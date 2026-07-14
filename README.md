@@ -4,33 +4,32 @@
 
 Browse and inspect instructions, skills, MCP settings, and other customization files for AI coding agents.
 
-> Development status: the M1 foundation and security spine are implemented and verified in this repository. The package is not released and does not yet include vendor adapters, redaction, a CLI, an HTTP server, or a Web UI.
+> Development status: on 2026-07-15, the user directed that all production implementation be removed. This repository currently contains planning documents and generic development-tool configuration only. It does not contain a runnable inspector, library, CLI, server, Web UI, or demo preview.
 
-## Current foundation
+## Current repository contents
 
-- TypeScript, ESM-only modules, Node.js 22.12.0 or later, and npm
-- Separate Repository and Global source contracts; Global is off by default
-- Bounded, root-contained filesystem discovery that skips symbolic links
-- Summary-only catalogs and revision-checked, source-aware detail storage
-- Static trusted adapter contracts plus test-only adapters and tool-home resolvers
+- Product and security planning for a future Agent Customization Inspector
+- Generic npm, TypeScript, formatting, and linting configuration
 - English and Japanese repository documentation maintained together
 
-Inspected content is treated as untrusted data and is never executed. The current M1 code contains no real tool-home resolver or vendor adapter.
+The previous M1 implementation was completed and verified on the `dev` branch, then removed at the user's direction. That history does not mean M1 is currently present or authorized for restoration. M2 and later milestones also remain unauthorized.
 
 ## Development
 
 ```sh
 npm ci
-npm run check
+npm run format
+npm run lint
+npm run typecheck
 ```
 
-Useful focused commands are `npm test`, `npm run typecheck`, `npm run lint`, `npm run format`, and `npm run build`.
+These commands validate the retained development configuration and documentation. There are no source tests, production build, package-validation target, or npm-startable product in the current repository.
 
 The future CLI milestone will use [gunshi](https://gunshi.dev/) for argument parsing and generated help. Commander is not used.
 
 ## Design
 
-See the [initial product design](docs/plans/initial-product-design.md) for the approved scope, security boundaries, milestones, and verification criteria. M2 and later milestones require separate explicit approval.
+See the [initial product design](docs/plans/initial-product-design.md) for the future scope, security boundaries, milestones, and verification criteria. Restoring M1 or starting M2 or a later milestone requires new explicit approval.
 
 ## License
 

@@ -13,11 +13,13 @@
 - ドキュメント変更を完了する前に、両言語版を比較し、欠落、古い記述、技術的な詳細の不一致がないことを確認してください。
 - この方針は新規ドキュメントと、変更する時点での既存ドキュメントに適用します。生成ファイルおよびベンダー提供のサードパーティ製ドキュメントは対象外です。
 
-## 現在の実装許可
+## 現在のrepository状態と実装許可
 
-- `docs/plans/initial-product-design.ja.md`のmilestone M1は、2026-07-15に明示的に承認され、`dev` branchで実装されました。
-- 実装およびreview作業はM1の範囲内に保ってください。M1が完了した後も、新たな明示的承認なしにM2、M3、M4を開始してはいけません。
-- M1には、開発基盤、公開contract、分離されたsource model、上限制約付きdiscovery primitive、diagnostic、virtual-path safety、test専用adapterおよびresolverが含まれます。実vendor adapter、redaction、diff生成、CLI launcher、HTTP server、Web UIは含まれません。
+- `docs/plans/initial-product-design.ja.md`のmilestone M1は、2026-07-15に明示的に承認され、`dev` branchで実装および検証されました。同日、その後にユーザーはproduction実装をすべて削除するよう指示しました。
+- 現在のrepositoryには、計画documentと汎用的な開発tool設定だけを残しています。Inspector library、CLI、server、Web UI、実行可能なpreview、source test、production build、package-validation targetはありません。
+- 以前のM1実装とlocal demo previewは、削除済みの履歴として扱ってください。以前の承認は、どちらかを復元する許可にはなりません。
+- 新たな明示的承認なしにM1を復元したり、M2、M3、M4を開始したりしてはいけません。
+- Product計画は将来のdesignとして維持してください。予定されているcontract、security primitive、adapter、interfaceを現在実装済みであるかのように記述してはいけません。
 
 ## 承認済みのプロダクト境界
 
@@ -42,6 +44,7 @@
 
 ## 必須の検証
 
-- M1完了前に、利用可能なformat、lint、typecheck、unit、contract、integration、coverage、build、package checkを実行してください。
-- Root containment、symlink skipping、設定済みの全limit、recoverableなfilesystemおよびadapter failure、diagnostic sanitization、source分離、Global無効時にGlobal resolverまたはfake-home filesystem callが0回であることをtestしてください。
-- Testやcoverage thresholdの成功を完全なsecurity保証とみなさず、boundary caseと意図しないdata exposureを明示的にreviewしてください。
+- 現在の設定だけのrepositoryでは、残されたfileに適用されるformat、lint、typecheckを実行してください。
+- Product実装が再度承認された場合、そのmilestoneの完了を宣言する前に、適切なunit、contract、integration、coverage、build、package checkを復元してください。
+- 将来のproduct testでは、root containment、symlink skipping、設定済みの全limit、recoverableなfilesystemおよびadapter failure、diagnostic sanitization、source分離、Global無効時にGlobal resolverまたはfake-home filesystem callが0回であることを対象にしてください。
+- Checkやcoverage thresholdの成功を完全なsecurity保証とみなさず、boundary caseと意図しないdata exposureを明示的にreviewしてください。

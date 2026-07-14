@@ -2,20 +2,19 @@
 
 [日本語](initial-product-design.ja.md)
 
-- Status: M1 implemented and locally verified on 2026-07-15; M2 and later approval is pending
+- Status: Future design only. M1 was implemented and verified, then removed at the user's direction on 2026-07-15; no milestone is currently implemented
 - Researched: 2026-07-14
 - Scope: Initial architecture and MVP plan only
-- Authorization: Implement M1 only. Do not begin M2 or later milestones without new explicit approval
+- Authorization: Do not restore M1 or begin M2 or later milestones without new explicit approval
 
 ## 1. Repository status
 
-- This plan was originally prepared from origin/main at b93ee32, Initial commit. M1 implementation work is isolated on the dev branch for a draft pull request.
-- The user's pre-existing staged README.md and package.json changes were preserved and incorporated without unstaging them.
-- The repository is now an npm single-package TypeScript and ESM project for Node.js 22.12.0 or later, with a lockfile, package exports, build, test, coverage, lint, format, and package-validation commands.
-- M1 adds vendor-neutral public model and adapter contracts, source-separated catalog and detail contracts, bounded diagnostics and metadata, Repository and Global source authorities, safe discovery primitives, an internal initial-session coordinator, and test-only adapters and resolvers.
-- Global remains disabled by default. The M1 Global path binds each allowlisted candidate to one built-in locator and does not walk a tool-home root wholesale.
-- Local aggregate verification passes with 195 tests and coverage above the configured 90% line/statement and 85% branch thresholds.
-- CI checks Node.js 22.12.0 and 24. Real vendor adapters, redaction, diff, the CLI, HTTP server, and Web UI remain outside the authorized M1 scope.
+- This plan was originally prepared from origin/main at b93ee32, Initial commit. M1 was later implemented on the `dev` branch and locally verified with 195 tests and coverage above the configured thresholds.
+- On 2026-07-15, after that verification, the user directed that all production implementation be removed. The M1 implementation is historical and is not present in the current repository.
+- The repository now retains planning documents and generic npm, TypeScript, formatting, and linting configuration only.
+- There is no inspector library, CLI, server, Web UI, runnable preview, source test suite, production build, or package-validation target.
+- The former implementation included vendor-neutral contracts, Repository and Global source separation, bounded discovery primitives, diagnostics, and test-only adapters and resolvers. These items remain future design requirements, not current capabilities.
+- Restoring M1 or implementing M2 or a later milestone requires new explicit approval.
 - The paired English and Japanese README, repository instructions, and design plan are maintained together.
 - The existing license is MIT.
 - npm view agent-customization-inspector returned E404 on 2026-07-14. This suggests the package is not currently public, but does not reserve the name.
@@ -806,7 +805,7 @@ Global source resolution needs no new runtime dependency. Use node:os, node:path
 - Test the packed tarball.
 - Trace every MVP completion requirement to evidence.
 
-M1 was explicitly authorized on 2026-07-15, and the approved persistent decisions are recorded in the root AGENTS.md. Implement M1 only. M1 completion does not authorize M2, and work must not proceed automatically to a later milestone.
+M1 was explicitly authorized, implemented, and verified on 2026-07-15, then removed later that day at the user's explicit direction. It is not currently present. The historical approval does not authorize restoring M1, and it never authorized M2 or a later milestone. Treat every milestone below as future work that requires new explicit approval.
 
 ## 12. Milestone completion criteria
 

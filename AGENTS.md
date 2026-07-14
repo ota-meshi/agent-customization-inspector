@@ -13,11 +13,13 @@
 - Before completing a documentation change, compare both versions for omissions, stale statements, and inconsistent technical details.
 - This policy applies to new documents and to existing documents whenever they are modified. Generated files and vendored third-party documentation are excluded.
 
-## Current implementation authorization
+## Current repository state and authorization
 
-- Milestone M1 in `docs/plans/initial-product-design.md` was explicitly authorized and implemented on the `dev` branch on 2026-07-15.
-- Keep implementation and review work within M1. Do not begin M2, M3, or M4 without a new explicit user approval, even after M1 is complete.
-- M1 includes the development foundation, public contracts, separated source model, bounded discovery primitives, diagnostics, virtual-path safety, and test-only adapters and resolvers. It does not include real vendor adapters, redaction, diff generation, the CLI launcher, the HTTP server, or the Web UI.
+- Milestone M1 in `docs/plans/initial-product-design.md` was explicitly authorized, implemented, and verified on the `dev` branch on 2026-07-15. Later that day, the user directed that all production implementation be removed.
+- The repository now retains planning documents and generic development-tool configuration only. It contains no inspector library, CLI, server, Web UI, runnable preview, source tests, production build, or package-validation target.
+- Treat the previous M1 implementation and local demo preview as historical and removed. Their earlier approvals do not authorize restoring either one.
+- Do not restore M1 or begin M2, M3, or M4 without new explicit user approval.
+- Preserve the product plan as a future design. Do not describe planned contracts, security primitives, adapters, or interfaces as currently implemented.
 
 ## Approved product boundaries
 
@@ -42,6 +44,7 @@
 
 ## Required verification
 
-- Before completing M1, run the available formatting, lint, typecheck, unit, contract, integration, coverage, build, and package checks.
-- Test root containment, symlink skipping, all configured limits, recoverable filesystem and adapter failures, diagnostic sanitization, source separation, and zero Global resolver or fake-home filesystem calls when Global is disabled.
-- Do not treat passing tests or coverage thresholds as a complete security guarantee; review boundary cases and unintended data exposure explicitly.
+- For the current configuration-only repository, run the available formatting, linting, and typechecking checks that apply to the retained files.
+- If product implementation is authorized again, restore appropriate unit, contract, integration, coverage, build, and package checks before calling that milestone complete.
+- Future product tests must cover root containment, symlink skipping, all configured limits, recoverable filesystem and adapter failures, diagnostic sanitization, source separation, and zero Global resolver or fake-home filesystem calls when Global is disabled.
+- Do not treat passing checks or coverage thresholds as a complete security guarantee; review boundary cases and unintended data exposure explicitly.

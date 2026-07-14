@@ -1,6 +1,7 @@
 {
   "name": "agent-customization-inspector",
   "version": "0.0.0",
+  "private": true,
   "description": "Browse and inspect instructions, skills, MCP settings, and other customization files for AI coding agents.",
   "homepage": "https://github.com/ota-meshi/agent-customization-inspector#readme",
   "bugs": {
@@ -17,50 +18,24 @@
   },
   "funding": "https://github.com/sponsors/ota-meshi",
   "type": "module",
-  "sideEffects": false,
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    },
-    "./package.json": "./package.json"
-  },
-  "files": [
-    "dist",
-    "docs",
-    "README.md",
-    "README.ja.md",
-    "LICENSE"
-  ],
   "engines": {
     "node": ">=22.12.0"
   },
   "packageManager": "npm@11.9.0",
   "scripts": {
-    "build": "tsup",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
     "format": "prettier --check .",
     "format:write": "prettier --write .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    "check:package": "npm run build && publint && attw --pack . --profile esm-only && npm pack --dry-run",
-    "check": "npm run format && npm run lint && npm run typecheck && npm run test:coverage && npm run check:package",
-    "prepack": "npm run build"
+    "check": "npm run format && npm run lint && npm run typecheck && npm test"
   },
   "devDependencies": {
-    "@arethetypeswrong/cli": "^0.18.5",
     "@eslint/js": "^9.39.5",
     "@types/node": "^22.20.1",
-    "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^9.39.5",
-    "fast-check": "^4.9.0",
     "prettier": "^3.9.5",
-    "publint": "^0.3.21",
-    "tsup": "^8.5.1",
     "typescript": "5.9.3",
     "typescript-eslint": "8.55.0",
     "vitest": "^4.1.10"
