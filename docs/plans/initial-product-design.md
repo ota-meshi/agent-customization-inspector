@@ -2,20 +2,23 @@
 
 [日本語](initial-product-design.ja.md)
 
-- Status: Future design only. M1 was implemented and verified, then removed at the user's direction on 2026-07-15; no milestone is currently implemented
+- Status: Proposed; implementation approval is still pending
 - Researched: 2026-07-14
 - Scope: Initial architecture and MVP plan only
-- Authorization: Do not restore M1 or begin M2 or later milestones without new explicit approval
+- Important: This document does not authorize product implementation
 
 ## 1. Repository status
 
-- This plan was originally prepared from origin/main at b93ee32, Initial commit. M1 was later implemented on the `dev` branch and locally verified with 195 tests and coverage above the configured thresholds.
-- On 2026-07-15, after that verification, the user directed that all production implementation be removed. The M1 implementation is historical and is not present in the current repository.
-- The repository now retains planning documents and generic npm, TypeScript, formatting, and linting configuration only.
-- There is no inspector library, CLI, server, Web UI, runnable preview, source test suite, production build, or package-validation target.
-- The former implementation included vendor-neutral contracts, Repository and Global source separation, bounded discovery primitives, diagnostics, and test-only adapters and resolvers. These items remain future design requirements, not current capabilities.
-- Restoring M1 or implementing M2 or a later milestone requires new explicit approval.
-- The paired English and Japanese README, repository instructions, and design plan are maintained together.
+- Branch main matches origin/main at b93ee32, Initial commit.
+- Tracked files are .gitignore, LICENSE, README.md, and package.json.
+- Existing staged changes:
+  - README.md: title change and blank line
+  - package.json: newly added
+- There were no unstaged or untracked files when this plan was prepared.
+- The later documentation pass added untracked AGENTS.md, AGENTS.ja.md, README.ja.md, and the English and Japanese plan files. The existing staged README.md and package.json changes remain staged and were not altered by that work.
+- package.json currently has type: module, main: dist/index.mjs, and a placeholder failing test script.
+- bin, exports, types, engines, files, dependencies, lockfile, source, tests, build configuration, lint configuration, formatter configuration, and CI do not exist yet.
+- README currently contains only the title and package description.
 - The existing license is MIT.
 - npm view agent-customization-inspector returned E404 on 2026-07-14. This suggests the package is not currently public, but does not reserve the name.
 
@@ -624,7 +627,7 @@ Minimal adapter contract:
       };
     }
 
-Tool IDs, kinds, formats, and built-in locator IDs are open strings so unknown future values can still be displayed. Adapters declare candidates for each supported source but never resolve environment variables or roots themselves. Every Global candidate names exactly one trusted built-in locator ID, Repository candidates cannot name a Global locator, and a bounded Global directory must begin below the tool-home root. This prevents one tool's candidate from probing an unrelated tool home.
+Tool IDs, kinds, formats, and built-in locator IDs are open strings so unknown future values can still be displayed. Adapters declare candidates for each supported source but never resolve environment variables or roots themselves.
 
 ## 9. Proposed directory structure
 
@@ -805,7 +808,7 @@ Global source resolution needs no new runtime dependency. Use node:os, node:path
 - Test the packed tarball.
 - Trace every MVP completion requirement to evidence.
 
-M1 was explicitly authorized, implemented, and verified on 2026-07-15, then removed later that day at the user's explicit direction. It is not currently present. The historical approval does not authorize restoring M1, and it never authorized M2 or a later milestone. Treat every milestone below as future work that requires new explicit approval.
+After explicit implementation approval, record the approved product decisions in the existing root AGENTS.md and implement only M1. The current documentation-language policy in AGENTS.md does not constitute implementation approval. Do not proceed automatically to M2.
 
 ## 12. Milestone completion criteria
 

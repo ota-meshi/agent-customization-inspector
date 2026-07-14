@@ -2,20 +2,23 @@
 
 [English](initial-product-design.md)
 
-- ステータス: 将来のdesignのみ。M1は2026-07-15に実装および検証された後、ユーザーの指示により削除済み。現在実装されているmilestoneはない
+- ステータス: 提案段階。実装承認はまだ得られていない
 - 調査日: 2026-07-14
 - スコープ: 初期アーキテクチャおよびMVP計画のみ
-- 実装許可: 新たな明示的承認なしにM1を復元したり、M2以降のmilestoneを開始したりしてはならない
+- 重要: 本文書はプロダクト実装を承認するものではない
 
 ## 1. リポジトリの現状
 
-- この計画は当初、origin/mainのb93ee32（Initial commit）を基に作成した。その後、M1は`dev` branchで実装され、195件のtest成功と設定済みthresholdを上回るcoverageによってlocal検証された。
-- その検証後の2026-07-15に、ユーザーはproduction実装をすべて削除するよう指示した。M1実装は過去の履歴であり、現在のrepositoryには存在しない。
-- 現在のrepositoryには、計画documentと、汎用的なnpm、TypeScript、format、lint設定だけを残している。
-- Inspector library、CLI、server、Web UI、実行可能なpreview、source test suite、production build、package-validation targetは存在しない。
-- 以前の実装には、vendor-neutralなcontract、Repository/Global source分離、上限制約付きdiscovery primitive、diagnostic、test専用adapterおよびresolverが含まれていた。これらは現在の機能ではなく、将来のdesign要件として残している。
-- M1の復元、M2またはそれ以降のmilestoneの実装には、新たな明示的承認が必要である。
-- 英語版と日本語版のREADME、repository instruction、design planを対として維持する。
+- mainブランチはb93ee32（Initial commit）でorigin/mainと一致している。
+- 追跡対象ファイルは.gitignore、LICENSE、README.md、package.jsonである。
+- 既存のステージ済み変更:
+  - README.md: タイトルの変更と空行
+  - package.json: 新規追加
+- この計画の作成時点では、ステージされていないファイルや未追跡ファイルは存在しなかった。
+- その後のドキュメント作業で、未追跡のAGENTS.md、AGENTS.ja.md、README.ja.md、および英語版・日本語版の計画書を追加した。既存のステージ済みREADME.mdとpackage.jsonはステージ済みのままであり、この作業では変更していない。
+- package.jsonには現在、type: module、main: dist/index.mjs、および必ず失敗するプレースホルダーのtestスクリプトがある。
+- bin、exports、types、engines、files、dependencies、lockfile、ソース、テスト、ビルド設定、lint設定、formatter設定、CIはまだ存在しない。
+- READMEには現在、タイトルとパッケージの説明だけが記載されている。
 - 既存のライセンスはMITである。
 - 2026-07-14時点で、npm view agent-customization-inspectorはE404を返した。これはパッケージが現在公開されていないことを示唆するが、パッケージ名を予約するものではない。
 
@@ -624,7 +627,7 @@ includeGlobalの既定値はfalseとする。Globalのdisabled、scanning、erro
       };
     }
 
-Tool ID、kind、format、built-in locator IDはopen stringとし、将来の未知の値も表示できるようにする。Adapterは対応sourceごとにcandidateを宣言するが、environment variableやrootを自ら解決しない。各Global candidateは信頼済みbuilt-in locator IDを1つだけ指定し、Repository candidateはGlobal locatorを指定できず、Globalのbounded directoryはtool-home rootより下から開始しなければならない。これにより、あるtoolのcandidateが無関係なtool homeをprobeすることを防ぐ。
+Tool ID、kind、format、built-in locator IDはopen stringとし、将来の未知の値も表示できるようにする。Adapterは対応sourceごとにcandidateを宣言するが、environment variableやrootを自ら解決しない。
 
 ## 9. 提案するディレクトリ構成
 
@@ -805,7 +808,7 @@ Global source resolutionに新しいruntime dependencyは不要である。node:
 - Pack済みtarballをテストする。
 - MVPのすべての完了要件を、その証拠までtraceする。
 
-M1は2026-07-15に明示的に承認、実装、検証された後、同日中にユーザーの明示的な指示により削除された。現在は存在しない。過去の承認はM1を復元する許可にはならず、M2またはそれ以降のmilestoneを許可したものでもない。以下の各milestoneは、新たな明示的承認を必要とする将来の作業として扱う。
+明示的な実装承認後、承認されたproduct decisionを既存のroot AGENTS.mdに記録し、M1のみを実装する。現在AGENTS.mdにあるドキュメント言語方針は実装承認を意味しない。自動的にM2へ進めてはならない。
 
 ## 12. Milestone完了基準
 

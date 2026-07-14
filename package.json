@@ -1,7 +1,6 @@
 {
   "name": "agent-customization-inspector",
   "version": "0.0.0",
-  "private": true,
   "description": "Browse and inspect instructions, skills, MCP settings, and other customization files for AI coding agents.",
   "homepage": "https://github.com/ota-meshi/agent-customization-inspector#readme",
   "bugs": {
@@ -18,26 +17,8 @@
   },
   "funding": "https://github.com/sponsors/ota-meshi",
   "type": "module",
-  "engines": {
-    "node": ">=22.12.0"
-  },
-  "packageManager": "npm@11.9.0",
+  "main": "dist/index.mjs",
   "scripts": {
-    "typecheck": "tsc --noEmit",
-    "lint": "eslint . --max-warnings=0",
-    "format": "prettier --check .",
-    "format:write": "prettier --write .",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "check": "npm run format && npm run lint && npm run typecheck && npm test"
-  },
-  "devDependencies": {
-    "@eslint/js": "^9.39.5",
-    "@types/node": "^22.20.1",
-    "eslint": "^9.39.5",
-    "prettier": "^3.9.5",
-    "typescript": "5.9.3",
-    "typescript-eslint": "8.55.0",
-    "vitest": "^4.1.10"
+    "test": "echo \"Error: no test specified\" && exit 1"
   }
 }
