@@ -16,6 +16,7 @@
 ## Pull requestの文章スタイル
 
 - Pull requestのタイトルと説明は、人間のreviewerに向けた簡潔で自然な文章にしてください。
+- Pull requestの説明は全文を英語で書いてください。日本語訳や、複数言語で重複した説明を含めてはいけません。
 - Pull requestの説明で、汎用的な見出しとして`Summary`を使用してはいけません。
 - 短いpull requestでは、`Scope`、`Key decisions`、`Verification`などのtemplate的なsectionを並べないでください。少数の直接的な段落を基本とし、内容上本当に必要な場合だけ見出しやlistを使用してください。
 - Pull requestが何を提案し、なぜ必要なのかに集中してください。Reviewに必要な場合を除き、実装の履歴、復元手順、commitの順序を説明してはいけません。

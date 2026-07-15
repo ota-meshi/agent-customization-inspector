@@ -16,6 +16,7 @@
 ## Pull request writing style
 
 - Write pull request titles and descriptions in concise, natural language for human reviewers.
+- Write the entire pull request description in English. Do not include a Japanese translation or duplicate the description in multiple languages.
 - Do not use `Summary` as a generic heading in a pull request description.
 - For a short pull request, avoid stacking template-like sections such as `Scope`, `Key decisions`, and `Verification`. Prefer a few direct paragraphs, and use headings or lists only when the content genuinely needs them.
 - Focus on what the pull request proposes and why it matters. Do not narrate implementation history, restoration steps, or the commit sequence unless that context is necessary for review.
