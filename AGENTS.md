@@ -2,6 +2,9 @@
 
 [日本語](AGENTS.ja.md)
 
+Project development and review are governed by the
+[Project Constitution](.specify/memory/constitution.md).
+
 ## Documentation language policy
 
 - Create and maintain both English and Japanese versions of every human-authored repository document.
