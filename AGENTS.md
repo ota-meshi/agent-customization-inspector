@@ -12,3 +12,11 @@
 - When practical, link each language version to its counterpart near the top of the document.
 - Before completing a documentation change, compare both versions for omissions, stale statements, and inconsistent technical details.
 - This policy applies to new documents and to existing documents whenever they are modified. Generated files and vendored third-party documentation are excluded.
+
+## Pull request writing style
+
+- Write pull request titles and descriptions in concise, natural language for human reviewers.
+- Do not use `Summary` as a generic heading in a pull request description.
+- For a short pull request, avoid stacking template-like sections such as `Scope`, `Key decisions`, and `Verification`. Prefer a few direct paragraphs, and use headings or lists only when the content genuinely needs them.
+- Focus on what the pull request proposes and why it matters. Do not narrate implementation history, restoration steps, or the commit sequence unless that context is necessary for review.
+- Remove boilerplate, redundant framing, and self-referential process notes before publishing or updating a pull request.
