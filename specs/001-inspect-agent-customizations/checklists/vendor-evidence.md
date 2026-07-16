@@ -1,0 +1,83 @@
+# Vendor Evidence and Surface Semantics Checklist: Inspect Agent Customizations
+
+[日本語](vendor-evidence.ja.md)
+
+**Purpose**: Validate that vendor lookup, surface-specific discovery and composition, and official-source traceability requirements are complete, precise, and maintainable before implementation
+**Created**: 2026-07-16
+**Feature**: [Inspect Agent Customizations specification](../spec.md)
+**Depth**: Standard
+**Audience / Timing**: PR reviewers, before task generation and implementation
+
+**Note**: This checklist evaluates the quality of the written requirements. It does not test product behavior or implementation conformance.
+
+## Requirement Completeness
+
+- [ ] CHK001 Are canonical URL, official host, exact reviewed sections, review date, and reciprocal affected-record references required for every maintained evidence record? [Completeness, Spec §QR-005]
+- [ ] CHK002 Does every vendor behavior state its product surface, Repository or User/Global scope, lookup base, path or selector, traversal semantics, version applicability, and activation conditions? [Completeness, Data Model §VendorBehaviorStatement]
+- [ ] CHK003 Are Repository and User/Global behavior documented in separate tables, with GitHub Copilot VS Code, CLI, and Cloud documented as independent surfaces? [Completeness, Spec §QR-005]
+- [ ] CHK004 Does every supported customization type have a documented vendor behavior, an Inspector matcher or explicit exclusion, and a runtime-composition strategy or an explicit statement that no composition applies? [Completeness, Spec §FR-003–FR-005; Contract: Inspection Path Allowlist §Contract map and identifier ownership]
+- [ ] CHK005 Are all documented Copilot MCP locations covered separately, including VS Code workspace-root `.mcp.json`, `.vscode/mcp.json`, Copilot CLI `.mcp.json`, `.github/mcp.json`, and their applicable User locations? [Gap, Spec §FR-004; Contract: GitHub Copilot §Surface boundary]
+
+## Requirement Clarity
+
+- [ ] CHK006 Are `launch cwd`, Inspector Repository root, vendor repository root, VS Code workspace folder, and runtime `cwd` defined as distinct concepts wherever they can differ? [Clarity, Spec §FR-001–FR-002; Contract: Runtime Composition §Required condition facts]
+- [ ] CHK007 Is the distinction between a vendor's lookup traversal and the Inspector's downward `./**/` inventory selector explicit for every recursive-looking path? [Clarity, Spec §QR-005; Contract: Inspection Path Allowlist §Vendor locators are not Inspector matchers]
+- [ ] CHK008 Are “present,” “recognized,” “supported,” “available,” “applicable,” “selected,” “enabled,” and “effective” defined so that file existence cannot be mistaken for runtime activation? [Clarity, Spec §FR-008–FR-009; Contract: Inspection Path Allowlist §Read authorization and applicability]
+- [ ] CHK009 Is each evidence section narrow enough to support the exact claim made by its behavior, rule, or strategy row rather than only naming a broad parent section? [Clarity, Spec §QR-005; Contract: Official Sources §Record notation and ownership]
+- [ ] CHK010 Are minimum versions, rollout state, preview or experimental status, and effective dates specified whenever a path or precedence rule is not valid across all supported versions? [Clarity, Gap]
+
+## Requirement Consistency
+
+- [ ] CHK011 Are `behaviorId`, `ruleId`, `strategyId`, and `sourceId` ownership and reciprocal references consistent across the vendor, matcher, composition, and source registries? [Consistency, Contract: Inspection Path Allowlist §Contract map and identifier ownership]
+- [ ] CHK012 Do the requirements consistently preserve one physical file with multiple tool/kind recognitions and surface-specific candidate provenances instead of duplicating the file or collapsing provenance semantics? [Consistency, Spec §FR-005; Data Model §ToolRecognition and §CandidateProvenance]
+- [ ] CHK013 Are the path, schema, and applicability requirements for `.mcp.json` consistent between Copilot VS Code and Copilot CLI without assuming that a shared filename implies identical configuration semantics? [Consistency, Ambiguity, Contract: GitHub Copilot §VS Code Repository behavior and §Copilot CLI Repository behavior]
+- [ ] CHK014 Is vendor runtime composition consistently separated from Inspector Repository/Global source separation and read authorization? [Consistency, Spec §FR-014; Contract: Runtime Composition §Runtime composition is not Inspector source merging]
+
+## Acceptance Criteria Quality
+
+- [ ] CHK015 Are there objective completeness criteria for evidence coverage, including zero unresolved identifier references, zero orphan sources, and evidence for every maintained behavior, rule, and strategy? [Measurability, Spec §QR-005]
+- [ ] CHK016 Are Repository selector acceptance criteria explicit about Base `./`, `./`-prefixed relative selectors, expansion class, and rejection of a bare `**/` prefix? [Measurability, Spec §QR-005]
+- [ ] CHK017 Can each documentation status—documented, partially documented, unknown, and documentation conflict—be assigned using objective evidence criteria? [Acceptance Criteria, Gap]
+- [ ] CHK018 Are drift-review outcomes measurable for unchanged content, changed assertions, missing or duplicate anchors, redirects, and human-reviewed semantic updates? [Acceptance Criteria, Contract: Official Sources §Offline validation and explicit drift review]
+
+## Scenario Coverage
+
+- [ ] CHK019 Are requirements defined for the primary case where a current first-party guide directly documents a supported path and its semantics? [Coverage, Spec §QR-005]
+- [ ] CHK020 Are requirements defined for an alternate case where a newer official release note adds support that the current general guide omits? [Coverage, Alternate Flow, Gap]
+- [ ] CHK021 Are requirements defined for a later product version that adds, renames, relocates, or removes a customization path? [Coverage, Change Scenario, Spec §Assumptions]
+- [ ] CHK022 Is the recovery process specified after evidence drift, including semantic review, affected-row updates, bilingual synchronization, review-date changes, and contract-version decisions? [Coverage, Recovery, Contract: Official Sources §Offline validation and explicit drift review]
+- [ ] CHK023 Are requirements complete for unresolved runtime facts such as surface version, workspace root, runtime `cwd`, trust, enablement, and organization policy, with a conditional outcome instead of a fabricated winner? [Coverage, Exception Flow, Spec §FR-009]
+
+## Edge Case Coverage
+
+- [ ] CHK024 Are same-name MCP servers declared in workspace-root `.mcp.json`, `.vscode/mcp.json`, User configuration, plugins, or agent profiles addressed without assuming undocumented precedence? [Edge Case, Gap]
+- [ ] CHK025 Are requirements defined for a `.mcp.json` file that is valid for one recognizing surface but malformed or unsupported for another, without losing the successful recognition? [Edge Case, Spec §FR-005 and §FR-028; Gap]
+- [ ] CHK026 Are single-folder workspaces, multi-root workspaces, nested launch directories, and runtime `cwd` values outside the Inspector launch root distinguished where they change vendor applicability? [Edge Case, Gap]
+- [ ] CHK027 Are unavailable pages, cross-host redirects, duplicate headings, sections absent from fetched markup, and removed anchors covered as evidence failures without silently weakening traceability? [Edge Case, Contract: Official Sources §Offline validation and explicit drift review]
+- [ ] CHK028 Are rolling or undated official pages and features that are previewed, rolled back, or superseded covered by explicit version and documentation-status requirements? [Edge Case, Assumption]
+
+## Non-Functional Requirements
+
+- [ ] CHK029 Are English and Japanese requirements required to preserve identical IDs, paths, URLs, reviewed sections, versions, documentation statuses, and semantic caveats? [Completeness, Spec §QR-004–QR-005]
+- [ ] CHK030 Are registry and drift validations required to be deterministic, bounded, and actionable when they cannot establish source integrity? [Non-Functional, Contract: Inspection Path Allowlist §Common conformance requirements]
+- [ ] CHK031 Are privacy requirements for official-source review explicit about credentials, cookies, repository data, response bodies, and retained remote content? [Security, Data Model §OfficialSourceRecord]
+- [ ] CHK032 Does the ownership model allow one vendor surface to be updated without changing unrelated vendors, surfaces, Inspector policies, or composition strategies? [Maintainability, Spec §QR-001]
+
+## Dependencies and Assumptions
+
+- [ ] CHK033 Is the accepted first-party source hierarchy defined for general guides, reference pages, release notes, official source repositories, and official issue statements? [Dependency, Gap]
+- [ ] CHK034 Is the assumption that official documentation can be incomplete or internally inconsistent stated, together with the required representation of residual uncertainty? [Assumption, Spec §FR-009 and §Assumptions]
+- [ ] CHK035 Are the owner, timing, trigger, and completion criteria for pre-implementation and recurring vendor-specification revalidation documented? [Dependency, Spec §Supported Initial Release Customization Files; §QR-005]
+
+## Ambiguities and Conflicts
+
+- [ ] CHK036 Is VS Code 1.118-or-later workspace-root `.mcp.json` support explicitly represented and linked to the exact official release-note section, rather than inferred from the `.vscode/mcp.json` guide? [Conflict, Gap]
+- [ ] CHK037 Is the accepted schema for VS Code workspace-root `.mcp.json` specified, including whether and how it differs from `.vscode/mcp.json` and Copilot CLI configuration? [Ambiguity, Gap]
+- [ ] CHK038 Is “most-specific” MCP server selection defined with an exact ordering across workspace folders and configuration locations, or explicitly retained as unknown where the evidence is incomplete? [Ambiguity, Gap]
+- [ ] CHK039 Is there a documented decision rule for the conflict between the current VS Code MCP guide's location list and the newer VS Code 1.118 workspace-root `.mcp.json` release note? [Conflict, Gap]
+
+## Notes
+
+- Check items off as the requirements are reviewed: `[x]`.
+- Record findings and the exact affected requirement or contract row inline.
+- A checked item means the requirement writing is adequate; it does not mean the implementation conforms.

@@ -1,0 +1,40 @@
+# Specification Quality Checklist: Inspect Agent Customizations
+
+[日本語](requirements.ja.md)
+
+**Purpose**: Validate specification completeness and quality before proceeding to planning
+**Created**: 2026-07-15
+**Feature**: [Inspect Agent Customizations specification](../spec.md)
+
+## Content Quality
+
+- [x] No implementation details (languages, frameworks, APIs)
+- [x] Focused on user value and business needs
+- [x] Written for non-technical stakeholders
+- [x] All mandatory sections completed
+
+## Requirement Completeness
+
+- [x] No `[NEEDS CLARIFICATION]` markers remain
+- [x] Requirements are testable and unambiguous
+- [x] Success criteria are measurable
+- [x] Success criteria are technology-agnostic (no implementation details)
+- [x] All acceptance scenarios are defined
+- [x] Edge cases are identified
+- [x] Scope is clearly bounded
+- [x] Dependencies and assumptions identified
+
+## Feature Readiness
+
+- [x] All functional requirements have clear acceptance criteria
+- [x] User scenarios cover primary flows
+- [x] Feature meets measurable outcomes defined in Success Criteria
+- [x] No implementation details leak into specification
+
+## Notes
+
+- Validation iteration 3 passed all items on 2026-07-15 after making inert browser rendering,
+  tool-specific instruction-selection rules, surface-separated behavior tables, and
+  official-source traceability explicit.
+- The exact repository inspection path allowlist is intentionally frozen during planning after revalidation against official vendor specifications; the specification fixes the supported product families and forbids Global-scope expansion without a specification change.
+- The temporary local product-description file is neither linked nor required by this specification.
