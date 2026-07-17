@@ -14,16 +14,15 @@ a filesystem path, URL, command, source text, parser option, glob, or executable
 
 1. The process binds an ephemeral port on `127.0.0.1`. The initial release has no host
    override and does not bind `0.0.0.0`, a LAN address, or a Unix socket. Before binding it
-   strictly loads the fixed, at-most-64-KiB `dist/native/manifest.json`, requires
-   manifest/package version agreement, custom native ABI 1, Node-API 10 and process support
-   of at least 10, maps to exactly one of the closed eight target IDs, verifies that exact
-   artifact's declared byte length/lowercase SHA-256, loads only
-   `<targetId>/safe-fs.node`, checks its reported target/ABI, and runs the backend self-test.
-   Linux selects GNU only from a well-formed process report with non-empty
-   `glibcVersionRuntime`, selects the musl candidate only when that field is absent from a
-   well-formed report, and otherwise reports unsupported. Missing, unsupported, corrupt, or
-   unhealthy native I/O exits with a fixed actionable CLI error; no second-target probe,
-   HTTP session, runtime download/build, or path-based fallback starts.
+   verifies the package version, the closed static/server manifests, and every asset they
+   list, then initializes the centralized Node.js filesystem service used for every
+   inspected-source operation. A missing, malformed, or inconsistent package asset or an
+   unavailable filesystem service exits with a fixed actionable CLI error before any HTTP
+   session starts. All executable runtime product code is JavaScript; generated HTML shell,
+   CSS, JSON manifests, documentation, and license files are declarative, non-executable
+   package artifacts. Any manifest-authorized bootstrap embedded in the HTML remains
+   JavaScript executable code governed by the CSP requirements below. The package contains
+   no native addon, platform-specific artifact selector, runtime download, or runtime build path.
 2. At process start, the host creates a random 256-bit capability and opens the SPA at
    `http://127.0.0.1:<port>/#cap=<base64url>`. If browser opening fails or is disabled, the
    same local URL is printed.
@@ -255,8 +254,8 @@ the same FIFO, dequeue-time base-generation, atomic publication, progress, inval
 and bounded-capacity rules as Repository rescan. At most one Global scan/enable command is
 running or queued; a duplicate cannot silently coalesce or trigger a second read.
 A fatal Global enable or rescan does not commit: it reports `status: failed` with null
-`progress`, retains `enabled: true`, the exact consent and accepted boundaries/capabilities,
-and any prior Global graph, and permits a later explicit rescan or disable.
+`progress`, retains `enabled: true`, the exact consent and accepted validated boundary
+records, and any prior Global graph, and permits a later explicit rescan or disable.
 
 Status: `202` with the updated source summary; `409 source-disabled` if Global is not
 enabled or is disabling; `409 scan-in-progress` for a duplicate running/queued Global scan
@@ -281,14 +280,16 @@ draining a Global scan it preserves that scan's counters/`startedAt`, otherwise 
 zero counters and the disable-acceptance `startedAt`. A drained
 Repository preserves its counters/start and clears `queuedAt`; a requeued Repository has
 zero counters, a new non-null `queuedAt`, and null `startedAt`. The disable commit clears consent,
-closes Global root capabilities, removes every Global raw byte/record, increments N to
-N+1, rekeys the retained Repository graph, and returns only after every comparison, mask,
+invalidates every Global source-root record, closes any open inspection `FileHandle`,
+removes every Global raw byte/record, increments N to N+1, rekeys the retained Repository graph,
+and returns only after every comparison, mask,
 and reveal referencing the prior generation is invalid. A requeued Repository job then
 starts from N+1 and may later commit N+2. Barrier cancellation is expected and adds no
 failure diagnostic. A disable request received while the same barrier is queued or active
 joins that barrier and returns when its single commit completes; it neither aborts the
 barrier nor creates another generation. If no Global enabled flag, consent record,
-nonempty graph, open root capability, or running/queued Global scan/enable command exists,
+nonempty graph, retained validated root record, open inspection `FileHandle`, or
+running/queued Global scan/enable command exists,
 disable returns immediately as an idempotent no-op and does not increment the generation
 or disturb Repository work.
 
@@ -364,9 +365,34 @@ Status: `200`; `404 stale-resource`; `409 file-not-readable` (including
   destroys the capability, raw values, source roots, generations, and diagnostics.
 - No API call starts an MCP server, follows an import, opens an inspected URL, invokes a
   customization command, or writes to an inspected source.
-- Enabled inspection sources are enumerated/read only through native root capabilities and
-  entry tickets. `node:fs` may serve trusted packaged assets but is never a fallback for an
-  inspected source.
+- Enabled inspection sources are enumerated/read only through one centralized service built
+  on `node:fs/promises`. It accepts validated source IDs and source-relative enumeration
+  records, never an arbitrary absolute path supplied by an API request, relationship, or
+  source file. Every candidate verification phase—enumeration, immediately before open,
+  after open but before reading any bytes, and after the bounded read—uses this exact order:
+  (1) `lstat` the candidate path and reject a symbolic link, non-regular type, or unexpected
+  identity; (2) only after that succeeds, resolve the candidate `realpath` and verify
+  canonical containment with `node:path.relative`; and (3) `lstat` the candidate path again
+  and require its identity, type, size, and relevant timestamps to match the first `lstat`.
+  A stable symlink is therefore rejected before candidate `realpath` can follow it. At
+  enumeration and immediately before open, the service also verifies lexical containment,
+  the root identity, and every ancestor `lstat`. It opens with `O_NOFOLLOW` whenever
+  `node:fs.constants.O_NOFOLLOW` exists and is effective on that Node.js/platform
+  combination. After open, it runs the ordered candidate sequence before reading and
+  compares pre-read `FileHandle.stat()` with both `lstat` results and the earlier snapshots.
+  After the bounded read and before parse, publish, or commit, it repeats the root and
+  ancestor checks, the ordered candidate sequence, and `stat()` on the same open handle. A
+  detected error, ambiguity, containment failure, or metadata change discards the entire
+  byte buffer and fails closed. Unusable required metadata or canonicalization emits
+  `safe-fs-boundary-unverifiable` and rejects the candidate, or its source when the root or
+  a shared ancestor is unverifiable.
+- Public Node.js APIs do not provide a portable directory-handle-relative open. An active
+  adversarial process that replaces an ancestor or final component between checks is
+  outside the initial-release threat model, including where `O_NOFOLLOW` is absent or
+  ineffective. Ordinary concurrent edits and all detectable races remain in scope and
+  discard every byte. Same-device bind mounts, unreported reparse behavior, and other OS
+  semantics unavailable through Node.js remain documented platform limitations, not
+  absolute containment guarantees.
 
 ## Required contract tests
 
@@ -397,16 +423,24 @@ Status: `200`; `404 stale-resource`; `409 file-not-readable` (including
    authorize a read. Exact-limit and one-byte-over-limit root/display fixtures prove that
    `oversized` returns null with no normalization, prefix display, allocation expansion, or
    authorization.
-9. The native loader accepts only the closed eight IDs and exact manifest schema. Missing,
-   corrupt, ABI/package/Node-API/size/hash-mismatched, unsupported, ambiguous-libc, and
-   failed-self-test artifacts, plus a symlink, directory, or platform-safe non-regular
-   fixture in place of either the native manifest or selected `.node` file, prevent server
-   bind, do not probe another target, and never activate a `node:fs` inspected-source fallback.
+9. The centralized Node.js filesystem service rejects lexical and canonical escapes,
+   symbolic-link path segments, non-regular candidates, and every detectable mismatch in
+   the required enumeration/pre-open/post-open-pre-read/post-read snapshots on every
+   supported OS. A call trace for each phase proves the exact candidate-path `lstat`, then
+   candidate `realpath` plus `path.relative` containment, then second candidate-path `lstat`
+   order and matching identity in the `lstat` results immediately before and after
+   `realpath`. A stable-symlink fixture proves that the first `lstat` rejects it without
+   calling candidate `realpath`. The service uses
+   effective `O_NOFOLLOW` when available. Root, parent, and final-entry replacement fixtures
+   prove that every ordinary concurrent or otherwise detectable change publishes no bytes.
+   Reported error, ambiguity, or unusable metadata/canonicalization returns
+   `safe-fs-boundary-unverifiable`; unobservable OS behavior is recorded as a platform
+   limitation and is not counted as proof against the excluded active-adversary race.
 10. The static loader rejects an oversized/malformed/extra-key/duplicate manifest,
     symlink/non-regular asset, unexpected file, path/MIME/size/hash mismatch, relative or
     external executable URL, `<base>`, nonce, executable attribute, and unrecorded inline
     script before bind. The build requires then removes only Nuxt's fixed `200.html` and
     `404.html`, rejects every other non-`index.html` HTML file, and the packed file list
     matches the exact npm allowlist. Build/package verification starts from clean
-    `.output`/`.build`/`dist` trees and recursively matches `dist` against only the three
-    manifests and their listed static, server, and native records, rejecting stale output.
+    `.output`/`.build`/`dist` trees and recursively matches `dist` against only the two
+    manifests and their listed static and server records, rejecting stale output.

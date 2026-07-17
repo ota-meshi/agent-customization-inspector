@@ -9,11 +9,7 @@ script/fixtureを追加するとcommandが実行可能になる。Current scaffo
 
 - Node.js 24.18.0 Active LTS（packageは宣言済み互換Node 26+ rangeもsupport）
 - pnpm 11.13.0
-- Current native targetのcontributor build用Rust 1.97.0。End userはrelease-test済みprebuildだけをinstallし、
-  Rust compilerは不要
-- Full `pnpm run build` acceptance pathでは、8 target CI jobすべてがartifactを配置したrelease-assembly
-  workspaceが必要。単一workstationはcurrent addonをbuild/testできるが、残り7つの検証済みinputなしに
-  publishable tarballを作成・主張できない
+- 追加compilerやplatform固有build workspaceは不要。Inspected-source accessはpackaged Node.js moduleで実装する
 - Project setup commandで作成したPlaywright-support Chromium
 - `127.0.0.1`へ到達できるlocal browser
 
@@ -22,10 +18,9 @@ Toolchain確認:
 ```bash
 node --version
 pnpm --version
-rustc --version
 ```
 
-期待結果: 基準環境ではNodeが`v24.18.0`、pnpmが`11.13.0`、Rustが`rustc 1.97.0`を表示する。[research.ja.md](research.ja.md)
+期待結果: 基準環境ではNodeが`v24.18.0`、pnpmが`11.13.0`を表示する。[research.ja.md](research.ja.md)
 に記録したNuxt/Vue互換性が変わるまでTypeScript 7/Vite 8へ置換しない。
 
 ## Installと準備
@@ -44,19 +39,18 @@ pnpm run build
   assemblerがredundantな`200.html`/`404.html`を要求するが除外し、`index.html`以外の全HTML fileを拒否する。
   Accepted treeを新規`dist/public`へcopyし、全copied asset size/hashと正確な全executable inline-script CSP hashを
   持つ`dist/manifests/static-assets.json`を書く。
-- Release assemblyがlocked Rust 8-target matrixでbuild/self-test済みのartifactをconsumeし、検証済みartifactを
-  `dist/native/<targetId>/safe-fs.node`へcopyしてclosedな`dist/native/manifest.json`を書く。Install scriptや
-  runtime downloadを生成しない。
-- tsdownがcleanな`.build/server`へfixed ESM extensionのnamed `cli.mjs`/`parser-worker.mjs` entryと任意の
-  code-split chunkを書き、assemblerが`dist/manifests/server-assets.json`を作ってlisted regular `.mjs` fileだけを
-  `dist/`へcopyする。
+- tsdownがcleanな`.build/server`へfixed ESM extensionのnamed `cli.mjs`/`parser-worker.mjs` entry、中央集約した
+  Node.js filesystem service、任意のcode-split chunkを書き、assemblerが`dist/manifests/server-assets.json`を
+  作ってlisted regular `.mjs` fileだけを`dist/`へcopyする。
 - `bin.mjs`はexecutableで、BOMなし、LF終端の正確な先頭行`#!/usr/bin/env node`で始まり、
   `dist/cli.mjs`をimportする。
 - `package.json.bin`は正確に`{ "agent-customization-inspector": "bin.mjs" }`、`main`、`module`、`exports`は不在。
-- Local server bind前にstatic/native manifest、package version、asset、target ABI、current-target self-testを
-  全て検証する。
-- Pack前のrecursive verificationで`dist/`に3 manifestとそのlisted static/server/native fileだけがあり、
+- Local server bind前にstatic/server manifest、package version、assetを全て検証する。
+- Pack前のrecursive verificationで`dist/`に2 manifestとそのlisted static/server fileだけがあり、
   stale、link、non-regular、unexpected pathがないことを確認する。
+- Package内のexecutableなruntime product codeはすべてJavaScriptとする。生成HTML shell、CSS、JSON manifest、
+  必須のdocumentation/license fileはdeclarativeかつnon-executableなartifactとして許可する。HTML内の
+  manifest-authorized bootstrapはJavaScript executable codeのままで、上記CSP checkの対象とする。
 - Build outputにfixture、raw customization text、Global content、cache、inspected machineを公開する
   source-map pathが含まれない。
 
@@ -97,9 +91,6 @@ ancestor-root discovery、remote-host flag、static-export command、MCP command
 ```bash
 pnpm run lint
 pnpm run typecheck
-cargo fmt --check
-cargo clippy --locked --all-targets -- -D warnings
-cargo test --locked
 pnpm run test:unit
 pnpm run test:contract
 pnpm run test:integration
@@ -113,7 +104,6 @@ pnpm run test:docs
 期待結果:
 
 - Lint/type checkがignored failureなしで完了する。
-- Rust format、clippy、unit test、native backend self-testがlocked toolchain/dependencyで完了する。
 - Unit testがpath classification、order、parser bound、mask、diagnostic、state transition、deterministic
   projectionを扱う。
 - Contract testが全API status/security ruleと全stable behavior、inspection-rule、composition-strategy、
@@ -121,8 +111,8 @@ pnpm run test:docs
   multi-provenance、multi-tool、Global caseを含む。
 - Integration/security testがsource containmentとcustomization由来のexecution、child process、MCP
   connection、outbound request、dynamic evaluation、source mutationが0であることを証明する。
-- Package testがtarballをbuild/inspectionし、isolated fixtureへinstallし、exact native target artifactと
-  固定のpackaged parser Worker URLをloadして、working tree/compiler/downloadへ依存せず正確な`npx` entryを
+- Package testがtarballをbuild/inspectionし、isolated fixtureへinstallし、packaged Node.js filesystem serviceと
+  固定のpackaged parser Worker URLをloadして、working tree/runtime downloadへ依存せず正確な`npx` entryを
   launchする。
 - 100,000 entry/500 in-limit customization fileのperformance fixtureが1秒以内にstatus、記録済み
   reference hostで10秒以内に完了する。
@@ -171,7 +161,7 @@ source checkでnetworkを使えるのはこのcommandだけとする。
    output、unresolved conditional output、known unsatisfied/shadowedまたはbounded-derived seedからの出力なし、
    stable deduplication/先頭128件保持、129件目targetへaccessしないことを証明する。Pure path fixtureは全OSで
    ADS colon、Windows-special character/device name、trailing dot/space、case/Unicode-normalization mismatch、
-   8.3 aliasを検証し、どれもnative ticket lookup/I/Oへ渡さない。
+   8.3 aliasを検証し、どれもread authorizationや中央集約したNode.js filesystem read operationへ渡さない。
 7. Applicabilityはdocumentation status、product surface、root/runtime `cwd`、target match、trust/approval、
    enablement、selection、agent context、tool availability、installation、managed policy、external runtimeを
    別factとして保持する。
@@ -339,15 +329,30 @@ Parser-limit testは全format、kill/replace behavior、worker crash後の成功
 扱う。Mask-limit testは停止点より後へmaintained secretを置き、prefix、suffix、metadata、raw value、comparison
 model、reveal ID、diagnostic argument、log entryのどこにも露出しないことを証明する。
 
-Native boundary testは`darwin-x64`、`darwin-arm64`、`win32-x64`、`win32-arm64`、
-`linux-x64-gnu`、`linux-arm64-gnu`、`linux-x64-musl`、`linux-arm64-musl`で実行する。Test専用barrierで
-enumeration/read間のparent directory/final fileを置換し、Repository pathをrename/replaceし、mount/bind
-mount、junction、arbitrary reparse tag、ADS、8.3 caseを扱う。保持root capabilityはoutside sentinelを決して
-readせず、identity mismatchで全byteをdropする。Exact schema/order/target mapping、Linux libc report、package/
-custom-ABI/Node-API、byte length、hash、missing/corrupt artifact、self-test caseで、別targetをprobeせず
-native manifest/選択`.node` fileを置換するsymlink、directory、platform-safe non-regular fixtureも含め、別targetを
-probeせず`node:fs` inspected-source fallbackなしにbind前にfailすることを証明する。Packaged artifactでもload/race testを
-反復し、test専用barrierをproduction exportへ含めない。
+Node.js filesystem boundary testは、同じplatform-neutral packageに対してsupported macOS、Windows、Linux CI
+matrixで実行する。各resultはplatform、Node.js version、`node:fs.constants.O_NOFOLLOW`が存在して有効かを記録する。
+Enumeration、open直前、open後かつbyteを読む前、bounded read後の各candidate verification phaseで、call traceは次の
+正確な順序を示さなければならない。(1) candidate pathを`lstat`し、symbolic link、non-regular type、unexpected
+identityを拒否する。(2) これが成功した後だけcandidate `realpath`と`path.relative` canonical containmentを実行する。
+(3) candidate pathを2回目に`lstat`し、identity、type、size、関連timestampが最初の`lstat`と一致することを要求する。
+Stable symlink fixtureは、最初の`lstat`がcandidate `realpath` callより前に拒否することを証明しなければならない。
+
+Enumeration時とopen直前にはroot identityと全ancestor `lstat`もsnapshotまたは再検証する。その後、利用可能な場合は
+有効な`O_NOFOLLOW`を必須として`FileHandle`をopenする。Open後かつread前にはordered candidate sequenceを実行し、
+handleのpre-read `stat()`をそのphaseの両`lstat`結果および以前のsnapshotと比較する。Bounded read後かつparse、
+publish、commitより前にはrootとancestorのcheck、ordered candidate sequence、同じopen handleの`stat()`を反復する。
+Detectable changeがあればbyte buffer全体をdropし、outside sentinelをpublishしない。
+
+Public Node.js APIにはportableなdirectory-handle-relative openがない。`O_NOFOLLOW`が利用不能または無効な場合も同じ
+lstat/realpath/open/fstat/post-check sequenceを必須とするが、check間にancestorまたはfinal componentを置換する
+active adversarial processは初期リリースのthreat model外とする。通常の同時editと全detectable raceはscope内で
+fail closedにする。Pack済みtarballでも同じsuiteを反復し、test専用barrierをproduction exportへ含めない。
+
+| OS observation | 必須outcome | Security proofでの扱い |
+|---|---|---|
+| Symlink、non-regular candidate、canonical escape、metadata mismatchを含むobservableなstable unsafe stateまたはdetectableなroot/parent/final replacement | 該当するbounded diagnosticでcandidateまたはaffected sourceを拒否し、全byteをdiscardする。Stable symlinkはcandidate `realpath`より前に拒否する | 必須passing evidence |
+| Node.jsが必要identity metadataまたはcanonicalizationをerrored、ambiguous、unusableとして報告 | `safe-fs-boundary-unverifiable`を返しcandidateを拒否する。Root/shared-ancestor failureではsourceを拒否 | 必須passing evidence |
+| Same-device bind mountや報告されないreparse behaviorなど、optionalなOS semanticをNode.jsから観測不能 | Platform、Node.js version、fixtureを含む明示的な`platform-unobservable` test recordをemitし、absoluteなcontainmentを主張しない | Security proofとして決して数えない |
 
 Static-package testは2 MiB/4,096 asset/512-byte path/32 inline-hash manifest limit、exact schema/order/MIME/
 size/hash validation、symlink/unexpected-file rejection、全client route上のNuxt root-absolute asset referenceを扱う。
@@ -390,11 +395,13 @@ git diff --check
 `pnpm outdated`を見てblind upgradeしない。新しいprereleaseや非互換TypeScript/Vite majorは
 [research.ja.md](research.ja.md)で文書化した最新互換versionを置換しない。Tarballがnpmの`package.json`と
 exact `package.json.files` entryの`bin.mjs`、`dist`、`README.md`、`README.ja.md`、`LICENSE`だけを含むことを
-assertし、展開した`dist/**` contentが3 manifestとlisted fileに一致することを確認する。Exact `bin` mappingと
-`main`/`module`/`exports`不在、dependency manifest、license notice、exact shebang/executable mode、strict static/server/native manifest、全advertised
-prebuild、install/download script不在、公開README pairを確認する。`pnpm run test:docs`はplanning setを公開せず、
-repository内の全英日document pairを別に検証する。各targetはcross-compileだけで済ませず、そのtarget上でload/native
-race suiteに合格させる。最後にcomplete diffをreviewし、
+assertし、展開した`dist/**` contentが2 manifestとlisted fileに一致することを確認する。Exact `bin` mappingと
+`main`/`module`/`exports`不在、dependency manifest、license notice、exact shebang/executable mode、strict static/server
+manifest、native addon/platform artifact selector/install/download script不在、公開README pairを確認する。
+生成HTML shell、CSS、JSON manifest、documentation、license fileはdeclarativeかつnon-executableなartifactとして
+受理し、埋め込まれたmanifest-authorized bootstrapはJavaScript executable codeのままとする。これらのartifactは
+JavaScript-only executable-code要件を弱めない。`pnpm run test:docs`はplanning setを公開せず、repository内の全英日document pairを別に検証する。同じtarballを
+CI matrixの全supported OSでinstall/launchし、Node.js filesystem security suiteに合格させる。最後にcomplete diffをreviewし、
 untested branch、secret exposure、古いofficial-path assumption、accidental source mutation、unrelated changeが
 ないことを確認してからreleaseする。
 

@@ -2,7 +2,7 @@
 
 [日本語](plan.ja.md)
 
-**Branch**: `dev` | **Date**: 2026-07-15 | **Spec**: [spec.md](spec.md)
+**Branch**: `dev` | **Date**: 2026-07-16 | **Spec**: [spec.md](spec.md)
 
 **Input**: Feature specification from `specs/001-inspect-agent-customizations/spec.md`
 
@@ -16,12 +16,12 @@ minimal `bin.mjs` shim, and one published `dist/` tree. A fixed clean step remov
 package-owned prior `.output/`, `.build/`, and `dist/` trees. `nuxt build` produces the
 static browser application in its standard `.output/public` staging tree; fixed assembly
 steps validate and copy its root-absolute assets into `dist/public`, record exact
-inline-script CSP hashes, assemble the native-target manifest, and copy a manifest-closed
-tsdown CLI/parser-Worker bundle from `.build/server`. A
-small Rust/Node-API addon supplies the sole
-root-handle-relative I/O path
-for inspected sources and is shipped as tested prebuilt assets rather than bundled by
-tsdown. The browser presents masked source in a read-only Monaco editor and uses
+inline-script CSP hashes, and copy a manifest-closed tsdown CLI/parser-Worker bundle from
+`.build/server`. The pure Node.js `src/inspection/safe-fs.ts` layer is the sole path by
+which inspected sources are enumerated or read. It uses bounded `node:fs/promises`
+traversal, canonical-path checks, opaque scan tickets, and same-`FileHandle` identity and
+metadata checks before and after bounded reads. The browser presents masked source in a
+read-only Monaco editor and uses
 Monaco's diff editor for source comparison; typed recognition metadata is compared and
 rendered separately with ordinary Vue components.
 
@@ -57,18 +57,13 @@ instruction-byte limits and excluded non-file inputs stay explicit condition fac
 ## Technical Context
 
 **Language/Version**: Node.js 24.18.0 Active LTS development baseline, package engines
-`^24.11.0 || >=26.0.0`; TypeScript 6.0.3; Vue 3.5.39; Rust 1.97.0 for the native safe-I/O addon
+`^24.11.0 || >=26.0.0`; TypeScript 6.0.3; Vue 3.5.39
 
 **Primary Dependencies**: Nuxt 4.4.8, Vue Router 5.2.0, tsdown 0.22.8, Vite 7.3.6
 (latest Nuxt-compatible release), `cac` 7.0.0, `open` 11.0.0, `yaml` 2.9.0,
 `jsonc-parser` 3.3.1, `smol-toml` 1.7.0, and `monaco-editor` 0.55.1. The first lockfile
 MUST revalidate these exact stable versions; prereleases and incompatible newer majors
 are not considered eligible “latest” versions.
-
-**Native I/O Dependencies**: `@napi-rs/cli` 3.7.3; Rust crates `napi` 3.10.5,
-`napi-derive` 3.5.9, `napi-build` 2.3.2, `cap-std` 4.0.2, `cap-fs-ext` 4.0.2,
-`rustix` 1.1.4, and `windows-sys` 0.61.2, locked by `Cargo.lock`. No install script,
-runtime download, or end-user compiler is allowed.
 
 **Storage**: No durable application storage. Session, raw file bytes, masked values,
 diagnostics, comparison selection, and reveal state exist only in process/browser memory.
@@ -78,22 +73,26 @@ Vue Test Utils 2.4.11, happy-dom 20.10.6, Playwright 1.61.1, and
 `@axe-core/playwright` 4.12.1; fixture-driven unit, contract, integration, packaging,
 performance, security, browser, and manual accessibility checks
 
-**Target Platform**: Tested prebuilt `darwin-x64`, `darwin-arm64`, `win32-x64`,
-`win32-arm64`, `linux-x64-gnu`, `linux-arm64-gnu`, `linux-x64-musl`, and
-`linux-arm64-musl` targets with a modern browser; Linux requires `openat2` support. An
-unsupported/missing/unhealthy native target fails before server bind, with no path-based
-fallback. The server binds only to `127.0.0.1` and has no remote deployment mode
+**Target Platform**: Node.js-supported macOS, Windows, and Linux environments with a
+modern browser. The package contains only platform-independent JavaScript and static
+assets and requires no install script, runtime download, or end-user compiler. The server
+binds only to `127.0.0.1` and has no remote deployment mode
 
 **Project Type**: Single publishable ESM npm package containing a static Nuxt web client,
-a Node CLI/local HTTP service, and shared serializable contracts
+a Node CLI/local HTTP service, and shared serializable contracts. All executable runtime,
+build, and test code is JavaScript/TypeScript; generated HTML/CSS, JSON manifests,
+documentation, and the license are permitted declarative package artifacts
 
 **Performance Goals**: Publish scan status within 1 second; complete a scan of 100,000
 filesystem entries and 500 matching files within 10 seconds on the reference environment;
 keep filtering and selection feedback under 100 ms for 500 items
 
 **Constraints**: No customization-derived execution, child process, dynamic import,
-network request, MCP connection, source mutation, or boundary-crossing read; no symlink
-following; explicit opt-in before Global reads; raw secrets remain server-side until one
+network request, MCP connection, or source mutation; no boundary-external bytes are
+accepted or published;
+no exposed symlink is intentionally followed, and detected path changes commit no bytes;
+the documented active path-component mutator remains outside the current threat model;
+explicit opt-in before Global reads; raw secrets remain server-side until one
 value is explicitly revealed; inert text rendering only; WCAG 2.2 AA; English/Japanese
 documentation parity. Hard limits are 1 MiB per file, 32 MiB total file bytes, 200,000
 visited entries, 2,000 customization files, 64 path segments, 1,024 aliases per file, 1,000 direct relationships
@@ -119,8 +118,8 @@ relationships never authorize a read.
 Trusted package manifests use separate fail-closed build/runtime limits rather than scan
 DTO limits: static manifest 2 MiB, 4,096 assets, 512 UTF-8 bytes per request path, and 32
 inline hashes; server manifest 1 MiB, 256 `.mjs` records, 16 MiB per file, and 64 MiB
-listed total; native manifest 64 KiB and exactly the eight ordered target records. All
-reject unknown keys, and the published package verifies the recursively exact declared set.
+listed total. Both reject unknown keys, and the published package verifies the recursively
+exact declared set.
 
 **Scale/Scope**: One local user, one Repository source rooted at launch `cwd`, zero or one
 opted-in Global source containing only the three documented instruction sets, up to 2,000
@@ -146,8 +145,9 @@ items in one transient session, and exactly two files in a comparison
       and contributor guides, all vendor/Repository/User/Global/surface tables, official
       evidence, security limits, and diagnostics.
 - [x] **Safe boundaries**: The design freezes read candidates, keeps raw values on the
-      Node side, authenticates local API requests, rejects link traversal, bounds every
-      scan dimension, and returns per-file safe failures.
+      Node side, authenticates local API requests, rejects every link or unverifiable
+      boundary exposed by Node.js, destroys bytes after detected races, bounds every scan
+      dimension, and records the non-atomic and platform-unobservable residual limits.
 - [x] **Welcoming participation**: One-package setup, reproducible pinned tooling,
       objective expected results, keyboard-first workflows, actionable errors, and
       automated plus manual accessibility gates keep the project approachable.
@@ -162,8 +162,11 @@ expand the read boundary. The quickstart covers every stable behavior, rule, str
 source ID, official-source drift review, the Repository `./` grammar and bare-`**/`
 rejection, all required quality gates, and all four end-to-end stories. Monaco is
 client-only, same-origin, bounded, and model-lifetime scoped; its own diff engine avoids a
-duplicate dependency while typed metadata comparison stays explicit. No constitutional
-exception or unresolved clarification remains.
+duplicate dependency while typed metadata comparison stays explicit. The Node.js-only
+verification limitation is recorded with its active-mutator/platform residual risk and the
+concrete future public Node.js filesystem API or OS-enforced snapshot/sandbox resolution path required by the
+constitution. It is not treated as passing-test proof or an implicit waiver. No unresolved
+clarification or known constitutional violation remains.
 
 ## Project Structure
 
@@ -228,7 +231,6 @@ src/
 │   ├── api-router.ts
 │   ├── capability.ts
 │   ├── global-consent.ts
-│   ├── native-loader.ts
 │   ├── server.ts
 │   └── static-files.ts
 ├── inspection/
@@ -263,12 +265,6 @@ src/
     ├── scan-generation.ts
     └── session.ts
 
-native/
-└── safe-fs/
-    ├── Cargo.toml
-    ├── build.rs
-    └── src/lib.rs
-
 shared/
 ├── api.ts
 ├── diagnostics.ts
@@ -300,16 +296,13 @@ tests/
 
 scripts/
 ├── clean-build-output.mjs
-├── assemble-native-manifest.mjs
 ├── assemble-server-manifest.mjs
 ├── build-static-manifest.mjs
 ├── verify-package-files.mjs
 └── check-official-sources.ts
 
 bin.mjs
-Cargo.lock
 nuxt.config.ts
-rust-toolchain.toml
 tsdown.config.ts
 playwright.config.ts
 vitest.config.ts
@@ -343,10 +336,8 @@ inline scripts, symlinks, and unexpected output. It requires but does not copy N
 redundant `200.html` and `404.html` static-host fallbacks and rejects every HTML file except
 the retained `index.html`, because the Node host owns status routing.
 
-Native CI jobs build and race-test each of the eight advertised targets with locked Rust;
-release assembly copies only verified artifacts to the exact
-`dist/native/<targetId>/safe-fs.node` locations and writes `dist/native/manifest.json`.
-tsdown uses the named `cli` (`src/cli.ts`) and `parser-worker`
+Cross-platform CI runs the same pure Node.js safe-filesystem integration and race-detection
+suite on macOS, Linux, and Windows. tsdown uses the named `cli` (`src/cli.ts`) and `parser-worker`
 (`src/inspection/parsers/worker.ts`) entries, `fixedExtension: true`, a clean dedicated
 `.build/server` output directory, disabled source maps/declarations, Node ESM, bundled
 project modules, and external declared runtime dependencies via
@@ -357,11 +348,10 @@ with safe relative names from that staging tree, requires `cli.mjs` and
 starts parser workers only from the fixed package-owned
 `new URL('./parser-worker.mjs', import.meta.url)`.
 
-The final recursive verifier derives the complete `dist/` file set from the static,
-server, and native manifests—three manifests, every listed public asset, every listed
-server `.mjs`, and every listed native artifact—and rejects a symlink, non-regular file,
-missing record, or stale/unexpected path before `npm pack`. No install-time build or
-download occurs. `package.json.files` is exactly
+The final recursive verifier derives the complete `dist/` file set from the static and
+server manifests—both manifests, every listed public asset, and every listed server
+`.mjs`—and rejects a symlink, non-regular file, missing record, or stale/unexpected path
+before `npm pack`. No install-time build or download occurs. `package.json.files` is exactly
 `["bin.mjs", "dist", "README.md", "README.ja.md", "LICENSE"]`; npm also includes
 `package.json`, so the tarball allowlist is that manifest plus those five entries and their
 contents, with no source, fixtures, or planning artifacts. The package is CLI-only:
@@ -369,40 +359,60 @@ contents, with no source, fixtures, or planning artifacts. The package is CLI-on
 `main`, `module`, and `exports` are absent so no nonexistent library entry point is
 advertised. The package test verifies the shim's exact shebang and executable mode, installs
 the tarball into an isolated fixture, actually launches its local command through
-`npx --no-install`, observes the loopback URL, and terminates it. This proves that the Nuxt assets, CLI, parser Worker,
-exact native target loader, prebuild, and runtime dependencies remain usable through
-`npx` from their packaged locations.
+`npx --no-install`, observes the loopback URL, and terminates it. This proves that the Nuxt
+assets, CLI, parser Worker, safe-filesystem layer, and runtime dependencies remain usable
+through `npx` from their packaged locations.
 
 ## Implementation Boundaries
 
-- Race-safe containment is a native object-capability boundary, not a pathname-validation
-  convention. `native/safe-fs` is the sole component allowed to enumerate or read enabled
-  inspection sources; `src/inspection` only orchestrates its closed API. The addon retains
-  non-serializable root handles, returns internal `EntryTicket` values from bounded
-  enumeration, and accepts only those tickets for candidate reads. Every read resolves
-  handle-relative from the retained root without following a symbolic link, mount crossing,
-  or Windows reparse point; it opens a regular file, enforces size, compares enumeration/
-  pre-read/post-read identity and metadata, and consumes bytes through that same final
-  handle. Canonical path strings may explain diagnostics but never authorize I/O.
-- Before bind, the fixed loader reads only the trusted packaged
-  `new URL('./native/manifest.json', import.meta.url)`. It accepts the closed eight-target
-  schema, package version, custom native ABI 1, and Node-API 10; maps the current
-  platform/architecture/libc to exactly one target; verifies that artifact's declared byte
-  length and lowercase SHA-256; loads only its exact `<targetId>/safe-fs.node`; and requires
-  its ABI report and self-test to pass. `process.versions.napi` must support version 10.
-  Linux classifies a well-formed process report with a non-empty
-  `glibcVersionRuntime` as GNU and the well-formed absence of that field as the musl
-  candidate; an unavailable or malformed report is unsupported. There is no probing of
-  alternate filenames, targets, libc variants, ABI versions, download, or source build.
-- Linux uses `openat2` with `RESOLVE_BENEATH`, `RESOLVE_NO_SYMLINKS`,
-  `RESOLVE_NO_MAGICLINKS`, and `RESOLVE_NO_XDEV`; unsupported kernels fail closed. macOS
-  holds every ancestor handle during component-by-component no-follow open and rejects a
-  mount-identity change. Windows rejects every reparse tag, opens relative to retained
-  directory handles, and prevents directory replacement while the chain is in use. A
-  missing, corrupt, unsupported, or unhealthy native backend exits before server bind; a
-  Global-root-specific failure leaves only that boundary disabled. There is no `node:fs`,
-  permission-model, WASI, `/proc`, `realpath`-then-open, or path-reopen fallback for an
-  inspected source. `node:fs` remains allowed only for trusted packaged application assets.
+- `src/inspection/safe-fs.ts` is the sole component allowed to enumerate or read enabled
+  inspection sources. It creates an internal `InspectionRootContext` by checking every
+  exposed lexical root component with `lstat`, rejecting links, resolving the accepted
+  root with `realpath`, requiring a directory, and recording bounded bigint identity and
+  metadata. Its deterministic bounded walker uses
+  `node:fs/promises.opendir`, collects and sorts each directory within the remaining entry
+  budget, validates every relative segment, counts every entry, and
+  rejects links, non-directory traversal objects, and detectable device changes before
+  emitting generation-bound `ScanEntryTicket` objects. A ticket is branded in private JS
+  state, cannot be serialized or reconstructed from a DTO or HTTP request, and can be
+  consumed at most once. Client-supplied paths never authorize I/O.
+- A candidate read reconstructs a path only from its owning root context and ticket. It
+  rechecks the root and each ancestor with bigint `lstat`, comparing `dev`, `ino`, and
+  `mode` with the ticket snapshots; first checks the candidate path with `lstat`, rejects
+  a link or non-regular object, and compares `dev`, `ino`, `mode`, `size`, `mtimeNs`, and
+  `ctimeNs` with enumeration metadata; then uses candidate `realpath` plus `path.relative`
+  for canonical containment and immediately repeats the candidate path `lstat` comparison.
+  It calls `open` only after both path-stat snapshots agree with each other and the
+  enumeration metadata. If `O_NOFOLLOW` exists and is effective on the platform, the open
+  must use it as mandatory
+  final-component defense in depth; absence or ineffective support is not treated as a
+  cross-platform guarantee. Before reading any bytes, the implementation repeats that
+  ordered root/ancestor/candidate-`lstat`/canonical/candidate-`lstat` sequence and compares
+  the same fields with `FileHandle.stat({ bigint: true })`. The reader consumes at most the remaining byte
+  budget from that same `FileHandle`. While it is still open and before accepting bytes,
+  post-read validation repeats that complete ordered sequence and the same-`FileHandle.stat`
+  comparisons over the same fields, then closes the handle in `finally`. Any detected link,
+  boundary, identity, type, size, or metadata change rejects the candidate; any collected bytes are discarded, no readable
+  content or receipt is committed, and only a bounded diagnostic-only inventory record may
+  remain. A fixed secret-safe diagnostic is emitted. A changed root aborts
+  that source attempt and preserves its previously committed graph.
+- If Node reports required identity/metadata or canonicalization as unavailable, ambiguous,
+  malformed, or otherwise unusable, the layer rejects the boundary or candidate with
+  `safe-fs-boundary-unverifiable`; it never guesses. A root-level failure aborts the source
+  attempt, while a candidate-level failure may retain only the bounded diagnostic record.
+- Pure Node.js does not expose a directory-handle-relative open or an atomic equivalent of
+  `RESOLVE_BENEATH`, so the checks above cannot prove kernel-enforced containment against an
+  active adversarial process that can replace the root, an ancestor, or the final entry
+  between path checks.
+  Node also cannot portably identify every Windows reparse tag or every mount transition;
+  same-device bind mounts and reparse metadata that Node does not report remain explicit
+  platform limitations outside test proof.
+  This release's race threat model therefore covers ordinary concurrent edits and other
+  races that the implementation detects; every detected case fails closed. An active adversarial filesystem
+  mutator is explicitly out of scope. No test result may be described as proof of stronger
+  containment. The concrete resolution path is to adopt a future Node handle-relative API
+  when one is available, or place scanning inside an OS-enforced read-only snapshot/sandbox
+  before expanding that threat model.
 - The four registries form one validated reference graph but grant different authority.
   Vendor behavior records describe upstream lookup without authorizing I/O; only static
   and bounded-derived Inspector rules authorize reads; runtime strategies project order,
@@ -414,8 +424,9 @@ exact native target loader, prebuild, and runtime dependencies remain usable thr
   independently addressable rather than sharing an inferred traversal.
 - Static matchers and the three vendor-specific one-edge derivation families are the only
   read authorities. Derived segments pass the host-independent NFC/Windows-special grammar
-  and must resolve to an exact enumerated `EntryTicket` before read, so ADS, device,
-  trailing-dot/space, case/normalization, and 8.3 aliases are never opened. FR-015 through
+  and must resolve to an exact enumerated `ScanEntryTicket` before read, so ADS, device,
+  trailing-dot/space, case/normalization, and 8.3 aliases are rejected before candidate
+  open. FR-015 through
   FR-018 continue to limit Global reads to the three instruction sets even when the vendor
   behavior registry records other supported User customizations.
 - Tool recognizers attach one or more `ToolRecognition` values to every accepted
@@ -503,15 +514,25 @@ exact native target loader, prebuild, and runtime dependencies remain usable thr
   a zero-I/O bootstrap snapshot with no files or diagnostics, so the first Repository scan
   and a fatal first attempt always have a legal active base. Explicit Repository and
   enabled-Global rescan commands share the same queue rules. Repeated Global disable joins
-  an existing barrier; when no Global enabled flag, consent, nonempty graph, open root
-  capability, or running/queued Global scan/enable command exists, disable is an immediate
+  an existing barrier; when no Global enabled flag, consent, nonempty graph, accepted root
+  context, or running/queued Global scan/enable command exists, disable is an immediate
   no-op even if Repository work exists.
 
 ## Complexity Tracking
 
-No constitution violation is being waived. One unavoidable implementation cost is tracked
-explicitly:
+The pure Node.js product constraint introduces a documented residual race risk without
+waiving the bounded-read, detected-race fail-closed, secret-safety, or review requirements.
+One unavoidable implementation cost is tracked explicitly:
 
 | Complexity | Why it is required | Simpler option rejected |
 |---|---|---|
-| Rust/Node-API `native/safe-fs` plus tested prebuild matrix | QR-003 and SC-004 require safe failure under file races on macOS, Linux, and Windows; the inspected-source boundary must survive parent-directory replacement | Node 24 exposes neither `dirfd`-relative open nor `openat2`; POSIX `O_NOFOLLOW` protects only the final component, Windows lacks that Node flag, and `realpath`/`lstat` followed by open is TOCTOU |
+| Repeated bounded `lstat`/`realpath`/`open`/`FileHandle.stat` validation and same-handle reads | Detect ordinary concurrent changes before accepting bytes and discard any result whose identity, metadata, or canonical containment changes | A direct `readFile(path)` or glob-only traversal has no generation-bound authorization, identity agreement, or post-read race detection |
+
+**Residual risk and resolution path**: Path validation and `open` are not one atomic kernel
+operation in Node.js, so a sufficiently privileged active mutator may win an undetectable
+root, ancestor, or final-entry replacement race. Approval must treat that actor as out of
+scope and must not call
+the current checks a containment proof. Expanding the threat model requires either a future
+Node directory-relative API with atomic beneath/no-follow semantics or an OS-enforced
+read-only snapshot/sandbox around the scan root, followed by a renewed security review and
+adversarial test plan.

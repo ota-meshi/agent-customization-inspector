@@ -20,6 +20,11 @@
 - Q: 調査してよいfilesystem pathの限定集合を何と呼ぶか？ → A: 仕様全体で「調査対象パス一覧」を使用する。
 - Q: Vendor lookup表とその根拠をどのように構成するか？ → A: Vendor lookup behaviorをInspector matcherおよびruntime compositionから分離し、製品ごとの文書、RepositoryとUser/Globalの別表、GitHub CopilotのVS Code/CLI/Cloud別表、ならびに保守する全行のstable official-source参照を使用する。
 
+### Session 2026-07-16
+
+- Q: 初期リリースにどのruntime実装制約を適用するか？ → A: 実行可能なapplication codeをすべてJavaScript/TypeScriptで実装する。CLI、local host、調査対象sourceのI/OはNode.jsの公開JavaScript API上で動作し、browserには生成済みJavaScriptとdeclarativeなHTML/CSS assetを渡す。Strict JSON manifest、documentation、license fileは有効なpackage dataとする。Rust、Node-APIその他のnative addon、platform別のprebuilt native binary、package lifecycleでのcompile、package lifecycleまたはruntimeでのartifact downloadは使用しない。
+- Q: そのNode.js-only制約で、filesystem raceについてどの保証が可能か？ → A: 調査対象sourceのI/Oを1つのNode.js moduleへ集約し、Node.js公開APIが示すlinkとboundary failureを拒否し、root、ancestor、candidate path、open handle、read後のidentity、canonical location、metadata snapshotを比較し、不一致の検出時は候補byteをすべて破棄する。Node.jsが公開しplatformがenforceする場合は`O_NOFOLLOW`をfinal-componentの多層防御として使用する。これらの非原子的check間でancestor、または有効な`O_NOFOLLOW`がない場合にfinal path componentをraceさせる敵対的なlocal processはthreat modelから除外する。Node.js公開APIはsame-device mountやreparse behaviorをすべて公開することもできない。これらの残存riskとNode.jsまたはoperating systemによる解消pathは文書化し続ける。
+
 ## ユーザーシナリオとテスト *(必須)*
 
 ### ユーザーストーリー1 - リポジトリのカスタマイズを発見する（優先度: P1）
@@ -126,9 +131,9 @@
 - **FR-019**: すべてのカスタマイズファイルとそこから得た値を信頼できないdataとして扱わなければならない（MUST）。
 - **FR-020**: Skill、command、hook、plugin、workflow、extension、script、handler、prompt、agent、rule、その他の調査対象contentを実行してはならない（MUST NOT）。
 - **FR-021**: 調査対象contentに記載されたMCP serverを起動、接続、probe、またはrequest送信してはならない（MUST NOT）。
-- **FR-022**: カスタマイズファイルの発見と表示によって、outbound network request、child-process実行、dynamic code evaluation、または明示的なRepositoryもしくはopt-in済みGlobal boundary外にある参照先ファイルの読み取りを引き起こしてはならない（MUST NOT）。
+- **FR-022**: カスタマイズファイルの発見と表示によって、outbound network request、child-process実行、またはdynamic code evaluationを引き起こしてはならない（MUST NOT）。調査対象sourceのreadは、内部でadmitしたentryから中央集約したNode.js source-boundary moduleだけが開始しなければならない（MUST）。Clientから与えられたpath、および適用対象のlexical、canonical、link、regular-file、またはsource-boundary checkに失敗した参照先ファイルをread authorityとして受理してはならない（MUST NOT）。
 - **FR-023**: 調査対象source内でfileを作成、変更、rename、または削除してはならない（MUST NOT）。
-- **FR-024**: Symbolic link、alias、import、参照pathをsource boundary外までたどってはならない（MUST NOT）。Cycleとboundary crossingは、実行可能なdiagnosticを伴って安全に失敗しなければならない（MUST）。
+- **FR-024**: Node.js公開APIが示すsymbolic link、alias、import、参照pathをsource boundary外のカスタマイズcontentとして受理または表示してはならない（MUST NOT）。Cycle、boundary crossing、利用不能または曖昧なverification metadataは、実行可能なdiagnosticを伴って安全に失敗しなければならない（MUST）。中央集約したNode.js source-boundary moduleは、Node.jsが公開しplatformがenforceする場合、`O_NOFOLLOW`をfinal-componentの多層防御として使用しなければならない（MUST）。Enumeration時、`open`前、`open`後かつread前、上限付きsame-handle read後のcandidate verificationでは、最初にpath `lstat`でlinkまたは不正なidentity/typeを拒否し、次にcandidate `realpath`とcanonical containmentを評価し、その後path `lstat`を繰り返してcanonicalization前後のidentity一致を要求しなければならない（MUST）。適用対象phaseではroot identity、利用可能な全ancestor identity、open-handle identityとmetadataも比較しなければならない（MUST）。検出した変更または検証不能な必須checkは、候補byteを破棄し、そのread結果をpublishまたはcommitしてはならない（MUST NOT）。
 - **FR-025**: Credentialらしい値と、secretを含み得ると文書化されたfieldは、source、metadata、comparison、diagnostic、logで既定でmaskしなければならない（MUST）。
 - **FR-026**: Mask済み値の表示には、その値に対する明示的な操作を必要とし、active session内のローカル操作に限定し、カスタマイズファイル、Global source、またはsessionを閉じた後に残してはならない（MUST NOT）。
 - **FR-027**: 自動maskingは偶発的な露出を減らすが、すべてのsecret形式の検出を保証しないことを警告しなければならない（MUST）。
@@ -142,6 +147,7 @@
 - **FR-035**: Codex instructionについて、各directoryで空でないinstruction fileを最大1つ選ぶ文書化されたrule、すなわち該当するoverrideを最初に選び、それ以外は通常fileと設定済みfallback nameから選ぶrule、およびGlobalからrepositoryを経由してruntime working directoryへ向かう広いscopeから狭いscopeへのorderを表さなければならない（MUST）。Working directoryまたはconfigurationが不明な場合、そのchainはconditionalのままにしなければならない（MUST）。
 - **FR-036**: Claude instructionについて、文書化された広いscopeから狭いscopeへのorder、同じlevelではlocal instructionが通常instructionに続くこと、およびruntime working directoryが不明な場合はworking directoryより下のinstruction fileがconditionalであることを表さなければならない（MUST）。
 - **FR-037**: 複数のCopilot instruction sourceが同時に適用され得る場合、またはprecedenceがproduct surfaceによって変わる場合、各recognitionを維持し、一般的なsemantic上の勝者を作り出してはならない（MUST NOT）。
+- **FR-038**: 初期リリースの実装とpackageに含む実行可能なapplication codeは、すべてJavaScript/TypeScriptでなければならない（MUST）。CLI、local host、調査対象sourceのfilesystem layerはNode.jsの公開JavaScript API上で動作し、browser logicはJavaScript/TypeScript sourceから生成しなければならない（MUST）。Declarativeな生成済みHTML/CSS、strict JSON manifest、documentation、license fileはpackageへ含めてよい（MAY）。ProductにRust code、Node-APIその他のnative addon、prebuilt native binary、package lifecycleでのcompile、package lifecycleまたはruntimeでのartifact downloadを含めてはならない（MUST NOT）。
 
 ### 初期リリースでサポートするカスタマイズファイル
 
@@ -170,11 +176,11 @@
 
 ### テストと検証
 
-- **QR-002**: 自動検証は、各toolの調査対象パス一覧に含まれるpathと含まれないpath、multi-tool recognition、source separation、決定的なorderとfallback、すべてのuncertainty state、comparison、opt-inとdisable flow、不正および変化するfile、encoding、resource limit、symbolic link、cycle、traversal attempt、secret maskingとreveal reset、ならびに実行、source mutation、MCP connection、カスタマイズファイル起因network accessがゼロであることを示すregression testを扱わなければならない（MUST）。すべてのerror caseには客観的な期待結果が必要であり、end-to-end browser testは4つのuser storyすべてを扱わなければならない（MUST）。
+- **QR-002**: 自動検証は、各toolの調査対象パス一覧に含まれるpathと含まれないpath、multi-tool recognition、source separation、決定的なorderとfallback、すべてのuncertainty state、comparison、opt-inとdisable flow、不正および変化するfile、encoding、resource limit、symbolic link、cycle、traversal attempt、rootとcandidateの差し替えfixture、identityとmetadataの変化、検出済みrace後の結果破棄、secret maskingとreveal reset、ならびに実行、source mutation、MCP connection、カスタマイズファイル起因network accessがゼロであることを示すregression testを扱わなければならない（MUST）。すべてのerror caseには客観的な期待結果が必要であり、end-to-end browser testは4つのuser storyすべてを扱わなければならない（MUST）。Supported-OS matrixは、stableかつ検出可能なunsafe objectの必須rejection、Node.jsが必要metadataまたはcanonicalizationを利用不能もしくは曖昧と報告した場合の`safe-fs-boundary-unverifiable`によるrejection、public Node.js APIが公開しないOS機能への明示的な`platform-unobservable` recordを区別しなければならない（MUST）。最後のcategoryをcontainmentの証明へ数えてはならない（MUST NOT）。これらのtestは、文書化したNode.js checkを検証しなければならず（MUST）、観測できない敵対的なpath-component replacement raceに対する証明と説明してはならない（MUST NOT）。
 
 ### セキュリティとプライバシー
 
-- **QR-003**: Viewing sessionは既定で起動元machineからのみ到達可能でなければならない（MUST）。最小権限のfilesystem access、各read時点でのcanonical boundary check、上限のあるresource use、secret-safeなdiagnosticとlogging、file raceに対する安全な失敗を使用しなければならない（MUST）。調査対象contentや機密値を別machineへ送信したり、既定でsession後に保持したりしてはならない（MUST NOT）。
+- **QR-003**: Viewing sessionは既定で起動元machineからのみ到達可能でなければならない（MUST）。最小権限のfilesystem access、1つに集約したNode.js調査対象I/O boundary、lexicalとcanonicalのcontainment check、linkと非regular-fileの拒否、公開かつ有効な場合の`O_NOFOLLOW`、enumerationからopenまでのidentity check、root/ancestor/candidate/open-handleのread後再検証、上限のあるresource use、secret-safeなdiagnosticとlogging、すべての検出済みまたは報告済み検証不能file raceに対する結果破棄を使用しなければならない（MUST）。調査対象contentや機密値を別machineへ送信したり、既定でsession後に保持したりしてはならない（MUST NOT）。Node.jsの公開APIはcross-platformなdirectory-handle-relative openを提供せず、same-device mountまたはreparse behaviorをすべて公開しないため、productはancestorまたは非対応final path componentを同時に差し替える敵対的なlocal processや、Node.jsが観測できないOS indirectionに対してkernelが強制するcontainmentを提供しないことを文書化しなければならない（MUST）。将来の解消には、適切なNode.js公開APIまたはoperating systemが強制するread-only boundaryを必要とする。
 
 ### ドキュメントと参加しやすさ
 
@@ -188,7 +194,7 @@
 - **SC-001**: 初めて利用する参加者の95%以上が、提供されたproduct guidanceだけを使い、2分以内に意図するrepository rootへ移動し、その場所でInspectorを起動して、発見されたカスタマイズファイルを1つ開ける。
 - **SC-002**: 文書化されたsize limit内で、filesystem entryが100,000件、該当するカスタマイズファイルが500件あるリポジトリについて、基準評価環境では10秒以内に完全な一覧を受け取り、1秒以内に進捗または意味のあるstatusを確認できる。
 - **SC-003**: Conformance fixture集合において、調査対象パス一覧に含まれるサポート対象カスタマイズファイルの認識率100%、一覧外のファイルを解釈する件数0、共有物理ファイルに対するmulti-tool attributionの正解率100%を達成する。
-- **SC-004**: Adversarial safety suite全体で、カスタマイズファイル由来のcommandまたはcode execution、child process、MCP connection、outbound request、調査対象sourceのmutation、有効なsource boundary外のreadがすべて0件である。
+- **SC-004**: 文書化したNode.js-only threat model内で維持するsafety suite全体において、カスタマイズファイル由来のcommandまたはcode execution、child process、MCP connection、outbound request、調査対象sourceのmutationがすべて0件である。有効なsource boundary外として拒否されたselectorに対する意図的なread requestが0件であり、read中にlink、identity、canonical location、または関連metadataが検出可能な形で変化するすべてのfixtureで、publishまたはcommitされるbyteが0である。
 - **SC-005**: 維持管理するsecret fixture集合のすべてのcredential値が、すべてのdefault view、comparison、diagnostic、logでmaskされ、カスタマイズファイル、source、sessionを閉じたときにreveal stateが100%消去される。
 - **SC-006**: 参加者の90%以上が、2分以内にカスタマイズファイルのsource、認識ツール、file type、実効動作がcertainかconditionalかを識別でき、主要workflowにcriticalなusability issueがない。
 - **SC-007**: 維持管理するread不能、不正、過大、cycle、stale、boundary-crossing fixtureの100%で、影響を受けないカスタマイズファイルを引き続き利用でき、影響を受けたitemに実行可能かつsecret-safeなdiagnosticがある。
@@ -197,6 +203,8 @@
 ## 前提
 
 - 初期リリースはローカルのsingle-user inspection sessionである。Remote hosting、collaboration、account、durable profileは対象外とする。
+- 初期リリースの実行可能なapplication codeはすべてJavaScript/TypeScriptで実装する。Browserは生成済みclient logicとdeclarative assetを実行し、それ以外のproduct codeはすべてNode.js上で実行する。Strict manifest、documentation、license fileはnon-executable package dataのままとする。Contributorとuserは、Rust toolchain、native compiler、native addon、platform別prebuilt binary、またはpackage lifecycle/runtimeでのartifact downloadを必要としない。
+- 調査対象のRepository rootとopt-in済みGlobal rootは、起動したuserが管理する通常のlocal pathである。通常の同時editは想定し、文書化したNode.js checkが変更を検出した場合、または必要なverification dataを利用不能と報告した場合はfail closedしなければならない。現行のNode.js公開APIはcross-platformな原子的directory-handle-relative openを公開しないため、check間でancestor、または有効な`O_NOFOLLOW`がないplatformのfinal path componentをraceさせる敵対的なlocal processは初期リリースのthreat modelから除外する。PlatformがNode.js経由で公開しないsame-device mountとreparse behaviorも残存limitationである。これらの制約は、検出可能または報告済み検証不能caseでlink、containment、identity、metadata、結果破棄、diagnosticの要件を緩和しない。
 - `npx`起動時の`cwd`は調査boundaryであり、いずれかのcoding agentが使用する実効working directoryの証明ではない。Subdirectoryから起動した場合、Repository sourceはそのsubtreeに限定される。より広いscopeを調査するには、意図するrootからcommandを再実行する。
 - 公式のカスタマイズ形式は変化し得る。正確な調査対象パス、filename、extensionは計画時に再確認して確定し、公開したうえでconformance fixtureによって検証する。
 - Global調査はFR-015からFR-017のinstruction pathだけを対象とする。追加のuser-global skill、agent、settings、MCP定義、plugin、managed configuration、remote configurationには、別の同意と将来の仕様作業が必要である。

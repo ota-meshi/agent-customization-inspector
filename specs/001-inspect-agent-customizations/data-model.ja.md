@@ -21,14 +21,14 @@ ContractRegistry（immutable、contract-versioned）
 
 InspectionSession
 ├── Source（Repositoryを正確に1つ）
-│   ├── SourceBoundary（正確に1つ） → SafeRootCapability（internal）
+│   ├── SourceBoundary（正確に1つ） → InspectionRootContext（internal）
 │   └── SourceConditionFact（0以上。起点fileなし）
 ├── Source（Globalを0または1つ）
-│   ├── SourceBoundary（enabled tool homeごとに1つ） → SafeRootCapability（internal）
+│   ├── SourceBoundary（enabled tool homeごとに1つ） → InspectionRootContext（internal）
 │   └── SourceConditionFact（0以上。起点fileなし）
 ├── ScanGeneration（session-wide activeを正確に1つ）
 │   └── CustomizationFile
-│       ├── EntryTicket + SafeReadReceipt（internal）
+│       ├── ScanEntryTicket + VerifiedReadReceipt（internal）
 │       ├── ToolRecognition（1つ以上）
 │       │   └── CandidateProvenance（1つ以上）
 │       │       └── ApplicabilityAssessment
@@ -155,52 +155,78 @@ reason codeでdeduplicateする。
 | `boundaryId` | opaque string | DTO | Grouping用。pathとして受け付けない |
 | `tool` | `copilot \| claude \| codex \| repository` | DTO | Repositoryは`repository` |
 | `displayRoot` | string | DTO | User向けlocal path。Control characterをescapeし`maxGlobalPreviewDisplayBytes`でboundする |
-| `canonicalRoot` | absolute canonical pathまたはnull | internal | Diagnostic/consent比較だけ。Read authorityにせず、enabled boundary外へ返さない |
-| `safeRoot` | `SafeRootCapability` | internal | 唯一のread authority。Enumeration前に必須 |
+| `canonicalRoot` | absolute canonical pathまたはnull | internal | Diagnostic/consent比較と反復containment checkに使用。単独ではreadを認可できず、enabled boundary外へ返さない |
+| `rootContext` | `InspectionRootContext` | internal | Enumeration前に必須。中央safe-filesystem layerだけが作成・consumeできる |
 | `origin` | `cwd \| default-home \| environment` | DTO | Boundary選択理由を示す |
 
 1つのlogical Global sourceは最大3つの別boundaryを含められる。全tool homeが同じdirectoryだと
 偽らず、filter可能なGlobal sourceを1つに保つ。
 
-### SafeRootCapability、EntryTicket、SafeReadReceipt
+### InspectionRootContext、ScanEntryTicket、VerifiedReadReceipt
 
-これらnative-backed recordはinternalだけで、serialize、DTOからのclone、pathからのreconstruct、HTTP
-requestからの受理を許さない。
+これらpure Node.js recordはinternalだけで、serialize、DTOからのclone、HTTP pathからのreconstruct、request
+からの受理を許さない。Private module brandはapplication-level authorityをenforceするが、OS filesystem
+capabilityではない。
 
 | Entity / field | Type | Rule |
 |---|---|---|
-| `SafeRootCapability.nativeHandle` | native external | 保持directory/volume-root-derived handle。Numeric descriptorとしてJSへ出さない |
-| `SafeRootCapability.sourceId` / `boundaryId` | opaque ID | 正確に1 source boundaryへbind |
-| `SafeRootCapability.backendTarget` / `backendVersion` | closed target ID / native ABI integer | Manifestが選んだ1 prebuild/custom native ABI 1と一致 |
-| `SafeRootCapability.rootIdentity` | platform handle identity | Prior path lookupではなくopened handleからcapture |
-| `SafeRootCapability.mountOrVolumeIdentity` | platform identity | Crossingを拒否 |
-| `SafeRootCapability.state` | `open \| closed` | Source disable/process終了でcloseし、closed後の全callを拒否 |
-| `EntryTicket.nativeTicket` | native external | 1 open root配下のbounded enumerationだけが発行 |
-| `EntryTicket.relativeSegments` | NFC segment array | Classification用normalized pathと同じ。Ambient absolute pathではない |
-| `EntryTicket.enumerationIdentity` / `enumerationMetadata` | handle-relative snapshot | Result受理前にfinal handleと比較 |
-| `EntryTicket.occurrence` | non-negative integer | Deterministic native enumeration order。`maxVisitedEntries`対象 |
-| `EntryTicket.state` | `enumerated \| consumed \| stale \| rejected` | Generationごとに最大1回read。Stale/rejected ticketはbyteを返さない |
-| `SafeReadReceipt.entryTicket` | internal reference | このfileでconsumeした正確なticket |
-| `SafeReadReceipt.finalHandleIdentity` | platform handle identity | `CustomizationFile.identity`の唯一source |
-| `SafeReadReceipt.preReadMetadata` / `postReadMetadata` | bounded metadata | Type、identity、size、change fieldがnative contract下で一致 |
-| `SafeReadReceipt.fileType` | literal `regular-file` | Directory、link、device、socket、pipe、reparse targetではない |
-| `SafeReadReceipt.acceptedByteCount` | integer | `maxFileBytes`または残total budgetを超えない |
-| `SafeReadReceipt.containmentMode` | closed OS mode | `linux-openat2`、`macos-handle-walk`、`windows-handle-walk` |
+| `InspectionRootContext.privateBrand` | module-private symbol/registry membership | `src/inspection/safe-fs.ts`だけが作成・検査し、process memory外へ出さない |
+| `InspectionRootContext.sourceId` / `boundaryId` | opaque ID | 正確に1 source boundaryへcontextをbind |
+| `InspectionRootContext.lexicalRoot` / `canonicalRoot` | absolute path | Accepted internal rootとその`realpath`。作成後にclient valueで置換できない |
+| `InspectionRootContext.rootIdentity` | bigint `dev`/`ino`/`mode` snapshot | `lstat`でcaptureし、traversal前とcandidate readごとに再比較 |
+| `InspectionRootContext.rootDevice` | bigint `dev` | Nodeが公開するdevice changeを検出するが、全mount transitionの識別は主張しない |
+| `InspectionRootContext.state` | `active \| closed` | Source disable/process終了でcloseし、closed後の全callを拒否 |
+| `ScanEntryTicket.privateBrand` / `rootContext` | module-private brand / internal reference | 1 active root contextのbounded enumerationだけが発行 |
+| `ScanEntryTicket.sourceId` / `boundaryId` / `generationId` | opaque ID / integer | 正確に1 source boundaryとscan generationへticketをbind |
+| `ScanEntryTicket.relativeSegments` | NFC segment array | Classification用normalized pathと同じ。Ambient absolute pathから受け付けない |
+| `ScanEntryTicket.canonicalAtEnumeration` | absolute canonical path | Internal比較値で、単独のread authorityではない |
+| `ScanEntryTicket.ancestorSnapshots` | bounded ordered snapshot[] | Relative directory prefixごとに`dev`、`ino`、`mode`を持ち、open前・read前・read後に比較 |
+| `ScanEntryTicket.enumerationIdentity` / `enumerationMetadata` | bigint path-stat snapshot | 正確な`dev`、`ino`、`mode`、`size`、`mtimeNs`、`ctimeNs`をbyte read前にpath/opened `FileHandle`と比較 |
+| `ScanEntryTicket.occurrence` | non-negative integer | Deterministic enumeration order。`maxVisitedEntries`対象 |
+| `ScanEntryTicket.state` | `enumerated \| consumed \| stale \| rejected` | Generationごとに最大1回read。Stale/rejected ticketはaccepted byteを返さない |
+| `VerifiedReadReceipt.entryTicket` | internal reference | このfileでconsumeした正確なticket |
+| `VerifiedReadReceipt.fileHandleIdentity` | bigint `dev`/`ino`/`mode` snapshot | `CustomizationFile.identity`の唯一source。Durableとはみなさない |
+| `VerifiedReadReceipt.preOpenChecks` | bounded verification record | `open`前にroot identity、全ancestor `lstat`、candidate path `lstat`、candidate `realpath`/`path.relative`、再度のcandidate path `lstat`をこの順序で記録する。Applicableな`dev`、`ino`、`mode`、`size`、`mtimeNs`、`ctimeNs`を比較し、最初のcandidate checkでcanonicalization前にlink/non-regular objectを拒否し、両candidate snapshotが相互およびenumerationと一致することを要求 |
+| `VerifiedReadReceipt.preReadChecks` / `postReadChecks` | bounded verification record | `open`後かつread前と、同じhandleを開いたread後に、exactなpre-open sequenceを同じ順序で繰り返し、その後に同じ`FileHandle.stat({ bigint: true })` fieldを比較 |
+| `VerifiedReadReceipt.fileType` | literal `regular-file` | Directory、link、device、socket、pipeではない。Unsupported/unverifiable objectは拒否 |
+| `VerifiedReadReceipt.acceptedByteCount` | integer | `maxFileBytes`または残total budgetを超えない |
+| `VerifiedReadReceipt.finalOpenDefense` | `o-nofollow \| unavailable-postcheck-only` | Nodeが有効な`O_NOFOLLOW`を公開する場合は`o-nofollow`必須。Fallbackは明示的なcross-platform limitationを記録 |
+| `VerifiedReadReceipt.containmentMode` | literal `node-realpath-fstat-best-effort` | Atomic kernel containmentを主張せず、反復canonical/same-handle validationを記録 |
 
-Repository rootはprocess `.`を直接openする。Global rootは一致preview consent後だけfilesystem/volume rootから
-componentを追跡せずwalkする。Ticketを作れるのはnative enumerationだけで、static/derived classifierは
-ticketをselectできても作れない。Derived valueはticketのexact normalized segmentと一致しなければならない。
-Identity/type/metadata check failureはbyteを破棄し、ticketをstale/rejectedにする。Canonical pathやJS path
-stringでitemをreopenしない。
+Repository root contextはprocess `cwd`から作る。Global root contextは一致preview consent後だけ作る。Root作成は
+公開されたlexical componentを全て`lstat`で検査してlinkを拒否し、accepted rootの`realpath`とidentityを記録する。
+これらの分離checkには後述の残存raceがある。Bounded Node walkerだけがticketを作り、static/derived classifierはselectできても作れない。Derived valueはticketの
+exact normalized segmentと一致しなければならない。Candidate readは所有root contextとticketだけからpathを
+再構築する。`open`前にroot identityと全ancestor snapshotを比較し、candidate pathを`lstat`してlink/non-regular
+objectを拒否しexact fieldを比較する。次にcandidate `realpath`/`path.relative`を検査し、candidate pathの`lstat`
+比較を繰り返して、両snapshotが相互およびenumerationと一致することを要求する。`open`後かつread前にこの
+順序付きsequenceを繰り返し、opened
+`FileHandle.stat({ bigint: true })`も比較する。Bounded same-handle read後もhandleを開いたまま、byte受理前に
+同じexact fieldについてこの完全な順序付きpre-read sequenceを繰り返す。検出したidentity/type/metadata/
+boundary changeは収集済みbyteを全て破棄し、ticketをstale/rejectedにする。Client/HTTP path stringはreadを認可しない。
 
-### StaticAssetManifest、ServerBundleManifest、NativeRuntimeManifest
+Nodeが必要なidentity/metadataまたはcanonicalizationをunavailable、ambiguous、malformed、その他unusableと
+報告した場合は`safe-fs-boundary-unverifiable`とし、推測しない。Root-level failureはsource attemptをabortし、
+item-level failureには上限付きdiagnostic-only inventory recordだけを残してよい。
 
-これらはtrusted packaged-build recordで、inspection-source DTOではない。Build/package verifierは3つ全てを
-固定package-root pathだけからresolveする。RuntimeではCLIがstatic/native manifestを自身の`import.meta.url`
-相対の固定URLだけからresolveする。`node:fs`はpackage所有fileのread/hashに使えるが、manifestを
+Nodeはatomicなdirectory-handle-relative child openを提供しないため、これらrecordはpath check間にroot、
+ancestor、final entryを差し替えるactive processへのcontainmentを証明できない。そのactorはcurrent threat
+modelのscope外である。
+検出した通常の同時変更とその他全detected raceはfail closedにする。Threat model拡張には、将来のatomic Node beneath/no-follow
+API、またはOS強制のread-only snapshot/sandboxとrenewed reviewが必要である。
+Same-device bind mountとNodeが全く公開しないreparse metadataは、automated-test proof外の明示的なplatform
+limitationとして残る。
+
+### StaticAssetManifest、ServerBundleManifest
+
+これらはtrusted packaged-build recordで、inspection-source DTOではない。Build/package verifierは両方を
+固定package-root pathだけからresolveする。RuntimeではCLIがstatic manifestを自身の`import.meta.url`相対の
+固定URLだけからresolveする。`node:fs`はpackage所有fileのread/hashに使えるが、build manifestを
 inspected-source fallbackには使えない。Runtime loaderはoversized document、malformed JSON、duplicate/unknown/
 missing key、unexpected order、symlink、non-regular file、size/hash mismatch、package-version mismatchをserver
 bind前に拒否する。
+これらJSON manifest、generated HTML/CSS、documentation、licenseはdeclarative artifactであり、それらを
+consumeする全runtime/build/test executable componentはJavaScript/TypeScriptとする。
 
 Static manifest作成前に固定normalizerがNuxt標準`.output/public` staging treeを読み、regularな生成済み
 `200.html`/`404.html`を要求するがredundant static-host fallback 2つはcopyせず、`index.html`以外の全HTML
@@ -226,26 +252,13 @@ manifest-listed regular `.mjs` fileだけを`dist/`へcopyする。
 | `ServerBundleManifest.packageVersion` | 最大64 UTF-8 byteのsemver string | 同じpacked-package versionと一致 |
 | `ServerBundleManifest.assets` | ordered unique record 2..256件 | `file`順。`cli.mjs`、`parser-worker.mjs`、全tsdown code-split chunkを正確に1回含み、listed byte合計は最大64 MiB |
 | `ServerBundleRecord` | closed object | Exact keyは`file`、`byteLength`、`sha256` |
-| `ServerBundleRecord.file` | 最大256 UTF-8 byteのnormalized relative `.mjs` path | Absolute path、empty/dot segment、separator alias、traversal、top-level `public`/`native`/`manifests` collisionなし |
+| `ServerBundleRecord.file` | 最大256 UTF-8 byteのnormalized relative `.mjs` path | Absolute path、empty/dot segment、separator alias、traversal、top-level `public`/`manifests` collisionなし |
 | `ServerBundleRecord.byteLength` / `sha256` | non-negative integer / lowercase 64 hex | Copy前にstaged byte、pack前にpackaged byteと照合。1 file最大16 MiB |
-| `NativeRuntimeManifest` | 最大64 KiBのstrict JSON | Exact keyは`manifestVersion`、`packageVersion`、`nativeAbiVersion`、`nodeApiVersion`、`targets` |
-| `NativeRuntimeManifest.packageVersion` | 最大64 UTF-8 byteのsemver string | 同じembed済みpacked-package versionと一致 |
-| `NativeRuntimeManifest.manifestVersion` / `nativeAbiVersion` / `nodeApiVersion` | literals `1` / `1` / `10` | `process.versions.napi`はparse後integerが10以上になるcanonical decimal string、addon reportは両ABI valueと一致 |
-| `NativeRuntimeManifest.targets` | 正確に8 ordered `NativeTargetRecord` | 順に`darwin-x64`、`darwin-arm64`、`win32-x64`、`win32-arm64`、`linux-x64-gnu`、`linux-arm64-gnu`、`linux-x64-musl`、`linux-arm64-musl` |
-| `NativeTargetRecord` | closed object | Exact keyは`targetId`、`file`、`byteLength`、`sha256`。`file`は正確に`<targetId>/safe-fs.node`、length/hashは上記rule |
 
-全assembly後のrecursive expected setは3 manifest file、`StaticAssetManifest`にlistedされた全`public/...` path、
-`ServerBundleManifest`にlistedされた全server path、`NativeRuntimeManifest`にlistedされた全
-`native/<target.file>`だけである。Final verifierはstale regular file、unlisted chunk/prebuild、symlink、fileの
+全assembly後のrecursive expected setは2 manifest file、`StaticAssetManifest`にlistedされた全`public/...` path、
+`ServerBundleManifest`にlistedされた全server pathだけである。Final verifierはstale regular file、unlisted chunk、symlink、fileの
 代わりのdirectory、その他platform-safe non-regular objectを含む全差異を拒否する。Package testはunpackした
 tarballへ同じsetを適用する。
-
-Native loaderは`process.platform`/`process.arch`をlisted OS/architecture 1つへmapする。Linuxでは
-`process.report.getReport()`を1回呼ぶ。Well-formed headerの非空string `glibcVersionRuntime`は`gnu`、同fieldが
-不在のwell-formed headerは`musl` candidateを選び、API unavailable、throw、non-object header、存在するempty/
-non-string fieldはunsupportedとする。選択した正確なartifactをfixed package-owned loaderでverify/loadして、
-addon target/ABI report/self-test合格を要求する。第2 target、libc variant、filename、ABI、download、build、
-path-based implementationをprobeしない。
 
 ### GlobalConsentPreview
 
@@ -423,7 +436,7 @@ scanをconcurrent実行しない。通常source commandはFIFOとする。Global
 uncommitted transactionをabort/discardし、queued Global commandをcancelしてzero-I/O disable transactionを
 次に置く。中断したRepository commandはfresh counterでbarrierの直後へ正確に1回requeueし、中断したGlobal
 commandはrequeueしない。Barrierがqueued/active中の2回目のdisableは同じcompletionへjoinし、追加transactionを
-作らない。Global enabled flag、consent record、nonempty graph、open root capability、running/queued Global
+作らない。Global enabled flag、consent record、nonempty graph、accepted root context、running/queued Global
 scan/enable commandが何もない場合、無関係なRepository workの有無にかかわらずdisableは即時no-opとする。
 Transactionはその時点のgeneration Nから開始する。Unchanged source graphを
 carry forwardし、scanned sourceにはsession-wide file-count、retained-byte、generation-diagnostic budgetの
@@ -473,8 +486,8 @@ generationの`counters`は引き続きnullとする。
 | `sourceId` / `boundaryId` | opaque string | DTO | Enabled boundaryを識別する |
 | `relativePath` | normalized POSIX-style path | DTO | Leading slash、NUL、empty segment、`..`なし。表示時control character escape |
 | `aliasPaths` | normalized path[] | DTO | 同じidentityの別allowlist対象hard-link pathを最大1,024件、sort済みで保持。Symlinkはaliasにしない |
-| `identity` | `SafeReadReceipt`のfinal-handle identity | internal | Alias/race detection専用。Durableとみなさない |
-| `safeReadReceipt` | `SafeReadReceipt`またはnull | internal | 受理済みreadable fileだけにあり、serializeしない |
+| `identity` | `VerifiedReadReceipt`のfile-handle identity | internal | Alias/race detection専用。Durableとみなさない |
+| `verifiedReadReceipt` | `VerifiedReadReceipt`またはnull | internal | 受理済みreadable fileだけにあり、serializeしない |
 | `readState` | file read-state enum | DTO | 後述 |
 | `parseStatus` | `not-applicable \| not-attempted \| parsed \| partial \| malformed` | DTO | Metadata extractionだけ。Vendor validation resultではない |
 | `sizeBytes` | integerまたはnull | DTO | Readable fileは最大1 MiB |
@@ -542,7 +555,7 @@ rule、normalized target、declaration keyでdeduplicateし、最初のoccurrenc
 generationをpartialにしてfixed-code diagnostic candidate 1件をdiagnostic aggregatorへ渡す。Known
 unsatisfied/shadowed seedは何も生成せず、未解決eligible static seedはconditional candidateだけを生成し、
 bounded-derived provenanceはこのalgorithmに入らない。
-Validationはnative ticket lookup前に行い、contractのplatform-independent NFC segment grammar、列挙済みentryとの
+Validationはgeneration-bound ticket選択前に行い、contractのplatform-independent NFC segment grammar、列挙済みentryとの
 exact match、canonical component-identity checkを適用する。このためADS/device/trailing-dot-space/case/
 normalization/8.3 aliasは、そのspellingが解決可能なhostでも開かず拒否する。
 
@@ -678,10 +691,10 @@ listへ載せる。Scan-class overflowはgenerationをpartialにする。Session
 
 Unknown internal exceptionはgeneric codeとmemory内だけのcorrelation IDへmapする。Stack traceとraw parser
 errorは既定でbrowserへ送らない。
-Closed registryは`safe-fs-backend-unavailable`、`safe-fs-unsupported-target`、
-`safe-fs-root-rejected`、`safe-fs-link-or-reparse-rejected`、`safe-fs-mount-rejected`、
-`safe-fs-entry-stale`、`safe-fs-handle-metadata-changed`を含む。ArgumentにOS error text、outside path、
-native handle、source byteを含めない。
+Closed registryは`safe-fs-root-rejected`、`safe-fs-boundary-unverifiable`、`safe-fs-link-rejected`、
+`safe-fs-device-changed`、`safe-fs-entry-stale`、`safe-fs-race-detected`、
+`safe-fs-file-metadata-changed`、`safe-fs-open-failed`を含む。ArgumentにOS error text、outside path、
+filesystem handle/descriptor、source byteを含めない。
 
 ### BrowserState
 
@@ -730,8 +743,8 @@ Lexical consent previewは`Source`ではない。Global Sourceはenable command�
 再びabsentになる。
 全`failed` stateでactiveなbootstrap/prior generationはreadableなまま、`progress`はnullとし、cap対象lifecycle
 diagnosticがuncommitted attemptを説明する。
-Globalではfatalなenable/rescan attempt後も`enabled: true`、正確なconsent record、open済みaccepted
-boundary/capability、任意のprior committed Global graphを保持し、明示rescanまたはdisableを可能にする。別rootへ
+Globalではfatalなenable/rescan attempt後も`enabled: true`、正確なconsent record、accepted root context、
+任意のprior committed Global graphを保持し、明示rescanまたはdisableを可能にする。別rootへ
 fallbackしない。
 
 ### Customization file
@@ -754,8 +767,9 @@ candidate -> readable + parsed/partial/malformed/not-applicable parse status
 4. Accepted file pathは同梱したstaticまたはtyped bounded-derived ruleで許可され、safe-read checkを
    独立して満たす。Parsed valueがaccessを許可できるのはその正確なderivation ruleを満たす場合だけで、
    relationship/excluded ruleは決して許可しない。
-   Authorizationは既存native `EntryTicket`をselectし、その所有open `SafeRootCapability`だけがresolve/readできる。
-   Path stringはどちらの代替にもならない。
+   Authorizationは既存`ScanEntryTicket`をselectし、中央safe-filesystem layerだけがそのticketと所有active
+   `InspectionRootContext`を組み合わせられる。Readable resultは文書化したpre-open、pre-read、post-read checkを
+   全て通らなければならず、client path stringはcontext/ticket pairの代替にならない。
 5. Physical fileはsource/generationごとに1つの`CustomizationFile`と任意数のtool recognitionを持つ。
    受理済みかつ上限内のhard-link aliasは`aliasPaths`で見えるままにし、raw contentを重複しない。
    Overflowは要求済みpartial resultとdiagnosticで表す。

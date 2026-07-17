@@ -38,7 +38,7 @@ workspace、target file、runtime working directory、user home、configuration 
 いずれかに対する相対位置になり得る。また、上向き探索、下向き探索、directoryごとの選択、surface固有
 layerを表し得る。
 
-**Inspector matcher**は、すでに有効な1つのsource boundary内でInspectorがどのentry ticketをclassify
+**Inspector matcher**は、すでに有効な1つのsource boundary内でInspectorがどのenumerated entry recordをclassify
 できるかを表す。常にruleが指定した正確なboundaryに対する相対指定であり、vendor locatorの暗黙のbaseや
 traversalを継承しない。
 
@@ -54,8 +54,8 @@ traversalを継承しない。
 ### Repository
 
 Repository boundaryは、userが`npx`を起動した正確なprocess working directoryである。InspectorはGitまたは
-productのproject rootを探すためにその上位をwalkしない。Repository inventoryは保持したlaunch-root
-capabilityの内側だけで行う。Vendorが異なるruntime rootやwalk方向を使う場合、そのfactはvendor contractと
+productのproject rootを探すためにその上位をwalkしない。Repository inventoryはvalidated launch-root boundary
+recordの内側だけで行う。Vendorが異なるruntime rootやwalk方向を使う場合、そのfactはvendor contractと
 runtime-composition contractに属し、このboundaryを変更しない。
 
 ### Global
@@ -110,13 +110,22 @@ Environment/default-homeの解決はboundary作成の責務であり、selector�
 Repository用の`./` prefixを再利用せず、別vendor boundaryを認可せず、FR-015からFR-018が許可するpathを
 拡張できない。
 
-### Matchingとnative entry identity
+### MatchingとNode.js entry verification
 
 Pathはclassificationのためだけに`/`へnormalizeする。Canonicalまたはnormalized stringはdiagnostic dataで
-あり、read authorityではない。Native backendは保持したroot capabilityからenumerateしてinternal entry ticketを
-返し、classifierは以前にenumerateした正確なticketだけを選択できる。
+あり、それ単独ではreadを認可しない。中央集約したNode.js filesystem serviceは、最初にlexical containmentを
+確立し、source rootのidentityとcanonical `realpath`をsnapshotする。Candidateを検討する前に全ancestorを`lstat`
+する。Enumeration、open直前、open後かつread前、bounded read後の全candidate verification phaseは、次の正確な順序を
+使う。
+(1) candidate pathを`lstat`し、symbolic link、non-regular type、unexpected identityを拒否する。(2) これが成功した
+後だけcandidate `realpath`を解決し、`node:path.relative`でcontainmentを検証する。Platform separatorをnormalize
+した結果はabsoluteでなく、`..`でも`../`始まりでもないことを要求する。(3) candidate pathを再び`lstat`し、identity、
+type、size、関連timestampが最初の`lstat`と一致することを要求する。したがってstable symlinkはcandidate
+`realpath` callがfollowする前に拒否される。Serviceは観測したroot、ancestor、path、canonical location、identity、
+type、size、関連timestamp metadataを持つinternal source-relative enumeration recordを返す。Classifierは以前に
+enumerateした正確なrecordだけを選択できる。
 
-Derived selectorをticket lookupへ渡す前に、各NFC-normalized segmentについてNUL、control character、
+Derived selectorをenumeration-record lookupへ渡す前に、各NFC-normalized segmentについてNUL、control character、
 Windows-special character、trailing dot/space、device basename、alternate-data-stream spelling、case・normalization・
 short-name・その他aliasを拒否する。残った全segmentはenumerate済みentryと正確に一致しなければならない。
 `.git/`、`.hg/`、`.svn/`内部はtraversal対象外とする。
@@ -143,8 +152,9 @@ recognition-level winnerへcollapseしてはならない。
 ## Read認可とapplicability
 
 Shippedかつcontract-versionedなregistry内の`static-candidate`または`bounded-derived-candidate`だけがsafe readを
-requestできる。Candidateは有効なboundaryに属し、正確なenumerated regular-file ticketにmatchし、すべての
-file/source/generation limit内に残り、nativeのpre-read/post-read identity checkに合格しなければならない。
+requestできる。Candidateは有効なboundaryに属し、正確なenumerated regular-file recordにmatchし、すべての
+file/source/generation limit内に残り、中央集約したNode.js serviceによるlexical/`realpath` containmentの再確認と
+enumeration/open/post-read identity checkに合格しなければならない。
 
 Bounded derivationは、独立して受理したstatic seedからの正確に1つのtyped edgeである。Derived candidateは別の
 derivationをseedできない。Relationship-onlyおよびexcluded rule、vendor locator、runtime strategy、import、
@@ -158,12 +168,32 @@ inputをsatisfiedとしてdefaultにしてはならず、UIはcandidateをsemant
 
 ## Symlink、alias、resource invariant
 
-- Symbolic-link fileとdirectoryはfollowしない。Junction、mount-point change、reparse point、canonicalizeしにくい
-  alias、boundary crossingはfail closedにする。
-- 保持したroot capabilityと正確なentry ticketだけをfilesystem authorityとする。Canonical path string、
-  relationship target、source textからpathをreopenしてはならない。
-- Enumeration、open、read、verificationの間にidentityまたはmetadataが変化した場合、全byteをdiscardし、boundedで
-  secret-safeなdiagnosticを返す。
+- Symbolic-link file/directoryとnon-regular candidateを拒否する。Junction、mount-point change、reparse point、
+  canonicalizeしにくいalias、boundary crossingは、Node.jsが検出に十分な情報を公開する場合にfail closedにする。
+  Lexical containmentと`realpath` containmentの両方を確立できない場合もfail closedにする。Node.jsが必要metadata
+  またはcanonicalizationをerrored、ambiguous、unusableとして報告した場合、serviceは
+  `safe-fs-boundary-unverifiable`をemitし、candidateを拒否する。Unverifiable stateがrootまたはtraversalで共有する
+  ancestorに属する場合はsource全体を拒否する。
+- Validated source-boundary recordと正確なenumeration recordは、中央集約したread operationだけを認可する。
+  Canonical path string、relationship target、source textだけでfilesystemを直接openしてはならない。
+- Open直前にserviceはroot identityとancestor `lstat`を反復し、上記のordered candidate verification sequenceを
+  実行する。`node:fs.constants.O_NOFOLLOW`が存在し、そのNode.js/platform combinationで有効な場合、
+  candidateを`O_NOFOLLOW`付きでopenしなければならない。これはfinal componentに対する必須のdefense in depthで
+  あり、周囲のcheckの代替ではない。Open後かつbyteを読む前に同じordered candidate verification sequenceを再び
+  実行し、openした`FileHandle.stat()`のidentity、type、size、関連timestampを、そのphaseの両`lstat`結果および
+  enumeration/pre-open snapshotと比較する。
+- Bounded read後かつparse、publish、commitより前に、root identityと全ancestor `lstat`を反復し、同じordered
+  candidate verification sequenceを実行して、同じopen中`FileHandle`の`stat()`を呼ぶ。Error、ambiguity、
+  containment failure、identity、type、size、関連timestampの変化を検出した場合はbyte buffer全体をdiscardして
+  fail closedにする。Boundaryを検証不能な場合は`safe-fs-boundary-unverifiable`、その他の検出済みraceは該当する
+  boundedかつsecret-safeなdiagnosticを返す。
+- Public Node.js APIにはportableなdirectory-handle-relative openがない。そのためactiveなparent-directory
+  replacementに限らず、activeなadversarial processはcheck間にancestorまたはfinal componentを置換でき、
+  `O_NOFOLLOW`が存在しないか有効でない場合を含め、cross-platformなkernel-enforced containment guaranteeはない。
+  このactive adversarial mutationは初期リリースのthreat model外とする。通常の同時editと全detectable raceは
+  scope内であり、fail closedにして全byteをdiscardしなければならない。Same-device bind mount、報告されない
+  reparse behavior、Node.jsが公開しないその他のOS semanticsは明示的なplatform limitationであり、absoluteな
+  containment guaranteeとして表現しない。
 - File byte、visited entry、candidate count、derivation fan-out、relationship count、parser work、diagnostic、
   deadlineには[data-model contract](../data-model.ja.md)の正確なlimitを使う。Limit到達時はcontract化したpartial resultまたはdiagnosticを
   返し、暗黙のexpansion、unbounded retry、fallback readを行わない。
@@ -189,8 +219,13 @@ Contractとfixtureのvalidationは、次をすべて証明しなければなら�
    0であることを証明する。FR-015からFR-018の外側で記録したUser behaviorはGlobal candidateにならない。
 6. 複数admissionを持つphysical fileは1回だけreadし、独立した各provenanceを保持する。Matcher、evidence、
    documentation、scope/order、applicabilityをcollapseしない。
-7. Native boundary fixtureは、symlink/reparse/mount traversalがないこと、path-reopenやNode-filesystem fallbackがない
-   こと、race時にexact ticket identityを保つこと、全advertised targetでboundedにsafe failureすることを証明する。
+7. 全supported OS上の中央集約Node.js filesystem fixtureは、lexical/`realpath` escape、`path.relative`
+   containment、全phaseの正確な`lstat`/`realpath`/2回目`lstat`順序、symlink/non-regular rejection、利用可能時の
+   有効な`O_NOFOLLOW`使用、上記全pre-read/post-read比較、root/parent/final-entry replacementを扱う。Stable-
+   symlink fixtureはcandidate `realpath` callより前の拒否を証明する。通常の同時変更またはその他のdetectable
+   changeではbyteをpublishせず、bounded diagnosticでfailする。報告されたerror、ambiguity、unusable metadataは
+   `safe-fs-boundary-unverifiable`を返す。Node.jsが観測不能なOS behaviorはplatform limitationとして記録し、
+   threat model外のactive-adversary raceに対するproofとして数えない。
 8. Official-source fixtureは公式HTTPS host、bounded anchor、review date、semantic fingerprint、影響contractへの
    backlink、human-only updateを検証する。Drift resultがbehavior、rule、strategyを自動変更してはならない。
 9. Unknown expansion mode、malformed selector、duplicate identifier、orphan reference、contract version mismatch、

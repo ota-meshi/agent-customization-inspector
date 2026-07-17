@@ -22,14 +22,14 @@ ContractRegistry (immutable, contract-versioned)
 
 InspectionSession
 ├── Source (exactly one Repository)
-│   ├── SourceBoundary (exactly one) → SafeRootCapability (internal)
+│   ├── SourceBoundary (exactly one) → InspectionRootContext (internal)
 │   └── SourceConditionFact (zero or more; no originating file)
 ├── Source (zero or one Global)
-│   ├── SourceBoundary (one per enabled tool home) → SafeRootCapability (internal)
+│   ├── SourceBoundary (one per enabled tool home) → InspectionRootContext (internal)
 │   └── SourceConditionFact (zero or more; no originating file)
 ├── ScanGeneration (exactly one active, session-wide)
 │   └── CustomizationFile
-│       ├── EntryTicket + SafeReadReceipt (internal)
+│       ├── ScanEntryTicket + VerifiedReadReceipt (internal)
 │       ├── ToolRecognition (one or more)
 │       │   └── CandidateProvenance (one or more)
 │       │       └── ApplicabilityAssessment
@@ -161,54 +161,88 @@ tool, explaining rule, affected-rule set, condition key, and reason code.
 | `boundaryId` | opaque string | DTO | Used for grouping, never accepted as a path |
 | `tool` | `copilot \| claude \| codex \| repository` | DTO | Repository uses `repository` |
 | `displayRoot` | string | DTO | Local path intended for the user; control characters escaped and bounded by `maxGlobalPreviewDisplayBytes` |
-| `canonicalRoot` | absolute canonical path or null | internal | Diagnostic/consent comparison only; never read authority and never returned outside an enabled boundary |
-| `safeRoot` | `SafeRootCapability` | internal | Sole read authority; required before enumeration |
+| `canonicalRoot` | absolute canonical path or null | internal | Diagnostic/consent comparison and repeated containment checks; never sufficient by itself to authorize a read and never returned outside an enabled boundary |
+| `rootContext` | `InspectionRootContext` | internal | Required before enumeration; only the central safe-filesystem layer can create or consume it |
 | `origin` | `cwd \| default-home \| environment` | DTO | Explains how the boundary was selected |
 
 One logical Global source may contain up to three separate boundaries. This preserves one
 filterable Global source without pretending that all tool homes share a directory.
 
-### SafeRootCapability, EntryTicket, and SafeReadReceipt
+### InspectionRootContext, ScanEntryTicket, and VerifiedReadReceipt
 
-These native-backed records are internal only. They cannot be serialized, cloned from a
-DTO, reconstructed from a path, or accepted from an HTTP request.
+These pure Node.js records are internal only. They cannot be serialized, cloned from a
+DTO, reconstructed from an HTTP path, or accepted from a request. Their private module
+brand enforces application-level authority; it is not an OS filesystem capability.
 
 | Entity / field | Type | Rules |
 |---|---|---|
-| `SafeRootCapability.nativeHandle` | native external | Retained directory/volume-root-derived handle; never exposed to JS as a numeric descriptor |
-| `SafeRootCapability.sourceId` / `boundaryId` | opaque IDs | Bind the capability to exactly one source boundary |
-| `SafeRootCapability.backendTarget` / `backendVersion` | closed target ID / native ABI integer | Must match the one manifest-selected prebuild and custom native ABI 1 |
-| `SafeRootCapability.rootIdentity` | platform handle identity | Captured from the opened handle, not a prior path lookup |
-| `SafeRootCapability.mountOrVolumeIdentity` | platform identity | Crossing it is rejected |
-| `SafeRootCapability.state` | `open \| closed` | Close on source disable or process end; closed capabilities reject all calls |
-| `EntryTicket.nativeTicket` | native external | Issued only by bounded enumeration beneath one open root |
-| `EntryTicket.relativeSegments` | NFC segment array | Same normalized path used for classification; never an ambient absolute path |
-| `EntryTicket.enumerationIdentity` / `enumerationMetadata` | handle-relative snapshot | Compared with the final handle before any result is accepted |
-| `EntryTicket.occurrence` | non-negative integer | Deterministic native enumeration order; capped by `maxVisitedEntries` |
-| `EntryTicket.state` | `enumerated \| consumed \| stale \| rejected` | A ticket can be read at most once per generation; stale/rejected tickets return no bytes |
-| `SafeReadReceipt.entryTicket` | internal reference | Exact ticket consumed for this file |
-| `SafeReadReceipt.finalHandleIdentity` | platform handle identity | Sole source of `CustomizationFile.identity` |
-| `SafeReadReceipt.preReadMetadata` / `postReadMetadata` | bounded metadata | Type, identity, size, and change fields must agree under the native contract |
-| `SafeReadReceipt.fileType` | literal `regular-file` | No directory, link, device, socket, pipe, or reparse target |
-| `SafeReadReceipt.acceptedByteCount` | integer | Never exceeds `maxFileBytes` or remaining total budget |
-| `SafeReadReceipt.containmentMode` | closed OS mode | `linux-openat2`, `macos-handle-walk`, or `windows-handle-walk` |
+| `InspectionRootContext.privateBrand` | module-private symbol/registry membership | Created and checked only by `src/inspection/safe-fs.ts`; never leaves process memory |
+| `InspectionRootContext.sourceId` / `boundaryId` | opaque IDs | Bind the context to exactly one source boundary |
+| `InspectionRootContext.lexicalRoot` / `canonicalRoot` | absolute paths | Accepted internal root and its `realpath`; client values cannot replace either after creation |
+| `InspectionRootContext.rootIdentity` | bigint `dev`/`ino`/`mode` snapshot | Captured with `lstat`; compared again before traversal and every candidate read |
+| `InspectionRootContext.rootDevice` | bigint `dev` | Detects device changes exposed by Node; does not claim to identify every mount transition |
+| `InspectionRootContext.state` | `active \| closed` | Close on source disable or process end; closed contexts reject all calls |
+| `ScanEntryTicket.privateBrand` / `rootContext` | module-private brand / internal reference | Issued only by bounded enumeration for one active root context |
+| `ScanEntryTicket.sourceId` / `boundaryId` / `generationId` | opaque IDs / integer | Bind the ticket to exactly one source boundary and scan generation |
+| `ScanEntryTicket.relativeSegments` | NFC segment array | Same normalized path used for classification; never accepted from an ambient absolute path |
+| `ScanEntryTicket.canonicalAtEnumeration` | absolute canonical path | Internal comparison value, not standalone read authority |
+| `ScanEntryTicket.ancestorSnapshots` | bounded ordered snapshot[] | One record per relative directory prefix with `dev`, `ino`, and `mode`; compared before open, before read, and after read |
+| `ScanEntryTicket.enumerationIdentity` / `enumerationMetadata` | bigint path-stat snapshot | Exact `dev`, `ino`, `mode`, `size`, `mtimeNs`, and `ctimeNs` compared with the path and opened `FileHandle` before bytes are read |
+| `ScanEntryTicket.occurrence` | non-negative integer | Deterministic enumeration order; capped by `maxVisitedEntries` |
+| `ScanEntryTicket.state` | `enumerated \| consumed \| stale \| rejected` | A ticket can be read at most once per generation; stale/rejected tickets return no accepted bytes |
+| `VerifiedReadReceipt.entryTicket` | internal reference | Exact ticket consumed for this file |
+| `VerifiedReadReceipt.fileHandleIdentity` | bigint `dev`/`ino`/`mode` snapshot | Sole source of `CustomizationFile.identity`; never treated as durable |
+| `VerifiedReadReceipt.preOpenChecks` | bounded verification record | Before `open`, records root identity, every ancestor `lstat`, candidate path `lstat`, candidate `realpath`/`path.relative`, and the repeated candidate path `lstat` in that order; comparisons use `dev`, `ino`, `mode`, `size`, `mtimeNs`, and `ctimeNs` where applicable, the first candidate check rejects links/non-regular objects before canonicalization, and both candidate snapshots must match each other and enumeration |
+| `VerifiedReadReceipt.preReadChecks` / `postReadChecks` | bounded verification records | After `open` before any read, and again after the read while the same handle remains open, repeat the exact pre-open sequence in the same order and then compare the same `FileHandle.stat({ bigint: true })` fields |
+| `VerifiedReadReceipt.fileType` | literal `regular-file` | No directory, link, device, socket, or pipe; unsupported/unverifiable objects are rejected |
+| `VerifiedReadReceipt.acceptedByteCount` | integer | Never exceeds `maxFileBytes` or remaining total budget |
+| `VerifiedReadReceipt.finalOpenDefense` | `o-nofollow \| unavailable-postcheck-only` | `o-nofollow` is mandatory when Node exposes an effective `O_NOFOLLOW`; the fallback records the explicit cross-platform limitation |
+| `VerifiedReadReceipt.containmentMode` | literal `node-realpath-fstat-best-effort` | Records repeated canonical and same-handle validation without claiming atomic kernel containment |
 
-Repository root creation opens process `.` directly. Global root creation occurs only
-after matching preview consent and walks from the filesystem/volume root without following
-components. Native enumeration alone creates tickets; static/derived classifiers may
-select a ticket but may not create one. A derived value must match the ticket's exact
-normalized segments. A failed identity/type/metadata check destroys the bytes and marks
-the ticket stale or rejected. Canonical paths and JS path strings never reopen an item.
+Repository root creation derives its context from process `cwd`. Global root creation
+occurs only after matching preview consent. Root creation checks every exposed lexical
+component with `lstat`, rejects links, then records the accepted root `realpath` and
+identity; these separate checks remain subject to the residual race below. The bounded Node walker alone creates tickets;
+static/derived classifiers may select a ticket but may not create one. A derived value must
+match the ticket's exact normalized segments. Candidate reads rebuild a path only from the
+owning root context and ticket. Before `open`, they compare root identity and every
+ancestor snapshot, `lstat` the candidate path to reject a link/non-regular object and
+compare its exact fields, check candidate `realpath`/`path.relative`, then repeat the
+candidate path `lstat` comparison, requiring both snapshots to match each other and
+enumeration. After `open` but before reading, they repeat that
+ordered sequence and compare the opened
+`FileHandle.stat({ bigint: true })`. After the bounded same-handle read and while the handle
+is still open, they repeat the complete ordered pre-read sequence over the same exact fields before
+accepting bytes. A detected identity/type/metadata/boundary change
+discards all collected bytes and marks the ticket stale or rejected. Client or HTTP path
+strings never authorize a read.
 
-### StaticAssetManifest, ServerBundleManifest, and NativeRuntimeManifest
+Required identity/metadata or canonicalization reported by Node as unavailable, ambiguous,
+malformed, or otherwise unusable produces `safe-fs-boundary-unverifiable`; the layer never
+guesses. A root-level failure aborts the source attempt, and an item-level failure can retain
+only a bounded diagnostic-only inventory record.
+
+Because Node does not provide atomic directory-handle-relative child open, these records
+cannot prove containment against an active process that replaces the root, an ancestor, or
+the final entry between checks;
+that actor is outside the current threat model. Detected ordinary concurrent changes and
+all other detected races fail closed. Expanding the threat model requires a future atomic Node
+beneath/no-follow API or an OS-enforced read-only snapshot/sandbox and renewed review.
+Same-device bind mounts and reparse metadata that Node never exposes remain explicit
+platform limitations outside automated-test proof.
+
+### StaticAssetManifest and ServerBundleManifest
 
 These are trusted packaged-build records, not inspection-source DTOs. The build/package
-verifier resolves all three only from fixed package-root paths. At runtime the CLI resolves
-the static and native manifests only from fixed URLs relative to its own `import.meta.url`;
-`node:fs` may read and hash these package-owned files but may not use a manifest as an
-inspected-source fallback. Runtime loaders reject an oversized document, malformed JSON,
+verifier resolves both only from fixed package-root paths. At runtime the CLI resolves the
+static manifest only from a fixed URL relative to its own `import.meta.url`; `node:fs` may
+read and hash package-owned files but may not use a build manifest as an inspected-source
+fallback. Runtime loaders reject an oversized document, malformed JSON,
 duplicate/unknown/missing key, unexpected order, symlink, non-regular file, size/hash
 mismatch, or package-version mismatch before server bind.
+These JSON manifests, generated HTML/CSS, documentation, and the license are declarative
+artifacts; every executable runtime/build/test component that consumes them is
+JavaScript/TypeScript.
 
 Before creating the static manifest, the fixed normalizer reads Nuxt's standard
 `.output/public` staging tree, requires regular generated `200.html` and `404.html` files
@@ -236,29 +270,14 @@ copies exactly its manifest-listed regular `.mjs` files into `dist/`.
 | `ServerBundleManifest.packageVersion` | semver string, at most 64 UTF-8 bytes | Equals the same packed-package version |
 | `ServerBundleManifest.assets` | 2..256 ordered unique records | Sorted by `file`; includes `cli.mjs`, `parser-worker.mjs`, and every tsdown code-split chunk exactly once; total listed bytes at most 64 MiB |
 | `ServerBundleRecord` | closed object | Exact keys `file`, `byteLength`, `sha256` |
-| `ServerBundleRecord.file` | normalized relative `.mjs` path, at most 256 UTF-8 bytes | No absolute path, empty/dot segment, separator alias, traversal, or `public`, `native`, or `manifests` top-level collision |
+| `ServerBundleRecord.file` | normalized relative `.mjs` path, at most 256 UTF-8 bytes | No absolute path, empty/dot segment, separator alias, traversal, or `public` or `manifests` top-level collision |
 | `ServerBundleRecord.byteLength` / `sha256` | non-negative integer / 64 lowercase hex | Verified against staged bytes before copy and packaged bytes before pack; each file at most 16 MiB |
-| `NativeRuntimeManifest` | strict JSON, at most 64 KiB | Exact keys `manifestVersion`, `packageVersion`, `nativeAbiVersion`, `nodeApiVersion`, `targets` |
-| `NativeRuntimeManifest.packageVersion` | semver string, at most 64 UTF-8 bytes | Equals the same embedded packed-package version |
-| `NativeRuntimeManifest.manifestVersion` / `nativeAbiVersion` / `nodeApiVersion` | literals `1` / `1` / `10` | `process.versions.napi` must be a canonical decimal string whose parsed integer is at least 10; addon report must match both ABI values |
-| `NativeRuntimeManifest.targets` | exactly eight ordered `NativeTargetRecord`s | IDs in order: `darwin-x64`, `darwin-arm64`, `win32-x64`, `win32-arm64`, `linux-x64-gnu`, `linux-arm64-gnu`, `linux-x64-musl`, `linux-arm64-musl` |
-| `NativeTargetRecord` | closed object | Exact keys `targetId`, `file`, `byteLength`, `sha256`; `file` is exactly `<targetId>/safe-fs.node`; length/hash use the rules above |
 
-After all assembly, the recursive expected set is exactly the three manifest files,
+After all assembly, the recursive expected set is exactly the two manifest files,
 every `public/...` path listed by `StaticAssetManifest`, every server path listed by
-`ServerBundleManifest`, and every `native/<target.file>` listed by
-`NativeRuntimeManifest`. The final verifier rejects any difference, including a stale
-regular file, unlisted chunk/prebuild, symlink, directory in place of a file, or other
+`ServerBundleManifest`. The final verifier rejects any difference, including a stale
+regular file, unlisted chunk, symlink, directory in place of a file, or other
 platform-safe non-regular object. Package tests apply the same set to the unpacked tarball.
-
-The native loader maps `process.platform`/`process.arch` to one listed OS/architecture.
-For Linux it calls `process.report.getReport()` once: a well-formed header with a non-empty
-string `glibcVersionRuntime` selects `gnu`, a well-formed header where that field is absent
-selects the `musl` candidate, and an unavailable API, thrown call, non-object header, or
-present empty/non-string field is unsupported. It verifies and loads exactly the selected
-artifact with a fixed package-owned loader, then requires the addon's target/ABI report and
-self-test to pass. It never probes a second target, libc variant, filename, ABI, download,
-build, or path-based implementation.
 
 ### GlobalConsentPreview
 
@@ -453,8 +472,8 @@ transaction, cancels queued Global commands, and places a zero-I/O disable trans
 next. An interrupted Repository command is requeued exactly once immediately behind the
 barrier with fresh counters; an interrupted Global command is not requeued. A second
 disable while that barrier is queued or active joins the same completion and creates no
-additional transaction. If no Global enabled flag, consent record, nonempty graph, open
-root capability, or running/queued Global scan/enable command exists, disable is an
+additional transaction. If no Global enabled flag, consent record, nonempty graph, accepted
+root context, or running/queued Global scan/enable command exists, disable is an
 immediate no-op regardless of unrelated Repository work. A transaction
 starts from the then-current generation N. It carries the unchanged source graph forward
 and gives the scanned source only the remaining session-wide file-count, retained-byte, and generation-diagnostic
@@ -512,8 +531,8 @@ has null `counters` because the barrier performs no source I/O.
 | `sourceId` / `boundaryId` | opaque string | DTO | Must identify an enabled boundary |
 | `relativePath` | normalized POSIX-style path | DTO | No leading slash, NUL, empty segment, or `..`; control characters escaped for display |
 | `aliasPaths` | normalized path[] | DTO | At most 1,024 other allowlisted hard-link paths for the same identity, sorted; symlinks are never aliases |
-| `identity` | final-handle identity from `SafeReadReceipt` | internal | Used only for alias/race detection; never treated as durable |
-| `safeReadReceipt` | `SafeReadReceipt` or null | internal | Present only for an accepted readable file and never serialized |
+| `identity` | file-handle identity from `VerifiedReadReceipt` | internal | Used only for alias/race detection; never treated as durable |
+| `verifiedReadReceipt` | `VerifiedReadReceipt` or null | internal | Present only for an accepted readable file and never serialized |
 | `readState` | file read-state enum | DTO | See states below |
 | `parseStatus` | `not-applicable \| not-attempted \| parsed \| partial \| malformed` | DTO | Metadata extraction only; never a vendor validation result |
 | `sizeBytes` | integer or null | DTO | At most 1 MiB for readable files |
@@ -588,7 +607,7 @@ distinct targets may proceed through normal candidate/safe-read limits. Encounte
 partial, and offers one fixed-code diagnostic candidate to the diagnostic aggregator. A
 known unsatisfied/shadowed seed emits none; an unresolved eligible static seed emits only
 conditional candidates; a bounded-derived provenance never enters this algorithm.
-Validation occurs before native ticket lookup and applies the contract's
+Validation occurs before generation-bound ticket selection and applies the contract's
 platform-independent NFC segment grammar, exact enumerated-entry match, and canonical
 component-identity check. ADS/device/trailing-dot-space/case/normalization/8.3 aliases are
 therefore rejected without opening them, even on a host where that spelling would resolve.
@@ -745,11 +764,11 @@ generation.
 
 Unknown internal exceptions are mapped to a generic code and correlation ID held only in
 memory; stack traces and raw parser errors are never sent to the browser by default.
-The closed registry includes `safe-fs-backend-unavailable`,
-`safe-fs-unsupported-target`, `safe-fs-root-rejected`,
-`safe-fs-link-or-reparse-rejected`, `safe-fs-mount-rejected`,
-`safe-fs-entry-stale`, and `safe-fs-handle-metadata-changed`. Their arguments contain no
-OS error text, outside path, native handle, or source bytes.
+The closed registry includes `safe-fs-root-rejected`,
+`safe-fs-boundary-unverifiable`, `safe-fs-link-rejected`,
+`safe-fs-device-changed`, `safe-fs-entry-stale`, `safe-fs-race-detected`,
+`safe-fs-file-metadata-changed`, and `safe-fs-open-failed`. Their arguments contain no
+OS error text, outside path, filesystem handle/descriptor, or source bytes.
 
 ### BrowserState
 
@@ -801,7 +820,7 @@ enable command is accepted and is absent again after the disable commit.
 In every `failed` state the active bootstrap/prior generation remains readable and
 `progress` is null; the capped lifecycle diagnostic explains the uncommitted attempt.
 For Global specifically, a fatal enable/rescan attempt retains `enabled: true`, the exact
-consent record, open accepted boundaries/capabilities, and any prior committed Global graph
+consent record, accepted root contexts, and any prior committed Global graph
 so the user may explicitly rescan or disable. It never falls back to different roots.
 
 ### Customization file
@@ -828,8 +847,10 @@ old file records in place.
 4. Every accepted file path is authorized by a shipped static or typed bounded-derived
    rule and independently passes safe-read checks. A parsed value grants access only when
    it satisfies that exact derivation rule; relationships and excluded rules never do.
-   Authorization selects an existing native `EntryTicket`; only its owning open
-   `SafeRootCapability` may resolve/read it, and no path string can substitute for either.
+   Authorization selects an existing `ScanEntryTicket`; only the central safe-filesystem
+   layer may combine it with its owning active `InspectionRootContext`, and any readable
+   result must pass the documented pre-open, pre-read, and post-read checks. No client path
+   string can substitute for the context/ticket pair.
 5. A physical file has one `CustomizationFile` record per source/generation and any number
    of tool recognitions; accepted in-limit hard-link aliases remain visible in `aliasPaths`
    without duplicating raw content, and overflow is represented by the required partial

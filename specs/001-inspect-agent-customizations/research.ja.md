@@ -2,7 +2,7 @@
 
 [English](research.md)
 
-**調査日**: 2026-07-15
+**調査日**: 2026-07-16
 **対象**: 参照architecture、現行互換toolchain、安全なlocal host設計、parseとmask、source/metadata比較、
 bounded scan、公式customization path surface
 
@@ -10,22 +10,23 @@ bounded scan、公式customization path surface
 
 **決定**: `app/`、`src/`、`shared/`、`tests/`、`bin.mjs`、1つの`dist/`を持つ公開可能な
 ESM packageを1つ使用する。Client buildはNuxt、Node CLI bundleはtsdownが所有する。
-Rust/Node-API addonが調査対象sourceのenumeration/readを所有し、prebuilt `.node` assetはtsdownのJS
-bundle外に保つ。Typed inert DTOだけをbrowserへ渡す。
+Pure Node.jsの`src/inspection/safe-fs.ts` moduleが調査対象sourceのenumeration/readを全て所有し、CLIとともに
+bundleする。Typed inert DTOだけをbrowserへ渡す。
+Runtime、build、testの全executable codeはJavaScript/TypeScriptとする。Generated HTML/CSS、JSON manifest、
+documentation、licenseはdeclarative artifactとして許可する。
 
 **理由**: UIとCLIは1つのproductを形成し、1つのrelease versionを共有し、すべての`npx`起動で両方が
 必要になる。単一packageはinstall/releaseをatomicに保ち、`app`/`src`/`shared` boundaryはbrowser codeが
 filesystem accessを得ることを防ぐ。Build orchestrationはpackage所有output treeだけをcleanし、Nuxtに標準
-`.output/public` staging treeを書かせ、accepted assetを検証して`dist/public`へcopyし、CI検証済みnative
-artifact 8つをcopyし、tsdownにnamed CLI/Worker entryとcode-split chunkをcleanな別`.build/server` staging
-treeへ出力させる。固定manifestが3 output classをcopy/pack前に閉じる。最小の`bin.mjs`がCLIをimportでき、
+`.output/public` staging treeを書かせ、accepted assetを検証して`dist/public`へcopyし、tsdownにnamed
+CLI/Worker entryとcode-split chunkをcleanな別`.build/server` staging treeへ出力させる。固定manifestが
+両output classをcopy/pack前に閉じる。最小の`bin.mjs`がCLIをimportでき、
 独立version管理するpackageを作る必要はない。
 Executable shimはBOMなし、LF終端の正確な先頭行`#!/usr/bin/env node`で始める。Release時のrepairではなく
 package contractとする。
 
-Contributorはcurrent native targetだけをbuild/race-testしてよいが、そのoutputはpublishable packageではなく
-matrix inputである。Full build/package acceptanceは意図的に8 target jobを要求し、missing targetをlocal-only
-releaseで隠せないようにする。
+Cross-platform CIはmacOS、Linux、Windowsで同じNode.js filesystem integration/race-detection caseを実行する。
+Published package自体はplatform固有artifactを含まない。
 
 **検討した代案**:
 
@@ -45,8 +46,7 @@ executable attribute、`<base>`、symlink、unexpected outputを拒否し、Nuxt
 新規`dist/public`へcopyし、正確なassetとexecutable inline-script hashを
 `dist/manifests/static-assets.json`へ記録する。
 
-Closedな8 native targetをCI matrixでbuild/testし、検証済みartifactだけを
-`dist/native/<targetId>/safe-fs.node`へcopyして`dist/native/manifest.json`を書く。tsdownはnamed entry
+tsdownはnamed entry
 `{ cli: 'src/cli.ts', 'parser-worker': 'src/inspection/parsers/worker.ts' }`、Node ESM、
 `fixedExtension: true`、source map/declaration無効、cleanな`.build/server` output、
 `deps.skipNodeModulesBundle: true`とする。固定assemblerは安全なregular `.mjs` outputだけを受理し、
@@ -55,21 +55,21 @@ Closedな8 native targetをCI matrixでbuild/testし、検証済みartifactだ�
 `new URL('./parser-worker.mjs', import.meta.url)`からだけparser Workerをconstructし、調査対象dataがmoduleや
 Worker URLを選べないようにする。
 
-Pack前に`dist/`を3 manifestから導くexact setとrecursiveに比較し、missing、stale、unexpected、link、
+Pack前に`dist/`を両manifestから導くexact setとrecursiveに比較し、missing、stale、unexpected、link、
 non-regular pathを拒否する。`package.json.files`は正確に
 `["bin.mjs", "dist", "README.md", "README.ja.md", "LICENSE"]`とする。npmが自動で含める`package.json`と
 それらのentryがcomplete tarball allowlistである。`package.json.bin`は正確に
 `{ "agent-customization-inspector": "bin.mjs" }`とし、library APIがないため`main`、`module`、`exports`を
 省略する。Install script、runtime download、end-user compileを使わない。Runtime packageは正確な
 `dependencies`として宣言し、`npx`に監査可能なversionをinstallさせる。tsdownはproject所有moduleとshared
-contractをbundleし、任意のtransitive package/native binaryはbundleしない。
+contractをbundleし、任意のtransitive packageはbundleしない。
 
 **理由**: Separate clean staging treeはcross-toolの`clean: false`へ依存せず、stale output拒否を機械的にする。
 node_modulesをexternalにすると、
 platform-sensitiveまたは変化するtransitive codeの暗黙inlineを避け、CLIがloadするものをmanifestで
 表せる。[tsdown dependency documentation](https://tsdown.dev/options/dependencies)はexternal dependencyと
 明示的`alwaysBundle`を区別し、[entry documentation](https://tsdown.dev/options/entry)はnamed multi-entry形式を
-定義する。Web、CLI、parser Worker、exact native-target outputがpackaged locationからloadできることはtarball
+定義する。Web、CLI、parser Worker、safe-filesystem layerがpackaged locationからloadできることはtarball
 smoke testで証明する。Tarballをisolated fixtureへinstallしてexecutableを実際に`npx --no-install`でinvokeし、
 `bin` mappingのinspectionだけで済ませない。起動前にexact shebang/executable modeもassertする。
 `/files/<fileId>`のようなnested routeにも同じshellを返すためroot-absolute assetが必要で、
@@ -100,24 +100,12 @@ Unlisted pathは配信しない。
 `packageVersion`、ordered 2..256 recordの`assets` arrayを持つ。各recordは正確に
 `{ file, byteLength, sha256 }`、安全なrelative `.mjs` pathはsort済みunique、listed byte合計最大64 MiB、
 各file最大16 MiB、`cli.mjs`/`parser-worker.mjs`必須とする。全code-split tsdown outputをlistedする。Final
-recursive verifierはこのmanifestとstatic/native manifestからlegalな`dist/` fileだけを導出し、pack前に全
+recursive verifierはこのmanifestとstatic manifestからlegalな`dist/` fileだけを導出し、pack前に全
 stale/unexpected/link/non-regular pathを拒否してunpack済みtarballへ同じproofを適用する。
-
-`dist/native/manifest.json`はextra keyのない最大64 KiBのstrict JSONとし、`manifestVersion: 1`、正確な
-`packageVersion`、`nativeAbiVersion: 1`、`nodeApiVersion: 10`、`darwin-x64`、`darwin-arm64`、
-`win32-x64`、`win32-arm64`、`linux-x64-gnu`、`linux-arm64-gnu`、`linux-x64-musl`、
-`linux-arm64-musl`のordered 8-entry `targets` arrayを持つ。各entryは正確に
-`{ targetId, file, byteLength, sha256 }`で、`file`は`<targetId>/safe-fs.node`、size/hashは同じclosed ruleに
-従う。Loaderはmanifest package versionを`package.json`からembedしたversionと比較し、custom ABI 1とprocessの
-Node-API 10以上対応を要求し、正確な1 targetを選び、byteを検証してloadし、addonのreported ABI/self-testを
-検査する。公式[Node-API version matrix](https://nodejs.org/api/n-api.html#node-api-version-matrix)は選択Node
-baselineのNode-API 10対応を示す。Linuxではwell-formedな`process.report`の非空
-`header.glibcVersionRuntime`をGNU、そのfieldの不在をmusl candidateとし、reportがunavailable/malformedなら
-unsupportedとする。Alternate target/libc/filenameをprobeせずfallbackしない。
 
 **検討した代案**:
 
-- Runtime dependencyの全bundleはdependency/license監査とnative/platform動作を見えにくくするため不採用。
+- Runtime dependencyの全bundleはdependency/license監査とtransitive動作を見えにくくするため不採用。
 - UIとCLIの別published package rootはmanifestで閉じた1つの`dist/`よりrelease boundaryが曖昧になるため不採用。
   Clean assembly用のisolated staging rootは使用する。
 - Hosted snapshot commandはlocal customization textとsecretをassetに永続化し得るため不採用。
@@ -145,9 +133,6 @@ unsupportedとする。Alternate target/libc/filenameをprobeせずfallbackし�
 | Component/DOM | Vue Test Utils 2.4.11、happy-dom 20.10.6 | Nuxt Test Utils peerを満たす現行release |
 | Browser/a11y | Playwright 1.61.1、`@axe-core/playwright` 4.12.1 | 現行stable browser/accessibility tooling |
 | Type | `@types/node` 24.13.3、`vue-tsc` 3.3.7 | Node 24基準とVueに対応する最新互換type |
-| Native toolchain | Rust 1.97.0、`@napi-rs/cli` 3.7.3 | Current stable compiler/Node-API build CLI。Development/releaseだけ |
-| Native crate | `napi` 3.10.5、`napi-derive` 3.5.9、`napi-build` 2.3.2 | Current stable Node-API binding/build support |
-| Capability I/O | `cap-std` 4.0.2、`cap-fs-ext` 4.0.2、`rustix` 1.1.4、`windows-sys` 0.61.2 | Current stable root-handle/no-follow/OS primitive support |
 
 Versionの一次根拠はnpm registryの[Nuxt](https://www.npmjs.com/package/nuxt)、
 [Vue](https://www.npmjs.com/package/vue)、[Vue Router](https://www.npmjs.com/package/vue-router)、
@@ -160,11 +145,8 @@ Versionの一次根拠はnpm registryの[Nuxt](https://www.npmjs.com/package/nux
 [Node 24 archive](https://nodejs.org/en/download/archive/v24)をLTS基準と正確なreleaseの根拠にする。
 Monaco公式の[v0.55.1 release](https://github.com/microsoft/monaco-editor/releases/tag/v0.55.1)を
 選択stable editor versionの根拠にする。
-Rust公式[1.97.0 release](https://blog.rust-lang.org/releases/latest/)、
-[`@napi-rs/cli` registry](https://www.npmjs.com/package/@napi-rs/cli)、current
-[`napi`](https://docs.rs/crate/napi/latest)、[`cap-std`](https://docs.rs/crate/cap-std/latest)、
-[`cap-fs-ext`](https://docs.rs/crate/cap-fs-ext/latest) recordでnative baselineを確定し、
-`rust-toolchain.toml`、`Cargo.lock`、`package.json`、`pnpm-lock.yaml`で固定する。
+Safe-filesystem layerはNode built-inの`node:fs/promises`、`node:fs`、`node:path` APIだけを使用するため、
+platform toolchainやruntime package dependencyを追加しない。
 
 調査日時点のupstream stableにはTypeScript 7.0.2とVite 8.1.4もあるが、意図的に選択しない。
 公式[TypeScript 7 announcement](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/)は
@@ -279,42 +261,65 @@ decompressed-size・content-type limit、anchored-section normalization、human 
 
 ## 5. Filesystemとscan safety
 
-**決定**: `native/safe-fs`を調査対象source I/O唯一のbackendとする。Server bind前にRepositoryのprocess
-`.`をnon-serializable root capabilityとして1回openし、digest-bound consent後に各eligible Global rootを
-filesystem/volume rootからcomponentごとのno-follow walkでopenする。Bounded native enumerationは全entryを
-countし、VCS内部、symlink、mount crossing、Windows reparse pointをskipし、ambient pathではなくinternal
-`EntryTicket`を返す。Rule engineはnormalized ticket pathを分類する。Candidate readはticketだけを受け付け、
-保持rootから再resolveし、enumeration/final-handle identityの一致とregular fileを要求し、sizeをenforceし、
-pre/post metadataを確認して同じfinal handleからbyteを読む。Canonical stringはdiagnostic dataでありauthorityではない。
+**決定**: Pure Node.jsの`src/inspection/safe-fs.ts` moduleを調査対象source I/O唯一のbackendとする。
+Repository startupとconsent済みの各Global boundaryは、公開されたlexical rootの全componentを`lstat`で検査して
+linkを拒否してから、accepted lexical root、その`realpath`、bigint directory identity/metadata snapshot、
+source/boundary ID、lifecycle stateを持つinternal
+`InspectionRootContext`を作る。このcontextはprivate application stateであり、OS capabilityではない。
+Deterministicなbounded walkerは`node:fs/promises.opendir`を使い、残entry budget内でdirectoryごとにentryを
+収集・sortし、全relative segmentをvalidateし、全entryを
+shared limitへcountし、bigint `lstat`とcanonical containment checkでVCS内部、link、非directory traversal
+object、検出可能なdevice changeを拒否する。このwalkerだけがprivateでgeneration-boundな`ScanEntryTicket`を
+発行でき、HTTP valueやparsed contentから作成・再構築できない。
 
-Linuxは`openat2`と`RESOLVE_BENEATH`、`RESOLVE_NO_SYMLINKS`、`RESOLVE_NO_MAGICLINKS`、
-`RESOLVE_NO_XDEV`を必要とする。macOSはcomponentごとのno-follow resolve中にancestor handleを保持し、mount
-identity変化を拒否する。Windowsは保持directory handleを使い、全`FILE_ATTRIBUTE_REPARSE_POINT` tagを拒否し、
-chainをopen中にparent置換を許可しない。`cap-std`はcapability typeに使うが、中間/final componentはすべて
-`cap-fs-ext`のno-follow operationを使い、`rustix`/`windows-sys`で必要なOS checkを行う。Addonがmissing、
-unsupported、corrupt、self-test failureならpure Node fallbackなしでserver bind前に停止する。Global root固有の
-failureはRepository resultを失わずそのboundaryだけをdisableする。
+Candidate readは所有root contextとticketだけからpathを再構築する。Open前にrootと全ancestorの`lstat`を再検査し、
+ticket snapshotと`dev`/`ino`/`mode`を比較する。まずcandidate pathを`lstat`し、linkまたはnon-regular objectを
+拒否して、`dev`/`ino`/`mode`/`size`/`mtimeNs`/`ctimeNs`をenumeration metadataと比較する。次にcandidateを
+`realpath`でresolveし、`path.relative`でcanonical containmentを要求して、直後にcandidate pathの`lstat`比較を
+繰り返す。両方のpath-stat snapshotが相互に一致し、enumeration metadataとも一致した場合だけfileをopenする。
+`O_NOFOLLOW`が存在しplatformで有効な場合は、必須のfinal-component
+多層防御として使用する。不在または無効なsupportはcross-platform保証ではない。Byteを読む前に同じ順序の
+root/ancestor/candidate-`lstat`/canonical/candidate-`lstat` sequenceを繰り返し、同じfieldを
+`FileHandle.stat({ bigint: true })`と比較する。Byteは同じ`FileHandle`から上限付きchunkで読み、後のpath-based
+`readFile`は使わない。Handleを開いたまま受理前に、
+post-read validationとしてこの完全な順序付きsequenceと、同じ`FileHandle.stat`について同じfieldの比較を
+繰り返す。いずれかの段階で不一致があればhandleをcloseし、収集済みbyteを全て破棄し、ticketをstale/rejectedと
+し、readable content/receiptをcommitせず固定のsecret-safe diagnosticだけをemitする。安全にinventory済みのpathには
+上限付きdiagnostic-only recordを残してよい。Root identity failureはそのsource attemptを
+abortして以前にcommitしたgraphを維持し、entry-local changeはunaffected resultをbounded partial resultとして
+利用可能に保つ。
 
-**理由**: Glob一致、`realpath` check、`FileHandle.stat`比較だけではparent swap後もopened handleがroot配下に
-あると証明できない。Node 24の[filesystem API](https://nodejs.org/docs/latest-v24.x/api/fs.html#file-system-flags)は
-directory-handle-relative open/`openat2`を公開せず、POSIX `O_NOFOLLOW`はfinal componentだけに適用され、
-Windowsには対応Node flagがない。Node自身もaccess checkとopenの分離を避けるよう警告している。
-[Permission Model](https://nodejs.org/docs/latest-v24.x/api/permissions.html#limitations-and-known-issues)はallowlist内
-symlinkを許可path外まで追い得て、[WASI](https://nodejs.org/docs/latest-v24.x/api/wasi.html#security)もfilesystem
-security boundaryではない。Native設計は[cap-std](https://github.com/bytecodealliance/cap-std)、
-[cap-fs-ext](https://docs.rs/cap-fs-ext/latest/cap_fs_ext/trait.DirExt.html)、Linux
-[`openat2`](https://man7.org/linux/man-pages/man2/openat2.2.html)、Windows
-[handle attribute API](https://learn.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_attribute_tag_info)
-のcapability/no-follow primitiveを使う。単一bounded walkerはentry/depth/deadline accountingとprogressも提供する。
+Nodeが必要なidentity/metadataまたはcanonicalizationをunavailable、ambiguous、malformed、その他unusableと
+報告した場合、`safe-fs-boundary-unverifiable`でboundaryまたはcandidateを拒否し、推測しない。Root-level failureは
+source attemptをabortし、item-level failureには上限付きdiagnostic-only inventory recordだけを残してよい。
+
+**理由**: 反復checkは通常の同時編集riskを実質的に減らし、検出した変更をcommitさせず、scan contractが要求する
+正確なresource accountingを保つ。ただしkernel-enforced containmentは作らない。Node 24の
+[filesystem API](https://nodejs.org/docs/latest-v24.x/api/fs.html#file-system-flags)はdirectory-handle-relative openや
+atomicなbeneath/no-follow resolverを公開せず、POSIX `O_NOFOLLOW`はfinal componentだけで、Windowsには対応する
+portable Node flagがない。Nodeは全Windows reparse tagや全mount transitionをportableに公開できない。
+Same-device bind mountとNodeが公開しないreparse metadataは、automated-test proof外の明示的なplatform limitationとして残る。
+[Permission Model](https://nodejs.org/docs/latest-v24.x/api/permissions.html#limitations-and-known-issues)と
+[WASI](https://nodejs.org/docs/latest-v24.x/api/wasi.html#security)も不足するfilesystem primitiveの代替ではない。
+
+したがってこのreleaseは検出した通常の同時変更とその他implementation-detectable raceをscope内とし、検出した
+全caseをfail closedにするが、
+path check間にroot、ancestor、final entryを差し替えられるactive adversarial processを除外する。Testは指定した検出動作の証拠で
+あり、そのactorに対するproofではない。Threat model拡張前の具体的解消pathは、atomicなbeneath/no-follow
+semanticsを持つ将来のNode directory-relative APIを採用するか、OS強制のread-only snapshot/sandbox内でscanし、
+security reviewを再実行することである。単一bounded walkerはentry/depth/deadline/byte accountingとprogressを
+引き続き集約する。
 
 **検討した代案**:
 
-- Pure `node:fs`、open前`realpath`/`lstat`、Permission Model、WASI、Linux `/proc/self/fd`は、同じ
-  cross-platform opened-handle containmentを証明できず、precheck-then-openがTOCTOUになるため不採用。
-- `tinyglobby`単独利用はroot-handle object capabilityとscan contractに必要な完全なaccountingを提供しないため不採用。
+- 直接の`readFile(path)`やglob-only implementationはgeneration-bound ticket、enumeration/open identity一致、
+  post-read validation、complete scan accountingを持たないため不採用。
+- Node Permission ModelやWASIをcontainment proofとみなす案は、documented limitationによりatomic child-open
+  semanticsを提供しないため不採用。
+- Pre/post path checkがactive root/ancestor/final-entry replacement attackerを防ぐと主張する案は、validationとopenが別operationの
+  ままであるため不採用。
 - 現在source内を指すsymlinkの追跡はparent swapとaliasがboundary/identityを複雑にするため不採用。
-- Install時compile/downloadは`npx`でunreviewed installer実行やplatform binary fetchを発生させるため不採用。
-  Release-test済みprebuildがfail closedする。
+- Install時compilerやdownload済みplatform helperを使う案は、packageをNode.jsだけでas-shipped実行するため不採用。
 - 1件のunsafe/changed fileによるscan全体失敗はFR-028に反するため不採用。
 
 ## 6. Parse、mask、inert display
@@ -415,7 +420,7 @@ Repository/Global scanとGlobal-disable transactionをserializeする。
 通常scanはFIFOとする。Global disableはpriority security barrierとしてactive uncommitted transactionを
 abort/discardし、queued Global workをcancelし、次にzero-I/O removalを実行し、中断したRepository commandを
 その後ろへ1回だけrequeueする。Repeated disableはqueued/active barrierへjoinし、Global enabled flag、consent、
-nonempty graph、open capability、scan/enable commandがない場合はRepository workにかかわらずno-opとする。
+nonempty graph、accepted root context、scan/enable commandがない場合はRepository workにかかわらずno-opとする。
 各scan jobはcurrent session-wide generationから開始し、unscanned sourceを残りのshared file/byte/
 diagnostic budget内でcarryし、replacementを別に構築する。Completeまたはbounded partial resultだけを次
 generationとしてatomic commitし、全source graphをrekeyして全file ID、comparison、revealをinvalidateする。
@@ -423,7 +428,7 @@ Planとshared contract記載のlimitをenforceする。
 
 **理由**: Global serializationとatomic session generationはlost updateとold/new result混在を防ぎ、reveal
 cleanupを観測可能にする。Fatal attemptはbootstrap 0を含むprior generationを変更せず、cap対象out-of-generation session
-diagnostic channelを使う。FatalなGlobal enable/rescanはexact consent、accepted boundary、open capability、prior
+diagnostic channelを使う。FatalなGlobal enable/rescanはexact consent、accepted boundary、root context、prior
 graphを保持し、明示retry/disableを可能にする。30秒hard deadlineはhangを防ぎ、performance acceptance targetは10秒のままにする。1 file 1 MiB、合計32 MiBは
 通常のcustomization file 500件を無制限に保持せず扱える。Per-file mask-output capは一部だけscanしたsuffixを
 返さずfail closedとし、kill可能なV8 limit付きworkerでsync parser time/tree amplificationを制限する。
@@ -449,10 +454,15 @@ registryだけがreadを認可できることをvalidateする。Matcher fixture
 `**/`を拒否し、exact/direct-child/explicit descendant inventoryを区別し、`./**/`がvendor traversal factを
 satisfiedにしないことを証明する。Targeted regression fixtureはCopilotの別々のVS Code/CLI/Cloud lookup表、
 exact launch `cwd`だけのClaude project settings、non-recursiveなCodex rule directory、plugin activation対
-authored manifest inventory、FR-015からFR-018外へのGlobal read 0件を扱う。全advertised OS/architecture/
-libc targetでnative integration/race testを実行し、parent/final-component replacement、root rename、mount/
-reparse rejection、identity mismatch、addon corruption/absence、pack後loadを扱う。Test専用race barrierは
-production addonからexportしない。Inspected contentにより
+authored manifest inventory、FR-015からFR-018外へのGlobal read 0件を扱う。macOS、Linux、Windowsでpure Node.js
+integration/race suiteを実行し、parent/final-component replacement、root rename、symlink/junction rejection、
+検出可能なdevice change、identity/metadata mismatch、bounded same-handle read、byte破棄、readable contentの
+no-commit、pack後実行を扱う。有効な`O_NOFOLLOW`が存在する場合は、その使用をtestで要求する。
+Controlled barrierはpost-readのroot identity、全ancestor `lstat`、canonicalization前後のcandidate path `lstat`、
+canonical containment、same-handle stat比較が検出する変更をexerciseする。Test専用filesystem barrierはtest harness内だけに置き、
+production moduleからexportしない。
+これらtestは指定したdetected-race動作を確立するもので、threat modelから除外したactive adversarial mutatorへの
+proof、またはsame-device bind mountやNodeが全く公開しないreparse情報へのproofと記述してはならない。Inspected contentにより
 outbound request、MCP connection、child process、dynamic evaluation、source mutationが発生するとtestを
 失敗させる。
 

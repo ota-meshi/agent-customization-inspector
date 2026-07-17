@@ -12,11 +12,8 @@ them.
 - Node.js 24.18.0 Active LTS (the package also supports the declared compatible Node 26+
   range)
 - pnpm 11.13.0
-- Rust 1.97.0 for contributor builds of the current native target; end users install only
-  release-tested prebuilds and need no Rust compiler
-- For the full `pnpm run build` acceptance path, the release-assembly workspace populated
-  by all eight target CI jobs. A single workstation may build/test its current addon, but
-  cannot produce or claim a publishable tarball without the other seven verified inputs
+- No additional compiler or platform-specific build workspace is required;
+  inspected-source access is implemented by packaged Node.js modules
 - A Playwright-supported Chromium installation created by the project setup command
 - A local browser capable of reaching `127.0.0.1`
 
@@ -25,11 +22,10 @@ Confirm the toolchain:
 ```bash
 node --version
 pnpm --version
-rustc --version
 ```
 
 Expected: Node reports `v24.18.0` for the reference environment and pnpm reports
-`11.13.0`; Rust reports `rustc 1.97.0`. Do not substitute TypeScript 7 or Vite 8 until Nuxt/Vue compatibility recorded
+`11.13.0`. Do not substitute TypeScript 7 or Vite 8 until Nuxt/Vue compatibility recorded
 in [research.md](research.md) changes.
 
 ## Install and prepare
@@ -49,23 +45,24 @@ Expected:
   redundant `200.html`/`404.html`, rejects every HTML file except `index.html`, copies the
   accepted tree to a new `dist/public`, and writes `dist/manifests/static-assets.json` with
   every copied asset size/hash and every exact executable inline-script CSP hash.
-- The release assembly consumes artifacts already built/self-tested by the locked Rust
-  eight-target matrix, copies each verified artifact to
-  `dist/native/<targetId>/safe-fs.node`, and writes the closed
-  `dist/native/manifest.json`; no install script or runtime download is generated.
-- tsdown writes the named `cli.mjs`/`parser-worker.mjs` entries and any code-split chunks
-  with fixed ESM extensions into clean `.build/server`; the assembler writes
+- tsdown writes the named `cli.mjs`/`parser-worker.mjs` entries, the centralized Node.js
+  filesystem service, and any code-split chunks with fixed ESM extensions into clean
+  `.build/server`; the assembler writes
   `dist/manifests/server-assets.json` and copies exactly its listed regular `.mjs` files
   into `dist/`.
 - `bin.mjs` is executable, starts with the exact BOM-free, LF-terminated first line
   `#!/usr/bin/env node`, and imports `dist/cli.mjs`.
 - `package.json.bin` is exactly `{ "agent-customization-inspector": "bin.mjs" }`, while
   `main`, `module`, and `exports` are absent.
-- The static/native manifests, package version, assets, target ABI, and current-target
-  self-test all validate before the local server binds.
-- Before packing, recursive verification finds exactly the three manifests and every
-  static/server/native file they list under `dist/`, with no stale, linked, non-regular,
+- The static/server manifests, package version, and assets all validate before the local
+  server binds.
+- Before packing, recursive verification finds exactly the two manifests and every
+  static/server file they list under `dist/`, with no stale, linked, non-regular,
   or unexpected path.
+- All executable runtime product code in the package is JavaScript. Generated HTML shell,
+  CSS, JSON manifests, and the required documentation/license files are permitted as
+  declarative, non-executable artifacts. The manifest-authorized bootstrap embedded in the
+  HTML remains JavaScript executable code and is covered by the CSP checks above.
 - Build output contains no fixture, raw customization text, Global content, cache, or
   source-map path that exposes an inspected machine.
 
@@ -111,9 +108,6 @@ Run every gate before considering an implementation change complete:
 ```bash
 pnpm run lint
 pnpm run typecheck
-cargo fmt --check
-cargo clippy --locked --all-targets -- -D warnings
-cargo test --locked
 pnpm run test:unit
 pnpm run test:contract
 pnpm run test:integration
@@ -127,8 +121,6 @@ pnpm run test:docs
 Expected:
 
 - Lint and type checking complete without ignored failures.
-- Rust formatting, clippy, unit tests, and the native backend self-test complete with the
-  locked toolchain and dependencies.
 - Unit tests cover path classification, ordering, parser bounds, masks, diagnostics,
   state transitions, and deterministic projections.
 - Contract tests cover every API status/security rule and every stable behavior, inspection-
@@ -139,8 +131,8 @@ Expected:
   execution, child process, MCP connection, outbound request, dynamic evaluation, or
   source mutation.
 - Package tests build a tarball, inspect its contents, install it into an isolated fixture,
-  load the exact native target artifact and fixed packaged parser Worker URL, and launch
-  the exact `npx` entry without relying on the working tree or a compiler/download.
+  load the packaged Node.js filesystem service and fixed packaged parser Worker URL, and
+  launch the exact `npx` entry without relying on the working tree or a runtime download.
 - The performance fixture with 100,000 entries and 500 in-limit customization files shows
   status within 1 second and completes within 10 seconds on the recorded reference host.
 - Browser tests cover all four user stories and axe reports no critical applicable WCAG
@@ -198,7 +190,8 @@ Verify:
    known unsatisfied/shadowed or bounded-derived seed, stable deduplication/first-128
    retention, and no target access for the 129th value. Pure path fixtures run on every OS
    for ADS colons, Windows-special characters and device names, trailing dot/space,
-   case/Unicode-normalization mismatch, and 8.3 aliases; none reaches native ticket lookup or I/O.
+   case/Unicode-normalization mismatch, and 8.3 aliases; none reaches read authorization or
+   the centralized Node.js filesystem read operation.
 7. Applicability keeps documentation status, product surface, root/runtime `cwd`, target
    match, trust/approval, enablement, selection, agent context, tool availability,
    installation, managed policy, and external runtime as separate facts. Codex instruction
@@ -386,18 +379,38 @@ The 10-second success criterion is a performance target, not the hard timeout. E
 test must assert deterministic ordering, no extra read after the stopping condition, and
 no stale Monaco model after comparison fallback or teardown.
 
-Native boundary tests run on each of `darwin-x64`, `darwin-arm64`, `win32-x64`,
-`win32-arm64`, `linux-x64-gnu`, `linux-arm64-gnu`, `linux-x64-musl`, and
-`linux-arm64-musl`.
-Test-only barriers replace a parent directory and final file between enumeration and read,
-rename/replace the Repository path, and exercise mount/bind-mount, junction, arbitrary
-reparse-tag, ADS, and 8.3 cases. The retained root capability must never read the outside
-sentinel; identity mismatch drops all bytes. Exact-schema, order, target mapping, Linux
-libc-report, package/custom-ABI/Node-API, byte-length, hash, missing/corrupt artifact, and
-self-test cases, plus symlink, directory, and platform-safe non-regular replacements for
-the native manifest and selected `.node` file, prove that failure occurs before bind without probing another target or
-using a `node:fs` inspected-source fallback. The packed artifact repeats the load and race
-tests. Test-only barriers are absent from production exports.
+Node.js filesystem boundary tests run on the supported macOS, Windows, and Linux CI matrix
+against the same platform-neutral package. Each result records the platform, Node.js
+version, and whether `node:fs.constants.O_NOFOLLOW` exists and is effective. At each
+candidate verification phase—enumeration, immediately before open, after open but before
+reading any bytes, and after the bounded read—the call trace must show this exact sequence:
+(1) candidate-path `lstat`, rejecting a symbolic link, non-regular type, or unexpected
+identity; (2) only after that succeeds, candidate `realpath` plus `path.relative` canonical
+containment; and (3) a second candidate-path `lstat`, requiring identity, type, size, and
+relevant timestamps to match the first `lstat`. The stable-symlink fixture must prove that
+the first `lstat` rejects it before any candidate `realpath` call.
+
+Enumeration and the immediately-pre-open phase also snapshot or recheck the root identity
+and every ancestor `lstat`. The suite then requires effective `O_NOFOLLOW` when available
+and opens the `FileHandle`. After open but before reading, it runs the ordered candidate
+sequence and compares the handle's pre-read `stat()` with both phase `lstat` results and the
+earlier snapshots. After the bounded read and before parse/publish/commit, it repeats the
+root and ancestor checks, the ordered candidate sequence, and `stat()` on the same open
+handle. Any detectable change drops the whole byte buffer and publishes no outside
+sentinel.
+
+Public Node.js APIs do not provide a portable directory-handle-relative open. When
+`O_NOFOLLOW` is unavailable or ineffective, the same lstat/realpath/open/fstat/post-check
+sequence remains mandatory, but an active adversarial process replacing an ancestor or
+final component between checks is outside the initial-release threat model. Ordinary
+concurrent edits and every detectable race remain in scope and fail closed. The packed
+tarball repeats the same suite, and test-only barriers are absent from production exports.
+
+| OS observation | Required outcome | Security-proof treatment |
+|---|---|---|
+| Observable stable unsafe state or detectable root/parent/final replacement, including a symlink, non-regular candidate, canonical escape, or metadata mismatch | Reject the candidate or affected source with the applicable bounded diagnostic; discard all bytes. Reject a stable symlink before candidate `realpath` | Required passing evidence |
+| Node.js reports required identity metadata or canonicalization as errored, ambiguous, or unusable | Return `safe-fs-boundary-unverifiable`; reject the candidate, or the source for a root/shared-ancestor failure | Required passing evidence |
+| An optional OS semantic is unobservable through Node.js, such as a same-device bind mount or unreported reparse behavior | Emit an explicit `platform-unobservable` test record with platform, Node.js version, and fixture; make no absolute containment claim | Never counted as security proof |
 
 Static-package tests cover the 2-MiB/4,096-asset/512-byte-path/32-inline-hash manifest
 limits, exact schema/order/MIME/size/hash validation, symlink and unexpected-file rejection,
@@ -453,12 +466,17 @@ Review `pnpm outdated` rather than blindly upgrading: a newer prerelease or an i
 TypeScript/Vite major does not replace the latest compatible versions documented in
 [research.md](research.md). Assert that the tarball contains only npm's `package.json` plus
 the exact `package.json.files` entries `bin.mjs`, `dist`, `README.md`, `README.ja.md`, and
-`LICENSE`; the expanded `dist/**` contents must equal the three manifests and their listed
+`LICENSE`; the expanded `dist/**` contents must equal the two manifests and their listed
 files. Inspect the exact `bin` mapping and absence of `main`/`module`/`exports`, dependency
-manifest, license notices, exact shebang/executable mode, strict static/server/native manifests, every advertised prebuild, absence of install/download scripts,
-and the published README pair. `pnpm run test:docs` separately validates all repository
-English/Japanese document pairs without publishing the planning set. Each target must load and pass
-its native race suite on that target rather than merely cross-compile. Finally review the complete diff
+manifest, license notices, exact shebang/executable mode, strict static/server manifests,
+absence of native addons, platform artifact selectors, and install/download scripts,
+and the published README pair. Generated HTML shell, CSS, JSON manifests, documentation,
+and license files are accepted as declarative, non-executable artifacts; any embedded
+manifest-authorized bootstrap remains JavaScript executable code. These artifacts do not
+weaken the JavaScript-only executable-code requirement. `pnpm run test:docs` separately validates all repository
+English/Japanese document pairs without publishing the planning set. The same tarball must
+install, launch, and pass the Node.js filesystem security suite on every supported OS in
+the CI matrix. Finally review the complete diff
 for untested branches, secret exposure, stale official-path assumptions, accidental source
 mutation, and unrelated changes before release.
 

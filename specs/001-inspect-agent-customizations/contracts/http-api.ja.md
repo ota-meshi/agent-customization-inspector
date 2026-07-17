@@ -13,14 +13,14 @@ executable contentを受け付けるendpointはない。
 ## Host/capability要件
 
 1. Processは`127.0.0.1`のephemeral portへbindする。初期リリースにはhost overrideがなく、`0.0.0.0`、
-   LAN address、Unix socketへbindしない。Bind前に固定かつ最大64 KiBの`dist/native/manifest.json`をstrictに
-   loadし、manifest/package version一致、custom native ABI 1、Node-API 10とprocessの10以上対応を要求し、closed
-   8 target IDの正確に1つへmapし、そのartifactのdeclared byte length/lowercase SHA-256を検証し、
-   `<targetId>/safe-fs.node`だけをloadしてreported target/ABIとbackend self-testを検査する。Linuxではwell-formed
-   process reportの非空`glibcVersionRuntime`だけをGNU、そのfieldが不在のwell-formed reportだけをmusl
-   candidateとし、それ以外はunsupportedとする。Native I/Oがmissing/unsupported/corrupt/unhealthyならfixed
-   actionable CLI errorで終了し、第2 target probe、HTTP session、runtime download/build、path-based fallbackを
-   開始しない。
+   LAN address、Unix socketへbindしない。Bind前にpackage version、closedなstatic/server manifest、それらが
+   listする全assetを検証して、全inspected-source operationに使う中央集約したNode.js filesystem serviceを
+   初期化する。Package assetがmissing、malformed、inconsistent、またはfilesystem serviceが利用不能なら、
+   HTTP session開始前にfixed actionable CLI errorで終了する。Executableなruntime product codeはすべて
+   JavaScriptとし、生成HTML shell、CSS、JSON manifest、documentation、license fileはdeclarativeかつ
+   non-executableなpackage artifactとする。HTML内のmanifest-authorized bootstrapはJavaScript executable codeの
+   ままで、後述するCSP要件に従う。Packageはnative addon、platform固有artifact selector、runtime download、
+   runtime build pathを含まない。
 2. Process開始時にrandom 256-bit capabilityを作り、SPAを
    `http://127.0.0.1:<port>/#cap=<base64url>`で開く。Browser openが失敗またはdisabledなら同じlocal
    URLを表示する。
@@ -228,7 +228,8 @@ Globalがenabledかつdisablingでない場合だけGlobal scan commandを1つ�
 dequeue時base generation、atomic publication、progress、invalidation、bounded capacity ruleを使う。
 Running/queued Global scan/enable commandは最大1つで、duplicateを暗黙coalesceしたり2回目のreadにしたりしない。
 FatalなGlobal enable/rescanはcommitせず、null `progress`の`status: failed`を返す。`enabled: true`、正確な
-consent、accepted boundary/capability、任意のprior Global graphを保持し、後の明示rescan/disableを許可する。
+consent、accepted済みvalidated boundary record、任意のprior Global graphを保持し、後の明示rescan/disableを
+許可する。
 
 Status: updated source summary付き`202`。Globalがnot enabledまたはdisablingなら`409 source-disabled`、
 running/queued Global scan/enableのduplicateなら`409 scan-in-progress`、bounded coordinatorが受理不能な場合だけ
@@ -250,12 +251,13 @@ sourceの`progress.phase: cancelling`、続いてrequeue済みRepositoryの`prog
 Global progressはnull `queuedAt`を持つ。Global scanをdrainする場合はそのscanのcounter/`startedAt`を保持し、
 それ以外はzero counterとdisable-acceptance `startedAt`を使う。Drain対象Repositoryはcounter/startを保持して
 `queuedAt`をclearし、requeue後はzero counter、新しいnon-null `queuedAt`、null `startedAt`とする。
-Disable commitはconsentをclearし、Global root
-capabilityをcloseし、全Global raw byte/recordを削除し、NをN+1へincrementし、retained Repository graphを
+Disable commitはconsentをclearし、全Global source-root recordをinvalidateし、open中のinspection
+`FileHandle`をcloseして、全Global raw byte/recordを削除し、NをN+1へincrementし、retained Repository graphを
 rekeyする。Prior generation参照comparison/mask/revealがすべて無効になってから返す。RequeueされたRepository
 jobはN+1から開始し、後でN+2をcommitできる。Barrier cancellationはexpectedなのでfailure diagnosticを追加しない。
 同じbarrierがqueued/active中のdisable requestはそのbarrierへjoinし、single commit完了時にreturnする。Barrierを
-abortせず追加generationも作らない。Global enabled flag、consent record、nonempty graph、open root capability、
+abortせず追加generationも作らない。Global enabled flag、consent record、nonempty graph、retained validated root
+record、open inspection `FileHandle`、
 running/queued Global scan/enable commandが何もない場合、即時idempotent no-opとしてreturnし、generationを
 incrementせずRepository workへ干渉しない。
 
@@ -323,8 +325,26 @@ Status: `200`、`404 stale-resource`、`409 file-not-readable`（`masking-overfl
   value、source root、generation、diagnosticを破棄する。
 - API callはMCP serverを起動せず、importを追わず、inspected URLを開かず、customization commandを
   invokeせず、inspected sourceへwriteしない。
-- Enabled inspection sourceはnative root capability/entry ticketだけでenumerate/readする。`node:fs`はtrusted
-  packaged asset配信に使えてもinspected sourceのfallbackにはしない。
+- Enabled inspection sourceは`node:fs/promises`上に構築した1つの中央集約serviceだけでenumerate/readする。
+  API request、relationship、source fileが与えた任意absolute pathは受け付けず、validated source IDとsource-relative
+  enumeration recordだけを受け付ける。Enumeration、open直前、open後かつbyteを読む前、bounded read後の全candidate
+  verification phaseは、次の正確な順序を使う。(1) candidate pathを`lstat`し、symbolic link、non-regular type、
+  unexpected identityを拒否する。(2) これが成功した後だけcandidate `realpath`を解決し、`node:path.relative`で
+  canonical containmentを検証する。(3) candidate pathを再び`lstat`し、identity、type、size、関連timestampが最初の
+  `lstat`と一致することを要求する。したがってstable symlinkはcandidate `realpath`がfollowする前に拒否される。
+  Enumeration時とopen直前にはlexical containment、root identity、全ancestor `lstat`も検証する。
+  `node:fs.constants.O_NOFOLLOW`が存在し、そのNode.js/platform combinationで有効な場合は`O_NOFOLLOW`付きでopenする。
+  Open後はbyteを読む前にordered candidate sequenceを実行し、pre-read `FileHandle.stat()`をそのphaseの両`lstat`結果と
+  以前のsnapshotに比較する。Bounded read後かつparse、publish、commitより前にはrootとancestorのcheck、ordered
+  candidate sequence、同じopen handleの`stat()`を反復する。Error、ambiguity、containment failure、metadata changeを
+  検出した場合はbyte buffer全体を破棄してfail closedにする。必要なmetadataまたはcanonicalizationがunusableなら
+  `safe-fs-boundary-unverifiable`をemitしてcandidateを拒否し、rootまたは共有ancestorがunverifiableならsourceを
+  拒否する。
+- Public Node.js APIにはportableなdirectory-handle-relative openがない。`O_NOFOLLOW`が存在しないか有効でない場合を
+  含め、check間にancestorまたはfinal componentを置換するactive adversarial processは初期リリースのthreat model外
+  とする。通常の同時editと全detectable raceはscope内で、全byteをdiscardする。Same-device bind mount、報告されない
+  reparse behavior、Node.jsから利用不能なその他のOS semanticsは文書化したplatform limitationであり、absoluteな
+  containment guaranteeではない。
 
 ## 必須contract test
 
@@ -349,13 +369,19 @@ Status: `200`、`404 stale-resource`、`409 file-not-readable`（`masking-overfl
    superseded previewまたはcanonical alias mismatchはreadを許可できない。Exact-limitと1 byte超過のroot/display
    fixtureで、`oversized`がnormalization、prefix表示、allocation expansion、authorizationなしにnullを返すことを
    証明する。
-9. Native loaderはclosed 8 IDとexact manifest schemaだけを受理する。Missing、corrupt、ABI/package/Node-API/
-   size/hash mismatch、unsupported、ambiguous libc、failed-self-test artifact、およびnative manifestまたは選択
-   `.node` fileの代わりのsymlink、directory、platform-safe non-regular fixtureはserver bindを防ぎ、別targetを
-   probeせず、`node:fs`によるinspected-source fallbackを決して有効にしない。
+9. 中央集約したNode.js filesystem serviceは、全supported OSでlexical/canonical escape、symbolic-link path
+   segment、non-regular candidate、必須enumeration/pre-open/post-open-pre-read/post-read snapshotの全detectable
+   mismatchを拒否する。各phaseのcall traceは、candidate-path `lstat`、次にcandidate `realpath`と`path.relative`
+   containment、次に2回目のcandidate-path `lstat`という正確な順序と、`realpath`直前・直後の`lstat`結果でidentityが
+   一致することを証明する。Stable symlink fixtureは最初の`lstat`がcandidate `realpath`をcallせず拒否することを
+   証明する。利用可能な場合は有効な
+   `O_NOFOLLOW`を使う。Root、parent、final-entry replacement fixtureは、通常の同時変更またはその他のdetectable
+   changeでbyteをpublishしないことを証明する。報告されたerror、ambiguity、unusable metadata/canonicalizationは
+   `safe-fs-boundary-unverifiable`を返す。観測不能なOS behaviorはplatform limitationとして記録し、threat model外の
+   active-adversary raceに対するproofとして数えない。
 10. Static loaderはoversized/malformed/extra-key/duplicate manifest、symlink/non-regular asset、unexpected file、
     path/MIME/size/hash mismatch、relative/external executable URL、`<base>`、nonce、executable attribute、未記録inline
     scriptをbind前に拒否する。BuildはNuxtの固定`200.html`/`404.html`だけを要求後に除去し、それ以外の
     non-`index.html` HTML fileを拒否する。Packed file listは正確なnpm allowlistと一致する。Build/package
-    verificationはcleanな`.output`/`.build`/`dist` treeから開始し、`dist`を3 manifestとlisted static/server/native
+    verificationはcleanな`.output`/`.build`/`dist` treeから開始し、`dist`を2 manifestとlisted static/server
     recordだけにrecursive matchさせ、stale outputを拒否する。

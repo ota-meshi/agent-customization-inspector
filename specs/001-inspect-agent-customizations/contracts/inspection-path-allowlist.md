@@ -41,9 +41,9 @@ may be relative to a repository root, Git root, workspace, target file, runtime 
 directory, user home, configuration home, profile, or hosted context. It may describe an
 upward search, a downward search, a per-directory choice, or a surface-specific layer.
 
-An **Inspector matcher** describes which entry tickets the Inspector may classify inside
-one already-enabled source boundary. It is always relative to the exact boundary named in
-the rule and never inherits a vendor locator's implicit base or traversal.
+An **Inspector matcher** describes which enumerated entry records the Inspector may
+classify inside one already-enabled source boundary. It is always relative to the exact
+boundary named in the rule and never inherits a vendor locator's implicit base or traversal.
 
 Consequently:
 
@@ -60,9 +60,9 @@ Consequently:
 
 The Repository boundary is the exact process working directory from which the user
 launches `npx`. The Inspector does not walk above it to find a Git or product project root.
-Repository inventory proceeds only within the retained launch-root capability. A vendor
-may use a different runtime root or walk direction; that fact belongs to the vendor and
-runtime-composition contracts and never changes this boundary.
+Repository inventory proceeds only within the validated launch-root boundary record. A
+vendor may use a different runtime root or walk direction; that fact belongs to the vendor
+and runtime-composition contracts and never changes this boundary.
 
 ### Global
 
@@ -120,15 +120,26 @@ creation, not to the selector. Global selectors do not reuse the Repository `./`
 do not authorize another vendor boundary, and cannot expand the paths permitted by
 FR-015 through FR-018.
 
-### Matching and native entry identity
+### Matching and Node.js entry verification
 
 Paths are normalized to `/` for classification only. Canonical or normalized strings are
-diagnostic data, never read authority. The native backend enumerates from a retained root
-capability and supplies internal entry tickets; a classifier may select only an exact
-previously enumerated ticket.
+diagnostic data and never authorize a read by themselves. The centralized Node.js
+filesystem service first establishes lexical containment and snapshots the source root's
+identity and canonical `realpath`. It `lstat`s every ancestor before considering a
+candidate. Every candidate verification phase—enumeration, immediately before open, after
+open but before reading, and after the bounded read—uses this exact ordered sequence: (1) `lstat` the
+candidate path and reject a symbolic link, non-regular type, or unexpected identity; (2)
+only after that succeeds, resolve the candidate `realpath` and verify containment with
+`node:path.relative`, whose platform-separator-normalized result must be non-absolute and
+neither `..` nor start with `../`; and (3) `lstat` the candidate path again and require its
+identity, type, size, and relevant timestamps to equal the first `lstat`. Thus a stable
+symlink is rejected before any candidate `realpath` call can follow it. The service supplies
+internal source-relative enumeration records carrying the observed root, ancestor, path,
+canonical-location, identity, type, size, and relevant timestamp metadata. A classifier may
+select only an exact previously enumerated record.
 
-Before a derived selector reaches ticket lookup, each NFC-normalized segment rejects NUL,
-control characters, Windows-special characters, trailing dot/space, device basenames,
+Before a derived selector reaches enumeration-record lookup, each NFC-normalized segment
+rejects NUL, control characters, Windows-special characters, trailing dot/space, device basenames,
 alternate-data-stream spelling, and case-, normalization-, short-name-, or other aliases.
 Every remaining segment must exactly match an enumerated entry. `.git/`, `.hg/`, and
 `.svn/` internals are excluded from traversal.
@@ -158,8 +169,9 @@ a recognition-level winner.
 
 Only a `static-candidate` or `bounded-derived-candidate` in the shipped, contract-versioned
 registry may request a safe read. The candidate must belong to an enabled boundary, match
-an exact enumerated regular-file ticket, remain within all file/source/generation limits,
-and pass the native pre-read and post-read identity checks.
+an exact enumerated regular-file record, remain within all file/source/generation limits,
+and pass the centralized Node.js service's repeated lexical/`realpath` containment and
+enumeration/open/post-read identity checks.
 
 Bounded derivation is exactly one typed edge from an independently admitted static seed.
 A derived candidate cannot seed another derivation. Relationship-only and excluded rules,
@@ -176,12 +188,39 @@ semantically effective.
 
 ## Symlink, alias, and resource invariants
 
-- Symbolic-link files and directories are never followed. Junctions, mount-point changes,
-  reparse points, hard-to-canonicalize aliases, and boundary crossings fail closed.
-- The retained root capability and exact entry ticket are the sole filesystem authority;
-  a canonical path string, relationship target, or source text can never reopen a path.
-- Identity or metadata change between enumeration, open, read, and verification discards
-  all bytes and yields a bounded, secret-safe diagnostic.
+- Symbolic-link files and directories and non-regular candidates are rejected. Junctions,
+  mount-point changes, reparse points, hard-to-canonicalize aliases, and boundary crossings
+  fail closed whenever Node.js exposes enough information to detect them; inability to
+  establish both lexical and `realpath` containment also fails closed. If Node.js reports
+  required metadata or canonicalization as errored, ambiguous, or unusable, the service
+  emits `safe-fs-boundary-unverifiable` and rejects the candidate, or the entire source when
+  the unverifiable state belongs to its root or an ancestor shared by the traversal.
+- A validated source-boundary record and exact enumeration record authorize only the
+  centralized read operation. A canonical path string, relationship target, or source text
+  alone never authorizes a direct filesystem open.
+- Immediately before opening, the service repeats the root-identity and ancestor-`lstat`
+  checks, then runs the ordered candidate verification sequence above.
+  It opens the candidate with `O_NOFOLLOW` whenever `node:fs.constants.O_NOFOLLOW` exists
+  and is effective on that Node.js/platform combination; this is mandatory defense in depth
+  for the final component, not a substitute for the surrounding checks. After open but
+  before reading any bytes, it runs the same ordered candidate verification sequence again,
+  then compares the opened `FileHandle.stat()` identity, type, size, and relevant timestamps
+  with both `lstat` results from that phase and the enumeration/pre-open snapshots.
+- After the bounded read and before any parse, publish, or commit, the service repeats the
+  root identity and every ancestor `lstat`, runs the same ordered candidate verification
+  sequence, and calls `stat()` on the same still-open `FileHandle`.
+  Any detected error, ambiguity, containment failure, or change to identity, type, size, or
+  relevant timestamps discards the entire byte buffer and fails closed. An unverifiable
+  boundary uses `safe-fs-boundary-unverifiable`; another detected race yields the applicable
+  bounded, secret-safe diagnostic.
+- Public Node.js APIs do not provide a portable directory-handle-relative open. An active
+  adversarial process can therefore replace an ancestor or final component between checks
+  without a cross-platform kernel-enforced containment guarantee, including where
+  `O_NOFOLLOW` is absent or ineffective. Such active adversarial mutation is outside the
+  initial-release threat model. Ordinary concurrent edits and every detectable race remain
+  in scope: they must fail closed and discard all bytes. Same-device bind mounts, unreported
+  reparse behavior, and other OS semantics that Node.js does not expose remain explicit
+  platform limitations and are never represented as an absolute containment guarantee.
 - File bytes, visited entries, candidate counts, derivation fan-out, relationship counts,
   parser work, diagnostics, and deadlines use the exact limits in the
   [data-model contract](../data-model.md).
@@ -213,9 +252,16 @@ Contract and fixture validation must prove all of the following:
    FR-018 never becomes a Global candidate.
 6. A multiply admitted physical file is read once and retains each independent provenance;
    matcher, evidence, documentation, scope/order, and applicability are not collapsed.
-7. Native boundary fixtures prove no symlink/reparse/mount traversal, no path-reopen or
-   Node-filesystem fallback, exact ticket identity under races, and bounded safe failure on
-   every advertised target.
+7. Centralized Node.js filesystem fixtures on every supported OS cover lexical and
+   `realpath` escape, `path.relative` containment, symlink and non-regular rejection,
+   the exact `lstat`/`realpath`/second-`lstat` order in every phase, effective `O_NOFOLLOW`
+   use when available, every pre-read and post-read comparison above, and root/parent/final-
+   entry replacement. A stable-symlink fixture proves rejection before a candidate
+   `realpath` call. Every ordinary concurrent or otherwise detectable change publishes no
+   bytes and fails with a bounded diagnostic. Reported
+   error, ambiguity, or unusable metadata yields `safe-fs-boundary-unverifiable`; an OS
+   behavior that Node.js cannot observe is recorded as a platform limitation and is not
+   counted as proof against the excluded active-adversary race.
 8. Official-source fixtures validate official HTTPS hosts, bounded anchors, review dates,
    semantic fingerprints, affected-contract backlinks, and human-only updates. A drift
    result never changes a behavior, rule, or strategy automatically.

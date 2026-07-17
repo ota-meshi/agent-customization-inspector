@@ -2,7 +2,7 @@
 
 [日本語](research.ja.md)
 
-**Researched**: 2026-07-15
+**Researched**: 2026-07-16
 **Scope**: Reference architecture, current compatible toolchain, safe local-host design,
 parsing and masking, source/metadata comparison, bounded scanning, and the official
 customization path surface
@@ -11,25 +11,26 @@ customization path surface
 
 **Decision**: Use one publishable ESM package with `app/`, `src/`, `shared/`, `tests/`,
 `bin.mjs`, and one `dist/` tree. Nuxt owns the client build; tsdown owns the Node CLI
-bundle. A Rust/Node-API addon owns inspected-source enumeration/read, while its prebuilt
-`.node` assets remain outside tsdown's JS bundle. Only typed inert DTOs cross into the browser.
+bundle. The pure Node.js `src/inspection/safe-fs.ts` module owns all inspected-source
+enumeration/read and is bundled with the CLI. Only typed inert DTOs cross into the browser.
+All executable runtime, build, and test code is JavaScript/TypeScript. Generated HTML/CSS,
+JSON manifests, documentation, and the license remain permitted declarative artifacts.
 
 **Rationale**: The UI and CLI form one product, share one release version, and are both
 required by every `npx` launch. A single package keeps installation and release atomic
 while the `app`/`src`/`shared` boundaries prevent browser code from gaining filesystem
 access. Build orchestration cleans only package-owned output trees, lets Nuxt write its
 standard `.output/public` staging tree, validates and copies accepted assets to
-`dist/public`, copies all eight CI-verified native artifacts, and lets tsdown write the
-named CLI/Worker entries and any code-split chunks into a separate clean `.build/server`
-staging tree. Fixed manifests close all three output classes before they are copied or
-packed; a minimal `bin.mjs` imports the CLI without creating independently versioned
+`dist/public`, and lets tsdown write the named CLI/Worker entries and any code-split chunks
+into a separate clean `.build/server` staging tree. Fixed manifests close both output
+classes before they are copied or packed; a minimal `bin.mjs` imports the CLI without creating independently versioned
 packages.
 The executable shim starts with the exact BOM-free, LF-terminated first line
 `#!/usr/bin/env node`; this is part of the package contract, not a release-time repair.
 
-A contributor may build and race-test only the current native target, but that output is a
-matrix input rather than a publishable package. Full build/package acceptance intentionally
-requires the eight target jobs; a missing target cannot be hidden by a local-only release.
+Cross-platform CI runs the same Node.js filesystem integration and race-detection cases on
+macOS, Linux, and Windows; the published package itself contains no platform-specific
+artifact.
 
 **Alternatives considered**:
 
@@ -54,9 +55,7 @@ static-host fallbacks, rejects every other HTML file except `index.html`, copies
 accepted tree to a newly created `dist/public`, and records it plus executable inline-script
 hashes in `dist/manifests/static-assets.json`.
 
-Build/test the closed eight native targets in a CI matrix, copy only verified artifacts to
-`dist/native/<targetId>/safe-fs.node`, and write `dist/native/manifest.json`. Configure
-tsdown with named entries
+Configure tsdown with named entries
 `{ cli: 'src/cli.ts', 'parser-worker': 'src/inspection/parsers/worker.ts' }`, Node ESM,
 `fixedExtension: true`, disabled source maps/declarations, a clean `.build/server` output,
 and `deps.skipNodeModulesBundle: true`. A fixed assembler accepts only safe regular `.mjs`
@@ -66,8 +65,8 @@ constructs the parser Worker only from the fixed package-owned
 `new URL('./parser-worker.mjs', import.meta.url)`; inspected data can never select a module
 or Worker URL.
 
-Before packing, recursively compare `dist/` with the exact set derived from all three
-manifests and reject missing, stale, unexpected, linked, or non-regular paths. Set
+Before packing, recursively compare `dist/` with the exact set derived from both manifests
+and reject missing, stale, unexpected, linked, or non-regular paths. Set
 `package.json.files` exactly to
 `["bin.mjs", "dist", "README.md", "README.ja.md", "LICENSE"]`; npm's automatic
 `package.json` plus those entries are the complete tarball allowlist. Set `package.json.bin`
@@ -75,7 +74,7 @@ exactly to `{ "agent-customization-inspector": "bin.mjs" }` and omit `main`, `mo
 `exports` because the package has no library API. Use no install script, runtime download,
 or end-user compilation. Keep runtime packages declared under exact `dependencies` so
 `npx` installs auditable versions; tsdown bundles project-owned modules and shared
-contracts, not arbitrary transitive packages or native binaries.
+contracts, not arbitrary transitive packages.
 
 **Rationale**: Separate clean staging trees avoid relying on cross-tool `clean: false` and
 make stale-output rejection mechanical. Leaving node_modules external avoids silently inlining platform-sensitive or changing
@@ -84,7 +83,7 @@ transitive code and makes the package manifest describe what the CLI loads. The
 external dependencies from explicit `alwaysBundle` behavior, and its
 [entry documentation](https://tsdown.dev/options/entry) defines the named multi-entry
 form. A tarball smoke test is the reliable proof that the web, CLI, parser Worker, and
-exact native-target output parts are included and load from their packaged locations.
+safe-filesystem layer are included and load from their packaged locations.
 It installs the tarball into an isolated fixture and actually invokes the executable with
 `npx --no-install`, rather than merely inspecting the `bin` mapping; the exact shebang and
 executable mode are asserted before launch.
@@ -121,29 +120,13 @@ record is exactly `{ file, byteLength, sha256 }`; safe relative `.mjs` paths are
 unique, total listed bytes are at most 64 MiB, each file is at most 16 MiB, and
 `cli.mjs`/`parser-worker.mjs` are required. Every code-split tsdown output is listed. A
 final recursive verifier derives the only legal `dist/` files from this manifest plus the
-static and native manifests, rejecting any stale/unexpected/link/non-regular path before
+static manifest, rejecting any stale/unexpected/link/non-regular path before
 packing and applying the same proof to the unpacked tarball.
-
-`dist/native/manifest.json` is strict JSON of at most 64 KiB with no extra keys. It has
-`manifestVersion: 1`, the exact `packageVersion`, `nativeAbiVersion: 1`,
-`nodeApiVersion: 10`, and an ordered eight-entry `targets` array for `darwin-x64`,
-`darwin-arm64`, `win32-x64`, `win32-arm64`, `linux-x64-gnu`, `linux-arm64-gnu`,
-`linux-x64-musl`, and `linux-arm64-musl`. Each entry is exactly
-`{ targetId, file, byteLength, sha256 }`; `file` is `<targetId>/safe-fs.node`, and the size
-and hash follow the same closed rules. The loader compares the manifest package version
-with the version embedded from `package.json`, requires custom ABI 1 and process Node-API
-support of at least 10, selects one exact target, verifies its bytes, loads it, and checks
-the addon's reported ABI and self-test. The official
-[Node-API version matrix](https://nodejs.org/api/n-api.html#node-api-version-matrix)
-documents Node-API 10 support in the selected Node baseline. Linux uses a well-formed
-`process.report`: a non-empty `header.glibcVersionRuntime` selects GNU, absence of that
-field selects the musl candidate, and an unavailable or malformed report is unsupported.
-No alternate target/libc/filename probing or fallback occurs.
 
 **Alternatives considered**:
 
 - Bundling all runtime dependencies was rejected for the initial release because it makes
-  dependency/license auditing and native/platform behavior less visible.
+  dependency/license auditing and transitive behavior less visible.
 - Separate published UI and CLI package roots were rejected because one manifest-closed
   `dist/` matches the release boundary; isolated staging roots are still used for clean assembly.
 - A hosted snapshot command was rejected because it would persist local customization
@@ -173,9 +156,6 @@ immediately before creating the first lockfile.
 | Components/DOM | Vue Test Utils 2.4.11, happy-dom 20.10.6 | Current releases satisfying Nuxt Test Utils peers |
 | Browser/a11y | Playwright 1.61.1, `@axe-core/playwright` 4.12.1 | Current stable browser and accessibility tooling |
 | Types | `@types/node` 24.13.3, `vue-tsc` 3.3.7 | Latest compatible types for the Node 24 baseline and Vue |
-| Native toolchain | Rust 1.97.0, `@napi-rs/cli` 3.7.3 | Current stable compiler and Node-API build CLI; development/release only |
-| Native crates | `napi` 3.10.5, `napi-derive` 3.5.9, `napi-build` 2.3.2 | Current stable Node-API bindings/build support |
-| Capability I/O | `cap-std` 4.0.2, `cap-fs-ext` 4.0.2, `rustix` 1.1.4, `windows-sys` 0.61.2 | Current stable root-handle/no-follow and OS primitive support |
 
 Primary version evidence is the npm registry for
 [Nuxt](https://www.npmjs.com/package/nuxt), [Vue](https://www.npmjs.com/package/vue),
@@ -191,12 +171,8 @@ Primary version evidence is the npm registry for
 and exact release. Monaco's official
 [v0.55.1 release](https://github.com/microsoft/monaco-editor/releases/tag/v0.55.1)
 establishes the selected stable editor version.
-Rust's official [1.97.0 release](https://blog.rust-lang.org/releases/latest/), the
-[`@napi-rs/cli` registry](https://www.npmjs.com/package/@napi-rs/cli), and current
-[`napi`](https://docs.rs/crate/napi/latest),
-[`cap-std`](https://docs.rs/crate/cap-std/latest), and
-[`cap-fs-ext`](https://docs.rs/crate/cap-fs-ext/latest) records establish the native
-baseline. `rust-toolchain.toml`, `Cargo.lock`, `package.json`, and `pnpm-lock.yaml` pin it.
+The safe-filesystem layer uses only Node's built-in `node:fs/promises`, `node:fs`, and
+`node:path` APIs, so it adds no platform toolchain or runtime package dependency.
 
 TypeScript 7.0.2 and Vite 8.1.4 were current stable upstream releases on the research date,
 but are deliberately not selected: the official
@@ -339,55 +315,81 @@ human review.
 
 ## 5. Filesystem and scan safety
 
-**Decision**: Make `native/safe-fs` the sole inspected-source I/O backend. It opens the
-Repository's process `.` once as a non-serializable root capability before server bind;
-after digest-bound consent it opens each eligible Global root from its filesystem/volume
-root by a no-follow component walk. Bounded native enumeration counts every entry, skips
-VCS internals, symlinks, mount crossings, and Windows reparse points, and returns internal
-`EntryTicket` objects rather than ambient paths. The rule engine classifies normalized
-ticket paths. A candidate read accepts only a ticket, resolves again from the retained root,
-requires enumeration/final-handle identity agreement and a regular file, enforces size,
-checks pre/post metadata, and reads bytes through that same final handle. Canonical strings
-are diagnostic data, never authority.
+**Decision**: Make the pure Node.js `src/inspection/safe-fs.ts` module the sole
+inspected-source I/O backend. Repository startup and each consented Global boundary create
+an internal `InspectionRootContext` after checking every exposed lexical root component
+with `lstat` and rejecting links. The context contains the accepted lexical root, its
+`realpath`, a bigint directory identity/metadata snapshot, source and boundary IDs, and
+lifecycle state. The context is private application state, not an OS capability. A deterministic
+bounded walker uses `node:fs/promises.opendir`, collects and sorts each directory within
+the remaining entry budget, validates every relative segment, counts
+every entry against the shared limits, and uses bigint `lstat` plus canonical containment
+checks to reject VCS internals, links, non-directory traversal objects, and detectable
+device changes. Only that walker can issue a private, generation-bound `ScanEntryTicket`;
+HTTP values and parsed content cannot create or reconstruct one.
 
-Linux requires `openat2` with `RESOLVE_BENEATH`, `RESOLVE_NO_SYMLINKS`,
-`RESOLVE_NO_MAGICLINKS`, and `RESOLVE_NO_XDEV`. macOS keeps ancestor handles open during
-component-by-component no-follow resolution and rejects mount-identity changes. Windows
-uses retained directory handles, rejects every `FILE_ATTRIBUTE_REPARSE_POINT` tag, and
-does not permit parent replacement while the chain is open. `cap-std` supplies capability
-types, but every intermediate/final component uses the no-follow operations from
-`cap-fs-ext`; `rustix` and `windows-sys` expose the required OS checks. A missing,
-unsupported, corrupt, or failed-self-test addon has no pure-Node fallback and stops before
-server bind. A Global-root-only failure disables that boundary without losing Repository
-results.
+A candidate read reconstructs its path only from the owning root context and ticket. Before
+open it compares the root and every ancestor `lstat` `dev`/`ino`/`mode` with ticket
+snapshots. It first checks candidate path `lstat`, rejects a link or non-regular object,
+and compares `dev`/`ino`/`mode`/`size`/`mtimeNs`/`ctimeNs` with enumeration metadata. It
+then resolves the candidate with `realpath`, uses `path.relative` to require canonical
+containment, and immediately repeats the candidate path `lstat` comparison. It opens the
+file only when both path-stat snapshots agree with each other and the enumeration
+metadata. If `O_NOFOLLOW` exists and is
+effective on that platform, its use is mandatory final-component defense in depth; absent
+or ineffective support is not a cross-platform guarantee. Before reading any bytes, the
+implementation repeats that ordered root/ancestor/candidate-`lstat`/canonical/
+candidate-`lstat` sequence and compares the same fields with
+`FileHandle.stat({ bigint: true })`. Bytes are read in bounded
+chunks from that same `FileHandle`, never by a later path-based `readFile`. While the handle
+remains open and before acceptance, post-read validation repeats the complete ordered
+sequence and the same `FileHandle.stat` comparisons over the same fields. A mismatch at
+any stage closes the handle, discards every collected byte, marks the ticket stale or rejected, commits no
+readable content or receipt, and emits only a fixed secret-safe diagnostic; a bounded
+diagnostic-only inventory record may remain for a safely inventoried path. Root identity
+failure aborts that source attempt and preserves its previously committed graph; an entry-local change leaves
+unaffected results usable as a bounded partial result.
 
-**Rationale**: Merely matching a glob, checking `realpath`, or comparing `FileHandle.stat`
-is not proof that the opened handle remains below a root after a parent swap. Node 24's
+If Node reports required identity/metadata or canonicalization as unavailable, ambiguous,
+malformed, or otherwise unusable, `safe-fs-boundary-unverifiable` rejects the boundary or
+candidate instead of guessing. A root-level failure aborts the source attempt; an item-level
+failure can retain only the bounded diagnostic-only inventory record.
+
+**Rationale**: The repeated checks materially reduce risk from ordinary concurrent edits,
+ensure detected changes cannot be committed, and preserve the exact resource accounting
+required by the scan contract. They do not create kernel-enforced containment. Node 24's
 [filesystem API](https://nodejs.org/docs/latest-v24.x/api/fs.html#file-system-flags) exposes
-neither directory-handle-relative open nor `openat2`; POSIX `O_NOFOLLOW` covers only the
-final component, and Windows has no corresponding Node flag. Node also warns against
-separate access checks followed by open. Its
+neither directory-handle-relative open nor an atomic beneath/no-follow resolver; POSIX
+`O_NOFOLLOW` covers only the final component, and Windows has no corresponding portable
+Node flag. Node cannot portably expose every Windows reparse tag or distinguish every mount
+transition. Same-device bind mounts and reparse metadata that Node does not expose remain
+explicit platform limitations outside automated-test proof. Its
 [Permission Model](https://nodejs.org/docs/latest-v24.x/api/permissions.html#limitations-and-known-issues)
-may follow an allowlisted symlink outside the permitted path, and
-[WASI](https://nodejs.org/docs/latest-v24.x/api/wasi.html#security) is not a filesystem
-security boundary. The native design instead follows the capability/no-follow primitives
-documented by [cap-std](https://github.com/bytecodealliance/cap-std),
-[cap-fs-ext](https://docs.rs/cap-fs-ext/latest/cap_fs_ext/trait.DirExt.html), Linux
-[`openat2`](https://man7.org/linux/man-pages/man2/openat2.2.html), and Windows
-[handle attribute APIs](https://learn.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_attribute_tag_info).
-One bounded walker also provides entry/depth/deadline accounting and progress.
+and [WASI](https://nodejs.org/docs/latest-v24.x/api/wasi.html#security) are not substitutes
+for that missing filesystem primitive.
+
+The release therefore treats detected ordinary concurrent changes and other
+implementation-detectable races as in scope and fails closed for every detected case, but excludes an active adversarial process
+that can replace the root, an ancestor, or the final entry between path checks. Tests are evidence for the specified
+detection behavior, not proof against that actor. The concrete resolution path before
+expanding the threat model is to adopt a future Node directory-relative API with atomic
+beneath/no-follow semantics, or to scan an OS-enforced read-only snapshot/sandbox and
+repeat the security review. One bounded walker still centralizes entry/depth/deadline/byte
+accounting and progress.
 
 **Alternatives considered**:
 
-- Pure `node:fs`, `realpath`/`lstat` before open, Permission Model, WASI, and Linux
-  `/proc/self/fd` techniques were rejected because none proves the same cross-platform
-  opened-handle containment; precheck-then-open is TOCTOU.
-- `tinyglobby` alone was rejected because path traversal cannot provide the root-handle
-  object capability or complete accounting needed for the scan contract.
+- A direct `readFile(path)` or glob-only implementation was rejected because it has no
+  generation-bound ticket, enumeration/open identity agreement, post-read validation, or
+  complete scan accounting.
+- Treating the Node Permission Model or WASI as a containment proof was rejected because
+  their documented limitations do not provide atomic child-open semantics.
+- Claiming that pre/post path checks defeat an active root/ancestor/final-entry replacement attacker was
+  rejected because validation and open remain separate operations.
 - Following symlinks that currently resolve inside the source was rejected because parent
   swaps and aliases complicate the boundary and physical-file identity.
-- Install-time compilation/download was rejected because `npx` must not execute an
-  unreviewed installer or fetch a platform binary; release-tested prebuilds fail closed.
+- An install-time compiler or downloaded platform helper was rejected because the package
+  must run as shipped with Node.js alone.
 - Failing the entire scan on one unsafe or changed file was rejected because FR-028
   requires unaffected results to remain usable.
 
@@ -506,7 +508,7 @@ FIFO. Global disable is a priority security barrier: it aborts and discards any 
 uncommitted transaction, cancels queued Global work, performs the zero-I/O removal next,
 and requeues an interrupted Repository command once behind that removal. Repeated disable
 joins an already queued/active barrier; with no Global enabled flag, consent, nonempty
-graph, open capability, or scan/enable command it is a no-op regardless of Repository
+graph, accepted root context, or scan/enable command it is a no-op regardless of Repository
 work. Each scan job starts
 from the current session-wide generation, carries the unscanned source under the remaining
 shared file/byte/diagnostic budgets, and builds a replacement separately. Atomically commit
@@ -517,8 +519,8 @@ in the plan and shared contract.
 **Rationale**: Global serialization plus atomic session generations prevent lost updates
 and mixed old/new results and make reveal cleanup observable. A fatal attempt leaves the
 prior generation—including bootstrap 0—untouched and uses the capped out-of-generation session diagnostic
-channel. A fatal Global enable/rescan retains its exact consent, accepted boundaries, open
-capabilities, and prior graph so explicit retry/disable stays possible. A 30-second hard deadline prevents hangs while the performance acceptance
+channel. A fatal Global enable/rescan retains its exact consent, accepted boundaries and
+root contexts, and prior graph so explicit retry/disable stays possible. A 30-second hard deadline prevents hangs while the performance acceptance
 target remains 10 seconds. One MiB per file and 32 MiB total permit 500 normal
 customization files without retaining unbounded content. Per-file mask-output caps fail
 closed instead of risking a partially scanned suffix, while killable V8-limited workers
@@ -554,10 +556,17 @@ Targeted regression fixtures cover Copilot's separate VS Code/CLI/Cloud lookup t
 Claude project settings only at exact launch `cwd`, non-recursive Codex rule directories,
 plugin activation versus authored manifest inventory, and zero Global reads beyond
 FR-015 through FR-018.
-Run native integration/race tests on every advertised OS/architecture/libc target, including
-parent replacement, final-component replacement, root rename, mount/reparse rejection,
-identity mismatch, addon corruption/absence, and post-pack load. Test-only race barriers
-must not be exported by the production addon.
+Run the pure Node.js integration/race suite on macOS, Linux, and Windows, including parent
+replacement, final-component replacement, root rename, symlink/junction rejection,
+detectable device changes, identity/metadata mismatch, bounded same-handle reads, byte
+discard, no-readable-content commit, and post-pack execution. Where effective
+`O_NOFOLLOW` exists, tests require its use. Controlled barriers exercise changes detected
+by the post-read root identity, every ancestor `lstat`, candidate path `lstat` before and
+after canonicalization, canonical containment, and same-handle stat comparisons. Test-only filesystem barriers remain
+inside the test harness and are not exported by production modules. These tests establish
+the specified detected-race behavior and must not be described as proof against the active
+adversarial mutator excluded by the threat model or against same-device bind mounts and
+reparse information that Node never exposes.
 Instrument tests to fail if inspected content causes an outbound request, MCP connection,
 child process, dynamic evaluation, or source mutation.
 
