@@ -2,7 +2,7 @@
 
 [日本語](github-copilot.ja.md)
 
-**Contract version**: 2026-07-15
+**Contract version**: 2026-07-17
 
 **Official-source review**: 2026-07-15
 

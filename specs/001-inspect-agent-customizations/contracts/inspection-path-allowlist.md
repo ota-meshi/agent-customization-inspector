@@ -2,9 +2,9 @@
 
 [日本語](inspection-path-allowlist.ja.md)
 
-**Contract version**: 2026-07-15
+**Contract version**: 2026-07-17
 
-**Official-source revalidation**: 2026-07-15
+**Inspection-path decision revalidation**: 2026-07-17
 
 **Normative for**: Rule classes, matcher notation, source-boundary interpretation, read
 authorization, and cross-vendor conformance
@@ -12,6 +12,9 @@ authorization, and cross-vendor conformance
 This document defines the common grammar and invariants of the inspection rule registry.
 It is intentionally not the vendor matrix. Exact vendor behavior, Inspector rules,
 runtime composition, and evidence are defined once in the linked contracts below.
+The date above records revalidation of this Inspector path decision, not a registry-wide
+semantic source review. Per-record review dates remain owned by
+[Official Sources](official-sources.md).
 
 ## Contract map and identifier ownership
 
@@ -67,9 +70,14 @@ and runtime-composition contracts and never changes this boundary.
 ### Global
 
 Global inspection is disabled in every new session and requires consent bound to the
-current contract version and exact no-I/O preview. One logical Global source may contain
-separate consented vendor-home boundaries, but those boundaries are not Repository
-children and are never merged into the Repository source.
+current contract version and exact no-I/O preview. Every accepted vendor-home root becomes
+its own tool-specific Global Source—at most one each for Copilot, Claude, and Codex—and
+each Source is bound to exactly one root. These Sources are not Repository children, are
+never merged with one another, and are never merged into the Repository Source.
+
+Every displayed or serialized candidate path is a Source-relative Path computed from the
+single root of its owning Source. It is repository-relative only for the Repository Source;
+each Global Source uses its own admitted tool-home root.
 
 Vendor contracts may record additional documented User behavior for maintenance and
 future review. Such a record grants no read authority. Under FR-015 through FR-018, only
@@ -84,33 +92,56 @@ Every static Inspector rule separates these fields:
 | Field | Meaning |
 |---|---|
 | **Base** | One exact enabled boundary: `Repository` or one named consented `Global` vendor boundary |
-| **Relative selector** | A boundary-relative, `/`-normalized selector; it never contains an absolute path, environment expansion, home expansion, URI, or implicit ancestor search |
-| **Expansion** | One closed mode: `exact`, `direct-child`, `descendant-inventory`, or `recursive-subtree` |
+| **Relative selectors** | A non-empty ordered list of boundary-relative, `/`-normalized selectors; none contains an absolute path, environment expansion, home expansion, URI, or implicit ancestor search |
+| **Selector programs** | Exactly one closed segment program per selector, in the same order; a program can contain multiple bounded expansion steps |
 
-The structured fields are authoritative. A compact selector printed in a table is only a
-lossless rendering of those fields.
+Each selector program has 1..64 ordered segment tokens from this closed union:
+
+- `literal(value)` matches one case-sensitive NFC segment exactly; `value` contains no
+  separator, wildcard, empty/dot segment, or Windows-special spelling.
+- `one-segment(suffix)` matches exactly one non-empty segment: `*` when `suffix` is empty,
+  or `*<fixed-literal-suffix>` otherwise. It is a directory step when non-terminal and a
+  regular-file step when terminal.
+- `recursive-directories` is rendered only as the complete segment `**`, matches zero or
+  more directories, is never terminal, appears at most twice, and is never adjacent to
+  another recursive token.
+
+The final token must be `literal` or `one-segment` and denotes a regular file. Every
+traversal shares the session's ordinary visited-entry/path-depth limits; a program adds no
+separate unbounded glob engine. The build compiler parses the compact selector into this
+typed program, then requires exact canonical round-trip back to the selector. The runtime
+loads only the validated typed program and never passes the text to a general-purpose glob
+or regular-expression evaluator.
+
+The structured Base, selector list, and segment programs are authoritative. The vendor
+tables' **Expansion** cells are human summaries derived from those programs. They use
+`exact`, `direct-child`, `descendant-inventory`, and `recursive-subtree` labels in program
+order and may list more than one label for a composite selector.
 
 ### Repository selector requirements
 
 Every Inspector Repository selector starts with the literal `./`, which means the exact
 Repository source root. A bare `**/` prefix is invalid and must fail registry validation.
 
-| Form | Required expansion | Meaning |
+| Form | Required program summary | Meaning |
 |---|---|---|
 | `./path/file` | `exact` | One exact file relative to the Repository source root |
 | `./path/*` | `direct-child` | Matching direct children of one root-relative directory; `*` never crosses `/` |
 | `./**/name` | `descendant-inventory` | Explicit Inspector inventory at the root and below it; `**` is a complete segment representing zero or more directory segments |
 | `./path/**/*.ext` | `recursive-subtree` | Explicit recursive Inspector inventory below one root-relative subtree, including its root level |
+| `./**/.claude/skills/*/SKILL.md` | `descendant-inventory`, then `direct-child` | Cross-product of possible context directories and exactly one direct skill-name directory; the terminal file remains exact |
+| `./**/.claude/rules/**/*.md` | `descendant-inventory`, then `recursive-subtree` | Cross-product of possible rule-layer roots and the recursive subtree below each fixed `rules` directory |
 
 `./**/` describes only the Inspector's downward descendant inventory. It does not mean
 that a vendor walks downward, walks upward, searches ancestors, recognizes every nested
 repository, or applies the matched file in a particular runtime context. Those claims
 require separate vendor behavior and strategy records.
 
-`*` matches exactly one non-empty segment. `**` is valid only as a complete segment in a
-form whose expansion explicitly permits recursion. Direct-child and exact selectors never
-imply recursive subdirectories. Repository rule tables must state Base, Relative selector,
-and Expansion separately rather than relying on the compact text alone.
+`*` matches exactly one non-empty segment. `**` is valid only as a complete
+`recursive-directories` token. A `one-segment` token never implies recursion, and a
+literal-only program is exact. Repository rule tables must state Base, Relative selector,
+and the derived Expansion summary separately; the immutable registry must carry the
+one-to-one typed selector programs.
 
 ### Global selector requirements
 
@@ -120,13 +151,69 @@ creation, not to the selector. Global selectors do not reuse the Repository `./`
 do not authorize another vendor boundary, and cannot expand the paths permitted by
 FR-015 through FR-018.
 
+### Traversal-plan compilation and Global least privilege
+
+Build validation compiles every validated typed matcher into an immutable, versioned
+`TraversalPlan`. The plan retains the closed selector programs and fixes the exact
+filesystem edges and operation classes they can authorize. Runtime scanning loads that
+plan as data; it does not reparse selector text or substitute a generic walker. A
+Repository plan may perform the bounded broad traversal explicitly described by its
+selector programs, subject to the shared entry, depth, exclusion, and deadline limits.
+
+A Global plan is narrower and never starts by enumerating the vendor-home root. For an
+exact Global target, the filesystem service snapshots the boundary and `lstat`s only the
+fixed literal ancestor chain and target; it does not `opendir` the root. For an explicitly
+fixed subtree, such as the contracted Copilot `instructions/` subtree, it `lstat`s only
+the fixed chain to that subtree and may `opendir` only that subtree and the descendants
+permitted by its segment program. It performs no `opendir`, `lstat`, `realpath`, open, or
+read against a neighboring path that the plan does not reach. Missing permitted paths do
+not broaden the plan or trigger sibling discovery. A successfully verified fixed target
+creates a targeted enumeration record; "enumeration record" does not imply that its parent
+directory was listed.
+
+The plan also carries a closed `selectionPolicy`. Every rule uses `all-matches` except
+`codex.global.instructions`, whose exact ordered selectors are `AGENTS.override.md` then
+`AGENTS.md` and whose policy is `codex-global-first-non-empty`. That branch safely reads the
+override only to establish whether its decoded string, after removal of an optional leading
+UTF-8 BOM, has `String.prototype.trim().length > 0`. A non-empty override short-circuits before any operation on the fallback; an
+absent or safely established empty override advances to `AGENTS.md`. A whitespace-only file is
+empty. A present candidate that is unsafe, unreadable, oversized, or undecodable fails
+closed without examining a later selector. `absent` means only an explicit not-found result
+from that exact target's `lstat` after root verification; permission, type, metadata,
+ancestor/root, canonicalization, and post-observation disappearance are failures. At most
+one non-empty file is published.
+
+The no-I/O Global preview renders `pathPatterns` from this same immutable plan; there is
+no separately maintained preview allowlist. The consent digest binds the contract
+version, traversal-plan schema/version, closed selection policy, and canonical selector
+programs. An enable
+operation executes the exact plan represented by the accepted preview rather than
+recompiling it from display text.
+
 ### Matching and Node.js entry verification
 
-Paths are normalized to `/` for classification only. Canonical or normalized strings are
-diagnostic data and never authorize a read by themselves. The centralized Node.js
-filesystem service first establishes lexical containment and snapshots the source root's
-identity and canonical `realpath`. It `lstat`s every ancestor before considering a
-candidate. Every candidate verification phase—enumeration, immediately before open, after
+For every name obtained by directory enumeration, the service retains internal
+`rawRelativeSegments` using the exact `Dirent.name` spellings. Those raw segments are used
+only to reconstruct, verify, and read the filesystem path. It separately computes NFC
+`classificationSegments`; only those segments, joined with `/`, are used for matcher
+classification, deterministic sorting, and the serialized `SourceRelativePath`. A
+normalized or canonical spelling is never substituted into a filesystem operation.
+
+Every opened directory is collected into a bounded, complete sibling buffer before any
+of its entries is descended into or opened. If the buffer cannot be completed within the
+shared limits, that directory fails closed. When two or more distinct raw sibling names
+normalize to the same NFC segment and therefore the same parent-relative classification
+key, every entry in that collision group fails closed: none is descended into or read,
+and the service emits bounded diagnostic
+`safe-fs-path-normalization-collision`. A single non-colliding NFD spelling remains valid:
+the service reads it through its raw segments while matching, sorting, and displaying its
+NFC `SourceRelativePath`.
+
+Canonical or normalized strings are diagnostic/classification data and never authorize a
+read by themselves. The centralized Node.js filesystem service first establishes lexical
+containment and snapshots the source root's identity and canonical `realpath`. It `lstat`s
+every plan-authorized ancestor before considering a candidate. Every candidate
+verification phase—enumeration, immediately before open, after
 open but before reading, and after the bounded read—uses this exact ordered sequence: (1) `lstat` the
 candidate path and reject a symbolic link, non-regular type, or unexpected identity; (2)
 only after that succeeds, resolve the candidate `realpath` and verify containment with
@@ -138,10 +225,11 @@ internal source-relative enumeration records carrying the observed root, ancesto
 canonical-location, identity, type, size, and relevant timestamp metadata. A classifier may
 select only an exact previously enumerated record.
 
-Before a derived selector reaches enumeration-record lookup, each NFC-normalized segment
+Before a derived selector reaches enumeration-record lookup, each NFC classification segment
 rejects NUL, control characters, Windows-special characters, trailing dot/space, device basenames,
-alternate-data-stream spelling, and case-, normalization-, short-name-, or other aliases.
-Every remaining segment must exactly match an enumerated entry. `.git/`, `.hg/`, and
+alternate-data-stream spelling, and ambiguous case-, short-name-, or other aliases. Every
+remaining segment must resolve to exactly one collision-free enumerated classification
+record, whose raw segments remain the only path spelling used for a read. `.git/`, `.hg/`, and
 `.svn/` internals are excluded from traversal.
 
 ## Rule classes
@@ -177,6 +265,23 @@ Bounded derivation is exactly one typed edge from an independently admitted stat
 A derived candidate cannot seed another derivation. Relationship-only and excluded rules,
 vendor locators, runtime strategies, imports, component references, remote sources, and
 MCP-server-provided instructions never authorize a read.
+
+Read authority for a bounded-derived candidate exists only through a closed, versioned
+`DerivationProgram` interpreted by the centralized service. Each program pins the exact
+static seed rule, declaration field (including a closed matched-path sentinel where
+applicable), and seed kind; chooses its base only from `seed-matched-path-parent` or
+`source-root`; names one closed extraction variant; uses only fixed literal segment tokens
+and bounded authored-segment tokens from a closed union, with each authored token producing
+exactly one validated segment rather than injecting an unparsed path; declares a fixed
+suffix; and carries an explicit fan-out bound. Extracted
+segments must pass the same collision-free classification and containment admission as a
+static candidate.
+
+The registry contains data only: it cannot supply a callback, function pointer, arbitrary
+`path.join` recipe, free-form path expression, glob, or regular expression. The exact
+closed schema and the five initial derived-rule mappings are owned by the
+[data-model contract](../data-model.md); adding a variant or mapping is a contract-versioned
+change, not an extension point at runtime.
 
 A match proves only that an authored artifact is inside Inspector inventory scope. It does
 not prove that a vendor installs, enables, trusts, selects, loads, merges, or follows it.
@@ -243,16 +348,27 @@ Contract and fixture validation must prove all of the following:
    positive and near-miss fixtures.
 3. A `./**/` fixture proves only downward Inspector inventory and carries separate unknown
    or conditional vendor-runtime facts where the upstream traversal is not established.
-4. Every static and bounded-derived rule has positive, root/nested, boundary, symlink,
+4. Typed matchers compile deterministically to immutable versioned plans. Global call-trace
+   fixtures prove that an exact target does not `opendir` its root, a fixed subtree opens
+   only that subtree and permitted descendants, and neighboring paths receive zero
+   `opendir`, `lstat`, `realpath`, open, or read calls. Preview fixtures prove that
+   `pathPatterns` come from that same plan and that the consent digest binds its version,
+   closed selection policy, and canonical programs. Codex traces apply absent, empty,
+   BOM-only, whitespace-only, non-empty, unreadable, oversized, undecodable, and non-regular
+   cases independently to both ordered targets; they distinguish exact-target not-found
+   from every other error and prove short-circuit/fail-closed behavior plus at most one
+   published file.
+5. Every static and bounded-derived rule has positive, root/nested, boundary, symlink,
    alias, resource-limit, and applicable multi-tool fixtures. Derived fixtures additionally
-   prove one-edge depth, fan-out limits, containment, deterministic retention, and no read
-   for the first rejected target.
-5. Relationship-only and excluded fixtures prove zero read authority even when a target
+   prove closed `DerivationProgram` interpretation without callbacks or free-form path
+   construction, one-edge depth, fan-out limits, containment, deterministic retention,
+   and no read for the first rejected target.
+6. Relationship-only and excluded fixtures prove zero read authority even when a target
    exists or matches a generic filename. User behavior recorded outside FR-015 through
    FR-018 never becomes a Global candidate.
-6. A multiply admitted physical file is read once and retains each independent provenance;
+7. A multiply admitted physical file is read once and retains each independent provenance;
    matcher, evidence, documentation, scope/order, and applicability are not collapsed.
-7. Centralized Node.js filesystem fixtures on every supported OS cover lexical and
+8. Centralized Node.js filesystem fixtures on every supported OS cover lexical and
    `realpath` escape, `path.relative` containment, symlink and non-regular rejection,
    the exact `lstat`/`realpath`/second-`lstat` order in every phase, effective `O_NOFOLLOW`
    use when available, every pre-read and post-read comparison above, and root/parent/final-
@@ -262,14 +378,21 @@ Contract and fixture validation must prove all of the following:
    error, ambiguity, or unusable metadata yields `safe-fs-boundary-unverifiable`; an OS
    behavior that Node.js cannot observe is recorded as a platform limitation and is not
    counted as proof against the excluded active-adversary race.
-8. Official-source fixtures validate official HTTPS hosts, bounded anchors, review dates,
+9. Path-spelling fixtures include a non-colliding NFD-only name that is read through its
+   exact raw `Dirent.name` segments and displayed as an NFC `SourceRelativePath`, plus NFC
+   and NFD sibling spellings with the same classification key. The latter fixture emits
+   `safe-fs-path-normalization-collision` and proves that every colliding sibling receives
+   zero descend/open/read operations.
+10. Official-source fixtures validate official HTTPS hosts, bounded anchors, review dates,
    semantic fingerprints, affected-contract backlinks, and human-only updates. A drift
    result never changes a behavior, rule, or strategy automatically.
-9. The registry fails closed on an unknown expansion mode, malformed selector, duplicate
+11. The registry fails closed on an unknown matcher, traversal, or derivation kind; an
+   invalid token position or count;
+   selector/program count or canonical-round-trip mismatch, malformed selector, duplicate
    identifier, orphan reference, mismatched contract version, or English/Japanese
    semantic difference.
 
-Changing a matcher base, selector, expansion, read-authorizing class, or Global scope is a
+Changing a matcher base, selector/program, derived expansion summary, read-authorizing class, or Global scope is a
 contract semantic change. Maintainers must review identifier compatibility, update every
 affected evidence backlink and fixture, update both language contracts together, and bump
 the consent-bound contract version when the accepted Global boundary changes.

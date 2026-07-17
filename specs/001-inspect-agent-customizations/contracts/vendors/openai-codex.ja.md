@@ -2,7 +2,7 @@
 
 [English](openai-codex.md)
 
-**契約バージョン**: 2026-07-15
+**契約バージョン**: 2026-07-17
 **公式資料のreview日**: 2026-07-15
 
 このcontractは、文書化済みCodex lookup behaviorとInspectorのread allowlistを分離する。共通matcher文法と
@@ -95,6 +95,14 @@ readできる。
 | Rule ID | Boundary base | Relative selectorとselection | Expansion | Class | Behavior refs | Policy refs | Evidence |
 |---|---|---|---|---|---|---|---|
 | `codex.global.instructions` | 正確なconsent済み`<CODEX_HOME>`。`CODEX_HOME` absent時だけ既定`$HOME/.codex` | Non-empty `AGENTS.override.md`があれば使用し、なければ`AGENTS.md` | `exact`、最大1 file | `static-candidate` | `codex.behavior.user.instructions` | FR-013、FR-014、FR-017、FR-018、QR-005 | `openai.codex.agents-md` |
+
+Immutable planは、この2つのexact selectorをその順序で持つclosedな`codex-global-first-non-empty` policyを使う。
+安全にnon-emptyと確定したoverrideはshort-circuitし、overrideがabsentまたは安全にemptyと確定した場合だけ
+`AGENTS.md`へ進む。Present candidateがunsafe、unreadable、oversized、またはdecode不能ならfallbackをreadせず
+fail closedし、Inspectorがpublishするnon-empty fileは最大1件とする。Emptyはoptionalな先頭UTF-8 BOMを除く
+decoded stringの`String.prototype.trim().length === 0`を意味し、whitespace-only fileはemptyとする。
+`absent`はroot verification後にexact targetの`lstat`が明示的not-foundを返した場合だけを意味する。Permission、
+type、metadata、ancestor/root、canonicalization、最初の観測後の消失は、次へ進む理由ではなくfailureとする。
 
 Present empty、relative、unreadable、その他invalidな`CODEX_HOME` overrideから暗黙fallbackしない。同じdirectory配下でも
 user config、agent、skill、hook、rule、MCP、plugin、prompt、memory、credential、log、session、cacheはexcludedの

@@ -40,5 +40,13 @@
   runtime constraint. The specification names the relevant public-API limitation because
   omitting it would overstate filesystem containment; detailed algorithms and data structures
   remain in the plan and research artifacts.
+- Validation iteration 5 on 2026-07-17 recorded five clarifications: separate tool-specific
+  Global Sources, exact unmasked value presentation without environment substitution,
+  fatal-rescan rollback, Source-relative path terminology, and use of the
+  maintainer-designated current local performance environment without publishing concrete
+  environment details. Three checklist items were reopened because SC-002 still lacks a
+  fixed sampling and aggregation protocol, while SC-001 and SC-006 still lack a participant
+  population and study protocol. A follow-up clarification pass is required before these
+  success criteria can serve as release gates.
 - The exact repository inspection path allowlist is intentionally frozen during planning after revalidation against official vendor specifications; the specification fixes the supported product families and forbids Global-scope expansion without a specification change.
 - The temporary local product-description file is neither linked nor required by this specification.

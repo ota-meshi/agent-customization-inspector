@@ -2,7 +2,7 @@
 
 [日本語](claude-code.ja.md)
 
-**Contract version**: 2026-07-15
+**Contract version**: 2026-07-17
 
 **Official-source revalidation**: 2026-07-15
 
@@ -156,7 +156,7 @@ This index grants no read authority and does not duplicate those definitions.
    project-root selection algorithm. Relative process arguments are nevertheless clearly
    launch-`cwd` based.
 6. The live memory page reviewed on 2026-07-15 states four import hops, while stale search
-   excerpts have shown five. Source records should retain `reviewedAt` and an assertion
+   excerpts have shown five. Source records should retain `reviewedOn` and an assertion
    fingerprint instead of trusting cached snippets.
 7. A plugin manifest or marketplace catalog present in source is not evidence that Claude
    registered, installed, trusted, enabled, selected, or loaded it.

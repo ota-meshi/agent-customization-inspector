@@ -2,7 +2,7 @@
 
 [日本語](openai-codex.ja.md)
 
-**Contract version**: 2026-07-15
+**Contract version**: 2026-07-17
 **Official-source review**: 2026-07-15
 
 This contract separates documented Codex lookup behavior from the Inspector's read
@@ -103,6 +103,17 @@ FR-013 through FR-018, Codex may read only this rule:
 | Rule ID | Boundary base | Relative selector and selection | Expansion | Class | Behavior refs | Policy refs | Evidence |
 |---|---|---|---|---|---|---|---|
 | `codex.global.instructions` | Exact consented `<CODEX_HOME>`; default `$HOME/.codex` only when `CODEX_HOME` is absent | Use non-empty `AGENTS.override.md` when present; otherwise `AGENTS.md` | `exact`, at most one file | `static-candidate` | `codex.behavior.user.instructions` | FR-013, FR-014, FR-017, FR-018, QR-005 | `openai.codex.agents-md` |
+
+The immutable plan uses the closed `codex-global-first-non-empty` policy with those two
+exact selectors in that order. A safely established non-empty override short-circuits;
+only an absent or safely established empty override advances to `AGENTS.md`. A present
+unsafe, unreadable, oversized, or undecodable candidate fails closed without reading the
+fallback, and the Inspector publishes at most one non-empty file. Empty means the decoded
+string after an optional leading UTF-8 BOM has `String.prototype.trim().length === 0`, so a
+whitespace-only file is empty. `absent` means only an explicit not-found result from that
+exact target's `lstat` after root verification. Permission, type, metadata, ancestor/root,
+canonicalization, and disappearance after the first observation are failures rather than
+reasons to advance.
 
 A present empty, relative, unreadable, or otherwise invalid `CODEX_HOME` override does not
 fall back silently. User config, agents, skills, hooks, rules, MCP, plugins, prompts,

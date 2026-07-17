@@ -38,5 +38,11 @@
 - ユーザーが要求したNode.js-only runtime制約を記録した後、2026-07-16の検証iteration 4で合格した。
   Filesystem containmentを過大評価しないため、仕様には関連する公開APIの制約を明記している。
   詳細なalgorithmとdata structureはplanとresearch artifactへ残している。
+- 2026-07-17の検証iteration 5では、tool別の独立したGlobal Source、environment置換を行わない
+  値の完全表示、致命的な再scanのrollback、Source-relative path用語、具体的な環境情報を公開しない
+  メンテナー指定の現在のローカル性能環境という5件のclarificationを記録した。SC-002には固定済みの
+  sampling・aggregation protocolがなく、SC-001とSC-006には参加者populationとstudy protocolがないため、
+  3つのchecklist項目を未完了へ戻した。これらの成功基準をrelease gateとして使用する前に、追加の
+  clarification passが必要である。
 - 正確なRepositoryの調査対象パス一覧は、公式vendor specificationを再確認した後、計画phaseで意図的に確定する。仕様はサポートするproduct familyを固定し、仕様変更なしのGlobal scope拡張を禁止している。
 - 一時的なローカルのプロダクト説明ファイルは、この仕様からリンクされず、仕様の利用にも必要ない。

@@ -2,7 +2,7 @@
 
 [English](claude-code.md)
 
-**契約バージョン**: 2026-07-15
+**契約バージョン**: 2026-07-17
 
 **公式ソース再確認日**: 2026-07-15
 
@@ -146,7 +146,7 @@ Environment validation、consent、canonicalization、およびabsentな`CLAUDE_
 5. MCP documentationは`.mcp.json`について「project root」を使うが、完全なproject-root selection
    algorithmは定義していない。一方、relative process argumentがlaunch-`cwd`基準であることは明確。
 6. 2026-07-15に確認したlive memory pageはimportを4 hopと記載するが、古いsearch excerptには5と
-   表示されたものがある。Cached snippetを信用せず、source recordに`reviewedAt`とassertion
+   表示されたものがある。Cached snippetを信用せず、source recordに`reviewedOn`とassertion
    fingerprintを保持すべきである。
 7. Source内にplugin manifestやmarketplace catalogが存在しても、Claudeが登録、install、trust、
    enable、select、loadした証拠にはならない。

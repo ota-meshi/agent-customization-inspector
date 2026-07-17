@@ -2,15 +2,17 @@
 
 [English](inspection-path-allowlist.md)
 
-**契約バージョン**: 2026-07-15
+**契約バージョン**: 2026-07-17
 
-**公式資料の再検証日**: 2026-07-15
+**検査パス決定の再検証日**: 2026-07-17
 
 **規範対象**: Rule class、matcher表記、source boundaryの解釈、read認可、vendor横断の適合要件
 
 この文書はinspection rule registryの共通文法とinvariantを定義する。Vendor matrixそのものではない。
 正確なvendor behavior、Inspector rule、runtime composition、evidenceは、以下のリンク先contractで一度だけ
 定義する。
+上記日付はこのInspector path decisionの再検証日であり、registry全体のsemantic source review日ではない。
+Recordごとのreview日は[公式資料](official-sources.ja.md)だけが所有する。
 
 ## Contract mapとidentifierのownership
 
@@ -61,8 +63,12 @@ runtime-composition contractに属し、このboundaryを変更しない。
 ### Global
 
 Global inspectionは新しいsessionごとに無効であり、current contract versionと正確なno-I/O previewにbind
-したconsentを必要とする。1つの論理Global sourceは、consent済みのvendor home boundaryを別々に持ち得るが、
-それらはRepositoryのchildではなく、Repository sourceへmergeしない。
+したconsentを必要とする。Accepted vendor-home rootごとに独立したtool-specific Global Sourceを作り、Copilot、
+Claude、Codexごとに最大1つ、各Sourceは正確に1つのrootへbindする。これらはRepositoryのchildではなく、互いに
+mergeせず、Repository Sourceにもmergeしない。
+
+表示またはserializeする全candidate pathは、owning Sourceのsingle rootから計算したSource-relative Pathとする。
+Repository Sourceの場合だけrepository-relativeであり、各Global Sourceは自身のadmit済みtool-home rootを使う。
 
 Vendor contractは保守と将来のreviewのため、文書化済みの追加User behaviorを記録できる。そのrecordはread
 authorityを与えない。FR-015からFR-018により、明示的にcontract化したGlobal instruction ruleだけがGlobal
@@ -76,32 +82,49 @@ directoryは、仕様が変更されるまでexcludedのままとする。
 | Field | 意味 |
 |---|---|
 | **Base** | 有効な1つの正確なboundary。`Repository`またはconsent済みのnamed `Global` vendor boundary |
-| **Relative selector** | Boundary相対かつ`/`でnormalizeしたselector。Absolute path、environment expansion、home expansion、URI、暗黙のancestor searchを含まない |
-| **Expansion** | `exact`、`direct-child`、`descendant-inventory`、`recursive-subtree`のいずれか1つのclosed mode |
+| **Relative selector** | Boundary相対かつ`/`でnormalizeしたselectorのnon-empty ordered list。Absolute path、environment expansion、home expansion、URI、暗黙のancestor searchを含まない |
+| **Selector program** | Selectorごとに同じ順序で正確に1つのclosed segment program。1 programは複数のbounded expansion stepを持てる |
 
-Structured fieldをauthoritativeとする。Tableにcompact selectorを表示する場合、それはこれらのfieldをlosslessに
-表記したものに限る。
+各selector programは次のclosed unionからなる1..64個のordered segment tokenを持つ。
+
+- `literal(value)`はcase-sensitiveなNFC segmentを正確に1つmatchする。`value`にseparator、wildcard、empty/dot
+  segment、Windows-special spellingを含めない。
+- `one-segment(suffix)`はnon-empty segmentを正確に1つmatchする。`suffix`がemptyなら`*`、それ以外は
+  `*<fixed-literal-suffix>`と表記する。Non-terminalならdirectory step、terminalならregular-file stepとする。
+- `recursive-directories`はcomplete segment `**`だけで表記し、0個以上のdirectoryをmatchする。Terminalにはできず、
+  最大2回、隣接不可とする。
+
+Final tokenは`literal`または`one-segment`で、regular fileを表す。全traversalは通常のsession visited-entry/path-depth
+limitを共有し、programが別のunbounded glob engineを追加することはない。Build compilerはcompact selectorをtyped
+programへparseし、selectorへのexact canonical round-tripを要求する。Runtimeはvalidated済みtyped programだけをloadし、
+textをgeneral-purpose glob/regular-expression evaluatorへ渡さない。
+
+Structured Base、selector list、segment programをauthoritativeとする。Vendor tableの**Expansion** cellはprogramから導く
+human summaryで、`exact`、`direct-child`、`descendant-inventory`、`recursive-subtree` labelをprogram順に使う。
+Composite selectorでは複数labelを記載できる。
 
 ### Repository selectorの要件
 
 全Inspector Repository selectorは、正確なRepository source rootを意味するliteral `./`で始める。Bareな
 `**/` prefixはinvalidであり、registry validationをfailureにしなければならない。
 
-| Form | 必須のexpansion | 意味 |
+| Form | 必須program summary | 意味 |
 |---|---|---|
 | `./path/file` | `exact` | Repository source root相対の正確な1 file |
 | `./path/*` | `direct-child` | Root相対の1 directoryのmatching direct child。`*`は`/`をcrossしない |
 | `./**/name` | `descendant-inventory` | Root levelとその下を対象にした明示的なInspector inventory。`**`は0個以上のdirectory segmentを表す完全な1 segment |
 | `./path/**/*.ext` | `recursive-subtree` | Root相対の1 subtree内の明示的なrecursive Inspector inventory。Subtree root levelも含む |
+| `./**/.claude/skills/*/SKILL.md` | `descendant-inventory`の後に`direct-child` | Possible context directoryと正確に1つのdirect skill-name directoryのcross-product。Terminal fileはexact |
+| `./**/.claude/rules/**/*.md` | `descendant-inventory`の後に`recursive-subtree` | Possible rule-layer rootと各固定`rules` directory配下のrecursive subtreeのcross-product |
 
 `./**/`が表すのはInspectorの下向きdescendant inventoryだけである。Vendorが下向きまたは上向きにwalkする、
 ancestorを探す、すべてのnested repositoryを認識する、あるruntime contextでmatch fileを適用する、のいずれも
 意味しない。これらの主張には別のvendor behavior recordとstrategy recordが必要である。
 
-`*`は正確に1つのnon-empty segmentにmatchする。`**`はcomplete segmentとしてのみ、かつ明示的にrecursionを
-許すexpansionでだけ有効である。Direct-child selectorとexact selectorはrecursive subdirectoryを暗黙に含まない。
-Repository rule tableはcompact textだけに依存せず、Base、Relative selector、Expansionを別々に記載しなければ
-ならない。
+`*`は正確に1つのnon-empty segmentにmatchする。`**`はcompleteな`recursive-directories` tokenとしてだけ有効である。
+`one-segment` tokenはrecursionを暗黙に含まず、literal-only programはexactとする。Repository rule tableはcompact
+textだけに依存せずBase、Relative selector、derived Expansion summaryを別々に記載し、immutable registryは1対1の
+typed selector programを保持しなければならない。
 
 ### Global selectorの要件
 
@@ -110,12 +133,54 @@ Environment/default-homeの解決はboundary作成の責務であり、selector�
 Repository用の`./` prefixを再利用せず、別vendor boundaryを認可せず、FR-015からFR-018が許可するpathを
 拡張できない。
 
+### Traversal planのcompileとGlobalのleast privilege
+
+Build validationは、validated済みtyped matcherをそれぞれimmutableかつversionedな`TraversalPlan`へcompileする。
+Planはclosed selector programを保持し、それが認可できるfilesystem edgeとoperation classを正確に固定する。
+Runtime scanはそのplanをdataとしてloadし、selector textを再parseしたりgeneric walkerへ置き換えたりしない。
+Repository planはselector programが明示するboundedなbroad traversalを実行できるが、shared entry、depth、exclusion、
+deadline limitに従わなければならない。
+
+Global planはさらに狭く、vendor-home rootのenumerationから開始してはならない。Exact Global targetでは、filesystem
+serviceはboundaryをsnapshotし、fixed literal ancestor chainとtargetだけを`lstat`する。Rootを`opendir`しない。
+Contract済みCopilot `instructions/` subtreeのような明示的fixed subtreeでは、そのsubtreeまでのfixed chainだけを
+`lstat`し、そのsubtreeとsegment programが許可するdescendantだけを`opendir`できる。Planが到達しない隣接pathに
+対して`opendir`、`lstat`、`realpath`、open、readを一切実行しない。許可されたpathが存在しなくてもplanを広げず、
+sibling discoveryを開始しない。Verificationに成功したfixed targetはtargeted enumeration recordを作る。
+「Enumeration record」はparent directoryをlistしたことを意味しない。
+
+Planはclosedな`selectionPolicy`も持つ。`codex.global.instructions`以外の全ruleは`all-matches`を使う。
+`codex.global.instructions`のexact ordered selectorは`AGENTS.override.md`、次に`AGENTS.md`で、policyは
+`codex-global-first-non-empty`とする。このbranchはoptionalな先頭UTF-8 BOMを除いたdecoded stringの
+`String.prototype.trim().length > 0`を確定する目的だけでoverrideを安全にreadする。Non-empty overrideならfallbackへ一切operationせずshort-circuitし、
+overrideがabsentまたは安全にemptyと確定した場合だけ`AGENTS.md`へ進む。Whitespace-only fileはemptyとする。Present candidateが
+unsafe、unreadable、oversized、またはdecode不能なら後続selectorを調べずfail closedする。`absent`はroot verification後の
+exact target `lstat`が明示的not-foundを返す場合だけで、permission、type、metadata、ancestor/root、canonicalization、
+最初の観測後の消失はfailureとする。Publishするnon-empty fileは最大1件とする。
+
+No-I/O Global previewの`pathPatterns`は、この同じimmutable planからrenderし、別管理のpreview allowlistを持たない。
+Consent digestはcontract version、traversal-plan schema/version、closed selection policy、canonical selector programへbindする。Enable operationは
+display textから再compileせず、accepted previewが表す正確なplanを実行する。
+
 ### MatchingとNode.js entry verification
 
-Pathはclassificationのためだけに`/`へnormalizeする。Canonicalまたはnormalized stringはdiagnostic dataで
-あり、それ単独ではreadを認可しない。中央集約したNode.js filesystem serviceは、最初にlexical containmentを
-確立し、source rootのidentityとcanonical `realpath`をsnapshotする。Candidateを検討する前に全ancestorを`lstat`
-する。Enumeration、open直前、open後かつread前、bounded read後の全candidate verification phaseは、次の正確な順序を
+Directory enumerationで得た各nameについて、serviceは正確な`Dirent.name` spellingを使ったinternal
+`rawRelativeSegments`を保持する。このraw segmentはfilesystem pathの再構築、verification、readだけに使う。
+別にNFCの`classificationSegments`を計算し、それを`/`でjoinしたものだけをmatcher classification、deterministic
+sort、serialized `SourceRelativePath`に使う。Normalizedまたはcanonical spellingをfilesystem operation用pathへ
+置き換えてはならない。
+
+Openした各directoryは、そのentryのいずれかへdescendまたはopenする前に、boundedかつcompleteなsibling bufferへ
+収集する。Shared limit内でbufferをcompleteにできなければ、そのdirectoryをfail closedにする。異なるraw sibling
+nameが同じNFC segment、したがって同じparent-relative classification keyへnormalizeする場合、そのcollision groupの
+全entryをfail closedにする。いずれにもdescendまたはreadせず、serviceはbounded diagnostic
+`safe-fs-path-normalization-collision`をemitする。CollisionしないNFD spellingが1つだけの場合はvalidであり、serviceは
+raw segmentでreadしつつ、NFCの`SourceRelativePath`でmatch、sort、displayする。
+
+Canonicalまたはnormalized stringはdiagnostic/classification dataであり、それ単独ではreadを認可しない。中央集約
+したNode.js filesystem serviceは、最初にlexical containmentを確立し、source rootのidentityとcanonical
+`realpath`をsnapshotする。Candidateを検討する前にplanが認可した全ancestorを`lstat`する。Enumeration、open直前、
+open後かつread前、bounded read後の全candidate verification phaseは、次の正確な順序を
 使う。
 (1) candidate pathを`lstat`し、symbolic link、non-regular type、unexpected identityを拒否する。(2) これが成功した
 後だけcandidate `realpath`を解決し、`node:path.relative`でcontainmentを検証する。Platform separatorをnormalize
@@ -125,10 +190,11 @@ type、size、関連timestampが最初の`lstat`と一致することを要求�
 type、size、関連timestamp metadataを持つinternal source-relative enumeration recordを返す。Classifierは以前に
 enumerateした正確なrecordだけを選択できる。
 
-Derived selectorをenumeration-record lookupへ渡す前に、各NFC-normalized segmentについてNUL、control character、
-Windows-special character、trailing dot/space、device basename、alternate-data-stream spelling、case・normalization・
-short-name・その他aliasを拒否する。残った全segmentはenumerate済みentryと正確に一致しなければならない。
-`.git/`、`.hg/`、`.svn/`内部はtraversal対象外とする。
+Derived selectorをenumeration-record lookupへ渡す前に、各NFC classification segmentについてNUL、control character、
+Windows-special character、trailing dot/space、device basename、alternate-data-stream spelling、case・short-name・
+その他aliasのambiguityを拒否する。残った全segmentはcollisionのないenumerated classification record
+1つだけへresolveしなければならず、そのraw segmentだけをread用path spellingとして使う。`.git/`、`.hg/`、
+`.svn/`内部はtraversal対象外とする。
 
 ## Rule class
 
@@ -159,6 +225,20 @@ enumeration/open/post-read identity checkに合格しなければならない。
 Bounded derivationは、独立して受理したstatic seedからの正確に1つのtyped edgeである。Derived candidateは別の
 derivationをseedできない。Relationship-onlyおよびexcluded rule、vendor locator、runtime strategy、import、
 component reference、remote source、MCP-server-provided instructionはreadを認可しない。
+
+Bounded-derived candidateのread authorityは、中央集約serviceがinterpretするclosedかつversionedな
+`DerivationProgram`だけから生じる。各programは正確なstatic seed rule、declaration field（該当する場合はclosedな
+matched-path sentinelを含む）、seed kindを固定する。Baseは`seed-matched-path-parent`または`source-root`だけから選び、
+1つのclosed extraction variantを指定する。Segment constructionにはfixed literal segment tokenと、そのvariantが
+許可するclosed unionのbounded authored-segment tokenだけを使う。各authored tokenはunparsed pathを注入せず、
+validated済みsegmentを正確に1つ生成する。Programはfixed suffixと明示的fan-out boundを持つ。Extractしたsegmentは、
+static candidateと同じcollision-free classificationおよびcontainment admissionに
+合格しなければならない。
+
+Registryはdataだけを持つ。Callback、function pointer、任意の`path.join` recipe、free-form path expression、glob、
+regular expressionを供給できない。正確なclosed schemaと初期5件のderived-rule mappingは
+[data-model contract](../data-model.ja.md)が所有する。Variantまたはmappingの追加はcontract-versionedな変更であり、
+runtime extension pointではない。
 
 Matchが証明するのは、authored artifactがInspector inventory scope内にあることだけである。Vendorがそれをinstall、
 enable、trust、select、load、merge、followすることは証明しない。Surface、project/root context、runtime working
@@ -212,25 +292,39 @@ Contractとfixtureのvalidationは、次をすべて証明しなければなら�
    subtree recursive formに、それぞれ別のpositive fixtureとnear-miss fixtureがある。
 3. `./**/` fixtureが証明するのは下向きInspector inventoryだけであり、upstream traversalが確立していない場合は
    vendor-runtime factを別のunknownまたはconditionalとして保持する。
-4. 全staticおよびbounded-derived ruleにpositive、root/nested、boundary、symlink、alias、resource-limit、該当する
-   multi-tool fixtureがある。Derived fixtureはさらにone-edge depth、fan-out limit、containment、deterministic
-   retention、最初のrejected targetをreadしないことを証明する。
-5. Relationship-onlyとexcluded fixtureは、targetが存在する場合やgeneric filenameにmatchする場合もread authorityが
+4. Typed matcherがimmutableかつversionedなplanへdeterministicallyにcompileされる。Global call-trace fixtureは、
+   exact targetがrootを`opendir`せず、fixed subtreeがそのsubtreeと許可されたdescendantだけをopenし、隣接pathへの
+   `opendir`、`lstat`、`realpath`、open、read callが0件であることを証明する。Preview fixtureは`pathPatterns`が
+   同じplanから生成され、consent digestがそのversion、closed selection policy、canonical programへbindすることを証明する。
+   Codex traceは両ordered targetへ独立にabsent、empty、BOM-only、whitespace-only、non-empty、unreadable、oversized、
+   decode不能、non-regular caseを適用し、exact-target not-foundとその他全errorを区別してshort-circuit/fail-closed動作と
+   publish file最大1件を証明する。
+5. 全staticおよびbounded-derived ruleにpositive、root/nested、boundary、symlink、alias、resource-limit、該当する
+   multi-tool fixtureがある。Derived fixtureはさらにcallbackまたはfree-form path constructionを使わないclosed
+   `DerivationProgram` interpretation、one-edge depth、fan-out limit、containment、deterministic retention、最初の
+   rejected targetをreadしないことを証明する。
+6. Relationship-onlyとexcluded fixtureは、targetが存在する場合やgeneric filenameにmatchする場合もread authorityが
    0であることを証明する。FR-015からFR-018の外側で記録したUser behaviorはGlobal candidateにならない。
-6. 複数admissionを持つphysical fileは1回だけreadし、独立した各provenanceを保持する。Matcher、evidence、
+7. 複数admissionを持つphysical fileは1回だけreadし、独立した各provenanceを保持する。Matcher、evidence、
    documentation、scope/order、applicabilityをcollapseしない。
-7. 全supported OS上の中央集約Node.js filesystem fixtureは、lexical/`realpath` escape、`path.relative`
+8. 全supported OS上の中央集約Node.js filesystem fixtureは、lexical/`realpath` escape、`path.relative`
    containment、全phaseの正確な`lstat`/`realpath`/2回目`lstat`順序、symlink/non-regular rejection、利用可能時の
    有効な`O_NOFOLLOW`使用、上記全pre-read/post-read比較、root/parent/final-entry replacementを扱う。Stable-
    symlink fixtureはcandidate `realpath` callより前の拒否を証明する。通常の同時変更またはその他のdetectable
    changeではbyteをpublishせず、bounded diagnosticでfailする。報告されたerror、ambiguity、unusable metadataは
    `safe-fs-boundary-unverifiable`を返す。Node.jsが観測不能なOS behaviorはplatform limitationとして記録し、
    threat model外のactive-adversary raceに対するproofとして数えない。
-8. Official-source fixtureは公式HTTPS host、bounded anchor、review date、semantic fingerprint、影響contractへの
+9. Path spelling fixtureには、正確なraw `Dirent.name` segmentでreadしNFC `SourceRelativePath`としてdisplayする
+   collisionのないNFD-only nameと、同じclassification keyを持つNFC/NFD sibling spellingを含める。後者は
+   `safe-fs-path-normalization-collision`をemitし、collisionした全siblingへのdescend/open/read operationが0件で
+   あることを証明する。
+10. Official-source fixtureは公式HTTPS host、bounded anchor、review date、semantic fingerprint、影響contractへの
    backlink、human-only updateを検証する。Drift resultがbehavior、rule、strategyを自動変更してはならない。
-9. Unknown expansion mode、malformed selector、duplicate identifier、orphan reference、contract version mismatch、
+11. Unknown matcher、traversal、derivation kind、不正なtoken位置/件数、selector/program件数またはcanonical
+   round-tripの不一致、malformed
+   selector、duplicate identifier、orphan reference、contract version mismatch、
    英日semantic differenceがあるregistryはfail closedにする。
 
-Matcher base、selector、expansion、read-authorizing class、Global scopeの変更はcontract semanticsの変更である。
+Matcher base、selector/program、derived expansion summary、read-authorizing class、Global scopeの変更はcontract semanticsの変更である。
 Maintainerはidentifier compatibilityをreviewし、影響する全evidence backlinkとfixtureを更新し、両言語contractを
 同時に更新し、受理するGlobal boundaryが変わる場合はconsent-bound contract versionをbumpしなければならない。
