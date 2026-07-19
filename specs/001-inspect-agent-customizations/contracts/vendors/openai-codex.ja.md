@@ -23,7 +23,7 @@ discoveryとplugin installationにもdesktop/CLI固有の管理behaviorがあり
 
 | Behavior ID | Surface | Lookup base | Relative selector | Traversalまたはactivation | Strategy | Status | Evidence |
 |---|---|---|---|---|---|---|---|
-| `codex.behavior.repo.instructions` | Local client | Project rootからruntime `cwd` | Directoryごとに`AGENTS.override.md`、次に`AGENTS.md`、次に設定済みfallback basename | Rootから`cwd`へwalkし、directoryごとにnon-empty fileを最大1つ選択。設定済みbyte budgetで停止 | `codex.instructions.layering` | Documented | `openai.codex.agents-md`, `openai.codex.config-basic` |
+| `codex.behavior.repo.instructions` | Local client | Project rootからruntime `cwd` | Directoryごとに`AGENTS.override.md`、次に`AGENTS.md`、次に設定済みfallback basename | Rootから`cwd`へwalkし、documented filename orderで最初のnon-empty fileを選択。Upstreamで設定されたbyte budgetで停止 | `codex.instructions.layering` | Documented | `openai.codex.agents-md`, `openai.codex.config-basic` |
 | `codex.behavior.repo.skills` | Local client | Runtime `cwd`からrepository root | `.agents/skills/<name>/SKILL.md` | 上向きchainの各directoryをscan。同名skillはmergeしない | `codex.skills.discovery` | Documented | `openai.codex.skills` |
 | `codex.behavior.repo.agents` | Local client | Project scope | `.codex/agents/*.toml` | Standalone TOML fileがspawned-session configuration layerを定義。Project内で探索する全directoryは資料上完全には明記されない | `codex.agents.inheritance` | Partially documented | `openai.codex.subagents` |
 | `codex.behavior.repo.config` | Local client | Project rootからruntime `cwd` | `.codex/config.toml` | Trusted project layerをrootから`cwd`へすべてload。同じkeyは最も近い値が勝ち、relative pathは包含する`.codex/` directory基準 | `codex.config.precedence` | Documented | `openai.codex.config-basic` |
@@ -53,19 +53,19 @@ FR-005、FR-024、QR-001、QR-004、QR-005である。
 
 受理済み`config.toml`内のinline MCP serverとinline hookはそのfileのmetadataであり、別candidateを作らない。
 Standalone `.mcp.json`はCodex Repository candidateではない。Inspectorは任意の
-`.codex-plugin/plugin.json`を再帰探索しない。Nested manifestは後述のbounded local-marketplace derivationを通じて
+`.codex-plugin/plugin.json`を再帰探索しない。Nested manifestは後述のclosed local-marketplace derivationを通じて
 のみ受理する。
 
-## Bounded-derived Repository rule
+## Derived Repository rule
 
 `Status`はrule schemaが要求するupstream documentation statusである。`documented` statusであっても、
-Inspectorのderivation boundがCodex product behaviorになるわけではない。
+Inspectorのclosed derivationがCodex product behaviorになるわけではない。
 
-| Rule ID | Class | Accepted seed | 許可する1 targetとbound | Behavior refs | Policy refs | Strategy refs | Status | Evidence |
+| Rule ID | Class | Accepted seed | Closed derived target | Behavior refs | Policy refs | Strategy refs | Status | Evidence |
 |---|---|---|---|---|---|---|---|---|
-| `codex.derived.local-plugin-manifest` | `bounded-derived-candidate` | Static受理済みCodex marketplace local entry | `<catalog-root>/<validated-local-source>/.codex-plugin/plugin.json`。Sourceは文書化済みlocal formを使い`./`で始まりcatalog root内に留まり、この1 manifest candidateだけを生成 | `codex.behavior.plugin.manifest`, `codex.behavior.repo.marketplace` | FR-003、FR-004、FR-005、FR-024、QR-001、QR-004、QR-005 | `codex.plugins.activation` | `documented` | `openai.codex.plugins` |
-| `codex.derived.fallback-basename` | `bounded-derived-candidate` | Static受理済みproject `.codex/config.toml` | Ancestry-comparable directory内の設定済みinstruction fallback basename。最大16個のdistinct literal basename、各最大128 UTF-8 byte。Excluded higher layerがoverrideし得るためruntime selectionはconditional | `codex.behavior.repo.config`, `codex.behavior.repo.instructions` | FR-003、FR-004、FR-005、FR-024、QR-001、QR-004、QR-005 | `codex.config.precedence`, `codex.instructions.layering` | `documented` | `openai.codex.agents-md`, `openai.codex.config-basic` |
-| `codex.derived.skill-metadata` | `bounded-derived-candidate` | Static受理済みskill `SKILL.md` | Sibling `agents/openai.yaml`。正確に1つのskill-local metadata fileだけを許可し、orphan fileは受理しない | `codex.behavior.repo.skills` | FR-003、FR-004、FR-005、FR-024、QR-001、QR-004、QR-005 | `codex.skills.discovery` | `documented` | `openai.codex.skills` |
+| `codex.derived.local-plugin-manifest` | `bounded-derived-candidate` | Static受理済みCodex marketplace local entry | `<catalog-root>/<validated-local-source>/.codex-plugin/plugin.json`。Sourceは文書化済みlocal formを使い`./`で始まりcatalog root内に留まり、そのexact manifest pathを導出 | `codex.behavior.plugin.manifest`, `codex.behavior.repo.marketplace` | FR-003、FR-004、FR-005、FR-024、QR-001、QR-004、QR-005 | `codex.plugins.activation` | `documented` | `openai.codex.plugins` |
+| `codex.derived.fallback-basename` | `bounded-derived-candidate` | Static受理済みproject `.codex/config.toml` | Ancestry-comparable directory内の設定済みliteral instruction fallback basename。Excluded higher layerがoverrideし得るためruntime selectionはconditionalで、利用可能なcapacityはNode.jsと実行環境から継承する | `codex.behavior.repo.config`, `codex.behavior.repo.instructions` | FR-003、FR-004、FR-005、FR-024、QR-001、QR-004、QR-005 | `codex.config.precedence`, `codex.instructions.layering` | `documented` | `openai.codex.agents-md`, `openai.codex.config-basic` |
+| `codex.derived.skill-metadata` | `bounded-derived-candidate` | Static受理済みskill `SKILL.md` | Sibling `agents/openai.yaml`。そのnamed skill-local metadata pathだけを導出し、orphan fileは受理しない | `codex.behavior.repo.skills` | FR-003、FR-004、FR-005、FR-024、QR-001、QR-004、QR-005 | `codex.skills.discovery` | `documented` | `openai.codex.skills` |
 
 Plugin skill、MCP file、app mapping、hook file、asset、script、remote sourceはこのreleaseではrelationship-onlyである。
 Local marketplace entryからこれらcomponentへ再帰展開してはならない。
@@ -94,12 +94,12 @@ readできる。
 
 | Rule ID | Boundary base | Relative selectorとselection | Expansion | Class | Behavior refs | Policy refs | Evidence |
 |---|---|---|---|---|---|---|---|
-| `codex.global.instructions` | 正確なconsent済み`<CODEX_HOME>`。`CODEX_HOME` absent時だけ既定`$HOME/.codex` | Non-empty `AGENTS.override.md`があれば使用し、なければ`AGENTS.md` | `exact`、最大1 file | `static-candidate` | `codex.behavior.user.instructions` | FR-013、FR-014、FR-017、FR-018、QR-005 | `openai.codex.agents-md` |
+| `codex.global.instructions` | 正確なconsent済み`<CODEX_HOME>`。`CODEX_HOME` absent時だけ既定`$HOME/.codex` | Non-empty `AGENTS.override.md`があれば使用し、なければ`AGENTS.md` | `exact`、first-non-empty selection | `static-candidate` | `codex.behavior.user.instructions` | FR-013、FR-014、FR-017、FR-018、QR-005 | `openai.codex.agents-md` |
 
 Immutable planは、この2つのexact selectorをその順序で持つclosedな`codex-global-first-non-empty` policyを使う。
 安全にnon-emptyと確定したoverrideはshort-circuitし、overrideがabsentまたは安全にemptyと確定した場合だけ
-`AGENTS.md`へ進む。Present candidateがunsafe、unreadable、oversized、またはdecode不能ならfallbackをreadせず
-fail closedし、Inspectorがpublishするnon-empty fileは最大1件とする。Emptyはoptionalな先頭UTF-8 BOMを除く
+`AGENTS.md`へ進む。Present candidateがunsafe、unreadable、environment failure、またはdecode不能ならfallbackをreadせず
+fail closedし、Inspectorは選択したnon-empty fileだけをpublishして両方はpublishしない。Emptyはoptionalな先頭UTF-8 BOMを除く
 decoded stringの`String.prototype.trim().length === 0`を意味し、whitespace-only fileはemptyとする。
 `absent`はroot verification後にexact targetの`lstat`が明示的not-foundを返した場合だけを意味する。Permission、
 type、metadata、ancestor/root、canonicalization、最初の観測後の消失は、次へ進む理由ではなくfailureとする。
@@ -122,6 +122,42 @@ deprecated promptなどbehaviorごとのqualifierはUser behavior tableに残し
 | `codex.excluded.user-runtime` | `excluded` | Consent済みinstruction fallback以外の上記User surfaceすべて。Managed/system configurationとlocal state | `codex.behavior.user.agents`, `codex.behavior.user.config`, `codex.behavior.user.hooks`, `codex.behavior.user.memories`, `codex.behavior.user.plugins`, `codex.behavior.user.prompts`, `codex.behavior.user.rules`, `codex.behavior.user.skills` | FR-013、FR-014、FR-017、FR-018、QR-001、QR-004、QR-005 | `codex.agents.inheritance`, `codex.config.precedence`, `codex.hooks.additive`, `codex.mcp.configuration`, `codex.plugins.activation`, `codex.rules.resolution`, `codex.skills.discovery` | `documented` | `openai.codex.config-basic`, `openai.codex.custom-prompts`, `openai.codex.hooks`, `openai.codex.mcp`, `openai.codex.memories`, `openai.codex.plugins`, `openai.codex.rules`, `openai.codex.skills`, `openai.codex.subagents` |
 | `codex.excluded.plugin-files` | `excluded` | Plugin skill、MCP、app、hook、asset、script、installed/cache copy | `codex.behavior.plugin.manifest`, `codex.behavior.repo.marketplace`, `codex.behavior.user.plugins` | FR-003、FR-004、FR-024、QR-001、QR-004、QR-005 | `codex.plugins.activation` | `documented` | `openai.codex.plugins` |
 
+## Initial releaseの規範的presentation allowlist
+
+次の表を、OpenAI Codexに対するclosedなFR-007 presentation allowlistとする。Kindの表記は正確な
+`ToolRecognition.kind` valueである。Field IDは、調査対象fileが与える任意のkeyではなく、authored source occurrenceの
+一つのclassを表す。Arrayの反復itemまたはdynamic map entryは、同じfield IDのもとでsource順の別occurrenceを生成する。
+Server、Hook event、environment、header、tool、named componentの`*.name` IDでは、authored map key自体をoccurrenceとする。
+`marketplace.plugin.source`は唯一のcross-vendor derivation fieldであり、plain stringのsource、またはobject sourceの
+`path` leafを表す。
+
+最終列はcommentaryではなく、規範的なsource-form applicabilityである。Effective eligibilityは、rowのclosedな
+field/relationship setと、candidate provenanceが示す実際のadmission済みsource formについてexact extractorがsupportする
+occurrenceのintersectionとする。1つのrowに複数formを記載しても、それらのschemaをunionしたり、1つのformのfieldを
+別formでeligibleにしたりしない。Conformance fixture/testは両gateをcoverする。
+
+各rowは網羅的であり、`—`はeligible setが空であることを意味する。単一のadmission済み`.codex/config.toml` carrierは、
+別々の`MCP`、`settings/config`、contained `hook` recognitionを所有できる。各occurrenceはそのdeclaration familyを所有する
+rowだけに属する。未列挙のkeyとreferenceは、完全な`sourceText`だけに残す。Relationshipは、そのkindがこの表にあり、
+かつoriginが中央registryの適切なrelationship-only ruleでcoverされる場合だけemitできる。このallowlistはread、
+connection、execution、import、installation、activationのauthorityを一切与えない。
+
+| `ToolRecognition.kind` | Eligibleなdeclared-metadata `fieldId` value | Eligibleな`Relationship.kind` value | Initial-release source form |
+|---|---|---|---|
+| `instructions` | `codex.instructions.reference-target` | `runtime-reference` | 受理済みstatic、configured-fallback、またはGlobal instruction file内の正確なauthored import/reference target token。Path-derived scope/orderとbyte-budget factはtyped stateでありmetadataではない |
+| `rule` | `codex.rule.pattern`<br>`codex.rule.decision`<br>`codex.rule.justification`<br>`codex.rule.match`<br>`codex.rule.not-match` | `runtime-reference` | 受理済みdirect-child `.rules` fileの正確なargument/value/item occurrence。Commentと未列挙Starlark expressionはsource textだけに残す |
+| `skill` | `codex.skill.name`<br>`codex.skill.description` | `skill-resource`<br>`runtime-reference` | 受理済み`SKILL.md`の正確な`name`と`description` frontmatter value。Resource/script/reference targetはrelationshipになり得るが、そのedgeを通じてreadしない |
+| `agent` | `codex.agent.name`<br>`codex.agent.description`<br>`codex.agent.developer-instructions`<br>`codex.agent.nickname-candidate`<br>`codex.agent.model`<br>`codex.agent.model-reasoning-effort`<br>`codex.agent.sandbox-mode`<br>`codex.agent.mcp-server.name`<br>`codex.agent.skill.path`<br>`codex.agent.skill.enabled` | `agent-reference`<br>`skill-resource`<br>`context-inheritance`<br>`runtime-reference` | 受理済み`.codex/agents/*.toml`の正確なsupported TOML value/item/map-key occurrence。MCPはinherited/carrier relationshipのままで、agent所有のMCP recognitionにはならない |
+| `hook` | `codex.hook.description`<br>`codex.hook.event`<br>`codex.hook.matcher`<br>`codex.hook.handler.type`<br>`codex.hook.handler.command`<br>`codex.hook.handler.command-windows`<br>`codex.hook.handler.timeout`<br>`codex.hook.handler.status-message`<br>`codex.hook.handler.async` | `runtime-reference` | 受理済みstandalone `hooks.json`またはinline `[hooks]`のevent map key、matcher value、handler leaf。同じlayerのstandalone occurrenceとinline occurrenceは別provenanceのままとする |
+| `MCP` | `codex.mcp.server.name`<br>`codex.mcp.server.command`<br>`codex.mcp.server.arg`<br>`codex.mcp.server.env.name`<br>`codex.mcp.server.env.value`<br>`codex.mcp.server.env-var`<br>`codex.mcp.server.cwd`<br>`codex.mcp.server.experimental-environment`<br>`codex.mcp.server.url`<br>`codex.mcp.server.auth`<br>`codex.mcp.server.bearer-token-env-var`<br>`codex.mcp.server.http-header.name`<br>`codex.mcp.server.http-header.value`<br>`codex.mcp.server.env-http-header.name`<br>`codex.mcp.server.env-http-header.value`<br>`codex.mcp.server.startup-timeout-sec`<br>`codex.mcp.server.tool-timeout-sec`<br>`codex.mcp.server.enabled`<br>`codex.mcp.server.required`<br>`codex.mcp.server.enabled-tool`<br>`codex.mcp.server.disabled-tool`<br>`codex.mcp.server.default-tools-approval-mode`<br>`codex.mcp.server.tool.name`<br>`codex.mcp.server.tool.approval-mode` | `runtime-reference` | Admission済みconfig carrierの`[mcp_servers.*]`配下にあるserver/table nameと正確なsupported leaf/item occurrence。Process environment valueは置換しない |
+| `settings/config` | `codex.config.model`<br>`codex.config.model-provider`<br>`codex.config.model-reasoning-effort`<br>`codex.config.approval-policy`<br>`codex.config.sandbox-mode`<br>`codex.config.web-search`<br>`codex.config.personality`<br>`codex.config.service-tier`<br>`codex.config.project-doc-max-bytes`<br>`codex.config.project-doc-fallback-filename`<br>`codex.config.model-instructions-file`<br>`codex.config.experimental-compact-prompt-file`<br>`codex.config.agent.name`<br>`codex.config.agent.config-file`<br>`codex.config.skill.path`<br>`codex.config.skill.enabled` | `agent-reference`<br>`skill-resource`<br>`runtime-reference`<br>`fallback` | Admission済みconfig carrierの正確なsupported TOML value/item/map-key occurrence。MCP/Hook declarationは別のrecognition rowだけに属し、configured target pathはread authorityを得ない |
+| `plugin` | `codex.plugin.name`<br>`codex.plugin.version`<br>`codex.plugin.description`<br>`codex.plugin.author.name`<br>`codex.plugin.author.email`<br>`codex.plugin.author.url`<br>`codex.plugin.homepage`<br>`codex.plugin.repository`<br>`codex.plugin.license`<br>`codex.plugin.keyword`<br>`codex.plugin.skills`<br>`codex.plugin.mcp-servers`<br>`codex.plugin.apps`<br>`codex.plugin.hooks`<br>`codex.plugin.interface.display-name`<br>`codex.plugin.interface.short-description`<br>`codex.plugin.interface.long-description`<br>`codex.plugin.interface.developer-name`<br>`codex.plugin.interface.category`<br>`codex.plugin.interface.capability`<br>`codex.plugin.interface.website-url`<br>`codex.plugin.interface.privacy-policy-url`<br>`codex.plugin.interface.terms-of-service-url`<br>`codex.plugin.interface.default-prompt`<br>`codex.plugin.interface.brand-color`<br>`codex.plugin.interface.composer-icon`<br>`codex.plugin.interface.logo`<br>`codex.plugin.interface.screenshot` | `declared-component`<br>`skill-resource`<br>`runtime-reference` | 受理済み`.codex-plugin/plugin.json`の正確なmetadata/component/presentation leaf/item occurrence。`hooks` field omitted時はregistry定義済みdocumented-default component relationshipだけをemitできる |
+| `marketplace` | `marketplace.name`<br>`marketplace.interface.display-name`<br>`marketplace.plugin.name`<br>`marketplace.plugin.source`<br>`marketplace.plugin.source.type`<br>`marketplace.plugin.source.url`<br>`marketplace.plugin.source.ref`<br>`marketplace.plugin.source.sha`<br>`marketplace.plugin.source.package`<br>`marketplace.plugin.source.version`<br>`marketplace.plugin.source.registry`<br>`marketplace.plugin.policy.installation`<br>`marketplace.plugin.policy.authentication`<br>`marketplace.plugin.category` | `plugin-source`<br>`runtime-reference` | 受理済みRepository-root marketplace fileの正確なcatalog/plugin-entry leaf/item occurrence。`marketplace.plugin.source`だけがclosedなlocal-manifest derivationをseedできる |
+| `skill metadata` | `codex.skill-metadata.interface.display-name`<br>`codex.skill-metadata.interface.short-description`<br>`codex.skill-metadata.interface.icon-small`<br>`codex.skill-metadata.interface.icon-large`<br>`codex.skill-metadata.interface.brand-color`<br>`codex.skill-metadata.interface.default-prompt`<br>`codex.skill-metadata.policy.allow-implicit-invocation`<br>`codex.skill-metadata.dependency.tool.type`<br>`codex.skill-metadata.dependency.tool.value`<br>`codex.skill-metadata.dependency.tool.description`<br>`codex.skill-metadata.dependency.tool.transport`<br>`codex.skill-metadata.dependency.tool.url` | `skill-resource`<br>`runtime-reference` | Derived `agents/openai.yaml`の正確なsupported YAML leaf/item occurrence。Seed provenanceはtyped stateであり、このfileはowner `SKILL.md`のmetadata identityを継承しない |
+
+Initial releaseのCodex recognitionは、sharedな`prompt/command`または`output style` kindを使用しない。Typed layer、
+path-derived scope、selection、precedence、trust、default、applicability factはauthored metadataではないため、追加field IDにはしない。
+
 ## 既知の不確実性と必須condition fact
 
 1. Custom-agent pageは`.codex/agents/`のproject scopeを確立するが、directory traversalを完全には定義しない。
@@ -130,8 +166,8 @@ deprecated promptなどbehaviorごとのqualifierはUser behavior tableに残し
    direct `.rules` childだけを受理する。
 3. Repository config、hook、rule、MCPはproject-root detection、runtime `cwd`、project trustに依存する。
    Inventory存在はloadの証明ではない。
-4. Instruction fallback nameとbyte limitはexcluded user/profile/CLI inputで変更できる。全必須inputが判明した場合だけ
-   Inspectorはfileをselectedまたはomittedと呼べる。
+4. Instruction fallback nameとupstream byte budgetはexcluded user/profile/CLI inputで変更できる。全必須inputが
+   判明した場合だけInspectorはfileをselectedまたはomittedと呼べる。このvendor runtime budgetをInspectorのvalidity ruleにはしない。
 5. Plugin manifestやmarketplaceはauthored metadataだけを証明する。Installed copy、enabled state、component override、
    hosted availabilityは独立factである。
 6. Hosted ChatGPT Workはlocal Codex fileを読まない。Local-file recognitionをhosted taskへprojectしてはならない。

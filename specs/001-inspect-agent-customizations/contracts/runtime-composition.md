@@ -34,8 +34,8 @@ winner. Repository and tool-specific Global results are never merged into an “
 configuration”; the UI can show the vendor's documented runtime edge while preserving
 every owning Source boundary and every unavailable input.
 
-When a documented hosted or runtime input has no originating customization file, it is a
-bounded, evidence-linked `SourceConditionFact` attached to the relevant Source, tool, and
+When a documented hosted or runtime input has no originating customization file, it is an
+evidence-linked `SourceConditionFact` attached to the relevant Source, tool, and
 surface. It is not a file, recognition, or relationship origin and creates no synthetic file,
 file identity/path/text, comparison target, local or hosted read, or network request.
 Uninspected current state remains conditional or unavailable.
@@ -65,12 +65,12 @@ Strategy rows use these fact names. Each fact is independently `satisfied`, `uns
 | `plugin-state` | Catalog registration, availability, selected components, and component overrides. |
 | `agent-context` | Agent kind, parent session, context mode, tool availability, memory scope, and nesting depth. |
 | `event` | Hook event and event-specific input. |
-| `content-limits` | Instruction byte/line limits and configured fallback names. |
+| `content-limits` | Upstream instruction-content policy and configured fallback names. |
 | `documentation-variant` | Official-source variant when upstream pages conflict or leave an edge unspecified. |
 | `tool-availability` | Exact tools available to the current main or child agent context. |
 | `installation` | Whether a plugin, extension, or component is actually installed for the surface. |
 | `managed-policy` | Administrator, enterprise, or managed-policy inputs and gates. |
-| `instruction-byte-budget` | The configured instruction-byte ceiling and the order in which inputs consume it. |
+| `instruction-byte-budget` | The upstream-configured instruction byte budget and the order in which inputs consume it. |
 | `external-runtime` | Hosted, connector, server-provided, or other runtime data unavailable from local files. |
 
 ## GitHub Copilot strategies
@@ -140,7 +140,7 @@ Codex host. Hosted ChatGPT Work does not consume these local files.
 
 | Strategy ID | Tool / surface | Operation(s) | Runtime projection | Input behavior refs | Required condition facts | Documentation status | Official source refs |
 |---|---|---|---|---|---|---|---|
-| `codex.instructions.layering` | OpenAI Codex / local clients | `select-first`, `concatenate`, `filter` | Select the first non-empty User fallback, then at each project-root-to-`cwd` directory select at most one non-empty `AGENTS.override.md`, `AGENTS.md`, or configured fallback; concatenate broad-to-narrow until the project document byte budget is exhausted | `codex.behavior.repo.instructions`; `codex.behavior.user.instructions` | `surface`, `engine-version`, `runtime-cwd`, `project-root`, `scope-availability`, `selection`, `settings-inputs`, `content-limits`, `managed-policy`, `instruction-byte-budget` | documented; excluded higher-scope settings can leave fallback names and budget unknown | `openai.codex.agents-md`, `openai.codex.config-basic` |
+| `codex.instructions.layering` | OpenAI Codex / local clients | `select-first`, `concatenate`, `filter` | Select the first non-empty User fallback, then at each project-root-to-`cwd` directory select the first non-empty `AGENTS.override.md`, `AGENTS.md`, or configured fallback in documented filename order; concatenate broad-to-narrow until the upstream project-document byte budget is exhausted | `codex.behavior.repo.instructions`; `codex.behavior.user.instructions` | `surface`, `engine-version`, `runtime-cwd`, `project-root`, `scope-availability`, `selection`, `settings-inputs`, `content-limits`, `managed-policy`, `instruction-byte-budget` | documented; excluded higher-scope settings can leave fallback names and budget unknown | `openai.codex.agents-md`, `openai.codex.config-basic` |
 | `codex.skills.discovery` | OpenAI Codex / local clients | `select-first` | Discover skills from active Repository, User, admin, and system scopes; do not merge same-name skills and retain the selected origin | `codex.behavior.repo.skills`; `codex.behavior.user.skills` | `surface`, `engine-version`, `runtime-cwd`, `repository-root`, `scope-availability`, `feature-state`, `enablement`, `selection`, `managed-policy` | documented | `openai.codex.skills` |
 | `codex.agents.inheritance` | OpenAI Codex / local spawned sessions | `merge-map`, `replace` | Select a custom or built-in agent configuration, overlay the child file on the parent session for documented inheritable fields, and reapply live parent sandbox and approval overrides. Do not infer child `AGENTS.md` inheritance | `codex.behavior.repo.agents`; `codex.behavior.user.agents` | `surface`, `engine-version`, `project-root`, `scope-availability`, `trust`, `approval`, `selection`, `settings-inputs`, `agent-context`, `documentation-variant`, `tool-availability`, `managed-policy` | partially documented: project traversal and child instruction inheritance are incomplete | `openai.codex.config-basic`, `openai.codex.subagents` |
 | `codex.config.precedence` | OpenAI Codex / local clients | `merge-map`, `replace`, `select-closest` | Resolve User/profile/CLI and every trusted project config layer from root to `cwd`; use the closest applicable value for the same key and resolve relative paths from the containing `.codex` directory | `codex.behavior.repo.config`; `codex.behavior.user.config` | `surface`, `engine-version`, `runtime-cwd`, `project-root`, `scope-availability`, `trust`, `approval`, `selection`, `settings-inputs`, `managed-policy` | documented | `openai.codex.config-basic` |
@@ -177,11 +177,11 @@ plugin install, hook execution, or MCP connection.
 | `shared.relationship.runtime` | Any accepted recognition needing unavailable runtime data | `claude.behavior.repo.mcp`; `claude.behavior.user.mcp-state`; `claude.behavior.user.plugins`; `claude.behavior.user.settings`; `codex.behavior.repo.mcp`; `codex.behavior.user.config`; `codex.behavior.user.plugins`; `copilot.behavior.cloud.mcp`; `copilot.behavior.cloud.organization-agents`; `copilot.behavior.cloud.organization-instructions`; `copilot.behavior.cloud.plugins`; `copilot.behavior.cloud.remote-skills` | MCP-server-provided instructions, hosted settings, organization policy, installed-service state, and other runtime-only inputs | Source fact only; never connect, fetch, authenticate, or create a local candidate | FR-005, FR-007, FR-009, FR-014, FR-018, FR-019, FR-021, FR-022, FR-031, FR-039, QR-001, QR-005 | `anthropic.claude-code.directory.file-reference`, `anthropic.claude-code.ide.shared-differences`, `anthropic.claude-code.mcp.scopes-precedence`, `anthropic.claude-code.plugins.components-scopes`, `anthropic.claude-code.settings.scopes-precedence`, `github.copilot.cli.reference`, `github.copilot.cloud.instructions`, `github.copilot.custom-agents`, `github.copilot.instructions.support`, `github.copilot.plugins`, `github.copilot.skills`, `openai.codex.config-basic`, `openai.codex.mcp`, `openai.codex.plugins`, `vscode.copilot.plugins` |
 
 An authored relationship displays its exact validated source slice without masking,
-redaction, reveal state, or environment-variable substitution. A separate bounded semantic/
+redaction, reveal state, or environment-variable substitution. A separate validated semantic/
 structural path form may determine relationship status, but never replaces that displayed
 literal. A registry-defined documented default such as the conditional Codex
 `hooks/hooks.json` relation has no authored slice: its DTO uses
-`targetOrigin: documented-default` and `authoredTarget: null`, and the UI labels its bounded
+`targetOrigin: documented-default` and `authoredTarget: null`, and the UI labels its registry-defined
 path as a documented default. Deduplication uses the closed origin identity plus target
 identity; it never discards distinct authored occurrences or candidate provenance.
 

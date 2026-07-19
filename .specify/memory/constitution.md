@@ -1,15 +1,12 @@
 <!--
 Sync Impact Report
-- Version change: unratified template → 1.0.0
-- Added principles:
-  - I. Quality Above Expediency (NON-NEGOTIABLE)
-  - II. Readable, Maintainable, Intention-Revealing Code
-  - III. Verification Before Completion
-  - IV. Documentation Is Part of the Product
-  - V. Welcoming Participation
-- Added sections: Quality and Safety Standards; Development Workflow
-- Added language companion: .specify/memory/constitution.ja.md
-- Removed sections: none; template placeholders were replaced
+- Version change: 1.0.0 → 1.1.0
+- Modified principles: Quality and Safety Standards — assigned resource capacity to the
+  execution environment instead of product-defined numeric limits, separated intentional
+  authenticated sensitive-content access from incidental disclosure, and prohibited paths
+  or inspected values in operational logs
+- Added sections: none
+- Removed sections: none
 - Templates and guidance updated:
   - ✅ .specify/templates/plan-template.md
   - ✅ .specify/templates/spec-template.md
@@ -17,7 +14,8 @@ Sync Impact Report
   - ✅ .agents/skills/speckit-tasks/SKILL.md
   - ✅ .claude/skills/speckit-tasks/SKILL.md
   - ✅ .github/agents/speckit.tasks.agent.md
-  - ✅ AGENTS.md and AGENTS.ja.md
+  - ✅ AGENTS.md, AGENTS.ja.md, README.md, and README.ja.md reviewed; no textual
+    changes required
 - Follow-up TODOs: none
 -->
 # Agent Customization Inspector Constitution
@@ -84,9 +82,32 @@ migration or support path.
 - Formatting, linting, type checking where applicable, automated tests, and documentation
   validation MUST run as required quality gates in local verification and CI.
 - Inputs and inspected artifacts MUST be treated as untrusted. Implementations MUST use
-  least privilege, bounded resource use, safe failure behavior, and secret-safe logging
-  and display. Security and privacy implications MUST be reviewed whenever trust
-  boundaries, permissions, persistence, networking, or sensitive data change.
+  least privilege and safe failure behavior. File size, file or item count, parser shape,
+  request or response size, work-queue capacity, time, concurrency, and similar resource
+  ceilings MUST NOT be defined as product-specific numeric validation limits. Capacity is
+  determined by the Node.js runtime, parser, operating system, filesystem, browser, and
+  deployment environment. A recoverable environment or resource failure MUST abort the
+  affected publication attempt and MUST publish no item, Source, recognition or derived
+  result, result record or response, or generation from that attempt; only previously
+  committed state may remain available. A lifecycle or operational failure MAY be reported
+  outside that result, but MUST NOT classify the inspected artifact as valid or invalid.
+  This rule does not prohibit functional
+  cardinalities inherent to a feature. Security and privacy implications MUST be reviewed whenever trust boundaries,
+  permissions, persistence, networking, or sensitive data change.
+- Operational logs and telemetry MUST contain only stable fixed codes and opaque
+  identifiers. They MUST NOT contain inspected content or metadata, authored values,
+  Source-relative or absolute paths, capabilities, request or response bodies, or raw
+  parser or system errors. An authenticated, session-only product diagnostic MAY show the
+  minimum Source-relative path and metadata needed to resolve a file-specific
+  problem, but that information MUST NOT be copied into operational logs or telemetry.
+- Complete authored content, including credentials and other secrets, MAY be intentionally
+  returned by a session API or displayed only when a product specification explicitly
+  requires inspection of that content. API access MUST be capability-authenticated and
+  local and session-scoped. User-facing display MUST be preceded by clear sensitive-content
+  acknowledgement and MUST render the content inert. The content MUST NOT be persisted,
+  sent to a remote service, or copied into operational logs or telemetry. This narrow
+  allowance for intentional authenticated inspection does not permit incidental exposure
+  through any other surface.
 - Dependencies, public contracts, and data formats MUST be explicit and kept as small as
   practical. New dependencies and breaking changes require documented rationale and
   migration impact.
@@ -137,4 +158,4 @@ Known violations MUST be resolved before approval; urgency, generated code, and 
 automation do not waive compliance. Reviewers are responsible for examining the complete
 change and recording any residual uncertainty that requires further investigation.
 
-**Version**: 1.0.0 | **Ratified**: 2026-07-15 | **Last Amended**: 2026-07-15
+**Version**: 1.1.0 | **Ratified**: 2026-07-15 | **Last Amended**: 2026-07-19

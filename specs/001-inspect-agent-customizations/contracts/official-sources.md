@@ -27,8 +27,8 @@ Each table row owns one `OfficialSourceRecord` key and the following authored fi
   are not implied.
 - Each semicolon-separated entry under `sectionAnchors` is an exact rendered heading-text
   descriptor. It is not a CSS/XPath selector or a URL fragment. The drift checker must
-  find exactly one matching heading for every listed entry. A record has 1..16 anchors,
-  and each heading text is at most 256 UTF-8 bytes.
+  find exactly one matching heading for every listed entry. Anchor and heading-text
+  capacity and completion behavior are inherited from Node.js and the execution environment.
 - `reviewedOn` is the date of the last human semantic review. Every record in this
   release was reviewed on `2026-07-15`.
 - Every row uses `normalizationVersion: 1`.
@@ -39,13 +39,13 @@ arrays, maintained paraphrased assertions, `snapshotFingerprint`, and
 `semanticFingerprint` required by the data model. It must not introduce another
 `sourceId`, URL, host, anchor, or review date.
 
-The registry contains 47 records, below the closed limit of 128. Each fixture record has
-1..64 assertions. Every assertion has a stable assertion ID, at most 1,024 UTF-8 bytes of
-paraphrased expected semantics, and affected IDs that are subsets of that source's exact
+The registry contains exactly the rows below. Each fixture record has a non-empty maintained
+assertion set. Every assertion has a stable assertion ID, paraphrased expected semantics,
+and affected IDs that are subsets of that source's exact
 reverse index; copied page text and generic product-area targets are forbidden.
 `snapshotFingerprint` is the lowercase SHA-256 of the selected normalized sections.
 `semanticFingerprint` is the lowercase SHA-256 of canonical JSON for the assertions after
-their stable sort. No bounded field is truncated.
+their stable sort. No field is truncated.
 
 Only these exact official hosts are valid in this release:
 
@@ -187,7 +187,7 @@ pnpm exec vitest run tests/contract/official-sources
 ```
 
 It validates the exact registry/Evidence set equality, bilingual edge parity, reciprocal
-affected IDs, official hosts, record bounds, assertion targets, and recomputed
+affected IDs, official hosts, record schema, assertion targets, and recomputed
 `semanticFingerprint` without network access.
 
 Only a maintainer explicitly runs the networked drift review:
@@ -196,11 +196,12 @@ Only a maintainer explicitly runs the networked drift review:
 pnpm run check:official-sources
 ```
 
-The command sends no credentials, cookies, repository contents, or other local state. For
-each record it permits at most 10 seconds, 2 MiB after decompression, UTF-8 HTML or
-Markdown, and three HTTPS redirects. Every redirect hop must retain the row's exact
-`officialHost`. An HTTPS downgrade, cross-host redirect, wrong content type, oversized
-response, decoding failure, or missing or duplicate heading is a hard failure. A different
+The command sends no credentials, cookies, repository contents, or other local state. It
+accepts only UTF-8 HTML or Markdown, and every redirect hop must retain the row's exact
+`officialHost`. Request, response, redirect, and decoding capacity comes from Node.js and
+the execution environment; a recoverable environment failure fails closed. An HTTPS
+downgrade, cross-host redirect, wrong content type, decoding failure, or missing or duplicate
+heading is a hard failure. A different
 final URL on the same host is reported for review and never silently replaces
 `canonicalUrl`.
 

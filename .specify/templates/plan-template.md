@@ -32,7 +32,7 @@
 
 **Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]
 
-**Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]
+**Constraints**: [domain-specific, e.g., offline-capable, supported-runtime compatible or NEEDS CLARIFICATION]
 
 **Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
 
@@ -49,8 +49,12 @@
       contract, end-to-end, regression, boundary, error, and security-sensitive cases.
 - [ ] **Documentation parity**: Every affected human-authored document and its English or
       Japanese counterpart are listed, along with user and contributor guidance changes.
-- [ ] **Safe boundaries**: Trust boundaries, permissions, sensitive data, resource limits,
-      failure behavior, and dependency or public-contract impacts are documented.
+- [ ] **Safe boundaries**: Trust boundaries, permissions, mutation semantics, intentional
+      authenticated sensitive-content access and acknowledgement, path/content-free
+      operational logging, environment-derived resource behavior without product-defined
+      numeric validation limits, recoverable failure handling, authority revocation or
+      cancellation, late-work cleanup and residual failure behavior, and dependency or
+      public-contract impacts are documented.
 - [ ] **Welcoming participation**: Setup, accessibility, contributor workflow, and
       actionable diagnostics are preserved or improved; unavoidable barriers have a
       documented migration or support path.

@@ -8,7 +8,7 @@
 
 **ベンダー**: Anthropic Claude Code
 
-この文書は、Claude Codeの文書化された探索動作とInspectorの有界inventory方針を分離する。
+この文書は、Claude Codeの文書化された探索動作とInspectorのclosed inventory方針を分離する。
 これは[inspection allowlist](../inspection-path-allowlist.ja.md)に対応するClaude固有の
 source of truthである。Runtime combinationの詳細は
 [runtime composition](../runtime-composition.ja.md)のstrategy IDで定義し、この文書では
@@ -37,7 +37,7 @@ source of truthである。Runtime combinationの詳細は
 
 ## Repositoryのvendor動作
 
-Composition列は[runtime composition](../runtime-composition.ja.md#claude-code)のstrategy IDだけを
+Composition列は[runtime composition](../runtime-composition.ja.md#claude-code-strategy)のstrategy IDだけを
 参照する。
 
 | Behavior ID | Surface | Base | Relative locator | Traversal / trigger | Composition strategy | Status | Evidence |
@@ -120,7 +120,7 @@ Environment validation、consent、canonicalization、およびabsentな`CLAUDE_
 
 ## Derived／excluded ruleとrelationship index
 
-| Rule ID | Class | Bounded meaning | Behavior refs | Strategy refs | Status | Policy refs | Evidence |
+| Rule ID | Class | Closed derivation meaning | Behavior refs | Strategy refs | Status | Policy refs | Evidence |
 |---|---|---|---|---|---|---|---|
 | `claude.derived.local-plugin-manifest` | `bounded-derived-candidate` | 独立に受理したmarketplace catalogから、`./`で始まるlocal plugin `source`だけを受理し、marketplace rootからescapeなしで解決し、`<resolved-plugin-root>/.claude-plugin/plugin.json`だけを確認する。Manifestはoptionalなので不存在も正当 | `claude.behavior.repo.marketplace`、`claude.behavior.repo.plugin` | `claude.plugins.activation` | Vendorのrelative-source semanticsに整合するInspector derivation。Claudeのauto-scanではない | FR-003、FR-004、FR-005、FR-024、QR-001、QR-004、QR-005 | `anthropic.claude-code.marketplaces.catalog-sources`、`anthropic.claude-code.plugins.components-scopes` |
 | `claude.excluded.user-runtime` | `excluded` | `CLAUDE.md`以外の全User rowを除外する。Settings/state、rule、skill、command、agent、output style、MCP state、plugin/cache、agent memory、auto memory、workflowを含む | `claude.behavior.user.rules`、`claude.behavior.user.skills`、`claude.behavior.user.commands`、`claude.behavior.user.agents`、`claude.behavior.user.settings`、`claude.behavior.user.output-style`、`claude.behavior.user.mcp-state`、`claude.behavior.user.plugins`、`claude.behavior.user.agent-memory`、`claude.behavior.user.auto-memory`、`claude.behavior.user.workflows` | — | FR-016とFR-018の要件。除外はvendor supportを否定しない | FR-013、FR-014、FR-016、FR-018、QR-001、QR-005 | `anthropic.claude-code.memory.locations-load`、`anthropic.claude-code.skills.locations-discovery`、`anthropic.claude-code.changelog.legacy-command-nesting`、`anthropic.claude-code.subagents.scope-context`、`anthropic.claude-code.settings.scopes-precedence`、`anthropic.claude-code.output-styles.locations`、`anthropic.claude-code.mcp.scopes-precedence`、`anthropic.claude-code.directory.file-reference`、`anthropic.claude-code.plugins.components-scopes` |
@@ -131,6 +131,43 @@ Environment validation、consent、canonicalization、およびabsentな`CLAUDE_
 `claude.relationship.agent-context`、`claude.relationship.agent-mcp`は、
 [中央relationship-only registry](../runtime-composition.ja.md#normative-relationship-only-registry)だけで一度定義する。
 このindexはread authorityを与えず、定義を重複しない。
+
+## Initial releaseの規範的presentation allowlist
+
+次の表を、Claude Codeに対するclosedなFR-007 presentation allowlistとする。Kindの表記は正確な
+`ToolRecognition.kind` valueである。Field IDは、調査対象fileが与える任意のkeyではなく、authored source occurrenceの
+一つのclassを表す。Arrayの反復itemまたはdynamic map entryは、同じfield IDのもとでsource順の別occurrenceを生成する。
+MCP serverとHook eventの`*.name` IDでは、authored map key自体をoccurrenceとする。
+`marketplace.plugin.source`はclosed marketplace derivationが使う唯一のcross-vendor field IDであり、plain stringの
+source、またはobject sourceの`path` leafを表す。
+
+最終列はcommentaryではなく、規範的なsource-form applicabilityである。Effective eligibilityは、rowのclosedな
+field/relationship setと、candidate provenanceが示す実際のadmission済みsource formについてexact extractorがsupportする
+occurrenceのintersectionとする。1つのrowに複数formを記載しても、それらのschemaをunionしたり、1つのformのfieldを
+別formでeligibleにしたりしない。Conformance fixture/testは両gateをcoverする。
+
+各rowは網羅的であり、`—`はeligible setが空であることを意味する。Contained MCPまたはHook declarationは、すでに
+admission済みのowner file上で`MCP`または`hook` rowを使う。Ownerの別recognitionからfieldを取得せず、synthetic fileも
+作らない。未列挙のkeyとreferenceは、完全な`sourceText`だけに残す。Relationshipは、そのkindがこの表にあり、かつoriginが
+中央registryの適切なrelationship-only ruleでcoverされる場合だけemitできる。このallowlistはread、connection、execution、
+import、installation、activationのauthorityを一切与えない。
+
+| `ToolRecognition.kind` | Eligibleなdeclared-metadata `fieldId` value | Eligibleな`Relationship.kind` value | Initial-release source form |
+|---|---|---|---|
+| `instructions` | `claude.instructions.import-target` | `import` | 受理済み`CLAUDE.md`または`CLAUDE.local.md`で、Markdown code span/fenceの外にあるauthored `@path` token |
+| `rule` | `claude.rule.paths` | — | 受理済み`.claude/rules/**/*.md`のauthored `paths` frontmatter scalar。`paths` omitted時はmetadataをemitしない |
+| `skill` | `claude.skill.name`<br>`claude.skill.description`<br>`claude.skill.when-to-use`<br>`claude.skill.argument-hint`<br>`claude.skill.argument`<br>`claude.skill.disable-model-invocation`<br>`claude.skill.user-invocable`<br>`claude.skill.allowed-tool`<br>`claude.skill.disallowed-tool`<br>`claude.skill.model`<br>`claude.skill.effort`<br>`claude.skill.context`<br>`claude.skill.agent`<br>`claude.skill.paths`<br>`claude.skill.shell` | `skill-resource`<br>`agent-reference`<br>`context-inheritance` | 受理済み`SKILL.md`の正確なfrontmatter value/item occurrence。`hooks`とMCP declarationは別のcontained recognitionが所有する |
+| `agent` | `claude.agent.name`<br>`claude.agent.description`<br>`claude.agent.tool`<br>`claude.agent.disallowed-tool`<br>`claude.agent.model`<br>`claude.agent.permission-mode`<br>`claude.agent.max-turns`<br>`claude.agent.skill`<br>`claude.agent.memory`<br>`claude.agent.background`<br>`claude.agent.effort`<br>`claude.agent.isolation`<br>`claude.agent.color`<br>`claude.agent.initial-prompt` | `agent-reference`<br>`context-inheritance`<br>`runtime-reference` | 受理済み`.claude/agents/**/*.md`の正確なfrontmatter value/item occurrence。`hooks`と`mcpServers`は別のcontained recognitionが所有する |
+| `prompt/command` | `claude.command.name`<br>`claude.command.description`<br>`claude.command.when-to-use`<br>`claude.command.argument-hint`<br>`claude.command.argument`<br>`claude.command.disable-model-invocation`<br>`claude.command.user-invocable`<br>`claude.command.allowed-tool`<br>`claude.command.disallowed-tool`<br>`claude.command.model`<br>`claude.command.effort`<br>`claude.command.context`<br>`claude.command.agent`<br>`claude.command.paths`<br>`claude.command.shell` | `agent-reference`<br>`context-inheritance` | 受理済みlegacy command Markdown fileの正確なfrontmatter value/item occurrence。Matched pathから導出するnamespaceとinvocation nameはtyped provenanceであり、declared metadataではない |
+| `hook` | `claude.hook.event`<br>`claude.hook.matcher`<br>`claude.hook.handler.type`<br>`claude.hook.handler.if`<br>`claude.hook.handler.timeout`<br>`claude.hook.handler.status-message`<br>`claude.hook.handler.once`<br>`claude.hook.handler.command`<br>`claude.hook.handler.arg`<br>`claude.hook.handler.async`<br>`claude.hook.handler.shell`<br>`claude.hook.handler.url`<br>`claude.hook.handler.header.name`<br>`claude.hook.handler.header.value`<br>`claude.hook.handler.allowed-env-var`<br>`claude.hook.handler.server`<br>`claude.hook.handler.tool`<br>`claude.hook.handler.input`<br>`claude.hook.handler.prompt`<br>`claude.hook.handler.model` | `runtime-reference` | 受理済みsettings、skill、agent、plugin、marketplace owner上のcontained `hooks` declarationにあるevent map key、matcher value、handler leaf/item value |
+| `MCP` | `claude.mcp.server.name`<br>`claude.mcp.server.type`<br>`claude.mcp.server.command`<br>`claude.mcp.server.arg`<br>`claude.mcp.server.env.name`<br>`claude.mcp.server.env.value`<br>`claude.mcp.server.url`<br>`claude.mcp.server.header.name`<br>`claude.mcp.server.header.value`<br>`claude.mcp.server.headers-helper`<br>`claude.mcp.server.timeout`<br>`claude.mcp.server.always-load`<br>`claude.mcp.server.oauth.client-id`<br>`claude.mcp.server.oauth.callback-port`<br>`claude.mcp.server.oauth.auth-server-metadata-url`<br>`claude.mcp.server.oauth.scopes` | `runtime-reference` | Root `.mcp.json`、またはすでにadmission済みowner上のcontained declarationにあるserver-name map keyと正確なserver leaf/item occurrence |
+| `settings/config` | `claude.settings.model`<br>`claude.settings.effort-level`<br>`claude.settings.agent`<br>`claude.settings.output-style`<br>`claude.settings.permission.allow`<br>`claude.settings.permission.ask`<br>`claude.settings.permission.deny`<br>`claude.settings.permission.default-mode`<br>`claude.settings.env.name`<br>`claude.settings.env.value`<br>`claude.settings.enabled-plugin.name`<br>`claude.settings.enabled-plugin.value`<br>`claude.settings.extra-known-marketplace.name`<br>`claude.settings.extra-known-marketplace.source`<br>`claude.settings.extra-known-marketplace.auto-update`<br>`claude.settings.disable-all-hooks` | `agent-reference`<br>`declared-component`<br>`runtime-reference` | Root `.claude/settings.json`または`.claude/settings.local.json`の正確なsupported leaf/item occurrence。Contained Hook/MCP valueはそれぞれのrecognition rowだけに属する |
+| `output style` | `claude.output-style.name`<br>`claude.output-style.description`<br>`claude.output-style.keep-coding-instructions`<br>`claude.output-style.force-for-plugin` | — | 受理済みdirect-child output-style Markdown fileの正確なfrontmatter value |
+| `plugin` | `claude.plugin.name`<br>`claude.plugin.display-name`<br>`claude.plugin.version`<br>`claude.plugin.description`<br>`claude.plugin.author.name`<br>`claude.plugin.author.email`<br>`claude.plugin.author.url`<br>`claude.plugin.homepage`<br>`claude.plugin.repository`<br>`claude.plugin.license`<br>`claude.plugin.keyword`<br>`claude.plugin.default-enabled`<br>`claude.plugin.skills`<br>`claude.plugin.commands`<br>`claude.plugin.agents`<br>`claude.plugin.hooks`<br>`claude.plugin.mcp-servers`<br>`claude.plugin.output-styles`<br>`claude.plugin.lsp-servers`<br>`claude.plugin.experimental.themes`<br>`claude.plugin.experimental.monitors`<br>`claude.plugin.dependency.name`<br>`claude.plugin.dependency.version` | `declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | 受理済み`.claude-plugin/plugin.json`の正確なmetadata/component/dependency leaf/item occurrence。Inline Hook/MCP bodyは別のcontained recognitionだけがprojectする |
+| `marketplace` | `marketplace.name`<br>`marketplace.owner.name`<br>`marketplace.owner.email`<br>`marketplace.description`<br>`marketplace.version`<br>`marketplace.metadata.plugin-root`<br>`marketplace.plugin.name`<br>`marketplace.plugin.source`<br>`marketplace.plugin.source.type`<br>`marketplace.plugin.source.url`<br>`marketplace.plugin.source.repo`<br>`marketplace.plugin.source.ref`<br>`marketplace.plugin.source.sha`<br>`marketplace.plugin.display-name`<br>`marketplace.plugin.description`<br>`marketplace.plugin.version`<br>`marketplace.plugin.author.name`<br>`marketplace.plugin.author.email`<br>`marketplace.plugin.homepage`<br>`marketplace.plugin.repository`<br>`marketplace.plugin.license`<br>`marketplace.plugin.keyword`<br>`marketplace.plugin.category`<br>`marketplace.plugin.tag`<br>`marketplace.plugin.strict`<br>`marketplace.plugin.default-enabled`<br>`marketplace.plugin.skills`<br>`marketplace.plugin.commands`<br>`marketplace.plugin.agents`<br>`marketplace.plugin.hooks`<br>`marketplace.plugin.mcp-servers`<br>`marketplace.plugin.lsp-servers` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | 受理済み`.claude-plugin/marketplace.json`の正確なcatalog/plugin-entry leaf/item occurrence。`marketplace.plugin.source`だけがclosedなlocal-manifest derivationをseedできる |
+
+Initial releaseのClaude recognitionは、sharedな`skill metadata` kindを使用しない。Typed layer、path-derived namespace、
+selection、precedence、trust、surface、default、applicability factはauthored metadataではないため、追加field IDにはしない。
 
 ## 既知の曖昧さとversion-sensitive fact
 

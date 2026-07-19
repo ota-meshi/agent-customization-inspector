@@ -5,7 +5,7 @@
 The model has two representations:
 
 - **Internal session records** may contain canonical paths, file descriptors during a
-  bounded read, raw bytes, and decoded authored content while an atomic snapshot is being
+  verified read, raw bytes, and decoded authored content while an atomic snapshot is being
   built. They never enter operational diagnostics or logs.
 - **Public DTOs** contain Source-relative Paths, complete authored source text for readable
   files, exact returned declared-metadata/relationship source slices, recognitions, relationships,
@@ -41,7 +41,7 @@ InspectionSession
 │       ├── Relationship (zero or more)
 │       │   └── ApplicabilityAssessment
 │       └── Diagnostic (zero or more)
-├── StaleSourceFailure (zero to four unresolved explicit-rescan failures)
+├── StaleSourceFailure (zero or more unresolved explicit-rescan failures)
 ├── GlobalConsentPreview (zero or one current lexical preview)
 ├── GlobalConsent (zero or one active record)
 │   ├── GlobalToolControl (one per confirmed tool; owns an optional InspectionRootContext)
@@ -68,14 +68,13 @@ BrowserState
 | `apiVersion` | literal `1` | DTO | Reject incompatible clients |
 | `createdAt` | `UtcTimestamp` | DTO | Process start time |
 | `sources` | `Source[]` | DTO | Exactly one Repository; zero to three Global, with at most one for each of Copilot, Claude, and Codex |
-| `activeGeneration` | `GenerationNumber` | DTO | Identifies the last committed snapshot; monotonically increases only on successful complete or bounded-partial commit |
+| `activeGeneration` | `GenerationNumber` | DTO | Identifies the last committed snapshot; monotonically increases only on a successful complete or contracted-partial commit |
 | `snapshotState` | `current \| stale-after-fatal-rescan` | DTO | Derived from `staleFailures`; stale exactly while one or more explicit-rescan failures remain unresolved |
-| `staleFailures` | `StaleSourceFailure[]` | DTO | At most one current entry per published Source and at most four total, sorted by Source; empty exactly while `snapshotState` is current |
+| `staleFailures` | `StaleSourceFailure[]` | DTO | One current entry may exist per published Source, sorted by Source; empty exactly while `snapshotState` is current |
 | `liveness` | `{ heartbeatIntervalMs: 1000, requestTimeoutMs: 750, leaseDurationMs: 2000 }` | DTO | Fixed authorized-page liveness protocol; each successful liveness response renews only the current browser-memory lease |
 | `globalControl` | `GlobalControlView \| null` | DTO | Null only when no active consent/control state exists; lets a freshly authenticated client recover immediate disable and preview-gated retry controls after a purge without exposing canonical roots |
-| `limits` | `ResourceLimits` | DTO | Exact enforced limits, not advisory values |
 | `sensitiveContentWarning` | `{ messageKey, nextStepKey, acknowledgementScope }` | DTO | Fixed localized keys explain before source or comparison opens that complete authored content may contain sensitive values; scope is literal `authorized-browser-session` |
-| `sessionDiagnosticIds` | opaque string[] | DTO | Out-of-generation lifecycle diagnostics accepted under the 1,024-entry session limit |
+| `sessionDiagnosticIds` | opaque string[] | DTO | Current out-of-generation lifecycle diagnostics |
 | `capability` | 256-bit random token | internal | Constant-time comparison; never serialized in snapshots/logs |
 
 The session is created from the launch process `cwd`. At process start it publishes the
@@ -85,133 +84,51 @@ scan. It has no repository picker, ancestor search, profile, cache, or resume id
 
 `UtcTimestamp` is an exact 24-byte ASCII UTC value in
 `YYYY-MM-DDTHH:mm:ss.sssZ` form with valid calendar fields; every field called timestamp in
-this model uses it. `GenerationNumber` is an integer from `0` through
-`Number.MAX_SAFE_INTEGER` (`9,007,199,254,740,991`). A coordinator that would advance past
-that value rejects the operation with a fixed process-restart error before mutation.
+this model uses it. `GenerationNumber` is a non-negative safe integer representable by the
+active Node.js runtime. A coordinator that cannot represent the next generation rejects the
+operation with a fixed process-restart error before mutation.
 
-### ResourceLimits
+The Inspector defines no product-specific byte, file-count, entry-count, graph-count,
+parser-depth, message-size, request-size, response-size, worker-count, queue-capacity, or
+wall-clock resource ceiling. Capacity is inherited from Node.js, the parser libraries, the
+browser, the operating system, the filesystem, and the execution environment. A
+recoverable capacity or resource failure is reported with a safe fixed-code lifecycle diagnostic and
+never becomes a customization-validity verdict or contracted-partial justification. Extraction
+for an affected recognition is all-or-nothing, and a capacity/resource-failed scan aborts its
+attempt, commits no item, Source, recognition, derived result, scan-result record or response,
+or generation, and leaves only the prior committed snapshot available. Unrecoverable
+engine or process termination cannot be converted into an application diagnostic.
 
-| Field | Value | Limit behavior |
-|---|---:|---|
-| `maxFileBytes` | 1 MiB | Do not read beyond the limit; retain the inventory item with a diagnostic |
-| `maxTotalFileBytes` | 32 MiB | Publish a bounded partial generation |
-| `maxVisitedEntries` | 200,000 | Stop enumeration deterministically |
-| `maxCustomizationFiles` | 2,000 | Stop accepting new candidates |
-| `maxPathSegments` | 64 | Skip deeper entries with a diagnostic |
-| `maxAliasPathsPerFile` | 1,024 | Keep the primary identity, stop accepting aliases, publish partial, and add a diagnostic |
-| `maxAliasPathsPerGeneration` | 50,000 | Stop accepting aliases in deterministic file/path order, publish partial, and add a diagnostic |
-| `maxRecognitionsPerFile` | 36 | At most one record for each closed tool/kind pair; fail that file's later recognition extraction closed |
-| `maxRecognitionsPerGeneration` | 8,000 | Stop accepting recognitions in deterministic file/tool/kind order and publish partial |
-| `maxDirectRelationshipsPerFile` | 1,000 | Retain the first 1,000 in stable extractor order, publish partial with a diagnostic, and never follow relationships |
-| `maxRelationshipsPerGeneration` | 100,000 | Stop accepting complete relationship records in stable global order and publish partial |
-| `maxProvenancesPerRecognition` | 2,000 | Stop accepting additional admissions, publish a partial generation, and add a diagnostic |
-| `maxCandidateProvenancesPerGeneration` | 100,000 | Stop accepting complete provenance records in stable global order and publish partial |
-| `maxDerivedTargetsPerSeed` | 128 | Retain the first 128 distinct validated targets in stable typed-extractor order; stop the seed, publish partial, and offer a diagnostic candidate on the next target |
-| `maxDerivationDepth` | 1 | A bounded-derived provenance cannot seed another derived edge |
-| `maxFallbackBasenamesPerConfig` | 16 | Reject additional Codex fallback values with a limit diagnostic |
-| `maxFallbackBasenameBytes` | 128 UTF-8 bytes | Reject the individual Codex fallback value |
-| `maxParseDepth` | 64 | Discard the affected recognition's extraction result and publish a partial diagnostic |
-| `maxParseNodes` | 50,000 | Discard the affected recognition's extraction result and publish a partial diagnostic |
-| `maxScalarBytes` | 64 KiB UTF-8 | Apply independently to an exact authored-literal source slice and its internal typed semantic value; discard that recognition's extraction result and retain no value in metadata, relationships, or derivation if either exceeds it |
-| `maxMetadataEntriesPerRecognition` | 512 | Discard the affected recognition's whole extraction result instead of returning a lossy prefix |
-| `maxMetadataEntriesPerGeneration` | 100,000 | Reject the next recognition's whole extraction result, publish partial, and retain no prefix from that recognition |
-| `parseTimeBudgetMs` | 2,000 per recognition | Terminate and replace the parser worker; retain the complete readable source text and a diagnostic, but no partial metadata extraction |
-| `maxParserWorkers` | 2 | Queue bounded parser jobs instead of creating another worker |
-| `parserWorkerMaxOldGenerationMiB` | 64 | Set the Worker V8 old-generation resource limit; discard the failed recognition result if exceeded |
-| `parserWorkerMaxYoungGenerationMiB` | 16 | Set the Worker V8 young-generation resource limit; discard the failed recognition result if exceeded |
-| `parserWorkerStackSizeMiB` | 4 | Set the Worker V8 stack resource limit; discard the failed recognition result if exceeded |
-| `maxParserMessageBytesPerRecognition` | 2 MiB | Reject the worker message before host retention and fail that recognition's extraction atomically |
-| `maxParserMessageBytesPerGeneration` | 32 MiB | Stop dispatching later recognition parses in deterministic order and publish partial |
-| `maxRetainedGraphBytes` | 64 MiB | Stop before retaining the next complete graph record, publish partial, and never retain a partial record |
-| `maxSourceConditionFactsPerSource` | 256 | Reject an invalid shipped registry before scanning; never truncate known limitations |
-| `maxConditionFactsPerAssessment` | 64 | Truncate no known fact; reject an invalid registry emitter before scanning |
-| `maxDiagnosticsPerFile` | 128 | Reserve the final slot for a file-limit sentinel; suppress later details and publish partial on overflow |
-| `maxDiagnosticsPerSource` | 5,000 | Reserve the final slot for a source-limit sentinel; suppress later details and publish partial on overflow |
-| `maxDiagnosticsPerGeneration` | 10,000 | Reserve the final slot for a generation-limit sentinel; suppress later details and publish partial on overflow |
-| `maxDiagnosticsPerSession` | 1,024 | Bound out-of-generation lifecycle diagnostics; reserve four fixed failure slots (Repository plus one per supported Global tool) and the final slot for a session-limit sentinel, leaving 1,019 ordinary details without replacing committed generation content |
-| `maxSessionLifecycleDiagnosticRecordBytes` | 2 KiB canonical UTF-8 JSON delta | Bound one lifecycle record with its duplicated ID-list occurrence and separators; replace an oversized keyed failure with its compact per-key record, but suppress an oversized ordinary detail into the session sentinel |
-| `maxSessionLifecycleDiagnosticBytes` | 2 MiB canonical UTF-8 JSON delta | Bound all paired lifecycle Diagnostic/ID insertions independently of committed generation content |
-| `reservedSessionLifecycleFixedBytes` | 16 KiB | Withhold from ordinary lifecycle details for the four fixed failure slots and session sentinel before any ordinary admission |
-| `maxSessionSnapshotControlBytes` | 1 MiB canonical UTF-8 JSON delta | Reserve for session-owned `snapshotState`, `staleFailures`, `globalControl`, and Source lifecycle/progress projections; customization-derived strings cannot consume it |
-| `maxSessionSnapshotOverlayBytes` | 3 MiB canonical UTF-8 JSON delta | Exact sum of the 2-MiB lifecycle-diagnostic and 1-MiB session-control sub-budgets |
-| `maxGlobalPreviewRootInputBytes` | 32 KiB UTF-8 | Stop bounded length counting before normalization/escaping and return an `oversized` null-display entry |
-| `maxGlobalPreviewDisplayBytes` | 192 KiB UTF-8 | Stop the streaming escape before output expansion and return the same `oversized` null-display entry |
-| `maxRequestBodyBytes` | 64 KiB | Reject before JSON parsing |
-| `maxSessionSnapshotBaseBytes` | 5 MiB canonical UTF-8 JSON | Bound the complete success envelope with all session-owned mutable overlay fields in their neutral forms while building a generation |
-| `maxSessionSnapshotBytes` | 8 MiB UTF-8 JSON | Exact sum of the 5-MiB base and 3-MiB session overlay budgets; never truncate an API response |
-| `maxFileDetailBytes` | 4 MiB UTF-8 JSON | Enforce while accepting records for a file; never truncate source text or a graph record |
-| `scanDeadlineMs` | 30,000 | Abort and publish a bounded partial generation |
-| `maxComparisonLinesPerFile` | 20,000 | Skip Monaco diff highlighting; retain both complete authored source views |
-| `comparisonTimeBudgetMs` | 5,000 | Cancel Monaco diff computation; retain both complete authored source views |
-
-The server enforces scan, parser, retained-graph, response, and request limits. Parser jobs run outside the
-host event loop in a pool of at most two `Worker` threads. Each worker has V8 resource
-limits of 64 MiB old generation, 16 MiB young generation, and a 4 MiB stack; it is replaced
-after a timeout, resource-limit exit, or uncaught failure. Tree traversal additionally
-enforces the depth, node, scalar, and metadata-entry limits above. A failed recognition
-result is all-or-nothing: no metadata, relationships, or derived declarations from that
-result are published, while successful recognitions for the same physical file may remain.
-Before allocating or retaining each complete alias, recognition, metadata set, provenance,
-relationship, parser message, or DTO-visible diagnostic, the host applies the numeric count
-limits and a deterministic UTF-8 JSON/record-byte accounting function. It stops at the first
-record that would exceed a per-file, generation, snapshot, or detail budget, retains no
-prefix of that record, marks the generation partial, and emits the applicable bounded
-diagnostic. For snapshot accounting, the base projection is the complete success envelope
-with generation diagnostics present and session-owned mutable fields in neutral form:
-`sessionDiagnosticIds: []`, no lifecycle-class records in `diagnostics`,
-`snapshotState: current`, `staleFailures: []`, `globalControl: null`, and no
-Source lifecycle/progress delta; every published Source is projected as `status: idle` with
-`progress: null`. It may occupy at most 5 MiB. A lifecycle record's charge is the
-exact canonical byte delta produced by inserting its complete Diagnostic, its duplicated ID
-list occurrence, and required separators into that projection. The lifecycle aggregator
-admits at most 2 MiB of such deltas and withholds 16 KiB before ordinary admission for the
-four fixed failure records and session sentinel. A keyed failure candidate above the 2-KiB
-per-record charge is replaced by the fixed compact diagnostic for the same Repository/tool
-key before accounting. An oversized ordinary detail has no such key; it is suppressed and
-increments the reserved session sentinel instead. The separately reserved 1-MiB control delta covers every legal encoding of the
-closed, server-owned `snapshotState`, up to four `staleFailures`, `globalControl`, and
-Source lifecycle/progress projections. Build-time worst-case encoding tests must fit that
-sub-budget; an implementation change that does not fit fails the build rather than borrowing
-diagnostic or base bytes. Thus any post-commit session mutation remains within the 3-MiB
-overlay and cannot enlarge the final envelope beyond 8 MiB. The committed graph is therefore always encodable as a complete snapshot and
-complete file details. A route never truncates a DTO; an impossible post-commit size
-invariant returns a fixed safe internal error and exposes no partial content. The
-client enforces the two comparison limits from the same DTO values and configures Monaco
-with the same finite time budget; neither side treats these values as advisory.
-
-Canonical JSON accounting uses the exact deterministic production encoder: contract field
-order, JSON escaping, separators, and omission rules are fixed, with no added whitespace.
-Record-delta admission and the final envelope use that encoder. For a successful response,
-the host materializes the complete UTF-8 entity-body buffer once while the selected snapshot
-is coherent, checks that buffer's exact byte length, and gives the same unchanged buffer to
-the HTTP layer; the route never invokes a second serializer. Thus accounting bytes and
-delivered entity-body bytes cannot diverge.
+Successful API responses contain complete DTOs and are never deliberately truncated. The
+host serializes a coherent snapshot once and passes the resulting unchanged entity body to
+the HTTP layer. A recoverable pre-commit serialization or encoding failure aborts the current
+attempt, publishes no item, Source, recognition, derived result, scan-result record or
+response, or generation, and retains only the prior committed snapshot. A socket-write or
+other delivery failure after atomic commit does not alter that committed snapshot or outcome,
+reports no successful response payload, and never converts a truncated body into a partial
+DTO. Monaco and the browser likewise use their environment-provided capabilities; comparison
+failure leaves both complete authored source views available.
 
 ### Source
 
 | Field | Type | Rules |
 |---|---|---|
-| `sourceId` | opaque ASCII string, at most 64 bytes | Server-generated and stable for the process lifetime |
+| `sourceId` | opaque ASCII string | Server-generated and stable for the process lifetime |
 | `kind` | `repository \| global` | Exactly one Repository source; zero to three Global Sources |
 | `tool` | `copilot \| claude \| codex \| null` | Repository pairs with null; each Global Source pairs with exactly one supported tool, and no two Global Sources share a tool |
 | `enabled` | boolean | Repository and every published Global Source are true; absence means only that no Source is published for that tool, while `globalControl` distinguishes disabled, pending, and retryable control states; a disabling source remains true until atomic removal |
-| `status` | `idle \| scanning \| disabling \| ready \| partial \| failed` | Follows transitions below; `failed` means the latest attempt failed while the last committed snapshot remains available; only a fatal explicit rescan marks that snapshot stale |
+| `status` | `idle \| scanning \| disabling \| ready \| partial \| failed` | Follows transitions below; public `partial` denotes only a contracted-partial result committed after complete traversal and a deterministic entry-local non-capacity failure; `failed` means the latest attempt failed while the last committed snapshot remains available; only a fatal explicit rescan marks that snapshot stale |
 | `boundary` | `SourceBoundary` | Exactly one root: launch `cwd` for Repository or the one consented home root for this Global Source's tool |
 | `generation` | `GenerationNumber` | Equals the session-wide last committed generation for every published source |
+| `scanRequestId` | opaque ASCII string or null | Latest admitted scan for this Source; set immediately on admission and retained through waiting/scanning/ready/partial/failed so status cannot be confused with an older request; null only before any scan admission |
 | `progress` | `ScanProgress` or null | Non-null only while `scanning`/`disabling` or after `ready`/`partial`; null for `idle` and `failed` |
-| `conditionFacts` | `SourceConditionFact[]` | Bounded source-level facts for documented non-file behavior or excluded/runtime inputs that have no originating file |
-| `diagnosticIds` | opaque string[] | Source-scoped diagnostics in the last committed generation accepted under the 5,000-entry source limit |
+| `conditionFacts` | `SourceConditionFact[]` | Source-level facts for documented non-file behavior or excluded/runtime inputs that have no originating file |
+| `diagnosticIds` | opaque string[] | Source-scoped diagnostics in the last committed generation |
 
-`status` and `progress` are session-owned operational overlays; a fatal attempt may update
+`status`, `scanRequestId`, and `progress` are session-owned operational overlays; a fatal attempt may update
 them without mutating the committed Source graph or generation-owned IDs. Boundary,
 condition, file, recognition, relationship, and generation-scoped diagnostic content
 changes only through an atomic generation commit.
-
-For snapshot-byte accounting, every published Source has the same synthetic neutral form:
-`status: idle` and `progress: null`. Every actual Source lifecycle/progress projection—
-including committed `ready`/`partial` plus final progress and transient `scanning`,
-`disabling`, or `failed` forms—is charged to the 1-MiB session-control overlay. No
-per-Source historical baseline is needed or inferred from another Source's later generation.
 
 Source-level condition facts never authorize a path read and never fabricate a
 `Relationship.fromFileId`. A candidate provenance or relationship whose rule is listed in
@@ -233,7 +150,7 @@ input that has no originating file.
 | `sourceRefs` | non-empty sorted `OfficialSourceRecord.sourceId`[] | Stable evidence exposed for the fact and reciprocally validated; never grants a read |
 | `condition` | `ConditionFact` | Fixed reason code and any documented status; `satisfied` records a non-file runtime fact but still grants no read authority and never duplicates an authored source value |
 
-The fixed registry may emit at most 256 entries per source. Entries are deduplicated by
+The fixed registry entries are deduplicated by
 tool, surface, explaining rule, affected-rule set, evidence set, condition key, and reason
 code. A fact has no file ID, path, authored source, relationship origin, or comparison target
 and never initiates local or hosted I/O.
@@ -244,7 +161,7 @@ and never initiates local or hosted I/O.
 |---|---|---|---|
 | `boundaryId` | opaque string | internal | Binds tickets and root context; unnecessary in the DTO because every Source has exactly one boundary |
 | `tool` | `copilot \| claude \| codex \| null` | internal | Must equal the owning Source's already-published tool; Repository uses null |
-| `displayRoot` | string | DTO | Local path intended for the user; control characters escaped and bounded by `maxGlobalPreviewDisplayBytes` |
+| `displayRoot` | string | DTO | Local path intended for the user; control characters are escaped for presentation |
 | `canonicalRoot` | absolute canonical path or null | internal | Diagnostic/consent comparison and repeated containment checks; never sufficient by itself to authorize a read and never returned outside an enabled boundary |
 | `rootContext` | `InspectionRootContext` | internal | Required before enumeration; Repository owns it directly, while a Global boundary references the active consent's `GlobalToolControl`-owned context; only the central safe-filesystem layer can create or consume it |
 | `origin` | `cwd \| default-home \| environment` | DTO | Explains how the boundary was selected |
@@ -288,34 +205,37 @@ brand enforces application-level authority; it is not an OS filesystem capabilit
 | `InspectionRootContext.rootIdentity` | bigint `dev`/`ino`/`mode` snapshot | Captured with `lstat`; compared again before traversal and every candidate read |
 | `InspectionRootContext.rootDevice` | bigint `dev` | Detects device changes exposed by Node; does not claim to identify every mount transition |
 | `InspectionRootContext.state` | `active \| closed` | Close on Repository/process end, owning Global-control disposal/disable, or retry revalidation that rejects a formerly admitted root; closed contexts reject all calls |
-| `ScanEntryTicket.privateBrand` / `rootContext` | module-private brand / internal reference | Issued only by bounded enumeration for one active root context |
+| `ScanEntryTicket.privateBrand` / `rootContext` | module-private brand / internal reference | Issued only by authorized enumeration for one active root context |
 | `ScanEntryTicket.sourceId` / `boundaryId` / `generationId` | opaque IDs / integer | Bind the ticket to exactly one source boundary and scan generation |
+| `ScanEntryTicket.scanRequestId` | opaque ASCII string | Binds publication authority to exactly one automatic or explicit source scan; revocation makes every late continuation cleanup-only |
 | `ScanEntryTicket.traversalPlan` | internal immutable reference | Exact versioned plan that authorized the targeted lookup or directory enumeration |
 | `ScanEntryTicket.rawRelativeSegments` | exact `Dirent.name`/target-spelling segment array | Sole segments used to reconstruct, verify, and read the filesystem path; never serialized or accepted from a client |
 | `ScanEntryTicket.classificationSegments` | collision-free NFC segment array | Used only for matcher classification, deterministic order, and `SourceRelativePath`; never substituted into a filesystem operation |
 | `ScanEntryTicket.canonicalAtEnumeration` | absolute canonical path | Internal comparison value, not standalone read authority |
-| `ScanEntryTicket.ancestorSnapshots` | bounded ordered snapshot[] | One record per relative directory prefix with `dev`, `ino`, and `mode`; compared before open, before read, and after read |
+| `ScanEntryTicket.ancestorSnapshots` | ordered snapshot[] | One record per relative directory prefix with `dev`, `ino`, and `mode`; compared before open, before read, and after read |
 | `ScanEntryTicket.enumerationIdentity` / `enumerationMetadata` | bigint path-stat snapshot | Exact `dev`, `ino`, `mode`, `size`, `mtimeNs`, and `ctimeNs` compared with the path and opened `FileHandle` before bytes are read |
-| `ScanEntryTicket.occurrence` | non-negative integer | Deterministic enumeration order; capped by `maxVisitedEntries` |
+| `ScanEntryTicket.occurrence` | non-negative integer | Deterministic enumeration order |
 | `ScanEntryTicket.state` | `enumerated \| consumed \| stale \| rejected` | A ticket can be read at most once per generation; stale/rejected tickets return no accepted bytes |
 | `VerifiedReadReceipt.entryTicket` | internal reference | Exact ticket consumed for this file |
 | `VerifiedReadReceipt.fileHandleIdentity` | bigint `dev`/`ino`/`mode` snapshot | Sole source of `CustomizationFile.identity`; never treated as durable |
-| `VerifiedReadReceipt.preOpenChecks` | bounded verification record | Before `open`, records root identity, every ancestor `lstat`, candidate path `lstat`, candidate `realpath`/`path.relative`, and the repeated candidate path `lstat` in that order; comparisons use `dev`, `ino`, `mode`, `size`, `mtimeNs`, and `ctimeNs` where applicable, the first candidate check rejects links/non-regular objects before canonicalization, and both candidate snapshots must match each other and enumeration |
-| `VerifiedReadReceipt.preReadChecks` / `postReadChecks` | bounded verification records | After `open` before any read, and again after the read while the same handle remains open, repeat the exact pre-open sequence in the same order and then compare the same `FileHandle.stat({ bigint: true })` fields |
+| `VerifiedReadReceipt.preOpenChecks` | ordered verification record | Before `open`, records root identity, every ancestor `lstat`, candidate path `lstat`, candidate `realpath`/`path.relative`, and the repeated candidate path `lstat` in that order; comparisons use `dev`, `ino`, `mode`, `size`, `mtimeNs`, and `ctimeNs` where applicable, the first candidate check rejects links/non-regular objects before canonicalization, and both candidate snapshots must match each other and enumeration |
+| `VerifiedReadReceipt.preReadChecks` / `postReadChecks` | ordered verification records | After `open` before any read, and again after the read while the same handle remains open, repeat the exact pre-open sequence in the same order and then compare the same `FileHandle.stat({ bigint: true })` fields |
 | `VerifiedReadReceipt.fileType` | literal `regular-file` | No directory, link, device, socket, or pipe; unsupported/unverifiable objects are rejected |
-| `VerifiedReadReceipt.acceptedByteCount` | integer | Never exceeds `maxFileBytes` or remaining total budget |
+| `VerifiedReadReceipt.acceptedByteCount` | non-negative integer | Exact bytes accepted from the verified handle; equals the readable file record's byte count |
 | `VerifiedReadReceipt.finalOpenDefense` | `effective-o-nofollow \| no-effective-o-nofollow-postchecks` | The first value is mandatory when Node exposes and the platform enforces `O_NOFOLLOW`; the second covers both absent and ineffective support and records the explicit residual limitation |
 | `VerifiedReadReceipt.containmentMode` | literal `node-realpath-fstat-best-effort` | Records repeated canonical and same-handle validation without claiming atomic kernel containment |
+| `VerifiedReadReceipt.openMode` | literal `read-only` | Mutation-capable open flags are unrepresentable and rejected by instrumentation tests |
+| `VerifiedReadReceipt.mutationObservation` | before/after record | Content, length, identity/link state, mode, mtime, ctime, and observable xattrs/ACLs are unchanged; OS-only atime differences are recorded separately and prove neither mutation nor safety |
 
 Repository root creation derives its context from process `cwd`. Global root creation
 occurs only after matching preview consent. Root creation checks every exposed lexical
 component with `lstat`, rejects links, then records the accepted root `realpath` and
-identity; these separate checks remain subject to the residual race below. The bounded Node
+identity; these separate checks remain subject to the residual race below. The Node
 filesystem service alone creates tickets while interpreting an immutable `TraversalPlan`;
 static/derived classifiers may select a ticket but may not create one. For each opened
-directory it buffers the complete bounded sibling set before descending. Distinct raw sibling
+directory it processes the sibling set exposed by Node before descending. Distinct raw sibling
 names that normalize to the same NFC classification key form a collision group: every member
-is rejected without descend/open/read and receives bounded
+is rejected without descend/open/read and receives
 `safe-fs-path-normalization-collision`. A non-colliding NFD-only entry remains readable by
 its exact raw segments while its classification and displayed path are NFC. A derived value
 must match exactly one collision-free classification record. Candidate reads rebuild a path
@@ -325,16 +245,26 @@ compare its exact fields, check candidate `realpath`/`path.relative`, then repea
 candidate path `lstat` comparison, requiring both snapshots to match each other and
 enumeration. After `open` but before reading, they repeat that
 ordered sequence and compare the opened
-`FileHandle.stat({ bigint: true })`. After the bounded same-handle read and while the handle
+`FileHandle.stat({ bigint: true })`. After the same-handle read and while the handle
 is still open, they repeat the complete ordered pre-read sequence over the same exact fields before
 accepting bytes. A detected identity/type/metadata/boundary change
 discards all collected bytes and marks the ticket stale or rejected. Client or HTTP path
 strings never authorize a read.
 
+One process-wide executor serializes inspected-source filesystem work. The production
+module exposes only read-only operations and never requests
+write, truncate, create, rename, delete, link, chmod/chown, utimes, xattr, ACL, or an atime
+change. Disable or process shutdown revokes the affected request's publication authority
+and stops new scheduling. A pending promise becomes cleanup-only: its late bytes and all
+graph/Diagnostic/DTO/log mutations are discarded, and every opened handle is closed in
+`finally`. Node does not guarantee physical kernel-I/O termination when application
+authority is revoked; a future cancellable primitive or OS-enforced worker/sandbox is the
+resolution path.
+
 Required identity/metadata or canonicalization reported by Node as unavailable, ambiguous,
 malformed, or otherwise unusable produces `safe-fs-boundary-unverifiable`; the layer never
 guesses. A root-level failure aborts the source attempt, and an item-level failure can retain
-only a bounded diagnostic-only inventory record.
+only a diagnostic-only inventory record.
 
 Because Node does not provide atomic directory-handle-relative child open, these records
 cannot prove containment against an active process that replaces the root or an ancestor
@@ -351,17 +281,23 @@ platform limitations outside automated-test proof.
 These are trusted packaged-build records, not inspection-source DTOs. The build/package
 verifier resolves both only from fixed package-root paths. At runtime the project-owned
 `bin.mjs` bootstrap resolves the packed `package.json` and both manifests only from fixed
-URLs relative to its own `import.meta.url`. Using only Node.js built-ins, it validates both
-strict manifests and hashes every listed static/server asset before it dynamically imports
-the already-validated `dist/cli.mjs`; the host cannot bind first. `node:fs` may read and hash
+URLs relative to its own `import.meta.url`. Using only Node.js built-ins, it validates
+the packed `package.json`, validates both strict manifests, and verifies every declared
+asset byte length against the packaged bytes. It hashes every listed static/server asset
+before it dynamically
+imports the already-validated `dist/cli.mjs`; the host cannot bind first. `node:fs` may read and hash
 package-owned files but may not use a build manifest as an inspected-source fallback.
-Runtime validation rejects an oversized document, malformed JSON,
+Runtime validation rejects malformed JSON,
 duplicate/unknown/missing key, unexpected order, symlink, non-regular file, size/hash
-mismatch, or package-version mismatch before server bind.
+mismatch, or package-version mismatch before import/
+server bind.
 These JSON manifests, generated HTML/CSS, documentation, and the license are declarative
 artifacts. All project-authored executable application code and every executable component
 shipped in the package are JavaScript generated from JavaScript/TypeScript sources. This
 boundary does not classify third-party development/test tooling as product code.
+The verifier defines integrity, not resource admission or customization-file validation.
+Package processing capacity is inherited from Node.js, the operating system, and the
+execution environment; a recoverable runtime failure prevents import and host bind.
 
 Before creating the static manifest, the fixed normalizer reads Nuxt's standard
 `.output/public` staging tree, requires regular generated `200.html` and `404.html` files
@@ -373,30 +309,34 @@ copies exactly its manifest-listed regular `.mjs` files into `dist/`.
 
 | Entity / field | Type | Rules |
 |---|---|---|
-| `StaticAssetManifest` | strict JSON, at most 2 MiB | Exact keys `manifestVersion`, `packageVersion`, `shellPath`, `assets`, `inlineScriptSha256` |
+| `StaticAssetManifest` | strict JSON | Exact keys `manifestVersion`, `packageVersion`, `shellPath`, `assets`, `inlineScriptSha256` |
 | `StaticAssetManifest.manifestVersion` | literal `1` | No compatibility guessing |
-| `StaticAssetManifest.packageVersion` | semver string, at most 64 UTF-8 bytes | Equals the version embedded from the packed `package.json` |
+| `StaticAssetManifest.packageVersion` | semver string | Equals the version embedded from the packed `package.json` |
 | `StaticAssetManifest.shellPath` | literal `/index.html` | Exact SPA fallback bytes |
-| `StaticAssetManifest.assets` | 1..4,096 ordered unique records | Sorted by `requestPath`; every post-normalization generated regular file appears exactly once |
+| `StaticAssetManifest.assets` | ordered unique records | Sorted by `requestPath`; every post-normalization generated regular file appears exactly once |
 | `StaticAssetRecord` | closed object | Exact keys `requestPath`, `file`, `byteLength`, `sha256`, `mediaType` |
-| `StaticAssetRecord.requestPath` | root-absolute URL path, at most 512 UTF-8 bytes | No query, fragment, dot segment, encoded separator, malformed escape, or external origin |
+| `StaticAssetRecord.requestPath` | root-absolute URL path | No query, fragment, dot segment, encoded separator, malformed escape, or external origin |
 | `StaticAssetRecord.file` | exact `public/...` relative path | Must be the unique lexical counterpart of `requestPath`; no separator alias or traversal |
-| `StaticAssetRecord.byteLength` / `sha256` | non-negative integer / 64 lowercase hex | Verified against packaged bytes before bind |
+| `StaticAssetRecord.byteLength` / `sha256` | non-negative integer / 64 lowercase hex | Declared byte length is verified for exact equality with packaged bytes before bind; mismatch fails closed |
 | `StaticAssetRecord.mediaType` | closed MIME enum | Determined at build time by the same fixed extension table used by the host; HTML is legal only for `/index.html` |
-| `StaticAssetManifest.inlineScriptSha256` | 0..32 unique ordered 44-character base64 hashes | SHA-256 of each exact executable inline-script byte sequence in `/index.html`; no executable attribute, `<base>`, nonce, external URL, or unrecorded inline script passes the build |
-| `ServerBundleManifest` | strict JSON, at most 1 MiB | Exact keys `manifestVersion`, `packageVersion`, `assets` |
+| `StaticAssetManifest.inlineScriptSha256` | unique ordered 44-character base64 hashes | SHA-256 of each exact executable inline-script byte sequence in `/index.html`; no executable attribute, `<base>`, nonce, external URL, or unrecorded inline script passes the build |
+| `ServerBundleManifest` | strict JSON | Exact keys `manifestVersion`, `packageVersion`, `assets` |
 | `ServerBundleManifest.manifestVersion` | literal `1` | No compatibility guessing |
-| `ServerBundleManifest.packageVersion` | semver string, at most 64 UTF-8 bytes | Equals the same packed-package version |
-| `ServerBundleManifest.assets` | 2..256 ordered unique records | Sorted by `file`; includes `cli.mjs`, `parser-worker.mjs`, and every tsdown code-split chunk exactly once; total listed bytes at most 64 MiB |
+| `ServerBundleManifest.packageVersion` | semver string | Equals the same packed-package version |
+| `ServerBundleManifest.assets` | ordered unique records | Sorted by `file`; includes `cli.mjs`, `parser-worker.mjs`, and every tsdown code-split chunk exactly once |
 | `ServerBundleRecord` | closed object | Exact keys `file`, `byteLength`, `sha256` |
-| `ServerBundleRecord.file` | normalized relative `.mjs` path, at most 256 UTF-8 bytes | No absolute path, empty/dot segment, separator alias, traversal, or `public` or `manifests` top-level collision |
-| `ServerBundleRecord.byteLength` / `sha256` | non-negative integer / 64 lowercase hex | Verified against staged bytes before copy and packaged bytes before pack; each file at most 16 MiB |
+| `ServerBundleRecord.file` | normalized relative `.mjs` path | No absolute path, empty/dot segment, separator alias, traversal, or `public` or `manifests` top-level collision |
+| `ServerBundleRecord.byteLength` / `sha256` | non-negative integer / 64 lowercase hex | Verified for exact equality with staged bytes before copy and packaged bytes before import |
 
 After all assembly, the recursive expected set is exactly the two manifest files,
 every `public/...` path listed by `StaticAssetManifest`, every server path listed by
 `ServerBundleManifest`. The final verifier rejects any difference, including a stale
 regular file, unlisted chunk, symlink, directory in place of a file, or other
 platform-safe non-regular object. Package tests apply the same set to the unpacked tarball.
+The build normalizer, unpacked-package verifier, and runtime bootstrap share the same
+manifest schema, path rules, byte-length equality check, and hash verification. Tests prove
+that a mismatch or recoverable environment failure is rejected before CLI import or host
+bind.
 
 ### GlobalConsentPreview
 
@@ -414,28 +354,31 @@ root.
 | `entries` | exactly three tool entries | Fixed Copilot, Claude, and Codex order |
 | `entries[].tool` | tool enum | Closed value |
 | `entries[].origin` | `default-home \| environment` | An environment entry is used even when invalid; no silent fallback |
-| `entries[].lexicalRoot` | exact bounded raw string or null | Internal only; preserves the pre-escape environment/default value and is null only for `oversized`; never logged or serialized |
-| `entries[].displayRoot` | escaped lexical absolute/invalid value or null | Exact proposed root shown when bounded; null only for `oversized`, never a canonicalization claim |
+| `entries[].lexicalRoot` | exact raw string | Internal only; preserves the pre-escape environment/default value; never logged or serialized |
+| `entries[].displayRoot` | escaped lexical absolute/invalid value | Exact proposed root shown to the user; never a canonicalization claim |
 | `entries[].pathPatterns` | non-empty fixed relative-pattern array | Rendered from the exact immutable Global `TraversalPlan`; no neighboring customization classes |
-| `entries[].inputState` | `eligible \| present-empty \| relative \| invalid \| oversized` | Determined before I/O; only `eligible` may become a boundary after consent |
+| `entries[].inputState` | `eligible \| present-empty \| relative \| invalid` | Determined before I/O; only `eligible` may become a boundary after consent |
 | `excludedRuleIds` | sorted excluded rule ID[] | Drives the displayed exclusions without accepting authored prose |
 
-The host counts the proposed root's UTF-8 length incrementally and stops after 32 KiB
-without constructing another copy. For an in-limit value it escapes incrementally and
-stops before output would exceed 192 KiB. Either overflow sets `inputState: oversized` and
-`displayRoot: null`, performs no normalization/canonicalization/root creation/read, and
-causes the UI to show only the fixed localized `global.previewTooLarge` message. The user
-must correct the environment and request a new preview. The digest uses length-prefixed
+The host escapes the proposed root for presentation without changing the retained raw
+value. Its ability to process that value is inherited from Node.js, the operating system,
+and the browser. A recoverable environment/runtime failure aborts preview creation without
+normalization, canonicalization, root creation, or a read; it does not create a size-based
+input state. The digest uses length-prefixed
 UTF-8 fields, explicit null tags, fixed enum encodings, and the listed array order. It binds
-each in-limit raw `lexicalRoot`, its escaped `displayRoot`, the traversal-plan schema/version
-and canonical selector programs behind `pathPatterns`, or explicitly binds both roots as
-null plus `oversized`; it never relies on reversing an escape or on Unicode normalization.
+each raw `lexicalRoot`, its escaped `displayRoot`, and the traversal-plan schema/version
+and canonical selector programs behind `pathPatterns`; it never relies on reversing an
+escape or on Unicode normalization.
 Fixed registry strings are already canonical NFC.
-It contains no filesystem-derived value. An in-limit invalid
+It contains no filesystem-derived value. An invalid
 environment value is escaped and displayed but is not normalized into an authorized path.
-Present-empty, relative, invalid, and oversized entries use only fixed preview presentation
+Present-empty, relative, and invalid entries use only fixed preview presentation
 and create no retained `Diagnostic`; only an `eligible` entry may receive a
-`GlobalToolControl` after confirmation and can later produce a reserved tool failure diagnostic.
+`GlobalToolControl` after confirmation and can later produce a tool failure diagnostic.
+Every representable absolute path is `eligible` regardless of whether it lies outside the
+ordinary home; that location alone neither rejects it nor grants pre-consent I/O. Only an
+absent setting selects the documented default. An empty, relative, invalid, or post-consent
+rejected setting never creates fallback authority.
 Admission uses only the stored internal raw `lexicalRoot`; it never uses `displayRoot` as a
 path and never rereads the environment. While consent is active, preview retrieval returns
 the same DTO-visible object byte-for-byte in field semantics, including its ID and digest,
@@ -469,17 +412,19 @@ root. Confirmation never creates a combined Global Source and never gives one to
 Source authority over another tool's root.
 If initial enable leaves any confirmed tool without a Source—including an all-failed or
 mixed outcome—the exact active consent and its `GlobalToolControl` records may requeue only
-those missing tools. Existing Sources remain unchanged. A different preview or root
-requires disabling Global inspection first; a request with no missing tool is rejected as
-a conflict.
+those missing tools. Existing Sources retain their semantic content and stable `sourceId`.
+Each successful initial or retry Global Source commit nevertheless advances the session
+generation, regenerates every generation-owned ID in every carried graph, and invalidates
+old file/detail/comparison/editor state. A different preview or root requires disabling
+Global inspection first; a request with no missing tool is rejected as a conflict.
 
-Post-consent canonical/root validation can accept zero to three tools. The host reserves
-coordinator capacity for all confirmed tools before activating consent, then queues one job
-per accepted root. If every tool is rejected before enumeration, consent remains active,
+Post-consent canonical/root validation can accept zero to three tools. The serialized
+coordinator activates consent and queues one job per accepted root. If every tool is
+rejected before enumeration, consent remains active,
 no new Source or scan job is published, and the operation returns the contracted
-`active-no-job` state with bounded diagnostics in the affected tools' reserved failure slots.
-Initial activation therefore has zero Global Sources; an all-rejected retry leaves existing
-Sources unchanged. A later exact-consent retry may
+`active-no-job` state with safe diagnostics for the affected tools.
+Initial activation therefore has zero Global Sources; an all-rejected retry commits no
+generation and leaves existing Sources and their IDs unchanged. A later exact-consent retry may
 revalidate only tools that still have no Source; changing the lexical root requires disable
 and a new preview.
 
@@ -493,7 +438,7 @@ and a new preview.
 | `sourceId` / `boundaryId` | opaque IDs or null | Allocated together only after successful root admission; remain internal until a Source commit and are discarded if admission must be repeated |
 | `rootContext` | `InspectionRootContext \| null` | Created only by safe-fs after lexical/canonical/root-identity validation; owned here even before a Source exists |
 | `rejectionCode` | closed reason code or null | Non-null only in `rejected`; contains no path or environment value |
-| `diagnosticId` | session diagnostic ID or null | References that tool's one reserved failure slot for post-consent rejection or fatal initial scan; the same slot later serves a published Source's fatal rescan |
+| `diagnosticId` | session diagnostic ID or null | References the current post-consent rejection or fatal-scan diagnostic for that tool |
 
 `GlobalToolControl` is session control state, never part of a scan working set. A successful
 admission preallocates its unpublished Source/boundary IDs and root context before queuing
@@ -507,8 +452,8 @@ retry may create a new context and IDs only after a complete new admission under
 frozen lexical preview. A post-consent validation failure therefore leaves a `rejected`
 control with no IDs/context and can be revalidated only under that preview. A
 successful Source commit publishes the preallocated IDs and makes its `SourceBoundary`
-reference this context. Rejection or fatal initial scan creates/replaces that control's one
-reserved tool diagnostic; a successful Source commit clears it, and unrelated tool outcomes
+reference this context. Rejection or fatal initial scan creates/replaces that control's
+current tool diagnostic; a successful Source commit clears it, and unrelated tool outcomes
 preserve it. Global disable first aborts work and closes open file handles, then removes all
 control-owned diagnostics, closes every control-owned context, and removes every control
 with the consent and frozen preview. No DTO can create or mutate this authority.
@@ -552,34 +497,29 @@ matching frozen preview has been retrieved and verified. The invariant forbids a
 | `commandEpoch` | non-negative integer | Captured from the coordinator when accepted; every asynchronous continuation must still match it |
 | `previewId` | opaque string | Must equal the frozen consent preview for the whole operation |
 | `tools` | non-empty sorted tool enum[] | Exact missing confirmed tools initially owned by this operation; rejected tools leave `pendingTools` at terminal validation, while accepted tools transfer pending ownership to the initial scan job until that job terminates |
-| `capacityLease` | internal bounded reservation | All-or-none reservation for every owned tool's validation/admission and possible scan-command slot; acquired before any consent/control mutation |
 | `status` | `waiting \| validating \| admitting \| queueing-scans \| draining \| cancelled \| complete` | `draining` begins when disable aborts the operation; no new authority or job may be published afterward |
 | `responseDisposition` | `unset \| 202-queued \| 202-active-no-job \| 409-global-disable-pending` | Chosen exactly once at the coordinator linearization point; transport delivery may occur later |
 | `abortSignal` | internal `AbortSignal` | Shared by root validation/admission and every pre-queue safe-fs call |
 
-After whole-operation capacity reservation succeeds, initial enable atomically activates the
-consent, creates `unvalidated` controls for confirmed eligible tools, registers this command,
-and places every owned tool in `pendingTools`; retry registers the same command against the
+Initial enable atomically activates the consent, creates `unvalidated` controls for
+confirmed eligible tools, registers this command, and places every owned tool in
+`pendingTools`; retry registers the same command against the
 existing consent. Root validation/admission and scan-job creation run only under the
 coordinator. Before and after every asynchronous boundary, and immediately before any
 control/diagnostic mutation or scan-job enqueue, the continuation must prove the same active
 `operationId`, `commandEpoch`, non-aborted signal, and `globalControl.state: active`.
-Initial enable and retry both acquire the whole `capacityLease` before changing consent,
-controls, contexts, IDs, or diagnostics; reservation failure returns `503` with no state
-change. A rejected tool releases its share after its terminal control/diagnostic update; an
-accepted tool transfers its share to the queued scan command. All-rejected completion
-closes the operation lease after all shares have been released, and each transferred share is released when its
-scan completes, fails, or is cancelled. Cancellation/disable drains the operation before
-releasing every untransferred share, so retry and repeated failure cannot leak capacity.
+Initial enable and retry register their state transition under the coordinator lock before
+changing consent, controls, contexts, IDs, or diagnostics. Cancellation or disable drains
+the operation so late continuations cannot enqueue work or regain authority.
 At most one `GlobalEnableOperation` is running or queued. After every owned tool reaches a
 terminal validation outcome and all accepted scan commands are transferred, the coordinator
 performs one final operation-ID/epoch/state check under its lock. It atomically chooses the
-`202-queued` or `202-active-no-job` disposition, marks the operation `complete`, closes the
-lease handle, and unregisters it; later response-byte delivery does not change that earlier
+`202-queued` or `202-active-no-job` disposition, marks the operation `complete`, and
+unregisters it; later response delivery does not change that earlier
 linearization. If the disable barrier has already linearized, the same check instead chooses
-`409-global-disable-pending` and drains cancellation. A drained operation releases every
-untransferred share, closes the lease handle, becomes `cancelled`, and is unregistered before
-barrier cleanup. Thus the operation wins the race with a committed `202`, or the barrier wins
+`409-global-disable-pending` and drains cancellation. A drained operation becomes
+`cancelled` and is unregistered before barrier cleanup. Thus the operation wins the race
+with a committed `202`, or the barrier wins
 with `409`, never both. Terminal operation history is not retained; pending scan jobs remain
 represented independently in `pendingTools` until they finish.
 
@@ -594,7 +534,9 @@ job or mutate a control. This ordering prevents validation that finishes after b
 adding authority or work after the cancellation sweep. An enable request for which the
 barrier wins the disposition point completes with `409 global-disable-pending`; if the
 operation chose `202` first, a later barrier may cancel/remove that accepted work normally.
-Barrier cancellation creates no failure diagnostic.
+Barrier cancellation creates no failure diagnostic. Coordinator queueing uses no
+product-defined numeric capacity; recoverable Node.js or operating-system failures fail the
+operation safely before publication.
 
 ### OfficialSourceRecord
 
@@ -606,24 +548,25 @@ input from the inspected repository and never fetched during product startup or 
 | `sourceId` | stable dotted string | Unique; every behavior, rule, and strategy `sourceRefs` entry resolves only to this key |
 | `canonicalUrl` | absolute HTTPS URL | Exact authored URL on `officialHost`; no credentials, query, or fragment |
 | `officialHost` | lowercase DNS hostname | Exact per-record host allowlist; the URL and every permitted redirect hop must match it exactly, with no implied subdomain or sibling host |
-| `sectionAnchors` | 1..16 exact heading-text strings | Exact rendered heading text only, each at most 256 UTF-8 bytes; no heading ID, URL fragment, CSS/XPath, or other executable selector |
+| `sectionAnchors` | non-empty exact heading-text strings | Exact rendered heading text only; no heading ID, URL fragment, CSS/XPath, or other executable selector |
 | `affectedBehaviorIds` | sorted behavior ID[] | Reciprocal with every referenced `VendorBehaviorStatement.sourceRefs` entry |
 | `affectedRuleIds` | sorted rule ID[] | Reciprocal with every referenced `InspectionRule.sourceRefs` entry |
 | `affectedStrategyIds` | sorted strategy ID[] | Reciprocal with every referenced `RuntimeCompositionStrategy.sourceRefs` entry |
 | `reviewedOn` | ISO date | Updated only after human semantic review |
 | `normalizationVersion` | literal `1` | Selects the checked-in deterministic normalization algorithm |
 | `snapshotFingerprint` | lowercase SHA-256 | Digest of normalized text from only the selected official sections |
-| `assertions` | 1..64 maintained assertion[] | Stable assertion ID, paraphrased expected semantics up to 1,024 UTF-8 bytes, and affected behavior, rule, or strategy IDs; never copied page text |
+| `assertions` | non-empty maintained assertion[] | Stable assertion ID, paraphrased expected semantics, and affected behavior, rule, or strategy IDs; never copied page text |
 | `semanticFingerprint` | lowercase SHA-256 | Digest of canonical JSON for sorted maintained assertions |
 
-The offline contract test validates IDs, reciprocal contract-record links, exact official hosts, bounds,
+The offline contract test validates IDs, reciprocal contract-record links, exact official hosts,
 and recomputes `semanticFingerprint`; it never contacts the network. The explicit
 maintainer drift command sends no credentials, cookies, repository data, or other local
-state. Per source it allows 10 seconds, 2 MiB after decompression, UTF-8 HTML/Markdown, and
-at most three HTTPS redirects whose every hop remains on the source's allowlisted official
-host. A redirect to a different final URL is reported for review rather than silently
-changing `canonicalUrl`; downgrade, cross-host redirect, wrong content type, oversize,
-missing/duplicate anchor, or decode failure is a hard drift-check failure.
+state. Per source it accepts UTF-8 HTML/Markdown and follows only HTTPS redirects whose
+every hop remains on the source's allowlisted official host; redirect loops fail closed.
+A redirect to a different final URL is reported for review rather than silently
+changing `canonicalUrl`; downgrade, cross-host redirect, wrong content type,
+missing/duplicate anchor, decode failure, or a recoverable network/runtime failure is a
+hard drift-check failure.
 
 Normalization selects each anchored heading through the next heading of equal or higher
 level, removes document chrome plus script/style nodes, preserves prose and code text,
@@ -634,8 +577,8 @@ language contracts/research, then explicitly updates anchors, assertions, finger
 and `reviewedOn`; no remote page text or response body is checked in.
 
 At least one affected-ID array is non-empty. Every assertion names a non-empty subset of
-that record's reverse-indexed behavior, rule, or strategy IDs rather than a generic product area. The map contains at most 128
-source records. An out-of-bound or unsupported record fails
+that record's reverse-indexed behavior, rule, or strategy IDs rather than a generic product
+area. An unsupported record fails
 offline contract/build validation before packaging; the scanner never loads this test map,
 and no source record, anchor, or assertion is truncated.
 
@@ -652,7 +595,7 @@ can never authorize a read.
 | `surfaces` | non-empty surface enum[] | For example VS Code, CLI, cloud, or shared local Codex clients; no implicit “all” |
 | `vendorScope` | closed scope enum | Repository/workspace, User, hosted/managed, plugin, or runtime-only |
 | `lookupBase` | closed locator-base descriptor | Workspace root, Git/repository root, runtime `cwd`, target-path chain, tool home, profile data, active config layer, registered catalog, or hosted state |
-| `relativeSelector` | bounded vendor-relative string or null | Path text only; does not contain Inspector glob semantics or grant authority |
+| `relativeSelector` | vendor-relative string or null | Path text only; does not contain Inspector glob semantics or grant authority |
 | `traversal` | closed traversal descriptor | Exact, ancestor chain, standard-location chain, recursive-under-base, lazy descendant, explicit registration, or none |
 | `activationConditions` | condition-key enum[] | Trust, feature flags, target match, installation, enablement, runtime version, and other required inputs |
 | `strategyRefs` | sorted strategy ID[] | Composition/selection records applicable to this behavior |
@@ -672,7 +615,7 @@ deduplication, or precedence without turning it into read authority.
 |---|---|---|
 | `strategyId` | stable dotted string | Unique and defined in the bilingual runtime-composition contract |
 | `tool` / `surfaces` | tool enum / non-empty surface enum[] | Exact product and surface boundary |
-| `operations` | 1..4 ordered closed enum[] | Each entry is `append \| concatenate \| select-first \| select-closest \| replace \| merge-map \| deduplicate \| filter \| unknown-order`; array order is the documented pipeline order |
+| `operations` | non-empty ordered closed enum[] | Each entry is `append \| concatenate \| select-first \| select-closest \| replace \| merge-map \| deduplicate \| filter \| unknown-order`; array order is the documented pipeline order |
 | `inputBehaviorRefs` | non-empty sorted behavior ID[] | Only documented inputs; excluded/user/hosted inputs remain explicit conditions |
 | `requiredConditionKeys` | condition-key enum[] | Every input required before a terminal applicability result is permitted |
 | `documentationStatus` | documentation-status enum | Ambiguous/conflicting order never becomes a fabricated winner |
@@ -687,18 +630,18 @@ Inspector's Repository and Global sources.
 | Field | Type | Rules |
 |---|---|---|
 | `base` | one exact Source-boundary descriptor | Repository or the named consented tool-specific Global boundary; never inferred from a selector |
-| `selectors` | 1..32 ordered unique `MatcherSelector[]` | Alternatives owned by one static rule; Repository renderings begin `./`, Global renderings are relative to that tool boundary |
-| `MatcherSelector.rendered` | bounded canonical string | Human contract spelling; must round-trip exactly from its typed segment program |
-| `MatcherSelector.segments` | 1..64 `MatcherSegment[]` | Closed ordered program; final token denotes a regular file and every traversal consumes the shared scan limits |
+| `selectors` | non-empty ordered unique `MatcherSelector[]` | Alternatives owned by one static rule; Repository renderings begin `./`, Global renderings are relative to that tool boundary |
+| `MatcherSelector.rendered` | canonical string | Human contract spelling; must round-trip exactly from its typed segment program |
+| `MatcherSelector.segments` | non-empty `MatcherSegment[]` | Closed ordered program; final token denotes a regular file |
 | `MatcherSegment` | discriminated union | `literal { value }`, `one-segment { suffix }`, or `recursive-directories`; no executable glob or regular-expression object |
 
 A `literal` matches one case-sensitive NFC segment. `one-segment` is rendered as `*` plus
 its fixed literal suffix and matches one non-empty segment; it is a directory step when
 non-terminal and a file step when terminal. `recursive-directories` is rendered only as
-the complete `**` segment, matches zero or more directories, is non-terminal, appears at
-most twice, and cannot be adjacent to another recursive token. Build validation compiles
+the complete `**` segment, matches zero or more directories, is non-terminal, and cannot
+be adjacent to another recursive token. Build validation compiles
 and canonical-round-trips every rendering; runtime loads only this immutable typed form.
-This permits bounded composites such as descendant context plus a direct child, or
+This permits composites such as descendant context plus a direct child, or
 descendant context plus a recursive fixed subtree, without inventing a single ambiguous
 expansion enum.
 
@@ -711,13 +654,13 @@ is the only traversal program accepted by `safe-fs.ts`.
 |---|---|---|
 | `schemaVersion` | literal `1` | Bound by the Global preview digest; unknown versions fail registry loading |
 | `boundary` | exact Source-boundary descriptor | Copied from the matcher and never inferred from request/display text |
-| `selectors` | 1..32 ordered `TraversalSelectorPlan[]` | One-to-one canonical compilation of matcher selectors |
+| `selectors` | non-empty ordered `TraversalSelectorPlan[]` | One-to-one canonical compilation of matcher selectors |
 | `selectionPolicy` | `all-matches \| codex-global-first-non-empty` | Closed scheduler policy; the second value is valid only for `codex.global.instructions` with the exact ordered selectors `AGENTS.override.md`, `AGENTS.md` |
 | `TraversalSelectorPlan.mode` | `repository-program \| global-exact \| global-fixed-subtree` | Closed operation class; no generic ambient-root walker |
 | `TraversalSelectorPlan.fixedPrefix` | NFC literal segment array | Exact ancestors that may be `lstat`ed; Global entries contain every path component before an allowed subtree/target |
-| `TraversalSelectorPlan.remainder` | bounded `MatcherSegment[]` | Empty for a Global exact target; a Global subtree remainder can enumerate only below its fixed prefix |
+| `TraversalSelectorPlan.remainder` | `MatcherSegment[]` | Empty for a Global exact target; a Global subtree remainder can enumerate only below its fixed prefix |
 
-A Repository plan may perform the bounded broad traversal explicitly represented by its
+A Repository plan may perform the broad traversal explicitly represented by its
 selector programs. A Global plan never begins with `opendir` on its home root. An exact
 target performs targeted `lstat`/verification only on its fixed ancestors and target; a
 fixed subtree may `opendir` only that subtree and permitted descendants. No missing target
@@ -732,8 +675,8 @@ single published file and short-circuits without any operation on `AGENTS.md`. A
 safely read empty override advances to the exact `AGENTS.md` target; a safely read non-empty
 regular file there is published, otherwise no Codex instruction file is published. Empty
 means that, after removal of an optional leading UTF-8 BOM, the decoded string has
-`String.prototype.trim().length === 0`; a whitespace-only file is empty. If either present candidate is unsafe, unreadable, oversized, or
-cannot be decoded under the shared file contract, selection fails closed with a bounded
+`String.prototype.trim().length === 0`; a whitespace-only file is empty. If either present candidate is unsafe, unreadable, or
+cannot be decoded under the shared file contract, selection fails closed with a safe
 diagnostic and does not inspect any later selector. `absent` is only the explicit not-found
 result from the exact target `lstat` after the admitted root remains verified. Permission,
 type, metadata, ancestor/root, canonicalization, and all other errors—and a target that
@@ -744,7 +687,7 @@ touches an unrepresented neighboring path.
 ### DerivationProgram
 
 `DerivationProgram` is the only program that can turn an independently accepted static
-provenance into a bounded-derived read candidate. It is an immutable closed discriminated
+provenance into a derived read candidate. It is an immutable closed discriminated
 union, not executable registry content.
 
 | Field | Type | Rules |
@@ -755,23 +698,22 @@ union, not executable registry content.
 | `declarationFieldId` | closed field ID or literal `matched-path` | Exact allowlisted source occurrence; `matched-path` is permitted only for the location-derived skill-metadata rule |
 | `syntaxVariants` | non-empty closed enum[] | Only the listed JSON/JSONC/TOML/frontmatter shapes are accepted; no authored key chooses code |
 | `base` | `seed-matched-path-parent \| source-root` | Resolved from the exact seed provenance, never from another alias/provenance or an ambient path |
-| `placement` | `at-base \| ancestor-chain-through-seed-owner` | The ancestor-chain form exists only for Codex fallback basenames and is bounded by the seed's collision-free path and source root |
+| `placement` | `at-base \| ancestor-chain-through-seed-owner` | The ancestor-chain form exists only for Codex fallback basenames and is constrained by the seed's collision-free path and source root |
 | `prefixPolicy` | `none \| optional-dot-slash \| required-dot-slash` | Applied before individual segment validation |
-| `fixedSuffixAlternatives` | 1..4 arrays of NFC literal segments | Registry constants appended after extracted segments; no authored suffix or free-form join |
-| `maxTargetsPerDeclaration` | integer `1..64` | Local hard bound before the shared 128-target seed bound; marketplace and skill mappings use 4/1/1/1, while one fallback basename may occupy at most the 64 bounded ancestor positions |
+| `fixedSuffixAlternatives` | non-empty arrays of NFC literal segments | Registry constants appended after extracted segments; no authored suffix or free-form join |
 
 The closed initial mappings are:
 
 | Derived rule | Variant and exact seed | Declaration/syntax | Base and construction |
 |---|---|---|---|
-| `copilot.derived.local-plugin-manifest` | `marketplace-local-plugin`; `copilot.repo.marketplace`, kind `marketplace` | `marketplace.plugin.source`; plain string or object `source.path`; optional `./` | Seed matched-path parent; each validated relative-path segment is emitted as one bounded authored-segment token; append one of `.plugin/plugin.json`, `plugin.json`, `.github/plugin/plugin.json`, `.claude-plugin/plugin.json`; max 4 per declaration |
-| `claude.derived.local-plugin-manifest` | `marketplace-local-plugin`; `claude.repo.marketplace`, kind `marketplace` | Same field; plain string or object `source.path`; required `./` | Seed matched-path parent; validated authored segments plus fixed `.claude-plugin/plugin.json`; max 1 |
-| `codex.derived.local-plugin-manifest` | `marketplace-local-plugin`; `codex.repo.marketplace`, kind `marketplace` | Same field; plain string or object `source.path`; required `./` | Seed matched-path parent; validated authored segments plus fixed `.codex-plugin/plugin.json`; max 1 |
-| `codex.derived.fallback-basename` | `codex-fallback-basename`; `codex.repo.config`, kind `settings/config` | `codex.config.project-doc-fallback-filename`; TOML string-array basename only | Source root; fixed ancestor chain from the source root through the exact parent of the seed's `.codex` directory, one validated basename segment at each position, root-to-narrow order; max 64 positions per declaration and shared max 16 names/128 targets |
-| `codex.derived.skill-metadata` | `codex-skill-metadata`; `codex.repo.skill`, kind `skill` | `matched-path`; no authored declaration | Seed matched-path parent; fixed `agents/openai.yaml`; max 1 |
+| `copilot.derived.local-plugin-manifest` | `marketplace-local-plugin`; `copilot.repo.marketplace`, kind `marketplace` | `marketplace.plugin.source`; plain string or object `source.path`; optional `./` | Seed matched-path parent; each validated relative-path segment is emitted as one authored-segment token; append one of `.plugin/plugin.json`, `plugin.json`, `.github/plugin/plugin.json`, `.claude-plugin/plugin.json` |
+| `claude.derived.local-plugin-manifest` | `marketplace-local-plugin`; `claude.repo.marketplace`, kind `marketplace` | Same field; plain string or object `source.path`; required `./` | Seed matched-path parent; validated authored segments plus fixed `.claude-plugin/plugin.json` |
+| `codex.derived.local-plugin-manifest` | `marketplace-local-plugin`; `codex.repo.marketplace`, kind `marketplace` | Same field; plain string or object `source.path`; required `./` | Seed matched-path parent; validated authored segments plus fixed `.codex-plugin/plugin.json` |
+| `codex.derived.fallback-basename` | `codex-fallback-basename`; `codex.repo.config`, kind `settings/config` | `codex.config.project-doc-fallback-filename`; TOML string-array basename only | Source root; fixed ancestor chain from the source root through the exact parent of the seed's `.codex` directory, one validated basename segment at each position, root-to-narrow order |
+| `codex.derived.skill-metadata` | `codex-skill-metadata`; `codex.repo.skill`, kind `skill` | `matched-path`; no authored declaration | Seed matched-path parent; fixed `agents/openai.yaml` |
 
-Marketplace extraction decodes a documented local relative path into at most 64 individual
-segments; every emitted segment passes the same NFC collision, Windows-special, alias, and
+Marketplace extraction decodes a documented local relative path into individual segments;
+every emitted segment passes the same NFC collision, Windows-special, alias, and
 containment grammar before a fixed suffix is considered. No program can contain a callback,
 function pointer, arbitrary `path.join` recipe, free-form expression, glob, regular
 expression, or recursive derivation. Adding a variant or mapping requires a contract-version
@@ -787,11 +729,11 @@ the bilingual inspection-rule contract. It is not read from the inspected reposi
 | `ruleId` | stable dotted string | Unique within a registry; retained across versions only while semantics stay compatible |
 | `contractVersion` | date string | Must match `GlobalConsent` and the shipped registry |
 | `tool` | tool enum or `shared` | `shared` is limited to cross-vendor safety/derivation rules |
-| `discoveryClass` | `static-candidate \| bounded-derived-candidate \| relationship-only \| excluded` | Only the first two may authorize a read |
+| `discoveryClass` | `static-candidate \| derived-candidate \| relationship-only \| excluded` | Only the first two may authorize a read |
 | `kind` | customization-kind enum or null | Null for a cross-kind relationship/exclusion |
 | `sourceKinds` | source-kind enum[] | Repository, Global, or both as explicitly contracted |
 | `matcher` | `StructuredInspectorMatcher` or null | Static rules only; never a vendor locator, ambient path, executable glob, or untyped selector string |
-| `derivation` | `DerivationProgram` or null | Present only for bounded-derived rules; the exact five mappings above are the complete initial registry |
+| `derivation` | `DerivationProgram` or null | Present only for derived rules; the exact five mappings above are the complete initial registry |
 | `behaviorRefs` | sorted behavior ID[] | Exact upstream lookup statements relevant to this policy; exclusions may reference documented User behavior without authorizing it |
 | `policyRefs` | non-empty sorted specification ID[] | FR/QR clauses that authorize or intentionally exclude the surface |
 | `strategyRefs` | sorted strategy ID[] | Composition facts used for order/applicability, never for path admission |
@@ -801,7 +743,7 @@ the bilingual inspection-rule contract. It is not read from the inspected reposi
 | `sourceRefs` | non-empty `OfficialSourceRecord.sourceId`[] | Exact direct Evidence-cell sources for this rule, reciprocally validated. Evidence owned by referenced behaviors or strategies remains reachable through those IDs and is not silently copied into this registry field |
 
 The build/contract validator checks uniqueness, legal field combinations, selector-program
-token/count/position and canonical-round-trip rules, exact traversal compilation, referenced
+token/position and canonical-round-trip rules, exact traversal compilation, referenced
 rule IDs, closed derivation mapping/acyclicity, and exact fixture agreement before packaging. The runtime
 loader checks the embedded registry schema, integrity, and contract version before
 scanning. There is no repository-provided plugin for adding rules.
@@ -814,20 +756,20 @@ scanning. There is no repository-provided plugin for adding rules.
 | `baseGeneration` | `GenerationNumber` | `0` for bootstrap; otherwise the last committed generation from which the serialized transaction started |
 | `transactionKind` | `bootstrap \| repository-scan \| global-scan \| global-disable` | Closed transaction classification |
 | `scannedSourceId` | opaque source ID or null | One source for either scan kind; null for bootstrap and zero-I/O Global disable |
+| `scanRequestId` | opaque ASCII string or null | Required for `repository-scan` and `global-scan` and equals the request carried by the committed Source/progress; null for bootstrap and Global disable |
 | `startedAt` / `finishedAt` | `UtcTimestamp` | Both present on every committed generation; in-flight timing belongs to `ScanAttempt`/`ScanProgress` |
-| `outcome` | `complete \| partial` | Partial requires a limit/diagnostic; a fatal attempt is never a generation |
+| `outcome` | `complete \| partial` | `partial` means only a contracted partial after complete traversal and serializable assembly with deterministic entry-local non-capacity failures; a capacity/resource or other fatal attempt is never a generation |
 | `files` | `CustomizationFile[]` | All enabled sources, deterministically sorted by source, Source-relative Path, then ID |
-| `diagnostics` | `Diagnostic[]` | At most 10,000, including overflow sentinels; never duplicate customization source or declared-metadata values |
-| `counters` | `ScanProgress` or null | Required for a source scan and bounded by configured limits; null for zero-I/O bootstrap/disable |
+| `diagnostics` | `Diagnostic[]` | Never duplicate customization source or declared-metadata values |
 
 Generation 0 is created synchronously at process start with `baseGeneration: 0`,
-`transactionKind: bootstrap`, null `scannedSourceId`/`counters`, equal
+`transactionKind: bootstrap`, null `scannedSourceId`/`scanRequestId`, equal
 `startedAt`/`finishedAt`/session `createdAt`, `outcome: complete`, and empty files and
 diagnostics. The session initially has no `StaleSourceFailure`, so its derived
 `snapshotState` is `current`. Generation 0 is a legal readable base, not evidence that a
 Repository scan succeeded.
 The automatic first Repository scan starts from 0; if it fails fatally, generation 0 stays
-committed and current while a bounded session-lifecycle diagnostic explains that no first
+committed and current while a safe session-lifecycle diagnostic explains that no first
 inventory was committed. Only a later user-requested rescan failure can mark a retained
 snapshot stale.
 
@@ -836,24 +778,23 @@ snapshot stale.
 | Field | Type | Visibility | Rules |
 |---|---|---|---|
 | `sourceId` | opaque Source ID | DTO | Identifies one still-published Source whose latest explicit rescan failed fatally |
-| `diagnosticId` | session diagnostic ID | DTO | References that Source's reserved actionable fatal-rescan diagnostic |
+| `diagnosticId` | session diagnostic ID | DTO | References that Source's current actionable fatal-rescan diagnostic |
 | `failedAt` | `UtcTimestamp` | DTO | Time the fatal explicit attempt ended |
 | `baseGeneration` | `GenerationNumber` | DTO | Last committed generation the failed attempt tried to replace |
 
 `StaleSourceFailure` is a session-owned lifecycle overlay, not a `ScanGeneration` field.
 An explicit fatal rescan creates or replaces only the entry for its Source, so failures for
-different Sources coexist and at most four entries are possible. A complete or bounded-
-partial scan commit clears the entry and its reserved diagnostic only for the Source it successfully refreshed; a
-commit for another Source carries all unrelated entries and reserved diagnostics forward. Global disable clears
-entries and reserved diagnostics for the Global Sources it removes, while a remaining Repository entry keeps the
+different Sources coexist. A complete or contracted-partial scan commit clears the entry
+and its diagnostic only for the Source it successfully refreshed; a commit for another
+Source carries all unrelated entries and diagnostics forward. Global disable clears
+entries and diagnostics for the Global Sources it removes, while a remaining Repository entry keeps the
 session stale. `snapshotState` is `stale-after-fatal-rescan` exactly while this array is
 non-empty. Automatic first Repository failure and initial Global enable failure create no
 `StaleSourceFailure` entry because neither failed to refresh an already committed Source graph.
-They may occupy their keyed reserved failure-diagnostic slot without making the snapshot stale;
+They may create a keyed lifecycle diagnostic without making the snapshot stale;
 initial Global enable also preserves every pre-existing entry and derived snapshot state.
 Queuing a retry changes that Source's operational status to `scanning` but does not clear
-its entry or reserved diagnostic. An unrelated commit carries both the entry and reserved
-diagnostic plus the Source's failed/scanning
+its entry or diagnostic. An unrelated commit carries both the entry and diagnostic plus the Source's failed/scanning
 lifecycle overlay; only the affected Source's successful commit moves it to
 `ready`/`partial` and resolves the entry.
 
@@ -862,92 +803,103 @@ lifecycle overlay; only the affected Source's successful commit moves it to
 | Field | Type | Visibility | Rules |
 |---|---|---|---|
 | `attemptId` | opaque string | internal | Identifies one serialized, uncommitted transaction |
+| `scanRequestId` | opaque ASCII string or null | internal | Required for a source scan, generated for automatic and explicit commands, and copied to Source/progress/generation; null only for zero-I/O disable |
 | `baseGeneration` | `GenerationNumber` | internal | Must equal the last committed generation when the attempt starts |
 | `transactionKind` / `scannedSourceId` | same closed values as `ScanGeneration` | internal | Identifies the requested source operation without changing committed state |
-| `status` | `waiting \| running \| committable-complete \| committable-partial \| fatal \| cancelled` | internal | Only the two committable outcomes may create the next generation |
+| `status` | `waiting \| running \| committable-complete \| committable-partial \| cleanup-only \| fatal \| cancelled` | internal | Only the two committable outcomes may create the next generation; `cleanup-only` follows disable or shutdown revocation and cannot mutate public state |
+| `publicationAuthority` | `active \| revoked` | internal | Disable/shutdown changes this irreversibly to revoked before any later continuation can publish |
 | `workingSet` | provisional source graph, files, metadata, relationships, and diagnostics, or null | internal | Null while queued; once running, isolated from every public DTO until one atomic commit and destroyed on fatal failure or cancellation |
 
 No field from an in-flight attempt is merged into or exposed through the committed
-snapshot. A bounded partial result is public only after it reaches
-`committable-partial` and the whole generation commits atomically.
+snapshot. A contracted partial result is public only after complete traversal, deterministic
+entry-local non-capacity failure classification, successful assembly/serialization, transition
+to `committable-partial`, and atomic commit of the whole generation. Any capacity or resource
+failure transitions the attempt to `fatal`, publishes no item, Source, recognition, derived
+result, scan-result record or response, or generation, destroys the working set, and retains
+only the prior committed snapshot.
 
 A single `ScanCoordinator` serializes `GlobalEnableOperation`, Repository scan, Global scan,
-and Global-disable transactions; two source scans and root admission never execute concurrently. Ordinary source commands are
-FIFO. Global disable is a priority barrier: acceptance changes `globalControl.state` to
+and Global-disable transactions. Source scans and root admission never execute concurrently.
+Ordinary source commands are FIFO. Global disable is a priority barrier: acceptance changes `globalControl.state` to
 `disabling`, empties pending/retry arrays, and rejects new Global-enable/Global-rescan commands. It aborts and discards the active uncommitted
 transaction, aborts and drains an active/queued Global enable operation, performs a final
 queued-Global-command cancellation sweep, and places a zero-I/O disable transaction next.
 An interrupted Repository command is requeued exactly once immediately behind the
-barrier with fresh counters; an interrupted Global command is not requeued. A second
+barrier with fresh progress; an interrupted Global command is not requeued. A second
 disable while that barrier is queued or active joins the same completion and creates no
 additional transaction. If there is no tool-specific Global Source or graph, active consent
 record, retained admitted Global root context, open Global inspection `FileHandle`, or
 running/queued Global scan/enable command,
 disable is an immediate no-op regardless of unrelated Repository work. A transaction
 starts from the then-current generation N. It carries the unchanged source graph forward
-and gives the scanned source only the remaining session-wide file-count, retained-byte, and generation-diagnostic
-budgets, and builds the replacement off to the side. `maxVisitedEntries` and the deadline
-apply to the active source job. A complete or contracted partial result commits exactly
-N+1 atomically. Every source then reports N+1, every file/recognition/provenance/
+and builds the scanned Source replacement off to the side. A complete or contracted-partial
+result commits exactly N+1 atomically. Every source then reports N+1, every file/recognition/provenance/
 relationship ID—including IDs for an unchanged source—is regenerated, the new snapshot
-clears the `StaleSourceFailure` and reserved diagnostic only for the successfully scanned
-Source, carries both for other Sources, and clears generation-scoped comparison/editor
+clears the `StaleSourceFailure` and diagnostic only for the successfully scanned Source,
+carries both for other Sources, and clears generation-scoped comparison/editor
 state. A Global-disable transaction removes every tool-specific Global graph and its
 stale-failure entry/diagnostic pair under the same commit rule without filesystem I/O;
 an unrelated Repository pair remains.
 
 A fatal attempt never creates or partially merges a `ScanGeneration`. Its entire
-`workingSet`, including any provisional bounded-partial result, is destroyed. N, every
+`workingSet`, including any provisional partial result, is destroyed. N, every
 prior ID, and all committed content remain visible. If and only if the attempt was an
 explicit rescan, the session overlay creates or replaces that Source's
-`StaleSourceFailure` and reserved actionable lifecycle diagnostic; failures for other
+`StaleSourceFailure` and actionable lifecycle diagnostic; failures for other
 Sources remain. A fatal automatic first Repository scan leaves bootstrap generation 0 current.
 A fatal initial Global enable adds no `StaleSourceFailure` entry for the missing tool,
-creates/replaces that tool's keyed reserved failure diagnostic, and preserves all pre-existing
+creates/replaces that tool's keyed failure diagnostic, and preserves all pre-existing
 entries and the derived snapshot state. Automatic first Repository failure likewise uses the
-Repository failure slot. Both report that no new inventory was committed. Expected cancellation by a
+Repository failure record. Both report that no new inventory was committed. Expected cancellation by a
 Global-disable barrier emits no failure diagnostic;
-a different bounded safe failure is an out-of-generation session-lifecycle diagnostic
-that may carry `sourceId` and Source-relative Path for display but never customization
-source values and never enters `Source.diagnosticIds` or the source/generation caps. The
+a different recoverable safe failure is an out-of-generation session-lifecycle diagnostic.
+Its attachment scope follows the `Diagnostic` rules below: a file-scoped record carries
+`sourceId`, `fileId`, and Source-relative Path together; source- and session-scoped records
+never fabricate a file ID or path. It never carries customization source values and never
+enters `Source.diagnosticIds`. The
 coordinator then starts the next queued transaction from the still-current N. A later
-successful complete or bounded-partial scan of the affected Source replaces N with N+1
-and clears only its entry and reserved diagnostic; a different Source's commit leaves both unresolved. At
+successful complete or contracted-partial scan of the affected Source replaces N with N+1
+and clears only its entry and diagnostic; a different Source's commit leaves both unresolved. At
 most one scan command per source is running or queued; duplicate scan commands
 return the documented conflict. Disable uses the join/no-op rules above and is not a
 duplicate scan command.
+
+Disable or process shutdown stops new scheduling and revokes `publicationAuthority`. A
+still-pending Node.js filesystem promise moves the attempt to `cleanup-only`; every late
+byte, graph/Diagnostic/DTO/log result is discarded and opened handles are closed during
+cleanup. API and liveness processing continue. A disable barrier can revoke Global
+authority immediately but cannot claim physical drain before an uncancellable kernel
+operation settles.
 
 ### ScanProgress
 
 | Field | Type | Rules |
 |---|---|---|
+| `scanRequestId` | opaque ASCII string or null | Non-null for waiting/active/final source-scan progress and equals `Source.scanRequestId`; null for barrier-owned disable progress |
 | `phase` | `waiting \| cancelling \| enumerating \| reading \| deriving \| recognizing \| complete` | `waiting` means queued; `cancelling` means a disable/shutdown abort is draining; neither contains a path or source content |
-| `visitedEntries` | non-negative integer | Maximum 200,000 |
-| `candidateFiles` | non-negative integer | Maximum 2,000 accepted items |
-| `readBytes` | non-negative integer | Maximum 32 MiB |
-| `diagnosticCount` | non-negative integer | Accepted count including sentinels; maximum 10,000 |
 | `queuedAt` | `UtcTimestamp` or null | Set when an accepted command waits behind another transaction; cleared when work begins |
 | `startedAt` | `UtcTimestamp` or null | Source-scan start, or disable acceptance for barrier-owned progress; null while idle or waiting |
 
 `Source.progress` is null in `idle` and `failed`. For `scanning`, `waiting`
 requires non-null `queuedAt` and null `startedAt`; an active phase requires null `queuedAt`
-and non-null `startedAt`. `disabling` exposes the relevant `cancelling` progress while a
+and non-null `startedAt`; `Source.scanRequestId` and `progress.scanRequestId` are the same
+non-null value. `failed` retains the failed request ID even though progress is null. A
+committed `ready`/`partial` Source, its final progress, and its source-scan generation carry
+one matching request ID. `disabling` exposes the relevant `cancelling` progress while a
 barrier drains. A committed `ready`/`partial` source retains its final `complete` progress
 with null `queuedAt` and non-null `startedAt`. Bootstrap has no source progress.
 
 On disable acceptance, every present Global Source immediately becomes `disabling` and
 its progress has null `queuedAt`. If the drained job is a Global scan, that scanned Source
-preserves its current bounded counters and original scan `startedAt` while only `phase`
-changes to `cancelling`; each other present Global Source exposes barrier-owned
-`cancelling` progress with all four counters zero and the disable-acceptance time in
+preserves its original scan `startedAt` while only `phase` changes to `cancelling`; each
+other present Global Source exposes barrier-owned `cancelling` progress with the disable-acceptance time in
 `startedAt`. If no Global scan is being drained, every present Global Source exposes that
 barrier-owned progress. A concurrently drained
-Repository scan preserves its own counters/`startedAt`, clears `queuedAt`, and changes only
+Repository scan preserves its own `startedAt`, clears `queuedAt`, and changes only
 its phase to `cancelling`. After the single disable commit, all Global Sources are removed;
-an interrupted Repository command reappears with zero counters, `phase: waiting`, non-null
-`queuedAt` at requeue, and null `startedAt`. Joined disable requests reuse all of these
-values and never create another progress record. The committed disable generation still
-has null `counters` because the barrier performs no source I/O.
+an interrupted Repository command reappears with `phase: waiting`, non-null
+`queuedAt` at requeue, null `startedAt`, and its original `scanRequestId`. Joined disable requests reuse all of these
+values and never create another progress record.
 
 ### CustomizationFile
 
@@ -957,20 +909,29 @@ has null `counters` because the barrier performs no source I/O.
 | `sourceId` | opaque string | DTO | Must identify one enabled Source |
 | `boundaryId` | opaque string | internal | Binds the file to that Source's sole boundary and is never serialized |
 | `sourceRelativePath` | `SourceRelativePath` | DTO | Primary display and filtering path relative to the owning Source root |
-| `aliasSourceRelativePaths` | `SourceRelativePath[]` | DTO | At most 1,024 other allowlisted hard-link paths in the same Source, sorted; symlinks are never aliases |
+| `aliasSourceRelativePaths` | `SourceRelativePath[]` | DTO | Other allowlisted hard-link paths in the same Source, sorted; symlinks are never aliases |
 | `identity` | file-handle identity from `VerifiedReadReceipt` | internal | Used only for alias/race detection; never treated as durable |
 | `verifiedReadReceipt` | `VerifiedReadReceipt` or null | internal | Present only for an accepted readable file and never serialized |
 | `readState` | file read-state enum | DTO | See states below |
 | `parseSummary` | `not-applicable \| all-parsed \| mixed \| all-failed` | DTO | Projection of recognition-level extraction states; never a vendor validation result |
-| `sizeBytes` | integer or null | DTO | At most 1 MiB for readable files |
+| `sizeBytes` | non-negative integer or null | DTO | Exact byte count for a readable file |
 | `encoding` | `utf-8 \| utf-8-bom \| unsupported \| binary \| unknown` | DTO | Invalid text remains diagnostic-only |
 | `sourceText` | string or null | DTO | Complete decoded authored source for a readable text file; literal values and environment-variable reference syntax are preserved exactly; never HTML |
 | `contentDigest` | keyed per-session digest | internal | Detects stale content without exposing a reusable content hash |
 | `recognitionIds` | opaque string[] | DTO | At least one for an accepted customization file |
-| `relationshipIds` / `diagnosticIds` | opaque string[] | DTO | Refer to the same generation; diagnostics are accepted under the 128-entry file limit |
+| `relationshipIds` / `diagnosticIds` | opaque string[] | DTO | Refer to the same generation |
 
-Read states are `readable`, `unreadable`, `oversized`, `binary`,
-`unsupported-encoding`, `stale`, `unsafe-link`, `boundary-rejected`, and `limit-skipped`.
+Read states are `readable`, `unreadable`, `binary`, `unsupported-encoding`, `stale`,
+`unsafe-link`, and `boundary-rejected`.
+Encoding is assigned only after a completed same-handle read passes every post-read check.
+Any NUL byte yields `readState: binary`, `encoding: binary`, and null `sourceText`. Otherwise
+the full byte sequence is decoded with fatal UTF-8 semantics. One leading BOM yields
+`encoding: utf-8-bom` and is removed from `sourceText`; strict success without it yields
+`encoding: utf-8`; failure yields `readState: unsupported-encoding`,
+`encoding: unsupported`, and null `sourceText`. Binary and unsupported items are
+diagnostic-only and comparison-ineligible. Replacement decoding, alternate encodings,
+sampling, and truncation are unrepresentable; no product byte, line, or item ceiling affects
+this state machine.
 `parseSummary` is `not-applicable` when every recognition is `not-attempted`, `all-parsed`
 when at least one is parsed and none failed, `all-failed` when at least one failed and none
 parsed, and `mixed` when parsed and failed recognitions coexist; `not-attempted` records do
@@ -988,19 +949,29 @@ comparison DTOs.
 |---|---|---|
 | `recognitionId` | opaque string | Unique within generation |
 | `fileId` | opaque string | Many recognitions may reference one physical file |
-| `provenances` | `CandidateProvenance[]` | Sorted, non-empty set of rule/path admissions for this shared tool/kind interpretation; maximum 2,000 |
+| `provenances` | `CandidateProvenance[]` | Sorted, non-empty set of rule/path admissions for this shared tool/kind interpretation |
 | `tool` | `copilot \| claude \| codex` | Required |
 | `kind` | closed customization-kind enum | Instructions, rule, skill, agent, prompt/command, hook, MCP, settings/config, output style, plugin, marketplace, or skill metadata |
 | `parseStatus` | `not-attempted \| parsed \| failed` | `not-attempted` means no allowlisted extractor applies; `failed` is all-or-nothing for this recognition only |
-| `declaredMetadata` | ordered `DeclaredMetadataEntry[]` | Only allowlisted closed field IDs; source-occurrence order and accepted duplicates are preserved; at most 512 entries |
-| `diagnosticIds` | opaque string[] | Recognition-scoped extraction failures/limits within the owning file's diagnostic cap |
+| `declaredMetadata` | ordered `DeclaredMetadataEntry[]` | Only allowlisted closed field IDs; source-occurrence order and accepted duplicates are preserved |
+| `diagnosticIds` | opaque string[] | Recognition-scoped extraction failures within the owning file |
 
 The maintained supported-customization documentation is the normative presentation
 allowlist. For every supported `(tool, kind)`, it enumerates the exact closed metadata
-`fieldId` values and relationship kinds eligible for display. An authored field or
-reference absent from that allowlist remains visible only in the complete `sourceText`; it
-does not create a `DeclaredMetadataEntry` or `Relationship`, and the parser does not infer
-an equivalent entry from its shape or name.
+`fieldId` values, relationship kinds, and admitted source forms covered by the row. An
+entry is eligible only if the tuple allowlist contains it and the exact extractor for the
+recognition's admitted source form defines that authored occurrence. Multiple source forms
+in one row do not union or transfer schema fields between those forms. An authored field or
+reference that fails either gate remains visible only in the complete `sourceText`; it does
+not create a `DeclaredMetadataEntry` or `Relationship`, and the parser does not infer an
+equivalent entry from its shape or name.
+
+The authoritative enumerations are the Presentation Allowlist sections in the
+[GitHub Copilot](contracts/vendors/github-copilot.md), [Claude Code](contracts/vendors/claude-code.md),
+and [OpenAI Codex](contracts/vendors/openai-codex.md) contracts. They are frozen design
+inputs before dependent implementation begins. A field, relationship, or source-form
+applicability change updates the applicable English/Japanese contract pair, registry,
+conformance fixture, and tests together.
 
 The customization-kind enum is shared, but each recognizer owns its path and interpretation
 rules. A shared `AGENTS.md`, `CLAUDE.md`, `.mcp.json`, skill, or marketplace therefore stays
@@ -1010,10 +981,13 @@ record. If extractors for the same pair produce incompatible parsed meanings, th
 recognition becomes `failed`, retains its complete source and compatible provenance
 admissions, and publishes no metadata/relationship/derivation result. Path-specific scope,
 order, documentation status, and applicability never use a lossy recognition-level aggregate.
-The parser never resolves environment references. If a metadata depth, node, scalar, or
-entry limit is exceeded, it discards that recognition's entire metadata extraction and
-reports a diagnostic rather than returning truncated or transformed authored values; the
-complete readable `sourceText` remains available.
+The parser never resolves environment references. A deterministic non-capacity extraction
+failure discards that recognition's entire metadata/relationship/derivation result, reports a
+safe diagnostic, and may retain the complete readable `sourceText` in a contracted partial
+generation. If Node.js or a parser library reports a recoverable capacity/resource failure,
+the Inspector returns no parser, extraction, recognition, relationship, derived result, item,
+or Source, propagates `fatal-resource`, aborts the scan attempt without a scan-result record or
+response or generation, and leaves only the prior committed snapshot available.
 
 Recognitions are ordered by the closed tool order `copilot`, `claude`, `codex`, then the
 kind order listed in the table, never by opaque ID. Cross-file metadata comparison uses
@@ -1027,10 +1001,9 @@ Every authored projection is first represented internally by one
 zero-based occurrence; it carries one exact authored literal, one typed semantic value when
 available, and one `SourceTextRange`. A range is a half-open `{ start, end }` pair measured
 in ECMAScript UTF-16 code units and is valid only when
-`sourceText.slice(start, end) === authoredLiteral`. The 64 KiB scalar bound is measured
-separately over UTF-8 bytes and never changes the offset unit.
+`sourceText.slice(start, end) === authoredLiteral`.
 
-Metadata, an authored relationship, and bounded derivation may all reference that same
+Metadata, an authored relationship, and derivation may all reference that same
 occurrence and therefore reuse its exact range. Exact range reuse is legal only through the
 same occurrence key and identical literal. Distinct emitted occurrences must have disjoint
 ranges: partial, crossing, containment, or identical overlap under different origin keys is
@@ -1045,23 +1018,27 @@ surrogate, and combining-character fixtures must round-trip with `String.prototy
 |---|---|---|---|
 | `fieldId` | closed metadata-field identifier | DTO | Registry-owned identity for an allowlisted field/path; never an arbitrary authored key |
 | `occurrence` | zero-based integer | DTO | Counts occurrences of this `fieldId` in source order and, together with `fieldId`, is the stable metadata-comparison identity |
-| `authoredLiteral` | string | DTO | Exact decoded-`sourceText` slice for the value token/span, including authored quotes, escapes, block/collection punctuation, and environment-reference syntax; maximum 64 KiB UTF-8 and never replaced by a decoded value |
+| `authoredLiteral` | string | DTO | Exact decoded-`sourceText` slice for the value token/span, including authored quotes, escapes, block/collection punctuation, and environment-reference syntax; never replaced by a decoded value |
 | `sourceOccurrenceKey` | closed field/occurrence origin key | internal | References the one shared `ExtractedSourceOccurrence`; relationship/derivation projections reuse this key rather than copying a span |
 | `sourceRange` | `SourceTextRange` | internal | UTF-16 half-open range whose `String.prototype.slice` must equal `authoredLiteral` |
-| `semanticValue` | bounded `SemanticMetadataValue` or null | internal | Separately decoded value for typed classification, relationship normalization, and bounded derivation only; never serialized or displayed; null when the syntax supports literal display but no unambiguous typed value |
+| `semanticValue` | `SemanticMetadataValue` or null | internal | Separately decoded value for typed classification, relationship normalization, and derivation only; never serialized or displayed; null when the syntax supports literal display but no unambiguous typed value |
 
 `SemanticMetadataValue` is a closed, JSON-safe discriminated union for null, boolean,
 string, integer, float, date/time, array, and object values. Integer, float, and date/time
-payloads use bounded canonical strings plus their explicit type tag so JavaScript number
+payloads use canonical strings plus their explicit type tag so JavaScript number
 precision and parser-specific date objects cannot change the semantic value. Arrays and
-objects recursively contain the same union within the existing depth/node/scalar limits;
+objects recursively contain the same union as supported by the selected parser and runtime;
 objects use ordered key/value entries rather than a JavaScript object map.
+Despite the field name, this union is mechanical typed decoding of an authored literal. It
+cannot represent natural-language meaning or intent, semantic rank, validity/correctness/
+effectiveness/compliance/quality, policy/remediation advice, or a fix action. Inspector-
+owned schema/registry validation never converts it into a customization-file verdict.
 
 The array is serialized in exact source-occurrence order. Accepted duplicate field
 occurrences remain separate rather than being collapsed by a map. JSON transport escaping
 does not alter the DTO string after JSON decoding. JSONC syntax-tree ranges, YAML
-CST/source-token ranges, bounded TOML lexical spans cross-checked with semantic parsing,
-and bounded Markdown/frontmatter/import spans must reproduce the exact substring. Missing,
+CST/source-token ranges, TOML lexical spans cross-checked with semantic parsing, and
+Markdown/frontmatter/import spans must reproduce the exact substring. Missing,
 ambiguous, illegally overlapping, or non-round-tripping spans discard the recognition's complete
 metadata/relationship/derivation extraction. Structural comparison matches
 `(tool, kind, fieldId, occurrence)` and compares `authoredLiteral`, so semantically equal but lexically
@@ -1072,13 +1049,12 @@ different values remain visibly different.
 | Field | Type | Rules |
 |---|---|---|
 | `provenanceId` | opaque string | Unique within generation and its owning recognition; used to anchor path-relative relationships |
-| `discoveryClass` | `static-candidate \| bounded-derived-candidate` | Relationship/excluded rules can never appear here |
+| `discoveryClass` | `static-candidate \| derived-candidate` | Relationship/excluded rules can never appear here |
 | `ruleId` | stable inspection-rule ID | One shipped rule that admitted the owning recognition |
 | `matchedPath` | `SourceRelativePath` | Exact candidate path admitted by this rule; must be the file's primary or alias path in the same Source |
 | `seedFileId` | opaque string or null | Required for a derived candidate; null for static candidates |
 | `seedProvenanceId` | opaque provenance ID or null | Required for a derived candidate and resolves one exact independently admitted static provenance; null for static candidates |
 | `seedRuleId` | stable rule ID or null | Rule of that exact seed provenance; required for derived candidates and null for static candidates |
-| `depth` | integer `0..1` | Static is zero; derived is one |
 | `declarationKey` | closed field/component identifier or null | Never duplicates an arbitrary authored declaration value |
 | `seedSourceOccurrenceKey` | internal occurrence reference or null | Reuses the seed's exact authored occurrence for declaration-driven derivation; null only for static or fixed matched-path derivation |
 | `scope` | `ScopeDescriptor` | Closed, displayable admission scope without evaluating runtime effectiveness |
@@ -1097,18 +1073,15 @@ derivation provenance is one typed edge and cannot seed another edge. An indepen
 static provenance on that same physical file remains eligible to seed its own typed rule.
 The stable array order is `matchedPath`, `ruleId`, the resolved nullable seed provenance's
 source/boundary/`matchedPath`/rule key, then nullable declaration key; opaque file and
-provenance IDs resolve identity but never determine order. Overflow stops further admissions and makes the
-generation partial.
+provenance IDs resolve identity but never determine order.
 
 For each independently admitted static seed provenance, typed extractors enumerate by
 derivation `ruleId`, closed declaration field, then zero-based source occurrence. After
 validation, targets are deduplicated by the seed's stable provenance key, derivation rule,
-normalized target, and declaration key; the earliest occurrence wins. The first 128
-distinct targets may proceed through normal candidate/safe-read limits. Encountering the
-129th stops derivation for that seed before any target stat/read, makes the generation
-partial, and offers one fixed-code diagnostic candidate to the diagnostic aggregator. A
+normalized target, and declaration key; the earliest occurrence wins. Each distinct target
+proceeds through the same candidate and safe-read checks. A
 known unsatisfied/shadowed seed emits none; an unresolved eligible static seed emits only
-conditional candidates; a bounded-derived provenance never enters this algorithm.
+conditional candidates; a derived provenance never enters this algorithm.
 Validation occurs before generation-bound ticket selection and applies the contract's
 platform-independent NFC segment grammar, unique collision-free enumerated-entry match,
 and canonical component-identity check. ADS/device/trailing-dot-space, ambiguous case or
@@ -1127,20 +1100,20 @@ on implementation-specific objects.
 |---|---|---|
 | `source-root` | none | The owning Repository or tool-specific Global Source root |
 | `directory-subtree` | `path: SourceRelativePath` | One collision-free Source-relative directory and its descendants |
-| `matching-path` | `path: SourceRelativePath`, `selectorIndex: 0..31` | The exact admitted path and immutable matcher-selector alternative |
+| `matching-path` | `path: SourceRelativePath`, `selectorIndex: non-negative integer` | The exact admitted path and immutable matcher-selector alternative |
 | `declared` | `fieldId`, `occurrence` | References one `DeclaredMetadataEntry` without duplicating its authored value |
 
 Any path field belongs to the same Source/boundary as the provenance. The stable scope key
 is the variant order above, then Source-relative path, selector index, field ID, and
 occurrence as applicable.
 
-`OrderDescriptor` contains `components`, an ordered array of one to four values from this
+`OrderDescriptor` contains `components`, a non-empty ordered array of values from this
 closed union:
 
 | Component `kind` | Fields | Meaning |
 |---|---|---|
-| `path-depth` | `direction: broad-to-narrow \| narrow-to-broad`, `depth: 0..64`, `path: SourceRelativePath` | Documented path-layer order only |
-| `registry-rank` | `strategyId`, `rank: 0..255` | Fixed documented fallback/precedence rank within one strategy |
+| `path-depth` | `direction: broad-to-narrow \| narrow-to-broad`, `depth: non-negative integer`, `path: SourceRelativePath` | Documented path-layer order only |
+| `registry-rank` | `strategyId`, `rank: non-negative integer` | Fixed documented fallback/precedence rank within one strategy |
 | `source-occurrence` | `fieldId`, `occurrence` | Authored declaration order without copying its value |
 
 Components are already in documented pipeline order. Their stable comparison key is
@@ -1153,14 +1126,14 @@ plus applicability/documentation facts, never a fabricated rank.
 | Field | Type | Rules |
 |---|---|---|
 | `summary` | `authored \| available \| selected \| omitted \| shadowed \| disabled \| conditional \| unknown` | Convenience projection only; never called `effective` |
-| `conditions` | `ConditionFact[]` | Maximum 64, sorted/deduplicated by key, reason code, basis, then status; no missing input defaults to true |
+| `conditions` | `ConditionFact[]` | Sorted/deduplicated by key, reason code, basis, then status; no missing input defaults to true |
 | `strategyRefs` | sorted strategy ID[] | Strategies used by the projection; empty when only authorship is known |
 | `evaluatedFromGeneration` | integer | Prevents facts from surviving a rescan |
 
 Each `ConditionFact` has a `key` (`surface`, `engine-version`, `runtime-cwd`,
 `workspace-root`, `repository-root`, `project-root`, `worked-path`, `target-match`,
 `scope-availability`, `feature-state`, `trust`, `approval`, `enablement`, `selection`,
-`settings-inputs`, `plugin-state`, `agent-context`, `event`, `content-limits`,
+`settings-inputs`, `plugin-state`, `agent-context`, `event`,
 `documentation-variant`, `tool-availability`, `installation`, `managed-policy`,
 `instruction-byte-budget`, or `external-runtime`), a
 `status` (`satisfied`, `unsatisfied`, `unknown`, or `documentation-conflict`), a fixed
@@ -1191,6 +1164,9 @@ Only file-originated candidate declarations can project `authored`. A relationsh
 no stronger proof is `conditional` or `unknown`. Unrelated informational facts do not
 block a terminal result; a fact marked required by the reason registry does. Conditions
 remain authoritative and visible even when a higher-priority sufficient outcome wins.
+These summaries mechanically project documented explicit facts; they do not interpret
+natural-language content, judge customization validity/correctness/effectiveness/compliance/
+quality, or advise remediation.
 
 ### Relationship
 
@@ -1206,7 +1182,7 @@ remain authoritative and visible even when a higher-priority sufficient outcome 
 | `authoredTarget` | string or null | For `authored`, exact decoded-source slice for this target token/span, including authored quoting and escapes; for `documented-default`, null so a synthetic path is never presented as authored |
 | `sourceOccurrenceKey` | internal occurrence reference or null | For `authored`, references the same `ExtractedSourceOccurrence` used by metadata/derivation when applicable; null for `documented-default` |
 | `targetSourceRange` | `SourceTextRange` or null | Required internally for `authored`, uses UTF-16 offsets, and must reproduce `authoredTarget`; null for `documented-default` |
-| `semanticTarget` | bounded string | Internal separately decoded authored target or fixed registry default used only for path normalization/applicability; never substituted for an authored display value |
+| `semanticTarget` | string | Internal separately decoded authored target or fixed registry default used only for path normalization/applicability; never substituted for an authored display value |
 | `normalizedTarget` | `SourceRelativePath` or null | Set only when lexical normalization is safe and the target remains in the owning Source |
 | `boundaryStatus` | `inside \| outside \| invalid \| unknown` | Does not authorize a read |
 | `resolutionStatus` | `not-followed \| independently-admitted \| missing \| rejected` | A relationship itself never expands content |
@@ -1221,10 +1197,10 @@ listed by the maintained presentation allowlist for the owning `(tool, kind)`. A
 with an unlisted relationship kind remains authored source text only and cannot be promoted
 to a generic, inferred, or fallback relationship.
 
-Relationships are direct only. Maximum depth is one and maximum count is 1,000 per file.
-A candidate target is independently admitted by a static or bounded-derived rule; a
+Relationships are direct only. A candidate target is independently admitted by a static
+or derived rule; a
 relationship itself never promotes the target. Typed candidate derivation is modeled in
-`CandidateProvenance`, has separate depth/count limits, and is not relationship traversal.
+`CandidateProvenance` and is not relationship traversal.
 The relationship summary describes only whether the reference edge may be available or
 selected under known product rules; it never describes target-file effectiveness.
 
@@ -1240,81 +1216,86 @@ Extractors emit by the originating provenance's stable array key, recognition to
 relationship `ruleId`/kind, declaration-field identifier, then source-occurrence order.
 Distinct authored source occurrences remain distinct edges even when their semantic targets
 match. A documented default uses `authoredTarget: null`; the UI labels it as a documented
-default and may display the bounded `normalizedTarget`, never as source-authored text.
+default and may display the `normalizedTarget`, never as source-authored text.
 When one declared field drives metadata, a relationship, and derivation, all three
 projections reference its one occurrence/range; only overlaps between distinct origin
 occurrences trigger extraction failure.
-Opaque IDs never participate in ordering. On the 1,001st distinct edge, extraction for
-that file stops, the first 1,000 remain
-in that order, the generation becomes partial, and one fixed-code limit diagnostic is
-offered to the diagnostic aggregator. If an outer diagnostic cap suppresses it, that cap's
-fixed sentinel represents the suppression. No target is opened while deciding retention.
+Opaque IDs never participate in ordering. No target is opened while constructing or
+retaining a relationship; only independent candidate admission can authorize a read.
 
 ### Diagnostic
 
 | Field | Type | Rules |
 |---|---|---|
-| `diagnosticId` | opaque ASCII string, at most 64 bytes | Server-generated and unique within generation/session |
+| `diagnosticId` | opaque ASCII string | Server-generated and unique within generation/session |
 | `code` | stable closed code | Suitable for objective tests and documentation links |
 | `severity` | `info \| warning \| error` | Does not imply vendor validation |
-| `sourceId` / `fileId` | optional opaque ASCII IDs, each at most 64 bytes | Scope without accepting paths from the client |
+| `scope` | `file \| source \| session` | Required attachment discriminator; independent of generation-scoped versus session-lifecycle lifetime |
+| `sourceId` | optional opaque ASCII ID | Required for `file` and `source`; forbidden for `session` |
+| `fileId` | optional opaque ASCII ID | Required only for `file`; forbidden for `source` and `session` |
+| `sourceRelativePath` | optional Source-relative Path | Required only for `file`, must equal that file's path within `sourceId`, and is forbidden for `source` and `session` |
 | `messageKey` | localized key | English/Japanese messages remain equivalent |
-| `safeArgs` | bounded JSON-safe map | No customization source, declared-metadata value, comparison content, process-environment value, arbitrary exception string, or outside path |
+| `safeArgs` | JSON-safe map | No customization source, declared-metadata value, comparison content, process-environment value, arbitrary exception string, or outside path |
 | `nextStepKey` | localized key | Every error identifies a practical next action |
 
-The closed diagnostic-code registry fixes severity, message/next-step keys, and a
-code-specific argument schema; `safeArgs` has at most 16 scalar entries and any string is
-at most 256 UTF-8 bytes after presentation escaping. Candidates are deduplicated by code,
-source/file IDs, and canonical safe arguments. They are emitted in fixed phase,
-source/boundary, Source-relative Path, rule/code, then emitter-occurrence order; opaque IDs
-never determine retention.
+The three legal attachment shapes are therefore exactly: `file` with non-null
+`sourceId`, `fileId`, and `sourceRelativePath`; `source` with non-null `sourceId` and null
+file/path fields; and `session` with all three location fields null. A DTO using any other
+combination is invalid. Scope is orthogonal to lifetime: for example, a generation-wide
+runtime-failure diagnostic may be session-scoped, while a fatal rescan lifecycle record may
+be source-scoped.
 
-Before aggregation, each candidate is assigned exactly one lifetime class. A scan
-candidate belongs to one `ScanGeneration` and passes every applicable file, source, and
-generation cap; those aggregators reserve their final slots and retain at most 127, 4,999,
-and 9,999 detail diagnostics. An out-of-generation lifecycle candidate—including a fatal
-scan attempt that cannot be committed—belongs to the session only, passes the separate
-session cap, and is never inserted into a generation or source ID list. Authentication,
-malformed-request, and other client-caused API errors are returned but not retained as
-diagnostics. The session aggregator reserves exactly four fixed failure slots keyed by
-Repository, Copilot, Claude, and Codex, plus its final slot for the session-limit sentinel,
-so it retains at most 1,019 ordinary lifecycle details. A slot contains at most one current
-actionable diagnostic: automatic first Repository failure or Repository fatal rescan in the
-Repository slot; post-consent rejection, fatal initial enable, or published-Source fatal
-rescan in that Global tool's slot. A Global control diagnostic is cleared before/when its
-Source publishes, so it cannot coexist with that Source's later stale-failure diagnostic.
-A later outcome for the same key replaces its slot; successful Repository refresh, successful
-Global Source publication/refresh, Source removal, or Global disable clears the applicable
-slot. Unrelated tool/Source commits preserve it. Reserved diagnostics are never suppressed by
-ordinary lifecycle-detail overflow and surviving IDs remain in `sessionDiagnosticIds`.
+The closed diagnostic-code registry fixes severity, scope, message/next-step keys, and a
+code-specific argument schema. Candidates are deduplicated by code,
+scope, source/file IDs, Source-relative Path, and canonical safe arguments. They are emitted
+in fixed phase, scope, source/boundary, Source-relative Path, rule/code, then emitter-
+occurrence order; opaque IDs never determine retention. A scan candidate belongs to one
+`ScanGeneration`. An out-of-generation lifecycle candidate—including a fatal scan attempt
+that cannot be committed—belongs to the session only and is never inserted into a
+generation or Source ID list. Authentication, malformed-request, and other client-caused
+API errors are returned but not retained as diagnostics.
 
-Lifecycle byte admission uses the same deterministic order as count admission. Ordinary
-details may consume only the 2-MiB lifecycle-diagnostic budget after the 16-KiB fixed-diagnostic reservation. The
-four keyed failure slots and session sentinel consume that reservation and each still obeys
-the 2-KiB paired-record charge; an unexpectedly larger keyed failure is converted to its
-fixed compact per-key form, while an oversized ordinary detail is suppressed. Count
-overflow or byte overflow increments the same saturating session-sentinel suppressed count. Replacement of one keyed slot is atomic and is accepted
-only after charging the replacement while crediting the old record, so the overlay never
-temporarily or finally exceeds its byte budget.
-
-An overflow-sentinel slot remains unused until overflow. On the first distinct candidate beyond an
-applicable detail allowance, that slot receives the fixed `diagnostic-limit-file`,
-`diagnostic-limit-source`, `diagnostic-limit-generation`, or
-`diagnostic-limit-session` sentinel with a saturating 32-bit suppressed count; later
-details are counted and suppressed. Only diagnostics that survive every applicable cap
-appear in `diagnostics` or an ID list. Scan-class overflow makes its generation partial.
-Session-class overflow preserves every occupied Repository/Global-tool failure slot, adds
-the session sentinel, and never replaces committed generation content or changes the
-derived session snapshot state.
+The session keeps the current actionable failure diagnostic for each Repository or Global
+tool key. A later outcome for the same key replaces that diagnostic; successful Repository
+refresh, successful Global Source publication/refresh, Source removal, or Global disable
+clears the applicable record. Unrelated tool/Source commits preserve it. Recoverable
+Node.js, parser, filesystem, browser, or operating-system capacity failures use fixed safe
+codes and arguments. Diagnostics are never deliberately truncated or replaced by an
+aggregate suppression record. If the active runtime cannot retain or serialize a diagnostic
+result, `fatal-resource` aborts the whole publication attempt, publishes no item, Source,
+recognition, derived result, scan-result record or response, diagnostic result, or generation,
+and leaves only the prior committed snapshot available; an extraction-local or contracted-
+partial outcome is not permitted.
 
 Unknown internal exceptions are mapped to a generic code and correlation ID held only in
-memory; stack traces and raw parser errors are never sent to the browser by default.
+memory; stack traces and raw parser errors are never sent to the browser or an operational
+event record.
 The closed registry includes `safe-fs-root-rejected`,
 `safe-fs-boundary-unverifiable`, `safe-fs-link-rejected`,
 `safe-fs-device-changed`, `safe-fs-entry-stale`, `safe-fs-race-detected`,
 `safe-fs-file-metadata-changed`, `safe-fs-path-normalization-collision`, and
 `safe-fs-open-failed`. Their arguments contain no
 OS error text, outside path, filesystem handle/descriptor, or source bytes.
+
+### OperationalEvent
+
+Operational events are distinct from authenticated session `Diagnostic` DTOs and from
+fixed CLI presentation output. Their closed schema has no free-form field:
+
+| Field | Type | Rules |
+|---|---|---|
+| `eventCode` | stable closed code | Required; conveys the fixed event class without embedding an error/message string |
+| `sessionId` / `sourceId` / `fileId` | opaque ASCII IDs or null | Optional event identities only; never resolved to or accompanied by a root, filename, or path |
+| `scanRequestId` / `operationId` | opaque ASCII IDs or null | Optional command identities |
+
+Every other field is rejected. In particular, an event contains no Source-relative,
+absolute, or canonical path, root, filename, inspected content or metadata, authored value,
+capability, request/response body, parser/system error, exception string, or Diagnostic
+argument. A file-scoped Diagnostic may expose its `sourceRelativePath` to the
+capability-authenticated session, but no projection copies it into `OperationalEvent`.
+Fixed help/version text, the single launch-URL line, and fixed actionable startup warnings
+are presentation output rather than operational events and still contain no inspected
+content, inspected path, or authored value.
 
 ### BrowserState
 
@@ -1382,6 +1363,9 @@ This state is not authoritative and is never persisted.
 
 ## State transitions
 
+Every `partial` token in the following transition diagrams means the closed public
+`contracted-partial` outcome; it never denotes provisional work or a resource-failure result.
+
 ### Repository source
 
 ```text
@@ -1421,10 +1405,10 @@ entities before the next DTO is published.
 The lexical consent preview is not a `Source`; an accepted enable may commit at most one
 Source for each confirmed eligible tool, each with one root. All are absent again after
 the disable commit. A failed initial enable commits no Source, adds no `StaleSourceFailure`
-entry for that tool, creates/replaces the tool's keyed reserved failure diagnostic, and leaves
+entry for that tool, creates/replaces the tool's keyed failure diagnostic, and leaves
 every pre-existing entry and the derived snapshot state unchanged. A failed explicit per-source rescan leaves that Source's prior committed graph
 readable and marks the snapshot stale. In either case `progress` is null for any published
-failed Source, and the capped actionable lifecycle diagnostic explains the discarded
+failed Source, and an actionable lifecycle diagnostic explains the discarded
 attempt. A fatal enable/rescan never commits its new or partial graph. The exact consent and
 admitted roots remain as session control state so the user may retry or disable; no Source
 falls back to a different root.
@@ -1438,8 +1422,8 @@ top-level `snapshotState` stale while this Source is ready, partial, or current.
 ```text
 candidate -> readable + not-applicable/all-parsed/mixed/all-failed parse summary
                      -> stale/removed on next generation
-          -> unreadable/oversized/binary/unsupported-encoding
-          -> unsafe-link/boundary-rejected/limit-skipped
+          -> unreadable/binary/unsupported-encoding
+          -> unsafe-link/boundary-rejected
 ```
 
 No state transition writes to the source. Rescan creates new entities instead of mutating
@@ -1455,7 +1439,7 @@ old file records in place.
 3. Global is disabled in every new process. A session has zero to three Global Sources,
    at most one each for Copilot, Claude, and Codex; every Source owns exactly one boundary
    confirmed for that same tool by the current allowlist consent.
-4. Every accepted file path is authorized by a shipped static or typed bounded-derived
+4. Every accepted file path is authorized by a shipped static or typed derived
    rule and independently passes safe-read checks. A parsed value grants access only when
    it satisfies that exact derivation rule; relationships and excluded rules never do.
    Authorization selects an existing `ScanEntryTicket`; only the central safe-filesystem
@@ -1465,9 +1449,8 @@ old file records in place.
    filesystem operations; NFC classification collisions fail closed. Global traversal
    performs only the exact operations represented by the consent-bound `TraversalPlan`.
 5. A physical file has one `CustomizationFile` record per source/generation and at most one
-   recognition for each tool/kind pair; accepted in-limit hard-link aliases remain visible in
-   `aliasSourceRelativePaths` without duplicating source content, and overflow is
-   represented by the required partial result and diagnostic.
+   recognition for each tool/kind pair; accepted hard-link aliases remain visible in
+   `aliasSourceRelativePaths` without duplicating source content.
 6. Every readable file DTO returns its complete authored `sourceText`; every returned
    declared-metadata value and authored relationship target is an exact validated source
    UTF-16-indexed `String.prototype.slice`, while a documented default has null authored
@@ -1475,23 +1458,28 @@ old file records in place.
    occurrence range; distinct origins may not overlap. Comparison uses authored slices and
    `(tool, kind, fieldId, occurrence)` so literal differences survive semantic decoding.
    Environment references remain literal and never cause a process-environment
-   lookup or substitution. Operational diagnostics, logs, progress, and exceptions never
-   duplicate customization source, declared-metadata, or comparison values.
+   lookup or substitution. Authenticated Diagnostics may carry only their actionable
+   location fields. Operational events contain fixed codes/opaque IDs only and never contain
+   any path, root, filename, inspected content/metadata, authored value, capability, body,
+   raw error, exception string, or Diagnostic argument.
 7. Documentation status, authored/installed state, selection, trust, enablement, and other
    condition facts remain orthogonal and provenance-specific; none is collapsed into
    “effective configuration” or a lossy recognition-level winner.
-8. Typed derivation is exactly one closed `DerivationProgram` edge and at most 128 targets
-   per exact `seedProvenanceId`; generic
-   relationships and bounded-derived provenances never seed it. An independent static
+8. Typed derivation is exactly one closed `DerivationProgram` edge per derived provenance;
+   generic relationships and derived provenances never seed it. An independent static
    provenance remains eligible even when its physical file also has a derived provenance.
 9. Every file-originated relationship names one recognition and one candidate provenance;
    only that provenance's `matchedPath` may be used as the base of a relative target.
-10. All arrays, strings, parse/worker messages, retained graph records, response bytes,
-   comparison work, request bodies, filesystem work, derivation, and relationship
-   extraction are bounded before allocation or processing by the exact count/byte budgets.
+10. Resource capacity is inherited from Node.js, parser libraries, the browser, the
+    operating system, the filesystem, and the execution environment. The Inspector defines
+    no product-specific byte/count/depth/worker/queue/deadline ceiling and never turns an
+    environment capacity failure into a customization-validity verdict.
 11. Browser editor models use opaque in-memory identities, never filesystem or remote URLs,
    and never retain source beyond the active route and generation. Source and comparison
-   surfaces present the session's sensitive-content notice before showing authored content.
+   surfaces present and receive in-memory acknowledgement of the session's sensitive-content
+   notice before the bundled SPA requests detail content or constructs a comparison.
+   Capability authentication, not acknowledgement, is the API access boundary; the API
+   never receives or persists acknowledgement.
    The liveness lease and central purge remove all application-held session content on
    session loss, hidden/page lifecycle events, or browser-memory lease expiry. Generation
    replacement increments `clientDataEpoch`; a response cannot revive an older generation.
@@ -1505,20 +1493,30 @@ old file records in place.
     Repository matcher starts with `./`; bare `**/` is invalid, and `./**/` can mean only
     explicit downward Inspector inventory—not vendor traversal or runtime selection.
 14. `snapshotState` is derived from session-owned `staleFailures`, never stored in or used
-    to mutate a committed `ScanGeneration`. Each entry names one Source and its reserved
+    to mutate a committed `ScanGeneration`. Each entry names one Source and its current
     actionable diagnostic; no `ScanAttempt` or working-set member is reachable from it.
-    Only a successful complete/bounded-partial scan of that Source or removal of that
-    Source clears its entry and reserved diagnostic, while unrelated commits preserve both.
+    Only a successful complete/contracted-partial scan of that Source or removal of that
+    Source clears its entry and diagnostic, while unrelated commits preserve both.
 15. The coordinator lock linearizes the generation and payload of every session snapshot
     and file-detail envelope. Network delivery may occur later, but cannot relabel the
     captured payload. Client request tokens, generation, epoch, and file existence are all
     rechecked at adoption time.
-16. A Global preview retains the bounded raw `lexicalRoot` only in process memory, binds it
+16. A Global preview retains the raw `lexicalRoot` only in process memory, binds it
     and its exact `TraversalPlan` in the digest, and uses that stored raw value for admission.
     Escaped `displayRoot` is presentation only and environment input is never reread by enable.
-17. A committed generation's neutral-overlay SessionSnapshot projection is at most 5 MiB.
-    Session-owned lifecycle records use only their separate 2-MiB sub-budget, including the
-    duplicated ID occurrences, with 16 KiB reserved for fixed diagnostic-control records.
-    All other session-owned mutable projections use a disjoint 1-MiB control sub-budget.
-    Together they form the 3-MiB overlay, so the result is always at most the 8-MiB
-    complete-envelope limit after any post-commit session mutation.
+17. Product-issued mutation-capable filesystem operations and open flags are absent. Tests
+    compare content, length, identity/link state, mode, mtime, ctime, and observable xattrs/
+    ACLs. OS-only atime changes are recorded separately and prove neither mutation nor
+    safety.
+18. Syntax parsing, exact authored-literal extraction, mechanical typed decoding,
+    frozen-catalog classification, and documented structural projection are the only
+    interpretation operations. No DTO or internal projection can express natural-language
+    interpretation/ranking, customization validity/correctness/effectiveness/compliance/
+    quality, policy/remediation advice, lint/sync/convert/format/fix behavior, or a size-based
+    valid/invalid verdict.
+19. The coordinator serializes scans and root admission. Global disable is a priority
+    barrier that revokes publication authority; late results after disable or shutdown can
+    never publish.
+20. Every source scan has one `scanRequestId` shared by Source, progress, attempt, response,
+    and any committed scan generation. Disable or shutdown revocation prevents every late
+    result from publishing without claiming physical kernel-I/O cancellation.

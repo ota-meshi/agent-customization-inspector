@@ -4,7 +4,7 @@
 
 **Researched**: 2026-07-16; revalidated 2026-07-18; CLI dependency selection revalidated 2026-07-19
 **Scope**: Reference architecture, current compatible toolchain, safe local-host design,
-safe parsing and literal display, source/metadata comparison, bounded scanning, and the official
+safe parsing and literal display, source/metadata comparison, environment-governed scanning, and the official
 customization path surface
 
 ## 1. Package architecture
@@ -28,9 +28,11 @@ standard `.output/public` staging tree, validates and copies accepted assets to
 `dist/public`, and lets tsdown write the named CLI/Worker entries and any code-split chunks
 into a separate clean `.build/server` staging tree. Fixed manifests close both output
 classes before they are copied or packed. A small project-owned `bin.mjs` uses Node.js
-built-ins to validate the packed package version, both manifests, and every listed static/
-server hash before dynamically importing the validated CLI, without creating independently
-versioned packages.
+built-ins to parse the packed `package.json`, validate both manifests and every listed
+static/server declared length and hash, and dynamically import the validated CLI only
+afterward, without creating independently versioned packages. Bootstrap work is subject to
+the capacity of Node.js, the operating system, and the execution environment; the product
+does not impose byte or item-count limits, and no host bind precedes validation.
 The executable shim starts with the exact BOM-free, LF-terminated first line
 `#!/usr/bin/env node`; this is part of the package contract, not a release-time repair.
 
@@ -131,28 +133,36 @@ The reproducible 4.4.8 minimal-SPA build also emits `index.html`, `200.html`, an
 so retaining only `index.html` prevents those redundant aliases from bypassing the closed
 client-route grammar.
 
-`dist/manifests/static-assets.json` is strict JSON of at most 2 MiB with no extra keys:
-`manifestVersion: 1`, the exact `packageVersion`, `shellPath: "/index.html"`, up to 4,096
-ordered `assets` records, and up to 32 ordered `inlineScriptSha256` values. Each asset is
+`dist/manifests/static-assets.json` is strict JSON with no extra keys:
+`manifestVersion: 1`, the exact `packageVersion`, `shellPath: "/index.html"`, ordered
+`assets` records, and ordered `inlineScriptSha256` values. Each asset is
 `{ requestPath, file, byteLength, sha256, mediaType }`: `requestPath` is a unique
-root-absolute URL path of at most 512 UTF-8 bytes, `file` is the exact corresponding
+root-absolute URL path, `file` is the exact corresponding
 `public/...` regular-file location, `byteLength` is non-negative, `sha256` is 64 lowercase
 hex characters, and `mediaType` comes from the closed host table. Inline values are the
 44-character base64 SHA-256 digests of the exact executable script bytes in the shell.
 The `bin.mjs` bootstrap resolves this manifest from its fixed package-relative URL,
-strictly validates it, and verifies every listed asset's size and hash before CLI import;
-no unlisted path is served.
+strictly validates it, rejects declared/actual length mismatches before import or bind, and
+verifies every listed hash; no unlisted path is served. Build normalization, unpacked-
+tarball verification, and runtime bootstrap apply the same structural and integrity rules.
+Their effective capacity is inherited from Node.js, the filesystem, and the execution
+environment rather than from product-defined file-size or asset-count validation.
 
-`dist/manifests/server-assets.json` is strict JSON of at most 1 MiB with exact keys
-`manifestVersion: 1`, `packageVersion`, and an ordered 2..256-record `assets` array. Each
+`dist/manifests/server-assets.json` is strict JSON with exact keys
+`manifestVersion: 1`, `packageVersion`, and an ordered `assets` array. Each
 record is exactly `{ file, byteLength, sha256 }`; safe relative `.mjs` paths are sorted and
-unique, total listed bytes are at most 64 MiB, each file is at most 16 MiB, and
-`cli.mjs`/`parser-worker.mjs` are required. Every code-split tsdown output is listed. A
+unique, `cli.mjs`/`parser-worker.mjs` are required, and every code-split tsdown output is
+listed. A
 final recursive verifier derives the only legal `dist/` files from this manifest plus the
 static manifest, rejecting any stale/unexpected/link/non-regular path before packing and
 applying the same proof to the unpacked tarball. At runtime `bin.mjs` also validates this
 server manifest and every listed server hash before it imports `cli.mjs`, so both manifest
 classes are checked before server bind.
+
+The packed `package.json` is a separate strict bootstrap input. `bin.mjs` parses it under
+Node.js and validates its closed engine/bin/package fields. Fixtures cover malformed inputs,
+declared/actual length mismatches, incomplete or unexpected asset sets, and hash failures;
+they do not define or test product file-size or item-count boundaries.
 
 **Alternatives considered**:
 
@@ -201,7 +211,7 @@ The CLI uses only Gunshi's stable root `define`/`cli` API. It declares a negatab
 boolean with a true default to provide `--no-open`, calls `cli()` with
 `strict: true`, and explicitly rejects all positional/rest arguments before the host binds.
 It awaits the asynchronous result and maps validation failures through a project-owned,
-fixed, bounded renderer and explicit `AggregateError` handling to a nonzero exit; built-in
+fixed, safe renderer and explicit `AggregateError` handling to a nonzero exit; built-in
 help/version return without binding.
 The production entry does not import `gunshi/agent`, lazy commands, custom plugins, or
 experimental parser combinators. Although Gunshi is one npm-graph leaf, its bundled internal
@@ -312,7 +322,7 @@ mixed path matrix:
    the common [allowlist grammar](contracts/inspection-path-allowlist.md). Every Repository
    matcher separates Base, ordered Relative selectors, and their one-to-one typed segment
    programs, is rendered from the exact launch root with `./`, and rejects a bare `**/`.
-   Literal, one-segment, and bounded recursive-directory tokens can compose in one program;
+   Literal, one-segment, and non-adjacent recursive-directory tokens can compose in one program;
    `./**/` denotes explicit downward Inspector descendant inventory only and never asserts
    vendor traversal. Build validation compiles the same programs into immutable versioned
    `TraversalPlan` data; Global preview patterns render from those plans and consent binds
@@ -342,12 +352,12 @@ Files of different customization types below that root remain separate inventory
 The term repository-relative path is reserved for the Repository Source; DTOs, filters,
 diagnostics, and cross-source comparison use Source-relative Path.
 
-Bounded derivation remains a typed single-edge provenance graph with fan-out limits, not
+Bounded derivation remains a typed single-edge provenance graph with closed deterministic target construction, not
 arbitrary reference following. The closed `DerivationProgram` union has exactly five
 initial mappings: the three vendor local-marketplace manifest rules, Codex fallback
 basename placement, and Codex skill metadata. Each pins an exact static seed provenance/
-rule/kind, declaration field and syntax, base/placement, fixed suffix alternatives, and
-fan-out. No callback, arbitrary path join, free-form expression, glob, or recursive
+rule/kind, declaration field and syntax, base/placement, and fixed suffix alternatives.
+No callback, arbitrary path join, free-form expression, glob, or recursive
 derivation is representable. A derived provenance cannot seed another edge, while an
 independent static provenance on the same physical file remains eligible. It admits only
 safe Codex fallback basenames, Codex skill UI metadata, and vendor-specific plugin
@@ -421,9 +431,9 @@ maintainer drift check may access the network; it never auto-updates a behavior,
 strategy, assertion, or fingerprint. Product startup and Repository/Global scans never
 fetch documentation.
 
-The registry stores no copied page body. The exact record bounds, official-HTTPS host and
-redirect policy, timeout/decompressed-size/content-type limits, anchored-section
-normalization, and human update rules remain defined by
+The registry stores no copied page body. The official-HTTPS host and redirect policy,
+content-type checks, anchored-section normalization, recoverable transport-failure behavior,
+and human update rules remain defined by
 [OfficialSourceRecord](data-model.md#officialsourcerecord). A URL that is reachable but has
 lost, duplicated, or semantically changed its anchored section still fails closed for
 human review.
@@ -461,14 +471,14 @@ enumerate the tool-home root: exact targets touch only their fixed ancestor/targ
 and only the fixed Copilot instructions subtree may be opened and enumerated beneath its
 prefix. Neighboring Global paths receive no I/O.
 
-For each opened directory the service completes a bounded sibling buffer before descent.
+For each opened directory the service completes its sibling set before descent.
 It preserves exact `Dirent.name` raw segments solely for path reconstruction/verification,
 and derives NFC classification segments solely for matching, ordering, and DTO paths. If
 distinct raw siblings normalize to one NFC classification key, every member of that group
 fails closed without descent/open/read and receives
 `safe-fs-path-normalization-collision`; one non-colliding NFD-only spelling remains readable
-through its raw path and displays as NFC. The service counts every entry against shared
-limits and uses bigint `lstat` plus canonical containment checks to reject VCS internals,
+through its raw path and displays as NFC. The service uses bigint `lstat` plus canonical
+containment checks to reject VCS internals,
 links, non-directory traversal objects, and detectable device changes. Only that service can issue a private, generation-bound `ScanEntryTicket`;
 HTTP values and parsed content cannot create or reconstruct one.
 
@@ -484,25 +494,44 @@ effective on that platform, its use is mandatory final-component defense in dept
 or ineffective support is not a cross-platform guarantee. Before reading any bytes, the
 implementation repeats that ordered root/ancestor/candidate-`lstat`/canonical/
 candidate-`lstat` sequence and compares the same fields with
-`FileHandle.stat({ bigint: true })`. Bytes are read in bounded
-chunks from that same `FileHandle`, never by a later path-based `readFile`. While the handle
+`FileHandle.stat({ bigint: true })`. Bytes are read from that same `FileHandle` using
+Node.js-managed streaming/chunking, never by a later path-based `readFile`. While the handle
 remains open and before acceptance, post-read validation repeats the complete ordered
 sequence and the same `FileHandle.stat` comparisons over the same fields. A mismatch at
 any stage closes the handle, discards every collected byte, marks the ticket stale or
 rejected, commits no readable content or receipt, and emits only a fixed source-value-free
-diagnostic; a bounded diagnostic-only inventory record may remain for a safely inventoried
+authenticated Diagnostic; its Source-relative Path is never projected into the
+fixed-code/opaque-ID operational event. A diagnostic-only inventory record may remain for a safely inventoried
 path. Root identity failure aborts that source attempt and preserves its previously
-committed graph; an entry-local change leaves unaffected results usable as a bounded
-partial result.
+committed graph. Only after complete traversal may a deterministic entry-local
+non-capacity failure leave unaffected results usable through a contracted-partial commit.
+
+All inspected-source filesystem calls run through one process-wide sequential executor, and
+each file is validated and read through the same handle. This ordering is a race-safety
+invariant. Opens are read-only. The production boundary exposes
+no write/append/create/truncate open, write, truncate, create, rename, delete, link,
+chmod/chown, utimes, xattr, ACL, or equivalent mutation operation and never requests an
+access-time update. Tests instrument those calls and compare content, length, identity/link
+state, mode, mtime, ctime, and observable xattrs/ACLs. An atime change caused solely by OS
+read semantics is recorded separately and is neither a mutation failure nor proof of safety.
+
+Filesystem-operation completion and effective capacity are governed by Node.js, the
+operating system, the filesystem, and the execution environment. Disable, shutdown, or
+another authority-revoking lifecycle event
+invalidates the attempt and its tickets; any result that arrives afterward is discarded and
+cannot publish a graph, Diagnostic, DTO, or operational event. Cleanup releases acquired
+resources when the underlying operation settles. Node.js exposes no portable hard
+cancellation guarantee for a stalled kernel operation, so timely physical drain and recovery
+from process-level OOM or kernel termination are outside the product guarantee.
 
 If Node reports required identity/metadata or canonicalization as unavailable, ambiguous,
 malformed, or otherwise unusable, `safe-fs-boundary-unverifiable` rejects the boundary or
 candidate instead of guessing. A root-level failure aborts the source attempt; an item-level
-failure can retain only the bounded diagnostic-only inventory record.
+failure can retain only the diagnostic-only inventory record.
 
 **Rationale**: The repeated checks materially reduce risk from ordinary concurrent edits,
-ensure detected changes cannot be committed, and preserve the exact resource accounting
-required by the scan contract. They do not create kernel-enforced containment. Node 24's
+ensure detected changes cannot be committed, and preserve the scan contract. They do not
+create kernel-enforced containment. Node 24's
 [filesystem API](https://nodejs.org/docs/latest-v24.x/api/fs.html#file-system-flags) exposes
 neither directory-handle-relative open nor an atomic beneath/no-follow resolver; POSIX
 `O_NOFOLLOW` covers only the final component, and Windows has no corresponding portable
@@ -521,9 +550,15 @@ Tests are evidence for the specified detection behavior, not proof against those
 cases. The concrete resolution path before
 expanding the threat model is to adopt a future Node directory-relative API with atomic
 beneath/no-follow semantics, or to scan an OS-enforced read-only snapshot/sandbox and
-repeat the security review. One bounded service still centralizes entry/depth/deadline/byte
-accounting and progress. Every emitted file path is a collision-free NFC classification
+repeat the security review. One service still centralizes traversal safety and progress
+without applying product-defined file-size, item-count, depth, or time validation. Every emitted file path is a collision-free NFC classification
 path relative to the owning Source's one root; filesystem operations retain the raw spelling.
+
+Node's ordinary filesystem promises also provide no portable hard wall-clock cancellation
+guarantee for a stalled kernel operation. Serialized execution and revoked tickets prevent
+late publication, but do not prove physical I/O termination. Removing that residual requires a future
+public cancellable filesystem primitive or an OS-enforced read-only worker/sandbox that can
+be terminated and drained, followed by renewed leak and disable-race verification.
 
 **Alternatives considered**:
 
@@ -551,48 +586,75 @@ reveal workflow. Environment-variable references inside inspected content remain
 text and never cause the Inspector to read, resolve, or substitute the referenced process
 value. The documented `CODEX_HOME`, `CLAUDE_CONFIG_DIR`, and `COPILOT_HOME` inputs are used
 only by the host to locate tool-specific Global Source roots, not by content parsing.
+The Inspector applies no file-size or file-count validation. Reading, decoding, parsing, and
+retention use the capacity available from Node.js, the parser libraries, the operating
+system, and the execution environment. After complete traversal, a deterministic entry-local
+non-capacity read failure may leave that file diagnostic-only in a contracted-partial
+generation. A capacity/allocation or other environment-resource failure instead aborts the
+attempt, returns or commits no item, Source, recognition, derived result, scan-result record
+or response, or generation, and retains only the previously committed snapshot, without a
+valid/invalid verdict or lint finding; recovery from process-level OOM or kernel termination
+is not promised.
 
 Perform best-effort metadata extraction after decoding, but never use a decoded/normalized
 value as the displayed value. Every accepted allowlisted field occurrence carries an exact
 `authoredLiteral` source slice plus a separate internal typed semantic value. The public
 metadata list stays in source-occurrence order and preserves accepted duplicate occurrences;
 its cross-file identity is tool, kind, closed field ID, and that field's zero-based
-occurrence. JSONC
-syntax-tree ranges, YAML CST/source-token ranges, a bounded TOML lexical-span scanner paired
-with semantic parsing, and bounded Markdown/frontmatter/import spans produce the exact slice.
+occurrence. JSONC syntax-tree ranges, YAML CST/source-token ranges, a TOML lexical-span
+scanner paired with semantic parsing, and Markdown/frontmatter/import spans produce the exact slice.
 JSON/YAML/TOML quoting, escapes, block indicators, numeric/date spelling, and collection
 punctuation therefore remain visible. Only the separate semantic value may drive typed
 classification, relationship normalization, or bounded derivation. An authored relationship
 displays the exact target slice and normalizes only its semantic string. A registry-defined
 documented default has no source slice, uses `authoredTarget: null`, and is labeled as a
 documented default rather than source-authored text. Ranges use ECMAScript UTF-16 code-unit
-offsets and must reproduce the literal with `String.prototype.slice`; the UTF-8 byte bound
-is separate. Metadata, relationship, and derivation may reference the same exact source
+offsets and must reproduce the literal with `String.prototype.slice`. Metadata,
+relationship, and derivation may reference the same exact source
 occurrence/range. Only partial, nested, crossing, or identical overlap between distinct
 origin occurrences is invalid. A missing, illegally overlapping, ambiguous, or non-round-tripping range discards the recognition's whole
 extraction rather than inventing a literal.
 
 YAML semantic parsing uses core schema with no custom tags and disabled aliases; JSONC
-extracts known paths from a syntax tree; semantic values are normalized to a bounded,
+extracts known paths from a syntax tree; semantic values are normalized to a
 JSON-safe discriminated internal union whose integer, float, and date/time payloads use
 typed canonical strings without JavaScript precision loss; Markdown/frontmatter and Claude
-imports are scanned as text. At
-most two V8-limited parser workers enforce a 2,000 ms per-recognition timeout, 2 MiB
-accepted message bound, depth 64, 50,000 nodes, 64 KiB scalars, and 512 metadata entries.
-Generation-wide parser messages are at most 32 MiB. The 64 KiB scalar limit applies
-independently to the exact UTF-8 source slice and the typed semantic value.
-A parser limit or incompatible meaning from two extractors for the same `(fileId, tool,
-kind)` discards that one recognition's whole extraction result without changing the
-readable source text or another recognition. Exactly one recognition exists per tool/kind
+imports are scanned as text. Parser workers are constructed only from the fixed package-owned
+entry and inherit their memory, message, syntax-tree, scalar, and scheduling capacity from
+Node.js, the parser libraries, and the execution environment; the product does not configure
+V8 memory ceilings or parser item/depth/time limits. After complete traversal, a deterministic
+entry-local non-capacity parser/extraction failure or incompatible meaning from two extractors
+for the same `(fileId, tool, kind)` may discard that one recognition's whole extraction result
+under a contracted-partial outcome without changing the readable source text or another
+recognition. A parser/runtime capacity or environment-resource failure returns no parser,
+extraction, recognition, relationship, derived result, item, or Source, propagates
+`fatal-resource`, aborts the attempt without a scan-result record or response or generation,
+and retains only the previously committed snapshot. Exactly one recognition exists per tool/kind
 pair and compatible provenances merge there. Rules, scripts, markup, URLs, and control sequences are never
-evaluated or rendered. Operational diagnostics and logs identify stable codes, the owning
-Source, and Source-relative Path without copying customization source values.
+evaluated or rendered. The internal `semanticValue` name means only mechanical typed
+decoding. Across Inventory, Detail, Comparison, Global controls, Diagnostics, Source
+Condition Facts, APIs, CLI output, and documentation, the product never interprets or ranks
+natural-language meaning, decides validity/correctness/effectiveness/compliance/quality,
+advises remediation, or lints, synchronizes, converts, formats, or fixes customization
+content. Validation of Inspector-owned manifests, DTOs, registries, and invariants is an
+internal safety check, not a customization verdict.
+
+Operational event records contain only fixed stable codes and opaque session/source/file/
+scan/operation IDs. They contain no Source-relative/absolute/canonical path, root, filename,
+inspected content or metadata, authored value, capability, body, raw parser/system error, or
+exception string. An authenticated session `Diagnostic` may retain the minimum
+Source-relative Path and metadata needed to act on a file-specific problem, but that surface
+is never projected into a log. Fixed CLI help/version, the one launch-URL line, and fixed
+startup warnings are presentation output rather than operational events and still contain
+no inspected content, inspected path, or authored value.
 
 **Rationale**: Parsing is needed to label declarations and relationships, but success must
 not turn the Inspector into a validator. Literal presentation preserves credential and
 other authored differences that masking would hide. Before a source or comparison view
-opens, the interface warns that the complete authored content may contain sensitive values.
-The authenticated loopback API, `Cache-Control: no-store`, process/browser-memory-only
+opens, the bundled interface requires an in-memory acknowledgement that resets on reload or
+client purge. Capability authentication is the API access boundary; the API does not receive
+or persist acknowledgement, and the bundled SPA simply issues no detail request or
+comparison construction before it. The authenticated loopback API, `Cache-Control: no-store`, process/browser-memory-only
 lifetime, Vue text bindings, disabled links, and restrictive content security policy keep
 that deliberate display local and inert rather than treating masking as a security
 boundary.
@@ -624,10 +686,10 @@ replacement. Configure
 `accessibilityVerbose`, and give every source side an `ariaLabel`. The CSP permits
 Monaco's generated inline layout/theme styles and only Nuxt executable inline scripts
 whose exact hashes are in the trusted build manifest; it permits no executable attribute,
-evaluation, nonce, unrecorded inline script, external worker, or blob worker. Attempt diff
-highlighting only when each side has at most 20,000 lines, with an explicit 5,000 ms
-computation timeout; retain complete read-only side-by-side source with a diagnostic when
-either limit is reached. Recognition metadata is matched by tool, kind, closed field ID, and occurrence,
+evaluation, nonce, unrecorded inline script, external worker, or blob worker. Diff
+highlighting uses Monaco and browser capacity without a product-defined line or computation-
+time cutoff. If Monaco or the browser reports a recoverable failure, retain the complete
+read-only side-by-side source and a diagnostic. Recognition metadata is matched by tool, kind, closed field ID, and occurrence,
 then compares and renders the exact `authoredLiteral` in Vue rows/badges; the internal typed
 semantic value is never substituted into the UI or converted to JSON text for Monaco. Preserve Monaco's
 accessible diff viewer, ARIA labels, keyboard navigation, and narrow-screen inline mode
@@ -636,7 +698,7 @@ for explicit accessibility testing.
 **Rationale**: Source files include Markdown and structured configuration where syntax
 coloring, line navigation, virtualized rendering, search, synchronized scrolling, and a
 well-tested diff surface materially improve inspection. Monaco already computes source
-differences and exposes file-size, computation-time, and accessibility controls, so a
+differences and exposes editor- and environment-dependent computation and accessibility behavior, so a
 second text-diff package would duplicate responsibility. Metadata has domain semantics:
 set-like recognitions, ordered precedence, and fields with stable identities must be
 compared structurally rather than as serialized lines, while literal spelling differences
@@ -663,17 +725,18 @@ loading, or navigating.
 **Decision**: Use `node:http` for a small versioned JSON API and static-file service. Bind
 an ephemeral port on `127.0.0.1`, generate a 256-bit capability per process, pass it to the
 SPA in the URL fragment, and require it on every API request. Enforce the exact Host and
-Origin, omit CORS, reject non-JSON/oversized bodies, set `Cache-Control: no-store`, and send
+Origin, omit CORS, reject malformed or unsupported bodies, set `Cache-Control: no-store`, and send
 a restrictive CSP. Use file IDs and closed commands, never client paths. Keep the
 capability in memory only: after fragment removal a reload makes no API call and tells the
 user to reopen the process-lifetime printed URL. Serve the inert SPA shell only for a
 closed client-route grammar and build-manifest assets. The CSP is derived from the exact
 build-recorded inline hashes rather than `unsafe-inline`. Before Global consent, expose a
-capability-protected lexical/no-I/O path preview; bound a proposed root at 32 KiB UTF-8 and
-its escaped display at 192 KiB, bind confirmation to its session-keyed digest, and reject
-oversized input or any post-consent canonical alias difference before enumeration. While
-in limit, retain the exact raw `lexicalRoot` internally and bind it, the escaped display,
-and the immutable `TraversalPlan` schema/selection-policy/canonical programs in the digest. Enable uses only
+capability-protected lexical/no-I/O path preview, bind confirmation to its session-keyed
+digest, and reject any post-consent canonical alias difference before enumeration. Retain
+the exact raw `lexicalRoot` internally and bind it, the escaped display, and the immutable
+`TraversalPlan` schema/selection-policy/canonical programs in the digest. Preview parsing
+and transport inherit capacity from Node.js, the browser, and the execution environment;
+the product does not impose a byte limit on the proposed root or escaped display. Enable uses only
 that stored raw value, never reverses display text and never rereads the environment. While
 the authorized page is visible, renew a two-second monotonic browser-memory lease through
 one capability-protected liveness route every second with a 750 ms request timeout. Use a
@@ -682,13 +745,19 @@ lifecycle events, and process loss; it removes all DOM/DTO/editor/warning state 
 late responses from restoring content. Retain only the memory capability across a hidden-page
 purge. On visibility return, the retained capability authenticates a fresh session. The SPA
 adopts its returned `sessionId` as the new liveness baseline without retaining or comparing
-the purged ID and keeps only its bounded, control-only `globalControl` view. Active consent
+the purged ID and keeps only its control-only `globalControl` view. Active consent
 makes disable available from that view immediately; the preview route returns the exact
 frozen preview so retry controls can be reconstructed without browser persistence or an
 environment reread. The recovery view always offers Resume inspection; that explicit action
 re-fetches a matching session and builds a default fresh inventory summary without restoring
 old detail, comparison, editor, selection, filter, authored source, or acknowledgement. A
 later detail/comparison open requires a new acknowledgement.
+
+The capability-authenticated API returns complete authored content only for an explicit
+detail request. Sensitive-content acknowledgement is a mandatory bundled-SPA presentation
+invariant, not an authorization credential: it stays in client memory, is never sent to the
+API, resets on document reload and the central purge, and gates both detail requests and
+comparison construction in the bundled client.
 
 Every SessionSnapshot/FileDetail request captures the client epoch, generation, exact
 request token, and file ID where applicable. Older snapshots are ignored; before adopting
@@ -697,6 +766,10 @@ comparison, and editor object. Equal-generation snapshots require their current 
 File detail is adopted only if epoch/generation still match and the readable file still
 exists. The server captures each envelope's generation and payload together under the
 coordinator lock, so delayed network delivery cannot mix them.
+Each automatic or explicit scan also receives an opaque `scanRequestId`. Source progress,
+the rescan admission response, and a successful source-scan generation carry that same ID;
+bootstrap and disable generations carry null. The client binds current status and rendered
+inventory completion to its admitted request ID and rejects an earlier status or generation.
 
 Print the closed-grammar launch URL exactly once to the initiating terminal before any
 browser attempt. A project-owned `src/launch-browser.ts` revalidates
@@ -707,8 +780,12 @@ other platform skip automatic opening and emit the fixed manual-URL warning beca
 portable Node API supplies no independent trusted boundary for selecting a system browser
 helper. The exact child environment allowlist is macOS `HOME`, `TMPDIR`, `LANG`, `LC_ALL`;
 or Linux `HOME`, `DISPLAY`, `WAYLAND_DISPLAY`, `XDG_CURRENT_DESKTOP`, `DESKTOP_SESSION`,
-`DBUS_SESSION_BUS_ADDRESS`, `XDG_RUNTIME_DIR`, `LANG`, `LC_ALL`. `BROWSER`, `NODE_OPTIONS`, `NODE_PATH`, all
-other environment values, inspected values, and additional argv are omitted. OS helpers
+`DBUS_SESSION_BUS_ADDRESS`, `XDG_RUNTIME_DIR`, `LANG`, `LC_ALL`. These keys are copied
+directly from the launch environment as ambient platform provenance only; no
+Source/preview/candidate/file path or authored value is copied from inspection state, and
+lexical equality changes no provenance or authority. `BROWSER`, `NODE_OPTIONS`, `NODE_PATH`,
+every non-allowlisted environment key, all inspection-derived content, paths, and authored
+values, and additional argv are omitted. OS helpers
 may consume the listed desktop/session values, but the Inspector never selects a handler
 from them. A missing helper, spawn error, nonzero exit, or
 unsupported platform emits only a fixed warning and leaves the server running; the printed
@@ -720,10 +797,9 @@ rebinding. A fragment is not sent in the initial HTTP request; JavaScript can tr
 to a custom authorization header and remove it from visible history. Refusing browser
 storage makes refresh behavior explicit without creating ambient credentials. Digest-
 bound preview consent proves which lexical roots and patterns the user saw before the host
-touches them. Oversized input becomes a fixed `oversized`/null-display state before
-normalization, so hostile environment size cannot cause an unbounded consent DTO or
-authorize a hidden value. `node:http` avoids a server framework for a small fixed route set; the current H3 v2 tag is a release candidate while
-stable H3 v1 is a larger legacy dependency. A bounded client lease makes process loss
+touches them. Recoverable Node.js or browser failures during preview construction fail
+without authorizing an unseen value. `node:http` avoids a server framework for a small fixed route set; the current H3 v2 tag is a release candidate while
+stable H3 v1 is a larger legacy dependency. A client lease makes process loss
 observable without persisting data or relying on a server push after the server has gone;
 immediate hidden-page purge avoids background timer throttling.
 The recovery DTO keeps all-failed Global consent visible even when no Source exists, while
@@ -743,87 +819,68 @@ the separate preview avoids repeating a potentially large display payload in eve
   but it is outside the package payload and is invoked as a fixed executable with
   `shell: false`.
 
-## 9. Atomic generations, rescan, and resource limits
+## 9. Atomic generations, rescan, and environment-dependent capacity
 
 **Decision**: Start the Repository scan automatically, expose progress through the session
 snapshot, and perform later Repository or enabled tool-specific Global Source scans only on
-explicit user action.
-Create a legal empty zero-I/O bootstrap generation 0 synchronously before the automatic
-Repository command, with null source progress until work is queued. A single coordinator
-serializes every `GlobalEnableOperation`, Repository or tool-specific Global Source scan,
-and the transaction that disables Global inspection. Initial enable and retry reserve their
-whole tool-set capacity before state mutation, transfer accepted shares to queued scans, and
-release every share on rejection, completion, failure, or cancellation; reservation failure
-changes no state. A final coordinator-locked operation-ID/epoch/state check atomically
-chooses the enable response disposition: operation first commits `202`, closes its lease,
-and unregisters immediately, while disable-barrier first commits `409`, drains, and only
-then closes/unregisters after releasing operation-local resources and untransferred capacity,
-without late mutation or leakage. Ordinary scans are FIFO. Global disable is a priority security barrier:
-at acceptance it sets `globalControl.state: disabling`, empties pending/retry arrays,
-increments the command epoch, and rejects new Global-enable/Global-rescan commands. It aborts
-and discards any active uncommitted transaction, aborts and drains enable validation/admission,
-performs a final queued-Global-work cancellation sweep, removes all active Global Sources without I/O next, and requeues an interrupted
-Repository command once behind that removal. Repeated disable joins an already
-queued/active barrier; with no tool-specific Global Source or graph, active consent record,
-retained admitted Global root context, open Global inspection `FileHandle`, or running/queued
-Global scan/enable command it is a no-op regardless of
-Repository work. Each scan job starts
-from the current session-wide generation, carries the unscanned source under the remaining
-shared file/byte/diagnostic budgets, and builds a replacement separately. Atomically commit
-only a complete or bounded-partial result as the next generation, rekeying every source
-graph and invalidating all file IDs and comparisons. Keep unresolved explicit-rescan
-failures as session-owned entries keyed by Source rather than fields on the immutable
-committed generation. Model each confirmed tool with a session-owned `GlobalToolControl`
-outside scan working sets; it owns any admitted root context and unpublished Source/boundary
-IDs until commit. A successful Source commit clears that control's reserved tool failure
-diagnostic. Post-consent validation may accept zero roots: an all-rejected request returns
-`active-no-job`, retains consent/control for exact retry or disable, and publishes no new
-Source or job. Initial activation therefore has zero Global Sources; a retry preserves any
-existing Sources. In a mixed request, `pendingTools` covers validation/admission in the
-running enable/retry operation and its queued/running initial scans, so an `unvalidated`
-tool is never retryable. Retryable tools remain informational until all such work finishes;
-retry is then preview-gated, while disable remains immediate.
-Enforce the limits recorded
-in the plan and shared contract: aggregate caps include 50,000 aliases, 8,000 recognitions,
-100,000 metadata entries, 100,000 provenances, and 100,000 relationships per generation,
-plus 64 MiB retained graph data, 8 MiB encoded SessionSnapshot, and 4 MiB encoded
-FileDetail. The SessionSnapshot budget is an exact 5-MiB neutral-overlay base plus a
-3-MiB session-owned overlay: at most 2 MiB for lifecycle Diagnostic/ID insertions and a
-disjoint 1 MiB for stale state, Global control, and Source lifecycle/progress projections.
-Every paired lifecycle insertion is at most 2 KiB, and 16 KiB of its sub-budget is reserved
-before ordinary admission for the four keyed failure slots and sentinel. An oversized keyed
-failure uses the fixed compact per-key form; an oversized ordinary detail is suppressed into
-the sentinel. Replacement credits the old charge before atomic admission. Build tests prove
-the worst-case closed control projection fits its 1-MiB sub-budget. Before allocation/retention, deterministic record-byte accounting admits only
-whole records. The first excess record makes the generation partial with a bounded
-diagnostic; routes never truncate a committed DTO and fail safely if an impossible
-post-commit size invariant is detected. Canonical accounting is performed by the production
-JSON encoder, which materializes the one UTF-8 entity-body buffer later passed unchanged to
-the HTTP layer; a second serializer cannot introduce byte drift.
+explicit user action. Create a legal empty zero-I/O bootstrap generation 0 synchronously
+before the automatic Repository command, with null source progress until work is queued.
+Every automatic or explicit scan receives an opaque `scanRequestId`; its Source progress and
+a successful source-scan generation retain that ID, while bootstrap and disable generations
+use null.
 
-**Rationale**: Global serialization plus atomic session generations prevent lost updates
-and mixed old/new results. If an explicit rescan fails fatally, every uncommitted result
-from that attempt—including a partial result—is discarded. The last successfully committed
-snapshot remains visible, is marked stale because the rescan failed, and receives an
-actionable capped out-of-generation session diagnostic. Failures for different Sources
-coexist; another Source's successful commit carries them, and only a successful complete/
-bounded-partial scan of the affected Source or removal of that Source clears its entry and
-reserved diagnostic. A
-fatal first Repository scan leaves legal empty bootstrap generation 0 current
-rather than inventing a previous inventory. A fatal tool-specific Global Source rescan retains that
-Source's consent, one accepted root context, and last committed graph so explicit
-retry/disable stays possible. Four fixed failure slots—Repository plus one per Global tool—plus the
-session sentinel leave 1,019 ordinary session-lifecycle details within the 1,024 cap. A
-separate post-commit byte overlay means those records and the other session controls cannot
-invalidate the committed 5-MiB base or overflow the 8-MiB response. A 30-second hard deadline prevents hangs while the performance acceptance
-target remains 10 seconds. One MiB per file and 32 MiB total permit 500 normal
-customization files without retaining unbounded content. Aggregate count, worker-message,
-graph, and response budgets prevent the product of otherwise legal per-record maxima from
-exhausting the host heap. Killable V8-limited workers bound
-synchronous parser time and tree amplification. Source comparison is separately bounded by
-20,000 lines per file and a 5,000 ms Monaco computation timeout; a capped or timed-out
-comparison still receives full literal side-by-side views and a diagnostic rather
-than becoming non-comparable.
+A single coordinator serializes every `GlobalEnableOperation`, Repository or tool-specific
+Global Source scan, and the transaction that disables Global inspection. It does not expose
+or enforce product-defined queue, slot, or concurrency capacities. Ordinary scans execute in
+FIFO order. Global disable remains a priority security barrier: acceptance sets
+`globalControl.state: disabling`, empties pending/retry arrays, increments the command epoch,
+and rejects new Global-enable/Global-rescan commands. It aborts and discards active
+uncommitted work, drains enable validation/admission, cancels queued Global work, removes
+active Global Sources without new I/O, and requeues an interrupted Repository command after
+that removal. Repeated disable joins the queued/active barrier; when no Global state or work
+exists it is a no-op regardless of Repository work. A final coordinator-locked operation-ID/
+epoch/state check determines whether enable returns `202` or loses to disable with `409`, so
+late work cannot restore revoked Global state.
+
+Each scan starts from the current session-wide generation and builds its replacement
+separately. A complete result, or a contracted partial result produced only after complete
+traversal and a deterministic entry-local non-capacity failure, commits atomically as the next generation; every carried graph and generation-owned
+ID is rekeyed, and old file/detail/comparison/selection/editor references become stale. An
+explicit rescan's fatal failure discards all uncommitted output. The last successful snapshot
+stays visible with a Source-keyed stale-failure entry and actionable Diagnostic. A fatal first
+Repository scan leaves bootstrap generation 0 current. A fatal tool-specific Global rescan
+retains that Source's consent, accepted root context, and last committed graph for retry or
+disable.
+
+Each confirmed tool has session-owned `GlobalToolControl` outside scan working sets. Post-
+consent validation may accept no roots: an all-rejected request returns `active-no-job`,
+retains the control needed for retry or disable, and publishes no Source, job, or generation.
+In mixed requests, `pendingTools` covers validation/admission and queued/running initial scans,
+so an unvalidated tool is never retryable; retry becomes preview-gated after that work
+finishes, while disable remains immediate.
+
+The Inspector defines no file-size, file-count, aggregate-record, graph, Diagnostic, parser-
+message, response-size, queue-capacity, or scan-time limit. Effective capacity is inherited
+from Node.js, parser and editor engines, the browser, the operating system, the filesystem,
+and the execution environment. If those layers report a recoverable capacity or resource
+failure, the attempt fails safely, returns or commits no item, Source, recognition, derived
+result, scan-result record or response, or generation, and retains only the previously
+committed snapshot. Such a failure never authorizes the entry-local contracted-partial path. Routes serialize
+committed DTOs once and never silently truncate them.
+Process-level OOM, kernel termination, and an indefinitely pending uncancellable filesystem
+operation cannot be recovered from or bounded by the application contract.
+
+Disable, shutdown, and generation replacement revoke publication authority independently of
+elapsed time. Results that settle after revocation are discarded, acquired resources are
+released when the underlying operation permits cleanup, and revoked data cannot repopulate
+the session. The liveness path remains independently scheduled by Node.js, but no claim is
+made that it can survive runtime exhaustion or a blocked/terminated process.
+
+**Rationale**: Serialization plus atomic session generations prevent lost updates and mixed
+old/new results. Deriving capacity from the actual runtime avoids presenting arbitrary
+product numbers as portable safety guarantees. Recoverable failures remain actionable and
+all-or-nothing at the generation boundary where required; failures outside application
+control are stated as platform limitations instead of being masked by synthetic limits.
 
 **Alternatives considered**:
 
@@ -833,17 +890,25 @@ than becoming non-comparable.
   mixture of generations.
 - Concurrent per-source commits were rejected because a single generation number and
   generation-scoped IDs would otherwise require conflict-prone commit-time rebasing.
-- Unlimited scan, parse, relationship, and comparison work was rejected as unsafe for
-  untrusted repositories.
+- Product-defined byte, item-count, parser, queue, worker, and deadline caps were rejected
+  because effective capacity belongs to Node.js and the surrounding execution environment.
 
 ## 10. Verification strategy
 
 **Decision**: Maintain vendor conformance fixtures and negative near-misses, plus
-adversarial fixtures for links, races, encodings, limits, literal credentials,
+adversarial fixtures for links, races, encodings, recoverable environment failures, literal credentials,
 environment-variable references, imports, executable declarations, and malformed formats.
 Test pure recognizers/parsers and literal-display DTOs, the HTTP
 contract, source boundary integration, packed `npx` behavior, the 100k/500 performance
-case, all four Playwright user stories, and WCAG 2.2 AA with axe plus keyboard/manual checks.
+case, and all four Playwright user stories. Evaluate SC-008 against the complete 55-row
+WCAG 2.2 Level A/AA applicability matrix and objective pass rule in
+[the accessibility acceptance contract](contracts/accessibility-acceptance.md), combining
+criterion-specific stable check IDs with the specified automated, keyboard, and manual
+evidence. Its closed manual matrix freezes the packed candidate, both locales, three
+supported OS/browser/assistive-technology cells, responsive/visual profiles, workflow
+states, and input profiles; every applicable cell is recorded, and a frozen-value change
+reruns all manual checks. An axe severity result alone is
+not acceptance evidence and cannot turn a failed Applicable row into a pass.
 Four registry fixture suites validate every behavior/rule/strategy/source ID, reciprocal
 evidence links, exact section anchors, English/Japanese parity, and the rule that only the
 Inspector matcher registry can authorize a read. Matcher fixtures reject a Repository
@@ -867,7 +932,7 @@ non-colliding NFD-only entry through its exact spelling and fail an NFC/NFD sibl
 group without descent/read.
 Run the pure Node.js integration/race suite on macOS, Linux, and Windows, including parent
 replacement, final-component replacement, root rename, symlink/junction rejection,
-detectable device changes, identity/metadata mismatch, bounded same-handle reads, byte
+detectable device changes, identity/metadata mismatch, same-handle reads, byte
 discard, no-readable-content commit, and post-pack execution. Where effective
 `O_NOFOLLOW` exists, tests require its use. Controlled barriers exercise changes detected
 by the post-read root identity, every ancestor `lstat`, candidate path `lstat` before and
@@ -877,16 +942,36 @@ the specified detected-race behavior and must not be described as proof against 
 adversarial mutator excluded by the threat model or against same-device bind mounts and
 reparse information that Node never exposes.
 Instrument tests to fail if inspected content causes an outbound request, MCP connection,
-child process, dynamic evaluation, or source mutation.
+child process, dynamic evaluation, or product-issued source mutation. Mutation tests
+instrument read-only versus mutation-capable filesystem APIs/flags and compare content,
+length, identity/link state, mode, mtime, ctime, and observable xattrs/ACLs; OS-only atime
+changes are recorded separately and count as neither failure nor proof. Operational-log
+tests capture every event and reject paths, roots, filenames, content/metadata/authored
+values, capabilities, bodies, raw errors, and exception strings while authenticated
+Diagnostic DTO tests retain only their allowed fields. Cross-surface negative tests
+cover Inventory, Detail, Comparison, Global controls, Diagnostics, Source Condition Facts,
+API/CLI output, and documentation to prove that no customization validation, natural-
+language interpretation/ranking, verdict, policy/remediation advice, conversion,
+synchronization, formatting, or fixing is exposed.
 Literal-span fixtures for every supported format place astral, isolated-surrogate, and
 combining sequences around fields, require UTF-16 `String.prototype.slice` round trips,
 allow one origin occurrence to drive metadata/relationship/derivation, and reject overlap
 between distinct origins. Multi-provenance fixtures prove exactly one recognition per
 tool/kind and keep hard-link alias seed provenances distinct. Package fixtures distinguish
 package payloads from package-manager-generated symlink/`.cmd`/`.ps1` launchers and verify
-their exact declared Node targets and argv-only bodies. Exact-limit and one-record-over
-fixtures cover every aggregate count, worker-message, graph, snapshot, and detail budget
-without response truncation.
+their exact declared Node targets and argv-only bodies. Package/bootstrap fixtures cover
+malformed inputs, manifest closure, declared/actual length mismatch, and hash failure without
+asserting byte or item-count boundaries. Coordinator fixtures prove FIFO serialization,
+disable priority, `202`/`409` race disposition, cancellation, and late-result rejection
+without slot-capacity fixtures. Injected recoverable Node.js, parser, editor, and transport
+failures prove safe failure, atomic publication, and no response truncation; fixtures also
+confirm that file size and collection cardinality are not product validation rules. Process-
+level OOM and kernel termination remain outside in-process recovery tests. Diagnostic fixtures enforce the closed `file | source | session`
+scope union. A file-scoped Diagnostic has its owning `sourceId`, `fileId`, and
+`sourceRelativePath`; a source-scoped Diagnostic has its owning `sourceId` but no `fileId`
+or `sourceRelativePath`; and a session-scoped Diagnostic has none of those three fields.
+Source- and session-scoped Diagnostics never fabricate a path to satisfy a display or
+ordering field.
 
 The 2026-07-17 measurable-outcome revalidation fixes the following objective protocols:
 
@@ -904,12 +989,16 @@ The 2026-07-17 measurable-outcome revalidation fixes the following objective pro
   memory, storage/filesystem, application runtime, benchmark command/configuration, and
   fixture manifest/digest; the result records actual values while omitting only personal
   identifiers and absolute user paths. A profile change starts a non-comparable set.
-  Fixture construction, setup, `npx` download/installation, and process start are outside
-  the timers. Both timers start when the browser submits the scan request. Within 1 second,
-  the current request must visibly and accessibly say queued, name an active scan phase, or
-  report complete/partial/failed; a failure includes a practical next step. A generic spinner,
+  Fixture construction, setup, `npx` download/installation, process start, and the automatic
+  initial Repository scan are outside the timers. Each fresh process waits for that automatic
+  scan to reach a terminal state, then the browser dispatches exactly one explicit Repository
+  rescan and both timers start. Its admission response supplies the opaque `scanRequestId`.
+  Within 1 second, a status carrying that same ID must visibly and accessibly say queued, name an active scan phase, or
+  report complete/`partial` (contracted-partial only)/failed; a failure includes a practical next step. A generic spinner,
   loading label, unchanged control, acknowledgement without scan state, or prior-request
-  status does not qualify. The complete operable inventory must render within 10 seconds.
+  status does not qualify. The complete operable inventory from the generation committed by
+  that same request must render within 10 seconds; an earlier status, snapshot, or automatic-
+  scan generation never qualifies. The result records the request ID and committed generation.
   After the inventory becomes operable in each run, perform one
   standardized filter action and one standardized item-selection action, timing each from
   browser input dispatch until the corresponding filtered results or selected-state feedback
@@ -969,13 +1058,13 @@ the following rules into every later design artifact:
    the three documented tool-home variables are used only to locate Global roots.
 3. A fatal explicit rescan discards all uncommitted output, including partial output, and
    leaves the last successfully committed snapshot visible with a per-Source stale-failure
-   entry and reserved actionable diagnostic. A successful scan clears only its own Source's
+   entry and actionable diagnostic. A successful scan clears only its own Source's
    entry and diagnostic; unrelated commits preserve both, and removal clears both for the
    removed Source. A repeated fatal rescan replaces both for only its Source.
 4. A fatal automatic first Repository scan also publishes no provisional result and keeps
    bootstrap generation 0 current. A fatal initial tool-enable job publishes no provisional
    result, adds no `StaleSourceFailure` entry for the missing tool, creates/replaces that
-   tool's keyed reserved failure diagnostic, and
+   tool's keyed failure diagnostic, and
    preserves every pre-existing entry and the derived snapshot state. Initial Global enable retains
    only the exact active consent and per-tool `GlobalToolControl` state needed to retry confirmed
    tools that still lack a Source or to disable Global inspection; successful tool Sources
@@ -1015,34 +1104,52 @@ product's read-only, local, non-executing boundary.
 **Decision**: Carry the final analysis remediations into planning and implementation:
 
 1. The fixed startup OS browser helper is the only permitted product-initiated child
-   process. It receives no inspected content, inspected path, authored value, user-supplied
-   command, or environment-selected handler. Discovery, reading, parsing, display,
+   process. It receives no inspection-derived content or path, authored value, user-supplied
+   command, or environment-selected handler. It may copy only the closed ambient platform-key
+   set directly from the launch environment; lexical equality with a Source root changes no
+   provenance and grants no authority. Discovery, reading, parsing, display,
    comparison, and relationship processing initiate no child process, and `--no-open` plus
    unsupported/failure paths leave a usable manual URL.
-2. Each supported tool/kind owns closed declared-metadata field IDs and relationship kinds.
-   Only entries present in the maintained presentation allowlist may be serialized or shown;
-   an unknown authored field remains visible only in complete source text and is not inferred
-   as metadata or a relationship.
+2. Each supported `(tool, kind)` owns closed declared-metadata field IDs, relationship kinds,
+   and admitted source-form applicability. An entry may be serialized or shown only when it
+   belongs to the maintained presentation-allowlist row and the exact extractor for the
+   actual admitted source form recognizes that authored occurrence. An entry failing either
+   gate remains visible only in complete source text and is never inferred or promoted across
+   source forms as metadata or a relationship.
 3. SC-002 includes the standardized filter and item-selection measurements defined in
-   Section 10; the 9-of-10 gate applies to both interactions as well as both scan thresholds.
+   Section 10; the same at least 9 individual runs must each pass both scan thresholds and
+   both interaction thresholds.
 4. Dependency revalidation is a planning gate. Any accepted package or version change synchronizes all
    dependency-baseline-bearing English/Japanese design and task artifacts and reruns planning plus task
    generation before implementation proceeds.
 5. The SC-002 environment is a checked-in versioned published profile with an objective
    current-request status stop condition; private local-machine identity is not part of the
    contract.
-6. Origin-file-less hosted/runtime inputs are bounded, evidence-linked Source Condition Facts
+6. Origin-file-less hosted/runtime inputs are evidence-linked Source Condition Facts
    attached to the relevant Source. They create no file/path/source text/comparison target,
    grant no read authority, perform no local or hosted I/O, and retain unobserved current state
    as conditional or unavailable.
 7. The maintainer team owns the initial-release participant study, funding, support, privacy,
-   accessibility, and bounded review protocol. Ordinary contributors do not carry those
+   accessibility, and defined review protocol. Ordinary contributors do not carry those
    obligations.
 8. `engines.node` is the complete Node 24/26 runtime compatibility range; the six exact floor
    jobs are lower-bound certification samples and Node 24.18.0 is the development/build
    baseline. The pinned three Playwright revisions are the automated browser-certification
    baseline, while the startup helper delegates to an unverified OS default handler and always
    retains the printed/manual-open fallback.
+9. A successful initial or retry Global commit preserves an existing Repository result only
+   semantically. It advances the generation, rekeys every carried graph and generation-owned
+   ID, and makes every old file/detail/comparison/selection/editor reference stale.
+10. SC-008 uses the maintained bilingual 55-row WCAG 2.2 Level A/AA applicability matrix.
+    Stable check IDs bind every expected observation, and the closed manual matrix forbids
+    sampling applicable locale/platform/viewport/mode/scenario/input cells. Every Applicable
+    row, every Not-applicable rationale recheck, all four keyboard workflows, and every
+    required responsive variation must pass; `validation.md` and `validation.ja.md`
+    record the nonzero Applicable-row denominator, zero failed Applicable rows, and complete
+    evidence. There is no axe-only or severity-based escape.
+11. Diagnostic scope is a closed `file | source | session` union. Only file scope carries
+    `sourceRelativePath`; source scope carries `sourceId` without a path, and session scope
+    carries neither source nor path identity.
 
 **Rationale**: These rules make the child-process boundary, presentation scope, performance
 denominator, runtime-fact model, participation ownership, compatibility/certification split,
@@ -1053,3 +1160,80 @@ documentation-parity requirements.
 execution, inferring metadata from arbitrary authored keys, keeping the interaction target
 as an untracked plan-only goal, and patching versions only in `package.json` were rejected
 because each creates a contradiction or a second undocumented contract.
+
+## 13. Pre-analysis ordering decisions (2026-07-19)
+
+**Decision**: Regenerate implementation tasks from three explicit dependency gates:
+
+1. Setup scaffolds the CLI entry, parser-worker entry, and referenced build/manifest scripts
+   before package commands, tsdown configuration, CI jobs, or runnable Setup checkpoints
+   depend on them.
+2. The English/Japanese vendor contracts enumerate the complete closed Presentation
+   Allowlist for every supported `(tool, kind)`, including its admitted source forms and
+   exact source-form extractor applicability, before any metadata or relationship parser,
+   recognizer, API, UI, or acceptance task consumes it. Tuple membership and source-form
+   extraction are separate required gates. Later evidence review reconciles drift; it does
+   not first define the normative list.
+3. Preserve the original family-vertical order: SKILL (including Skill Metadata) →
+   Instructions → MCP → Rules → Commands → Copilot Prompts → Custom Agents →
+   Configuration/Settings → Output Styles → Marketplaces → Plugin Manifests → Hooks. Each
+   family completes US1 discovery and US2 complete inert detail before its US3 comparison.
+   Repository-wide Inventory, Detail, and Comparison Acceptance then close Repository work
+   before US4 Global inspection; cross-cutting and release work remains last.
+
+**Rationale**: These gates give each configured command and acceptance test an existing
+prerequisite and a normative oracle, preserve the established dependency-safe delivery
+increments, and let each comparison validate a complete family before unrelated later
+families expand the product.
+
+**Alternatives considered**: A runnable Setup checkpoint that refers to absent entries and
+code-first presentation fields documented only near release were rejected because they make
+checkpoints unattainable or let implementation define its own contract. Horizontally moving
+every comparison behind all family discovery/detail work was also rejected because it
+breaks the original task order and delays independently testable family checkpoints; a
+comparison still never precedes its own family's discovery and complete inert detail.
+
+## 14. Cross-artifact remediation decisions (2026-07-19)
+
+**Decision**: Freeze the remaining safety and measurement contracts before regenerating
+tasks:
+
+1. Operational events use only fixed codes and opaque IDs. Paths, roots, filenames,
+   inspected content/metadata, authored values, capabilities, bodies, raw errors, and
+   exception strings are prohibited; authenticated session Diagnostics remain a separate
+   actionable surface. Fixed CLI help/version, one launch URL, and fixed startup
+   warnings are presentation output.
+2. Package bootstrap validates closed manifest structure, declared/actual lengths, and every
+   listed hash before import or bind. Build, tarball, and runtime share those integrity rules
+   but impose no product-defined file-size, aggregate-size, asset-count, buffer-size, or
+   handle-count boundary.
+3. The coordinator serializes Source scans, Global enable, and disable without exposing a
+   product-defined slot or queue capacity. Disable remains a priority security barrier, and
+   enable/disable races resolve atomically without late mutation.
+4. Every scan receives a `scanRequestId`. SC-002 waits for the automatic first Repository
+   scan, times one explicit rescan, and accepts only status and the committed inventory
+   generation carrying that request ID.
+5. Disable, shutdown, or generation replacement revokes publication authority independent of
+   elapsed time. Late results are discarded and cleanup follows the underlying Node.js/OS
+   operation; no hard kernel-I/O cancellation or OOM recovery is claimed.
+6. Allowed interpretation is limited to closed syntax, exact literal extraction, mechanical
+   typed decoding, frozen-catalog classification, and documented structural projection.
+   Every product/documentation surface forbids natural-language interpretation/ranking,
+   customization verdicts, policy/remediation advice, linting, synchronization, conversion,
+   formatting, and fixing.
+7. Product-issued mutation means every mutation-capable filesystem request or flag. Tests
+   instrument those calls and stable source properties; OS-only atime changes are recorded
+   separately as neither failure nor proof.
+8. Capability authentication is the API access boundary. Sensitive-content acknowledgement
+   is a resettable client-memory presentation gate that the bundled SPA applies before
+   detail requests or comparison construction; it is never sent to the API.
+
+**Rationale**: These boundaries remove ambiguity from integrity, cleanup, disclosure, and
+negative-product-scope tests while preserving literal inspection and making capacity a
+property of Node.js and the surrounding execution environment.
+
+**Alternatives considered**: Path-bearing logs, product-defined resource caps, integrity-free
+static loading, prior-generation performance completion, timer-based claims of physical I/O
+cancellation, broad semantic analysis, literal atime-as-mutation scoring, and server-side
+acknowledgement state were rejected because they overstate the platform guarantee, weaken
+integrity, or confuse presentation with API authorization.

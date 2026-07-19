@@ -24,7 +24,7 @@ semantic source review. Per-record review dates remain owned by
 | [Claude Code](vendors/claude-code.md) | Claude `behaviorId` statements and Claude static, bounded-derived, and excluded `ruleId` definitions |
 | [OpenAI Codex](vendors/openai-codex.md) | Codex `behaviorId` statements and Codex static, bounded-derived, and excluded `ruleId` definitions |
 | [Runtime composition](runtime-composition.md) | `strategyId` definitions, precedence/composition projections, relationship-only `ruleId` definitions, and shared cross-vendor non-read `ruleId` definitions |
-| [Official sources](official-sources.md) | `sourceId`, canonical official URL, bounded section anchors, review date, and reciprocal affected-contract references |
+| [Official sources](official-sources.md) | `sourceId`, canonical official URL, enumerated section anchors, review date, and reciprocal affected-contract references |
 
 An identifier is defined normatively in exactly one contract. Other contracts refer to
 that identifier and must not restate its rule. `behaviorId` describes the maintained
@@ -71,9 +71,10 @@ and runtime-composition contracts and never changes this boundary.
 
 Global inspection is disabled in every new session and requires consent bound to the
 current contract version and exact no-I/O preview. Every accepted vendor-home root becomes
-its own tool-specific Global Source—at most one each for Copilot, Claude, and Codex—and
-each Source is bound to exactly one root. These Sources are not Repository children, are
-never merged with one another, and are never merged into the Repository Source.
+its own tool-specific Global Source, separately identified as Copilot, Claude, or Codex.
+Each tool maps to its own Source, and each Source is bound to exactly one root. These
+Sources are not Repository children, are never merged with one another, and are never
+merged into the Repository Source.
 
 Every displayed or serialized candidate path is a Source-relative Path computed from the
 single root of its owning Source. It is repository-relative only for the Repository Source;
@@ -93,9 +94,9 @@ Every static Inspector rule separates these fields:
 |---|---|
 | **Base** | One exact enabled boundary: `Repository` or one named consented `Global` vendor boundary |
 | **Relative selectors** | A non-empty ordered list of boundary-relative, `/`-normalized selectors; none contains an absolute path, environment expansion, home expansion, URI, or implicit ancestor search |
-| **Selector programs** | Exactly one closed segment program per selector, in the same order; a program can contain multiple bounded expansion steps |
+| **Selector programs** | Exactly one closed segment program per selector, in the same order; a program can contain multiple typed expansion steps |
 
-Each selector program has 1..64 ordered segment tokens from this closed union:
+Each selector program has a non-empty ordered sequence of segment tokens from this closed union:
 
 - `literal(value)` matches one case-sensitive NFC segment exactly; `value` contains no
   separator, wildcard, empty/dot segment, or Windows-special spelling.
@@ -103,13 +104,13 @@ Each selector program has 1..64 ordered segment tokens from this closed union:
   or `*<fixed-literal-suffix>` otherwise. It is a directory step when non-terminal and a
   regular-file step when terminal.
 - `recursive-directories` is rendered only as the complete segment `**`, matches zero or
-  more directories, is never terminal, appears at most twice, and is never adjacent to
-  another recursive token.
+  more directories, is never terminal, and is never adjacent to another recursive token.
 
-The final token must be `literal` or `one-segment` and denotes a regular file. Every
-traversal shares the session's ordinary visited-entry/path-depth limits; a program adds no
-separate unbounded glob engine. The build compiler parses the compact selector into this
-typed program, then requires exact canonical round-trip back to the selector. The runtime
+The final token must be `literal` or `one-segment` and denotes a regular file. A program
+uses only this closed typed grammar; parser, token, and depth capacity and completion
+behavior come from Node.js, the parser, and the execution environment. The build compiler
+parses the compact selector into this typed program, then requires exact canonical
+round-trip back to the selector. The runtime
 loads only the validated typed program and never passes the text to a general-purpose glob
 or regular-expression evaluator.
 
@@ -157,8 +158,9 @@ Build validation compiles every validated typed matcher into an immutable, versi
 `TraversalPlan`. The plan retains the closed selector programs and fixes the exact
 filesystem edges and operation classes they can authorize. Runtime scanning loads that
 plan as data; it does not reparse selector text or substitute a generic walker. A
-Repository plan may perform the bounded broad traversal explicitly described by its
-selector programs, subject to the shared entry, depth, exclusion, and deadline limits.
+Repository plan may perform only the broad traversal explicitly described by its selector
+programs and exclusions. Entry, depth, time, and work capacity and completion behavior
+come from Node.js, the filesystem, and the execution environment.
 
 A Global plan is narrower and never starts by enumerating the vendor-home root. For an
 exact Global target, the filesystem service snapshots the boundary and `lstat`s only the
@@ -177,11 +179,11 @@ The plan also carries a closed `selectionPolicy`. Every rule uses `all-matches` 
 override only to establish whether its decoded string, after removal of an optional leading
 UTF-8 BOM, has `String.prototype.trim().length > 0`. A non-empty override short-circuits before any operation on the fallback; an
 absent or safely established empty override advances to `AGENTS.md`. A whitespace-only file is
-empty. A present candidate that is unsafe, unreadable, oversized, or undecodable fails
+empty. A present candidate that is unsafe, unreadable, environment-failed, or undecodable fails
 closed without examining a later selector. `absent` means only an explicit not-found result
 from that exact target's `lstat` after root verification; permission, type, metadata,
-ancestor/root, canonicalization, and post-observation disappearance are failures. At most
-one non-empty file is published.
+ancestor/root, canonicalization, and post-observation disappearance are failures. The
+policy publishes the selected non-empty file and never publishes both selectors.
 
 The no-I/O Global preview renders `pathPatterns` from this same immutable plan; there is
 no separately maintained preview allowlist. The consent digest binds the contract
@@ -199,12 +201,15 @@ only to reconstruct, verify, and read the filesystem path. It separately compute
 classification, deterministic sorting, and the serialized `SourceRelativePath`. A
 normalized or canonical spelling is never substituted into a filesystem operation.
 
-Every opened directory is collected into a bounded, complete sibling buffer before any
-of its entries is descended into or opened. If the buffer cannot be completed within the
-shared limits, that directory fails closed. When two or more distinct raw sibling names
+Every opened directory is collected into a complete sibling buffer before any
+of its entries is descended into or opened. A recoverable capacity or environment-resource
+failure before that buffer is complete aborts the whole scan attempt, publishes no item,
+Source, recognition, derived result, scan-result record or response, or generation, and
+leaves only the prior committed snapshot available; incomplete traversal never becomes a
+contracted-partial result. When two or more distinct raw sibling names
 normalize to the same NFC segment and therefore the same parent-relative classification
 key, every entry in that collision group fails closed: none is descended into or read,
-and the service emits bounded diagnostic
+and the service emits diagnostic
 `safe-fs-path-normalization-collision`. A single non-colliding NFD spelling remains valid:
 the service reads it through its raw segments while matching, sorting, and displaying its
 NFC `SourceRelativePath`.
@@ -214,7 +219,7 @@ read by themselves. The centralized Node.js filesystem service first establishes
 containment and snapshots the source root's identity and canonical `realpath`. It `lstat`s
 every plan-authorized ancestor before considering a candidate. Every candidate
 verification phase—enumeration, immediately before open, after
-open but before reading, and after the bounded read—uses this exact ordered sequence: (1) `lstat` the
+open but before reading, and after the complete same-handle read—uses this exact ordered sequence: (1) `lstat` the
 candidate path and reject a symbolic link, non-regular type, or unexpected identity; (2)
 only after that succeeds, resolve the candidate `realpath` and verify containment with
 `node:path.relative`, whose platform-separator-normalized result must be non-absolute and
@@ -239,7 +244,7 @@ Every rule has a stable `ruleId` and exactly one discovery class:
 | Class | Meaning | May authorize a read? |
 |---|---|---|
 | `static-candidate` | The rule's structured source-relative matcher alone can create a candidate. | Yes, after consent and safe-read checks |
-| `bounded-derived-candidate` | An independently accepted seed declares one target through a closed vendor-specific derivation. | Yes, only for that one edge and within every derivation bound |
+| `bounded-derived-candidate` | An independently accepted seed declares a target through a closed vendor-specific derivation. | Yes, only for the derived path enumerated by that closed rule |
 | `relationship-only` | The Inspector records that a product may follow or use a target without opening it. | No |
 | `excluded` | The surface is documented but intentionally outside this release or source boundary. | No |
 
@@ -257,29 +262,28 @@ a recognition-level winner.
 
 Only a `static-candidate` or `bounded-derived-candidate` in the shipped, contract-versioned
 registry may request a safe read. The candidate must belong to an enabled boundary, match
-an exact enumerated regular-file record, remain within all file/source/generation limits,
-and pass the centralized Node.js service's repeated lexical/`realpath` containment and
+an exact enumerated regular-file record, and pass the centralized Node.js service's
+repeated lexical/`realpath` containment and
 enumeration/open/post-read identity checks.
 
-Bounded derivation is exactly one typed edge from an independently admitted static seed.
-A derived candidate cannot seed another derivation. Relationship-only and excluded rules,
-vendor locators, runtime strategies, imports, component references, remote sources, and
-MCP-server-provided instructions never authorize a read.
+A `bounded-derived-candidate` uses a typed edge from an independently admitted static seed
+and is nonrecursive: a derived candidate cannot seed another derivation. Relationship-only
+and excluded rules, vendor locators, runtime strategies, imports, component references,
+remote sources, and MCP-server-provided instructions never authorize a read.
 
 Read authority for a bounded-derived candidate exists only through a closed, versioned
 `DerivationProgram` interpreted by the centralized service. Each program pins the exact
 static seed rule, declaration field (including a closed matched-path sentinel where
 applicable), and seed kind; chooses its base only from `seed-matched-path-parent` or
 `source-root`; names one closed extraction variant; uses only fixed literal segment tokens
-and bounded authored-segment tokens from a closed union, with each authored token producing
+and typed authored-segment tokens from a closed union, with each authored token producing
 exactly one validated segment rather than injecting an unparsed path; declares a fixed
-suffix; and carries an explicit fan-out bound. Extracted
-segments must pass the same collision-free classification and containment admission as a
-static candidate.
+suffix; and enumerates every permitted output form. Extracted segments must pass the same
+collision-free classification and containment admission as a static candidate.
 
 The registry contains data only: it cannot supply a callback, function pointer, arbitrary
 `path.join` recipe, free-form path expression, glob, or regular expression. The exact
-closed schema and the five initial derived-rule mappings are owned by the
+closed schema and the initial derived-rule mappings are enumerated by the
 [data-model contract](../data-model.md); adding a variant or mapping is a contract-versioned
 change, not an extension point at runtime.
 
@@ -311,13 +315,13 @@ semantically effective.
   before reading any bytes, it runs the same ordered candidate verification sequence again,
   then compares the opened `FileHandle.stat()` identity, type, size, and relevant timestamps
   with both `lstat` results from that phase and the enumeration/pre-open snapshots.
-- After the bounded read and before any parse, publish, or commit, the service repeats the
+- After the complete same-handle read and before any parse, publish, or commit, the service repeats the
   root identity and every ancestor `lstat`, runs the same ordered candidate verification
   sequence, and calls `stat()` on the same still-open `FileHandle`.
   Any detected error, ambiguity, containment failure, or change to identity, type, size, or
   relevant timestamps discards the entire byte buffer and fails closed. An unverifiable
   boundary uses `safe-fs-boundary-unverifiable`; another detected race yields the applicable
-  bounded, secret-safe diagnostic.
+  actionable, secret-safe diagnostic.
 - Public Node.js APIs do not provide a portable directory-handle-relative open. An active
   adversarial process can therefore replace the source root or an ancestor between checks
   without a cross-platform kernel-enforced containment guarantee on any platform. Replacing
@@ -326,13 +330,18 @@ semantically effective.
   in scope: they must fail closed and discard all bytes. Same-device bind mounts, unreported
   reparse behavior, and other OS semantics that Node.js does not expose remain explicit
   platform limitations and are never represented as an absolute containment guarantee.
-- File bytes, visited entries, candidate counts, derivation fan-out, relationship counts,
-  parser work, diagnostics, and deadlines use the exact limits in the
-  [data-model contract](../data-model.md).
-  Reaching a limit produces the contracted partial result or diagnostic, never implicit
-  expansion, an unbounded retry, or a fallback read.
-- One unsafe, unreadable, malformed, changed, or oversized candidate does not prevent
-  unaffected candidates from being reported.
+- File, collection, derivation, relationship, parser, diagnostic, and timing capacity is
+  inherited from Node.js, parser libraries, the operating system, the filesystem, and the
+  execution environment as specified in the [data-model contract](../data-model.md). A
+  recoverable capacity failure aborts the attempt, returns only the contracted lifecycle
+  failure, commits no item, recognition, derived result, scan-result record or response, or
+  generation, and leaves only the prior committed snapshot available. A contracted partial is possible only after complete traversal
+  for deterministic entry-local non-capacity failures. Neither path permits implicit expansion,
+  retry without authority, fallback read, or a validity verdict.
+- One unsafe, unreadable, malformed, or changed candidate does not prevent unaffected candidates
+  from being reported when it satisfies the contracted-partial rule above. An environment-resource
+  failure aborts the attempt, publishes no current-attempt result, and leaves only the
+  previously committed snapshot available.
 - No relationship or excluded record may be promoted merely because its target happens
   to exist. A target is readable only through an independent static or bounded-derived
   admission.
@@ -354,15 +363,15 @@ Contract and fixture validation must prove all of the following:
    `opendir`, `lstat`, `realpath`, open, or read calls. Preview fixtures prove that
    `pathPatterns` come from that same plan and that the consent digest binds its version,
    closed selection policy, and canonical programs. Codex traces apply absent, empty,
-   BOM-only, whitespace-only, non-empty, unreadable, oversized, undecodable, and non-regular
+   BOM-only, whitespace-only, non-empty, unreadable, environment-failed, undecodable, and non-regular
    cases independently to both ordered targets; they distinguish exact-target not-found
-   from every other error and prove short-circuit/fail-closed behavior plus at most one
-   published file.
+   from every other error and prove short-circuit/fail-closed behavior, including that the
+   two selectors are never both published.
 5. Every static and bounded-derived rule has positive, root/nested, boundary, symlink,
-   alias, resource-limit, and applicable multi-tool fixtures. Derived fixtures additionally
+   alias, recoverable-environment-failure, and applicable multi-tool fixtures. Derived fixtures additionally
    prove closed `DerivationProgram` interpretation without callbacks or free-form path
-   construction, one-edge depth, fan-out limits, containment, deterministic retention,
-   and no read for the first rejected target.
+   construction, nonrecursive derivation, containment, deterministic retention on successful
+   completion, safe handling of recoverable environment failure, and no read for a rejected target.
 6. Relationship-only and excluded fixtures prove zero read authority even when a target
    exists or matches a generic filename. User behavior recorded outside FR-015 through
    FR-018 never becomes a Global candidate.
@@ -374,7 +383,7 @@ Contract and fixture validation must prove all of the following:
    use when available, every pre-read and post-read comparison above, and root/parent/final-
    entry replacement. A stable-symlink fixture proves rejection before a candidate
    `realpath` call. Every ordinary concurrent or otherwise detectable change publishes no
-   bytes and fails with a bounded diagnostic. Reported
+   bytes and fails with an actionable diagnostic. Reported
    error, ambiguity, or unusable metadata yields `safe-fs-boundary-unverifiable`; an OS
    behavior that Node.js cannot observe is recorded as a platform limitation and is not
    counted as proof against the excluded active-adversary race.
@@ -383,14 +392,13 @@ Contract and fixture validation must prove all of the following:
    and NFD sibling spellings with the same classification key. The latter fixture emits
    `safe-fs-path-normalization-collision` and proves that every colliding sibling receives
    zero descend/open/read operations.
-10. Official-source fixtures validate official HTTPS hosts, bounded anchors, review dates,
+10. Official-source fixtures validate official HTTPS hosts, enumerated anchors, review dates,
    semantic fingerprints, affected-contract backlinks, and human-only updates. A drift
    result never changes a behavior, rule, or strategy automatically.
 11. The registry fails closed on an unknown matcher, traversal, or derivation kind; an
-   invalid token position or count;
-   selector/program count or canonical-round-trip mismatch, malformed selector, duplicate
-   identifier, orphan reference, mismatched contract version, or English/Japanese
-   semantic difference.
+   invalid token sequence or position; a selector/program correspondence or canonical-
+   round-trip mismatch; a malformed selector; a duplicate identifier; an orphan reference;
+   a mismatched contract version; or an English/Japanese semantic difference.
 
 Changing a matcher base, selector/program, derived expansion summary, read-authorizing class, or Global scope is a
 contract semantic change. Maintainers must review identifier compatibility, update every

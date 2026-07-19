@@ -24,8 +24,8 @@ Source registryはevidence metadataであって、Inspectorのread authorityで�
   許可しない。
 - `sectionAnchors`内のsemicolon区切りentryは、それぞれexact rendered heading-text descriptorである。
   CSS/XPath selectorでもURL fragmentでもない。Drift checkerは、列挙した各entryに対して正確に1つの
-  matching headingを見つけなければならない。1 recordは1..16 anchorを持ち、各heading textは最大
-  256 UTF-8 byteである。
+  matching headingを見つけなければならない。Anchorとheading-textのcapacityおよびcompletion behaviorは、
+  Node.jsと実行環境から継承する。
 - `reviewedOn`は、最後にhuman semantic reviewを実施した日である。このreleaseの全recordは
   `2026-07-15`にreview済みである。
 - 全rowが`normalizationVersion: 1`を使用する。
@@ -35,11 +35,11 @@ materializationである。さらにdata modelが要求する3つのderived affe
 paraphrased assertion、`snapshotFingerprint`、`semanticFingerprint`を含む。別の`sourceId`、URL、host、
 anchor、review dateを導入してはならない。
 
-Registryはclosed limit 128未満の47 recordを持つ。各fixture recordは1..64 assertionを持つ。各assertionは
-stable assertion ID、最大1,024 UTF-8 byteのparaphrase済みexpected semantics、そのsourceのexact reverse
+Registryは以下のrowだけを持つ。各fixture recordはnon-emptyなmaintained assertion setを持つ。各assertionは
+stable assertion ID、paraphrase済みexpected semantics、そのsourceのexact reverse
 indexのsubsetであるaffected IDを持つ。Page textのcopyとgeneric product-area targetは禁止する。
 `snapshotFingerprint`は選択・normalizeしたsectionのlowercase SHA-256、`semanticFingerprint`はstable sort後の
-assertionに対するcanonical JSONのlowercase SHA-256である。Bounded fieldはtruncateしない。
+assertionに対するcanonical JSONのlowercase SHA-256である。Fieldはtruncateしない。
 
 このreleaseでは、次のexact official hostだけを許可する。
 
@@ -172,7 +172,7 @@ pnpm exec vitest run tests/contract/official-sources
 ```
 
 Network accessなしで、exact registry/Evidence set equality、bilingual edge parity、reciprocal affected ID、
-official host、record bound、assertion target、再計算した`semanticFingerprint`をvalidateする。
+official host、record schema、assertion target、再計算した`semanticFingerprint`をvalidateする。
 
 Networkを使用するdrift reviewは、maintainerだけが次を明示実行する。
 
@@ -180,10 +180,10 @@ Networkを使用するdrift reviewは、maintainerだけが次を明示実行す
 pnpm run check:official-sources
 ```
 
-このcommandはcredential、cookie、Repository contents、その他local stateを送信しない。Recordごとに最大
-10秒、decompress後2 MiB、UTF-8 HTMLまたはMarkdown、3回までのHTTPS redirectだけを許可する。全redirect
-hopはrowのexact `officialHost`を維持しなければならない。HTTPS downgrade、cross-host redirect、誤った
-content type、oversized response、decode failure、headingの欠落または重複はhard failureとする。同一host上の
+このcommandはcredential、cookie、Repository contents、その他local stateを送信しない。UTF-8 HTMLまたはMarkdownだけを
+受理し、全redirect hopはrowのexact `officialHost`を維持しなければならない。Request、response、redirect、decodeの
+capacityはNode.jsと実行環境から継承し、recoverableなenvironment failureはfail closedする。HTTPS downgrade、
+cross-host redirect、誤ったcontent type、decode failure、headingの欠落または重複はhard failureとする。同一host上の
 異なるfinal URLはreview対象として報告し、`canonicalUrl`を黙って置き換えない。
 
 Normalization version `1`は、列挙した各headingから同level以上の次heading直前までを選択し、document

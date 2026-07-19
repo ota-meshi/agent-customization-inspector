@@ -14,7 +14,8 @@ a filesystem path, URL, command, source text, parser option, glob, or executable
 
 1. The process binds an ephemeral port on `127.0.0.1`. The initial release has no host
    override and does not bind `0.0.0.0`, a LAN address, or a Unix socket. Before binding it
-   verifies that packed `engines.node` is exactly `^24.11.0 || ^26.0.0`, that the running
+   reads and strictly parses the packed `package.json`, verifies that
+   `engines.node` is exactly `^24.11.0 || ^26.0.0`, that the running
    Node.js version is in its expanded compatibility range, the package version, the closed
    static/server manifests, and every asset they list, then initializes the centralized
    Node.js filesystem service used for every
@@ -50,8 +51,11 @@ a filesystem path, URL, command, source text, parser option, glob, or executable
    `HOME`, `DISPLAY`, `WAYLAND_DISPLAY`, `XDG_CURRENT_DESKTOP`, `DESKTOP_SESSION`,
    `DBUS_SESSION_BUS_ADDRESS`, `XDG_RUNTIME_DIR`, `LANG`, and `LC_ALL`. An OS helper may itself read
    those ambient desktop/session values, but the Inspector does not select a handler from
-   them. `BROWSER`, `NODE_OPTIONS`, `NODE_PATH`, every inspected value, every other environment
-   value, and every environment-supplied or additional argv element are omitted. Missing or
+   them. The allowlisted keys are copied directly as ambient platform provenance only; no
+   Source/preview/candidate/file path is copied from inspection state, and lexical equality
+   changes no provenance or authority. `BROWSER`, `NODE_OPTIONS`, `NODE_PATH`, every other
+   environment value, every inspection-derived value, and every environment-supplied or
+   additional argv element are omitted. Missing or
    nonzero helpers, spawn errors, and unsupported platforms emit a fixed
    warning only; the server and printed fallback URL remain.
    The helper delegates to the operating system's default browser and neither selects nor
@@ -67,17 +71,27 @@ a filesystem path, URL, command, source text, parser option, glob, or executable
    SPA makes no API request and shows a safe authorization-lost view whose exact next step
    is to reopen the printed launch URL. That URL remains reusable only for the lifetime of
    the same process and returns the user to `/` with the fragment again.
-4. Other than the required one-time initiating-terminal launch line, which is presentation
-   output and not an operational log, the host compares the capability in constant time and never logs the header, fragment,
-   token, request/response body, raw parser error, or any value copied from customization
-   source or declared metadata. Operational diagnostics and logs may identify an opaque
-   source/file ID and its source-relative location, but never duplicate inspected content.
+4. Other than fixed help/version text, the required one-time initiating-terminal launch
+   line, and fixed actionable startup warnings, which are presentation output rather than
+   operational events, the host emits only the closed `OperationalEvent` schema from the
+   data model: a stable event code plus optional opaque session, source, file, scan-request,
+   and operation IDs. An operational event has no free-form field and never
+   contains a Source-relative, absolute, or canonical path, root, filename, inspected
+   content or metadata, authored value, capability, request/response body, parser/system
+   error, exception string, or Diagnostic argument. A capability-authenticated file
+   Diagnostic may contain its minimum necessary `sourceRelativePath`, but that value is never copied
+   into an operational event. The host compares the capability in constant time and never
+   logs the header, fragment, or token.
 5. Every request must have the exact assigned `Host` value. State-changing requests must
    also have the exact same-origin `Origin`; API navigations and cross-site fetch metadata
    are rejected. CORS headers are never emitted.
-6. Before bind, the host strictly loads the at-most-2-MiB
-   `dist/manifests/static-assets.json` described in the data model and verifies every
-   listed regular asset's exact path, byte length, and lowercase SHA-256. The build rejects
+6. Before bind, the host strictly loads the closed
+   `dist/manifests/static-assets.json` and `dist/manifests/server-assets.json` described in
+   the data model. The host verifies every listed regular asset's exact path, declared byte
+   length, actual byte length, and lowercase SHA-256 before import or bind. File and manifest
+   capacity is inherited from Node.js, the operating system, the filesystem, and the
+   execution environment; the host defines no product-specific size or record-count ceiling.
+   The build rejects
    relative/external executable assets, executable attributes, `<base>`, nonces, malformed
    or unrecorded inline scripts, symlinks, and unexpected output. It requires then removes
    Nuxt's `200.html`/`404.html` static-host aliases and permits HTML only at `index.html`.
@@ -90,9 +104,12 @@ a filesystem path, URL, command, source text, parser option, glob, or executable
    `object-src 'none'`; `base-uri 'none'`; `form-action 'none'`; and
    `frame-ancestors 'none'`. Monaco workers are emitted root-absolute same-origin static
    assets, so no external or `blob:` worker source is permitted. API responses use
-   `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`.
-7. JSON request bodies must use `application/json`, have a declared and actual size of at
-   most 64 KiB, contain only the documented keys, and pass strict manual type/enum guards.
+   `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`. Build verification,
+   packed-tarball verification, and runtime bootstrap enforce the same package/static/server
+   integrity contract.
+7. JSON request bodies must use `application/json`, contain only the documented keys, and
+   pass strict manual type/enum guards. Transport capacity is inherited from Node.js and the
+   execution environment rather than a product-defined request-size ceiling.
 
 Static assets and the packaged SPA shell may be fetched without the capability because
 they contain no session data. The shell performs the authorization-lost behavior above;
@@ -119,34 +136,19 @@ the session coordinator lock, then may serialize and deliver the already-fixed e
 after releasing the lock. It never reads a generation, constructs data outside that
 generation, and later relabels the response.
 
-`ResourceLimits.maxSessionSnapshotBytes` is 8 MiB and
-`ResourceLimits.maxFileDetailBytes` is 4 MiB, measured as the complete UTF-8 JSON success
-envelope. The snapshot limit is partitioned into an exact 5-MiB
-`maxSessionSnapshotBaseBytes` projection with every session-owned mutable field neutral and
-a 3-MiB `maxSessionSnapshotOverlayBytes` delta. The overlay consists of a 2-MiB
-`maxSessionLifecycleDiagnosticBytes` sub-budget and a disjoint 1-MiB
-`maxSessionSnapshotControlBytes` sub-budget for `snapshotState`, up to four
-`staleFailures`, `globalControl`, and Source lifecycle/progress projections. Each lifecycle insertion—including
-its Diagnostic, duplicated `sessionDiagnosticIds` occurrence, and separators—is at most
-2 KiB, and ordinary records cannot consume the 16-KiB reservation for the four keyed
-failure slots and session sentinel. An oversized keyed failure uses its fixed compact
-per-key record; an oversized ordinary detail is suppressed and increments the session
-sentinel. Keyed replacement credits the old charge before atomically accepting the new
-one. Build-time worst-case encoding tests must keep all closed server-owned control
-forms inside their 1-MiB reservation. This overlay accounting continues after generation
-commit, so no later session control or lifecycle-diagnostic mutation can push the complete
-envelope over 8 MiB. During scan construction, a deterministic canonical byte budget admits or rejects
-whole file-summary, recognition, metadata, provenance, relationship, and diagnostic records
-in their contractual order; it never cuts a string, array element, or object. Encountering
-the next over-budget record stops the applicable accumulation, marks the generation partial,
-and offers the fixed bounded diagnostic before commit. The API performs no response-time
-truncation. If committed state nevertheless cannot produce an in-limit complete envelope,
-the host returns the fixed safe `500 response-size-invariant` error with no partial `data`.
-Canonical accounting is the production JSON encoding, with fixed contract field order,
-escaping, separators, omission rules, and no extra whitespace. The host materializes one
-complete UTF-8 entity-body buffer for a successful envelope, checks its exact byte length,
-and passes that same unchanged buffer to the HTTP response; it never reserializes an already
-accounted DTO. When `Content-Length` is emitted, it is that buffer length.
+The API defines no product-specific numeric limit for request bodies, files, item counts,
+parser structures, snapshots, details, or response bodies. Capacity is inherited from
+Node.js, the parser, the operating system, the filesystem, the browser, and the execution
+environment. If recoverable serialization or encoding failure occurs before an atomic scan
+publication commit, the current attempt aborts, publishes no item, Source, recognition,
+derived result, scan-result record or response, or generation, retains only the prior
+committed snapshot, and returns only a fixed safe failure outside the result. It does not
+classify inspected content as valid or invalid. The host materializes one complete UTF-8
+entity-body buffer for a successful envelope and passes that unchanged buffer to the HTTP
+response. When `Content-Length` is emitted, it is the actual buffer length. If socket write or
+other transport delivery fails after the atomic commit, the committed outcome and snapshot
+remain unchanged; no successful response payload is reported, a truncated body is never a
+partial result, and the authenticated client may refetch the committed generation.
 
 Error responses:
 
@@ -166,7 +168,8 @@ No error contains a stack trace, arbitrary exception message, customization sour
 declared-metadata value, API capability, referenced process-environment value, or canonical
 path outside an enabled source. Literal credentials are returned only as part of an
 explicitly requested readable file detail, never copied into an error or operational log. A
-correlation ID may be returned and stored only in process memory.
+correlation ID may be returned and stored only in process memory. Error envelopes and
+authenticated Diagnostics remain distinct from path-free operational events.
 
 ## Routes
 
@@ -180,21 +183,24 @@ Response data:
 
 ```text
 SessionSnapshot
-├── sessionId, createdAt, activeGeneration, snapshotState, limits,
+├── sessionId, createdAt, activeGeneration, snapshotState,
 │   liveness { heartbeatIntervalMs, requestTimeoutMs, leaseDurationMs },
 │   staleFailures[] { sourceId, diagnosticId, failedAt, baseGeneration },
 │   globalControl null | { state, previewId, confirmedTools[], pendingTools[], retryableTools[] },
 │   sensitiveContentWarning { messageKey, nextStepKey, acknowledgementScope }, sessionDiagnosticIds
 ├── sources[]
-│   ├── sourceId, kind, tool, enabled, status, generation
+│   ├── sourceId, kind, tool, enabled, status, generation, scanRequestId
 │   ├── root { displayRoot, origin }
 │   ├── conditionFacts[] { tool, surface, ruleId, affectedRuleIds, behaviorRefs, strategyRefs, sourceRefs,
 │   │                      condition { key, status, reasonCode, basis } }
-│   └── progress null | { phase, visitedEntries, candidateFiles, readBytes, diagnosticCount, queuedAt, startedAt }
+│   └── progress null | { scanRequestId, phase, visitedEntries, candidateFiles, readBytes,
+│                         diagnosticCount, queuedAt, startedAt }
 ├── files[]
 │   └── fileId, sourceId, sourceRelativePath, aliasSourceRelativePaths, readState, parseSummary, sizeBytes,
 │       encoding, recognition summaries { tool, kind, parseStatus, provenance count, diagnostic IDs }, diagnostic IDs
-└── diagnostics[] (active-generation records plus bounded out-of-generation lifecycle records)
+└── diagnostics[] { diagnosticId, code, severity, scope,
+                    sourceId?, fileId?, sourceRelativePath?, messageKey, safeArgs, nextStepKey }
+    (active-generation records plus session-owned lifecycle records)
 ```
 
 Every Source has exactly one root. The Repository Source has `tool: null`; the session has
@@ -205,14 +211,14 @@ it stays distinct from `files` and recognitions and cannot create a physical or 
 file, file ID/path/text, comparison target, relationship origin, local or hosted read, or
 network request. An unobserved current state remains conditional or unavailable.
 Top-level `snapshotState` is `current` or `stale-after-fatal-rescan`; only a fatal explicit
-rescan adds or replaces one `staleFailures` entry and its reserved diagnostic for the affected
+rescan adds or replaces one `staleFailures` entry and its lifecycle diagnostic for the affected
 Source. Entries and diagnostics for different Sources coexist. A successful complete or
-contracted-partial scan clears only the entry and reserved diagnostic for the Source it
+contracted-partial scan clears only the entry and lifecycle diagnostic for the Source it
 refreshed; a commit for another Source preserves both, and Global disable clears both for
 Sources it removes. `snapshotState` is stale exactly while the
 array is non-empty. Automatic first Repository failure and initial Global-enable failure
-create no `staleFailures` entry, but use the keyed Repository/Global-tool reserved failure
-slot; initial Global-enable failure preserves all pre-existing entries and the derived snapshot state.
+create no `staleFailures` entry, but use a Repository- or Global-tool-owned lifecycle
+diagnostic; initial Global-enable failure preserves all pre-existing entries and the derived snapshot state.
 Each `sourceRelativePath` and alias path is relative to its owning Source's single root; the
 API never substitutes an absolute or canonical filesystem path for it.
 The inventory summary does not include source text. Deterministic sort order is source kind,
@@ -243,8 +249,12 @@ editors/models and comparison/detail state, clears the prior DTO graph, then set
 `currentGeneration` and adopts the complete new snapshot. A response captured under the
 old epoch cannot repopulate state even if its bytes arrive later.
 Every returned diagnostic is referenced by the active generation/source/file graph or by
-`sessionDiagnosticIds`; client-caused request errors are never accumulated here. The exact
-file/source/generation/session caps and overflow sentinels come from `limits`.
+`sessionDiagnosticIds`; client-caused request errors are never accumulated here.
+`scope` is an obligatory attachment discriminator, independent of diagnostic lifetime.
+The only legal location shapes are: `file`, with `sourceId`, `fileId`, and that file's
+Source-relative Path all present; `source`, with only `sourceId` present; and `session`,
+with all three location fields absent. Source- and session-scoped records never invent a
+file ID or path. Serialization rejects any other combination.
 Progress is null for `idle` and `failed`; it is present for active work and
 for final `ready`/`partial` counters as defined in the data model. The first legal snapshot
 is bootstrap generation 0 with no files/diagnostics; it remains readable and current if the
@@ -256,7 +266,10 @@ possible credentials. `acknowledgementScope` is the fixed value `authorized-brow
 Before requesting a file detail or constructing a comparison, the SPA
 requires an in-memory acknowledgement for the current authorized browser session. The
 acknowledgement is client-only, is not sent to this API, and is not persisted by either side.
-It grants no filesystem authority and does not alter the returned content.
+The bearer capability is the complete host-side authorization boundary: the API neither
+accepts nor claims to enforce a presentation acknowledgement. The shipped SPA nevertheless
+must obtain that acknowledgement before it requests detail or constructs comparison. It
+grants no filesystem authority and does not alter the returned content.
 
 `globalControl` is null only when Global consent/control state is inactive. Otherwise
 `state` is `active` or `disabling`, and `previewId` identifies the frozen active preview.
@@ -342,37 +355,60 @@ in the [data-model contract](../data-model.md#scopedescriptor-and-orderdescripto
 does not accept or return implementation-specific scope/order objects.
 
 For a readable file, `sourceText`, every `declaredMetadata[].authoredLiteral`, and every
-relationship with `targetOrigin: authored` preserve exact validated slices of decoded source without
+relationship with `targetOrigin: authored` preserve exact structurally delimited,
+round-tripping slices of decoded source without
 credential detection, masking, redaction, or a reveal step. The metadata array preserves
 source-occurrence order and accepted duplicates; `occurrence` is scoped to its recognition,
 and the full comparison identity is `(tool, kind, fieldId, occurrence)`. Authored quoting,
 escapes, block/collection punctuation, numeric/date spelling,
 and environment-reference syntax are returned rather than a parser-normalized value. A
 separate internal typed semantic value may drive classification, target normalization, or
-bounded derivation but is never serialized or displayed. JSON transport escaping must
+plan-defined derivation but is never serialized or displayed. JSON transport escaping must
 round-trip to the same `authoredLiteral` string at the client. Environment-variable
 references remain literal strings: the host never reads,
 resolves, or substitutes the referenced process-environment value. The only environment
 values used by inspection are the specifically documented tool-home variables used to derive
 Global roots through the consent flow.
 A registry-defined `targetOrigin: documented-default` relationship instead has
-`authoredTarget: null`; the SPA labels its bounded `normalizedTarget` as a documented
+`authoredTarget: null`; the SPA labels its validated `normalizedTarget` as a documented
 default and never implies that the synthetic path occurred in source.
+
+Across Inventory, Detail, Comparison, Global controls, Diagnostics, Source Condition Facts,
+every API envelope, CLI output, and documentation, the product is limited to syntax-only parsing, exact authored
+literal extraction, mechanical typed decoding, frozen-catalog classification, and documented
+structural scope/order/condition/selection/reference projection. It never interprets or
+ranks natural-language meaning or intent; decides customization correctness, validity,
+compliance, effectiveness, or quality; or provides policy/remediation advice, validation,
+lint, synchronization, conversion, formatting, or fixing. Strict validation of
+Inspector-owned manifests, DTOs, registries, capabilities, and internal invariants remains
+permitted and is not customization validation. Recoverable runtime/environment Diagnostics
+describe inspection availability only and carry no content verdict.
+
+The file encoding state is assigned only after a completed same-handle read passes every
+post-read check. Any NUL byte yields `binary`; otherwise decoding is strict UTF-8. A strict
+decode with one leading BOM records `utf-8-bom` and removes that BOM, strict success without
+a BOM records `utf-8`, and invalid UTF-8 records `unsupported` without replacement or alternate decoding. Binary and unsupported
+items expose null `sourceText` and are comparison-ineligible; successful decoding exposes the
+complete text without sampling, truncation, or a product-defined byte/line/item ceiling.
 
 Each recognition's `parseStatus` is the closed enum
 `not-attempted | parsed | failed`. Parsing and extraction are all-or-nothing per
-recognition: `failed` retains that recognition and its bounded diagnostic IDs but returns
+recognition: `failed` retains that recognition and its diagnostic IDs but returns
 no metadata, relationships, or derivations from the failed result; another recognition on
 the same file may still be `parsed`. The uniqueness, compatible-provenance merge,
 inconsistent-meaning failure, and closed tool-then-kind ordering rules stated for the
-session summary apply identically to detail. Structural metadata comparison uses
+session summary apply identically to detail. Only deterministic non-capacity parser/Worker/
+extraction failure may produce this failed-recognition state in a contracted-partial
+generation; a capacity/resource failure returns no item, recognition, relationship, or
+derivation from the attempt, propagates `fatal-resource`, commits no scan-result record or
+response or generation, and leaves only the prior committed snapshot available. Structural metadata comparison uses
 `(tool, kind, fieldId, occurrence)`, so two tools or kinds never collide merely because
 their field and occurrence match.
 
 Every internal `SourceTextRange` used to produce metadata, an authored relationship target,
 or a derivation is a half-open `{ start, end }` measured in ECMAScript UTF-16 code units.
 `sourceText.slice(start, end)` must equal the returned authored literal exactly. UTF-8 byte
-limits are counted separately and never reused as offsets; no Unicode normalization,
+measurements are kept separate and never reused as offsets; no Unicode normalization,
 code-point counting, or grapheme counting changes the range. Metadata, relationship, and
 derivation outputs for the same logical source occurrence may reuse one exactly identical
 range. Different logical occurrences may not partially overlap, nest, or cross; any such
@@ -401,25 +437,29 @@ Body:
 {}
 ```
 
-Accepts one Repository scan command when that source has no running or queued command. If
+Accepts one Repository scan command when that source has no running or queued command. The
+host generates one opaque `scanRequestId` at admission and returns
+`ScanAdmission { scanRequestId, source }`; both fields in the returned Source/progress and
+all later queued, active, complete, partial, or failed status for this command carry that
+same ID. A successful committed generation records it, while older status or inventory
+cannot satisfy this request. If
 the coordinator is idle, work starts immediately; if another transaction is active, the
 command is queued FIFO and the Repository summary returns `status: scanning`,
 `progress.phase: waiting`, a non-null `queuedAt`, and null `startedAt`. The job begins from
 the active generation at dequeue time, not the generation observed by this request. The
-current generation remains readable until a complete or bounded-partial replacement is
+current generation remains readable until a complete or contracted-partial replacement is
 atomically published. Publication invalidates every old file ID and comparison selection.
 If the explicit rescan fails fatally, every uncommitted result from that attempt, including
 any partial result, is discarded. The last committed generation and its IDs remain readable,
 the top-level snapshot returns `snapshotState: stale-after-fatal-rescan`, the Repository
-Source returns `status: failed`, and one bounded
+Source returns `status: failed`, and one
 actionable lifecycle diagnostic explains that the rescan failed and that the retained
 snapshot is stale. This creates or replaces the Repository entry in `staleFailures` and its
-reserved diagnostic; a later successful or contracted-partial Repository rescan clears both,
+lifecycle diagnostic; a later successful or contracted-partial Repository rescan clears both,
 while a commit for another Source leaves both unresolved.
 
-Status: `202` with the updated source summary; `409 scan-in-progress` only for a duplicate
-running/queued Repository command; `503` only when the bounded coordinator cannot accept
-the command.
+Status: `202` with the request ID and updated source summary; `409 scan-in-progress` only
+for a duplicate running/queued Repository command.
 
 ### `GET /api/v1/global/consent-preview`
 
@@ -436,26 +476,23 @@ The server derives it only from the three documented tool-home environment varia
 default-home values, and shipped contract. Those variables are used only to locate proposed
 Global roots and never to substitute references inside inspected content. The frozen
 internal preview record, which is never serialized, additionally keeps each entry's
-`lexicalRoot` as the exact bounded raw string or null. Null is used only for an oversized
-raw/display value; empty, relative, invalid, control-containing, and backslash-containing
-in-limit values remain exact raw strings with their separate `inputState`. `displayRoot` is
+`lexicalRoot` as the exact raw string. Empty, relative, invalid, control-containing, and
+backslash-containing values remain exact raw strings with their separate `inputState`. `displayRoot` is
 one-way presentation escaping derived from `lexicalRoot`; it is never decoded back into a
 path or used as admission input. The preview
 performs no `stat`, `realpath`, directory enumeration, or file read under a
-proposed Global root. It incrementally counts the raw value and stops above 32 KiB UTF-8;
-for an in-limit value it incrementally escapes and stops before 192 KiB UTF-8 output.
-Either overflow returns `inputState: oversized`, `displayRoot: null`, and only the fixed
-localized `global.previewTooLarge` presentation; it performs no normalization,
-canonicalization, root creation, or read. The user must correct the environment and request
-a new preview. Otherwise `displayRoot` shows the exact escaped lexical value; invalid empty
+proposed Global root. Node.js and the execution environment determine whether the value can
+be retained and escaped. A recoverable failure returns a fixed environment-error state,
+creates no authorization, and performs no normalization, canonicalization, root creation,
+or read. Otherwise `displayRoot` shows the exact escaped lexical value; invalid empty
 or relative overrides are shown as invalid instead of falling back. With no active consent,
 a new preview invalidates the prior unconsented preview. While consent is active, this route
 instead returns the exact frozen preview identified by `globalControl.previewId`, including
 the same digest, without rereading the environment or creating a replacement. This lets a
 fresh authenticated client recover the exact display after a purge; a different preview
 requires disable first. The keyed digest binds the session, version, ordered tool entries,
-each exact raw `lexicalRoot` or null using a type-tagged length-prefix encoding, its
-separately length-prefixed escaped `displayRoot` or null, origins, states, exclusions, and
+each exact raw `lexicalRoot` using a type-tagged length-prefix encoding, its
+separately length-prefixed escaped `displayRoot`, origins, states, exclusions, and
 the typed `TraversalPlan` version, closed selection policy, and canonical program. It never substitutes escaped
 `displayRoot` for the raw digest input, so two raw values that render similarly cannot
 collide through presentation escaping.
@@ -466,13 +503,13 @@ After consent and root admission, an exact-file operation does not `opendir` the
 root: it applies `lstat` only to the exact root/ancestor/target chain and performs the common
 canonical identity checks without enumerating a neighbor. A fixed-instruction-subtree
 operation may `opendir` only the plan-named instruction subtree directories needed for its
-bounded walk. No operation lists, stats, or reads a sibling setting, credential, state,
+plan-defined walk. No operation lists, stats, or reads a sibling setting, credential, state,
 plugin, or other neighboring path.
 
 The Codex plan alone uses `codex-global-first-non-empty`: it safely probes
 `AGENTS.override.md`, short-circuits before any `AGENTS.md` operation when the override is
 non-empty, and advances only from an absent or safely established empty override. A present
-unsafe, unreadable, oversized, or undecodable candidate fails closed without fallback. An
+unsafe, unreadable, environment-failed, or undecodable candidate fails closed without fallback. An
 optional leading UTF-8 BOM alone or whitespace-only content is empty, and at most one non-empty
 Codex instruction file is published. `absent` means only an explicit not-found result from
 that exact target's `lstat` after root verification; permission, type, metadata,
@@ -515,34 +552,33 @@ the request cannot add, remove, or reorder consented tools. After consent it res
 eligible tool home independently. If a canonical root is not
 component-identical to the stored raw lexical absolute root shown by that preview because of
 a symlink, junction, case, Unicode normalization, short-name, or other alias, that tool is
-rejected before enumeration with an actionable reserved tool diagnostic; the host never
+rejected before enumeration with an actionable tool diagnostic; the host never
 substitutes the canonical target or broadens consent. Lexically present-empty, relative,
-invalid, or oversized environment
+invalid, or environment-failed
 entries are not confirmed and create no retained Diagnostic; their fixed preview
 `inputState`/message is the complete explanation and they never silently fall back. A
 lexically eligible but missing, unreadable, or otherwise unusable root is a post-consent
-rejection and uses that tool's reserved diagnostic. Oversized entries can never be confirmed or resolved. Before
-activating consent, the coordinator reserves capacity for every confirmed tool; failure
-returns `503` with no state change. On success it atomically activates consent, creates the
+rejection and uses that tool's diagnostic. Every representable absolute root is lexically
+eligible even outside the ordinary home; location alone neither rejects it nor grants
+pre-consent I/O. Before activating consent, the coordinator
+serializes the operation, atomically activates consent, creates the
 confirmed eligible tools' `unvalidated` controls, and registers one cancellable
 `GlobalEnableOperation` whose command epoch and `pendingTools` cover validation, admission,
 and scan-job queueing. Post-consent validation accepts zero to three roots.
-Initial enable reserves the whole derived `confirmedTools` set, while retry reserves its
-whole derived missing-tool work set, before changing state;
-retry reservation failure also returns `503` without changing existing controls,
-diagnostics, contexts, or Sources. Rejection releases its share, accepted work transfers its
-share to the queued scan, and every share is released on terminal rejection, scan completion/
-failure/cancellation, or drained disable. After all validation outcomes and job transfers,
+Initial enable uses the whole derived `confirmedTools` set, while retry uses its whole
+derived missing-tool work set. Capacity is inherited from Node.js and the execution
+environment, and admission uses the availability those layers report.
+After all validation outcomes and job enqueues,
 the coordinator performs one final operation-ID/epoch/state check under its lock. At that
 single linearization point it atomically chooses the response disposition. For `202`, it
-also marks the operation complete, closes its lease, and unregisters it. For `409`, it enters
-draining; only after cancellation has released untransferred shares and operation-local
-resources does it close the lease, become cancelled, and unregister before barrier cleanup.
+also marks the operation complete and unregisters it. For `409`, it enters draining; only
+after cancellation has released operation-local resources does it become cancelled and
+unregister before barrier cleanup.
 Terminal operation history is not kept, and later response-byte delivery cannot change the
 chosen disposition.
 Each accepted tool root creates one provisional scan job for a separate tool-specific Global
 Source with exactly one root; roots and files for different tools are never merged. Rejected
-tools create or replace their `GlobalToolControl`-owned reserved tool failure diagnostic
+tools create or replace their `GlobalToolControl`-owned tool failure diagnostic
 and receive no Source, stale-failure entry, or
 job. `acceptedTools` and `rejectedTools` partition the tools validated by this request. The
 operation checks its ID/epoch, non-aborted signal, and `globalControl.state: active` before
@@ -559,22 +595,25 @@ progress are not published. Each accepted scan is
 queued FIFO, starts from the active generation at dequeue time, and atomically publishes a
 new Source only with a complete or contracted-partial generation. A later session poll
 observes each Source only after that Source's scan
-commits. Successful publication clears that `GlobalToolControl`'s reserved tool failure
+commits. Successful publication clears that `GlobalToolControl`'s tool failure
 diagnostic from `sessionDiagnosticIds`; unrelated tools' diagnostics remain unchanged.
 
 If the exact same active consent already exists, whether zero or more Global Sources have
 committed, this route may be called again only to retry confirmed eligible tools that still
 have no Source.
 The host compares the same session-bound frozen preview ID/digest, active consent, and its
-`GlobalToolControl` records, leaves every existing Source unchanged, and validates only
-the tools listed by `globalControl.retryableTools`. Revalidation of an admitted retained
+`GlobalToolControl` records, preserves every existing Source's semantic content and stable
+`sourceId`, and validates only the tools listed by `globalControl.retryableTools`.
+Every successful initial or retry Global Source commit still advances the session
+generation, regenerates all generation-owned IDs in every carried graph, and invalidates
+old file/detail/comparison/editor state. Revalidation of an admitted retained
 context follows the close/discard/re-admit rule in the data model: a mismatch or unverifiable
 root closes and unregisters the old context and discards its unpublished IDs before the
 control becomes `rejected`. A different preview/root requires Global disable first; a request
 with no missing tool is a conflict.
 A fatal initial tool enable publishes no file or Source result, adds no `StaleSourceFailure`
 entry for the missing tool, and preserves all pre-existing entries and the derived snapshot
-state. It creates or replaces the affected `GlobalToolControl`'s keyed reserved tool failure
+state. It creates or replaces the affected `GlobalToolControl`'s keyed tool failure
 diagnostic and retains only
 the consent and `GlobalToolControl` state needed for this exact-consent retry or disable.
 
@@ -586,10 +625,9 @@ has eligible tools but post-consent validation rejects all of them, the host ins
 Status: `202`; `400 consent-required`, `no-eligible-global-root`, `allowlist-version-mismatch`, or
 `consent-preview-mismatch`; `409 no-missing-global-tool` if no confirmed eligible tool is
 missing, `409 active-global-consent-conflict` if the request would change active consent,
-`409 global-enable-in-progress` if an enable/retry operation or one of its transferred
+`409 global-enable-in-progress` if an enable/retry operation or one of its
 initial scan jobs is running/queued, or
-`409 global-disable-pending` if Global disable is pending/active; `503` only when the
-bounded coordinator cannot reserve the whole enable operation.
+`409 global-disable-pending` if Global disable is pending/active.
 
 ### `POST /api/v1/global/rescan`
 
@@ -604,23 +642,24 @@ Body:
 Accepts one scan command for the identified enabled tool-specific Global Source only while
 Global disable is not pending. `sourceId` is an opaque ID and never a path. The command uses
 the same FIFO, dequeue-time base-generation, atomic publication, progress, invalidation, and
-bounded-capacity rules as Repository rescan. At most one scan command is running or queued
-for that Source; a duplicate cannot silently coalesce or trigger a second read.
+serialization rules as Repository rescan. At most one scan command is running or queued
+for that Source; a duplicate cannot silently coalesce or trigger a second read. Admission
+returns `ScanAdmission { scanRequestId, source }`; the opaque request ID is identical in the
+returned Source/progress, every later status for the command, and any generation it commits.
 
 A fatal Global rescan commits nothing and publishes zero partial results from the failed
 attempt. It reports top-level `snapshotState: stale-after-fatal-rescan`, Source
 `status: failed`, and null `progress`, while
 retaining `enabled: true`, the exact consent and validated single-root record, the last
-committed graph, and all IDs from that graph. One bounded actionable lifecycle diagnostic
+committed graph, and all IDs from that graph. One actionable lifecycle diagnostic
 identifies the affected Source and explains that the retained session snapshot is stale.
-This creates or replaces only that Source's `staleFailures` entry and reserved diagnostic. A
+This creates or replaces only that Source's `staleFailures` entry and lifecycle diagnostic. A
 later successful or contracted-partial rescan of the same Source replaces its graph atomically
 and clears both; another Source's commit preserves both.
 
-Status: `202` with the updated source summary; `404 stale-resource` for an unknown or removed
+Status: `202` with the request ID and updated source summary; `404 stale-resource` for an unknown or removed
 Source ID; `409 global-disable-pending` if Global disable is pending/active;
-`409 scan-in-progress` for a duplicate running/queued scan for that Source; `503` only when
-the bounded coordinator cannot accept the command.
+`409 scan-in-progress` for a duplicate running/queued scan for that Source.
 
 ### `POST /api/v1/global/disable`
 
@@ -650,11 +689,11 @@ Repository preserves its counters/start and clears `queuedAt`; a requeued Reposi
 zero counters, a new non-null `queuedAt`, and null `startedAt`. The disable commit clears
 consent, removes all Global Sources and their root records, closes any open inspection
 `FileHandle`, removes every Global source/metadata record, clears every `GlobalToolControl`-
-owned reserved tool diagnostic from `sessionDiagnosticIds`, closes and removes every control-owned
+owned tool diagnostic from `sessionDiagnosticIds`, closes and removes every control-owned
 root context and frozen preview, increments N to N+1, rekeys the
 retained Repository graph, and returns only after every comparison referencing the prior
-generation is invalid. It also removes the `staleFailures` entries and reserved diagnostics
-for every removed Global Source; any Repository entry and reserved diagnostic remain and keep
+generation is invalid. It also removes the `staleFailures` entries and lifecycle diagnostics
+for every removed Global Source; any Repository entry and lifecycle diagnostic remain and keep
 the session stale.
 A requeued Repository job then
 starts from N+1 and may later commit N+2. Barrier cancellation is expected and adds no
@@ -672,8 +711,9 @@ Status: `200`.
 
 - Unknown `/api/v1` paths return `404`; known paths with a wrong method return `405` with
   an explicit `Allow` header.
-- Unsupported media types return `415`; malformed JSON or unexpected keys return `400`;
-  oversized requests return `413` before parsing.
+- Unsupported media types return `415`; malformed JSON or unexpected keys return `400`.
+  A recoverable Node.js transport or parsing failure returns a fixed safe error without a
+  partial body; the API defines no product-specific request-size ceiling.
 - There is no masking, redaction, reveal, or environment-resolution API. In particular,
   `POST /api/v1/files/{fileId}/reveals` is an unknown path and returns `404`.
 - API responses are always UTF-8 JSON. Static files use a fixed extension-to-MIME table;
@@ -693,24 +733,29 @@ Status: `200`.
 
 ## Concurrency and lifecycle
 
-- One bounded coordinator executes exactly one root-admission/scan/disable command at a
-  time. A `GlobalEnableOperation` owns validation/admission and job queueing under one
-  abort signal and command epoch. It admits at most
-  one running/queued scan command per source; duplicate scans conflict, while a scan for
+- One coordinator serializes scan transactions as a correctness invariant. It accepts one
+  running or queued scan command per Source; duplicate scans conflict, while a scan for
   another Repository or tool-specific Global Source queues FIFO and reports the waiting
-  phase. Disable instead follows its barrier join/no-op rules. Every scan starts from the
+  phase. If Node.js or the execution environment reports a recoverable admission failure,
+  the command fails
+  without state mutation. Disable follows its priority barrier join/no-op rules. Every
+  automatic or explicit scan receives one opaque `scanRequestId` and starts from the
   generation current when it actually dequeues.
-- Every scan and `GlobalEnableOperation` receives an `AbortSignal`. Process shutdown aborts all work. Global disable is
-  the priority barrier documented above: it aborts any active uncommitted transaction,
-  aborts/drains enable validation, performs a final queued-Global-work cancellation sweep,
-  commits removal next, and requeues an interrupted Repository
-  command once. A deadline produces a bounded partial generation and diagnostic.
+- Every scan and `GlobalEnableOperation` receives an `AbortSignal`. Process shutdown aborts
+  all work. Global disable is the priority barrier documented above: it aborts any active
+  uncommitted transaction, aborts/drains enable validation, performs a final queued-Global-
+  work cancellation sweep, commits removal next, and requeues an interrupted Repository
+  command once. Operation completion is governed by Node.js and the execution environment.
+  Disable, shutdown, supersession, or a recoverable operation failure irreversibly revokes publication
+  authority. A pending Node.js filesystem promise becomes cleanup-only: every late byte,
+  graph record, Diagnostic, DTO, and operational-event result is discarded. Physical
+  cancellation of an uncancellable kernel operation is not guaranteed.
 - A successful or contracted-partial scan commits exactly N+1 and regenerates generation-
   owned graph IDs for the scanned Source and all carried Sources; process-lifetime-stable
   Source IDs remain unchanged. It clears only the scanned Source's stale-failure
-  entry and reserved diagnostic and carries both for other Sources. A fatal explicit rescan discards every uncommitted
+  entry and lifecycle diagnostic and carries both for other Sources. A fatal explicit rescan discards every uncommitted
   result, including partial results, leaves N and its IDs active, marks the retained
-  session snapshot stale, and creates or replaces one capped actionable out-of-generation
+  session snapshot stale, and creates or replaces one actionable out-of-generation
   lifecycle diagnostic and entry for the affected Source, replacing both for that Source
   on repeated failure. N may be legal bootstrap
   generation 0. Barrier cancellation emits none.
@@ -727,8 +772,12 @@ Status: `200`.
 - Enabled inspection sources are enumerated/read only through one centralized service built
   on `node:fs/promises`. It accepts validated source IDs and source-relative enumeration
   records, never an arbitrary absolute path supplied by an API request, relationship, or
-  source file. Every candidate verification phase—enumeration, immediately before open,
-  after open but before reading any bytes, and after the bounded read—uses this exact order:
+  source file. The service centrally owns each operation and handle lifecycle and relies on
+  Node.js, the operating system, and the execution environment for available capacity. Every open uses only
+  read-only, non-create, non-truncate flags. The service never calls a write, append, create,
+  truncate, rename, delete, link, chmod/chown, timestamp, extended-attribute, ACL, or
+  equivalent mutation-capable primitive on an inspected source. Every candidate verification phase—enumeration, immediately before open,
+  after open but before reading any bytes, and after the complete same-handle read—uses this exact order:
   (1) `lstat` the candidate path and reject a symbolic link, non-regular type, or unexpected
   identity; (2) only after that succeeds, resolve the candidate `realpath` and verify
   canonical containment with `node:path.relative`; and (3) `lstat` the candidate path again
@@ -739,12 +788,21 @@ Status: `200`.
   `node:fs.constants.O_NOFOLLOW` exists and is effective on that Node.js/platform
   combination. After open, it runs the ordered candidate sequence before reading and
   compares pre-read `FileHandle.stat()` with both `lstat` results and the earlier snapshots.
-  After the bounded read and before parse, publish, or commit, it repeats the root and
+  After the read and before parse, publish, or commit, it repeats the root and
   ancestor checks, the ordered candidate sequence, and `stat()` on the same open handle. A
   detected error, ambiguity, containment failure, or metadata change discards the entire
   byte buffer and fails closed. Unusable required metadata or canonicalization emits
   `safe-fs-boundary-unverifiable` and rejects the candidate, or its source when the root or
   a shared ancestor is unverifiable.
+- Mutation verification instruments the product's filesystem calls and compares fixture
+  content, length, identity/link state, mode, modification/change time, and extended
+  attributes or ACLs where observable before and after inspection. Access-time movement
+  caused only by an OS read is recorded separately; it neither fails the no-product-mutation
+  claim nor counts as proof of it, and the product never requests an access-time update.
+  A recoverable environment capacity failure discards the incomplete read and every item,
+  scan-result record or response, and generation from that attempt, leaves only the prior
+  committed snapshot available, and is never labelled valid, invalid, correct, incorrect,
+  or lint-failing.
 - Public Node.js APIs do not provide a portable directory-handle-relative open. An active
   adversarial process that replaces the source root or an ancestor between checks is outside
   the initial-release threat model on every platform. Final-component replacement is outside
@@ -757,15 +815,23 @@ Status: `200`.
 ## Required contract tests
 
 1. Every API route rejects missing, wrong, expired-process, cross-origin, wrong-Host, and
-   navigation requests without returning session data.
+   navigation requests without returning session data. Operational-event schema tests
+   reject every extra or free-form field and prove that Source-relative/absolute/canonical
+   paths, roots, filenames, content, metadata, authored values, capabilities, bodies, raw
+   parser/system errors, exception strings, and Diagnostic arguments never enter captured
+   operational output. Fixed presentation-output tests admit only help/version, the one
+   launch-URL line, and fixed startup warnings and include no inspected path or value.
 2. Old file IDs fail after a successful Repository/Global rescan and Global disable. A fatal
    explicit rescan publishes zero failed-attempt partials, retains the last committed IDs,
    marks the retained session snapshot stale, and identifies the affected Source in the
    actionable lifecycle diagnostic. Bootstrap generation 0 is the legal empty base for the
    automatic first scan. Multi-Source sequences prove that A and B entry-diagnostic pairs
-   coexist, B's success does not clear A, A's bounded-partial success clears only A's pair,
+   coexist, B's success does not clear A, A's contracted-partial success clears only A's pair,
    a repeated A failure replaces only A's pair, and Global disable clears only pairs for
-   removed Global Sources.
+   removed Global Sources. Diagnostic DTO fixtures accept exactly the three scoped shapes:
+   file with matching `sourceId`/`fileId`/`sourceRelativePath`, source with only `sourceId`,
+   and session with no location field. Every missing, extra, mismatched, or fabricated
+   source/file/path combination is rejected before serialization.
 3. Readable file detail returns complete authored source, exact metadata/authored-relationship source
    slices, credentials, and environment-reference text without masks or reveal controls.
    JSONC escape spelling, YAML quote/block spelling, TOML quote/date spelling, collection
@@ -778,60 +844,66 @@ Status: `200`.
    closed tool-then-kind order. Comparison keys are
    `(tool, kind, fieldId, occurrence)`. Astral characters, unpaired surrogates, combining
    sequences, and ordinary BMP text prove that `SourceTextRange` uses UTF-16
-   `String.prototype.slice` offsets while UTF-8 limits remain separate. One logical
+   `String.prototype.slice` offsets while UTF-8 measurements remain separate. One logical
    occurrence may reuse an identical span across metadata/relationship/derivation output;
    partial, nested, or crossing overlaps between different occurrences fail the recognition.
    Every returned metadata tuple `(tool, kind, fieldId)` and relationship tuple
-   `(tool, kind, relationship kind)` must appear in the maintained presentation allowlist.
-   Unknown authored keys and references remain available only through complete `sourceText`
-   and never produce inferred metadata or relationships.
+   `(tool, kind, relationship kind)` must appear in the maintained presentation allowlist,
+   and the exact authored occurrence must be supported by the extractor for the recognition's
+   actual admitted source form. Tuple membership never transfers eligibility between source
+   forms. Unknown authored keys and references remain available only through complete
+   `sourceText` and never produce inferred metadata or relationships.
    A fixed Codex default-hook fixture instead returns `targetOrigin: documented-default`,
    null `authoredTarget`, and an explicit documented-default label; an explicit manifest
    hook returns `targetOrigin: authored` with its exact occurrence. Sentinel process values
    prove that environment references are never resolved or substituted. The SPA shows
    and receives the in-memory sensitive-content acknowledgement before requesting detail or
-   constructing comparison, while the removed reveal route returns `404`.
-4. Extra JSON keys, path-shaped inputs, malformed/oversized bodies, wrong methods, and
-   wrong media types produce the documented safe errors. Exact-limit and
-   one-complete-record-over-limit fixtures prove the 5-MiB neutral-overlay base, 2-MiB
-   lifecycle-diagnostic sub-budget, 1-MiB control sub-budget, 3-MiB complete session
-   overlay, 8-MiB complete snapshot, and 4-MiB detail budgets admit only whole records.
-   Post-commit lifecycle add/replace/clear/overflow fixtures exercise the paired 2-KiB charge,
-   16-KiB fixed-diagnostic reservation, compact keyed fallback, ordinary-detail suppression,
-   and old-charge credit. Maximum legal stale-state, Global-control, and Source-progress
-   transitions fit the 1-MiB control reservation; a build-only synthetic schema variant whose
-   worst-case encoding is exactly 1 MiB plus one byte fails. Escaping/key-order fixtures prove
-   the exact accounted buffer is the HTTP
-   entity body and matches `Content-Length` when present. Scan construction publishes the
-   bounded partial diagnostic and response time never truncates. A deliberately corrupted
-   over-limit committed-state fixture returns `500 response-size-invariant` with no partial
-   `data`.
+   constructing comparison, while the removed reveal route returns `404`. Direct authorized
+   API tests prove that no acknowledgement field or endpoint exists and that the capability,
+   not a claimed server-side presentation gate, is the host authorization boundary.
+   Cross-surface negative fixtures prove that Inventory, Detail, Comparison, Global
+   controls, Diagnostics, Source Condition Facts, API DTOs, CLI output, and documentation expose only
+   the documented structural projections: no natural-language meaning/intent
+   interpretation or ranking, correctness/validity/compliance/effectiveness/quality verdict,
+   policy/remediation advice, validation, lint, synchronization, conversion, formatting, or
+   fixing field or behavior is admitted.
+4. Extra JSON keys, path-shaped inputs, malformed bodies, wrong methods, and wrong media
+   types produce the documented safe errors. Contract tests prove that no request, file,
+   collection, parser, snapshot, detail, or response DTO exposes or enforces a product-
+   defined numeric capacity ceiling. Injected recoverable Node.js, parser, filesystem, and
+   serialization failures return fixed safe errors or operational Diagnostics, never a
+   partial JSON body or incomplete committed generation, and never a validity, correctness,
+   compliance, or lint verdict. Escaping and key-order fixtures prove that the one complete
+   serialized buffer is the HTTP entity body and matches `Content-Length` when present.
 5. Static traversal and encoded traversal attempts never escape `dist/public`; the packed
    root, `/compare`, `/global-consent`, and `/files/<fileId>` routes all boot with the same
    root-absolute assets and a CSP whose exact hashes authorize the Nuxt bootstrap but no
    modified/unrecorded inline script or executable attribute.
 6. Queue ordering across Repository and each tool-specific Global rescan, duplicate
-   rejection, aborts, partial limits, fatal failures, and polling
-   expose only whole generations. A scan queued behind another Source starts from the
-   then-current generation; a Global-disable barrier produces the documented N/N+1/N+2
-   sequence, never exposes an aborted transaction, and preserves the one accepted
-   Repository command by requeuing it once. Concurrent repeated disable joins one barrier;
-   an already-empty Global no-op never interrupts Repository work. A paused
-   validation/admission operation is aborted and drained before the final cancellation
-   sweep; releasing its late continuation afterward creates no mutation, diagnostic,
-   context, ID, or job. Every capacity share is transferred/released exactly once and the
-   terminal operation is unregistered. Deterministic barrier-race fixtures pause the
-   operation (a) while validation is awaited, (b) after admission but before any
-   control/context/diagnostic mutation, and (c) immediately before job enqueue/final response
-   disposition. At every pause, a barrier-first ordering returns `409`, permits no late side
-   effect, releases every untransferred share, unregisters the operation, and allows a later
-   enable to reserve capacity; an operation-first final disposition remains the committed
-   `202` even when response bytes are delivered after disable acceptance.
+   rejection, aborts, contracted-partial outcomes, fatal failures, and polling expose only
+   whole generations. A scan queued behind another Source starts from the then-current
+   generation; a Global-disable barrier produces the documented N/N+1/N+2 sequence, never
+   exposes an aborted transaction, and preserves the one accepted Repository command by
+   requeuing it once. Concurrent repeated disable joins one barrier; an already-empty Global
+   no-op never interrupts Repository work. A paused validation/admission operation is
+   aborted and drained before the final cancellation sweep; releasing its late continuation
+   afterward creates no mutation, diagnostic, context, ID, or job. Injected recoverable
+   environment admission failures leave state unchanged and do not depend on a product-
+   defined slot count. Deterministic barrier-race fixtures pause the operation (a) while
+   validation is awaited, (b) after admission but before any control/context/diagnostic
+   mutation, and (c) immediately before job enqueue/final response disposition. At every
+   pause, a barrier-first ordering returns `409`, permits no late side effect, unregisters
+   the operation, and allows a later enable; an operation-first final disposition remains
+   the committed `202` even when response bytes are delivered after disable acceptance.
    Separate deterministic delivery pauses hold a linearized SessionSnapshot or FileDetail
    response while a scan commit or Global-disable commit advances the generation. They prove
    that envelope generation and payload never mix, older responses are ignored, adopting a
    newer snapshot increments `clientDataEpoch` and aborts/disposes old state, and detail is
-   adopted only when its captured epoch/generation/fileId all still match.
+   adopted only when its captured epoch/generation/fileId all still match. Disable,
+   shutdown, supersession, and injected recoverable-operation tests leave a filesystem
+   promise pending, revoke publication authority, and prove that every late result is
+   discarded. Tests do not assert hard cancellation of the underlying Node.js/kernel
+   operation or a product-defined completion deadline.
 7. Reloading every allowlisted client route after fragment removal makes no API call,
    returns no session data, and directs the user to the still-running process's printed
    launch URL; unknown routes and malformed asset paths never receive the SPA fallback.
@@ -852,21 +924,24 @@ Status: `200`.
    a changed/superseded preview or canonical alias mismatch cannot authorize a read.
    Escape-collision, control-character, and backslash fixtures prove the digest length-prefixes the
    raw value and that enable uses only the stored raw value, never an environment reread or
-   `displayRoot` reverse conversion. Exact-limit and one-byte-over-limit root/display fixtures prove that
-   `oversized` returns null with no normalization, prefix display, allocation expansion, or
-   authorization; an all-ineligible preview activates no consent. Provisional enable work
-   publishes no Source. Successful complete/partial
+   `displayRoot` reverse conversion. Injected recoverable environment failures return a
+   fixed non-authorizing preview state with no normalization, prefix display, or read; an
+   all-ineligible preview activates no consent. Provisional enable work
+   publishes no Source. Successful complete or contracted-partial
    commits produce zero to three separately identified Global Sources, at most one per tool
    and exactly one root per Source; no cross-tool Source merges occur. Failed missing-tool jobs
    in an all-failed or mixed outcome add no `StaleSourceFailure` entry, create/replace their
-   keyed reserved tool diagnostics, and preserve all pre-existing entries and the derived
+   keyed tool diagnostics, and preserve all pre-existing entries and the derived
    snapshot state; successful tool commits
    carry unrelated entries and diagnostics. Both prior-current and prior-stale cases are tested.
    Initial activation with all post-consent roots rejected yields `202 active-no-job`, zero
    new jobs and zero Global Sources, an active
-   `globalControl`, retryable tools, and one replaceable reserved diagnostic per affected
+   `globalControl`, retryable tools, and one replaceable diagnostic per affected
    `GlobalToolControl`; an all-rejected retry likewise creates zero new jobs/Sources while
-   preserving existing Sources. Partial acceptance partitions accepted/rejected tools. Successful
+   preserving existing Source semantic content and stable `sourceId` values without a
+   generation commit. Partial acceptance partitions accepted/rejected tools. Every successful
+   initial or retry publication advances the generation, rekeys all generation-owned IDs
+   in carried graphs, and invalidates old file/detail/comparison/editor state. Successful
    publication clears its control diagnostic, unrelated outcomes preserve it, and disable
    removes every control diagnostic/context even when no Global Source was ever published.
    During validation/admission and initial scan, every tool owned by the running enable/retry
@@ -874,9 +949,8 @@ Status: `200`.
    mixed activation, already rejected/non-pending admitted tools may appear in
    `retryableTools`, but retry stays disabled and returns `409 global-enable-in-progress`
    until `pendingTools` is empty; disable is available throughout.
-   Initial-enable and retry reservation exhaustion each return `503` with byte-for-byte
-   unchanged consent/control/diagnostic/Source state; exact-capacity and every terminal
-   outcome prove there is no reservation or operation-history leak.
+   Injected recoverable admission failures leave consent/control/diagnostic/Source state
+   unchanged, and every terminal outcome proves there is no operation-history leak.
    A fatal initial scan followed by a retry with a changed or unverifiable retained root
    closes/unregisters the old context, discards its unpublished IDs, and leaves a rejected
    control with no authority before any later re-admission.
@@ -898,16 +972,28 @@ Status: `200`.
    Reported error, ambiguity, or unusable metadata/canonicalization returns
    `safe-fs-boundary-unverifiable`; unobservable OS behavior is recorded as a platform
    limitation and is not counted as proof against the excluded active-adversary race.
-10. The bootstrap rejects an altered packed `engines.node` contract or an executing Node.js
+   Instrumentation rejects every mutation-capable open flag and every write, append, create,
+   truncate, rename, delete, link, chmod/chown, timestamp, extended-attribute, ACL, or
+   equivalent call. Before/after fixtures prove unchanged content, length, identity/link
+   state, mode, modification/change time, and extended attributes or ACLs where observable.
+   OS-only access-time movement is recorded separately, is neither a failure nor proof, and
+   no product call requests it. Operation and handle lifecycle is centrally managed without
+   a product-defined concurrency ceiling.
+10. The bootstrap rejects a malformed packed `package.json`, an altered packed
+    `engines.node` contract, or an executing Node.js
     version outside `>=24.11.0 <25.0.0 || >=26.0.0 <27.0.0` before CLI import or bind. The
-    static loader rejects an oversized/malformed/extra-key/duplicate manifest,
+    static loader rejects a malformed/extra-key/duplicate manifest,
     symlink/non-regular asset, unexpected file, path/MIME/size/hash mismatch, relative or
     external executable URL, `<base>`, nonce, executable attribute, and unrecorded inline
-    script before bind. The build requires then removes only Nuxt's fixed `200.html` and
+    script before bind. Fixtures prove every manifest path, declared byte length, actual byte
+    length, MIME type, and digest agree without imposing a product-defined file-size or
+    record-count ceiling. The build requires then removes only Nuxt's fixed `200.html` and
     `404.html`, rejects every other non-`index.html` HTML file, and the packed file list
     matches the exact npm allowlist. Build/package verification starts from clean
     `.output`/`.build`/`dist` trees and recursively matches `dist` against only the two
-    manifests and their listed static and server records, rejecting stale output.
+    manifests and their listed static and server records, rejecting stale output. Build,
+    packed-tarball, and runtime-bootstrap fixtures enforce the identical integrity contract
+    before import or bind and never classify customization-file content.
 11. Package tests require exact production dependencies `gunshi`, `yaml`, `jsonc-parser`, and
     `smol-toml`, with `open` absent from every dependency section and lock closure. Every
     project/dependency tarball payload and authored application-code file is JavaScript or a
@@ -930,3 +1016,12 @@ Status: `200`.
     handler override. Tests distinguish default-handler delegation from certification:
     helper success proves no browser version, and release evidence uses the pinned Playwright
     revisions or the `--no-open` manual fallback.
+12. Every automatic and explicit scan receives a unique opaque `scanRequestId`. Repository
+    and Global rescan admission responses, Source summaries, waiting/active/final progress,
+    fatal status, and successful generation records preserve the same ID; stale or prior
+    request state cannot satisfy the newer request. The SC-002 browser protocol starts a
+    fresh process, waits for the automatic Repository scan to reach a terminal state outside
+    timing, dispatches exactly one explicit Repository rescan, captures its admission ID,
+    and stops the status and inventory timers only for visibly rendered state and the
+    committed generation associated with that same ID. Evidence records both the ID and
+    generation, and an already-rendered automatic inventory cannot qualify.

@@ -59,7 +59,7 @@
 ## 非機能要件
 
 - [ ] CHK029 英語版と日本語版の要件で、同一のID、path、URL、確認したsection、version、documentation status、およびsemantic caveatを保持することが要求されているか？ [Completeness, Spec §QR-004–QR-005]
-- [ ] CHK030 registry validationとdrift validationは、source integrityを確立できない場合にdeterministic、bounded、かつactionableであることを要求されているか？ [Non-Functional, Contract: Inspection Path Allowlist §Common conformance requirements]
+- [ ] CHK030 registry validationとdrift validationは、source integrityを確立できない場合にdeterministic、complete-or-explicitly-failed、かつactionableであり、product固有のnumerical resource ceilingを定義しないことを要求されているか？ [Non-Functional, Contract: Inspection Path Allowlist §Common conformance requirements]
 - [ ] CHK031 credential、cookie、repository data、response body、および保持されるremote contentについて、official-source reviewのprivacy要件が明示されているか？ [Security, Data Model §OfficialSourceRecord]
 - [ ] CHK032 一つのvendor surfaceを更新するときに、無関係なvendor、surface、Inspector policy、またはcomposition strategyを変更せずに済むownership modelになっているか？ [Maintainability, Spec §QR-001]
 

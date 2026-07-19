@@ -59,7 +59,7 @@
 ## Non-Functional Requirements
 
 - [ ] CHK029 Are English and Japanese requirements required to preserve identical IDs, paths, URLs, reviewed sections, versions, documentation statuses, and semantic caveats? [Completeness, Spec §QR-004–QR-005]
-- [ ] CHK030 Are registry and drift validations required to be deterministic, bounded, and actionable when they cannot establish source integrity? [Non-Functional, Contract: Inspection Path Allowlist §Common conformance requirements]
+- [ ] CHK030 Are registry and drift validations required to be deterministic, complete-or-explicitly-failed, and actionable when they cannot establish source integrity, without defining a product-specific numeric resource ceiling? [Non-Functional, Contract: Inspection Path Allowlist §Common conformance requirements]
 - [ ] CHK031 Are privacy requirements for official-source review explicit about credentials, cookies, repository data, response bodies, and retained remote content? [Security, Data Model §OfficialSourceRecord]
 - [ ] CHK032 Does the ownership model allow one vendor surface to be updated without changing unrelated vendors, surfaces, Inspector policies, or composition strategies? [Maintainability, Spec §QR-001]
 

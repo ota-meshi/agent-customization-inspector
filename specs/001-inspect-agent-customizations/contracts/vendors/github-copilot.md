@@ -29,7 +29,7 @@ A vendor locator, behavior record, relationship, or strategy never grants read a
 |---|---|
 | **Workspace root** | One folder opened as a VS Code workspace folder. It can differ from a Git repository root. |
 | **Repository root** | The root of the repository processed by a hosted GitHub surface. |
-| **Git root** | The upper bound found by Copilot CLI while walking from its runtime working directory. |
+| **Git root** | The stopping boundary found by Copilot CLI while walking from its runtime working directory. |
 | **Runtime `cwd`** | The directory from which the relevant Copilot CLI session operates. It is not necessarily the Inspector launch directory. |
 | **CLI standard locations** | Repository root, runtime `cwd`, directories between them, and directories on the path of a file that CLI is working on. A row can explicitly exclude some of those locations. |
 | **User location** | A local home, `COPILOT_HOME`, or VS Code profile location used across projects. It is not a Repository source. |
@@ -206,7 +206,7 @@ duplicating the same surface provenance or merging runtime behavior.
 
 These two static rules do not search repository descendants. Copilot does not activate
 an arbitrary descendant manifest or catalog merely because its filename matches. A
-nested local plugin manifest is admitted only by the bounded derivation from an accepted
+nested local plugin manifest is admitted only by the closed derivation from an accepted
 marketplace entry below; that derivation is likewise Inspector policy, not product
 discovery or activation.
 
@@ -233,11 +233,11 @@ an invalid override and does not silently fall back. User settings, agents, skil
 MCP, LSP, extensions, plugins, permissions, credentials, logs, sessions, and caches remain
 excluded even when stored below the same boundary.
 
-## Bounded-derived rule and relationship index
+## Derived rule and relationship index
 
-| Rule ID | Accepted seed | Permitted target | Behavior refs | Strategy refs | Bound and status | Policy refs | Evidence |
+| Rule ID | Accepted seed | Permitted target | Behavior refs | Strategy refs | Closed derivation and status | Policy refs | Evidence |
 |---|---|---|---|---|---|---|---|
-| `copilot.derived.local-plugin-manifest` | An accepted Copilot marketplace entry with a documented local `source` | At the validated local plugin root: `.plugin/plugin.json`, `plugin.json`, `.github/plugin/plugin.json`, `.claude-plugin/plugin.json` | `copilot.behavior.vscode.plugins`, `copilot.behavior.cli.plugins` | `copilot.vscode.plugins.activation`, `copilot.cli.plugins.activation` | Accept `plugins/foo` or `./plugins/foo`; resolve from the catalog root; remain inside it; admit at most these four targets in documented order; one derivation edge only. Git, HTTP(S), npm, absolute, and home-relative sources remain relationships | FR-003, FR-004, FR-005, FR-024, QR-001, QR-004, QR-005 | `github.copilot.cli.plugins`, `vscode.copilot.plugins` |
+| `copilot.derived.local-plugin-manifest` | An accepted Copilot marketplace entry with a documented local `source` | At the validated local plugin root: `.plugin/plugin.json`, `plugin.json`, `.github/plugin/plugin.json`, `.claude-plugin/plugin.json` | `copilot.behavior.vscode.plugins`, `copilot.behavior.cli.plugins` | `copilot.vscode.plugins.activation`, `copilot.cli.plugins.activation` | Accept `plugins/foo` or `./plugins/foo`; resolve from the catalog root and remain inside it; try only the enumerated manifest names in documented order; the derivation is nonrecursive. Git, HTTP(S), npm, absolute, and home-relative sources remain relationships | FR-003, FR-004, FR-005, FR-024, QR-001, QR-004, QR-005 | `github.copilot.cli.plugins`, `vscode.copilot.plugins` |
 
 The relationship-only rules referenced by this vendor—
 `copilot.relationship.instruction-import`, `copilot.relationship.prompt-reference`,
@@ -245,6 +245,48 @@ The relationship-only rules referenced by this vendor—
 `copilot.relationship.agent-context`—are defined exactly once in the
 [central relationship-only registry](../runtime-composition.md#normative-relationship-only-registry).
 This index grants no read authority and does not duplicate those definitions.
+
+## Normative initial-release presentation allowlist
+
+This table is the closed FR-007 presentation allowlist for GitHub Copilot. The kind
+spellings are the exact `ToolRecognition.kind` values. A field ID names one authored
+source occurrence class, not an arbitrary key supplied by the inspected file. A repeated
+array item or dynamic map entry produces another source-ordered occurrence under the same
+field ID; for server, environment, header, Hook-event, metadata, and named-setting
+`*.name` IDs, the authored map key is the occurrence. `marketplace.plugin.source` is the
+single cross-vendor field ID used by the closed marketplace derivation: it denotes
+either a plain-string source or the `path` leaf of an object source.
+
+The final column is normative source-form applicability, not commentary. Effective
+eligibility is the intersection of the row's closed field/relationship sets and the exact
+extractor occurrences supported for the actual admitted source form identified by candidate
+provenance. Naming several forms in one row does not union their schemas or make one form's
+fields eligible in another; conformance fixtures and tests cover both gates.
+
+The rows are exhaustive. A contained MCP or Hook declaration uses the `MCP` or `hook`
+row on its already admitted owner file; it does not gain fields from the owner's other
+recognition and does not create a synthetic file. Unknown keys and references remain
+visible only in complete `sourceText`. A relationship can be emitted only when both its
+kind is listed here and its origin is covered by the appropriate relationship-only rule
+in the central registry. This allowlist never grants read, connection, execution,
+import, installation, or activation authority.
+
+| `ToolRecognition.kind` | Eligible declared-metadata `fieldId` values | Eligible `Relationship.kind` values | Initial-release source forms |
+|---|---|---|---|
+| `instructions` | `copilot.instructions.name`<br>`copilot.instructions.description`<br>`copilot.instructions.apply-to`<br>`copilot.instructions.exclude-agent`<br>`copilot.instructions.import-target` | `import` | Exact supported frontmatter values in an accepted `*.instructions.md`, plus authored CLI `@path` targets in accepted `.github/copilot-instructions.md`, `AGENTS.md`, or Copilot-recognized `CLAUDE.md`; path-derived scope and enablement remain typed facts |
+| `skill` | `copilot.skill.name`<br>`copilot.skill.description`<br>`copilot.skill.argument-hint`<br>`copilot.skill.allowed-tool`<br>`copilot.skill.user-invocable`<br>`copilot.skill.disable-model-invocation`<br>`copilot.skill.context` | `skill-resource`<br>`context-inheritance` | Exact supported frontmatter value/item occurrences in an accepted `SKILL.md`; relative resource references can be relationships but never authorize reads |
+| `MCP` | `copilot.mcp.server.name`<br>`copilot.mcp.server.type`<br>`copilot.mcp.server.command`<br>`copilot.mcp.server.arg`<br>`copilot.mcp.server.tool`<br>`copilot.mcp.server.env.name`<br>`copilot.mcp.server.env.value`<br>`copilot.mcp.server.cwd`<br>`copilot.mcp.server.timeout`<br>`copilot.mcp.server.defer-tools`<br>`copilot.mcp.server.url`<br>`copilot.mcp.server.header.name`<br>`copilot.mcp.server.header.value`<br>`copilot.mcp.server.oauth-client-id`<br>`copilot.mcp.server.oauth-public-client`<br>`copilot.mcp.server.oauth-grant-type`<br>`copilot.mcp.server.oidc`<br>`copilot.mcp.server.filter-mapping`<br>`copilot.mcp.server.sandbox-enabled` | `runtime-reference` | Server-name map keys and exact supported server leaf/item occurrences in an accepted CLI `mcpServers` file, VS Code `servers` file, or custom-agent-contained declaration; environment/header values remain authored literals and are never expanded |
+| `prompt/command` | `copilot.prompt.name`<br>`copilot.prompt.description`<br>`copilot.prompt.argument-hint`<br>`copilot.prompt.agent`<br>`copilot.prompt.model`<br>`copilot.prompt.tool`<br>`copilot.command.description`<br>`copilot.command.argument-hint`<br>`copilot.command.allowed-tool`<br>`copilot.command.disable-model-invocation` | `skill-resource`<br>`agent-reference`<br>`runtime-reference` | Exact supported frontmatter value/item occurrences in an accepted VS Code prompt or root direct-child CLI command; prompt/command invocation names derived from matched paths remain typed provenance, and links or `#file` targets remain inert |
+| `agent` | `copilot.agent.name`<br>`copilot.agent.description`<br>`copilot.agent.target`<br>`copilot.agent.tool`<br>`copilot.agent.model`<br>`copilot.agent.disable-model-invocation`<br>`copilot.agent.user-invocable`<br>`copilot.agent.infer`<br>`copilot.agent.metadata.name`<br>`copilot.agent.metadata.value`<br>`copilot.agent.argument-hint`<br>`copilot.agent.subagent`<br>`copilot.agent.disallowed-tool`<br>`copilot.agent.handoff.label`<br>`copilot.agent.handoff.agent`<br>`copilot.agent.handoff.prompt`<br>`copilot.agent.handoff.send`<br>`copilot.agent.handoff.model` | `agent-reference`<br>`skill-resource`<br>`context-inheritance`<br>`runtime-reference` | Exact supported frontmatter value/item/map-entry occurrences in an accepted `.github/agents/*.md` or `.claude/agents/*.md`; body instructions remain `sourceText`, while `hooks` and `mcp-servers` are owned by their separate contained recognitions |
+| `settings/config` | `copilot.settings.company-announcement`<br>`copilot.settings.context-tier`<br>`copilot.settings.denied-url`<br>`copilot.settings.disable-all-hooks`<br>`copilot.settings.disabled-mcp-server`<br>`copilot.settings.disabled-skill`<br>`copilot.settings.effort-level`<br>`copilot.settings.enabled-plugin.name`<br>`copilot.settings.enabled-plugin.value`<br>`copilot.settings.extra-known-marketplace.name`<br>`copilot.settings.extra-known-marketplace.source`<br>`copilot.settings.extra-known-marketplace.repo`<br>`copilot.settings.extra-known-marketplace.url`<br>`copilot.settings.extra-known-marketplace.path`<br>`copilot.settings.extra-known-marketplace.ref`<br>`copilot.settings.extra-known-marketplace.sha`<br>`copilot.settings.extra-known-marketplace.auto-update`<br>`copilot.settings.include-co-authored-by`<br>`copilot.settings.merge-strategy`<br>`copilot.settings.model`<br>`copilot.settings.respect-gitignore` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`runtime-reference` | Exact supported Repository/local or cross-tool-compatible settings leaf/item/map-entry occurrences; contained Hook values belong only to the `hook` recognition, and settings never own an MCP recognition |
+| `marketplace` | `marketplace.name`<br>`marketplace.owner.name`<br>`marketplace.owner.email`<br>`marketplace.description`<br>`marketplace.version`<br>`marketplace.metadata.plugin-root`<br>`marketplace.plugin.name`<br>`marketplace.plugin.source`<br>`marketplace.plugin.source.type`<br>`marketplace.plugin.source.url`<br>`marketplace.plugin.source.repo`<br>`marketplace.plugin.source.ref`<br>`marketplace.plugin.source.sha`<br>`marketplace.plugin.description`<br>`marketplace.plugin.version`<br>`marketplace.plugin.author.name`<br>`marketplace.plugin.author.email`<br>`marketplace.plugin.author.url`<br>`marketplace.plugin.homepage`<br>`marketplace.plugin.repository`<br>`marketplace.plugin.license`<br>`marketplace.plugin.keyword`<br>`marketplace.plugin.category`<br>`marketplace.plugin.tag`<br>`marketplace.plugin.commands`<br>`marketplace.plugin.agents`<br>`marketplace.plugin.skills`<br>`marketplace.plugin.hooks`<br>`marketplace.plugin.mcp-servers`<br>`marketplace.plugin.lsp-servers`<br>`marketplace.plugin.strict` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | Exact catalog and plugin-entry leaf/item occurrences in an accepted marketplace file; `marketplace.plugin.source` alone represents a plain-string source or object `path` leaf and may seed the closed local-manifest derivation, while inline component bodies are never activated |
+| `plugin` | `copilot.plugin.name`<br>`copilot.plugin.description`<br>`copilot.plugin.version`<br>`copilot.plugin.author.name`<br>`copilot.plugin.author.email`<br>`copilot.plugin.author.url`<br>`copilot.plugin.homepage`<br>`copilot.plugin.repository`<br>`copilot.plugin.license`<br>`copilot.plugin.keyword`<br>`copilot.plugin.category`<br>`copilot.plugin.tag`<br>`copilot.plugin.agents`<br>`copilot.plugin.skills`<br>`copilot.plugin.commands`<br>`copilot.plugin.hooks`<br>`copilot.plugin.extensions`<br>`copilot.plugin.mcp-servers`<br>`copilot.plugin.lsp-servers` | `declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | Exact metadata and component-path leaf/item occurrences in an accepted Copilot plugin manifest; inline Hook/MCP bodies and referenced scripts/assets do not gain plugin metadata IDs, and component paths never create candidates |
+| `hook` | `copilot.hook.version`<br>`copilot.hook.event`<br>`copilot.hook.matcher`<br>`copilot.hook.handler.type`<br>`copilot.hook.handler.command`<br>`copilot.hook.handler.bash`<br>`copilot.hook.handler.powershell`<br>`copilot.hook.handler.windows`<br>`copilot.hook.handler.linux`<br>`copilot.hook.handler.osx`<br>`copilot.hook.handler.cwd`<br>`copilot.hook.handler.env.name`<br>`copilot.hook.handler.env.value`<br>`copilot.hook.handler.timeout`<br>`copilot.hook.handler.timeout-sec`<br>`copilot.hook.handler.url`<br>`copilot.hook.handler.header.name`<br>`copilot.hook.handler.header.value`<br>`copilot.hook.handler.allowed-env-var`<br>`copilot.hook.handler.prompt` | `runtime-reference` | Version values, event map keys, matcher values, and exact handler leaf/item/map-entry occurrences in an accepted standalone hook file or settings/agent-contained declaration; plugin Hook paths remain relationships only |
+
+No Copilot recognition uses the shared `rule`, `output style`, or `skill metadata` kind
+in the initial release. Typed surface, path-derived scope/invocation, selection,
+precedence, trust, installation, enablement, default, and applicability facts are not
+authored metadata and therefore are not additional field IDs.
 
 ## Documented but excluded by the initial scope
 
@@ -286,6 +328,6 @@ state, is defined only in [Shared non-read exclusions](../runtime-composition.md
 6. **Authored plugin metadata is not activation evidence.** A manifest or marketplace
    proves an authored candidate only. Registration, installation, enabled state,
    component overrides, trust, and hosted availability are independent facts.
-7. **Documentation is fast-moving.** Canonical pages, bounded section names, the
+7. **Documentation is fast-moving.** Canonical pages, enumerated section names, the
    2026-07-15 review date, and semantic fingerprints in the Official Sources contract are
    the maintenance baseline; search-result snippets are not evidence.

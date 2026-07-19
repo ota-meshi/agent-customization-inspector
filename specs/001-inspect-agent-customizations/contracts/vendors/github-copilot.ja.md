@@ -26,7 +26,7 @@ relationship、strategyはいずれもread authorityを与えない。
 |---|---|
 | **Workspace root** | VS Codeでworkspace folderとして開いた1 folder。Git repository rootと異なる場合がある。 |
 | **Repository root** | Hosted GitHub surfaceが処理するrepositoryのroot。 |
-| **Git root** | Copilot CLIがruntime working directoryから上向きにwalkするときの上限。 |
+| **Git root** | Copilot CLIがruntime working directoryから上向きにwalkするときの停止boundary。 |
 | **Runtime `cwd`** | 対象Copilot CLI sessionが動作するdirectory。Inspector launch directoryと同じとは限らない。 |
 | **CLI standard locations** | Repository root、runtime `cwd`、両者の中間directory、CLIが作業中のfile path上のdirectory。個別rowがその一部を明示的に除外できる。 |
 | **User location** | Projectをまたいで使うlocal home、`COPILOT_HOME`、またはVS Code profile location。Repository sourceではない。 |
@@ -192,7 +192,7 @@ mergeしない。
 
 この2つのstatic ruleはrepository descendantを探索しない。Copilotは、任意descendantのmanifest/catalogを
 filenameが一致するだけでactivateしない。Nested local plugin manifestは、後述するaccepted marketplace entryからの
-bounded derivationによってのみadmitする。このderivationもproduct discovery/activationではなくInspector policyである。
+closed derivationによってのみadmitする。このderivationもproduct discovery/activationではなくInspector policyである。
 
 1つの明示的にestablishedなplugin rootで、documented manifest recognition orderは`.plugin/plugin.json`、`plugin.json`、
 `.github/plugin/plugin.json`、`.claude-plugin/plugin.json`である。Marketplace orderは`marketplace.json`、
@@ -214,11 +214,11 @@ Present empty、relative、unreadable、missing、non-canonicalizableな`COPILOT
 しない。同じboundary配下でもuser settings、agent、skill、hook、MCP、LSP、extension、plugin、permission、credential、
 log、session、cacheはexcludedのままである。
 
-## Bounded-derived ruleとrelationship index
+## Derived ruleとrelationship index
 
-| Rule ID | Accepted seed | 許可target | Behavior refs | Strategy refs | Boundとstatus | Policy refs | Evidence |
+| Rule ID | Accepted seed | 許可target | Behavior refs | Strategy refs | Closed derivationとstatus | Policy refs | Evidence |
 |---|---|---|---|---|---|---|---|
-| `copilot.derived.local-plugin-manifest` | Documented local `source`を持つaccepted Copilot marketplace entry | Validated local plugin rootの`.plugin/plugin.json`、`plugin.json`、`.github/plugin/plugin.json`、`.claude-plugin/plugin.json` | `copilot.behavior.vscode.plugins`, `copilot.behavior.cli.plugins` | `copilot.vscode.plugins.activation`, `copilot.cli.plugins.activation` | `plugins/foo`または`./plugins/foo`を受理しcatalog rootからresolveして内部に留める。Documented orderのこの4 targetだけを最大4つadmitし、derivationは1 edgeだけ。Git、HTTP(S)、npm、absolute、home-relative sourceはrelationshipのまま | FR-003、FR-004、FR-005、FR-024、QR-001、QR-004、QR-005 | `github.copilot.cli.plugins`, `vscode.copilot.plugins` |
+| `copilot.derived.local-plugin-manifest` | Documented local `source`を持つaccepted Copilot marketplace entry | Validated local plugin rootの`.plugin/plugin.json`、`plugin.json`、`.github/plugin/plugin.json`、`.claude-plugin/plugin.json` | `copilot.behavior.vscode.plugins`, `copilot.behavior.cli.plugins` | `copilot.vscode.plugins.activation`, `copilot.cli.plugins.activation` | `plugins/foo`または`./plugins/foo`を受理しcatalog rootからresolveして内部に留める。列挙済みmanifest名だけをdocumented orderで確認し、derivationは再帰しない。Git、HTTP(S)、npm、absolute、home-relative sourceはrelationshipのまま | FR-003、FR-004、FR-005、FR-024、QR-001、QR-004、QR-005 | `github.copilot.cli.plugins`, `vscode.copilot.plugins` |
 
 このvendorが参照するrelationship-only rule、すなわち
 `copilot.relationship.instruction-import`、`copilot.relationship.prompt-reference`、
@@ -226,6 +226,42 @@ log、session、cacheはexcludedのままである。
 `copilot.relationship.agent-context`は、
 [中央relationship-only registry](../runtime-composition.ja.md#normative-relationship-only-registry)だけで一度定義する。
 このindexはread authorityを与えず、定義を重複しない。
+
+## Initial releaseの規範的presentation allowlist
+
+次の表を、GitHub Copilotに対するclosedなFR-007 presentation allowlistとする。Kindの表記は正確な
+`ToolRecognition.kind` valueである。Field IDは、調査対象fileが与える任意のkeyではなく、authored source occurrenceの
+一つのclassを表す。Arrayの反復itemまたはdynamic map entryは、同じfield IDのもとでsource順の別occurrenceを生成する。
+Server、environment、header、Hook event、metadata、named settingの`*.name` IDでは、authored map key自体を
+occurrenceとする。`marketplace.plugin.source`はclosed marketplace derivationが使う唯一のcross-vendor field IDであり、
+plain stringのsource、またはobject sourceの`path` leafを表す。
+
+最終列はcommentaryではなく、規範的なsource-form applicabilityである。Effective eligibilityは、rowのclosedな
+field/relationship setと、candidate provenanceが示す実際のadmission済みsource formについてexact extractorがsupportする
+occurrenceのintersectionとする。1つのrowに複数formを記載しても、それらのschemaをunionしたり、1つのformのfieldを
+別formでeligibleにしたりしない。Conformance fixture/testは両gateをcoverする。
+
+各rowは網羅的である。Contained MCPまたはHook declarationは、すでにadmission済みのowner file上で`MCP`または
+`hook` rowを使う。Ownerの別recognitionからfieldを取得せず、synthetic fileも作らない。未列挙のkeyとreferenceは、
+完全な`sourceText`だけに残す。Relationshipは、そのkindがこの表にあり、かつoriginが中央registryの適切な
+relationship-only ruleでcoverされる場合だけemitできる。このallowlistはread、connection、execution、import、
+installation、activationのauthorityを一切与えない。
+
+| `ToolRecognition.kind` | Eligibleなdeclared-metadata `fieldId` value | Eligibleな`Relationship.kind` value | Initial-release source form |
+|---|---|---|---|
+| `instructions` | `copilot.instructions.name`<br>`copilot.instructions.description`<br>`copilot.instructions.apply-to`<br>`copilot.instructions.exclude-agent`<br>`copilot.instructions.import-target` | `import` | 受理済み`*.instructions.md`の正確なsupported frontmatter valueと、受理済み`.github/copilot-instructions.md`、`AGENTS.md`、またはCopilot recognition済み`CLAUDE.md`にあるauthored CLI `@path` target。Path-derived scopeとenablementはtyped factのままとする |
+| `skill` | `copilot.skill.name`<br>`copilot.skill.description`<br>`copilot.skill.argument-hint`<br>`copilot.skill.allowed-tool`<br>`copilot.skill.user-invocable`<br>`copilot.skill.disable-model-invocation`<br>`copilot.skill.context` | `skill-resource`<br>`context-inheritance` | 受理済み`SKILL.md`の正確なsupported frontmatter value/item occurrence。Relative resource referenceはrelationshipにできるがreadをauthorizeしない |
+| `MCP` | `copilot.mcp.server.name`<br>`copilot.mcp.server.type`<br>`copilot.mcp.server.command`<br>`copilot.mcp.server.arg`<br>`copilot.mcp.server.tool`<br>`copilot.mcp.server.env.name`<br>`copilot.mcp.server.env.value`<br>`copilot.mcp.server.cwd`<br>`copilot.mcp.server.timeout`<br>`copilot.mcp.server.defer-tools`<br>`copilot.mcp.server.url`<br>`copilot.mcp.server.header.name`<br>`copilot.mcp.server.header.value`<br>`copilot.mcp.server.oauth-client-id`<br>`copilot.mcp.server.oauth-public-client`<br>`copilot.mcp.server.oauth-grant-type`<br>`copilot.mcp.server.oidc`<br>`copilot.mcp.server.filter-mapping`<br>`copilot.mcp.server.sandbox-enabled` | `runtime-reference` | 受理済みCLI `mcpServers` file、VS Code `servers` file、またはcustom-agent-contained declarationにあるserver-name map keyと正確なsupported server leaf/item occurrence。Environment/header valueはauthored literalのまま保持し、展開しない |
+| `prompt/command` | `copilot.prompt.name`<br>`copilot.prompt.description`<br>`copilot.prompt.argument-hint`<br>`copilot.prompt.agent`<br>`copilot.prompt.model`<br>`copilot.prompt.tool`<br>`copilot.command.description`<br>`copilot.command.argument-hint`<br>`copilot.command.allowed-tool`<br>`copilot.command.disable-model-invocation` | `skill-resource`<br>`agent-reference`<br>`runtime-reference` | 受理済みVS Code promptまたはroot direct-child CLI commandの正確なsupported frontmatter value/item occurrence。Matched pathから導出するprompt/command invocation nameはtyped provenanceのままとし、linkまたは`#file` targetはinertに保つ |
+| `agent` | `copilot.agent.name`<br>`copilot.agent.description`<br>`copilot.agent.target`<br>`copilot.agent.tool`<br>`copilot.agent.model`<br>`copilot.agent.disable-model-invocation`<br>`copilot.agent.user-invocable`<br>`copilot.agent.infer`<br>`copilot.agent.metadata.name`<br>`copilot.agent.metadata.value`<br>`copilot.agent.argument-hint`<br>`copilot.agent.subagent`<br>`copilot.agent.disallowed-tool`<br>`copilot.agent.handoff.label`<br>`copilot.agent.handoff.agent`<br>`copilot.agent.handoff.prompt`<br>`copilot.agent.handoff.send`<br>`copilot.agent.handoff.model` | `agent-reference`<br>`skill-resource`<br>`context-inheritance`<br>`runtime-reference` | 受理済み`.github/agents/*.md`または`.claude/agents/*.md`の正確なsupported frontmatter value/item/map-entry occurrence。Body instructionは`sourceText`のまま保持し、`hooks`と`mcp-servers`は別のcontained recognitionが所有する |
+| `settings/config` | `copilot.settings.company-announcement`<br>`copilot.settings.context-tier`<br>`copilot.settings.denied-url`<br>`copilot.settings.disable-all-hooks`<br>`copilot.settings.disabled-mcp-server`<br>`copilot.settings.disabled-skill`<br>`copilot.settings.effort-level`<br>`copilot.settings.enabled-plugin.name`<br>`copilot.settings.enabled-plugin.value`<br>`copilot.settings.extra-known-marketplace.name`<br>`copilot.settings.extra-known-marketplace.source`<br>`copilot.settings.extra-known-marketplace.repo`<br>`copilot.settings.extra-known-marketplace.url`<br>`copilot.settings.extra-known-marketplace.path`<br>`copilot.settings.extra-known-marketplace.ref`<br>`copilot.settings.extra-known-marketplace.sha`<br>`copilot.settings.extra-known-marketplace.auto-update`<br>`copilot.settings.include-co-authored-by`<br>`copilot.settings.merge-strategy`<br>`copilot.settings.model`<br>`copilot.settings.respect-gitignore` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`runtime-reference` | 正確なsupported Repository/localまたはcross-tool-compatible settings leaf/item/map-entry occurrence。Contained Hook valueは`hook` recognitionだけに属し、settingsはMCP recognitionを所有しない |
+| `marketplace` | `marketplace.name`<br>`marketplace.owner.name`<br>`marketplace.owner.email`<br>`marketplace.description`<br>`marketplace.version`<br>`marketplace.metadata.plugin-root`<br>`marketplace.plugin.name`<br>`marketplace.plugin.source`<br>`marketplace.plugin.source.type`<br>`marketplace.plugin.source.url`<br>`marketplace.plugin.source.repo`<br>`marketplace.plugin.source.ref`<br>`marketplace.plugin.source.sha`<br>`marketplace.plugin.description`<br>`marketplace.plugin.version`<br>`marketplace.plugin.author.name`<br>`marketplace.plugin.author.email`<br>`marketplace.plugin.author.url`<br>`marketplace.plugin.homepage`<br>`marketplace.plugin.repository`<br>`marketplace.plugin.license`<br>`marketplace.plugin.keyword`<br>`marketplace.plugin.category`<br>`marketplace.plugin.tag`<br>`marketplace.plugin.commands`<br>`marketplace.plugin.agents`<br>`marketplace.plugin.skills`<br>`marketplace.plugin.hooks`<br>`marketplace.plugin.mcp-servers`<br>`marketplace.plugin.lsp-servers`<br>`marketplace.plugin.strict` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | 受理済みmarketplace fileの正確なcatalog/plugin-entry leaf/item occurrence。`marketplace.plugin.source`だけがplain-string sourceまたはobjectの`path` leafを表し、closedなlocal-manifest derivationをseedできる。Inline component bodyはactivateしない |
+| `plugin` | `copilot.plugin.name`<br>`copilot.plugin.description`<br>`copilot.plugin.version`<br>`copilot.plugin.author.name`<br>`copilot.plugin.author.email`<br>`copilot.plugin.author.url`<br>`copilot.plugin.homepage`<br>`copilot.plugin.repository`<br>`copilot.plugin.license`<br>`copilot.plugin.keyword`<br>`copilot.plugin.category`<br>`copilot.plugin.tag`<br>`copilot.plugin.agents`<br>`copilot.plugin.skills`<br>`copilot.plugin.commands`<br>`copilot.plugin.hooks`<br>`copilot.plugin.extensions`<br>`copilot.plugin.mcp-servers`<br>`copilot.plugin.lsp-servers` | `declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | 受理済みCopilot plugin manifestの正確なmetadata/component-path leaf/item occurrence。Inline Hook/MCP bodyと参照先script/assetはplugin metadata IDを取得せず、component pathはcandidateを作らない |
+| `hook` | `copilot.hook.version`<br>`copilot.hook.event`<br>`copilot.hook.matcher`<br>`copilot.hook.handler.type`<br>`copilot.hook.handler.command`<br>`copilot.hook.handler.bash`<br>`copilot.hook.handler.powershell`<br>`copilot.hook.handler.windows`<br>`copilot.hook.handler.linux`<br>`copilot.hook.handler.osx`<br>`copilot.hook.handler.cwd`<br>`copilot.hook.handler.env.name`<br>`copilot.hook.handler.env.value`<br>`copilot.hook.handler.timeout`<br>`copilot.hook.handler.timeout-sec`<br>`copilot.hook.handler.url`<br>`copilot.hook.handler.header.name`<br>`copilot.hook.handler.header.value`<br>`copilot.hook.handler.allowed-env-var`<br>`copilot.hook.handler.prompt` | `runtime-reference` | 受理済みstandalone hook fileまたはsettings/agent-contained declarationにあるversion value、event map key、matcher value、正確なhandler leaf/item/map-entry occurrence。Plugin Hook pathはrelationshipだけに保つ |
+
+Initial releaseのCopilot recognitionは、sharedな`rule`、`output style`、`skill metadata` kindを使用しない。Typed surface、
+path-derived scope/invocation、selection、precedence、trust、installation、enablement、default、applicability factはauthored
+metadataではないため、追加field IDにはしない。
 
 ## Documentedだがinitial scopeでexcluded
 
@@ -260,5 +296,5 @@ Hosted Copilot stateを含むcross-vendorの`shared.excluded.managed-remote-stat
    preloadを定義しない。これらedgeはunknownのままとする。
 6. **Authored plugin metadataはactivation evidenceではない。** Manifest/marketplaceはauthored candidateだけを証明する。
    Registration、installation、enabled state、component override、trust、hosted availabilityは独立factである。
-7. **Documentationは急速に変化する。** Official Sources contractのcanonical page、bounded section名、2026-07-15 review日、
+7. **Documentationは急速に変化する。** Official Sources contractのcanonical page、列挙済みsection名、2026-07-15 review日、
    semantic fingerprintをmaintenance baselineとし、search-result snippetをevidenceにしない。

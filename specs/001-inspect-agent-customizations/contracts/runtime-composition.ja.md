@@ -33,7 +33,7 @@ Required condition factが利用不能ならprojectionは`unknown`である。�
 保持したまま、vendorの文書化されたruntime edgeを表示できる。
 
 Originating customization fileを持たない文書化済みhosted/runtime inputは、関連するSource、tool、surfaceに紐づく
-上限付きでevidence-linkedな`SourceConditionFact`とする。File、recognition、relationship originではなく、synthetic
+evidence-linkedな`SourceConditionFact`とする。File、recognition、relationship originではなく、synthetic
 file、file identity/path/text、comparison target、local/hosted read、network requestを作成しない。未調査の現在stateは
 conditionalまたはunavailableのままにする。
 
@@ -62,12 +62,12 @@ Strategy rowは次のfact名を使用する。各factは、該当する場合に
 | `plugin-state` | Catalog registration、availability、selected component、component override |
 | `agent-context` | Agent kind、parent session、context mode、tool availability、memory scope、nesting depth |
 | `event` | Hook eventとevent固有input |
-| `content-limits` | Instruction byte/line limitと設定済みfallback name |
+| `content-limits` | Upstream instruction-content policyと設定済みfallback name |
 | `documentation-variant` | Upstream pageが矛盾する、またはedgeが未指定の場合のofficial-source variant |
 | `tool-availability` | 現在のmain/child agent contextで利用できる正確なtool |
 | `installation` | Plugin、extension、componentがそのsurfaceへ実際にinstall済みか |
 | `managed-policy` | Administrator、enterprise、managed-policy inputとgate |
-| `instruction-byte-budget` | 設定済みinstruction-byte上限とinputが消費する順序 |
+| `instruction-byte-budget` | Upstreamで設定されたinstruction byte budgetとinputが消費する順序 |
 | `external-runtime` | Local fileから利用できないhosted、connector、server-provided、その他runtime data |
 
 ## GitHub Copilot strategy
@@ -136,7 +136,7 @@ Hosted ChatGPT Workはこれらのlocal fileを使用しない。
 
 | Strategy ID | Tool / surface | Operation(s) | Runtime projection | Input behavior refs | Required condition facts | Documentation status | Official source refs |
 |---|---|---|---|---|---|---|---|
-| `codex.instructions.layering` | OpenAI Codex / local client | `select-first`、`concatenate`、`filter` | 最初のnon-empty User fallbackを選び、project-rootから`cwd`までの各directoryでnon-emptyな`AGENTS.override.md`、`AGENTS.md`、設定済みfallbackのうち最大1つを選択し、project document byte budgetまでbroad-to-narrowで連結する | `codex.behavior.repo.instructions`、`codex.behavior.user.instructions` | `surface`、`engine-version`、`runtime-cwd`、`project-root`、`scope-availability`、`selection`、`settings-inputs`、`content-limits`、`managed-policy`、`instruction-byte-budget` | documented。Excluded higher-scope settingsによりfallback nameとbudgetがunknownになり得る | `openai.codex.agents-md`、`openai.codex.config-basic` |
+| `codex.instructions.layering` | OpenAI Codex / local client | `select-first`、`concatenate`、`filter` | 最初のnon-empty User fallbackを選び、project-rootから`cwd`までの各directoryで`AGENTS.override.md`、`AGENTS.md`、設定済みfallbackをdocumented filename orderで評価して最初のnon-empty fileを選択し、upstream project-document byte budgetまでbroad-to-narrowで連結する | `codex.behavior.repo.instructions`、`codex.behavior.user.instructions` | `surface`、`engine-version`、`runtime-cwd`、`project-root`、`scope-availability`、`selection`、`settings-inputs`、`content-limits`、`managed-policy`、`instruction-byte-budget` | documented。Excluded higher-scope settingsによりfallback nameとbudgetがunknownになり得る | `openai.codex.agents-md`、`openai.codex.config-basic` |
 | `codex.skills.discovery` | OpenAI Codex / local client | `select-first` | Active Repository、User、admin、system scopeからskillを発見する。同名skillをmergeせずselected originを保持する | `codex.behavior.repo.skills`、`codex.behavior.user.skills` | `surface`、`engine-version`、`runtime-cwd`、`repository-root`、`scope-availability`、`feature-state`、`enablement`、`selection`、`managed-policy` | documented | `openai.codex.skills` |
 | `codex.agents.inheritance` | OpenAI Codex / local spawned session | `merge-map`、`replace` | Customまたはbuilt-in agent configurationを選び、documented inheritable fieldについてchild fileをparent sessionへoverlayし、live parent sandbox/approval overrideを再適用する。Child `AGENTS.md` inheritanceは推測しない | `codex.behavior.repo.agents`、`codex.behavior.user.agents` | `surface`、`engine-version`、`project-root`、`scope-availability`、`trust`、`approval`、`selection`、`settings-inputs`、`agent-context`、`documentation-variant`、`tool-availability`、`managed-policy` | partially documented。Project traversalとchild instruction inheritanceが不完全 | `openai.codex.config-basic`、`openai.codex.subagents` |
 | `codex.config.precedence` | OpenAI Codex / local client | `merge-map`、`replace`、`select-closest` | User/profile/CLIと全trusted project config layerをrootから`cwd`へ解決する。同一keyはclosest applicable valueを使い、relative pathは含有`.codex` directoryから解決する | `codex.behavior.repo.config`、`codex.behavior.user.config` | `surface`、`engine-version`、`runtime-cwd`、`project-root`、`scope-availability`、`trust`、`approval`、`selection`、`settings-inputs`、`managed-policy` | documented | `openai.codex.config-basic` |
@@ -172,9 +172,9 @@ connectionをseedしない。
 | `shared.relationship.runtime` | 利用不能runtime dataが必要な任意の受理済みrecognition | `claude.behavior.repo.mcp`、`claude.behavior.user.mcp-state`、`claude.behavior.user.plugins`、`claude.behavior.user.settings`、`codex.behavior.repo.mcp`、`codex.behavior.user.config`、`codex.behavior.user.plugins`、`copilot.behavior.cloud.mcp`、`copilot.behavior.cloud.organization-agents`、`copilot.behavior.cloud.organization-instructions`、`copilot.behavior.cloud.plugins`、`copilot.behavior.cloud.remote-skills` | MCP-server-provided instruction、hosted settings、organization policy、installed-service state、その他runtime-only input | Source factだけ。Connect、fetch、authenticate、local candidate作成をしない | FR-005、FR-007、FR-009、FR-014、FR-018、FR-019、FR-021、FR-022、FR-031、FR-039、QR-001、QR-005 | `anthropic.claude-code.directory.file-reference`、`anthropic.claude-code.ide.shared-differences`、`anthropic.claude-code.mcp.scopes-precedence`、`anthropic.claude-code.plugins.components-scopes`、`anthropic.claude-code.settings.scopes-precedence`、`github.copilot.cli.reference`、`github.copilot.cloud.instructions`、`github.copilot.custom-agents`、`github.copilot.instructions.support`、`github.copilot.plugins`、`github.copilot.skills`、`openai.codex.config-basic`、`openai.codex.mcp`、`openai.codex.plugins`、`vscode.copilot.plugins` |
 
 Authored relationshipはmasking、redaction、reveal state、環境変数置換を行わず、validated済みexact source sliceを
-表示する。Relationship status判定用に別のbounded semantic/structural path formを使用してよいが、表示literalを
+表示する。Relationship status判定用に別のvalidated semantic/structural path formを使用してよいが、表示literalを
 置換しない。Conditional Codex `hooks/hooks.json` relationのようなregistry定義documented defaultにはauthored sliceが
-ないため、DTOを`targetOrigin: documented-default`、`authoredTarget: null`とし、UIはbounded pathをdocumented defaultと
+ないため、DTOを`targetOrigin: documented-default`、`authoredTarget: null`とし、UIはregistry定義pathをdocumented defaultと
 labelする。Deduplicationはclosed origin identityとtarget identityを使用し、distinct authored occurrence/candidate
 provenanceを破棄しない。
 
