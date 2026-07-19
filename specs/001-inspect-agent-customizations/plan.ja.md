@@ -2,7 +2,7 @@
 
 [English](plan.md)
 
-**ブランチ**: `dev` | **日付**: 2026-07-17 | **仕様**: [spec.ja.md](spec.ja.md)
+**ブランチ**: `dev` | **日付**: 2026-07-19 | **仕様**: [spec.ja.md](spec.ja.md)
 
 **入力**: `specs/001-inspect-agent-customizations/spec.ja.md` の機能仕様
 
@@ -47,20 +47,36 @@ Repository Sourceの場合だけrepository-relativeであり、各Global Source�
 `./**/`が意味するのは下向きInspector descendant inventoryだけであり、vendor traversalではない。Static
 candidate、vendor-specific one-edge derivation、relationship-only reference、exclusionを分離する。File存在と
 product surface、runtime root/`cwd`、target match、trust、enablement、selection、installation、managed policy、
-external runtime factを別に保ち、inventoryをeffective agent configurationに見せない。Closed context
+external runtime factを別に保ち、inventoryをeffective agent configurationに見せない。Originating fileを
+持たないhosted/runtime inputは、関連Sourceに紐づく上限付きでevidence-linkedな`SourceConditionFact`とし、
+I/O authority、synthetic file、path、source text、relationship origin、comparison targetを一切作らない。Closed context
 relationshipは、agentが参照し得る独立inventory済みinstruction、rule、skill、MCP declaration、memory scopeを
 path追跡なしで示す。Codex instruction-byte limitとexcluded non-file inputは明示condition factのままとする。
 
 ## 技術コンテキスト
 
-**言語・バージョン**: 開発基準はNode.js 24.18.0 Active LTS、package enginesは
-`^24.11.0 || >=26.0.0`、TypeScript 6.0.3、Vue 3.5.39
+**言語・バージョン**: 開発・build基準はNode.js 24.18.0 LTS、package runtime compatibility contractは
+`^24.11.0 || ^26.0.0`、正確には`>=24.11.0 <25.0.0 || >=26.0.0 <27.0.0`、TypeScript 6.0.3、
+Vue 3.5.39とする。6つのNode/OS floor jobはcompatibleな全minor/patch releaseを列挙するものではなく、
+宣言した2つの下限をcertifyする。各floor未満、Node 25、将来のmajorはcontract外とする。
 
 **主要依存関係**: Nuxt 4.4.8、Vue Router 5.2.0、tsdown 0.22.8、Vite 7.3.6
-（Nuxtと互換性のある最新release）、`cac` 7.0.0、`yaml` 2.9.0、
+（Nuxtと互換性のある最新release）、`gunshi` 0.37.0、`yaml` 2.9.0、
 `jsonc-parser` 3.3.1、`smol-toml` 1.7.0、`monaco-editor` 0.55.1。最初のlockfile作成時に
 これらの正確なstable versionを再確認しなければならない（MUST）。Prereleaseや互換性のない
 新しいmajorは「最新」の対象にしない。
+この再確認はplanning gateであり、task内だけでpackageまたはversionを変更する許可ではない。選択済み
+packageまたはversionが1つでも変わる場合、configuration作業前にimplementationを停止してcompatibility
+decisionを再reviewし、dependency baselineを記載する英日両方のresearch、plan、quickstart、task artifactを
+すべて同期し、作業再開前に
+`/speckit-plan`、続いて`/speckit-tasks`を再実行する。Configuration、CI、release、package-policy
+instructionは、その1つの同期済みbaselineだけを使用しなければならない（MUST）。
+
+`src/cli.ts`はGunshiのstableなroot `define`/`cli` APIだけを使用する。Negatableな`open` booleanを
+default trueとして定義して`--no-open`を提供し、`strict: true`を有効にし、bind前にすべての
+positional/rest argumentを明示的に拒否し、`cli()`をawaitし、validation `AggregateError`を固定された上限付きoutputと
+nonzero exitへ対応付ける。Built-in help/versionはbindせずに処理する。Production entryは`gunshi/agent`、
+lazy command、custom plugin、experimental parser combinatorをimportしない。
 
 **ストレージ**: 永続的application storageは使用しない。Session state、上限付きfile byte、記述された完全な
 source DTO、diagnostic、機密content警告のacknowledgement、comparison selectionはprocess/browser memoryだけに存在する。
@@ -68,16 +84,35 @@ source DTO、diagnostic、機密content警告のacknowledgement、comparison sel
 **テスト**: Vitest 4.1.10と`@vitest/coverage-v8` 4.1.10、Nuxt Test Utils 4.0.3、
 Vue Test Utils 2.4.11、happy-dom 20.10.6、Playwright 1.61.1、
 `@axe-core/playwright` 4.12.1。Fixture駆動のunit、contract、integration、packaging、
-performance、security、browser testとmanual accessibility checkを使用する。保守するusability study kitは、
+performance、security、browser testとmanual accessibility checkを使用する。Browser release gateは、pinした
+Playwright versionがinstallする正確なChromium、Firefox、WebKit revisionでprimary-workflowとaccessibilityの
+完全なsuiteを、startup helperがそのrevisionを選ぶという主張ではなく再現可能なautomated certification baselineとして実行する。
+保守するusability study kitは、
 SC-001、SC-006の順に同じ初回利用者20人cohortを使い、固定promptとmoderator制限、差し替えなしでfailureを不成功へ
 算入するrule、定義済みtimer boundary、固定ground truthで採点するSC-006の4項目response formを含む。
+時間計測したSC-006回答後、同じ参加者が標準化されたcomparisonとGlobal consentの課題を実施する。Moderatorは
+客観的workflow outcomeと事前定義済みsafety eventを記録し、全safety eventを自動的にcriticalとする。Product起因と
+疑われるworkflow blockerだけを2人がrubricに対して独立分類し、不一致は第3の裁定者なしでcriticalとして数える。
+Gateは20人全員が4つのprimary workflowすべてを実施し、自動判定またはreviewer確認済みcritical issueが1件もない
+場合だけ合格とする。Maintainer teamが公開study planを通じてrecruitment、compensation funding、moderation、review、
+consent/privacy handling、提供equipment/session support、bilingual material、accessibility accommodationを担当し、通常の
+contributorには負わせない。Study environmentではdefault browser handlerがrelease-certified revisionへ解決することを記録する。
 
-**対象platform**: Node.jsがsupportするmacOS、Windows、Linux環境とmodern browser。公開project/dependency package
-payloadとproject-authored installed application codeはplatform非依存のJavaScript application codeとdeclarativeな
-static/package dataだけを含み、install script、runtime download、end-user compilerを必要としない。
+**対象platform**: Supported runtime contractは宣言済みNode.js 24/26 engine range全体を`ubuntu-24.04` x64、
+`macos-15` arm64、`windows-2025` x64で使用するものとする。`24.11.0`/`26.0.0`の各floorと3つのOS/architecture targetを
+掛け合わせた正確な6 jobは、compatibleな全Node minor/patch releaseの一覧ではなく必須のlower-bound release-certification
+sampleである。1つのplatform非依存tarballをNode.js 24.18.0 development/build baselineの`ubuntu-24.04` x64でbuildし、
+同環境で別のbuild/package smoke checkを実行してから、同一byteを6つのfloor jobすべてでinstallして検証する。各releaseで
+解決されたrunner-image identifierと実際のNode versionを記録する。その他のOS/architecture targetと宣言したengine range外の
+Node versionはunsupportedとする。Browser release certificationでは、Playwright 1.61.1がinstallする正確なChromium、Firefox、
+WebKit revisionについて、Node.js 24.18.0の`ubuntu-24.04` x64で完全なbrowser/accessibility suiteを実行する。これらのrevisionは
+再現可能で有限なcertification baselineであり、user browserの網羅的listではない。固定OS helperは表示済みURLをuserのdefault
+handlerへ渡すだけでbrowser family/versionを選択または検証せず、helper成功をbrowser compatibility evidenceとしない。Certification
+baseline外のhandlerはbest-effortであり、表示済みURLと`--no-open`を使ってcertified browserでmanual openすることをactionable
+fallbackとする。公開project/dependency package payloadとproject-authored installed application codeはplatform非依存の
+JavaScript application codeとdeclarativeなstatic/package dataだけを含み、install script、runtime download、end-user compilerを必要としない。
 Package-manager生成`node_modules/.bin` symlink/`.cmd`/`.ps1` launcherはpayload外interoperability metadataとして別の
-exact-target/content auditを受ける。Development-only toolingはproduct package外で
-別にpin/auditする。
+exact-target/content auditを受ける。Development-only toolingはproduct package外で別にpin/auditする。
 Serverは`127.0.0.1`だけへbindし、remote deployment modeを持たない。
 
 **Project type**: 静的Nuxt web client、Node CLI/local HTTP service、shared serializable
@@ -86,20 +121,31 @@ JavaScript/TypeScriptとし、全published package payload内のexecutable code�
 JSON manifest、documentation、licenseはdeclarative package artifactとして
 許可する。このFR-038 boundaryでthird-party development/test toolingをpublished application codeと誤分類しない。
 
-**性能目標**: メンテナー指定の現在のローカル基準環境で、内容を変更しない1つのdeterministic fixture
-（100,000 filesystem entry、500 matching file）を使用し、正確に10回のfresh-process runのうち9回以上で、
-1秒以内にscan progressまたは意味のあるstatusをbrowserへ表示し、10秒以内に完全なinventoryを表示して主要な
-list controlを操作可能にする。両timerはbrowserのscan requestで開始し、fixture構築と
-`npx` download/install/process起動は除外し、run間でoperating systemのfilesystem cacheを意図的にresetしない。
-基準環境の具体的なmachine、operating system、hardware、runtime情報は公開しない。500 itemでのfilterとselection
-feedbackは100 ms未満にする。
+**性能目標**: `tests/performance/sc002-reference-profile.json`にversion付きで公開するprofile上で、現在のrequestが
+queue済みであること、active phase名、またはcomplete/partial/failedのいずれかを示しassistive technologyにも公開される
+statusを1秒以内にbrowserへ表示し、内容を変更しない1つのdeterministic fixture（100,000 filesystem entry、500 matching
+file）について、正確に10回のfresh-process runのうち9回以上で10秒以内に完全なinventoryを表示して主要なlist controlを
+操作可能にする。Spinner、generic loading label、scan stateのないacknowledgement、変化しないcontrol、以前のrequestのstatusは
+qualifyしない。両timerはbrowserのscan requestで開始し、fixture構築と`npx` download/install/process起動は除外し、run間で
+operating systemのfilesystem cacheを意図的にresetしない。Profile ID、実際のenvironment field、fixture-manifest digestを記録し、
+personal identifierとabsolute user pathだけを省略する。Profile fieldを変更すると新しい直接比較不能なmeasurement setを開始する。
+各runで完全なinventoryが
+操作可能になった後、標準化されたfilter actionとitem-selection actionを1回ずつ実施する。各actionはbrowserの
+input dispatchから、対応するfiltered resultまたはselected-state feedbackが表示され操作可能になるまでを測定し、
+同じ10回のrunのうち9回以上で両interactionを100 ms未満にする。
 
 **制約**: 調査対象カスタマイズによりexecution、child process、dynamic import、network request、MCP connection、
-source mutationを発生させない。別途boundedなstartup launcherは固定OS browser helperだけをinvokeでき、調査対象contentを
-受け取らない。Boundary外byteを受理・公開しない。公開済みsymlinkを意図的に追わず、検出したpath changeの
-byteをcommitしない。文書化したactive path-component mutatorはcurrent threat modelのscope外とする。
+source mutationを発生させない。別途boundedなstartup launcherは、許可するproduct起動child processを唯一所有し、
+その対象は固定OS browser helperだけとする。このhelperは調査対象content、調査対象path、authored value、
+user-supplied command、environmentで選択したhandlerを受け取らず、自動起動を無効にした場合、非対応の場合、
+または失敗した場合もsessionを利用可能に保つ。Boundary外byteを受理・公開しない。公開済みsymlinkを意図的に追わず、検出したpath changeの
+byteをcommitしない。文書化したactive source-root/ancestor mutatorと、有効な`O_NOFOLLOW`を利用できない場合に限るactive
+final-component mutatorはcurrent threat modelのscope外とする。
 Global read前に明示的opt-inを要求する。リテラルcredentialを含む記述された完全なsourceと表示metadataは、
-機密content警告後にmask/reveal controlなしで表示する。環境変数参照は解決も置換もしない。Inert textだけをrenderする。WCAG 2.2
+機密content警告後にmask/reveal controlなしで表示する。環境変数参照は解決も置換もしない。Inert textだけをrenderする。
+表示するmetadata fieldとrelationship kindは、supported customization typeごとに維持管理するclosedなpresentation
+allowlistへ限定する。未記載のauthored entryは完全なsource textからだけ利用可能とし、metadataまたはrelationshipとして
+推論しない。WCAG 2.2
 AAを満たし、英語・日本語文書を同等に保つ。Hard limitは1 fileあたり1 MiB、file byte合計32 MiB、
 訪問entry 200,000件、customization file 2,000件、path segment 64、aliasは1 file 1,024件/generation 50,000件、
 recognitionは1 file 36件/generation 8,000件、direct relationshipは1 file 1,000件/generation 100,000件、
@@ -148,7 +194,8 @@ opt-in Global sourceを0から3つ（Copilot、Claude、Codexごとに最大1つ
       別々のinvariantを所有する。Vendor behavior、Inspector matcher、runtime composition、official evidenceは
       4つのclosed registryに分け、vendor固有policyを分離し、shared behaviorは小さく明示的に保つ。
 - [x] **完全な検証**: Unit、contract、integration、package、performance、end-to-end、error、
-      boundary、accessibility、adversarial safety scenarioと4つのuser storyすべてをtest layoutで扱う。
+      boundary、accessibility、adversarial safety scenario、4つのuser story、公開SC-002 profile/status protocol、
+      FR-039/SC-009のorigin-file-less Source Condition Factをtest layoutで扱う。
 - [x] **文書の言語同等性**: Phase 0/1 artifactにはcanonical英語版と意味的に同等な`*.ja.md`を用意する。
       実装では両言語のuser/Contributor guide、全vendor/Repository/User/Global/surface表、official evidence、
       security limit、diagnosticを更新する。
@@ -160,18 +207,23 @@ opt-in Global sourceを0から3つ（Copilot、Claude、Codexごとに最大1つ
       起動元のcapability認証済みbrowserだけで不活性かつsession内限定で表示し、diagnostic/logへ複製せず、
       別machineへ送信しない。明示的に要求されたliteral sourceをmasking/redactionで変更することはしない。
 - [x] **参加しやすさ**: 単一package setup、再現可能なpinned tooling、客観的期待結果、keyboard-first
-      workflow、actionable error、自動・manual accessibility gateで参加の障壁を抑える。
+      workflow、actionable error、自動・manual accessibility gateで参加の障壁を抑える。Maintainer-owned release studyは
+      必要性、accountable owner、funding、support、privacy、accessibility、rerun policyを公開し、通常のcontributorへ
+      recruitmentまたはreview義務を移さない。
 
 ### 設計後の再確認
 
 Data modelはphysical file、candidate provenance、documentation status、runtime applicability factを分離する。
 HTTP contractは警告gate後の明示的なdetail/comparison requestにだけ記述された完全なsourceを返し、masking/reveal
-workflowを持たず、環境変数参照を解決しない。Matcher contractは明示的staticまたはvendor-specific one-edge
+workflowを持たず、環境変数参照を解決せず、維持管理するclosedなpresentation allowlistに含まれるmetadata fieldと
+relationship kindだけをemitする。Matcher contractは明示的staticまたはvendor-specific one-edge
 derived candidateだけを許可し、relationship、component、vendor locator、excluded inputはread boundaryを
 拡張できない。Quickstartは全stable behavior/rule/strategy/source ID、official-source drift review、Repositoryの
 `./` grammarとbare `**/` rejection、必須品質gate、4つのend-to-end storyを扱う。Monacoはclient-only、
 same-origin、bounded、model lifetime scopeとし、固有diff engineでdependency重複を避け、exact authored metadata比較を
-明示的に保つ。Project-owned browser launcherによりshellを含む`open` packageを除去し、package gateはroot tarballと
+明示的に保つ。Project-owned browser launcherによりshellを含む`open` packageを除去し、許可する唯一のproduct child
+processを、調査対象content/path、authored value、user command、environment-selected handlerを受け取らない固定startup
+OS helperへ限定する。Package gateはroot tarballと
 exactなinstall済みproduction closureのJavaScript-only application code、lifecycle/build/download path、selector、
 native/binary artifactをauditする。Third-party development/test toolingはpublished FR-038 boundary外のままとする。
 Node.js-onlyの検証制約は、active mutator/platformの残存riskと、憲章が求める将来の
@@ -299,6 +351,7 @@ tests/
 ├── package/
 ├── performance/
 ├── e2e/
+├── usability/
 └── fixtures/
     ├── conformance/
     │   ├── vendor-behaviors.json
@@ -314,6 +367,7 @@ scripts/
 ├── clean-build-output.mjs
 ├── assemble-server-manifest.mjs
 ├── build-static-manifest.mjs
+├── build-production-graph.mjs
 ├── verify-package-files.mjs
 └── check-official-sources.ts
 
@@ -325,9 +379,12 @@ bin.mjs
 package.json
 pnpm-lock.yaml
 nuxt.config.ts
+tsconfig.json
+eslint.config.js
 tsdown.config.ts
 playwright.config.ts
 vitest.config.ts
+.gitignore
 ```
 
 **構成判断**: UIとCLIを同時にrelease/version管理するため、単一packageの`app`/`src`/`shared`分離を
@@ -364,7 +421,7 @@ closedな`dist/manifests/static-assets.json` inventoryと正確なCSP hashを書
 `check:official-sources`だけをnetwork有効のevidence-drift commandとして文書化する。`src/cli.ts`とparser-worker
 entry、`tsdown.config.ts`、assembly script、これらpackage scriptはfoundation prerequisiteであり、存在する前に
 build、package、manifest quality gateを配置しない。
-Production `dependencies`はexact-version leaf setの`cac`、`yaml`、`jsonc-parser`、`smol-toml`だけとし、`open`を
+Production `dependencies`はexact-version leaf setの`gunshi`、`yaml`、`jsonc-parser`、`smol-toml`だけとし、`open`を
 全dependency sectionとproduction lock closureから除外する。Nuxt/Vue/Vite/tsdown、Monaco、Playwright、その他
 build/test toolingはdevelopment-onlyとし、assemble済みproduct outputをclosed manifestで検証する。
 
@@ -435,12 +492,14 @@ production dependency/artifactは明示reviewまでfailする。
   報告した場合、layerは`safe-fs-boundary-unverifiable`でboundaryまたはcandidateを拒否し、推測しない。
   Root-level failureはsource attemptをabortし、candidate-level failureには上限付きdiagnostic recordだけを残してよい。
 - Pure Node.jsはdirectory-handle-relative openや`RESOLVE_BENEATH`相当のatomic operationを公開しないため、上記
-  checkはpath check間にroot、ancestor、final entryを差し替えられるactive adversarial processに対するkernel-enforced
-  containmentを証明できない。またNodeだけでは全Windows reparse tagや全mount transitionをportableに識別できず、
+  checkはpath check間にrootまたはancestorを差し替えるactive adversarial process、ならびに有効な`O_NOFOLLOW`を
+  利用できないNode.js/platform combinationでfinal entryを差し替えるprocessに対するkernel-enforced containmentを
+  証明できない。またNodeだけでは全Windows reparse tagや全mount transitionをportableに識別できず、
   same-device bind mountとNodeが報告しないreparse metadataはtest proof外の明示的なplatform limitationとして残る。
-  このreleaseのrace threat modelはimplementationが検出した通常の同時編集とその他raceを対象とし、検出した
-  全caseをfail closedにする。Active adversarial filesystem mutatorは明示的にscope外とし、test resultをより強いcontainmentの証明と
-  記述してはならない。具体的解消pathは、将来のNode handle-relative APIが利用可能になった時点で採用するか、
+  このreleaseのrace threat modelは通常の同時編集、検出可能な全change、有効な`O_NOFOLLOW`によるfinal-component
+  defenseを対象とし、検出した全caseをfail closedにする。Active source-root/ancestor replacementと、有効な
+  `O_NOFOLLOW`を利用できない場合だけのfinal-component replacementを明示的にscope外とする。Test resultをより強い
+  containmentの証明と記述してはならない。具体的解消pathは、将来のNode handle-relative APIが利用可能になった時点で採用するか、
   threat model拡張前にscanをOS強制のread-only snapshot/sandbox内へ置くことである。
 - 4つのregistryは1つのreference graphとしてvalidateするが、与えるauthorityは異なる。Vendor behavior recordは
   upstream lookupを記述するだけでI/Oを認可せず、static/bounded-derived Inspector ruleだけがreadを認可し、
@@ -511,8 +570,9 @@ production dependency/artifactは明示reviewまでfailする。
   decoded valueで置換せず、環境変数参照の解決、credential detection、masking、redactionを行わない。
 - Node hostは`node:http`、小さなstatic MIME table、URL fragmentで渡すrandom 256-bit capability、
   厳密なHost/Origin check、CORSなし、API responseの`Cache-Control: no-store`、restrictive CSPを使う。
-  CLI import前にproject-owned `bin.mjs`が両closed manifestと全listed static/server hashを検証し、それ以前にhostを
-  bindさせない。CSPはsame-origin scriptとNuxt
+  CLI import前にproject-owned `bin.mjs`がpacked `engines.node` stringが正確に`^24.11.0 || ^26.0.0`であること、
+  `process.versions.node`がその展開済みrange内であること、両closed manifest、全listed static/server hashを検証する。
+  Range外runtimeは固定されたactionable errorで終了し、それ以前にhostをbindさせない。CSPはsame-origin scriptとNuxt
   executable inline bootstrapの正確なbuild-recorded SHA-256だけを許可し、inline executable attribute、eval、
   nonce、external/blob workerを禁止し、inline style permissionはMonaco layout/theme outputだけに残す。
   API payloadはcaller指定filesystem pathではなくIDを使用する。Capabilityはmemory-onlyで、fragment削除後の
@@ -532,7 +592,9 @@ production dependency/artifactは明示reviewまでfailする。
   `TMPDIR`、`LANG`、`LC_ALL`、Linuxが`HOME`、`DISPLAY`、`WAYLAND_DISPLAY`、`XDG_CURRENT_DESKTOP`、`DESKTOP_SESSION`、
   `DBUS_SESSION_BUS_ADDRESS`、`XDG_RUNTIME_DIR`、`LANG`、`LC_ALL`とする。`BROWSER`、`NODE_OPTIONS`、`NODE_PATH`、その他environment value、inspected value、
   extra argvを除外する。OS helperはlisted desktop/session ambient valueをconsumeできるが、Inspectorはそこからhandlerを
-  選ばない。Package-owned/user-supplied shell helper、shell command string、packaged platform helperは禁止する。固定OS提供
+  選ばない。HelperはnavigationをOS default handlerへ委譲するだけでbrowser family/versionを選択・検証せず、spawn成功を
+  compatibility evidenceとしない。そのhandlerがrelease-certification baseline外の場合、表示済みURLと`--no-open`によって
+  certified browserでmanual openできる。Package-owned/user-supplied shell helper、shell command string、packaged platform helperは禁止する。固定OS提供
   `xdg-open`はpackage payload外で、引き続き`shell: false`でinvokeする。Terminalのlaunch line 1件だけを意図したcapability表示とし、
   operational logへcopyしない。
 - Browserはinert DTOを受け取り、完全なsourceは機密content警告後の明示的なdetail/comparison requestでだけ受け取る。
@@ -624,8 +686,8 @@ diagnostic/logging、review要件を免除せず、
 | 上限付き`lstat`/`realpath`/`open`/`FileHandle.stat`の反復検証とsame-handle read | 通常の同時変更をbyte受理前に検出し、identity、metadata、canonical containmentが変化したresultを破棄する | 直接の`readFile(path)`やglob-only traversalにはgeneration-bound authorization、identity一致、post-read race detectionがない |
 
 **残存riskと解消path**: Node.jsではpath validationと`open`が1つのatomic kernel operationではないため、十分な
-権限を持つactive mutatorが検出不能なroot/ancestor/final-entry replacement raceに勝つ可能性がある。承認時は
-そのactorをscope外と
-扱い、current checkをcontainment proofと呼んではならない。Threat modelを拡張するには、atomicなbeneath/no-follow
+権限を持つactive mutatorが検出不能なroot/ancestor replacement race、または有効な`O_NOFOLLOW`を利用できない場合の
+final-entry replacement raceに勝つ可能性がある。承認時はそのcaseだけをscope外として扱い、current checkをcontainment
+proofと呼んではならない。Threat modelを拡張するには、atomicなbeneath/no-follow
 semanticsを持つ将来のNode directory-relative API、またはscan rootを囲むOS強制のread-only snapshot/sandboxを
 導入し、security reviewとadversarial test planを更新する必要がある。

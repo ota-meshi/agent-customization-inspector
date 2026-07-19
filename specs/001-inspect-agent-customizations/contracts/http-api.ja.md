@@ -13,8 +13,9 @@ executable contentを受け付けるendpointはない。
 ## Host/capability要件
 
 1. Processは`127.0.0.1`のephemeral portへbindする。初期リリースにはhost overrideがなく、`0.0.0.0`、
-   LAN address、Unix socketへbindしない。Bind前にpackage version、closedなstatic/server manifest、それらが
-   listする全assetを検証して、全inspected-source operationに使う中央集約したNode.js filesystem serviceを
+   LAN address、Unix socketへbindしない。Bind前にpacked `engines.node`が正確に`^24.11.0 || ^26.0.0`であること、
+   実行中Node.js versionがその展開compatibility range内にあること、package version、closedなstatic/server manifest、
+   それらがlistする全assetを検証して、全inspected-source operationに使う中央集約したNode.js filesystem serviceを
    初期化する。Package assetがmissing、malformed、inconsistent、またはfilesystem serviceが利用不能なら、
    HTTP session開始前にfixed actionable CLI errorで終了する。Project packageとproduction dependencyのtarball
    payload内にある全authored application code/executable codeはJavaScriptとする。生成HTML shell、CSS、JSON
@@ -42,6 +43,9 @@ executable contentを受け付けるendpointはない。
    `BROWSER`、`NODE_OPTIONS`、`NODE_PATH`、全inspected value、その他environment value、environment由来または追加argv
    elementは渡さない。Helper missing/nonzero、spawn error、unsupported platformは固定warningだけを
    出し、serverと表示済みfallback URLを残す。
+   HelperはOS default browserへ委譲するだけで、そのversionを選択も検証もしない。Spawn成功はbrowser compatibility
+   evidenceではない。自動release certificationはPlaywright 1.61.1がpinする正確なrevisionを使用し、
+   `--no-open`と表示URLをmanual certified-browser fallbackとする。
 3. FragmentはHTTP serverへ届かない。SPAは1回だけ読み、`history.replaceState`で削除し、memory内だけに
    保持し、全`/api/v1` requestへ`Authorization: Bearer <capability>`を送る。Capabilityをcookie、query
    string、`localStorage`、`sessionStorage`、IndexedDB、service worker、その他durable/browser-managed
@@ -152,7 +156,7 @@ SessionSnapshot
 ├── sources[]
 │   ├── sourceId, kind, tool, enabled, status, generation
 │   ├── root { displayRoot, origin }
-│   ├── conditionFacts[] { tool, ruleId, affectedRuleIds, behaviorRefs, strategyRefs,
+│   ├── conditionFacts[] { tool, surface, ruleId, affectedRuleIds, behaviorRefs, strategyRefs, sourceRefs,
 │   │                      condition { key, status, reasonCode, basis } }
 │   └── progress null | { phase, visitedEntries, candidateFiles, readBytes, diagnosticCount, queuedAt, startedAt }
 ├── files[]
@@ -163,8 +167,12 @@ SessionSnapshot
 
 各Sourceは正確に1つのrootを持つ。Repository Sourceは`tool: null`とし、sessionはGlobal Sourceを0〜3個、
 `tool: codex`、`tool: claude`、`tool: copilot`ごとに最大1個持つ。Global rootを別Source内のboundaryとして
-表現しない。Top-levelの`snapshotState`は`current`または`stale-after-fatal-rescan`とする。Fatalな明示rescan
-だけがaffected Sourceの`staleFailures` entryと予約済みdiagnosticを追加または置換し、別Sourceの両方は共存する。
+表現しない。
+各`conditionFacts` entryはevidence-linkedでorigin-file-lessなSource Condition Factであり、`files`とrecognitionから
+分離する。Physical/synthetic file、file ID/path/text、comparison target、relationship origin、local/hosted read、
+network requestを作成できず、未観測の現在stateはconditionalまたはunavailableのままにする。
+Top-levelの`snapshotState`は`current`または`stale-after-fatal-rescan`とする。Fatalな明示rescanだけがaffected
+Sourceの`staleFailures` entryと予約済みdiagnosticを追加または置換し、別Sourceの両方は共存する。
 Successfulなcompleteまたはcontract済みpartial scanがclearするのはrefreshしたSourceのentryと予約済みdiagnosticだけであり、
 別Sourceのcommitは両方を保持し、Global disableは除去するSourceの両方をclearする。Arrayがnon-emptyの間だけ
 `snapshotState`はstaleである。自動初回Repository failureと初回Global-enable failureは`staleFailures` entryを作らず、
@@ -587,9 +595,9 @@ Status: `200`。
   検出した場合はbyte buffer全体を破棄してfail closedにする。必要なmetadataまたはcanonicalizationがunusableなら
   `safe-fs-boundary-unverifiable`をemitしてcandidateを拒否し、rootまたは共有ancestorがunverifiableならsourceを
   拒否する。
-- Public Node.js APIにはportableなdirectory-handle-relative openがない。`O_NOFOLLOW`が存在しないか有効でない場合を
-  含め、check間にancestorまたはfinal componentを置換するactive adversarial processは初期リリースのthreat model外
-  とする。通常の同時editと全detectable raceはscope内で、全byteをdiscardする。Same-device bind mount、報告されない
+- Public Node.js APIにはportableなdirectory-handle-relative openがない。Check間にsource rootまたはancestorを置換する
+  active adversarial processは全platformで初期リリースのthreat model外とし、final-component replacementも有効な
+  `O_NOFOLLOW`が存在しない場合だけscope外とする。通常の同時editと全detectable raceはscope内で、全byteをdiscardする。Same-device bind mount、報告されない
   reparse behavior、Node.jsから利用不能なその他のOS semanticsは文書化したplatform limitationであり、absoluteな
   containment guaranteeではない。
 
@@ -614,6 +622,9 @@ Status: `200`。
    surrogate、combining sequence、通常BMP textにより、`SourceTextRange`がUTF-16 `String.prototype.slice` offsetを使い、
    UTF-8 limitを別に保つことを証明する。同じlogical occurrenceはmetadata/relationship/derivation間でidentical spanを
    reuseできるが、別occurrenceのpartial/nested/crossing overlapはrecognitionをfailさせる。
+   返却する全metadata tuple `(tool, kind, fieldId)`とrelationship tuple
+   `(tool, kind, relationship kind)`は、維持管理するpresentation allowlistに含まれなければならない。Unknownなauthored
+   keyとreferenceは完全な`sourceText`からだけ利用可能とし、推論したmetadataまたはrelationshipを作らない。
    固定Codex default-hook fixtureは
    `targetOrigin: documented-default`、null `authoredTarget`、明示的な
    documented-default labelを返し、explicit manifest hookは`targetOrigin: authored`とexact occurrenceを返す。
@@ -699,13 +710,15 @@ Status: `200`。
    changeでbyteをpublishしないことを証明する。報告されたerror、ambiguity、unusable metadata/canonicalizationは
    `safe-fs-boundary-unverifiable`を返す。観測不能なOS behaviorはplatform limitationとして記録し、threat model外の
    active-adversary raceに対するproofとして数えない。
-10. Static loaderはoversized/malformed/extra-key/duplicate manifest、symlink/non-regular asset、unexpected file、
+10. Bootstrapは変更されたpacked `engines.node` contract、または
+    `>=24.11.0 <25.0.0 || >=26.0.0 <27.0.0`外の実行Node.js versionをCLI import/bind前に拒否する。Static loaderは
+    oversized/malformed/extra-key/duplicate manifest、symlink/non-regular asset、unexpected file、
     path/MIME/size/hash mismatch、relative/external executable URL、`<base>`、nonce、executable attribute、未記録inline
     scriptをbind前に拒否する。BuildはNuxtの固定`200.html`/`404.html`だけを要求後に除去し、それ以外の
     non-`index.html` HTML fileを拒否する。Packed file listは正確なnpm allowlistと一致する。Build/package
     verificationはcleanな`.output`/`.build`/`dist` treeから開始し、`dist`を2 manifestとlisted static/server
     recordだけにrecursive matchさせ、stale outputを拒否する。
-11. Package testはexact production dependencyを`cac`、`yaml`、`jsonc-parser`、`smol-toml`とし、`open`が全dependency
+11. Package testはexact production dependencyを`gunshi`、`yaml`、`jsonc-parser`、`smol-toml`とし、`open`が全dependency
     section/lock closureにないことを要求する。全project/dependency tarball payloadとauthored application-code fileは
     JavaScriptまたは許可済みdeclarative artifactでなければならず、package-owned shell helperを拒否する。Isolatedな
     scripts-disabled/omit-dev installと、その後のnetwork-disabled
@@ -718,4 +731,6 @@ Status: `200`。
     environment allowlist、terminal表示1回、`--no-open`でchild 0件、missing/nonzero/unsupported helper時の固定warning付き
     継続をassertする。Malicious `BROWSER`、`NODE_OPTIONS`、`NODE_PATH`、inspected/env-supplied argvはcommandを
     選択・変更できない。Windowsとその他unsupported platformはchildを0件とし、固定manual-URL warningを出す。Allowlist済みambient desktop/session valueはOS helperへ
-    到達してよいがInspector handler overrideにはならない。
+    到達してよいがInspector handler overrideにはならない。Testはdefault-handler delegationとcertificationを区別し、helper
+    成功がbrowser versionを証明しないこと、release evidenceがpin済みPlaywright revisionまたは`--no-open` manual fallbackを
+    使用することを確認する。

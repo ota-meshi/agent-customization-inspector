@@ -267,10 +267,10 @@ inputをsatisfiedとしてdefaultにしてはならず、UIはcandidateをsemant
   containment failure、identity、type、size、関連timestampの変化を検出した場合はbyte buffer全体をdiscardして
   fail closedにする。Boundaryを検証不能な場合は`safe-fs-boundary-unverifiable`、その他の検出済みraceは該当する
   boundedかつsecret-safeなdiagnosticを返す。
-- Public Node.js APIにはportableなdirectory-handle-relative openがない。そのためactiveなparent-directory
-  replacementに限らず、activeなadversarial processはcheck間にancestorまたはfinal componentを置換でき、
-  `O_NOFOLLOW`が存在しないか有効でない場合を含め、cross-platformなkernel-enforced containment guaranteeはない。
-  このactive adversarial mutationは初期リリースのthreat model外とする。通常の同時editと全detectable raceは
+- Public Node.js APIにはportableなdirectory-handle-relative openがない。そのためactive adversarial processがcheck間に
+  source rootまたはancestorを置換する場合、全platformでcross-platformなkernel-enforced containment guaranteeはない。
+  Final componentの置換は、有効な`O_NOFOLLOW`が存在しない場合だけ初期リリースのthreat model外とする。
+  通常の同時editと全detectable raceは
   scope内であり、fail closedにして全byteをdiscardしなければならない。Same-device bind mount、報告されない
   reparse behavior、Node.jsが公開しないその他のOS semanticsは明示的なplatform limitationであり、absoluteな
   containment guaranteeとして表現しない。

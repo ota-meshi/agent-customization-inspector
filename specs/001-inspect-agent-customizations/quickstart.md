@@ -9,12 +9,17 @@ them.
 
 ## Prerequisites
 
-- Node.js satisfying the `package.json` `engines` range
+- Node.js satisfying the exact `package.json` compatibility contract
+  `^24.11.0 || ^26.0.0` (`>=24.11.0 <25.0.0 || >=26.0.0 <27.0.0`); Node.js
+  24.18.0 is the development/build baseline
 - pnpm satisfying the repository `packageManager` declaration
 - No additional compiler or platform-specific build workspace is required;
   inspected-source access is implemented by packaged Node.js modules
-- A Playwright-supported Chromium installation created by the project setup command
-- A local browser capable of reaching `127.0.0.1`
+- The exact Chromium, Firefox, and WebKit revisions installed by Playwright 1.61.1 through
+  the project setup command; these pinned revisions are the reproducible automated browser-
+  certification baseline, not an exhaustive list of browsers a user may run
+- A browser capable of reaching `127.0.0.1`; for release evidence, use one of those certified
+  revisions, including when the OS default handler selects some other browser
 
 Confirm the toolchain:
 
@@ -24,15 +29,21 @@ pnpm --version
 ```
 
 Expected: both commands satisfy the checked-in package declarations. Performance evidence
-must not publish the reference environment's concrete machine, operating-system, hardware,
-or runtime details. Do not change major toolchain versions until Nuxt/Vue compatibility
-recorded in [research.md](research.md) changes.
+names the checked-in SC-002 profile ID and fixture digest and publishes the actual profile
+values used, omitting only personal identifiers and absolute user paths. Do not change major
+toolchain versions until Nuxt/Vue compatibility recorded in [research.md](research.md)
+changes.
 
 ## Install and prepare
 
+Dependency revalidation is a planning gate. If it changes any approved package or version,
+stop before editing package or configuration files, synchronize every dependency-baseline-
+bearing English/Japanese pair in `research`, `plan`, `quickstart`, and `tasks`, and rerun
+`/speckit-plan` and `/speckit-tasks`. Do not continue with a second local dependency baseline.
+
 ```bash
 pnpm install --frozen-lockfile
-pnpm exec playwright install chromium
+pnpm exec playwright install chromium firefox webkit
 pnpm run build
 ```
 
@@ -52,10 +63,11 @@ Expected:
   into `dist/`.
 - `bin.mjs` is executable and starts with the exact BOM-free, LF-terminated first line
   `#!/usr/bin/env node`. Its bootstrap has no static import of `dist/cli.mjs`: it first
-  validates the installed package version, both static/server manifests, and every listed
-  asset's exact path, regular-file type, size, and digest. Only after all checks succeed
-  does it perform the dynamic import of `dist/cli.mjs`; only that imported CLI may bind the
-  server.
+  validates that the packed `engines.node` string is exactly `^24.11.0 || ^26.0.0`, that the
+  running Node.js version is inside its expanded range, the installed package version, both
+  static/server manifests, and every listed asset's exact path, regular-file type, size, and
+  digest. Only after all checks succeed does it perform the dynamic import of `dist/cli.mjs`;
+  only that imported CLI may bind the server.
 - `package.json.bin` is exactly `{ "agent-customization-inspector": "bin.mjs" }`, while
   `main`, `module`, and `exports` are absent.
 - A malformed or inconsistent manifest, package-version mismatch, missing/unexpected asset,
@@ -72,7 +84,7 @@ Expected:
   payloads and are the only limited interoperability exception: each maps one exact
   declared `package.json.bin` target to audited Node JavaScript, forwards argv only, and
   adds no input or application logic. Package-owned shell helpers and unexpected shims are
-  rejected. The exact production dependencies are the leaf packages `cac`, `yaml`,
+  rejected. The exact production dependencies are the leaf packages `gunshi`, `yaml`,
   `jsonc-parser`, and `smol-toml`; `open` is absent.
 - Build output contains no fixture, raw customization text, Global content, cache, or
   source-map path that exposes an inspected machine.
@@ -92,7 +104,10 @@ Expected:
 - The CLI prints the closed-grammar capability URL exactly once before any browser attempt
   and never binds a non-loopback address. With `--no-open`, it creates no child process.
 - The Repository source root shown by the browser is the `all-supported` fixture itself.
-- Within 1 second the UI shows scan progress or a meaningful status.
+- Within 1 second the UI visibly renders and exposes to assistive technology a status for the
+  current scan request that says queued, names an active phase, or reports complete, partial,
+  or failed (with a practical next step for failure). A generic spinner/loading label,
+  unchanged control, acknowledgement without scan state, or earlier-scan status does not count.
 - The first complete inventory appears within the documented limits and contains no file
   outside the frozen path contract.
 - Stopping the process destroys the server session. On a visible authorized page, a failed
@@ -116,13 +131,22 @@ and exactly one fixed helper: `/usr/bin/open` on macOS or `/usr/bin/xdg-open` on
 environment is limited to macOS `HOME`, `TMPDIR`, `LANG`, `LC_ALL`; or Linux `HOME`, `DISPLAY`,
 `WAYLAND_DISPLAY`, `XDG_CURRENT_DESKTOP`, `DESKTOP_SESSION`,
 `DBUS_SESSION_BUS_ADDRESS`, `XDG_RUNTIME_DIR`, `LANG`, `LC_ALL`. `BROWSER`, `NODE_OPTIONS`, `NODE_PATH`, inspected
-values, other environment values, and extra environment-derived argv are omitted.
+content or paths, authored values, user-supplied commands, environment-selected handlers,
+other environment values, and extra environment-derived argv are omitted. This fixed startup
+helper is the sole product-initiated child process permitted in the initial release.
 Windows and every other platform deliberately skip automatic opening in this release because
 portable Node supplies no independent trusted system-helper boundary. Missing/nonzero helpers
 and unsupported platforms leave the server running with a fixed manual-URL warning. If automatic browser
 opening fails, the already printed local URL is sufficient. There is no repository
 argument, ancestor-root discovery, remote-host flag, static-export command, or MCP command
 in the initial release.
+
+The fixed helper delegates the URL to the operating system's default browser; it neither
+selects nor verifies a browser version, and helper success is not compatibility evidence.
+For deterministic certification, use `--no-open` and paste the printed URL into one of the
+three pinned Playwright revisions. Participant-study evidence records the default handler and
+counts the run only when that handler is a certified revision; otherwise use the same manual
+certified-browser fallback before enrollment.
 
 ## Automated quality gates
 
@@ -150,10 +174,14 @@ Expected:
 - Contract tests cover every API status/security rule and every stable behavior, inspection-
   rule, composition-strategy, and official-source ID, including positive, one-rule
   near-miss, derived, relationship-only, excluded, multi-provenance, multi-tool, and Global
-  cases.
+  cases. They also prove every returned metadata field and relationship kind is present in
+  the maintained closed presentation allowlist for its supported type, while unknown
+  authored keys and references remain available only in complete source text.
 - Integration/security tests prove source containment and zero customization-derived
   execution, child process, MCP connection, outbound request, dynamic evaluation, or
-  source mutation; the separately tested startup launcher never receives inspected content.
+  source mutation; the separately tested startup launcher never receives inspected content,
+  an inspected path, an authored value, a user-supplied command, or an environment-selected
+  handler.
 - Package tests build a tarball, inspect its contents, install it into an isolated fixture,
   load the packaged Node.js filesystem service and fixed packaged parser Worker URL, and
   launch the exact `npx` entry without relying on the working tree or a runtime download.
@@ -164,8 +192,11 @@ Expected:
   before both manifests and every listed asset pass verification.
 - The unchanged deterministic performance fixture with 100,000 entries and 500 in-limit
   customization files is measured in exactly 10 fresh Inspector processes on the same
-  maintainer-designated current local reference environment. At least 9 runs show status
-  within 1 second and complete within 10 seconds under the timer/cache protocol below.
+  versioned checked-in profile. At least 9 runs show a qualifying current-request status
+  within 1 second and complete within 10 seconds under the timer/cache protocol below. After
+  each complete inventory becomes operable, perform one standardized filter action and one
+  standardized item-selection action; at least 9 of the same 10 runs keep both dispatch-to-
+  visible-operable-result measurements below 100 ms.
 - Browser tests cover all four user stories and axe reports no critical applicable WCAG
   2.2 AA violation.
 - Documentation tests verify links, commands, the allowlist version, diagnostic codes,
@@ -290,7 +321,11 @@ Verify:
 12. Source-level incompleteness and product-versus-inspector symlink-divergence fixtures
    identify the tool, explaining non-candidate rule, affected candidate/relationship rules,
    and fixed reason code for every source-level fact; matching provenance/edge conditions
-   project it without losing the canonical source fact.
+   project it without losing the canonical source fact. Origin-file-less Source Condition
+   Facts additionally retain the correct Source, tool, product surface, condition or
+   unavailable state, scope, uncertainty, and evidence, while creating no physical or
+   synthetic file, file ID, Source-relative Path, authored text, comparison target,
+   relationship origin, local or hosted read, or network request.
 
 ## User story validation
 
@@ -536,6 +571,15 @@ four-field response form, and predefined ground truth. Enroll exactly 20 people 
 and a command-line interface in normal development work but have never used the Inspector
 or contributed to it. Use the same cohort in one session, with SC-001 before SC-006.
 
+Before enrollment, the maintainer team publishes a bilingual plan naming the accountable
+study owner, recruitment and compensation-funding owner, moderators and reviewers, schedule
+and support contact, consent/privacy and anonymized-retention procedure, supplied repository
+and equipment/session support, and accessibility accommodations. Participants need no
+personal repository, paid product, or personal expenditure. Ordinary contributors do not
+recruit, fund, moderate, or review participants. Missing resources block the initial-release
+claim, not review of an otherwise conforming contribution; repeat the study only after a
+material change to a primary workflow, supplied guidance, fixture, or scoring rubric.
+
 - A moderator may repeat the applicable prompt verbatim and may not provide command,
   navigation, or interface-operation hints.
 - After enrollment, every equipment, environment, or product failure counts as an
@@ -554,7 +598,11 @@ or contributed to it. Use the same cohort in one session, with SC-001 before SC-
 - Record zero critical usability issues across primary workflows. Critical means either
   preventing workflow completion without prohibited assistance or causing unintended
   execution, inspected-source mutation, an MCP/network connection, or exposure of
-  inspected content to another machine.
+  inspected content to another machine. A safety event is automatically critical. Only a
+  suspected product-caused workflow blocker that is not a safety event receives two
+  independent fixed-rubric classifications; disagreement counts as critical, with no third
+  adjudicator. All 20 participants attempt the standardized comparison and Global-consent
+  tasks after SC-006 so the recorded observations cover all four primary workflows.
 
 ### SC-002 performance measurement
 
@@ -563,16 +611,24 @@ matching customization files within the documented limits before measurement, th
 unchanged for all runs. Fixture construction/setup and `npx` download, installation, and
 process startup are outside both timers.
 
-Run exactly 10 measurements on the same maintainer-designated current local reference
-environment. End the Inspector after each run and start a fresh process for the next; do
+Run exactly 10 measurements on the same versioned profile published at
+`tests/performance/sc002-reference-profile.json`. It identifies the exact OS image/version,
+processor architecture/model and logical count, memory, storage medium/filesystem, exact
+runtime, benchmark command/configuration, and deterministic fixture manifest/digest. End the
+Inspector after each run and start a fresh process for the next; do
 not reuse application-memory state or the previous snapshot. Do not deliberately clear or
 reset the operating-system filesystem cache—the measurements use its natural evolving
 state. Start both timers when the browser submits the scan request. Stop the one-second
-timer when progress or meaningful status first renders, and stop the ten-second timer when
-the complete inventory renders with its primary list controls operable. At least 9 runs
-must meet both thresholds individually. Record the per-run outcomes and aggregate result
-without publishing concrete machine, operating-system, hardware, or runtime details for
-the reference environment.
+timer only when the qualifying current-request status defined above is visibly rendered and
+exposed to assistive technology, and stop the ten-second timer when
+the complete inventory renders with its primary list controls operable. Then perform one
+standardized filter action and one standardized item-selection action. Time each interaction
+from browser input dispatch until its filtered results or selected-state feedback is visibly
+rendered and operable. At least 9 runs must meet both scan thresholds individually and keep
+both interactions below 100 ms. Record the per-run outcomes and aggregate result with the
+profile ID, fixture digest, and actual environment values, omitting only personal identifiers
+and absolute user paths. A profile-field change starts a new, non-comparable measurement set;
+the result is profile-specific rather than a portable performance guarantee.
 
 ## Boundary and resource-limit validation
 
@@ -675,10 +731,11 @@ root and ancestor checks, the ordered candidate sequence, and `stat()` on the sa
 handle. Any detectable change drops the whole byte buffer and publishes no outside
 sentinel.
 
-Public Node.js APIs do not provide a portable directory-handle-relative open. When
-`O_NOFOLLOW` is unavailable or ineffective, the same lstat/realpath/open/fstat/post-check
-sequence remains mandatory, but an active adversarial process replacing an ancestor or
-final component between checks is outside the initial-release threat model. Ordinary
+Public Node.js APIs do not provide a portable directory-handle-relative open. The same
+lstat/realpath/open/fstat/post-check sequence remains mandatory everywhere. An active
+adversarial process replacing the source root or an ancestor between checks is outside the
+initial-release threat model on every platform; replacement of the final component is also
+outside only where effective `O_NOFOLLOW` is unavailable. Ordinary
 concurrent edits and every detectable race remain in scope and fail closed. The packed
 tarball repeats the same suite, and test-only barriers are absent from production exports.
 
@@ -752,7 +809,7 @@ the exact `package.json.files` entries `bin.mjs`, `dist`, `README.md`, `README.j
 `LICENSE`; the expanded `dist/**` contents must equal the two manifests and their listed
 files. Inspect the exact `bin` mapping and absence of `main`/`module`/`exports`, license
 notices, exact shebang/executable mode, strict static/server manifests, and the published
-README pair. The exact production dependencies are `cac`, `yaml`, `jsonc-parser`, and
+README pair. The exact production dependencies are `gunshi`, `yaml`, `jsonc-parser`, and
 `smol-toml`; `open` must be absent from every dependency section and the production lock
 closure.
 
@@ -777,13 +834,22 @@ outside that published boundary and is audited separately.
 Launcher tests must cover the exact macOS/Linux helpers, URL validation, `shell: false`, the URL
 as the sole argv item, one URL line before the attempt, zero child processes under
 `--no-open`, and fixed-warning/manual-URL fallback for a missing, nonzero, or unsupported
-helper. They assert the exact minimal per-OS environment allowlists stated above and prove
+helper. They also cover Gunshi's non-binding help/version, strict unknown-option rejection,
+explicit positional/rest rejection, fixed bounded nonzero validation failures, awaited
+completion, and root-only import boundary. They assert the exact minimal per-OS environment
+allowlists stated above and prove
 that `BROWSER`, `NODE_OPTIONS`, `NODE_PATH`, inspected values, other environment values, and
 extra argv cannot select or alter a command. Windows and other unsupported-platform fixtures
-assert zero child processes plus the fixed manual-URL warning. `pnpm run test:docs` separately validates all
+assert zero child processes plus the fixed manual-URL warning. Tests also prove that the OS
+helper merely delegates to the default handler and cannot certify its version; the release
+record uses the pinned Playwright revisions, and `--no-open` plus the printed URL is the
+manual certified-browser fallback. `pnpm run test:docs` separately
+validates all
 repository English/Japanese document pairs without publishing the planning set. The same
-tarball must install, launch, and pass the Node.js filesystem security suite on every
-supported OS in the CI matrix.
+tarball must install, launch, and pass the Node.js filesystem security suite across the full
+declared Node.js 24/26 engine ranges on every supported OS. The six exact lower-bound
+OS/architecture jobs are certification samples, while Node.js 24.18.0 is the development/
+build baseline; neither set narrows the declared compatibility range.
 Finally review the complete diff for untested branches, secret exposure, stale official-path
 assumptions, accidental source mutation, and unrelated changes before release.
 

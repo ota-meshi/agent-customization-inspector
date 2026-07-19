@@ -319,10 +319,10 @@ semantically effective.
   boundary uses `safe-fs-boundary-unverifiable`; another detected race yields the applicable
   bounded, secret-safe diagnostic.
 - Public Node.js APIs do not provide a portable directory-handle-relative open. An active
-  adversarial process can therefore replace an ancestor or final component between checks
-  without a cross-platform kernel-enforced containment guarantee, including where
-  `O_NOFOLLOW` is absent or ineffective. Such active adversarial mutation is outside the
-  initial-release threat model. Ordinary concurrent edits and every detectable race remain
+  adversarial process can therefore replace the source root or an ancestor between checks
+  without a cross-platform kernel-enforced containment guarantee on any platform. Replacing
+  the final component is likewise outside the initial-release threat model only where
+  effective `O_NOFOLLOW` is absent. Ordinary concurrent edits and every detectable race remain
   in scope: they must fail closed and discard all bytes. Same-device bind mounts, unreported
   reparse behavior, and other OS semantics that Node.js does not expose remain explicit
   platform limitations and are never represented as an absolute containment guarantee.

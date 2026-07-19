@@ -2,7 +2,7 @@
 
 [English](research.md)
 
-**調査日**: 2026-07-16、2026-07-17再確認
+**調査日**: 2026-07-16、2026-07-18再確認、CLI dependency選択を2026-07-19再確認
 **対象**: 参照architecture、現行互換toolchain、安全なlocal host設計、安全なparseとliteral表示、source/metadata比較、
 bounded scan、公式customization path surface
 
@@ -66,7 +66,7 @@ non-regular pathを拒否する。`package.json.files`は正確に
 `{ "agent-customization-inspector": "bin.mjs" }`とし、library APIがないため`main`、`module`、`exports`を
 省略する。Install script、runtime download、end-user compileを使わない。Runtime packageは正確な
 `dependencies`として宣言し、`npx`に監査可能なversionをinstallさせる。tsdownはproject所有moduleとshared
-contractをbundleし、任意のtransitive packageはbundleしない。Production setはleaf packageの`cac`、`yaml`、
+contractをbundleし、任意のtransitive packageはbundleしない。Production setはleaf packageの`gunshi`、`yaml`、
 `jsonc-parser`、`smol-toml`の正確に4つだけとし、`open`を全dependency sectionとproduction lock closureから
 除外する。
 
@@ -137,17 +137,22 @@ server manifestと全listed server hashを検証してから`cli.mjs`をimport�
 **決定**: `package.json`と`pnpm-lock.yaml`へ正確なversionをpinし、pnpm 11.13.0を使用する。
 「最新」は選択したNuxt/Vue toolchainと互換性がある最新stable versionを意味し、prereleaseや非互換majorを
 意味しない。最初のlockfile作成直前に同じregistry互換性確認を再実行する。
+このcheckはplanning gateとして扱う。選択済みpackageまたはversionが1つでも変わる場合、configuration
+implementation前に停止してcompatibility decisionを再reviewし、dependency baselineを記載する英日両方の
+research、plan、quickstart、task artifactをすべて同期して`/speckit-plan`、続いて`/speckit-tasks`を
+再実行する。Localなpackage/lockfile editで
+第2のdependency baselineを作ってはならない。
 
 | 領域 | 選択version | 理由 |
 |---|---:|---|
-| Node.js | 24.18.0 Active LTS基準 | NuxtはproductionでActive LTSを推奨し、package enginesはsupport対象Node 26+も許可する |
+| Node.js | 24.18.0 LTS development/build基準、engines `^24.11.0 || ^26.0.0` = `>=24.11.0 <25.0.0 || >=26.0.0 <27.0.0` | Node 24/26 range全体のruntime compatibilityを宣言し、release matrixでは各下限をcertifyして他majorを除外する |
 | TypeScript | 6.0.3 | 現行Vue/Volarとtypescript-eslint toolchainがsupportする最新compiler |
 | Nuxt / Vue | 4.4.8 / 3.5.39 | 現行stable release |
 | Vue Router | 5.2.0 | Nuxt 4.4.8の宣言range `^5.1.0`を満たす現行stable release。別router abstractionは追加しない |
 | tsdown | 0.22.8 | 現行stable release。Node 24.11+をsupport |
 | Vite | 7.3.6 | Nuxt 4.4.8が宣言するbuilder range `^7.3.3`内の最新version |
 | pnpm | 11.13.0 | 現行stable package manager |
-| CLI | `cac` 7.0.0 | 小さく現行のESM-compatible leaf dependency。Browser launchは`node:child_process`上のproject-owned TypeScriptとしpackageを追加しない |
+| CLI | `gunshi` 0.37.0 | 現行のruntime dependency 0件のESM CLI framework。Node.js `>=22` engine requirementは宣言済みrangeと互換。Browser launchは`node:child_process`上のproject-owned TypeScriptとしpackageを追加しない |
 | Parser | `yaml` 2.9.0、`jsonc-parser` 3.3.1、`smol-toml` 1.7.0 | 現行stable inert data parser |
 | Source view/diff | `monaco-editor` 0.55.1 | 現行stable read-only source/diff editor。固有diff engineによりclient dependency重複を避ける |
 | Lint | ESLint 10.7.0、`@nuxt/eslint` 1.16.0 | 現行互換stable release |
@@ -159,24 +164,69 @@ server manifestと全listed server hashを検証してから`cli.mjs`をimport�
 **理由**: 選択した集合は、公開済みpeer rangeとbuilder rangeが一致する最新stableの組み合わせであるため、
 未supportのcompilerまたはbundler overrideを強制せず最初の実装を再現できる。
 
+CLIはGunshiのstableなroot `define`/`cli` APIだけを使用する。Negatableな`open` booleanをdefault trueとして
+宣言して`--no-open`を提供し、`cli()`を`strict: true`で呼び出し、host bind前に
+すべてのpositional/rest argumentを明示的に拒否する。非同期resultをawaitし、validation failureをproject-ownedの
+固定された上限付きrendererと明示的な`AggregateError`処理によってnonzero exitへ対応付ける。Built-in help/versionはbindせずreturnする。
+Production entryは`gunshi/agent`、lazy command、custom plugin、experimental parser combinatorをimportしない。
+Gunshiはnpm graph上の1 leafだが、bundle済みinternal argument/plugin/resource codeもpayload、integrity、license、
+import-boundary digestの監査対象とする。Exact pinとこれらのtestによってpre-1.0 API変更riskを有界化する。
+
+監査した0.37.0のregistry tarballはtext-onlyのJavaScript、declaration、JSON、documentation、license file
+34件（unpacked 239,298 byte）で、runtime/optional/peer/bundled dependency、install lifecycle hook、platform
+selector、shell/native/binary/Wasm payloadを含まない。これにより既存Node-only package gateを維持しつつ、
+Gunshiのより大きなbundle済みJavaScript payloadをrelease auditで明示する。
+
+### 有限なrelease-certification行列
+
+**決定**: 宣言済みNode.js 24/26 engine range全体を3つの固定OS/architecture targetでsupportする。Node.js 24.18.0
+development/build baselineの`ubuntu-24.04` x64で1つのplatform非依存tarballをbuildして別のbuild/package smoke checkを
+実行し、同一byteをNode.js `24.11.0`と`26.0.0`に`ubuntu-24.04` x64、`macos-15` arm64、`windows-2025` x64を
+掛け合わせた正確な6つのlower-bound certification jobでinstallする。各release jobで解決されたrunner-image identifierと
+実際のNode versionを記録する。Playwright 1.61.1がinstallする正確なChromium、Firefox、WebKit revisionのそれぞれで、
+primary-workflowとaccessibilityの完全なbrowser suiteをNode.js 24.18.0の`ubuntu-24.04` x64で実行する。これらのbrowser
+revisionはuser browserの網羅的listではなく、再現可能なautomated certification baselineである。OS helperはbrowser
+family/versionを選択・検証せずURLをdefault handlerへ渡す。Helper成功をcompatibility evidenceとせず、表示済みURLと
+`--no-open`をcertified browserのmanual選択fallbackとする。
+
+**理由**: Closedなcertification行列は再現可能で、より広いsemver compatibility contractを誤表示せずrelease完了を
+判定可能にする。各Node majorのsupport下限を使って宣言したengine floorを検査し、同一tarball byteでpackageがplatformに
+より変化しないことを証明する。PinしたPlaywright browser revisionは、OS default handlerがそれを選ぶと主張せず有限な
+automated gateを与える。
+
+**検討した代案**: 無上限の`>=26.0.0` engine rangeは将来のmajorを暗黙に主張するため不採用とした。
+可変な`*-latest` runner labelと特定しないmodern-browser targetは、repository変更なしにrelease denominatorが変化するため不採用とした。
+Chromium-only testは、local launcherが別のbrowser engineを開く可能性があり、productが3つのPlaywright engineで動作することを意図した
+standard browser APIを使用するため不採用とした。
+
 Versionの一次根拠はnpm registryの[Nuxt](https://www.npmjs.com/package/nuxt)、
 [Vue](https://www.npmjs.com/package/vue)、[Vue Router](https://www.npmjs.com/package/vue-router)、
 [tsdown](https://www.npmjs.com/package/tsdown)、
 [TypeScript](https://www.npmjs.com/package/typescript)、[Vite](https://www.npmjs.com/package/vite)、
 [pnpm](https://www.npmjs.com/package/pnpm)、[Monaco Editor](https://www.npmjs.com/package/monaco-editor)、
+[Gunshi 0.37.0 registry metadata](https://registry.npmjs.org/gunshi/0.37.0)、
 [Vitest](https://www.npmjs.com/package/vitest)、
 [Playwright](https://www.npmjs.com/package/@playwright/test)である。Node公式の
 [release status](https://nodejs.org/en/about/previous-releases)と
-[Node 24 archive](https://nodejs.org/en/download/archive/v24)をLTS基準と正確なreleaseの根拠にする。
+[Node 24.18.0 release](https://nodejs.org/en/blog/release/v24.18.0)をLTS基準と正確なbuild releaseの根拠にし、
+[Node 26.0.0 archive](https://nodejs.org/en/download/archive/v26.0.0)を第2のengine floorの根拠にする。GitHub公式の
+[runner-image labels](https://github.com/actions/runner-images#available-images)を3つの固定OS/architecture jobの根拠にする。
 Monaco公式の[v0.55.1 release](https://github.com/microsoft/monaco-editor/releases/tag/v0.55.1)を
 選択stable editor versionの根拠にする。
+Gunshi公式の[setup requirement](https://gunshi.dev/guide/introduction/setup)と
+[declarative/strict CLI guide](https://gunshi.dev/guide/essentials/declarative)を、ここで用いる
+Node/TypeScript互換性とclosedなunknown-option behaviorの根拠にする。
 Safe-filesystem layerはNode built-inの`node:fs/promises`、`node:fs`、`node:path` APIだけを使用するため、
 platform toolchainやruntime package dependencyを追加しない。
-Production `dependencies` setはpin済みleaf packageの`cac`、`yaml`、`jsonc-parser`、`smol-toml`だけとする。
+Production `dependencies` setはpin済みleaf packageの`gunshi`、`yaml`、`jsonc-parser`、`smol-toml`だけとする。
 Nuxt/Vue/Vite/tsdown、Monaco、test toolingは必要outputをclosed product assetへassembleするためbuild/development-onlyとする。
 Lockfileとisolated install済みproduction closureの両方をauditする。
 
 **検討した代案**:
+
+`cac` 7.0.0も互換なruntime dependency 0件のESM parserだが、改訂後のCLI frameworkにはGunshiの
+declarativeかつtypedなcommand定義とstrict validationを採用する。同じ責務を重複させないため、`cac`を
+第2のparserとして残さずproduction baselineから除外する。
 
 調査日時点のupstream stableにはTypeScript 7.0.2とVite 8.1.4もあるが、意図的に選択しない。
 公式[TypeScript 7 announcement](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/)は
@@ -359,10 +409,10 @@ Same-device bind mountとNodeが公開しないreparse metadataは、automated-t
 [Permission Model](https://nodejs.org/docs/latest-v24.x/api/permissions.html#limitations-and-known-issues)と
 [WASI](https://nodejs.org/docs/latest-v24.x/api/wasi.html#security)も不足するfilesystem primitiveの代替ではない。
 
-したがってこのreleaseは検出した通常の同時変更とその他implementation-detectable raceをscope内とし、検出した
-全caseをfail closedにするが、
-path check間にroot、ancestor、final entryを差し替えられるactive adversarial processを除外する。Testは指定した検出動作の証拠で
-あり、そのactorに対するproofではない。Threat model拡張前の具体的解消pathは、atomicなbeneath/no-follow
+したがってこのreleaseは通常の同時変更、全implementation-detectable race、有効な`O_NOFOLLOW`によるfinal-component
+defenseをscope内とし、検出した全caseをfail closedにする。Path check間のactive source-root/ancestor replacementと、
+有効な`O_NOFOLLOW`を利用できない場合だけのactive final-entry replacementを除外する。Testは指定した検出動作の証拠で
+あり、その除外caseに対するproofではない。Threat model拡張前の具体的解消pathは、atomicなbeneath/no-follow
 semanticsを持つ将来のNode directory-relative APIを採用するか、OS強制のread-only snapshot/sandbox内でscanし、
 security reviewを再実行することである。単一bounded serviceはentry/depth/deadline/byte accountingとprogressを
 引き続き集約する。Emitする全file pathはowning Sourceの1つのrootからのcollision-free NFC classification pathとし、
@@ -374,8 +424,8 @@ filesystem operationではraw spellingを保持する。
   post-read validation、complete scan accountingを持たないため不採用。
 - Node Permission ModelやWASIをcontainment proofとみなす案は、documented limitationによりatomic child-open
   semanticsを提供しないため不採用。
-- Pre/post path checkがactive root/ancestor/final-entry replacement attackerを防ぐと主張する案は、validationとopenが別operationの
-  ままであるため不採用。
+- Pre/post path checkがactive root/ancestor replacement attacker、または有効な`O_NOFOLLOW`を利用できない場合の
+  final-entry replacement attackerを防ぐと主張する案は、validationとopenが別operationのままであるため不採用。
 - 現在source内を指すsymlinkの追跡はparent swapとaliasがboundary/identityを複雑にするため不採用。
 - Install時compilerやdownload済みplatform helperを使う案は、packageをNode.jsだけでas-shipped実行するため不採用。
 - 1件のunsafe/changed fileによるscan全体失敗はFR-028に反するため不採用。
@@ -657,25 +707,41 @@ outbound request、MCP connection、child process、dynamic evaluation、source 
   なった時点で終了する。Repository rootへの移動とlaunch timeも含む。SC-001は同じcohortのSC-006より先に行う。
   Moderatorはpromptを同じ文面で読み直すことだけ可能とする。登録済み参加者の機材、環境、product failureは
   timer開始前も含めて不成功とし、参加者を除外または差し替えない。
-- **SC-002**は、内容を変更しないdeterministicな100,000-entry/500-match fixtureを1つ用意し、メンテナーが指定
-  する同じ現在のローカル基準環境で正確に10回の測定runに再利用する。Fixture構築、setup、`npx`
-  download/installation、process startはtimer外とする。両timerはbrowserがscan requestを送信した時点で開始し、
-  1秒以内にvisible progressまたはmeaningful status、10秒以内に完全で操作可能なinventoryを表示する。9回以上が
-  runごとに両方のthresholdを満たす必要がある。各runは新しいInspector processを使い、application-memory stateや
+- **SC-002**は、内容を変更しないdeterministicな100,000-entry/500-match fixtureを1つ用意し、version付きで公開した
+  1つのreference-environment profile上で正確に10回の測定runに再利用する。Checked-in profileは正確なOS image/version、
+  processor architecture/modelとlogical count、memory、storage/filesystem、application runtime、benchmark command/configuration、
+  fixture manifest/digestを記録する。結果には実際のvalueを記録し、personal identifierとabsolute user pathだけを省略する。
+  Profile変更時は直接比較不能な新しいsetを開始する。Fixture構築、setup、`npx` download/installation、process startはtimer外と
+  する。両timerはbrowserがscan requestを送信した時点で開始する。1秒以内に現在のrequestがqueue済みであること、active scan
+  phase名、またはcomplete/partial/failedのいずれかを画面とassistive technologyへ表示し、failureには実用的next stepを含める。
+  Generic spinner、loading label、変化しないcontrol、scan stateのないacknowledgement、以前のrequestのstatusはqualifyしない。
+  10秒以内に完全で操作可能なinventoryを表示する。各runで
+  inventoryが操作可能になった後、標準化されたfilter actionとitem-selection actionを1回ずつ実施し、browserの
+  input dispatchから対応するfiltered resultまたはselected-state feedbackが表示され操作可能になるまでを測定する。
+  9回以上がrunごとに両方のscan thresholdを満たし、両interactionを100ミリ秒未満に保つ必要がある。各runは新しいInspector processを使い、application-memory stateや
   以前のsnapshotを再利用しない。Operating system filesystem cacheは意図的にclearせず自然に変化する状態を使う。
-  結果は基準環境固有であり、repository documentationはその環境の具体的なmachine、operating system、hardware、
-  runtime情報を公開しない。
+  結果はportable guaranteeではなく公開profile固有とする。
 - **SC-006**はSC-001後に同じ20人を以前の結果にかかわらず使用し、同じ指定fileを開いた同一の準備済みInspector
   stateから開始する。Timerはstateの準備完了後に標準化されたpromptを提示した時点で開始する。Standardized
   response formはsource、recognizing tool、file type、effective behaviorがcertainかconditionalかの4項目を必須と
   し、2分以内に全項目がpredefined ground truthと一致した場合だけ成功とする。提供されたproduct guidanceと
-  SC-001のmoderator policyだけを使って18人以上の成功を要求する。禁止された支援なしでprimary workflowを
-  完了できなくする問題、または意図しないexecution、inspected-source mutation、MCP/network connection、
-  別machineへのinspected content開示を起こす問題をcritical usability issueとし、許容件数を0とする。
+  SC-001のmoderator policyだけを使って18人以上の成功を要求する。Moderatorは客観的workflow outcomeと事前定義済み
+  safety eventを記録する。意図しないexecution、inspected-source mutation、MCP/network connection、別machineへの
+  inspected content開示はすべて自動的にcriticalとする。それ以外のproduct起因と疑われるworkflow blockerだけを2人が
+  fixed rubricに対して独立分類し、不一致は第3の裁定者なしでcriticalとして数える。自動判定またはreviewer確認済みの
+  critical許容件数を0とする。
+
+20人studyは、automationとprojectに詳しいcontributorだけではproject contextを持たない初回利用者のdiscoverabilityと
+interpretationを確認できないため、initial-release evidenceとして実施する。固定denominatorはpopulation-levelの統計的
+主張ではない。Maintainer teamは、accountable study owner、recruitmentとcompensation-funding owner、moderation/review staff、
+schedule/support contact、consent/privacyとanonymized-retention process、提供repository/equipment/session support、accessibility
+accommodationを示すbilingual planを公開する。通常のcontributorはparticipantをrecruit、fund、moderate、reviewしない。
+Study resource不足はrelease claimをblockするが、それ以外は適合するcontributionのreviewをblockしない。Materialなworkflow、
+guidance、fixture、rubric変更は次のstudyをtriggerする。
 
 **理由**: 憲章はpassing testを証明ではなく証拠とするため、objective automationにfull-diff review、
 manual accessibility check、documentation parity check、release tarball inspection、固定participant scoring、
-再実行可能な基準環境固有performance measurementを組み合わせる。
+再実行可能なversion付きprofile固有performance measurementを組み合わせる。
 
 **検討した代案**:
 
@@ -705,9 +771,9 @@ manual accessibility check、documentation parity check、release tarball inspec
    `active-no-job`を返せる。Purge済みclientはretry前にactive control viewとexact frozen previewをrecoverする。
 5. Cross-sourceの表示、filter、diagnostic用語はSource-relative Pathとする。Repository-relative pathはlaunch
    `cwd`をrootとするRepository Sourceだけに使う。
-6. SC-001、SC-002、SC-006はSection 10のobjective protocolを使う。SC-002はメンテナーが指定する現在の
-   ローカル基準環境で測定し、その具体的なmachine、operating system、hardware、runtime情報をrepository
-   documentationへ公開しない。
+6. SC-001、SC-002、SC-006はSection 10のobjective protocolを使う。SC-002はchecked-in version付きreference profileを
+   1つ使い、各結果でprofile ID、fixture digest、実際の非personal environment fieldを公開する。変更したprofile IDの結果を
+   直接比較可能としてはならない。
 
 **理由**: これらの決定により、以前のmulti-root Source、mask/reveal、fatal result、path用語、outcome測定の
 曖昧さを除去し、productのread-only、local、non-executing boundaryを維持する。
@@ -722,5 +788,37 @@ manual accessibility check、documentation parity check、release tarball inspec
 - 初回scan/enable失敗をstaleにする案は、以前にcommit済みのSourceをrefreshできなかった事象ではなく、current
   snapshotが最後の正確なcommit済みstateのままであるため不採用。
 - Global fileへrepository-relative pathを使う案は、Global SourceがRepository `cwd`をrootとしないため不採用。
-- Portableなperformance claimまたは現行reference machineの開示は、SC-002が意図的にenvironment-specificで
-  あるため不採用。
+- Mutableかつ非公開のreference environmentは、別maintainerがprotocolを再現したりbaseline変更を解釈したりできないため
+  不採用。SC-002はportable performance guaranteeではなくprofile固有のままとする。
+
+## 12. 仕様再確認の決定（2026-07-19）
+
+**決定**: 最終analysis remediationをplanningとimplementationへ引き継ぐ。
+
+1. 固定startup OS browser helperを、許可する唯一のproduct起動child processとする。調査対象content、調査対象path、
+   authored value、user-supplied command、environmentで選択したhandlerを渡さない。Discovery、read、parse、display、
+   comparison、relationship処理はchild processを開始せず、`--no-open`、unsupported、failure pathでも利用可能なmanual URLを残す。
+2. 各supported tool/kindがclosedなdeclared-metadata field IDとrelationship kindを所有する。維持管理するpresentation
+   allowlistに含まれるentryだけをserialize/displayし、unknown authored fieldは完全なsource text内だけで見えるままにし、
+   metadataまたはrelationshipとして推論しない。
+3. SC-002はSection 10で定義した標準化filter/item-selection測定を含み、9-of-10 gateを両scan thresholdと両interactionへ適用する。
+4. Dependency再確認はplanning gateとする。Packageまたはversion変更をacceptした場合、dependency baselineを記載する英日両方のdesign/task
+   artifactをすべて同期し、implementation前にplanningとtask generationを再実行する。
+5. SC-002 environmentはchecked-in version付き公開profileとし、現在のrequestに対する客観的status停止条件を持つ。
+   Private local-machine identityはcontractに含めない。
+6. Origin-file-less hosted/runtime inputは関連Sourceに紐づく上限付きevidence-linked Source Condition Factとする。
+   File/path/source text/comparison targetを作らず、read authorityを付与せず、local/hosted I/Oを実行せず、未観測のcurrent stateを
+   conditionalまたはunavailableのままにする。
+7. Maintainer teamがinitial-release participant study、funding、support、privacy、accessibility、bounded review protocolを担当し、
+   通常のcontributorへ義務を負わせない。
+8. `engines.node`をNode 24/26 runtime compatibility range全体とし、正確な6つのfloor jobをlower-bound certification sample、
+   Node 24.18.0をdevelopment/build baselineとする。Pinした3つのPlaywright revisionはautomated browser-certification baselineであり、
+   startup helperは未検証のOS default handlerへ委譲して表示済み/manual-open fallbackを常に残す。
+
+**理由**: これらのruleにより、既存security/documentation parity requirementを弱めず、child-process boundary、
+presentation scope、performance denominator、runtime-fact model、participation ownership、compatibility/certificationの分離、
+dependency baselineを独立にtest可能にする。
+
+**検討した代案**: Browser launchをcustomization由来executionへ含める案、任意authored keyからmetadataを推論する案、
+interaction targetをtrace不能なplan-only goalのままにする案、`package.json`だけでversionをpatchする案は、いずれも
+矛盾または第2のundocumented contractを作るため不採用。

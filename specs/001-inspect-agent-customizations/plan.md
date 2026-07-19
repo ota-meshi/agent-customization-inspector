@@ -2,7 +2,7 @@
 
 [日本語](plan.ja.md)
 
-**Branch**: `dev` | **Date**: 2026-07-17 | **Spec**: [spec.md](spec.md)
+**Branch**: `dev` | **Date**: 2026-07-19 | **Spec**: [spec.md](spec.md)
 
 **Input**: Feature specification from `specs/001-inspect-agent-customizations/spec.md`
 
@@ -59,21 +59,42 @@ inventory, never vendor traversal. Static candidates, vendor-specific one-edge
 derivations, relationship-only references, and exclusions remain distinct. File existence
 is kept separate from product surface, runtime root/`cwd`, target matching, trust,
 enablement, selection, installation, managed policy, and external runtime facts, so the
-inventory never masquerades as an effective agent configuration. Closed context
+inventory never masquerades as an effective agent configuration. Origin-file-less hosted or
+runtime inputs are bounded, evidence-linked `SourceConditionFact` records attached to the
+relevant Source; they authorize no I/O and create no synthetic file, path, source text,
+relationship origin, or comparison target. Closed context
 relationships show which independently inventoried instructions, rules, skills, MCP
 declarations, or memory scopes an agent may reference without following a path; Codex
 instruction-byte limits and excluded non-file inputs stay explicit condition facts.
 
 ## Technical Context
 
-**Language/Version**: Node.js 24.18.0 Active LTS development baseline, package engines
-`^24.11.0 || >=26.0.0`; TypeScript 6.0.3; Vue 3.5.39
+**Language/Version**: Node.js 24.18.0 LTS development/build baseline; package runtime
+compatibility contract `^24.11.0 || ^26.0.0`, exactly
+`>=24.11.0 <25.0.0 || >=26.0.0 <27.0.0`; TypeScript 6.0.3; Vue 3.5.39. The six
+Node/OS floor jobs certify the two declared lower bounds rather than enumerating every
+compatible minor/patch release. Versions below either floor, Node 25, and future majors are
+outside the contract.
 
 **Primary Dependencies**: Nuxt 4.4.8, Vue Router 5.2.0, tsdown 0.22.8, Vite 7.3.6
-(latest Nuxt-compatible release), `cac` 7.0.0, `yaml` 2.9.0,
+(latest Nuxt-compatible release), `gunshi` 0.37.0, `yaml` 2.9.0,
 `jsonc-parser` 3.3.1, `smol-toml` 1.7.0, and `monaco-editor` 0.55.1. The first lockfile
 MUST revalidate these exact stable versions; prereleases and incompatible newer majors
 are not considered eligible “latest” versions.
+That revalidation is a planning gate, not permission for a task-local package or version
+edit. If any selected package or version changes, implementation stops before configuration
+work, the compatibility decision is reviewed again, every dependency-baseline-bearing
+English/Japanese research, plan, quickstart, and task artifact is synchronized, and
+`/speckit-plan` followed by `/speckit-tasks` is rerun before work resumes. Configuration,
+CI, release, and package-policy
+instructions MUST use only that one synchronized baseline.
+
+`src/cli.ts` uses only Gunshi's stable root `define`/`cli` API. It defines a negatable
+`open` boolean with a true default to provide `--no-open`, enables
+`strict: true`, explicitly rejects every positional/rest argument before binding, awaits
+`cli()`, and maps its validation `AggregateError` to fixed bounded output plus a nonzero exit. Built-in
+help/version are handled without binding. The production entry does not import
+`gunshi/agent`, lazy commands, custom plugins, or experimental parser combinators.
 
 **Storage**: No durable application storage. Session state, bounded file bytes, complete
 authored-source DTOs, diagnostics, the sensitive-content warning acknowledgement, and
@@ -82,19 +103,48 @@ comparison selection exist only in process/browser memory.
 **Testing**: Vitest 4.1.10 with `@vitest/coverage-v8` 4.1.10, Nuxt Test Utils 4.0.3,
 Vue Test Utils 2.4.11, happy-dom 20.10.6, Playwright 1.61.1, and
 `@axe-core/playwright` 4.12.1; fixture-driven unit, contract, integration, packaging,
-performance, security, browser, and manual accessibility checks. The maintained usability
-study kit uses one 20-person first-time cohort for SC-001 then SC-006, fixed prompts and
-moderator limits, failure-as-unsuccessful accounting without replacements, the defined
+performance, security, browser, and manual accessibility checks. The browser release gate
+runs the complete primary-workflow and accessibility suite against the exact Chromium,
+Firefox, and WebKit revisions installed by the pinned Playwright version as a reproducible
+automated certification baseline, not as an assertion that the startup helper selects one of
+those revisions. The maintained usability study kit uses one 20-person first-time cohort for
+SC-001 then SC-006, fixed prompts
+and moderator limits, failure-as-unsuccessful accounting without replacements, the defined
 timer boundaries, and a four-field SC-006 response form scored against fixed ground truth.
+After that timed response, the same participants attempt standardized comparison and Global-
+consent tasks. Moderators record objective workflow outcomes and predefined safety events;
+every safety event is automatically critical. Only a suspected product-caused workflow
+blocker needs two independent rubric classifications, and a disagreement counts as critical
+without a third adjudicator. The gate passes only after all 20 participants attempt all four
+primary workflows with no automatic or reviewer-confirmed critical issue. The maintainer team,
+not ordinary contributors, owns recruitment, compensation funding, moderation, review,
+consent/privacy handling, supplied equipment/session support, bilingual materials, and
+accessibility accommodations through a published study plan. The study environment records
+that its default browser handler resolves to a release-certified revision.
 
-**Target Platform**: Node.js-supported macOS, Windows, and Linux environments with a
-modern browser. Published project/dependency package payloads and project-authored installed
+**Target Platform**: The supported runtime contract is the complete declared Node.js 24/26
+engine range on `ubuntu-24.04` x64, `macos-15` arm64, and `windows-2025` x64. The exact
+six-job Cartesian product of the `24.11.0` and `26.0.0` floors with those OS/architecture
+targets is the mandatory lower-bound release-certification sample, not the full list of
+compatible Node minor/patch releases. One platform-independent tarball is built on
+`ubuntu-24.04` x64 with the Node.js 24.18.0 development/build baseline, receives a separate
+build/package smoke check there, and is installed unchanged in all six floor jobs. Each
+release records the resolved runner-image identifier and actual Node version. Other OS/
+architecture targets and Node versions outside the declared engine range are unsupported.
+Browser release certification runs the complete browser and accessibility suite against the
+exact Chromium, Firefox, and WebKit revisions installed by Playwright 1.61.1 on
+`ubuntu-24.04` x64 with Node.js 24.18.0. Those revisions are a finite reproducible
+certification baseline, not an exhaustive list of user browsers. The fixed OS helper passes
+the printed URL to the user's default handler without selecting or validating its family or
+version; helper success is not browser-compatibility evidence. A handler outside the
+certification baseline is best-effort, and the printed URL plus `--no-open`/manual opening in
+a certified browser is the actionable fallback. Published project/dependency package payloads and project-authored installed
 application code contain only platform-independent JavaScript application code and
 declarative static/package data; they require no install script, runtime download, or end-user
 compiler. Package-manager-generated `node_modules/.bin` symlink/`.cmd`/`.ps1` launchers are
 payload-external interoperability metadata and receive a separate exact-target/content audit.
-Development-only tooling is outside the product package and remains separately pinned/audited. The server
-binds only to `127.0.0.1` and has no remote deployment mode
+Development-only tooling is outside the product package and remains separately pinned/audited.
+The server binds only to `127.0.0.1` and has no remote deployment mode.
 
 **Project Type**: Single publishable ESM npm package containing a static Nuxt web client,
 a Node CLI/local HTTP service, and shared serializable contracts. All project-authored
@@ -104,26 +154,41 @@ HTML/CSS, JSON manifests, documentation, and the license are permitted declarati
 artifacts. This FR-038 boundary does not misclassify third-party development/test tooling as
 published application code.
 
-**Performance Goals**: On the maintainer-designated current local reference environment,
-visibly render scan progress or meaningful status in the browser within 1 second and render
-the complete inventory with its primary list controls operable for one unchanged
-deterministic fixture containing 100,000 filesystem entries and 500 matching files within
-10 seconds in at least 9 of exactly 10 fresh-process runs. Start both timers at the browser scan request,
+**Performance Goals**: On the versioned, published profile in
+`tests/performance/sc002-reference-profile.json`, visibly render a current-request status
+that says queued, names an active phase, or reports complete/partial/failed and is exposed to
+assistive technology within 1 second, and render the complete inventory with its primary
+list controls operable for one unchanged deterministic fixture containing 100,000 filesystem
+entries and 500 matching files within 10 seconds in at least 9 of exactly 10 fresh-process
+runs. A spinner, generic loading label, acknowledgement without scan state, unchanged
+control, or prior-request status does not qualify. Start both timers at the browser scan request,
 exclude fixture construction and `npx` download/install/process startup, do not deliberately
-reset the operating-system filesystem cache between runs, and publish no concrete reference-
-environment machine, operating-system, hardware, or runtime details. Keep filtering and
-selection feedback under 100 ms for 500 items.
+reset the operating-system filesystem cache between runs, and record the profile ID, exact
+actual environment fields, and fixture-manifest digest while omitting only personal
+identifiers and absolute user paths. Any profile-field change starts a new non-comparable
+measurement set. After the complete
+inventory becomes operable in each run, perform one standardized filter action and one
+standardized item-selection action. Measure each from browser input dispatch until the
+corresponding filtered results or selected-state feedback is visibly rendered and operable;
+at least 9 of the same 10 runs must keep both interactions below 100 ms.
 
 **Constraints**: Inspected customization must cause no execution, child process, dynamic
-import, network request, MCP connection, or source mutation; the separately bounded startup
-launcher may invoke only its fixed OS browser helper and never receives inspected content.
+import, network request, MCP connection, or source mutation. The separately bounded startup
+launcher owns the only permitted product-initiated child process: its fixed OS browser helper.
+The helper receives no inspected content, inspected path, authored value, user-supplied
+command, or environment-selected handler, and the session remains usable when automatic
+opening is disabled, unsupported, or fails.
 No boundary-external bytes are accepted or published;
 no exposed symlink is intentionally followed, and detected path changes commit no bytes;
-the documented active path-component mutator remains outside the current threat model;
+the documented active source-root/ancestor mutator and, only where effective `O_NOFOLLOW`
+is unavailable, active final-component mutator remain outside the current threat model;
 explicit opt-in before Global reads; complete authored source and displayed metadata,
 including literal credentials, are shown without masking or reveal controls only after a
 sensitive-content warning; environment-variable references are never resolved or
-substituted; inert text rendering only; WCAG 2.2 AA; English/Japanese
+substituted; inert text rendering only. Displayed metadata fields and relationship kinds are
+restricted to the maintained closed presentation allowlist for each supported customization
+type; unlisted authored entries remain available only in complete source text and are never
+inferred as metadata or relationships. WCAG 2.2 AA; English/Japanese
 documentation parity. Hard limits are 1 MiB per file, 32 MiB total file bytes, 200,000
 visited entries, 2,000 customization files, 64 path segments, 1,024 aliases per file and
 50,000 per generation, 36 recognitions per file and 8,000 per generation, 1,000 direct
@@ -185,7 +250,8 @@ two files in a comparison
       explicit.
 - [x] **Complete verification**: The test layout covers unit, contract, integration,
       package, performance, end-to-end, error, boundary, accessibility, and adversarial
-      safety scenarios, including all four user stories.
+      safety scenarios, including all four user stories, the published SC-002 profile/status
+      protocol, and FR-039/SC-009 origin-file-less Source Condition Facts.
 - [x] **Documentation parity**: Every Phase 0/1 artifact has an English canonical file and
       a semantically equivalent `*.ja.md` companion. Implementation must update both user
       and contributor guides, all vendor/Repository/User/Global/surface tables, official
@@ -203,14 +269,18 @@ two files in a comparison
       explicitly requested literal source through masking or redaction.
 - [x] **Welcoming participation**: One-package setup, reproducible pinned tooling,
       objective expected results, keyboard-first workflows, actionable errors, and
-      automated plus manual accessibility gates keep the project approachable.
+      automated plus manual accessibility gates keep the project approachable. The
+      maintainer-owned release study publishes its necessity, accountable owner, funding,
+      support, privacy, accessibility, and rerun policy and never shifts recruitment or
+      review obligations to ordinary contributors.
 
 ### Post-design re-check
 
 The data model distinguishes physical files, candidate provenances, documentation status,
 and runtime applicability facts. The HTTP contract returns complete authored source only
 for explicit detail/comparison requests after the warning gate, provides no masking or
-reveal workflow, and never resolves environment-variable references. The matcher contract
+reveal workflow, never resolves environment-variable references, and emits only metadata
+fields and relationship kinds present in the maintained closed presentation allowlist. The matcher contract
 permits only explicit static or vendor-specific one-edge
 derived candidates; relationships, components, vendor locators, and excluded inputs cannot
 expand the read boundary. The quickstart covers every stable behavior, rule, strategy, and
@@ -218,7 +288,9 @@ source ID, official-source drift review, the Repository `./` grammar and bare-`*
 rejection, all required quality gates, and all four end-to-end stories. Monaco is
 client-only, same-origin, bounded, and model-lifetime scoped; its own diff engine avoids a
 duplicate dependency while exact authored metadata comparison stays explicit. The
-project-owned browser launcher removes the shell-bearing `open` package, and package gates
+project-owned browser launcher removes the shell-bearing `open` package and confines the sole
+permitted product child process to a fixed startup OS helper that receives no inspected
+content/path, authored value, user command, or environment-selected handler; package gates
 audit the root tarball plus the installed exact production closure for JavaScript-only
 application code, lifecycle/build/download paths, selectors, and native/binary artifacts;
 third-party development/test tooling remains outside the published FR-038 boundary. The Node.js-only
@@ -348,6 +420,7 @@ tests/
 ├── package/
 ├── performance/
 ├── e2e/
+├── usability/
 └── fixtures/
     ├── conformance/
     │   ├── vendor-behaviors.json
@@ -363,6 +436,7 @@ scripts/
 ├── clean-build-output.mjs
 ├── assemble-server-manifest.mjs
 ├── build-static-manifest.mjs
+├── build-production-graph.mjs
 ├── verify-package-files.mjs
 └── check-official-sources.ts
 
@@ -374,9 +448,12 @@ bin.mjs
 package.json
 pnpm-lock.yaml
 nuxt.config.ts
+tsconfig.json
+eslint.config.js
 tsdown.config.ts
 playwright.config.ts
 vitest.config.ts
+.gitignore
 ```
 
 **Structure Decision**: Use a single-package `app`/`src`/`shared` separation because the UI
@@ -421,7 +498,7 @@ and the recursive exact-set verifier; `check:official-sources` is the only docum
 network-enabled evidence-drift command. The `src/cli.ts` and parser-worker entries,
 `tsdown.config.ts`, assembly scripts, and these package scripts are foundation prerequisites:
 no build, package, or manifest quality gate may be scheduled before they exist.
-Production `dependencies` is the exact-version leaf set `cac`, `yaml`, `jsonc-parser`, and
+Production `dependencies` is the exact-version leaf set `gunshi`, `yaml`, `jsonc-parser`, and
 `smol-toml`; `open` is absent from every dependency section and production lock closure.
 Nuxt/Vue/Vite/tsdown, Monaco, Playwright, and other build/test tooling remain development-
 only, while their assembled product output is covered by the closed manifests.
@@ -516,15 +593,17 @@ dependency or artifact fails until explicitly reviewed.
   attempt, while a candidate-level failure may retain only the bounded diagnostic record.
 - Pure Node.js does not expose a directory-handle-relative open or an atomic equivalent of
   `RESOLVE_BENEATH`, so the checks above cannot prove kernel-enforced containment against an
-  active adversarial process that can replace the root, an ancestor, or the final entry
-  between path checks.
+  active adversarial process that replaces the root or an ancestor between path checks, or
+  that replaces the final entry on a Node.js/platform combination without effective
+  `O_NOFOLLOW`.
   Node also cannot portably identify every Windows reparse tag or every mount transition;
   same-device bind mounts and reparse metadata that Node does not report remain explicit
   platform limitations outside test proof.
-  This release's race threat model therefore covers ordinary concurrent edits and other
-  races that the implementation detects; every detected case fails closed. An active adversarial filesystem
-  mutator is explicitly out of scope. No test result may be described as proof of stronger
-  containment. The concrete resolution path is to adopt a future Node handle-relative API
+  This release's race threat model therefore covers ordinary concurrent edits, every
+  detectable change, and effective-`O_NOFOLLOW` final-component defense; every detected case
+  fails closed. Active source-root/ancestor replacement and final-component replacement only
+  where effective `O_NOFOLLOW` is unavailable are explicitly out of scope. No test result may
+  be described as proof of stronger containment. The concrete resolution path is to adopt a future Node handle-relative API
   when one is available, or place scanning inside an OS-enforced read-only snapshot/sandbox
   before expanding that threat model.
 - The four registries form one validated reference graph but grant different authority.
@@ -618,8 +697,10 @@ dependency or artifact fails until explicitly reviewed.
 - The Node host uses `node:http`, a small static MIME table, a random 256-bit capability
   delivered in the URL fragment, exact Host/Origin checks, no CORS,
   `Cache-Control: no-store` for API responses, and a restrictive CSP. Before the CLI is
-  imported, project-owned `bin.mjs` validates both closed manifests and every listed
-  static/server hash; the host cannot bind beforehand. The CSP permits
+  imported, project-owned `bin.mjs` validates the packed `engines.node` string as exactly
+  `^24.11.0 || ^26.0.0`, verifies `process.versions.node` is within that expanded range, and
+  validates both closed manifests and every listed static/server hash; an out-of-range
+  runtime exits with a fixed actionable error and the host cannot bind beforehand. The CSP permits
   same-origin scripts plus only the exact build-recorded SHA-256 hashes for Nuxt's
   executable inline bootstrap, forbids inline executable attributes, eval, nonces, and
   external/blob workers, and retains inline style permission only for Monaco layout/theme
@@ -650,7 +731,10 @@ dependency or artifact fails until explicitly reviewed.
   `NODE_OPTIONS`, `NODE_PATH`, all
   other environment values, inspected values, and extra argv are omitted. An OS helper may
   consume the listed desktop/session ambient values, but the Inspector never selects a
-  handler from them. No package-owned or user-supplied shell helper, shell command string,
+  handler from them. The helper delegates only navigation to the OS default handler and does
+  not select or verify a browser family/version; a successful spawn is not compatibility
+  evidence. If that handler is outside the release-certification baseline, the printed URL
+  and `--no-open` allow manual opening in a certified browser. No package-owned or user-supplied shell helper, shell command string,
   or packaged platform helper is permitted; the fixed OS-provided `xdg-open` helper is
   outside the package payload and is still invoked with `shell: false`. The one terminal launch line is the only
   intentional capability display and is never copied into operational logs.
@@ -770,8 +854,8 @@ One unavoidable implementation cost is tracked explicitly:
 
 **Residual risk and resolution path**: Path validation and `open` are not one atomic kernel
 operation in Node.js, so a sufficiently privileged active mutator may win an undetectable
-root, ancestor, or final-entry replacement race. Approval must treat that actor as out of
-scope and must not call
+root or ancestor replacement race, or a final-entry replacement race where effective
+`O_NOFOLLOW` is unavailable. Approval must treat only those cases as out of scope and must not call
 the current checks a containment proof. Expanding the threat model requires either a future
 Node directory-relative API with atomic beneath/no-follow semantics or an OS-enforced
 read-only snapshot/sandbox around the scan root, followed by a renewed security review and

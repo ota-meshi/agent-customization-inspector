@@ -225,14 +225,18 @@ input that has no originating file.
 | Field | Type | Rules |
 |---|---|---|
 | `tool` | tool enum | Product whose documented non-file behavior or uninspected input is being described |
+| `surface` | product-surface enum | Exact CLI, IDE, Cloud, or other maintained surface; never inferred from the owning Source kind |
 | `ruleId` | stable excluded or relationship-only rule ID | Defines the non-file fact and can never authorize a file candidate |
 | `affectedRuleIds` | non-empty sorted inspection-rule ID[] | Candidate or relationship-only subset of the shipped registry; controls which provenance/edge may project the fact |
 | `behaviorRefs` | sorted `VendorBehaviorStatement.behaviorId`[] | Exact surface/scope lookup statements that explain the fact; never grants a read |
 | `strategyRefs` | sorted `RuntimeCompositionStrategy.strategyId`[] | Exact composition or selection statements used by the projection |
+| `sourceRefs` | non-empty sorted `OfficialSourceRecord.sourceId`[] | Stable evidence exposed for the fact and reciprocally validated; never grants a read |
 | `condition` | `ConditionFact` | Fixed reason code and any documented status; `satisfied` records a non-file runtime fact but still grants no read authority and never duplicates an authored source value |
 
 The fixed registry may emit at most 256 entries per source. Entries are deduplicated by
-tool, explaining rule, affected-rule set, condition key, and reason code.
+tool, surface, explaining rule, affected-rule set, evidence set, condition key, and reason
+code. A fact has no file ID, path, authored source, relationship origin, or comparison target
+and never initiates local or hosted I/O.
 
 ### SourceBoundary
 
@@ -300,7 +304,7 @@ brand enforces application-level authority; it is not an OS filesystem capabilit
 | `VerifiedReadReceipt.preReadChecks` / `postReadChecks` | bounded verification records | After `open` before any read, and again after the read while the same handle remains open, repeat the exact pre-open sequence in the same order and then compare the same `FileHandle.stat({ bigint: true })` fields |
 | `VerifiedReadReceipt.fileType` | literal `regular-file` | No directory, link, device, socket, or pipe; unsupported/unverifiable objects are rejected |
 | `VerifiedReadReceipt.acceptedByteCount` | integer | Never exceeds `maxFileBytes` or remaining total budget |
-| `VerifiedReadReceipt.finalOpenDefense` | `o-nofollow \| unavailable-postcheck-only` | `o-nofollow` is mandatory when Node exposes an effective `O_NOFOLLOW`; the fallback records the explicit cross-platform limitation |
+| `VerifiedReadReceipt.finalOpenDefense` | `effective-o-nofollow \| no-effective-o-nofollow-postchecks` | The first value is mandatory when Node exposes and the platform enforces `O_NOFOLLOW`; the second covers both absent and ineffective support and records the explicit residual limitation |
 | `VerifiedReadReceipt.containmentMode` | literal `node-realpath-fstat-best-effort` | Records repeated canonical and same-handle validation without claiming atomic kernel containment |
 
 Repository root creation derives its context from process `cwd`. Global root creation
@@ -333,10 +337,11 @@ guesses. A root-level failure aborts the source attempt, and an item-level failu
 only a bounded diagnostic-only inventory record.
 
 Because Node does not provide atomic directory-handle-relative child open, these records
-cannot prove containment against an active process that replaces the root, an ancestor, or
-the final entry between checks;
-that actor is outside the current threat model. Detected ordinary concurrent changes and
-all other detected races fail closed. Expanding the threat model requires a future atomic Node
+cannot prove containment against an active process that replaces the root or an ancestor
+between checks, or the final entry where effective `O_NOFOLLOW` is unavailable. Those cases,
+not the whole actor class, are outside the current threat model. Detected ordinary concurrent
+changes, effective-`O_NOFOLLOW` final-component defense, and all other detected races remain
+in scope and fail closed. Expanding the threat model requires a future atomic Node
 beneath/no-follow API or an OS-enforced read-only snapshot/sandbox and renewed review.
 Same-device bind mounts and reparse metadata that Node never exposes remain explicit
 platform limitations outside automated-test proof.
@@ -990,6 +995,13 @@ comparison DTOs.
 | `declaredMetadata` | ordered `DeclaredMetadataEntry[]` | Only allowlisted closed field IDs; source-occurrence order and accepted duplicates are preserved; at most 512 entries |
 | `diagnosticIds` | opaque string[] | Recognition-scoped extraction failures/limits within the owning file's diagnostic cap |
 
+The maintained supported-customization documentation is the normative presentation
+allowlist. For every supported `(tool, kind)`, it enumerates the exact closed metadata
+`fieldId` values and relationship kinds eligible for display. An authored field or
+reference absent from that allowlist remains visible only in the complete `sourceText`; it
+does not create a `DeclaredMetadataEntry` or `Relationship`, and the parser does not infer
+an equivalent entry from its shape or name.
+
 The customization-kind enum is shared, but each recognizer owns its path and interpretation
 rules. A shared `AGENTS.md`, `CLAUDE.md`, `.mcp.json`, skill, or marketplace therefore stays
 one file with multiple recognitions. There is exactly one recognition for each
@@ -1203,6 +1215,11 @@ remain authoritative and visible even when a higher-priority sufficient outcome 
 | `strategyRefs` | sorted strategy ID[] | Composition/selection strategies considered for the edge |
 | `sourceRefs` | sorted source ID[] | Exact evidence union from the relationship rule, behavior, and strategy records |
 | `applicability` | `ApplicabilityAssessment` | Edge-specific context/tool/trust/selection facts; never read authority for the target |
+
+Although `Relationship.kind` is globally closed, an extractor may emit only the subset
+listed by the maintained presentation allowlist for the owning `(tool, kind)`. A reference
+with an unlisted relationship kind remains authored source text only and cannot be promoted
+to a generic, inferred, or fallback relationship.
 
 Relationships are direct only. Maximum depth is one and maximum count is 1,000 per file.
 A candidate target is independently admitted by a static or bounded-derived rule; a

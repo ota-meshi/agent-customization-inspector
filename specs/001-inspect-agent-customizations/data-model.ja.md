@@ -205,14 +205,17 @@ policy、その他起点fileを持たないexcluded/runtime inputの正準な説
 | Field | Type | Rule |
 |---|---|---|
 | `tool` | tool enum | Documented non-file behaviorまたは検査しないinputを持つproduct |
+| `surface` | product-surface enum | 正確なCLI、IDE、Cloud、その他保守対象surface。Owning Source kindから推論しない |
 | `ruleId` | stable excludedまたはrelationship-only rule ID | Non-file factを定義し、file candidateを許可できない |
 | `affectedRuleIds` | non-emptyなsort済みinspection-rule ID[] | 同梱registryのcandidate/relationship-only subsetで、factを投影できるprovenance/edgeを制御 |
 | `behaviorRefs` | sort済み`VendorBehaviorStatement.behaviorId`[] | Factを説明する正確なsurface/scope lookup statement。Readを許可しない |
 | `strategyRefs` | sort済み`RuntimeCompositionStrategy.strategyId`[] | Projectionに使った正確なcomposition/selection statement |
+| `sourceRefs` | non-emptyなsort済み`OfficialSourceRecord.sourceId`[] | Factで公開し相互validationするstable evidence。Readを許可しない |
 | `condition` | `ConditionFact` | 固定reason codeと任意のdocumented status。`satisfied`はnon-file runtime factを記録するだけでread authorityを与えず、authored source valueを複製しない |
 
-固定registryが1 sourceあたり最大256 entryを生成し、tool、説明rule、affected-rule set、condition key、
-reason codeでdeduplicateする。
+固定registryが1 sourceあたり最大256 entryを生成し、tool、surface、説明rule、affected-rule set、evidence set、
+condition key、reason codeでdeduplicateする。Factはfile ID、path、authored source、relationship origin、comparison
+targetを持たず、local/hosted I/Oを開始しない。
 
 ### SourceBoundary
 
@@ -277,7 +280,7 @@ capabilityではない。
 | `VerifiedReadReceipt.preReadChecks` / `postReadChecks` | bounded verification record | `open`後かつread前と、同じhandleを開いたread後に、exactなpre-open sequenceを同じ順序で繰り返し、その後に同じ`FileHandle.stat({ bigint: true })` fieldを比較 |
 | `VerifiedReadReceipt.fileType` | literal `regular-file` | Directory、link、device、socket、pipeではない。Unsupported/unverifiable objectは拒否 |
 | `VerifiedReadReceipt.acceptedByteCount` | integer | `maxFileBytes`または残total budgetを超えない |
-| `VerifiedReadReceipt.finalOpenDefense` | `o-nofollow \| unavailable-postcheck-only` | Nodeが有効な`O_NOFOLLOW`を公開する場合は`o-nofollow`必須。Fallbackは明示的なcross-platform limitationを記録 |
+| `VerifiedReadReceipt.finalOpenDefense` | `effective-o-nofollow \| no-effective-o-nofollow-postchecks` | Nodeが公開しplatformがenforceする場合は前者必須。後者は不在と無効なsupportの両方を扱い、明示的な残存limitationを記録 |
 | `VerifiedReadReceipt.containmentMode` | literal `node-realpath-fstat-best-effort` | Atomic kernel containmentを主張せず、反復canonical/same-handle validationを記録 |
 
 Repository root contextはprocess `cwd`から作る。Global root contextは一致preview consent後だけ作る。Root作成は
@@ -301,10 +304,11 @@ Nodeが必要なidentity/metadataまたはcanonicalizationをunavailable、ambig
 報告した場合は`safe-fs-boundary-unverifiable`とし、推測しない。Root-level failureはsource attemptをabortし、
 item-level failureには上限付きdiagnostic-only inventory recordだけを残してよい。
 
-Nodeはatomicなdirectory-handle-relative child openを提供しないため、これらrecordはpath check間にroot、
-ancestor、final entryを差し替えるactive processへのcontainmentを証明できない。そのactorはcurrent threat
-modelのscope外である。
-検出した通常の同時変更とその他全detected raceはfail closedにする。Threat model拡張には、将来のatomic Node beneath/no-follow
+Nodeはatomicなdirectory-handle-relative child openを提供しないため、これらrecordはpath check間にroot/ancestorを
+差し替えるactive process、または有効な`O_NOFOLLOW`を利用できない場合のfinal-entry replacementへのcontainmentを
+証明できない。Actor class全体ではなくそのcaseだけをcurrent threat modelのscope外とする。
+検出した通常の同時変更、有効な`O_NOFOLLOW`によるfinal-component defense、その他全detected raceはscope内でfail
+closedにする。Threat model拡張には、将来のatomic Node beneath/no-follow
 API、またはOS強制のread-only snapshot/sandboxとrenewed reviewが必要である。
 Same-device bind mountとNodeが全く公開しないreparse metadataは、automated-test proof外の明示的なplatform
 limitationとして残る。
@@ -863,6 +867,11 @@ substituteしない。
 | `declaredMetadata` | ordered `DeclaredMetadataEntry[]` | Allowlist対象のclosed field IDだけ。Source occurrence順と受理したduplicateを保持し、最大512 entry |
 | `diagnosticIds` | opaque string[] | Owning fileのdiagnostic cap内にあるrecognition-scoped extraction failure/limit |
 
+維持管理するsupported-customization文書を規範的なpresentation allowlistとする。Supportedな各`(tool, kind)`について、
+表示対象となるexactでclosedなmetadata `fieldId`とrelationship kindを列挙する。そのallowlistにないauthored fieldまたは
+referenceは完全な`sourceText`内でだけ表示し、`DeclaredMetadataEntry`または`Relationship`を作らない。Parserはshapeや
+nameから同等entryを推論しない。
+
 Customization-kind enumは共有するが、各recognizerがpath/interpretation ruleを所有する。共有`AGENTS.md`、
 `CLAUDE.md`、`.mcp.json`、skill、marketplaceは1 fileのまま複数recognitionを持つ。`(fileId, tool, kind)` pairごとに
 recognitionは正確に1つとする。Compatible admissionはその1 recordへprovenanceをmergeする。同じpairのextractorが
@@ -1050,6 +1059,10 @@ requiredとしたfactだけが妨げる。Higher-priority sufficient outcomeが�
 | `strategyRefs` | sort済みstrategy ID[] | Edgeについて考慮したcomposition/selection strategy |
 | `sourceRefs` | sort済みsource ID[] | Relationship rule、behavior、strategy recordからの正確なevidence union |
 | `applicability` | `ApplicabilityAssessment` | Edge固有context/tool/trust/selection fact。Targetのread authorityにはしない |
+
+`Relationship.kind`は全体としてclosedだが、extractorがemitできるのは、owning `(tool, kind)`について維持管理する
+presentation allowlistに記載したsubsetだけとする。未記載のrelationship kindを持つreferenceはauthored source text内にだけ
+残し、generic、inferred、またはfallback relationshipへ昇格させない。
 
 Relationshipはdirectのみ。最大depth 1、1 file最大1,000件。Candidate targetはstaticまたは
 bounded-derived ruleで独立して受理し、relationship自体はtargetを昇格させない。Typed candidate

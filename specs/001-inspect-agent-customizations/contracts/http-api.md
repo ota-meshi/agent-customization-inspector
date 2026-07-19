@@ -14,8 +14,10 @@ a filesystem path, URL, command, source text, parser option, glob, or executable
 
 1. The process binds an ephemeral port on `127.0.0.1`. The initial release has no host
    override and does not bind `0.0.0.0`, a LAN address, or a Unix socket. Before binding it
-   verifies the package version, the closed static/server manifests, and every asset they
-   list, then initializes the centralized Node.js filesystem service used for every
+   verifies that packed `engines.node` is exactly `^24.11.0 || ^26.0.0`, that the running
+   Node.js version is in its expanded compatibility range, the package version, the closed
+   static/server manifests, and every asset they list, then initializes the centralized
+   Node.js filesystem service used for every
    inspected-source operation. A missing, malformed, or inconsistent package asset or an
    unavailable filesystem service exits with a fixed actionable CLI error before any HTTP
    session starts. All authored application code and executable code in the project-package
@@ -52,6 +54,10 @@ a filesystem path, URL, command, source text, parser option, glob, or executable
    value, and every environment-supplied or additional argv element are omitted. Missing or
    nonzero helpers, spawn errors, and unsupported platforms emit a fixed
    warning only; the server and printed fallback URL remain.
+   The helper delegates to the operating system's default browser and neither selects nor
+   verifies its version; successful spawn is not browser-compatibility evidence. Automated
+   release certification uses the exact revisions pinned by Playwright 1.61.1, with
+   `--no-open` and the printed URL as the manual certified-browser fallback.
 3. The fragment never reaches the HTTP server. The SPA reads it once, removes it with
    `history.replaceState`, keeps it only in memory, and sends
    `Authorization: Bearer <capability>` on every `/api/v1` request.
@@ -182,7 +188,7 @@ SessionSnapshot
 ├── sources[]
 │   ├── sourceId, kind, tool, enabled, status, generation
 │   ├── root { displayRoot, origin }
-│   ├── conditionFacts[] { tool, ruleId, affectedRuleIds, behaviorRefs, strategyRefs,
+│   ├── conditionFacts[] { tool, surface, ruleId, affectedRuleIds, behaviorRefs, strategyRefs, sourceRefs,
 │   │                      condition { key, status, reasonCode, basis } }
 │   └── progress null | { phase, visitedEntries, candidateFiles, readBytes, diagnosticCount, queuedAt, startedAt }
 ├── files[]
@@ -194,6 +200,10 @@ SessionSnapshot
 Every Source has exactly one root. The Repository Source has `tool: null`; the session has
 zero to three Global Sources, at most one each with `tool: codex`, `tool: claude`, or
 `tool: copilot`. A Global root is never represented as a boundary inside another Source.
+Every `conditionFacts` entry is an evidence-linked, origin-file-less Source Condition Fact:
+it stays distinct from `files` and recognitions and cannot create a physical or synthetic
+file, file ID/path/text, comparison target, relationship origin, local or hosted read, or
+network request. An unobserved current state remains conditional or unavailable.
 Top-level `snapshotState` is `current` or `stale-after-fatal-rescan`; only a fatal explicit
 rescan adds or replaces one `staleFailures` entry and its reserved diagnostic for the affected
 Source. Entries and diagnostics for different Sources coexist. A successful complete or
@@ -736,9 +746,10 @@ Status: `200`.
   `safe-fs-boundary-unverifiable` and rejects the candidate, or its source when the root or
   a shared ancestor is unverifiable.
 - Public Node.js APIs do not provide a portable directory-handle-relative open. An active
-  adversarial process that replaces an ancestor or final component between checks is
-  outside the initial-release threat model, including where `O_NOFOLLOW` is absent or
-  ineffective. Ordinary concurrent edits and all detectable races remain in scope and
+  adversarial process that replaces the source root or an ancestor between checks is outside
+  the initial-release threat model on every platform. Final-component replacement is outside
+  only where effective `O_NOFOLLOW` is absent. Ordinary concurrent edits and all detectable
+  races remain in scope and
   discard every byte. Same-device bind mounts, unreported reparse behavior, and other OS
   semantics unavailable through Node.js remain documented platform limitations, not
   absolute containment guarantees.
@@ -770,6 +781,10 @@ Status: `200`.
    `String.prototype.slice` offsets while UTF-8 limits remain separate. One logical
    occurrence may reuse an identical span across metadata/relationship/derivation output;
    partial, nested, or crossing overlaps between different occurrences fail the recognition.
+   Every returned metadata tuple `(tool, kind, fieldId)` and relationship tuple
+   `(tool, kind, relationship kind)` must appear in the maintained presentation allowlist.
+   Unknown authored keys and references remain available only through complete `sourceText`
+   and never produce inferred metadata or relationships.
    A fixed Codex default-hook fixture instead returns `targetOrigin: documented-default`,
    null `authoredTarget`, and an explicit documented-default label; an explicit manifest
    hook returns `targetOrigin: authored` with its exact occurrence. Sentinel process values
@@ -883,7 +898,9 @@ Status: `200`.
    Reported error, ambiguity, or unusable metadata/canonicalization returns
    `safe-fs-boundary-unverifiable`; unobservable OS behavior is recorded as a platform
    limitation and is not counted as proof against the excluded active-adversary race.
-10. The static loader rejects an oversized/malformed/extra-key/duplicate manifest,
+10. The bootstrap rejects an altered packed `engines.node` contract or an executing Node.js
+    version outside `>=24.11.0 <25.0.0 || >=26.0.0 <27.0.0` before CLI import or bind. The
+    static loader rejects an oversized/malformed/extra-key/duplicate manifest,
     symlink/non-regular asset, unexpected file, path/MIME/size/hash mismatch, relative or
     external executable URL, `<base>`, nonce, executable attribute, and unrecorded inline
     script before bind. The build requires then removes only Nuxt's fixed `200.html` and
@@ -891,7 +908,7 @@ Status: `200`.
     matches the exact npm allowlist. Build/package verification starts from clean
     `.output`/`.build`/`dist` trees and recursively matches `dist` against only the two
     manifests and their listed static and server records, rejecting stale output.
-11. Package tests require exact production dependencies `cac`, `yaml`, `jsonc-parser`, and
+11. Package tests require exact production dependencies `gunshi`, `yaml`, `jsonc-parser`, and
     `smol-toml`, with `open` absent from every dependency section and lock closure. Every
     project/dependency tarball payload and authored application-code file is JavaScript or a
     permitted declarative artifact, and any package-owned shell helper is rejected. An
@@ -910,4 +927,6 @@ Status: `200`.
     inspected/env-supplied argv never select or alter a command; Windows and every other
     unsupported platform spawn zero children and emit the fixed manual-URL warning. Ambient
     allowlisted desktop/session values may reach the OS helper but never become an Inspector
-    handler override.
+    handler override. Tests distinguish default-handler delegation from certification:
+    helper success proves no browser version, and release evidence uses the pinned Playwright
+    revisions or the `--no-open` manual fallback.

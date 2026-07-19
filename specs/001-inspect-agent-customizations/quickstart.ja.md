@@ -7,11 +7,15 @@ script/fixtureを追加するとcommandが実行可能になる。Current scaffo
 
 ## 前提条件
 
-- `package.json`の`engines` rangeを満たすNode.js
+- 正確な`package.json` compatibility contract `^24.11.0 || ^26.0.0`
+  （`>=24.11.0 <25.0.0 || >=26.0.0 <27.0.0`）を満たすNode.js。Development/build基準は
+  Node.js 24.18.0
 - Repositoryの`packageManager` declarationを満たすpnpm
 - 追加compilerやplatform固有build workspaceは不要。Inspected-source accessはpackaged Node.js moduleで実装する
-- Project setup commandで作成したPlaywright-support Chromium
-- `127.0.0.1`へ到達できるlocal browser
+- Project setup commandでPlaywright 1.61.1がinstallする正確なChromium、Firefox、WebKit revision。これらのpin済み
+  revisionは再現可能な自動browser-certification基準であり、userが実行できるbrowserの網羅的な一覧ではない
+- `127.0.0.1`へ到達できるbrowser。Release evidenceでは、OS default handlerが別browserを選ぶ場合も含め、上記certified
+  revisionの1つを使う
 
 Toolchain確認:
 
@@ -20,15 +24,20 @@ node --version
 pnpm --version
 ```
 
-期待結果: 両commandがchecked-in package declarationを満たす。Performance evidenceには基準環境の具体的な
-machine、operating system、hardware、runtime情報を公開しない。[research.ja.md](research.ja.md)に記録した
-Nuxt/Vue互換性が変わるまでtoolchainのmajor versionを変更しない。
+期待結果: 両commandがchecked-in package declarationを満たす。Performance evidenceにはchecked-in SC-002 profile IDと
+fixture digest、および実際に使用したprofile valueを記載し、個人識別子と絶対user pathだけを省略する。
+[research.ja.md](research.ja.md)に記録したNuxt/Vue互換性が変わるまでtoolchainのmajor versionを変更しない。
 
 ## Installと準備
 
+Dependency revalidationをplanning gateとする。承認済みpackageまたはversionが1つでも変わった場合、packageまたは
+configuration fileを編集する前に停止し、dependency baselineを含む`research`、`plan`、`quickstart`、`tasks`の
+全英日pairを同期して、
+`/speckit-plan`と`/speckit-tasks`を再実行する。2つ目のlocal dependency baselineで作業を継続しない。
+
 ```bash
 pnpm install --frozen-lockfile
-pnpm exec playwright install chromium
+pnpm exec playwright install chromium firefox webkit
 pnpm run build
 ```
 
@@ -44,8 +53,9 @@ pnpm run build
   Node.js filesystem service、任意のcode-split chunkを書き、assemblerが`dist/manifests/server-assets.json`を
   作ってlisted regular `.mjs` fileだけを`dist/`へcopyする。
 - `bin.mjs`はexecutableで、BOMなし、LF終端の正確な先頭行`#!/usr/bin/env node`で始まる。そのbootstrapは
-  `dist/cli.mjs`をstatic importせず、先にinstalled package version、static/server両manifest、全listed assetの
-  exact path、regular-file type、size、digestを検証する。全check成功後だけ`dist/cli.mjs`をdynamic importし、
+  `dist/cli.mjs`をstatic importせず、先にpacked `engines.node` stringが正確に`^24.11.0 || ^26.0.0`であること、
+  実行中Node.js versionがその展開range内にあること、installed package version、static/server両manifest、全listed
+  assetのexact path、regular-file type、size、digestを検証する。全check成功後だけ`dist/cli.mjs`をdynamic importし、
   serverをbindできるのはそのimport済みCLIだけとする。
 - `package.json.bin`は正確に`{ "agent-customization-inspector": "bin.mjs" }`、`main`、`module`、`exports`は不在。
 - Malformed/inconsistent manifest、package-version mismatch、missing/unexpected asset、symlink/non-regular asset、
@@ -57,7 +67,7 @@ pnpm run build
   manifest-authorized HTML bootstrapはJavaScriptのまま上記CSP check対象とする。Package manager生成の`.bin` symlinkと
   `.cmd`/`.ps1` launch shimはpayload外の唯一の限定interop例外とし、それぞれexactな宣言済み`package.json.bin` targetを
   audit済みNode JavaScriptへ対応させ、argvだけをforwardして追加input/application logicを持たせない。Package-owned shell
-  helperとunexpected shimは拒否する。Exact production dependencyはleaf packageの`cac`、`yaml`、`jsonc-parser`、
+  helperとunexpected shimは拒否する。Exact production dependencyはleaf packageの`gunshi`、`yaml`、`jsonc-parser`、
   `smol-toml`だけで、`open`は不在とする。
 - Build outputにfixture、raw customization text、Global content、cache、inspected machineを公開する
   source-map pathが含まれない。
@@ -77,7 +87,9 @@ node ../../../../bin.mjs --no-open
 - CLIがbrowser attempt前にclosed-grammar capability URLを正確に1回表示し、non-loopback addressへbindしない。
   `--no-open`ではchild processを作らない。
 - Browser表示のRepository source rootは`all-supported` fixture自身。
-- 1秒以内にscan progressまたはmeaningful statusを表示する。
+- 1秒以内に現在のscan requestについて、queued、active phase名、complete、partial、またはfailedを明示するstatusを画面に
+  表示しassistive technologyにも公開する。Failureは実行可能な次の手順も示す。一般的なspinner/loading label、変化しない
+  control、scan stateを示さないacknowledgement、以前のscanのstatusは数えない。
 - 最初のcomplete inventoryが文書化limit内で表示され、凍結path contract外のfileを含まない。
 - Process停止でserver sessionを破棄する。Visibleなauthorized pageでは1秒のliveness heartbeat failureまたは2秒の
   monotonic leaseにより、session-ended view前に全DTO、DOM source value、editor model/worker、comparison、warning
@@ -98,11 +110,18 @@ Project-owned launcherは`shell: false`の`spawn`、sole argv itemとしてのUR
 またはLinuxの`HOME`、`DISPLAY`、
 `WAYLAND_DISPLAY`、`XDG_CURRENT_DESKTOP`、`DESKTOP_SESSION`、`DBUS_SESSION_BUS_ADDRESS`、
 `XDG_RUNTIME_DIR`、`LANG`、`LC_ALL`だけとする。
-`BROWSER`、`NODE_OPTIONS`、`NODE_PATH`、inspected value、その他environment value、environment由来の追加argvは渡さない。
+`BROWSER`、`NODE_OPTIONS`、`NODE_PATH`、調査対象contentまたはpath、authored value、user-supplied command、
+environment-selected handler、その他environment value、environment由来の追加argvは渡さない。この固定startup helperを、
+initial releaseで許可する唯一のproduct起動child processとする。
 Portable Nodeから独立したtrusted system-helper boundaryを得られないため、このreleaseではWindowsとその他platformの
 automatic openを意図的にskipする。Missing/nonzero helperとunsupported platformでも固定manual-URL warning付きでserverを継続する。Automatic browser
 openが失敗しても既に表示したlocal URLを利用できる。
 初期リリースにはrepository argument、ancestor-root discovery、remote-host flag、static-export command、MCP commandはない。
+
+固定helperはURLをOS default browserへ委譲するだけで、browser versionを選択も検証もしない。Helper成功はcompatibility
+evidenceではない。Deterministicなcertificationでは`--no-open`を使い、表示URLを3つのpin済みPlaywright revisionの1つへ
+貼り付ける。Participant-study evidenceにはdefault handlerを記録し、そのhandlerがcertified revisionの場合だけrunを数える。
+それ以外ではenrollment前に同じmanual certified-browser fallbackを使う。
 
 ## 自動品質gate
 
@@ -128,19 +147,23 @@ pnpm run test:docs
   diagnostic、state transition、deterministic projectionを扱う。
 - Contract testが全API status/security ruleと全stable behavior、inspection-rule、composition-strategy、
   official-source IDを扱い、positive、1-rule near-miss、derived、relationship-only、excluded、
-  multi-provenance、multi-tool、Global caseを含む。
+  multi-provenance、multi-tool、Global caseを含む。返却する全metadata fieldとrelationship kindが、そのsupported typeの
+  維持管理するclosed presentation allowlistに含まれ、unknownなauthored key/referenceは完全なsource textからだけ利用可能で
+  あることも証明する。
 - Integration/security testがsource containmentとcustomization由来のexecution、child process、MCP
   connection、outbound request、dynamic evaluation、source mutationが0であることを証明する。別test対象のstartup
-  launcherへinspected contentを渡さない。
+  launcherへ調査対象content、調査対象path、authored value、user-supplied command、environment-selected handlerを渡さない。
 - Package testがtarballをbuild/inspectionし、isolated fixtureへinstallし、packaged Node.js filesystem serviceと
   固定のpackaged parser Worker URLをloadして、working tree/runtime downloadへ依存せず正確な`npx` entryを
   launchする。Production closure全体のscripts-disabled installとnetwork-disabled normal installもauditし、closedな
   payload-JavaScript/no-lifecycle/no-native policy、package-manager生成shimの別audit、全CI OSで同じpackage graph digestを
   確認する。Negative bootstrap fixtureは、両manifestと全listed assetの検証成功前に`bin.mjs`がCLIをevaluateまたはbind
   しないことを証明する。
-- 内容を変更しない100,000 entry/500 in-limit customization fileのdeterministic performance fixtureを、
-  メンテナー指定の同じ現在のローカル基準環境で正確に10個のfresh Inspector processにより測定し、9 run以上が
-  後述timer/cache protocolのもと1秒以内にstatusを表示し10秒以内に完了する。
+- 内容を変更しない100,000 entry/500 in-limit customization fileのdeterministic performance fixtureを、同じversion付き
+  checked-in profile上の正確に10個のfresh Inspector processで測定し、9 run以上が後述timer/cache protocolのもと1秒以内に
+  現在のrequestに対するqualifying statusを表示し10秒以内に完了する。各complete inventoryが操作可能になった後、
+  標準化されたfilter actionとitem-selection actionを1回ずつ実施し、同じ10回のrunのうち9回以上で、両方の
+  input dispatchからvisibleかつoperableな結果までの測定を100ミリ秒未満にする。
 - Browser testが4 user storyすべてを扱い、axeがcriticalな適用可能WCAG 2.2 AA violationを報告しない。
 - Documentation testがlink、command、allowlist version、diagnostic code、registry間の相互参照、
   各英語・日本語pairのsemantic parityを検証し、official source snapshot変更時に
@@ -238,7 +261,10 @@ source checkでnetworkを使えるのはこのcommandだけとする。
    1 byte手前・exact・1 byte超を扱い、broad-to-narrowでomittedになるprovenanceをassertする。
 12. Source-level incompletenessと製品・インスペクター間symlink差異のfixtureで、全source-level factがtool、
    説明するnon-candidate rule、影響を受けるcandidate/relationship rule、固定reason codeを識別し、matching
-   provenance/edge conditionへcanonical source factを失わず投影することを検証する。
+   provenance/edge conditionへcanonical source factを失わず投影することを検証する。Origin-file-less Source Condition Factは
+   正しいSource、tool、product surface、conditionまたはunavailable state、scope、不確実性、evidenceも保持し、physical/
+   synthetic file、file ID、Source-relative Path、authored text、comparison target、relationship origin、local/hosted read、
+   network requestを作成しない。
 
 ## User story検証
 
@@ -426,6 +452,13 @@ Product guidance、標準化したSC-001/SC-006 task prompt、対象fixture repo
 command-line interfaceを使用するが、Inspectorの利用・開発経験がない人を正確に20人登録する。同じcohortを
 1つのsessionでSC-001、SC-006の順に使用する。
 
+Enrollment前にmaintainer teamは、accountable study owner、recruitment/compensation-funding owner、moderator/reviewer、
+schedule/support contact、consent/privacyと匿名化retention procedure、提供repositoryとequipment/session support、accessibility
+accommodationを示すbilingual planを公開する。Participantにpersonal repository、paid product、personal expenditureを要求しない。
+通常のcontributorはparticipantをrecruit、fund、moderate、reviewしない。Resource不足はinitial-release claimをblockするが、
+それ以外は適合するcontributionのreviewをblockしない。Primary workflow、提供guidance、fixture、scoring rubricのいずれかに
+material changeがある場合だけstudyを再実施する。
+
 - Moderatorは該当promptを同じ文面で読み直すことだけでき、command、navigation、interface操作のhintを提供しない。
 - 登録後の機材、環境、product failureはtimer開始前も含め該当基準の不成功として数え、参加者を除外・差し替えない。
 - SC-001は標準化したprompt提示時にtimerを開始し、発見されたcustomization file 1つのsource/details viewが
@@ -437,6 +470,9 @@ command-line interfaceを使用するが、Inspectorの利用・開発経験が�
   1項目でもあれば不成功とし、20人中18人以上の成功を必要とする。
 - Primary workflow全体でcritical usability issueを0件とする。禁止された支援なしでworkflow完了を妨げる問題、または
   意図しない実行、調査対象sourceの変更、MCP/network接続、別machineへの調査content露出をcriticalとする。
+  Safety eventは自動的にcriticalとする。Safety event以外のproduct起因と疑われるworkflow blockerだけを2人がfixed rubricに
+  対して独立分類し、不一致は第3の裁定者を設けずcriticalとして数える。SC-006後に20人全員が標準化したcomparisonとGlobal
+  consent taskを実施し、記録した観察で4つのprimary workflowすべてを扱う。
 
 ### SC-002 performance測定
 
@@ -444,12 +480,18 @@ command-line interfaceを使用するが、Inspectorの利用・開発経験が�
 測定前に1つ構築し、全runで変更せず使用する。Fixtureの構築/setupと`npx` download、installation、process起動は
 両timerに含めない。
 
-メンテナー指定の同じ現在のローカル基準環境で正確に10回測定する。RunごとにInspectorを終了し、次のrunではfresh
+`tests/performance/sc002-reference-profile.json`で公開する同じversion付きprofile上で正確に10回測定する。Profileは正確な
+OS image/version、processor architecture/modelとlogical count、memory、storage medium/filesystem、正確なruntime、benchmark
+command/configuration、deterministic fixture manifest/digestを特定する。RunごとにInspectorを終了し、次のrunではfresh
 processを起動してapplication-memory stateと以前のsnapshotを再利用しない。Operating systemのfilesystem cacheは
 意図的にclear/resetせず、自然に変化する状態で測定する。Browserがscan requestを送信した時点で両timerを開始し、
-1秒timerは最初のprogressまたはmeaningful status表示時、10秒timerはcomplete inventoryが表示され主要list controlが
-操作可能になった時点で終了する。9 run以上が両thresholdをrunごとに満たさなければならない。各runとaggregate結果を
-記録するが、基準環境の具体的なmachine、operating system、hardware、runtime情報は公開しない。
+1秒timerは上記で定義した現在のrequestに対するqualifying statusが画面に表示されassistive technologyにも公開された場合だけ、
+10秒timerはcomplete inventoryが表示され主要list controlが
+操作可能になった時点で終了する。続いて標準化されたfilter actionとitem-selection actionを1回ずつ実施する。各interactionは、
+browserのinput dispatchから対応するfiltered resultまたはselected-state feedbackが表示され操作可能になるまでを測定する。
+9 run以上が両scan thresholdをrunごとに満たし、かつ両interactionを100ミリ秒未満に保たなければならない。各runとaggregate結果を
+profile ID、fixture digest、実際のenvironment valueとともに記録し、個人識別子と絶対user pathだけを省略する。Profile fieldを
+変更すると新しい直接比較不能なmeasurement setを開始し、結果はportable performance guaranteeではなくprofile固有とする。
 
 ## Boundary/resource-limit検証
 
@@ -542,9 +584,9 @@ handleのpre-read `stat()`をそのphaseの両`lstat`結果および以前のsna
 publish、commitより前にはrootとancestorのcheck、ordered candidate sequence、同じopen handleの`stat()`を反復する。
 Detectable changeがあればbyte buffer全体をdropし、outside sentinelをpublishしない。
 
-Public Node.js APIにはportableなdirectory-handle-relative openがない。`O_NOFOLLOW`が利用不能または無効な場合も同じ
-lstat/realpath/open/fstat/post-check sequenceを必須とするが、check間にancestorまたはfinal componentを置換する
-active adversarial processは初期リリースのthreat model外とする。通常の同時editと全detectable raceはscope内で
+Public Node.js APIにはportableなdirectory-handle-relative openがない。同じlstat/realpath/open/fstat/post-check sequenceを
+全platformで必須とする。Check間にsource rootまたはancestorを置換するactive adversarial processは全platformで初期リリースの
+threat model外とし、final componentの置換も有効な`O_NOFOLLOW`が利用不能な場合だけscope外とする。通常の同時editと全detectable raceはscope内で
 fail closedにする。Pack済みtarballでも同じsuiteを反復し、test専用barrierをproduction exportへ含めない。
 
 | OS observation | 必須outcome | Security proofでの扱い |
@@ -600,7 +642,7 @@ git diff --check
 exact `package.json.files` entryの`bin.mjs`、`dist`、`README.md`、`README.ja.md`、`LICENSE`だけを含むことを
 assertし、展開した`dist/**` contentが2 manifestとlisted fileに一致することを確認する。Exact `bin` mappingと
 `main`/`module`/`exports`不在、license notice、exact shebang/executable mode、strict static/server manifest、
-公開README pairを確認する。Exact production dependencyは`cac`、`yaml`、`jsonc-parser`、`smol-toml`とし、
+公開README pairを確認する。Exact production dependencyは`gunshi`、`yaml`、`jsonc-parser`、`smol-toml`とし、
 `open`は全dependency sectionとproduction lock closureに存在してはならない。
 
 展開したroot tarballとisolated install済みproduction closureをauditする。最初のscript-disabledかつdevelopment
@@ -618,11 +660,16 @@ development/test toolingはその公開boundary外で別にauditする。
 
 Launcher testはexact macOS/Linux helper、URL validation、`shell: false`、sole argv itemとしてのURL、attempt前の1回のURL line、
 `--no-open`でchild processが0件であること、missing/nonzero/unsupported helperでのfixed-warning/manual-URL fallbackを扱う。
-上記exact minimal OS別environment allowlistをassertし、`BROWSER`、`NODE_OPTIONS`、`NODE_PATH`、inspected value、その他
+Gunshiのbindしないhelp/version、strict unknown-option拒否、明示的なpositional/rest拒否、固定された上限付きnonzero
+validation failure、await済みcompletion、root-only import boundaryも扱う。上記exact minimal OS別environment
+allowlistをassertし、`BROWSER`、`NODE_OPTIONS`、`NODE_PATH`、inspected value、その他
 environment value、extra argvがcommandを選択・変更できないことを証明する。Windowsとその他unsupported-platform fixtureは
-child processが0件で固定manual-URL warningが出ることをassertする。`pnpm run test:docs`はplanning setを公開せず、repository内の全英日document
-pairを別に検証する。同じtarballをCI matrixの全supported OSでinstall/launchし、Node.js filesystem security suiteに
-合格させる。最後にcomplete diffをreviewし、untested branch、secret exposure、古いofficial-path assumption、
+child processが0件で固定manual-URL warningが出ることをassertする。TestはOS helperがdefault handlerへ委譲するだけでversionを
+certifyできないことも証明する。Release recordはpin済みPlaywright revisionを使用し、`--no-open`と表示URLをmanual certified-browser
+fallbackとする。`pnpm run test:docs`はplanning setを公開せず、repository内の全英日document
+pairを別に検証する。同じtarballを宣言したNode.js 24/26 engine range全体にわたりCI matrixの全supported OSでinstall/launchし、
+Node.js filesystem security suiteに合格させる。正確な6つのlower-bound OS/architecture jobはcertification sampleであり、Node.js
+24.18.0はdevelopment/build baselineである。どちらも宣言済みcompatibility rangeを狭めない。最後にcomplete diffをreviewし、untested branch、secret exposure、古いofficial-path assumption、
 accidental source mutation、unrelated changeがないことを確認してからreleaseする。
 
 `pnpm run test:package`は新規pack済みtarballをisolated fixtureへinstallし、

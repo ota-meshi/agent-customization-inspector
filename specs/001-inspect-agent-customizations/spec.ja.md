@@ -6,7 +6,7 @@
 
 **Created**: 2026-07-15
 
-**Status**: Draft
+**Status**: Ready for Implementation
 
 **Input**: ユーザー説明: 「提供されたローカルのプロダクト説明からAgent Customization Inspectorの初期プロダクトを定義し、後で削除する一時的な入力へのリンクは残さない。」
 
@@ -23,7 +23,7 @@
 ### Session 2026-07-16
 
 - Q: 初期リリースにどのruntime実装制約を適用するか？ → A: 実行可能なapplication codeをすべてJavaScript/TypeScriptで実装する。CLI、local host、調査対象sourceのI/OはNode.jsの公開JavaScript API上で動作し、browserには生成済みJavaScriptとdeclarativeなHTML/CSS assetを渡す。Strict JSON manifest、documentation、license fileは有効なpackage dataとする。Rust、Node-APIその他のnative addon、platform別のprebuilt native binary、package lifecycleでのcompile、package lifecycleまたはruntimeでのartifact downloadは使用しない。
-- Q: そのNode.js-only制約で、filesystem raceについてどの保証が可能か？ → A: 調査対象sourceのI/Oを1つのNode.js moduleへ集約し、Node.js公開APIが示すlinkとboundary failureを拒否し、root、ancestor、candidate path、open handle、read後のidentity、canonical location、metadata snapshotを比較し、不一致の検出時は候補byteをすべて破棄する。Node.jsが公開しplatformがenforceする場合は`O_NOFOLLOW`をfinal-componentの多層防御として使用する。これらの非原子的check間でancestor、または有効な`O_NOFOLLOW`がない場合にfinal path componentをraceさせる敵対的なlocal processはthreat modelから除外する。Node.js公開APIはsame-device mountやreparse behaviorをすべて公開することもできない。これらの残存riskとNode.jsまたはoperating systemによる解消pathは文書化し続ける。
+- Q: そのNode.js-only制約で、filesystem raceについてどの保証が可能か？ → A: 調査対象sourceのI/Oを1つのNode.js moduleへ集約し、Node.js公開APIが示すlinkとboundary failureを拒否し、root、ancestor、candidate path、open handle、read後のidentity、canonical location、metadata snapshotを比較し、不一致の検出時は候補byteをすべて破棄する。Node.jsが公開しplatformがenforceする場合は`O_NOFOLLOW`をfinal-componentの多層防御として使用する。これらの非原子的check間でsource rootまたはancestor、あるいは有効な`O_NOFOLLOW`がない場合のfinal path componentをraceさせる敵対的なlocal processはthreat modelから除外する。Node.js公開APIはsame-device mountやreparse behaviorをすべて公開することもできない。これらの残存riskとNode.jsまたはoperating systemによる解消pathは文書化し続ける。
 
 ### Session 2026-07-17
 
@@ -31,11 +31,11 @@
 - Q: カスタマイズファイル内のリテラルcredentialと環境変数参照をどのように表示するか？ → A: リテラルな差分を確認できるよう、source text、表示対象の宣言済みmetadata値、comparison contentはcredential maskingやreveal workflowを使わず、記述されたまま表示する。調査対象content内の環境変数参照はリテラルtextとして扱い、process上の値を解決または置換しない。文書化されたtool-home環境変数はGlobal rootを特定するためだけに使用する。ファイルを開くと機密値を含み得る完全なcontentが表示されることを警告し、operational diagnosticとlogにはsource valueを複製しない。
 - Q: 明示的な再scanが致命的に失敗した場合、以前のinventoryをどう扱うか？ → A: 最後に正常commitされたsnapshotを表示したまま残し、再scan失敗によりstaleであることを示し、実行可能なfailure diagnosticを表示する。部分結果を含む失敗scanの未commit結果はすべて破棄し、後続の再scanが正常commitされた場合にだけ保持中のsnapshotを置換する。
 - Q: Repository sourceとGlobal sourceに一貫して適用するpath用語は何か？ → A: カスタマイズファイルを所有するSource rootからのpathを「Source-relative path」と呼ぶ。Repository Sourceでは起動時`cwd`からの相対path、各Global Sourceではそのtoolについてadmitされたhome rootからの相対pathとする。「repository-relative path」はRepository Sourceだけを説明する場合に限って使用する。
-- Q: SC-002の性能測定にはどの環境を使用するか？ → A: メンテナーが指定する現在のローカル開発環境を基準とする。Ubuntuを必須とせず、具体的なmachine、operating system、hardware、runtimeの情報をrepository文書へ公開しない。1つのmeasurement setに含まれる全sampleは同じ環境で実行し、結果を別machineにも適用できる性能保証ではなく、基準環境固有の結果として扱う。
-- Q: 1つのSC-002 measurement setを何回の測定で構成するか？ → A: メンテナーが指定する同じ現在のローカル基準環境で、正確に10回測定する。
-- Q: SC-002の10回の測定のうち、何回が合格しなければならないか？ → A: 9回以上で、それぞれ1秒以内に進捗または意味のあるstatusを表示し、10秒以内に完全な一覧を表示する。
+- Q: SC-002の性能測定にはどの環境を使用するか？ → A: Release測定の前に、version付きSC-002 reference-environment profileをrepository内で確定する。Profileは、正確なoperating-system imageとversion、processor architectureとmodel、logical processor数、memory、storage mediumとfilesystem、正確なapplication-runtime version、benchmark commandとconfiguration、deterministic fixture manifestとdigestを特定する。1つのmeasurement setの全runはそのprofileに一致しなければならない。結果とともにprofile IDと実際に記録したenvironment valueを公開し、個人識別子と絶対user pathだけを省略する。Profile fieldを1つでも変更すると新しいprofileとなり、異なるprofile IDの結果を直接比較可能としてはならない。
+- Q: 1つのSC-002 measurement setを何回の測定で構成するか？ → A: 変更しない1つのversion付きreference-environment profile上で正確に10回測定する。
+- Q: SC-002の10回の測定のうち、何回が合格しなければならないか？ → A: 9回以上で、それぞれ1秒以内に現在のrequestに対するqualifying scan statusを表示し、10秒以内に完全な一覧を表示する。
 - Q: SC-002の各測定で1つのInspector processを再利用するか、新しく起動するか？ → A: 測定runごとにInspectorを終了し、次のrunでは新しいprocessを起動して、application memory stateと以前のscan snapshotを再利用しない。
-- Q: SC-002の計測開始点と終了点をどこにするか？ → A: Browserがscan requestを送信した時点で両方のtimerを開始する。1秒timerは最初の進捗または意味のあるstatusが画面に表示された時点、10秒timerは完全な一覧が表示され主要な一覧操作が可能になった時点で終了する。`npx`のdownload、installation、process起動時間は除外する。
+- Q: SC-002の計測開始点と終了点をどこにするか？ → A: Browserがscan requestを送信した時点で両方のtimerを開始する。1秒timerは現在のrequestに対する最初のqualifying scan statusが画面に表示されassistive technologyにも公開された時点、10秒timerは完全な一覧が表示され主要な一覧操作が可能になった時点で終了する。`npx`のdownload、installation、process起動時間は除外する。
 - Q: SC-001とSC-006の評価に何人の参加者を使用するか？ → A: 各基準を正確に20人で評価し、SC-001は19人以上、SC-006は18人以上の成功を必要とする。
 - Q: SC-001とSC-006で同じ参加者を使用するか、別cohortを使用するか？ → A: 1つのevaluation sessionで同じ20人を使用し、SC-001、SC-006の順に実施する。
 - Q: SC-001とSC-006の参加者にどのような経験を求めるか？ → A: 通常の開発作業でGitとcommand-line interfaceを使用しているが、Inspectorを利用したことも開発へ参加したこともない人とする。
@@ -48,11 +48,24 @@
 - Q: SC-006で識別の成功をどのように記録し判定するか？ → A: Source、認識ツール、file type、実効動作がcertainかconditionalかの必須回答欄を持つ標準化されたresponse formを使用する。2分以内に4項目すべてを提出し、指定ファイルについて事前定義したground truthと全項目が一致した場合だけ成功とし、未回答または誤答が1項目でもあれば不成功とする。
 - Q: SC-002の10回の測定runでperformance fixtureをどのように扱うか？ → A: 測定前にdeterministicなfixtureを1つ用意し、内容を変更せず10回すべてで再利用する。Fixtureの構築とsetupは計測時間に含めない。
 
+### Session 2026-07-18
+
+- Q: SC-006でprimary workflow全体のcritical usability issueをどのように評価するか？ → A: 同じ20人の参加者が、時間計測するSC-006の識別回答を提出した後、標準化されたcomparisonとGlobal consentの課題をそれぞれ実施する。Discoveryとinspectionの観察にはSC-001と時間計測するSC-006の課題を使用し、moderatorは同じヒント禁止policyに従い、4つの客観的workflow outcomeと事前定義済みsafety-event fieldを記録する。Safety eventは自動的にcriticalとする。自動的なsafety eventではない、product起因と疑われるworkflow blockerだけを固定rubricに対して2人が独立分類し、不一致は安全側に倒してcriticalとして数え、第3の裁定者は設けない。登録した全参加者と機材、環境、productの全outcomeを除外や差し替えなしで記録する。Critical issueゼロのgateは、20人全員が4つのprimary workflowすべてを実施し、自動判定またはreviewer確認済みのcritical issueが1件もない場合に限り合格とする。
+
+### Session 2026-07-19
+
+- Q: Child process禁止はproductのbrowser起動helperも禁止するか？ → A: いいえ。許可するproduct起動のchild processは、FR-001に基づきstartup時に使用する固定のOS browser起動helperだけとする。このhelperへ調査対象content、調査対象path、authored value、user-supplied command、またはenvironmentで選択したhandlerを渡してはならず、自動起動を無効にした場合、非対応の場合、または失敗した場合もinspectionを利用可能にする。Customization fileのdiscovery、read、parse、display、comparison、relationship処理はchild processを開始してはならない。
+- Q: FR-007でrelevantまたはknownとするdeclared metadataとrelationshipはどれか？ → A: 維持管理するsupported-customization文書で、各supported customization file typeについて、表示対象となるdeclared metadata fieldとrelationship kindのclosedなpresentation allowlistを列挙する。Initial releaseはそのallowlistに記載したentryだけを表示し、未記載のfieldやrelationshipを推論しない。
+- Q: 100ミリ秒未満のinventory interaction目標をどのように測定するか？ → A: SC-002の各runで500件の完全なinventoryが操作可能になった後、標準化されたfilter actionとitem-selection actionを1回ずつ実施する。各actionはbrowserがinputをdispatchした時点から、対応するfiltered resultまたはselected-state feedbackが表示され操作可能になるまでを測定する。同じ10回のrunのうち9回以上で、両方のactionが100ミリ秒未満でなければならない。
+- Q: SC-002の1秒statusとして何を認めるか？ → A: 現在のscan requestについて画面に表示されassistive technologyにも公開されるstateであり、scanがqueue済みであること、activeなscan phase名、またはcomplete、partial、failedのいずれかを明示するものをqualifying statusとする。Failureの場合は実行可能な次の手順も示す。一般的なspinnerや「loading」label、変化しないcontrol、scan stateを示さないacknowledgement、以前のscanから残ったstatusは認めない。
+- Q: 初回利用者による参加者評価を誰が担当するか？ → A: Maintainer teamがinitial-release studyと、そのrecruitment、compensation funding、moderation、review、consent/privacy handling、equipmentとsession support、bilingual material、accessibility accommodationを担当する。これはrelease evidenceの義務でありpull requestごとの義務ではない。通常のcontributorへ参加者の募集、費用負担、moderation、reviewを求めない。
+- Q: Originating customization fileを持たない、文書化済みruntimeまたはhosted inputをどう表現するか？ → A: 関連するSourceに紐づく上限付きSource Condition Factとして表現する。これは文書化済みでread authorityを持たないfactであり、Customization FileまたはTool Recognitionではない。File ID、Source-relative path、source text、comparison target、relationship origin、local/hosted read、network requestを作成しない。調査していない現在のruntime stateはconditionalまたはunavailableのままにする。
+
 ## ユーザーシナリオとテスト *(必須)*
 
 ### ユーザーストーリー1 - リポジトリのカスタマイズを発見する（優先度: P1）
 
-開発者は意図するrepository rootへ移動して`npx`経由でInspectorを起動し、GitHub Copilot、Claude Code、OpenAI Codexが認識するカスタマイズファイルの一覧をブラウザで確認する。起動processの`cwd`は常に独立したRepository sourceとして表す。
+開発者は意図するrepository rootへ移動して`npx`経由でInspectorを起動し、GitHub Copilot、Claude Code、OpenAI Codexが認識するカスタマイズファイルの一覧をブラウザで確認する。起動processの`cwd`は常に独立したRepository sourceとして表す。Inventoryには、関連するfile以外または未調査runtime behaviorについて保守するSource Condition Factを、カスタマイズファイルと明確に分けて表示してよい。
 
 **この優先度の理由**: Agentを実行せずに関連ファイルを見つけることが、プロダクトとして価値を持つ最小単位であり、後続workflowの前提でもある。
 
@@ -64,6 +77,7 @@
 2. **前提** 1つの物理`AGENTS.md`がCopilotとCodexの両方に認識される、**操作** 一覧を表示する、**結果** 1つのカスタマイズファイルに2つの異なるtool recognitionが付いた状態で表示される。
 3. **前提** Repositoryの調査対象パス一覧に含まれないファイルがある、**操作** リポジトリをスキャンする、**結果** それらのファイルはカスタマイズファイルとして解釈も表示もされない。
 4. **前提** サポート対象カスタマイズファイルがない、**操作** スキャンが完了する、**結果** エラーではなく、サポート範囲を説明する正常な空状態が表示される。
+5. **前提** 文書化されたCopilot Cloud behaviorがRepository sourceに関係するがlocalのoriginating fileを持たずhosted stateも調査しない、**操作** inventoryを表示する、**結果** Inspectorはtool、surface、文書化済みconditionまたはunavailable state、evidenceを持つ別labelのSource Condition Factを表示し、synthetic file、Source-relative path、source-text action、comparison target、hosted read、network requestを作成しない。
 
 ---
 
@@ -73,7 +87,7 @@
 
 **この優先度の理由**: 信頼できないカスタマイズファイルが対象であるため、安全かつ忠実な調査は追加機能ではなく中核価値である。
 
-**独立テスト**: 実行可能なhook command、script付きskill、MCP server定義、import、不正なdata、リテラルcredential、環境変数参照、boundary外linkを含むfixtureを、filesystem書き込み、child process、network activityを監視し、sentinel環境変数値を与えながら調査する。内容が不活性のままであり、リテラル値と参照がenvironment置換なしで記述されたまま表示され、sentinel値が表示contentへ混入せず、diagnosticが出ても影響を受けないカスタマイズファイルを引き続き利用できることを確認する。
+**独立テスト**: 実行可能なhook command、script付きskill、MCP server定義、import、不正なdata、リテラルcredential、環境変数参照、boundary外linkを含むfixtureを、filesystem書き込み、child process、network activityを監視し、sentinel環境変数値を与えながら調査する。自動browser起動を無効にするか、許可された固定browser起動helperが完了した後にchild process監視を開始する。調査対象contentが不活性のままであり、リテラル値と参照がenvironment置換なしで記述されたまま表示され、sentinel値が表示contentへ混入せず、diagnosticが出ても影響を受けないカスタマイズファイルを引き続き利用できることを確認する。
 
 **受け入れシナリオ**:
 
@@ -82,6 +96,7 @@
 3. **前提** Claudeのimportがsource boundary外を指している、**操作** カスタマイズファイルを調査する、**結果** targetを読んだり展開したりせず、関係とboundary diagnosticを表示する。
 4. **前提** 優先順位または実効動作が未知のruntime surface、version、trust decision、working directory、flag、environmentに依存する、**操作** カスタマイズファイルを調査する、**結果** Inspectorは不確実性を示し、最終的な勝者や実効設定を断定しない。
 5. **前提** 調査対象パス一覧に一致する読み取り不能、不正、変更済み、または過大なファイルがある、**操作** そのファイルを処理する、**結果** Inspectorは実行可能なdiagnosticを示し、他のカスタマイズファイルを引き続き表示する。
+6. **前提** Source Condition Factがoriginating fileを持たない、**操作** ユーザーがそのdetailを確認する、**結果** Inspectorはauthored content、file provenance、実効runtime resultを捏造せず、文書化済みbehavior、affected scope、evidence、不確実性を説明する。
 
 ---
 
@@ -129,6 +144,7 @@
 - 明示的な再scanが部分結果を生成した後で致命的に失敗する。部分結果を破棄し、最後に正常commitされたsnapshotをstale markerとfailure diagnostic付きで表示したまま残す。
 - Browser sessionがrefreshされる、または起動元とは別のhostから開かれる。
 - カスタマイズファイルにリテラルcredential、またはInspector process上で値が設定済みの環境変数への参照がある。リテラルsourceはmaskせず表示し、参照は解決も置換もしない。
+- 文書化されたCloudまたはexternal-runtime behaviorが関係するが、現在のhosted stateを利用できずlocal fileもそのfactのoriginではない。Synthetic customization fileではなく、read authorityを持たないSource Condition Factのまま扱う。
 
 ## 要件 *(必須)*
 
@@ -140,7 +156,7 @@
 - **FR-004**: 初期リリースは、GitHub Copilot、Claude Code、OpenAI Codexについて、「初期リリースでサポートするカスタマイズファイル」に記載したrepositoryのカスタマイズファイル種別を認識しなければならない（MUST）。
 - **FR-005**: 1つのファイルを複数の物理ファイルとして重複させずに、複数のtool、kind、scope、relationshipを表せるよう、物理ファイルとtool-specific recognitionを分離して表現しなければならない（MUST）。
 - **FR-006**: ユーザーはsource、tool、カスタマイズファイル種別、Source-relative pathで一覧を閲覧および絞り込みできなければならない（MUST）。
-- **FR-007**: 読み取り可能な各カスタマイズファイルについて、source、Source-relative path、file type、認識ツール、source text、関連する宣言済みmetadata、既知のrelationshipを表示しなければならない（MUST）。
+- **FR-007**: 読み取り可能な各カスタマイズファイルについて、source、Source-relative path、file type、認識ツール、source text、関連する宣言済みmetadata、既知のrelationshipを表示しなければならない（MUST）。維持管理するsupported-customization文書は、各supported customization file typeについて、表示対象となるdeclared metadata fieldとrelationship kindのclosedなpresentation allowlistを列挙しなければならない（MUST）。Initial releaseはそのallowlistに記載したentryだけを表示し、未記載のmetadataまたはrelationshipを推論してはならない（MUST NOT）。
 - **FR-008**: 1 directoryごとのoverrideやfallbackを含め、決定的なdiscovery orderとscope ruleが文書化されている場合は説明し、その基礎となる物理ファイルも表示し続けなければならない（MUST）。
 - **FR-009**: Runtime version、product surface、working directory、trust、flag、environment、organization policy、または文書化されていない競合解決に動作が依存する場合、conditionalまたはunknownと表示しなければならない（MUST）。
 - **FR-010**: Claudeのimport relationshipは参照としてのみ表示し、import contentを自動展開してはならない（MUST NOT）。起点source boundary外への参照はdiagnosticを生成しなければならない（MUST）。
@@ -155,7 +171,7 @@
 - **FR-019**: すべてのカスタマイズファイルとそこから得た値を信頼できないdataとして扱わなければならない（MUST）。
 - **FR-020**: Skill、command、hook、plugin、workflow、extension、script、handler、prompt、agent、rule、その他の調査対象contentを実行してはならない（MUST NOT）。
 - **FR-021**: 調査対象contentに記載されたMCP serverを起動、接続、probe、またはrequest送信してはならない（MUST NOT）。
-- **FR-022**: カスタマイズファイルの発見と表示によって、outbound network request、child-process実行、またはdynamic code evaluationを引き起こしてはならない（MUST NOT）。調査対象sourceのreadは、内部でadmitしたentryから中央集約したNode.js source-boundary moduleだけが開始しなければならない（MUST）。Clientから与えられたpath、および適用対象のlexical、canonical、link、regular-file、またはsource-boundary checkに失敗した参照先ファイルをread authorityとして受理してはならない（MUST NOT）。
+- **FR-022**: カスタマイズファイルの発見と表示によって、outbound network request、dynamic code evaluation、またはcustomization content由来のchild-process実行を引き起こしてはならない（MUST NOT）。Initial releaseで許可するproduct起動のchild processは、FR-001に基づきstartup時に使用する固定のOS browser起動helperだけとする。このhelperへ調査対象content、調査対象path、authored value、user-supplied command、またはenvironmentで選択したhandlerを渡してはならず（MUST NOT）、自動起動を無効にした場合、非対応の場合、または失敗した場合もinspectionを利用可能にしなければならない（MUST）。Customization fileのdiscovery、read、parse、display、comparison、relationship処理はchild processを開始してはならない（MUST NOT）。調査対象sourceのreadは、内部でadmitしたentryから中央集約したNode.js source-boundary moduleだけが開始しなければならない（MUST）。Clientから与えられたpath、および適用対象のlexical、canonical、link、regular-file、またはsource-boundary checkに失敗した参照先ファイルをread authorityとして受理してはならない（MUST NOT）。
 - **FR-023**: 調査対象source内でfileを作成、変更、rename、または削除してはならない（MUST NOT）。
 - **FR-024**: Node.js公開APIが示すsymbolic link、alias、import、参照pathをsource boundary外のカスタマイズcontentとして受理または表示してはならない（MUST NOT）。Cycle、boundary crossing、利用不能または曖昧なverification metadataは、実行可能なdiagnosticを伴って安全に失敗しなければならない（MUST）。中央集約したNode.js source-boundary moduleは、Node.jsが公開しplatformがenforceする場合、`O_NOFOLLOW`をfinal-componentの多層防御として使用しなければならない（MUST）。Enumeration時、`open`前、`open`後かつread前、上限付きsame-handle read後のcandidate verificationでは、最初にpath `lstat`でlinkまたは不正なidentity/typeを拒否し、次にcandidate `realpath`とcanonical containmentを評価し、その後path `lstat`を繰り返してcanonicalization前後のidentity一致を要求しなければならない（MUST）。適用対象phaseではroot identity、利用可能な全ancestor identity、open-handle identityとmetadataも比較しなければならない（MUST）。検出した変更または検証不能な必須checkは、候補byteを破棄し、そのread結果をpublishまたはcommitしてはならない（MUST NOT）。
 - **FR-025**: Inspectorは、読み取り可能なカスタマイズファイルのsource textを、credential検出、contentベースのmasking、redaction、reveal手順なしで表示しなければならない（MUST）。表示対象の宣言済みmetadata値とcomparison contentは、credential間の差を含む差分を確認できるよう、記述されたリテラル値を維持しなければならない（MUST）。
@@ -172,6 +188,7 @@
 - **FR-036**: Claude instructionについて、文書化された広いscopeから狭いscopeへのorder、同じlevelではlocal instructionが通常instructionに続くこと、およびruntime working directoryが不明な場合はworking directoryより下のinstruction fileがconditionalであることを表さなければならない（MUST）。
 - **FR-037**: 複数のCopilot instruction sourceが同時に適用され得る場合、またはprecedenceがproduct surfaceによって変わる場合、各recognitionを維持し、一般的なsemantic上の勝者を作り出してはならない（MUST NOT）。
 - **FR-038**: 初期リリースの実装とpackageに含む実行可能なapplication codeは、すべてJavaScript/TypeScriptでなければならない（MUST）。CLI、local host、調査対象sourceのfilesystem layerはNode.jsの公開JavaScript API上で動作し、browser logicはJavaScript/TypeScript sourceから生成しなければならない（MUST）。Declarativeな生成済みHTML/CSS、strict JSON manifest、documentation、license fileはpackageへ含めてよい（MAY）。ProductにRust code、Node-APIその他のnative addon、prebuilt native binary、package lifecycleでのcompile、package lifecycleまたはruntimeでのartifact downloadを含めてはならない（MUST NOT）。
+- **FR-039**: Inspectorは、originating customization fileを持たない、保守対象の文書化済みnon-file behaviorと、excluded、hosted、runtime inputを、関連するSourceに紐づく上限付きSource Condition Factとして表さなければならない（MUST）。各factはtool、product surface、文書化済みconditionまたはavailability state、affected scope、不確実性、stable evidenceを特定しなければならない（MUST）。Customization FileおよびTool Recognitionと分離し、file identity、Source-relative path、authored source text、comparison eligibility、relationship origin、read authority、local/hosted read、network requestを作成してはならない（MUST NOT）。Inspectorが観測しない現在のstateは推論せず、conditionalまたはunavailableのままにしなければならない（MUST）。
 
 ### 初期リリースでサポートするカスタマイズファイル
 
@@ -179,18 +196,19 @@
 
 | ツール | Repositoryの調査対象パスとカスタマイズファイル種別 | 明示的な対象外またはconditionalな動作 |
 |---|---|---|
-| GitHub Copilot | Repository全体およびpath-specific instruction、認識対象`AGENTS.md`、rootの`CLAUDE.md`と`GEMINI.md`、custom agent、`.github/skills`、`.agents/skills`、`.claude/skills`配下のskill、promptとCopilot CLI互換command、hook宣言、MCP宣言、サポート対象settingsとplugin metadata | Surfaceに依存するsupportと文書化されていないprecedenceはconditionalとして表示する。Hosted personalまたはorganization configuration、`COPILOT_CUSTOM_INSTRUCTIONS_DIRS`または`COPILOT_SKILLS_DIRS`で指定する追加directoryは初期リリース対象外 |
+| GitHub Copilot | Repository全体およびpath-specific instruction、認識対象`AGENTS.md`、rootの`CLAUDE.md`と`GEMINI.md`、custom agent、`.github/skills`、`.agents/skills`、`.claude/skills`配下のskill、promptとCopilot CLI互換command、hook宣言、MCP宣言、サポート対象settingsとplugin metadata | Surfaceに依存するsupportと文書化されていないprecedenceはconditionalとして表示する。Hosted personalまたはorganization configuration、`COPILOT_CUSTOM_INSTRUCTIONS_DIRS`または`COPILOT_SKILLS_DIRS`で指定する追加directoryは初期リリース対象外。Local originを持たない文書化済みCloud/runtime behaviorはread authorityを持たないSource Condition Factとしてだけ表示でき、hosted stateとconfigurationは調査しない |
 | Claude Code | `CLAUDE.md`、`.claude/CLAUDE.md`、`CLAUDE.local.md`、nested instruction file、`.claude/rules`、skill、legacy command、subagent、project/local settings、宣言済みhook、root MCP configuration、output style、plugin manifest | Importはrelationshipとしてのみ扱う。`AGENTS.md`をfilenameだけでは認識しない。参照されていないscriptをhookと推測しない。単独の`.claude/prompts` directory、managed settings、managed instructions、無関係なuser stateはRepository source対象外 |
 | OpenAI Codex | `AGENTS.md`と`AGENTS.override.md`、`.agents/skills`、custom agent定義、project configuration、hook宣言、MCP宣言、rule、pluginとmarketplace metadata | Project trustまたはworking directoryに依存する実効設定はconditional。非推奨のuser custom promptとuser-level skillはRepository source対象外 |
 
 ### 主要Entity
 
-- **Inspection Session**: 正確に1つのRepository source、0から3つのtool別Global source、現在のscan result、comparison selection、diagnosticを含む一時的なユーザー活動。
-- **Source**: 種別（`Repository`または`Global`）、正確に1つのroot location、enabled state、scan statusを持つ、明示的なfilesystem trust boundary。Global sourceはさらに正確に1つのサポート対象toolで識別し、そのroot内にある異なる種別のカスタマイズファイルは別々のinventory itemとして扱う。
+- **Inspection Session**: 正確に1つのRepository source、0から3つのtool別Global source、現在のscan result、source condition fact、comparison selection、diagnosticを含む一時的なユーザー活動。
+- **Source**: 種別（`Repository`または`Global`）、正確に1つのroot location、enabled state、scan status、0件以上のSource Condition Factを持つ、明示的なfilesystem trust boundary。Global sourceはさらに正確に1つのサポート対象toolで識別し、そのroot内にある異なる種別のカスタマイズファイルは別々のinventory itemとして扱う。
 - **Source-relative Path**: カスタマイズファイルを所有するSourceの1つのrootを基準にした表示・絞り込み用path。Repository Sourceの場合に限り起動時`cwd`からのrepository-relative pathとなり、Global Sourceではtool homeからの相対pathとなる。
 - **カスタマイズファイル**: Source-relative pathと安全なfile identityで識別され、readableまたはdiagnostic stateとcontentベースのmaskingを行わない完全なsource textを持つ、source内で発見された1つの物理ファイル。
 - **Tool Recognition**: カスタマイズファイルに付与するtool-specific interpretation。Tool、file type、文書化されたscopeまたはorder、宣言済みmetadata、不確実性を含む。
 - **Relationship**: カスタマイズファイルから別pathまたは宣言済みcomponentへの、実行されない参照。Import contentを展開せず、boundaryとresolution statusを含む。
+- **Source Condition Fact**: Originating customization fileを持たない、文書化済みnon-file behaviorまたはexcluded、hosted、runtime inputについての、上限付きsource-scoped statement。関連toolとsurface、conditionまたはavailability、affected scope、不確実性、evidenceを特定するが、file identity、Source-relative Path、authored source text、comparison eligibility、Relationship origin、read authorityを持たない。Localまたはhosted I/Oを発生させず、未観測の現在stateはconditionalまたはunavailableのままにする。
 - **Diagnostic**: カスタマイズsource valueを複製せず、影響を受けたsourceとSource-relative locationを特定して、空結果、read/parse failure、不確実性、limit、stale file、cycle、boundary violationを実行可能に説明する情報。
 
 ## 品質要件 *(必須)*
@@ -201,11 +219,11 @@
 
 ### テストと検証
 
-- **QR-002**: 自動検証は、各toolの調査対象パス一覧に含まれるpathと含まれないpath、multi-tool recognition、source separation、決定的なorderとfallback、すべてのuncertainty state、comparison、opt-inとdisable flow、不正および変化するfile、encoding、resource limit、symbolic link、cycle、traversal attempt、rootとcandidateの差し替えfixture、identityとmetadataの変化、検出済みrace後の結果破棄、最後にcommitされたsnapshotへの致命的な再scanのrollback、リテラルcredentialの正確な表示、環境変数参照の非解決、ならびに実行、source mutation、MCP connection、カスタマイズファイル起因network accessがゼロであることを示すregression testを扱わなければならない（MUST）。すべてのerror caseには客観的な期待結果が必要であり、end-to-end browser testは4つのuser storyすべてを扱わなければならない（MUST）。Supported-OS matrixは、stableかつ検出可能なunsafe objectの必須rejection、Node.jsが必要metadataまたはcanonicalizationを利用不能もしくは曖昧と報告した場合の`safe-fs-boundary-unverifiable`によるrejection、public Node.js APIが公開しないOS機能への明示的な`platform-unobservable` recordを区別しなければならない（MUST）。最後のcategoryをcontainmentの証明へ数えてはならない（MUST NOT）。これらのtestは、文書化したNode.js checkを検証しなければならず（MUST）、観測できない敵対的なpath-component replacement raceに対する証明と説明してはならない（MUST NOT）。
+- **QR-002**: 自動検証は、各toolの調査対象パス一覧に含まれるpathと含まれないpath、multi-tool recognition、source separation、決定的なorderとfallback、すべてのuncertainty state、comparison、opt-inとdisable flow、不正および変化するfile、encoding、resource limit、symbolic link、cycle、traversal attempt、rootとcandidateの差し替えfixture、identityとmetadataの変化、検出済みrace後の結果破棄、最後にcommitされたsnapshotへの致命的な再scanのrollback、リテラルcredentialの正確な表示、環境変数参照の非解決、ならびに実行、source mutation、MCP connection、カスタマイズファイル起因network accessがゼロであることを示すregression testを扱わなければならない（MUST）。さらにSC-002のreference profileとfixture digestのvalidation、現在のrequestに対する客観的なqualifying-status assertion、origin-file-less Source Condition Factについて正しいsource、tool、surface、status、evidenceを保ったfile分離とsynthetic fileゼロ・local/hosted I/Oゼロを検証しなければならない（MUST）。すべてのerror caseには客観的な期待結果が必要であり、end-to-end browser testは4つのuser storyすべてを扱わなければならない（MUST）。Supported-OS matrixは、stableかつ検出可能なunsafe objectの必須rejection、Node.jsが必要metadataまたはcanonicalizationを利用不能もしくは曖昧と報告した場合の`safe-fs-boundary-unverifiable`によるrejection、public Node.js APIが公開しないOS機能への明示的な`platform-unobservable` recordを区別しなければならない（MUST）。最後のcategoryをcontainmentの証明へ数えてはならない（MUST NOT）。これらのtestは、文書化したNode.js checkを検証しなければならず（MUST）、観測できない敵対的なpath-component replacement raceに対する証明と説明してはならない（MUST NOT）。
 
 ### セキュリティとプライバシー
 
-- **QR-003**: Viewing sessionは既定で起動元machineからのみ到達可能でなければならない（MUST）。最小権限のfilesystem access、1つに集約したNode.js調査対象I/O boundary、lexicalとcanonicalのcontainment check、linkと非regular-fileの拒否、公開かつ有効な場合の`O_NOFOLLOW`、enumerationからopenまでのidentity check、root/ancestor/candidate/open-handleのread後再検証、上限のあるresource use、カスタマイズsource valueを複製しないoperational diagnosticとlog、すべての検出済みまたは報告済み検証不能file raceに対する結果破棄を使用しなければならない（MUST）。調査対象contentや表示した値を別machineへ送信したり、既定でsession後に保持したりしてはならない（MUST NOT）。Node.jsの公開APIはcross-platformなdirectory-handle-relative openを提供せず、same-device mountまたはreparse behaviorをすべて公開しないため、productはancestorまたは非対応final path componentを同時に差し替える敵対的なlocal processや、Node.jsが観測できないOS indirectionに対してkernelが強制するcontainmentを提供しないことを文書化しなければならない（MUST）。将来の解消には、適切なNode.js公開APIまたはoperating systemが強制するread-only boundaryを必要とする。
+- **QR-003**: Viewing sessionは既定で起動元machineからのみ到達可能でなければならない（MUST）。最小権限のfilesystem access、1つに集約したNode.js調査対象I/O boundary、lexicalとcanonicalのcontainment check、linkと非regular-fileの拒否、公開かつ有効な場合の`O_NOFOLLOW`、enumerationからopenまでのidentity check、root/ancestor/candidate/open-handleのread後再検証、上限のあるresource use、カスタマイズsource valueを複製しないoperational diagnosticとlog、すべての検出済みまたは報告済み検証不能file raceに対する結果破棄を使用しなければならない（MUST）。調査対象contentや表示した値を別machineへ送信したり、既定でsession後に保持したりしてはならない（MUST NOT）。Node.jsの公開APIはcross-platformなdirectory-handle-relative openを提供せず、same-device mountまたはreparse behaviorをすべて公開しないため、productはsource rootまたはancestor、あるいは非対応final path componentを同時に差し替える敵対的なlocal processや、Node.jsが観測できないOS indirectionに対してkernelが強制するcontainmentを提供しないことを文書化しなければならない（MUST）。将来の解消には、適切なNode.js公開APIまたはoperating systemが強制するread-only boundaryを必要とする。
 
 ### ドキュメントと参加しやすさ
 
@@ -216,23 +234,30 @@
 
 ### 測定可能な成果
 
+**初回利用者評価のガバナンス**
+
+20人による評価はinitial-release candidateについて1回実施する。自動checkとprojectに詳しいcontributorだけでは、project contextを持たない初回利用者が発見と正しい解釈を行えることを確認できないためである。固定denominatorは観測した19/20と18/20のthresholdを明示するためのものであり、population-levelの統計的主張ではない。重複recruitmentを避けるため、SC-001とSC-006では同じcohortとsessionを再利用しなければならない（MUST）。
+
+このrelease evidenceはmaintainer teamが担当する。Pull requestごとの義務ではなく、通常のcontributorへ参加者のrecruit、費用負担、moderation、reviewを求めてはならない（MUST NOT）。Enrollment前にmaintainerは、accountable study owner、recruitmentとparticipant-compensationのfunding owner、moderatorとreviewer、scheduleとcontact/support path、consent/privacyと匿名化retention procedure、提供するtest repositoryとequipment/session support、合理的なaccessibility accommodationを示すbilingual study planを公開しなければならない（MUST）。Participantにpersonal repository、paid product、personal expenditureを要求してはならない（MUST NOT）。Study resourceが不足する場合はinitial-release claimをblockするが、それ以外は適合するcontributionのreviewをblockしない。Primary workflow、提供guidance、evaluation fixture、scoring rubricのいずれかにmaterial changeがあった場合に限り、studyを再実施しなければならない（MUST）。
+
 - **SC-001**: 通常の開発作業でGitとcommand-line interfaceを使用しているがInspectorを利用したことも開発へ参加したこともない初回利用者を正確に20人とする評価で、19人以上が提供されたproduct guidanceだけを使い、2分以内に意図するrepository rootへ移動し、その場所でInspectorを起動して、発見されたカスタマイズファイルを1つ開ける。2分timerは標準化された課題文を提示した時点で開始し（MUST）、発見されたカスタマイズファイル1つのsource/details viewが画面に開かれて操作可能になった時点で終了しなければならない（MUST）。したがって、計測時間には意図するrepository rootへの移動とInspectorの起動を含む。同じevaluation sessionでSC-006にも同じparticipant cohortを使用し（MUST）、SC-001を先に実施しなければならない（MUST）。Moderatorは標準化された課題文を同じ文面で読み直してよいが（MAY）、いずれの基準でもcommand、navigation、interface操作のヒントを提供してはならない（MUST NOT）。参加者を20人のcohortへ登録した後は、基準の実施を妨げる、または中断する機材、環境、productのfailureを、そのtask timerの開始前に発生した場合も含めて当該基準の不成功として数えなければならず（MUST）、参加者を除外または差し替えてはならない（MUST NOT）。
-- **SC-002**: 文書化されたsize limit内で、filesystem entryが100,000件、該当するカスタマイズファイルが500件あるリポジトリについて、メンテナーが指定する現在のローカル基準環境では10秒以内に完全な一覧を受け取り、1秒以内に進捗または意味のあるstatusを確認できる。このworkloadに一致するdeterministicなfixtureを測定前に1つ用意し（MUST）、内容を変更せず10回の測定runすべてで再利用しなければならない（MUST）。Fixtureの構築とsetupは計測時間に含めてはならない（MUST NOT）。両方のtimerはBrowserがscan requestを送信した時点で開始しなければならない（MUST）。1秒timerは最初の進捗または意味のあるstatusが画面に表示された時点、10秒timerは完全な一覧が表示され主要な一覧操作が可能になった時点で終了しなければならない（MUST）。`npx`のdownload、installation、process起動時間はこれらのtimerに含めてはならない（MUST NOT）。1つのmeasurement setは、その同じ環境で正確に10回測定して構成し（MUST）、9回以上が2つの時間基準をrunごとに満たさなければならない（MUST）。各測定runは以前のprocess終了後に新しいInspector processを起動し（MUST）、application memory stateまたは以前のscan snapshotを再利用してはならない（MUST NOT）。Operating systemのfilesystem cacheはrun間で意図的にclearまたはresetしてはならず（MUST NOT）、10回のrunは自然に変化するcache stateを使用しなければならない（MUST）。この結果は別machineにも適用できる性能保証ではなく基準環境固有であり、repository文書は基準環境の具体的なmachine、operating system、hardware、runtime情報を公開してはならない（MUST NOT）。
+- **SC-002**: 文書化されたsize limit内で、filesystem entryが100,000件、該当するカスタマイズファイルが500件あるリポジトリについて、version付きで公開したSC-002 reference-environment profile上で、10秒以内に完全な一覧を受け取り、1秒以内に現在のrequestに対するqualifying scan statusを確認できる。このworkloadに一致するdeterministicなfixtureを測定前に1つ用意し（MUST）、内容を変更せず10回の測定runすべてで再利用しなければならない（MUST）。Fixtureの構築とsetupは計測時間に含めてはならない（MUST NOT）。両方のtimerはBrowserがscan requestを送信した時点で開始しなければならない（MUST）。1秒timerはClarificationsで定義したqualifying statusが画面に表示されassistive technologyにも公開された時点だけで終了し、10秒timerは完全な一覧が表示され主要な一覧操作が可能になった時点で終了しなければならない（MUST）。各runで完全な一覧が操作可能になった後、標準化されたfilter actionとitem-selection actionを1回ずつ実施しなければならない（MUST）。各interaction timerはBrowserが対応するinputをdispatchした時点で開始し、filtered resultまたはselected-state feedbackが表示され操作可能になった時点で終了しなければならない（MUST）。`npx`のdownload、installation、process起動時間はこれらのtimerに含めてはならない（MUST NOT）。1つのmeasurement setは同じprofileで正確に10回測定して構成し（MUST）、9回以上が2つのscan時間基準をrunごとに満たし、かつ標準化された両interactionを100ミリ秒未満に保たなければならない（MUST）。各測定runは以前のprocess終了後に新しいInspector processを起動し（MUST）、application memory stateまたは以前のscan snapshotを再利用してはならない（MUST NOT）。Operating systemのfilesystem cacheはrun間で意図的にclearまたはresetしてはならず（MUST NOT）、10回のrunは自然に変化するcache stateを使用しなければならない（MUST）。Measurement recordはprofile ID、fixture digest、実際のenvironment valueを記載しなければならない（MUST）。Profileを変更すると新しい直接比較不能なmeasurement setを開始する。この結果は公開したprofile固有であり、別環境へ適用できる性能保証ではない。
 - **SC-003**: Conformance fixture集合において、調査対象パス一覧に含まれるサポート対象カスタマイズファイルの認識率100%、一覧外のファイルを解釈する件数0、共有物理ファイルに対するmulti-tool attributionの正解率100%を達成する。
 - **SC-004**: 文書化したNode.js-only threat model内で維持するsafety suite全体において、カスタマイズファイル由来のcommandまたはcode execution、child process、MCP connection、outbound request、調査対象sourceのmutationがすべて0件である。有効なsource boundary外として拒否されたselectorに対する意図的なread requestが0件であり、read中にlink、identity、canonical location、または関連metadataが検出可能な形で変化するすべてのfixtureで、publishまたはcommitされるbyteが0である。
 - **SC-005**: 維持管理するexact-display fixtureの100%で、リテラルcredential値と環境変数参照textがsource viewとcomparison viewにmaskされず変更なしで表示され、参照先のprocess environment値が表示contentへ混入せず、maskまたはreveal controlも表示されない。
-- **SC-006**: SC-001を実施した後、同じevaluation sessionの同じ初回利用者20人がSC-006を実施する。SC-001の結果にかかわらず、全参加者は同じ指定カスタマイズファイルが開かれた同一の準備済みInspector stateからSC-006を開始しなければならない（MUST）。2分timerは、そのstateの準備が完了し、標準化された課題文を提示した時点で開始しなければならない（MUST）。各参加者は、カスタマイズファイルのsource、認識ツール、file type、実効動作がcertainかconditionalかの必須回答欄を持つ標準化されたresponse formへ回答を記録しなければならない（MUST）。2分以内に4項目すべてを提出し、指定ファイルについて事前定義したground truthと全項目が一致した場合を成功とし、未回答または誤答が1項目でもあれば不成功として数えなければならない（MUST）。18人以上が、提供されたproduct guidanceとSC-001で定義したmoderator policyだけを使って成功しなければならない（MUST）。Primary workflow全体でcritical usability issueは0件でなければならない（MUST）。禁止された支援なしでworkflowを完了できなくする問題、または意図しない実行、調査対象sourceの変更、MCP・network接続、別machineへの調査content露出を起こす問題をcriticalとする。
+- **SC-006**: SC-001を実施した後、同じevaluation sessionの同じ初回利用者20人がSC-006を実施する。SC-001の結果にかかわらず、全参加者は同じ指定カスタマイズファイルが開かれた同一の準備済みInspector stateからSC-006を開始しなければならない（MUST）。2分timerは、そのstateの準備が完了し、標準化された課題文を提示した時点で開始しなければならない（MUST）。各参加者は、カスタマイズファイルのsource、認識ツール、file type、実効動作がcertainかconditionalかの必須回答欄を持つ標準化されたresponse formへ回答を記録しなければならない（MUST）。2分以内に4項目すべてを提出し、指定ファイルについて事前定義したground truthと全項目が一致した場合を成功とし、未回答または誤答が1項目でもあれば不成功として数えなければならない（MUST）。18人以上が、提供されたproduct guidanceとSC-001で定義したmoderator policyだけを使って成功しなければならない（MUST）。時間計測した回答を提出した後、20人全員が同じヒント禁止のmoderator policyの下で、標準化されたcomparisonとGlobal consentの課題をそれぞれ実施しなければならない（MUST）。これらの課題とSC-001のdiscovery観察および時間計測するSC-006のinspection観察を合わせ、4つのprimary workflowすべてを対象としなければならない（MUST）。登録した全参加者と機材、環境、productの全outcomeを除外や差し替えなしで記録しなければならない（MUST）。Moderatorは4つの客観的workflow-completion outcomeと事前定義済みsafety-event fieldを記録しなければならない（MUST）。意図しない実行、調査対象sourceの変更、MCP・network接続、別machineへの調査content露出は自動的にcriticalとする。自動的なsafety triggerではない、product起因と疑われるworkflow blockerだけを固定rubricに対して2人が独立分類しなければならず（MUST）、不一致は安全側に倒してconfirmed critical issueとして数え、第3の裁定者は設けない。Critical issueゼロのgateは、20人全員が4つのprimary workflowすべてを実施し、自動判定またはreviewer確認済みのcritical issueが1件もない場合に限り合格しなければならない（MUST）。Safety以外では、禁止された支援なしでworkflowを完了できなくする問題をcriticalとする。
 - **SC-007**: 維持管理するread不能、不正、過大、cycle、stale、boundary-crossing、fatal-rescan fixtureの100%で、影響を受けないカスタマイズファイルを引き続き利用でき、影響を受けたitemにカスタマイズsource valueを複製しない実行可能なdiagnosticがある。すべての致命的な再scanで部分結果のpublish件数が0となり、最後に正常commitされたsnapshotがstale表示付きで残る。
 - **SC-008**: すべての主要workflowをkeyboardだけで完了でき、適用されるWCAG 2.2 AAの自動および手動acceptance checkにcriticalなaccessibility defectなしで合格する。
+- **SC-009**: 維持管理するorigin-file-less Source Condition Fact fixtureの100%で、各factを正しいSource、tool、product surfaceの下にexpected documented conditionまたはunavailable stateおよびevidenceとともに表示し、physical/synthetic file、file ID、Source-relative Path、authored source text、comparison target、relationship origin、local/hosted read、network requestを作成するfactを0件にする。
 
 ## 前提
 
 - 初期リリースはローカルのsingle-user inspection sessionである。Remote hosting、collaboration、account、durable profileは対象外とする。
 - 初期リリースの実行可能なapplication codeはすべてJavaScript/TypeScriptで実装する。Browserは生成済みclient logicとdeclarative assetを実行し、それ以外のproduct codeはすべてNode.js上で実行する。Strict manifest、documentation、license fileはnon-executable package dataのままとする。Contributorとuserは、Rust toolchain、native compiler、native addon、platform別prebuilt binary、またはpackage lifecycle/runtimeでのartifact downloadを必要としない。
-- 調査対象のRepository rootとopt-in済みGlobal rootは、起動したuserが管理する通常のlocal pathである。通常の同時editは想定し、文書化したNode.js checkが変更を検出した場合、または必要なverification dataを利用不能と報告した場合はfail closedしなければならない。現行のNode.js公開APIはcross-platformな原子的directory-handle-relative openを公開しないため、check間でancestor、または有効な`O_NOFOLLOW`がないplatformのfinal path componentをraceさせる敵対的なlocal processは初期リリースのthreat modelから除外する。PlatformがNode.js経由で公開しないsame-device mountとreparse behaviorも残存limitationである。これらの制約は、検出可能または報告済み検証不能caseでlink、containment、identity、metadata、結果破棄、diagnosticの要件を緩和しない。
+- 調査対象のRepository rootとopt-in済みGlobal rootは、起動したuserが管理する通常のlocal pathである。通常の同時editは想定し、文書化したNode.js checkが変更を検出した場合、または必要なverification dataを利用不能と報告した場合はfail closedしなければならない。現行のNode.js公開APIはcross-platformな原子的directory-handle-relative openを公開しないため、check間でsource rootまたはancestor、あるいは有効な`O_NOFOLLOW`がないplatformのfinal path componentをraceさせる敵対的なlocal processは初期リリースのthreat modelから除外する。PlatformがNode.js経由で公開しないsame-device mountとreparse behaviorも残存limitationである。これらの制約は、検出可能または報告済み検証不能caseでlink、containment、identity、metadata、結果破棄、diagnosticの要件を緩和しない。
 - `npx`起動時の`cwd`は調査boundaryであり、いずれかのcoding agentが使用する実効working directoryの証明ではない。Subdirectoryから起動した場合、Repository sourceはそのsubtreeに限定される。より広いscopeを調査するには、意図するrootからcommandを再実行する。
 - 公式のカスタマイズ形式は変化し得る。正確な調査対象パス、filename、extensionは計画時に再確認して確定し、公開したうえでconformance fixtureによって検証する。
-- Global調査はFR-015からFR-017のinstruction pathだけを対象とする。追加のuser-global skill、agent、settings、MCP定義、plugin、managed configuration、remote configurationには、別の同意と将来の仕様作業が必要である。
+- Global調査はFR-015からFR-017のinstruction pathだけを対象とする。追加のuser-global skill、agent、settings、MCP定義、plugin、managed configuration、remote configurationには、別の同意と将来の仕様作業が必要である。この除外は、文書化済みhosted/runtime behaviorについて保守するread authorityを持たないSource Condition Factの表示を妨げない。そのfactはremote configurationを調査も公開もしない。
 - Source text、表示対象の宣言済みmetadata値、comparison contentは、記述された差分を確認できるようcredential maskingなしで表示する。調査対象content内の環境変数参照はリテラルのままとし、解決しない。Productはreveal workflowを持たない。ファイルを開くと完全なcontentが露出するため、interfaceと文書は機密値が表示され得ることを示し、operational diagnosticとlogにはカスタマイズsource valueを複製しない。
 - Inspectorは宣言済みmetadataとreferenceをlabel付けするために必要な範囲で構造をparseしてよいが、parse diagnosticはvalidation resultではなく、Inspectorをvalidatorにするものでもない。
 - 初期リリースで一度に比較できるのは2つのカスタマイズファイルに限定し、contentのmergeやeditは行わない。

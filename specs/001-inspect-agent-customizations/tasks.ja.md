@@ -16,6 +16,70 @@
 - **[Story]**: フェーズ 3〜101 で必須です。Setup、Minimal Secure Foundation、フェーズ 102〜104 でのみ省略します。
 - すべてのチェックリスト項目には、一つの主要成果と少なくとも一つの正確なファイルパスがあります。
 
+## 規範的な要件トレーサビリティ
+
+このmatrixを、checklist semanticsを変更する仕組みではなく正本coverage indexとする。全FR、QR、SCについてprimaryな
+implementation/verification/evidence ownerを示す。Rangeはその全taskが当該requirementへ直接寄与する場合だけ両端を含み、
+taskはchecklist textと参照specにないobligationを継承しない。全taskを少なくとも1つのspecification rowまたは明示的な
+Constitution/project-governance rowで扱う。Requirement/task変更時はこのmatrixと英語版を同じ変更で更新する。
+
+| 要件 | 所有する実装・検証・evidence task |
+|---|---|
+| FR-001 | T040–T049, T917, T1048, T1056 |
+| FR-002 | T017, T028–T032, T037, T913–T919 |
+| FR-003 | T050–T073, T913–T920, T1042, T1053 |
+| FR-004 | T050–T073, T913–T920, T1042, T1053 |
+| FR-005 | T017, T028, T178–T190, T268–T275, T388–T396, T913, T920 |
+| FR-006 | T178–T190, T268–T275, T388–T396, T402–T410, T440–T448, T475–T481, T486–T494, T507–T516, T565–T572, T577–T588, T643–T653, T658–T666, T679–T688, T739–T746, T751–T762, T818–T828, T833–T843, T899–T907, T919 |
+| FR-007 | T074–T177, T216–T267, T292–T387, T411–T435, T449–T474, T495–T502, T517–T564, T589–T642, T667–T674, T689–T738, T763–T817, T844–T898, T920–T927, T1034–T1036, T1041–T1042 |
+| FR-008 | T205–T275, T920, T927, T1042 |
+| FR-009 | T079–T080, T913–T920, T1042, T1053 |
+| FR-010 | T226–T244, T920, T924–T927 |
+| FR-011 | T191–T204, T276–T279, T397–T401, T436–T439, T482–T485, T503–T506, T573–T576, T654–T657, T675–T678, T747–T750, T829–T832, T908–T912, T928–T929 |
+| FR-012 | T191–T204, T276–T279, T397–T401, T436–T439, T482–T485, T503–T506, T573–T576, T654–T657, T675–T678, T747–T750, T829–T832, T908–T912, T928–T929 |
+| FR-013 | T930–T943, T1017–T1028 |
+| FR-014 | T944–T1028 |
+| FR-015 | T977–T990 |
+| FR-016 | T963–T976 |
+| FR-017 | T944–T962 |
+| FR-018 | T930–T990, T1042 |
+| FR-019 | T015–T039, T050–T073, T913–T927 |
+| FR-020 | T056, T925, T1048, T1054 |
+| FR-021 | T280–T401, T925, T1054 |
+| FR-022 | T040, T043, T047, T056, T925, T1048, T1054 |
+| FR-023 | T056, T925, T1054 |
+| FR-024 | T018–T032, T924, T1051, T1058 |
+| FR-025 | T074–T085, T920–T927, T995–T997, T1055 |
+| FR-026 | T077, T085, T178–T190, T268–T275, T388–T396, T475–T481, T565–T572, T643–T653, T739–T746, T818–T828, T899–T907, T925–T927, T995–T997, T1055 |
+| FR-027 | T084, T100, T927, T1045 |
+| FR-028 | T016, T027, T923, T927, T1058 |
+| FR-029 | T015–T027, T915, T922–T923, T1046, T1058 |
+| FR-030 | T026, T037, T182, T916, T928, T1006–T1016, T1058 |
+| FR-031 | T041, T048–T049, T096, T182, T1021, T1024, T1027 |
+| FR-032 | T191–T204, T276–T279, T397–T401, T436–T439, T482–T485, T503–T506, T573–T576, T654–T657, T675–T678, T747–T750, T829–T832, T908–T912, T928–T929 |
+| FR-033 | T178–T190, T268–T275, T388–T396, T475–T481, T565–T572, T643–T653, T739–T746, T818–T828, T899–T907, T925, T927–T929 |
+| FR-034 | T226–T244, T857–T877, T1042 |
+| FR-035 | T205–T225, T944–T962 |
+| FR-036 | T226–T244, T963–T976 |
+| FR-037 | T245–T267 |
+| FR-038 | T001–T014, T024–T036, T1043–T1044, T1047–T1051 |
+| FR-039 | T153, T159, T246, T260, T374, T377, T380–T386, T388, T391, T393, T400, T547, T550, T720, T723, T911, T979–T980, T985–T986, T995–T997, T1029, T1041–T1042, T1060 |
+| QR-001 | T017–T039, T050–T073, T913–T920, T1031–T1042 |
+| QR-002 | T015–T026, T913–T935, T944–T950, T963–T967, T977–T981, T991–T997, T1006–T1011, T1017–T1022, T1041–T1055, T1058–T1060 |
+| QR-003 | T018–T049, T924–T927, T1017–T1028, T1051, T1054, T1058 |
+| QR-004 | T044, T084, T100, T919, T927, T929, T935, T950, T976, T990, T1005, T1016, T1022, T1028–T1030, T1039–T1041, T1045, T1056–T1059 |
+| QR-005 | T050–T073, T913, T920, T1031–T1042, T1062 |
+| SC-001 | T040–T049, T917, T1030, T1048, T1056 |
+| SC-002 | T183, T914, T918, T1029, T1041, T1052 |
+| SC-003 | T913–T920, T1042, T1053 |
+| SC-004 | T085, T925, T930, T995–T997, T1054 |
+| SC-005 | T074, T077, T081–T085, T925–T927, T930, T995–T997, T1055 |
+| SC-006 | T1030, T1057 |
+| SC-007 | T018–T023, T915, T922–T924, T1058 |
+| SC-008 | T044, T084, T100, T919, T927, T929, T1045, T1059 |
+| SC-009 | T153, T246, T374–T386, T547, T720, T979–T980, T995–T997, T1041–T1042, T1060 |
+| Constitution/project governance | T001–T014, T1029–T1046, T1047–T1063 |
+
 ---
 
 ## フェーズ 1: Setup
@@ -26,20 +90,20 @@
 
 **目に見えるチェックポイント**: コントリビューターがプロジェクトをインストールし、空のビルド・テストツールチェーンを実行できます。
 
-- [ ] T001 Node.js `^24.11.0 || >=26.0.0`、`pnpm@11.13.0`、正確な runtime leaf 集合 `cac`・`yaml`・`jsonc-parser`・`smol-toml`、plan で承認された正確な development version、凍結された graph を `package.json` と `pnpm-lock.yaml` に固定する
+- [ ] T001 Packageまたはconfiguration fileを変更する前にplan承認済みdependency baselineを再検証する。Packageまたはversionが1つでも変わる場合は停止し、`specs/001-inspect-agent-customizations/`配下のdependency baselineを含む`research.md`/`research.ja.md`、`plan.md`/`plan.ja.md`、`quickstart.md`/`quickstart.ja.md`、`tasks.md`/`tasks.ja.md` pairを同期して`/speckit-plan`と`/speckit-tasks`を再実行する。変わらない場合はNode.js `^24.11.0 || ^26.0.0`、`pnpm@11.13.0`、正確なruntime leaf集合`gunshi` 0.37.0・`yaml`・`jsonc-parser`・`smol-toml`、承認済みの正確なdevelopment version、凍結されたgraphを`package.json`と`pnpm-lock.yaml`に固定する
 - [ ] T002 `bin` を `agent-customization-inspector: bin.mjs` のみ、`files` を `bin.mjs`、`dist`、`README.md`、`README.ja.md`、`LICENSE` のみに定義し、`main`/`module`/`exports` を省略して、`package.json` でライフサイクルのビルド・ダウンロードフックを禁止する
 - [ ] T003 フォーマット、lint、型チェック、ユニット、契約、統合、セキュリティ、パッケージ、性能、カバレッジ、文書、ブラウザーの各コマンドを `package.json` に追加する
-- [ ] T004 検証済みの依存関係基準と実行可能なコマンドを `specs/001-inspect-agent-customizations/research.md`、`specs/001-inspect-agent-customizations/research.ja.md`、`specs/001-inspect-agent-customizations/plan.md`、`specs/001-inspect-agent-customizations/plan.ja.md`、`specs/001-inspect-agent-customizations/quickstart.md`、`specs/001-inspect-agent-customizations/quickstart.ja.md` で同期する
+- [ ] T004 `package.json`、`pnpm-lock.yaml`、configuration、CI、release、package-policy taskが再検証済みの1つのbaselineを使用することを確認し、そのpackage、正確なversion、実行可能なcommandを`specs/001-inspect-agent-customizations/research.md`、`specs/001-inspect-agent-customizations/research.ja.md`、`specs/001-inspect-agent-customizations/plan.md`、`specs/001-inspect-agent-customizations/plan.ja.md`、`specs/001-inspect-agent-customizations/quickstart.md`、`specs/001-inspect-agent-customizations/quickstart.ja.md`、`specs/001-inspect-agent-customizations/tasks.md`、`specs/001-inspect-agent-customizations/tasks.ja.md`で同期する
 - [ ] T005 [P] Nuxt SPA、静的 Nitro プリセット、ルート絶対アセット、無効化した CDN、明示的な imports と components を `nuxt.config.ts` で設定する
 - [ ] T006 [P] アプリケーション、共有、ソース、スクリプト、テストに対する厳格な型チェックを `tsconfig.json` で設定する
 - [ ] T007 [P] 生成出力を除外しながら TypeScript、Vue、Node.js、テストの lint を `eslint.config.js` で設定する
 - [ ] T008 [P] ユニット、契約、統合、セキュリティ、パッケージ、性能、カバレッジの各プロジェクトを `vitest.config.ts` で設定する
-- [ ] T009 [P] 決定論的なブラウザーおよびアクセシビリティプロジェクトを `playwright.config.ts` で設定する
+- [ ] T009 [P] Playwright 1.61.1がinstallする正確なbrowser revisionを使うdeterministicなChromium、Firefox、WebKitのprimary-workflow/accessibility certification projectを `playwright.config.ts` に設定し、pin済みrevisionは再現可能な自動baselineであってuser browserの網羅的一覧ではないことを文書化する
 - [ ] T010 [P] 名前付き Node ESM `cli` および `parser-worker` エントリー、固定 `.mjs` 出力、バンドルするプロジェクトモジュール、外部化する宣言済み依存関係、無効化したマップ・宣言、クリーンな `.build/server` ステージングを `tsdown.config.ts` で設定する
-- [ ] T011 [P] 正確な shebang、project 所有で built-in のみを使う verification flow、static な `dist/cli.mjs` import の不在、verification 後に正確に一度だけ行う dynamic import の placeholder を持つ、BOM なしで実行可能な Node.js integrity-bootstrap skeleton を `bin.mjs` に作成する
+- [ ] T011 [P] 正確なshebang、packed exact `engines.node` string `^24.11.0 || ^26.0.0`と実行中versionが`>=24.11.0 <25.0.0 || >=26.0.0 <27.0.0`内であることのbuilt-in-only検証、`dist/cli.mjs`のstatic importなし、検証後のdynamic-import placeholder正確に1件を備えるBOMなしのexecutable Node.js integrity-bootstrap skeletonを `bin.mjs` に作成する
 - [ ] T012 [P] 依存関係と、生成された Nuxt、サーバー、配布、カバレッジ、Playwright、Node.js のビルド出力だけを `.gitignore` で無視する
 - [ ] T013 フォーマット、lint、型チェック、ユニット、契約、統合、セキュリティ、パッケージ、性能、文書、カバレッジ、ブラウザーの独立したジョブを `.github/workflows/ci.yml` に追加する
-- [ ] T014 一つのプラットフォーム非依存アーティファクトを利用する、対応 Node.js エンジンおよび Linux/macOS/Windows のプレースホルダーを `.github/workflows/ci.yml` に追加する
+- [ ] T014 Node.js `24.11.0`と`26.0.0`を`ubuntu-24.04` x64、`macos-15` arm64、`windows-2025` x64と掛け合わせた正確な6つのlower-bound certification job、Node.js 24.18.0 `ubuntu-24.04` x64のdevelopment/build job 1件を `.github/workflows/ci.yml` に追加し、宣言済みNode.js 24/26 engine rangeがruntime compatibility contractでありsampleだけへsupportを狭めないことをlabelする
 
 ---
 
@@ -55,26 +119,26 @@
 
 - [ ] T015 [P] parser message、retained graph、および session 所有の全 mutable field を synthetic neutral form（`sessionDiagnosticIds: []`、lifecycle diagnostic なし、current/no stale failure/null control、全 Source が idle かつ progress は null）へ投影した5 MiB の complete-envelope base について、正確な上限・whole-record-one-over の決定論的な失敗テストを追加する。さらに、各 complete record の canonical byte delta を正確に課金し1 record あたり2 KiB cap と四つの keyed failure および sentinel 用16 KiB reserve を持つ独立した2 MiB lifecycle-diagnostic delta、compact keyed fallback/通常 overflow の抑制、独立した1 MiB worst-case control delta、budget 間借用なし、8 MiB の最終 snapshot を `tests/unit/shared/limits.test.ts` で検証する
 - [ ] T016 [P] 閉じた診断レジストリー、決定論的な集約、四つのオーバーフローセンチネル、compact keyed failure、記述された source value を一切複製しない引数に関する失敗テストを `tests/unit/shared/diagnostics.test.ts` に追加する
-- [ ] T017 [P] 公開エンティティの形、Source が一つの root だけを持つという不変条件、記述されたリテラルの正確な metadata、UTF-16 source range、不透明な generation-scoped ID、バージョン付き API envelope、厳格なリクエストガード、内部権限レコードの拒否に関する失敗テストを `tests/unit/shared/entities.test.ts` と `tests/unit/shared/api.test.ts` に追加する
-- [ ] T018 link、junction、非通常エントリー、深いツリー、VCS 内部、注入された置換チェックポイント、実効的な `O_NOFOLLOW`、検証不能な確認、`platform-unobservable` の結果について、決定論的なクロスプラットフォーム fixture を `tests/fixtures/adversarial/build-filesystem-fixtures.ts` に作成する
+- [ ] T017 [P] Public entity shape、one-root Source invariant、exact tool/surface/rule/evidence/condition fieldを持ちfile identity/path/text/comparison/relationship/read authorityを持たないbounded `SourceConditionFact` record、exact authored-literal metadata、UTF-16 source range、opaque generation-scoped ID、versioned API envelope、strict request guard、internal authority record rejectionに関するfailing testを `tests/unit/shared/entities.test.ts` と `tests/unit/shared/api.test.ts` に追加する
+- [ ] T018 Link、junction、non-regular entry、deep tree、VCS internal、注入したsource-root/ancestor/final-component replacement checkpoint、effectiveおよびunavailable/ineffectiveな`O_NOFOLLOW`、unverifiable check、`platform-unobservable` outcomeのdeterministic cross-platform fixtureを `tests/fixtures/adversarial/build-filesystem-fixtures.ts` に作成する
 - [ ] T019 I/O 前の字句的拒否、コンポーネント `lstat`、正規パス包含、bigint identity、plan 駆動の境界付き `opendir`、I/O segment としての raw `Dirent.name`、表示・分類の NFC 化、NFC 化すると衝突する sibling を fail-closed にする動作、VCS 除外、検出可能なデバイス変更に関する root-context および列挙の失敗テストを `tests/unit/inspection/node-safe-fs.test.ts` に追加する
 - [ ] T020 private generation binding、一度だけの使用、クライアントパスの拒否、および列挙時・pre-open・post-open/pre-read・post-read に root と利用可能なすべての ancestor を確認してから candidate `lstat` → `realpath` containment → repeated unchanged `lstat` を行う ticket/read の失敗テストを `tests/unit/inspection/node-safe-fs.test.ts` に追加する
-- [ ] T021 same-handle identity、すべてのチェックポイントでの置換、バイトの破棄、実効的な `O_NOFOLLOW`、共有境界を検証できない場合の source-attempt rejection、candidate を検証できない場合の item rejection、証明にならないプラットフォームレコードに関する境界の失敗テストを `tests/integration/boundaries/node-safe-fs.test.ts` に追加する
+- [ ] T021 Same-handle identity、全detectable replacementとbyte disposal、effective `O_NOFOLLOW`によるfinal-component defense、明示的なno-effective-`O_NOFOLLOW` postcheck receipt、shared-boundary unverifiability時のsource-attempt rejection、candidate unverifiability時のitem rejection、およびactive source-root/ancestor replacementまたはfinal defense unavailable raceのproofを主張せず`platform-unobservable`をproofへ数えないrecordに関するfailing boundary testを `tests/integration/boundaries/node-safe-fs.test.ts` に追加する
 - [ ] T022 中央権限の外にあるすべての調査対象ソースのファイルシステム読み取りを拒否する失敗アーキテクチャ契約を `tests/contract/inspection-io-boundary.test.ts` に追加する
 - [ ] T023 [P] 256-bit 認証、constant-time 比較、Host/Origin/fetch-metadata 確認、CORS なし、厳格なメソッドとメディア、64 KiB body、no-store response、capability または記述された source value を一切露出しない error に関する capability の失敗テストを `tests/contract/host-security.test.ts` に追加する
 - [ ] T024 [P] root confinement、正確な schema/order/limits/hashes、必須だが削除される `200.html`/`404.html`、唯一受け入れる HTML としての `index.html`、`<base>`・nonce・実行可能属性・外部/相対実行可能 URL・未記録 inline script・stale asset の拒否に関する cleanup および static-manifest の失敗テストを `tests/package/build-cleanup.test.ts` と `tests/package/static-manifest.test.ts` に追加する
-- [ ] T025 [P] 正確な `.mjs` レコード、必須 CLI/Worker エントリー、再帰的に正確な二つのマニフェスト集合、production graph digest と正確な runtime leaf、ならびに `open`、Rust/C/C++/Cargo、Node-API/native/binary/Wasm payload、prebuild、platform selector、package shell helper、Node 以外の shebang、lifecycle/runtime download の拒否に関する server-manifest および package-policy の失敗テストを `tests/package/server-manifest.test.ts`、`tests/package/production-graph.test.ts`、`tests/package/node-only-policy.test.ts` に追加する
+- [ ] T025 [P] 正確な `.mjs` レコード、必須 CLI/Worker エントリー、再帰的に正確な二つのマニフェスト集合、production graph digest と正確な runtime leaf、`gunshi` 0.37.0の正確なintegrityとbundle済みpayload全体のdigest、`gunshi/agent`/lazy/custom-plugin pathを含まないroot-API-only CLI import、ならびに `open`、Rust/C/C++/Cargo、Node-API/native/binary/Wasm payload、prebuild、platform selector、package shell helper、Node 以外の shebang、lifecycle/runtime download の拒否に関する server-manifest および package-policy の失敗テストを `tests/package/server-manifest.test.ts`、`tests/package/production-graph.test.ts`、`tests/package/node-only-policy.test.ts` に追加する
 - [ ] T026 [P] bootstrap generation 0、決定論的 ID、graph 不変条件、coordinator lock 下の一つの linearization point で行う generation/payload capture、atomic N+1 replacement、fatal retention、Source ごとの stale failure、ID rekeying、境界付き lifecycle/control overlay、canonical な single-buffer snapshot encoding、generation overflow に関する generation および session の失敗テストを `tests/unit/session/scan-generation.test.ts` と `tests/unit/session/session.test.ts` に追加する
 
 ### 実装
 
 - [ ] T027 正確な resource 定数、whole record の決定論的な count/production-JSON-byte accounting、parser message と retained graph の上限、idle/null-progress Source を含む session 所有の全 mutable field を指定された neutral form へ投影した5 MiB complete-envelope base、complete lifecycle record ごとの正確な canonical byte-delta charge と2 KiB cap、四つの keyed failure/sentinel 用16 KiB reserve および compact/suppression rule を持つ独立した2 MiB lifecycle overlay、借用を行わず build で独立検証する1 MiB control overlay、8 MiB の最終 snapshot、閉じた diagnostic registry、overflow sentinel、source value を含まない引数を `shared/limits.ts`、`shared/diagnostics.ts`、`src/inspection/limits.ts` に実装する
-- [ ] T028 公開 DTO、Repository Source および tool 固有 Global Source が一つの root だけを持つという不変条件、記述されたリテラルの正確な metadata と relationship、内部型の除外、不透明 ID ガード、バージョン付き envelope、決定論的な production JSON encoding、厳格な手動リクエストガードを `shared/entities.ts` と `shared/api.ts` に実装する
+- [ ] T028 Public DTO、one-root Repository/tool-specific-Global Source invariant、required tool/surface/source refを持ちfile/relationship/read authorityを表現不能にするbounded evidence-linked `SourceConditionFact` DTO、exact authored-literal metadata/relationship、internal-type exclusion、opaque ID guard、versioned envelope、deterministic production JSON encoding、strict manual request guardを `shared/entities.ts` と `shared/api.ts` に実装する
 - [ ] T029 字句コンポーネント検証、正規 root の取得、bigint identity、close-state enforcement を持つ private `InspectionRootContext` の作成を `src/inspection/safe-fs.ts` に実装する
 - [ ] T030 immutable な typed plan から実行する境界付きで決定論的な `opendir` traversal、raw `Dirent.name` segment の保持、衝突を拒否する NFC 表示正規化、VCS 除外、root とすべての ancestor の確認、順序付けられた candidate validation、generation-bound `ScanEntryTicket` snapshot を `src/inspection/safe-fs.ts` に実装する
-- [ ] T031 pre-open・post-open/pre-read・post-read に完全な順序で検証し、same-handle identity、実効的な `O_NOFOLLOW`、バイト破棄、非公開、`node-realpath-fstat-best-effort` receipt を伴う one-time ticket read を `src/inspection/safe-fs.ts` に実装する
+- [ ] T031 Pre-open、post-open/pre-read、post-readのcomplete ordered verification、same-handle identity、enforce可能な場合のmandatory effective `O_NOFOLLOW`、`effective-o-nofollow`対`no-effective-o-nofollow-postchecks` receipt、byte disposal、no publicationを持つone-time ticket readを `src/inspection/safe-fs.ts` に実装する
 - [ ] T032 推測せず、root/shared ancestor は source scope で、candidate は item scope で拒否する `safe-fs-boundary-unverifiable` 処理を `src/inspection/safe-fs.ts` に実装する
-- [ ] T033 active-mutator と platform-unobservable の残余リスク、および将来の公開 Node.js API または OS 強制境界解決への道筋を `src/inspection/safe-fs.ts` に記載する
+- [ ] T033 Active source-root/ancestor replacementは全platformでinitial threat model外、active final-component replacementはeffective `O_NOFOLLOW`なしの場合だけscope外、全detectable changeはscope内でfail closed、`platform-unobservable` outcomeはnon-provingであること、および将来のpublic Node.js APIまたはOS-enforced resolution pathを `src/inspection/safe-fs.ts` に記載する
 - [ ] T034 capability 生成、constant-time 認証、capability-safe なリクエスト分類を `src/host/capability.ts` に実装する
 - [ ] T035 受け入れる HTML/URL ケースを強制し、必要な fallback だけを削除し、アセットを検証して決定論的な CSP hash を記録する root-confined static normalization を `scripts/clean-build-output.mjs` と `scripts/build-static-manifest.mjs` に実装する
 - [ ] T036 非活性で固定された Node ESM entry を `src/cli.ts` と `src/inspection/parsers/worker.ts` に scaffold してから、決定論的な server-manifest 生成、production graph digest、再帰的 exact-set verification、Node.js 専用ポリシーの強制を `scripts/assemble-server-manifest.mjs`、`scripts/build-production-graph.mjs`、`scripts/verify-package-files.mjs` に実装する
@@ -97,14 +161,14 @@
 - [ ] T040 [P] [US1] 固定 manifest asset、閉じた SPA fallback、正確な CSP、対応 Node engine、CLI の evaluation または bind より前の package/two-manifest/every-asset verification、その後に正確に一度だけ行う dynamic `import('./dist/cli.mjs')` と static CLI import の不在、loopback-only ephemeral binding、startup 時の documentation/network access ゼロ、固定 startup failure に関する static-route および startup の失敗テストを `tests/contract/static-routes.test.ts` と `tests/contract/host-startup.test.ts` に追加する
 - [ ] T041 [P] [US1] 一度だけの fragment capture、memory-only Bearer 使用、authorization-lost reload behavior、正確な request-token/`clientDataEpoch`/generation/file-ID adoption guard、older generation の拒否、equal generation での current-token 強制、newer generation adoption 前の purge、永続化ゼロ、未認可 API call ゼロに関する client の失敗テストを `tests/unit/app/api-capability.test.ts` に追加する
 - [ ] T042 [P] [US1] 認可済み polling、表示中ページの1秒ごとの liveness heartbeat、750 ms の request timeout、2秒の lease expiry、timeout/network/`401`/`403`/session-ID mismatch/port reuse/process loss 時の purge、hidden/`pagehide`/`beforeunload` 時の即時 purge、`clientDataEpoch` increment、late response の拒否、generation-zero 表示、認可喪失、visibility 復帰後の fresh-snapshot baseline adoption、control-only recovery、matching-baseline での明示的 Resume、timer/request teardown に関する browser-state の失敗テストを `tests/unit/app/session-shell.test.ts` と `tests/unit/app/liveness.test.ts` に追加する
-- [ ] T043 [P] [US1] 正確な shebang/mode/package field、隔離インストール、起動前に一度だけ出力する閉じた grammar の loopback URL と43文字の base64url capability、固定 `/usr/bin/open` と `/usr/bin/xdg-open` helper（`shell: false`・ignored stdio・unref・正確な environment allowlist）、Windows/非対応 platform での spawn ゼロ、非対応/helper failure 時の手動 fallback、`--no-open`、直接 shell boot、正常終了、追加 mode の拒否、調査対象ソース読み取りゼロに関するパッケージ済み起動の失敗テストを `tests/package/npx-launch.test.ts` に追加する
+- [ ] T043 [P] [US1] Gunshiのroot `define`/`cli` API、正のdefault-true `open`と生成される`--no-open`、bindしないbuilt-in help/version、`strict: true`によるunknown-option拒否、bind前の明示的なpositional/rest拒否、await済みcompletion、固定された上限付きoutputとnonzero failure exitを伴う明示的なvalidation `AggregateError`処理、正確なshebang/mode/package field、隔離install、起動前に1回だけ出力するclosed grammarのloopback URLと43文字のbase64url capability、唯一許可するproduct child processとしての固定`/usr/bin/open`または`/usr/bin/xdg-open` startup helper（`shell: false`・ignored stdio・unref・正確なenvironment allowlist）、そのhelperへ調査対象content/path、authored value、user command、environment-selected handlerを渡さずOS default browserへ委譲するだけでversionをcertifyできないこと、Windows/非対応platformでのspawnゼロ、disabled/非対応/helper failureまたはuncertified handler時も利用可能な`--no-open`/printed-URL certified-browser fallback、direct shell boot、clean shutdown、`gunshi/agent`/lazy/custom-plugin importなし、調査対象source readゼロに関するCLIとpackaged launchの失敗testを`tests/unit/cli.test.ts`と`tests/package/npx-launch.test.ts`に追加する
 - [ ] T044 [US1] 認可済み空 shell、authorization-lost shell、DOM/DTO/editor/filter/warning state を一切保持しない liveness purge、fresh-baseline control-only recovery、default inventory state での明示的 Resume、keyboard focus、Repository picker や ancestor discovery がないことに関するブラウザー受け入れ失敗テストを `tests/e2e/boot.spec.ts` に追加する
 
 ### 実装
 
 - [ ] T045 [US1] 固定マニフェストアセットの提供、閉じた SPA fallback、正確な MIME validation、正確な CSP serialization を `src/host/static-files.ts` に実装する
 - [ ] T046 [US1] CLI の evaluation または bind より前に、built-in のみを使う対応 engine・package・両 manifest・全 asset の verification を `bin.mjs` に実装してから、static CLI import を行わず正確に一度だけ dynamic `import('./dist/cli.mjs')` を実行する。loopback-only ephemeral binding、process lifetime を延長せず source/root/diagnostic を含まない capability 保護済み `GET /api/v1/session/liveness` response、source value を含まない operational output、startup 時の documentation/network access ゼロを `bin.mjs`、`src/host/api-router.ts`、`src/host/server.ts` に実装する
-- [ ] T047 [US1] 起動前に一度だけ出力する閉じた grammar の loopback URL と43文字の base64url capability、固定 `/usr/bin/open` と `/usr/bin/xdg-open` helper（`shell: false`・ignored stdio・unref）、`BROWSER`・`NODE_OPTIONS`・`NODE_PATH` および調査対象の値を除外する正確な child-environment allowlist、Windows/非対応 platform での spawn ゼロ、非対応/helper failure 時の手動 fallback、`--no-open`、追加 mode の拒否、起動時 `cwd` の取得、graceful shutdown を `src/cli.ts` と `src/launch-browser.ts` に実装する
+- [ ] T047 [US1] Gunshiのroot `define`/`cli` entryを、正のdefault-true `open`と生成される`--no-open`、`strict: true`、bind前の明示的なpositional/rest拒否、await済みcompletion、bindしないbuilt-in help/version、固定された上限付きrenderingとnonzero failure exitを伴う明示的なvalidation `AggregateError`処理、`gunshi/agent`/lazy/custom-plugin/experimental-combinator importなしで実装する。起動前に1回だけ出力するclosed grammarのloopback URLと43文字のbase64url capability、唯一許可するproduct child processとしての固定`/usr/bin/open`または`/usr/bin/xdg-open` startup helper（`shell: false`・ignored stdio・unref）、`BROWSER`・`NODE_OPTIONS`・`NODE_PATH`、調査対象content/path、authored value、user command、environment-selected handlerを除外する正確なchild-environment allowlist、versionをselect/verifyしない明示的なdefault-browser delegation、Windows/非対応platformでのspawnゼロ、disabled/非対応/helper failureまたはuncertified handler時も利用可能な`--no-open`/printed-URL manual certified-browser fallback、起動時`cwd`の取得、graceful shutdownを`src/cli.ts`と`src/launch-browser.ts`に実装する
 - [ ] T048 [US1] 一度だけの capability-fragment capture、memory-only authorization、正確な request token、abort 可能な request、older generation を無視し、equal generation では current token を要求し、newer generation を adopt する前に epoch increment と dependent state disposal を行う `clientDataEpoch`/generation/file-ID adoption guard を `app/composables/api.ts` に実装する
 - [ ] T049 [US1] 認可済み generation-zero polling と、timeout/network/`401`/`403`/session-ID mismatch/lease expiry/process loss/hidden/`pagehide`/`beforeunload` のための唯一の synchronous purge path を実装する。全 session DTO/DOM/detail/comparison/editor/filter/warning state を clear し、request を abort し、`clientDataEpoch` を increment し、memory capability だけを保持し、purge 済み ID と比較せず fresh authenticated snapshot の `sessionId` を adopt し、境界付き `globalControl` recovery だけを構築し、fresh default inventory には matching-baseline の明示的 Resume を要求する。正確な heartbeat/lease/timer teardown と意味的に同等な英語・日本語メッセージを `app/composables/session.ts`、`app/composables/liveness.ts`、`app/app.vue`、`app/locales/en.ts`、`app/locales/ja.ts`、`app/styles/main.css` に追加する
 
@@ -126,7 +190,7 @@
 - [ ] T053 [P] [US1] `./**/.agents/skills/*/SKILL.md` が typed plan へ一度だけ compile され、安全な filesystem はその plan だけを実行し、vendor code は match の分類だけを行い、descendant/near-miss/VCS 動作が正確で、runtime-chain fact が引き続き conditional であることを証明する Codex SKILL の失敗テストを `tests/unit/inspection/rules.test.ts` に追加する
 - [ ] T054 [P] [US1] tool、`skill` kind、path provenance、無関係な recognition がないことに関する Codex recognition の失敗テストを `tests/unit/inspection/recognizers.test.ts` に追加する
 - [ ] T055 [P] [US1] 起動時 `cwd` の admission、ticket-only read、決定論的な順序、hard-link alias、境界付き作業、隔離された item failure、relationship-target read なしに関する scan の失敗テストを `tests/integration/repository-scan.test.ts` に追加する
-- [ ] T056 [P] [US1] Codex SKILL discovery が child process、動的な評価/import、MCP connection、outbound request、URI load、調査対象ソースの mutation を一切発生させないことを証明する zero-activation test を `tests/integration/security/zero-activation.test.ts` に追加する
+- [ ] T056 [P] [US1] `--no-open`または隔離した許可済みstartup helperの後から開始するinstrumentationのもとで、Codex SKILL discoveryがchild process、dynamic evaluation/import、MCP connection、outbound request、URI load、調査対象source mutationを一切発生させないことを証明するzero-activation testを`tests/integration/security/zero-activation.test.ts`に追加する
 - [ ] T057 [P] [US1] 起動時 `cwd` の Repository Source が正確に一つであること、Source-relative path、`GET /api/v1/session`、`POST /api/v1/repository/rescan`、source/root/diagnostic を含まない `GET /api/v1/session/liveness` に関し、固定 heartbeat value、progress、duplicate conflict、stale entry を作らず generation 0 を保つ automatic initial failure、Source ごとの stale failure を伴う explicit fatal rescan rollback、stale ID、same-buffer encoding、whole-generation publication、Repository-rescan commit をまたいで pause した SessionSnapshot delivery が coherent な envelope generation/payload を持つことを含む失敗契約を `tests/contract/http-api-session.test.ts` に追加する
 - [ ] T058 [P] [US1] Codex row、source/path/kind label、progress、empty state、rescan、retry、diagnostics、および session summary が source text や declared value を一切露出しないことに関する inventory の失敗テストを `tests/unit/app/inventory.test.ts` に追加する
 - [ ] T059 [US1] Codex 専用 fixture を起動し、source content を含まない正確な SKILL 一覧が表示されることに関するブラウザー受け入れ失敗テストを `tests/e2e/codex-skills-list.spec.ts` に追加する
@@ -381,7 +445,7 @@
 - [ ] T180 [P] [US1] 決定論的な physical-file/recognition order、一度だけ読み取る merge、alias cap、partial continuity、progress、limit 後に extra read を行わないことに関する統合失敗テストを `tests/integration/repository-scan.test.ts` に追加する
 - [ ] T181 [P] [US1] 統合 SKILL row に対する source、tool、kind、path filter の client 失敗テストを追加し、detail acknowledgement より前の inventory state が source text、metadata literal、sensitive fixture value を一切含まないことを `tests/unit/app/inventory.test.ts` で証明する
 - [ ] T182 [P] [US1] whole-generation replacement、stale detail/request-token/selection cleanup、通常 rescan をまたぐ acknowledgement retention、filter retention、profile/cache/repository persistence ゼロに関する rescan の失敗テストを `tests/unit/session/session.test.ts` と `tests/unit/app/session-shell.test.ts` に追加する
-- [ ] T183 [P] [US1] 変更しない100,000 entry/500 match fixture、正確に10個の fresh Inspector process、browser request から visible status/inventory までの timing、prior snapshot reuse なし、意図的な OS cache reset なし、10回中9回以上の1秒・10秒 pass、100 ms 未満の filtering/selection check、具体的な reference environment details を省く validation output を使う SC-002 performance test を `tests/performance/repository-scan.test.ts` と `tests/performance/inventory-interactions.test.ts` に追加する
+- [ ] T183 [P] [US1] Exact OS image/version、CPU architecture/model/logical count、memory、storage/filesystem、runtime、benchmark command/configuration、deterministic fixture manifest/digestを持つversion付き公開profile validatorと再利用可能なSC-002 harnessを追加する。100,000-entry/500-match fixtureを構築し、fresh processとsnapshot/cache policyを制御し、現在requestのqueued/active-phase/complete/partial/failed statusが画面表示されassistive technologyにも公開された場合だけbrowser-request timingをcaptureしてgeneric/loading/unchanged/old stateを拒否し、operable inventoryと2つのstandardized interactionを測定してnon-gating smoke runを1回実行する。対象は `tests/performance/sc002-reference-profile.json`、`tests/performance/repository-scan.test.ts`、`tests/performance/inventory-interactions.test.ts` とし、exact 10-run 9/10 protocolはT918へ延期する
 - [ ] T184 [US1] 統合 filter、multi-recognition、provenance、keyboard use、inventory からの source exposure なし、detail open 前の sensitive-content notice 提示に関するブラウザー回帰を `tests/e2e/skills-inventory.spec.ts` に追加する
 
 ### 実装
@@ -2395,8 +2459,8 @@
 - [ ] T914 [US1] 全サポート対象、ニアミス、空、複数ツール、ハードリンク、導出、敵対的、シークレット、性能のフィクスチャとガイダンスを `tests/fixtures/repositories/build-fixtures.ts`、`tests/fixtures/repositories/README.md`、`tests/fixtures/repositories/README.ja.md` で完成させる
 - [ ] T915 [US1] 1 MiB のファイル、32 MiB のバイト数、200,000 エントリ、2,000 ファイル、64 セグメント、1,024 エイリアス、30 秒について、正確な上限値と 1 超過時のテストを `tests/integration/limits.test.ts` に追加する
 - [ ] T916 [P] [US1] すべての Repository kind、source text も declared metadata value も含まない strict envelope、progress、per-Source stale failure、conflict、stale ID、atomic publication、source-value-free failure に関する完全な session/rescan API contract を `tests/contract/http-api-session.test.ts` に追加する
-- [ ] T917 [P] [US1] 分離インストール、固定 assets/Worker、同一 tarball、起動時の `cwd`、フォールバック URL、シャットダウン、拒否されるモードについて、完全なパッケージ済み CLI テストを `tests/package/npx-launch.test.ts` に追加する
-- [ ] T918 [P] [US1] 変更しない 100,000-entry/500-match fixture、browser request の開始、1 秒以内の status と 10 秒以内の operable inventory に対する 9/10 pass rule、snapshot の再利用も意図的な OS-cache reset も行わないこと、100 ms 未満の interaction、具体的な reference-environment details を公開しないことを含む、正確な SC-002 の 10 回の fresh-process protocol を `tests/performance/repository-scan.test.ts` と `tests/performance/inventory-interactions.test.ts` で完成させる
+- [ ] T917 [P] [US1] 分離install、固定asset/Worker、同一tarball、起動時`cwd`、version-certification claimなしのdefault-browser delegation、`--no-open`とprinted-URL certified-browser fallback、bindしないhelp/version、固定された上限付きnonzero failureを伴うstrict unknown-option/positional/rest拒否、await済みshutdown、root-only import boundary、追加modeゼロに関する完全なpackaged Gunshi CLI testを `tests/package/npx-launch.test.ts` に追加する
+- [ ] T918 [P] [US1] T183をfinal registryへ拡張し、全runが同じchecked-in profileと変更しないfixture digestへ一致することをvalidateして、browser-request start、snapshot再利用/意図的OS-cache resetなしでexactly 10 fresh processを実行する。10回中9回以上でqualifying current-request statusを1秒以内、operable inventoryを10秒以内、両standardized interactionを100 ms未満にし、profile ID、fixture digest、actual non-personal environment fieldを出力してpersonal identifier/absolute user pathだけを省略し、cross-profile comparisonを拒否する。対象は `tests/performance/repository-scan.test.ts` と `tests/performance/inventory-interactions.test.ts` とする
 - [ ] T919 [US1] inventory、filter、multi-recognition、diagnostics、empty state、rescan、retry、keyboard use、atomic replacement、detail acknowledgement 前に source/metadata/sensitive value を一切公開しないことに関する Repository-complete browser acceptance と、文書化された discovery command target を `tests/e2e/repository-complete-inventory.spec.ts` と `tests/e2e/discovery.spec.ts` に追加する
 
 ---
@@ -2411,13 +2475,13 @@
 
 ### 受け入れテスト
 
-- [ ] T920 [P] [US2] 現在所有されている正確な 48 ID の内訳（35 個の静的、5 個の有界導出、7 個のベンダー除外、1 個の共有シンボリックリンク除外）、延期された 4 個の除外が存在しないこと、内包 Hook/MCP の候補ルールがゼロであること、前段の契約から後段の所有者有効化までの完全なマトリクス、一つの所有者 ID/読み取り、合成ファイル/接続がゼロであること、現在所有されているすべての behavior/strategy/relationship/evidence バックリンク、相互フィンガープリント、オフライン分離について、Repository サブグラフ契約を `tests/contract/inspection-rules.test.ts`、`tests/contract/runtime-composition.test.ts`、`tests/contract/official-sources.test.ts` に追加する
+- [ ] T920 [P] [US2] 現在所有する正確な48 IDの内訳（35 static、5 bounded-derived、7 vendor-excluded、1 shared-symlink exclusion）、延期した4 exclusionの不在、contained Hook/MCP candidate ruleゼロ、early contractからlate owner activationまでの完全なmatrix、1 owner ID/read、synthetic file/connectionゼロ、現在所有する全behavior/strategy/relationship/evidence backlink、emitする全`(tool, kind, fieldId)`とrelationship kindのexactなclosed presentation-allowlist membershipおよび未記載entryの推論ゼロ、reciprocal fingerprint、offline separationについて、Repository subgraph contractを`tests/contract/inspection-rules.test.ts`、`tests/contract/runtime-composition.test.ts`、`tests/contract/official-sources.test.ts`に追加する
 - [ ] T921 [P] [US2] JSONC、YAML、TOML、Markdown/frontmatter、厳密なエンコーディング、アトミックな抽出、Worker 置換、正確な境界について、4 パーサーのマトリクステストを `tests/unit/inspection/parsers.test.ts` と `tests/unit/inspection/seed-parsers.test.ts` に追加する
 - [ ] T922 [US2] relationship、provenance、derivation、fallback、正確な source occurrence、完全な authored text、parser message、retained graph byte、file-detail bound に関する exact-limit/one-over テストを `tests/integration/limits.test.ts` に追加する
 - [ ] T923 [US2] ソース/評価の事実、診断の上限、センチネル、有界な部分継続について、正確な上限値と 1 超過時のテストを `tests/integration/limits.test.ts` に追加する
 - [ ] T924 [P] [US2] 不正ファイル、リンク、トラバーサル、循環、変更、読み取り後の検証、バイトの破棄、`O_NOFOLLOW`、OS の残存リスクについて、完全な安全性テストを `tests/integration/inspection-safety.test.ts` に追加する
-- [ ] T925 [P] [US2] プロセス、評価/import、MCP、ネットワーク、URI/image、書き込み、参照先の読み取りについて、すべての Repository ファミリーにわたるゼロアクティベーションの回帰テストを `tests/integration/security/zero-activation.test.ts` で拡張する
-- [ ] T926 [P] [US2] すべての kind、正確な authored source/metadata/relationship literal、strict envelope、stale ID、no-store、truncation しない 4 MiB whole-response failure、source-value-free failure に関する完全な file-detail と removed-reveal-route API contract を `tests/contract/http-api-files.test.ts` に追加する
+- [ ] T925 [P] [US2] `--no-open`または隔離した許可済みstartup helperの後から開始するinstrumentationのもとで、全Repository familyのdiscovery、read、parse、display、comparison、relationship処理によるchild process、evaluation/import、MCP、network、URI/image load、write、referenced readがゼロであることを`tests/integration/security/zero-activation.test.ts`のregressionで証明する
+- [ ] T926 [P] [US2] 全kind、正確なauthored source/metadata/relationship literal、維持管理するclosed presentation allowlistにない全metadata/relationship tupleの拒否およびunknownなauthored key/referenceを完全なsource textだけに保持すること、strict envelope、stale ID、no-store、truncateしない4 MiB whole-response failure、source-value-free failureに関する完全なfile-detailとremoved-reveal-route API contractを`tests/contract/http-api-files.test.ts`に追加する
 - [ ] T927 [US2] sensitive-content acknowledgement、完全なリテラルの detail、正確な metadata/relationship value、リテラルの credential と environment reference、masking/reveal control がないこと、malformed/boundary failure isolation、diagnostics、stale route、executable rendering がゼロであることに関する Repository-complete browser acceptance と、文書化された inspection-safety command target を `tests/e2e/repository-complete-detail.spec.ts` と `tests/e2e/inspection-safety.spec.ts` に追加する
 
 ---
@@ -2447,7 +2511,7 @@
 
 ### フィクスチャとテストを先に
 
-- [ ] T930 [US4] 正確な候補、除外、フォールバック、不正なオーバーライド、リンク、エイリアス、シークレット、読み取り不能なルートを対象とする分離 Global-home フィクスチャを、二言語の利用ガイダンスとともに `tests/fixtures/global-homes/build-fixtures.ts`、`tests/fixtures/global-homes/README.md`、`tests/fixtures/global-homes/README.ja.md` に作成する
+- [ ] T930 [US4] 正確なcandidate、exclusion、fallback、invalid override、link、alias、unreadable root、異なるliteral credential/environment reference、sentinel process value、実行可能に見えるinert payload、before/after content hash、mutation sentinelを対象とする分離Global-home fixtureを、bilingual usage guidanceとともに `tests/fixtures/global-homes/build-fixtures.ts`、`tests/fixtures/global-homes/README.md`、`tests/fixtures/global-homes/README.ja.md` に作成する
 - [ ] T931 [US4] 残りの純粋な User-only の事実 `codex.behavior.user.memories`、`codex.behavior.user.prompts`、`claude.behavior.user.workflows` を具体化し、それらに対する失敗するレジストリ/バックリンクのカバレッジを `tests/fixtures/conformance/vendor-behaviors.json`、`tests/fixtures/conformance/official-sources.json`、`tests/contract/vendor-behaviors.test.ts`、`tests/contract/official-sources.test.ts` に追加する
 - [ ] T932 [P] [US4] ファイルシステム I/O がゼロであること、存在しないオーバーライドと不正なオーバーライドの区別、正確な字句上のルート、32 KiB の入力、192 KiB のエスケープ済み出力、固定された null のサイズ超過状態について、失敗するプレビューテストを `tests/unit/host/global-consent.test.ts` に追加する
 - [ ] T933 [US4] immutable typed traversal-plan program、順序付き session-keyed raw/display digest binding、固定形式の verification input、stale/replayed invalidation、正確な eligible-tool state、closed tool order におけるすべての eligible entry からの `confirmedTools` 導出について、preview test を `tests/unit/host/global-consent.test.ts` で拡張する
@@ -2576,18 +2640,20 @@
 - [ ] T992 [US4] 正確に 56 個のルール ID（Global 前の 48 ID ゲートに、3 つのベンダー `*.excluded.user-runtime` レコード、`shared.excluded.managed-remote-state`、4 個の Global 静的読み取り許可ルールを加えたもの）、正確な除外の所有、相互性、内包 Hook/MCP による候補追加がゼロであること、既存ソースへのエビデンスバックリンクを証明する、最終 Global レジストリ契約を `tests/contract/vendor-behaviors.test.ts`、`tests/contract/inspection-rules.test.ts`、`tests/contract/runtime-composition.test.ts`、`tests/contract/official-sources.test.ts` に追加する
 - [ ] T993 [P] [US4] independent per-tool atomic Source publication、stable `Source.sourceId`、one-root/tool invariant、session-wide carried-Source generation rekeying、sibling failure、bounded partial commit、missing-tool no-Source retry state、progress、duplicate conflict に関する coordinator test を `tests/unit/session/coordinator.test.ts` に追加する
 - [ ] T994 [P] [US4] Repository と tool-specific Global のすべての `Source.sourceId` が process lifetime にわたり安定する一方、file、recognition、provenance、relationship、diagnostic と関連する generation-owned ID が rekey され、stale FileDetail/comparison/Monaco が cleanup され、provisional context や pending-admission が漏れないことを証明する lifecycle test を `tests/integration/session-lifecycle.test.ts` に追加する
-- [ ] T995 [US4] exact-preview enablement、独立した commit 後に別々に識別される Codex/Claude/Copilot Source、source/tool filter、one-root presentation、sibling diagnostic、Global detail/comparison の再利用、retryable missing tool、fatal retention、Repository preservation に関する browser acceptance を `tests/e2e/global-enable.spec.ts` に追加する
+- [ ] T995 [P] [US4] 異なるliteral credential text、environment-reference syntax、sentinel process value、実行可能に見えるinert payload、mutation/hash sentinelを含むGlobal fixtureについて、失敗するexact-display API/integration testを追加し、各source/detail/comparison surfaceとAPIがauthored textを正確に返し、process sentinelを返さず、fixtureを変更しないことを `tests/contract/http-api-files.test.ts` と `tests/integration/global-literal-display.test.ts` で証明する
+- [ ] T996 [P] [US4] そのGlobal fixtureがdynamic evaluation、command/hook execution、browser-helper launch、MCP connection、outbound request、environment lookup/substitution、source writeを0件にすること、およびorigin-file-less Source Condition Factがlocal/hosted I/Oを0件にし、file、relationship origin、comparison identityを作成しないことを証明する、失敗するzero-activation security testを `tests/security/global-zero-activation.test.ts` と `tests/integration/source-condition-facts.test.ts` に追加する
+- [ ] T997 [US4] exact-preview enablement、独立commit後に別々に識別されるCodex/Claude/Copilot Source、source/tool filter、one-root presentation、sibling diagnostic、process substitution/activationなしのliteral credential/environment-reference exact display、synthetic file actionを持たないorigin-file-less Source Condition Fact分離、Global detail/comparison再利用、retryable missing tool、fatal retention、Repository preservationに関するbrowser acceptanceを `tests/e2e/global-enable.spec.ts` に追加する
 
 ### 実装
 
-- [ ] T996 [US4] post-consent per-tool admission を、independent one-root `GlobalToolControl` context と provisional job として完成させ、all-eligible initial confirmation、missing-tool-only retry、sibling retention を `src/host/global-consent.ts` に実装する
-- [ ] T997 [US4] すべての Global 振る舞い、正確に 4 個の Global 静的候補ルール、既存の正確な除外、戦略参照、47 個のソースバックリンク、正確な 56 ルールの合計を `shared/registries/vendor-behaviors.ts`、`shared/registries/inspection-rules.ts`、`shared/registries/runtime-composition.ts`、`shared/registries/official-sources.ts` で完成させる
-- [ ] T998 [US4] Repository と他 tool の result を保持しつつ、別々の one-root Source に対する integrated but isolated per-tool Global scanning、sibling continuation、Codex fallback、独立した bounded ready/partial result を `src/inspection/scan.ts` に実装する
-- [ ] T999 [US4] tool-specific Global Source を、その tool 自身の scan が complete/partial complete した時だけ atomic に publish/replace し、Repository と sibling Source を新しい session generation へ持ち越し、すべての Source ID を保持し、generation-owned graph ID を rekey し、その tool の transient work を clear する。fatal 時には missing Source を publish せず consent/control retry state と prior graph を保持する処理を `src/session/session.ts` と `src/session/scan-generation.ts` に実装する
-- [ ] T1000 [US4] exact accepted/rejected tool partition、queued/active-no-job outcome、sibling diagnostic、conflict、retry state に対する `POST /api/v1/global/enable` response を完成させ、Source publication は per-tool commit 後の後続 session poll に委ねる処理を `src/host/api-router.ts` に実装する
-- [ ] T1001 [US4] Repository と別々に識別される Codex/Claude/Copilot Global Source および tool filter、one-root summary、共通の detail/comparison navigation を `app/composables/filters.ts`、`app/composables/session.ts`、`app/pages/index.vue` に実装する
-- [ ] T1002 [US4] per-tool Global confirmation/progress/retry control、focus recovery、active-no-job handling、別々の Source outcome presentation を `app/pages/global-consent.vue` と `app/components/consent/GlobalSourceControls.vue` で完成させる
-- [ ] T1003 [US4] 意味的に同等な英語/日本語の tool-specific Source integration、one-root、accepted/rejected、active-no-job、sibling failure、retry、source/tool-filter、detail/comparison、progress message を `app/locales/en.ts` と `app/locales/ja.ts` に追加する
+- [ ] T998 [US4] post-consent per-tool admission を、independent one-root `GlobalToolControl` context と provisional job として完成させ、all-eligible initial confirmation、missing-tool-only retry、sibling retention を `src/host/global-consent.ts` に実装する
+- [ ] T999 [US4] すべての Global 振る舞い、正確に 4 個の Global 静的候補ルール、既存の正確な除外、戦略参照、47 個のソースバックリンク、正確な 56 ルールの合計を `shared/registries/vendor-behaviors.ts`、`shared/registries/inspection-rules.ts`、`shared/registries/runtime-composition.ts`、`shared/registries/official-sources.ts` で完成させる
+- [ ] T1000 [US4] Repository と他 tool の result を保持しつつ、別々の one-root Source に対する integrated but isolated per-tool Global scanning、sibling continuation、Codex fallback、独立した bounded ready/partial result を `src/inspection/scan.ts` に実装する
+- [ ] T1001 [US4] tool-specific Global Source を、その tool 自身の scan が complete/partial complete した時だけ atomic に publish/replace し、Repository と sibling Source を新しい session generation へ持ち越し、すべての Source ID を保持し、generation-owned graph ID を rekey し、その tool の transient work を clear する。fatal 時には missing Source を publish せず consent/control retry state と prior graph を保持する処理を `src/session/session.ts` と `src/session/scan-generation.ts` に実装する
+- [ ] T1002 [US4] exact accepted/rejected tool partition、queued/active-no-job outcome、sibling diagnostic、conflict、retry state に対する `POST /api/v1/global/enable` response を完成させ、Source publication は per-tool commit 後の後続 session poll に委ねる処理を `src/host/api-router.ts` に実装する
+- [ ] T1003 [US4] Repository と別々に識別される Codex/Claude/Copilot Global Source および tool filter、one-root summary、共通の detail/comparison navigation を `app/composables/filters.ts`、`app/composables/session.ts`、`app/pages/index.vue` に実装する
+- [ ] T1004 [US4] per-tool Global confirmation/progress/retry control、focus recovery、active-no-job handling、別々の Source outcome presentation を `app/pages/global-consent.vue` と `app/components/consent/GlobalSourceControls.vue` で完成させる
+- [ ] T1005 [US4] 意味的に同等な英語/日本語の tool-specific Source integration、one-root、accepted/rejected、active-no-job、sibling failure、retry、source/tool-filter、detail/comparison、progress message を `app/locales/en.ts` と `app/locales/ja.ts` に追加する
 
 ---
 
@@ -2601,20 +2667,20 @@
 
 ### テストを先に
 
-- [ ] T1004 [US4] ソースをまたぐ FIFO、デキュー時の世代、重複スキャン競合、進捗遷移、致命的な失敗時の保持、ジョブごとのカウンターについて、失敗するコーディネーターテストを `tests/unit/session/coordinator.test.ts` に追加する
-- [ ] T1005 [US4] carried-Source graph/base-budget accounting、lifecycle/control overlay capacity、per-command reservation transfer/release、active job ごとの exact-limit/one-over visited-entry/deadline reset に関する coordinator test を `tests/unit/session/coordinator.test.ts` で拡張する
-- [ ] T1006 [P] [US4] 失敗する `POST /api/v1/global/rescan` contract として、strict single `sourceId` body、識別済みの tool-specific Source 1 つだけ、unknown/removed Source、disable-pending/duplicate conflict、bounded-capacity failure、waiting progress、fatal retry、stale ID を `tests/contract/http-api-global.test.ts` に追加する
-- [ ] T1007 [P] [US4] 有効化の完了、キューに入った Repository/Global スキャン、部分公開、致命的な失敗時の保持、明示的な再試行、変更されない同意/境界について、並行性テストを `tests/integration/global-concurrency.test.ts` に追加する
-- [ ] T1008 [P] [US4] 成功/部分成功した tool-specific Global commit がすべての Repository/Global `Source.sourceId` を保持し、carried/replaced file/recognition/provenance/relationship/diagnostic graph ID を rekey し、その Source の stale failure だけを clear し、sibling failure を保持し、古い FileDetail/comparison/Monaco state を無効化することを証明する lifecycle test を `tests/integration/session-lifecycle.test.ts` に追加する
-- [ ] T1009 [US4] Global 再スキャン、待機中/アクティブの進捗、重複防止、部分的な診断、致命的な失敗の再試行、以前の結果の保持について、ブラウザ受け入れテストを `tests/e2e/global-rescan.spec.ts` に追加する
+- [ ] T1006 [US4] ソースをまたぐ FIFO、デキュー時の世代、重複スキャン競合、進捗遷移、致命的な失敗時の保持、ジョブごとのカウンターについて、失敗するコーディネーターテストを `tests/unit/session/coordinator.test.ts` に追加する
+- [ ] T1007 [US4] carried-Source graph/base-budget accounting、lifecycle/control overlay capacity、per-command reservation transfer/release、active job ごとの exact-limit/one-over visited-entry/deadline reset に関する coordinator test を `tests/unit/session/coordinator.test.ts` で拡張する
+- [ ] T1008 [P] [US4] 失敗する `POST /api/v1/global/rescan` contract として、strict single `sourceId` body、識別済みの tool-specific Source 1 つだけ、unknown/removed Source、disable-pending/duplicate conflict、bounded-capacity failure、waiting progress、fatal retry、stale ID を `tests/contract/http-api-global.test.ts` に追加する
+- [ ] T1009 [P] [US4] 有効化の完了、キューに入った Repository/Global スキャン、部分公開、致命的な失敗時の保持、明示的な再試行、変更されない同意/境界について、並行性テストを `tests/integration/global-concurrency.test.ts` に追加する
+- [ ] T1010 [P] [US4] 成功/部分成功した tool-specific Global commit がすべての Repository/Global `Source.sourceId` を保持し、carried/replaced file/recognition/provenance/relationship/diagnostic graph ID を rekey し、その Source の stale failure だけを clear し、sibling failure を保持し、古い FileDetail/comparison/Monaco state を無効化することを証明する lifecycle test を `tests/integration/session-lifecycle.test.ts` に追加する
+- [ ] T1011 [US4] Global 再スキャン、待機中/アクティブの進捗、重複防止、部分的な診断、致命的な失敗の再試行、以前の結果の保持について、ブラウザ受け入れテストを `tests/e2e/global-rescan.spec.ts` に追加する
 
 ### 実装
 
-- [ ] T1010 [US4] 識別済みの tool-specific Global Source 1 つに対する FIFO rescan、すべての Source ID を保持して carried/replaced generation-owned graph ID を再生成する successful/partial session-wide commit、rescanned Source の stale failure だけの clear、sibling failure の保持、古い FileDetail/comparison state の無効化を `src/session/session.ts`、`src/session/stale-failures.ts`、`src/session/scan-generation.ts` に実装する
-- [ ] T1011 [US4] 持ち越しソースの予算予約と、アクティブなジョブごとの visited-entry/deadline リセットを `src/session/session.ts` と `src/session/scan-generation.ts` に実装する
-- [ ] T1012 [US4] strict `POST /api/v1/global/rescan` handling として、正確に 1 つの opaque `sourceId`、1 つの tool-specific Source、disable/duplicate conflict、bounded-capacity error、progress、fatal retry、stale-resource response を `src/host/api-router.ts` に実装する
-- [ ] T1013 [US4] Global 再スキャンのロード、重複抑止、古い状態からの回復、致命的な失敗の再試行、進捗更新を `app/components/consent/GlobalSourceControls.vue` と `app/composables/session.ts` に実装する
-- [ ] T1014 [US4] 意味的に同等な英語/日本語の Global 再スキャン、キュー、部分結果、失敗時の保持、再試行メッセージを `app/locales/en.ts` と `app/locales/ja.ts` に追加する
+- [ ] T1012 [US4] 識別済みの tool-specific Global Source 1 つに対する FIFO rescan、すべての Source ID を保持して carried/replaced generation-owned graph ID を再生成する successful/partial session-wide commit、rescanned Source の stale failure だけの clear、sibling failure の保持、古い FileDetail/comparison state の無効化を `src/session/session.ts`、`src/session/stale-failures.ts`、`src/session/scan-generation.ts` に実装する
+- [ ] T1013 [US4] 持ち越しソースの予算予約と、アクティブなジョブごとの visited-entry/deadline リセットを `src/session/session.ts` と `src/session/scan-generation.ts` に実装する
+- [ ] T1014 [US4] strict `POST /api/v1/global/rescan` handling として、正確に 1 つの opaque `sourceId`、1 つの tool-specific Source、disable/duplicate conflict、bounded-capacity error、progress、fatal retry、stale-resource response を `src/host/api-router.ts` に実装する
+- [ ] T1015 [US4] Global 再スキャンのロード、重複抑止、古い状態からの回復、致命的な失敗の再試行、進捗更新を `app/components/consent/GlobalSourceControls.vue` と `app/composables/session.ts` に実装する
+- [ ] T1016 [US4] 意味的に同等な英語/日本語の Global 再スキャン、キュー、部分結果、失敗時の保持、再試行メッセージを `app/locales/en.ts` と `app/locales/ja.ts` に追加する
 
 ---
 
@@ -2628,44 +2694,25 @@
 
 ### テストを先に
 
-- [ ] T1015 [US4] 優先キャンセル、キャンセル診断がゼロであること、Repository の 1 回だけの再キュー、安定した Repository `Source.sourceId` を伴う N+1 の保持 Repository グラフ再キー化、古い世代所有 ID、合流するバリア、no-op 無効化、タイムスタンプについて、失敗するコーディネーターテストを `tests/unit/session/coordinator.test.ts` に追加する
-- [ ] T1016 [P] [US4] 失敗する `POST /api/v1/global/disable` 契約として、空ボディ、キャンセル中の進捗、合流した完了、べき等な no-op、1 回の削除コミット、`200` レスポンスを `tests/contract/http-api-global.test.ts` に追加する
-- [ ] T1017 [P] [US4] 中断された Repository 作業、中断された Global 作業、キューに入った Global のキャンセル、合流する無効化、1 回だけの再キュー、空の no-op の振る舞いについて、並行性テストを `tests/integration/global-concurrency.test.ts` に追加する
-- [ ] T1018 [P] [US4] Global 無効化がファイルシステムの列挙または読み取りを一切行わず、バリアキャンセル診断を一切出力しないことを証明する境界計装を `tests/integration/global-boundaries.test.ts` に追加する
-- [ ] T1019 [P] [US4] すべての Global Source/file/graph ID、source/control diagnostics、authored-source/detail state、comparison selection、Monaco model/worker、consent、tool control、frozen preview、root context、handle の削除に関する lifecycle test を `tests/integration/session-lifecycle.test.ts` に追加する
-- [ ] T1020 [US4] complete preview/enable/rescan/disable workflow、すべての tool-specific Source にわたる disable progress、enable/disable race outcome、joined/no-op request、focus restoration、Global route/editor/detail teardown、control/diagnostic removal、保持される Repository result に関する browser acceptance と、文書化された Global-consent command target を `tests/e2e/global-disable.spec.ts` と `tests/e2e/global-consent.spec.ts` に追加する
+- [ ] T1017 [US4] 優先キャンセル、キャンセル診断がゼロであること、Repository の 1 回だけの再キュー、安定した Repository `Source.sourceId` を伴う N+1 の保持 Repository グラフ再キー化、古い世代所有 ID、合流するバリア、no-op 無効化、タイムスタンプについて、失敗するコーディネーターテストを `tests/unit/session/coordinator.test.ts` に追加する
+- [ ] T1018 [P] [US4] 失敗する `POST /api/v1/global/disable` 契約として、空ボディ、キャンセル中の進捗、合流した完了、べき等な no-op、1 回の削除コミット、`200` レスポンスを `tests/contract/http-api-global.test.ts` に追加する
+- [ ] T1019 [P] [US4] 中断された Repository 作業、中断された Global 作業、キューに入った Global のキャンセル、合流する無効化、1 回だけの再キュー、空の no-op の振る舞いについて、並行性テストを `tests/integration/global-concurrency.test.ts` に追加する
+- [ ] T1020 [P] [US4] Global 無効化がファイルシステムの列挙または読み取りを一切行わず、バリアキャンセル診断を一切出力しないことを証明する境界計装を `tests/integration/global-boundaries.test.ts` に追加する
+- [ ] T1021 [P] [US4] すべての Global Source/file/graph ID、source/control diagnostics、authored-source/detail state、comparison selection、Monaco model/worker、consent、tool control、frozen preview、root context、handle の削除に関する lifecycle test を `tests/integration/session-lifecycle.test.ts` に追加する
+- [ ] T1022 [US4] complete preview/enable/rescan/disable workflow、すべての tool-specific Source にわたる disable progress、enable/disable race outcome、joined/no-op request、focus restoration、Global route/editor/detail teardown、control/diagnostic removal、保持される Repository result に関する browser acceptance と、文書化された Global-consent command target を `tests/e2e/global-disable.spec.ts` と `tests/e2e/global-consent.spec.ts` に追加する
 
 ### 実装
 
-- [ ] T1021 [US4] 優先ゼロ I/O バリア、診断を伴わないアクティブ作業のキャンセル、キュー済み Global の破棄、Repository の 1 回だけの再キュー、バリアの合流、no-op 検出を `src/session/session.ts` に実装する
-- [ ] T1022 [US4] handle を閉じてすべての Global Source、graph/authored source、consent、tool control、frozen preview、root context、diagnostics、detail、comparison を削除し、Repository `Source.sourceId` を保持し、その generation-owned graph ID を rekey し、以前の generation-owned ID をすべて stale にする N+1 zero-I/O commit を `src/session/session.ts`、`src/session/stale-failures.ts`、`src/session/scan-generation.ts` に実装する
-- [ ] T1023 [US4] 空ボディの検証、キャンセル中の進捗、合流した完了、no-op の振る舞い、1 回の削除コミットを備えた厳密な `POST /api/v1/global/disable` 処理を `src/host/api-router.ts` に実装する
-- [ ] T1024 [US4] 無効化のロード、合流/no-op 処理、フォーカス復元、Global route/editor/model のクリーンアップを `app/pages/global-consent.vue`、`app/components/consent/GlobalSourceControls.vue`、`app/composables/session.ts` に実装する
-- [ ] T1025 [US4] committed barrier の後に、すべての Global tool/Source filter、selection、diagnostic、recovery、FileDetail、comparison、Monaco model/worker/subscription、cached DTO state を削除し、authorized-session acknowledgement は liveness purge まで保持する処理を `app/composables/filters.ts`、`app/composables/liveness.ts`、`app/composables/comparison.ts`、`app/composables/monaco.ts` に実装する
-- [ ] T1026 [US4] 意味的に同等な英語/日本語の Global バリア、キャンセル、無効化、no-op、削除、Repository 維持メッセージを `app/locales/en.ts` と `app/locales/ja.ts` に追加する
+- [ ] T1023 [US4] 優先ゼロ I/O バリア、診断を伴わないアクティブ作業のキャンセル、キュー済み Global の破棄、Repository の 1 回だけの再キュー、バリアの合流、no-op 検出を `src/session/session.ts` に実装する
+- [ ] T1024 [US4] handle を閉じてすべての Global Source、graph/authored source、consent、tool control、frozen preview、root context、diagnostics、detail、comparison を削除し、Repository `Source.sourceId` を保持し、その generation-owned graph ID を rekey し、以前の generation-owned ID をすべて stale にする N+1 zero-I/O commit を `src/session/session.ts`、`src/session/stale-failures.ts`、`src/session/scan-generation.ts` に実装する
+- [ ] T1025 [US4] 空ボディの検証、キャンセル中の進捗、合流した完了、no-op の振る舞い、1 回の削除コミットを備えた厳密な `POST /api/v1/global/disable` 処理を `src/host/api-router.ts` に実装する
+- [ ] T1026 [US4] 無効化のロード、合流/no-op 処理、フォーカス復元、Global route/editor/model のクリーンアップを `app/pages/global-consent.vue`、`app/components/consent/GlobalSourceControls.vue`、`app/composables/session.ts` に実装する
+- [ ] T1027 [US4] committed barrier の後に、すべての Global tool/Source filter、selection、diagnostic、recovery、FileDetail、comparison、Monaco model/worker/subscription、cached DTO state を削除し、authorized-session acknowledgement は liveness purge まで保持する処理を `app/composables/filters.ts`、`app/composables/liveness.ts`、`app/composables/comparison.ts`、`app/composables/monaco.ts` に実装する
+- [ ] T1028 [US4] 意味的に同等な英語/日本語の Global バリア、キャンセル、無効化、no-op、削除、Repository 維持メッセージを `app/locales/en.ts` と `app/locales/ja.ts` に追加する
 
 ---
 
-## フェーズ 102: 横断的な検証
-
-**目的**: 最終的な横断ドキュメント、パッケージ、アクセシビリティ、ライフサイクル、Node.js-only の回帰スイートを追加する。
-
-**独立テスト**: 横断スイートを実行し、二言語の契約、クローズドなパッケージ内容、Node.js-only ポリシー、アクセシビリティの振る舞い、ライフサイクルのクリーンアップを検証する。
-
-**目に見えるチェックポイント**: 完成した製品が横断的な自動回帰レイヤーを通過する。
-
-### 横断テストを先に
-
-- [ ] T1027 英語/日本語の相互リンク、semantic parity、runnable command、stable ID、complete literal-display/no-environment-resolution policy、tool-specific one-root Source、Node.js-only boundary、`O_NOFOLLOW`、`safe-fs-boundary-unverifiable`、`platform-unobservable`、residual-risk wording、official backlink、stale native claim がないこと、具体的な reference-environment 情報を公開していないことに関する documentation test を `tests/contract/documentation.test.ts` に追加する
-- [ ] T1028 [P] 正確に 47 個の source record を具体化し、正確に 56 個の inspection-rule ID（35 Repository static、5 bounded-derived、10 vendor-excluded、2 shared-excluded、4 Global static）、39 strategy、14 relationship-only rule、contained Hook/MCP candidate addition がゼロであること、complete reciprocity、official-source identity bound、production runtime-import exclusion に関する final full-registry test を `tests/fixtures/conformance/official-sources.json`、`tests/contract/inspection-rules.test.ts`、`tests/contract/runtime-composition.test.ts`、`tests/contract/official-sources.test.ts` に追加する
-- [ ] T1029 [P] `package.json`、正確な `bin.mjs`、`dist`、両方の README file、`LICENSE`、両方の manifest、列挙されたすべての payload hash、固定 CLI/Worker entry、unlisted payload の拒否に関する exact packed-tarball closed-set/recursive-manifest test を `tests/package/package-contents.test.ts`、`tests/package/static-manifest.test.ts`、`tests/package/server-manifest.test.ts` に追加する
-- [ ] T1030 [P] 正確な runtime dependency leaf set、`open` の不在、production-graph の name/version/integrity/payload digest、scripts-disabled install と verified-cache network-disabled normal-lifecycle install、別個の generated-shim audit、Rust/C/C++、Cargo、Node-API/native/binary/Wasm payload、`binding.gyp`、prebuild、platform selector、package-owned shell helper、non-Node shebang、lifecycle/runtime download、unlisted data の拒否に関する package test を `tests/package/node-only-policy.test.ts` と `tests/package/production-graph.test.ts` で拡張する
-- [ ] T1031 [P] story 横断の axe、keyboard、forced-colors、zoom/reflow、reduced-motion、focus-retention、safe-error、sensitive-content acknowledgement、liveness purge/resume regression を `tests/e2e/accessibility.spec.ts` と `tests/e2e/session-liveness.spec.ts` に追加する
-- [ ] T1032 [P] 正確な 5 MiB neutral base、16 KiB の fixed-failure/sentinel reserve を含む 2 MiB lifecycle diagnostic/ID overlay、1 MiB control/progress overlay、8 MiB final envelope、canonical production encoder、同一の変更されない HTTP buffer と `Content-Length`、truncation しない固定 `500 response-size-invariant`、各 coordinator が capture した generation と payload を混在させず rescan/Global-disable commit をまたいで pause した SessionSnapshot/FileDetail delivery に関する worst-case snapshot regression を `tests/integration/session-snapshot-encoding.test.ts`、`tests/contract/http-api-session.test.ts`、`tests/contract/http-api-files.test.ts` に追加する
-
----
-
-## フェーズ 103: ドキュメント、エビデンス、依存関係のレビュー
+## フェーズ 102: ドキュメント、エビデンス、依存関係のレビュー
 
 **目的**: 二言語の運用ガイダンス、公式ソースのエビデンス、適合データ、レビュー済みの依存関係判断を完成させる。
 
@@ -2675,54 +2722,73 @@
 
 ### ドキュメント
 
-- [ ] T1033 検証済みの launch command、Repository と別々の one-root tool-specific Global scope、consent/retry/disable workflow、完全な sensitive-value display、environment-reference を解決しないこと、masking/reveal workflow がないこと、正確な limit、diagnostics、Node.js filesystem defense/residual risk、privacy、accessibility、exclusion、maintenance command を含む意味的に同等な operational guidance を `README.md` と `README.ja.md` に起草する
-- [ ] T1034 固定された 20 participant の順序、正確な timer boundary、prepared state、4-field response form と ground truth、moderator restriction、equipment/environment/product outcome は unsuccessful とすること、participant replacement を行わないことを含む、意味的に同等な SC-001/SC-006 study kit を `tests/usability/sc001-sc006-study-kit.md` と `tests/usability/sc001-sc006-study-kit.ja.md` に作成する
+- [ ] T1029 検証済みlaunch command、Node.js 24/26 engines contract全体・Node.js 24.18.0 build baseline・lower-bound certification sample、OS-default-browser delegation対pin済みPlaywright certificationと`--no-open` manual fallback、Repositoryと別々のone-root Global scope、Source Condition Fact分離、consent/retry/disable、literal value/no-environment-resolution behavior、公開SC-002 profile/status protocol、正確なlimit、diagnostic、filesystem residual risk、privacy、accessibility、exclusion、maintenance commandを含む意味的に同等なoperational guidanceを `README.md` と `README.ja.md` に起草する
+- [ ] T1030 Study、recruitment/compensation funding、moderation/review、support、privacy/retention、equipment/session、accessibilityのownerを示すmaintainer-owned bilingual plan、固定20 participant順序、certified-browser record/fallback、exact timer、prepared state、4-field ground truth、no-hints/no-replacement rule、4 workflowすべての観察、safety eventのautomatic critical判定、safety以外のproduct blocker疑いだけを2人がfixed rubricで独立分類し不一致をcriticalとして第3裁定者を設けないことを含む意味的に同等なSC-001/SC-006 study kitを `tests/usability/sc001-sc006-study-kit.md` と `tests/usability/sc001-sc006-study-kit.ja.md` に作成する。通常のcontributorはstudyを運営せず、resource不足はcontribution reviewではなくrelease claimをblockし、materialなworkflow/guidance/fixture/rubric変更時だけ再実施することも記載する
 
 ### 公式エビデンスと依存関係のレビュー
 
-- [ ] T1035 exact host、redirect rejection、bounded content、size/time limit、explicit network opt-in、non-mutating drift reporting に関する、失敗する official-source checker contract を `tests/contract/official-source-drift.test.ts` に追加する
-- [ ] T1036 明示的に network を使う official-source checker を実装し、standalone maintainer-only の `check:official-sources` script をすべての default build/start/test/CI chain の外で登録して実行し、自動的な behavior change を行わず reviewed source set と classified drift を `scripts/check-official-sources.ts`、`package.json`、`specs/001-inspect-agent-customizations/validation.md`、`specs/001-inspect-agent-customizations/validation.ja.md` に記録する
-- [ ] T1037 受け入れられたソースまたはセクションのドリフトを `specs/001-inspect-agent-customizations/contracts/official-sources.md`、`specs/001-inspect-agent-customizations/contracts/official-sources.ja.md`、`specs/001-inspect-agent-customizations/contracts/runtime-composition.md`、`specs/001-inspect-agent-customizations/contracts/runtime-composition.ja.md` で解消する
-- [ ] T1038 [P] 自動的にスコープを拡大せず、受け入れられた Copilot エビデンスのドリフトを `specs/001-inspect-agent-customizations/contracts/vendors/github-copilot.md` と `specs/001-inspect-agent-customizations/contracts/vendors/github-copilot.ja.md` で解消する
-- [ ] T1039 [P] 自動的にスコープを拡大せず、受け入れられた Claude エビデンスのドリフトを `specs/001-inspect-agent-customizations/contracts/vendors/claude-code.md` と `specs/001-inspect-agent-customizations/contracts/vendors/claude-code.ja.md` で解消する
-- [ ] T1040 [P] 自動的にスコープを拡大せず、受け入れられた Codex エビデンスのドリフトを `specs/001-inspect-agent-customizations/contracts/vendors/openai-codex.md` と `specs/001-inspect-agent-customizations/contracts/vendors/openai-codex.ja.md` で解消する
-- [ ] T1041 明示的にレビューされたエビデンス変更だけを `shared/registries/vendor-behaviors.ts`、`shared/registries/inspection-rules.ts`、`shared/registries/runtime-composition.ts`、`shared/registries/official-sources.ts` に適用する
-- [ ] T1042 影響を受けた適合レコードだけを `tests/fixtures/conformance/vendor-behaviors.json`、`tests/fixtures/conformance/inspection-rules.json`、`tests/fixtures/conformance/runtime-composition.json`、`tests/fixtures/conformance/official-sources.json` で再生成する
-- [ ] T1043 レビュー済みのエビデンスの結論を同期し、チェッカーを再実行し、最終結果を `specs/001-inspect-agent-customizations/research.md`、`specs/001-inspect-agent-customizations/research.ja.md`、`specs/001-inspect-agent-customizations/validation.md`、`specs/001-inspect-agent-customizations/validation.ja.md` に記録する
-- [ ] T1044 `pnpm outdated`、ライセンス、通知、互換バージョンの根拠、公開契約への影響をレビューし、すべての受け入れ/拒否判断を `specs/001-inspect-agent-customizations/validation.md` と `specs/001-inspect-agent-customizations/validation.ja.md` に記録する
-- [ ] T1045 凍結された Node.js-only パッケージ契約を維持しながら、受け入れられた依存関係の変更を `package.json` と `pnpm-lock.yaml` に適用する
-- [ ] T1046 受け入れられたすべてのエビデンスと依存関係の影響を `README.md`、`README.ja.md`、および `specs/001-inspect-agent-customizations/` 配下の影響を受ける英語/日本語の research、plan、quickstart、inspection-path allowlist、runtime-composition、vendor-contract の各ペアへ同期する
+- [ ] T1031 exact host、redirect rejection、bounded content、size/time limit、explicit network opt-in、non-mutating drift reporting に関する、失敗する official-source checker contract を `tests/contract/official-source-drift.test.ts` に追加する
+- [ ] T1032 明示的に network を使う official-source checker を実装し、standalone maintainer-only の `check:official-sources` script をすべての default build/start/test/CI chain の外で登録して実行し、自動的な behavior change を行わず reviewed source set と classified drift を `scripts/check-official-sources.ts`、`package.json`、`specs/001-inspect-agent-customizations/validation.md`、`specs/001-inspect-agent-customizations/validation.ja.md` に記録する
+- [ ] T1033 受け入れられたソースまたはセクションのドリフトを `specs/001-inspect-agent-customizations/contracts/official-sources.md`、`specs/001-inspect-agent-customizations/contracts/official-sources.ja.md`、`specs/001-inspect-agent-customizations/contracts/runtime-composition.md`、`specs/001-inspect-agent-customizations/contracts/runtime-composition.ja.md` で解消する
+- [ ] T1034 [P] SupportedなCopilot customization typeごとにexactでclosedなmetadata-field/relationship-kind presentation allowlistを列挙し、automatic scope expansionなしでaccepted evidence driftを`specs/001-inspect-agent-customizations/contracts/vendors/github-copilot.md`と`specs/001-inspect-agent-customizations/contracts/vendors/github-copilot.ja.md`で解決する
+- [ ] T1035 [P] SupportedなClaude customization typeごとにexactでclosedなmetadata-field/relationship-kind presentation allowlistを列挙し、automatic scope expansionなしでaccepted evidence driftを`specs/001-inspect-agent-customizations/contracts/vendors/claude-code.md`と`specs/001-inspect-agent-customizations/contracts/vendors/claude-code.ja.md`で解決する
+- [ ] T1036 [P] SupportedなCodex customization typeごとにexactでclosedなmetadata-field/relationship-kind presentation allowlistを列挙し、automatic scope expansionなしでaccepted evidence driftを`specs/001-inspect-agent-customizations/contracts/vendors/openai-codex.md`と`specs/001-inspect-agent-customizations/contracts/vendors/openai-codex.ja.md`で解決する
+- [ ] T1037 明示的にレビューされたエビデンス変更だけを `shared/registries/vendor-behaviors.ts`、`shared/registries/inspection-rules.ts`、`shared/registries/runtime-composition.ts`、`shared/registries/official-sources.ts` に適用する
+- [ ] T1038 影響を受けた適合レコードだけを `tests/fixtures/conformance/vendor-behaviors.json`、`tests/fixtures/conformance/inspection-rules.json`、`tests/fixtures/conformance/runtime-composition.json`、`tests/fixtures/conformance/official-sources.json` で再生成する
+- [ ] T1039 レビュー済みのエビデンスの結論を同期し、チェッカーを再実行し、最終結果を `specs/001-inspect-agent-customizations/research.md`、`specs/001-inspect-agent-customizations/research.ja.md`、`specs/001-inspect-agent-customizations/validation.md`、`specs/001-inspect-agent-customizations/validation.ja.md` に記録する
+- [ ] T1040 `pnpm outdated`、license、notice、compatible-version rationale、public-contract effectをreviewし、全accept/reject判断を `specs/001-inspect-agent-customizations/validation.md` と `specs/001-inspect-agent-customizations/validation.ja.md` に記録する。変更をacceptしない場合はbaseline unchangedを記録して続行する。1件でもacceptした場合はcurrent `tasks.md`/`tasks.ja.md`をsupersededと記録し、package/configuration editおよび旧task IDの後続実行前に停止し、影響を受ける英日research/plan/quickstartを同期して`/speckit-plan`、`/speckit-tasks`の順に再実行し、regenerate済みtask setからだけ変更をapply/verifyする
+
+---
+
+## フェーズ 103: 横断的な検証
+
+**目的**: 最終的な横断ドキュメント、パッケージ、アクセシビリティ、ライフサイクル、Node.js-only の回帰スイートを追加する。
+
+**独立テスト**: 横断スイートを実行し、二言語の契約、クローズドなパッケージ内容、Node.js-only ポリシー、アクセシビリティの振る舞い、ライフサイクルのクリーンアップを検証する。
+
+**目に見えるチェックポイント**: 完成した製品が横断的な自動回帰レイヤーを通過する。
+
+### 横断テストを先に
+
+- [ ] T1041 英日相互link/semantic parity、runnable command/stable ID、全53 FR/QR/SC rowの実在task参照と全taskのspec requirementまたは明示的Constitution obligationへのmapping、closed presentation allowlistとregistry/API parity、literal-display/no-environment-resolutionとSource Condition Fact zero-synthetic-file/I/O rule、one-root Source、exact engines/build/certification区分とdefault-browser fallback、公開SC-002 profile field/result fieldおよびpersonal identifier/absolute-user-pathだけを省略するrule、`O_NOFOLLOW`、`safe-fs-boundary-unverifiable`、`platform-unobservable`、residual-risk wording、official backlink、stale native claim不在に関するdocumentation/traceability testを `tests/contract/documentation.test.ts` に追加する
+- [ ] T1042 [P] 正確に47 source recordをmaterializeし、正確に56 inspection-rule ID（35 Repository static、5 bounded-derived、10 vendor-excluded、2 shared-excluded、4 Global static）、39 strategy、14 relationship-only rule、contained Hook/MCP candidate additionゼロ、presentation allowlist/registry exact parity、complete reciprocity、official-source identity bound、およびexact Source/tool/surface/status/evidenceとread authority・synthetic file・local/hosted I/Oゼロを持つorigin-file-less Source Condition Factに関するfinal full-registry testを `tests/fixtures/conformance/official-sources.json`、`tests/contract/inspection-rules.test.ts`、`tests/contract/runtime-composition.test.ts`、`tests/contract/official-sources.test.ts` に追加する
+- [ ] T1043 [P] `package.json`、exact `bin.mjs`、exact packed `engines.node`、pre-import running-version rejection、`dist`、両README、`LICENSE`、両manifest、全listed payload hash、fixed CLI/Worker entry、unlisted payload rejectionに関するexact packed-tarball closed-set/recursive-manifest testを `tests/package/package-contents.test.ts`、`tests/package/static-manifest.test.ts`、`tests/package/server-manifest.test.ts` に追加する
+- [ ] T1044 [P] `gunshi` 0.37.0を含む正確なruntime dependency leaf set、Gunshiの正確なintegrity/bundle済みpayload全体のdigestとroot-only import boundary、`open`の不在、production-graphのname/version/integrity/payload digest、scripts-disabled installとverified-cache network-disabled normal-lifecycle install、別個のgenerated-shim audit、Rust/C/C++、Cargo、Node-API/native/binary/Wasm payload、`binding.gyp`、prebuild、platform selector、package-owned shell helper、non-Node shebang、lifecycle/runtime download、unlisted dataの拒否に関するpackage testを`tests/package/node-only-policy.test.ts`と`tests/package/production-graph.test.ts`で拡張する
+- [ ] T1045 [P] Story横断のaxe、keyboard、forced-colors、zoom/reflow、reduced-motion、focus-retention、safe-error、sensitive-content acknowledgement、liveness purge/resume regressionを追加し、完全なprimary-workflow/accessibility certification suiteがpin済みChromium、Firefox、WebKit projectで合格することを要求する一方、それらrevisionをuser browserの網羅的一覧としないことを `tests/e2e/accessibility.spec.ts` と `tests/e2e/session-liveness.spec.ts` で検証する
+- [ ] T1046 [P] 正確な 5 MiB neutral base、16 KiB の fixed-failure/sentinel reserve を含む 2 MiB lifecycle diagnostic/ID overlay、1 MiB control/progress overlay、8 MiB final envelope、canonical production encoder、同一の変更されない HTTP buffer と `Content-Length`、truncation しない固定 `500 response-size-invariant`、各 coordinator が capture した generation と payload を混在させず rescan/Global-disable commit をまたいで pause した SessionSnapshot/FileDetail delivery に関する worst-case snapshot regression を `tests/integration/session-snapshot-encoding.test.ts`、`tests/contract/http-api-session.test.ts`、`tests/contract/http-api-files.test.ts` に追加する
 
 ---
 
 ## フェーズ 104: リリースと成果エビデンス
 
-**目的**: リリースマトリクスを組み立て、測定可能なすべての成功基準と最終ゲートに対する合否エビデンスを記録する。
+**目的**: リリースマトリクスを組み立て、測定可能なすべての成功基準、最終ゲート、明示的なrelease Constitution Checkの合否エビデンスを記録する。
 
-**独立テスト**: 1 つのクローズドセットでプラットフォーム非依存の tarball をビルドし、サポートされるすべての Node/OS ジョブで同一バイトをインストールし、SC-001～SC-008 のすべての分母としきい値を検証する。
+**独立テスト**: 1つのclosed setでplatform非依存tarballをbuildし、Node.js 24/26の宣言済みcompatibility contract全体を維持しながら正確な6つのlower-bound Node/OS jobで同一byteをcertifyし、SC-001～SC-009の全denominator/thresholdを検証して、principleごとの明示的Constitution Checkを記録する。
 
-**目に見えるチェックポイント**: 初期リリースが、明示的な自動化、参加者、アクセシビリティ、性能、安全性、残存リスクのエビデンスを備え、公開可能な状態になる。
+**目に見えるチェックポイント**: 初期リリースが、明示的な自動化、参加者、アクセシビリティ、性能、安全性、残存リスク、憲章準拠のエビデンスを備え、公開可能な状態になる。
 
 ### リリースワークフロー
 
-- [ ] T1047 platform-independent tarball を一度だけ build/verify し、その正確に同じ byte をすべての supported Node/OS job に配布し、generated shim は別に audit しながら production-graph name/version/integrity/payload digest を集約する release job を `.github/workflows/release.yml` に追加する
-- [ ] T1048 publish 前の safe-filesystem、recursive two-manifest、pre-import bootstrap/hash、scripts-disabled および verified-cache network-disabled install、production graph、`npx`、Node.js-only、package-content、browser、liveness、accessibility gate によって release job を `.github/workflows/release.yml` で拡張する
+- [ ] T1047 Node.js 24.18.0 `ubuntu-24.04` x64 development/build baselineでplatform-independent tarballをbuild/verifyし、同一byteをNode.js `24.11.0`/`26.0.0`と`ubuntu-24.04` x64/`macos-15` arm64/`windows-2025` x64の6 lower-bound certification sampleへ配布し、runner-image identifier/actual Node versionを記録して、`^24.11.0 || ^26.0.0`をfull compatibility contractとして維持し、shimを別auditしながらproduction-graph digestを集約するrelease jobを `.github/workflows/release.yml` に追加する
+- [ ] T1048 Exact packed-engines/running-version pre-import rejection、safe-filesystem、recursive two-manifest/hash、scripts-disabled/verified-cache network-disabled install、production graph、`npx`、Node.js-only、package-content、exact Playwright 1.61.1 Chromium/Firefox/WebKit browser certification、`--no-open` manual fallbackを含むOS-default-handler区分、liveness、accessibility gateによってrelease jobを `.github/workflows/release.yml` で拡張する
 
 ### 成果エビデンスと最終ゲート
 
-- [ ] T1049 frozen install、Chromium install、build、formatting、lint、typecheck、unit、contract、security の各ゲートを実行し、すべての結果を `specs/001-inspect-agent-customizations/validation.md` と `specs/001-inspect-agent-customizations/validation.ja.md` に記録する
+- [ ] T1049 frozen install、Playwright 1.61.1の正確なChromium/Firefox/WebKit install、build、formatting、lint、typecheck、unit、contract、securityの各gateを実行し、すべての結果を `specs/001-inspect-agent-customizations/validation.md` と `specs/001-inspect-agent-customizations/validation.ja.md` に記録する
 - [ ] T1050 integration、package、performance、browser、coverage、documentation の各ゲートを実行し、すべての結果を `specs/001-inspect-agent-customizations/validation.md` と `specs/001-inspect-agent-customizations/validation.ja.md` に記録する
-- [ ] T1051 同一 tarball byte に対して supported Node-engine/OS matrix を実行し、production-graph digest の一致、generated-shim audit、検出可能な unsafe state の拒否、`safe-fs-boundary-unverifiable`、effective `O_NOFOLLOW`、証明にはならない `platform-unobservable` outcome を、具体的な reference-environment details を公開せず `specs/001-inspect-agent-customizations/validation.md` と `specs/001-inspect-agent-customizations/validation.ja.md` に記録する
-- [ ] T1052 変更しない 100,000-entry/500-match fixture で、以前の snapshot を再利用せず OS cache を意図的に reset しない正確に 10 回の fresh-process run に対する SC-002 の pass/fail を記録する。browser scan request から 1 秒以内に visible status、10 秒以内に完全で操作可能な inventory を表示する run が 10 回中少なくとも 9 回であることを要求し、具体的な reference-environment details を省略して `specs/001-inspect-agent-customizations/validation.md` と `specs/001-inspect-agent-customizations/validation.ja.md` に記録する
+- [ ] T1051 同一tarball byteに対してNode.js `24.11.0`/`26.0.0`と`ubuntu-24.04` x64/`macos-15` arm64/`windows-2025` x64の正確な6 lower-bound certification jobを実行し、packed full Node.js 24/26 engines contractとout-of-range rejectionを検証して、runner identifier、actual version、production-graph digest一致、shim audit、detectable unsafe-state rejection、`safe-fs-boundary-unverifiable`、effective `O_NOFOLLOW`、non-proving `platform-unobservable` outcomeを `specs/001-inspect-agent-customizations/validation.md` と `specs/001-inspect-agent-customizations/validation.ja.md` に記録する
+- [ ] T1052 Checked-in `tests/performance/sc002-reference-profile.json` fieldとfixture digestをvalidateし、そのprofile/変更しない100,000-entry/500-match fixtureに一致する正確に10回のfresh-process runでSC-002 pass/failを記録する。以前のsnapshot再利用と意図的OS-cache resetを行わず、10回中9回以上で現在requestのqueued/active-phase/complete/partial/failed statusを1秒以内に画面表示してassistive technologyにも公開し、generic/loading/old stateを拒否し、10秒以内にoperable inventoryを完成させ、両standardized interactionを100 ms未満にする。Profile ID、digest、actual environment valueを公開してpersonal identifierとabsolute user pathだけを省略し、profile変更をnon-comparableとして `specs/001-inspect-agent-customizations/validation.md` と `specs/001-inspect-agent-customizations/validation.ja.md` に記録する
 - [ ] T1053 サポート、拒否、共有ファイルのすべての適合行について、最終ゲートと分母から SC-003 の合否を記録する。認識率 100%、範囲外の解釈ゼロ、正しい帰属率 100% とし、`specs/001-inspect-agent-customizations/validation.md` と `specs/001-inspect-agent-customizations/validation.ja.md` に記録する
-- [ ] T1054 最終ゲートと安全性スイートの分母から SC-004 の合否を記録する。activation、child process、MCP、network、mutation、rejected-selector reads、changed-file byte publication はゼロとし、`specs/001-inspect-agent-customizations/validation.md` と `specs/001-inspect-agent-customizations/validation.ja.md` に記録する
-- [ ] T1055 維持対象の literal credential と environment-reference text の 100% が source/comparison view で unmasked/unchanged のままであり、参照される process-environment sentinel value が 1 件も導入されず、masking/reveal control が 0 件で、diagnostics/log が source value を一切複製しないことを証明する SC-005 の pass/fail と denominator を `specs/001-inspect-agent-customizations/validation.md` と `specs/001-inspect-agent-customizations/validation.ja.md` に記録する
-- [ ] T1056 exactly 20 人の replacement を行わない participant と bilingual study kit を使って SC-001 を最初に実施し、正確な 2 分の boundary と unsuccessful だったすべての equipment/environment/product outcome を記録し、少なくとも 19 件の launch/open 成功を要求して `specs/001-inspect-agent-customizations/validation.md` と `specs/001-inspect-agent-customizations/validation.ja.md` に記録する
-- [ ] T1057 SC-001 の後、同じ exactly 20 人の participant、prepared file state、正確な 2 分の boundary、必須の 4-field response と ground truth、replacement なしで SC-006 を実施し、critical usability issue がゼロの識別成功を少なくとも 18 件要求して `specs/001-inspect-agent-customizations/validation.md` と `specs/001-inspect-agent-customizations/validation.ja.md` に記録する
+- [ ] T1054 T996/T997 Global inert-payload fixtureを含むfinal gate/safety-suite denominatorからSC-004 pass/failを記録する。Fixed startup browser helperを唯一許可するproduct child processとして隔離し、customization由来activation、child process、MCP、network、mutation、rejected-selector read、environment lookup/substitution、changed-file byte publicationを0件にして `specs/001-inspect-agent-customizations/validation.md` と `specs/001-inspect-agent-customizations/validation.ja.md` に記録する
+- [ ] T1055 T930/T995/T997 Global fixtureを含むSC-005 pass/fail/denominatorを記録し、維持対象literal credential/environment-reference textの100%がAPI/source/comparison viewでunmasked/unchanged、process-environment sentinel導入0件、masking/reveal control 0件、fixture hash unchanged、diagnostic/logによるsource value複製0件であることを `specs/001-inspect-agent-customizations/validation.md` と `specs/001-inspect-agent-customizations/validation.ja.md` で証明する
+- [ ] T1056 Maintainer-owned bilingual study planのもとreplacementなしのexactly 20 participantでSC-001を最初に実施し、certified browser/default handlerまたはmanual fallback、exact 2-minute boundary、全unsuccessful equipment/environment/product outcomeを記録し、19件以上のlaunch/open成功を要求して `specs/001-inspect-agent-customizations/validation.md` と `specs/001-inspect-agent-customizations/validation.ja.md` に記録する
+- [ ] T1057 SC-001後に同じexactly 20 participant、prepared file state、certified-browser record/fallback、exact 2-minute boundary、4-field ground truth、replacementなしでSC-006を実施し、その後全員がcomparison/Global consentを実施する。全workflow outcomeとautomatic safety eventを記録し、safety以外のproduct blocker疑いだけを2人がfixed rubricで独立分類し、不一致を第3裁定者なしでcriticalと数え、18件以上の識別成功、20人全員のcomplete attempt、critical issue 0件を要求して `specs/001-inspect-agent-customizations/validation.md` と `specs/001-inspect-agent-customizations/validation.ja.md` に記録する
 - [ ] T1058 すべての unreadable、malformed、oversized、cyclic、stale、boundary-crossing fixture に関する SC-007 の pass/fail と denominator を記録する。fatal rescan からの partial publication がゼロであること、最後に commit 済みの snapshot を stale として保持すること、影響を受けない item の usability が 100% であること、actionable diagnostics を含めて `specs/001-inspect-agent-customizations/validation.md` と `specs/001-inspect-agent-customizations/validation.ja.md` に記録する
 - [ ] T1059 すべての主要ワークフローと、適用可能なすべての WCAG 2.2 AA 自動/手動チェックについて分母を備えた SC-008 キーボードおよび手動アクセシビリティプロトコルを実行し、合否と重大な欠陥ゼロを `specs/001-inspect-agent-customizations/validation.md` と `specs/001-inspect-agent-customizations/validation.ja.md` に記録する
-- [ ] T1060 完全な diff と packed tarball について、correctness、untested branch、literal-display/environment-resolution failure、boundary failure、stale claim、source-root merge、package-graph divergence、bilingual mismatch、具体的な reference-environment leakage、unrelated change を検査し、影響を受けるすべての evaluation を `specs/001-inspect-agent-customizations/validation.md` と `specs/001-inspect-agent-customizations/validation.ja.md` で再実行する
-- [ ] T1061 残存課題と具体的な解決経路を完成させ、`pnpm run test:docs` を再実行し、`git diff --check` を実行して、その結果を `specs/001-inspect-agent-customizations/validation.md` と `specs/001-inspect-agent-customizations/validation.ja.md` に記録する
+- [ ] T1060 維持管理するorigin-file-less Source Condition Fact fixtureの100%についてSC-009のpass/failを記録し、正しいSource、tool、product surface、documented conditionまたはunavailable state、evidence、およびphysical/synthetic file、file ID、Source-relative Path、authored source text、comparison target、relationship origin、local/hosted read、network requestが0件であることを `specs/001-inspect-agent-customizations/validation.md` と `specs/001-inspect-agent-customizations/validation.ja.md` で証明する
+- [ ] T1061 Complete diff/packed tarballについてcorrectness、untested branch、literal-display/environment-resolution failure、Source Condition Fact synthesis/I/O、boundary failure、stale claim、source-root merge、engines/certification ambiguity、package-graph divergence、bilingual mismatch、SC-002 personal-identifier/absolute-user-path leakage、unrelated changeを検査し、影響を受ける全evaluationを `specs/001-inspect-agent-customizations/validation.md` と `specs/001-inspect-agent-customizations/validation.ja.md` で再実行する
+- [ ] T1062 残存課題と具体的な解決経路を完成させ、`pnpm run test:docs` を再実行し、`git diff --check` を実行して、その結果を `specs/001-inspect-agent-customizations/validation.md` と `specs/001-inspect-agent-customizations/validation.ja.md` に記録する
+- [ ] T1063 原則ごとの明示的なrelease Constitution Checkを実施・記録し、既知の全違反が解決済みで、各残存不確実性にownerと具体的な解決pathがあることを確認し、approval前のpull request reviewでも同じ明示的checkを必須とする。対象は `specs/001-inspect-agent-customizations/validation.md` と `specs/001-inspect-agent-customizations/validation.ja.md` とする
 
 ---
 
@@ -2831,9 +2897,9 @@
 | 99 ツール固有 Global 結果の統合 | US4 | 別々に識別される 0〜3 個の one-root tool Source が、それぞれ自身の complete/partial commit 後だけ表示され、detail/comparison workflow を再利用する。 |
 | 100 Global の再スキャンと回復 | US4 | ユーザーは再同意せずに Global 結果を再スキャンし、失敗した試行から回復できる。 |
 | 101 Global 無効化バリアと解体 | US4 | Global 検査を無効にすると、そのセッション状態が完全に解体され、Repository 検査は引き続き利用できる。 |
-| 102 横断的な検証 | 回帰 | 完成した製品が横断的な自動回帰レイヤーを通過する。 |
-| 103 ドキュメント、エビデンス、依存関係のレビュー | リリースエビデンス | メンテナーが、リリース候補のレビュー可能なガイダンス、エビデンスの来歴、依存関係の根拠を利用できる。 |
-| 104 リリースと成果エビデンス | 測定可能な成果 | 初期リリースが、明示的な自動化、参加者、アクセシビリティ、性能、安全性、残存リスクのエビデンスを備え、公開可能な状態になる。 |
+| 102 ドキュメント、エビデンス、依存関係のレビュー | リリースエビデンス | 横断suiteがartifactを検証する前に、メンテナーがreview可能なguidance、evidence provenance、dependency decisionを利用できる。 |
+| 103 横断的な検証 | 回帰 | 文書化済みの完成productが横断的な自動regression layerを通過する。 |
+| 104 リリースと成果エビデンス | 測定可能な成果 | 初期リリースが、明示的な自動化、参加者、アクセシビリティ、性能、安全性、残存リスク、憲章準拠のエビデンスを備え、公開可能な状態になる。 |
 
 ## 依存関係と実行順序
 
@@ -2893,8 +2959,8 @@ Setup
   → Tool-Specific Global Result Integration
   → Global Rescan and Recovery
   → Global Disable Barrier and Teardown
-  → Cross-Cutting Verification
   → Documentation, Evidence, and Dependency Review
+  → Cross-Cutting Verification
   → Release and Outcome Evidence
 ```
 
@@ -2923,7 +2989,7 @@ Setup
 - `[P]` とマークされた Repository 受け入れテストは、全サポート対象フィクスチャと最終レジストリグラフが固定された後に並行して進められる。
 - Global vendor boundary test は分離された fixture root を使用するが、フェーズ 96〜98 は 1 つの共有 consent/operation contract と独立した per-tool control を追加するため、checkpoint としては順次実行する。provisional work はフェーズ 99 の commit integration が存在する前には Source を決して公開しない。
 - Global の再スキャンおよび無効化に関する API、concurrency、boundary、lifecycle、browser の各テストは、正確なファイルが異なる場合、コーディネーター状態のテスト後に並行して進められる。
-- 横断的な package、Node.js-only、accessibility、lifecycle、official-source の各テストと、3 ベンダーのエビデンスレビューは、独立したマーク済み作業ストリームである。
+- 順序付けた各phase内では3 vendor evidence reviewを独立したmarked work streamにできる。Artifact/README pair完成後はcross-cutting package、Node.js-only、accessibility、lifecycle、documentation testを独立したmarked work streamにできる。
 
 ### 並行実行例: ベンダー Inventory フェーズ
 
@@ -2978,7 +3044,7 @@ After the phase metadata shape is fixed:
 3. Marketplaces を提供し、Claude marketplace-contained MCP はその所有者が受け入れられたときにだけ有効化する。
 4. marketplace のローカルソース検証後に Plugin Manifests を提供し、Claude plugin-contained MCP は受け入れ済み manifest 所有者上でだけ有効化する。
 5. Repository カスタマイズファミリーの最後に Hooks を提供し、すべての内包 Hook がすでに受け入れられた所有者へ関連付くようにする。
-6. Repository 受け入れ、Global 検査、横断的検証、ドキュメント/エビデンスレビュー、リリースエビデンスを完成させる。
+6. Repository acceptanceとGlobal inspectionを完成させ、documentation/evidence/dependency reviewを終えた後にcross-cutting verificationとrelease evidenceを実行する。
 
 ### 各ファミリー内のベンダー優先垂直スライス
 
@@ -3011,16 +3077,17 @@ After the phase metadata shape is fixed:
 3. selector-free consent を有効化し、eligible な全 confirmed tool を導出し、provisional Source を公開せずに独立した Codex/Claude/Copilot の one-root control を検証する。
 4. 独自の complete/partial job を通じて、別々の tool-specific Source を 0〜3 個 atomic に公開し、Repository と sibling Source を保持して root を決して merge しない。
 5. Global の再スキャン/回復と、優先ゼロ I/O 無効化バリアを追加する。
-6. 横断的な検証と、ドキュメント/エビデンス/依存関係のレビューを完成させる。
-7. SC-001～SC-008 の分母、しきい値、合否結果、リリースマトリクス、残存リスクを記録する。
+6. Documentation/evidence/dependency reviewを完了し、その完成artifactに対してcross-cutting suiteを実行する。
+7. SC-001～SC-009のdenominator、threshold、pass/fail、Node.js engines contract全体とexact lower-bound/browser certification sample、residual riskを記録する。
+8. 原則ごとの明示的なrelease Constitution Checkを記録し、対応するpull request review checkを必須とする。
 
 ## 注記
 
 - 有効な検査対象ソースを列挙または読み取れるのは `src/inspection/safe-fs.ts` だけである。呼び出し元のパス、関係の対象、ベンダーロケーター、戦略、エビデンスレコードが読み取り権限を与えることはない。
 - すべての候補フェーズでは、最初に候補の `lstat`、次に `realpath` の包含、最後に変更されていないことを確認する `lstat` の再実行を行う。該当するフェーズではさらに、ルート、利用可能な各祖先、同一ハンドルの同一性を比較する。
 - 検出されたすべての変更、または利用不能/曖昧と報告された必須チェックでは、すべてのバイトを破棄し、読み取り可能な結果を公開しない。ルート/共有祖先の検証不能はソース試行を拒否し、候補の検証不能はその項目を拒否する。
-- Node.js が公開し強制できる箇所では、有効な `O_NOFOLLOW` を多層防御として必須とする。ただし、文書化された active-mutator または platform-unobservable の残存ケースに対し、カーネルが強制する包含を証明したと主張するテストがあってはならない。
-- 実行可能なすべての製品、ビルド、テストコードは JavaScript/TypeScript とする。Rust、Cargo、Node-API/native addon、prebuilt binary、ライフサイクルでのコンパイル、ライフサイクル/ランタイムでのアーティファクトダウンロードは引き続き禁止する。
+- Effective `O_NOFOLLOW`はNode.jsが公開/enforceする場合のmandatory final-component defense in depthとする。Active source-root/ancestor replacement、effective `O_NOFOLLOW`を利用できないfinal-component replacement、`platform-unobservable` caseに対するkernel-enforced containmentをtestが主張してはならず、全detectable changeはscope内でfail closedにする。
+- FR-038はproject-authored executable application codeと公開/install済みproduction closure内のexecutable codeに適用する。Project-authored build/test codeもrepositoryの設計選択としてJavaScript/TypeScriptを使用するが、third-party development/test toolingはFR-038の対象外として別にpin/auditする。Rust、Cargo、Node-API/native addon、prebuilt binary、lifecycle compilation、lifecycle/runtime artifact downloadはFR-038が定義するproduct boundaryから引き続き禁止する。
 - ベンダーの振る舞い、Inspector matcher、runtime composition、公式エビデンスは別々に所有する。読み取りを許可できるのは、静的および有界導出の Inspector ルールだけである。
 - 非読み取りの `excluded` ルール ID は、`shared.excluded.symlink-target`、`shared.excluded.managed-remote-state`、`copilot.excluded.additional-standard-locations`、`copilot.excluded.extra-directories`、`copilot.excluded.vscode-settings`、`copilot.excluded.cli-lsp`、`copilot.excluded.cli-extensions`、`codex.excluded.plugin-files`、`claude.excluded.plugin-files`、`codex.excluded.user-runtime`、`claude.excluded.user-runtime`、`copilot.excluded.user-runtime` だけである。その他の拒否はすべて、パス不一致テストまたは relationship-only の条件である。
 - 関係は記述的、直接的、有界、非追跡とする。関係の対象は、それ自身が独立した静的または有界導出の受け入れを受けた場合にだけ読み取り可能になる。

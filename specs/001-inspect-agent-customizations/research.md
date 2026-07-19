@@ -2,7 +2,7 @@
 
 [日本語](research.ja.md)
 
-**Researched**: 2026-07-16; revalidated 2026-07-17
+**Researched**: 2026-07-16; revalidated 2026-07-18; CLI dependency selection revalidated 2026-07-19
 **Scope**: Reference architecture, current compatible toolchain, safe local-host design,
 safe parsing and literal display, source/metadata comparison, bounded scanning, and the official
 customization path surface
@@ -81,7 +81,7 @@ exactly to `{ "agent-customization-inspector": "bin.mjs" }` and omit `main`, `mo
 or end-user compilation. Keep runtime packages declared under exact `dependencies` so
 `npx` installs auditable versions; tsdown bundles project-owned modules and shared
 contracts, not arbitrary transitive packages. The production set is exactly the four leaf
-packages `cac`, `yaml`, `jsonc-parser`, and `smol-toml`; `open` is absent from every
+packages `gunshi`, `yaml`, `jsonc-parser`, and `smol-toml`; `open` is absent from every
 dependency section and the production lock closure.
 
 Audit every project/dependency tarball payload and the installed production graph. First install the packed
@@ -169,17 +169,22 @@ classes are checked before server bind.
 “Latest” means the newest stable version compatible with the selected Nuxt/Vue toolchain,
 not a prerelease or an incompatible major. Re-run the same registry compatibility check
 immediately before creating the first lockfile.
+Treat that check as a planning gate. If any selected package or version changes, stop before
+configuration implementation, review the compatibility decision again, synchronize every
+dependency-baseline-bearing English/Japanese research, plan, quickstart, and task artifact,
+and rerun `/speckit-plan` followed by `/speckit-tasks`. A local package/lockfile edit may not
+create a second dependency baseline.
 
 | Area | Selected version | Reason |
 |---|---:|---|
-| Node.js | 24.18.0 Active LTS baseline | Nuxt recommends an active LTS for production; package engines also accept supported Node 26+ |
+| Node.js | 24.18.0 LTS development/build baseline; engines `^24.11.0 || ^26.0.0` = `>=24.11.0 <25.0.0 || >=26.0.0 <27.0.0` | Declares runtime compatibility across the Node 24/26 ranges while the release matrix certifies each lower bound and excludes other majors |
 | TypeScript | 6.0.3 | Newest compiler supported by the current Vue/Volar and typescript-eslint toolchain |
 | Nuxt / Vue | 4.4.8 / 3.5.39 | Current stable releases |
 | Vue Router | 5.2.0 | Current stable release; satisfies Nuxt 4.4.8's declared `^5.1.0` range; no separate router abstraction |
 | tsdown | 0.22.8 | Current stable release; supports Node 24.11+ |
 | Vite | 7.3.6 | Newest version in Nuxt 4.4.8's declared `^7.3.3` builder range |
 | pnpm | 11.13.0 | Current stable package manager |
-| CLI | `cac` 7.0.0 | Small current ESM-compatible leaf dependency; browser launch is project-owned TypeScript over `node:child_process` and adds no package |
+| CLI | `gunshi` 0.37.0 | Current zero-runtime-dependency ESM CLI framework; its Node.js `>=22` engine requirement fits the declared range; browser launch is project-owned TypeScript over `node:child_process` and adds no package |
 | Parsers | `yaml` 2.9.0, `jsonc-parser` 3.3.1, `smol-toml` 1.7.0 | Current stable inert data parsers |
 | Source view/diff | `monaco-editor` 0.55.1 | Current stable read-only source and diff editor; its own diff engine avoids a duplicate client dependency |
 | Lint | ESLint 10.7.0, `@nuxt/eslint` 1.16.0 | Current compatible stable releases |
@@ -192,28 +197,87 @@ immediately before creating the first lockfile.
 builder ranges agree, so the first implementation can be reproduced without forcing
 unsupported compiler or bundler overrides.
 
+The CLI uses only Gunshi's stable root `define`/`cli` API. It declares a negatable `open`
+boolean with a true default to provide `--no-open`, calls `cli()` with
+`strict: true`, and explicitly rejects all positional/rest arguments before the host binds.
+It awaits the asynchronous result and maps validation failures through a project-owned,
+fixed, bounded renderer and explicit `AggregateError` handling to a nonzero exit; built-in
+help/version return without binding.
+The production entry does not import `gunshi/agent`, lazy commands, custom plugins, or
+experimental parser combinators. Although Gunshi is one npm-graph leaf, its bundled internal
+argument/plugin/resource code remains part of the audited payload, integrity, license, and
+import-boundary digest. Exact pinning and these tests bound its pre-1.0 API-change risk.
+
+The audited 0.37.0 registry tarball has 34 text-only JavaScript, declaration, JSON,
+documentation, and license files (239,298 unpacked bytes), no runtime/optional/peer/bundled
+dependency, no install lifecycle hook or platform selector, and no shell, native, binary,
+or Wasm payload. This preserves the existing Node-only package gate while making Gunshi's
+larger bundled JavaScript payload explicit in the release audit.
+
+### Finite release-certification matrix
+
+**Decision**: Support the complete declared Node.js 24/26 engine range on the three fixed
+OS/architecture targets. Build one platform-independent tarball on `ubuntu-24.04` x64 with
+the Node.js 24.18.0 development/build baseline, run a separate build/package smoke check,
+then install the identical bytes in the exact six-job lower-bound certification product of
+Node.js `24.11.0` and `26.0.0` with `ubuntu-24.04` x64, `macos-15` arm64, and
+`windows-2025` x64. Record the resolved runner-image identifier and actual Node version for
+each release job. Run the full primary-workflow and accessibility browser suite against the
+exact Chromium, Firefox, and WebKit revisions installed by Playwright 1.61.1 on
+`ubuntu-24.04` x64 with Node.js 24.18.0. Those browser revisions are the reproducible
+automated certification baseline, not an exhaustive user-browser list. The OS helper passes
+the URL to the default handler without selecting or verifying its family/version; helper
+success is not compatibility evidence, and the printed URL plus `--no-open` is the fallback
+for manually choosing a certified browser.
+
+**Rationale**: A closed certification matrix is reproducible and makes release completion
+decidable without misrepresenting the wider semver compatibility contract. The minimum
+supported version of each Node major exercises the declared engine floor, while identical
+tarball bytes prove that the package does not vary by platform. Pinned Playwright browser
+revisions provide a finite automated gate without claiming that the OS default handler
+selects one of them.
+
+**Alternatives considered**: An unbounded `>=26.0.0` engine range was rejected because it
+silently claims future majors. Mutable `*-latest` runner labels and an unspecified modern-
+browser target were rejected because their release denominator changes without a repository
+change. Chromium-only testing was rejected because the local launcher may open another
+browser engine and the product uses standard browser APIs intended to work across the three
+Playwright engines.
+
 Primary version evidence is the npm registry for
 [Nuxt](https://www.npmjs.com/package/nuxt), [Vue](https://www.npmjs.com/package/vue),
 [Vue Router](https://www.npmjs.com/package/vue-router),
 [tsdown](https://www.npmjs.com/package/tsdown),
 [TypeScript](https://www.npmjs.com/package/typescript),
 [Vite](https://www.npmjs.com/package/vite), [pnpm](https://www.npmjs.com/package/pnpm),
+[Gunshi 0.37.0 registry metadata](https://registry.npmjs.org/gunshi/0.37.0),
 [Monaco Editor](https://www.npmjs.com/package/monaco-editor),
 [Vitest](https://www.npmjs.com/package/vitest), and
 [Playwright](https://www.npmjs.com/package/@playwright/test). Node's official
 [release status](https://nodejs.org/en/about/previous-releases) and
-[Node 24 archive](https://nodejs.org/en/download/archive/v24) establish the LTS baseline
-and exact release. Monaco's official
+[Node 24.18.0 release](https://nodejs.org/en/blog/release/v24.18.0) establish the LTS baseline
+and exact build release; the [Node 26.0.0 archive](https://nodejs.org/en/download/archive/v26.0.0)
+establishes the second engine floor. GitHub's official
+[runner-image labels](https://github.com/actions/runner-images#available-images) establish the
+three fixed OS/architecture jobs. Monaco's official
 [v0.55.1 release](https://github.com/microsoft/monaco-editor/releases/tag/v0.55.1)
 establishes the selected stable editor version.
+Gunshi's official [setup requirements](https://gunshi.dev/guide/introduction/setup) and
+[declarative/strict CLI guide](https://gunshi.dev/guide/essentials/declarative) establish
+the Node/TypeScript compatibility and closed unknown-option behavior used here.
 The safe-filesystem layer uses only Node's built-in `node:fs/promises`, `node:fs`, and
 `node:path` APIs, so it adds no platform toolchain or runtime package dependency.
-The production `dependencies` set is exactly the pinned leaf packages `cac`, `yaml`,
+The production `dependencies` set is exactly the pinned leaf packages `gunshi`, `yaml`,
 `jsonc-parser`, and `smol-toml`. Nuxt/Vue/Vite/tsdown, Monaco, and test tooling are build-
 or development-only because their required output is assembled into the closed product
 assets. The lockfile and an isolated installed production closure are both audited.
 
 **Alternatives considered**:
+
+`cac` 7.0.0 remains a compatible zero-runtime-dependency ESM parser, but the revised CLI
+framework choice adopts Gunshi's declarative typed command definition and strict validation.
+Keeping both would duplicate one responsibility, so `cac` is removed from the production
+baseline rather than retained as a second parser.
 
 TypeScript 7.0.2 and Vite 8.1.4 were current stable upstream releases on the research date,
 but are deliberately not selected: the official
@@ -449,10 +513,12 @@ explicit platform limitations outside automated-test proof. Its
 and [WASI](https://nodejs.org/docs/latest-v24.x/api/wasi.html#security) are not substitutes
 for that missing filesystem primitive.
 
-The release therefore treats detected ordinary concurrent changes and other
-implementation-detectable races as in scope and fails closed for every detected case, but excludes an active adversarial process
-that can replace the root, an ancestor, or the final entry between path checks. Tests are evidence for the specified
-detection behavior, not proof against that actor. The concrete resolution path before
+The release therefore treats ordinary concurrent changes, every implementation-detectable
+race, and effective-`O_NOFOLLOW` final-component defense as in scope and fails closed for
+every detected case. It excludes active source-root/ancestor replacement and, only where
+effective `O_NOFOLLOW` is unavailable, active final-entry replacement between path checks.
+Tests are evidence for the specified detection behavior, not proof against those excluded
+cases. The concrete resolution path before
 expanding the threat model is to adopt a future Node directory-relative API with atomic
 beneath/no-follow semantics, or to scan an OS-enforced read-only snapshot/sandbox and
 repeat the security review. One bounded service still centralizes entry/depth/deadline/byte
@@ -466,7 +532,8 @@ path relative to the owning Source's one root; filesystem operations retain the 
   complete scan accounting.
 - Treating the Node Permission Model or WASI as a containment proof was rejected because
   their documented limitations do not provide atomic child-open semantics.
-- Claiming that pre/post path checks defeat an active root/ancestor/final-entry replacement attacker was
+- Claiming that pre/post path checks defeat an active root/ancestor replacement attacker, or
+  a final-entry replacement attacker where effective `O_NOFOLLOW` is unavailable, was
   rejected because validation and open remain separate operations.
 - Following symlinks that currently resolve inside the source was rejected because parent
   swaps and aliases complicate the boundary and physical-file identity.
@@ -832,31 +899,54 @@ The 2026-07-17 measurable-outcome revalidation fixes the following objective pro
   enrolled-participant equipment, environment, or product failure counts as unsuccessful,
   including before timer start; no participant is excluded or replaced.
 - **SC-002** reuses one unchanged deterministic 100,000-entry/500-match fixture for exactly
-  10 measured runs on the same maintainer-designated current local reference environment.
+  10 measured runs on one versioned, published reference-environment profile. The checked-in
+  profile records the exact OS image/version, processor architecture/model and logical count,
+  memory, storage/filesystem, application runtime, benchmark command/configuration, and
+  fixture manifest/digest; the result records actual values while omitting only personal
+  identifiers and absolute user paths. A profile change starts a non-comparable set.
   Fixture construction, setup, `npx` download/installation, and process start are outside
-  the timers. Both timers start when the browser submits the scan request; visible progress
-  or meaningful status must render within 1 second, and the complete operable inventory
-  within 10 seconds. At least 9 runs must individually meet both thresholds. Each run uses
-  a new Inspector process without application-memory or prior-snapshot reuse. The operating
+  the timers. Both timers start when the browser submits the scan request. Within 1 second,
+  the current request must visibly and accessibly say queued, name an active scan phase, or
+  report complete/partial/failed; a failure includes a practical next step. A generic spinner,
+  loading label, unchanged control, acknowledgement without scan state, or prior-request
+  status does not qualify. The complete operable inventory must render within 10 seconds.
+  After the inventory becomes operable in each run, perform one
+  standardized filter action and one standardized item-selection action, timing each from
+  browser input dispatch until the corresponding filtered results or selected-state feedback
+  is visibly rendered and operable. At least 9 runs must individually meet both scan
+  thresholds and keep both interactions below 100 milliseconds. Each run uses a new Inspector
+  process without application-memory or prior-snapshot reuse. The operating
   system filesystem cache follows its natural evolving state and is not deliberately
-  cleared. The result is reference-environment-specific; repository documentation must not
-  disclose concrete machine, operating-system, hardware, or runtime details for that
-  environment.
+  cleared. The result is specific to its published profile rather than a portable guarantee.
 - **SC-006** uses the same 20 participants after SC-001, regardless of their earlier result,
   starting from the same prepared Inspector state with the same designated file open. Its
   timer starts when that state is ready and the standardized prompt is presented. A
   standardized response form requires source, recognizing tools, file type, and
   certain-versus-conditional effective behavior; success requires all four fields within
   2 minutes and an exact match to predefined ground truth. At least 18 must succeed using
-  only the provided product guidance under the SC-001 moderator policy. A critical
-  usability issue is one that blocks a primary workflow without prohibited assistance or
-  causes unintended execution, inspected-source mutation, an MCP/network connection, or
-  disclosure of inspected content to another machine; the acceptable count is zero.
+  only the provided product guidance under the SC-001 moderator policy. Moderators record
+  objective workflow outcomes and predefined safety events. Every unintended execution,
+  inspected-source mutation, MCP/network connection, or disclosure of inspected content to
+  another machine is automatically critical. Only a suspected product-caused workflow
+  blocker that is not such a safety event receives two independent fixed-rubric
+  classifications; disagreement counts as critical without a third adjudicator. The
+  acceptable automatic or reviewer-confirmed critical count is zero.
+
+The 20-person study is initial-release evidence because automation and project-familiar
+contributors cannot establish first-use discoverability or interpretation without project
+context; its fixed denominator is not a population-level statistical claim. The maintainer
+team publishes a bilingual plan naming the accountable study owner, recruitment and
+compensation-funding owner, moderation/review staff, schedule/support contact, consent/privacy
+and anonymized-retention process, supplied repository/equipment/session support, and
+accessibility accommodations. Ordinary contributors do not recruit, fund, moderate, or
+review participants. Missing study resources block the release claim, not review of an
+otherwise conforming contribution; material workflow/guidance/fixture/rubric changes trigger
+the next study.
 
 **Rationale**: The constitution treats passing tests as evidence rather than proof, so the
 suite combines objective automation with full-diff review, manual accessibility checks,
 documentation parity checks, a release tarball inspection, fixed participant scoring, and
-repeatable reference-environment-specific performance measurement.
+repeatable versioned-profile-specific performance measurement.
 
 **Alternatives considered**:
 
@@ -894,10 +984,10 @@ the following rules into every later design artifact:
    exact frozen preview before retry.
 5. Source-relative Path is the cross-source display/filter/diagnostic term. Repository-
    relative path is used only for the Repository Source rooted at launch `cwd`.
-6. SC-001, SC-002, and SC-006 use the objective protocols in Section 10. SC-002 is measured
-   on the maintainer-designated current local reference environment without publishing its
-   concrete machine, operating-system, hardware, or runtime details in repository
-   documentation.
+6. SC-001, SC-002, and SC-006 use the objective protocols in Section 10. SC-002 uses one
+   checked-in versioned reference profile and publishes the profile ID, fixture digest, and
+   actual non-personal environment fields with each result; results from changed profile IDs
+   are not directly comparable.
 
 **Rationale**: These decisions remove the former multi-root Source, masking/reveal,
 fatal-result, path-terminology, and outcome-measurement ambiguities while preserving the
@@ -916,5 +1006,50 @@ product's read-only, local, non-executing boundary.
   truthful committed state.
 - Using repository-relative path for Global files was rejected because a Global Source is
   not rooted at the Repository `cwd`.
-- A portable performance claim or disclosure of the current reference machine was rejected
-  because SC-002 is intentionally environment-specific.
+- A mutable unpublished reference environment was rejected because it prevents another
+  maintainer from reproducing the protocol or interpreting a changed baseline. SC-002 remains
+  profile-specific rather than a portable performance guarantee.
+
+## 12. Specification revalidation decisions (2026-07-19)
+
+**Decision**: Carry the final analysis remediations into planning and implementation:
+
+1. The fixed startup OS browser helper is the only permitted product-initiated child
+   process. It receives no inspected content, inspected path, authored value, user-supplied
+   command, or environment-selected handler. Discovery, reading, parsing, display,
+   comparison, and relationship processing initiate no child process, and `--no-open` plus
+   unsupported/failure paths leave a usable manual URL.
+2. Each supported tool/kind owns closed declared-metadata field IDs and relationship kinds.
+   Only entries present in the maintained presentation allowlist may be serialized or shown;
+   an unknown authored field remains visible only in complete source text and is not inferred
+   as metadata or a relationship.
+3. SC-002 includes the standardized filter and item-selection measurements defined in
+   Section 10; the 9-of-10 gate applies to both interactions as well as both scan thresholds.
+4. Dependency revalidation is a planning gate. Any accepted package or version change synchronizes all
+   dependency-baseline-bearing English/Japanese design and task artifacts and reruns planning plus task
+   generation before implementation proceeds.
+5. The SC-002 environment is a checked-in versioned published profile with an objective
+   current-request status stop condition; private local-machine identity is not part of the
+   contract.
+6. Origin-file-less hosted/runtime inputs are bounded, evidence-linked Source Condition Facts
+   attached to the relevant Source. They create no file/path/source text/comparison target,
+   grant no read authority, perform no local or hosted I/O, and retain unobserved current state
+   as conditional or unavailable.
+7. The maintainer team owns the initial-release participant study, funding, support, privacy,
+   accessibility, and bounded review protocol. Ordinary contributors do not carry those
+   obligations.
+8. `engines.node` is the complete Node 24/26 runtime compatibility range; the six exact floor
+   jobs are lower-bound certification samples and Node 24.18.0 is the development/build
+   baseline. The pinned three Playwright revisions are the automated browser-certification
+   baseline, while the startup helper delegates to an unverified OS default handler and always
+   retains the printed/manual-open fallback.
+
+**Rationale**: These rules make the child-process boundary, presentation scope, performance
+denominator, runtime-fact model, participation ownership, compatibility/certification split,
+and dependency baseline independently testable without weakening the existing security or
+documentation-parity requirements.
+
+**Alternatives considered**: Treating browser launch as part of customization-derived
+execution, inferring metadata from arbitrary authored keys, keeping the interaction target
+as an untracked plan-only goal, and patching versions only in `package.json` were rejected
+because each creates a contradiction or a second undocumented contract.
