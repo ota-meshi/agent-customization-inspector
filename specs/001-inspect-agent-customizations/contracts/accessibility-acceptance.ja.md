@@ -127,11 +127,17 @@ checkをすべて再実行する。
   platform-mode N/A cellであり、指定したsupported OSにnative forced-colors modeがないというrationaleを個別に
   記録する。いずれも黙って省略しない。
 - **Workflow/state scenario**: `S1` populated inventory、filter、tool/source/kind factを伴うRepository discovery、
-  `S2` Repository empty state、recoverable source diagnostic、rescan、`S3` sensitive-content acknowledgement前後の
+  `S2` Repository empty state、決定的にreturnされたsource Diagnostic、明示的rescan、および以前のsnapshotをstaleのまま
+  保持してgenericなOperation Errorだけを表示する別のthrown/rejected rescan、`S3` sensitive-content acknowledgement前後の
   file inspectionとMonaco source access、`S4` file diagnosticと実行可能なnext step、`S5` 2-file comparison、
   Monaco accessible diff、narrow inline alternative、`S6` generation replacement後のstale/removed comparison、
-  `S7` Global disabled、consent pending、enabled scan complete、明示disable、`S8` 並行表示されるscan/status update、
-  pause/stop/hideまたはuser-frequency control、error recovery、focus restoration。
+  `S7` Global disabled、selectorを持たないfixed 3-toolのsession-wide consent pending、admit済みsubsetを1 batchでscanして
+  正確に1つのatomic generationとしてcompleteする状態、その他のthrow/rejectionによるtransaction全体abort、およびrequest前
+  full client-data purge、greater content epoch、non-nullな全inspection-data fence、control-onlyのdraining/failed/retry/join state、
+  unconfirmed cleanupのrestart next step、terminal recovery、`remove-active-state` N+1、未公開initial enableだけの
+  `cleanup-only` N caseを扱う明示disable、`S8` 並行表示されるscan/status update、exactな
+  `{ sessionId, globalContentEpoch, globalDisableInProgress }` liveness stateとrender前purge transition、disable fenceがnullの場合だけの
+  Resume inspection、pause/stop/hideまたはuser-frequency control、error recovery、focus restoration。
 - **Input profile**: `I1` AT browse/virtual modeとfocus modeを含むkeyboardのみ、`I2` click activationとcancellationを
   通るprimary pointer、`I3` mouse hoverに続くkeyboard focus、dismissal、pointer transfer、persistence check。
 

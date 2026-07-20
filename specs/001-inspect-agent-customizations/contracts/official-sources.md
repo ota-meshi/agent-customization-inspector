@@ -2,8 +2,8 @@
 
 [日本語](official-sources.ja.md)
 
-**Registry version**: 2026-07-15
-**Official-source review**: 2026-07-15
+**Registry version**: 2026-07-20
+**Official-source review**: 2026-07-20
 **Normalization version**: `1`
 
 This registry is the single normative owner of every `sourceId` used by the three
@@ -29,9 +29,44 @@ Each table row owns one `OfficialSourceRecord` key and the following authored fi
   descriptor. It is not a CSS/XPath selector or a URL fragment. The drift checker must
   find exactly one matching heading for every listed entry. Anchor and heading-text
   capacity and completion behavior are inherited from Node.js and the execution environment.
-- `reviewedOn` is the date of the last human semantic review. Every record in this
-  release was reviewed on `2026-07-15`.
+- `reviewedOn` is the date of the last human semantic review. It is authored per row;
+  records not re-reviewed during the 2026-07-20 reconciliation retain `2026-07-15`.
 - Every row uses `normalizationVersion: 1`.
+
+Every maintained behavior, rule, and strategy that cites this registry also owns exactly
+one atomic evidence assessment with this closed shape:
+
+```ts
+type DocumentationStatus =
+  | 'documented'
+  | 'partially-documented'
+  | 'unknown'
+  | 'conflict';
+type LifecycleQualifier = 'preview' | 'experimental' | 'deprecated';
+type EvidenceAssessment = {
+  subjectKind: 'behavior' | 'rule' | 'strategy';
+  subjectId: string;
+  documentationStatus: DocumentationStatus;
+  lifecycleQualifiers: LifecycleQualifier[];
+};
+```
+
+The qualifier array contains no duplicates and is always serialized in `preview`,
+`experimental`, `deprecated` order. Empty means that the reviewed sources make no
+lifecycle claim; it does not mean or imply `stable`. `documented` means the exact reviewed
+sections completely establish the maintained atomic assertion, `partially-documented`
+means they establish only part of it, `unknown` means they establish no determination for
+it, and `conflict` retains incompatible official assertions. The separate
+`documentation-conflict` token is a runtime `ConditionFact.status`, never a spelling or
+alias of `DocumentationStatus`.
+
+Each assessment identifies its own subject; it is not a status attached to a source ID or
+to a whole vendor. A provenance or relationship that cites several behavior/rule/strategy
+subjects carries the deterministic subject-by-subject `EvidenceAssessment[]`. It never
+reduces those records to one scalar, a most/least certain value, or a qualifier union.
+Sort by `subjectKind` in fixed `behavior`, `rule`, `strategy` order and then by `subjectId`,
+and reject duplicate `(subjectKind, subjectId)` records. The assessment is backed by that
+subject's complete `sourceRefs` set and does not change the reverse-index ownership below.
 
 The checked-in `tests/fixtures/conformance/official-sources.json` is the machine-readable
 materialization of these rows. It additionally contains the three derived affected-ID
@@ -100,10 +135,48 @@ exact inverse index from the Evidence cells:
 6. Parse the Japanese counterparts independently and require the same owner IDs,
    `sourceId` tokens, and edges. Japanese files validate semantic parity but are not a
    second input to the generated arrays.
+7. Validate exactly one assessment for every owner, the closed documentation-status enum,
+   duplicate-free fixed qualifier ordering, and English/Japanese equality. Reject
+   `documentation-conflict` as a documentation status and reject any assessment-free or
+   lossy aggregate provenance/relationship fixture.
 
 Consequently, the set of IDs in the registry below must equal—not merely contain—the set
 of IDs used by all four canonical Evidence sources. Each `sourceId` is defined exactly
 once here.
+
+## Presentation Allowlist implementation gate
+
+The normative bilingual Presentation Allowlist rows in the three vendor contracts are
+already approved design input. The implementation gate verifies only the frozen English
+and Japanese rows and their recorded digest; it must not author or semantically edit the
+allowlist set, identifiers, admitted source forms, exact source-form extractor
+applicability, eligible metadata fields, or relationship kinds.
+
+The following lowercase SHA-256 values are the recorded freeze. For each named UTF-8,
+BOM-free, LF-only contract, the digest input is constructed by locating the unique level-2
+heading whose case-folded text ends with `presentation allowlist`, skipping subsequent
+non-table lines, and then concatenating the first contiguous run of lines whose first byte
+is `|`, preserving every byte and appending one LF after every row including the last.
+No heading, prose, blank line, or line after that contiguous table is hashed.
+
+| Vendor | English table SHA-256 | Japanese table SHA-256 |
+|---|---|---|
+| GitHub Copilot | `974ac8fdf76d16925ab7bc3505a22863314e2938981e40e09f1d428bb2ef244f` | `92e27ba7f5444f28a8d29087eca52d3bfbac95652e6551405feb9238c3a07a1a` |
+| Claude Code | `c41502612324aef171de5ead0ba73dcc9234e378f630e31ff04aa8a4b6f66f9f` | `75f6689a1c04551e3991f27bdf8637516c3959970336d75009eb417ca21dc66b` |
+| OpenAI Codex | `c1de96a1764c6ba7355e1784d6bbabb3262ebc7e51ef7cbaa6b64f621aa38b1b` | `d06588c649e9fbd969bc89816d8be3ced41b9b02601a2a6b0fc0e6c08636c248` |
+
+The implementation freeze test must recompute all six inputs exactly, require one and only
+one matching heading and contiguous table per file, compare every digest in constant time,
+and separately validate row IDs and English/Japanese semantic parity. A missing, duplicate,
+empty, malformed, or mismatched table or digest blocks implementation; a digest match alone
+does not prove semantic parity.
+
+After implementation starts, any semantic mismatch or requested change to those values
+stops dependent work. Before any changed row is consumed, maintainers must synchronize all
+applicable English and Japanese specification, research, plan, quickstart, and contract
+artifacts, then rerun `/speckit.plan` followed by `/speckit.tasks`. Evidence-location,
+section-anchor, review-metadata, and semantically unchanged corrections may proceed under
+the current task set, but they must not be used to bypass this stop-and-regenerate rule.
 
 ## GitHub official sources
 
@@ -125,6 +198,17 @@ once here.
 
 ## Microsoft Visual Studio Code official sources
 
+For a versioned behavior that a newer release note adds while the current general guide
+still presents an exhaustive older location list, the release note establishes the new
+behavior for that version and later, while the guide continues to establish only the
+claims it states directly. The omission does not erase the release-note behavior; the
+incompatible exhaustive location statements produce `documentationStatus: conflict` for
+the affected behavior, rule, and strategy. Neither source establishes an unmentioned schema or a
+total precedence order. Those facts remain unknown instead of being inferred from a
+similar filename or another surface. This rule prefers a direct, version-qualified
+first-party assertion over omission, retains incompatible direct assertions as conflict,
+and does not admit an unregistered source repository or issue as substitute evidence.
+
 | `sourceId` | `canonicalUrl` | `officialHost` | Exact `sectionAnchors` | `reviewedOn` |
 |---|---|---|---|---|
 | `vscode.copilot.instructions` | <https://code.visualstudio.com/docs/agent-customization/custom-instructions> | `code.visualstudio.com` | `Types of instruction files`; `Use a .github/copilot-instructions.md file`; `Use .instructions.md files`; `Use an AGENTS.md file`; `Use a CLAUDE.md file`; `Instruction priority` | `2026-07-15` |
@@ -134,7 +218,8 @@ once here.
 | `vscode.copilot.custom-agents` | <https://code.visualstudio.com/docs/agent-customization/custom-agents> | `code.visualstudio.com` | `Handoffs`; `Custom agent file locations`; `Custom agent file structure`; `Tool list priority`; `Share custom agents across teams` | `2026-07-15` |
 | `vscode.copilot.skills` | <https://code.visualstudio.com/docs/agent-customization/agent-skills> | `code.visualstudio.com` | `Create a skill`; `SKILL.md file format`; `How Copilot uses skills`; `Use shared skills` | `2026-07-15` |
 | `vscode.copilot.hooks` | <https://code.visualstudio.com/docs/agent-customization/hooks> | `code.visualstudio.com` | `Configure hooks`; `Security considerations` | `2026-07-15` |
-| `vscode.copilot.mcp` | <https://code.visualstudio.com/docs/agent-customization/mcp-servers> | `code.visualstudio.com` | `Add an MCP server`; `MCP server trust`; `Synchronize MCP configuration across devices` | `2026-07-15` |
+| `vscode.copilot.mcp` | <https://code.visualstudio.com/docs/agent-customization/mcp-servers> | `code.visualstudio.com` | `Add an MCP server`; `MCP server trust`; `Synchronize MCP configuration across devices` | `2026-07-20` |
+| `vscode.copilot.mcp.workspace-root-release` | <https://code.visualstudio.com/updates/v1_118> | `code.visualstudio.com` | `Workspace .mcp.json files and server deduplication` | `2026-07-20` |
 | `vscode.copilot.plugins` | <https://code.visualstudio.com/docs/agent-customization/agent-plugins> | `code.visualstudio.com` | `What plugins provide`; `Plugin metadata (plugin.json)`; `Plugin formats`; `Configure plugin marketplaces`; `Use local plugins`; `Workspace plugin recommendations` | `2026-07-15` |
 | `vscode.settings` | <https://code.visualstudio.com/docs/configure/settings> | `code.visualstudio.com` | `User settings`; `Workspace settings`; `Profile settings`; `Settings precedence` | `2026-07-15` |
 
@@ -162,6 +247,19 @@ once here.
 The OpenAI rows use the exact first-party Markdown source URLs emitted by the official
 Codex manual. The `.md` response is intentional and is accepted by the drift check's
 Markdown content-type branch.
+
+The 2026-07-20 Inspector runtime reconciliation is product policy, not an assertion about
+upstream Codex behavior. For inspected Codex candidates, only an exact `ENOENT` from a
+contract-declared structural `lstat` checkpoint becomes `absent` or
+`entry-disappeared`; every other throw or rejection propagates unchanged, including an
+`ENOENT` from `open` or `read`. A NUL byte produces the binary, diagnostic-only outcome.
+Every non-NUL byte stream is decoded once with UTF-8 replacement semantics; invalid
+sequences produce `utf-8-replaced`, and the resulting garbled text containing `U+FFFD` remains in the
+complete source used for parsing, extraction, display, and comparison. Maintained OpenAI
+assertions must paraphrase only the selected official sections and must not encode these
+Inspector-owned filesystem or decoding choices. Because no selected official text or
+maintained OpenAI assertion changed in this reconciliation, its `snapshotFingerprint`,
+`semanticFingerprint`, and `reviewedOn` remain unchanged.
 
 | `sourceId` | `canonicalUrl` | `officialHost` | Exact `sectionAnchors` | `reviewedOn` |
 |---|---|---|---|---|

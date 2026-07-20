@@ -2,7 +2,7 @@
 
 [日本語](research.ja.md)
 
-**Researched**: 2026-07-16; revalidated 2026-07-18; CLI dependency selection revalidated 2026-07-19
+**Researched**: 2026-07-16; revalidated 2026-07-18; CLI dependency selection revalidated 2026-07-19; product-boundary decisions revalidated 2026-07-20
 **Scope**: Reference architecture, current compatible toolchain, safe local-host design,
 safe parsing and literal display, source/metadata comparison, environment-governed scanning, and the official
 customization path surface
@@ -182,7 +182,7 @@ immediately before creating the first lockfile.
 Treat that check as a planning gate. If any selected package or version changes, stop before
 configuration implementation, review the compatibility decision again, synchronize every
 dependency-baseline-bearing English/Japanese research, plan, quickstart, and task artifact,
-and rerun `/speckit-plan` followed by `/speckit-tasks`. A local package/lockfile edit may not
+and rerun `/speckit.plan` followed by `/speckit.tasks`. A local package/lockfile edit may not
 create a second dependency baseline.
 
 | Area | Selected version | Reason |
@@ -206,6 +206,20 @@ create a second dependency baseline.
 **Rationale**: The selected set is the newest stable combination whose published peer and
 builder ranges agree, so the first implementation can be reproduced without forcing
 unsupported compiler or bundler overrides.
+
+**Migration impact**: The planned impact for this initial-release dependency baseline is
+none: there is no prior published Inspector package, public contract, persisted profile, or
+user data to migrate. T001 must confirm that determination before package/configuration work;
+an affected consumer or prior contract invalidates it and requires replanning. Every later
+accepted dependency addition/change or breaking public-contract change must record affected
+consumers, contracts, data, and workflows; required migration and compatibility/support
+steps; and a rollback/support path, or an explicit reasoned no-impact determination. Missing
+or stale English/Japanese design evidence in this `**Migration impact**` section and the
+paired `**移行影響**` section, plus the plan's
+`**Dependency and breaking-change migration gate**`/`**Dependencyおよび破壊的変更の移行gate**`
+sections, blocks T002. The
+release-validation pair records the corresponding decision evidence later; missing bilingual
+validation evidence blocks release.
 
 The CLI uses only Gunshi's stable root `define`/`cli` API. It declares a negatable `open`
 boolean with a true default to provide `--no-open`, calls `cli()` with
@@ -321,7 +335,7 @@ mixed path matrix:
 2. The **Inspector matcher registry** records stable `ruleId` values and is governed by
    the common [allowlist grammar](contracts/inspection-path-allowlist.md). Every Repository
    matcher separates Base, ordered Relative selectors, and their one-to-one typed segment
-   programs, is rendered from the exact launch root with `./`, and rejects a bare `**/`.
+   programs, is rendered from the exact selected Repository root with `./`, and rejects a bare `**/`.
    Literal, one-segment, and non-adjacent recursive-directory tokens can compose in one program;
    `./**/` denotes explicit downward Inspector descendant inventory only and never asserts
    vendor traversal. Build validation compiles the same programs into immutable versioned
@@ -329,8 +343,8 @@ mixed path matrix:
    their schema, closed selection policy, and canonical programs. The only
    content-dependent policy is the closed Codex Global first-non-empty branch: it probes
    the override first, short-circuits on safely read non-empty content, advances only from
-   absent or safely empty content, and fails closed without fallback for an unsafe or
-   unreadable present candidate.
+   absent or safely empty content, ends with a safe returned Diagnostic for a deterministic
+   unsafe or binary candidate, and propagates every throw/rejection without fallback.
 3. The **runtime composition registry** records stable `strategyId` values for selection,
    precedence, layering, fallbacks, condition projection, and relationship-only rules in
    [runtime composition](contracts/runtime-composition.md). A strategy refers to behavior
@@ -339,7 +353,28 @@ mixed path matrix:
    URLs, exact bounded section anchors, review dates, affected contract IDs, assertions,
    and semantic fingerprints in [official sources](contracts/official-sources.md).
 
-The launch `cwd` remains the immutable Repository inventory boundary. Vendor runtime roots,
+**Evidence-status decision:** documentation completeness and upstream lifecycle are
+orthogonal. Every atomic behavior, rule, and strategy owns one `EvidenceAssessment` keyed
+by `(subjectKind, subjectId)`. Its `documentationStatus` is exactly `documented`,
+`partially-documented`, `unknown`, or `conflict`; its duplicate-free
+`lifecycleQualifiers` use fixed `preview`, `experimental`, `deprecated` order. An empty
+qualifier array asserts no lifecycle state and is never rendered as `stable`.
+`documentation-conflict` remains only the `ConditionFact.status` produced when a conflict
+affects runtime projection. Candidate provenance and relationships retain the sorted,
+deduplicated assessment for every directly referenced behavior/rule/strategy record. We
+rejected a single scalar status, a worst/best-status reduction, and a qualifier union
+because each loses which official assertion applies to which subject.
+
+The selected Repository root remains the immutable Repository inventory boundary. The CLI
+captures `process.cwd()` once and uses that exact string by default. On Windows it rejects
+UNC/server-share/device, current-drive/root-relative, and `C:`/`C:foo` drive-relative forms
+before `resolve`, resolves only a plain relative option against the anchored capture, and
+retains an absolute drive option; POSIX retains an absolute option or resolves a relative
+option against the capture. Every selected absolute result passes the shared pure
+`LexicalAbsoluteRootParts` parser with zero filesystem/network I/O and without
+`process.chdir()` or per-drive working-directory semantics. Invalid option shapes fail before
+session/browser creation, and bootstrap creates the one
+non-authorizing Repository Source before central boundary admission. Vendor runtime roots,
 walk directions, target files, trust, enablement, selection, installation, and product
 surface are independent behavior/strategy facts rather than implications of a matcher or
 file existence. A behavior record, source record, strategy, relationship, or excluded rule
@@ -349,8 +384,12 @@ Every admitted tool-home root is represented by its own tool-specific Global Sou
 most one each for Codex, Claude, and Copilot, and therefore zero to three Global Sources in
 one session. Each Source owns exactly one root and one Source-relative Path namespace.
 Files of different customization types below that root remain separate inventory items.
-The term repository-relative path is reserved for the Repository Source; DTOs, filters,
-diagnostics, and cross-source comparison use Source-relative Path.
+The term repository-relative path is reserved for the Repository Source; inventoried-file
+and normalized-target DTO locator fields, filters, file-scoped diagnostics, and cross-source
+comparison use Source-relative Path. Enabled-Source and consent-preview `displayRoot` fields
+are one-way escaped root presentation labels, not Source-relative locators or read authority;
+the preview label originates before any owning Source exists and may represent an absolute
+or invalid lexical root.
 
 Bounded derivation remains a typed single-edge provenance graph with closed deterministic target construction, not
 arbitrary reference following. The closed `DerivationProgram` union has exactly five
@@ -377,7 +416,16 @@ Inspector matcher look like vendor lookup behavior:
   context toward its repository boundary, and Cloud/code-review surfaces have another
   support and composition model. These are separate behavior rows. Inspector matchers may
   inventory possible descendant contexts only through explicit `./**/`, with applicability
-  left conditional; no VS Code row is reused as a CLI or Cloud traversal rule. Current
+  left conditional; no VS Code row is reused as a CLI or Cloud traversal rule. VS Code MCP
+  has one deliberate versioned exception to the current-guide view: the 1.118 release note
+  adds exact workspace-root `.mcp.json` and announces most-specific same-name deduplication,
+  while the current MCP guide still presents `.vscode/mcp.json` and User configuration as
+  its exhaustive locations. The specific versioned path is admitted, but the evidence
+  status is `conflict`; because neither selected section states the root schema or a total
+  order across root, `.vscode`, User, agent, and plugin inputs, the VS Code root provenance
+  remains path/surface-only and projects no inferred winner. Its physical root file is
+  already a CLI candidate, so compatible CLI and VS Code provenances share one Copilot/MCP
+  recognition and one read while CLI extraction remains provenance-specific. Current
   pages still conflict or remain silent about parts of standard-instruction support,
   project-versus-user custom-agent precedence, separate agent-context instruction order,
   and agent-profile skill preload, so those facts remain conflict or unknown rather than a
@@ -385,7 +433,7 @@ Inspector matcher look like vendor lookup behavior:
   and IDE handoff locators and composition are likewise surface-qualified; excluded User
   overrides remain condition facts rather than inferred files.
 - **Claude project settings are launch-directory exact.** `.claude/settings.json` and
-  `.claude/settings.local.json` are read from the exact launch `cwd`; they are not inherited
+  `.claude/settings.local.json` are read from the exact selected Repository root; they are not inherited
   from parent directories and are not a generic descendant runtime scan. Instructions,
   rules, skills, commands, agents, output styles, and MCP each have distinct bases and
   traversal/activation rules. Recursive legacy-command namespaces, subagent
@@ -443,6 +491,10 @@ human review.
 - One combined vendor/path/precedence/source table was rejected because one cell could not
   distinguish an upstream locator from an Inspector matcher or a surface-specific
   composition strategy, and citations could not be reviewed independently.
+- Treating the current VS Code MCP guide's omission as proof that 1.118 root `.mcp.json`
+  is unsupported was rejected because the versioned first-party release note directly adds
+  it. Inferring its schema or a total “most-specific” order was also rejected because the
+  selected official sections do not state either fact.
 - Simulating an effective runtime from inventory alone was rejected because runtime `cwd`,
   target paths, surface, trust, CLI/environment/managed settings, and installed plugin
   state are unavailable or intentionally excluded.
@@ -471,13 +523,33 @@ enumerate the tool-home root: exact targets touch only their fixed ancestor/targ
 and only the fixed Copilot instructions subtree may be opened and enumerated beneath its
 prefix. Neighboring Global paths receive no I/O.
 
-For each opened directory the service completes its sibling set before descent.
-It preserves exact `Dirent.name` raw segments solely for path reconstruction/verification,
-and derives NFC classification segments solely for matching, ordering, and DTO paths. If
+For each directory, the service preallocates the process-wide resource-registry reservation,
+completes checkpoint rows 21–24 immediately before `opendir`, drives the registered
+`fs.Dir` with explicit `Dir.read()` calls until null, and completes rows 25–28 while it
+remains open. Those paired checks bind and compare root, available-ancestor, and target-
+directory identity/type plus `mtimeNs`/`ctimeNs`. The directory must reach registry
+`close-confirmed` before the complete sibling set may be classified, used for descent, or
+used to issue a ticket. A detectable create/remove/rename, unverifiable check, or unconfirmed
+close discards the enumeration. The service preserves exact `Dirent.name` raw segments solely for enumerated-path reconstruction/
+verification. A targeted fixed path that forbids parent enumeration instead retains and
+uses only the exact immutable registry target-spelling segments. Neither form substitutes
+NFC spelling into I/O; NFC classification segments exist only for matching, ordering, and DTO paths. If
 distinct raw siblings normalize to one NFC classification key, every member of that group
 fails closed without descent/open/read and receives
 `safe-fs-path-normalization-collision`; one non-colliding NFD-only spelling remains readable
-through its raw path and displays as NFC. The service uses bigint `lstat` plus canonical
+through its raw path and displays as NFC. A collision is one pathless session-scoped record
+because no unambiguous public file path exists. Within one Source scan attempt, static
+discovery, admission, collision rejection, and physical grouping complete before a group
+read, except for the content-dependent Codex ordered fallback. A grouping identity is usable
+only when exact bigint `dev`/`ino`/`nlink` are present, `ino !== 0n`, `nlink` is stable and
+positive, and the admitted group count is no greater than `nlink`; otherwise the group is
+boundary-unverifiable with zero accepted bytes. Hard-link admissions for one usable verified
+physical file are read exactly once, choose the unsigned UTF-8-bytewise lowest NFC path as
+primary, sort remaining unique paths as aliases, retain every raw provenance, match
+filters/detail/selection across all paths, and use only the primary for a file Diagnostic.
+Sources, later attempts, and later generations independently verify and read the object.
+The Codex ordered fallback and a distinct derived path discovered after group consumption
+are not merged or reopened; each uses its specified zero-read rejection. The service uses bigint `lstat` plus canonical
 containment checks to reject VCS internals,
 links, non-directory traversal objects, and detectable device changes. Only that service can issue a private, generation-bound `ScanEntryTicket`;
 HTTP values and parsed content cannot create or reconstruct one.
@@ -485,7 +557,7 @@ HTTP values and parsed content cannot create or reconstruct one.
 A candidate read reconstructs its path only from the owning root context and ticket. Before
 open it compares the root and every ancestor `lstat` `dev`/`ino`/`mode` with ticket
 snapshots. It first checks candidate path `lstat`, rejects a link or non-regular object,
-and compares `dev`/`ino`/`mode`/`size`/`mtimeNs`/`ctimeNs` with enumeration metadata. It
+and compares `dev`/`ino`/`nlink`/`mode`/`size`/`mtimeNs`/`ctimeNs` with enumeration metadata. It
 then resolves the candidate with `realpath`, uses `path.relative` to require canonical
 containment, and immediately repeats the candidate path `lstat` comparison. It opens the
 file only when both path-stat snapshots agree with each other and the enumeration
@@ -497,8 +569,9 @@ candidate-`lstat` sequence and compares the same fields with
 `FileHandle.stat({ bigint: true })`. Bytes are read from that same `FileHandle` using
 Node.js-managed streaming/chunking, never by a later path-based `readFile`. While the handle
 remains open and before acceptance, post-read validation repeats the complete ordered
-sequence and the same `FileHandle.stat` comparisons over the same fields. A mismatch at
-any stage closes the handle, discards every collected byte, marks the ticket stale or
+sequence and the same `FileHandle.stat` comparisons over the same fields. The registry
+closer is invoked or joined in `finally`, and no result is accepted before
+`close-confirmed`. A mismatch at any stage discards every collected byte, marks the ticket stale or
 rejected, commits no readable content or receipt, and emits only a fixed source-value-free
 authenticated Diagnostic; its Source-relative Path is never projected into the
 fixed-code/opaque-ID operational event. A diagnostic-only inventory record may remain for a safely inventoried
@@ -506,8 +579,23 @@ path. Root identity failure aborts that source attempt and preserves its previou
 committed graph. Only after complete traversal may a deterministic entry-local
 non-capacity failure leave unaffected results usable through a contracted-partial commit.
 
-All inspected-source filesystem calls run through one process-wide sequential executor, and
-each file is validated and read through the same handle. This ordering is a race-safety
+The only filesystem rejection converted here is Node's exact `ENOENT` from an `lstat`
+call at a contract-declared structural existence checkpoint. Before observation it means
+`absent`; after observation it means `entry-disappeared`. The handler checks only the code,
+never the message, and never applies to `open`, `read`, or another error. Every other throw
+or rejection propagates unchanged through filesystem, parser, recognition, and scan domain
+layers.
+
+All inspected-source filesystem calls run through one process-wide sequential executor.
+One process-wide `ClosableResourceRegistry` is the sole owner and close-state machine for
+every inspection `FileHandle` and `fs.Dir`. It inserts an `opening` reservation before
+`open`/`opendir`, publishes the strong resource reference before it can escape, invokes
+`close()` at most once, and lets every waiter join one retained promise. Fulfillment or a
+FileHandle `close` event confirms closure. When that event confirms first, a later raw
+promise rejection is observed but treated as successful; without confirmation, rejection
+becomes `close-unknown`, propagates through the owning boundary, and poisons new inspection
+scheduling. A later FileHandle event may clear the poison, while an unknown directory close
+requires restart. Each file is validated and read through the same handle. This ordering is a race-safety
 invariant. Opens are read-only. The production boundary exposes
 no write/append/create/truncate open, write, truncate, create, rename, delete, link,
 chmod/chown, utimes, xattr, ACL, or equivalent mutation operation and never requests an
@@ -519,15 +607,19 @@ Filesystem-operation completion and effective capacity are governed by Node.js, 
 operating system, the filesystem, and the execution environment. Disable, shutdown, or
 another authority-revoking lifecycle event
 invalidates the attempt and its tickets; any result that arrives afterward is discarded and
-cannot publish a graph, Diagnostic, DTO, or operational event. Cleanup releases acquired
-resources when the underlying operation settles. Node.js exposes no portable hard
+cannot publish a graph, Diagnostic, DTO, or operational event. Cleanup invokes or joins the
+same registry closer when the underlying operation settles, but retains a strong reference
+for `close-unknown` and never guesses or double-closes. Disable cannot complete until every
+resource in its lineage is `close-confirmed`; an unknown close leaves its data fence and
+retryable Operation Error in place, with restart as the fallback. Node.js exposes no portable hard
 cancellation guarantee for a stalled kernel operation, so timely physical drain and recovery
 from process-level OOM or kernel termination are outside the product guarantee.
 
-If Node reports required identity/metadata or canonicalization as unavailable, ambiguous,
-malformed, or otherwise unusable, `safe-fs-boundary-unverifiable` rejects the boundary or
-candidate instead of guessing. A root-level failure aborts the source attempt; an item-level
-failure can retain only the diagnostic-only inventory record.
+If successfully returned identity/metadata or canonicalization is structurally unavailable,
+ambiguous, malformed, or otherwise unusable, `safe-fs-boundary-unverifiable` rejects the
+boundary or candidate instead of guessing. A root-level outcome aborts the source attempt;
+an item-level outcome can retain only the diagnostic-only inventory record. A throw or
+rejection while obtaining the data instead follows the propagation rule above.
 
 **Rationale**: The repeated checks materially reduce risk from ordinary concurrent edits,
 ensure detected changes cannot be committed, and preserve the scan contract. They do not
@@ -579,7 +671,12 @@ be terminated and drained, followed by renewed leak and disable-race verificatio
 
 ## 6. Safe parsing, literal display, and inert rendering
 
-**Decision**: Treat source bytes as authoritative and decode supported text strictly.
+**Decision**: Treat verified source bytes as authoritative. Any NUL byte is binary and
+diagnostic-only, making an otherwise publishable generation contracted-partial. Decode every
+other byte sequence exactly once as UTF-8 with replacement semantics. Record and remove one
+leading BOM; use `utf-8-replaced` when decoding inserts any `U+FFFD`, preserve those
+characters in the complete garbled source, and continue parsing, extraction, display, and
+comparison. Replacement alone is a complete outcome. Never guess or retry another charset.
 Return readable source text, displayed declared metadata values, and comparison content
 exactly as authored, without credential detection, content-based masking, redaction, or a
 reveal workflow. Environment-variable references inside inspected content remain literal
@@ -588,13 +685,12 @@ value. The documented `CODEX_HOME`, `CLAUDE_CONFIG_DIR`, and `COPILOT_HOME` inpu
 only by the host to locate tool-specific Global Source roots, not by content parsing.
 The Inspector applies no file-size or file-count validation. Reading, decoding, parsing, and
 retention use the capacity available from Node.js, the parser libraries, the operating
-system, and the execution environment. After complete traversal, a deterministic entry-local
-non-capacity read failure may leave that file diagnostic-only in a contracted-partial
-generation. A capacity/allocation or other environment-resource failure instead aborts the
-attempt, returns or commits no item, Source, recognition, derived result, scan-result record
-or response, or generation, and retains only the previously committed snapshot, without a
-valid/invalid verdict or lint finding; recovery from process-level OOM or kernel termination
-is not promised.
+system, and the execution environment. After complete traversal, only an FR-028-eligible
+deterministic non-throwing entry outcome may use contracted-partial. Any other throw or
+rejection propagates without domain classification/retry/recovery, contributes no result to
+the attempt, and becomes only a generic Operation Error at a REST-owning boundary; startup-
+owned failure reaches the process top level. Recovery from process-level OOM or kernel
+termination is not promised.
 
 Perform best-effort metadata extraction after decoding, but never use a decoded/normalized
 value as the displayed value. Every accepted allowlisted field occurrence carries an exact
@@ -622,14 +718,13 @@ typed canonical strings without JavaScript precision loss; Markdown/frontmatter 
 imports are scanned as text. Parser workers are constructed only from the fixed package-owned
 entry and inherit their memory, message, syntax-tree, scalar, and scheduling capacity from
 Node.js, the parser libraries, and the execution environment; the product does not configure
-V8 memory ceilings or parser item/depth/time limits. After complete traversal, a deterministic
-entry-local non-capacity parser/extraction failure or incompatible meaning from two extractors
+V8 memory ceilings or parser item/depth/time limits. After complete traversal, an
+FR-028-eligible deterministic non-throwing parser/extraction outcome or incompatible meaning from two extractors
 for the same `(fileId, tool, kind)` may discard that one recognition's whole extraction result
 under a contracted-partial outcome without changing the readable source text or another
-recognition. A parser/runtime capacity or environment-resource failure returns no parser,
-extraction, recognition, relationship, derived result, item, or Source, propagates
-`fatal-resource`, aborts the attempt without a scan-result record or response or generation,
-and retains only the previously committed snapshot. Exactly one recognition exists per tool/kind
+recognition. A parser/Worker throw or rejection propagates without a domain catch,
+classification, retry, Diagnostic, or partial result and follows the same owning-boundary
+rule. Exactly one recognition exists per tool/kind
 pair and compatible provenances merge there. Rules, scripts, markup, URLs, and control sequences are never
 evaluated or rendered. The internal `semanticValue` name means only mechanical typed
 decoding. Across Inventory, Detail, Comparison, Global controls, Diagnostics, Source
@@ -650,11 +745,13 @@ no inspected content, inspected path, or authored value.
 
 **Rationale**: Parsing is needed to label declarations and relationships, but success must
 not turn the Inspector into a validator. Literal presentation preserves credential and
-other authored differences that masking would hide. Before a source or comparison view
-opens, the bundled interface requires an in-memory acknowledgement that resets on reload or
-client purge. Capability authentication is the API access boundary; the API does not receive
-or persist acknowledgement, and the bundled SPA simply issues no detail request or
-comparison construction before it. The authenticated loopback API, `Cache-Control: no-store`, process/browser-memory-only
+other authored differences that masking would hide. Before any `FileDetail` request or
+comparison construction, the bundled interface requires an in-memory acknowledgement that
+gates complete source text, declared authored metadata, authored relationship targets, and
+either comparison side. It resets on document reload or the central full-session client-data
+purge; ordinary scoped route, file/Source, and generation cleanup may retain it for the
+loaded document, while Global disable is the explicit full-purge exception. Capability authentication is the API access boundary; the API does not receive or
+persist acknowledgement. The authenticated loopback API, `Cache-Control: no-store`, process/browser-memory-only
 lifetime, Vue text bindings, disabled links, and restrictive content security policy keep
 that deliberate display local and inert rather than treating masking as a security
 boundary.
@@ -733,6 +830,11 @@ closed client-route grammar and build-manifest assets. The CSP is derived from t
 build-recorded inline hashes rather than `unsafe-inline`. Before Global consent, expose a
 capability-protected lexical/no-I/O path preview, bind confirmation to its session-keyed
 digest, and reject any post-consent canonical alias difference before enumeration. Retain
+one operation-local input capture per new unconsented preview: read `COPILOT_HOME`,
+`CLAUDE_CONFIG_DIR`, and `CODEX_HOME` once each in that order; treat only `undefined` as
+absent; when any is absent call imported `node:os.homedir()` once and use active-platform
+`node:path.join` with fixed `.copilot`, `.claude`, and `.codex` suffixes. Do not independently
+select `HOME` or `USERPROFILE`, and perform no existence check during capture. Retain
 the exact raw `lexicalRoot` internally and bind it, the escaped display, and the immutable
 `TraversalPlan` schema/selection-policy/canonical programs in the digest. Preview parsing
 and transport inherit capacity from Node.js, the browser, and the execution environment;
@@ -740,24 +842,34 @@ the product does not impose a byte limit on the proposed root or escaped display
 that stored raw value, never reverses display text and never rereads the environment. While
 the authorized page is visible, renew a two-second monotonic browser-memory lease through
 one capability-protected liveness route every second with a 750 ms request timeout. Use a
-single `clientDataEpoch`-guarded purge for failed/mismatched liveness, lease expiry, hidden/page
-lifecycle events, and process loss; it removes all DOM/DTO/editor/warning state and prevents
+shared `clientDataEpoch`-guarded purge for failed/mismatched liveness, lease expiry, hidden/page
+lifecycle events, process loss, a Global-disable click before request dispatch, and observation
+of a greater Global content epoch or non-null disable fence; it removes all DOM/DTO/editor/warning state and prevents
 late responses from restoring content. Retain only the memory capability across a hidden-page
 purge. On visibility return, the retained capability authenticates a fresh session. The SPA
 adopts its returned `sessionId` as the new liveness baseline without retaining or comparing
-the purged ID and keeps only its control-only `globalControl` view. Active consent
+the purged ID. A successful liveness body is exactly
+`{ sessionId, globalContentEpoch, globalDisableInProgress }`: an older epoch is rejected,
+equal epoch plus a null fence renews the lease, and a greater epoch or non-null fence purges
+before render and enters client-side `RecoveryViewState`. A non-null fence makes the session
+route return the exact control-only `GlobalFenceRecoverySnapshot`; a null fence makes it
+return a normal full `InspectionSession`, from which the recovering client adopts only the
+control/error projection and discards the inspection graph. Active consent
 makes disable available from that view immediately; the preview route returns the exact
 frozen preview so retry controls can be reconstructed without browser persistence or an
-environment reread. The recovery view always offers Resume inspection; that explicit action
-re-fetches a matching session and builds a default fresh inventory summary without restoring
+environment reread. The recovery view offers Resume inspection only when the fence is null
+and a normal full snapshot can be fetched; that explicit action re-fetches a matching
+session and builds a default fresh inventory summary without restoring
 old detail, comparison, editor, selection, filter, authored source, or acknowledgement. A
 later detail/comparison open requires a new acknowledgement.
 
 The capability-authenticated API returns complete authored content only for an explicit
 detail request. Sensitive-content acknowledgement is a mandatory bundled-SPA presentation
 invariant, not an authorization credential: it stays in client memory, is never sent to the
-API, resets on document reload and the central purge, and gates both detail requests and
-comparison construction in the bundled client.
+API, resets on document reload and the central full-session purge, and gates every
+`FileDetail` request plus comparison construction in the bundled client. Ordinary scoped
+route, file/Source, and generation cleanup is not that purge and may retain acknowledgement
+for the loaded document; Global disable is the explicit full-purge exception.
 
 Every SessionSnapshot/FileDetail request captures the client epoch, generation, exact
 request token, and file ID where applicable. Older snapshots are ignored; before adopting
@@ -824,7 +936,9 @@ the separate preview avoids repeating a potentially large display payload in eve
 **Decision**: Start the Repository scan automatically, expose progress through the session
 snapshot, and perform later Repository or enabled tool-specific Global Source scans only on
 explicit user action. Create a legal empty zero-I/O bootstrap generation 0 synchronously
-before the automatic Repository command, with null source progress until work is queued.
+before the automatic Repository command, containing exactly one idle, non-authorizing
+Repository Source selected from captured `process.cwd()` or the optional single `--cwd`,
+with null source progress until boundary admission and work are queued.
 Every automatic or explicit scan receives an opaque `scanRequestId`; its Source progress and
 a successful source-scan generation retain that ID, while bootstrap and disable generations
 use null.
@@ -832,40 +946,62 @@ use null.
 A single coordinator serializes every `GlobalEnableOperation`, Repository or tool-specific
 Global Source scan, and the transaction that disables Global inspection. It does not expose
 or enforce product-defined queue, slot, or concurrency capacities. Ordinary scans execute in
-FIFO order. Global disable remains a priority security barrier: acceptance sets
-`globalControl.state: disabling`, empties pending/retry arrays, increments the command epoch,
-and rejects new Global-enable/Global-rescan commands. It aborts and discards active
-uncommitted work, drains enable validation/admission, cancels queued Global work, removes
-active Global Sources without new I/O, and requeues an interrupted Repository command after
-that removal. Repeated disable joins the queued/active barrier; when no Global state or work
-exists it is a no-op regardless of Repository work. A final coordinator-locked operation-ID/
-epoch/state check determines whether enable returns `202` or loses to disable with `409`, so
-late work cannot restore revoked Global state.
+FIFO order. Global disable remains a priority security barrier. Before dispatch, the browser
+performs the full client-data purge. First acceptance of a non-no-op barrier atomically
+increments the command epoch and `globalContentEpoch`, installs non-null
+`globalDisableInProgress`, revokes publication authority, and rejects new Global-enable/
+Global-rescan commands. Every inspection-data route then returns
+`409 global-disable-pending`; the session route returns only
+`GlobalFenceRecoverySnapshot`. Every inspection-data success binds its captured epoch and
+rechecks an unchanged epoch plus a null fence under the coordinator lock at final
+publication. Every liveness success instead binds exact `{ sessionId, globalContentEpoch,
+globalDisableInProgress }` values from one current coordinator-lock snapshot at publication
+and returns a current non-null fence. The
+barrier sets `globalControl.state: disabling` and empties pending/retry arrays only when
+active consent/control exists; an operation-local initial enable has a null control
+projection but a visible fence. It aborts/discards active uncommitted work, drains enable
+validation/admission and queued Global work through the shared resource registry, and
+requeues an interrupted Repository command only after terminal success. Success with any
+public Global consent, control, or Source state uses `remove-active-state` and publishes
+Repository-only N+1; only an unpublished operation-local initial enable uses `cleanup-only`
+and preserves N plus every generation-owned ID. Repeated disable joins the same barrier.
+A post-acceptance or unconfirmed-close failure keeps the fence, generic Operation Error,
+and retry/join path while the process stays alive; unrecoverable cleanup requires restart.
+A pre-acceptance failure or true no-op leaves the fence null. A final coordinator-locked
+operation-ID/epoch/state check determines whether enable returns `202` or loses to disable
+with `409`, so late work cannot restore revoked Global state.
 
 Each scan starts from the current session-wide generation and builds its replacement
 separately. A complete result, or a contracted partial result produced only after complete
-traversal and a deterministic entry-local non-capacity failure, commits atomically as the next generation; every carried graph and generation-owned
+traversal and an FR-028-eligible deterministic non-throwing entry outcome, commits atomically as the next generation; every carried graph and generation-owned
 ID is rekeyed, and old file/detail/comparison/selection/editor references become stale. An
 explicit rescan's fatal failure discards all uncommitted output. The last successful snapshot
-stays visible with a Source-keyed stale-failure entry and actionable Diagnostic. A fatal first
-Repository scan leaves bootstrap generation 0 current. A fatal tool-specific Global rescan
+stays visible with a Source-keyed stale-failure entry referencing an actionable Diagnostic
+for a deterministic returned failure or only Operation Error for a throw/rejection. A
+startup throw/rejection has no REST owner and reaches the process top level. A fatal tool-specific Global rescan
 retains that Source's consent, accepted root context, and last committed graph for retry or
 disable.
 
-Each confirmed tool has session-owned `GlobalToolControl` outside scan working sets. Post-
-consent validation may accept no roots: an all-rejected request returns `active-no-job`,
-retains the control needed for retry or disable, and publishes no Source, job, or generation.
-In mixed requests, `pendingTools` covers validation/admission and queued/running initial scans,
-so an unvalidated tool is never retryable; retry becomes preview-gated after that work
+One session-wide consent fixes all three tools, with one `GlobalToolControl` per frozen
+preview entry and no selector. Post-consent validation catches only exact structural-`lstat`
+`ENOENT` as absence; lexical/link/type/boundary outcomes may reject a sibling, while every
+other throw/rejection aborts the whole transaction through the owning REST boundary. If
+validation admits no root, `active-no-job` retains control for retry/disable and publishes no
+Source/job/generation. If it admits one to three roots, one provisional batch scan publishes
+all of their separate Sources together in exactly one generation; no per-tool commit is
+observable. For active-consent retry, `pendingTools` covers validation/admission and the one
+queued/running subset scan. Initial enable has no control projection until atomic activation,
+after which only accepted-batch tools are pending. Thus an unvalidated active control is
+never retryable; retry becomes preview-gated after that work
 finishes, while disable remains immediate.
 
 The Inspector defines no file-size, file-count, aggregate-record, graph, Diagnostic, parser-
 message, response-size, queue-capacity, or scan-time limit. Effective capacity is inherited
 from Node.js, parser and editor engines, the browser, the operating system, the filesystem,
-and the execution environment. If those layers report a recoverable capacity or resource
-failure, the attempt fails safely, returns or commits no item, Source, recognition, derived
-result, scan-result record or response, or generation, and retains only the previously
-committed snapshot. Such a failure never authorizes the entry-local contracted-partial path. Routes serialize
+and the execution environment. A throw or rejection from those layers is not assigned a
+capacity/resource/operational cause by the domain. It propagates to the trigger owner,
+returns or commits no attempt result/generation, and retains the prior snapshot when a REST
+boundary survives. Such a failure never authorizes contracted-partial. Routes serialize
 committed DTOs once and never silently truncate them.
 Process-level OOM, kernel termination, and an indefinitely pending uncancellable filesystem
 operation cannot be recovered from or bounded by the application contract.
@@ -878,9 +1014,9 @@ made that it can survive runtime exhaustion or a blocked/terminated process.
 
 **Rationale**: Serialization plus atomic session generations prevent lost updates and mixed
 old/new results. Deriving capacity from the actual runtime avoids presenting arbitrary
-product numbers as portable safety guarantees. Recoverable failures remain actionable and
-all-or-nothing at the generation boundary where required; failures outside application
-control are stated as platform limitations instead of being masked by synthetic limits.
+product numbers as portable safety guarantees. Generic outer-boundary errors preserve the
+execution lifecycle without inventing a domain cause; failures outside application control
+remain explicit platform limitations.
 
 **Alternatives considered**:
 
@@ -909,13 +1045,31 @@ supported OS/browser/assistive-technology cells, responsive/visual profiles, wor
 states, and input profiles; every applicable cell is recorded, and a frozen-value change
 reruns all manual checks. An axe severity result alone is
 not acceptance evidence and cannot turn a failed Applicable row into a pass.
+SC-003, SC-004, SC-005, SC-007, and SC-009 share a versioned, checked-in release-evidence
+fixture manifest whose stable case IDs, required-class membership, objective expected
+outcomes, fixture/builder references, and per-fixture digests freeze each release candidate's
+exact nonzero denominators. The canonical manifest digest and executed case IDs enter the
+evidence record. A contract rejects a missing, duplicate, undeclared, unexecuted, or
+digest-mismatched case, an empty required class, a missing fixture, or a denominator below
+its declared minimum. Removing or reclassifying a case, changing a required-class
+definition, or changing an expected outcome requires a manifest-version increment and
+explicit review. Changing only fixture bytes requires the affected fixture digests and the
+canonical manifest digest to change. Either kind of change starts a new non-comparable
+measurement set, and digest drift alone never authorizes changed denominator semantics.
+The automated contract exercises these transition rules with table-driven previous/current
+manifest revision pairs and never attempts to infer reviewer state. For the real release
+diff, T1062 records initial creation or the prior/current versions, the changed case IDs,
+required-class definitions, or expected outcomes, and an explicit reviewer decision or
+reference in the bilingual validation record.
+This makes a maintained suite evolvable without
+allowing a release to shrink its denominator implicitly.
 Four registry fixture suites validate every behavior/rule/strategy/source ID, reciprocal
 evidence links, exact section anchors, English/Japanese parity, and the rule that only the
 Inspector matcher registry can authorize a read. Matcher fixtures reject a Repository
 selector without `./` or with bare `**/`, distinguish exact/direct-child/explicit
 descendant inventory, and prove that `./**/` does not satisfy a vendor traversal fact.
 Targeted regression fixtures cover Copilot's separate VS Code/CLI/Cloud lookup tables,
-Claude project settings only at exact launch `cwd`, non-recursive Codex rule directories,
+Claude project settings only at the exact selected Repository root, non-recursive Codex rule directories,
 plugin activation versus authored manifest inventory, and zero Global reads beyond
 FR-015 through FR-018. They also verify zero to three tool-specific Global Sources, at most
 one per tool, exactly one root and Source-relative Path namespace per Source, exact literal
@@ -941,8 +1095,14 @@ inside the test harness and are not exported by production modules. These tests 
 the specified detected-race behavior and must not be described as proof against the active
 adversarial mutator excluded by the threat model or against same-device bind mounts and
 reparse information that Node never exposes.
-Instrument tests to fail if inspected content causes an outbound request, MCP connection,
-child process, dynamic evaluation, or product-issued source mutation. Mutation tests
+Instrument tests with local fixture roots and all product socket/HTTP(S)/DNS/SMB/URI/image/
+remote-reference/MCP surfaces. Separately classify and validate the two exact FR-022 authorized
+internal loopback classes at the issued `127.0.0.1` authority—closed unauthenticated static/SPA
+`GET`/`HEAD` and capability-authenticated declared API requests—and fail if inspected content causes
+any other direct product-issued outbound request as defined by FR-022, MCP connection, child
+process, dynamic evaluation, or product-issued source mutation. Explicit UNC/server-share/device vectors prove
+zero filesystem/DNS/SMB calls; lexically indistinguishable mounted/mapped network storage is
+recorded separately as the OS-mediated platform/environment limitation. Mutation tests
 instrument read-only versus mutation-capable filesystem APIs/flags and compare content,
 length, identity/link state, mode, mtime, ctime, and observable xattrs/ACLs; OS-only atime
 changes are recorded separately and count as neither failure nor proof. Operational-log
@@ -1014,9 +1174,22 @@ The 2026-07-17 measurable-outcome revalidation fixes the following objective pro
   certain-versus-conditional effective behavior; success requires all four fields within
   2 minutes and an exact match to predefined ground truth. At least 18 must succeed using
   only the provided product guidance under the SC-001 moderator policy. Moderators record
-  objective workflow outcomes and predefined safety events. Every unintended execution,
-  inspected-source mutation, MCP/network connection, or disclosure of inspected content to
-  another machine is automatically critical. Only a suspected product-caused workflow
+  objective workflow outcomes and predefined safety events. Study equipment runs the SC-004
+  product network/URL/MCP instrumentation, an exact-authority Inspector-server request ledger,
+  and study-browser request capture continuously from Inspector launch before SC-001 through
+  all four workflow observations. Correlation of process identity, the exact issued authority,
+  request initiator and target, and the server ledger attributes every Inspector/bundled-SPA
+  request for classification into either exact authorized internal loopback class or prohibited
+  traffic. Unrelated browser-extension or other host-process traffic is recorded separately and
+  not attributed to the product; attributable but unclassifiable traffic is outside the two
+  classes, and observable OS-mediated mounted/mapped-source traffic is separately recorded as
+  the FR-022 limitation. Every unintended execution,
+  inspected-source mutation, prohibited direct product-issued outbound request or MCP
+  connection as defined by FR-022, request outside its two exact authorized internal loopback
+  classes, or disclosure of inspected content to another machine is automatically critical.
+  Those closed classes are neither outbound nor MCP and are not this event.
+  Recorded OS-mediated traffic for a pre-mounted/mapped source remains the FR-022 limitation,
+  not this automatic connection event. Only a suspected product-caused workflow
   blocker that is not such a safety event receives two independent fixed-rubric
   classifications; disagreement counts as critical without a third adjudicator. The
   acceptable automatic or reviewer-confirmed critical count is zero.
@@ -1058,21 +1231,20 @@ the following rules into every later design artifact:
    the three documented tool-home variables are used only to locate Global roots.
 3. A fatal explicit rescan discards all uncommitted output, including partial output, and
    leaves the last successfully committed snapshot visible with a per-Source stale-failure
-   entry and actionable diagnostic. A successful scan clears only its own Source's
-   entry and diagnostic; unrelated commits preserve both, and removal clears both for the
+   entry and either a deterministic Diagnostic or thrown/rejected job Operation Error. A
+   successful scan clears only its own Source's entry and referenced failure; unrelated
+   commits preserve both, and removal clears both for the
    removed Source. A repeated fatal rescan replaces both for only its Source.
-4. A fatal automatic first Repository scan also publishes no provisional result and keeps
-   bootstrap generation 0 current. A fatal initial tool-enable job publishes no provisional
-   result, adds no `StaleSourceFailure` entry for the missing tool, creates/replaces that
-   tool's keyed failure diagnostic, and
-   preserves every pre-existing entry and the derived snapshot state. Initial Global enable retains
-   only the exact active consent and per-tool `GlobalToolControl` state needed to retry confirmed
-   tools that still lack a Source or to disable Global inspection; successful tool Sources
-   in a mixed outcome remain unchanged. Post-consent validation may accept zero tools and
-   returns recoverable `active-no-job`; a purged client recovers the active control view and
-   exact frozen preview before retry.
+4. Generation 0 already contains the non-authorizing Repository Source. A deterministic
+   automatic failure publishes no provisional result; a startup throw/rejection reaches the
+   process top level with no survival guarantee. Initial Global enable uses fixed all-tools
+   consent and a single admitted-subset batch. A deterministic all-rejected outcome returns
+   `active-no-job`; another throw/rejection creates only the REST Operation Error and commits
+   none of the subset. A purged client recovers the active control view and exact frozen
+   preview before selector-free retry.
 5. Source-relative Path is the cross-source display/filter/diagnostic term. Repository-
-   relative path is used only for the Repository Source rooted at launch `cwd`.
+   relative path is used only for the Repository Source rooted at the selected Repository
+   root.
 6. SC-001, SC-002, and SC-006 use the objective protocols in Section 10. SC-002 uses one
    checked-in versioned reference profile and publishes the profile ID, fixture digest, and
    actual non-personal environment fields with each result; results from changed profile IDs
@@ -1094,7 +1266,7 @@ product's read-only, local, non-executing boundary.
   committed Source was unsuccessfully refreshed; the current snapshot remains the last
   truthful committed state.
 - Using repository-relative path for Global files was rejected because a Global Source is
-  not rooted at the Repository `cwd`.
+  not rooted at the selected Repository root.
 - A mutable unpublished reference environment was rejected because it prevents another
   maintainer from reproducing the protocol or interpreting a changed baseline. SC-002 remains
   profile-specific rather than a portable performance guarantee.
@@ -1137,8 +1309,8 @@ product's read-only, local, non-executing boundary.
    baseline. The pinned three Playwright revisions are the automated browser-certification
    baseline, while the startup helper delegates to an unverified OS default handler and always
    retains the printed/manual-open fallback.
-9. A successful initial or retry Global commit preserves an existing Repository result only
-   semantically. It advances the generation, rekeys every carried graph and generation-owned
+9. A successful initial or retry Global admitted-subset batch commit preserves an existing
+   Repository result only semantically. It advances the generation exactly once, rekeys every carried graph and generation-owned
    ID, and makes every old file/detail/comparison/selection/editor reference stale.
 10. SC-008 uses the maintained bilingual 55-row WCAG 2.2 Level A/AA applicability matrix.
     Stable check IDs bind every expected observation, and the closed manual matrix forbids
@@ -1149,7 +1321,8 @@ product's read-only, local, non-executing boundary.
     evidence. There is no axe-only or severity-based escape.
 11. Diagnostic scope is a closed `file | source | session` union. Only file scope carries
     `sourceRelativePath`; source scope carries `sourceId` without a path, and session scope
-    carries neither source nor path identity.
+    carries neither source nor path identity. Operation Error is a separate closed,
+    path/content/raw-error-free outer-boundary entity and never becomes a Diagnostic.
 
 **Rationale**: These rules make the child-process boundary, presentation scope, performance
 denominator, runtime-fact model, participation ownership, compatibility/certification split,
@@ -1171,9 +1344,12 @@ because each creates a contradiction or a second undocumented contract.
 2. The English/Japanese vendor contracts enumerate the complete closed Presentation
    Allowlist for every supported `(tool, kind)`, including its admitted source forms and
    exact source-form extractor applicability, before any metadata or relationship parser,
-   recognizer, API, UI, or acceptance task consumes it. Tuple membership and source-form
-   extraction are separate required gates. Later evidence review reconciles drift; it does
-   not first define the normative list.
+   recognizer, API, UI, or acceptance task consumes it. The implementation gate verifies
+   that already approved bilingual design and digest only; it does not author or semantically
+   edit a row. Tuple membership and source-form extraction are separate required gates. Any
+   semantic delta stops dependent work, synchronizes all design artifacts, and reruns plan
+   and task generation. Later evidence review reconciles drift; it does not first define the
+   normative list.
 3. Preserve the original family-vertical order: SKILL (including Skill Metadata) →
    Instructions → MCP → Rules → Commands → Copilot Prompts → Custom Agents →
    Configuration/Settings → Output Styles → Marketplaces → Plugin Manifests → Hooks. Each
@@ -1225,8 +1401,10 @@ tasks:
    instrument those calls and stable source properties; OS-only atime changes are recorded
    separately as neither failure nor proof.
 8. Capability authentication is the API access boundary. Sensitive-content acknowledgement
-   is a resettable client-memory presentation gate that the bundled SPA applies before
-   detail requests or comparison construction; it is never sent to the API.
+   is a resettable client-memory presentation gate that the bundled SPA applies before every
+   `FileDetail` request or comparison construction; it is never sent to the API. Document
+   reload and the central full-session purge reset it; ordinary scoped cleanup may retain it,
+   while Global disable is the explicit full-purge exception.
 
 **Rationale**: These boundaries remove ambiguity from integrity, cleanup, disclosure, and
 negative-product-scope tests while preserving literal inspection and making capacity a
@@ -1237,3 +1415,51 @@ static loading, prior-generation performance completion, timer-based claims of p
 cancellation, broad semantic analysis, literal atime-as-mutation scoring, and server-side
 acknowledgement state were rejected because they overstate the platform guarantee, weaken
 integrity, or confuse presentation with API authorization.
+
+## 15. Final clarification decisions (2026-07-20)
+
+**Decision**: Apply the final user choices as one closed runtime contract:
+
+1. Capture `process.cwd()` exactly once. With no `--cwd`, use that string as the selected
+   Repository root. On Windows reject explicit UNC/server-share/device, current-drive/root-
+   relative, and `C:`/`C:foo` drive-relative forms before `resolve`; preserve an absolute
+   drive option and resolve only a plain relative option against the anchored capture. On
+   POSIX preserve an absolute option or resolve a relative option against the capture. Pass
+   every selected absolute result through the one shared pure `LexicalAbsoluteRootParts`
+   parser with zero filesystem/network I/O, never `chdir` or use per-drive resolution, and
+   reject invalid input before session/browser creation. Generation 0
+   synchronously contains the stable, non-authorizing Repository Source; admission is later.
+2. Global consent is one selector-free all-tools action. Initial processing always evaluates
+   all three frozen preview entries; retry derives the complete missing-Source set. A
+   deterministic rejected entry does not block siblings. All admitted roots are scanned as
+   one batch and their separate one-root Sources publish in one atomic generation.
+3. The only filesystem rejection interpreted inside the domain is exact `ENOENT` from a
+   contract-declared structural `lstat`, because root absence, exact-target fallback, and
+   observed-entry disappearance require that closed fact. Every other throw/rejection,
+   including `ENOENT` from `open`/`read`, propagates unchanged. A pre-acceptance REST owner
+   returns fixed HTTP 500 Operation Error with no `scanRequestId`; an accepted job exposes
+   the same generic terminal entity with its ID and keeps the process/prior snapshot;
+   startup-owned failure reaches the process top level. No raw error enters product API,
+   logs, or telemetry, while runtime-owned local uncaught output remains a limitation.
+4. NUL is binary/diagnostic-only/contracted-partial. Every non-NUL byte stream is decoded
+   once with UTF-8 replacement semantics. `utf-8-replaced` preserves all `U+FFFD` characters
+   as the replacement-decoded garbled text shown, parsed, extracted, and compared, and is complete by itself.
+5. Raw entry segments alone perform filesystem operations. Collision-free NFC values own
+   public classification/display. Normalization collisions produce no ambiguous file; hard-
+   linked admissions deterministically choose the unsigned UTF-8-bytewise lowest NFC path as
+   primary and sort the rest as aliases while preserving every raw provenance.
+6. Presentation Allowlist rows are already approved design input. The implementation gate
+   verifies them and their bilingual digest only. A semantic change stops work and requires
+   synchronized design plus regenerated plan/tasks before consumption.
+
+**Rationale**: These choices preserve the requested runtime ownership of actual read errors
+without making an absent optional path fatal, eliminate user-selectable Global scope, make
+bootstrap identity independent of read authority, and keep malformed text inspectable in
+the exact form the UTF-8 decoder produced.
+
+**Alternatives considered**: Treating every `lstat` absence as an uncaught runtime failure
+would make documented fallback and automatic existing-root selection impossible. Catching
+permission, `open`, or `read` errors as domain outcomes would violate runtime ownership.
+Per-tool Global commits would expose intermediate subsets and advance generation multiple
+times. Charset guessing would make output environment-dependent. Using normalized display
+segments for filesystem operations would weaken the boundary. All were rejected.

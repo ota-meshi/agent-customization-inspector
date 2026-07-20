@@ -2,7 +2,7 @@
 
 [日本語](runtime-composition.ja.md)
 
-**Contract version**: 2026-07-17
+**Contract version**: 2026-07-20
 
 **Official-source review**: 2026-07-15
 
@@ -14,6 +14,43 @@ read-authorizing `ruleId` records. This contract alone defines how documented ru
 inputs may compose and how non-read relationships are represented. A strategy or
 relationship never grants filesystem read authority.
 
+## Canonical evidence-assessment index
+
+Every `strategyId` and every relationship-only or shared non-read `ruleId` owned by this
+contract has exactly one `EvidenceAssessment`. Unless listed below, its canonical values
+are `documentationStatus: documented` and `lifecycleQualifiers: []`. This is a closed
+subject-by-subject mapping, not an inference from evidence presence. Empty qualifiers mean
+that no lifecycle claim is made and never mean `stable`. Documentation-status values are
+closed to `documented`, `partially-documented`, `unknown`, and `conflict`; the distinct
+`documentation-conflict` token remains only a runtime `ConditionFact.status`.
+
+| Subject ID | `documentationStatus` | `lifecycleQualifiers` | Assessment basis |
+|---|---|---|---|
+| `copilot.vscode.instructions.layering` | `partially-documented` | `[experimental]` | Same-layer ordering is incomplete and nested `AGENTS.md` selection is experimental |
+| `copilot.vscode.skills.selection` | `partially-documented` | `[]` | Cross-location duplicate precedence is incomplete |
+| `copilot.vscode.agents.selection` | `partially-documented` | `[]` | Cross-scope duplicate precedence is incomplete |
+| `copilot.vscode.hooks.composition` | `documented` | `[preview]` | The upstream hook feature is preview |
+| `copilot.vscode.mcp.selection` | `conflict` | `[]` | The 1.118 workspace-root `.mcp.json`/most-specific release assertion conflicts with the current guide's exhaustive location list; root schema and total location order remain unknown |
+| `copilot.cli.instructions.layering` | `partially-documented` | `[]` | General precedence among non-identical applicable files is not established |
+| `copilot.cli.skills.selection` | `partially-documented` | `[]` | Command anchoring and ancestry are only partially documented |
+| `copilot.cli.agents.selection` | `conflict` | `[]` | Official project-versus-User precedence assertions conflict |
+| `copilot.cli.mcp.selection` | `partially-documented` | `[]` | Ancestor duplicate selection is unresolved |
+| `copilot.cloud.skills.selection` | `partially-documented` | `[]` | Exact remote-skill collision behavior is incomplete |
+| `claude.rules.layering` | `partially-documented` | `[]` | Ancestor `paths` base and descendant rule discovery are unclear |
+| `claude.commands.selection` | `partially-documented` | `[]` | Complete ancestor/lazy traversal is not independently stated |
+| `claude.agents.selection` | `partially-documented` | `[]` | Same-tree duplicate order is unspecified |
+| `claude.mcp.selection` | `partially-documented` | `[]` | Exact project-root selection is only partially specified |
+| `codex.agents.inheritance` | `partially-documented` | `[]` | Project traversal and child instruction inheritance are incomplete |
+| `codex.rules.resolution` | `partially-documented` | `[experimental]` | Nested recursion is unspecified and the rules feature is experimental |
+
+The fixed qualifier order is `preview`, `experimental`, `deprecated`; arrays are
+duplicate-free. The typed registry expands the default and exception table to one record
+per subject. Existing Documentation status and Required conditions/status cells below are
+human rationale or runtime condition text, not serialized scalar enums. A provenance or
+relationship keeps the assessment for every exact rule, behavior, and strategy it
+references, sorted and deduplicated by `(subjectKind, subjectId)`; no best/worst scalar or
+qualifier union may replace that `EvidenceAssessment[]`.
+
 ## Runtime composition is not Inspector source merging
 
 A strategy consumes independently recognized artifacts and unavailable-source facts. It
@@ -24,7 +61,7 @@ install a plugin, or change a candidate's source boundary.
 | Input domain | Vendor runtime model | Inspector model |
 |---|---|---|
 | Repository | A vendor can walk runtime roots, select applicable files, and combine Repository inputs. | Each accepted file retains its Repository candidate provenance. A strategy may relate candidates but never expands the allowlist. |
-| User | A vendor can combine User settings, instructions, skills, agents, hooks, MCP, or state with Repository inputs. | The Repository Source and zero to three tool-specific Global Sources remain separate. Only explicitly consented Global instruction rules can read User files; all other User inputs remain unavailable facts. |
+| User | A vendor can combine User settings, instructions, skills, agents, hooks, MCP, or state with Repository inputs. | The Repository Source and zero to three tool-specific Global Sources remain separate. After the one selector-free session-wide consent evaluates all three frozen tool entries, only the frozen Global instruction rules for admitted roots can read User files; all other User inputs remain unavailable facts. |
 | Hosted, organization, enterprise, or managed | A hosted surface can combine service-side inputs with a repository checkout. | These inputs are represented by `shared.relationship.runtime` or `shared.excluded.managed-remote-state`; they are never local scan roots. |
 | Plugin, hook, MCP, import, or arbitrary path | A vendor may activate, execute, connect to, or follow it after runtime checks. | Authored declarations and relationships are inert. A target can be read only when an independent static or bounded-derived rule admits that same target. |
 
@@ -49,7 +86,7 @@ Strategy rows use these fact names. Each fact is independently `satisfied`, `uns
 |---|---|
 | `surface` | Exact product surface, including local versus hosted execution. |
 | `engine-version` | CLI, extension-bundled engine, or host version whose feature set applies. |
-| `runtime-cwd` | Product runtime working directory, which can differ from the Inspector launch directory. |
+| `runtime-cwd` | Product runtime working directory, which can differ from the Inspector's selected Repository root. |
 | `workspace-root` | VS Code workspace folder used by the local surface. |
 | `repository-root` | Git or hosted repository root used by the product. |
 | `project-root` | Product-defined project root when it differs from a repository root. |
@@ -83,7 +120,7 @@ Strategy rows use these fact names. Each fact is independently `satisfied`, `uns
 | `copilot.vscode.skills.selection` | GitHub Copilot / local VS Code | `filter`, `select-first`, `unknown-order` | Discover metadata from enabled locations and parent layers, then progressively load a relevant skill; do not invent a duplicate-name winner | `copilot.behavior.vscode.skills`; `copilot.behavior.vscode.user.skills` | `surface`, `engine-version`, `workspace-root`, `worked-path`, `scope-availability`, `feature-state`, `enablement`, `selection`, `settings-inputs`, `external-runtime` | partially documented: cross-location duplicate precedence is unknown | `github.copilot.skills`, `vscode.copilot.settings`, `vscode.copilot.skills` |
 | `copilot.vscode.agents.selection` | GitHub Copilot / local VS Code | `filter`, `select-first`, `unknown-order` | Select an invocable or inferred profile whose target includes VS Code; retain its body/model/tool facts and preserve unresolved same-name precedence across workspace, User, organization, and plugin sources | `copilot.behavior.vscode.agents`; `copilot.behavior.vscode.user.agents` | `surface`, `engine-version`, `workspace-root`, `scope-availability`, `feature-state`, `enablement`, `selection`, `plugin-state`, `external-runtime` | partially documented: cross-scope duplicate precedence is unknown | `github.copilot.custom-agents`, `vscode.copilot.custom-agents`, `vscode.copilot.settings` |
 | `copilot.vscode.hooks.composition` | GitHub Copilot / local VS Code | `filter`, `select-first`, `append` | Resolve the event's workspace and User hooks with workspace precedence for the same event, then retain additional applicable agent and plugin hooks | `copilot.behavior.vscode.agents`; `copilot.behavior.vscode.hooks`; `copilot.behavior.vscode.plugins`; `copilot.behavior.vscode.user.hooks` | `surface`, `engine-version`, `workspace-root`, `scope-availability`, `feature-state`, `trust`, `approval`, `enablement`, `selection`, `plugin-state`, `event`, `managed-policy` | documented; preview and activation conditions remain required | `vscode.copilot.custom-agents`, `vscode.copilot.customization`, `vscode.copilot.hooks` |
-| `copilot.vscode.mcp.selection` | GitHub Copilot / local VS Code | `merge-map`, `replace`, `unknown-order` | Compose the VS Code `servers` configuration from available workspace, User, and agent inputs; preserve same-name workspace/User resolution as unknown where the docs do not decide it | `copilot.behavior.vscode.agents`; `copilot.behavior.vscode.mcp`; `copilot.behavior.vscode.user.mcp` | `surface`, `engine-version`, `workspace-root`, `scope-availability`, `trust`, `approval`, `enablement`, `selection`, `settings-inputs`, `external-runtime` | partially documented: same-name cross-scope selection is incomplete | `vscode.copilot.custom-agents`, `vscode.copilot.mcp` |
+| `copilot.vscode.mcp.selection` | GitHub Copilot / local VS Code | `merge-map`, `replace`, `unknown-order` | For `.vscode/mcp.json`, project the documented VS Code `servers` input. For VS Code 1.118+ root `.mcp.json`, retain only path/surface availability until direct documentation establishes its schema. The release note's “most-specific” same-name rule does not define a total order across root, `.vscode`, User, agent, and plugin inputs, so preserve every unresolved winner as `documentation-conflict` or unknown condition rather than composing an inferred map | `copilot.behavior.vscode.agents`; `copilot.behavior.vscode.mcp`; `copilot.behavior.vscode.user.mcp` | `surface`, `engine-version`, `workspace-root`, `scope-availability`, `trust`, `approval`, `enablement`, `selection`, `settings-inputs`, `external-runtime` | conflict: current guide and 1.118 release locations disagree; root schema and total same-name order are unknown | `vscode.copilot.custom-agents`, `vscode.copilot.mcp`, `vscode.copilot.mcp.workspace-root-release` |
 | `copilot.vscode.settings.precedence` | GitHub Copilot / local VS Code | `merge-map`, `replace` | Resolve VS Code setting scopes, with workspace values above User values and policy, remote, language, and profile scopes retained as inputs | `copilot.behavior.vscode.settings`; `copilot.behavior.vscode.user.settings` | `surface`, `engine-version`, `workspace-root`, `scope-availability`, `selection`, `settings-inputs`, `managed-policy` | documented | `vscode.copilot.plugins`, `vscode.copilot.settings`, `vscode.settings` |
 | `copilot.vscode.plugins.activation` | GitHub Copilot / local VS Code | `select-first`, `filter` | At an explicitly established root, apply manifest/catalog recognition order, then keep registration, recommendation, installation, enablement, availability, and component selection as separate activation states | `copilot.behavior.vscode.plugins`; `copilot.behavior.vscode.user.plugins` | `surface`, `engine-version`, `workspace-root`, `scope-availability`, `trust`, `approval`, `enablement`, `selection`, `plugin-state`, `installation`, `external-runtime` | documented; activation is runtime-state dependent | `github.copilot.plugins`, `vscode.copilot.plugins` |
 
@@ -93,7 +130,7 @@ Strategy rows use these fact names. Each fact is independently `satisfied`, `uns
 |---|---|---|---|---|---|---|---|
 | `copilot.cli.instructions.layering` | GitHub Copilot / CLI | `filter`, `deduplicate`, `append`, `unknown-order` | Collect applicable standard-location and User instructions, filter `applyTo` and disablement, remove documented identical duplicates, and combine the remainder without inventing a general precedence | `copilot.behavior.cli.instructions.agents`; `copilot.behavior.cli.instructions.claude`; `copilot.behavior.cli.instructions.gemini`; `copilot.behavior.cli.instructions.path`; `copilot.behavior.cli.instructions.repository`; `copilot.behavior.cli.user.instructions.path`; `copilot.behavior.cli.user.instructions.root` | `surface`, `engine-version`, `runtime-cwd`, `repository-root`, `worked-path`, `target-match`, `scope-availability`, `feature-state`, `enablement`, `settings-inputs`, `managed-policy` | documented; order among non-identical applicable files is unspecified | `github.copilot.cli.instructions`, `github.copilot.instructions.support` |
 | `copilot.cli.skills.selection` | GitHub Copilot / CLI | `select-first` | Resolve the first same-name skill in the documented project, inherited, personal, plugin, custom, built-in, and remote source order; a same-name skill outranks a legacy command | `copilot.behavior.cli.commands`; `copilot.behavior.cli.skills`; `copilot.behavior.cli.user.skills` | `surface`, `engine-version`, `runtime-cwd`, `repository-root`, `scope-availability`, `feature-state`, `enablement`, `selection`, `plugin-state`, `installation`, `external-runtime` | documented for skills; command anchor and ancestry are partially documented | `github.copilot.cli.reference`, `github.copilot.skills` |
-| `copilot.cli.agents.selection` | GitHub Copilot / CLI | `select-closest`, `select-first`, `unknown-order` | Within project layers, prefer the deepest ancestor and `.github/agents` over `.claude/agents`; keep project-versus-User selection as `documentation-conflict`; plugin agents remain the documented lowest source | `copilot.behavior.cli.agents`; `copilot.behavior.cli.user.agents` | `surface`, `engine-version`, `runtime-cwd`, `repository-root`, `scope-availability`, `enablement`, `selection`, `plugin-state`, `documentation-variant`, `managed-policy` | documentation-conflict for project versus User; project traversal is documented | `github.copilot.cli.configuration`, `github.copilot.cli.custom-agents`, `github.copilot.cli.plugins`, `github.copilot.cli.reference` |
+| `copilot.cli.agents.selection` | GitHub Copilot / CLI | `select-closest`, `select-first`, `unknown-order` | Within project layers, prefer the deepest ancestor and `.github/agents` over `.claude/agents`; keep project-versus-User selection as `documentation-conflict`; plugin agents remain the documented lowest source | `copilot.behavior.cli.agents`; `copilot.behavior.cli.user.agents` | `surface`, `engine-version`, `runtime-cwd`, `repository-root`, `scope-availability`, `enablement`, `selection`, `plugin-state`, `documentation-variant`, `managed-policy` | Canonical documentation status is `conflict`; runtime projection uses `documentation-conflict` for project versus User | `github.copilot.cli.configuration`, `github.copilot.cli.custom-agents`, `github.copilot.cli.plugins`, `github.copilot.cli.reference` |
 | `copilot.cli.hooks.composition` | GitHub Copilot / CLI | `filter`, `append` | Compose every applicable policy, User, Repository, agent, and plugin hook for the event; preserve the documented source append order and do not collapse same-event hooks into one winner | `copilot.behavior.cli.hooks`; `copilot.behavior.cli.user.hooks` | `surface`, `engine-version`, `repository-root`, `scope-availability`, `feature-state`, `trust`, `approval`, `enablement`, `plugin-state`, `event`, `managed-policy` | documented | `github.copilot.cli.configuration`, `github.copilot.hooks` |
 | `copilot.cli.mcp.selection` | GitHub Copilot / CLI | `select-first`, `replace`, `unknown-order` | Resolve server sources in session-additional, plugin, workspace, then User order; preserve same-name resolution among multiple ancestor workspace files as unknown | `copilot.behavior.cli.mcp`; `copilot.behavior.cli.user.mcp` | `surface`, `engine-version`, `runtime-cwd`, `repository-root`, `scope-availability`, `trust`, `approval`, `enablement`, `selection`, `settings-inputs`, `plugin-state`, `external-runtime` | partially documented: ancestor duplicate selection is unresolved | `github.copilot.cli.reference` |
 | `copilot.cli.settings.precedence` | GitHub Copilot / CLI | `replace`, `merge-map`, `concatenate` | Apply the documented defaults, managed, User, Repository, local, environment, and flag cascade using each setting's replace, merge, or concatenate mode | `copilot.behavior.cli.settings`; `copilot.behavior.cli.user.settings` | `surface`, `engine-version`, `repository-root`, `scope-availability`, `selection`, `settings-inputs`, `managed-policy` | documented | `github.copilot.cli.configuration` |

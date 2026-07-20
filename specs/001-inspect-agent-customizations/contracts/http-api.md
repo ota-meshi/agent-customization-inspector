@@ -9,6 +9,14 @@
 This API connects the static Nuxt SPA to the same-process Node inspection host. It is not
 a public network API. It accepts opaque IDs and closed commands only; no endpoint accepts
 a filesystem path, URL, command, source text, parser option, glob, or executable content.
+FR-022 authorizes browser/host HTTP at the exact issued `127.0.0.1` authority in exactly
+two closed internal-loopback classes: unauthenticated `GET`/`HEAD` for manifest-listed packaged
+static assets and the closed SPA-shell/client-route fallback paths, which contain no session
+data; and capability-authenticated bundled-SPA requests to the declared `/api/v1` routes under
+the exact Host, method, and Origin rules below. Neither class is an outbound request or MCP
+connection. Any non-loopback or remote authority, unlisted path, route, or method, API request
+without the valid session capability, customization-selected destination, or transmission of
+inspected content to another machine remains prohibited.
 
 ## Host and capability requirements
 
@@ -123,27 +131,41 @@ Successful responses:
 ```json
 {
   "apiVersion": 1,
+  "globalContentEpoch": 4,
   "generation": 3,
   "data": {}
 }
 ```
 
-The `GET /api/v1/session` and `GET /api/v1/files/{fileId}` success envelopes always carry
-`generation`. For a `SessionSnapshot`, it equals `data.activeGeneration`; for a
+Every normal inspection-data success envelope carries `globalContentEpoch` and
+`generation`. For a full `InspectionSession`, `generation` equals
+`data.activeGeneration`; for a
 `FileDetail`, every returned generation-owned ID belongs to that exact value. The server
-selects the generation and constructs the complete payload at one linearization point under
-the session coordinator lock, then may serialize and deliver the already-fixed envelope
-after releasing the lock. It never reads a generation, constructs data outside that
-generation, and later relabels the response.
+captures the epoch and generation, constructs the complete payload, and then revalidates
+under the session coordinator lock that the epoch is unchanged and
+`globalDisableInProgress` is still null before binding the immutable success body. A failed
+revalidation discards that body and returns `409 global-disable-pending`. The server may
+serialize and deliver an already-bound envelope after releasing the lock; it never reads one
+generation, constructs data outside that generation, and later relabels the response. A
+body fully bound before disable acceptance remains a bounded pre-fence-authorized response;
+the browser rejects or purges it after observing the greater epoch or fence.
+
+The normal envelope does not apply to the exact control-only
+`GlobalFenceRecoverySnapshot` or the exact liveness body documented below; neither contains
+a generation or inspection graph.
+
+A preview or command success that returns no inspection graph uses
+`{ apiVersion, globalContentEpoch, data }` and omits the envelope-level `generation`; any
+generation carried inside its documented result is an explicit command outcome. This keeps
+control responses epoch-aware without presenting them as generation snapshots.
 
 The API defines no product-specific numeric limit for request bodies, files, item counts,
 parser structures, snapshots, details, or response bodies. Capacity is inherited from
 Node.js, the parser, the operating system, the filesystem, the browser, and the execution
-environment. If recoverable serialization or encoding failure occurs before an atomic scan
-publication commit, the current attempt aborts, publishes no item, Source, recognition,
-derived result, scan-result record or response, or generation, retains only the prior
-committed snapshot, and returns only a fixed safe failure outside the result. It does not
-classify inspected content as valid or invalid. The host materializes one complete UTF-8
+environment. A serialization/encoding throw or rejection before atomic publication
+propagates to the trigger-owning REST boundary, publishes no result or generation from the
+attempt, retains the prior snapshot, and returns only the generic Operation Error defined
+below. No domain layer classifies its cause. The host materializes one complete UTF-8
 entity-body buffer for a successful envelope and passes that unchanged buffer to the HTTP
 response. When `Content-Length` is emitted, it is the actual buffer length. If socket write or
 other transport delivery fails after the atomic commit, the committed outcome and snapshot
@@ -171,6 +193,26 @@ explicitly requested readable file detail, never copied into an error or operati
 correlation ID may be returned and stored only in process memory. Error envelopes and
 authenticated Diagnostics remain distinct from path-free operational events.
 
+For a thrown or rejected operation owned by a REST trigger, the `error` object is the closed `OperationError`
+shape and has exactly an opaque `operationErrorId`, `code: "operation-failed"`, `messageKey: "api.operationFailed"`,
+`nextStepKey: "api.retryOrRestart"`, an opaque `operationId`, and `scanRequestId`. The last
+field is null before asynchronous job acceptance and no job/ID is created. For an accepted
+scan job, the HTTP request has already returned `202`; the authenticated full session later
+exposes the same closed terminal object with that job's non-null `scanRequestId`. The
+two-stage Global-disable barrier is the sole exception: a post-acceptance failure returns
+the error from that still-open disable POST with null `scanRequestId` and also retains it for
+the fenced session. It is not a Diagnostic or scan result. Neither form has `safeArgs`, source/file/path/root identity, content,
+exception class/message/stack/cause/code, parser/system error, or runtime arguments.
+The pre-acceptance HTTP status is always `500`; its `operationErrorId` is response-only and
+is not retained in the session, and no cause-specific status is inferred. A retained
+accepted scan-job error is owned by exactly one `StaleSourceFailure` or
+`globalControl.lastOperationErrorId`; an accepted Global-disable error has null
+`scanRequestId` and is owned only by `globalDisableOperationErrorId`. A later terminal
+outcome clears or supersedes the exact owner as defined by the data model. The REST response
+survives as a generic failure and does not terminate the process. An automatic startup
+throw/rejection has no REST owner or product `OperationError`, reaches the process top
+level, and may terminate the process.
+
 ## Routes
 
 ### `GET /api/v1/session`
@@ -182,45 +224,96 @@ liveness route below, so no watcher, SSE, or WebSocket is required.
 Response data:
 
 ```text
-SessionSnapshot
-├── sessionId, createdAt, activeGeneration, snapshotState,
+InspectionSession
+├── sessionId, apiVersion, createdAt, activeGeneration, snapshotState, globalContentEpoch,
 │   liveness { heartbeatIntervalMs, requestTimeoutMs, leaseDurationMs },
-│   staleFailures[] { sourceId, diagnosticId, failedAt, baseGeneration },
-│   globalControl null | { state, previewId, confirmedTools[], pendingTools[], retryableTools[] },
-│   sensitiveContentWarning { messageKey, nextStepKey, acknowledgementScope }, sessionDiagnosticIds
+│   staleFailures[] { sourceId, failureRef, failedAt, baseGeneration },
+│   operationErrors[] { operationErrorId, code, messageKey, nextStepKey, operationId, scanRequestId },
+│   globalEnableInProgress null | { kind, operationId, previewId },
+│   globalDisableInProgress null | { operationId, state }, globalDisableOperationErrorId,
+│   globalControl null | { state, previewId, confirmedTools[], pendingTools[], retryableTools[],
+│                         batchStatus null | { scanRequestId, tools[], phase, failureRef },
+│                         toolFailures[] { tool, diagnosticId }, lastOperationErrorId },
+│   sensitiveContentWarning { messageKey, nextStepKey, acknowledgementScope },
+│   sessionDiagnosticIds, repositoryFailureDiagnosticId
 ├── sources[]
 │   ├── sourceId, kind, tool, enabled, status, generation, scanRequestId
 │   ├── root { displayRoot, origin }
 │   ├── conditionFacts[] { tool, surface, ruleId, affectedRuleIds, behaviorRefs, strategyRefs, sourceRefs,
+│   │                      evidenceAssessments[] { subjectKind, subjectId,
+│   │                                                documentationStatus, lifecycleQualifiers[] },
 │   │                      condition { key, status, reasonCode, basis } }
 │   └── progress null | { scanRequestId, phase, visitedEntries, candidateFiles, readBytes,
 │                         diagnosticCount, queuedAt, startedAt }
 ├── files[]
 │   └── fileId, sourceId, sourceRelativePath, aliasSourceRelativePaths, readState, parseSummary, sizeBytes,
-│       encoding, recognition summaries { tool, kind, parseStatus, provenance count, diagnostic IDs }, diagnostic IDs
+│       encoding, hadLeadingBom, recognition summaries { tool, kind, parseStatus, provenance count, diagnostic IDs }, diagnostic IDs
 └── diagnostics[] { diagnosticId, code, severity, scope,
                     sourceId?, fileId?, sourceRelativePath?, messageKey, safeArgs, nextStepKey }
     (active-generation records plus session-owned lifecycle records)
 ```
 
+This full DTO is returned only while `globalDisableInProgress` is null. After a non-no-op
+disable barrier is accepted, this route instead returns only this exact control DTO:
+
+```text
+GlobalFenceRecoverySnapshot
+├── sessionId, apiVersion, liveness, globalContentEpoch
+├── globalControl, globalEnableInProgress, globalDisableInProgress (required and non-null)
+├── toolFailureDiagnostics[]
+├── lastGlobalOperationError
+└── globalDisableOperationError
+```
+
+`toolFailureDiagnostics` contains exactly the pathless session Diagnostics referenced by
+`globalControl.toolFailures`; each nullable error is exactly the record referenced by its
+corresponding control/error ID. The DTO contains no generation, Source, Repository failure,
+stale failure, unrelated Diagnostic/error, file, path, authored value, relationship, or
+resource field. The fence remains in force when disable state is `failed`; only terminal
+disable success or process restart permits a full DTO again. Every other inspection-data
+route, including inventory/generation/Source/file/detail/Diagnostic/relationship/comparison
+data, returns `409 global-disable-pending` throughout the fence.
+For every fenced route, this check follows transport/capability/Host/Origin/body-shape
+validation but precedes resource-ID existence, generation staleness, duplicate-work, and
+other inspection-state checks; the fence conflict therefore wins without leaking retained
+graph state.
+
 Every Source has exactly one root. The Repository Source has `tool: null`; the session has
 zero to three Global Sources, at most one each with `tool: codex`, `tool: claude`, or
 `tool: copilot`. A Global root is never represented as a boundary inside another Source.
+`root.displayRoot` is a one-way escaped root presentation label, not a
+`SourceRelativePath`, inventory-item locator, caller input, operational-log field, or read
+authority. The same distinction applies to a pre-admission consent-preview `displayRoot`,
+which may represent an absolute or invalid lexical root before any owning Source exists.
+The bootstrap Repository root has `origin: process-cwd` when `--cwd` was omitted and
+`origin: cwd-option` otherwise; the API never exposes the retained raw or canonical root.
 Every `conditionFacts` entry is an evidence-linked, origin-file-less Source Condition Fact:
 it stays distinct from `files` and recognitions and cannot create a physical or synthetic
 file, file ID/path/text, comparison target, relationship origin, local or hosted read, or
-network request. An unobserved current state remains conditional or unavailable.
+network request. Its `evidenceAssessments` uses the exact record schema, closed enums, and
+ordering defined under File Detail; no scalar documentation status is serialized. An
+unobserved current state remains conditional or unavailable.
 Top-level `snapshotState` is `current` or `stale-after-fatal-rescan`; only a fatal explicit
-rescan adds or replaces one `staleFailures` entry and its lifecycle diagnostic for the affected
-Source. Entries and diagnostics for different Sources coexist. A successful complete or
-contracted-partial scan clears only the entry and lifecycle diagnostic for the Source it
-refreshed; a commit for another Source preserves both, and Global disable clears both for
+rescan adds or replaces one `staleFailures` entry and its failure reference for the affected
+Source. A deterministic returned failure references a Diagnostic; a thrown/rejected accepted
+job references only its Operation Error. Entries and failure records for different Sources
+coexist. A successful complete or contracted-partial scan clears only the entry and referenced
+failure for the Source it refreshed; a commit for another Source preserves both, and Global disable clears both for
 Sources it removes. `snapshotState` is stale exactly while the
 array is non-empty. Automatic first Repository failure and initial Global-enable failure
-create no `staleFailures` entry, but use a Repository- or Global-tool-owned lifecycle
-diagnostic; initial Global-enable failure preserves all pre-existing entries and the derived snapshot state.
+create no `staleFailures` entry. A deterministic returned failure may use its closed
+Diagnostic; a startup throw/rejection reaches the process top level and a REST-owned Global
+failure uses only Operation Error. Initial Global-enable failure preserves all pre-existing
+entries and the derived snapshot state.
 Each `sourceRelativePath` and alias path is relative to its owning Source's single root; the
 API never substitutes an absolute or canonical filesystem path for it.
+Paths serialize as collision-free NFC values, while filesystem operations retain their
+provenance-specific exact segments internally: `Dirent.name` for enumerated paths and the
+immutable registry spelling for targeted fixed paths that forbid parent enumeration. A verified hard-linked file uses the unsigned UTF-8-bytewise
+lowest admitted NFC value as primary and returns every remaining unique value as a sorted
+alias. Filters and selection match both; a file Diagnostic always uses the primary. Distinct
+raw paths with one NFC value produce only one pathless session-scoped collision Diagnostic,
+no ambiguous file DTO, and no generation from that Source attempt.
 The inventory summary does not include source text. Deterministic sort order is source kind,
 Global tool where present, normalized source-relative path, then file ID.
 `parseSummary` is the file-level closed projection
@@ -229,8 +322,9 @@ recognition is `not-attempted`, `all-parsed` when at least one is `parsed` and n
 `failed`, `all-failed` when at least one is `failed` and none is `parsed`, and `mixed` when
 `parsed` and `failed` coexist. `not-attempted` records do not change the last three
 projections. Recognition summaries contain tool/kind, recognition-level `parseStatus`,
-provenance count, diagnostic IDs, and sorted sets of provenance documentation/applicability
-states; they never invent an aggregate parse result or winner.
+provenance count, and diagnostic IDs only; they never invent an aggregate documentation or
+applicability status, parse result, or winner. Record-by-record evidence/applicability stays
+on the detail provenances and relationships below.
 
 Within one generation there is exactly one `ToolRecognition` for each
 `(fileId, tool, kind)`. Compatible provenances merge into that recognition. If those
@@ -250,6 +344,9 @@ editors/models and comparison/detail state, clears the prior DTO graph, then set
 old epoch cannot repopulate state even if its bytes arrive later.
 Every returned diagnostic is referenced by the active generation/source/file graph or by
 `sessionDiagnosticIds`; client-caused request errors are never accumulated here.
+Every returned retained Operation Error is referenced by exactly one
+`StaleSourceFailure`, `globalControl.lastOperationErrorId`, or
+`globalDisableOperationErrorId`; it never enters either Diagnostic list.
 `scope` is an obligatory attachment discriminator, independent of diagnostic lifetime.
 The only legal location shapes are: `file`, with `sourceId`, `fileId`, and that file's
 Source-relative Path all present; `source`, with only `sourceId` present; and `session`,
@@ -257,65 +354,105 @@ with all three location fields absent. Source- and session-scoped records never 
 file ID or path. Serialization rejects any other combination.
 Progress is null for `idle` and `failed`; it is present for active work and
 for final `ready`/`partial` counters as defined in the data model. The first legal snapshot
-is bootstrap generation 0 with no files/diagnostics; it remains readable and current if the
-automatic first Repository scan fails fatally.
+is bootstrap generation 0 with exactly one idle Repository Source selected lexically from
+captured `process.cwd()` or the single `--cwd`, and no files/diagnostics. Its escaped root
+label is non-authorizing until central admission; a startup throw/rejection may terminate
+the process, so no later readable snapshot is promised.
 
 `sensitiveContentWarning` supplies the fixed warning and next-step message keys that explain
-that opening source or comparison content displays complete authored values, including
-possible credentials. `acknowledgementScope` is the fixed value `authorized-browser-session`.
-Before requesting a file detail or constructing a comparison, the SPA
+that opening detail or comparison surfaces displays complete authored values, including
+possible credentials. Protected values include complete source text, declared authored
+metadata, authored relationship targets, and either comparison side.
+`acknowledgementScope` is the fixed value `authorized-browser-session`.
+Before requesting any `FileDetail` or constructing a comparison, the SPA
 requires an in-memory acknowledgement for the current authorized browser session. The
 acknowledgement is client-only, is not sent to this API, and is not persisted by either side.
 The bearer capability is the complete host-side authorization boundary: the API neither
 accepts nor claims to enforce a presentation acknowledgement. The shipped SPA nevertheless
-must obtain that acknowledgement before it requests detail or constructs comparison. It
-grants no filesystem authority and does not alter the returned content.
+must obtain that acknowledgement before it requests detail or constructs comparison. A
+newly loaded browser document and the central full-session client-data purge reset it. Route
+closure, selection replacement, file or Source removal, and generation replacement are
+scoped cleanup rather than that central purge and may retain acknowledgement for the loaded
+document. Global disable uses the central purge and therefore resets it. It grants no
+filesystem authority and does not alter the returned content.
 
 `globalControl` is null only when Global consent/control state is inactive. Otherwise
 `state` is `active` or `disabling`, and `previewId` identifies the frozen active preview.
-`confirmedTools` lists the consented tools. `pendingTools` lists tools owned by a running or
-queued enable/retry operation during validation/admission or by its running/queued initial
-scan job. `retryableTools` is exactly the confirmed controls in `rejected` or non-pending
-`admitted` state with no published Source and no active operation/job; an `unvalidated`
-control is always pending. These sorted closed arrays expose no canonical root,
-digest, or source content. The field remains present for all-failed and post-validation
-initial `active-no-job` outcomes with zero Global Sources and all-rejected retries that
-preserve existing Sources, so a fresh client can always offer disable and can retrieve the
-matching preview before retry. From priority-barrier acceptance until
-its commit, `state: disabling` makes `pendingTools` and `retryableTools` empty; the UI offers
-no retry and the enable route rejects it. The field becomes null at the disable commit.
-While `state: active` and `pendingTools` is non-empty, `retryableTools` is informational:
-the UI does not offer retry and the enable route returns `409 global-enable-in-progress`.
-Disable remains immediately available. Retry is offered only after `pendingTools` is empty
-and the matching frozen preview has been retrieved and verified.
+`confirmedTools` is always the fixed closed `[copilot, claude, codex]` all-tools consent set.
+Initial enable and retry validation/admission remain operation-local: only the authority-free
+`globalEnableInProgress { kind, operationId, previewId }` is visible. Initial enable keeps
+`globalControl: null`; retry preserves its exact pre-operation control projection until one
+buffer-bound disposition atomically commits. A duplicate enable while that projection is
+non-null returns `409 global-enable-in-progress`; disable remains immediately available.
 
-Status: `200`, or `401`/`403` for capability/origin failures.
+At a queued disposition, `pendingTools` is exactly the admitted non-empty batch subset and
+`batchStatus` is exactly `{ scanRequestId, tools, phase, failureRef }` for that same subset.
+`tools` is non-empty, unique, and in fixed tool order. Its active `phase` is
+`waiting | enumerating | reading | deriving | recognizing`, with null
+`failureRef`. Batch success atomically publishes every Source, clears both fields, and
+advances one generation. Terminal deterministic failure leaves empty `pendingTools` and
+`phase: failed` with `{ kind: 'tool-failures', failedTools }`, where `failedTools` is the
+non-empty fixed-order set with batch-owned `toolFailures` rows and repeats no Diagnostic ID;
+terminal throw/rejection uses
+`{ kind: 'operation-error', operationErrorId }`, exactly matching
+`lastOperationErrorId`. A failed batch remains request-correlated until retry acceptance or
+disable. An `active-no-job` disposition has null `batchStatus`, creates no job/generation,
+and retains or replaces only deterministic rejected-tool controls.
+
+While `state: active`, `retryableTools` is exactly each unpublished non-pending `admitted`
+control and each `rejected` control whose `retryDisposition` is `same-preview`; lexical
+`new-preview-required` controls are excluded. It stays at the pre-operation projection
+during operation-local retry validation. Retry is offered only when
+`globalEnableInProgress` is null, `pendingTools` is empty, and the matching frozen preview
+has been retrieved and verified. During a non-failed active batch, retryable tools are
+informational only and enable returns `409 global-enable-in-progress`.
+
+From disable-barrier acceptance through terminal success, `state: disabling` has empty
+pending/retry arrays and null `batchStatus`; `globalDisableInProgress` is non-null through
+`draining`, `committing`, and retained `failed`. The control becomes null only at successful
+`remove-active-state` completion. A `cleanup-only` barrier can have null `globalControl`.
+`toolFailures` is the fixed-tool-order unique mapping for every non-null control
+`diagnosticId`; each ID also occurs in `sessionDiagnosticIds` and resolves to a
+session-owned deterministic Diagnostic. It contains no Operation Error and remains until
+that control failure is cleared or disable commits removal.
+`lastOperationErrorId` is null or references the one accepted missing-Source batch
+throw/rejection for the whole active consent. A pre-acceptance retry failure preserves it;
+deterministic `active-no-job` retry or replacement-batch acceptance clears it; a terminal
+replacement failure supersedes it; and Global disable removes it. It never identifies one
+tool and never creates a `StaleSourceFailure`.
+
+Status: `200` with the full or fenced DTO; `401`/`403` for capability/origin failures.
 
 ### `GET /api/v1/session/liveness`
 
-Returns only the current `sessionId` and fixed `leaseDurationMs: 2000`. While the authorized
-page is visible, the SPA calls this route every `heartbeatIntervalMs: 1000` with a
-`requestTimeoutMs: 750` timeout. A response renews the monotonic browser-memory lease only
-when its `sessionId` exactly matches the initial authenticated snapshot. A timeout, network
-failure, `401`/`403`, mismatched session, or lease expiry invokes the central client purge
-before the session-ended view renders. Hidden/page lifecycle events purge immediately;
-the lease is the hard fallback when timer scheduling or a completion callback is delayed.
-The memory-only capability is retained across that purge. Returning to visibility requires
-a fresh authenticated session snapshot; a new sensitive-content acknowledgement is required
-only if the user later opens source/detail or comparison content. Recovery
-uses the retained capability to authenticate that snapshot, adopts its returned `sessionId`
-as the new liveness baseline without retaining or comparing the purged ID, retains only its
-`globalControl` projection, and
-discards the other snapshot fields without restoring inventory, detail, or acknowledgement
-state. The recovery view always offers an explicit **Resume inspection** action. Resume
-fetches the session again, requires its `sessionId` to match the adopted baseline, and
-atomically constructs a fresh inventory-summary view with default filters; it restores no
-prior detail, comparison, editor, warning acknowledgement, or authored source. When that
-projection is non-null, disable is available immediately. The SPA retrieves
-the exact frozen active preview and verifies its `previewId` before reconstructing retry
-controls. Authentication failure leaves the
-session-ended view in place. A liveness call never extends the Node process lifetime, returns
-no source/root/diagnostic data, and is never stored or cached.
+The success body is exactly
+`{ sessionId, globalContentEpoch, globalDisableInProgress }`. At final publication the
+handler obtains all three values from one current coordinator-lock snapshot; unlike an
+inspection-data success, it does not require a null fence and returns the current non-null
+projection so another tab can observe disable. While the authorized page is
+visible, the SPA calls this route every `heartbeatIntervalMs: 1000` with a
+`requestTimeoutMs: 750` timeout and maintains the fixed two-second browser-memory lease from
+the session DTO. It renews only when `sessionId` matches, the epoch equals its last observed
+epoch, and the disable projection is null. An older epoch is rejected. Before renewal or
+rendering, a greater epoch or non-null projection invokes the central full purge, adopts the
+new epoch, and enters control-only recovery. This is how another tab observes disable.
+
+A timeout, network failure, `401`/`403`, mismatched session, lease expiry, or hidden/page
+lifecycle event also purges before rendering the ended/recovery view. The memory-only
+capability survives the purge. Any recovery fetch adopts only the fresh `sessionId`,
+`globalContentEpoch`, `globalControl`, `globalEnableInProgress`,
+`globalDisableInProgress`, the exact tool-failure Diagnostics, the one Global Operation
+Error referenced by `globalControl.lastOperationErrorId` when present, the disable error ID
+and its referenced Operation Error when
+present, and an optionally reverified frozen preview. It restores no inventory, generation,
+Source, file, detail, relationship, comparison, editor, warning acknowledgement, or authored
+source. A null disable projection permits **Resume inspection**, which refetches a matching
+full session and atomically builds the default inventory view. A draining/committing fence
+offers join/wait; a failed fence offers retry-disable. Global retry is rebuilt only after
+the matching frozen preview is retrieved, `globalEnableInProgress` is null,
+`pendingTools` is empty, and `retryableTools` is non-empty. Authentication failure leaves
+the session-ended view in place. A liveness call never extends Node process lifetime,
+returns no inspection graph, and is never stored or cached.
 
 Status: `200`, or `401`/`403` for capability/origin failures.
 
@@ -331,15 +468,15 @@ FileDetail
 │   ├── recognitionId, fileId, tool, kind, parseStatus, diagnosticIds[]
 │   ├── declaredMetadata[] { closed fieldId, zero-based occurrence, exact authoredLiteral }
 │   └── provenances[] { provenanceId, ruleId, discoveryClass, matchedPath,
-│                       seedFileId, seedProvenanceId, seedRuleId, depth,
-│                       declarationKey, scope, documentationStatus, order,
+│                       seedFileId, seedProvenanceId, seedRuleId,
+│                       declarationKey, scope, evidenceAssessments[], order,
 │                       behaviorRefs, strategyRefs, sourceRefs,
 │                       applicability { summary, strategyRefs, evaluatedFromGeneration,
 │                                       condition facts[] } }
 ├── relationships[] { relationshipId, fromFileId, fromRecognitionId, fromProvenanceId,
 │                     ruleId, kind, targetOrigin, authoredTarget (exact slice or null),
 │                     normalizedTarget, boundary status, resolution status,
-│                     documentationStatus, behaviorRefs, strategyRefs, sourceRefs,
+│                     evidenceAssessments[], behaviorRefs, strategyRefs, sourceRefs,
 │                     applicability { summary, strategyRefs, evaluatedFromGeneration,
 │                                     condition facts[] } }
 └── diagnostics[]
@@ -381,15 +518,19 @@ ranks natural-language meaning or intent; decides customization correctness, val
 compliance, effectiveness, or quality; or provides policy/remediation advice, validation,
 lint, synchronization, conversion, formatting, or fixing. Strict validation of
 Inspector-owned manifests, DTOs, registries, capabilities, and internal invariants remains
-permitted and is not customization validation. Recoverable runtime/environment Diagnostics
-describe inspection availability only and carry no content verdict.
+permitted and is not customization validation. Deterministic availability Diagnostics
+carry no content verdict; thrown/rejected operations use only the outer-boundary Operation
+Error and never become Diagnostics.
 
 The file encoding state is assigned only after a completed same-handle read passes every
-post-read check. Any NUL byte yields `binary`; otherwise decoding is strict UTF-8. A strict
-decode with one leading BOM records `utf-8-bom` and removes that BOM, strict success without
-a BOM records `utf-8`, and invalid UTF-8 records `unsupported` without replacement or alternate decoding. Binary and unsupported
-items expose null `sourceText` and are comparison-ineligible; successful decoding exposes the
-complete text without sampling, truncation, or a product-defined byte/line/item ceiling.
+post-read check. Any NUL byte yields `binary`, null `sourceText`, no comparison eligibility,
+and an otherwise publishable contracted-partial generation. Every other byte sequence is
+decoded exactly once as UTF-8 with replacement semantics. One leading BOM sets
+`hadLeadingBom: true` and is removed. Valid text uses `utf-8` or `utf-8-bom`; any inserted
+`U+FFFD` uses `utf-8-replaced`. That exact garbled complete `sourceText` continues through
+parsing, extraction, detail, and comparison and does not make the generation partial by
+itself. There is no alternate decode, charset guessing, sampling, truncation, or product-
+defined byte/line/item ceiling.
 
 Each recognition's `parseStatus` is the closed enum
 `not-attempted | parsed | failed`. Parsing and extraction are all-or-nothing per
@@ -397,11 +538,11 @@ recognition: `failed` retains that recognition and its diagnostic IDs but return
 no metadata, relationships, or derivations from the failed result; another recognition on
 the same file may still be `parsed`. The uniqueness, compatible-provenance merge,
 inconsistent-meaning failure, and closed tool-then-kind ordering rules stated for the
-session summary apply identically to detail. Only deterministic non-capacity parser/Worker/
-extraction failure may produce this failed-recognition state in a contracted-partial
-generation; a capacity/resource failure returns no item, recognition, relationship, or
-derivation from the attempt, propagates `fatal-resource`, commits no scan-result record or
-response or generation, and leaves only the prior committed snapshot available. Structural metadata comparison uses
+session summary apply identically to detail. Only an FR-028-eligible deterministic,
+non-throwing parser/extraction outcome may produce this failed-recognition state in a
+contracted-partial generation. A read/parser/Worker throw or rejection propagates without a
+domain catch, classification, retry, item, Diagnostic, or generation result and is exposed,
+when REST-owned, only through the generic Operation Error. Structural metadata comparison uses
 `(tool, kind, fieldId, occurrence)`, so two tools or kinds never collide merely because
 their field and occurrence match.
 
@@ -426,8 +567,20 @@ generation, and selected file; replacement of the request token invalidates that
 Any mismatch disposes the response without creating a model, DOM text, metadata row, or
 comparison input.
 
+Every `evidenceAssessments` member is exactly `{ subjectKind, subjectId,
+documentationStatus, lifecycleQualifiers }`. `subjectKind` is
+`behavior | rule | strategy`; `documentationStatus` is
+`documented | partially-documented | unknown | conflict`; and
+`lifecycleQualifiers` is a unique fixed-order subset of
+`preview | experimental | deprecated`. An empty qualifier array makes no stability claim.
+Each array contains one record for the owning rule and every referenced behavior/strategy,
+deduplicated and sorted by subject-kind order then `subjectId`; the API never collapses it
+to a scalar. The runtime `ConditionFact.status: documentation-conflict` remains a distinct
+condition value, not a `DocumentationStatus` alias.
+
 Status: `200`; `404 stale-resource` when the file ID is unknown, belongs to a previous
-generation or removed file, or belongs to a disabled source.
+generation or removed file, or belongs to a disabled source; `409 global-disable-pending`
+while the disable fence is non-null.
 
 ### `POST /api/v1/repository/rescan`
 
@@ -449,21 +602,46 @@ command is queued FIFO and the Repository summary returns `status: scanning`,
 the active generation at dequeue time, not the generation observed by this request. The
 current generation remains readable until a complete or contracted-partial replacement is
 atomically published. Publication invalidates every old file ID and comparison selection.
-If the explicit rescan fails fatally, every uncommitted result from that attempt, including
-any partial result, is discarded. The last committed generation and its IDs remain readable,
-the top-level snapshot returns `snapshotState: stale-after-fatal-rescan`, the Repository
-Source returns `status: failed`, and one
-actionable lifecycle diagnostic explains that the rescan failed and that the retained
-snapshot is stale. This creates or replaces the Repository entry in `staleFailures` and its
-lifecycle diagnostic; a later successful or contracted-partial Repository rescan clears both,
-while a commit for another Source leaves both unresolved.
+If the explicit rescan fails before commit, every uncommitted result, including any
+provisional partial result, is discarded. The last committed generation and IDs remain
+readable, the snapshot is `stale-after-fatal-rescan`, and the Repository Source is `failed`.
+A deterministic returned fatal outcome uses its closed actionable lifecycle Diagnostic. A
+throw/rejection propagates past every domain layer and the accepted-job boundary records only
+the generic Operation Error carrying this same `scanRequestId`. In either case the
+`staleFailures` entry references exactly that failure representation; later success clears
+both, while another Source's commit preserves them.
+
+After authorization and body-shape validation and after any non-null Global-disable fence
+has selected `409 global-disable-pending`, a `poisoned` process-wide resource registry is the
+next pre-schedule gate. It returns
+`409 resource-cleanup-restart-required` without allocating a request ID or job, changing
+state, or performing filesystem I/O.
 
 Status: `202` with the request ID and updated source summary; `409 scan-in-progress` only
-for a duplicate running/queued Repository command.
+for a duplicate running/queued Repository command; `409 global-disable-pending` while the
+disable fence is non-null; or `409 resource-cleanup-restart-required` while the registry is
+poisoned and no disable fence already governs the response.
 
 ### `GET /api/v1/global/consent-preview`
 
-Returns a lexical, process-scoped preview before any proposed Global path is touched:
+Returns only the already-current process-memory preview. It never captures environment
+values and never creates, replaces, or invalidates a preview. With active consent or a
+registered initial enable it returns that exact frozen preview; while a disable fence is
+non-null it returns the barrier's exact `frozenPreview` so the control-only recovery view can
+display the consent being revoked. With neither a current unconsented preview nor a frozen
+preview it returns `404 consent-preview-missing`.
+
+### `POST /api/v1/global/consent-preview`
+
+Body:
+
+```json
+{}
+```
+
+Captures and atomically creates or replaces an unconsented lexical, process-scoped preview
+before any proposed Global path is touched. This state-changing request requires the exact
+same-origin `Origin` in addition to the capability:
 
 ```text
 GlobalConsentPreview
@@ -472,8 +650,13 @@ GlobalConsentPreview
 └── excludedRuleIds[]
 ```
 
-The server derives it only from the three documented tool-home environment variables,
-default-home values, and shipped contract. Those variables are used only to locate proposed
+For every permitted POST capture attempt after coordinator conflicts are checked, the server reads `COPILOT_HOME`,
+`CLAUDE_CONFIG_DIR`, and `CODEX_HOME` exactly once each in that order. Only `undefined` is
+absent; an empty string is present. If any is absent, it calls imported
+`node:os.homedir()` exactly once for that request and uses active-platform `node:path.join`
+with fixed `.copilot`, `.claude`, or `.codex` suffixes for the corresponding absent entries.
+It does not independently select `HOME`, `USERPROFILE`, or another home source, and the
+lexical capture/join performs no existence check. Those variables are used only to locate proposed
 Global roots and never to substitute references inside inspected content. The frozen
 internal preview record, which is never serialized, additionally keeps each entry's
 `lexicalRoot` as the exact raw string. Empty, relative, invalid, control-containing, and
@@ -482,15 +665,17 @@ one-way presentation escaping derived from `lexicalRoot`; it is never decoded ba
 path or used as admission input. The preview
 performs no `stat`, `realpath`, directory enumeration, or file read under a
 proposed Global root. Node.js and the execution environment determine whether the value can
-be retained and escaped. A recoverable failure returns a fixed environment-error state,
-creates no authorization, and performs no normalization, canonicalization, root creation,
-or read. Otherwise `displayRoot` shows the exact escaped lexical value; invalid empty
-or relative overrides are shown as invalid instead of falling back. With no active consent,
-a new preview invalidates the prior unconsented preview. While consent is active, this route
-instead returns the exact frozen preview identified by `globalControl.previewId`, including
-the same digest, without rereading the environment or creating a replacement. This lets a
-fresh authenticated client recover the exact display after a purge; a different preview
-requires disable first. The keyed digest binds the session, version, ordered tool entries,
+be retained and escaped. A throw/rejection during environment capture, `homedir()`, join,
+retention, presentation encoding, digest construction, or serialization reaches this pre-acceptance REST boundary and
+returns the generic Operation Error with null `scanRequestId`, creates no authorization, and
+performs no normalization, canonicalization, root creation, or read. Otherwise `displayRoot` shows the exact escaped lexical value; invalid empty
+or relative overrides are shown as invalid instead of falling back. A successful POST
+atomically replaces the prior unconsented preview only after its complete response buffer is
+ready. Active consent returns `409 consent-preview-frozen`; a registered enable returns
+`409 global-enable-in-progress`; and a disable fence returns
+`409 global-disable-pending`, with no environment recapture or state change. The GET route
+supplies the exact frozen preview for fresh-client recovery; a different preview requires
+disable first. The canonical HMAC digest binds the session, `previewId`, version, ordered tool entries,
 each exact raw `lexicalRoot` using a type-tagged length-prefix encoding, its
 separately length-prefixed escaped `displayRoot`, origins, states, exclusions, and
 the typed `TraversalPlan` version, closed selection policy, and canonical program. It never substitutes escaped
@@ -509,14 +694,28 @@ plugin, or other neighboring path.
 The Codex plan alone uses `codex-global-first-non-empty`: it safely probes
 `AGENTS.override.md`, short-circuits before any `AGENTS.md` operation when the override is
 non-empty, and advances only from an absent or safely established empty override. A present
-unsafe, unreadable, environment-failed, or undecodable candidate fails closed without fallback. An
-optional leading UTF-8 BOM alone or whitespace-only content is empty, and at most one non-empty
-Codex instruction file is published. `absent` means only an explicit not-found result from
-that exact target's `lstat` after root verification; permission, type, metadata,
-ancestor/root, canonicalization, and disappearance after the first observation are
-failures rather than fallback conditions.
+deterministically unsafe or binary candidate ends selection without fallback. An optional
+leading UTF-8 BOM alone or whitespace-only content is empty under
+`decodedText.trim().length === 0`; `utf-8-replaced` participates as ordinary text and every
+`U+FFFD` is non-whitespace. At most one non-empty Codex instruction file is published.
+`absent` means only Node's exact `ENOENT` returned by that contract-declared target `lstat`
+after root verification. The same code after prior observation is `entry-disappeared`, not
+fallback. Every other throw/rejection—including from `open` or `read`—propagates to the
+owning REST boundary without a domain catch or fallback.
 
-Status: `200` or `401`/`403` for capability/origin failures.
+GET status: `200`; `404 consent-preview-missing`; or `401`/`403` for capability/Host
+failures. POST status: `201`; `409 consent-preview-frozen`,
+`global-enable-in-progress`, `global-disable-pending`, or
+`resource-cleanup-restart-required`; or `401`/`403` for capability/Host/Origin failures. A
+capture/serialization throw or rejection returns the generic pre-acceptance Operation Error
+with status `500`.
+
+For POST, after authorization and body-shape validation plus the existing active-consent,
+registered-enable, and non-null-disable-fence conflict checks, a `poisoned` process-wide
+resource registry is the next pre-capture gate. It returns
+`409 resource-cleanup-restart-required` without capturing environment values, creating or
+replacing a preview, allocating a job or request ID, changing state, or performing
+filesystem I/O. GET remains a read-only current-preview lookup and does not schedule work.
 
 ### `POST /api/v1/global/enable`
 
@@ -525,7 +724,7 @@ Body:
 ```json
 {
   "confirmed": true,
-  "allowlistVersion": "2026-07-17",
+  "allowlistVersion": "2026-07-20",
   "previewId": "opaque-preview-id",
   "previewDigest": "opaque-keyed-digest"
 }
@@ -536,6 +735,7 @@ Response data:
 ```text
 GlobalEnableResult
 ├── state: queued | active-no-job
+├── scanRequestId: opaque ID | null
 ├── acceptedTools[] (zero to three tool enums)
 └── rejectedTools[] (zero to three tool enums)
 ```
@@ -545,89 +745,77 @@ states, and exclusions from that preview. The host rejects a false confirmation,
 contract version, superseded preview, or non-constant-time digest mismatch. It uses only
 the stored internal raw `lexicalRoot` and stored typed traversal program; it never rereads
 environment input, reverse-converts `displayRoot`, or accepts `pathPatterns` as authority.
-The body intentionally has no tool selector: initial enable confirms every `eligible`
-entry in the frozen preview, and the server derives `confirmedTools` as that exact closed-
-order set. A retry derives its work set as the confirmed tools that still have no Source;
-the request cannot add, remove, or reorder consented tools. After consent it resolves each
-eligible tool home independently. If a canonical root is not
-component-identical to the stored raw lexical absolute root shown by that preview because of
-a symlink, junction, case, Unicode normalization, short-name, or other alias, that tool is
-rejected before enumeration with an actionable tool diagnostic; the host never
-substitutes the canonical target or broadens consent. Lexically present-empty, relative,
-invalid, or environment-failed
-entries are not confirmed and create no retained Diagnostic; their fixed preview
-`inputState`/message is the complete explanation and they never silently fall back. A
-lexically eligible but missing, unreadable, or otherwise unusable root is a post-consent
-rejection and uses that tool's diagnostic. Every representable absolute root is lexically
-eligible even outside the ordinary home; location alone neither rejects it nor grants
-pre-consent I/O. Before activating consent, the coordinator
-serializes the operation, atomically activates consent, creates the
-confirmed eligible tools' `unvalidated` controls, and registers one cancellable
-`GlobalEnableOperation` whose command epoch and `pendingTools` cover validation, admission,
-and scan-job queueing. Post-consent validation accepts zero to three roots.
-Initial enable uses the whole derived `confirmedTools` set, while retry uses its whole
-derived missing-tool work set. Capacity is inherited from Node.js and the execution
-environment, and admission uses the availability those layers report.
-After all validation outcomes and job enqueues,
-the coordinator performs one final operation-ID/epoch/state check under its lock. At that
-single linearization point it atomically chooses the response disposition. For `202`, it
-also marks the operation complete and unregisters it. For `409`, it enters draining; only
-after cancellation has released operation-local resources does it become cancelled and
-unregister before barrier cleanup.
-Terminal operation history is not kept, and later response-byte delivery cannot change the
-chosen disposition.
-Each accepted tool root creates one provisional scan job for a separate tool-specific Global
-Source with exactly one root; roots and files for different tools are never merged. Rejected
-tools create or replace their `GlobalToolControl`-owned tool failure diagnostic
-and receive no Source, stale-failure entry, or
-job. `acceptedTools` and `rejectedTools` partition the tools validated by this request. The
-operation checks its ID/epoch, non-aborted signal, and `globalControl.state: active` before
-and after every asynchronous step and immediately before any control/diagnostic mutation or
-job enqueue. If the operation reaches the final disposition point first, its chosen `202`
-remains committed even if response delivery occurs after a later disable acceptance; that
-barrier may then cancel/remove the accepted work normally. If the disable barrier linearizes
-first, the operation drains and chooses `409 global-disable-pending` without allowing a late
-mutation or job. The request cannot produce both dispositions.
-`202` response uses `state: queued` when at least one job was accepted and
-`state: active-no-job` when all were rejected; it never returns Source summaries.
-Consent and `globalControl` remain active in either state. Provisional Sources and their
-progress are not published. Each accepted scan is
-queued FIFO, starts from the active generation at dequeue time, and atomically publishes a
-new Source only with a complete or contracted-partial generation. A later session poll
-observes each Source only after that Source's scan
-commits. Successful publication clears that `GlobalToolControl`'s tool failure
-diagnostic from `sessionDiagnosticIds`; unrelated tools' diagnostics remain unchanged.
+The body intentionally has no tool selector. Initial enable derives the exact fixed
+`[copilot, claude, codex]` set from all three frozen preview entries, including entries that
+are already lexically invalid. A retry derives the exact current server-side
+`retryableTools` subset: unpublished non-pending admitted controls and same-preview rejected
+controls only. Lexical `new-preview-required` controls require disable and a new preview.
+The client cannot add, omit, remove, or reorder a tool.
 
-If the exact same active consent already exists, whether zero or more Global Sources have
-committed, this route may be called again only to retry confirmed eligible tools that still
-have no Source.
-The host compares the same session-bound frozen preview ID/digest, active consent, and its
-`GlobalToolControl` records, preserves every existing Source's semantic content and stable
-`sourceId`, and validates only the tools listed by `globalControl.retryableTools`.
-Every successful initial or retry Global Source commit still advances the session
-generation, regenerates all generation-owned IDs in every carried graph, and invalidates
-old file/detail/comparison/editor state. Revalidation of an admitted retained
-context follows the close/discard/re-admit rule in the data model: a mismatch or unverifiable
-root closes and unregisters the old context and discards its unpublished IDs before the
-control becomes `rejected`. A different preview/root requires Global disable first; a request
-with no missing tool is a conflict.
-A fatal initial tool enable publishes no file or Source result, adds no `StaleSourceFailure`
-entry for the missing tool, and preserves all pre-existing entries and the derived snapshot
-state. It creates or replaces the affected `GlobalToolControl`'s keyed tool failure
-diagnostic and retains only
-the consent and `GlobalToolControl` state needed for this exact-consent retry or disable.
+After the confirmation fields are verified, the coordinator registers exactly one
+`GlobalEnableOperation` and exposes only
+`globalEnableInProgress { kind, operationId, previewId }` while one provisional transaction
+evaluates the whole derived set. A duplicate enable returns
+`409 global-enable-in-progress`; no tool outcome, root, context, Source, job, or authority is
+published by that projection. Empty/relative/unrepresentable entries are deterministic
+rejections with no filesystem call. For an eligible absolute root, only Node's exact
+`ENOENT` from its contract-declared structural `lstat` becomes `absent`. Successful
+link/type/canonical/identity checks may deterministically reject that tool without fallback.
+Every other throw or rejection—including permission failures and any `open`/`read`
+rejection—propagates to the REST owner without domain classification. During initial enable
+this occurs before job acceptance, returns the generic Operation Error with null
+`scanRequestId`, activates no consent/control/job, and commits none of a provisional subset.
+During retry, existing consent/control and the prior snapshot remain unchanged.
+Either pre-acceptance failure unregisters `globalEnableInProgress`; no terminal operation
+history is retained.
 
-If the lexical preview has no eligible tool root, the host returns
-`400 no-eligible-global-root` without activating consent or creating a control record. If it
-has eligible tools but post-consent validation rejects all of them, the host instead returns
-`202 active-no-job` with active recovery/disable control as defined above.
+When validation finishes without such an exception, `acceptedTools` and `rejectedTools`
+are disjoint, unique, fixed-tool-order arrays whose union is every tool evaluated by the
+transaction. The coordinator atomically activates
+initial consent with controls for all three tools. If no root was admitted, it returns
+`state: active-no-job`, null `scanRequestId`, no Source/job/generation, and keeps controls
+for disable plus same-preview retry only where `retryDisposition` permits it. Otherwise it allocates one `scanRequestId`, transfers every
+admitted root into one provisional batch scan, returns `state: queued`, and publishes no
+Source before that batch's commit. The same atomic acceptance publishes
+`globalControl.pendingTools` and `batchStatus` with the promoted `scanRequestId`, tool set,
+`phase: waiting`, and null `failureRef`; fresh polling can therefore recover a lost `202`.
+Separate tool roots remain separate Source
+identities, but all ready/partial Sources in the admitted subset appear together in exactly
+one N+1 generation; no poll can observe a per-tool commit. That one commit preserves stable
+IDs and semantic content for carried Sources, rekeys all generation-owned IDs, invalidates
+old detail/comparison/editor state, and clears the applicable deterministic tool failures.
 
-Status: `202`; `400 consent-required`, `no-eligible-global-root`, `allowlist-version-mismatch`, or
-`consent-preview-mismatch`; `409 no-missing-global-tool` if no confirmed eligible tool is
-missing, `409 active-global-consent-conflict` if the request would change active consent,
-`409 global-enable-in-progress` if an enable/retry operation or one of its
-initial scan jobs is running/queued, or
-`409 global-disable-pending` if Global disable is pending/active.
+The operation checks its ID/epoch and non-aborted signal before and after each asynchronous
+step, plus the same operation-local provisional state for initial enable or the same active
+control snapshot for retry. Immediately before the one batch enqueue, the coordinator
+atomically activates initial consent/controls or applies the retry partition and verifies
+that resulting active control state. A disable-first race
+drains and returns `409 global-disable-pending` with no late mutation; an operation-first
+`202` remains its accepted disposition even if a later barrier cancels the batch. A
+throw/rejection after `202` is the terminal generic Operation Error for the same non-null
+`scanRequestId`, commits no subset Source/generation, and preserves the prior snapshot. It
+creates no Diagnostic or `StaleSourceFailure` for an initial/retry missing-Source batch;
+instead one operation-wide error is retained and referenced by
+`globalControl.lastOperationErrorId`. A later retry and disable apply the exact clear/
+supersede lifecycle defined on the session projection.
+
+The exact same consent may be retried only while one or more fixed-set tools lack a Source.
+The server, not the client, derives the exact eligible subset. A different preview/root or
+lexical `new-preview-required` control requires Global disable first. An empty eligible
+subset returns `409 no-retryable-global-tool`; the presence of a missing tool creates no
+separate active-consent conflict. Even an all-lexically-invalid preview may be
+confirmed and returns the deterministic `active-no-job` state, so there is no separate
+`no-eligible-global-root` response.
+
+Status: `202`; `400 consent-required`, `allowlist-version-mismatch`, or
+`consent-preview-mismatch`; `409 no-retryable-global-tool`,
+`global-enable-in-progress`, `global-disable-pending`, or
+`resource-cleanup-restart-required`; or the generic pre-acceptance Operation Error. After
+authorization and body-shape validation and after any non-null disable fence has selected
+`global-disable-pending`, a `poisoned` process-wide resource registry is the next
+pre-schedule gate: it returns the restart-required conflict
+without evaluating or changing consent/control state, allocating a request ID or job,
+admitting a root, or performing filesystem I/O.
 
 ### `POST /api/v1/global/rescan`
 
@@ -647,19 +835,25 @@ for that Source; a duplicate cannot silently coalesce or trigger a second read. 
 returns `ScanAdmission { scanRequestId, source }`; the opaque request ID is identical in the
 returned Source/progress, every later status for the command, and any generation it commits.
 
-A fatal Global rescan commits nothing and publishes zero partial results from the failed
+A failed Global rescan commits nothing and publishes zero partial results from the failed
 attempt. It reports top-level `snapshotState: stale-after-fatal-rescan`, Source
 `status: failed`, and null `progress`, while
 retaining `enabled: true`, the exact consent and validated single-root record, the last
-committed graph, and all IDs from that graph. One actionable lifecycle diagnostic
-identifies the affected Source and explains that the retained session snapshot is stale.
-This creates or replaces only that Source's `staleFailures` entry and lifecycle diagnostic. A
+committed graph, and all IDs from that graph. Its one actionable Diagnostic or Operation
+Error identifies only the allowed lifecycle context and explains that the retained snapshot is stale.
+This creates or replaces only that Source's `staleFailures` entry. A deterministic returned
+failure references its lifecycle Diagnostic; a throw/rejection propagates past the domain
+and references only the generic accepted-job Operation Error for this `scanRequestId`. A
 later successful or contracted-partial rescan of the same Source replaces its graph atomically
 and clears both; another Source's commit preserves both.
 
 Status: `202` with the request ID and updated source summary; `404 stale-resource` for an unknown or removed
 Source ID; `409 global-disable-pending` if Global disable is pending/active;
-`409 scan-in-progress` for a duplicate running/queued scan for that Source.
+`409 resource-cleanup-restart-required` if the registry is poisoned and no disable fence
+already governs the response; or `409 scan-in-progress` for a duplicate running/queued scan
+for that Source. After authorization and body-shape validation and the non-null-disable-fence
+check, the poisoned-registry gate runs before scheduling and allocates no request ID or job,
+changes no state, and performs no filesystem I/O.
 
 ### `POST /api/v1/global/disable`
 
@@ -669,51 +863,89 @@ Body:
 {}
 ```
 
-Acts as a priority security barrier for all tool-specific Global Sources. When any
-tool-specific Global Source or graph, active consent record, retained admitted Global root
-context, open Global inspection `FileHandle`, or running/queued Global scan/enable command exists,
-the coordinator sets `globalControl.state: disabling` with empty pending/retry arrays,
-increments the command epoch, and rejects new Global-enable/Global-rescan commands. It aborts and discards
-whichever transaction is active, aborts any active/queued `GlobalEnableOperation`, waits for
-its validation/admission continuations to drain without mutation or enqueue, performs a
-final queued-Global-command cancellation sweep, and runs the zero-I/O Global-disable
-transaction next. An interrupted
-Repository command is requeued exactly once immediately behind the barrier with fresh
-counters; an interrupted Global command is not requeued. Polling may observe every retained
-Global Source as `status: disabling` and the draining active Source at
-`progress.phase: cancelling`, then a requeued Repository at `progress.phase: waiting`. The
-draining Global Source has null `queuedAt`; when draining a Global scan it preserves that
-scan's counters/`startedAt`, otherwise it uses zero counters and the disable-acceptance
-`startedAt`. A drained
-Repository preserves its counters/start and clears `queuedAt`; a requeued Repository has
-zero counters, a new non-null `queuedAt`, and null `startedAt`. The disable commit clears
-consent, removes all Global Sources and their root records, closes any open inspection
-`FileHandle`, removes every Global source/metadata record, clears every `GlobalToolControl`-
-owned tool diagnostic from `sessionDiagnosticIds`, closes and removes every control-owned
-root context and frozen preview, increments N to N+1, rekeys the
-retained Repository graph, and returns only after every comparison referencing the prior
-generation is invalid. It also removes the `staleFailures` entries and lifecycle diagnostics
-for every removed Global Source; any Repository entry and lifecycle diagnostic remain and keep
-the session stale.
-A requeued Repository job then
-starts from N+1 and may later commit N+2. Barrier cancellation is expected and adds no
-failure diagnostic. A disable request received while the same barrier is queued or active
-joins that barrier and returns when its single commit completes; it neither aborts the
-barrier nor creates another generation. If no Global Source, consent record, nonempty Global
-graph, retained validated Global root record, open Global inspection `FileHandle`, or
-running/queued Global scan/enable command exists,
-disable returns immediately as an idempotent no-op and does not increment the generation
-or disturb Repository work.
+Response data:
 
-Status: `200`.
+```text
+GlobalDisableResult
+├── state: disabled | no-op
+├── operationId: opaque ID | null
+├── commitKind: cleanup-only | remove-active-state | null
+└── generation
+```
+
+This is the priority security barrier for all inspection data, not merely a Global Source
+deletion command. Before sending it, the SPA performs the central full purge. A true no-op
+is possible only when no active/queued Global authority, retained disable failure, or
+affected closable-resource record exists and the resource registry is not poisoned. It uses
+the ordinary pre-acceptance response-buffer gate, returns null operation/commit kind with
+the unchanged generation, does not increment `globalContentEpoch`, and does not disturb
+Repository work. If validation or response construction fails before barrier acceptance,
+the request returns the response-only generic Operation Error and mutates nothing; because
+the fresh session has a null fence, the already-purged client may immediately recover a full
+snapshot. The deterministic pre-acceptance restart-required conflict has the same
+mutationless, null-fence recovery behavior.
+
+Every non-no-op first acceptance atomically allocates the barrier operation, increments the
+command epoch and `globalContentEpoch`, irreversibly revokes publication authority, exposes
+non-null `globalDisableInProgress`, changes an existing `globalControl` to `disabling`, and
+clears its `pendingTools`, `retryableTools`, and `batchStatus`. It aborts the registered
+`globalEnableInProgress` operation and Global scans, prevents any queued Global command from
+dequeueing, and fences every generation-mutating command. Repository rescan requests then
+return `409 global-disable-pending`; already-running Repository work is revoked and held for
+one requeue only after terminal disable success. Global enable/rescan also returns that
+conflict. The session route returns only `GlobalFenceRecoverySnapshot`; every other
+inspection-data route returns the same conflict. Liveness continues to report the greater
+epoch and non-null projection.
+An existing poisoned registry never blocks this revocation when active/queued Global state
+exists: the barrier accepts first, adopts every affected record, and reports any unresolved
+cleanup only through its retained generic error and fence.
+
+The first acceptance fixes `commitKind`. `remove-active-state` is selected exactly when
+public Global consent/control/Source state exists. `cleanup-only` is selected only when the
+barrier must cancel and drain an operation-local initial enable that published no such
+state. The barrier drains every revoked continuation, performs the final queued-Global-work
+cancellation sweep, and closes or joins every inspection `FileHandle` and `fs.Dir` through
+the process-wide `ClosableResourceRegistry`. It never requeues interrupted Global work.
+Expected cancellation creates no Diagnostic or Operation Error.
+
+A request received while the barrier is `draining` or `committing` joins the same
+`operationId` and terminal result; disconnecting any transport does not cancel it. An
+unexpected post-acceptance throw/rejection, including drain, close/unregister, final
+assembly, or success serialization failure, returns the generic Operation Error with null
+`scanRequestId`. That exact retained error is owned only by
+`globalDisableOperationErrorId`; `globalDisableInProgress.state` becomes `failed`, the
+process remains alive, the prior generation stays internal, and every inspection-data fence
+remains closed. No failed cleanup re-exposes content.
+
+A later disable POST in `failed` state starts or resumes idempotent cleanup with a new
+operation that inherits the exact `commitKind`, base generation, frozen preview, cleanup
+ledger, resource records, close promises, observers, and already incremented
+`globalContentEpoch`; retry does not increment the content epoch again. It never guesses an uncertain
+close outcome or double-closes a resource. Another failure supersedes the sole retained
+disable error; terminal success alone clears it and removes the fence. An indefinitely
+unknown close requires process restart, but the REST-triggered failure itself never exits
+the process.
+
+Terminal success is buffer-bound and atomic. For `remove-active-state`, it removes all
+Global Sources, consent, controls, roots, preview, stale failures, tool Diagnostics, and
+owned Operation Errors; commits a fully rekeyed Repository-only generation N+1; clears the
+fence; and returns that new generation. The held Repository command is then requeued once
+from N+1 and may later commit N+2. For `cleanup-only`, it removes only the unpublished
+operation-local state, clears the fence, and re-exposes the unchanged generation N with all
+generation-owned IDs unchanged. Concurrent joiners receive that same terminal result.
+
+Status: `200` on no-op, joined success, retry success, or first-attempt success;
+`409 resource-cleanup-restart-required` only when no Global state/barrier exists but an unrelated
+poisoned resource registry forbids a no-op; or the generic post-acceptance Operation Error
+with status `500`. Disable itself never returns `global-disable-pending`.
 
 ## Method and media handling
 
 - Unknown `/api/v1` paths return `404`; known paths with a wrong method return `405` with
   an explicit `Allow` header.
 - Unsupported media types return `415`; malformed JSON or unexpected keys return `400`.
-  A recoverable Node.js transport or parsing failure returns a fixed safe error without a
-  partial body; the API defines no product-specific request-size ceiling.
+  A Node.js transport/parser throw or rejection returns the closed pre-acceptance Operation
+  Error without a partial body; the API defines no product-specific request-size ceiling.
 - There is no masking, redaction, reveal, or environment-resolution API. In particular,
   `POST /api/v1/files/{fileId}/reveals` is an unknown path and returns `404`.
 - API responses are always UTF-8 JSON. Static files use a fixed extension-to-MIME table;
@@ -736,33 +968,38 @@ Status: `200`.
 - One coordinator serializes scan transactions as a correctness invariant. It accepts one
   running or queued scan command per Source; duplicate scans conflict, while a scan for
   another Repository or tool-specific Global Source queues FIFO and reports the waiting
-  phase. If Node.js or the execution environment reports a recoverable admission failure,
-  the command fails
-  without state mutation. Disable follows its priority barrier join/no-op rules. Every
+  phase. The only caught filesystem rejection is exact `ENOENT` from a declared structural
+  `lstat`; every other admission throw/rejection propagates to the owning boundary without
+  domain state mutation. Disable follows its priority barrier join/no-op rules. Every
   automatic or explicit scan receives one opaque `scanRequestId` and starts from the
   generation current when it actually dequeues.
 - Every scan and `GlobalEnableOperation` receives an `AbortSignal`. Process shutdown aborts
   all work. Global disable is the priority barrier documented above: it aborts any active
   uncommitted transaction, aborts/drains enable validation, performs a final queued-Global-
-  work cancellation sweep, commits removal next, and requeues an interrupted Repository
-  command once. Operation completion is governed by Node.js and the execution environment.
-  Disable, shutdown, supersession, or a recoverable operation failure irreversibly revokes publication
-  authority. A pending Node.js filesystem promise becomes cleanup-only: every late byte,
+  work cancellation sweep, completes its fixed cleanup-only or remove-active-state
+  disposition next, and requeues an interrupted Repository command once only after terminal
+  success. Operation completion is governed by Node.js and the execution environment.
+  Disable, shutdown, supersession, or a propagated fatal operation failure irreversibly
+  revokes publication authority. An FR-028-eligible deterministic entry-local outcome does not by itself revoke
+  the attempt's publication authority. A revoked pending Node.js filesystem promise is
+  retained only for resource cleanup: every late byte,
   graph record, Diagnostic, DTO, and operational-event result is discarded. Physical
   cancellation of an uncancellable kernel operation is not guaranteed.
 - A successful or contracted-partial scan commits exactly N+1 and regenerates generation-
   owned graph IDs for the scanned Source and all carried Sources; process-lifetime-stable
   Source IDs remain unchanged. It clears only the scanned Source's stale-failure
-  entry and lifecycle diagnostic and carries both for other Sources. A fatal explicit rescan discards every uncommitted
+  entry and referenced failure and carries both for other Sources. A fatal explicit rescan discards every uncommitted
   result, including partial results, leaves N and its IDs active, marks the retained
   session snapshot stale, and creates or replaces one actionable out-of-generation
-  lifecycle diagnostic and entry for the affected Source, replacing both for that Source
+  lifecycle Diagnostic or Operation Error and entry for the affected Source, replacing both for that Source
   on repeated failure. N may be legal bootstrap
   generation 0. Barrier cancellation emits none.
 - Snapshot polling and liveness heartbeats never extend the Node process lifetime or persist
-  data. The browser renews a two-second monotonic memory lease only from a matching
-  authenticated liveness response. Failure, lease expiry, hidden/page lifecycle events, or
-  process loss runs the central purge before an ended view is shown. The purge increments a
+  data. The browser renews a two-second monotonic memory lease only from an exact matching
+  session/epoch liveness response whose disable projection is null. A greater epoch or
+  non-null projection runs the central purge before entering control-only recovery; failure,
+  lease expiry, hidden/page lifecycle events, or process loss purges before an ended view.
+  The purge increments a
   client epoch so a late in-flight response cannot repopulate DTOs or editor state, disposes
   Monaco models/editors/workers and subscriptions, clears DOM/store content and warning
   acknowledgement, and aborts pending requests. Closing the Node process destroys the
@@ -772,7 +1009,9 @@ Status: `200`.
 - Enabled inspection sources are enumerated/read only through one centralized service built
   on `node:fs/promises`. It accepts validated source IDs and source-relative enumeration
   records, never an arbitrary absolute path supplied by an API request, relationship, or
-  source file. The service centrally owns each operation and handle lifecycle and relies on
+  source file. Its process-wide `ClosableResourceRegistry` solely owns the open/close state
+  of every inspection `FileHandle` and `fs.Dir`; the service centrally owns each operation
+  lifecycle and relies on
   Node.js, the operating system, and the execution environment for available capacity. Every open uses only
   read-only, non-create, non-truncate flags. The service never calls a write, append, create,
   truncate, rename, delete, link, chmod/chown, timestamp, extended-attribute, ACL, or
@@ -790,19 +1029,20 @@ Status: `200`.
   compares pre-read `FileHandle.stat()` with both `lstat` results and the earlier snapshots.
   After the read and before parse, publish, or commit, it repeats the root and
   ancestor checks, the ordered candidate sequence, and `stat()` on the same open handle. A
-  detected error, ambiguity, containment failure, or metadata change discards the entire
-  byte buffer and fails closed. Unusable required metadata or canonicalization emits
-  `safe-fs-boundary-unverifiable` and rejects the candidate, or its source when the root or
-  a shared ancestor is unverifiable.
+  detected ambiguity, containment failure, or metadata change returned as data discards the
+  entire byte buffer and fails closed. Unusable successfully returned metadata or
+  canonicalization emits `safe-fs-boundary-unverifiable` and rejects the candidate, or its
+  source when the root or a shared ancestor is unverifiable. Only exact `ENOENT` from a
+  contract-declared structural `lstat` is caught as `absent`/`entry-disappeared`; every
+  other throw/rejection propagates unchanged and produces no candidate Diagnostic.
 - Mutation verification instruments the product's filesystem calls and compares fixture
   content, length, identity/link state, mode, modification/change time, and extended
   attributes or ACLs where observable before and after inspection. Access-time movement
   caused only by an OS read is recorded separately; it neither fails the no-product-mutation
   claim nor counts as proof of it, and the product never requests an access-time update.
-  A recoverable environment capacity failure discards the incomplete read and every item,
-  scan-result record or response, and generation from that attempt, leaves only the prior
-  committed snapshot available, and is never labelled valid, invalid, correct, incorrect,
-  or lint-failing.
+  A read throw/rejection propagates without domain classification, discards the incomplete
+  attempt, commits no item/result/generation, and, when REST-owned, yields only the generic
+  Operation Error. It is never labelled valid, invalid, correct, incorrect, or lint-failing.
 - Public Node.js APIs do not provide a portable directory-handle-relative open. An active
   adversarial process that replaces the source root or an ancestor between checks is outside
   the initial-release threat model on every platform. Final-component replacement is outside
@@ -821,17 +1061,26 @@ Status: `200`.
    parser/system errors, exception strings, and Diagnostic arguments never enter captured
    operational output. Fixed presentation-output tests admit only help/version, the one
    launch-URL line, and fixed startup warnings and include no inspected path or value.
-2. Old file IDs fail after a successful Repository/Global rescan and Global disable. A fatal
+2. Old file IDs fail after a successful Repository/Global rescan and a
+   `remove-active-state` Global disable; `cleanup-only` instead preserves N and every
+   generation-owned ID. A fatal
    explicit rescan publishes zero failed-attempt partials, retains the last committed IDs,
-   marks the retained session snapshot stale, and identifies the affected Source in the
-   actionable lifecycle diagnostic. Bootstrap generation 0 is the legal empty base for the
-   automatic first scan. Multi-Source sequences prove that A and B entry-diagnostic pairs
+   marks the retained session snapshot stale, and references exactly one actionable
+   Diagnostic for a deterministic returned failure or Operation Error for a throw/rejection.
+   Bootstrap generation 0 contains exactly one non-authorizing Repository Source selected
+   from captured `process.cwd()`/`--cwd`. Multi-Source sequences prove that A and B entry-failure pairs
    coexist, B's success does not clear A, A's contracted-partial success clears only A's pair,
    a repeated A failure replaces only A's pair, and Global disable clears only pairs for
    removed Global Sources. Diagnostic DTO fixtures accept exactly the three scoped shapes:
    file with matching `sourceId`/`fileId`/`sourceRelativePath`, source with only `sourceId`,
    and session with no location field. Every missing, extra, mismatched, or fabricated
    source/file/path combination is rejected before serialization.
+   Operation Error fixtures require the exact closed fields, null `scanRequestId` before
+   acceptance, the admitted ID for a scan job, and null for an accepted disable barrier.
+   Each retained fixture has exactly one legal lifecycle owner and rejects every
+   Diagnostic/path/content/raw-error field. REST-triggered rejections return the generic
+   error without exiting the process; automatic startup read rejection reaches the process
+   top level and makes no product process-liveness guarantee.
 3. Readable file detail returns complete authored source, exact metadata/authored-relationship source
    slices, credentials, and environment-reference text without masks or reveal controls.
    JSONC escape spelling, YAML quote/block spelling, TOML quote/date spelling, collection
@@ -853,12 +1102,22 @@ Status: `200`.
    actual admitted source form. Tuple membership never transfers eligibility between source
    forms. Unknown authored keys and references remain available only through complete
    `sourceText` and never produce inferred metadata or relationships.
+   Evidence fixtures accept only `documented | partially-documented | unknown | conflict`,
+   keep unique fixed-order `preview | experimental | deprecated` qualifiers separately,
+   treat an empty qualifier array as no lifecycle claim, and require one sorted
+   `EvidenceAssessment` for the rule and every referenced behavior/strategy. They reject a
+   lossy scalar assessment and keep runtime `documentation-conflict` distinct.
+   Encoding fixtures prove NUL is binary/diagnostic-only/contracted-partial, valid text is
+   `utf-8` or `utf-8-bom`, and invalid non-NUL input is readable `utf-8-replaced` with every
+   `U+FFFD` preserved through parsing, detail, and comparison without making the generation
+   partial by itself. No alternate decoder is invoked.
    A fixed Codex default-hook fixture instead returns `targetOrigin: documented-default`,
    null `authoredTarget`, and an explicit documented-default label; an explicit manifest
    hook returns `targetOrigin: authored` with its exact occurrence. Sentinel process values
    prove that environment references are never resolved or substituted. The SPA shows
-   and receives the in-memory sensitive-content acknowledgement before requesting detail or
-   constructing comparison, while the removed reveal route returns `404`. Direct authorized
+   and receives the in-memory sensitive-content acknowledgement before requesting any
+   `FileDetail` or constructing comparison, and tests assert that no protected authored-value
+   request or derived DOM/editor state exists earlier, while the removed reveal route returns `404`. Direct authorized
    API tests prove that no acknowledgement field or endpoint exists and that the capability,
    not a claimed server-side presentation gate, is the host authorization boundary.
    Cross-surface negative fixtures prove that Inventory, Detail, Comparison, Global
@@ -870,10 +1129,10 @@ Status: `200`.
 4. Extra JSON keys, path-shaped inputs, malformed bodies, wrong methods, and wrong media
    types produce the documented safe errors. Contract tests prove that no request, file,
    collection, parser, snapshot, detail, or response DTO exposes or enforces a product-
-   defined numeric capacity ceiling. Injected recoverable Node.js, parser, filesystem, and
-   serialization failures return fixed safe errors or operational Diagnostics, never a
-   partial JSON body or incomplete committed generation, and never a validity, correctness,
-   compliance, or lint verdict. Escaping and key-order fixtures prove that the one complete
+   defined numeric capacity ceiling. Injected Node.js, parser, filesystem, and serialization
+   throws/rejections bypass domain classification and return only the generic Operation
+   Error at the owning REST boundary, never a Diagnostic, partial JSON body, incomplete
+   generation, or validity/correctness/compliance/lint verdict. Escaping and key-order fixtures prove that the one complete
    serialized buffer is the HTTP entity body and matches `Content-Length` when present.
 5. Static traversal and encoded traversal attempts never escape `dist/public`; the packed
    root, `/compare`, `/global-consent`, and `/files/<fileId>` routes all boot with the same
@@ -882,80 +1141,113 @@ Status: `200`.
 6. Queue ordering across Repository and each tool-specific Global rescan, duplicate
    rejection, aborts, contracted-partial outcomes, fatal failures, and polling expose only
    whole generations. A scan queued behind another Source starts from the then-current
-   generation; a Global-disable barrier produces the documented N/N+1/N+2 sequence, never
-   exposes an aborted transaction, and preserves the one accepted Repository command by
-   requeuing it once. Concurrent repeated disable joins one barrier; an already-empty Global
-   no-op never interrupts Repository work. A paused validation/admission operation is
+   generation. A `remove-active-state` barrier produces N/N+1/N+2, a `cleanup-only` barrier
+   re-exposes unchanged N before the held Repository command may commit N+1, and a true no-op
+   leaves N and Repository work untouched. No barrier exposes an aborted transaction, and
+   the one accepted Repository command is requeued once only after terminal success.
+   Concurrent disable during `draining`/`committing` joins one operation/result; a later
+   request after `failed` retries the inherited cleanup ledger. A paused validation/admission operation is
    aborted and drained before the final cancellation sweep; releasing its late continuation
-   afterward creates no mutation, diagnostic, context, ID, or job. Injected recoverable
-   environment admission failures leave state unchanged and do not depend on a product-
-   defined slot count. Deterministic barrier-race fixtures pause the operation (a) while
+   afterward creates no mutation, diagnostic, context, ID, or job. Injected non-`ENOENT`
+   admission rejections propagate to their outer boundary, leave domain state unchanged,
+   and do not depend on a product-defined slot count. Deterministic barrier-race fixtures pause the operation (a) while
    validation is awaited, (b) after admission but before any control/context/diagnostic
    mutation, and (c) immediately before job enqueue/final response disposition. At every
    pause, a barrier-first ordering returns `409`, permits no late side effect, unregisters
    the operation, and allows a later enable; an operation-first final disposition remains
    the committed `202` even when response bytes are delivered after disable acceptance.
-   Separate deterministic delivery pauses hold a linearized SessionSnapshot or FileDetail
-   response while a scan commit or Global-disable commit advances the generation. They prove
-   that envelope generation and payload never mix, older responses are ignored, adopting a
-   newer snapshot increments `clientDataEpoch` and aborts/disposes old state, and detail is
-   adopted only when its captured epoch/generation/fileId all still match. Disable,
-   shutdown, supersession, and injected recoverable-operation tests leave a filesystem
+   Fence fixtures prove first non-no-op acceptance increments `globalContentEpoch` and
+   immediately makes the session route control-only while every other inspection-data route
+   returns `409 global-disable-pending`, including throughout retained `failed`. They inject
+   close/unregister and final-serialization rejection, verify the sole null-scan-ID disable
+   Operation Error owner, process survival, no content re-exposure, and idempotent retry.
+   Separate deterministic delivery pauses hold a data response before or across scan commit
+   and disable acceptance. They prove that envelope epoch/generation and payload never mix,
+   a body not yet bound when the fence linearizes becomes `409`, and a body already bound is
+   treated only as the documented bounded pre-fence response and is purged when the client
+   observes the greater epoch/fence. Older responses are ignored, adopting a newer snapshot
+   increments `clientDataEpoch` and aborts/disposes old state, and detail is adopted only when
+   its captured epoch/generation/fileId all still match. Disable,
+   shutdown, supersession, and injected read/parser/Worker/assembly/serialization rejection
+   tests leave a filesystem
    promise pending, revoke publication authority, and prove that every late result is
-   discarded. Tests do not assert hard cancellation of the underlying Node.js/kernel
-   operation or a product-defined completion deadline.
+   discarded and that the correct outer boundary alone exposes Operation Error or startup
+   top-level propagation. A separate FR-028-eligible deterministic entry-local case proves contracted-partial
+   publication without revoking the whole attempt. Tests do not assert hard cancellation of the underlying Node.js/kernel
+   operation or a product-defined completion deadline. Close-state fixtures prove concurrent
+   join/retry shares the exact `FileHandle`/`fs.Dir` registry record and promise, never
+   double-closes, and leaves an unknown outcome fenced with the restart next step.
 7. Reloading every allowlisted client route after fragment removal makes no API call,
    returns no session data, and directs the user to the still-running process's printed
    launch URL; unknown routes and malformed asset paths never receive the SPA fallback.
-   Liveness tests cover visible-page process termination, request timeout, lease expiry,
-   hidden/page lifecycle purge, port reuse with a different `sessionId`, and a late in-flight
+   Liveness tests require the exact `{ sessionId, globalContentEpoch,
+   globalDisableInProgress }` body and cover visible-page process termination, request
+   timeout, lease expiry, hidden/page lifecycle purge, port reuse with a different
+   `sessionId`, older/equal/greater epochs, null/draining/committing/failed projections, and a late in-flight
    response after the client epoch changed; none may leave or automatically restore pre-purge inventory,
    detail, comparison, editor, or authored-content DTO/DOM state or the warning
    acknowledgement. With active consent, hidden-to-visible recovery authenticates with only
    the retained capability, adopts the returned `sessionId` without retaining/comparing the
-   purged ID, and constructs a fresh `globalControl` projection. Disable is available from
-   that projection immediately; retrieving and verifying the same frozen preview ID/digest
-   rebuilds only retry controls. The explicit Resume inspection action re-fetches a matching
-   session and constructs a fresh inventory summary with default state, but restores no
+   purged ID, and constructs only the closed recovery projections. Disable is available from
+   active control/enable state immediately; draining/committing joins or waits, failed offers
+   retry-disable, and retrieving/verifying the same frozen preview rebuilds only eligible
+   retry controls. The explicit Resume inspection action is absent while the fence is
+   non-null. With a null fence it re-fetches a matching full session and constructs a fresh
+   inventory summary with default state, but restores no
    pre-purge authored content, selection, filter, detail, comparison, editor, or
    acknowledgement. A later detail/comparison request requires a new acknowledgement.
+   Pre-acceptance disable failure and true no-op both leave a null fresh-session fence so a
+   purged client can resume immediately.
 8. A Global consent preview touches no proposed path, confirmation is bound to the exact
    raw internal `lexicalRoot`, typed traversal-plan version/program, and preview digest, and
    a changed/superseded preview or canonical alias mismatch cannot authorize a read.
+   Only same-origin POST captures all three environment inputs and atomically creates or
+   replaces an unconsented preview; GET performs zero capture and returns only the current or
+   frozen preview, including through the disable fence. Missing-current, active-consent,
+   in-progress-enable, and disable-fence cases return their documented closed outcomes with
+   no accidental replacement.
    Escape-collision, control-character, and backslash fixtures prove the digest length-prefixes the
    raw value and that enable uses only the stored raw value, never an environment reread or
-   `displayRoot` reverse conversion. Injected recoverable environment failures return a
-   fixed non-authorizing preview state with no normalization, prefix display, or read; an
-   all-ineligible preview activates no consent. Provisional enable work
-   publishes no Source. Successful complete or contracted-partial
-   commits produce zero to three separately identified Global Sources, at most one per tool
-   and exactly one root per Source; no cross-tool Source merges occur. Failed missing-tool jobs
-   in an all-failed or mixed outcome add no `StaleSourceFailure` entry, create/replace their
-   keyed tool diagnostics, and preserve all pre-existing entries and the derived
-   snapshot state; successful tool commits
-   carry unrelated entries and diagnostics. Both prior-current and prior-stale cases are tested.
-   Initial activation with all post-consent roots rejected yields `202 active-no-job`, zero
-   new jobs and zero Global Sources, an active
-   `globalControl`, retryable tools, and one replaceable diagnostic per affected
-   `GlobalToolControl`; an all-rejected retry likewise creates zero new jobs/Sources while
+   `displayRoot` reverse conversion. The body has no tool selector and initial enable always
+   evaluates all three frozen entries. Exact structural-`lstat` `ENOENT` and deterministic
+   lexical/link/type/boundary outcomes partition rejected tools; every other throw/rejection
+   returns the generic pre-acceptance Operation Error, activates no initial control/job, and
+   commits none of a provisional subset. Provisional enable work publishes no Source. One
+   successful complete or contracted-partial batch commit produces one to three separately
+   identified Global Sources together in exactly one generation, at most one per tool and
+   exactly one root per Source; no cross-tool merge or observable per-tool commit occurs. An
+   accepted batch throw/rejection produces the terminal Operation Error for its one
+   `scanRequestId`, no Source/generation, and no Diagnostic. Both prior-current and
+   prior-stale cases are tested. Initial activation with every root deterministically
+   rejected, including an all-lexically-invalid preview, yields `202 active-no-job`, zero
+   jobs/Sources, and an active `globalControl`. Its `retryableTools` contains exactly the
+   same-preview subset; an all-lexically-invalid preview has none and requires disable/new
+   preview. An all-rejected retry likewise creates zero new jobs/Sources while
    preserving existing Source semantic content and stable `sourceId` values without a
-   generation commit. Partial acceptance partitions accepted/rejected tools. Every successful
-   initial or retry publication advances the generation, rekeys all generation-owned IDs
+   generation commit. Partial acceptance partitions every evaluated tool. Every successful
+   initial or retry batch publication advances the generation exactly once, rekeys all generation-owned IDs
    in carried graphs, and invalidates old file/detail/comparison/editor state. Successful
    publication clears its control diagnostic, unrelated outcomes preserve it, and disable
    removes every control diagnostic/context even when no Global Source was ever published.
-   During validation/admission and initial scan, every tool owned by the running enable/retry
-   operation appears in `pendingTools`; an `unvalidated` tool is never retryable. During a
+   During initial and retry validation/admission, only `globalEnableInProgress` is newly
+   visible: initial enable keeps `globalControl` null and retry keeps its exact
+   pre-operation control projection. At buffer-bound queued acceptance, only accepted-batch
+   tools appear in `pendingTools`, and `batchStatus` exposes the exact promoted request ID,
+   tools, and active phase. Terminal deterministic and thrown/rejected failures use their
+   exact closed `failureRef` variants; lost-202 recovery retains the status, while success,
+   retry acceptance, and disable apply the contracted clear/replace lifecycle. An `unvalidated`
+   active control is never retryable. During a
    mixed activation, already rejected/non-pending admitted tools may appear in
    `retryableTools`, but retry stays disabled and returns `409 global-enable-in-progress`
    until `pendingTools` is empty; disable is available throughout.
-   Injected recoverable admission failures leave consent/control/diagnostic/Source state
-   unchanged, and every terminal outcome proves there is no operation-history leak.
+   Injected non-`ENOENT` admission rejections leave consent/control/Source state unchanged,
+   expose only Operation Error, and every terminal outcome proves there is no operation-history leak.
    A fatal initial scan followed by a retry with a changed or unverifiable retained root
    closes/unregisters the old context, discards its unpublished IDs, and leaves a rejected
    control with no authority before any later re-admission.
-   An exact-active-consent retry queues only confirmed missing tools while a changed consent
-   requires disable first. Traversal call traces prove that public patterns are derived from
+   An exact-active-consent retry derives the server's exact `retryableTools` subset; lexical
+   `new-preview-required` controls and changed consent require disable/new preview first.
+   Traversal call traces prove that public patterns are derived from
    the typed plan, an exact Global target never opens the root directory and touches only its
    exact ancestor/target chain, a fixed instruction-subtree walk opens only that subtree,
    and no neighboring setting, credential, state, or plugin path receives I/O.

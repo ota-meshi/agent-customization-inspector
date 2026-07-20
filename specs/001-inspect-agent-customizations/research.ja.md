@@ -2,7 +2,7 @@
 
 [English](research.md)
 
-**調査日**: 2026-07-16、2026-07-18再確認、CLI dependency選択を2026-07-19再確認
+**調査日**: 2026-07-16、2026-07-18再確認、CLI dependency選択を2026-07-19再確認、product boundary決定を2026-07-20再確認
 **対象**: 参照architecture、現行互換toolchain、安全なlocal host設計、安全なparseとliteral表示、source/metadata比較、
 実行環境に従うscan、公式customization path surface
 
@@ -147,7 +147,7 @@ incomplete/unexpected asset set、hash failureを扱い、product独自のfile-s
 意味しない。最初のlockfile作成直前に同じregistry互換性確認を再実行する。
 このcheckはplanning gateとして扱う。選択済みpackageまたはversionが1つでも変わる場合、configuration
 implementation前に停止してcompatibility decisionを再reviewし、dependency baselineを記載する英日両方の
-research、plan、quickstart、task artifactをすべて同期して`/speckit-plan`、続いて`/speckit-tasks`を
+research、plan、quickstart、task artifactをすべて同期して`/speckit.plan`、続いて`/speckit.tasks`を
 再実行する。Localなpackage/lockfile editで
 第2のdependency baselineを作ってはならない。
 
@@ -171,6 +171,17 @@ research、plan、quickstart、task artifactをすべて同期して`/speckit-pl
 
 **理由**: 選択した集合は、公開済みpeer rangeとbuilder rangeが一致する最新stableの組み合わせであるため、
 未supportのcompilerまたはbundler overrideを強制せず最初の実装を再現できる。
+
+**移行影響**: このinitial-release dependency baselineのplanned impactはnoneとする。移行対象となる以前の公開済み
+Inspector package、public contract、永続profile、user dataが存在しないためである。T001はpackage/configuration
+作業前にこの判断を確認しなければならず、影響を受けるconsumerまたは以前のcontractが見つかった場合は判断を
+無効としてreplanningする。後でacceptするdependency追加・変更または破壊的なpublic-contract変更はすべて、影響を
+受けるconsumer、contract、data、workflow、必要な移行・compatibility/support手順、rollback/support pathを記録するか、
+理由付きの明示的なno-impact判断を記録する。この`**移行影響**` sectionと対応する`**Migration impact**` section、
+およびplanの`**Dependency and breaking-change migration gate**`/
+`**Dependencyおよび破壊的変更の移行gate**` sectionの英日design evidenceが欠落またはstaleならT002を
+blockする。Release-validation pairは後で対応するdecision evidenceを記録し、英日validation evidenceが欠落すれば
+releaseをblockする。
 
 CLIはGunshiのstableなroot `define`/`cli` APIだけを使用する。Negatableな`open` booleanをdefault trueとして
 宣言して`--no-open`を提供し、`cli()`を`strict: true`で呼び出し、host bind前に
@@ -261,13 +272,14 @@ URLをmanual openできるままにする。
    Copilot contractはさらにVS Code、CLI、Cloudを別表にする。
 2. **Inspector matcher registry**はstableな`ruleId`を記録し、共通の
    [allowlist grammar](contracts/inspection-path-allowlist.ja.md)に従う。全Repository matcherはBase、ordered Relative
-   selector、それらと1対1のtyped segment programを分離し、正確なlaunch rootから`./`で表記してbare `**/`を
+   selector、それらと1対1のtyped segment programを分離し、正確なselected Repository rootから`./`で表記してbare `**/`を
    拒否する。Literal、one-segment、non-adjacent recursive-directory tokenは1 program内でcomposeできる。`./**/`は
    明示的な下向きInspector descendant inventoryだけを表し、vendor traversalを主張しない。Build validationは同じ
    programをimmutable versioned `TraversalPlan` dataへcompileし、Global preview patternをそのplanからrenderしてconsentへ
    schema、closed selection policy、canonical programをbindする。Content依存policyはclosedなCodex Global
    first-non-empty branchだけで、overrideを先にprobeし、安全にreadできたnon-empty contentならshort-circuitし、absentまたは
-   安全にemptyと確定した場合だけ次へ進み、unsafe/unreadableなpresent candidateではfallbackせずfail closedする。
+   安全にemptyと確定した場合だけ次へ進む。決定的なunsafeまたはbinary candidateは安全にreturnしたDiagnosticで終了し、
+   throw/rejectionはすべてfallbackせず伝播する。
 3. **Runtime composition registry**は、selection、precedence、layering、fallback、condition projection、
    relationship-only ruleを表すstable `strategyId`を
    [runtime composition](contracts/runtime-composition.ja.md)に記録する。Strategyはpathを再記述せずbehavior IDと
@@ -276,16 +288,33 @@ URLをmanual openできるままにする。
    review date、影響contract ID、assertion、semantic fingerprintを
    [公式資料](contracts/official-sources.ja.md)に記録する。
 
-Launch `cwd`はimmutableなRepository inventory boundaryのままとする。Vendor runtime root、walk方向、target
-file、trust、enablement、selection、installation、product surfaceは、matcherやfile存在から導出せず独立した
-behavior/strategy factにする。Behavior record、source record、strategy、relationship、excluded ruleはreadを
+**Evidence statusの決定:** Documentation completenessとupstream lifecycleは直交させる。Atomicなbehavior、
+rule、strategyはそれぞれ`(subjectKind, subjectId)`をkeyとする1件の`EvidenceAssessment`を所有する。
+`documentationStatus`は正確に`documented`、`partially-documented`、`unknown`、`conflict`のいずれかとし、
+重複のない`lifecycleQualifiers`は固定順`preview`、`experimental`、`deprecated`を使う。Empty qualifier arrayは
+lifecycle stateを主張せず、`stable`として表示しない。`documentation-conflict`はconflictがruntime projectionへ
+影響するときに生成する`ConditionFact.status`だけに残す。Candidate provenanceとrelationshipは、直接参照する
+behavior/rule/strategy recordごとのassessmentをsort・deduplicateして保持する。単一scalar status、best/worst statusへの
+縮約、qualifier unionは、どのofficial assertionがどのsubjectへ適用されるかを失うため不採用とした。
+
+選択したRepository rootはimmutableなRepository inventory boundaryのままとする。CLIは`process.cwd()`を1回だけ
+captureし、defaultではその正確な文字列を使う。WindowsではUNC/server-share/device、current-drive/root-relative、
+`C:`/`C:foo` drive-relative formを`resolve`前にrejectし、plain relative optionだけをanchored captureに対してresolveして
+absolute drive optionを保持する。POSIXはabsolute optionを保持するかrelative optionをcaptureに対してresolveする。
+全selected absolute resultをshared pure `LexicalAbsoluteRootParts` parserへfilesystem/network I/O 0件で渡し、
+`process.chdir()`もper-drive working-directory semanticsも使わない。無効なoption shapeはsession/browser作成前に失敗させ、
+bootstrapは中央boundary admissionより前に、readを認可しない唯一のRepository Sourceを作成する。Vendor runtime root、
+walk方向、target file、trust、enablement、selection、installation、product surfaceは、matcherやfile存在から導出せず
+独立したbehavior/strategy factにする。Behavior record、source record、strategy、relationship、excluded ruleはreadを
 認可しない。
 
 Admitしたtool-home rootはtool別の独立したGlobal Sourceとして表す。Codex、Claude、Copilotごとに最大1つ、
 したがって1 sessionで0から3つのGlobal Sourceとする。各Sourceは正確に1つのrootと1つのSource-relative Path
 namespaceを所有し、そのroot配下にある異なるcustomization typeのfileは別々のinventory itemとして保つ。
-「repository-relative path」はRepository Sourceだけに使い、DTO、filter、diagnostic、cross-source comparisonでは
-Source-relative Pathを使う。
+「repository-relative path」はRepository Sourceだけに使い、inventory-file/normalized-targetのDTO locator field、filter、
+file-scoped diagnostic、cross-source comparisonではSource-relative Pathを使う。Enabled Sourceとconsent previewの
+`displayRoot` fieldはone-way escapedなroot presentation labelであり、Source-relative locatorでもread authorityでもない。
+Preview labelはowning Sourceが存在する前にoriginを持ち、absoluteまたはinvalidなlexical rootを表し得る。
 
 Bounded derivationは任意のreference追跡ではなく、closedかつdeterministicなtarget constructionを持つtyped single-edge provenance graphの
 ままとする。Closed `DerivationProgram` unionのinitial mappingは、3 vendorのlocal-marketplace manifest rule、Codex
@@ -306,13 +335,20 @@ tableではInspector matcherがvendor lookup behaviorのように見える箇所
   contextからrepository boundaryへ向かう独自の文書化済みstandard-location traversalを持ち、Cloud/code-
   review surfaceはさらに別のsupport/composition modelを持つ。これらは別behavior rowにする。Inspector matcherが
   possible descendant contextをinventoryする場合は明示的な`./**/`だけを使い、applicabilityはconditionalのままに
-  する。VS Code rowをCLIまたはCloud traversal ruleとして再利用しない。Standard-instruction supportの一部、
+  する。VS Code rowをCLIまたはCloud traversal ruleとして再利用しない。VS Code MCPにはcurrent-guide viewに対する
+  意図的なversion付き例外が1つある。1.118 release noteはexact workspace root `.mcp.json`を追加してmost-specific
+  same-name deduplicationを告知する一方、current MCP guideは`.vscode/mcp.json`とUser configurationを網羅的location
+  として提示し続ける。Specific versioned pathはadmitするがevidence statusを`conflict`とする。選択したofficial
+  sectionのどちらもroot schemaまたはroot、`.vscode`、User、agent、plugin input間のtotal orderを述べないため、
+  VS Code root provenanceはpath/surface-onlyのままにし、winnerを推測してprojectしない。Physical root fileは
+  すでにCLI candidateなので、compatibleなCLI/VS Code provenanceは1つのCopilot/MCP recognitionと1回のreadを
+  共有し、CLI extractionはprovenance-specificのままにする。Standard-instruction supportの一部、
   project対user custom-agent precedence、別agent-contextのinstruction order、agent-profile skill preloadには、
   current page間の競合または未記載が残るため、普遍的winnerを作らずconflictまたはunknownとする。
   Hook、settings、plugin、MCP、custom-agent body/tool/model/invocation、IDE handoffのlocator/compositionも
   surface-qualifiedとし、excluded User overrideはfileを推測せずcondition factにする。
 - **Claude project settingsはlaunch directory exactである。** `.claude/settings.json`と
-  `.claude/settings.local.json`は正確なlaunch `cwd`から読み、parent directoryからinheritせず、genericな
+  `.claude/settings.local.json`は選択した正確なRepository rootから読み、parent directoryからinheritせず、genericな
   descendant runtime scanでもない。Instruction、rule、skill、command、agent、output style、MCPはそれぞれ異なる
   baseとtraversal/activation ruleを持つ。Recursive legacy-command namespace、subagentのskill/MCP/memory field、
   settings選択agent、通常対forked conversation context、parent MCP inheritance/filter、workspace trust、built-in-
@@ -356,6 +392,9 @@ recoverableなtransport failure動作、anchored-section normalization、human u
 
 - 1つのcombined vendor/path/precedence/source表は、1 cellでupstream locator、Inspector matcher、surface-specific
   composition strategyを区別できず、citationを独立reviewできないため不採用。
+- Current VS Code MCP guideのomissionを、1.118 root `.mcp.json`がunsupportedである証拠として扱う案は、
+  version付きfirst-party release noteが直接追加しているため不採用。Schemaまたはtotalな「most-specific」orderを
+  推測する案も、選択したofficial sectionがどちらもそのfactを述べないため不採用。
 - Inventoryだけからeffective runtimeをsimulateする案は、runtime `cwd`、target path、surface、trust、
   CLI/environment/managed settings、installed plugin stateが利用不能または意図的に除外されるため不採用。
 - 全manifest/config path、import file、skill resource、script、assetのreadは、untrusted contentがread boundaryを
@@ -379,17 +418,31 @@ matcherからcompileしたimmutable versioned `TraversalPlan` dataだけをinter
 traversalを表現できる。Global planはtool-home rootをenumerateせず、exact targetはfixed ancestor/target chainだけに触れ、
 fixed Copilot instructions subtreeだけがprefix配下をopen/enumerateできる。隣接Global pathへのI/Oは0とする。
 
-Opened directoryごとにdescend前にsibling setをcompleteにする。Exact `Dirent.name` raw segmentはpath再構築/
-verificationだけに保持し、NFC classification segmentはmatching/order/DTO pathだけに使う。Distinct raw siblingが1 NFC
+Directoryごとにprocess-wide resource-registry reservationをpreallocateし、`opendir`直前にcheckpoint rows 21–24を完了し、
+登録済み`fs.Dir`をexplicit `Dir.read()`でnullまでdriveし、openのままrows 25–28を完了する。Pairとなるcheckはroot、利用可能な
+ancestor、target-directoryのidentity/typeと`mtimeNs`/`ctimeNs`をbindして比較する。Directoryがregistry `close-confirmed`へ
+到達してからだけ、complete sibling setをclassify、descend、ticket発行に使用できる。検出可能なcreate/remove/rename、
+検証不能check、close未確認ではenumerationを破棄する。Exact `Dirent.name` raw segmentはenumerated pathの再構築/
+verificationだけに保持する。Parent enumerationを禁止するtargeted fixed pathでは、代わりにimmutable registryのexact
+target-spelling segmentだけを保持・使用する。どちらもNFC spellingをI/Oへ代入せず、NFC classification segmentは
+matching/order/DTO pathだけに使う。Distinct raw siblingが1 NFC
 classification keyへnormalizeする場合、group全memberをdescend/open/readせずfail closedにして
 `safe-fs-path-normalization-collision`を付ける。CollisionのないNFD-only spellingはraw pathでreadしNFC表示する。
+Collisionは、曖昧でないpublic file pathが存在しないためpathless session-scoped record 1件とする。1 Source scan attempt内では、
+content-dependentなCodex ordered fallbackを除き、static discovery、admission、collision rejection、physical groupingをgroup
+read前に完了する。Grouping identityをusableとするにはexact bigintの`dev`/`ino`/`nlink`、`ino !== 0n`、stableかつpositiveな
+`nlink`、および`nlink`以下のadmitted group countが必要で、それ以外はaccepted byte 0のboundary-unverifiableとする。
+Usableな検証済み1 physical fileに対するhard-link admissionは正確に1回だけreadし、unsigned UTF-8 bytewiseで最小のNFC pathを
+primaryとして決定的に選び、残りのunique pathをaliasとしてsortし、全raw provenanceを保持する。Filter/detail/selectionは
+全pathにmatchさせ、file Diagnosticにはprimaryだけを使う。Source、後続attempt、後続generationは同じobjectを独立にverify/readする。
+Group consume後のCodex ordered fallbackまたは別derived pathはmerge/reopenせず、それぞれ指定済みzero-read rejectionを使う。
 bigint `lstat`とcanonical containment checkでVCS内部、link、非directory traversal
 object、検出可能なdevice changeを拒否する。このserviceだけがprivateでgeneration-boundな`ScanEntryTicket`を発行でき、HTTP valueやparsed contentから
 作成・再構築できない。
 
 Candidate readは所有root contextとticketだけからpathを再構築する。Open前にrootと全ancestorの`lstat`を再検査し、
 ticket snapshotと`dev`/`ino`/`mode`を比較する。まずcandidate pathを`lstat`し、linkまたはnon-regular objectを
-拒否して、`dev`/`ino`/`mode`/`size`/`mtimeNs`/`ctimeNs`をenumeration metadataと比較する。次にcandidateを
+拒否して、`dev`/`ino`/`nlink`/`mode`/`size`/`mtimeNs`/`ctimeNs`をenumeration metadataと比較する。次にcandidateを
 `realpath`でresolveし、`path.relative`でcanonical containmentを要求して、直後にcandidate pathの`lstat`比較を
 繰り返す。両方のpath-stat snapshotが相互に一致し、enumeration metadataとも一致した場合だけfileをopenする。
 `O_NOFOLLOW`が存在しplatformで有効な場合は、必須のfinal-component
@@ -398,15 +451,26 @@ root/ancestor/candidate-`lstat`/canonical/candidate-`lstat` sequenceを繰り返
 `FileHandle.stat({ bigint: true })`と比較する。Byteは同じ`FileHandle`からNode.js管理のstreaming/chunkingで読み、後のpath-based
 `readFile`は使わない。Handleを開いたまま受理前に、
 post-read validationとしてこの完全な順序付きsequenceと、同じ`FileHandle.stat`について同じfieldの比較を
-繰り返す。いずれかの段階で不一致があればhandleをcloseし、収集済みbyteを全て破棄し、ticketをstale/rejectedと
+繰り返す。`finally`でregistry closerをinvokeまたはjoinし、`close-confirmed`前にはresultを受理しない。いずれかの段階で
+不一致があれば収集済みbyteを全て破棄し、ticketをstale/rejectedと
 し、readable content/receiptをcommitせず固定のsource-value-freeなauthenticated Diagnosticだけをemitする。その
 Source-relative Pathは、fixed-code/opaque-IDだけのoperational eventへ決してprojectionしない。安全に
 inventory済みのpathにはdiagnostic-only recordを残してよい。Root identity failureはそのsource attemptを
 abortして以前にcommitしたgraphを維持する。完全なtraversal後に限り、決定的かつentry-localでcapacityに起因しない
 failureは、contracted-partial commitを通じてunaffected resultを利用可能に保てる。
 
-調査対象sourceへのfilesystem callは全てprocess-wideのsequential executorを通し、各fileを同じhandleでvalidate/readする。
-このorderingはrace-safety invariantである。Openはread-onlyである。
+ここでdomain outcomeへ変換するfilesystem rejectionは、contractで宣言したstructural existence checkpointの`lstat`
+callから返るNodeの正確な`ENOENT`だけとする。Observation前なら`absent`、observation後なら`entry-disappeared`を意味する。
+Handlerはmessageではなくcodeだけを検査し、`open`、`read`、その他のerrorへは決して適用しない。他の全throw/rejectionは、
+filesystem、parser、recognition、scan domain layerを通して変更せずpropagateする。
+
+調査対象sourceへのfilesystem callは全てprocess-wideのsequential executorを通す。Process-wideな
+`ClosableResourceRegistry` 1つだけが全inspection `FileHandle`/`fs.Dir`のowner/close-state machineとなる。`open`/`opendir`前に
+`opening` reservationをinsertし、resourceがescapeする前にstrong referenceをpublishし、`close()`を最大1回だけinvokeし、全waiterを
+1つのretained promiseへjoinさせる。FulfillmentまたはFileHandle `close` eventがclosureをconfirmする。Eventが先にconfirmした場合、
+後のraw promise rejectionはobserveするがsuccessとして扱う。Confirmationなしのrejectionは`close-unknown`となってowning boundaryへ
+propagateし、new inspection schedulingをpoisonする。Later FileHandle eventはpoisonをclearできるが、unknown directory closeはrestartを
+必要とする。各fileを同じhandleでvalidate/readする。このorderingはrace-safety invariantである。Openはread-onlyである。
 Production boundaryはwrite/append/create/truncate open、write、truncate、create、rename、delete、link、
 chmod/chown、utimes、xattr、ACL、または同等のmutation operationを公開せず、access-time updateも要求しない。
 Testはこれらのcallをinstrumentし、content、length、identity/link state、mode、mtime、ctime、観測可能な
@@ -416,12 +480,15 @@ xattr/ACLを比較する。OSのread semanticsだけが原因のatime changeは�
 Filesystem operationの完了と実効capacityはNode.js、OS、filesystem、実行環境に従う。Disable、shutdown、
 その他publication authorityをrevokeするlifecycle eventはattemptと
 ticketをinvalidateし、それ以後に到着したresultはgraph、Diagnostic、DTO、operational eventをpublishできず破棄する。
-取得済みresourceはunderlying operationがsettleした時点でcleanupする。Node.jsはstallしたkernel operationのportableな
+取得済みresourceはunderlying operationがsettleした時点で同じregistry closerをinvoke/joinするが、`close-unknown`ではstrong referenceを
+保持し、推測またはdouble-closeしない。Disableはlineage内の全resourceが`close-confirmed`になるまでcompleteできない。Unknown closeでは
+data fenceとretry可能なOperation Errorを維持し、restartをfallbackとする。Node.jsはstallしたkernel operationのportableな
 hard cancellationを提供しないため、timelyなphysical drain、process-level OOM、kernel terminationからのrecoverは保証しない。
 
-Nodeが必要なidentity/metadataまたはcanonicalizationをunavailable、ambiguous、malformed、その他unusableと
-報告した場合、`safe-fs-boundary-unverifiable`でboundaryまたはcandidateを拒否し、推測しない。Root-level failureは
-source attemptをabortし、item-level failureにはdiagnostic-only inventory recordだけを残してよい。
+正常に返されたidentity/metadataまたはcanonicalizationがstructurally unavailable、ambiguous、malformed、その他
+unusableな場合、`safe-fs-boundary-unverifiable`でboundaryまたはcandidateを拒否し、推測しない。Root-level outcomeは
+source attemptをabortし、item-level outcomeにはdiagnostic-only inventory recordだけを残してよい。Data取得中の
+throw/rejectionは、代わりに上記propagation ruleへ従う。
 
 **理由**: 反復checkは通常の同時編集riskを実質的に減らし、検出した変更をcommitさせず、scan contractを保つ。
 ただしkernel-enforced containmentは作らない。Node 24の
@@ -461,16 +528,19 @@ disable-raceのverificationを再実行する必要がある。
 
 ## 6. 安全なparse、literal表示、inert rendering
 
-**決定**: Source byteを正とし、support対象textをstrictにdecodeする。読み取り可能なsource text、表示対象の
-宣言済みmetadata値、comparison contentは、credential検出、content-based masking、redaction、reveal workflowを
-使わず、記述されたまま返す。調査対象content内の環境変数参照はliteral textのままとし、Inspectorが参照先の
-process値を読み取り、解決、置換する契機にしない。文書化済みの`CODEX_HOME`、`CLAUDE_CONFIG_DIR`、
-`COPILOT_HOME` inputは、hostがtool別Global Source rootを特定するためだけに使い、content parseでは使わない。
-Inspectorはfile-size/file-count validationを適用しない。Read、decode、parse、retentionはNode.js、parser library、OS、
-実行環境が利用可能にするcapacityを使う。完全なtraversal後の決定的かつentry-localでcapacityに起因しないread failureは、
-そのfileをcontracted-partial generationのdiagnostic-only stateにしてよい。Capacity/allocationその他の環境resource failureは
-attemptをabortし、item、Source、recognition、derived result、scan-result record/response、generationを一切返却もcommitもせず、
-以前のcommit済みsnapshotだけを維持し、valid/invalid verdictもlint findingも付与しない。Process-level OOMやkernel terminationからのrecoverは保証しない。
+**決定**: 検証済みsource byteを正とする。NUL byteを1つでも含む場合はbinaryかつdiagnostic-onlyとし、他の点では
+publish可能なgenerationをcontracted-partialにする。それ以外のbyte sequenceは全て、UTF-8 replacement semanticsで
+正確に1回だけdecodeする。先頭BOMを1つ記録して取り除く。Decodeが`U+FFFD`を挿入した場合は`utf-8-replaced`を使い、
+その文字をgarbled source全体に保持したままparse、extraction、display、comparisonを続ける。Replacementだけでcomplete
+outcomeとし、別charsetを推測したりretryしたりしない。読み取り可能なsource text、表示対象の宣言済みmetadata値、
+comparison contentは、credential検出、content-based masking、redaction、reveal workflowを使わず、記述されたまま返す。
+調査対象content内の環境変数参照はliteral textのままとし、Inspectorが参照先のprocess値を読み取り、解決、置換する
+契機にしない。文書化済みの`CODEX_HOME`、`CLAUDE_CONFIG_DIR`、`COPILOT_HOME` inputは、hostがtool別Global Source
+rootを特定するためだけに使い、content parseでは使わない。Inspectorはfile-size/file-count validationを適用しない。
+Read、decode、parse、retentionはNode.js、parser library、OS、実行環境が利用可能にするcapacityを使う。完全なtraversal後、
+FR-028対象の決定的でthrowしないentry outcomeだけがcontracted-partialを使える。その他のthrow/rejectionはdomainで
+classification/retry/recoveryせずpropagateし、attemptへresultを提供せず、REST所有boundaryではgenericなOperation Errorだけに
+なる。Startup所有failureはprocess top levelへ到達する。Process-level OOMやkernel terminationからのrecoverは保証しない。
 
 Decode後にbest-effort metadata extractionを行うが、decode/normalize済みvalueを表示値には使わない。受理した
 allowlist field occurrenceごとに、正確な`authoredLiteral` source sliceと別のinternal typed semantic valueを持つ。
@@ -491,11 +561,11 @@ YAML semantic parseはcustom tagなしのcore schemaと無効化したalias、JS
 payloadはtyped canonical stringを使ってJavaScript precision lossを防ぐ。Markdown/frontmatterとClaude importはtext
 scanとする。Parser workerは固定package-owned entryからだけconstructし、memory、message、syntax tree、scalar、
 scheduling capacityはNode.js、parser library、実行環境に従う。ProductはV8 memory ceilingやparser item/depth/time
-limitを設定しない。完全なtraversal後の決定的かつentry-localでcapacityに起因しないparser/extraction failure、または同じ
+limitを設定しない。完全なtraversal後のFR-028対象の決定的でthrowしないparser/extraction outcome、または同じ
 `(fileId, tool, kind)`への2 extractorのincompatible meaningでは、contracted-partial outcomeとしてそのrecognitionのresult全体を
-破棄してよいが、読み取り可能なsource textや別recognitionは変更しない。Parser/runtime capacityまたは環境resource failureは
-parser、extraction、recognition、relationship、derived result、item、Sourceを一切返さず`fatal-resource`をpropagateし、
-scan-result record/responseもgenerationも作らずattemptをabortして、以前のcommit済みsnapshotだけを維持する。Tool/kind pairごとにrecognitionは正確に1つで、compatible provenanceはそこへ
+破棄してよいが、読み取り可能なsource textや別recognitionは変更しない。Parser/Workerのthrow/rejectionはdomainで
+catch、classification、retry、Diagnostic、partial resultを作らずpropagateし、同じowning-boundary ruleへ従う。
+Tool/kind pairごとにrecognitionは正確に1つで、compatible provenanceはそこへ
 mergeする。Rule、script、markup、URL、control sequenceは実行もrenderもしない。Internalな`semanticValue`という
 名称はmechanicalなtyped decodingだけを意味する。Inventory、Detail、Comparison、Global control、Diagnostic、
 Source Condition Fact、API、CLI output、documentationの全surfaceで、productはnatural-languageの意味をinterpret/
@@ -511,11 +581,12 @@ projectionしない。Fixed CLI help/version、1行のlaunch URL、fixed startup
 presentation outputであり、それでも調査対象content/path/authored valueを含めない。
 
 **理由**: Declaration/relationshipのlabelにはparseが必要だが、成功してもInspectorをvalidatorにしない。
-Literal表示は、maskingなら隠してしまうcredentialその他の記述済み差分を維持する。Sourceまたはcomparison viewを
-開く前に、bundled interfaceは完全な記述済みcontentが機密値を含み得ることへのin-memory acknowledgementを
-要求し、document reloadまたはclient purgeでresetする。Capability authenticationがAPI access boundaryであり、APIは
-acknowledgementを受信も永続化もしない。Bundled SPAはacknowledgement前にdetail requestもcomparison constructionも
-行わない。Authenticated loopback API、`Cache-Control: no-store`、process/browser memoryだけのlifetime、Vue text
+Literal表示は、maskingなら隠してしまうcredentialその他の記述済み差分を維持する。任意の`FileDetail` requestまたは
+comparison構築前に、bundled interfaceは完全なsource text、declared authored metadata、authored relationship target、
+comparisonの両sideをgateするin-memory acknowledgementを要求する。Document reloadまたは中央full-session client-data
+purgeでresetし、通常のscope限定route、file/Source、generation cleanupでは読み込み済みdocumentについて維持してよいが、
+Global disableは明示的なfull-purge例外である。
+Capability authenticationがAPI access boundaryであり、APIはacknowledgementを受信も永続化もしない。Authenticated loopback API、`Cache-Control: no-store`、process/browser memoryだけのlifetime、Vue text
 binding、無効なlink、restrictive content security policyにより、この意図的な表示をlocalかつinertに保ち、maskingを
 security boundaryとして扱わない。
 
@@ -580,7 +651,11 @@ copyせず、そのtextがambient valueとlexicalに一致してもprovenanceも
 OS helperはlisted desktop/session valueを利用できるが、Inspectorはそれからhandlerを選択しない。OS提供
 `xdg-open`自体はsystem shell helperの場合があるが、package payload外の固定executableとして`shell: false`で呼び出す。
 
-このsectionの固定contractとして、正確なraw `lexicalRoot`をinternal stateに保持し、その値、
+このsectionの固定contractとして、new unconsented previewごとにoperation-local input captureを1つ作る。
+`COPILOT_HOME`、`CLAUDE_CONFIG_DIR`、`CODEX_HOME`をこの順で1回ずつreadし、`undefined`だけをabsentとする。1つでも
+absentならimport済み`node:os.homedir()`を1回callして、active-platform `node:path.join`と固定suffix `.copilot`、
+`.claude`、`.codex`を使う。`HOME`/`USERPROFILE`を独自選択せず、capture中にexistence checkを行わない。正確なraw
+`lexicalRoot`をinternal stateに保持し、その値、
 escaped display、immutableな`TraversalPlan` schema/selection-policy/canonical programをconsent digestにbindする。Enableは
 stored raw valueだけを使い、display textから逆変換せず、environmentを再readしない。
 また、各SessionSnapshot/FileDetail requestは`clientDataEpoch`、generation、正確なrequest token、該当時は
@@ -603,19 +678,25 @@ lexical/no-I/O path previewを公開し、session-keyed digestへconfirmationを
 enumeration前に拒否する。Preview parse/transportのcapacityはNode.js、browser、実行環境に従い、proposed rootや
 escaped displayへproduct独自のbyte上限を設けない。Authorized pageがvisibleな間は、capability保護liveness routeを1秒ごとに750 ms
 request timeout付きで呼び、2秒のmonotonic browser-memory leaseをrenewする。Liveness failure/mismatch、lease
-expiry、hidden/page lifecycle event、process lossにはepoch guard付きの単一purgeを使い、全DOM/DTO/editor/warning
+expiry、hidden/page lifecycle event、process loss、request dispatch前のGlobal-disable click、greater Global content epochまたは
+non-null disable fenceの観測には、epoch guard付きのshared purgeを使い、全DOM/DTO/editor/warning
 stateを除去してlate responseによるcontent復活を防ぐ。Hidden-page purgeを越えて保持するのはmemory capabilityだけとする。
 Visibleへ戻るとretained capabilityでfresh sessionを認証する。SPAはpurge済みIDを保持・比較せず、返された`sessionId`を
-new liveness baselineとして採用し、control-onlyな`globalControl` viewだけを保持する。Active consent中は
+new liveness baselineとして採用する。Successful liveness bodyは正確に
+`{ sessionId, globalContentEpoch, globalDisableInProgress }`とする。Older epochはrejectし、equal epochかつnull fenceはleaseを
+renewし、greater epochまたはnon-null fenceではrender前にpurgeしてclient-side `RecoveryViewState`へ入る。Non-null fenceならsession routeは
+exactでcontrol-onlyな`GlobalFenceRecoverySnapshot`を返す。Null fenceならnormal full `InspectionSession`を返すが、recovering clientは
+control/error projectionだけを採用してinspection graphを破棄する。Active consent中は
 そのviewからdisableを直ちに利用でき、preview routeがexact frozen previewを返した後だけbrowser persistenceや
-environment再readなしでretry controlを再構築できる。Recovery viewは常にResume inspectionを提示し、この明示actionは
-matching sessionを再取得してdefaultのfresh inventory summaryを構築するが、old detail、comparison、editor、selection、
+environment再readなしでretry controlを再構築できる。Recovery viewはfenceがnullでnormal full snapshotを取得可能な場合だけ
+Resume inspectionを提示する。この明示actionはmatching sessionを再取得してdefaultのfresh inventory summaryを構築するが、old detail、comparison、editor、selection、
 filter、authored source、acknowledgementを復元しない。後のdetail/comparison openにはnew acknowledgementを要求する。
 
 Capability-authenticated APIは、明示的なdetail requestにだけ完全なauthored contentを返す。Sensitive-content
 acknowledgementはbundled-SPAの必須presentation invariantであり、authorization credentialではない。Client memoryだけに
-置き、APIへ送信せず、document reloadとcentral purgeでresetし、bundled clientのdetail requestとcomparison
-constructionの両方をgateする。
+置き、APIへ送信せず、document reloadと中央full-session purgeでresetし、bundled clientの全`FileDetail` requestと
+comparison constructionをgateする。通常のscope限定route、file/Source、generation cleanupはそのpurgeではなく、
+読み込み済みdocumentについてacknowledgementを維持してよい。Global disableは明示的なfull-purge例外である。
 
 Browser attempt前にclosed-grammar launch URLを起動元terminalへ正確に1回表示する。Project-owned
 `src/launch-browser.ts`は`http://127.0.0.1:<port>/#cap=<43-character-base64url>`を再検証し、`--no-open`でなければ
@@ -657,36 +738,52 @@ payloadをsession pollごとに繰り返さない。
 
 **決定**: Repository scanは自動開始し、session snapshotでprogressを公開し、以後のRepositoryまたはenabledな
 tool別Global Sourceのscanは明示的user actionだけで行う。自動Repository command前にlegalで空のzero-I/O
-bootstrap generation 0を同期作成し、workがqueueされるまではsource progressをnullとする。自動または明示的な各scanに
-opaqueな`scanRequestId`を割り当て、そのSource progressとsuccessfulなsource-scan generationに同じIDを保持する。
-Bootstrap/disable generationはnullを使う。
+bootstrap generation 0を同期作成する。これには、captureした`process.cwd()`または任意指定の単一`--cwd`から選択した、
+idleでreadを認可しないRepository Sourceを正確に1つ含め、boundary admissionとworkがqueueされるまではsource progressを
+nullとする。自動または明示的な各scanにopaqueな`scanRequestId`を割り当て、そのSource progressとsuccessfulな
+source-scan generationに同じIDを保持する。Bootstrap/disable generationはnullを使う。
 
 単一coordinatorが全`GlobalEnableOperation`、Repositoryまたはtool別Global Source scan、Global調査を無効にする
 transactionをserializeする。Product独自のqueue、slot、concurrency capacityは公開もenforceもしない。通常scanはFIFOで
-実行する。Global disableはpriority security barrierとして受理時に`globalControl.state: disabling`、empty
-pending/retry array、increment済みcommand epochとし、新しいGlobal-enable/Global-rescan commandを拒否する。Activeな
-uncommitted workをabort/discardし、enable validation/admissionをdrainし、queued Global workをcancelして、new I/Oなしで
-active Global Sourceをremoveし、その後に中断したRepository commandをrequeueする。Repeated disableはqueued/active
-barrierへjoinし、Global state/workがない場合はRepository workにかかわらずno-opとする。最後のcoordinator lock下
+実行する。Global disableはpriority security barrierとし、dispatch前にbrowserがfull client-data purgeを実行する。Non-no-op
+barrierの最初のaccept時、command epochと`globalContentEpoch`をatomicにincrementし、non-null
+`globalDisableInProgress`をinstallし、publication authorityをrevokeして新しいGlobal-enable/Global-rescan commandを拒否する。
+全inspection-data routeは`409 global-disable-pending`を返し、session routeは`GlobalFenceRecoverySnapshot`だけを返す。
+各inspection-data successはcaptureしたepochへbindし、最終publish時にcoordinator lock下でepoch不変かつfence nullを再checkする。各liveness successは
+代わりにpublish時の1つのcurrent coordinator-lock snapshotからexactな`{ sessionId, globalContentEpoch, globalDisableInProgress }`値へbindし、
+current fenceがnon-nullでも返す。Active
+consent/controlが存在する場合だけ`globalControl.state: disabling`としてpending/retry arrayをemptyにし、operation-local initial
+enableだけならcontrol projectionはnullだがfenceを表示する。Active uncommitted workをabort/discardし、shared resource registryを
+通じてenable validation/admissionとqueued Global workをdrainし、terminal success後だけ中断Repository commandをrequeueする。
+PublicなGlobal consent/control/Source stateのいずれかがあるsuccessは`remove-active-state`でRepository-only N+1をpublishし、
+未公開operation-local initial enableだけが`cleanup-only`でNと全generation-owned IDを維持する。Repeated disableは同じbarrierへjoinする。
+Accept後またはclose未確認failureではprocessを維持しながらfence、generic Operation Error、retry/join pathを保持し、unrecoverable
+cleanupはrestartを必要とする。Accept前failureまたはtrue no-opはfenceをnullのままとする。最後のcoordinator lock下
 operation-ID/epoch/state checkによりenableの`202`またはdisableへ負けた`409`を決め、late workによるGlobal state復元を防ぐ。
 
 各scanはcurrent session-wide generationから開始してreplacementを別に構築する。Complete result、または完全なtraversal後の
-決定的かつentry-localでcapacityに起因しないfailureから作成したcontracted partial resultだけを次generationとしてatomic commitし、carryしたgraphとgeneration所有IDを
+FR-028対象の決定的でthrowしないentry outcomeから作成したcontracted partial resultだけを次generationとしてatomic commitし、carryしたgraphとgeneration所有IDを
 全てrekeyして旧file/detail/comparison/selection/editor referenceをstaleにする。明示rescanのfatal failureは全uncommitted
-outputを破棄する。最後のsuccessful snapshotはSource-keyed stale-failure entryとactionable Diagnostic付きで表示し続ける。
-最初のRepository scanのfatal failureはbootstrap generation 0をcurrentに保つ。Tool別Global rescanのfatal failureはその
+outputを破棄する。最後のsuccessful snapshotはSource-keyed stale-failure entryとともに表示し続け、決定的なreturned failureでは
+actionable Diagnosticを参照し、throw/rejectionではOperation Errorだけを参照する。Startupのthrow/rejectionにはREST ownerが
+ないためprocess top levelへ到達する。Tool別Global rescanのfatal failureはその
 Sourceのconsent、accepted root context、最後にcommitしたgraphをretry/disable用に保持する。
 
-Confirmed toolごとにscan working set外のsession所有`GlobalToolControl`を持つ。Consent後validationがrootをacceptしない
-場合、全件reject requestは`active-no-job`を返してretry/disableに必要なcontrolを保持し、Source、job、generationをpublish
-しない。Mixed requestでは`pendingTools`がvalidation/admissionとqueued/running initial scanを含むため、unvalidated toolを
-retryableにしない。全work完了後のretryはpreview-gatedとし、disableは直ちに利用可能とする。
+Session-wide consent 1件で3 tool全てを固定し、frozen preview entryごとに`GlobalToolControl`を1つ持ち、selectorは
+持たない。Consent後validationがabsenceとしてcatchするのは、structural `lstat`からの正確な`ENOENT`だけとする。
+Lexical/link/type/boundary outcomeはsiblingをrejectできるが、その他のthrow/rejectionは全transactionをowning REST
+boundary経由でabortする。Validationがrootを1つもadmitしない場合、`active-no-job`はretry/disable用controlを保持し、
+Source/job/generationをpublishしない。1つから3つをadmitした場合、provisional batch scan 1件が各rootの独立したSourceを
+正確に1つのgenerationでまとめてpublishし、tool別commitは観測できない。Active-consent retryでは`pendingTools`が
+validation/admissionとqueued/runningのsubset scan 1件を含む。Initial enableはatomic activationまでcontrol projectionを持たず、
+その後はaccept済みbatchのtoolだけをpendingとする。したがってactive controlのunvalidated toolをretryableにしない。全work完了後の
+retryはpreview-gatedとし、disableは直ちに利用可能とする。
 
 Inspectorはfile-size、file-count、aggregate record、graph、Diagnostic、parser message、response-size、queue capacity、
 scan-timeのproduct独自limitを定義しない。実効capacityはNode.js、parser/editor engine、browser、OS、filesystem、実行環境に
-従う。これらのlayerがrecoverableなcapacity/resource failureを報告した場合、attemptをsafeに失敗させ、item、Source、recognition、
-derived result、scan-result record/response、generationを一切返却もcommitもせず、以前のcommit済みsnapshotだけを維持する。
-そのfailureはentry-local contracted-partial pathを許可する根拠にならない。Routeはcommit済みDTOを一度だけserializeし、silent truncateしない。
+従う。これらのlayerからのthrow/rejectionへdomainはcapacity/resource/operational causeを割り当てない。Trigger ownerへ
+propagateし、attempt result/generationを返却もcommitもせず、REST boundaryがsurviveする場合は以前のsnapshotを維持する。
+このfailureはcontracted-partialを決して認可しない。Routeはcommit済みDTOを一度だけserializeし、silent truncateしない。
 Process-level OOM、kernel termination、無期限にpendingとなるuncancellable filesystem operationはapplication contractでは
 recoverもboundもできない。
 
@@ -695,8 +792,8 @@ resultは破棄し、取得済みresourceはunderlying operationがcleanupを許
 Liveness pathはNode.js上で独立scheduleするが、runtime exhaustionやblocked/terminated processをsurviveするとは主張しない。
 
 **理由**: Serializationとatomic session generationはlost updateとold/new result混在を防ぐ。Capacityを実runtimeから
-導くことで、任意のproduct数値をportableなsafety guaranteeとして提示しない。Recoverable failureはactionableかつ必要な
-generation boundaryでall-or-nothingに保ち、application制御外のfailureはsynthetic limitで隠さずplatform limitationとする。
+導くことで、任意のproduct数値をportableなsafety guaranteeとして提示しない。Genericなouter-boundary errorはdomain causeを
+発明せずexecution lifecycleを維持し、application制御外のfailureは明示的なplatform limitationとして残す。
 
 **検討した代案**:
 
@@ -736,12 +833,18 @@ Pure recognizer/parserとliteral-display DTO、HTTP contract、source boundary i
 Closed manual matrixはpacked candidate、両locale、3つのsupported OS/browser/assistive-technology cell、responsive/visual
 profile、workflow state、input profileをfreezeし、applicableな全cellを記録して、frozen value変更時は全manual checkを再実行する。
 Axeのseverity結果だけを
-受入evidenceとせず、Applicable行のfailureをpassへ変更できない。4つのregistry fixture suiteは
+受入evidenceとせず、Applicable行のfailureをpassへ変更できない。SC-003、SC-004、SC-005、SC-007、SC-009は、
+stable case ID、required-class membership、客観的expected outcome、fixture/builder reference、fixtureごとのdigestを持つ
+version付きでcheck-in済みのrelease-evidence fixture manifestを共有し、release candidateごとの正確で非ゼロなdenominatorを
+freezeする。Canonical manifest digestと実行済みcase IDをevidence recordへ入れる。Contractはmissing、duplicate、undeclared、
+unexecuted、digest-mismatched case、required classの空集合、fixture欠落、declared minimum未満のdenominatorを拒否する。
+黙ったdelete/reclassifyを認めず、caseのremove/reclassify、required-class定義の変更、expected outcomeの変更ではmanifest versionをincrementして明示的なreviewを受ける。Fixture byteだけを変更する場合は、影響するfixture digestとcanonical manifest digestを更新する。どちらの変更も新しい直接比較不能なmeasurement setを開始し、digest driftだけでdenominator semanticsの変更を認可しない。Automated contractはtable-drivenなprevious/current manifest revision pairでこれらのtransition ruleを検証し、reviewer stateを推測しない。実際のrelease diffについては、T1062が初回作成またはprior/current version、変更したcase ID、required-class定義またはexpected outcome、明示的なreviewer decision/referenceをbilingual validation recordへ記録する。これによりmaintained suiteを
+進化可能にしつつ、releaseがdenominatorを暗黙に縮小することを防ぐ。4つのregistry fixture suiteは
 全behavior/rule/strategy/source ID、相互evidence link、正確なsection anchor、英日parity、Inspector matcher
 registryだけがreadを認可できることをvalidateする。Matcher fixtureは`./`なしのRepository selectorとbare
 `**/`を拒否し、exact/direct-child/explicit descendant inventoryを区別し、`./**/`がvendor traversal factを
 satisfiedにしないことを証明する。Targeted regression fixtureはCopilotの別々のVS Code/CLI/Cloud lookup表、
-exact launch `cwd`だけのClaude project settings、non-recursiveなCodex rule directory、plugin activation対
+選択した正確なRepository rootだけのClaude project settings、non-recursiveなCodex rule directory、plugin activation対
 authored manifest inventory、FR-015からFR-018外へのGlobal read 0件を扱う。
 さらに、tool別Global Sourceが0から3つで各tool最大1つ、各Sourceが正確に1つのrootとSource-relative Path
 namespaceを持つこと、literal credentialのexact表示、reveal controlがないこと、環境変数を置換しないことを
@@ -755,9 +858,12 @@ Controlled barrierはpost-readのroot identity、全ancestor `lstat`、canonical
 canonical containment、same-handle stat比較が検出する変更をexerciseする。Test専用filesystem barrierはtest harness内だけに置き、
 production moduleからexportしない。
 これらtestは指定したdetected-race動作を確立するもので、threat modelから除外したactive adversarial mutatorへの
-proof、またはsame-device bind mountやNodeが全く公開しないreparse情報へのproofと記述してはならない。Inspected contentにより
-outbound request、MCP connection、child process、dynamic evaluation、product-issued source mutationが発生するとtestを
-失敗させる。Mutation testはread-only/mutation-capableなfilesystem API/flagをinstrumentし、content、length、
+proof、またはsame-device bind mountやNodeが全く公開しないreparse情報へのproofと記述してはならない。Local fixture rootとproductの全
+socket/HTTP(S)/DNS/SMB/URI/image/remote-reference/MCP surfaceをinstrumentする。発行済みのexactな`127.0.0.1` authorityにおける
+2つのexactなFR-022 authorized internal loopback class、すなわちclosedなunauthenticated static/SPA `GET`/`HEAD`と
+capability-authenticated declared API requestを別々に分類・検証する。Inspected contentにより、それ以外のFR-022で定義したdirect product-issued outbound request、MCP connection、child process、dynamic evaluation、product-issued
+source mutationが発生するとtestを失敗させる。Explicit UNC/server-share/device vectorはfilesystem/DNS/SMB call 0件を証明し、lexicalに
+識別不能なmounted/mapped network storageはOS-mediated platform/environment limitationとして別に記録する。Mutation testはread-only/mutation-capableなfilesystem API/flagをinstrumentし、content、length、
 identity/link state、mode、mtime、ctime、観測可能なxattr/ACLを比較する。OS-only atime changeは別に記録し、failureにも
 proofにも数えない。Operational-log testは全eventをcaptureし、path、root、filename、content/metadata/authored value、
 capability、body、raw error、exception stringを拒否する一方、authenticated Diagnostic DTO testでは許可したfieldだけを
@@ -795,8 +901,15 @@ policy/remediation advice、conversion、synchronization、formatting、fixing�
   response formはsource、recognizing tool、file type、effective behaviorがcertainかconditionalかの4項目を必須と
   し、2分以内に全項目がpredefined ground truthと一致した場合だけ成功とする。提供されたproduct guidanceと
   SC-001のmoderator policyだけを使って18人以上の成功を要求する。Moderatorは客観的workflow outcomeと事前定義済み
-  safety eventを記録する。意図しないexecution、inspected-source mutation、MCP/network connection、別machineへの
-  inspected content開示はすべて自動的にcriticalとする。それ以外のproduct起因と疑われるworkflow blockerだけを2人が
+  safety eventを記録する。Study equipmentはSC-004のproduct network/URL/MCP instrumentation、exact-authorityの
+  Inspector-server request ledger、study-browser request captureをSC-001前のInspector launchから4つのworkflow観察完了まで
+  継続する。Process identity、発行済みのexact authority、request initiator/target、server ledgerを相関して、Inspector/bundled-SPAへ
+  帰属する全requestをexactな2つのauthorized internal loopback classまたは禁止対象へ分類する。無関係なbrowser extensionまたは
+  他のhost processのtrafficは別に記録してproductへ帰属させず、帰属できるが分類できないtrafficは2つのclass外とし、観測できる
+  OS-mediated mounted/mapped-source trafficはFR-022 limitationとして別に記録する。意図しないexecution、inspected-source mutation、FR-022で定義した禁止対象のdirect product-issued outbound requestまたはMCP connection、
+  exactな2つのauthorized internal loopback class外のrequest、別machineへのinspected content開示はすべて自動的にcriticalとする。この2つのclosed classは
+  outboundでもMCPでもなく、このeventには含めない。記録済みpre-mounted/mapped sourceのOS-mediated trafficはFR-022 limitationであり、このautomatic
+  connection eventにはしない。それ以外のproduct起因と疑われるworkflow blockerだけを2人が
   fixed rubricに対して独立分類し、不一致は第3の裁定者なしでcriticalとして数える。自動判定またはreviewer確認済みの
   critical許容件数を0とする。
 
@@ -828,18 +941,17 @@ manual accessibility check、documentation parity check、release tarball inspec
    Credential maskingとreveal workflowは持たない。調査対象content内の環境変数参照はliteralのまま解決も置換も
    せず、文書化済みの3つのtool-home変数はGlobal rootの特定だけに使う。
 3. 明示的な再scanがfatalに失敗した場合、partial outputを含む未commit outputをすべて破棄し、最後に正常
-   commitされたsnapshotをSource別stale-failure entryと実行可能diagnostic付きで残す。正常scanはown Sourceの
-   entryとdiagnosticだけをclearし、無関係なcommitは両方を保持し、Source除去はremoved Sourceの両方をclearする。
+   commitされたsnapshotをSource別stale-failure entryと、決定的なDiagnosticまたはthrow/rejectされたjobのOperation
+   Error付きで残す。正常scanはown Sourceのentryと参照先failureだけをclearし、無関係なcommitは両方を保持し、
+   Source除去はremoved Sourceの両方をclearする。
    同じSourceの再fatal rescanはそのSourceの両方だけを置換する。
-4. Fatalな自動初回Repository scanもprovisional resultをpublishせず、bootstrap generation 0をcurrentのまま保つ。
-   Fatalな初回tool-enable jobはprovisional resultをpublishせず、missing tool用の`StaleSourceFailure` entryを追加せず、
-   そのtoolのkey別failure diagnosticを作成/置換し、既存entryとそこから派生するsnapshot stateをすべて保持する。
-   初回Global enableでは、Sourceがまだない
-   confirmed toolのretryまたはGlobal inspectionのdisableに必要なexact active consentとtool別`GlobalToolControl` stateだけを
-   保持し、mixed outcomeで成功済みのtool Sourceは変更しない。Consent後validationは0 toolをacceptしてrecover可能な
-   `active-no-job`を返せる。Purge済みclientはretry前にactive control viewとexact frozen previewをrecoverする。
-5. Cross-sourceの表示、filter、diagnostic用語はSource-relative Pathとする。Repository-relative pathはlaunch
-   `cwd`をrootとするRepository Sourceだけに使う。
+4. Generation 0はreadを認可しないRepository Sourceを既に含む。決定的な自動failureはprovisional resultをpublishせず、
+   startupのthrow/rejectionはsurvival保証なしでprocess top levelへ到達する。初回Global enableは固定のall-tools consentと、
+   admitted-subset batch 1件を使う。決定的なall-rejected outcomeは`active-no-job`を返す。それ以外のthrow/rejectionはREST
+   Operation Errorだけを作り、subsetを一切commitしない。Purge済みclientはselectorなしでretryする前にactive control viewと
+   exact frozen previewをrecoverする。
+5. Cross-sourceの表示、filter、diagnostic用語はSource-relative Pathとする。Repository-relative pathは、選択した
+   Repository rootをrootとするRepository Sourceだけに使う。
 6. SC-001、SC-002、SC-006はSection 10のobjective protocolを使う。SC-002はchecked-in version付きreference profileを
    1つ使い、各結果でprofile ID、fixture digest、実際の非personal environment fieldを公開する。変更したprofile IDの結果を
    直接比較可能としてはならない。
@@ -856,7 +968,7 @@ manual accessibility check、documentation parity check、release tarball inspec
   混在させるかfreshnessを誤表示するため不採用。
 - 初回scan/enable失敗をstaleにする案は、以前にcommit済みのSourceをrefreshできなかった事象ではなく、current
   snapshotが最後の正確なcommit済みstateのままであるため不採用。
-- Global fileへrepository-relative pathを使う案は、Global SourceがRepository `cwd`をrootとしないため不採用。
+- Global fileへrepository-relative pathを使う案は、Global Sourceが選択したRepository rootをrootとしないため不採用。
 - Mutableかつ非公開のreference environmentは、別maintainerがprotocolを再現したりbaseline変更を解釈したりできないため
   不採用。SC-002はportable performance guaranteeではなくprofile固有のままとする。
 
@@ -886,8 +998,9 @@ manual accessibility check、documentation parity check、release tarball inspec
 8. `engines.node`をNode 24/26 runtime compatibility range全体とし、正確な6つのfloor jobをlower-bound certification sample、
    Node 24.18.0をdevelopment/build baselineとする。Pinした3つのPlaywright revisionはautomated browser-certification baselineであり、
    startup helperは未検証のOS default handlerへ委譲して表示済み/manual-open fallbackを常に残す。
-9. InitialまたはretryのGlobal commitが成功しても、既存Repository resultを保持するのはsemanticな意味だけである。
-   Generationを進め、carryした全graphとgeneration所有IDをrekeyし、旧file/detail/comparison/selection/editor参照をstaleにする。
+9. InitialまたはretryのGlobal admitted-subset batch commitが成功しても、既存Repository resultを保持するのはsemanticな
+   意味だけである。Generationを正確に1回進め、carryした全graphとgeneration所有IDをrekeyし、旧file/detail/comparison/
+   selection/editor参照をstaleにする。
 10. SC-008は維持管理する英日55行のWCAG 2.2 Level A/AA applicability matrixを使う。各criterionのexpected observationを
     stable check IDへbindし、closed manual matrixではapplicableなlocale/platform/viewport/mode/scenario/input cellの
     samplingを禁止する。Applicableな全行、全Not-applicable rationaleの再確認、4つのkeyboard workflow、必須responsive
@@ -895,7 +1008,8 @@ manual accessibility check、documentation parity check、release tarball inspec
     `validation.ja.md`へ0件ではないApplicable-row denominator、Applicable rowのfailure 0件、完全なevidenceを記録する。
     Axeだけまたはseverity基準による免除はない。
 11. Diagnostic scopeはclosedな`file | source | session` unionとする。`sourceRelativePath`を持つのはfile scopeだけで、
-    source scopeはpathなしの`sourceId`を持ち、session scopeはsource/path identityをどちらも持たない。
+    source scopeはpathなしの`sourceId`を持ち、session scopeはsource/path identityをどちらも持たない。Operation Errorは
+    path/content/raw-errorを含まない別のclosed outer-boundary entityであり、Diagnosticには決してならない。
 
 **理由**: これらのruleにより、既存security/documentation parity requirementを弱めず、child-process boundary、
 presentation scope、performance denominator、runtime-fact model、participation ownership、compatibility/certificationの分離、
@@ -913,8 +1027,10 @@ interaction targetをtrace不能なplan-only goalのままにする案、`packag
    parser-worker entry、参照されるbuild/manifest scriptをscaffoldする。
 2. 英日vendor contractは、metadata/relationshipのparser、recognizer、API、UI、acceptance taskが利用する前に、
    supportedな全`(tool, kind)`の完全でclosedなPresentation Allowlist、admit済みsource form、exact source-form
-   extractor applicabilityを列挙する。Tuple membershipとsource-form extractionは別々の必須gateとする。後続の
-   evidence reviewはdriftをreconcileするが、規範的listを初めて定義するphaseにはしない。
+   extractor applicabilityを列挙する。Implementation gateは、既に承認済みの英日designとdigestだけをverifyし、rowを
+   authoringもsemantic editもしない。Tuple membershipとsource-form extractionは別々の必須gateとする。Semantic deltaが
+   あればdependent workを停止し、全design artifactを同期してplan/task generationを再実行する。後続のevidence reviewは
+   driftをreconcileするが、規範的listを初めて定義するphaseにはしない。
 3. 元のfamily-vertical order、すなわちSKILL（Skill Metadataを含む）→ Instructions → MCP → Rules → Commands →
    Copilot Prompts → Custom Agents → Configuration/Settings → Output Styles → Marketplaces → Plugin Manifests →
    Hooksを維持する。各familyでUS1 discoveryとUS2の完全で不活性なdetailを完了してから、そのUS3 comparisonを行う。
@@ -954,7 +1070,9 @@ checkpointを遅らせるため不採用。Comparisonが自身のfamilyのdiscov
 7. Product-issued mutationはmutation-capableなfilesystem request/flag全てを意味する。Testはそれらのcallとstableな
    source propertyをinstrumentし、OS-only atime changeはfailureにもproofにも数えず別に記録する。
 8. Capability authenticationがAPI access boundaryである。Sensitive-content acknowledgementはreset可能なclient-memory
-   presentation gateであり、bundled SPAがdetail requestまたはcomparison constructionの前に適用し、APIへは送らない。
+   presentation gateであり、bundled SPAが全`FileDetail` requestまたはcomparison constructionの前に適用し、APIへは送らない。
+   Document reloadと中央full-session purgeでresetし、通常のscope限定cleanupでは維持してよいが、Global disableは明示的な
+   full-purge例外である。
 
 **理由**: これらのboundaryにより、literal inspectionを維持し、capacityをNode.jsと周辺実行環境のpropertyとしながら、
 integrity、cleanup、disclosure、negative-product-scope testの曖昧さを除去する。
@@ -963,3 +1081,41 @@ integrity、cleanup、disclosure、negative-product-scope testの曖昧さを除
 performance completion、timerに基づくphysical I/O cancellationの主張、広いsemantic analysis、literal atimeを
 mutationとしてscoreすること、server-side acknowledgement stateは、platform guaranteeを過大に述べる、integrityを弱める、
 またはpresentationとAPI authorizationを混同するため不採用。
+
+## 15. 最終clarification決定（2026-07-20）
+
+**決定**: 最終的なuser choiceを1つのclosed runtime contractとして適用する。
+
+1. `process.cwd()`を正確に1回captureする。`--cwd`がなければ、その文字列を選択したRepository rootとして使う。Windowsでは
+   explicit UNC/server-share/device、current-drive/root-relative、`C:`/`C:foo` drive-relative formを`resolve`前にrejectし、
+   absolute drive optionを保持してplain relative optionだけをanchored captureに対してresolveする。POSIXはabsolute optionを
+   保持するかrelative optionをcaptureに対してresolveする。全selected absolute resultをsingle shared pure
+   `LexicalAbsoluteRootParts` parserへfilesystem/network I/O 0件で渡し、`chdir`もper-drive resolutionも使わず、invalid inputは
+   session/browser作成前にrejectする。Generation 0はstableで
+   readを認可しないRepository Sourceを同期的に含み、admissionは後で行う。
+2. Global consentはselectorなしのall-tools action 1件とする。Initial processingは必ずfrozen preview entry 3件全てを評価し、
+   retryはmissing Sourceのcomplete setを導出する。決定的にrejectされたentryはsiblingをblockしない。Admitした全rootをbatch
+   1件としてscanし、それぞれ独立したone-root Sourceをatomic generation 1件でpublishする。
+3. Domain内でinterpretする唯一のfilesystem rejectionは、contractで宣言したstructural `lstat`からの正確な`ENOENT`とする。
+   Root absence、exact-target fallback、observed-entry disappearanceには、このclosed factが必要だからである。`open`/`read`からの
+   `ENOENT`を含むその他の全throw/rejectionは、変更せずpropagateする。Pre-acceptanceのREST ownerは`scanRequestId`なしの固定
+   HTTP 500 Operation Errorを返す。Accepted jobは同じgeneric terminal entityをそのIDとともに公開し、processと以前のsnapshotを
+   維持する。Startup所有failureはprocess top levelへ到達する。Raw errorはproduct API、log、telemetryへ入れないが、runtime所有の
+   local uncaught outputはlimitationとして残る。
+4. NULはbinary/diagnostic-only/contracted-partialとする。NULを含まない全byte streamはUTF-8 replacement semanticsで1回だけ
+   decodeする。`utf-8-replaced`は全`U+FFFD`文字を文字化けしたtextとしてそのまま表示、parse、extract、compareする形で保持し、
+   それ自体をcomplete outcomeとする。
+5. Filesystem operationを行うのはraw entry segmentだけとする。Collision-freeなNFC valueがpublic classification/displayを
+   所有する。Normalization collisionでは曖昧なfileを作らない。Hard-link admissionでは、unsigned UTF-8 bytewiseで最小のNFC
+   pathをprimaryとして決定的に選び、残りをaliasとしてsortし、全raw provenanceを保持する。
+6. Presentation Allowlist rowは承認済みdesign inputである。Implementation gateはrowとそのbilingual digestだけをverifyする。
+   Semantic changeではworkを停止し、designを同期してplan/taskを再生成してから利用する。
+
+**理由**: これらのchoiceは、実際のread errorを要求どおりruntime所有に保ちながらoptional pathのabsenceをfatalにせず、
+user-selectableなGlobal scopeをなくし、bootstrap identityをread authorityから独立させ、不正なtextをUTF-8 decoderが生成した
+正確な形でinspect可能に保つ。
+
+**検討した代案**: 全`lstat` absenceをuncaught runtime failureとして扱う案は、文書化済みfallbackと自動的なexisting-root
+selectionを不可能にする。Permission、`open`、`read` errorをdomain outcomeとしてcatchする案はruntime ownershipに反する。
+Tool別Global commitは中間subsetを公開しgenerationを複数回進める。Charset guessingはoutputをenvironment-dependentにする。
+Normalized display segmentをfilesystem operationへ使う案はboundaryを弱める。いずれも不採用。

@@ -2,9 +2,9 @@
 
 [日本語](inspection-path-allowlist.ja.md)
 
-**Contract version**: 2026-07-17
+**Contract version**: 2026-07-20
 
-**Inspection-path decision revalidation**: 2026-07-17
+**Inspection-path decision revalidation**: 2026-07-20
 
 **Normative for**: Rule classes, matcher notation, source-boundary interpretation, read
 authorization, and cross-vendor conformance
@@ -61,16 +61,28 @@ Consequently:
 
 ### Repository
 
-The Repository boundary is the exact process working directory from which the user
-launches `npx`. The Inspector does not walk above it to find a Git or product project root.
-Repository inventory proceeds only within the validated launch-root boundary record. A
+The Repository boundary is the selected root: the exact one-time captured invocation
+`process.cwd()` when `--cwd` is omitted. On Windows, explicit UNC/server-share/device,
+current-drive/root-relative, and `C:`/`C:foo` drive-relative forms are rejected before
+`resolve`; only a plain relative option is resolved against the anchored capture, while an
+absolute drive option is retained. POSIX retains an absolute option or resolves a relative
+option against the capture. Every selected absolute result passes the same shared pure
+`LexicalAbsoluteRootParts` parser used below. Selection performs zero filesystem/network I/O,
+no `chdir`, and no per-drive working-directory resolution; invalid option shapes fail before
+session/browser creation. Generation 0 contains the one
+non-authorizing Repository Source before central admission. The Inspector does not walk
+above the selected root to find a Git or product project root. Repository inventory proceeds
+only within the later validated selected-root boundary record. A
 vendor may use a different runtime root or walk direction; that fact belongs to the vendor
 and runtime-composition contracts and never changes this boundary.
 
 ### Global
 
 Global inspection is disabled in every new session and requires consent bound to the
-current contract version and exact no-I/O preview. Every accepted vendor-home root becomes
+current contract version and exact no-I/O preview. Consent is one selector-free action for
+the fixed Copilot/Claude/Codex entries. One transaction evaluates all three; deterministic
+rejections do not block admitted siblings, and one batch publishes all resulting Sources in
+one atomic generation. Every accepted vendor-home root becomes
 its own tool-specific Global Source, separately identified as Copilot, Claude, or Codex.
 Each tool maps to its own Source, and each Source is bound to exactly one root. These
 Sources are not Repository children, are never merged with one another, and are never
@@ -98,15 +110,20 @@ Every static Inspector rule separates these fields:
 
 Each selector program has a non-empty ordered sequence of segment tokens from this closed union:
 
-- `literal(value)` matches one case-sensitive NFC segment exactly; `value` contains no
-  separator, wildcard, empty/dot segment, or Windows-special spelling.
+- `literal(value)` matches one case-sensitive exact ASCII segment. `value` is a non-empty
+  string of U+0021–U+007E except `/`, `\\`, `:`, `*`, `?`, `\"`, `<`, `>`, and `|`;
+  `.` and `..` are also forbidden.
 - `one-segment(suffix)` matches exactly one non-empty segment: `*` when `suffix` is empty,
-  or `*<fixed-literal-suffix>` otherwise. It is a directory step when non-terminal and a
-  regular-file step when terminal.
+  or `*<fixed-literal-suffix>` otherwise. A non-empty suffix has the same closed ASCII
+  type as `literal(value)`; the empty suffix is valid only here and preserves the bare `*`
+  form. It is a directory step when non-terminal and a regular-file step when terminal.
 - `recursive-directories` is rendered only as the complete segment `**`, matches zero or
   more directories, is never terminal, and is never adjacent to another recursive token.
 
-The final token must be `literal` or `one-segment` and denotes a regular file. A program
+Static fixed prefixes, exact targets, and fixed derived suffixes use that same closed ASCII
+literal type. Registry validation rejects every non-ASCII path literal; consequently exact
+raw-byte/code-unit relevance cannot disagree with later NFC classification. The final token
+must be `literal` or `one-segment` and denotes a regular file. A program
 uses only this closed typed grammar; parser, token, and depth capacity and completion
 behavior come from Node.js, the parser, and the execution environment. The build compiler
 parses the compact selector into this typed program, then requires exact canonical
@@ -179,10 +196,11 @@ The plan also carries a closed `selectionPolicy`. Every rule uses `all-matches` 
 override only to establish whether its decoded string, after removal of an optional leading
 UTF-8 BOM, has `String.prototype.trim().length > 0`. A non-empty override short-circuits before any operation on the fallback; an
 absent or safely established empty override advances to `AGENTS.md`. A whitespace-only file is
-empty. A present candidate that is unsafe, unreadable, environment-failed, or undecodable fails
-closed without examining a later selector. `absent` means only an explicit not-found result
-from that exact target's `lstat` after root verification; permission, type, metadata,
-ancestor/root, canonicalization, and post-observation disappearance are failures. The
+empty. Replacement-decoded `utf-8-replaced` text participates unchanged and any `U+FFFD` is
+non-whitespace. A deterministic unsafe or binary candidate ends without examining a later
+selector. `absent` means only exact `ENOENT` from that contract-declared target `lstat`
+after root verification; the same code after observation is `entry-disappeared`. Every
+other throw/rejection, including `open`/`read`, propagates without a domain catch or fallback. The
 policy publishes the selected non-empty file and never publishes both selectors.
 
 The no-I/O Global preview renders `pathPatterns` from this same immutable plan; there is
@@ -192,43 +210,239 @@ programs. An enable
 operation executes the exact plan represented by the accepted preview rather than
 recompiling it from display text.
 
+### Closed structural-`lstat` checkpoints
+
+Every compiled plan carries the exact ordered `StructuralLstatCheckpointTemplate` catalog
+below, and each selector carries only the discovery checkpoint IDs it may instantiate.
+Each template fixes `operation: lstat`, `readAuthority: false`, its phase, target role,
+observation state, exact-`ENOENT` outcome, and multiplicity. `safe-fs.ts` must mint a
+module-private single-call instance bound to the exact root operation, selector or ticket,
+raw target identity, and occurrence before the call. Return or rejection consumes it. No
+caller may synthesize, serialize, reuse, retarget, or transfer it to another operation.
+
+Selector compilation is lossless and closed. `repository-program` has empty `fixedPrefix`,
+the complete matcher program in `remainder`, and `discoveryCheckpointIds: []`.
+`global-exact` has a non-empty all-literal `fixedPrefix` including the terminal target and
+empty `remainder`; its IDs are row 20 then row 3 for a one-component target, otherwise row
+20, row 2, then row 3. Row 20 rechecks the root before descendant I/O, row 2 covers every
+component except the target, and row 3 covers the target.
+`global-fixed-subtree` has the non-empty maximal leading literal chain including the subtree
+root, a non-empty non-literal-first remainder, and rows 20 then 2; row 2 covers every prefix
+component including the subtree leaf. Every row-2 component receives its own rows 4–7
+directory sequence before the next operand is constructed, and the leaf sequence therefore
+completes before that leaf is opened. Registry-authored fields,
+an empty/non-maximal Global prefix, and every other field/ID tuple are rejected. Rows 4–7
+are automatic for an observed candidate and never occur in the ID array; rows 8–19 are
+automatic for its ticket, rows 21–24 are automatic before every `opendir`, and rows 25–28
+are automatic after complete sibling collection and before its buffer is used.
+
+| Order / checkpoint ID | Phase and target role | Observation / exact-`ENOENT` outcome | Multiplicity |
+|---|---|---|---|
+| 1 `root-admission-component` | `root-admission`; `lexical-root-component` | `pre-observation`; `absent` | Parsed anchor once, then each component, root to leaf, with exact platform operands |
+| 2 `selector-fixed-prefix-discovery` | `selector-discovery`; `selector-fixed-prefix` | `pre-observation`; `absent` | Every fixed-prefix component in every selector execution, including a component observed by an earlier selector |
+| 3 `selector-exact-target-discovery` | `selector-discovery`; `selector-exact-target` | `pre-observation`; `absent` | Each attempted exact static target; the Codex primary/fallback checkpoint |
+| 4 `enumerated-admission-root-recheck` | `enumerated-admission`; `admitted-root` | `post-observation`; `entry-disappeared` | Each observed candidate |
+| 5 `enumerated-admission-ancestor-recheck` | `enumerated-admission`; `admitted-ancestor` | `post-observation`; `entry-disappeared` | Each admitted ancestor/observed candidate, root to leaf |
+| 6 `enumerated-admission-candidate-first` | `enumerated-admission`; `observed-candidate-first` | `post-observation`; `entry-disappeared` | Each observed candidate before `realpath` |
+| 7 `enumerated-admission-candidate-repeat` | `enumerated-admission`; `observed-candidate-repeat` | `post-observation`; `entry-disappeared` | Each observed candidate after `realpath` |
+| 8 `pre-open-root-recheck` | `pre-open`; `admitted-root` | `post-observation`; `entry-disappeared` | Each ticket |
+| 9 `pre-open-ancestor-recheck` | `pre-open`; `admitted-ancestor` | `post-observation`; `entry-disappeared` | Each admitted ancestor/ticket, root to leaf |
+| 10 `pre-open-candidate-first` | `pre-open`; `ticketed-candidate-first` | `post-observation`; `entry-disappeared` | Each ticket before candidate `realpath` |
+| 11 `pre-open-candidate-repeat` | `pre-open`; `ticketed-candidate-repeat` | `post-observation`; `entry-disappeared` | Each ticket after candidate `realpath` |
+| 12 `pre-read-root-recheck` | `pre-read`; `admitted-root` | `post-observation`; `entry-disappeared` | Each ticket |
+| 13 `pre-read-ancestor-recheck` | `pre-read`; `admitted-ancestor` | `post-observation`; `entry-disappeared` | Each admitted ancestor/ticket, root to leaf |
+| 14 `pre-read-candidate-first` | `pre-read`; `ticketed-candidate-first` | `post-observation`; `entry-disappeared` | Each ticket before candidate `realpath` |
+| 15 `pre-read-candidate-repeat` | `pre-read`; `ticketed-candidate-repeat` | `post-observation`; `entry-disappeared` | Each ticket after candidate `realpath` |
+| 16 `post-read-root-recheck` | `post-read`; `admitted-root` | `post-observation`; `entry-disappeared` | Each ticket |
+| 17 `post-read-ancestor-recheck` | `post-read`; `admitted-ancestor` | `post-observation`; `entry-disappeared` | Each admitted ancestor/ticket, root to leaf |
+| 18 `post-read-candidate-first` | `post-read`; `ticketed-candidate-first` | `post-observation`; `entry-disappeared` | Each ticket before candidate `realpath` |
+| 19 `post-read-candidate-repeat` | `post-read`; `ticketed-candidate-repeat` | `post-observation`; `entry-disappeared` | Each ticket after candidate `realpath` |
+| 20 `selector-root-recheck` | `selector-discovery`; `admitted-root` | `post-observation`; `entry-disappeared` | Start of every Global selector execution, before row 2 or 3 |
+| 21 `pre-directory-open-root-recheck` | `pre-directory-open`; `admitted-root` | `post-observation`; `entry-disappeared` | Before every `opendir`; sole pre-open row when opening the source root itself |
+| 22 `pre-directory-open-ancestor-recheck` | `pre-directory-open`; `admitted-ancestor` | `post-observation`; `entry-disappeared` | Each directory strictly between root and non-root directory to open, root to leaf |
+| 23 `pre-directory-open-target-first` | `pre-directory-open`; `directory-to-open-first` | `post-observation`; `entry-disappeared` | Non-root directory to open, before exact-platform `realpath` |
+| 24 `pre-directory-open-target-repeat` | `pre-directory-open`; `directory-to-open-repeat` | `post-observation`; `entry-disappeared` | Non-root directory to open, after exact-platform `realpath` and before `opendir` |
+| 25 `post-directory-enumeration-root-recheck` | `post-directory-enumeration`; `admitted-root` | `post-observation`; `entry-disappeared` | After complete sibling collection and before use; sole post-enumeration row for the source root |
+| 26 `post-directory-enumeration-ancestor-recheck` | `post-directory-enumeration`; `admitted-ancestor` | `post-observation`; `entry-disappeared` | Each directory strictly between root and enumerated non-root directory, root to leaf |
+| 27 `post-directory-enumeration-target-first` | `post-directory-enumeration`; `enumerated-directory-first` | `post-observation`; `entry-disappeared` | Non-root enumerated directory, before exact-platform `realpath` |
+| 28 `post-directory-enumeration-target-repeat` | `post-directory-enumeration`; `enumerated-directory-repeat` | `post-observation`; `entry-disappeared` | Non-root enumerated directory, after exact-platform `realpath` and before confirmed `fs.Dir` close |
+
+The compiler rejects missing, extra, reordered, widened, or unresolved catalog/reference
+data. Runtime instantiates only occurrences demanded by the bound plan and ticket. Table
+order is immutable schema order, not one chronological run: row 20 precedes row 2/3 for each
+Global selector. Immediately before each `opendir`, row 21, row 22 in ancestor order, row
+23, exact-platform `realpath`, then row 24 complete. The registered `fs.Dir` is driven with
+explicit `Dir.read()` until null; rows 25, 26 in ancestor order, 27, exact-platform
+`realpath`, then 28 complete while it remains open. Registry `close-confirmed` is required
+before sibling classification, descent, or ticket issuance. Source-root enumeration uses
+only rows 21 and 25.
+Only `error.code === 'ENOENT'` from the instance's one `lstat`
+returns the listed outcome. A phase/role/target mismatch, consumed or absent instance,
+different error code, undeclared `lstat`, or rejection from `opendir`, `open`, `read`,
+`realpath`, `FileHandle.stat`, or any other operation propagates unchanged. A successful
+checkpoint never licenses a later call to reuse its catch. For the Codex policy, only row 3
+on the primary selector may advance to the fallback as `absent`.
+An observed candidate is a collision-free selected `Dirent` after complete sibling
+classification, one immutable exact-file target successfully observed by row 3, or any
+immutable Global fixed-prefix directory component successfully observed by row 2. Each
+receives exactly one rows 4–7 sequence before ticket issuance, directory descent, or
+targeted `opendir`; the expected file/directory type is bound by the observation. Rows
+21–24 revalidate any directory immediately before it is opened, and rows 25–28 plus
+confirmed close validate the completed enumeration before its sibling buffer is used. Derived
+candidates mint no selector-discovery row 2 or 3. They reuse an existing collision-free
+record/ticket when present; otherwise the central service performs only the typed targeted
+enumeration authorized by the exact `DerivationProgram` segment sequence. It completes rows
+21–24 for the current admitted parent, opens it, collects the complete sibling name set,
+completes rows 25–28 and confirmed close, then classifies the set, selects one unique exact
+segment, and gives that selected `Dirent` one rows 4–7 sequence before descent or ticket
+issuance. Unselected siblings receive no entry I/O. Missing classification is a deterministic
+miss after parent enumeration; a relevant unrepresentable name or collision is Source-fatal.
+
+For post-observation `entry-disappeared`, root-role rows 4/8/12/16/20/21 map to pathless
+source-fatal `safe-fs-root-stale`; root row 25 has the same mapping. Ancestor-role rows
+5/9/13/17/22/26, directory-to-open rows 23/24, and enumerated-directory rows 27/28 map to
+pathless source-fatal `safe-fs-ancestor-stale`. Candidate-file rows map
+exactly as defined in the data-model contract. Successfully returned records use the same
+first-match order in selector-discovery, enumerated-admission, pre-directory-open,
+post-directory-enumeration, pre-open, pre-read, and post-read: unusable required data →
+`safe-fs-boundary-unverifiable`; link →
+`safe-fs-link-rejected`; wrong bound type → `safe-fs-type-rejected`; canonical mismatch →
+`safe-fs-boundary-unverifiable`; `dev` change → `safe-fs-device-changed`; `ino`/handle
+identity change → `safe-fs-race-detected`; other mode/size/time/terminal-`nlink` change →
+`safe-fs-file-metadata-changed`. The first match stops evaluation. Every Global row-2
+component immediately receives this classification with `expectedType: directory` and rows
+4–7 before the next component operand is constructed. This is repeated independently for
+every selector execution; a shared prefix observed by an earlier selector is never reused
+without the later selector's own row-2 and rows 4–7 sequence.
+
+### Root spelling admission and platform operands
+
+Before row 1 or any other filesystem call, the central service applies the closed pure
+`LexicalAbsoluteRootParts` parser defined by the [data-model contract](../data-model.md) to
+the exact retained root. Every platform rejects NUL and unpaired UTF-16 surrogates with
+zero I/O. POSIX additionally rejects U+FFFD in a root string, accepts only `/` or exact
+non-empty non-dot components separated by one `/`, and creates private Buffer prefixes for
+the anchor and every component. Windows accepts only an anchored drive form. It rejects
+every explicit two-leading-separator UNC/server-share/device spelling, current-drive, drive-relative,
+device-namespace, and malformed drive form before I/O; no server/share spelling can reach
+`lstat`, `realpath`, DNS, or SMB access. It preserves exact UTF-16 code units and probes only
+the drive anchor followed by each component. Row 1 uses only those exact operands.
+`realpath` returns and is parsed as a Buffer on POSIX and as an exact plain or mapped drive-
+namespace string on Windows; canonical values are comparison-only and never replace a raw
+I/O operand. A syntactically plain drive may be OS-mapped network storage and a POSIX root
+may be a network mount; the pure grammar cannot identify those cases, and post-consent/root-
+selection exact-operand checks may perform network filesystem I/O and cause OS-mediated
+traffic. FR-022 excludes that traffic from its direct product-issued outbound-request assertion
+and requires local fixture roots for that assertion. The assertion separately classifies and
+validates the two exact FR-022 authorized internal loopback classes at the issued `127.0.0.1`
+authority—closed unauthenticated static/SPA `GET`/`HEAD` and capability-authenticated declared
+API requests—and requires zero other product network/URL/MCP requests. Only explicit server/share spellings
+receive the pre-I/O filesystem/DNS/SMB guarantee.
+
+For `origin: process-cwd`, the only extra operand is `lstat('.')`, whose identity must equal
+the selected absolute root. The original spelling of a relative `--cwd` is never probed:
+all admission and descendant I/O use only its lexically selected absolute root. Root and
+candidate containment is an exact platform component comparison—POSIX bytes or Windows
+code units, with no case fold or Unicode normalization. Successfully returned malformed,
+non-round-tripping, or non-contained canonical data fails closed. A redundant platform
+`path.relative` check may only reject after lossless parsing; it never admits or constructs
+a path. Differences that Node exposes, including case, normalization, and short-name
+expansion, are rejected; aliases the platform does not expose remain the explicit
+`platform-unobservable` limitation.
+
 ### Matching and Node.js entry verification
 
-For every name obtained by directory enumeration, the service retains internal
-`rawRelativeSegments` using the exact `Dirent.name` spellings. Those raw segments are used
-only to reconstruct, verify, and read the filesystem path. It separately computes NFC
-`classificationSegments`; only those segments, joined with `/`, are used for matcher
-classification, deterministic sorting, and the serialized `SourceRelativePath`. A
-normalized or canonical spelling is never substituted into a filesystem operation.
+An enumerated POSIX name is a private defensive Buffer copy returned by
+`opendir(parentBuffer, { encoding: 'buffer' })`; a Windows name is its exact returned UTF-16
+code-unit sequence. A targeted fixed path whose plan forbids parent enumeration instead
+uses immutable registry literal segments compiled into the same platform representation.
+The closed ticket-path union is the only descendant operand: all-enumerated
+`RawEntrySegment[]`, an all-registry exact `RegistryTargetSegment[]`, or the sole mixed form
+of a non-empty fixed registry prefix followed by a non-empty enumerated raw remainder.
+Element-wise unions are forbidden. NFC `classificationSegments`, their `/`-joined `SourceRelativePath`, canonical
+values, and display strings never reconstruct a filesystem path.
 
-Every opened directory is collected into a complete sibling buffer before any
-of its entries is descended into or opened. A recoverable capacity or environment-resource
-failure before that buffer is complete aborts the whole scan attempt, publishes no item,
-Source, recognition, derived result, scan-result record or response, or generation, and
-leaves only the prior committed snapshot available; incomplete traversal never becomes a
-contracted-partial result. When two or more distinct raw sibling names
-normalize to the same NFC segment and therefore the same parent-relative classification
-key, every entry in that collision group fails closed: none is descended into or read,
-and the service emits diagnostic
-`safe-fs-path-normalization-collision`. A single non-colliding NFD spelling remains valid:
-the service reads it through its raw segments while matching, sorting, and displaying its
-NFC `SourceRelativePath`.
+Selector relevance is decided on exact bytes/code units before text decoding. Literal and
+one-segment suffix comparisons are exact. At a recursive directory position, a known
+directory or an unknown `Dirent` type is potentially relevant, while a known non-directory
+may be ignored without `lstat`. A relevant POSIX name must pass `isUtf8` and exact decode/
+re-encode equality; a relevant Windows name must contain no unpaired surrogate. A relevant
+unrepresentable name receives pathless session Diagnostic
+`safe-fs-entry-name-unrepresentable`, receives zero entry `lstat`/descent/`realpath`/open/
+read calls, makes the source attempt fatal, and publishes no generation or partial item.
+Its nonserialized lifecycle owner is exposed only through
+`repositoryFailureDiagnosticId`, `GlobalControlView.toolFailures`, or
+`StaleSourceFailure`. An irrelevant unrepresentable name is ignored. This filename rule is
+separate from file content: representable files with invalid non-NUL UTF-8 bytes are decoded
+once with replacement semantics and processed unchanged as `utf-8-replaced` text.
 
-Canonical or normalized strings are diagnostic/classification data and never authorize a
-read by themselves. The centralized Node.js filesystem service first establishes lexical
-containment and snapshots the source root's identity and canonical `realpath`. It `lstat`s
-every plan-authorized ancestor before considering a candidate. Every candidate
-verification phase—enumeration, immediately before open, after
-open but before reading, and after the complete same-handle read—uses this exact ordered sequence: (1) `lstat` the
-candidate path and reject a symbolic link, non-regular type, or unexpected identity; (2)
-only after that succeeds, resolve the candidate `realpath` and verify containment with
-`node:path.relative`, whose platform-separator-normalized result must be non-absolute and
-neither `..` nor start with `../`; and (3) `lstat` the candidate path again and require its
-identity, type, size, and relevant timestamps to equal the first `lstat`. Thus a stable
-symlink is rejected before any candidate `realpath` call can follow it. The service supplies
-internal source-relative enumeration records carrying the observed root, ancestor, path,
-canonical-location, identity, type, size, and relevant timestamp metadata. A classifier may
-select only an exact previously enumerated record.
+Rows 21–24 bind exact bigint directory/root/ancestor `dev`, `ino`, `mode`, `mtimeNs`, and
+`ctimeNs` immediately before each open. Every opened directory is collected into a complete
+raw sibling buffer before descent or open. Rows 25–28 then require the same identity/type/
+mode and unchanged `mtimeNs`/`ctimeNs`, and the resource registry must confirm `fs.Dir`
+closure before the buffer is classified or used. A detectable create/remove/rename during
+enumeration is source-fatal and publishes no generation. A throw/rejection before
+completion, during post-checks, or during close propagates to the trigger-owning outer boundary,
+publishes no attempt result/generation, and never becomes contracted-partial. Distinct raw
+relevant siblings with the same NFC classification key all fail closed with pathless session
+Diagnostic `safe-fs-path-normalization-collision`; no member is descended into or read, the
+source attempt is fatal, and no generation or partial item is published. A single
+non-colliding NFD spelling remains valid and is read through its raw segments while the
+public path is NFC.
+
+Canonical containment and the rows 4–19 sequences use the platform representation above.
+Each observation binds `expectedType: directory | regular-file`: roots, ancestors,
+fixed-subtree leaves, derived intermediate segments, and nonterminal matcher steps require a
+directory; only a terminal candidate requires a regular file. Each phase first `lstat`s and
+rejects a link, a type different from that bound expected type, or changed identity, then
+parses and exact-component-compares the candidate `realpath`, then repeats `lstat` and exact
+metadata comparison. A stable symlink is therefore rejected before candidate `realpath`.
+The service exposes only the resulting internal enumeration record, and a classifier may
+select only that exact record.
+
+A terminal-file identity is usable only when every path `lstat` and same-handle
+`FileHandle.stat({ bigint: true })` exposes exact bigint fields, `ino !== 0n`, and
+`nlink > 0n`. Within one Source scan attempt, hard-link grouping requires identical
+`(dev, ino)`, stable equal `nlink` across every phase/member, and
+`nlink >= BigInt(admittedPathCount)`. Missing, non-bigint, zero/negative, changing, or
+group-inconsistent identity metadata returns `safe-fs-boundary-unverifiable` with zero
+accepted bytes. Plausible non-unique values that Node cannot distinguish are an explicit
+`platform-unobservable` limitation. Sources, attempts, and generations never share a
+ticket, receipt, buffer, or read-once group and may each independently read the same
+underlying object once.
+
+Except for the content-dependent ordered Codex fallback below, one Source attempt completes
+all static traversal, sibling classification, rows 4–7 admission, and physical-group
+formation before consuming any static group. Groups are then consumed in deterministic
+primary-path order; any later static admission is an internal invariant failure, not a
+second read. When one physical file has multiple collision-free hard-link admissions
+identified within that attempt before its group is consumed, the unsigned
+UTF-8-bytewise lowest NFC path is primary and the other unique paths are ordered aliases.
+Every raw provenance and ticket is retained. In deterministic primary/alias order, every
+ticket runs rows 8–11 before the sole primary-path open, rows 12–15 before any read, and rows
+16–19 after the one complete primary-handle read while that handle remains open. Each path's
+identity and metadata must still equal its enumeration snapshot and the same handle identity
+before bytes are accepted. Alias disappearance, replacement, or divergence discards all
+bytes and prevents publication from an old observation. Filters/detail/selection match all
+paths, while a file Diagnostic uses only the primary.
+
+The `codex-global-first-non-empty` policy is the only static-discovery exception: a fallback
+target is not touched until the override is absent or has been safely read as empty. If an
+empty consumed override and the subsequently admitted fallback have the same usable
+`(dev, ino)`, the fallback receives zero open/read and no alias/provenance merge. The
+contracted-partial result contains a diagnostic-only fallback file with
+`readState: boundary-rejected` and file-scoped
+`safe-fs-ordered-fallback-alias-rejected`; the empty override probe remains unpublished.
+Reusing its bytes, reopening the group, or silently omitting the fallback is forbidden.
+
+Derivation occurs after its static seed read. An exact already-verified raw path gains the
+derived provenance without another ticket/read. A different raw hard-link path may join a
+not-yet-consumed physical group and undergo every ordinary check above. Once that group has
+been opened/read, however, a late derived alias receives zero open/read, is not published as
+an alias or provenance, and adds file-scoped `safe-fs-late-derived-alias-rejected` to the
+existing file; the generation is contracted-partial and the existing bytes/read state stay
+unchanged. Re-reading, reusing old bytes for the late path, or silently dropping the
+Diagnostic is forbidden.
 
 Before a derived selector reaches enumeration-record lookup, each NFC classification segment
 rejects NUL, control characters, Windows-special characters, trailing dot/space, device basenames,
@@ -253,10 +467,16 @@ file unless a bounded-derived rule explicitly creates another candidate. An unli
 field, import, link, component path, command, directory, vendor locator, `behaviorId`, or
 `strategyId` never grants read authority.
 
-One physical file may be admitted by multiple rules and tools. It is read once and retains
-each accepted provenance, including its `ruleId`, matched selector, evidence,
-documentation status, order facts, and applicability. Admissions are not collapsed into
-a recognition-level winner.
+One physical file may be admitted by multiple rules within one Source, or independently by
+multiple tool Sources. It is read once per Source scan attempt and retains each provenance
+accepted before that attempt's physical group is consumed, including its `ruleId`, matched selector, evidence,
+record-by-record documentation/lifecycle assessments, order facts, and applicability.
+`DocumentationStatus` is exactly `documented | partially-documented | unknown | conflict`;
+the separate unique fixed-order lifecycle qualifier array is `preview`, `experimental`,
+`deprecated`, and empty never implies stable. Admissions are not collapsed into
+a recognition-level winner. Cross-Source, cross-attempt, and cross-generation reads are
+independent. A late ordered fallback or derived hard-link path follows its explicit
+rejection protocol above and is not an accepted alias admission.
 
 ## Read authorization and applicability
 
@@ -281,6 +501,32 @@ exactly one validated segment rather than injecting an unparsed path; declares a
 suffix; and enumerates every permitted output form. Extracted segments must pass the same
 collision-free classification and containment admission as a static candidate.
 
+Targeted derivation never falls back to a free-form path open. For each segment, the service
+either reuses an already admitted enumeration record or enumerates exactly its admitted
+parent and selects the unique collision-free raw-name record. Every newly selected directory
+and terminal file is an observed candidate with the ordinary rows 4–7 checks; neighbors are
+names only and receive no `lstat`, `realpath`, open, or read. The next parent is reachable
+only through the preceding selected directory, so the interpreter cannot widen the plan.
+
+Authored local paths use the exact pure tokenizer in the data-model contract. Prefix policy
+handles only one literal `./`; U+002F is the sole separator. Empty input/segments, leading,
+trailing, or repeated separators, `.`/`..`, backslash, colon, a first-segment home marker,
+controls, unpaired surrogates, and non-NFC segments reject the whole derivation with zero
+target I/O. There is no percent/URL/URI decoding, environment expansion, home resolution, or
+platform path parsing. The interpreter produces typed one-segment tokens, never a path
+string. Fixed suffix alternatives use literal `first-present-exact`: only a missing exact
+classification advances in registry order; the first fully observed path stops later
+alternatives even if its later safe/type/read/parse result is unsuccessful. An ancestor-
+chain placement applies that rule independently at every fixed root-to-narrow placement.
+
+A derived-only ticket is authorized by a module-private `DerivedTicketAuthority` binding the
+exact program, current source/boundary/generation/scan, consumed static seed ticket and
+provenance, source occurrence, placement/alternative indexes, and typed segment tokens to
+one target. It cannot be serialized, retargeted, reused after revocation, or seed another
+derivation. A ticket admitted independently by a static traversal keeps that traversal
+authority and merely gains another provenance; seed traversal authority is never widened to
+cover a derived target.
+
 The registry contains data only: it cannot supply a callback, function pointer, arbitrary
 `path.join` recipe, free-form path expression, glob, or regular expression. The exact
 closed schema and the initial derived-rule mappings are enumerated by the
@@ -300,13 +546,17 @@ semantically effective.
 - Symbolic-link files and directories and non-regular candidates are rejected. Junctions,
   mount-point changes, reparse points, hard-to-canonicalize aliases, and boundary crossings
   fail closed whenever Node.js exposes enough information to detect them; inability to
-  establish both lexical and `realpath` containment also fails closed. If Node.js reports
-  required metadata or canonicalization as errored, ambiguous, or unusable, the service
+  establish both lexical and `realpath` containment also fails closed. If successfully
+  returned required metadata or canonicalization is ambiguous or unusable, the service
   emits `safe-fs-boundary-unverifiable` and rejects the candidate, or the entire source when
   the unverifiable state belongs to its root or an ancestor shared by the traversal.
 - A validated source-boundary record and exact enumeration record authorize only the
   centralized read operation. A canonical path string, relationship target, or source text
   alone never authorizes a direct filesystem open.
+- The sole caught filesystem rejection is exact `ENOENT` from a contract-declared
+  structural `lstat`, mapped only to `absent` before observation or
+  `entry-disappeared` afterward. The code is not inferred from message text and the rule
+  never applies to `open`, `read`, or any other throw/rejection.
 - Immediately before opening, the service repeats the root-identity and ancestor-`lstat`
   checks, then runs the ordered candidate verification sequence above.
   It opens the candidate with `O_NOFOLLOW` whenever `node:fs.constants.O_NOFOLLOW` exists
@@ -318,7 +568,7 @@ semantically effective.
 - After the complete same-handle read and before any parse, publish, or commit, the service repeats the
   root identity and every ancestor `lstat`, runs the same ordered candidate verification
   sequence, and calls `stat()` on the same still-open `FileHandle`.
-  Any detected error, ambiguity, containment failure, or change to identity, type, size, or
+  Any detected ambiguity, containment failure, or change to identity, type, size, or
   relevant timestamps discards the entire byte buffer and fails closed. An unverifiable
   boundary uses `safe-fs-boundary-unverifiable`; another detected race yields the applicable
   actionable, secret-safe diagnostic.
@@ -333,15 +583,15 @@ semantically effective.
 - File, collection, derivation, relationship, parser, diagnostic, and timing capacity is
   inherited from Node.js, parser libraries, the operating system, the filesystem, and the
   execution environment as specified in the [data-model contract](../data-model.md). A
-  recoverable capacity failure aborts the attempt, returns only the contracted lifecycle
-  failure, commits no item, recognition, derived result, scan-result record or response, or
-  generation, and leaves only the prior committed snapshot available. A contracted partial is possible only after complete traversal
-  for deterministic entry-local non-capacity failures. Neither path permits implicit expansion,
+  throw/rejection propagates without domain cause classification or recovery and, when
+  REST-owned, is represented only by the generic Operation Error. A contracted partial is
+  possible only after complete traversal for FR-028-eligible deterministic non-throwing
+  outcomes. Neither path permits implicit expansion,
   retry without authority, fallback read, or a validity verdict.
-- One unsafe, unreadable, malformed, or changed candidate does not prevent unaffected candidates
-  from being reported when it satisfies the contracted-partial rule above. An environment-resource
-  failure aborts the attempt, publishes no current-attempt result, and leaves only the
-  previously committed snapshot available.
+- One deterministic unsafe, malformed, binary, or changed candidate does not prevent
+  unaffected candidates from being reported when it satisfies the contracted-partial rule
+  above. A throw/rejection publishes no current-attempt result and follows the owning-
+  boundary rule.
 - No relationship or excluded record may be promoted merely because its target happens
   to exist. A target is readable only through an independent static or bounded-derived
   admission.
@@ -354,7 +604,8 @@ Contract and fixture validation must prove all of the following:
    references reciprocally, and has semantically equivalent English and Japanese rows.
 2. Every Repository matcher begins with `./`; a bare `**/` is rejected. Exact,
    direct-child, `./**/` descendant, and fixed-subtree recursive forms have distinct
-   positive and near-miss fixtures.
+   positive and near-miss fixtures. Matcher fixtures accept canonical bare `*`, reject a
+   misplaced/adjacent `**`, and reject every non-ASCII or forbidden literal/suffix code unit.
 3. A `./**/` fixture proves only downward Inspector inventory and carries separate unknown
    or conditional vendor-runtime facts where the upstream traversal is not established.
 4. Typed matchers compile deterministically to immutable versioned plans. Global call-trace
@@ -363,35 +614,72 @@ Contract and fixture validation must prove all of the following:
    `opendir`, `lstat`, `realpath`, open, or read calls. Preview fixtures prove that
    `pathPatterns` come from that same plan and that the consent digest binds its version,
    closed selection policy, and canonical programs. Codex traces apply absent, empty,
-   BOM-only, whitespace-only, non-empty, unreadable, environment-failed, undecodable, and non-regular
-   cases independently to both ordered targets; they distinguish exact-target not-found
-   from every other error and prove short-circuit/fail-closed behavior, including that the
+   BOM-only, whitespace-only, non-empty, replacement-decoded, binary, and non-regular cases
+   independently to both ordered targets; they distinguish exact structural-`lstat`
+   `ENOENT` from every other throw/rejection and prove short-circuit/propagation behavior, including that the
    two selectors are never both published.
+   Shared-prefix Global traces prove that each selector independently executes row 20,
+   every row-2 prefix observation, and its immediate rows 4–7 directory checks before the
+   next descendant operand; no cross-selector admission cache suppresses those calls.
+   Global-consent fixtures reject selector-shaped input, evaluate all three frozen entries,
+   isolate deterministic rejected roots, publish all admitted one-root Sources in one batch
+   generation, and prove that any other throw/rejection aborts the whole provisional subset.
 5. Every static and bounded-derived rule has positive, root/nested, boundary, symlink,
-   alias, recoverable-environment-failure, and applicable multi-tool fixtures. Derived fixtures additionally
+   alias, thrown/rejected-operation, and applicable multi-tool fixtures. Derived fixtures additionally
    prove closed `DerivationProgram` interpretation without callbacks or free-form path
    construction, nonrecursive derivation, containment, deterministic retention on successful
-   completion, safe handling of recoverable environment failure, and no read for a rejected target.
+   completion, owning-boundary propagation without a domain result, and no read for a rejected target.
 6. Relationship-only and excluded fixtures prove zero read authority even when a target
    exists or matches a generic filename. User behavior recorded outside FR-015 through
    FR-018 never becomes a Global candidate.
-7. A multiply admitted physical file is read once and retains each independent provenance;
-   matcher, evidence, documentation, scope/order, and applicability are not collapsed.
-8. Centralized Node.js filesystem fixtures on every supported OS cover lexical and
-   `realpath` escape, `path.relative` containment, symlink and non-regular rejection,
-   the exact `lstat`/`realpath`/second-`lstat` order in every phase, effective `O_NOFOLLOW`
-   use when available, every pre-read and post-read comparison above, and root/parent/final-
-   entry replacement. A stable-symlink fixture proves rejection before a candidate
+7. Within one Source scan attempt, complete static discovery precedes group reads; each
+   usable multiply admitted physical group is read once and retains each independent
+   provenance. Matcher, evidence, record-by-record documentation/lifecycle assessments,
+   scope/order, and applicability are not
+   collapsed, and each admitted hard-link path retains its own ticket through every
+   post-read check. Cross-Source/attempt/generation fixtures prove independent reads.
+   Codex fixtures prove the explicit zero-read ordered-fallback hard-link rejection, and
+   derived fixtures prove the distinct late-derived rejection. Identity fixtures cover
+   `ino === 0n`, absent/non-bigint/zero `nlink`, changing `nlink`, identical unusable tuples,
+   and `nlink < admittedPathCount`; all yield boundary-unverifiable with zero accepted bytes.
+8. Centralized Node.js filesystem fixtures on every supported OS cover the exact pure root
+   grammar, anchor/component row-1 operands, POSIX Buffer and Windows code-unit forms,
+   malformed/device/current-drive/drive-relative rejection, every two-leading-separator
+   UNC/server-share/device spelling including mixed separator forms, POSIX root U+FFFD rejection,
+   `process-cwd` identity verification, and zero probes of an original relative `--cwd`
+   spelling. They also cover exact-component canonical containment, lexical and `realpath`
+   escape, redundant-only `path.relative` rejection, symlink and non-regular rejection,
+   the exact row 20, per-selector row 2 plus rows 4–7, rows 21–24 pre-directory-open, rows
+   25–28 post-directory-enumeration, and candidate-phase `lstat`/`realpath`/second-`lstat`
+   order. Directory fixtures mutate an entry by create/remove/rename during explicit
+   `Dir.read()` and prove metadata-stale failure, confirmed close, no descent/ticket/bytes,
+   and no generation. They also cover effective `O_NOFOLLOW` use when available, every
+   pre-read and post-read comparison above, and root/parent/final-entry replacement. A stable-symlink fixture proves rejection before a candidate
    `realpath` call. Every ordinary concurrent or otherwise detectable change publishes no
-   bytes and fails with an actionable diagnostic. Reported
-   error, ambiguity, or unusable metadata yields `safe-fs-boundary-unverifiable`; an OS
+   bytes and fails with an actionable diagnostic. Successfully returned ambiguous or
+   unusable metadata yields `safe-fs-boundary-unverifiable`; exact structural-`lstat`
+   `ENOENT` alone becomes absent/disappeared; every other throw/rejection propagates. An OS
    behavior that Node.js cannot observe is recorded as a platform limitation and is not
    counted as proof against the excluded active-adversary race.
-9. Path-spelling fixtures include a non-colliding NFD-only name that is read through its
-   exact raw `Dirent.name` segments and displayed as an NFC `SourceRelativePath`, plus NFC
-   and NFD sibling spellings with the same classification key. The latter fixture emits
-   `safe-fs-path-normalization-collision` and proves that every colliding sibling receives
-   zero descend/open/read operations.
+   Explicit UNC/server-share spelling proves zero filesystem/DNS/SMB calls; a mapped drive
+   and a POSIX network mount are instead tested/documented as lexically indistinguishable
+   post-consent filesystem I/O and are outside FR-022's zero-prohibited-direct-product-request
+   assertion. That assertion must separately observe both exact authorized internal loopback
+   classes and reject every request outside them, including customization-selected,
+   remote-reference, or MCP requests.
+9. Path-spelling fixtures include POSIX Buffer names with invalid UTF-8 in relevant and
+   irrelevant positions, a literal U+FFFD name, Windows unpaired-surrogate and unknown-
+   `Dirent` cases, immutable exact-target segments, and a non-colliding NFD-only name read
+   through exact raw segments and displayed as NFC. They prove relevance before decoding,
+   zero entry I/O plus source-fatal pathless lifecycle ownership for an unrepresentable
+   relevant name, no generation/partial item, and separate replacement processing for
+   invalid non-NUL file-content UTF-8. NFC/NFD sibling collision fixtures similarly emit
+   `safe-fs-path-normalization-collision`, perform zero member descent/open/read, publish no
+   generation, and expose exactly one lifecycle owner without an ambiguous path. Hard-link
+   fixtures prove deterministic primary/alias ordering, retained raw provenances/tickets,
+   all-path UI matching, primary-only file Diagnostic location, one primary-handle read, and
+   rejection with all bytes discarded when any alias disappears or is replaced before
+   open, before read, or after read.
 10. Official-source fixtures validate official HTTPS hosts, enumerated anchors, review dates,
    semantic fingerprints, affected-contract backlinks, and human-only updates. A drift
    result never changes a behavior, rule, or strategy automatically.
@@ -399,8 +687,24 @@ Contract and fixture validation must prove all of the following:
    invalid token sequence or position; a selector/program correspondence or canonical-
    round-trip mismatch; a malformed selector; a duplicate identifier; an orphan reference;
    a mismatched contract version; or an English/Japanese semantic difference.
+12. Production-call instrumentation proves one content read from the sole accepted handle
+    and zero mutation-capable APIs or flags: no write/truncate/create/rename/delete/link,
+    chmod/chown, utimes, xattr, ACL, or requested atime mutation. Only an external harness
+    snapshots bytes and, where stable APIs exist, xattrs/ACLs before and after execution;
+    those observations never become a second product read. OS-attributable atime changes
+    are reported separately.
+13. Resource-lifecycle fixtures cover preallocated `opening` reservations, open/opendir
+    rejection, synchronous attachment failure as process-fatal, explicit `Dir.read()`, one
+    close call, synchronous close throw, concurrent closer joining, FileHandle event-before-
+    fulfillment/event-before-rejection/rejection-before-late-event, `Dir.close()` rejection,
+    poison clearing, restart-required directory unknown, disable-lineage transfer, and
+    zero publication until every required close is confirmed.
 
 Changing a matcher base, selector/program, derived expansion summary, read-authorizing class, or Global scope is a
 contract semantic change. Maintainers must review identifier compatibility, update every
 affected evidence backlink and fixture, update both language contracts together, and bump
 the consent-bound contract version when the accepted Global boundary changes.
+The implementation freeze task verifies the already approved bilingual Presentation
+Allowlist and digest only. It may not author or semantically edit membership, source-form
+applicability, extractors, or relationship kinds; any such delta stops dependent work and
+requires synchronized design plus regenerated plan/tasks.

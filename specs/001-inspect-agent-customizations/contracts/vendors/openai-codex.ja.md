@@ -2,7 +2,7 @@
 
 [English](openai-codex.md)
 
-**契約バージョン**: 2026-07-17
+**契約バージョン**: 2026-07-20
 **公式資料のreview日**: 2026-07-15
 
 このcontractは、文書化済みCodex lookup behaviorとInspectorのread allowlistを分離する。共通matcher文法と
@@ -18,6 +18,28 @@ authorityを与えない。
 ChatGPT desktop app、Codex CLI、Codex IDE extensionは、以下で**local client**としたbehaviorについて同じlocal
 Codex host configurationを使う。ChatGPT Work webはlocal Codex configurationを読まない。Repository marketplace
 discoveryとplugin installationにもdesktop/CLI固有の管理behaviorがあり、hosted taskへ一般化してはならない。
+
+## Canonical evidence-assessment index
+
+このcontractが所有する全`behaviorId`と`ruleId`は正確に1件の`EvidenceAssessment`を持つ。下記にないsubjectの
+canonical valueは`documentationStatus: documented`、`lifecycleQualifiers: []`とする。これはEvidence cellからの
+推論ではなく、未列挙subjectごとのclosed mappingである。Empty qualifierはlifecycle claimを行わず、`stable`を
+意味しない。`documentation-conflict`はruntimeの`ConditionFact.status`だけに残す。既存のStatus、Documentation
+status、Inspector status列はrationaleまたはInspector scope stateであり、serializeするstatus scalarではない。
+
+| Subject ID | `documentationStatus` | `lifecycleQualifiers` | Assessment basis |
+|---|---|---|---|
+| `codex.behavior.repo.agents` | `partially-documented` | `[]` | Completeなproject directory searchが未指定 |
+| `codex.behavior.repo.rules` | `partially-documented` | `[experimental]` | Nested recursionは未指定でrules featureはexperimental |
+| `codex.behavior.user.rules` | `documented` | `[experimental]` | 文書化済みUser rules surfaceはexperimental |
+| `codex.behavior.user.prompts` | `documented` | `[deprecated]` | 文書化済みcustom-prompt surfaceはdeprecated |
+| `codex.repo.agent` | `partially-documented` | `[]` | Descendant inventoryは完全に指定されたproject search外のpossible contextを含む |
+| `codex.repo.rules` | `documented` | `[experimental]` | Inspector ruleは文書化済みdirect childだけをadmitし、未確立のnestingを除外する |
+
+固定qualifier順は`preview`、`experimental`、`deprecated`とする。ここでは複数qualifierを持つrowはないが、一般の
+orderingは必須のままである。Typed registryはdefaultとexceptionをsubjectごとに1 recordへ展開する。Candidate
+provenanceとrelationship DTOは、直接参照するrule/behavior/strategyのassessmentをsort/deduplicate済み
+`EvidenceAssessment[]`へすべて保持し、scalarまたはqualifier unionへ平坦化しない。
 
 ## 文書化済みRepository behavior
 
@@ -48,7 +70,7 @@ FR-005、FR-024、QR-001、QR-004、QR-005である。
 | `codex.repo.config` | `./` | `./**/.codex/config.toml` | 可能なproject layerの`descendant-inventory` | `static-candidate` | `codex.behavior.repo.config`, `codex.behavior.repo.mcp`, `codex.behavior.repo.hooks` | Documented。Trust/runtime chainはconditional | `openai.codex.config-basic`, `openai.codex.mcp` |
 | `codex.repo.hooks` | `./` | `./**/.codex/hooks.json` | 可能なactive config layerの`descendant-inventory` | `static-candidate` | `codex.behavior.repo.hooks` | Documented。Trust/hook reviewはconditional | `openai.codex.hooks` |
 | `codex.repo.rules` | `./` | `./**/.codex/rules/*.rules` | Layer rootの`descendant-inventory`と各`rules/`内`direct-child` | `static-candidate` | `codex.behavior.repo.rules` | Experimental。Nested rule directoryはexcluded | `openai.codex.rules` |
-| `codex.repo.plugin-manifest` | `./` | `./.codex-plugin/plugin.json` | `exact`。Launch rootをauthored plugin rootとして扱う | `static-candidate` | `codex.behavior.plugin.manifest` | Inspectorのauthored-project policyだけ。Codex plugin discovery/activationではない | `openai.codex.plugins` |
+| `codex.repo.plugin-manifest` | `./` | `./.codex-plugin/plugin.json` | `exact`。Selected Repository rootをauthored plugin rootとして扱う | `static-candidate` | `codex.behavior.plugin.manifest` | Inspectorのauthored-project policyだけ。Codex plugin discovery/activationではない | `openai.codex.plugins` |
 | `codex.repo.marketplace` | `./` | `./.agents/plugins/marketplace.json`、`./.claude-plugin/marketplace.json` | `exact` | `static-candidate` | `codex.behavior.repo.marketplace` | 正確なRepository-root location | `openai.codex.plugins` |
 
 受理済み`config.toml`内のinline MCP serverとinline hookはそのfileのmetadataであり、別candidateを作らない。
@@ -58,8 +80,9 @@ Standalone `.mcp.json`はCodex Repository candidateではない。Inspectorは�
 
 ## Derived Repository rule
 
-`Status`はrule schemaが要求するupstream documentation statusである。`documented` statusであっても、
-Inspectorのclosed derivationがCodex product behaviorになるわけではない。
+`Status`はupstream evidenceに関するhuman-readable rationaleであり、ruleの正確な`EvidenceAssessment`は上記canonical
+indexが所有する。`documented` assessmentであっても、Inspectorのclosed derivationがCodex product behaviorに
+なるわけではない。
 
 | Rule ID | Class | Accepted seed | Closed derived target | Behavior refs | Policy refs | Strategy refs | Status | Evidence |
 |---|---|---|---|---|---|---|---|---|
@@ -94,19 +117,29 @@ readできる。
 
 | Rule ID | Boundary base | Relative selectorとselection | Expansion | Class | Behavior refs | Policy refs | Evidence |
 |---|---|---|---|---|---|---|---|
-| `codex.global.instructions` | 正確なconsent済み`<CODEX_HOME>`。`CODEX_HOME` absent時だけ既定`$HOME/.codex` | Non-empty `AGENTS.override.md`があれば使用し、なければ`AGENTS.md` | `exact`、first-non-empty selection | `static-candidate` | `codex.behavior.user.instructions` | FR-013、FR-014、FR-017、FR-018、QR-005 | `openai.codex.agents-md` |
+| `codex.global.instructions` | 正確なconsent済みcapture済み`CODEX_HOME`。Absent時だけrequest-wideなimport済み`node:os.homedir()` captureと`.codex`を`node:path.join`した値 | Non-empty `AGENTS.override.md`があれば使用し、なければ`AGENTS.md` | `exact`、first-non-empty selection | `static-candidate` | `codex.behavior.user.instructions` | FR-013、FR-014、FR-017、FR-018、QR-005 | `openai.codex.agents-md` |
 
 Immutable planは、この2つのexact selectorをその順序で持つclosedな`codex-global-first-non-empty` policyを使う。
-安全にnon-emptyと確定したoverrideはshort-circuitし、overrideがabsentまたは安全にemptyと確定した場合だけ
-`AGENTS.md`へ進む。Present candidateがunsafe、unreadable、environment failure、またはdecode不能ならfallbackをreadせず
-fail closedし、Inspectorは選択したnon-empty fileだけをpublishして両方はpublishしない。Emptyはoptionalな先頭UTF-8 BOMを除く
-decoded stringの`String.prototype.trim().length === 0`を意味し、whitespace-only fileはemptyとする。
-`absent`はroot verification後にexact targetの`lstat`が明示的not-foundを返した場合だけを意味する。Permission、
-type、metadata、ancestor/root、canonicalization、最初の観測後の消失は、次へ進む理由ではなくfailureとする。
+安全にnon-emptyと確定したoverrideはshort-circuitし、`absent`または安全にemptyと確定したoverrideだけが
+`AGENTS.md`へ進む。
 
-Present empty、relative、unreadable、その他invalidな`CODEX_HOME` overrideから暗黙fallbackしない。同じdirectory配下でも
-user config、agent、skill、hook、rule、MCP、plugin、prompt、memory、credential、log、session、cacheはexcludedの
-ままである。
+Contractで宣言したstructural existence checkpointでは、`lstat`からのNodeの正確な`ENOENT`だけをdomainがfilesystem
+rejectionから変換する。Candidateの観測前なら`absent`、観測後なら`entry-disappeared`とする。Handlerはmessageではなく
+codeだけを検査する。Fallbackへ進めるのは`absent`だけで、`entry-disappeared`では進まない。正常に返されたlink、type、
+metadata、ancestor/root、canonicalization outcomeがboundaryを満たさない場合はfail closedのままfallbackへ進まない。
+`open`または`read`からの`ENOENT`を含むその他の全throw/rejectionは変更せずpropagateし、candidate classificationや
+fallback choiceへ決して変換しない。
+
+NUL byteを1つでも含むcandidateはbinaryかつdiagnostic-onlyとし、他の点ではpublish可能なgenerationを
+contracted-partialにしてfallbackへ進まない。NULを含まない全byte streamはUTF-8 replacement semanticsで正確に1回だけ
+decodeする。先頭BOMを1つ記録して取り除く。Decodeが`U+FFFD`を挿入した場合、`utf-8-replaced`はその全characterを、parse、
+extraction、display、comparisonに使うgarbled source全体へ保持する。Replacementだけでcompleteとし、別charsetを推測もretryも
+しない。Emptyはoptionalな先頭BOMを除くdecoded stringの`String.prototype.trim().length === 0`を意味し、whitespace-only
+fileはemptyとする。Inspectorは選択したnon-empty fileだけをpublishして両方はpublishしない。
+
+Present emptyまたはrelativeな`CODEX_HOME` override、もしくはthrowせずrejectされたroot outcomeから暗黙fallbackしない。
+Root selection/admission中のthrow/rejectionは変更せずpropagateする。同じdirectory配下でもuser config、agent、skill、hook、
+rule、MCP、plugin、prompt、memory、credential、log、session、cacheはexcludedのままである。
 
 ## Relationship-onlyとexcluded group
 
@@ -114,8 +147,9 @@ Relationship-only `ruleId`は[Runtime Composition](../runtime-composition.ja.md)
 non-normative indexにすぎない。Codexではこれらのruleがarbitrary config path、plugin component declaration、hook
 command、server-provided MCP instruction、parent/child custom-agent contextを扱い、target readを認可しない。
 
-Grouped User exclusionの`documented`は、参照先surfaceにofficial documentationがあることを表す。Experimental ruleや
-deprecated promptなどbehaviorごとのqualifierはUser behavior tableに残し、このrule statusへ平坦化しない。
+Grouped User exclusionは自身のassessmentとしてlifecycle claimなしの`documented`を持つ。Record単位のassessment
+arrayは参照先のexperimental ruleとdeprecated promptを別々に保持し、それらbehavior qualifierをexclusion ruleまたは
+unionへ平坦化しない。
 
 | Rule ID | Class | Excluded group | Behavior refs | Policy refs | Strategy refs | Status | Evidence |
 |---|---|---|---|---|---|---|---|
@@ -135,6 +169,12 @@ Server、Hook event、environment、header、tool、named componentの`*.name` I
 field/relationship setと、candidate provenanceが示す実際のadmission済みsource formについてexact extractorがsupportする
 occurrenceのintersectionとする。1つのrowに複数formを記載しても、それらのschemaをunionしたり、1つのformのfieldを
 別formでeligibleにしたりしない。Conformance fixture/testは両gateをcoverする。
+
+Implementation開始時点で、この英日tableと[official-source contract](../official-sources.ja.md)に記録した言語別SHA-256
+digest 2件をfreeze済みの承認済みdesign inputとする。Implementation gateはそれらを再計算してverifyするだけで、
+eligible set、source form、extractor applicability、relationship kindをauthoringまたは
+意味変更してはならない。この種の変更が必要ならdependent workを停止し、影響する英日design artifactをすべて同期し、
+改訂contractを利用する前に`/speckit.plan`と`/speckit.tasks`を再実行する。
 
 各rowは網羅的であり、`—`はeligible setが空であることを意味する。単一のadmission済み`.codex/config.toml` carrierは、
 別々の`MCP`、`settings/config`、contained `hook` recognitionを所有できる。各occurrenceはそのdeclaration familyを所有する

@@ -134,13 +134,21 @@ Every `MANUAL-*` ID is executed over the Cartesian product of the following clos
   only predefined platform-mode N/A cells and each requires a recorded rationale that the
   named supported OS has no native forced-colors mode; neither is silently omitted.
 - **Workflow/state scenario**: `S1` Repository discovery with populated inventory, filter,
-  and tool/source/kind facts; `S2` Repository empty state plus recoverable source diagnostic
-  and rescan; `S3` file inspection before and after sensitive-content acknowledgement,
+  and tool/source/kind facts; `S2` Repository empty state, a deterministic returned source
+  Diagnostic, explicit rescan, and a separate thrown/rejected rescan shown only as its generic
+  Operation Error while the prior snapshot remains stale; `S3` file inspection before and after sensitive-content acknowledgement,
   including Monaco source access; `S4` file diagnostic and actionable next step; `S5`
   two-file comparison, Monaco accessible diff, and narrow inline alternative; `S6` stale or
-  removed comparison after generation replacement; `S7` Global disabled, consent pending,
-  enabled scan complete, and explicit disable; `S8` scan/status updates presented in
-  parallel, pause/stop/hide or user-frequency control, error recovery, and focus restoration.
+  removed comparison after generation replacement; `S7` Global disabled, selector-free
+  fixed-three-tool session-wide consent pending, one-batch admitted-subset scan complete with
+  exactly one atomic generation, whole-transaction abort on another throw/rejection, and
+  explicit disable covering the pre-request full client-data purge, greater content epoch,
+  non-null all-inspection-data fence, control-only draining/failed/retry/join state, restart
+  next step for unconfirmed cleanup, terminal recovery, `remove-active-state` N+1, and the
+  unpublished-initial-enable-only `cleanup-only` N case; `S8` scan/status updates presented in
+  parallel, the exact `{ sessionId, globalContentEpoch, globalDisableInProgress }` liveness
+  state and purge-before-render transition, Resume inspection only with a null disable fence,
+  pause/stop/hide or user-frequency control, error recovery, and focus restoration.
 - **Input profile**: `I1` keyboard only, including AT browse/virtual and focus modes; `I2`
   primary pointer through click activation and cancellation; `I3` mouse hover followed by
   keyboard focus, dismissal, pointer transfer, and persistence checks.

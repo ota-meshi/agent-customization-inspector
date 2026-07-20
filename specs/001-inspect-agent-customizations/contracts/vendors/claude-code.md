@@ -2,7 +2,7 @@
 
 [日本語](claude-code.ja.md)
 
-**Contract version**: 2026-07-17
+**Contract version**: 2026-07-20
 
 **Official-source revalidation**: 2026-07-15
 
@@ -30,13 +30,40 @@ does not duplicate those algorithms.
 - For Repository matchers, `./**/` means zero or more descendant directory segments. The
   table states explicitly whether a matcher covers the inventory root, descendants, or
   both.
-- `documented`, `partially-documented`, and `unknown` describe upstream evidence, not
-  runtime effectiveness. Trust, approval, enablement, target files, runtime `cwd`, CLI
-  flags, embedded-engine version, and installed-plugin state remain separate conditions.
+- `documented`, `partially-documented`, `unknown`, and `conflict` are the closed upstream
+  documentation-status values, not runtime effectiveness. Trust, approval, enablement,
+  target files, runtime `cwd`, CLI flags, embedded-engine version, and installed-plugin
+  state remain separate conditions. Runtime `documentation-conflict` is a
+  `ConditionFact.status`, not a documentation-status alias.
 - **Shared core** means the CLI, VS Code extension, and JetBrains integration use the same
   settings scopes and precedence. It does not mean every feature is available on every
   surface. The VS Code extension bundles its own Claude Code engine, which can differ in
   version from a separately installed CLI.
+
+## Canonical evidence-assessment index
+
+Every `behaviorId` and `ruleId` owned by this contract has exactly one
+`EvidenceAssessment`. Unless listed below, its canonical values are
+`documentationStatus: documented` and `lifecycleQualifiers: []`. This is a closed mapping
+for every unlisted subject, not an inference from evidence presence; empty qualifiers make
+no lifecycle claim and do not mean `stable`. Status/caveat columns elsewhere in this
+document are rationale or Inspector state, not serialized scalar enums.
+
+| Subject ID | `documentationStatus` | `lifecycleQualifiers` | Assessment basis |
+|---|---|---|---|
+| `claude.behavior.repo.instructions.ancestor` | `partially-documented` | `[]` | The ancestor walk does not establish the `.claude/CLAUDE.md` variant |
+| `claude.behavior.repo.instructions.descendant` | `partially-documented` | `[]` | Lazy descendant discovery does not establish the `.claude/CLAUDE.md` variant |
+| `claude.behavior.repo.rules` | `partially-documented` | `[]` | Descendant rule-layer discovery and the ancestor-layer `paths` base are incomplete |
+| `claude.behavior.repo.commands` | `partially-documented` | `[]` | Complete skill-equivalent ancestor/lazy-descendant traversal is not independently stated |
+| `claude.behavior.repo.agents` | `partially-documented` | `[]` | Duplicate-name selection inside one directory tree has no documented stable winner |
+| `claude.behavior.repo.mcp` | `partially-documented` | `[]` | Exact project-root selection is not fully specified |
+| `claude.repo.rules` | `partially-documented` | `[]` | The matcher deliberately inventories contexts beyond the completely documented layer set |
+| `claude.repo.command` | `partially-documented` | `[]` | Recursive namespaces are documented, but the complete runtime-layer traversal is not |
+
+The typed registry expands the default and exceptions into one record per subject.
+Candidate provenance and relationship DTOs retain every directly referenced rule,
+behavior, and strategy assessment, sorted and deduplicated by subject; they never replace
+that `EvidenceAssessment[]` with one scalar or qualifier union.
 
 ## Repository vendor behavior
 
@@ -68,7 +95,7 @@ cannot spawn another subagent.
 
 ## Repository Inspector matchers
 
-These matchers are rooted at the exact Inspector launch `cwd`. Broad descendant inventory
+These matchers are rooted at the exact Inspector selected Repository root. Broad descendant inventory
 allows the UI to show candidates that could matter under another product runtime `cwd` or
 after lazy discovery. It never turns the matcher into a claim that Claude loaded the file.
 Every row has policy references FR-003, FR-004, FR-005, FR-024, QR-001, QR-004, and QR-005
@@ -84,8 +111,8 @@ unless a narrower exclusion or Global requirement is stated below.
 | `claude.repo.settings` | `./` | `./.claude/settings.json`; `./.claude/settings.local.json` | `exact` for each selector | `static-candidate` | `claude.behavior.repo.settings` | Matches Claude's exact launch-`cwd` rule; no parent or descendant setting matcher | `anthropic.claude-code.large-codebases.start-directory`; `anthropic.claude-code.settings.scopes-precedence` |
 | `claude.repo.mcp` | `./` | `./.mcp.json` | `exact` | `static-candidate` | `claude.behavior.repo.mcp` | Conditional on the source root being Claude's project root and on trust/approval | `anthropic.claude-code.mcp.scopes-precedence` |
 | `claude.repo.output-style` | `./` | `./**/.claude/output-styles/*.md` | `descendant-inventory`; style file is a direct child of each fixed output-styles directory | `static-candidate` | `claude.behavior.repo.output-style` | Eligibility requires an ancestor layer of the active session and selection by settings/session state | `anthropic.claude-code.output-styles.locations` |
-| `claude.repo.plugin-manifest` | `./` | `./.claude-plugin/plugin.json` | `exact`; the launch root is treated as the authored plugin root | `static-candidate` | `claude.behavior.repo.plugin` | Inspector authoring policy only. Claude does not auto-discover this path at an arbitrary Repository root, and presence does not establish activation. A nested local manifest is reachable only through `claude.derived.local-plugin-manifest` | `anthropic.claude-code.plugins.components-scopes`; `anthropic.claude-code.marketplaces.catalog-sources` |
-| `claude.repo.marketplace` | `./` | `./.claude-plugin/marketplace.json` | `exact`; the launch root is treated as the authored marketplace root | `static-candidate` | `claude.behavior.repo.marketplace` | Inspector authoring policy only. Claude does not auto-register this catalog from an arbitrary Repository root; explicit registration remains a runtime condition | `anthropic.claude-code.marketplaces.catalog-sources` |
+| `claude.repo.plugin-manifest` | `./` | `./.claude-plugin/plugin.json` | `exact`; the selected Repository root is treated as the authored plugin root | `static-candidate` | `claude.behavior.repo.plugin` | Inspector authoring policy only. Claude does not auto-discover this path at an arbitrary Repository root, and presence does not establish activation. A nested local manifest is reachable only through `claude.derived.local-plugin-manifest` | `anthropic.claude-code.plugins.components-scopes`; `anthropic.claude-code.marketplaces.catalog-sources` |
+| `claude.repo.marketplace` | `./` | `./.claude-plugin/marketplace.json` | `exact`; the selected Repository root is treated as the authored marketplace root | `static-candidate` | `claude.behavior.repo.marketplace` | Inspector authoring policy only. Claude does not auto-register this catalog from an arbitrary Repository root; explicit registration remains a runtime condition | `anthropic.claude-code.marketplaces.catalog-sources` |
 
 Hooks and inline MCP declarations contained in an accepted settings, skill, agent, plugin,
 or marketplace file are metadata on that candidate. They do not create another filesystem
@@ -119,7 +146,7 @@ other User file does not expand this consent boundary.
 
 | Rule ID | Global base | Relative selector | Expansion | Class | Behavior refs | Policy refs | Status | Evidence |
 |---|---|---|---|---|---|---|---|---|
-| `claude.global.instructions` | Resolved `<claude-config-dir>` | `CLAUDE.md` | `exact`; Global selectors do not reuse the Repository `./` prefix | `static-candidate` | `claude.behavior.user.instructions` | FR-013, FR-014, FR-016, FR-018, QR-005 | Accepted by FR-016; all adjacent User configuration and state remain excluded by FR-018 | `anthropic.claude-code.memory.locations-load`; `anthropic.claude-code.directory.file-reference` |
+| `claude.global.instructions` | Exact consented captured `CLAUDE_CONFIG_DIR`; only when absent, `node:path.join` of the request-wide imported `node:os.homedir()` capture and `.claude` | `CLAUDE.md` | `exact`; Global selectors do not reuse the Repository `./` prefix | `static-candidate` | `claude.behavior.user.instructions` | FR-013, FR-014, FR-016, FR-018, QR-005 | Accepted by FR-016; all adjacent User configuration and state remain excluded by FR-018 | `anthropic.claude-code.memory.locations-load`; `anthropic.claude-code.directory.file-reference` |
 
 Environment validation, consent, canonicalization, and the rule for an absent versus an
 invalid `CLAUDE_CONFIG_DIR` are Inspector policies defined by the parent allowlist, not
@@ -156,6 +183,14 @@ eligibility is the intersection of the row's closed field/relationship sets and 
 extractor occurrences supported for the actual admitted source form identified by candidate
 provenance. Naming several forms in one row does not union their schemas or make one form's
 fields eligible in another; conformance fixtures and tests cover both gates.
+
+Once implementation begins, this bilingual table and its two per-language SHA-256 digests
+recorded in the [official-source contract](../official-sources.md) are frozen, approved design
+input. The implementation gate recomputes and verifies them only; it must not author or semantically change
+an eligible set, source form, extractor applicability, or relationship kind. If such a change
+is required, dependent work stops, every affected English/Japanese design artifact is
+synchronized, and `/speckit.plan` and `/speckit.tasks` are rerun before the revised contract
+is consumed.
 
 The rows are exhaustive. `—` means the eligible set is empty. A contained MCP or Hook
 declaration uses the `MCP` or `hook` row on its already admitted owner file; it does not

@@ -2,8 +2,8 @@
 
 [English](official-sources.md)
 
-**Registry version**: 2026-07-15
-**Official-source review**: 2026-07-15
+**Registry version**: 2026-07-20
+**Official-source review**: 2026-07-20
 **Normalization version**: `1`
 
 この台帳は、3つのvendor contractと[Runtime Composition](runtime-composition.ja.md)が使用する
@@ -26,9 +26,41 @@ Source registryはevidence metadataであって、Inspectorのread authorityで�
   CSS/XPath selectorでもURL fragmentでもない。Drift checkerは、列挙した各entryに対して正確に1つの
   matching headingを見つけなければならない。Anchorとheading-textのcapacityおよびcompletion behaviorは、
   Node.jsと実行環境から継承する。
-- `reviewedOn`は、最後にhuman semantic reviewを実施した日である。このreleaseの全recordは
-  `2026-07-15`にreview済みである。
+- `reviewedOn`は、最後にhuman semantic reviewを実施した日であり、rowごとに記述する。
+  2026-07-20 reconciliationで再reviewしていないrecordは`2026-07-15`を保持する。
 - 全rowが`normalizationVersion: 1`を使用する。
+
+このregistryを参照する保守対象behavior、rule、strategyはそれぞれ、次のclosed shapeを持つatomicな
+evidence assessmentを正確に1件所有する。
+
+```ts
+type DocumentationStatus =
+  | 'documented'
+  | 'partially-documented'
+  | 'unknown'
+  | 'conflict';
+type LifecycleQualifier = 'preview' | 'experimental' | 'deprecated';
+type EvidenceAssessment = {
+  subjectKind: 'behavior' | 'rule' | 'strategy';
+  subjectId: string;
+  documentationStatus: DocumentationStatus;
+  lifecycleQualifiers: LifecycleQualifier[];
+};
+```
+
+Qualifier arrayは重複を持たず、常に`preview`、`experimental`、`deprecated`の順でserializeする。
+Emptyはreview済みsourceがlifecycle claimを行わないことを意味するだけで、`stable`を意味も暗示もしない。
+`documented`は正確なreview済みsectionが保守対象atomic assertionを完全に確立すること、
+`partially-documented`は一部だけを確立すること、`unknown`はそのassertionについて決定を確立しないこと、
+`conflict`は互換性のないofficial assertionを保持することを表す。別tokenの`documentation-conflict`はruntimeの
+`ConditionFact.status`であり、`DocumentationStatus`の表記またはaliasではない。
+
+各assessmentは自身のsubjectを識別し、source IDやvendor全体へstatusを付けるものではない。複数のbehavior/rule/
+strategy subjectを参照するprovenanceまたはrelationshipは、subject単位の決定的な`EvidenceAssessment[]`を持つ。
+これらrecordを単一scalar、最も確実/不確実な値、またはqualifier unionへ縮約してはならない。
+`subjectKind`を固定順`behavior`、`rule`、`strategy`で、次に`subjectId`でsortし、重複する
+`(subjectKind, subjectId)` recordをrejectする。Assessmentは該当subjectのcompleteな`sourceRefs` setに
+裏付けられ、後述するreverse-index ownershipを変更しない。
 
 Checked-inする`tests/fixtures/conformance/official-sources.json`は、これらrowのmachine-readableな
 materializationである。さらにdata modelが要求する3つのderived affected-ID array、maintainedな
@@ -88,9 +120,41 @@ assertionに対するcanonical JSONのlowercase SHA-256である。Fieldはtrunc
    failさせる。
 6. 日本語counterpartを独立にparseし、同じowner ID、`sourceId` token、edgeを要求する。日本語fileは
    semantic parityを検証するが、generated arrayへの第二のinputにはしない。
+7. 全ownerについて正確に1件のassessment、closed documentation-status enum、重複なしの固定qualifier順序、
+   英日equalityを検証する。`documentation-conflict`をdocumentation statusとしてrejectし、assessmentを欠く、
+   またはlossy aggregateへ平坦化したprovenance/relationship fixtureをrejectする。
 
 したがって、下記registryのID setは、4つのcanonical Evidence sourceが使用するID setを単に包含するの
 ではなく、完全に一致しなければならない。各`sourceId`はここで正確に1回だけ定義する。
+
+## Presentation Allowlistのimplementation gate
+
+3つのvendor contractにある規範的なbilingual Presentation Allowlist rowは、すでに承認済みのdesign inputで
+ある。Implementation gateは、凍結済みの英日rowと記録済みdigestだけをverifyし、allowlist set、identifier、
+admission済みsource form、正確なsource-form extractor applicability、eligible metadata field、relationship
+kindを新規作成または意味変更してはならない。
+
+次のlowercase SHA-256値を記録済みfreezeとする。指定したUTF-8、BOMなし、LF-onlyの各contractについて、
+case-foldしたtextが`presentation allowlist`で終わる一意なlevel-2 headingを特定し、後続のtable以外のlineをskipし、
+first byteが`|`である最初の連続line群を各byteそのまま連結し、最終rowを含む全rowの末尾にLFを1つ付けたものを
+digest inputとする。Heading、prose、blank line、連続table後のlineはhashへ含めない。
+
+| Vendor | 英語table SHA-256 | 日本語table SHA-256 |
+|---|---|---|
+| GitHub Copilot | `974ac8fdf76d16925ab7bc3505a22863314e2938981e40e09f1d428bb2ef244f` | `92e27ba7f5444f28a8d29087eca52d3bfbac95652e6551405feb9238c3a07a1a` |
+| Claude Code | `c41502612324aef171de5ead0ba73dcc9234e378f630e31ff04aa8a4b6f66f9f` | `75f6689a1c04551e3991f27bdf8637516c3959970336d75009eb417ca21dc66b` |
+| OpenAI Codex | `c1de96a1764c6ba7355e1784d6bbabb3262ebc7e51ef7cbaa6b64f621aa38b1b` | `d06588c649e9fbd969bc89816d8be3ced41b9b02601a2a6b0fc0e6c08636c248` |
+
+Implementation freeze testは6 inputすべてを正確に再計算し、fileごとにmatching headingと連続tableが正確に1つだけ
+存在することを要求し、全digestをconstant timeで比較し、row IDと英日semantic parityを別に検証しなければならない。
+Tableまたはdigestのmissing、duplicate、empty、malformed、mismatchはimplementationをblockし、digest一致だけを
+semantic parityの証明にしてはならない。
+
+Implementation開始後にこれらの値のsemantic mismatchまたは変更要求が判明した場合、dependent workを停止する。
+変更後のrowをconsumeする前に、maintainerは適用対象の英日specification、research、plan、quickstart、contract
+artifactをすべて同期し、`/speckit.plan`、続いて`/speckit.tasks`を再実行しなければならない。Evidence location、
+section anchor、review metadata、意味を変えないcorrectionはcurrent task setで継続できるが、このstop-and-regenerate
+ruleを迂回するために使用してはならない。
 
 ## GitHub公式ソース
 
@@ -112,6 +176,14 @@ assertionに対するcanonical JSONのlowercase SHA-256である。Fieldはtrunc
 
 ## Microsoft Visual Studio Code公式ソース
 
+新しいrelease noteがversion付きbehaviorを追加した一方、current general guideが網羅的な古いlocation
+listを提示し続ける場合、release noteはそのversion以降の新behaviorを確立し、guideは直接記述するclaimだけを
+引き続き確立する。Guideのomissionでrelease-note behaviorを消さず、互換性のない網羅的location assertionは、
+影響するbehavior、rule、strategyの`documentationStatus: conflict`として保持する。どちらのsourceも、記載していない
+schemaまたはtotal precedence orderを確立しない。同じfilenameや別surfaceから推測せずunknownのままにする。
+このruleはomissionよりdirectでversion-qualifiedなfirst-party assertionを優先し、互換性のないdirect assertionを
+conflictとして保持し、未登録のsource repositoryやissueを代替evidenceとして受理しない。
+
 | `sourceId` | `canonicalUrl` | `officialHost` | Exact `sectionAnchors` | `reviewedOn` |
 |---|---|---|---|---|
 | `vscode.copilot.instructions` | <https://code.visualstudio.com/docs/agent-customization/custom-instructions> | `code.visualstudio.com` | `Types of instruction files`; `Use a .github/copilot-instructions.md file`; `Use .instructions.md files`; `Use an AGENTS.md file`; `Use a CLAUDE.md file`; `Instruction priority` | `2026-07-15` |
@@ -121,7 +193,8 @@ assertionに対するcanonical JSONのlowercase SHA-256である。Fieldはtrunc
 | `vscode.copilot.custom-agents` | <https://code.visualstudio.com/docs/agent-customization/custom-agents> | `code.visualstudio.com` | `Handoffs`; `Custom agent file locations`; `Custom agent file structure`; `Tool list priority`; `Share custom agents across teams` | `2026-07-15` |
 | `vscode.copilot.skills` | <https://code.visualstudio.com/docs/agent-customization/agent-skills> | `code.visualstudio.com` | `Create a skill`; `SKILL.md file format`; `How Copilot uses skills`; `Use shared skills` | `2026-07-15` |
 | `vscode.copilot.hooks` | <https://code.visualstudio.com/docs/agent-customization/hooks> | `code.visualstudio.com` | `Configure hooks`; `Security considerations` | `2026-07-15` |
-| `vscode.copilot.mcp` | <https://code.visualstudio.com/docs/agent-customization/mcp-servers> | `code.visualstudio.com` | `Add an MCP server`; `MCP server trust`; `Synchronize MCP configuration across devices` | `2026-07-15` |
+| `vscode.copilot.mcp` | <https://code.visualstudio.com/docs/agent-customization/mcp-servers> | `code.visualstudio.com` | `Add an MCP server`; `MCP server trust`; `Synchronize MCP configuration across devices` | `2026-07-20` |
+| `vscode.copilot.mcp.workspace-root-release` | <https://code.visualstudio.com/updates/v1_118> | `code.visualstudio.com` | `Workspace .mcp.json files and server deduplication` | `2026-07-20` |
 | `vscode.copilot.plugins` | <https://code.visualstudio.com/docs/agent-customization/agent-plugins> | `code.visualstudio.com` | `What plugins provide`; `Plugin metadata (plugin.json)`; `Plugin formats`; `Configure plugin marketplaces`; `Use local plugins`; `Workspace plugin recommendations` | `2026-07-15` |
 | `vscode.settings` | <https://code.visualstudio.com/docs/configure/settings> | `code.visualstudio.com` | `User settings`; `Workspace settings`; `Profile settings`; `Settings precedence` | `2026-07-15` |
 
@@ -148,6 +221,16 @@ assertionに対するcanonical JSONのlowercase SHA-256である。Fieldはtrunc
 
 OpenAI rowは、official Codex manualが出力したexact first-party Markdown source URLを使用する。
 `.md` responseは意図したものであり、drift checkのMarkdown content-type branchで受理する。
+
+2026-07-20のInspector runtime reconciliationはproduct policyであり、upstream Codex behaviorに関するassertion
+ではない。調査対象Codex candidateでは、contract-declaredなstructural `lstat` checkpointからの正確な
+`ENOENT`だけを`absent`または`entry-disappeared`へ変換する。それ以外のthrowまたはrejectionは、`open`や
+`read`からの`ENOENT`を含め、変更せずpropagateする。NUL byteはbinaryかつdiagnostic-only outcomeとする。
+NULを含まない全byte streamはUTF-8 replacement semanticsで正確に1回decodeし、invalid sequenceは
+`utf-8-replaced`となり、生成された`U+FFFD`を含む文字化けtextをparsing、extraction、display、comparisonに使用する
+完全なsourceに保持する。Maintained OpenAI assertionは選択した公式sectionだけをparaphraseし、これらInspector所有の
+filesystemまたはdecode方針をencodeしてはならない。このreconciliationでは選択した公式textもmaintained OpenAI
+assertionも変わらないため、`snapshotFingerprint`、`semanticFingerprint`、`reviewedOn`は変更しない。
 
 | `sourceId` | `canonicalUrl` | `officialHost` | Exact `sectionAnchors` | `reviewedOn` |
 |---|---|---|---|---|

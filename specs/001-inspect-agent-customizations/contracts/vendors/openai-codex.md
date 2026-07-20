@@ -2,7 +2,7 @@
 
 [日本語](openai-codex.ja.md)
 
-**Contract version**: 2026-07-17
+**Contract version**: 2026-07-20
 **Official-source review**: 2026-07-15
 
 This contract separates documented Codex lookup behavior from the Inspector's read
@@ -22,6 +22,31 @@ configuration for the behaviors marked **local clients** below. ChatGPT Work on 
 does not read local Codex configuration. Repository marketplace discovery and plugin
 installation also have desktop/CLI management behavior that must not be generalized to
 hosted tasks.
+
+## Canonical evidence-assessment index
+
+Every `behaviorId` and `ruleId` owned by this contract has exactly one
+`EvidenceAssessment`. Unless listed below, its canonical values are
+`documentationStatus: documented` and `lifecycleQualifiers: []`. This is a closed mapping
+for every unlisted subject, not an inference from an Evidence cell. Empty qualifiers make
+no lifecycle claim and never mean `stable`; `documentation-conflict` remains solely a
+runtime `ConditionFact.status`. Existing Status, Documentation status, and Inspector status
+columns are rationale or Inspector-scope state, not serialized status scalars.
+
+| Subject ID | `documentationStatus` | `lifecycleQualifiers` | Assessment basis |
+|---|---|---|---|
+| `codex.behavior.repo.agents` | `partially-documented` | `[]` | The complete project directory search is not specified |
+| `codex.behavior.repo.rules` | `partially-documented` | `[experimental]` | Nested recursion is unspecified and the rules feature is experimental |
+| `codex.behavior.user.rules` | `documented` | `[experimental]` | The documented User rules surface is experimental |
+| `codex.behavior.user.prompts` | `documented` | `[deprecated]` | The documented custom-prompt surface is deprecated |
+| `codex.repo.agent` | `partially-documented` | `[]` | Descendant inventory includes possible contexts beyond the fully specified project search |
+| `codex.repo.rules` | `documented` | `[experimental]` | The Inspector rule admits only documented direct children and excludes unestablished nesting |
+
+The fixed qualifier order is `preview`, `experimental`, `deprecated`; no row here has more
+than one, but the general ordering remains mandatory. The typed registry expands the
+default and exceptions to one record per subject. Candidate provenance and relationship
+DTOs keep every directly referenced rule/behavior/strategy assessment in a sorted,
+deduplicated `EvidenceAssessment[]`; they never flatten it to a scalar or qualifier union.
 
 ## Documented Repository behavior
 
@@ -53,7 +78,7 @@ Global requirement is stated below.
 | `codex.repo.config` | `./` | `./**/.codex/config.toml` | `descendant-inventory` of possible project layers | `static-candidate` | `codex.behavior.repo.config`, `codex.behavior.repo.mcp`, `codex.behavior.repo.hooks` | Documented; trust and runtime chain conditional | `openai.codex.config-basic`, `openai.codex.mcp` |
 | `codex.repo.hooks` | `./` | `./**/.codex/hooks.json` | `descendant-inventory` of possible active config layers | `static-candidate` | `codex.behavior.repo.hooks` | Documented; trust and hook review conditional | `openai.codex.hooks` |
 | `codex.repo.rules` | `./` | `./**/.codex/rules/*.rules` | `descendant-inventory` of layer roots plus `direct-child` within each `rules/` directory | `static-candidate` | `codex.behavior.repo.rules` | Experimental; nested rule directories excluded | `openai.codex.rules` |
-| `codex.repo.plugin-manifest` | `./` | `./.codex-plugin/plugin.json` | `exact`; the launch root is treated as the authored plugin root | `static-candidate` | `codex.behavior.plugin.manifest` | Inspector authored-project policy only; not Codex plugin discovery or activation | `openai.codex.plugins` |
+| `codex.repo.plugin-manifest` | `./` | `./.codex-plugin/plugin.json` | `exact`; the selected Repository root is treated as the authored plugin root | `static-candidate` | `codex.behavior.plugin.manifest` | Inspector authored-project policy only; not Codex plugin discovery or activation | `openai.codex.plugins` |
 | `codex.repo.marketplace` | `./` | `./.agents/plugins/marketplace.json`; `./.claude-plugin/marketplace.json` | `exact` | `static-candidate` | `codex.behavior.repo.marketplace` | Exact Repository-root locations | `openai.codex.plugins` |
 
 Inline MCP servers and inline hooks in an accepted `config.toml` are metadata on that
@@ -64,8 +89,9 @@ local-marketplace derivation below.
 
 ## Derived Repository rules
 
-`Status` is the upstream documentation status required by the rule schema. A documented
-status does not turn the Inspector's closed derivation into Codex product behavior.
+`Status` is human-readable rationale for the upstream evidence; the canonical index above
+owns the rule's exact `EvidenceAssessment`. A `documented` assessment does not turn the
+Inspector's closed derivation into Codex product behavior.
 
 | Rule ID | Class | Accepted seed | Closed derived target | Behavior refs | Policy refs | Strategy refs | Status | Evidence |
 |---|---|---|---|---|---|---|---|---|
@@ -102,21 +128,34 @@ FR-013 through FR-018, Codex may read only this rule:
 
 | Rule ID | Boundary base | Relative selector and selection | Expansion | Class | Behavior refs | Policy refs | Evidence |
 |---|---|---|---|---|---|---|---|
-| `codex.global.instructions` | Exact consented `<CODEX_HOME>`; default `$HOME/.codex` only when `CODEX_HOME` is absent | Use non-empty `AGENTS.override.md` when present; otherwise `AGENTS.md` | `exact`; first-non-empty selection | `static-candidate` | `codex.behavior.user.instructions` | FR-013, FR-014, FR-017, FR-018, QR-005 | `openai.codex.agents-md` |
+| `codex.global.instructions` | Exact consented captured `CODEX_HOME`; only when absent, `node:path.join` of the request-wide imported `node:os.homedir()` capture and `.codex` | Use non-empty `AGENTS.override.md` when present; otherwise `AGENTS.md` | `exact`; first-non-empty selection | `static-candidate` | `codex.behavior.user.instructions` | FR-013, FR-014, FR-017, FR-018, QR-005 | `openai.codex.agents-md` |
 
 The immutable plan uses the closed `codex-global-first-non-empty` policy with those two
-exact selectors in that order. A safely established non-empty override short-circuits;
-only an absent or safely established empty override advances to `AGENTS.md`. A present
-unsafe, unreadable, environment-failed, or undecodable candidate fails closed without reading the
-fallback, and the Inspector publishes the selected non-empty file, never both. Empty means the decoded
-string after an optional leading UTF-8 BOM has `String.prototype.trim().length === 0`, so a
-whitespace-only file is empty. `absent` means only an explicit not-found result from that
-exact target's `lstat` after root verification. Permission, type, metadata, ancestor/root,
-canonicalization, and disappearance after the first observation are failures rather than
-reasons to advance.
+exact selectors in that order. A safely established non-empty override short-circuits; only
+an `absent` or safely established empty override advances to `AGENTS.md`.
 
-A present empty, relative, unreadable, or otherwise invalid `CODEX_HOME` override does not
-fall back silently. User config, agents, skills, hooks, rules, MCP, plugins, prompts,
+At a contract-declared structural existence checkpoint, Node's exact `ENOENT` from `lstat`
+is the only filesystem rejection converted by the domain. Before the candidate is observed
+it becomes `absent`; after observation it becomes `entry-disappeared`. The handler checks the
+code only, never the message. Only `absent` can advance fallback; `entry-disappeared` cannot.
+Successfully returned link, type, metadata, ancestor/root, or canonicalization outcomes that
+fail the boundary remain fail-closed and do not advance. Every other throw or rejection,
+including `ENOENT` from `open` or `read`, propagates unchanged and is never converted into a
+candidate classification or fallback choice.
+
+A candidate containing any NUL byte is binary and diagnostic-only, makes an otherwise
+publishable generation contracted-partial, and does not advance fallback. Every non-NUL byte
+stream is decoded exactly once as UTF-8 with replacement semantics. One leading BOM is
+recorded and removed. If decoding inserts `U+FFFD`, `utf-8-replaced` preserves every such
+character in the complete garbled source used for parsing, extraction, display, and
+comparison. Replacement alone is complete; no other charset is guessed or retried. Empty
+means that decoded string after the optional leading BOM has
+`String.prototype.trim().length === 0`, so a whitespace-only file is empty. The Inspector
+publishes the selected non-empty file, never both.
+
+A present empty or relative `CODEX_HOME` override, or a non-throwing rejected root outcome,
+does not fall back silently. A throw or rejection during root selection or admission
+propagates unchanged. User config, agents, skills, hooks, rules, MCP, plugins, prompts,
 memories, credentials, logs, sessions, and caches remain excluded even when they are under
 the same directory.
 
@@ -128,9 +167,10 @@ non-normative index only: for Codex, those rules cover arbitrary config paths, p
 component declarations, hook commands, server-provided MCP instructions, and parent/child
 custom-agent context. They never authorize a target read.
 
-For the grouped User exclusion, `documented` means the referenced surfaces have official
-documentation. Per-behavior qualifiers such as experimental rules and deprecated prompts
-remain in the User behavior table and are not flattened into this rule status.
+For the grouped User exclusion, the rule's own assessment is `documented` with no
+lifecycle claim. The record-by-record assessment array separately retains the referenced
+experimental rules and deprecated prompts; it never flattens those behavior qualifiers
+into the exclusion rule or a union.
 
 | Rule ID | Class | Excluded group | Behavior refs | Policy refs | Strategy refs | Status | Evidence |
 |---|---|---|---|---|---|---|---|
@@ -153,6 +193,14 @@ eligibility is the intersection of the row's closed field/relationship sets and 
 extractor occurrences supported for the actual admitted source form identified by candidate
 provenance. Naming several forms in one row does not union their schemas or make one form's
 fields eligible in another; conformance fixtures and tests cover both gates.
+
+Once implementation begins, this bilingual table and its two per-language SHA-256 digests
+recorded in the [official-source contract](../official-sources.md) are frozen, approved design
+input. The implementation gate recomputes and verifies them only; it must not author or semantically change
+an eligible set, source form, extractor applicability, or relationship kind. If such a change
+is required, dependent work stops, every affected English/Japanese design artifact is
+synchronized, and `/speckit.plan` and `/speckit.tasks` are rerun before the revised contract
+is consumed.
 
 The rows are exhaustive. `—` means the eligible set is empty. The single admitted
 `.codex/config.toml` carrier can own separate `MCP`, `settings/config`, and contained

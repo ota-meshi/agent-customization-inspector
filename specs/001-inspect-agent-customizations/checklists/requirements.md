@@ -29,11 +29,22 @@
 - [x] The closed Diagnostic union defines exact location invariants: file scope requires a coherent `sourceId`/`fileId`/`sourceRelativePath` tuple, source scope requires only `sourceId` and forbids file/path, session scope forbids all three, and scope is orthogonal to generation-versus-lifecycle ownership
 - [x] Product-issued mutation is defined by prohibited mutation-capable requests and observable source properties, with operating-system-only access-time changes recorded separately as neither failure nor proof
 - [x] FR-032 defines the allowed structural-projection boundary and prohibits validation, semantic interpretation/ranking, verdicts, and remediation advice across every product and documentation surface
-- [x] FR-029 and FR-040 prohibit product-defined numeric resource validation limits, require safe handling of recoverable engine/environment failures and revoked late work, and restrict operational logs to fixed codes and opaque IDs while keeping authenticated diagnostics separate
+- [x] FR-029, FR-040, FR-041, and FR-042 prohibit product-defined numeric resource-validation limits, revoke and discard late work, propagate every non-exempt throw/rejection without domain cause classification, restrict operational logs and Operation Errors to fixed values and opaque IDs while keeping authenticated deterministic Diagnostics separate, and close the Global-disable purge/epoch/fence/recovery lifecycle
 - [x] File size and item count never determine customization validity, correctness, compliance, or lint findings; capacity is inherited from Node.js, parsers, the operating system, the filesystem, the browser, and the execution environment
-- [x] The closed scan-publication table permits contracted partial publication only after complete traversal for deterministic entry-local non-capacity failures; any capacity/resource failure aborts its attempt, commits no item, Source, recognition, derived result, scan-result record or response, or generation, and retains only the prior committed snapshot
-- [x] The verified-byte decoding table covers NUL/binary, strict UTF-8, one recorded and removed leading BOM, unsupported invalid UTF-8 without replacement or alternate decoding, and comparison ineligibility for diagnostic-only items without a product-defined byte, line, or item ceiling
+- [x] The closed scan-publication table permits contracted partial publication only after complete traversal for FR-028-eligible deterministic non-throwing entry outcomes; exact `ENOENT` from a declared structural `lstat` alone becomes `absent`/`entry-disappeared`, while every other throw/rejection aborts publication and follows the owning outer boundary without a domain result
+- [x] The verified-byte decoding table covers NUL/binary, valid UTF-8, one recorded and removed leading BOM, and one-pass replacement decoding of invalid non-NUL UTF-8 as complete `utf-8-replaced` garbled text, without alternate decoding or a product-defined byte, line, or item ceiling
+- [x] The Customization File entity exposes complete source text for verified `utf-8`, `utf-8-bom`, and `utf-8-replaced` reads, forbids it for binary outcomes, and creates no file item from a thrown or rejected read
+- [x] US3 is independently testable with two readable Repository files before Global work, while US4 separately covers a Repository-to-Global comparison without merging Source-relative namespaces
+- [x] SC-003, SC-004, SC-005, SC-007, and SC-009 use a frozen versioned release-evidence fixture manifest with stable case IDs, per-fixture digests, nonzero required classes, exact executed-case records, paired automated manifest-version transition tests for denominator-semantic changes, a separate T1062 human-review record, both fixture and canonical digest updates for fixture-byte-only changes, and mandatory failure for missing, omitted, duplicate, or mismatched evidence
+- [x] Every bundled-browser `FileDetail` request and comparison construction shares one acknowledgement gate covering source text, declared metadata, authored relationship targets, and both comparison sides; ordinary route, Source, and generation cleanup remains scoped, while Global disable is the explicit full-session-purge exception before request and again on greater-epoch or non-null-fence observation
 - [x] The closed Global-root table distinguishes absent/default, empty, relative, unrepresentable, representable absolute roots including those outside the ordinary home, post-consent rejection without fallback, and provisional admission without pre-commit Source publication
+- [x] Repository-root selection is closed to captured `process.cwd()` or one lexically resolved `--cwd` value, performs no probe or `chdir`, rejects invalid option shapes before session creation, and creates exactly one non-authorizing generation-0 Repository Source before central admission
+- [x] One selector-free session-wide Global action binds the fixed Copilot/Claude/Codex preview, evaluates all three entries, and publishes every admitted Source in one batch and one atomic generation; any non-structural throw/rejection aborts the whole provisional subset
+- [x] Raw enumeration segments remain the sole filesystem operands; NFC collisions fail before open, and one same-Source hard-linked physical file has deterministic primary/alias paths with retained provenances and no cross-Source identity merge
+- [x] The safe-filesystem contract covers exact root grammar, checkpoint rows 1–28, explicit `Dir.read()` enumeration with pre/post directory guards and confirmed close, one-Source-attempt hard-link grouping with usable `dev`/`ino`/`nlink`, ordered-fallback and late-derived zero-read rejection, and a process-wide closable-resource registry whose unknown close poisons scheduling until confirmation or restart
+- [x] The Codex Global override fallback defines emptiness by one optional leading-BOM removal followed by `String.prototype.trim()`, treats retained `U+FFFD` as non-whitespace, and permits fallback only for safely read empty content or exact initial-target structural-`lstat` absence
+- [x] Presentation Allowlist freeze is verification-only; any semantic membership, source-form, extractor-applicability, or relationship-kind change stops dependent implementation and requires synchronized design plus regenerated plan/tasks
+- [x] QR-005 closes `documentationStatus` to `documented | partially-documented | unknown | conflict`, keeps duplicate-free lifecycle qualifiers in `preview`, `experimental`, `deprecated` order, defines empty qualifiers as no lifecycle claim rather than `stable`, reserves `documentation-conflict` for `ConditionFact.status`, and requires provenance/relationship `EvidenceAssessment[]` to preserve every subject record without lossy aggregation
 - [x] The fixed browser helper receives no inspection-derived path or content; only a closed ambient platform-key set may be copied directly, and lexical equality with a Source root neither changes provenance nor grants authority or selects a handler
 - [x] SC-008 defines a bilingual all-Level-A-and-AA applicability matrix, criterion-specific non-applicability rationale, automated/manual check mappings, a nonzero applicable-criterion denominator, and a zero-failure pass rule
 - [x] Every applicable SC-008 row has stable criterion-specific check IDs and an expected observation, and the closed manual matrix fixes both locales, release/environment versions, responsive and visual profiles, workflow states, and input profiles with no unrecorded sampling
@@ -77,7 +88,7 @@
   and specifying origin-file-less Source Condition Facts across scenarios, requirements,
   entities, edge cases, verification, and SC-009.
 - Validation iteration 8 passed all items on 2026-07-19 after limiting comparison eligibility
-  to readable discovered customization files, keeping unreadable and diagnostic-only items
+  to readable discovered customization files, keeping binary and other diagnostic-only items
   available only for diagnostic review, and making that selection boundary explicit before
   task regeneration.
 - Validation iteration 9 passed all items on 2026-07-19 after defining each FR-007
@@ -100,18 +111,38 @@
   and correcting 2.2.2 so parallel automatically updating status requires its own control.
 - Validation iteration 13 passed all items on 2026-07-19 after reconciling deliberate
   capability-authenticated complete-content inspection with path/content-free operational
-  logs; defining environment-failure handling, revocation, and late cleanup; binding SC-002 to
+  logs; defining revocation and late cleanup; binding SC-002 to
   an explicit rescan request and its committed generation; defining product-issued mutation
   independently of OS-only access-time effects; and applying the FR-032 non-analysis boundary
   across every product and documentation surface.
 - Validation iteration 14 passed all items on 2026-07-19 after removing product-defined
   file-size, count, parser, transport, queue, time, and concurrency ceilings. Capacity is
-  inherited from the supported engine and environment; recoverable failures remain operational
-  diagnostics and never become validation, correctness/compliance implications, or lint findings.
+  inherited from the supported engine and environment and never becomes a customization
+  validation, correctness/compliance implication, or lint finding. The 2026-07-20 refinement
+  supersedes domain classification of thrown/rejected failures with FR-041 propagation.
 - Validation iteration 15 passed all items on 2026-07-19 after closing Global-root admission,
-  verified-byte decoding, and scan-publication outcomes; limiting contracted partial commits to
-  deterministic entry-local non-capacity failures after complete traversal; making every
-  capacity/resource failure non-publishing; and separating ambient browser-helper context from
-  inspection-derived path provenance.
+  verified-byte decoding, and scan-publication outcomes. The 2026-07-20 refinement limits
+  contracted partial commits to FR-028-eligible deterministic non-throwing outcomes after
+  complete traversal, makes invalid non-NUL UTF-8 complete replacement-decoded text, and sends
+  all non-exempt throws/rejections to the owning outer boundary without a domain result.
+- Validation iteration 16 passed all items on 2026-07-19 after making US3 independently
+  Repository-scoped and moving cross-Source comparison coverage to US4; excluding deterministic
+  entry-local non-throwing failures from abort-attempt wording; making source text conditional on
+  a verified non-binary UTF-8 replacement decode; freezing SC-003/004/005/007/009 denominators with a versioned,
+  digest-bound release-evidence manifest; and closing the authored-value acknowledgement and
+  client-data-purge scope.
+- Validation iteration 17 passed all items on 2026-07-20 after closing selected-root and
+  `--cwd` behavior, non-authorizing generation-0 Repository Source creation, selector-free
+  fixed-three-tool Global batching, exact structural-`lstat` `ENOENT` handling, REST versus
+  startup Operation Error ownership, as-is garbled-text UTF-8 replacement, raw/NFC and hard-link
+  identity rules, exact Codex emptiness, and the verification-only Presentation Allowlist gate.
+- Validation iteration 18 passed all items on 2026-07-20 after separating documentation
+  completeness from lifecycle qualifiers, reserving `documentation-conflict` for runtime
+  condition projection, and requiring deterministic subject-by-subject evidence assessments
+  on provenance and relationships.
+- Validation iteration 19 passed all items on 2026-07-20 after making Global disable a
+  pre-request full client-data purge with an epoch-bound all-inspection-data fence and
+  control-only failed-barrier recovery; completing directory-enumeration and hard-link race
+  rules; and defining one process-wide confirmed-close registry with restart fallback.
 - The exact repository inspection path allowlist is intentionally frozen during planning after revalidation against official vendor specifications; the specification fixes the supported product families and forbids Global-scope expansion without a specification change.
 - The temporary local product-description file is neither linked nor required by this specification.

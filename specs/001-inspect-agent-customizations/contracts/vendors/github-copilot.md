@@ -2,9 +2,9 @@
 
 [日本語](github-copilot.ja.md)
 
-**Contract version**: 2026-07-17
+**Contract version**: 2026-07-20
 
-**Official-source review**: 2026-07-15
+**Official-source review**: 2026-07-20
 
 This contract separates documented GitHub Copilot behavior from the Inspector's read
 allowlist. The common matcher grammar and source-boundary rules are defined in
@@ -30,7 +30,7 @@ A vendor locator, behavior record, relationship, or strategy never grants read a
 | **Workspace root** | One folder opened as a VS Code workspace folder. It can differ from a Git repository root. |
 | **Repository root** | The root of the repository processed by a hosted GitHub surface. |
 | **Git root** | The stopping boundary found by Copilot CLI while walking from its runtime working directory. |
-| **Runtime `cwd`** | The directory from which the relevant Copilot CLI session operates. It is not necessarily the Inspector launch directory. |
+| **Runtime `cwd`** | The directory from which the relevant Copilot CLI session operates. It is not necessarily the Inspector's selected Repository root. |
 | **CLI standard locations** | Repository root, runtime `cwd`, directories between them, and directories on the path of a file that CLI is working on. A row can explicitly exclude some of those locations. |
 | **User location** | A local home, `COPILOT_HOME`, or VS Code profile location used across projects. It is not a Repository source. |
 | **Hosted location** | Organization, enterprise, repository settings, or other state held by GitHub rather than cloned from a local user home. |
@@ -41,6 +41,46 @@ A vendor locator, behavior record, relationship, or strategy never grants read a
 A `**` segment appears below only when recursion is anchored by a separately named base
 or by the Inspector's explicit `./` boundary. A bare `**/` prefix is never a valid
 Inspector selector.
+
+## Canonical evidence-assessment index
+
+Every `behaviorId` and `ruleId` owned by this contract has exactly one
+`EvidenceAssessment`. Unless listed in the exception table below, its canonical values are
+`documentationStatus: documented` and `lifecycleQualifiers: []`. The default is a closed
+contract mapping for each unlisted subject, not an inference from a non-empty Evidence
+cell; empty qualifiers mean no lifecycle claim, never `stable`. Existing table columns
+named Status, Documentation status, Runtime/documentation status, or Inspector status are
+human rationale or Inspector-scope state and are not serialized status scalars. Runtime
+`documentation-conflict` remains a `ConditionFact.status`; the canonical assessment uses
+`conflict`.
+
+| Subject ID | `documentationStatus` | `lifecycleQualifiers` | Assessment basis |
+|---|---|---|---|
+| `copilot.behavior.vscode.instructions.agents` | `documented` | `[experimental]` | Nested selection is experimental; that lifecycle does not change documentation completeness |
+| `copilot.behavior.vscode.skills` | `partially-documented` | `[]` | Cross-location duplicate precedence is not documented |
+| `copilot.behavior.vscode.agents` | `partially-documented` | `[]` | Cross-scope duplicate precedence is not documented |
+| `copilot.behavior.vscode.prompts` | `partially-documented` | `[]` | Default nested-directory behavior is not stated precisely |
+| `copilot.behavior.vscode.hooks` | `documented` | `[preview]` | The upstream hook feature is preview while activation remains a runtime condition |
+| `copilot.behavior.vscode.mcp` | `conflict` | `[]` | VS Code 1.118 adds workspace-root `.mcp.json`, while the current MCP guide still presents `.vscode/mcp.json` and User configuration as the exhaustive locations; the root-file schema and total same-name order are not directly documented |
+| `copilot.behavior.vscode.user.skills` | `partially-documented` | `[]` | Duplicate-name precedence is not documented |
+| `copilot.behavior.vscode.user.agents` | `partially-documented` | `[]` | Workspace/User/organization/plugin duplicate precedence is not documented |
+| `copilot.behavior.vscode.user.mcp` | `partially-documented` | `[]` | Same-name cross-scope server resolution is incomplete |
+| `copilot.behavior.cli.agents` | `conflict` | `[]` | Official project-versus-User precedence assertions conflict |
+| `copilot.behavior.cli.commands` | `partially-documented` | `[]` | The project anchor and ancestor/recursive traversal are incomplete |
+| `copilot.behavior.cli.mcp` | `partially-documented` | `[]` | Same-name resolution among ancestor files is incomplete |
+| `copilot.behavior.cli.extensions` | `documented` | `[experimental]` | The documented extension surface is experimental |
+| `copilot.behavior.cli.user.agents` | `conflict` | `[]` | It carries the same retained project-versus-User conflict |
+| `copilot.behavior.cli.user.extensions` | `documented` | `[experimental]` | The documented User extension surface is experimental |
+| `copilot.behavior.cloud.skills` | `partially-documented` | `[]` | Local-personal projection is not established |
+| `copilot.behavior.cloud.remote-skills` | `partially-documented` | `[]` | Exact Cloud collision behavior is incomplete |
+| `copilot.repo.command` | `partially-documented` | `[]` | The conservative matcher is supported, but product ancestry is not documented |
+| `copilot.repo.mcp.vscode-root` | `conflict` | `[]` | The exact 1.118+ path is release-note documented, while the current guide's exhaustive location list omits it and does not establish its schema |
+
+The typed registry expands the default and exceptions to one record per subject. A
+candidate provenance retains the assessment for its exact `ruleId` and each exact
+`behaviorId`; a relationship retains the assessment for its relationship-only rule and
+each referenced behavior/strategy. Those arrays are sorted and deduplicated by subject,
+not reduced to a scalar or qualifier union.
 
 ## Surface boundary
 
@@ -68,7 +108,7 @@ repository root. It does not turn the workspace into an arbitrary descendant sca
 | `copilot.behavior.vscode.agents` | Workspace root | `.github/agents/*.md`; `.claude/agents/*.md` | Folder-based discovery; VS Code accepts any `.md` file in `.github/agents`. Parent discovery is opt-in | `copilot.vscode.agents.selection` | Documented; cross-scope duplicate-name precedence is not documented | `vscode.copilot.custom-agents`, `vscode.copilot.settings`, `github.copilot.custom-agents` |
 | `copilot.behavior.vscode.prompts` | Workspace root | `.github/prompts/*.prompt.md` | Explicit/manual invocation; additional locations come from `chat.promptFilesLocations` | —; explicit prompt invocation | Documented; default nested-directory behavior is not stated precisely | `vscode.copilot.prompts`, `vscode.copilot.settings` |
 | `copilot.behavior.vscode.hooks` | Workspace root | `.github/hooks/*.json`; `.claude/settings.json`; `.claude/settings.local.json`; agent-scoped hook declarations | Workspace hooks take precedence over user hooks for the same event; agent and plugin hooks can run in addition; parent discovery is opt-in | `copilot.vscode.hooks.composition` | Documented; preview features remain activation-conditional | `vscode.copilot.hooks`, `vscode.copilot.custom-agents`, `vscode.copilot.customization` |
-| `copilot.behavior.vscode.mcp` | Workspace root | `.vscode/mcp.json` | Exact workspace configuration. It uses the VS Code `servers` schema and is not interchangeable with CLI `.mcp.json` | `copilot.vscode.mcp.selection` | Documented; same-name workspace/user resolution is not fully documented | `vscode.copilot.mcp` |
+| `copilot.behavior.vscode.mcp` | Workspace root | For VS Code 1.118+: `.mcp.json`; all reviewed versions: `.vscode/mcp.json` | Both are exact workspace-root locations. The current guide directly documents the `.vscode/mcp.json` `servers` schema but still calls it the workspace location; the 1.118 release note separately adds root `.mcp.json` and announces most-specific same-name deduplication without defining that file's schema or a total order across root, `.vscode`, User, agent, and plugin inputs. The Inspector therefore attaches path/surface provenance for root `.mcp.json` but makes no VS Code-owned schema claim; independently documented CLI extraction on the same physical file remains separate provenance in the one Copilot/MCP recognition | `copilot.vscode.mcp.selection` | Conflict between the current exhaustive guide and the newer release note; root schema and exact selection order remain unknown | `vscode.copilot.mcp`, `vscode.copilot.mcp.workspace-root-release` |
 | `copilot.behavior.vscode.settings` | Workspace root | `.vscode/settings.json`; plugin-recommendation keys in `.github/copilot/settings.json` | VS Code setting scopes apply; workspace values override user values. The Copilot settings file is not a replacement for general VS Code settings | `copilot.vscode.settings.precedence` | Documented | `vscode.settings`, `vscode.copilot.plugins`, `vscode.copilot.settings` |
 | `copilot.behavior.vscode.plugins` | A registered or installed plugin or marketplace root | `plugin.json`; `.plugin/plugin.json`; `.github/plugin/plugin.json`; `.claude-plugin/plugin.json`, and corresponding marketplace files | Registration, installation, recommendation, and enabled state are separate. A matching file in an arbitrary repository is not automatically active | `copilot.vscode.plugins.activation` | Documented | `vscode.copilot.plugins`, `github.copilot.plugins` |
 
@@ -171,7 +211,7 @@ setting must therefore not be projected into a Cloud-agent instruction chain.
 ## Inspector Repository matcher rules
 
 Every Base in this table is the exact Inspector Repository boundary (`./`), which is the
-`npx` launch directory. The Inspector does not search above it for a workspace, project,
+selected Repository root from captured `process.cwd()` or `--cwd`. The Inspector does not search above it for a workspace, project,
 or Git root. A selector beginning `./**/` is an explicitly anchored Inspector inventory,
 not a claim that VS Code, CLI, or Cloud walks downward. No selector begins with bare
 `**/`. Every row has policy references FR-003, FR-004, FR-005, FR-024, QR-001, QR-004,
@@ -180,7 +220,7 @@ and QR-005 unless a narrower exclusion or Global requirement is stated below.
 The VS Code/Cloud repository-wide and path-instruction rules use the root-exact
 `./.github/...` spelling. Separate CLI-context rules use `./**/.github/...` solely because
 CLI documents additional standard locations. Because `**` can match zero segments, the
-CLI rule also covers the launch root. A root file therefore receives VS Code/Cloud
+CLI rule also covers the selected Repository root. A root file therefore receives VS Code/Cloud
 provenance from the root-exact rule and CLI provenance from the CLI-context rule, without
 duplicating the same surface provenance or merging runtime behavior.
 
@@ -199,12 +239,20 @@ duplicating the same surface provenance or merging runtime behavior.
 | `copilot.repo.command` | `./` | `./.claude/commands/*.md` | `direct-child` | `static-candidate` | `copilot.behavior.cli.commands` | Conservative initial matcher; product ancestry is not documented | `github.copilot.cli.reference` |
 | `copilot.repo.hooks` | `./` | `./.github/hooks/*.json` | `direct-child` | `static-candidate` | `copilot.behavior.vscode.hooks`, `copilot.behavior.cli.hooks`, `copilot.behavior.cloud.hooks` | Documented root hook files; settings can contain inline hook metadata | `vscode.copilot.hooks`, `github.copilot.hooks` |
 | `copilot.repo.mcp` | `./` | `./**/.mcp.json`; `./**/.github/mcp.json` | `descendant-inventory` | `static-candidate` | `copilot.behavior.cli.mcp` | Documented CLI candidate inventory; runtime ancestor chain and trust conditional | `github.copilot.cli.reference` |
+| `copilot.repo.mcp.vscode-root` | `./` | `./.mcp.json` | `exact` | `static-candidate` | `copilot.behavior.vscode.mcp` | VS Code 1.118+ path/surface provenance only. The current guide omits this location, and no VS Code schema extractor is authorized until direct documentation resolves the conflict | `vscode.copilot.mcp`, `vscode.copilot.mcp.workspace-root-release` |
 | `copilot.repo.mcp.vscode` | `./` | `./.vscode/mcp.json` | `exact` | `static-candidate` | `copilot.behavior.vscode.mcp` | Dedicated VS Code MCP candidate; schema differs from CLI | `vscode.copilot.mcp`, `github.copilot.cli.reference` |
 | `copilot.repo.settings` | `./` | `./.github/copilot/settings.json`; `./.github/copilot/settings.local.json`; `./.claude/settings.json`; `./.claude/settings.local.json` | `exact` for each selector | `static-candidate` | `copilot.behavior.cli.settings`, `copilot.behavior.cli.hooks`, `copilot.behavior.vscode.hooks`, `copilot.behavior.cloud.plugins` | Documented supported subset; general `.vscode/settings.json` excluded | `github.copilot.cli.configuration`, `github.copilot.hooks`, `vscode.copilot.plugins` |
-| `copilot.repo.plugin-manifest` | `./` | `./.plugin/plugin.json`; `./plugin.json`; `./.github/plugin/plugin.json`; `./.claude-plugin/plugin.json` | `exact` for each selector, and only when the Inspector launch boundary is intentionally treated as an authored plugin root | `static-candidate` | `copilot.behavior.vscode.plugins`, `copilot.behavior.cli.plugins` | Inspector policy for an explicit root only; it is not Copilot discovery or activation evidence | `vscode.copilot.plugins`, `github.copilot.cli.plugins` |
-| `copilot.repo.marketplace` | `./` | `./marketplace.json`; `./.plugin/marketplace.json`; `./.github/plugin/marketplace.json`; `./.claude-plugin/marketplace.json` | `exact` for each selector, and only when the Inspector launch boundary is intentionally treated as an authored catalog root | `static-candidate` | `copilot.behavior.vscode.plugins`, `copilot.behavior.cli.plugins` | Inspector policy for an explicit root only; installation and enablement are separate | `vscode.copilot.plugins`, `github.copilot.cli.plugins` |
+| `copilot.repo.plugin-manifest` | `./` | `./.plugin/plugin.json`; `./plugin.json`; `./.github/plugin/plugin.json`; `./.claude-plugin/plugin.json` | `exact` for each selector, and only when the Inspector selected Repository boundary is intentionally treated as an authored plugin root | `static-candidate` | `copilot.behavior.vscode.plugins`, `copilot.behavior.cli.plugins` | Inspector policy for an explicit root only; it is not Copilot discovery or activation evidence | `vscode.copilot.plugins`, `github.copilot.cli.plugins` |
+| `copilot.repo.marketplace` | `./` | `./marketplace.json`; `./.plugin/marketplace.json`; `./.github/plugin/marketplace.json`; `./.claude-plugin/marketplace.json` | `exact` for each selector, and only when the Inspector selected Repository boundary is intentionally treated as an authored catalog root | `static-candidate` | `copilot.behavior.vscode.plugins`, `copilot.behavior.cli.plugins` | Inspector policy for an explicit root only; installation and enablement are separate | `vscode.copilot.plugins`, `github.copilot.cli.plugins` |
 
-These two static rules do not search repository descendants. Copilot does not activate
+The overlapping `copilot.repo.mcp` and `copilot.repo.mcp.vscode-root` rules create two
+compatible provenances on the same root `.mcp.json`; they never duplicate its physical
+identity or read. CLI `mcpServers` extraction remains owned by the CLI provenance, while
+the VS Code provenance is path/surface-only until direct official documentation establishes
+its schema. Unknown same-name ordering is projected as conditions rather than an inferred
+winner.
+
+The plugin and marketplace static rules do not search repository descendants. Copilot does not activate
 an arbitrary descendant manifest or catalog merely because its filename matches. A
 nested local plugin manifest is admitted only by the closed derivation from an accepted
 marketplace entry below; that derivation is likewise Inspector policy, not product
@@ -225,13 +273,14 @@ flow required by FR-013 through FR-018, Copilot may read only these rules:
 
 | Rule ID | Boundary base | Relative selector | Expansion | Class | Behavior refs | Runtime strategy | Policy refs | Evidence |
 |---|---|---|---|---|---|---|---|---|
-| `copilot.global.instructions.root` | Exact consented `<COPILOT_HOME>`; default `$HOME/.copilot` only when `COPILOT_HOME` is absent | `copilot-instructions.md` | `exact` | `static-candidate` | `copilot.behavior.cli.user.instructions.root` | `copilot.cli.instructions.layering` | FR-013, FR-014, FR-015, FR-018, QR-005 | `github.copilot.cli.instructions`, `github.copilot.instructions.support` |
+| `copilot.global.instructions.root` | Exact consented captured `COPILOT_HOME`; only when absent, `node:path.join` of the request-wide imported `node:os.homedir()` capture and `.copilot` | `copilot-instructions.md` | `exact` | `static-candidate` | `copilot.behavior.cli.user.instructions.root` | `copilot.cli.instructions.layering` | FR-013, FR-014, FR-015, FR-018, QR-005 | `github.copilot.cli.instructions`, `github.copilot.instructions.support` |
 | `copilot.global.instructions.path` | The same exact consented `<COPILOT_HOME>` boundary | `instructions/**/*.instructions.md` | `recursive-subtree` below the fixed `instructions/` directory | `static-candidate` | `copilot.behavior.cli.user.instructions.path`, `copilot.behavior.vscode.user.instructions` | `copilot.cli.instructions.layering`, `copilot.vscode.instructions.layering` | FR-013, FR-014, FR-015, FR-018, QR-005 | `github.copilot.cli.instructions`, `github.copilot.instructions.support`, `vscode.copilot.instructions`, `vscode.copilot.settings` |
 
-A present empty, relative, unreadable, missing, or non-canonicalizable `COPILOT_HOME` is
-an invalid override and does not silently fall back. User settings, agents, skills, hooks,
-MCP, LSP, extensions, plugins, permissions, credentials, logs, sessions, and caches remain
-excluded even when stored below the same boundary.
+A present empty or relative `COPILOT_HOME`, or a non-throwing rejected root outcome, is an
+invalid override and does not silently fall back. A throw or rejection during root selection
+or admission propagates unchanged. User settings, agents, skills, hooks, MCP, LSP,
+extensions, plugins, permissions, credentials, logs, sessions, and caches remain excluded
+even when stored below the same boundary.
 
 ## Derived rule and relationship index
 
@@ -263,6 +312,14 @@ extractor occurrences supported for the actual admitted source form identified b
 provenance. Naming several forms in one row does not union their schemas or make one form's
 fields eligible in another; conformance fixtures and tests cover both gates.
 
+Once implementation begins, this bilingual table and its two per-language SHA-256 digests
+recorded in the [official-source contract](../official-sources.md) are frozen, approved design
+input. The implementation gate recomputes and verifies them only; it must not author or semantically change
+an eligible set, source form, extractor applicability, or relationship kind. If such a change
+is required, dependent work stops, every affected English/Japanese design artifact is
+synchronized, and `/speckit.plan` and `/speckit.tasks` are rerun before the revised contract
+is consumed.
+
 The rows are exhaustive. A contained MCP or Hook declaration uses the `MCP` or `hook`
 row on its already admitted owner file; it does not gain fields from the owner's other
 recognition and does not create a synthetic file. Unknown keys and references remain
@@ -275,7 +332,7 @@ import, installation, or activation authority.
 |---|---|---|---|
 | `instructions` | `copilot.instructions.name`<br>`copilot.instructions.description`<br>`copilot.instructions.apply-to`<br>`copilot.instructions.exclude-agent`<br>`copilot.instructions.import-target` | `import` | Exact supported frontmatter values in an accepted `*.instructions.md`, plus authored CLI `@path` targets in accepted `.github/copilot-instructions.md`, `AGENTS.md`, or Copilot-recognized `CLAUDE.md`; path-derived scope and enablement remain typed facts |
 | `skill` | `copilot.skill.name`<br>`copilot.skill.description`<br>`copilot.skill.argument-hint`<br>`copilot.skill.allowed-tool`<br>`copilot.skill.user-invocable`<br>`copilot.skill.disable-model-invocation`<br>`copilot.skill.context` | `skill-resource`<br>`context-inheritance` | Exact supported frontmatter value/item occurrences in an accepted `SKILL.md`; relative resource references can be relationships but never authorize reads |
-| `MCP` | `copilot.mcp.server.name`<br>`copilot.mcp.server.type`<br>`copilot.mcp.server.command`<br>`copilot.mcp.server.arg`<br>`copilot.mcp.server.tool`<br>`copilot.mcp.server.env.name`<br>`copilot.mcp.server.env.value`<br>`copilot.mcp.server.cwd`<br>`copilot.mcp.server.timeout`<br>`copilot.mcp.server.defer-tools`<br>`copilot.mcp.server.url`<br>`copilot.mcp.server.header.name`<br>`copilot.mcp.server.header.value`<br>`copilot.mcp.server.oauth-client-id`<br>`copilot.mcp.server.oauth-public-client`<br>`copilot.mcp.server.oauth-grant-type`<br>`copilot.mcp.server.oidc`<br>`copilot.mcp.server.filter-mapping`<br>`copilot.mcp.server.sandbox-enabled` | `runtime-reference` | Server-name map keys and exact supported server leaf/item occurrences in an accepted CLI `mcpServers` file, VS Code `servers` file, or custom-agent-contained declaration; environment/header values remain authored literals and are never expanded |
+| `MCP` | `copilot.mcp.server.name`<br>`copilot.mcp.server.type`<br>`copilot.mcp.server.command`<br>`copilot.mcp.server.arg`<br>`copilot.mcp.server.tool`<br>`copilot.mcp.server.env.name`<br>`copilot.mcp.server.env.value`<br>`copilot.mcp.server.cwd`<br>`copilot.mcp.server.timeout`<br>`copilot.mcp.server.defer-tools`<br>`copilot.mcp.server.url`<br>`copilot.mcp.server.header.name`<br>`copilot.mcp.server.header.value`<br>`copilot.mcp.server.oauth-client-id`<br>`copilot.mcp.server.oauth-public-client`<br>`copilot.mcp.server.oauth-grant-type`<br>`copilot.mcp.server.oidc`<br>`copilot.mcp.server.filter-mapping`<br>`copilot.mcp.server.sandbox-enabled` | `runtime-reference` | Server-name map keys and exact supported server leaf/item occurrences in an accepted CLI `mcpServers` file, VS Code `.vscode/mcp.json` `servers` file, or custom-agent-contained declaration; a VS Code 1.118+ root `.mcp.json` provenance is path/surface-only and adds no VS Code-owned extractor fields until direct documentation establishes its schema, while any CLI extraction on the same file remains independent; environment/header values remain authored literals and are never expanded |
 | `prompt/command` | `copilot.prompt.name`<br>`copilot.prompt.description`<br>`copilot.prompt.argument-hint`<br>`copilot.prompt.agent`<br>`copilot.prompt.model`<br>`copilot.prompt.tool`<br>`copilot.command.description`<br>`copilot.command.argument-hint`<br>`copilot.command.allowed-tool`<br>`copilot.command.disable-model-invocation` | `skill-resource`<br>`agent-reference`<br>`runtime-reference` | Exact supported frontmatter value/item occurrences in an accepted VS Code prompt or root direct-child CLI command; prompt/command invocation names derived from matched paths remain typed provenance, and links or `#file` targets remain inert |
 | `agent` | `copilot.agent.name`<br>`copilot.agent.description`<br>`copilot.agent.target`<br>`copilot.agent.tool`<br>`copilot.agent.model`<br>`copilot.agent.disable-model-invocation`<br>`copilot.agent.user-invocable`<br>`copilot.agent.infer`<br>`copilot.agent.metadata.name`<br>`copilot.agent.metadata.value`<br>`copilot.agent.argument-hint`<br>`copilot.agent.subagent`<br>`copilot.agent.disallowed-tool`<br>`copilot.agent.handoff.label`<br>`copilot.agent.handoff.agent`<br>`copilot.agent.handoff.prompt`<br>`copilot.agent.handoff.send`<br>`copilot.agent.handoff.model` | `agent-reference`<br>`skill-resource`<br>`context-inheritance`<br>`runtime-reference` | Exact supported frontmatter value/item/map-entry occurrences in an accepted `.github/agents/*.md` or `.claude/agents/*.md`; body instructions remain `sourceText`, while `hooks` and `mcp-servers` are owned by their separate contained recognitions |
 | `settings/config` | `copilot.settings.company-announcement`<br>`copilot.settings.context-tier`<br>`copilot.settings.denied-url`<br>`copilot.settings.disable-all-hooks`<br>`copilot.settings.disabled-mcp-server`<br>`copilot.settings.disabled-skill`<br>`copilot.settings.effort-level`<br>`copilot.settings.enabled-plugin.name`<br>`copilot.settings.enabled-plugin.value`<br>`copilot.settings.extra-known-marketplace.name`<br>`copilot.settings.extra-known-marketplace.source`<br>`copilot.settings.extra-known-marketplace.repo`<br>`copilot.settings.extra-known-marketplace.url`<br>`copilot.settings.extra-known-marketplace.path`<br>`copilot.settings.extra-known-marketplace.ref`<br>`copilot.settings.extra-known-marketplace.sha`<br>`copilot.settings.extra-known-marketplace.auto-update`<br>`copilot.settings.include-co-authored-by`<br>`copilot.settings.merge-strategy`<br>`copilot.settings.model`<br>`copilot.settings.respect-gitignore` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`runtime-reference` | Exact supported Repository/local or cross-tool-compatible settings leaf/item/map-entry occurrences; contained Hook values belong only to the `hook` recognition, and settings never own an MCP recognition |
@@ -317,10 +374,12 @@ state, is defined only in [Shared non-read exclusions](../runtime-composition.md
    `.claude/commands/*.md` and its priority below same-name skills, but not a complete
    project/user base or ancestor traversal. The root direct-child Inspector matcher is a
    conservative initial policy, not a claim about runtime discovery.
-4. **Several duplicate-name edges are undocumented.** VS Code does not fully document
+4. **Several MCP and duplicate-name edges are unresolved.** VS Code does not fully document
    duplicate custom-agent or skill precedence across workspace, user, organization, and
-   plugin sources. VS Code MCP and CLI ancestor MCP same-name resolution are also not
-   fully specified.
+   plugin sources. For MCP, the 1.118 release note adds workspace-root `.mcp.json` and a
+   most-specific rule, while the current guide still lists only `.vscode/mcp.json` and User
+   configuration. The root schema and the total order across locations are not specified;
+   the conflict and unknown conditions must remain visible.
 5. **Custom-agent context composition is incomplete.** VS Code documents always-on
    instructions and prepending the selected profile body. Current Cloud and CLI sources
    do not define a complete instruction order inside a separate custom-agent/subagent
@@ -329,5 +388,5 @@ state, is defined only in [Shared non-read exclusions](../runtime-composition.md
    proves an authored candidate only. Registration, installation, enabled state,
    component overrides, trust, and hosted availability are independent facts.
 7. **Documentation is fast-moving.** Canonical pages, enumerated section names, the
-   2026-07-15 review date, and semantic fingerprints in the Official Sources contract are
+   per-record review dates through 2026-07-20, and semantic fingerprints in the Official Sources contract are
    the maintenance baseline; search-result snippets are not evidence.

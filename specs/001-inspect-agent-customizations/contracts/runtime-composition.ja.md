@@ -2,7 +2,7 @@
 
 [English](runtime-composition.md)
 
-**契約バージョン**: 2026-07-17
+**契約バージョン**: 2026-07-20
 
 **公式ソース確認日**: 2026-07-15
 
@@ -12,6 +12,40 @@
 Vendor contractは`behaviorId` recordを定義し、inspection allowlistはreadを認可する`ruleId` recordを
 定義する。文書化されたruntime inputのcompositionとnon-read relationshipの表現は、このcontract
 だけが定義する。Strategyやrelationshipはfilesystem read権限を与えない。
+
+## Canonical evidence-assessment index
+
+このcontractが所有する全`strategyId`とrelationship-only/shared non-read `ruleId`は、正確に1件の
+`EvidenceAssessment`を持つ。下記にないsubjectのcanonical valueは`documentationStatus: documented`、
+`lifecycleQualifiers: []`とする。これはevidenceの存在からの推論ではなく、subjectごとのclosed mappingである。
+Empty qualifierはlifecycle claimなしを表し、`stable`を意味しない。Documentation-status valueは
+`documented`、`partially-documented`、`unknown`、`conflict`だけにclosedとし、別tokenの
+`documentation-conflict`はruntimeの`ConditionFact.status`だけに残す。
+
+| Subject ID | `documentationStatus` | `lifecycleQualifiers` | Assessment basis |
+|---|---|---|---|
+| `copilot.vscode.instructions.layering` | `partially-documented` | `[experimental]` | Same-layer orderingが不完全でnested `AGENTS.md` selectionはexperimental |
+| `copilot.vscode.skills.selection` | `partially-documented` | `[]` | Cross-location duplicate precedenceが不完全 |
+| `copilot.vscode.agents.selection` | `partially-documented` | `[]` | Cross-scope duplicate precedenceが不完全 |
+| `copilot.vscode.hooks.composition` | `documented` | `[preview]` | Upstream hook featureはpreview |
+| `copilot.vscode.mcp.selection` | `conflict` | `[]` | 1.118 workspace root `.mcp.json`/most-specific release assertionがcurrent guideの網羅的location listと競合し、root schemaとtotal location orderはunknownのまま |
+| `copilot.cli.instructions.layering` | `partially-documented` | `[]` | Non-identicalなapplicable file間のgeneral precedenceが確立されない |
+| `copilot.cli.skills.selection` | `partially-documented` | `[]` | Command anchorとancestryは一部だけ文書化 |
+| `copilot.cli.agents.selection` | `conflict` | `[]` | Project対User precedenceのofficial assertionが競合 |
+| `copilot.cli.mcp.selection` | `partially-documented` | `[]` | Ancestor duplicate selectionが未解決 |
+| `copilot.cloud.skills.selection` | `partially-documented` | `[]` | 正確なremote-skill collision behaviorが不完全 |
+| `claude.rules.layering` | `partially-documented` | `[]` | Ancestor `paths` baseとdescendant rule discoveryが不明確 |
+| `claude.commands.selection` | `partially-documented` | `[]` | Completeなancestor/lazy traversalは独立に記載されない |
+| `claude.agents.selection` | `partially-documented` | `[]` | Same-tree duplicate orderが未指定 |
+| `claude.mcp.selection` | `partially-documented` | `[]` | 正確なproject-root selectionは一部だけ指定 |
+| `codex.agents.inheritance` | `partially-documented` | `[]` | Project traversalとchild instruction inheritanceが不完全 |
+| `codex.rules.resolution` | `partially-documented` | `[experimental]` | Nested recursionは未指定でrules featureはexperimental |
+
+固定qualifier順は`preview`、`experimental`、`deprecated`で、arrayは重複を持たない。Typed registryはdefaultと
+exception tableをsubjectごとに1 recordへ展開する。以下のDocumentation status列とRequired conditions/status列は
+human rationaleまたはruntime condition textであり、serializeするscalar enumではない。Provenanceまたはrelationshipは、
+参照するexact rule、behavior、strategyごとのassessmentを`(subjectKind, subjectId)`でsort/deduplicateして保持し、
+best/worst scalarまたはqualifier unionで`EvidenceAssessment[]`を置換しない。
 
 ## Runtime compositionはInspector sourceのmergeではない
 
@@ -23,7 +57,7 @@ shadowing、combination、またはunresolved-condition metadataを生成する�
 | Input domain | Vendor runtime model | Inspector model |
 |---|---|---|
 | Repository | Vendorはruntime rootを探索し、applicable fileを選択し、Repository inputをcombineできる | 受理した各fileはRepository candidate provenanceを保持する。Strategyはcandidateを関連付けられるがallowlistを拡張しない |
-| User | VendorはUser settings、instruction、skill、agent、hook、MCP、stateをRepository inputとcombineできる | Repository Sourceと0から3つのtool固有Global Sourceは別々のまま。User fileをreadできるのは明示的にconsentしたGlobal instruction ruleだけであり、その他のUser inputはunavailable factのまま |
+| User | VendorはUser settings、instruction、skill、agent、hook、MCP、stateをRepository inputとcombineできる | Repository Sourceと0から3つのtool固有Global Sourceは別々のまま。Selectorを持たない1回のsession-wide consentで固定3-tool entryをすべて評価した後、admit済みrootのfrozen Global instruction ruleだけがUser fileをreadでき、その他のUser inputはunavailable factのまま |
 | Hosted、organization、enterprise、managed | Hosted surfaceはservice-side inputをrepository checkoutとcombineできる | これらは`shared.relationship.runtime`または`shared.excluded.managed-remote-state`で表し、local scan rootにしない |
 | Plugin、hook、MCP、import、arbitrary path | Vendorはruntime check後にactivate、execute、connect、followし得る | Authored declarationとrelationshipはinert。独立したstaticまたはbounded-derived ruleが同じtargetを受理した場合だけreadできる |
 
@@ -46,7 +80,7 @@ Strategy rowは次のfact名を使用する。各factは、該当する場合に
 |---|---|
 | `surface` | Local対hosted executionを含む正確なproduct surface |
 | `engine-version` | Feature setを決めるCLI、extension-bundled engine、またはhost version |
-| `runtime-cwd` | Inspector launch directoryとは異なり得るproduct runtime working directory |
+| `runtime-cwd` | Inspectorのselected Repository rootとは異なり得るproduct runtime working directory |
 | `workspace-root` | Local surfaceが使用するVS Code workspace folder |
 | `repository-root` | Productが使用するGitまたはhosted repository root |
 | `project-root` | Repository rootと異なる場合のproduct-defined project root |
@@ -80,7 +114,7 @@ Strategy rowは次のfact名を使用する。各factは、該当する場合に
 | `copilot.vscode.skills.selection` | GitHub Copilot / local VS Code | `filter`、`select-first`、`unknown-order` | Enabled locationとparent layerからmetadataを発見し、relevant skillをprogressive loadする。Duplicate-name winnerを推測しない | `copilot.behavior.vscode.skills`、`copilot.behavior.vscode.user.skills` | `surface`、`engine-version`、`workspace-root`、`worked-path`、`scope-availability`、`feature-state`、`enablement`、`selection`、`settings-inputs`、`external-runtime` | partially documented。Cross-location duplicate precedenceはunknown | `github.copilot.skills`、`vscode.copilot.settings`、`vscode.copilot.skills` |
 | `copilot.vscode.agents.selection` | GitHub Copilot / local VS Code | `filter`、`select-first`、`unknown-order` | TargetにVS Codeを含むinvocableまたはinferred profileを選択する。Body/model/tool factを保持し、workspace、User、organization、plugin source間の未解決same-name precedenceを保持する | `copilot.behavior.vscode.agents`、`copilot.behavior.vscode.user.agents` | `surface`、`engine-version`、`workspace-root`、`scope-availability`、`feature-state`、`enablement`、`selection`、`plugin-state`、`external-runtime` | partially documented。Cross-scope duplicate precedenceはunknown | `github.copilot.custom-agents`、`vscode.copilot.custom-agents`、`vscode.copilot.settings` |
 | `copilot.vscode.hooks.composition` | GitHub Copilot / local VS Code | `filter`、`select-first`、`append` | Eventのworkspace/User hookを、同じeventではworkspace precedenceで解決し、追加のapplicable agent/plugin hookを保持する | `copilot.behavior.vscode.agents`、`copilot.behavior.vscode.hooks`、`copilot.behavior.vscode.plugins`、`copilot.behavior.vscode.user.hooks` | `surface`、`engine-version`、`workspace-root`、`scope-availability`、`feature-state`、`trust`、`approval`、`enablement`、`selection`、`plugin-state`、`event`、`managed-policy` | documented。Previewとactivation conditionは必須 | `vscode.copilot.custom-agents`、`vscode.copilot.customization`、`vscode.copilot.hooks` |
-| `copilot.vscode.mcp.selection` | GitHub Copilot / local VS Code | `merge-map`、`replace`、`unknown-order` | Availableなworkspace、User、agent inputからVS Code `servers` configurationをcomposeする。Docsが決めないsame-name workspace/User resolutionはunknownのまま | `copilot.behavior.vscode.agents`、`copilot.behavior.vscode.mcp`、`copilot.behavior.vscode.user.mcp` | `surface`、`engine-version`、`workspace-root`、`scope-availability`、`trust`、`approval`、`enablement`、`selection`、`settings-inputs`、`external-runtime` | partially documented。Same-name cross-scope selectionは不完全 | `vscode.copilot.custom-agents`、`vscode.copilot.mcp` |
+| `copilot.vscode.mcp.selection` | GitHub Copilot / local VS Code | `merge-map`、`replace`、`unknown-order` | `.vscode/mcp.json`にはdocumentedなVS Code `servers` inputをprojectする。VS Code 1.118以降のroot `.mcp.json`はdirect documentationがschemaを確立するまでpath/surface availabilityだけを保持する。Release noteの「most-specific」same-name ruleはroot、`.vscode`、User、agent、plugin input間のtotal orderを定義しないため、推測したmapをcomposeせず、未解決winnerを`documentation-conflict`またはunknown conditionとして保持する | `copilot.behavior.vscode.agents`、`copilot.behavior.vscode.mcp`、`copilot.behavior.vscode.user.mcp` | `surface`、`engine-version`、`workspace-root`、`scope-availability`、`trust`、`approval`、`enablement`、`selection`、`settings-inputs`、`external-runtime` | conflict。Current guideと1.118 releaseのlocationが競合し、root schemaとtotal same-name orderはunknown | `vscode.copilot.custom-agents`、`vscode.copilot.mcp`、`vscode.copilot.mcp.workspace-root-release` |
 | `copilot.vscode.settings.precedence` | GitHub Copilot / local VS Code | `merge-map`、`replace` | Workspace valueをUser valueより上に置き、policy、remote、language、profile scopeをinputとして保持してVS Code setting scopeを解決する | `copilot.behavior.vscode.settings`、`copilot.behavior.vscode.user.settings` | `surface`、`engine-version`、`workspace-root`、`scope-availability`、`selection`、`settings-inputs`、`managed-policy` | documented | `vscode.copilot.plugins`、`vscode.copilot.settings`、`vscode.settings` |
 | `copilot.vscode.plugins.activation` | GitHub Copilot / local VS Code | `select-first`、`filter` | 明示的に確立されたrootでmanifest/catalog recognition orderを適用し、registration、recommendation、installation、enablement、availability、component selectionを別々のactivation stateとして保持する | `copilot.behavior.vscode.plugins`、`copilot.behavior.vscode.user.plugins` | `surface`、`engine-version`、`workspace-root`、`scope-availability`、`trust`、`approval`、`enablement`、`selection`、`plugin-state`、`installation`、`external-runtime` | documented。Activationはruntime state依存 | `github.copilot.plugins`、`vscode.copilot.plugins` |
 
@@ -90,7 +124,7 @@ Strategy rowは次のfact名を使用する。各factは、該当する場合に
 |---|---|---|---|---|---|---|---|
 | `copilot.cli.instructions.layering` | GitHub Copilot / CLI | `filter`、`deduplicate`、`append`、`unknown-order` | Applicableなstandard-location/User instructionを収集し、`applyTo`とdisablementをfilterし、文書化されたidentical duplicateを除き、残りをgeneral precedenceを推測せずcombineする | `copilot.behavior.cli.instructions.agents`、`copilot.behavior.cli.instructions.claude`、`copilot.behavior.cli.instructions.gemini`、`copilot.behavior.cli.instructions.path`、`copilot.behavior.cli.instructions.repository`、`copilot.behavior.cli.user.instructions.path`、`copilot.behavior.cli.user.instructions.root` | `surface`、`engine-version`、`runtime-cwd`、`repository-root`、`worked-path`、`target-match`、`scope-availability`、`feature-state`、`enablement`、`settings-inputs`、`managed-policy` | documented。Non-identical applicable file間のorderは未指定 | `github.copilot.cli.instructions`、`github.copilot.instructions.support` |
 | `copilot.cli.skills.selection` | GitHub Copilot / CLI | `select-first` | 同名skillをdocumentedなproject、inherited、personal、plugin、custom、built-in、remote source orderの最初から解決する。同名skillはlegacy commandより上 | `copilot.behavior.cli.commands`、`copilot.behavior.cli.skills`、`copilot.behavior.cli.user.skills` | `surface`、`engine-version`、`runtime-cwd`、`repository-root`、`scope-availability`、`feature-state`、`enablement`、`selection`、`plugin-state`、`installation`、`external-runtime` | Skillはdocumented。Command anchorとancestryはpartially documented | `github.copilot.cli.reference`、`github.copilot.skills` |
-| `copilot.cli.agents.selection` | GitHub Copilot / CLI | `select-closest`、`select-first`、`unknown-order` | Project layer内ではdeepest ancestorと`.claude/agents`より`.github/agents`を優先する。Project対User selectionは`documentation-conflict`のままにし、plugin agentは文書化された最下位sourceとする | `copilot.behavior.cli.agents`、`copilot.behavior.cli.user.agents` | `surface`、`engine-version`、`runtime-cwd`、`repository-root`、`scope-availability`、`enablement`、`selection`、`plugin-state`、`documentation-variant`、`managed-policy` | Project対Userはdocumentation-conflict。Project traversalはdocumented | `github.copilot.cli.configuration`、`github.copilot.cli.custom-agents`、`github.copilot.cli.plugins`、`github.copilot.cli.reference` |
+| `copilot.cli.agents.selection` | GitHub Copilot / CLI | `select-closest`、`select-first`、`unknown-order` | Project layer内ではdeepest ancestorと`.claude/agents`より`.github/agents`を優先する。Project対User selectionは`documentation-conflict`のままにし、plugin agentは文書化された最下位sourceとする | `copilot.behavior.cli.agents`、`copilot.behavior.cli.user.agents` | `surface`、`engine-version`、`runtime-cwd`、`repository-root`、`scope-availability`、`enablement`、`selection`、`plugin-state`、`documentation-variant`、`managed-policy` | Canonical documentation statusは`conflict`。Runtime projectionではproject対Userに`documentation-conflict`を使う | `github.copilot.cli.configuration`、`github.copilot.cli.custom-agents`、`github.copilot.cli.plugins`、`github.copilot.cli.reference` |
 | `copilot.cli.hooks.composition` | GitHub Copilot / CLI | `filter`、`append` | Eventにapplicableな全policy、User、Repository、agent、plugin hookをcomposeする。Documented source append orderを保持し、same-event hookを1 winnerへcollapseしない | `copilot.behavior.cli.hooks`、`copilot.behavior.cli.user.hooks` | `surface`、`engine-version`、`repository-root`、`scope-availability`、`feature-state`、`trust`、`approval`、`enablement`、`plugin-state`、`event`、`managed-policy` | documented | `github.copilot.cli.configuration`、`github.copilot.hooks` |
 | `copilot.cli.mcp.selection` | GitHub Copilot / CLI | `select-first`、`replace`、`unknown-order` | Server sourceをsession-additional、plugin、workspace、Userの順で解決する。複数ancestor workspace file間のsame-name resolutionはunknownのまま | `copilot.behavior.cli.mcp`、`copilot.behavior.cli.user.mcp` | `surface`、`engine-version`、`runtime-cwd`、`repository-root`、`scope-availability`、`trust`、`approval`、`enablement`、`selection`、`settings-inputs`、`plugin-state`、`external-runtime` | partially documented。Ancestor duplicate selectionは未解決 | `github.copilot.cli.reference` |
 | `copilot.cli.settings.precedence` | GitHub Copilot / CLI | `replace`、`merge-map`、`concatenate` | Documentedなdefaults、managed、User、Repository、local、environment、flag cascadeを、各settingのreplace、merge、concatenate modeで適用する | `copilot.behavior.cli.settings`、`copilot.behavior.cli.user.settings` | `surface`、`engine-version`、`repository-root`、`scope-availability`、`selection`、`settings-inputs`、`managed-policy` | documented | `github.copilot.cli.configuration` |

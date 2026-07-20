@@ -2,9 +2,9 @@
 
 [English](github-copilot.md)
 
-**契約バージョン**: 2026-07-17
+**契約バージョン**: 2026-07-20
 
-**公式資料のreview日**: 2026-07-15
+**公式資料のreview日**: 2026-07-20
 
 このcontractは、文書化済みGitHub Copilot behaviorとInspectorのread allowlistを分離する。共通matcher文法と
 source-boundary ruleは[Inspection Path Allowlist Grammar and Index](../inspection-path-allowlist.ja.md)、
@@ -27,7 +27,7 @@ relationship、strategyはいずれもread authorityを与えない。
 | **Workspace root** | VS Codeでworkspace folderとして開いた1 folder。Git repository rootと異なる場合がある。 |
 | **Repository root** | Hosted GitHub surfaceが処理するrepositoryのroot。 |
 | **Git root** | Copilot CLIがruntime working directoryから上向きにwalkするときの停止boundary。 |
-| **Runtime `cwd`** | 対象Copilot CLI sessionが動作するdirectory。Inspector launch directoryと同じとは限らない。 |
+| **Runtime `cwd`** | 対象Copilot CLI sessionが動作するdirectory。Inspectorのselected Repository rootと同じとは限らない。 |
 | **CLI standard locations** | Repository root、runtime `cwd`、両者の中間directory、CLIが作業中のfile path上のdirectory。個別rowがその一部を明示的に除外できる。 |
 | **User location** | Projectをまたいで使うlocal home、`COPILOT_HOME`、またはVS Code profile location。Repository sourceではない。 |
 | **Hosted location** | Local user homeではなくGitHubが保持するorganization、enterprise、repository settings、その他state。 |
@@ -37,6 +37,42 @@ relationship、strategyはいずれもread authorityを与えない。
 
 以下の`**` segmentは、別に指定したbaseまたはInspectorの明示的な`./` boundaryでrecursionが固定される場合だけ
 現れる。Bare `**/` prefixは有効なInspector selectorではない。
+
+## Canonical evidence-assessment index
+
+このcontractが所有する全`behaviorId`と`ruleId`は、正確に1件の`EvidenceAssessment`を持つ。下記exception
+tableにないsubjectのcanonical valueは`documentationStatus: documented`、`lifecycleQualifiers: []`とする。
+このdefaultはEvidence cellがnon-emptyであることからの推論ではなく、未列挙subjectごとのclosed contract mappingである。
+Empty qualifierはlifecycle claimなしを表し、`stable`を意味しない。既存tableのStatus、Documentation status、
+Runtime/documentation status、Inspector status列はhuman rationaleまたはInspector scope stateであり、serializeする
+status scalarではない。Runtimeの`documentation-conflict`は`ConditionFact.status`のままとし、canonical assessmentでは
+`conflict`を使う。
+
+| Subject ID | `documentationStatus` | `lifecycleQualifiers` | Assessment basis |
+|---|---|---|---|
+| `copilot.behavior.vscode.instructions.agents` | `documented` | `[experimental]` | Nested selectionはexperimentalであり、そのlifecycleはdocumentation completenessを変更しない |
+| `copilot.behavior.vscode.skills` | `partially-documented` | `[]` | Cross-location duplicate precedenceは未文書化 |
+| `copilot.behavior.vscode.agents` | `partially-documented` | `[]` | Cross-scope duplicate precedenceは未文書化 |
+| `copilot.behavior.vscode.prompts` | `partially-documented` | `[]` | Default nested-directory behaviorは厳密には記載されない |
+| `copilot.behavior.vscode.hooks` | `documented` | `[preview]` | Upstream hook featureはpreviewで、activationはruntime conditionのまま |
+| `copilot.behavior.vscode.mcp` | `conflict` | `[]` | VS Code 1.118はworkspace root `.mcp.json`を追加する一方、current MCP guideは`.vscode/mcp.json`とUser configurationを網羅的locationとして提示し続ける。Root file schemaとtotal same-name orderは直接文書化されない |
+| `copilot.behavior.vscode.user.skills` | `partially-documented` | `[]` | Duplicate-name precedenceは未文書化 |
+| `copilot.behavior.vscode.user.agents` | `partially-documented` | `[]` | Workspace/User/organization/plugin間のduplicate precedenceは未文書化 |
+| `copilot.behavior.vscode.user.mcp` | `partially-documented` | `[]` | 同名cross-scope server resolutionが不完全 |
+| `copilot.behavior.cli.agents` | `conflict` | `[]` | Project対User precedenceに関するofficial assertionが競合 |
+| `copilot.behavior.cli.commands` | `partially-documented` | `[]` | Project anchorとancestor/recursive traversalが不完全 |
+| `copilot.behavior.cli.mcp` | `partially-documented` | `[]` | Ancestor file間の同名resolutionが不完全 |
+| `copilot.behavior.cli.extensions` | `documented` | `[experimental]` | 文書化済みextension surfaceはexperimental |
+| `copilot.behavior.cli.user.agents` | `conflict` | `[]` | 同じproject対User conflictを保持 |
+| `copilot.behavior.cli.user.extensions` | `documented` | `[experimental]` | 文書化済みUser extension surfaceはexperimental |
+| `copilot.behavior.cloud.skills` | `partially-documented` | `[]` | Local-personal projectionが確立されない |
+| `copilot.behavior.cloud.remote-skills` | `partially-documented` | `[]` | 正確なCloud collision behaviorが不完全 |
+| `copilot.repo.command` | `partially-documented` | `[]` | Conservative matcherはsupportされるがproduct ancestryは未文書化 |
+| `copilot.repo.mcp.vscode-root` | `conflict` | `[]` | Exact 1.118+ pathはrelease noteで文書化される一方、current guideの網羅的location listはそれを省略しschemaを確立しない |
+
+Typed registryはdefaultとexceptionをsubjectごとに1 recordへ展開する。Candidate provenanceはexactな`ruleId`と
+各exact `behaviorId`のassessmentを保持し、relationshipはrelationship-only ruleと参照する各behavior/strategyの
+assessmentを保持する。Arrayはsubjectでsort/deduplicateし、scalarまたはqualifier unionへ縮約しない。
 
 ## Surface boundary
 
@@ -61,7 +97,7 @@ hooksのdiscoveryを変更する。既定では無効である。有効時は各
 | `copilot.behavior.vscode.agents` | Workspace root | `.github/agents/*.md`、`.claude/agents/*.md` | Folder-based discovery。VS Codeは`.github/agents`内の任意`.md` fileを受理。Parent discoveryはopt-in | `copilot.vscode.agents.selection` | Documented。Cross-scope同名precedenceは未文書化 | `vscode.copilot.custom-agents`, `vscode.copilot.settings`, `github.copilot.custom-agents` |
 | `copilot.behavior.vscode.prompts` | Workspace root | `.github/prompts/*.prompt.md` | Explicit/manual invocation。Additional locationは`chat.promptFilesLocations`から取得 | —。Explicit prompt invocation | Documented。既定nested-directory behaviorは厳密には明記されない | `vscode.copilot.prompts`, `vscode.copilot.settings` |
 | `copilot.behavior.vscode.hooks` | Workspace root | `.github/hooks/*.json`、`.claude/settings.json`、`.claude/settings.local.json`、agent-scoped hook declaration | 同eventではworkspace hookがuser hookより優先。Agent/plugin hookは追加実行可能。Parent discoveryはopt-in | `copilot.vscode.hooks.composition` | Documented。Preview featureはactivation-conditional | `vscode.copilot.hooks`, `vscode.copilot.custom-agents`, `vscode.copilot.customization` |
-| `copilot.behavior.vscode.mcp` | Workspace root | `.vscode/mcp.json` | 正確なworkspace configuration。VS Codeの`servers` schemaを使い、CLI `.mcp.json`とは互換ではない | `copilot.vscode.mcp.selection` | Documented。同名workspace/user resolutionは完全には文書化されない | `vscode.copilot.mcp` |
+| `copilot.behavior.vscode.mcp` | Workspace root | VS Code 1.118以降は`.mcp.json`、全review対象versionは`.vscode/mcp.json` | どちらもworkspace rootのexact location。Current guideは`.vscode/mcp.json`の`servers` schemaを直接文書化する一方、それをworkspace locationとして提示し続ける。1.118 release noteは別にroot `.mcp.json`を追加し、同名serverのmost-specific deduplicationを告知するが、そのfile schemaやroot、`.vscode`、User、agent、plugin input間のtotal orderは定義しない。したがってInspectorはroot `.mcp.json`へpath/surface provenanceを付与するが、VS Code所有schema claimを作らない。同じphysical fileに対する独立に文書化されたCLI extractionは、1つのCopilot/MCP recognition内で別provenanceのまま保持する | `copilot.vscode.mcp.selection` | Currentの網羅的guideと新しいrelease noteがconflict。Root schemaとexact selection orderはunknownのまま | `vscode.copilot.mcp`, `vscode.copilot.mcp.workspace-root-release` |
 | `copilot.behavior.vscode.settings` | Workspace root | `.vscode/settings.json`、`.github/copilot/settings.json`内plugin-recommendation key | VS Code setting scopeを適用し、workspace valueがuser valueをoverride。Copilot settings fileはgeneral VS Code settingsの代替ではない | `copilot.vscode.settings.precedence` | Documented | `vscode.settings`, `vscode.copilot.plugins`, `vscode.copilot.settings` |
 | `copilot.behavior.vscode.plugins` | Registered/installed pluginまたはmarketplace root | `plugin.json`、`.plugin/plugin.json`、`.github/plugin/plugin.json`、`.claude-plugin/plugin.json`と対応marketplace file | Registration、installation、recommendation、enabled stateは別。任意repositoryのmatching fileは自動的にactiveにならない | `copilot.vscode.plugins.activation` | Documented | `vscode.copilot.plugins`, `github.copilot.plugins` |
 
@@ -158,7 +194,7 @@ Cloud-agent layerとして挙げない。したがってhosted personal Chat set
 
 ## Inspector Repository matcher rule
 
-この表のBaseはすべて正確なInspector Repository boundary (`./`)、すなわち`npx` launch directoryである。
+この表のBaseはすべて正確なInspector Repository boundary (`./`)、すなわち取得済み`process.cwd()`または`--cwd`から得たselected Repository rootである。
 Inspectorはその上位からworkspace、project、Git rootを探索しない。`./**/`で始まるselectorは明示的にanchorされた
 Inspector inventoryであり、VS Code、CLI、Cloudが下向きにwalkするという主張ではない。Bare `**/`から始まる
 selectorはない。より狭いexclusionまたはGlobal requirementを後述しない限り、全行のpolicy referenceは
@@ -166,7 +202,7 @@ FR-003、FR-004、FR-005、FR-024、QR-001、QR-004、QR-005である。
 
 VS Code/Cloudのrepository-wide/path-instruction ruleはroot-exactな`./.github/...`表記を使う。CLIが追加の
 standard locationを文書化するため、別のCLI-context ruleだけが`./**/.github/...`を使う。`**`は0 segmentにも
-matchするため、CLI ruleはlaunch rootも対象にする。したがってroot fileはroot-exact ruleからVS Code/Cloud
+matchするため、CLI ruleはselected Repository rootも対象にする。したがってroot fileはroot-exact ruleからVS Code/Cloud
 provenanceを、CLI-context ruleからCLI provenanceを受け取る。同じsurface provenanceを重複させず、runtime behaviorも
 mergeしない。
 
@@ -185,12 +221,18 @@ mergeしない。
 | `copilot.repo.command` | `./` | `./.claude/commands/*.md` | `direct-child` | `static-candidate` | `copilot.behavior.cli.commands` | Conservative initial matcher。Product ancestryは未文書化 | `github.copilot.cli.reference` |
 | `copilot.repo.hooks` | `./` | `./.github/hooks/*.json` | `direct-child` | `static-candidate` | `copilot.behavior.vscode.hooks`, `copilot.behavior.cli.hooks`, `copilot.behavior.cloud.hooks` | Documented root hook file。Settingsがinline hook metadataを含み得る | `vscode.copilot.hooks`, `github.copilot.hooks` |
 | `copilot.repo.mcp` | `./` | `./**/.mcp.json`、`./**/.github/mcp.json` | `descendant-inventory` | `static-candidate` | `copilot.behavior.cli.mcp` | Documented CLI candidate inventory。Runtime ancestor chain/trustはconditional | `github.copilot.cli.reference` |
+| `copilot.repo.mcp.vscode-root` | `./` | `./.mcp.json` | `exact` | `static-candidate` | `copilot.behavior.vscode.mcp` | VS Code 1.118以降のpath/surface provenanceだけ。Current guideはこのlocationを省略し、direct documentationがconflictを解消するまでVS Code schema extractorを認可しない | `vscode.copilot.mcp`, `vscode.copilot.mcp.workspace-root-release` |
 | `copilot.repo.mcp.vscode` | `./` | `./.vscode/mcp.json` | `exact` | `static-candidate` | `copilot.behavior.vscode.mcp` | VS Code専用MCP candidate。SchemaはCLIと異なる | `vscode.copilot.mcp`, `github.copilot.cli.reference` |
 | `copilot.repo.settings` | `./` | `./.github/copilot/settings.json`、`./.github/copilot/settings.local.json`、`./.claude/settings.json`、`./.claude/settings.local.json` | 各selectorを`exact` | `static-candidate` | `copilot.behavior.cli.settings`, `copilot.behavior.cli.hooks`, `copilot.behavior.vscode.hooks`, `copilot.behavior.cloud.plugins` | Documented supported subset。General `.vscode/settings.json`はexcluded | `github.copilot.cli.configuration`, `github.copilot.hooks`, `vscode.copilot.plugins` |
-| `copilot.repo.plugin-manifest` | `./` | `./.plugin/plugin.json`、`./plugin.json`、`./.github/plugin/plugin.json`、`./.claude-plugin/plugin.json` | Inspector launch boundaryを意図的にauthored plugin rootとして扱う場合だけ、各selectorを`exact` | `static-candidate` | `copilot.behavior.vscode.plugins`, `copilot.behavior.cli.plugins` | 明示的rootだけを対象にするInspector policy。Copilot discovery/activation evidenceではない | `vscode.copilot.plugins`, `github.copilot.cli.plugins` |
-| `copilot.repo.marketplace` | `./` | `./marketplace.json`、`./.plugin/marketplace.json`、`./.github/plugin/marketplace.json`、`./.claude-plugin/marketplace.json` | Inspector launch boundaryを意図的にauthored catalog rootとして扱う場合だけ、各selectorを`exact` | `static-candidate` | `copilot.behavior.vscode.plugins`, `copilot.behavior.cli.plugins` | 明示的rootだけを対象にするInspector policy。Installation/enablementは別 | `vscode.copilot.plugins`, `github.copilot.cli.plugins` |
+| `copilot.repo.plugin-manifest` | `./` | `./.plugin/plugin.json`、`./plugin.json`、`./.github/plugin/plugin.json`、`./.claude-plugin/plugin.json` | Inspector selected Repository boundaryを意図的にauthored plugin rootとして扱う場合だけ、各selectorを`exact` | `static-candidate` | `copilot.behavior.vscode.plugins`, `copilot.behavior.cli.plugins` | 明示的rootだけを対象にするInspector policy。Copilot discovery/activation evidenceではない | `vscode.copilot.plugins`, `github.copilot.cli.plugins` |
+| `copilot.repo.marketplace` | `./` | `./marketplace.json`、`./.plugin/marketplace.json`、`./.github/plugin/marketplace.json`、`./.claude-plugin/marketplace.json` | Inspector selected Repository boundaryを意図的にauthored catalog rootとして扱う場合だけ、各selectorを`exact` | `static-candidate` | `copilot.behavior.vscode.plugins`, `copilot.behavior.cli.plugins` | 明示的rootだけを対象にするInspector policy。Installation/enablementは別 | `vscode.copilot.plugins`, `github.copilot.cli.plugins` |
 
-この2つのstatic ruleはrepository descendantを探索しない。Copilotは、任意descendantのmanifest/catalogを
+重複する`copilot.repo.mcp`と`copilot.repo.mcp.vscode-root` ruleは、同じroot `.mcp.json`に2つの
+compatible provenanceを作るが、physical identityまたはreadを重複させない。CLI `mcpServers` extractionはCLI
+provenanceが所有し、VS Code provenanceはdirect official documentationがschemaを確立するまでpath/surface-onlyとする。
+同名orderingのunknownは推測したwinnerではなくconditionとしてprojectする。
+
+Pluginとmarketplaceのstatic ruleはrepository descendantを探索しない。Copilotは、任意descendantのmanifest/catalogを
 filenameが一致するだけでactivateしない。Nested local plugin manifestは、後述するaccepted marketplace entryからの
 closed derivationによってのみadmitする。このderivationもproduct discovery/activationではなくInspector policyである。
 
@@ -207,12 +249,13 @@ readできる。
 
 | Rule ID | Boundary base | Relative selector | Expansion | Class | Behavior refs | Runtime strategy | Policy refs | Evidence |
 |---|---|---|---|---|---|---|---|---|
-| `copilot.global.instructions.root` | 正確なconsent済み`<COPILOT_HOME>`。`COPILOT_HOME` absent時だけ既定`$HOME/.copilot` | `copilot-instructions.md` | `exact` | `static-candidate` | `copilot.behavior.cli.user.instructions.root` | `copilot.cli.instructions.layering` | FR-013、FR-014、FR-015、FR-018、QR-005 | `github.copilot.cli.instructions`, `github.copilot.instructions.support` |
+| `copilot.global.instructions.root` | 正確なconsent済みcapture済み`COPILOT_HOME`。Absent時だけrequest-wideなimport済み`node:os.homedir()` captureと`.copilot`を`node:path.join`した値 | `copilot-instructions.md` | `exact` | `static-candidate` | `copilot.behavior.cli.user.instructions.root` | `copilot.cli.instructions.layering` | FR-013、FR-014、FR-015、FR-018、QR-005 | `github.copilot.cli.instructions`, `github.copilot.instructions.support` |
 | `copilot.global.instructions.path` | 同じ正確なconsent済み`<COPILOT_HOME>` boundary | `instructions/**/*.instructions.md` | 固定`instructions/` directory配下の`recursive-subtree` | `static-candidate` | `copilot.behavior.cli.user.instructions.path`, `copilot.behavior.vscode.user.instructions` | `copilot.cli.instructions.layering`, `copilot.vscode.instructions.layering` | FR-013、FR-014、FR-015、FR-018、QR-005 | `github.copilot.cli.instructions`, `github.copilot.instructions.support`, `vscode.copilot.instructions`, `vscode.copilot.settings` |
 
-Present empty、relative、unreadable、missing、non-canonicalizableな`COPILOT_HOME`はinvalid overrideであり、暗黙fallback
-しない。同じboundary配下でもuser settings、agent、skill、hook、MCP、LSP、extension、plugin、permission、credential、
-log、session、cacheはexcludedのままである。
+Present emptyまたはrelativeな`COPILOT_HOME`、もしくはthrowせずrejectされたroot outcomeはinvalid overrideであり、
+暗黙fallbackしない。Root selection/admission中のthrow/rejectionは変更せずpropagateする。同じboundary配下でもuser
+settings、agent、skill、hook、MCP、LSP、extension、plugin、permission、credential、log、session、cacheはexcludedの
+ままである。
 
 ## Derived ruleとrelationship index
 
@@ -241,6 +284,12 @@ field/relationship setと、candidate provenanceが示す実際のadmission済�
 occurrenceのintersectionとする。1つのrowに複数formを記載しても、それらのschemaをunionしたり、1つのformのfieldを
 別formでeligibleにしたりしない。Conformance fixture/testは両gateをcoverする。
 
+Implementation開始時点で、この英日tableと[official-source contract](../official-sources.ja.md)に記録した言語別SHA-256
+digest 2件をfreeze済みの承認済みdesign inputとする。Implementation gateはそれらを再計算してverifyするだけで、
+eligible set、source form、extractor applicability、relationship kindをauthoringまたは
+意味変更してはならない。この種の変更が必要ならdependent workを停止し、影響する英日design artifactをすべて同期し、
+改訂contractを利用する前に`/speckit.plan`と`/speckit.tasks`を再実行する。
+
 各rowは網羅的である。Contained MCPまたはHook declarationは、すでにadmission済みのowner file上で`MCP`または
 `hook` rowを使う。Ownerの別recognitionからfieldを取得せず、synthetic fileも作らない。未列挙のkeyとreferenceは、
 完全な`sourceText`だけに残す。Relationshipは、そのkindがこの表にあり、かつoriginが中央registryの適切な
@@ -251,7 +300,7 @@ installation、activationのauthorityを一切与えない。
 |---|---|---|---|
 | `instructions` | `copilot.instructions.name`<br>`copilot.instructions.description`<br>`copilot.instructions.apply-to`<br>`copilot.instructions.exclude-agent`<br>`copilot.instructions.import-target` | `import` | 受理済み`*.instructions.md`の正確なsupported frontmatter valueと、受理済み`.github/copilot-instructions.md`、`AGENTS.md`、またはCopilot recognition済み`CLAUDE.md`にあるauthored CLI `@path` target。Path-derived scopeとenablementはtyped factのままとする |
 | `skill` | `copilot.skill.name`<br>`copilot.skill.description`<br>`copilot.skill.argument-hint`<br>`copilot.skill.allowed-tool`<br>`copilot.skill.user-invocable`<br>`copilot.skill.disable-model-invocation`<br>`copilot.skill.context` | `skill-resource`<br>`context-inheritance` | 受理済み`SKILL.md`の正確なsupported frontmatter value/item occurrence。Relative resource referenceはrelationshipにできるがreadをauthorizeしない |
-| `MCP` | `copilot.mcp.server.name`<br>`copilot.mcp.server.type`<br>`copilot.mcp.server.command`<br>`copilot.mcp.server.arg`<br>`copilot.mcp.server.tool`<br>`copilot.mcp.server.env.name`<br>`copilot.mcp.server.env.value`<br>`copilot.mcp.server.cwd`<br>`copilot.mcp.server.timeout`<br>`copilot.mcp.server.defer-tools`<br>`copilot.mcp.server.url`<br>`copilot.mcp.server.header.name`<br>`copilot.mcp.server.header.value`<br>`copilot.mcp.server.oauth-client-id`<br>`copilot.mcp.server.oauth-public-client`<br>`copilot.mcp.server.oauth-grant-type`<br>`copilot.mcp.server.oidc`<br>`copilot.mcp.server.filter-mapping`<br>`copilot.mcp.server.sandbox-enabled` | `runtime-reference` | 受理済みCLI `mcpServers` file、VS Code `servers` file、またはcustom-agent-contained declarationにあるserver-name map keyと正確なsupported server leaf/item occurrence。Environment/header valueはauthored literalのまま保持し、展開しない |
+| `MCP` | `copilot.mcp.server.name`<br>`copilot.mcp.server.type`<br>`copilot.mcp.server.command`<br>`copilot.mcp.server.arg`<br>`copilot.mcp.server.tool`<br>`copilot.mcp.server.env.name`<br>`copilot.mcp.server.env.value`<br>`copilot.mcp.server.cwd`<br>`copilot.mcp.server.timeout`<br>`copilot.mcp.server.defer-tools`<br>`copilot.mcp.server.url`<br>`copilot.mcp.server.header.name`<br>`copilot.mcp.server.header.value`<br>`copilot.mcp.server.oauth-client-id`<br>`copilot.mcp.server.oauth-public-client`<br>`copilot.mcp.server.oauth-grant-type`<br>`copilot.mcp.server.oidc`<br>`copilot.mcp.server.filter-mapping`<br>`copilot.mcp.server.sandbox-enabled` | `runtime-reference` | 受理済みCLI `mcpServers` file、VS Code `.vscode/mcp.json` `servers` file、またはcustom-agent-contained declarationにあるserver-name map keyと正確なsupported server leaf/item occurrence。VS Code 1.118以降のroot `.mcp.json` provenanceはpath/surface-onlyで、direct documentationがschemaを確立するまでVS Code所有extractor fieldを追加しない。同じfileのCLI extractionは独立のまま。Environment/header valueはauthored literalのまま保持し、展開しない |
 | `prompt/command` | `copilot.prompt.name`<br>`copilot.prompt.description`<br>`copilot.prompt.argument-hint`<br>`copilot.prompt.agent`<br>`copilot.prompt.model`<br>`copilot.prompt.tool`<br>`copilot.command.description`<br>`copilot.command.argument-hint`<br>`copilot.command.allowed-tool`<br>`copilot.command.disable-model-invocation` | `skill-resource`<br>`agent-reference`<br>`runtime-reference` | 受理済みVS Code promptまたはroot direct-child CLI commandの正確なsupported frontmatter value/item occurrence。Matched pathから導出するprompt/command invocation nameはtyped provenanceのままとし、linkまたは`#file` targetはinertに保つ |
 | `agent` | `copilot.agent.name`<br>`copilot.agent.description`<br>`copilot.agent.target`<br>`copilot.agent.tool`<br>`copilot.agent.model`<br>`copilot.agent.disable-model-invocation`<br>`copilot.agent.user-invocable`<br>`copilot.agent.infer`<br>`copilot.agent.metadata.name`<br>`copilot.agent.metadata.value`<br>`copilot.agent.argument-hint`<br>`copilot.agent.subagent`<br>`copilot.agent.disallowed-tool`<br>`copilot.agent.handoff.label`<br>`copilot.agent.handoff.agent`<br>`copilot.agent.handoff.prompt`<br>`copilot.agent.handoff.send`<br>`copilot.agent.handoff.model` | `agent-reference`<br>`skill-resource`<br>`context-inheritance`<br>`runtime-reference` | 受理済み`.github/agents/*.md`または`.claude/agents/*.md`の正確なsupported frontmatter value/item/map-entry occurrence。Body instructionは`sourceText`のまま保持し、`hooks`と`mcp-servers`は別のcontained recognitionが所有する |
 | `settings/config` | `copilot.settings.company-announcement`<br>`copilot.settings.context-tier`<br>`copilot.settings.denied-url`<br>`copilot.settings.disable-all-hooks`<br>`copilot.settings.disabled-mcp-server`<br>`copilot.settings.disabled-skill`<br>`copilot.settings.effort-level`<br>`copilot.settings.enabled-plugin.name`<br>`copilot.settings.enabled-plugin.value`<br>`copilot.settings.extra-known-marketplace.name`<br>`copilot.settings.extra-known-marketplace.source`<br>`copilot.settings.extra-known-marketplace.repo`<br>`copilot.settings.extra-known-marketplace.url`<br>`copilot.settings.extra-known-marketplace.path`<br>`copilot.settings.extra-known-marketplace.ref`<br>`copilot.settings.extra-known-marketplace.sha`<br>`copilot.settings.extra-known-marketplace.auto-update`<br>`copilot.settings.include-co-authored-by`<br>`copilot.settings.merge-strategy`<br>`copilot.settings.model`<br>`copilot.settings.respect-gitignore` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`runtime-reference` | 正確なsupported Repository/localまたはcross-tool-compatible settings leaf/item/map-entry occurrence。Contained Hook valueは`hook` recognitionだけに属し、settingsはMCP recognitionを所有しない |
@@ -289,12 +338,14 @@ Hosted Copilot stateを含むcross-vendorの`shared.excluded.managed-remote-stat
 3. **CLI command ancestryは確立されていない。** Command referenceは`.claude/commands/*.md`と同名skillより低いpriorityを
    文書化するが、完全なproject/user baseやancestor traversalを定義しない。Root direct-child Inspector matcherは
    conservative initial policyであり、runtime discoveryの主張ではない。
-4. **複数のduplicate-name edgeが未文書化である。** VS Codeはworkspace、user、organization、plugin source間のduplicate
-   custom-agent/skill precedenceを完全には文書化しない。VS Code MCPとCLI ancestor MCPの同名resolutionも不完全である。
+4. **複数のMCP/duplicate-name edgeが未解決である。** VS Codeはworkspace、user、organization、plugin source間のduplicate
+   custom-agent/skill precedenceを完全には文書化しない。MCPでは1.118 release noteがworkspace root `.mcp.json`と
+   most-specific ruleを追加する一方、current guideは`.vscode/mcp.json`とUser configurationだけを列挙し続ける。
+   Root schemaとlocation間のtotal orderは未指定であり、conflictとunknown conditionを表示したままにする。
 5. **Custom-agent context compositionは不完全である。** VS Codeはalways-on instructionsとselected profile bodyのprependを
    文書化する。Current Cloud/CLI sourceは別custom-agent/subagent context内の完全なinstruction orderやagent-profile skill
    preloadを定義しない。これらedgeはunknownのままとする。
 6. **Authored plugin metadataはactivation evidenceではない。** Manifest/marketplaceはauthored candidateだけを証明する。
    Registration、installation、enabled state、component override、trust、hosted availabilityは独立factである。
-7. **Documentationは急速に変化する。** Official Sources contractのcanonical page、列挙済みsection名、2026-07-15 review日、
+7. **Documentationは急速に変化する。** Official Sources contractのcanonical page、列挙済みsection名、2026-07-20までのrecord別review日、
    semantic fingerprintをmaintenance baselineとし、search-result snippetをevidenceにしない。

@@ -2,7 +2,7 @@
 
 [English](claude-code.md)
 
-**契約バージョン**: 2026-07-17
+**契約バージョン**: 2026-07-20
 
 **公式ソース再確認日**: 2026-07-15
 
@@ -28,12 +28,35 @@ source of truthである。Runtime combinationの詳細は
   できる場所を記述する。
 - Repository matcherの`./**/`は0個以上のdescendant directory segmentを意味する。各表はmatcherが
   inventory root、descendant、または両方のどれに届くかを明記する。
-- `documented`、`partially-documented`、`unknown`はupstream evidenceの状態であり、runtimeでの
-  effectivenessではない。Trust、approval、enablement、target file、runtime `cwd`、CLI flag、
-  embedded-engine version、installed-plugin stateは独立conditionのままとする。
+- `documented`、`partially-documented`、`unknown`、`conflict`はclosedなupstream documentation-status valueであり、
+  runtimeでのeffectivenessではない。Trust、approval、enablement、target file、runtime `cwd`、CLI flag、
+  embedded-engine version、installed-plugin stateは独立conditionのままとする。Runtimeの
+  `documentation-conflict`は`ConditionFact.status`であり、documentation-statusのaliasではない。
 - **Shared core**は、CLI、VS Code extension、JetBrains integrationが同じsettings scopeとprecedenceを
   使用することを意味する。すべてのsurfaceで全featureが利用可能という意味ではない。VS Code
   extensionは独自のClaude Code engineをbundleするため、別途installしたCLIとversionが異なり得る。
+
+## Canonical evidence-assessment index
+
+このcontractが所有する全`behaviorId`と`ruleId`は正確に1件の`EvidenceAssessment`を持つ。下記にないsubjectの
+canonical valueは`documentationStatus: documented`、`lifecycleQualifiers: []`とする。これはevidenceの存在からの
+推論ではなく、未列挙subjectごとのclosed mappingである。Empty qualifierはlifecycle claimを行わず、`stable`を
+意味しない。この文書の他のstatus/caveat列はrationaleまたはInspector stateであり、serializeするscalar enumではない。
+
+| Subject ID | `documentationStatus` | `lifecycleQualifiers` | Assessment basis |
+|---|---|---|---|
+| `claude.behavior.repo.instructions.ancestor` | `partially-documented` | `[]` | Ancestor walkは`.claude/CLAUDE.md` variantを確立しない |
+| `claude.behavior.repo.instructions.descendant` | `partially-documented` | `[]` | Lazy descendant discoveryは`.claude/CLAUDE.md` variantを確立しない |
+| `claude.behavior.repo.rules` | `partially-documented` | `[]` | Descendant rule-layer discoveryとancestor-layer `paths` baseが不完全 |
+| `claude.behavior.repo.commands` | `partially-documented` | `[]` | 完全なskill相当ancestor/lazy-descendant traversalは独立に記載されない |
+| `claude.behavior.repo.agents` | `partially-documented` | `[]` | 同一directory tree内のduplicate-name selectionに文書化済みstable winnerがない |
+| `claude.behavior.repo.mcp` | `partially-documented` | `[]` | 正確なproject-root selectionが完全には記載されない |
+| `claude.repo.rules` | `partially-documented` | `[]` | Matcherが完全に文書化されたlayer setを越えるcontextを意図的にinventoryする |
+| `claude.repo.command` | `partially-documented` | `[]` | Recursive namespaceは文書化済みだが、完全なruntime-layer traversalは未文書化 |
+
+Typed registryはdefaultとexceptionをsubjectごとに1 recordへ展開する。Candidate provenanceとrelationship DTOは、
+直接参照するrule、behavior、strategyのassessmentをすべてsubjectでsort/deduplicateして保持し、その
+`EvidenceAssessment[]`を単一scalarまたはqualifier unionへ置換しない。
 
 ## Repositoryのvendor動作
 
@@ -64,7 +87,7 @@ relationshipは、「subagentは別のsubagentをspawnできない」という�
 
 ## RepositoryのInspector matcher
 
-これらのmatcherは、正確なInspector launch `cwd`をrootとする。Broad descendant inventoryにより、
+これらのmatcherは、正確なInspector selected Repository rootをrootとする。Broad descendant inventoryにより、
 別のproduct runtime `cwd`またはlazy discoveryで関係し得るcandidateをUIに表示できるが、Claudeが
 fileをloadしたという主張には変換しない。より狭いexclusionまたはGlobal requirementを後述しない限り、
 全行のpolicy referenceはFR-003、FR-004、FR-005、FR-024、QR-001、QR-004、QR-005である。
@@ -79,8 +102,8 @@ fileをloadしたという主張には変換しない。より狭いexclusionま
 | `claude.repo.settings` | `./` | `./.claude/settings.json`、`./.claude/settings.local.json` | 各selectorを`exact` | `static-candidate` | `claude.behavior.repo.settings` | Claudeのexact launch-`cwd` ruleと一致。Parent/descendant setting matcherなし | `anthropic.claude-code.large-codebases.start-directory`、`anthropic.claude-code.settings.scopes-precedence` |
 | `claude.repo.mcp` | `./` | `./.mcp.json` | `exact` | `static-candidate` | `claude.behavior.repo.mcp` | Source rootがClaudeのproject rootであること、およびtrust/approvalがcondition | `anthropic.claude-code.mcp.scopes-precedence` |
 | `claude.repo.output-style` | `./` | `./**/.claude/output-styles/*.md` | `descendant-inventory`。Style fileは各fixed output-styles directoryのdirect child | `static-candidate` | `claude.behavior.repo.output-style` | Active sessionのancestor layerであることとsettings/session stateによるselectionが必要 | `anthropic.claude-code.output-styles.locations` |
-| `claude.repo.plugin-manifest` | `./` | `./.claude-plugin/plugin.json` | `exact`。Launch rootをauthored plugin rootとして扱う | `static-candidate` | `claude.behavior.repo.plugin` | Inspectorのauthoring policyだけ。Claudeは任意のRepository rootにあるこのpathをauto-discoveryせず、存在はactivationを証明しない。Nested local manifestへは`claude.derived.local-plugin-manifest`からだけ到達できる | `anthropic.claude-code.plugins.components-scopes`、`anthropic.claude-code.marketplaces.catalog-sources` |
-| `claude.repo.marketplace` | `./` | `./.claude-plugin/marketplace.json` | `exact`。Launch rootをauthored marketplace rootとして扱う | `static-candidate` | `claude.behavior.repo.marketplace` | Inspectorのauthoring policyだけ。Claudeは任意のRepository rootからこのcatalogをauto-registerしない。Explicit registrationはruntime conditionのまま | `anthropic.claude-code.marketplaces.catalog-sources` |
+| `claude.repo.plugin-manifest` | `./` | `./.claude-plugin/plugin.json` | `exact`。Selected Repository rootをauthored plugin rootとして扱う | `static-candidate` | `claude.behavior.repo.plugin` | Inspectorのauthoring policyだけ。Claudeは任意のRepository rootにあるこのpathをauto-discoveryせず、存在はactivationを証明しない。Nested local manifestへは`claude.derived.local-plugin-manifest`からだけ到達できる | `anthropic.claude-code.plugins.components-scopes`、`anthropic.claude-code.marketplaces.catalog-sources` |
+| `claude.repo.marketplace` | `./` | `./.claude-plugin/marketplace.json` | `exact`。Selected Repository rootをauthored marketplace rootとして扱う | `static-candidate` | `claude.behavior.repo.marketplace` | Inspectorのauthoring policyだけ。Claudeは任意のRepository rootからこのcatalogをauto-registerしない。Explicit registrationはruntime conditionのまま | `anthropic.claude-code.marketplaces.catalog-sources` |
 
 受理済みsettings、skill、agent、plugin、marketplace fileに内包されたhookとinline MCP declarationは、
 そのcandidateのmetadataである。別のfilesystem matcherは作らない。
@@ -113,7 +136,7 @@ supportしていても、このconsent boundaryは拡張しない。
 
 | Rule ID | Global base | Relative selector | Expansion | Class | Behavior refs | Policy refs | Status | Evidence |
 |---|---|---|---|---|---|---|---|---|
-| `claude.global.instructions` | 解決済み`<claude-config-dir>` | `CLAUDE.md` | `exact`。Global selectorはRepositoryの`./` prefixを再利用しない | `static-candidate` | `claude.behavior.user.instructions` | FR-013、FR-014、FR-016、FR-018、QR-005 | FR-016によりaccepted。隣接する全User configuration/stateはFR-018によりexcluded | `anthropic.claude-code.memory.locations-load`、`anthropic.claude-code.directory.file-reference` |
+| `claude.global.instructions` | 正確なconsent済みcapture済み`CLAUDE_CONFIG_DIR`。Absent時だけrequest-wideなimport済み`node:os.homedir()` captureと`.claude`を`node:path.join`した値 | `CLAUDE.md` | `exact`。Global selectorはRepositoryの`./` prefixを再利用しない | `static-candidate` | `claude.behavior.user.instructions` | FR-013、FR-014、FR-016、FR-018、QR-005 | FR-016によりaccepted。隣接する全User configuration/stateはFR-018によりexcluded | `anthropic.claude-code.memory.locations-load`、`anthropic.claude-code.directory.file-reference` |
 
 Environment validation、consent、canonicalization、およびabsentな`CLAUDE_CONFIG_DIR`とinvalid valueの
 扱いは、親allowlistで定義するInspector方針であり、Claude Codeのvendor lookup claimではない。
@@ -145,6 +168,12 @@ source、またはobject sourceの`path` leafを表す。
 field/relationship setと、candidate provenanceが示す実際のadmission済みsource formについてexact extractorがsupportする
 occurrenceのintersectionとする。1つのrowに複数formを記載しても、それらのschemaをunionしたり、1つのformのfieldを
 別formでeligibleにしたりしない。Conformance fixture/testは両gateをcoverする。
+
+Implementation開始時点で、この英日tableと[official-source contract](../official-sources.ja.md)に記録した言語別SHA-256
+digest 2件をfreeze済みの承認済みdesign inputとする。Implementation gateはそれらを再計算してverifyするだけで、
+eligible set、source form、extractor applicability、relationship kindをauthoringまたは
+意味変更してはならない。この種の変更が必要ならdependent workを停止し、影響する英日design artifactをすべて同期し、
+改訂contractを利用する前に`/speckit.plan`と`/speckit.tasks`を再実行する。
 
 各rowは網羅的であり、`—`はeligible setが空であることを意味する。Contained MCPまたはHook declarationは、すでに
 admission済みのowner file上で`MCP`または`hook` rowを使う。Ownerの別recognitionからfieldを取得せず、synthetic fileも
