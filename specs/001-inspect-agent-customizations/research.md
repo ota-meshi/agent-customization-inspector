@@ -1206,8 +1206,14 @@ The 2026-07-17 measurable-outcome revalidation fixes the following objective pro
   normal development work but have never used or contributed to the Inspector. At least 19
   must succeed within 2 minutes using only the provided product guidance. The timer starts with the
   standardized task prompt and ends when one discovered file's source/details view is
-  visibly open and operable, including repository navigation and launch time. SC-001 runs
-  before SC-006 with the same cohort. Moderators may only repeat the prompt verbatim. Every
+  visibly open and operable. Before the prompt, the equipment prepares the intended Repository
+  root as the verified distribution `repository/` working directory. The timed participant
+  actions begin by entering the fixed fd6 line
+  `npx --no-install agent-customization-inspector --no-open` and include launch plus the
+  deliberate printed-URL fallback in the pinned certified browser. Changing directory or
+  supplying `--cwd` is not a participant action in this study and remains a product capability
+  verified by the automated User Story 1 tests. SC-001 runs before SC-006 with the same cohort.
+  Moderators may only repeat the prompt verbatim. Every
   enrolled participant remains in the fixed denominator and is never replaced. An equipment,
   environment, or product failure counts as unsuccessful, including before timer start, when
   it prevents or interrupts criterion completion. The sole scoring carveout is a handled

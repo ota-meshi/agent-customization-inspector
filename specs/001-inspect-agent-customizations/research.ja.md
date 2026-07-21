@@ -921,7 +921,11 @@ policy/remediation advice、conversion、synchronization、formatting、fixing�
 - **SC-001**は、通常の開発作業でGitとcommand-line interfaceを使うがInspectorを利用したことも開発へ参加した
   こともない参加者を正確に20人使用し、提供されたproduct guidanceだけで2分以内に19人以上の成功を要求する。Timerは
   標準化されたtask promptの提示時に開始し、発見済みfile 1つのsource/details viewが画面に開かれて操作可能に
-  なった時点で終了する。Repository rootへの移動とlaunch timeも含む。SC-001は同じcohortのSC-006より先に行う。
+  なった時点で終了する。機材はprompt提示前に、verified distributionの`repository/` working directoryを意図する
+  Repository rootとして準備する。計測対象のparticipant操作は固定fd6行
+  `npx --no-install agent-customization-inspector --no-open`の入力から始まり、起動とpin済みcertified browserでの意図的な
+  printed-URL fallbackを含む。Directory移動または`--cwd`指定はこのstudyのparticipant操作ではなく、automatedなUser Story 1
+  テストで検証するproduct capabilityとして維持する。SC-001は同じcohortのSC-006より先に行う。
   Moderatorはpromptを同じ文面で読み直すことだけ可能とする。登録済み参加者は全員fixed denominatorに残し、
   差し替えない。機材、環境、product failureがcriterion completionをpreventまたはinterruptする場合は、timer開始前を
   含めて不成功とする。唯一のscoring carveoutはhandled automatic-browser-opening conditionであり、そのconditionを記録して

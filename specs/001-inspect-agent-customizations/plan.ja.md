@@ -109,8 +109,10 @@ instructionは、その1つの同期済みbaselineだけを使用しなければ
 `scripts/check-format.mjs`だけを実行する。Exact recursive root、repository-root file、generated-root pruning、
 non-symlink rule、3 classのexact-path fixture exception schema、UTF-8/BOM/CR/trailing-whitespace/final-LF rule、stableで
 content-freeなfailure code、non-mutation contractはresearchでclosedに定義する。調査対象customization contentをformatしない。
-ESLint 10.7.0と`@nuxt/eslint` 1.16.0は独立したlint gateとして維持し、local verification、独立CI job、releaseでは
-behavioral testをcheckerより先に実行し、ESLintを別に実行する。
+ESLint 10.7.0と`@nuxt/eslint` 1.16.0は独立したlint gateとして維持し、`tsconfig.json`で設定した
+application、shared、source、script、test codeへのstrict TypeScript type checkを同等に独立した
+`typecheck` gateとして実行する。local verification、独立CI job、releaseでは
+behavioral testをcheckerより先に実行し、ESLintと`typecheck`を別に実行する。
 
 **Dependencyおよび破壊的変更の移行gate**: このinitial-release baselineは、移行対象となる以前の公開済み
 Inspector package、public contract、永続profile、user dataが存在しないため、planned migration impactを
@@ -687,7 +689,8 @@ execution environmentによって決まる。
       concernが0件になるまでcomplete-diff/tarball reviewを反復する。Bilingual Constitution recordをsole planned validation-only editとして
       完了した後、frozen final tree/final candidateへ全applicable automated gateを再実行する。Outcomeはrepository外へcaptureする。
       その後repositoryをeditした場合は結果を無効にし、final sequence前にremediation、digest/evidence再validation、applicable gate再実行、
-      complete-diff reviewへ戻る。独立したESLint gateも各workflowで実行する。
+      complete-diff reviewへ戻る。独立したESLint gateと独立したstrict `typecheck`
+      type-checking gateも各workflowで実行する。
       Unit、contract、integration、security、package、performance、end-to-end、error、
       boundary、accessibility、adversarial safety scenario、4つのuser story、公開SC-002 profile/status
       request/generation protocol、thrownまたはrejectedなoperationを所有execution boundaryまで変更なく伝播する処理、product-issued mutationと
@@ -1019,7 +1022,9 @@ artifactをvalidまたはinvalidと分類しない。
 `package.json`がrunnable command graphを所有する。`build` scriptは固定clean step、Nuxt client build、tsdownの
 `cli`/`parser-worker` build、両manifest assembler、recursive exact-set verifierを順に実行する。`test:format` scriptは
 `node --test tests/unit/check-format.test.mjs`だけを実行する。`format:check` scriptは`node scripts/check-format.mjs`だけを
-実行し、researchのclosed scope、exception schema、stable diagnosticをnon-mutatingに適用する。`study:evidence:inputs`は
+実行し、researchのclosed scope、exception schema、stable diagnosticをnon-mutatingに適用する。`typecheck` scriptは
+`tsconfig.json`で設定したapplication、shared、source、script、test codeへのstrict TypeScript type checkを実行し、
+local verification、独自の独立CI job、releaseで必須のquality gateとする。`study:evidence:inputs`は
 `node scripts/build-usability-study-inputs.mjs`だけを、`study:evidence:capture`は
 `node scripts/run-usability-study-capture.mjs`だけを、`study:evidence:verify`は
 `node scripts/verify-usability-study-evidence.mjs`だけを実行する。いずれもdefault build/start/test chainへ含めず、明示的な

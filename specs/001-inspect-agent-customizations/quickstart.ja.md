@@ -715,8 +715,12 @@ distribution、digestの変更は両resultを無効にし、final pairがvalid e
   participantがpin済みcertified browserで表示URLを使い、prohibited hintなしでoriginal 2-minute interval内に完了した場合、その
   condition自体を不成功としない。Timerをpause/restartしない。
 - SC-001は標準化したprompt提示時にtimerを開始し、発見されたcustomization file 1つのsource/details viewが
-  画面に開かれて操作可能になった時点で終了する。必要なprinted-URL fallbackを含め、意図するrepository rootへの移動と
-  Inspector起動を計測に含め、20人中19人以上が2分以内に成功しなければならない。
+  画面に開かれて操作可能になった時点で終了する。機材はprompt提示前に、verified distributionの`repository/` working
+  directoryを意図するRepository rootとして準備する。固定fd6行
+  `npx --no-install agent-customization-inspector --no-open`の入力、その準備済みrootからのInspector起動、pin済みcertified
+  browserで必要なprinted-URL fallbackを完了するまでを計測に含める。Directory移動または`--cwd`指定はこのstudyの
+  participant操作ではなく、それらのproduct capabilityはautomatedなUser Story 1テストで検証する。20人中19人以上が
+  2分以内に成功しなければならない。
 - SC-006はSC-001結果にかかわらず、全参加者を同じ指定fileが開いた同一の準備済みInspector stateへ置く。そのstateの
   準備完了後に標準化したpromptを提示した時点で開始する。Source、認識tool、file type、実効動作がcertainか
   conditionalかを2分以内に提出し、4項目すべてが事前定義したground truthと一致しなければならない。未回答・誤答が

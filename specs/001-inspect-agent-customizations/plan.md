@@ -135,8 +135,10 @@ repository-root files, generated-root pruning, non-symlink rule, three-class exa
 exception schema, UTF-8/BOM/CR/trailing-whitespace/final-LF rules, stable content-free failure
 codes, and non-mutation contract are closed in research. The checker never formats inspected
 customization content. ESLint 10.7.0 with `@nuxt/eslint` 1.16.0 remains an independent lint
-gate. Local verification, independent CI jobs, and release run the behavioral test before the
-checker and run ESLint separately.
+gate, and the strict TypeScript type check over the application, shared, source, script, and
+test code configured in `tsconfig.json` runs as the equally independent `typecheck` gate.
+Local verification, independent CI jobs, and release run the behavioral test before the
+checker and run ESLint and `typecheck` separately.
 
 **Dependency and breaking-change migration gate**: This initial-release baseline has a
 planned migration impact of none because there is no prior published Inspector package,
@@ -1141,7 +1143,8 @@ execution environment rather than a product-defined item ceiling.
       frozen final tree and final candidate. Outcomes are captured outside the repository; any
       later repository edit invalidates them and returns to remediation, digest/evidence
       revalidation, applicable gate reruns, and complete-diff review before the final sequence.
-      The independent ESLint gate runs in each workflow as well.
+      The independent ESLint gate and the independent strict `typecheck` type-checking gate
+      run in each workflow as well.
       The test layout covers unit, contract, integration,
       security, package, performance, end-to-end, error, boundary, accessibility, and adversarial
       safety scenarios, including all four user stories, the published SC-002 profile/status
@@ -1522,7 +1525,10 @@ clean step, Nuxt client build, tsdown `cli`/`parser-worker` build, both manifest
 and the recursive exact-set verifier. Its `test:format` script invokes only
 `node --test tests/unit/check-format.test.mjs`; its `format:check` script invokes only
 `node scripts/check-format.mjs`, is non-mutating, and applies the closed scope, exception
-schema, and stable diagnostics from research. `study:evidence:inputs` invokes only
+schema, and stable diagnostics from research. Its `typecheck` script runs the strict
+TypeScript type check over the application, shared, source, script, and test code configured
+in `tsconfig.json` and is a required quality gate in local verification, its own independent
+CI job, and release. `study:evidence:inputs` invokes only
 `node scripts/build-usability-study-inputs.mjs`, `study:evidence:capture` invokes only
 `node scripts/run-usability-study-capture.mjs`, and `study:evidence:verify` invokes only
 `node scripts/verify-usability-study-evidence.mjs`; none belongs to a default build/start/test

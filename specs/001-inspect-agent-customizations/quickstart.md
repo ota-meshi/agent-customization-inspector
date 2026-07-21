@@ -1012,9 +1012,13 @@ unless the final pair exactly matches valid evidence.
   the original two-minute interval; never pause or restart the timer.
 - For SC-001, start the timer when the standardized prompt is presented. Stop when one
   discovered customization file's source/details view is visibly open and operable. The
-  interval includes changing to the intended repository root and launching the Inspector,
-  including any required printed-URL fallback. At least 19 of 20 participants must succeed
-  within two minutes.
+  equipment prepares the intended Repository root as the verified distribution `repository/`
+  working directory before the prompt. The interval includes entering the fixed fd6 line
+  `npx --no-install agent-customization-inspector --no-open`, launching the Inspector from
+  that prepared root, and completing the required printed-URL fallback in the pinned certified
+  browser. Changing directory or supplying `--cwd` is not a participant action in this study;
+  the automated User Story 1 tests verify those product capabilities. At least 19 of 20
+  participants must succeed within two minutes.
 - For SC-006, place every participant—regardless of SC-001 result—in the same prepared
   Inspector state with the designated file open. Start when that state is ready and the
   standardized prompt is presented. The participant must submit source, recognizing tools,
