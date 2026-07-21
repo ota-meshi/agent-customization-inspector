@@ -217,16 +217,15 @@ level, and may terminate the process.
 
 ### `GET /api/v1/session`
 
-Returns the current session snapshot and scan progress. The client polls this endpoint
-when source state changes; continuous lifetime detection uses the separate lightweight
-liveness route below, so no watcher, SSE, or WebSocket is required.
+Returns the current session snapshot and scan progress. The client retrieves this endpoint
+when source state changes; lifecycle-triggered session verification uses the separate
+lightweight liveness route below, with no timer, watcher, SSE, or WebSocket.
 
 Response data:
 
 ```text
 InspectionSession
 ├── sessionId, apiVersion, createdAt, activeGeneration, snapshotState, globalContentEpoch,
-│   liveness { heartbeatIntervalMs, requestTimeoutMs, leaseDurationMs },
 │   staleFailures[] { sourceId, failureRef, failedAt, baseGeneration },
 │   operationErrors[] { operationErrorId, code, messageKey, nextStepKey, operationId, scanRequestId },
 │   globalEnableInProgress null | { kind, operationId, previewId },
@@ -415,7 +414,7 @@ pending/retry arrays and null `batchStatus`; `globalDisableInProgress` is non-nu
 `diagnosticId`; each ID also occurs in `sessionDiagnosticIds` and resolves to a
 session-owned deterministic Diagnostic. It contains no Operation Error and remains until
 that control failure is cleared or disable commits removal.
-`lastOperationErrorId` is null or references the one accepted missing-Source batch
+`lastOperationErrorId` is null or references the one accepted admitted-subset Global batch
 throw/rejection for the whole active consent. A pre-acceptance retry failure preserves it;
 deterministic `active-no-job` retry or replacement-batch acceptance clears it; a terminal
 replacement failure supersedes it; and Global disable removes it. It never identifies one
@@ -429,16 +428,21 @@ The success body is exactly
 `{ sessionId, globalContentEpoch, globalDisableInProgress }`. At final publication the
 handler obtains all three values from one current coordinator-lock snapshot; unlike an
 inspection-data success, it does not require a null fence and returns the current non-null
-projection so another tab can observe disable. While the authorized page is
-visible, the SPA calls this route every `heartbeatIntervalMs: 1000` with a
-`requestTimeoutMs: 750` timeout and maintains the fixed two-second browser-memory lease from
-the session DTO. It renews only when `sessionId` matches, the epoch equals its last observed
-epoch, and the disable projection is null. An older epoch is rejected. Before renewal or
-rendering, a greater epoch or non-null projection invokes the central full purge, adopts the
-new epoch, and enters control-only recovery. This is how another tab observes disable.
+projection so another tab can observe disable. The SPA calls this route only for initial
+authorization, return to a visible/focused page, explicit Resume, or fresh session adoption,
+with at most one request in flight. That single-flight rule serializes state adoption to
+reject stale responses and is a functional coordination invariant, not a resource-admission
+or validation ceiling. It defines no polling interval, request timeout, retry
+timer, or memory lease; the browser/network/runtime owns request settlement. A matching
+`sessionId`, equal epoch, and null disable projection establishes or confirms the current
+baseline. An older epoch is rejected. Before baseline confirmation or rendering, a greater
+epoch or non-null projection invokes the central full purge, adopts the new epoch, and enters
+control-only recovery. This is how a lifecycle check observes another tab's disable.
 
-A timeout, network failure, `401`/`403`, mismatched session, lease expiry, or hidden/page
-lifecycle event also purges before rendering the ended/recovery view. The memory-only
+A network/runtime rejection, `401`/`403`, mismatched session, or hidden/page lifecycle event
+also purges before rendering the ended/recovery view. Process loss on a continuously visible
+idle page has no product-defined wall-clock detection guarantee and is handled by the next
+lifecycle check or authorized request outcome. The memory-only
 capability survives the purge. Any recovery fetch adopts only the fresh `sessionId`,
 `globalContentEpoch`, `globalControl`, `globalEnableInProgress`,
 `globalDisableInProgress`, the exact tool-failure Diagnostics, the one Global Operation
@@ -794,15 +798,16 @@ drains and returns `409 global-disable-pending` with no late mutation; an operat
 `202` remains its accepted disposition even if a later barrier cancels the batch. A
 throw/rejection after `202` is the terminal generic Operation Error for the same non-null
 `scanRequestId`, commits no subset Source/generation, and preserves the prior snapshot. It
-creates no Diagnostic or `StaleSourceFailure` for an initial/retry missing-Source batch;
+creates no Diagnostic or `StaleSourceFailure` for an initial/retry admitted-subset Global batch;
 instead one operation-wide error is retained and referenced by
 `globalControl.lastOperationErrorId`. A later retry and disable apply the exact clear/
 supersede lifecycle defined on the session projection.
 
-The exact same consent may be retried only while one or more fixed-set tools lack a Source.
-The server, not the client, derives the exact eligible subset. A different preview/root or
-lexical `new-preview-required` control requires Global disable first. An empty eligible
-subset returns `409 no-retryable-global-tool`; the presence of a missing tool creates no
+The exact same consent may be retried only while the server-derived `retryableTools`
+projection is nonempty. That exact eligible subset, not mere Source absence, is derived by the
+server and cannot be narrowed by the client. A different preview/root or lexical
+`new-preview-required` control requires Global disable first. An empty projection returns
+`409 no-retryable-global-tool`; the presence of a non-retryable missing tool creates no
 separate active-consent conflict. Even an all-lexically-invalid preview may be
 confirmed and returns the deterministic `active-no-job` state, so there is no separate
 `no-eligible-global-root` response.
@@ -994,11 +999,12 @@ with status `500`. Disable itself never returns `global-disable-pending`.
   lifecycle Diagnostic or Operation Error and entry for the affected Source, replacing both for that Source
   on repeated failure. N may be legal bootstrap
   generation 0. Barrier cancellation emits none.
-- Snapshot polling and liveness heartbeats never extend the Node process lifetime or persist
-  data. The browser renews a two-second monotonic memory lease only from an exact matching
-  session/epoch liveness response whose disable projection is null. A greater epoch or
-  non-null projection runs the central purge before entering control-only recovery; failure,
-  lease expiry, hidden/page lifecycle events, or process loss purges before an ended view.
+- Session retrieval and lifecycle-triggered liveness checks never extend the Node process
+  lifetime or persist data and define no product-specific time threshold. An exact matching
+  session/equal-epoch response with a null disable projection confirms the current baseline.
+  A greater epoch or non-null projection runs the central purge before entering control-only
+  recovery; network/runtime failure, authorization/session mismatch, or hidden/page lifecycle
+  events purge before an ended view.
   The purge increments a
   client epoch so a late in-flight response cannot repopulate DTOs or editor state, disposes
   Monaco models/editors/workers and subscriptions, clears DOM/store content and warning
@@ -1034,7 +1040,12 @@ with status `500`. Disable itself never returns `global-disable-pending`.
   canonicalization emits `safe-fs-boundary-unverifiable` and rejects the candidate, or its
   source when the root or a shared ancestor is unverifiable. Only exact `ENOENT` from a
   contract-declared structural `lstat` is caught as `absent`/`entry-disappeared`; every
-  other throw/rejection propagates unchanged and produces no candidate Diagnostic.
+  other throw/rejection propagates unchanged and produces no candidate Diagnostic. Only a
+  deterministic candidate-local returned outcome may retain a diagnostic-only record, and
+  only after complete traversal and registry-confirmed closure of every acquired resource.
+  A root/shared-ancestor or directory-enumeration guard outcome, or any unconfirmed
+  FileHandle or `fs.Dir` close, aborts the affected Source attempt and produces no candidate
+  record, contracted-partial generation, or success receipt.
 - Mutation verification instruments the product's filesystem calls and compares fixture
   content, length, identity/link state, mode, modification/change time, and extended
   attributes or ACLs where observable before and after inspection. Access-time movement
@@ -1173,7 +1184,10 @@ with status `500`. Disable itself never returns `global-disable-pending`.
    promise pending, revoke publication authority, and prove that every late result is
    discarded and that the correct outer boundary alone exposes Operation Error or startup
    top-level propagation. A separate FR-028-eligible deterministic entry-local case proves contracted-partial
-   publication without revoking the whole attempt. Tests do not assert hard cancellation of the underlying Node.js/kernel
+   publication without revoking the whole attempt, after complete traversal and confirmed
+   closure of every acquired resource. Root/shared-ancestor and directory-enumeration guard
+   outcomes plus unconfirmed FileHandle/`fs.Dir` closes instead prove Source-attempt abort
+   with no candidate record, partial generation, or success receipt. Tests do not assert hard cancellation of the underlying Node.js/kernel
    operation or a product-defined completion deadline. Close-state fixtures prove concurrent
    join/retry shares the exact `FileHandle`/`fs.Dir` registry record and promise, never
    double-closes, and leaves an unknown outcome fenced with the restart next step.
@@ -1181,8 +1195,8 @@ with status `500`. Disable itself never returns `global-disable-pending`.
    returns no session data, and directs the user to the still-running process's printed
    launch URL; unknown routes and malformed asset paths never receive the SPA fallback.
    Liveness tests require the exact `{ sessionId, globalContentEpoch,
-   globalDisableInProgress }` body and cover visible-page process termination, request
-   timeout, lease expiry, hidden/page lifecycle purge, port reuse with a different
+   globalDisableInProgress }` body and cover lifecycle-triggered checks, browser/network/runtime
+   rejection, authorization failure, hidden/page lifecycle purge, port reuse with a different
    `sessionId`, older/equal/greater epochs, null/draining/committing/failed projections, and a late in-flight
    response after the client epoch changed; none may leave or automatically restore pre-purge inventory,
    detail, comparison, editor, or authored-content DTO/DOM state or the warning

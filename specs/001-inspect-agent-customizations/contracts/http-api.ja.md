@@ -170,15 +170,14 @@ throw/rejectionにはREST ownerもproduct `OperationError`もなく、process to
 
 ### `GET /api/v1/session`
 
-Current session snapshotとscan progressを返す。Source state変化時はclientがこのendpointをpollし、継続的な
-lifetime検出には後述の軽量liveness routeを使う。Watcher、SSE、WebSocketは不要。
+Current session snapshotとscan progressを返す。Source state変化時はclientがこのendpointを取得し、lifecycle-triggeredな
+session verificationには後述の軽量liveness routeを使う。Timer、watcher、SSE、WebSocketは不要。
 
 Response data:
 
 ```text
 InspectionSession
 ├── sessionId, apiVersion, createdAt, activeGeneration, snapshotState, globalContentEpoch,
-│   liveness { heartbeatIntervalMs, requestTimeoutMs, leaseDurationMs },
 │   staleFailures[] { sourceId, failureRef, failedAt, baseGeneration },
 │   operationErrors[] { operationErrorId, code, messageKey, nextStepKey, operationId, scanRequestId },
 │   globalEnableInProgress null | { kind, operationId, previewId },
@@ -332,7 +331,7 @@ Disable-barrier受理からterminal successまでは`state: disabling`、empty p
 `toolFailures`はnon-nullな全control `diagnosticId`をexact toolへmapする
 fixed-tool-orderかつuniqueなarrayで、各IDは`sessionDiagnosticIds`にも存在しsession-owned deterministic Diagnosticへresolveする。
 Operation Errorを含まず、そのcontrol failureのclearまたはdisable commitまで保持する。`lastOperationErrorId`はnull、またはactive consent全体について1件の
-accept済みmissing-Source batch throw/rejectionを参照する。Accept前retry failureは保持し、決定的な`active-no-job` retryまたは
+accept済みadmitted-subset Global batch throw/rejectionを参照する。Accept前retry failureは保持し、決定的な`active-no-job` retryまたは
 replacement-batch acceptanceはclearし、replacementのterminal failureはsupersedeし、Global disableはremoveする。1 toolを
 識別せず、`StaleSourceFailure`を作らない。
 
@@ -342,14 +341,16 @@ Status: fullまたはfenced DTO付き`200`、capability/origin failureは`401`/`
 
 Success bodyはexactに`{ sessionId, globalContentEpoch, globalDisableInProgress }`とする。Handlerは最終publish時に3値すべてを1つの
 current coordinator-lock snapshotから取得する。Inspection-data successと異なりfence nullを要求せず、別tabがdisableを観測できるよう
-current non-null projectionも返す。Authorized pageがvisibleな間、
-SPAは`heartbeatIntervalMs: 1000`ごとに`requestTimeoutMs: 750`のtimeout付きでこのrouteを呼び、session DTO由来の固定2秒
-browser-memory leaseを維持する。`sessionId`が一致し、epochがlast observed epochと等しく、disable projectionがnullの場合だけ
-renewする。Older epochはrejectする。Renewまたはrenderの前にgreater epochまたはnon-null projectionを観測した場合、中央full
-purgeを実行してnew epochをadoptし、control-only recoveryへ入る。別tabのdisableはこの仕組みで観測する。
+current non-null projectionも返す。SPAはinitial authorization、visible/focused pageへの復帰、明示的Resume、fresh session adoptionの場合だけ
+このrouteを呼び、in-flight requestは最大1件とする。このsingle-flight ruleはstale responseを拒否するためstate adoptionをserializeする
+functional coordination invariantであり、resource admissionまたはvalidation ceilingではない。Polling interval、request timeout、retry
+timer、memory leaseを定義せず、request settlementはbrowser/network/runtimeが所有する。`sessionId`一致、equal epoch、null disable projectionでcurrent baselineを
+establishまたはconfirmする。Older epochはrejectする。Baseline confirmまたはrenderの前にgreater epochまたはnon-null projectionを
+観測した場合、中央full purgeを実行してnew epochをadoptし、control-only recoveryへ入る。Lifecycle checkはこの仕組みで別tabのdisableを観測する。
 
-Timeout、network failure、`401`/`403`、session mismatch、lease expiry、hidden/page lifecycle eventでもended/recovery viewの
-render前にpurgeする。Memory-only capabilityはpurgeを越えて保持する。Recovery fetchはfreshな`sessionId`、
+Network/runtime rejection、`401`/`403`、session mismatch、hidden/page lifecycle eventでもended/recovery viewのrender前にpurgeする。
+Continuously visibleなidle page上のprocess lossにはproduct定義のwall-clock検出保証を設けず、次のlifecycle checkまたはauthorized request
+outcomeで扱う。Memory-only capabilityはpurgeを越えて保持する。Recovery fetchはfreshな`sessionId`、
 `globalContentEpoch`、`globalControl`、`globalEnableInProgress`、`globalDisableInProgress`、exactなtool-failure Diagnostic、存在する
 場合に`globalControl.lastOperationErrorId`が参照するGlobal Operation Error 1件、disable error IDと存在する場合の参照先
 Operation Error、optionally reverified frozen
@@ -625,14 +626,15 @@ retryでは同じactive control snapshotをcheckする。単一batch enqueue直�
 activateするかretry partitionを適用し、生成されたactive control stateをverifyする。Disable-first raceはdrainしてlate mutationなしの
 `409 global-disable-pending`を返し、operation-firstの`202`は後のbarrierがbatchを
 cancelしてもaccepted dispositionのままとする。`202`後のthrow/rejectionは同じnon-null `scanRequestId`を持つterminal generic
-Operation Errorとし、subset Source/generationをcommitせずprior snapshotを維持する。Initial/retry missing-Source batchでは
+Operation Errorとし、subset Source/generationをcommitせずprior snapshotを維持する。Initial/retry admitted-subset Global batchでは
 Diagnosticも`StaleSourceFailure`も作らず、代わりにoperation-wide errorを1件retainして
 `globalControl.lastOperationErrorId`から参照する。後のretryとdisableにはsession projectionで定義した正確なclear/
 supersede lifecycleを適用する。
 
-同じexact consentをretryできるのはfixed-set toolの1つ以上がSourceを持たない場合だけで、そのexact eligible subsetはclientでなく
-serverがderiveする。別preview/rootまたはlexical `new-preview-required` controlには先にGlobal disableが必要で、retryable subsetが
-emptyなら`409 no-retryable-global-tool`とする。Missing toolが存在すること自体は別のactive-consent conflictを作らない。全entryがlexicalにinvalidなpreviewもconfirmでき、
+同じexact consentをretryできるのはserver-derived `retryableTools` projectionがnonemptyの場合だけとする。そのexact eligible subsetは
+単なるSource absenceではなくserverがderiveし、clientはnarrowできない。別preview/rootまたはlexical `new-preview-required` controlには
+先にGlobal disableが必要で、empty projectionなら`409 no-retryable-global-tool`とする。Non-retryableなmissing toolが存在すること自体は
+別のactive-consent conflictを作らない。全entryがlexicalにinvalidなpreviewもconfirmでき、
 決定的な`active-no-job` stateを返すため、別の`no-eligible-global-root` responseは存在しない。
 
 Status: `202`、`400 consent-required`、`allowlist-version-mismatch`、または`consent-preview-mismatch`、
@@ -780,10 +782,10 @@ registryがno-opを禁止する場合だけ`409 resource-cleanup-restart-require
   session snapshotをstaleにmarkして、affected Sourceを識別するcap対象actionable out-of-generation lifecycle
   DiagnosticまたはOperation Errorとentryを1件作成または置換し、同じSourceの再failureでは両方を置換する。Nはlegalなbootstrap generation 0でも
   よい。Barrier cancellationは何もemitしない。
-- Snapshot pollingとliveness heartbeatはNode process lifetimeを延長せずdataを永続化しない。Browserはmatching session/epochかつ
-  disable projectionがnullのexact authenticated liveness responseからだけ2秒のmonotonic memory leaseをrenewする。Greater epoch
-  またはnon-null projectionではcontrol-only recoveryへ入る前に中央purgeを実行し、failure、lease expiry、hidden/page lifecycle
-  event、process lossではended view表示前にpurgeする。Purgeはclient epochをincrementしてlate
+- Session retrievalとlifecycle-triggered liveness checkはNode process lifetimeを延長せずdataを永続化せず、product固有のtime thresholdを
+  定義しない。Matching session/equal epochかつdisable projectionがnullのexact authenticated responseでcurrent baselineをconfirmする。
+  Greater epochまたはnon-null projectionではcontrol-only recoveryへ入る前に中央purgeを実行し、network/runtime failure、
+  authorization/session mismatch、hidden/page lifecycle eventではended view表示前にpurgeする。Purgeはclient epochをincrementしてlate
   in-flight responseによるDTO/editor stateの復活を防ぎ、Monaco model/editor/worker/subscriptionをdisposeし、DOM/store
   contentとwarning acknowledgementをclearしてpending requestをabortする。Node process終了時はserver側capability、
   complete source content、source root、generation、diagnosticを破棄する。
@@ -808,7 +810,10 @@ registryがno-opを禁止する場合だけ`409 resource-cleanup-restart-require
   changeを検出した場合はbyte buffer全体を破棄してfail closedにする。正常にreturnされた必要なmetadataまたはcanonicalizationが
   unusableなら`safe-fs-boundary-unverifiable`をemitしてcandidateを拒否し、rootまたは共有ancestorがunverifiableならsourceを
   拒否する。Contract宣言済みstructural `lstat`からのexact `ENOENT`だけを`absent`/`entry-disappeared`としてcatchし、その他
-  すべてのthrow/rejectionは変更せずpropagateしてcandidate Diagnosticを作らない。
+  すべてのthrow/rejectionは変更せずpropagateしてcandidate Diagnosticを作らない。決定的なcandidate-local returned outcomeだけが、
+  complete traversalとacquireした全resourceのregistry-confirmed closure後に限りdiagnostic-only recordを保持できる。
+  Root/shared-ancestorまたはdirectory-enumeration guard outcome、もしくはFileHandle/`fs.Dir`のclose未確認は、影響Source
+  attemptをabortし、candidate record、contracted-partial generation、success receiptを作らない。
 - Mutation verificationはproductのfilesystem callをinstrumentし、inspection前後のfixture content、length、identity/link
   state、mode、modification/change time、観測可能なextended attributeまたはACLを比較する。OS readだけによるaccess-time
   移動は別に記録する。No-product-mutation claimをfailさせず、そのproofにも数えず、productはaccess-time updateをrequest
@@ -911,14 +916,16 @@ registryがno-opを禁止する場合だけ`409 resource-cleanup-restart-require
    rejectionのtestは
    filesystem promiseをpendingのままにし、publication authorityをrevokeして全late resultを破棄することを証明する。
    正しいouter boundaryだけがOperation Errorまたはstartup top-level propagationを公開する。別のFR-028対象となる決定的な
-   entry-local caseは、attempt全体のauthorityをrevokeせずcontracted-partialをpublishする
-   ことを証明する。Underlying Node.js/kernel operationのhard cancellationや製品定義のcompletion deadlineはassertしない。
+   entry-local caseは、complete traversalとacquireした全resourceのconfirmed closure後に、attempt全体のauthorityをrevokeせず
+   contracted-partialをpublishすることを証明する。Root/shared-ancestorとdirectory-enumeration guard outcome、および
+   FileHandle/`fs.Dir`のclose未確認は、candidate record、partial generation、success receiptなしでSource-attempt abortとなることを
+   証明する。Underlying Node.js/kernel operationのhard cancellationや製品定義のcompletion deadlineはassertしない。
    Close-state fixtureはconcurrent join/retryがexactな`FileHandle`/`fs.Dir` registry recordとpromiseをshareし、double-closeせず、
    unknown outcomeをrestart next step付きfenceのままにすることを証明する。
 7. Fragment削除後に全allowlist client routeをreloadしてもAPI request、session data公開がなく、実行中
    processの表示済みlaunch URLを開くよう案内する。Unknown route/malformed asset pathにSPA fallbackを返さない。
-   Liveness testはexactな`{ sessionId, globalContentEpoch, globalDisableInProgress }` bodyを要求し、visible pageでのprocess終了、
-   request timeout、lease expiry、hidden/page lifecycle purge、異なる`sessionId`でのport再利用、older/equal/greater epoch、
+   Liveness testはexactな`{ sessionId, globalContentEpoch, globalDisableInProgress }` bodyを要求し、lifecycle-triggered check、
+   browser/network/runtime rejection、authorization failure、hidden/page lifecycle purge、異なる`sessionId`でのport再利用、older/equal/greater epoch、
    null/draining/committing/failed projection、client epoch変更後のlate in-flight responseを扱い、pre-purge inventory/detail/comparison/
    editor/authored-content DTO/DOM stateまたはwarning acknowledgementが残留・復活しないことを証明する。Active consentが
    あるhidden-to-visible recoveryではretained capabilityだけで認証し、purge済みIDを保持・比較せず返された`sessionId`を

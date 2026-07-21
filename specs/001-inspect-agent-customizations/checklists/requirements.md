@@ -34,12 +34,13 @@
 - [x] The closed scan-publication table permits contracted partial publication only after complete traversal for FR-028-eligible deterministic non-throwing entry outcomes; exact `ENOENT` from a declared structural `lstat` alone becomes `absent`/`entry-disappeared`, while every other throw/rejection aborts publication and follows the owning outer boundary without a domain result
 - [x] The verified-byte decoding table covers NUL/binary, valid UTF-8, one recorded and removed leading BOM, and one-pass replacement decoding of invalid non-NUL UTF-8 as complete `utf-8-replaced` garbled text, without alternate decoding or a product-defined byte, line, or item ceiling
 - [x] The Customization File entity exposes complete source text for verified `utf-8`, `utf-8-bom`, and `utf-8-replaced` reads, forbids it for binary outcomes, and creates no file item from a thrown or rejected read
-- [x] US3 is independently testable with two readable Repository files before Global work, while US4 separately covers a Repository-to-Global comparison without merging Source-relative namespaces
+- [x] US3 is independently testable with two distinct readable Repository physical file IDs before Global work and rejects the same ID in both inputs, while US4 separately covers a Repository-to-Global comparison without merging Source-relative namespaces
 - [x] SC-003, SC-004, SC-005, SC-007, and SC-009 use a frozen versioned release-evidence fixture manifest with stable case IDs, per-fixture digests, nonzero required classes, exact executed-case records, paired automated manifest-version transition tests for denominator-semantic changes, a separate T1062 human-review record, both fixture and canonical digest updates for fixture-byte-only changes, and mandatory failure for missing, omitted, duplicate, or mismatched evidence
 - [x] Every bundled-browser `FileDetail` request and comparison construction shares one acknowledgement gate covering source text, declared metadata, authored relationship targets, and both comparison sides; ordinary route, Source, and generation cleanup remains scoped, while Global disable is the explicit full-session-purge exception before request and again on greater-epoch or non-null-fence observation
 - [x] The closed Global-root table distinguishes absent/default, empty, relative, unrepresentable, representable absolute roots including those outside the ordinary home, post-consent rejection without fallback, and provisional admission without pre-commit Source publication
-- [x] Repository-root selection is closed to captured `process.cwd()` or one lexically resolved `--cwd` value, performs no probe or `chdir`, rejects invalid option shapes before session creation, and creates exactly one non-authorizing generation-0 Repository Source before central admission
+- [x] Repository-root selection is closed to captured `process.cwd()` or one lexically resolved `--cwd` value, performs no selection-stage probe or `chdir`, rejects invalid option shapes before session creation, and creates exactly one non-authorizing generation-0 Repository Source before central admission; the earlier fixed package-integrity bootstrap is limited to package-owned manifest/declared-asset reads and performs no selected-root, DNS, SMB, or outbound-network I/O
 - [x] One selector-free session-wide Global action binds the fixed Copilot/Claude/Codex preview, evaluates all three entries, and publishes every admitted Source in one batch and one atomic generation; any non-structural throw/rejection aborts the whole provisional subset
+- [x] Active-consent Global retry reuses the frozen preview and fixed tuple, derives the complete missing/deterministically rejected target set server-side only after pending work empties, preserves existing Sources and the prior snapshot, creates no request/job/generation for an all-rejected retry, and otherwise publishes one request-correlated atomic batch
 - [x] Raw enumeration segments remain the sole filesystem operands; NFC collisions fail before open, and one same-Source hard-linked physical file has deterministic primary/alias paths with retained provenances and no cross-Source identity merge
 - [x] The safe-filesystem contract covers exact root grammar, checkpoint rows 1–28, explicit `Dir.read()` enumeration with pre/post directory guards and confirmed close, one-Source-attempt hard-link grouping with usable `dev`/`ino`/`nlink`, ordered-fallback and late-derived zero-read rejection, and a process-wide closable-resource registry whose unknown close poisons scheduling until confirmation or restart
 - [x] The Codex Global override fallback defines emptiness by one optional leading-BOM removal followed by `String.prototype.trim()`, treats retained `U+FFFD` as non-whitespace, and permits fallback only for safely read empty content or exact initial-target structural-`lstat` absence
@@ -144,5 +145,28 @@
   pre-request full client-data purge with an epoch-bound all-inspection-data fence and
   control-only failed-barrier recovery; completing directory-enumeration and hard-link race
   rules; and defining one process-wide confirmed-close registry with restart fallback.
+- Validation iteration 20 passed all items on 2026-07-20 after separating fixed package-owned
+  integrity reads from zero-I/O root selection, making preview construction failures generic
+  pre-acceptance Operation Errors with no preview state, restoring mandatory explicit-rescan
+  stale overlays, and assigning the outcome manifest, digest, and contract test to T1041.
+- Validation iteration 21 passed all items on 2026-07-20 after making repository-root task
+  paths explicit with `./`; replacing timed heartbeat, timeout, and memory-lease liveness with
+  observable lifecycle-triggered checks; and defining the FR-024/FR-028 publication taxonomy
+  so only a confirmed-close candidate-local returned outcome can retain a diagnostic-only
+  record while root, directory-guard, and unconfirmed-close cases abort the Source attempt.
+- Validation iteration 22 passed all items on 2026-07-20 after removing the remaining lease
+  rationale and fixture wording from research; propagating the exact publication taxonomy
+  through research, verification tables, and task notes; and assigning all four lifecycle
+  triggers, non-trigger tests, single-flight coordination, stale-settlement rejection, and
+  timer-free implementation ownership to T042 and T049.
+- Validation iteration 23 passed all items on 2026-07-20 after restoring the omitted binary,
+  BOM, typed-literal, malformed-extraction, tree-token UTF-16 range, environment-owned parser
+  capacity, and source-value-free extraction obligations in Japanese T075 and T321; a fresh
+  context-isolated analysis then confirmed zero critical or high findings.
+- Validation iteration 24 passed all items on 2026-07-21 after specifying the complete
+  server-derived active-consent Global retry set and request/job/state semantics, adding the
+  missing `entry-disappeared` table row, distinguishing successful and failed Global disable,
+  closing SC-001 manual-fallback scoring, and requiring two distinct physical file IDs for
+  comparison.
 - The exact repository inspection path allowlist is intentionally frozen during planning after revalidation against official vendor specifications; the specification fixes the supported product families and forbids Global-scope expansion without a specification change.
 - The temporary local product-description file is neither linked nor required by this specification.

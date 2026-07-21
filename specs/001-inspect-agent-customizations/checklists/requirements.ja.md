@@ -34,12 +34,13 @@
 - [x] Closedなscan-publication tableが、完全なtraversal後のFR-028対象となる決定的でthrowしないentry outcomeだけにcontracted partial publicationを許可し、宣言済みstructural `lstat`からの正確な`ENOENT`だけを`absent`/`entry-disappeared`に変換し、その他のthrow/rejectionではpublicationをabortしてdomain resultを作らずowner outer boundaryへ伝播する
 - [x] 検証済みbyteのdecoding tableが、NUL/binary、valid UTF-8、先頭BOM 1つの記録と除去、invalidなnon-NUL UTF-8を完全な`utf-8-replaced`文字化けとして1回だけreplacement decodeする処理を、別decodeや製品固有のbyte、line、item上限なしで扱う
 - [x] Customization File entityが、検証済みの`utf-8`、`utf-8-bom`、`utf-8-replaced` readには完全なsource textを公開し、binary outcomeでは禁止し、thrownまたはrejectedなreadからfile itemを作成しない
-- [x] US3がGlobal workより前に2つのreadableなRepository fileだけで独立test可能であり、US4がSource-relative namespaceを統合せずRepository-to-Global比較を別に扱う
+- [x] US3がGlobal workより前に異なる2つのreadableなRepository physical file IDだけで独立test可能で同じIDの両input使用をrejectし、US4がSource-relative namespaceを統合せずRepository-to-Global比較を別に扱う
 - [x] SC-003、SC-004、SC-005、SC-007、SC-009が、stable case ID、fixtureごとのdigest、0件ではないrequired class、実行した正確なcase record、denominator semantics変更時のpaired automated manifest-version transition test、独立したT1062 human-review record、fixture-byteのみ変更時のfixture/canonical digest両方の更新、欠落・省略・重複・不一致evidenceの必須failureを持つversion付きrelease-evidence fixture manifestを使用する
 - [x] Bundled-browserの全`FileDetail` requestとcomparison構築が、source text、declared metadata、authored relationship target、comparisonの両sideを扱う1つのacknowledgement gateを共有する。通常のroute、Source、generation cleanupはscope限定のままとし、Global disableはrequest前とgreater-epoch/non-null-fence観測時にfull-session purgeを行う明示的な例外とする
 - [x] ClosedなGlobal-root tableがabsent/default、empty、relative、表現不能、通常のhome外を含む表現可能なabsolute root、fallbackなしのconsent後rejection、commit前Source publicationなしのprovisional admissionを区別する
-- [x] Repository-root selectionを取得済み`process.cwd()`またはlexicalにresolveした1つの`--cwd`値へ限定し、probeと`chdir`を行わず、invalidなoption shapeをsession作成前にrejectし、中央admission前にauthorityを持たないgeneration-0 Repository Sourceを正確に1つ作成する
+- [x] Repository-root selectionを取得済み`process.cwd()`またはlexicalにresolveした1つの`--cwd`値へ限定し、selection-stageのprobeと`chdir`を行わず、invalidなoption shapeをsession作成前にrejectし、中央admission前にauthorityを持たないgeneration-0 Repository Sourceを正確に1つ作成する。先行する固定package-integrity bootstrapはpackage所有manifest/declared-asset readだけに限定し、selected-root、DNS、SMB、outbound-network I/Oを行わない
 - [x] Selectorを持たない1回のsession-wide Global actionを固定Copilot/Claude/Codex previewへbindし、3 entryすべてを評価して、admit済みSourceを1 batchかつ1 atomic generationで公開する。Non-structuralなthrow/rejectionはprovisional subset全体をabortする
+- [x] Active-consent Global retryはfrozen preview/fixed tupleを再利用し、pending workがemptyになった後だけcompleteなmissing/deterministically rejected target setをserver側でderiveし、既存Source/prior snapshotを保持し、全件rejectならrequest/job/generationを作らず、それ以外はrequest-correlatedな1 atomic batchをpublishする
 - [x] Raw enumeration segmentだけをfilesystem operandとして維持し、NFC collisionをopen前にfailさせ、同一Sourceでhard-linkされた1つのphysical fileへ決定的なprimary/alias pathと各provenanceを保持し、Sourceをまたぐidentity mergeを行わない
 - [x] Safe-filesystem contractがexact root grammar、checkpoint rows 1–28、pre/post directory guardとconfirmed closeを伴うexplicit `Dir.read()` enumeration、usableな`dev`/`ino`/`nlink`による1 Source attempt内のhard-link grouping、ordered-fallback/late-derivedのzero-read rejection、unknown closeがconfirmationまたはrestartまでschedulingをpoisonするprocess-wide closable-resource registryを扱う
 - [x] Codex Global override fallbackのemptyを、任意の先頭BOM 1つを除去した後の`String.prototype.trim()`で定義し、保持した`U+FFFD`をnon-whitespaceとして扱い、安全にreadしたempty contentまたはinitial-targetの正確なstructural-`lstat` absenceだけにfallbackを許可する
@@ -123,5 +124,22 @@
 - 2026-07-20の検証iteration 19では、Global disableをpre-requestのfull client-data purge、epoch-boundな
   all-inspection-data fence、control-onlyなfailed-barrier recoveryとして定義し、directory-enumeration/hard-link race ruleを
   完成させ、restart fallbackを持つprocess-wide confirmed-close registryを定義した後、すべての項目に合格した。
+- 2026-07-20の検証iteration 20では、固定package所有integrity readとzero-I/O root selectionを分離し、preview construction
+  failureをpreview stateなしのgeneric pre-acceptance Operation Errorとし、明示rescanのmandatory stale overlayを復元し、
+  outcome manifest、digest、contract testをT1041へ割り当てた後、すべての項目に合格した。
+- 2026-07-20の検証iteration 21では、repository-root task pathを`./`で明示し、時間指定heartbeat、timeout、memory leaseの
+  livenessを観測可能なlifecycle-triggered checkへ置き換えた。さらにFR-024/FR-028 publication taxonomyを定義し、
+  confirmed-close済みcandidate-local returned outcomeだけがdiagnostic-only recordを保持でき、root、directory guard、
+  unconfirmed-close caseはSource attemptをabortするよう統一した後、すべての項目に合格した。
+- 2026-07-20の検証iteration 22では、researchに残っていたleaseのrationale/fixture記述を除去し、exactなpublication
+  taxonomyをresearch、verification table、task noteへ伝播した。さらに4つのlifecycle trigger、non-trigger test、
+  single-flight coordination、stale settlement rejection、timerなしの実装ownershipをT042とT049へ割り当てた後、
+  すべての項目に合格した。
+- 2026-07-20の検証iteration 23では、日本語T075とT321へ省略されていたbinary、BOM、typed literal、malformed
+  extraction、tree-token UTF-16 range、environment-owned parser capacity、source-value-free extractionの義務を復元した。
+  その後、新しいcontext-isolated分析でcritical/high findingが0件であることを確認した。
+- 2026-07-21の検証iteration 24では、completeなserver-derived active-consent Global retry setとrequest/job/state
+  semantics、欠落していた`entry-disappeared` table row、Global disableのsuccess/failure区分、SC-001 manual fallback
+  scoring、comparisonで異なるphysical file ID 2件を要求するruleを明文化した後、すべての項目に合格した。
 - 正確なRepositoryの調査対象パス一覧は、公式vendor specificationを再確認した後、計画phaseで意図的に確定する。仕様はサポートするproduct familyを固定し、仕様変更なしのGlobal scope拡張を禁止している。
 - 一時的なローカルのプロダクト説明ファイルは、この仕様からリンクされず、仕様の利用にも必要ない。
