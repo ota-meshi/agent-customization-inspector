@@ -174,8 +174,9 @@ operation with a fixed process-restart error before mutation.
 The Inspector defines no product-specific byte, file-count, entry-count, graph-count,
 parser-depth, message-size, request-size, response-size, worker-count, queue-capacity, or
 wall-clock resource ceiling. Capacity is inherited from Node.js, the parser libraries, the
-browser, the operating system, the filesystem, and the execution environment. A
-thrown or rejected read/parser/Worker/scan operation is not caught or classified by the
+browser, the operating system, the filesystem, and the execution environment. The event-
+confirmed-close observation retains only already-confirmed successful close lifecycle. A
+non-carveout thrown or rejected read/parser/Worker/scan operation is not caught or classified by the
 domain layers. Such an operation produces no item, Diagnostic, scan result, response body
 from the attempt, or generation. A REST-owning outer boundary converts only the lifecycle
 into a generic `OperationError`; an automatic startup operation reaches the process top
@@ -340,7 +341,7 @@ zero requests outside them, including customization-selected, remote-reference, 
 The service mints one row-1 checkpoint for the anchor and then one for each component and
 calls `lstat(prefix, { bigint: true })` in that order using the exact platform operand. Exact `ENOENT`
 alone returns `absent`; a lifecycle owner records that returned outcome as
-`safe-fs-root-absent`, while every other rejection propagates unchanged. A returned link,
+`safe-fs-root-absent`, while every other rejection from that `lstat` propagates unchanged. A returned link,
 detectable reparse object, non-directory, or unusable identity is a deterministic root
 rejection. Only after all prefixes succeed does it call `realpath` on the exact raw root;
 that call has no catch carve-out. POSIX requests a Buffer result and parses it as an exact
@@ -519,8 +520,10 @@ raw sibling set with explicit `Dir.read()` calls before descending, then rows 25
 the same identity/type/mode and unchanged `mtimeNs`/`ctimeNs` against those bound snapshots.
 The registered `fs.Dir` must reach `close-confirmed` before the buffer is used. A detectable
 create, removal, or rename during enumeration therefore yields the applicable pathless
-source-fatal stale/metadata diagnostic and no generation; a thrown/rejected post-check or
-close propagates to the owning boundary and likewise publishes no attempt result. Among
+source-fatal stale/metadata diagnostic and no generation. An event-confirmed-close later-
+promise rejection retains only already-confirmed successful close lifecycle; a non-carveout
+thrown/rejected post-check or close, including any unconfirmed close, propagates to the owning
+boundary and likewise publishes no attempt result. Among
 representable relevant names, distinct raw sibling names that normalize to the same
 NFC classification key form a collision group: every member is rejected without
 descend/open/read and receives one pathless session-scoped
@@ -591,12 +594,16 @@ for the late path, or silently dropping the Diagnostic is forbidden.
 
 Client or HTTP path strings never authorize a read.
 
-The only filesystem rejection converted inside this model is Node's exact `ENOENT` from an
-`lstat` invoked at a registry-declared structural existence checkpoint. Before admission it
-means `absent`; after an entry was observed it means deterministic `entry-disappeared` and
-discards all bytes. The handler checks only `error.code === 'ENOENT'`, never the message,
-and applies to neither `open` nor `read`. Every other exception or rejection propagates
-unchanged past the filesystem, parser, recognition, and scan domain layers.
+The only two caught or observed filesystem-rejection cases inside this model are FR-041's
+narrow carve-outs. Node's exact `ENOENT` from an `lstat` invoked at a registry-declared
+structural existence checkpoint means `absent` before admission or deterministic
+`entry-disappeared` after an entry was observed and discards all bytes. The handler checks
+only `error.code === 'ENOENT'`, never the message, and applies that conversion to neither
+`open` nor `read`. Separately, after a FileHandle `close` event has confirmed closure, the
+resource registry may observe a later rejection of that handle's retained close promise and
+retain only the already-confirmed successful close lifecycle. Every non-carveout exception
+or rejection propagates unchanged past the filesystem, parser, recognition, and scan domain
+layers.
 
 One process-wide executor serializes inspected-source filesystem work. The production
 module exposes only read-only operations and never requests
@@ -839,9 +846,10 @@ Global inspection first; a request with no retryable tool is rejected as closed 
 Post-consent canonical/root validation can admit zero to three tools. The serialized
 coordinator activates consent and creates at most one provisional batch scan for the entire
 admitted subset. An exact `ENOENT` from a contract-declared root `lstat`, a lexical-invalid
-entry, or a deterministic link/type/boundary rejection affects only that tool. Any other
-throw/rejection propagates to the REST boundary, aborts the whole transaction, and publishes
-none of its provisional subset. If every tool is deterministically rejected, consent remains
+entry, or a deterministic link/type/boundary rejection affects only that tool. The
+event-confirmed-close observation retains only already-confirmed successful close lifecycle.
+Any non-carveout throw/rejection propagates to the REST boundary, aborts the whole
+transaction, and publishes none of its provisional subset. If every tool is deterministically rejected, consent remains
 active, no Source or scan job is published, and the operation returns the contracted
 `active-no-job` state.
 Initial activation therefore has zero Global Sources; an all-rejected retry commits no
@@ -876,7 +884,7 @@ old context remains the exact rollback snapshot and cannot be used by a job beca
 registered operation suppresses admission/dequeue. At the buffer-bound disposition, one
 synchronous non-throwing memory transaction revokes and closes/unregisters the old
 handle-free context, discards the old unpublished IDs, and applies either the rejected
-null-context state or the tentative admitted replacement. A throw/rejection or
+null-context state or the tentative admitted replacement. A non-carveout throw/rejection or
 serialization failure discards only tentative resources and leaves every pre-operation
 field/context active and byte-for-byte unchanged. A post-consent validation failure
 therefore commits a `rejected` control with no IDs/context only at that disposition and can
@@ -885,7 +893,7 @@ successful Source commit publishes the preallocated IDs and makes its `SourceBou
 reference this context. A safe-fs deterministic rejection or fatal returned scan outcome
 creates/replaces that control's current tool Diagnostic. A lexical `present-empty`,
 `relative`, or `invalid` rejection keeps `diagnosticId: null` and is explained only by its
-fixed rejection code plus the frozen preview. A throw/rejection creates no per-tool failure and,
+fixed rejection code plus the frozen preview. A non-carveout throw/rejection creates no per-tool failure and,
 for an accepted admitted-subset Global batch, creates one operation-level REST Operation Error
 referenced by `GlobalControlView.lastOperationErrorId` for the whole consent. A successful
 Source commit clears the applicable deterministic failure record, and unrelated tool outcomes
@@ -904,7 +912,7 @@ with the consent and frozen preview. No DTO can create or mutate this authority.
 | `batchStatus` | `GlobalBatchStatus \| null` | Non-null from accepted admitted-subset queueing through terminal success/failure; preserves the promoted `scanRequestId` for fresh-snapshot and lost-202 recovery |
 | `retryableTools` | sorted tool enum[] | While `active`, exactly each non-pending unpublished `admitted` control and each `rejected` control whose `retryDisposition` is `same-preview`; it retains the exact pre-operation projection during operation-local retry validation, lexical `new-preview-required` controls are excluded, `unvalidated` exists only in non-serialized operation-local work, and the array is empty while `disabling` |
 | `toolFailures` | fixed-tool-order `{ tool, diagnosticId }[]` | Exact public ownership map for every non-null `GlobalToolControl.diagnosticId`; each tool and diagnostic ID is unique, and no Operation Error appears here |
-| `lastOperationErrorId` | opaque Operation Error ID or null | Current accepted admitted-subset Global batch throw/rejection for the whole active consent; resolves to exactly one `InspectionSession.operationErrors` entry and is never attributed to one tool |
+| `lastOperationErrorId` | opaque Operation Error ID or null | Current accepted admitted-subset Global batch non-carveout throw/rejection for the whole active consent; resolves to exactly one `InspectionSession.operationErrors` entry and is never attributed to one tool |
 
 `GlobalControlView` is derived from the active consent, its `GlobalToolControl` records, the
 coordinator, and published Sources. It is returned in every authenticated session snapshot
@@ -952,7 +960,7 @@ matching frozen preview has been retrieved and verified. The invariant forbids e
 `unvalidated` control in an active serialized view; every accepted pending control is
 already `admitted` and has the same accepted-batch membership as `pendingTools`.
 
-An accepted admitted-subset Global batch throw/rejection atomically creates one `OperationError`,
+An accepted admitted-subset Global batch non-carveout throw/rejection atomically creates one `OperationError`,
 sets `lastOperationErrorId` to that ID, and leaves every tool without a per-tool failure for
 that throw/rejection. A later same-consent retry preserves the reference through any
 pre-acceptance failure, then clears it only when deterministic validation reaches
@@ -1000,7 +1008,8 @@ coordinator lock before changing any session state. Cancellation or disable drai
 operation so late continuations cannot enqueue work or regain authority.
 At most one `GlobalEnableOperation` is running or queued. Deterministic lexical, exact
 structural-`lstat` absence, link/type, and boundary outcomes partition the tools into
-rejected and admitted sets. Any other throw/rejection unwinds to the REST owner: initial
+rejected and admitted sets. The event-confirmed-close observation retains only
+already-confirmed successful close lifecycle. Any non-carveout throw/rejection unwinds to the REST owner: initial
 enable discards all provisional state without activating consent/control, while retry
 restores its exact pre-operation snapshot; neither commits a partial admitted subset. After
 every owned tool reaches a deterministic validation outcome, the coordinator performs the
@@ -1087,7 +1096,7 @@ enumerating it. The barrier waits for all affected continuations to settle and r
 registry sweep before terminal commit, so no late resource escapes the lineage. A retry
 reuses the exact same IDs, records, promises, observers, and strong references.
 
-A normal close rejection propagates through the trigger-owning runtime/REST boundary and
+A non-carveout unconfirmed close rejection propagates through the trigger-owning runtime/REST boundary and
 publishes no attempt result. While `poisoned`, no new Repository/Global admission, scan,
 rescan, enable retry, or Global preview capture that could lead to filesystem work is
 scheduled; those REST mutations return `409 resource-cleanup-restart-required`, while
@@ -1201,7 +1210,7 @@ stale failures/diagnostics/batch errors and commits the candidate generation; fo
 operation complete and binds the exact buffer. Delivery
 failure after that commit never rolls back or creates another error.
 
-Any unexpected throw/rejection after barrier acceptance—including drain, close/unregister,
+Any non-carveout unexpected throw/rejection after barrier acceptance—including drain, close/unregister,
 final assembly, or success serialization—propagates to the triggering REST boundary and is
 returned as the generic Operation Error. It atomically creates/replaces one retained error
 referenced by `InspectionSession.globalDisableOperationErrorId`, with this operation ID and
@@ -1453,10 +1462,12 @@ helper must then reach `close-confirmed` before the sibling buffer may be classi
 for descent, or used to issue a ticket. For the source root only rows 21 and 25 apply. A
 successful earlier `lstat` does not let a later
 `opendir`, `open`, `read`, `realpath`, or handle operation reuse its checkpoint. An undeclared
-call, mismatched phase/role/target, consumed token, non-`ENOENT` code, or any rejection from
-another operation propagates unchanged. For `codex-global-first-non-empty`, only row 3 on
-the primary selector can return `absent` and advance to the fallback; an unsafe/binary
-outcome or any other rejection ends the branch as specified elsewhere.
+call, mismatched phase/role/target, consumed token, non-`ENOENT` code, or any non-carveout
+rejection from another operation propagates unchanged. The event-confirmed-close
+observation instead retains only already-confirmed successful close lifecycle. For
+`codex-global-first-non-empty`, only row 3 on the primary selector can return `absent` and
+advance to the fallback; an unsafe/binary outcome or any other non-carveout rejection ends
+the branch as specified elsewhere.
 
 For a post-observation `entry-disappeared`, root-role rows 4/8/12/16/20/21/25 map to pathless
 source-fatal `safe-fs-root-stale`; ancestor-role rows 5/9/13/17/22/26 map to pathless source-fatal
@@ -1552,7 +1563,9 @@ means that, after removal of an optional leading UTF-8 BOM, the decoded string h
 candidate has a deterministic unsafe or binary outcome, selection ends with its safe
 diagnostic and does not inspect any later selector. A `utf-8-replaced` string is ordinary
 decoded text for this policy; because `U+FFFD` is not whitespace, replacement bytes make it
-non-empty. A thrown or rejected probe propagates without a domain catch or fallback.
+non-empty. The event-confirmed-close observation retains only already-confirmed successful
+close lifecycle and does not select fallback. A non-carveout thrown or rejected probe
+propagates without a domain catch or fallback.
 `absent` is only the explicit not-found
 result from the exact target `lstat` after the admitted root remains verified. Permission,
 type, metadata, ancestor/root, canonicalization, and all other errors—and a target that
@@ -1623,7 +1636,8 @@ the typed targeted-enumeration algorithm. A missing exact classification at any 
 one alternative advances to the next alternative without touching siblings beyond name
 enumeration. Once every segment of an alternative is observed, later alternatives receive
 zero filesystem calls; any link/type/boundary/binary/parse/deterministic outcome belongs to
-that selected path, and any throw/rejection propagates. At-base mappings have one placement.
+that selected path, the event-confirmed-close observation retains only already-confirmed
+successful close lifecycle, and any non-carveout throw/rejection propagates. At-base mappings have one placement.
 `ancestor-chain-through-seed-owner` emits every independently authorized placement in fixed
 root-to-narrow order; `first-present-exact` applies separately within each placement and does
 not collapse those placements.
@@ -1698,7 +1712,7 @@ diagnostics. The session initially has no `StaleSourceFailure`, so its derived
 Repository admission or scanning succeeded. It coexists with exactly one non-authorizing,
 idle Repository Source in the session.
 The automatic first Repository scan starts from 0. A deterministic returned failure may
-leave generation 0 current with its closed lifecycle state; a thrown/rejected operation has
+leave generation 0 current with its closed lifecycle state; a non-carveout thrown/rejected operation has
 no REST owner, publishes no application failure representation, and reaches the process top
 level with no liveness guarantee. Only a later user-requested rescan failure can mark a
 retained snapshot stale.
@@ -1723,7 +1737,7 @@ session stale. `snapshotState` is `stale-after-fatal-rescan` exactly while this 
 non-empty. Automatic first Repository failure and initial Global enable failure create no
 `StaleSourceFailure` entry because neither failed to refresh an already committed Source graph.
 A deterministic returned failure may create its closed lifecycle Diagnostic; a startup
-throw/rejection creates no product failure record, while a REST-owned Global error creates
+non-carveout throw/rejection creates no product failure record, while a REST-owned Global error creates
 only its Operation Error. Initial Global enable preserves every pre-existing entry and
 derived snapshot state.
 Queuing a retry changes that Source's operational status to `scanning` but does not clear
@@ -1748,7 +1762,7 @@ No field from an in-flight attempt is merged into or exposed through the committ
 snapshot. A contracted partial result is public only after complete traversal, an
 FR-028-eligible deterministic non-throwing entry-local outcome, successful
 assembly/serialization, transition to `committable-partial`, and atomic commit of the whole
-generation. A throw or rejection is not caught by the scan domain and therefore creates no
+generation. A non-carveout throw or rejection is not caught by the scan domain and therefore creates no
 domain transition or result. The trigger-owning outer boundary revokes publication authority,
 destroys the abandoned working set when cleanup can run, preserves the prior snapshot, and
 records only the generic REST `OperationError` when that boundary owns an accepted REST job.
@@ -1812,7 +1826,7 @@ never fabricate a file ID or path. It never carries customization source values 
 enters `Source.diagnosticIds`. The
 coordinator then starts the next queued transaction from the still-current N. A later
 successful complete or contracted-partial scan of the affected Source replaces N with N+1
-and clears only its entry and failure reference; a different Source's commit leaves both unresolved. A throw/rejection bypasses this domain classification and is handled only as described by `OperationError`; an accepted explicit rescan MUST create the same stale overlay referencing that Operation Error instead of a Diagnostic, while a pre-acceptance failure creates no overlay. At
+and clears only its entry and failure reference; a different Source's commit leaves both unresolved. A non-carveout throw/rejection bypasses this domain classification and is handled only as described by `OperationError`; an accepted explicit rescan MUST create the same stale overlay referencing that Operation Error instead of a Diagnostic, while a pre-acceptance failure creates no overlay. At
 most one scan command per source is running or queued; duplicate scan commands
 return the documented conflict. Disable uses the join/no-op rules above and is not a
 duplicate scan command.
@@ -2263,10 +2277,12 @@ disable clears it. A published Source explicit-rescan failure uses
 removal clears it. Unrelated owner commits preserve each record. Every non-null public
 reference resolves to exactly one unique member of `sessionDiagnosticIds`, and each such
 lifecycle Diagnostic has exactly one public owner reference. Diagnostics are
-never deliberately truncated or replaced by an aggregate suppression record. A thrown or
-rejected operation never enters this registry: it propagates past the domain and, if
-REST-owned, is represented only by `OperationError`. If retaining or serializing a
-deterministic Diagnostic itself throws or rejects, that new failure follows the same rule
+never deliberately truncated or replaced by an aggregate suppression record. The event-
+confirmed-close observation never enters this registry and retains only already-confirmed
+successful close lifecycle. A non-carveout thrown or rejected operation never enters this
+registry: it propagates past the domain and, if REST-owned, is represented only by
+`OperationError`. If retaining or serializing a deterministic Diagnostic itself throws or
+rejects, that non-carveout failure follows the same rule
 and no Diagnostic or generation from the attempt is published.
 
 The safe-filesystem subset is exactly:
@@ -2299,7 +2315,7 @@ path, filesystem handle/descriptor, or source bytes.
 
 ### OperationError
 
-`OperationError` is the only product representation of a thrown or rejected operation at a
+`OperationError` is the only product representation of a non-carveout thrown or rejected operation at a
 REST-owning outer boundary. It is execution-lifecycle state, never a `Diagnostic`,
 `CustomizationFile`, `ScanGeneration`, parser result, or operational-log payload.
 
@@ -4148,7 +4164,7 @@ failed/stale -> scanning (waiting or active) -> ready/partial (clears this Sourc
 1..3 admitted roots ---------> buffer-bound 202 + batchStatus(waiting/id) --> running --> one atomic generation containing every ready/partial Source
                                                                         \-> failed(tool failures or Operation Error; same id)
 exact retryable subset ------> same buffer-bound batch lifecycle; lexical-ineligible controls require disable/new preview
-unexpected pre-accept throw/rejection --> Operation Error; no subset Source/generation from the transaction
+unexpected non-carveout pre-accept throw/rejection --> Operation Error; no subset Source/generation from the transaction
 ready/partial -- accepted per-source rescan --> scanning --> ready/partial
                                                      \-> failed/stale (creates own entry)
 failed/stale -- accepted per-source rescan --> scanning --> ready/partial (clears own entry + diagnostic)

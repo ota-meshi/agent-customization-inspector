@@ -127,7 +127,8 @@ Contractで宣言したstructural existence checkpointでは、`lstat`からのN
 rejectionから変換する。Candidateの観測前なら`absent`、観測後なら`entry-disappeared`とする。Handlerはmessageではなく
 codeだけを検査する。Fallbackへ進めるのは`absent`だけで、`entry-disappeared`では進まない。正常に返されたlink、type、
 metadata、ancestor/root、canonicalization outcomeがboundaryを満たさない場合はfail closedのままfallbackへ進まない。
-`open`または`read`からの`ENOENT`を含むその他の全throw/rejectionは変更せずpropagateし、candidate classificationや
+FR-041のevent-confirmed-close observationは既にconfirm済みのsuccessful close lifecycleだけを維持し、fallbackへ進まない。
+`open`または`read`からの`ENOENT`を含むすべてのnon-carveout throw/rejectionは変更せずpropagateし、candidate classificationや
 fallback choiceへ決して変換しない。
 
 NUL byteを1つでも含むcandidateはbinaryかつdiagnostic-onlyとし、他の点ではpublish可能なgenerationを
@@ -138,7 +139,7 @@ extraction、display、comparisonに使うgarbled source全体へ保持する。
 fileはemptyとする。Inspectorは選択したnon-empty fileだけをpublishして両方はpublishしない。
 
 Present emptyまたはrelativeな`CODEX_HOME` override、もしくはthrowせずrejectされたroot outcomeから暗黙fallbackしない。
-Root selection/admission中のthrow/rejectionは変更せずpropagateする。同じdirectory配下でもuser config、agent、skill、hook、
+Root selection/admission中のnon-carveout throw/rejectionは変更せずpropagateする。同じdirectory配下でもuser config、agent、skill、hook、
 rule、MCP、plugin、prompt、memory、credential、log、session、cacheはexcludedのままである。
 
 ## Relationship-onlyとexcluded group

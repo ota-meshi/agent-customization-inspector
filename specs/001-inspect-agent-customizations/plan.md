@@ -1035,12 +1035,16 @@ inherited from the supported Node.js runtime, parser libraries, operating system
 filesystem, browser, and current execution environment. Deterministic, non-throwing
 entry-local outcomes may use the contracted-partial path after complete traversal and
 serializable assembly; binary input is one such outcome. Invalid non-NUL UTF-8 is instead a
-complete readable `utf-8-replaced` outcome. The only inspected-source exception a domain
-layer may catch is Node's exact `ENOENT` code from an `lstat` call that the contract declares
-as a structural existence checkpoint. That checkpoint returns only `absent` when the entry
+complete readable `utf-8-replaced` outcome. A domain layer may catch only two
+contract-declared inspected-source exceptions: Node's exact `ENOENT` code from an `lstat`
+call that the contract declares as a structural existence checkpoint, and — as close
+lifecycle only — a FileHandle close-promise rejection that the `ClosableResourceRegistry`
+observes after that same handle's `close` event has already confirmed closure, recording the
+already-confirmed closure as successful without cause classification, recovery, or
+publication. The structural checkpoint returns only `absent` when the entry
 has not yet been observed or `entry-disappeared` when a previously observed or ticketed
 entry vanishes; it does not inspect the message or apply to another code or operation,
-including `realpath`, `open`, `FileHandle.stat`, or a read. Every other thrown exception or
+including `realpath`, `open`, `FileHandle.stat`, or a read. Every non-carveout thrown exception or
 rejected promise from inspected-source reading is not caught, classified, retried, or
 converted into a file, Diagnostic, scan result, or partial generation by filesystem, parser,
 recognition, or scan domain layers. Its trigger-owning outer boundary may catch only to
@@ -1148,7 +1152,7 @@ execution environment rather than a product-defined item ceiling.
       The test layout covers unit, contract, integration,
       security, package, performance, end-to-end, error, boundary, accessibility, and adversarial
       safety scenarios, including all four user stories, the published SC-002 profile/status
-      request/generation protocol, unchanged propagation of thrown or rejected operations to their owning execution boundaries,
+      request/generation protocol, event-confirmed-close success and unchanged propagation of non-carveout thrown or rejected operations to their owning execution boundaries,
       product-issued mutation and OS-atime separation, path/content-free operational logs,
       the product-wide FR-032 negative boundary, the complete bilingual 55-row WCAG Level
       A/AA acceptance matrix, FR-039/SC-009 origin-file-less Source Condition Facts, the
@@ -1644,9 +1648,11 @@ dependency or artifact fails until explicitly reviewed.
   exactly `ENOENT`: before any successful observation it returns `absent`, and after a
   successful observation or ticket issuance it returns `entry-disappeared`. Neither outcome
   grants authority or retains bytes. The wrapper does not inspect an error message, infer a
-  cause, or catch another `lstat` error. Every throw or rejection from any non-structural
-  `lstat` or from `realpath`, `opendir`, `open`, `FileHandle.stat`, byte reading, parsing, or
-  any other operation propagates unchanged under FR-041, even when its code is `ENOENT`.
+  cause, or catch another `lstat` error. The separate event-confirmed-close observation may
+  retain only already-confirmed successful FileHandle close lifecycle. Every non-carveout
+  throw or rejection from any non-structural `lstat` or from `realpath`, `opendir`, `open`,
+  `FileHandle.stat`, byte reading, parsing, close/unregister, or any other operation propagates
+  unchanged under FR-041, even when its code is `ENOENT`.
 - A candidate read reconstructs a path only from its owning root context and ticket. It
   rechecks the root and each ancestor with bigint `lstat`, comparing `dev`, `ino`, and
   `mode` with the ticket snapshots; first checks the candidate path with `lstat`, rejects
@@ -1681,7 +1687,8 @@ dependency or artifact fails until explicitly reviewed.
   resource can escape, and failed acquisition removes it. The exact resource may be closed
   once, and all callers join one retained close promise. A fulfilled close, or a FileHandle
   `close` event, confirms closure. If the event confirms first, a later raw close-promise
-  rejection is observed but treated as successful and neither propagates nor poisons.
+  rejection is observed but treated as successful and neither propagates nor poisons — the
+  event-confirmed-close observation FR-041 declares as close lifecycle.
   Rejection without confirmation produces `close-unknown`, propagates through the owning
   REST/startup boundary, and poisons new inspection scheduling until a later FileHandle
   event confirms it; an unknown `fs.Dir` close requires process restart. Disable reuses this
@@ -1705,8 +1712,9 @@ dependency or artifact fails until explicitly reviewed.
   attempt. Only a candidate-local outcome after complete traversal and confirmed closure of
   every acquired resource may retain the diagnostic record; any unconfirmed close aborts
   the Source attempt. This classification uses returned data only: the
-  exact structural-`lstat` `ENOENT` conversion above is the sole caught exception, and every
-  other throw or rejection follows FR-041. Every Source-abort case commits no diagnostic-only
+  exact structural-`lstat` `ENOENT` conversion above and the FR-041-declared
+  event-confirmed-close observation are the only domain-caught or observed exception cases,
+  and every non-carveout throw or rejection follows FR-041. Every Source-abort case commits no diagnostic-only
   candidate record, contracted-partial generation, or success receipt.
 - Pure Node.js does not expose a directory-handle-relative open or an atomic equivalent of
   `RESOLVE_BENEATH`, so the checks above cannot prove kernel-enforced containment against an
@@ -1747,7 +1755,9 @@ dependency or artifact fails until explicitly reviewed.
   `utf-8-replaced` string participates unchanged, so any `U+FFFD` makes it non-empty unless
   other non-whitespace text already does. Binary is a deterministic no-fallback outcome. An
   exact `ENOENT` from a contract-declared structural recheck after the override was observed
-  becomes `entry-disappeared` and also performs no fallback. Every other thrown or rejected
+  becomes `entry-disappeared` and also performs no fallback. The FR-041
+  event-confirmed-close observation leaves the already confirmed close successful and does
+  not select fallback. Every non-carveout thrown or rejected
   probe follows FR-041, performs no fallback, and, during an initial or retry Global batch,
   aborts the whole transaction rather than committing a sibling subset.
 - Static matchers and the exact five initial mappings of the closed `DerivationProgram`
@@ -2018,7 +2028,9 @@ dependency or artifact fails until explicitly reviewed.
   after observation returns `entry-disappeared`, never fallback. Its closed checkpoint role
   then maps a root, ancestor, or directory result to Source-fatal stale state, or a terminal-
   regular-file candidate result to file-scoped `safe-fs-entry-stale` that may contribute only
-  to a post-traversal, confirmed-closure contracted-partial Source. Every other throw or
+  to a post-traversal, confirmed-closure contracted-partial Source. The FR-041
+  event-confirmed-close observation leaves the already confirmed close successful. Every
+  non-carveout throw or
   rejection applies FR-041 and aborts the entire enable/retry transaction: every sibling's
   tentative context and result is discarded, no admitted subset is committed, and the exact
   pre-operation snapshot is restored. For initial enable that snapshot has no active
@@ -2106,7 +2118,7 @@ dependency or artifact fails until explicitly reviewed.
   while a deterministic returned fatal outcome references its lifecycle `Diagnostic`.
   This single-Source rescan path does not alter the atomic batch requirement for
   initial enable or retry.
-  Any unexpected throw or rejection during a Global batch produces no domain result and
+  Any unexpected non-carveout throw or rejection during a Global batch produces no domain result and
   follows its trigger-owning REST boundary. Before job acceptance it creates no
   `scanRequestId`; after acceptance it terminates the one shared request with a generic
   path/content-free Operation Error. In either case it commits none of the tentative sibling
@@ -2151,8 +2163,9 @@ dependency or artifact fails until explicitly reviewed.
 | A contract-declared pre-observation root `lstat` returns exact `ENOENT` | `absent` | Touch only that proposed root through the centralized structural check; do not fall back or create its Source, and continue partitioning the current server-owned set—all three tools initially or exact `retryableTools` on retry |
 | A contract-declared structural `lstat` returns exact `ENOENT` after the entry was observed or ticketed | `entry-disappeared` | Discard tentative authority/bytes and never fall back. Root/ancestor/directory roles are Source-fatal; terminal regular-file candidate roles map to file-scoped `safe-fs-entry-stale` and may contribute only a post-traversal, confirmed-closure contracted-partial scan outcome; unaffected siblings remain eligible |
 | Post-consent lexical/canonical/link/type/containment/identity checks return a deterministic failure without throwing | `root-rejected` | Touch only the proposed root through `safe-fs`; do not fall back or create its Source, and continue partitioning the current initial-three or exact-retryable set |
-| Any proposed-root operation throws or rejects other than exact `ENOENT` at a declared structural `lstat` | FR-041 propagation | Abort the whole Global transaction, discard every provisional sibling context/result, publish no admitted subset, and retain the prior snapshot |
-| Post-consent admission succeeds for one or more roots and no operation throws or rejects | `root-admitted` batch subset | Atomically attach all admitted private contexts/IDs to their controls and transfer them together to the one `GlobalBatchScan`; create no public Source or graph before its single atomic commit |
+| A FileHandle `close` event confirms closure before that handle's retained close promise rejects | FR-041 event-confirmed-close observation | Retain only the already-confirmed successful close lifecycle; do not classify the cause, poison the registry, propagate the rejection, select fallback, or publish a result from the observation |
+| Any non-carveout proposed-root operation throws or rejects | FR-041 propagation | Abort the whole Global transaction, discard every provisional sibling context/result, publish no admitted subset, and retain the prior snapshot |
+| Post-consent admission succeeds for one or more roots and no non-carveout operation throws or rejects | `root-admitted` batch subset | Atomically attach all admitted private contexts/IDs to their controls and transfer them together to the one `GlobalBatchScan`; create no public Source or graph before its single atomic commit |
 
 #### Verified-byte decoding
 
@@ -2169,10 +2182,11 @@ dependency or artifact fails until explicitly reviewed.
 |---|---|---|
 | Complete traversal; every admitted entry complete; assembly/serialization succeed; authority current | `committable-complete`, coordinator | Commit one `complete` generation and complete response; an initial/retry Global batch publishes every admitted tool-specific Source together in this one commit |
 | Complete traversal; only deterministic entry-local non-capacity failures; unaffected entries complete; assembly/serialization succeed; authority current | `committable-partial`, scan assembler then coordinator | Commit one `contracted-partial` generation with affected diagnostics and complete unaffected entries; an initial/retry Global batch still publishes its whole committable admitted subset in this one commit |
-| Fixed-three Global admission deterministically rejects every root and no operation throws or rejects | `active-no-job`, Global coordinator | Retain active consent/controls, create no `scanRequestId`, batch, Source, or generation, and preserve every carried ID |
-| A filesystem, parser, Worker, coordinator, assembly, serialization, or authority operation other than the declared structural-`lstat` exact-`ENOENT` conversion throws or rejects before a REST job is accepted | Unclassified propagation to the REST request boundary | Create no `scanRequestId`, item, Diagnostic, scan result, response body from the attempt, or generation; abort every tentative Global sibling, return one generic path/content-free HTTP Operation Error, and keep the process/session and prior snapshot available |
+| Fixed-three Global admission deterministically rejects every root and no non-carveout operation throws or rejects | `active-no-job`, Global coordinator | Retain active consent/controls, create no `scanRequestId`, batch, Source, or generation, and preserve every carried ID |
+| A FileHandle `close` event confirms closure before that handle's retained close promise rejects | FR-041 event-confirmed-close observation in the resource registry | Retain only the already-confirmed successful close lifecycle; create no item, Diagnostic, result, or generation from the observation, and neither poison the registry nor propagate the rejection |
+| A non-carveout filesystem, parser, Worker, coordinator, assembly, serialization, or authority operation throws or rejects before a REST job is accepted | Unclassified propagation to the REST request boundary | Create no `scanRequestId`, item, Diagnostic, scan result, response body from the attempt, or generation; abort every tentative Global sibling, return one generic path/content-free HTTP Operation Error, and keep the process/session and prior snapshot available |
 | Such an operation throws or rejects after a REST job is accepted | Unclassified propagation to the accepted-job boundary | Abort the whole request, including every tentative Global batch sibling; commit no attempt result, Source, or generation; retain the prior snapshot and expose one generic path/content-free terminal Operation Error for the one `scanRequestId`; if and only if the accepted job is an explicit rescan, create or replace that Source's stale overlay referencing only this Operation Error; initial scans and initial/retry Global batches create no stale overlay; keep the process/session available |
-| Automatic startup work with no REST owner throws or rejects | Unclassified propagation to the process top level | Publish no attempt result or generation; make no process/session survival guarantee. Product API/log/telemetry contains no raw error, while runtime-owned local uncaught-error output remains outside product control |
+| Non-carveout automatic startup work with no REST owner throws or rejects | Unclassified propagation to the process top level | Publish no attempt result or generation; make no process/session survival guarantee. Product API/log/telemetry contains no raw error, while runtime-owned local uncaught-error output remains outside product control |
 | Another deterministic fatal returned outcome that cannot use the complete or contracted-partial transition | Closed coordinator outcome | Abort the attempt, commit no result or generation, retain the prior snapshot, and expose only its fixed path/content-free lifecycle representation; if and only if the attempt is an explicit rescan, create or replace that Source's stale overlay referencing its lifecycle Diagnostic; initial scans and initial/retry Global batches create no stale overlay |
 | Disable/shutdown/supersession/failure revokes authority | `revoked`, coordinator | Discard all late bytes, extraction, diagnostics, DTOs, events, and graph mutations |
 | Transport fails after atomic commit | Existing committed outcome, host | Never relabel or expose a truncated body as partial; allow authenticated refetch of the already committed generation |

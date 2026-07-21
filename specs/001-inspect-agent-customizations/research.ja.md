@@ -309,7 +309,8 @@ URLをmanual openできるままにする。
    schema、closed selection policy、canonical programをbindする。Content依存policyはclosedなCodex Global
    first-non-empty branchだけで、overrideを先にprobeし、安全にreadできたnon-empty contentならshort-circuitし、absentまたは
    安全にemptyと確定した場合だけ次へ進む。決定的なunsafeまたはbinary candidateは安全にreturnしたDiagnosticで終了し、
-   throw/rejectionはすべてfallbackせず伝播する。
+   event-confirmed-close observationは既にconfirm済みのsuccessful close lifecycleだけとして扱い、すべてのnon-carveout
+   throw/rejectionはfallbackせず伝播する。
 3. **Runtime composition registry**は、selection、precedence、layering、fallback、condition projection、
    relationship-only ruleを表すstable `strategyId`を
    [runtime composition](contracts/runtime-composition.ja.md)に記録する。Strategyはpathを再記述せずbehavior IDと
@@ -490,10 +491,12 @@ diagnostic-only recordを残し、contracted-partial commitを通じてunaffecte
 Root/shared-ancestorまたはdirectory-enumeration guard outcome、もしくはFileHandle/`fs.Dir`のclose未確認は、影響Source
 attemptをabortして以前にcommitしたgraphを維持し、candidate record、partial generation、success receiptをcommitしない。
 
-ここでdomain outcomeへ変換するfilesystem rejectionは、contractで宣言したstructural existence checkpointの`lstat`
-callから返るNodeの正確な`ENOENT`だけとする。Observation前なら`absent`、observation後なら`entry-disappeared`を意味する。
-Handlerはmessageではなくcodeだけを検査し、`open`、`read`、その他のerrorへは決して適用しない。他の全throw/rejectionは、
-filesystem、parser、recognition、scan domain layerを通して変更せずpropagateする。
+ここでcatchまたはobserveするfilesystem rejection caseは、FR-041の2つの限定的なcarve-outだけとする。Contractで宣言した
+structural existence checkpointの`lstat` callから返るNodeの正確な`ENOENT`は、observation前なら`absent`、observation後なら
+`entry-disappeared`を意味する。Handlerはmessageではなくcodeだけを検査し、その変換を`open`、`read`、その他のerrorへは
+決して適用しない。これとは別に、FileHandleの`close` eventがclosureをconfirmした後は、resource registryが同じhandleのretained
+close promiseの後続rejectionをobserveし、既にconfirm済みのsuccessful close lifecycleだけを維持してよい。すべてのnon-carveout
+throw/rejectionはfilesystem、parser、recognition、scan domain layerを通して変更せずpropagateする。
 
 調査対象sourceへのfilesystem callは全てprocess-wideのsequential executorを通す。Process-wideな
 `ClosableResourceRegistry` 1つだけが全inspection `FileHandle`/`fs.Dir`のowner/close-state machineとなる。`open`/`opendir`前に
@@ -570,7 +573,8 @@ comparison contentは、credential検出、content-based masking、redaction、r
 契機にしない。文書化済みの`CODEX_HOME`、`CLAUDE_CONFIG_DIR`、`COPILOT_HOME` inputは、hostがtool別Global Source
 rootを特定するためだけに使い、content parseでは使わない。Inspectorはfile-size/file-count validationを適用しない。
 Read、decode、parse、retentionはNode.js、parser library、OS、実行環境が利用可能にするcapacityを使う。完全なtraversal後、
-FR-028対象の決定的でthrowしないentry outcomeだけがcontracted-partialを使える。その他のthrow/rejectionはdomainで
+FR-028対象の決定的でthrowしないentry outcomeだけがcontracted-partialを使える。Event-confirmed-close observationは既に
+confirm済みのsuccessful close lifecycleだけを維持する。すべてのnon-carveout throw/rejectionはdomainで
 classification/retry/recoveryせずpropagateし、attemptへresultを提供せず、REST所有boundaryではgenericなOperation Errorだけに
 なる。Startup所有failureはprocess top levelへ到達する。Process-level OOMやkernel terminationからのrecoverは保証しない。
 
@@ -807,8 +811,9 @@ actionable Diagnosticを参照し、throw/rejectionではOperation Errorだけ�
 Sourceのconsent、accepted root context、最後にcommitしたgraphをretry/disable用に保持する。
 
 Session-wide consent 1件で3 tool全てを固定し、frozen preview entryごとに`GlobalToolControl`を1つ持ち、selectorは
-持たない。Consent後validationがabsenceとしてcatchするのは、structural `lstat`からの正確な`ENOENT`だけとする。
-Lexical/link/type/boundary outcomeはsiblingをrejectできるが、その他のthrow/rejectionは全transactionをowning REST
+持たない。Consent後validationはstructural `lstat`からの正確な`ENOENT`だけをabsenceとしてcatchする。
+Lexical/link/type/boundary outcomeはsiblingをrejectでき、event-confirmed-close observationは既にconfirm済みのsuccessful
+close lifecycleだけを維持するが、すべてのnon-carveout throw/rejectionは全transactionをowning REST
 boundary経由でabortする。Validationがrootを1つもadmitしない場合、`active-no-job`はretry/disable用controlを保持し、
 Source/job/generationをpublishしない。1つから3つをadmitした場合、provisional batch scan 1件が各rootの独立したSourceを
 正確に1つのgenerationでまとめてpublishし、tool別commitは観測できない。Active-consent retryのvalidation/admissionは
@@ -820,7 +825,8 @@ commitする。Initial enableはatomic activationまでcontrol projectionを持�
 
 Inspectorはfile-size、file-count、aggregate record、graph、Diagnostic、parser message、response-size、queue capacity、
 scan-timeのproduct独自limitを定義しない。実効capacityはNode.js、parser/editor engine、browser、OS、filesystem、実行環境に
-従う。これらのlayerからのthrow/rejectionへdomainはcapacity/resource/operational causeを割り当てない。Trigger ownerへ
+従う。Event-confirmed-close observationは既にconfirm済みのsuccessful close lifecycleだけを維持する。これらのlayerからの
+non-carveout throw/rejectionへdomainはcapacity/resource/operational causeを割り当てない。Trigger ownerへ
 propagateし、attempt result/generationを返却もcommitもせず、REST boundaryがsurviveする場合は以前のsnapshotを維持する。
 このfailureはcontracted-partialを決して認可しない。Routeはcommit済みDTOを一度だけserializeし、silent truncateしない。
 Process-level OOM、kernel termination、無期限にpendingとなるuncancellable filesystem operationはapplication contractでは
@@ -1266,7 +1272,7 @@ manual accessibility check、documentation parity check、release tarball inspec
    同じSourceの再fatal rescanはそのSourceの両方だけを置換する。
 4. Generation 0はreadを認可しないRepository Sourceを既に含む。決定的な自動failureはprovisional resultをpublishせず、
    startupのthrow/rejectionはsurvival保証なしでprocess top levelへ到達する。初回Global enableは固定のall-tools consentと、
-   admitted-subset batch 1件を使う。決定的なall-rejected outcomeは`active-no-job`を返す。それ以外のthrow/rejectionはREST
+   admitted-subset batch 1件を使う。決定的なall-rejected outcomeは`active-no-job`を返す。Non-carveout throw/rejectionはREST
    Operation Errorだけを作り、subsetを一切commitしない。Purge済みclientはselectorなしでretryする前にactive control viewと
    exact frozen previewをrecoverする。
 5. Cross-sourceの表示、filter、diagnostic用語はSource-relative Pathとする。Repository-relative pathは、選択した
@@ -1419,9 +1425,10 @@ mutationとしてscoreすること、server-side acknowledgement stateは、plat
    `retryDisposition: same-preview`の`rejected` controlを導出し、lexicalな`new-preview-required`を除外する。決定的に
    rejectされたentryはsiblingをblockしない。Admitした全rootをbatch
    1件としてscanし、それぞれ独立したone-root Sourceをatomic generation 1件でpublishする。
-3. Domain内でinterpretする唯一のfilesystem rejectionは、contractで宣言したstructural `lstat`からの正確な`ENOENT`とする。
-   Root absence、exact-target fallback、observed-entry disappearanceには、このclosed factが必要だからである。`open`/`read`からの
-   `ENOENT`を含むその他の全throw/rejectionは、変更せずpropagateする。Pre-acceptanceのREST ownerは`scanRequestId`なしの固定
+3. Domain内でcatchまたはobserveするfilesystem rejection caseは、FR-041の2つの限定的なcarve-outだけとする。Contractで
+   宣言したstructural `lstat`からの正確な`ENOENT`は、root absence、exact-target fallback、observed-entry disappearanceに必要な
+   closed factを提供し、event-confirmed-close observationは既にconfirm済みのsuccessful close lifecycleだけを維持する。
+   `open`/`read`からの`ENOENT`を含むすべてのnon-carveout throw/rejectionは、変更せずpropagateする。Pre-acceptanceのREST ownerは`scanRequestId`なしの固定
    HTTP 500 Operation Errorを返す。Accepted jobは同じgeneric terminal entityをそのIDとともに公開し、processと以前のsnapshotを
    維持する。Startup所有failureはprocess top levelへ到達する。Raw errorはproduct API、log、telemetryへ入れないが、runtime所有の
    local uncaught outputはlimitationとして残る。

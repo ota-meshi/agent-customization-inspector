@@ -82,6 +82,15 @@ assertionに対するcanonical JSONのlowercase SHA-256である。Fieldはtrunc
 | Anthropic | `code.claude.com` |
 | OpenAI | `learn.chatgpt.com` |
 
+受理する第一者evidence classは、全vendor横断で1つのhierarchyを形成する。上記exact host上の
+general guide、reference page、version付きrelease noteまたはchangelogだけを受理classとする。
+Guideとreference pageは直接述べるclaimだけを確立し、この2 classは同格である。直接的で
+version-qualifiedなrelease note/changelog assertionは、guideまたはreference pageの省略に優先する。
+一方、直接矛盾するassertion同士はrankせず`conflict`として保持する。公式source repositoryと公式
+issue/discussion statementはすべてのdocumentation classより下位であり、上記hostに登録できず、
+登録済みdocumentation evidenceの代替にはならない。後述のMicrosoft Visual Studio Code sectionは、
+このhierarchyを特定のguide/release-note conflictへ適用したものである。
+
 ## Exact affected-record reverse index
 
 両方向を手動保守すると監査できない第二のsource of truthが生じるため、affected-ID arrayは下表に
@@ -224,8 +233,9 @@ OpenAI rowは、official Codex manualが出力したexact first-party Markdown s
 
 2026-07-20のInspector runtime reconciliationはproduct policyであり、upstream Codex behaviorに関するassertion
 ではない。調査対象Codex candidateでは、contract-declaredなstructural `lstat` checkpointからの正確な
-`ENOENT`だけを`absent`または`entry-disappeared`へ変換する。それ以外のthrowまたはrejectionは、`open`や
-`read`からの`ENOENT`を含め、変更せずpropagateする。NUL byteはbinaryかつdiagnostic-only outcomeとする。
+`ENOENT`だけを`absent`または`entry-disappeared`へ変換する。FR-041のevent-confirmed-close observationは既に
+confirm済みのsuccessful close lifecycleだけを維持する。`open`や`read`からの`ENOENT`を含むすべてのnon-carveout
+throwまたはrejectionは変更せずpropagateする。NUL byteはbinaryかつdiagnostic-only outcomeとする。
 NULを含まない全byte streamはUTF-8 replacement semanticsで正確に1回decodeし、invalid sequenceは
 `utf-8-replaced`となり、生成された`U+FFFD`を含む文字化けtextをparsing、extraction、display、comparisonに使用する
 完全なsourceに保持する。Maintained OpenAI assertionは選択した公式sectionだけをparaphraseし、これらInspector所有の
@@ -257,7 +267,8 @@ pnpm exec vitest run tests/contract/official-sources
 Network accessなしで、exact registry/Evidence set equality、bilingual edge parity、reciprocal affected ID、
 official host、record schema、assertion target、再計算した`semanticFingerprint`をvalidateする。
 
-Networkを使用するdrift reviewは、maintainerだけが次を明示実行する。
+Networkを使用するdrift reviewはmaintainerだけが明示実行し、少なくともすべてのfrozen release candidate前と、
+supported surfaceへのmaterialなupstream変更を認知した時点で実行する。
 
 ```sh
 pnpm run check:official-sources

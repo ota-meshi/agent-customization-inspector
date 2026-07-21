@@ -383,7 +383,7 @@ mixed path matrix:
    content-dependent policy is the closed Codex Global first-non-empty branch: it probes
    the override first, short-circuits on safely read non-empty content, advances only from
    absent or safely empty content, ends with a safe returned Diagnostic for a deterministic
-   unsafe or binary candidate, and propagates every throw/rejection without fallback.
+   unsafe or binary candidate, treats the event-confirmed-close observation only as already-confirmed successful close lifecycle, and propagates every non-carveout throw/rejection without fallback.
 3. The **runtime composition registry** records stable `strategyId` values for selection,
    precedence, layering, fallbacks, condition projection, and relationship-only rules in
    [runtime composition](contracts/runtime-composition.md). A strategy refers to behavior
@@ -621,12 +621,15 @@ guard outcome, or any unconfirmed FileHandle or `fs.Dir` close, aborts the affec
 attempt, preserves its previously committed graph, and commits no candidate record, partial
 generation, or success receipt.
 
-The only filesystem rejection converted here is Node's exact `ENOENT` from an `lstat`
-call at a contract-declared structural existence checkpoint. Before observation it means
-`absent`; after observation it means `entry-disappeared`. The handler checks only the code,
-never the message, and never applies to `open`, `read`, or another error. Every other throw
-or rejection propagates unchanged through filesystem, parser, recognition, and scan domain
-layers.
+The only two caught or observed filesystem-rejection cases here are FR-041's narrow
+carve-outs. Node's exact `ENOENT` from an `lstat` call at a contract-declared structural
+existence checkpoint means `absent` before observation or `entry-disappeared` afterward.
+The handler checks only the code, never the message, and never applies that conversion to
+`open`, `read`, or another error. Separately, after a FileHandle `close` event has confirmed
+closure, the resource registry may observe a later rejection of that handle's retained
+close promise and retain only the already-confirmed successful close lifecycle. Every
+non-carveout throw or rejection propagates unchanged through filesystem, parser,
+recognition, and scan domain layers.
 
 All inspected-source filesystem calls run through one process-wide sequential executor.
 One process-wide `ClosableResourceRegistry` is the sole owner and close-state machine for
@@ -731,8 +734,9 @@ only by the host to locate tool-specific Global Source roots, not by content par
 The Inspector applies no file-size or file-count validation. Reading, decoding, parsing, and
 retention use the capacity available from Node.js, the parser libraries, the operating
 system, and the execution environment. After complete traversal, only an FR-028-eligible
-deterministic non-throwing entry outcome may use contracted-partial. Any other throw or
-rejection propagates without domain classification/retry/recovery, contributes no result to
+deterministic non-throwing entry outcome may use contracted-partial. The
+event-confirmed-close observation retains only already-confirmed successful close lifecycle.
+Any non-carveout throw or rejection propagates without domain classification/retry/recovery, contributes no result to
 the attempt, and becomes only a generic Operation Error at a REST-owning boundary; startup-
 owned failure reaches the process top level. Recovery from process-level OOM or kernel
 termination is not promised.
@@ -1037,9 +1041,10 @@ retains that Source's consent, accepted root context, and last committed graph f
 disable.
 
 One session-wide consent fixes all three tools, with one `GlobalToolControl` per frozen
-preview entry and no selector. Post-consent validation catches only exact structural-`lstat`
-`ENOENT` as absence; lexical/link/type/boundary outcomes may reject a sibling, while every
-other throw/rejection aborts the whole transaction through the owning REST boundary. If
+preview entry and no selector. Post-consent validation catches exact structural-`lstat`
+`ENOENT` only as absence; lexical/link/type/boundary outcomes may reject a sibling, the
+event-confirmed-close observation retains only already-confirmed successful close lifecycle,
+and every non-carveout throw/rejection aborts the whole transaction through the owning REST boundary. If
 validation admits no root, `active-no-job` retains control for retry/disable and publishes no
 Source/job/generation. If it admits one to three roots, one provisional batch scan publishes
 all of their separate Sources together in exactly one generation; no per-tool commit is
@@ -1056,8 +1061,9 @@ that work finishes, while disable remains immediate.
 The Inspector defines no file-size, file-count, aggregate-record, graph, Diagnostic, parser-
 message, response-size, queue-capacity, or scan-time limit. Effective capacity is inherited
 from Node.js, parser and editor engines, the browser, the operating system, the filesystem,
-and the execution environment. A throw or rejection from those layers is not assigned a
-capacity/resource/operational cause by the domain. It propagates to the trigger owner,
+and the execution environment. The event-confirmed-close observation retains only already-
+confirmed successful close lifecycle. A non-carveout throw or rejection from those layers
+is not assigned a capacity/resource/operational cause by the domain. It propagates to the trigger owner,
 returns or commits no attempt result/generation, and retains the prior snapshot when a REST
 boundary survives. Such a failure never authorizes contracted-partial. Routes serialize
 committed DTOs once and never silently truncate them.
@@ -1889,7 +1895,7 @@ the following rules into every later design artifact:
    automatic failure publishes no provisional result; a startup throw/rejection reaches the
    process top level with no survival guarantee. Initial Global enable uses fixed all-tools
    consent and a single admitted-subset batch. A deterministic all-rejected outcome returns
-   `active-no-job`; another throw/rejection creates only the REST Operation Error and commits
+   `active-no-job`; a non-carveout throw/rejection creates only the REST Operation Error and commits
    none of the subset. A purged client recovers the active control view and exact frozen
    preview before selector-free retry.
 5. Source-relative Path is the cross-source display/filter/diagnostic term. Repository-
@@ -2088,9 +2094,11 @@ integrity, or confuse presentation with API authorization.
    whose `retryDisposition` is `same-preview`, excluding lexical `new-preview-required`. A
    deterministic rejected entry does not block siblings. All admitted roots are scanned as
    one batch and their separate one-root Sources publish in one atomic generation.
-3. The only filesystem rejection interpreted inside the domain is exact `ENOENT` from a
-   contract-declared structural `lstat`, because root absence, exact-target fallback, and
-   observed-entry disappearance require that closed fact. Every other throw/rejection,
+3. The only two caught or observed filesystem-rejection cases inside the domain are
+   FR-041's narrow carve-outs: exact `ENOENT` from a contract-declared structural `lstat`
+   supplies the closed fact required for root absence, exact-target fallback, and
+   observed-entry disappearance, while the event-confirmed-close observation retains only
+   already-confirmed successful close lifecycle. Every non-carveout throw/rejection,
    including `ENOENT` from `open`/`read`, propagates unchanged. A pre-acceptance REST owner
    returns fixed HTTP 500 Operation Error with no `scanRequestId`; an accepted job exposes
    the same generic terminal entity with its ID and keeps the process/prior snapshot;

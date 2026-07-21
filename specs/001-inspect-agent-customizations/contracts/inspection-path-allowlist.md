@@ -199,8 +199,10 @@ absent or safely established empty override advances to `AGENTS.md`. A whitespac
 empty. Replacement-decoded `utf-8-replaced` text participates unchanged and any `U+FFFD` is
 non-whitespace. A deterministic unsafe or binary candidate ends without examining a later
 selector. `absent` means only exact `ENOENT` from that contract-declared target `lstat`
-after root verification; the same code after observation is `entry-disappeared`. Every
-other throw/rejection, including `open`/`read`, propagates without a domain catch or fallback. The
+after root verification; the same code after observation is `entry-disappeared`. The
+FR-041 event-confirmed-close observation retains only already-confirmed successful close
+lifecycle and never selects fallback. Every non-carveout throw/rejection, including
+`open`/`read`, propagates without a domain catch or fallback. The
 policy publishes the selected non-empty file and never publishes both selectors.
 
 The no-I/O Global preview renders `pathPatterns` from this same immutable plan; there is
@@ -277,9 +279,12 @@ explicit `Dir.read()` until null; rows 25, 26 in ancestor order, 27, exact-platf
 before sibling classification, descent, or ticket issuance. Source-root enumeration uses
 only rows 21 and 25.
 Only `error.code === 'ENOENT'` from the instance's one `lstat`
-returns the listed outcome. A phase/role/target mismatch, consumed or absent instance,
-different error code, undeclared `lstat`, or rejection from `opendir`, `open`, `read`,
-`realpath`, `FileHandle.stat`, or any other operation propagates unchanged. A successful
+returns the listed checkpoint outcome. The event-confirmed-close observation is separate:
+after a FileHandle `close` event confirms closure, the registry may observe a later rejection
+of that handle's retained close promise and retain only the already-confirmed successful
+close lifecycle. A phase/role/target mismatch, consumed or absent instance, different error
+code, undeclared `lstat`, or non-carveout rejection from `opendir`, `open`, `read`,
+`realpath`, `FileHandle.stat`, close/unregister, or any other operation propagates unchanged. A successful
 checkpoint never licenses a later call to reuse its catch. For the Codex policy, only row 3
 on the primary selector may advance to the fallback as `absent`.
 An observed candidate is a collision-free selected `Dirent` after complete sibling
@@ -381,8 +386,9 @@ Rows 21–24 bind exact bigint directory/root/ancestor `dev`, `ino`, `mode`, `mt
 raw sibling buffer before descent or open. Rows 25–28 then require the same identity/type/
 mode and unchanged `mtimeNs`/`ctimeNs`, and the resource registry must confirm `fs.Dir`
 closure before the buffer is classified or used. A detectable create/remove/rename during
-enumeration is source-fatal and publishes no generation. A throw/rejection before
-completion, during post-checks, or during close propagates to the trigger-owning outer boundary,
+enumeration is source-fatal and publishes no generation. The event-confirmed-close observation
+retains only already-confirmed successful close lifecycle. A non-carveout throw/rejection before
+completion, during post-checks, or during close—including any unconfirmed close—propagates to the trigger-owning outer boundary,
 publishes no attempt result/generation, and never becomes contracted-partial. Distinct raw
 relevant siblings with the same NFC classification key all fail closed with pathless session
 Diagnostic `safe-fs-path-normalization-collision`; no member is descended into or read, the
@@ -541,6 +547,22 @@ instruction budget, and external state remain independent condition facts. Missi
 excluded inputs never default to satisfied, and the UI must not call a candidate
 semantically effective.
 
+The contracts use a fixed existence-versus-activation vocabulary. `present` means only
+that an authored regular file exists at an allowlisted location inside an enabled
+boundary. `recognized` means a present file matched an Inspector rule and owns a
+`(tool, kind)` recognition. `supported` means a `(tool, kind)` customization type is in
+this release's frozen contract catalog. These three terms describe authored existence
+and Inspector classification only. `available` means a scope or runtime input actually
+exists for the surface (`scope-availability`, `tool-availability`, `installation`).
+`applicable` means the vendor's documented applicability conditions—surface, roots,
+`target-match`, and related facts—are satisfied for a concrete runtime context.
+`selected` means the vendor's documented resolution chose the artifact among
+alternatives (`selection`). `enabled` means the relevant enablement gate is on at the
+relevant scope (`enablement`). `effective` means every required condition fact of the
+documented runtime edge is `satisfied`. These five activation terms are established only
+by condition facts, never by file existence, and each unresolved fact keeps the
+projection conditional or `unknown`.
+
 ## Symlink, alias, and resource invariants
 
 - Symbolic-link files and directories and non-regular candidates are rejected. Junctions,
@@ -553,10 +575,14 @@ semantically effective.
 - A validated source-boundary record and exact enumeration record authorize only the
   centralized read operation. A canonical path string, relationship target, or source text
   alone never authorizes a direct filesystem open.
-- The sole caught filesystem rejection is exact `ENOENT` from a contract-declared
-  structural `lstat`, mapped only to `absent` before observation or
-  `entry-disappeared` afterward. The code is not inferred from message text and the rule
-  never applies to `open`, `read`, or any other throw/rejection.
+- The only two caught or observed filesystem-rejection cases are FR-041's narrow
+  carve-outs. Exact `ENOENT` from a contract-declared structural `lstat` maps only to
+  `absent` before observation or `entry-disappeared` afterward; the code is not inferred
+  from message text and the rule never applies to `open` or `read`. Separately, after a
+  FileHandle `close` event has confirmed closure, the process-wide resource registry may
+  observe a later rejection of that handle's retained close promise and retain only the
+  already-confirmed successful close lifecycle. Every non-carveout throw/rejection
+  propagates under FR-041.
 - Immediately before opening, the service repeats the root-identity and ancestor-`lstat`
   checks, then runs the ordered candidate verification sequence above.
   It opens the candidate with `O_NOFOLLOW` whenever `node:fs.constants.O_NOFOLLOW` exists
@@ -583,14 +609,14 @@ semantically effective.
 - File, collection, derivation, relationship, parser, diagnostic, and timing capacity is
   inherited from Node.js, parser libraries, the operating system, the filesystem, and the
   execution environment as specified in the [data-model contract](../data-model.md). A
-  throw/rejection propagates without domain cause classification or recovery and, when
+  non-carveout throw/rejection propagates without domain cause classification or recovery and, when
   REST-owned, is represented only by the generic Operation Error. A contracted partial is
   possible only after complete traversal for FR-028-eligible deterministic non-throwing
   outcomes. Neither path permits implicit expansion,
   retry without authority, fallback read, or a validity verdict.
 - One deterministic unsafe, malformed, binary, or changed candidate does not prevent
   unaffected candidates from being reported when it satisfies the contracted-partial rule
-  above. A throw/rejection publishes no current-attempt result and follows the owning-
+  above. A non-carveout throw/rejection publishes no current-attempt result and follows the owning-
   boundary rule.
 - No relationship or excluded record may be promoted merely because its target happens
   to exist. A target is readable only through an independent static or bounded-derived
@@ -616,14 +642,15 @@ Contract and fixture validation must prove all of the following:
    closed selection policy, and canonical programs. Codex traces apply absent, empty,
    BOM-only, whitespace-only, non-empty, replacement-decoded, binary, and non-regular cases
    independently to both ordered targets; they distinguish exact structural-`lstat`
-   `ENOENT` from every other throw/rejection and prove short-circuit/propagation behavior, including that the
-   two selectors are never both published.
+   `ENOENT`, the event-confirmed-close observation, and every non-carveout throw/rejection,
+   and prove short-circuit/propagation behavior, including that the two selectors are never
+   both published.
    Shared-prefix Global traces prove that each selector independently executes row 20,
    every row-2 prefix observation, and its immediate rows 4–7 directory checks before the
    next descendant operand; no cross-selector admission cache suppresses those calls.
    Global-consent fixtures reject selector-shaped input, evaluate all three frozen entries,
    isolate deterministic rejected roots, publish all admitted one-root Sources in one batch
-   generation, and prove that any other throw/rejection aborts the whole provisional subset.
+   generation, and prove that any non-carveout throw/rejection aborts the whole provisional subset.
 5. Every static and bounded-derived rule has positive, root/nested, boundary, symlink,
    alias, thrown/rejected-operation, and applicable multi-tool fixtures. Derived fixtures additionally
    prove closed `DerivationProgram` interpretation without callbacks or free-form path
@@ -658,7 +685,9 @@ Contract and fixture validation must prove all of the following:
    `realpath` call. Every ordinary concurrent or otherwise detectable change publishes no
    bytes and fails with an actionable diagnostic. Successfully returned ambiguous or
    unusable metadata yields `safe-fs-boundary-unverifiable`; exact structural-`lstat`
-   `ENOENT` alone becomes absent/disappeared; every other throw/rejection propagates. An OS
+   `ENOENT` alone becomes absent/disappeared; the event-confirmed-close observation retains
+   only already-confirmed successful close lifecycle; every non-carveout throw/rejection
+   propagates. An OS
    behavior that Node.js cannot observe is recorded as a platform limitation and is not
    counted as proof against the excluded active-adversary race.
    Explicit UNC/server-share spelling proves zero filesystem/DNS/SMB calls; a mapped drive

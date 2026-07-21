@@ -24,7 +24,7 @@ relationship、strategyはいずれもread authorityを与えない。
 
 | 用語 | このcontractでの意味 |
 |---|---|
-| **Workspace root** | VS Codeでworkspace folderとして開いた1 folder。Git repository rootと異なる場合がある。 |
+| **Workspace root** | VS Codeでworkspace folderとして開いた1 folder。Single-folder workspaceはworkspace folderを正確に1つ持ち、`.code-workspace`のmulti-root workspaceは構成folderごとに1つ持つ。Git repository rootと異なる場合がある。 |
 | **Repository root** | Hosted GitHub surfaceが処理するrepositoryのroot。 |
 | **Git root** | Copilot CLIがruntime working directoryから上向きにwalkするときの停止boundary。 |
 | **Runtime `cwd`** | 対象Copilot CLI sessionが動作するdirectory。Inspectorのselected Repository rootと同じとは限らない。 |
@@ -37,6 +37,10 @@ relationship、strategyはいずれもread authorityを与えない。
 
 以下の`**` segmentは、別に指定したbaseまたはInspectorの明示的な`./` boundaryでrecursionが固定される場合だけ
 現れる。Bare `**/` prefixは有効なInspector selectorではない。
+
+Inspectorのselected Repository rootは単一のfilesystem pathであり、multi-root workspaceをmodel化しない。
+Selected root外のworkspace folderはRepository sourceの外にあり、VS Code surfaceが実際に使うworkspace
+folderは、推測されたwinnerではなく未解決の`workspace-root` condition factのままとする。
 
 ## Canonical evidence-assessment index
 
@@ -253,7 +257,7 @@ readできる。
 | `copilot.global.instructions.path` | 同じ正確なconsent済み`<COPILOT_HOME>` boundary | `instructions/**/*.instructions.md` | 固定`instructions/` directory配下の`recursive-subtree` | `static-candidate` | `copilot.behavior.cli.user.instructions.path`, `copilot.behavior.vscode.user.instructions` | `copilot.cli.instructions.layering`, `copilot.vscode.instructions.layering` | FR-013、FR-014、FR-015、FR-018、QR-005 | `github.copilot.cli.instructions`, `github.copilot.instructions.support`, `vscode.copilot.instructions`, `vscode.copilot.settings` |
 
 Present emptyまたはrelativeな`COPILOT_HOME`、もしくはthrowせずrejectされたroot outcomeはinvalid overrideであり、
-暗黙fallbackしない。Root selection/admission中のthrow/rejectionは変更せずpropagateする。同じboundary配下でもuser
+暗黙fallbackしない。Root selection/admission中のnon-carveout throw/rejectionは変更せずpropagateする。同じboundary配下でもuser
 settings、agent、skill、hook、MCP、LSP、extension、plugin、permission、credential、log、session、cacheはexcludedの
 ままである。
 

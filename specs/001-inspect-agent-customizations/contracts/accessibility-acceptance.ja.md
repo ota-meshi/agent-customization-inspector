@@ -132,7 +132,7 @@ checkをすべて再実行する。
   file inspectionとMonaco source access、`S4` file diagnosticと実行可能なnext step、`S5` 2-file comparison、
   Monaco accessible diff、narrow inline alternative、`S6` generation replacement後のstale/removed comparison、
   `S7` Global disabled、selectorを持たないfixed 3-toolのsession-wide consent pending、admit済みsubsetを1 batchでscanして
-  正確に1つのatomic generationとしてcompleteする状態、その他のthrow/rejectionによるtransaction全体abort、およびrequest前
+  正確に1つのatomic generationとしてcompleteする状態、poisonもpropagationも伴わないevent-confirmed-close success、non-carveoutなthrow/rejectionによるtransaction全体abort、およびrequest前
   full client-data purge、greater content epoch、non-nullな全inspection-data fence、control-onlyのdraining/failed/retry/join state、
   unconfirmed cleanupのrestart next step、terminal recovery、`remove-active-state` N+1、未公開initial enableだけの
   `cleanup-only` N caseを扱う明示disable、`S8` 並行表示されるscan/status update、exactな

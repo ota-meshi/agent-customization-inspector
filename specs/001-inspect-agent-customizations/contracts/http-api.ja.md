@@ -153,7 +153,7 @@ credentialは明示的に要求されたreadable file detailの一部として�
 copyしない。Correlation IDを返してよいが、process memory内だけに保持する。Error envelopeと認証済みDiagnosticは、
 path-freeなoperational eventとは別のものとする。
 
-REST trigger所有のthrowまたはrejectされたoperationでは、`error` objectはclosedな`OperationError` shapeとし、正確に
+REST trigger所有のnon-carveoutとしてthrowまたはrejectされたoperationでは、`error` objectはclosedな`OperationError` shapeとし、正確に
 opaqueな`operationErrorId`、`code: "operation-failed"`、`messageKey: "api.operationFailed"`、`nextStepKey: "api.retryOrRestart"`、opaqueな
 `operationId`、`scanRequestId`を持つ。最後のfieldはasync job accept前にはnullで、job/IDを作らない。Accepted scan jobでは
 HTTP requestがすでに`202`を返しており、後のauthenticated full sessionがそのjobのnon-null `scanRequestId`を持つ同じclosed
@@ -314,7 +314,7 @@ exactな`{ scanRequestId, tools, phase, failureRef }`とする。`tools`をnon-e
 `waiting | enumerating | reading | deriving | recognizing`で`failureRef`はnullとする。Batch successは全Sourceをatomicに
 publishし、両fieldをclearしてgenerationを1回進める。Terminal deterministic failureはempty `pendingTools`と
 `phase: failed`を維持し、`{ kind: 'tool-failures', failedTools }`を持つ。`failedTools`はbatch-owned `toolFailures` rowを持つ
-non-empty fixed-order setで、Diagnostic IDを繰り返さない。Terminal throw/rejectionは
+non-empty fixed-order setで、Diagnostic IDを繰り返さない。Terminal non-carveout throw/rejectionは
 `{ kind: 'operation-error', operationErrorId }`を使い、`lastOperationErrorId`とexactに一致させる。Failed batchはretry受理または
 disableまでrequest correlationを維持する。`active-no-job` dispositionはnull `batchStatus`を持ち、job/generationを作らず、
 決定的なrejected-tool controlだけをretainまたはreplaceする。
@@ -331,7 +331,7 @@ Disable-barrier受理からterminal successまでは`state: disabling`、empty p
 `toolFailures`はnon-nullな全control `diagnosticId`をexact toolへmapする
 fixed-tool-orderかつuniqueなarrayで、各IDは`sessionDiagnosticIds`にも存在しsession-owned deterministic Diagnosticへresolveする。
 Operation Errorを含まず、そのcontrol failureのclearまたはdisable commitまで保持する。`lastOperationErrorId`はnull、またはactive consent全体について1件の
-accept済みadmitted-subset Global batch throw/rejectionを参照する。Accept前retry failureは保持し、決定的な`active-no-job` retryまたは
+accept済みadmitted-subset Global batchのnon-carveout throw/rejectionを参照する。Accept前retry failureは保持し、決定的な`active-no-job` retryまたは
 replacement-batch acceptanceはclearし、replacementのterminal failureはsupersedeし、Global disableはremoveする。1 toolを
 識別せず、`StaleSourceFailure`を作らない。
 
@@ -417,7 +417,8 @@ classification、文書化済みstructural scope/order/condition/selection/refer
 meaningまたはintentをinterpret/rankせず、customizationのcorrectness、validity、compliance、effectiveness、qualityを
 判定せず、policy/remediation advice、validation、lint、synchronization、conversion、formatting、fixingを一切提供しない。
 Inspector所有のmanifest、DTO、registry、capability、internal invariantに対するstrict validationは許可され、customization
-validationではない。決定的なavailability Diagnosticはcontent verdictを含まず、throw/rejectされたoperationはouter-boundary
+validationではない。決定的なavailability Diagnosticはcontent verdictを含まない。Event-confirmed-close observationは既にconfirm済みの
+successful close lifecycleだけを維持してerrorを作らず、non-carveoutとしてthrow/rejectされたoperationはouter-boundary
 Operation Errorだけを使用してDiagnosticにはならない。
 
 File encoding stateは、完了したsame-handle readがread後の全checkに成功してから割り当てる。NUL byteが1つでもあれば
@@ -554,7 +555,8 @@ Codex planだけは`codex-global-first-non-empty`を使う。`AGENTS.override.md
 whitespace-only contentは`decodedText.trim().length === 0`のもとでemptyとする。`utf-8-replaced`は通常textとして参加し、
 全`U+FFFD`はnon-whitespaceである。Non-emptyなCodex instruction fileを最大1件だけpublishする。`absent`はroot verification後、
 contract宣言済みexact targetの`lstat`が返すNodeのexact `ENOENT`だけを意味する。最初の観測後の同じcodeはfallbackでなく
-`entry-disappeared`とする。`open`/`read`を含むその他すべてのthrow/rejectionはdomain catch/fallbackなしでowning REST boundaryへpropagateする。
+`entry-disappeared`とする。FR-041のevent-confirmed-close observationは既にconfirm済みのsuccessful close lifecycleだけを維持し、fallbackを選択しない。
+`open`/`read`を含むすべてのnon-carveoutなthrow/rejectionはdomain catch/fallbackなしでowning REST boundaryへpropagateする。
 
 GET status: `200`、`404 consent-preview-missing`、またはcapability/Host failureの`401`/`403`。POST status: `201`、
 `409 consent-preview-frozen`、`global-enable-in-progress`、`global-disable-pending`、
@@ -602,7 +604,8 @@ derived set全体をevaluateする間は`globalEnableInProgress { kind, operatio
 `409 global-enable-in-progress`を返す。このprojectionはtool outcome、root、context、Source、job、authorityを一切publishしない。Empty/relative/
 表現不能entryはfilesystem callなしの決定的rejectionとする。Eligibleなabsolute rootでは、contract宣言済みstructural
 `lstat`からのNodeのexact `ENOENT`だけを`absent`に変換する。正常にreturnされたlink/type/canonical/identity checkはfallbackなしで
-そのtoolを決定的にrejectできる。Permission failureや`open`/`read` rejectionを含むその他すべてのthrow/rejectionはdomain
+そのtoolを決定的にrejectできる。FR-041のevent-confirmed-close observationは既にconfirm済みのsuccessful close lifecycleだけを維持する。
+Permission failureや`open`/`read` rejectionを含むすべてのnon-carveoutなthrow/rejectionはdomain
 classificationなしでREST ownerへpropagateする。Initial enableではjob accept前に発生するため、null `scanRequestId`のgeneric
 Operation Errorを返し、consent/control/jobをactivateせず、provisional subsetを一切commitしない。Retryでは既存
 consent/controlとprior snapshotを変更しない。どちらのaccept前failureも`globalEnableInProgress`をunregisterし、terminal
@@ -625,7 +628,7 @@ Operationは各async stepの前後でID/epoch、non-aborted signalに加え、in
 retryでは同じactive control snapshotをcheckする。単一batch enqueue直前にcoordinatorがinitial consent/controlをatomicに
 activateするかretry partitionを適用し、生成されたactive control stateをverifyする。Disable-first raceはdrainしてlate mutationなしの
 `409 global-disable-pending`を返し、operation-firstの`202`は後のbarrierがbatchを
-cancelしてもaccepted dispositionのままとする。`202`後のthrow/rejectionは同じnon-null `scanRequestId`を持つterminal generic
+cancelしてもaccepted dispositionのままとする。`202`後のnon-carveout throw/rejectionは同じnon-null `scanRequestId`を持つterminal generic
 Operation Errorとし、subset Source/generationをcommitせずprior snapshotを維持する。Initial/retry admitted-subset Global batchでは
 Diagnosticも`StaleSourceFailure`も作らず、代わりにoperation-wide errorを1件retainして
 `globalControl.lastOperationErrorId`から参照する。後のretryとdisableにはsession projectionで定義した正確なclear/
@@ -664,7 +667,7 @@ Failed Global rescanは何もcommitせず、そのfailed attemptからpartial re
 `snapshotState: stale-after-fatal-rescan`、Sourceのnull `progress`と`status: failed`を返し、`enabled: true`、正確なconsent、validated済み
 single-root record、last committed graph、そのgraphの全IDを保持する。1件のactionable DiagnosticまたはOperation Errorは、
 許可されたlifecycle contextだけを識別してretained session snapshotがstaleだと説明する。そのSourceの`staleFailures` entryだけを
-作成または置換する。決定的にreturnされたfailureはlifecycle Diagnosticを参照し、throw/rejectionはdomainを越えてpropagateし、
+作成または置換する。決定的にreturnされたfailureはlifecycle Diagnosticを参照し、non-carveoutなthrow/rejectionはdomainを越えてpropagateし、
 この`scanRequestId`を持つgeneric accepted-job Operation Errorだけを参照する。後の同じSourceに対するsuccessfulまたは
 contract済みpartial rescanがgraphをatomic replaceして両方をclearし、別Sourceのcommitは両方を保持する。
 
@@ -718,8 +721,8 @@ process-wide `ClosableResourceRegistry`を通じて全inspection `FileHandle`と
 requeueせず、expected cancellationはDiagnosticもOperation Errorも作らない。
 
 Barrierが`draining`または`committing`の間に受けたrequestは同じ`operationId`とterminal resultへjoinし、いずれかのtransport
-disconnectでもcancelしない。Drain、close/unregister、final assembly、success serialization failureを含むaccept後のunexpected
-throw/rejectionは、null `scanRequestId`のgeneric Operation Errorを返す。そのexact retained errorは
+disconnectでもcancelしない。Drain、close/unregister、final assembly、success serialization failureを含むaccept後のunexpectedな
+non-carveout throw/rejectionは、null `scanRequestId`のgeneric Operation Errorを返す。そのexact retained errorは
 `globalDisableOperationErrorId`だけが所有する。`globalDisableInProgress.state`は`failed`となり、processはaliveのまま、prior
 generationはinternalに残り、全inspection-data fenceを閉じたままとする。Failed cleanupでcontentを再公開しない。
 
@@ -763,8 +766,9 @@ registryがno-opを禁止する場合だけ`409 resource-cleanup-restart-require
 
 - 1つのcoordinatorがcorrectness invariantとしてscan transactionをserializeする。1 Sourceあたりrunningまたはqueuedの
   scan commandを1つ受理し、duplicate scanはconflict、別のRepositoryまたはtool-specific Global Source scanはFIFOへ
-  queueしてwaiting phaseを示す。Catchするfilesystem rejectionは宣言済みstructural `lstat`からのexact `ENOENT`だけとし、
-  その他のadmission throw/rejectionはdomain state mutationなしでowning boundaryへpropagateする。Disableはpriority barrierの
+  queueしてwaiting phaseを示す。Catchまたはobserveするfilesystem rejection caseは、宣言済みstructural `lstat`からのexact `ENOENT` conversionと
+  FR-041のevent-confirmed-close observationだけとする。すべてのnon-carveoutなadmission throw/rejectionはdomain state mutationなしで
+  owning boundaryへpropagateする。Disableはpriority barrierの
   join/no-op ruleに従う。全自動/明示scanは1つのopaque `scanRequestId`を受け、実際のdequeue時にcurrentなgenerationから開始する。
 - 全scanと`GlobalEnableOperation`に`AbortSignal`を渡し、process shutdownは全workをabortする。Global disableは上記priority barrierで、
   active uncommitted transactionをabortし、enable validationをabort/drainして最後のqueued Global work cancellation sweep後に
@@ -809,15 +813,16 @@ registryがno-opを禁止する場合だけ`409 resource-cleanup-restart-require
   candidate sequence、同じopen handleの`stat()`を反復する。Dataとしてreturnされたambiguity、containment failure、metadata
   changeを検出した場合はbyte buffer全体を破棄してfail closedにする。正常にreturnされた必要なmetadataまたはcanonicalizationが
   unusableなら`safe-fs-boundary-unverifiable`をemitしてcandidateを拒否し、rootまたは共有ancestorがunverifiableならsourceを
-  拒否する。Contract宣言済みstructural `lstat`からのexact `ENOENT`だけを`absent`/`entry-disappeared`としてcatchし、その他
-  すべてのthrow/rejectionは変更せずpropagateしてcandidate Diagnosticを作らない。決定的なcandidate-local returned outcomeだけが、
+  拒否する。Contract宣言済みstructural `lstat`からのexact `ENOENT`だけを`absent`/`entry-disappeared`としてcatchし、FR-041の
+  event-confirmed-close observationは既にconfirm済みのsuccessful close lifecycleだけを維持する。すべてのnon-carveoutな
+  throw/rejectionは変更せずpropagateしてcandidate Diagnosticを作らない。決定的なcandidate-local returned outcomeだけが、
   complete traversalとacquireした全resourceのregistry-confirmed closure後に限りdiagnostic-only recordを保持できる。
   Root/shared-ancestorまたはdirectory-enumeration guard outcome、もしくはFileHandle/`fs.Dir`のclose未確認は、影響Source
   attemptをabortし、candidate record、contracted-partial generation、success receiptを作らない。
 - Mutation verificationはproductのfilesystem callをinstrumentし、inspection前後のfixture content、length、identity/link
   state、mode、modification/change time、観測可能なextended attributeまたはACLを比較する。OS readだけによるaccess-time
   移動は別に記録する。No-product-mutation claimをfailさせず、そのproofにも数えず、productはaccess-time updateをrequest
-  しない。Readのthrow/rejectionはdomain classificationなしでpropagateし、incomplete attemptを破棄してitem/result/generationを
+  しない。Readのnon-carveout throw/rejectionはdomain classificationなしでpropagateし、incomplete attemptを破棄してitem/result/generationを
   commitせず、REST所有の場合はgeneric Operation Errorだけを生成する。Valid、invalid、correct、incorrect、lint-failingの
   いずれともlabelしない。
 - Public Node.js APIにはportableなdirectory-handle-relative openがない。Check間にsource rootまたはancestorを置換する
@@ -884,7 +889,7 @@ registryがno-opを禁止する場合だけ`409 resource-cleanup-restart-require
    validation、lint、synchronization、conversion、formatting、fixingのfieldまたはbehaviorを一切admitしない。
 4. Extra JSON key、path-shaped input、malformed body、wrong method/media typeが文書化済みsafe errorを返す。
    Contract testはrequest、file、collection、parser、snapshot、detail、response DTOのいずれも、製品定義の数値capacity
-   上限を公開またはenforceしないことを証明する。注入したNode.js、parser、filesystem、serializationのthrow/rejectionは
+   上限を公開またはenforceしないことを証明する。注入したnon-carveoutなNode.js、parser、filesystem、serializationのthrow/rejectionは
    domain classificationをbypassし、owning REST boundaryでgeneric Operation Errorだけを返す。Diagnostic、partial JSON body、
    incomplete generation、validity/correctness/compliance/lint verdictを返さない。Escape/key-order fixtureは1つのcomplete serialized bufferがHTTP
    entity bodyであり、存在する場合の`Content-Length`と一致することを証明する。
@@ -899,14 +904,15 @@ registryがno-opを禁止する場合だけ`409 resource-cleanup-restart-require
    requeueする。`draining`/`committing`中のconcurrent disableは1 operation/resultへjoinし、`failed`後のrequestはinherited
    cleanup ledgerをretryする。
    Pauseしたvalidation/admission operationを最後のcancellation sweep前にabort/drainし、その後late continuationを解放しても
-   mutation、diagnostic、context、ID、jobを作らない。注入したnon-`ENOENT` admission rejectionはouter boundaryへpropagateし、
+   mutation、diagnostic、context、ID、jobを作らない。注入したnon-carveoutなadmission rejectionはouter boundaryへpropagateし、
    domain stateを変更せず製品定義のslot数に依存しない。Deterministicなbarrier-race fixtureではoperationを(a) validation await中、(b) admission後かつ
    control/context/diagnostic mutation前、(c) job enqueue/final response disposition直前でpauseする。各pauseでbarrierが
    先なら`409`となり、late side effectを許さず、operationをunregisterして後のenableを許可する。Operationのfinal
    dispositionが先なら、disable受理後にresponse byteをdeliveryしても確定済み
    `202`を維持する。
    Fence fixtureはfirst non-no-op acceptanceが`globalContentEpoch`をincrementし、session routeを即control-onlyにしてその他全
-   inspection-data routeがretained `failed`中も含め`409 global-disable-pending`を返すことを証明する。Close/unregisterとfinal
+   inspection-data routeがretained `failed`中も含め`409 global-disable-pending`を返すことを証明する。Event-confirmed-closeのlater-promise rejectionを
+   注入してpoison、propagation、Operation Errorを伴わないsuccessful lifecycleを証明する。別にnon-carveoutなclose/unregisterとfinal
    serialization rejectionを注入し、null-scan-ID disable Operation Errorのsole owner、process survival、content非再公開、
    idempotent retryを検証する。別のdeterministic delivery pauseではscan commit/disable acceptanceの前後にdata responseを保持する。
    Envelope epoch/generationとpayloadが混在せず、fence linearize時に未bind bodyは`409`となり、既にbind済みbodyは文書化した
@@ -943,11 +949,12 @@ registryがno-opを禁止する場合だけ`409 resource-cleanup-restart-require
    Escape-collision、control-character、backslash fixtureはdigestがraw valueをlength-prefixし、enableがstored raw valueだけを
    使ってenvironmentを再読込せず`displayRoot`をreverse-convertしないことを証明する。Bodyはtool selectorを持たず、initial
    enableは凍結済みentry 3件すべてを必ずevaluateする。Exact structural-`lstat` `ENOENT`と決定的なlexical/link/type/boundary
-   outcomeがrejected toolをpartitionし、その他すべてのthrow/rejectionはgeneric accept前Operation Errorを返し、initial
+   outcomeがrejected toolをpartitionし、event-confirmed-close observationは既にconfirm済みのsuccessful close lifecycleだけを維持し、
+   すべてのnon-carveoutなthrow/rejectionはgeneric accept前Operation Errorを返し、initial
    control/jobをactivateせずprovisional subsetを一切commitしない。Provisional enable workはSourceをpublishしない。
    正常なcompleteまたはcontracted-partial batch commit 1件は1〜3個の別々にidentifiedされたGlobal Sourceをexact 1 generationに
    同時に作り、toolごとに最大1個、Sourceごとに正確に1 rootとし、cross-tool mergeもobservableなper-tool commitも行わない。
-   Accepted batch throw/rejectionはその1つの`scanRequestId`用terminal Operation Errorを作り、Source/generationもDiagnosticも作らない。
+   Accepted batchのnon-carveout throw/rejectionはその1つの`scanRequestId`用terminal Operation Errorを作り、Source/generationもDiagnosticも作らない。
    Prior-currentとprior-staleの両caseをtestする。全rootを決定的にrejectするinitial activationは、all-lexically-invalid previewも含め、
    `202 active-no-job`、job/Source 0件、active `globalControl`を返す。`retryableTools`はexactなsame-preview subsetだけを含み、
    all-lexically-invalid previewではemptyとなってdisable/new previewを要求する。All-rejected retryもnew job/Sourceを0件とし、generationを
@@ -959,12 +966,12 @@ registryがno-opを禁止する場合だけ`409 resource-cleanup-restart-require
    Initial/retry validation/admission中にnewly visibleなのは`globalEnableInProgress`だけとする。Initial enableは
    `globalControl`をnullのまま、retryはexact pre-operation control projectionを維持する。Buffer-bound queued acceptance時だけ
    accepted-batch toolを`pendingTools`へ表示し、`batchStatus`がexact promoted request ID、tool、active phaseを公開する。Terminal
-   deterministic failureとthrow/rejectionはexact closed `failureRef` variantを使い、lost-202 recoveryはstatusをretainし、success、
+   deterministic failureとnon-carveoutなthrow/rejectionはexact closed `failureRef` variantを使い、lost-202 recoveryはstatusをretainし、success、
    retry acceptance、disableはcontract済みclear/replace lifecycleを適用する。Active controlの`unvalidated` toolをretryableにしない。
    Mixed activation中は既にrejectedまたはnon-pending admittedとなったtoolを
    `retryableTools`へ表示してよいが、`pendingTools`がemptyになるまでretryをdisabledとし
    `409 global-enable-in-progress`を返す。Disableは全期間利用できる。
-   注入したnon-`ENOENT` admission rejectionはconsent/control/Source stateを変更せず、Operation Errorだけを公開し、全terminal
+   注入したnon-carveoutなadmission rejectionはconsent/control/Source stateを変更せず、Operation Errorだけを公開し、全terminal
    outcomeでoperation-history leakがないことを証明する。
    Fatal初回scan後のretryでretained rootが変更済みまたは検証不能ならold contextをclose/unregisterし、未公開IDを
    破棄して、後の再admission前にauthorityなしのrejected controlを残す。
@@ -981,7 +988,8 @@ registryがno-opを禁止する場合だけ`409 resource-cleanup-restart-require
    `O_NOFOLLOW`を使う。Root、parent、final-entry replacement fixtureは、通常の同時変更またはその他のdetectable
    changeでbyteをpublishしないことを証明する。Dataとしてreturnされたambiguity/unusable metadata/canonicalizationは
    `safe-fs-boundary-unverifiable`を返す。Contract宣言済みstructural `lstat`からのexact `ENOENT`だけをabsence/disappearanceへ
-   変換し、`open`/`read`を含むその他のthrow/rejectionはOperation Errorまたはstartup top levelへpropagateしてDiagnosticを
+   変換し、event-confirmed-close observationは既にconfirm済みのsuccessful close lifecycleだけを維持する。`open`/`read`を含む
+   すべてのnon-carveoutなthrow/rejectionはOperation Errorまたはstartup top levelへpropagateしてDiagnosticを
    作らない。観測不能なOS behaviorはplatform limitationとして記録し、threat model外の
    active-adversary raceに対するproofとして数えない。Instrumentationは全mutation-capable open flag、およびwrite、append、
    create、truncate、rename、delete、link、chmod/chown、timestamp、extended-attribute、ACL、同等のcallを拒否する。

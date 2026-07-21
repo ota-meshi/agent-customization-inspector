@@ -333,8 +333,9 @@ Verify:
    `U+FFFD` is non-whitespace. Apply absent, empty, BOM-only, whitespace-only, non-empty,
    replacement-decoded, binary, and non-regular fixtures independently to both targets.
    Only exact `ENOENT` from the declared target `lstat` is caught as absence; after prior
-   observation it is `entry-disappeared`. Every other throw/rejection propagates without
-   fallback. These fixtures
+   observation it is `entry-disappeared`. The FR-041 event-confirmed-close observation
+   retains only already-confirmed successful close lifecycle and does not select fallback.
+   Every non-carveout throw/rejection propagates without fallback. These fixtures
    pin the content rule, short-circuit behavior, and zero operations on an unselected target.
 3. Static rules authorize only their exact typed literal/one-segment/recursive-directory
    programs and traversal boundaries, never a text glob evaluated at runtime. A file
@@ -655,7 +656,7 @@ real home directory. Verify:
    An all-invalid preview, or an eligible preview whose three roots are all found absent
    after consent, may still receive the one all-tools confirmation and
    deterministically becomes `active-no-job`.
-5. Any other injected admission throw/rejection propagates without domain classification;
+5. Any non-carveout injected admission throw/rejection propagates without domain classification;
    initial enable returns the generic pre-acceptance Operation Error and activates no
    consent/control/job, while retry preserves existing state. No numeric root or escaped-
    display ceiling is defined.
@@ -683,7 +684,7 @@ real home directory. Verify:
    preview through a symlink, junction, case, normalization, or short-name alias is rejected
    before enumeration and is never silently substituted.
    The coordinator serializes correctness-sensitive admission and scan work without a
-   product-defined slot or queue-capacity ceiling. Non-`ENOENT` admission rejections
+   product-defined slot or queue-capacity ceiling. Non-carveout admission rejections
    propagate before state mutation. All-rejected, contracted-partial, accepted-batch error, cancellation, and
    repeated-retry fixtures prove terminal `GlobalEnableOperation` records are unregistered.
    At the final locked
@@ -726,10 +727,10 @@ real home directory. Verify:
    attempt publishes zero uncommitted partial results, keeps exact consent/boundaries and
    every prior per-tool graph, creates or replaces only that Source's stale-failure entry and
    references a Diagnostic for a deterministic returned failure or only Operation Error for
-   a throw/rejection, reports failed/null progress, and remains eligible for explicit
+   a non-carveout throw/rejection, reports failed/null progress, and remains eligible for explicit
    rescan or disable. A different Source's successful commit preserves both; the affected
    Source's successful complete/contracted-partial rescan clears both.
-9. A thrown/rejected accepted initial/retry batch publishes no provisional Source/file/
+9. A non-carveout thrown/rejected accepted initial/retry batch publishes no provisional Source/file/
    generation, adds no `StaleSourceFailure`, preserves the prior snapshot, and exposes only
    the terminal Operation Error for the batch `scanRequestId`, retained exactly once through
    `globalControl.lastOperationErrorId`. A deterministic rejected tool
@@ -1578,7 +1579,8 @@ tarball repeats the same suite, and test-only barriers are absent from productio
 | Observable stable unsafe state or detectable root/parent/final replacement, including a symlink, non-regular candidate, canonical escape, or metadata mismatch | Reject the candidate or affected source with the applicable diagnostic; discard all bytes. Reject a stable symlink before candidate `realpath` | Required passing evidence |
 | Successfully returned identity metadata or canonicalization is structurally ambiguous or unusable | After complete traversal and confirmed closure, a candidate-local value may return `safe-fs-boundary-unverifiable` with only its diagnostic record. A root/shared-ancestor or directory-enumeration guard value, or any unconfirmed close, aborts the Source attempt with no candidate record, partial generation, or success receipt | Required passing evidence |
 | Contract-declared structural `lstat` returns exact `ENOENT` | Return only `absent` before observation or `entry-disappeared` afterward; never apply this conversion to `open`/`read`. Prove root/ancestor/directory roles are Source-fatal while terminal regular-file candidate roles map to file-scoped `safe-fs-entry-stale` and may publish only a post-traversal, confirmed-closure contracted-partial Source | Required passing evidence |
-| Any other inspected-source operation throws or rejects | Propagate unchanged to the owning outer boundary; publish no file Diagnostic or attempt result | Required passing evidence |
+| A FileHandle `close` event confirms closure before that handle's retained close promise rejects | Observe the rejection, retain only the already-confirmed successful close lifecycle, and neither poison nor propagate | Required passing evidence |
+| Any non-carveout inspected-source operation throws or rejects | Propagate unchanged to the owning outer boundary; publish no file Diagnostic or attempt result | Required passing evidence |
 | An optional OS semantic is unobservable through Node.js, such as a same-device bind mount or unreported reparse behavior | Emit an explicit `platform-unobservable` test record with platform, Node.js version, and fixture; make no absolute containment claim | Never counted as security proof |
 
 Static-package tests cover the packed `package.json`, the closed static-manifest schema,

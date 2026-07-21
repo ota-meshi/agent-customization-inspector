@@ -139,9 +139,11 @@ is the only filesystem rejection converted by the domain. Before the candidate i
 it becomes `absent`; after observation it becomes `entry-disappeared`. The handler checks the
 code only, never the message. Only `absent` can advance fallback; `entry-disappeared` cannot.
 Successfully returned link, type, metadata, ancestor/root, or canonicalization outcomes that
-fail the boundary remain fail-closed and do not advance. Every other throw or rejection,
-including `ENOENT` from `open` or `read`, propagates unchanged and is never converted into a
-candidate classification or fallback choice.
+fail the boundary remain fail-closed and do not advance. The FR-041
+event-confirmed-close observation retains only already-confirmed successful close lifecycle
+and does not advance fallback. Every non-carveout throw or rejection, including `ENOENT`
+from `open` or `read`, propagates unchanged and is never converted into a candidate
+classification or fallback choice.
 
 A candidate containing any NUL byte is binary and diagnostic-only, makes an otherwise
 publishable generation contracted-partial, and does not advance fallback. Every non-NUL byte
@@ -154,7 +156,7 @@ means that decoded string after the optional leading BOM has
 publishes the selected non-empty file, never both.
 
 A present empty or relative `CODEX_HOME` override, or a non-throwing rejected root outcome,
-does not fall back silently. A throw or rejection during root selection or admission
+does not fall back silently. A non-carveout throw or rejection during root selection or admission
 propagates unchanged. User config, agents, skills, hooks, rules, MCP, plugins, prompts,
 memories, credentials, logs, sessions, and caches remain excluded even when they are under
 the same directory.

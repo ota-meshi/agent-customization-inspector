@@ -81,7 +81,7 @@ Strategy rowは次のfact名を使用する。各factは、該当する場合に
 | `surface` | Local対hosted executionを含む正確なproduct surface |
 | `engine-version` | Feature setを決めるCLI、extension-bundled engine、またはhost version |
 | `runtime-cwd` | Inspectorのselected Repository rootとは異なり得るproduct runtime working directory |
-| `workspace-root` | Local surfaceが使用するVS Code workspace folder |
+| `workspace-root` | Local surfaceが使用するVS Code workspace folder。`.code-workspace`のmulti-root workspaceでは構成folderごとに別のcandidate valueとなり、実際に使われるfolderはdocumented factが解決するまで`unknown`のままとする |
 | `repository-root` | Productが使用するGitまたはhosted repository root |
 | `project-root` | Repository rootと異なる場合のproduct-defined project root |
 | `worked-path` | 現在read、edit、process中のfileまたはdirectory |

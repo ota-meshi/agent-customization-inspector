@@ -10,6 +10,7 @@ Project development and review are governed by the
 - Create and maintain both English and Japanese versions of every human-authored repository document.
 - Add or update both language versions in the same change. A documentation task is not complete while either version is missing or outdated.
 - Use the canonical `*.md` filename for English and the matching `*.ja.md` filename for Japanese. For names required by tools or community conventions, keep the required filename (for example, `AGENTS.md`) and add the Japanese companion beside it (for example, `AGENTS.ja.md`).
+- A tool-specific filename that is only a symbolic link to a canonical English document does not require its own `*.ja.md` symbolic link when the canonical document already has a Japanese companion. The canonical English/Japanese pair remains the source of truth.
 - Keep both versions semantically equivalent. They do not need to be word-for-word translations, but requirements, warnings, examples, links, and status information must agree.
 - Preserve code, commands, paths, package names, API names, identifiers, and URLs unless localization is necessary for the example itself.
 - When practical, link each language version to its counterpart near the top of the document.

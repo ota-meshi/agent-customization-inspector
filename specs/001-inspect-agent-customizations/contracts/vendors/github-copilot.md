@@ -27,7 +27,7 @@ A vendor locator, behavior record, relationship, or strategy never grants read a
 
 | Term | Meaning in this contract |
 |---|---|
-| **Workspace root** | One folder opened as a VS Code workspace folder. It can differ from a Git repository root. |
+| **Workspace root** | One folder opened as a VS Code workspace folder. A single-folder workspace has exactly one workspace folder; a `.code-workspace` multi-root workspace has one per configured folder. It can differ from a Git repository root. |
 | **Repository root** | The root of the repository processed by a hosted GitHub surface. |
 | **Git root** | The stopping boundary found by Copilot CLI while walking from its runtime working directory. |
 | **Runtime `cwd`** | The directory from which the relevant Copilot CLI session operates. It is not necessarily the Inspector's selected Repository root. |
@@ -41,6 +41,11 @@ A vendor locator, behavior record, relationship, or strategy never grants read a
 A `**` segment appears below only when recursion is anchored by a separately named base
 or by the Inspector's explicit `./` boundary. A bare `**/` prefix is never a valid
 Inspector selector.
+
+The Inspector's selected Repository root is a single filesystem path and does not model
+a multi-root workspace: workspace folders outside the selected root are outside the
+Repository source, and which workspace folder a VS Code surface actually uses remains
+the unresolved `workspace-root` condition fact rather than an inferred winner.
 
 ## Canonical evidence-assessment index
 
@@ -277,7 +282,7 @@ flow required by FR-013 through FR-018, Copilot may read only these rules:
 | `copilot.global.instructions.path` | The same exact consented `<COPILOT_HOME>` boundary | `instructions/**/*.instructions.md` | `recursive-subtree` below the fixed `instructions/` directory | `static-candidate` | `copilot.behavior.cli.user.instructions.path`, `copilot.behavior.vscode.user.instructions` | `copilot.cli.instructions.layering`, `copilot.vscode.instructions.layering` | FR-013, FR-014, FR-015, FR-018, QR-005 | `github.copilot.cli.instructions`, `github.copilot.instructions.support`, `vscode.copilot.instructions`, `vscode.copilot.settings` |
 
 A present empty or relative `COPILOT_HOME`, or a non-throwing rejected root outcome, is an
-invalid override and does not silently fall back. A throw or rejection during root selection
+invalid override and does not silently fall back. A non-carveout throw or rejection during root selection
 or admission propagates unchanged. User settings, agents, skills, hooks, MCP, LSP,
 extensions, plugins, permissions, credentials, logs, sessions, and caches remain excluded
 even when stored below the same boundary.

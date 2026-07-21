@@ -87,7 +87,7 @@ Strategy rows use these fact names. Each fact is independently `satisfied`, `uns
 | `surface` | Exact product surface, including local versus hosted execution. |
 | `engine-version` | CLI, extension-bundled engine, or host version whose feature set applies. |
 | `runtime-cwd` | Product runtime working directory, which can differ from the Inspector's selected Repository root. |
-| `workspace-root` | VS Code workspace folder used by the local surface. |
+| `workspace-root` | VS Code workspace folder used by the local surface. In a `.code-workspace` multi-root workspace each configured folder is a distinct candidate value, and the folder actually used stays `unknown` until documented facts resolve it. |
 | `repository-root` | Git or hosted repository root used by the product. |
 | `project-root` | Product-defined project root when it differs from a repository root. |
 | `worked-path` | File or directory currently being read, edited, or processed. |

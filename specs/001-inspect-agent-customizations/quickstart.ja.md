@@ -271,7 +271,8 @@ source checkでnetworkを使えるのはこのcommandだけとする。
    `utf-8-replaced`はordinary textで、全`U+FFFD`をnon-whitespaceとして扱う。Absent、empty、BOM-only、
    whitespace-only、non-empty、replacement-decoded、binary、non-regular fixtureを両ordered targetへ独立に適用する。
    Declared targetの`lstat`からのexact `ENOENT`だけをabsenceとしてcatchし、prior observation後なら
-   `entry-disappeared`とする。その他のthrow/rejectionはfallbackせずpropagateする。
+   `entry-disappeared`とする。FR-041のevent-confirmed-close observationは既にconfirm済みのsuccessful close lifecycleだけを維持し、fallbackを選択しない。
+   すべてのnon-carveoutなthrow/rejectionはfallbackせずpropagateする。
    これらのfixtureでcontent rule、short-circuit、および非選択targetへのoperation 0件を固定する。
 3. Static ruleはtyped literal/one-segment/recursive-directory programとtraversal boundaryだけを許可し、runtimeで
    text globを評価しない。Staticとderivedの両ruleが
@@ -514,7 +515,7 @@ Test harnessはisolated fake tool homeを渡し、developerのreal homeを絶対
    与えたりしない。All-invalid preview、またはconsent後に3 rootすべてがabsentと判明するeligible previewも
    all-tools confirmationを1回受けてよく、deterministicallyに
    `active-no-job`になる。
-5. その他の注入したadmission throw/rejectionはdomain classificationなしにpropagateする。Initial enableはgeneric
+5. 注入したnon-carveoutなadmission throw/rejectionはdomain classificationなしにpropagateする。Initial enableはgeneric
    pre-acceptance Operation Errorを返し、consent/control/jobをactivateしない。Retryでは既存stateを維持する。
    Rootまたはescaped displayの数値上限は定義しない。
 6. Stale/changed/cross-session replayed preview ID/digestを拒否する。Digestは各entryについて、stored raw `lexicalRoot`と
@@ -535,7 +536,7 @@ Test harnessはisolated fake tool homeを渡し、developerのreal homeを絶対
    Symlink、junction、case、normalization、short-name aliasによりcanonical rootがpreviewに示した
    stored raw lexical absolute rootと異なる場合はenumeration前に拒否し、暗黙に置換しない。
    Coordinatorはcorrectness-sensitiveなadmissionとscan workをserializeし、製品定義のslotまたはqueue-capacity上限を持たない。
-   Non-`ENOENT` admission rejectionはstate mutation前にpropagateする。All-rejected、contracted-partial、accepted-batch error、cancellation、
+   Non-carveoutなadmission rejectionはstate mutation前にpropagateする。All-rejected、contracted-partial、accepted-batch error、cancellation、
    repeated-retry fixtureでterminal `GlobalEnableOperation` recordをunregisterすることを証明する。最後のlock済み
    disposition pointでoperationが先なら、disable受理後にdeliveryしても`202`をcommit済みとし、barrierが先なら`409`、
    late side effect/operation-history leakなしとし、
@@ -563,10 +564,10 @@ Test harnessはisolated fake tool homeを渡し、developerのreal homeを絶対
    `scanRequestId`を保持する。Unknown/removed Sourceは`404 stale-resource`、disable pending/activeは
    `409 global-disable-pending`、duplicateは`409 scan-in-progress`を返す。Fatal attemptは
    uncommitted partial resultを0件publishし、exact consent/boundaryとtool別prior graphを保ち、そのSourceだけの
-   stale-failure entryを作成または置換し、deterministic returned failureではDiagnosticをreferenceし、throw/rejectionでは
+   stale-failure entryを作成または置換し、deterministic returned failureではDiagnosticをreferenceし、non-carveoutなthrow/rejectionでは
    Operation Errorだけを返してfailed/null progressを報告し、明示rescan/disableを
    可能にする。別Sourceの正常commitは両方をclearせず、affected Sourceのcomplete/contracted-partial正常rescanだけが両方をclearする。
-9. Throw/rejectされたaccepted initial/retry batchはprovisional Source/file/generationをpublishせず、
+9. Non-carveoutとしてthrow/rejectされたaccepted initial/retry batchはprovisional Source/file/generationをpublishせず、
    `StaleSourceFailure`を追加せず、prior snapshotを維持し、batchの`scanRequestId`に対するterminal Operation Errorだけを
    `globalControl.lastOperationErrorId`から正確に1回参照して公開する。Deterministicにrejectされたtoolはexact-consent
    retry/disable用のclosed control stateを保持してよい。Mixed deterministic outcomeでretry validation/admission中に新たにvisibleと
@@ -1036,7 +1037,8 @@ fail closedにする。Pack済みtarballでも同じsuiteを反復し、test専�
 | Symlink、non-regular candidate、canonical escape、metadata mismatchを含むobservableなstable unsafe stateまたはdetectableなroot/parent/final replacement | 該当するdiagnosticでcandidateまたはaffected sourceを拒否し、全byteをdiscardする。Stable symlinkはcandidate `realpath`より前に拒否する | 必須passing evidence |
 | 正常に返されたidentity metadataまたはcanonicalizationがstructurally ambiguousまたはunusable | Complete traversalとconfirmed closure後のcandidate-local valueだけが`safe-fs-boundary-unverifiable`とdiagnostic recordを返してよい。Root/shared-ancestorまたはdirectory-enumeration guard value、もしくはclose未確認はcandidate record、partial generation、success receiptなしでSource attemptをabortする | 必須passing evidence |
 | Contractで宣言したstructural `lstat`がexact `ENOENT`を返す | Observation前は`absent`だけを返し、後なら`entry-disappeared`だけを返す。このconversionを`open`/`read`へ適用しない。Root/ancestor/directory roleはSource-fatal、terminal regular-file candidate roleはfile-scoped `safe-fs-entry-stale`へmapしてpost-traversal/confirmed-closure contracted-partial Sourceだけをpublishできることを証明する | 必須passing evidence |
-| その他の調査対象Source operationがthrow/rejectする | Owning outer boundaryへ変更せずpropagateし、file Diagnosticもattempt resultもpublishしない | 必須passing evidence |
+| FileHandleの`close` eventがclosureをconfirmした後に、そのhandleでretainされたclose promiseがrejectする | Rejectionをobserveし、既にconfirm済みのsuccessful close lifecycleだけを維持し、poisonもpropagateもしない | 必須passing evidence |
+| Non-carveoutな調査対象Source operationがthrow/rejectする | Owning outer boundaryへ変更せずpropagateし、file Diagnosticもattempt resultもpublishしない | 必須passing evidence |
 | Same-device bind mountや報告されないreparse behaviorなど、optionalなOS semanticをNode.jsから観測不能 | Platform、Node.js version、fixtureを含む明示的な`platform-unobservable` test recordをemitし、absoluteなcontainmentを主張しない | Security proofとして決して数えない |
 
 Static-package testはpacked `package.json`、closedなstatic-manifest schema、exact record order、MIME/

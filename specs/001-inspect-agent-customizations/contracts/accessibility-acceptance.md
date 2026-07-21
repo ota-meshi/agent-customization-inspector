@@ -141,7 +141,7 @@ Every `MANUAL-*` ID is executed over the Cartesian product of the following clos
   two-file comparison, Monaco accessible diff, and narrow inline alternative; `S6` stale or
   removed comparison after generation replacement; `S7` Global disabled, selector-free
   fixed-three-tool session-wide consent pending, one-batch admitted-subset scan complete with
-  exactly one atomic generation, whole-transaction abort on another throw/rejection, and
+  exactly one atomic generation, event-confirmed-close success without poisoning or propagation, whole-transaction abort on a non-carveout throw/rejection, and
   explicit disable covering the pre-request full client-data purge, greater content epoch,
   non-null all-inspection-data fence, control-only draining/failed/retry/join state, restart
   next step for unconfirmed cleanup, terminal recovery, `remove-active-state` N+1, and the

@@ -91,6 +91,17 @@ Only these exact official hosts are valid in this release:
 | Anthropic | `code.claude.com` |
 | OpenAI | `learn.chatgpt.com` |
 
+Accepted first-party evidence classes form one hierarchy across all vendors. General
+guides, reference pages, and versioned release notes or changelogs on the exact hosts
+above are the only accepted classes. A guide or reference page establishes exactly the
+claims it states directly, and those two classes rank equally. A direct,
+version-qualified release-note or changelog assertion outranks omission in a guide or
+reference page, while directly incompatible assertions are retained as `conflict` rather
+than ranked. Official source repositories and official issue or discussion statements
+rank below every documentation class: they are not registrable on the hosts above and
+never substitute for registered documentation evidence. The Microsoft Visual Studio Code
+section below applies this hierarchy to a specific guide/release-note conflict.
+
 ## Exact affected-record reverse index
 
 The affected-ID arrays are not copied into the tables below because hand-maintaining both
@@ -251,8 +262,10 @@ Markdown content-type branch.
 The 2026-07-20 Inspector runtime reconciliation is product policy, not an assertion about
 upstream Codex behavior. For inspected Codex candidates, only an exact `ENOENT` from a
 contract-declared structural `lstat` checkpoint becomes `absent` or
-`entry-disappeared`; every other throw or rejection propagates unchanged, including an
-`ENOENT` from `open` or `read`. A NUL byte produces the binary, diagnostic-only outcome.
+`entry-disappeared`; the FR-041 event-confirmed-close observation retains only
+already-confirmed successful close lifecycle; every non-carveout throw or rejection
+propagates unchanged, including an `ENOENT` from `open` or `read`. A NUL byte produces the
+binary, diagnostic-only outcome.
 Every non-NUL byte stream is decoded once with UTF-8 replacement semantics; invalid
 sequences produce `utf-8-replaced`, and the resulting garbled text containing `U+FFFD` remains in the
 complete source used for parsing, extraction, display, and comparison. Maintained OpenAI
@@ -288,7 +301,9 @@ It validates the exact registry/Evidence set equality, bilingual edge parity, re
 affected IDs, official hosts, record schema, assertion targets, and recomputed
 `semanticFingerprint` without network access.
 
-Only a maintainer explicitly runs the networked drift review:
+Only a maintainer explicitly runs the networked drift review, at minimum before every
+frozen release candidate and whenever a material upstream change to a supported surface
+becomes known:
 
 ```sh
 pnpm run check:official-sources

@@ -168,7 +168,8 @@ overrideがabsentまたは安全にemptyと確定した場合だけ`AGENTS.md`�
 Replacement decodeされた`utf-8-replaced` textも変更せず判定に参加し、全`U+FFFD`をnon-whitespaceとする。
 Deterministicにunsafeまたはbinaryなcandidateなら後続selectorを調べず終了する。`absent`はroot verification後に
 contractで宣言したtarget `lstat`から返るexact `ENOENT`だけを意味し、同じcodeでもobservation後なら
-`entry-disappeared`とする。`open`/`read`を含むその他すべてのthrow/rejectionはdomain catchもfallbackもせず
+`entry-disappeared`とする。FR-041のevent-confirmed-close observationは既にconfirm済みのsuccessful close lifecycleだけを維持し、
+fallbackを選択しない。`open`/`read`を含むすべてのnon-carveout throw/rejectionはdomain catchもfallbackもせず
 propagateする。Policyは選択したnon-empty fileをpublishし、両selectorを同時にはpublishしない。
 
 No-I/O Global previewの`pathPatterns`は、この同じimmutable planからrenderし、別管理のpreview allowlistを持たない。
@@ -228,8 +229,10 @@ Compilerはmissing、extra、reordered、widened、unresolvedなcatalog/referenc
 row 2/3より前に実行し、全`opendir`直前にrow 21、ancestor順row 22、row 23、exact-platform `realpath`、row 24を完了する。
 Registry登録済み`fs.Dir`をexplicit `Dir.read()`がnullを返すまでdriveし、openのままrow 25、ancestor順row 26、row 27、exact-platform
 `realpath`、row 28を完了する。Sibling classification/descent/ticket発行前にregistry `close-confirmed`を要求する。Source-root enumerationはrows 21/25だけを使う。Instanceの1回の`lstat`からの
-`error.code === 'ENOENT'`だけがlisted outcomeを返す。Phase/role/target mismatch、consumedまたはmissing instance、別error
-code、undeclared `lstat`、あるいは`opendir`、`open`、`read`、`realpath`、`FileHandle.stat`その他operationのrejectionは
+`error.code === 'ENOENT'`だけがlisted checkpoint outcomeを返す。Event-confirmed-close observationは別であり、FileHandleの`close` eventが
+closureをconfirmした後は、registryが同じhandleのretained close promiseの後続rejectionをobserveし、既にconfirm済みのsuccessful close
+lifecycleだけを維持してよい。Phase/role/target mismatch、consumedまたはmissing instance、別error code、undeclared `lstat`、あるいは
+`opendir`、`open`、`read`、`realpath`、`FileHandle.stat`、close/unregister、その他operationのnon-carveout rejectionは
 変更せずpropagateする。成功したcheckpointを後続callのcatchへ再利用できない。Codex policyではprimary selectorのrow 3だけが
 `absent`としてfallbackへ進める。
 Observed candidateはcomplete sibling classification後のcollision-free selected `Dirent`、row 3で正常観測したimmutable exact
@@ -296,7 +299,8 @@ semanticsで1回decodeし、そのまま`utf-8-replaced` textとして処理す�
 Rows 21–24は各open直前にdirectory/root/ancestorのexact bigint `dev`、`ino`、`mode`、`mtimeNs`、`ctimeNs`をbindする。
 Openした各directoryはdescend/open前にcomplete raw sibling bufferへ収集する。Rows 25–28でsame identity/type/modeと不変の
 `mtimeNs`/`ctimeNs`を要求し、registryが`fs.Dir` closureをconfirmするまでbufferをclassify/useしない。Enumeration中のdetectable
-create/remove/renameはsource-fatalでgenerationをpublishしない。Completion/post-check/close中のthrow/rejectionはtrigger所有outer boundaryへ
+create/remove/renameはsource-fatalでgenerationをpublishしない。Event-confirmed-close observationは既にconfirm済みのsuccessful close
+lifecycleだけを維持する。Completion前、post-check中、またはclose中（close未確認を含む）のnon-carveout throw/rejectionはtrigger所有outer boundaryへ
 propagateし、attempt result/generationをpublishせずcontracted-partialにもならない。同じNFC classification keyを持つ異なるraw relevant
 siblingは全memberをpathless session Diagnostic `safe-fs-path-normalization-collision`でfail closedにする。どのmemberにもdescend/readせず、
 source attemptをfatalにしてgeneration/partial itemをpublishしない。Collisionしない単一NFD spellingはexact raw segmentでreadし、public pathを
@@ -413,6 +417,19 @@ directory、target path、trust、approval、enablement、selection、agent cont
 managed policy、instruction budget、external stateは独立したcondition factのままとする。Missingまたはexcludedな
 inputをsatisfiedとしてdefaultにしてはならず、UIはcandidateをsemantically effectiveと呼んではならない。
 
+Contract群は、existenceとactivationを区別する固定vocabularyを使う。`present`は、authored regular fileが
+enabledなboundary内のallowlisted locationに存在することだけを意味する。`recognized`は、present fileが
+Inspector ruleにmatchし`(tool, kind)` recognitionを所有することを意味する。`supported`は、`(tool, kind)`
+カスタマイズ種別がこのreleaseのfrozen contract catalogにあることを意味する。この3語はauthoredな存在と
+Inspector分類だけを表す。`available`は、scopeまたはruntime inputがそのsurfaceに実際に存在することを意味する
+（`scope-availability`、`tool-availability`、`installation`）。`applicable`は、vendorのdocumented
+applicability condition—surface、各root、`target-match`、関連fact—が具体的なruntime contextで満たされる
+ことを意味する。`selected`は、vendorのdocumented resolutionが代替の中からそのartifactを選んだことを意味する
+（`selection`）。`enabled`は、該当scopeで該当enablement gateが有効であることを意味する（`enablement`）。
+`effective`は、documented runtime edgeの必要condition factがすべて`satisfied`であることを意味する。
+この5つのactivation用語はcondition factだけで確立され、file existenceでは決して確立されず、未解決factが
+1つでもあればprojectionはconditionalまたは`unknown`のままとなる。
+
 ## Symlink、alias、resource invariant
 
 - Symbolic-link file/directoryとnon-regular candidateを拒否する。Junction、mount-point change、reparse point、
@@ -423,9 +440,11 @@ inputをsatisfiedとしてdefaultにしてはならず、UIはcandidateをsemant
   ancestorに属する場合はsource全体を拒否する。
 - Validated source-boundary recordと正確なenumeration recordは、中央集約したread operationだけを認可する。
   Canonical path string、relationship target、source textだけでfilesystemを直接openしてはならない。
-- Catchするfilesystem rejectionは、contractで宣言したstructural `lstat`からのexact `ENOENT`だけであり、
-  observation前なら`absent`、後なら`entry-disappeared`にだけmapする。Message textからcodeを推測せず、このruleを
-  `open`、`read`、その他のthrow/rejectionへ適用しない。
+- Catchまたはobserveするfilesystem rejection caseは、FR-041の2つの限定的なcarve-outだけとする。Contractで宣言したstructural
+  `lstat`からのexact `ENOENT`はobservation前なら`absent`、後なら`entry-disappeared`にだけmapする。Message textからcodeを
+  推測せず、このruleを`open`または`read`へ適用しない。これとは別に、FileHandleの`close` eventがclosureをconfirmした後は、
+  process-wide resource registryが同じhandleのretained close promiseの後続rejectionをobserveし、既にconfirm済みのsuccessful close
+  lifecycleだけを維持してよい。すべてのnon-carveout throw/rejectionにはFR-041を適用してpropagateする。
 - Open直前にserviceはroot identityとancestor `lstat`を反復し、上記のordered candidate verification sequenceを
   実行する。`node:fs.constants.O_NOFOLLOW`が存在し、そのNode.js/platform combinationで有効な場合、
   candidateを`O_NOFOLLOW`付きでopenしなければならない。これはfinal componentに対する必須のdefense in depthで
@@ -446,11 +465,11 @@ inputをsatisfiedとしてdefaultにしてはならず、UIはcandidateをsemant
   containment guaranteeとして表現しない。
 - File、collection、derivation、relationship、parser、diagnostic、timingのcapacityは、
   [data-model contract](../data-model.ja.md)のとおりNode.js、parser library、OS、filesystem、実行環境から継承する。
-  Throw/rejectionはdomain cause classificationもrecoveryもせずpropagateし、REST所有の場合はgeneric Operation Errorだけで
+  Non-carveout throw/rejectionはdomain cause classificationもrecoveryもせずpropagateし、REST所有の場合はgeneric Operation Errorだけで
   表す。Contracted partialは、完全なtraversal後のFR-028対象でdeterministicなnon-throwing outcomeだけに許可する。どちらのpathも
   暗黙のexpansion、authorityなしのretry、fallback read、validity verdictを行わない。
 - Deterministicにunsafe、malformed、binary、changedのcandidateが1つあっても、上記contracted-partial ruleを満たす場合は
-  unaffected candidateのreportを妨げない。Throw/rejectionはcurrent-attempt resultをpublishせず、owning-boundary ruleに従う。
+  unaffected candidateのreportを妨げない。Non-carveout throw/rejectionはcurrent-attempt resultをpublishせず、owning-boundary ruleに従う。
 - Relationshipまたはexcluded recordのtargetが存在するという理由でcandidateへpromoteしてはならない。Targetを
   readできるのは、独立したstaticまたはbounded-derived admissionがある場合だけである。
 
@@ -470,12 +489,12 @@ Contractとfixtureのvalidationは、次をすべて証明しなければなら�
    `opendir`、`lstat`、`realpath`、open、read callが0件であることを証明する。Preview fixtureは`pathPatterns`が
    同じplanから生成され、consent digestがそのversion、closed selection policy、canonical programへbindすることを証明する。
    Codex traceは両ordered targetへ独立にabsent、empty、BOM-only、whitespace-only、non-empty、replacement-decoded、binary、
-   non-regular caseを適用し、exact structural-`lstat` `ENOENT`とその他すべてのthrow/rejectionを区別して
-   short-circuit/propagation動作と両selectorを同時にpublishしないことを証明する。
+   non-regular caseを適用し、exact structural-`lstat` `ENOENT`、event-confirmed-close observation、すべてのnon-carveout
+   throw/rejectionを区別してshort-circuit/propagation動作と両selectorを同時にpublishしないことを証明する。
    Shared-prefix Global traceは各selectorがrow 20、全row-2 prefix observation、その直後のrows 4–7 directory checkを次descendant
    operand前に独立して実行し、cross-selector admission cacheがcallをsuppressしないことを証明する。
    Global-consent fixtureはselector-shaped inputをrejectし、frozen entry 3つすべてをevaluateし、deterministicにrejectされた
-   rootをisolateし、admit済みone-root Sourceをすべて1 batch generationへpublishする。その他のthrow/rejectionはprovisional
+   rootをisolateし、admit済みone-root Sourceをすべて1 batch generationへpublishする。Non-carveout throw/rejectionはprovisional
    subset全体をabortすることも証明する。
 5. 全staticおよびbounded-derived ruleにpositive、root/nested、boundary、symlink、alias、thrown/rejected operation、該当する
    multi-tool fixtureがある。Derived fixtureはさらにcallbackまたはfree-form path constructionを使わないclosed
@@ -500,8 +519,9 @@ Contractとfixtureのvalidationは、次をすべて証明しなければなら�
    また、symlink/non-regular rejection、利用可能時の有効な`O_NOFOLLOW`使用、上記全pre-read/post-read比較、root/parent/final-entry replacementを扱う。Stable-
    symlink fixtureはcandidate `realpath` callより前の拒否を証明する。通常の同時変更またはその他のdetectable
    changeではbyteをpublishせず、actionable diagnosticでfailする。正常に返されたambiguousまたはunusableなmetadataは
-   `safe-fs-boundary-unverifiable`を返し、exact structural-`lstat` `ENOENT`だけをabsent/disappearedへ変換し、その他の
-   throw/rejectionはすべてpropagateする。Node.jsが観測不能なOS behaviorはplatform limitationとして記録し、
+   `safe-fs-boundary-unverifiable`を返し、exact structural-`lstat` `ENOENT`だけをabsent/disappearedへ変換する。Event-confirmed-close
+   observationは既にconfirm済みのsuccessful close lifecycleだけを維持し、すべてのnon-carveout throw/rejectionはpropagateする。
+   Node.jsが観測不能なOS behaviorはplatform limitationとして記録し、
    threat model外のactive-adversary raceに対するproofとして数えない。Explicit UNC/server-share spellingはfilesystem/DNS/SMB call 0を証明するが、
    mapped drive/POSIX network mountはlexically識別不能なpost-consent filesystem I/Oとしてtest/documentし、FR-022のzero-prohibited-direct-product-request assertionの対象外とする。
    このassertionはexactな2つのauthorized internal loopback classを別々に観測し、そのclass外のrequestをすべてrejectする。これにはcustomization-selected、remote-reference、MCP requestを含む。

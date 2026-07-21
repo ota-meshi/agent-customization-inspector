@@ -29,9 +29,9 @@
 - [x] ClosedなDiagnostic unionが正確なlocation invariantを定義している。File scopeはcoherentな`sourceId`/`fileId`/`sourceRelativePath` tupleを必須とし、source scopeは`sourceId`だけを必須としてfile/pathを禁止し、session scopeは3つすべてを禁止し、scopeはgeneration ownershipとlifecycle ownershipの違いに直交する
 - [x] Product起因mutationを禁止済みmutation-capable requestと観測可能なsource propertyで定義し、OSだけによるaccess-time変更をfailureにもproofにもせず別に記録する
 - [x] FR-032が許可するstructural-projection boundaryを定義し、全product/documentation surfaceでvalidation、semantic interpretation/ranking、verdict、remediation adviceを禁止する
-- [x] FR-029、FR-040、FR-041、FR-042が製品定義の数値resource-validation limitを禁止し、late workのauthorityを取り消して破棄し、例外でないthrow/rejectionをdomainで原因分類せず伝播させ、operational logとOperation Errorを固定値と不透明IDだけに限定しながら認証済みの決定的Diagnosticを分離し、Global-disableのpurge/epoch/fence/recovery lifecycleをclosedにする
+- [x] FR-029、FR-040、FR-041、FR-042が製品定義の数値resource-validation limitを禁止し、late workのauthorityを取り消して破棄し、non-carveoutなthrow/rejectionをdomainで原因分類せず伝播させ、operational logとOperation Errorを固定値と不透明IDだけに限定しながら認証済みの決定的Diagnosticを分離し、Global-disableのpurge/epoch/fence/recovery lifecycleをclosedにする
 - [x] File sizeとitem件数をcustomizationのvalidity、correctness、compliance、lint findingに使用せず、容量をNode.js、parser、OS、filesystem、browser、実行環境から継承する
-- [x] Closedなscan-publication tableが、完全なtraversal後のFR-028対象となる決定的でthrowしないentry outcomeだけにcontracted partial publicationを許可し、宣言済みstructural `lstat`からの正確な`ENOENT`だけを`absent`/`entry-disappeared`に変換し、その他のthrow/rejectionではpublicationをabortしてdomain resultを作らずowner outer boundaryへ伝播する
+- [x] Closedなscan-publication tableが、完全なtraversal後のFR-028対象となる決定的でthrowしないentry outcomeだけにcontracted partial publicationを許可し、宣言済みstructural `lstat`からの正確な`ENOENT`だけを`absent`/`entry-disappeared`に変換し、FR-041のevent-confirmed-close observationでは既にconfirm済みのsuccessful close lifecycleだけを記録し、すべてのnon-carveoutなthrow/rejectionではpublicationをabortしてdomain resultを作らずowner outer boundaryへ伝播する
 - [x] 検証済みbyteのdecoding tableが、NUL/binary、valid UTF-8、先頭BOM 1つの記録と除去、invalidなnon-NUL UTF-8を完全な`utf-8-replaced`文字化けとして1回だけreplacement decodeする処理を、別decodeや製品固有のbyte、line、item上限なしで扱う
 - [x] Customization File entityが、検証済みの`utf-8`、`utf-8-bom`、`utf-8-replaced` readには完全なsource textを公開し、binary outcomeでは禁止し、thrownまたはrejectedなreadからfile itemを作成しない
 - [x] US3がGlobal workより前に異なる2つのreadableなRepository physical file IDだけで独立test可能で同じIDの両input使用をrejectし、US4がSource-relative namespaceを統合せずRepository-to-Global比較を別に扱う
@@ -39,7 +39,7 @@
 - [x] Bundled-browserの全`FileDetail` requestとcomparison構築が、source text、declared metadata、authored relationship target、comparisonの両sideを扱う1つのacknowledgement gateを共有する。通常のroute、Source、generation cleanupはscope限定のままとし、Global disableはrequest前とgreater-epoch/non-null-fence観測時にfull-session purgeを行う明示的な例外とする
 - [x] ClosedなGlobal-root tableがabsent/default、empty、relative、表現不能、通常のhome外を含む表現可能なabsolute root、fallbackなしのconsent後rejection、commit前Source publicationなしのprovisional admissionを区別する
 - [x] Repository-root selectionを取得済み`process.cwd()`またはlexicalにresolveした1つの`--cwd`値へ限定し、selection-stageのprobeと`chdir`を行わず、invalidなoption shapeをsession作成前にrejectし、中央admission前にauthorityを持たないgeneration-0 Repository Sourceを正確に1つ作成する。先行する固定package-integrity bootstrapはpackage所有manifest/declared-asset readだけに限定し、selected-root、DNS、SMB、outbound-network I/Oを行わない
-- [x] Selectorを持たない1回のsession-wide Global actionを固定Copilot/Claude/Codex previewへbindし、3 entryすべてを評価して、admit済みSourceを1 batchかつ1 atomic generationで公開する。Non-structuralなthrow/rejectionはprovisional subset全体をabortする
+- [x] Selectorを持たない1回のsession-wide Global actionを固定Copilot/Claude/Codex previewへbindし、3 entryすべてを評価して、admit済みSourceを1 batchかつ1 atomic generationで公開する。FR-041のevent-confirmed-close observationは既にconfirm済みのsuccessful close lifecycleだけを維持し、non-carveoutなthrow/rejectionはprovisional subset全体をabortする
 - [x] Active-consent Global retryはfrozen preview/fixed tupleを再利用し、pending workがemptyになった後だけcompleteなmissing/deterministically rejected target setをserver側でderiveし、既存Source/prior snapshotを保持し、全件rejectならrequest/job/generationを作らず、それ以外はrequest-correlatedな1 atomic batchをpublishする
 - [x] Raw enumeration segmentだけをfilesystem operandとして維持し、NFC collisionをopen前にfailさせ、同一Sourceでhard-linkされた1つのphysical fileへ決定的なprimary/alias pathと各provenanceを保持し、Sourceをまたぐidentity mergeを行わない
 - [x] Safe-filesystem contractがexact root grammar、checkpoint rows 1–28、pre/post directory guardとconfirmed closeを伴うexplicit `Dir.read()` enumeration、usableな`dev`/`ino`/`nlink`による1 Source attempt内のhard-link grouping、ordered-fallback/late-derivedのzero-read rejection、unknown closeがconfirmationまたはrestartまでschedulingをpoisonするprocess-wide closable-resource registryを扱う
@@ -108,7 +108,7 @@
   domain分類をFR-041のpropagationで置き換えた。
 - 2026-07-19の検証iteration 15では、Global-root admission、検証済みbyte decoding、scan-publication outcomeを
   closedにした。2026-07-20のrefinementにより、contracted partial commitを完全なtraversal後のFR-028対象となる決定的で
-  throwしないoutcomeだけに限定し、invalidなnon-NUL UTF-8を完全なreplacement-decoded textとし、例外でないthrow/rejectionを
+  throwしないoutcomeだけに限定し、invalidなnon-NUL UTF-8を完全なreplacement-decoded textとし、non-carveoutなthrow/rejectionを
   domain resultなしでowner outer boundaryへ伝播するようにした。
 - 2026-07-19の検証iteration 16では、US3をRepository scopeだけで独立test可能にしてcross-Source comparisonをUS4へ移し、
   abort-attempt wordingから決定的かつentry-localでthrowしないfailureを除外し、source textを検証済みnon-binary UTF-8
