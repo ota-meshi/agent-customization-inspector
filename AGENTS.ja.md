@@ -17,6 +17,31 @@
 - ドキュメント変更を完了する前に、両言語版を比較し、欠落、古い記述、技術的な詳細の不一致がないことを確認してください。
 - この方針は新規ドキュメントと、変更する時点での既存ドキュメントに適用します。生成ファイルおよびベンダー提供のサードパーティ製ドキュメントは対象外です。
 
+## シンプルな実装の方針
+
+シンプルな実装を優先します。これは憲章の原則I（速さより品質）を日々のコーディング判断に適用するものです。
+
+- 既知の要件を完全に満たす最も単純な実装を選んでください。シンプルさは推測的な堅牢性より優先されます。仕組みの追加は実証された要件のためだけに行い、「念のため」で追加してはいけません。
+- 他のlayer（package manager、runtime/platform、testまたはrelease gate）がすでに所有しenforceしているpolicyを再実装してはいけません。重複したpolicyは防御にならずdriftを生むだけです。例: Node.js互換性は`engines.node`で一度だけ宣言しpackage managerがenforceするため、CLIはruntimeで再検査しません。
+- すべての防御的checkは、userを実際に守るfailure modeを持たなければなりません。同時に配布されるartifact同士をuser runtimeで相互検証してはならず、packaged artifactに対するexact-valueのassertはpackage testとrelease gateに置いてください。例: `package.json.bin`はpackaged `dist/cli.mjs`を直接指します。CLI importの前に同梱fileを再検証する別のbootstrap wrapperは撤去しました。
+- 不要な間接化や、より単純な構文で書ける冗長な等価表現を避けてください。例: 固定の相対dynamic importは`import(new URL('./module.mjs', import.meta.url).href)`ではなく`import('./module.mjs')`と書きます。
+- シンプル化とは複雑さの総量を減らすことであり、移動させることではありません。宣言的な定義を削除して同じ情報をより長いコマンドラインや別のファイルへ書き移すのはシンプル化ではありません。宣言的な設定は、それを所有するconfigファイルに置いてください。例: vitestの`coverage` projectは`test:coverage` scriptの`--project` flagの連鎖にせず、`vitest.config.ts`内の定義のまま維持します。
+- Specificationが冗長な複雑さを要求している場合は、書かれたとおりに実装せず、同じ変更の中で両言語のspecificationを修正してください。
+
+## コードコメントの方針
+
+- 憲章の原則IIに従い、自明でない判断、不変条件、セキュリティ上の前提、トレードオフ、互換性の制約を、影響を受けるコードの近くに文書化してください。Reviewerが作者の意図をリバースエンジニアリングせずに、変更とその理由を理解できなければなりません。
+- すべてのproductionモジュールは、モジュールの役割と実装するcontractを述べるheaderコメントで始めてください。セキュリティ上重要なモジュールでは、threat modelの境界と残存する制約も記載してください。
+- コメントは構文が何をするかではなく、なぜそのコードが存在するかを説明してください。仕様で定められた挙動には、根拠となるアーティファクト（例: `FR-030`、`data-model.md § Diagnostic`、`research.md § 5`）をコメント内で名指しし、reviewerがコードをcontractと照合できるようにしてください。
+- 閉じたunion、enumのような型、固定catalogには、宣言に付けたJSDoc docコメント（`/** ... */`）で各memberを文書化し、エディタのhoverで表示されるようにしてください。値が何を意味するか、いつ生成されるか、統治するartifactがあればそれ（例: `spec.md § Closed Scan Publication Outcomes`）を示します。文字列literalの列挙だけでは自己文書化になりません。
+- Exportされたinterfaceの各フィールドには、フィールドが何を意味するか、いつ設定されるか、統治するartifactがあればそれを述べるJSDoc docコメントを付けてください。1行で十分です。Mirror DTOは各行を複製する代わりに、「フィールドの意味は元のinterfaceと同じ」と1回述べる形でかまいません。
+- 宣言自体も文書化してください。Exportされたinterface、type alias、定数には、その型や値が何を表すか、統治するartifactがあればそれを述べるJSDoc docコメントを付けます。
+- Classの全member—フィールドとメソッド、constructorやprivate memberを含む—にJSDoc docコメントを付けてください。メソッドは呼び出しが何をするかとどのcontract挙動を実装するかを、フィールドは何を保持しどのinvariantを維持するかを述べます。
+- 仕様化されたcontractを実装するexportされた関数・クラス・定数には、そのcontractの挙動を述べるdocコメントを付けてください。拒否やfail-closedの分岐には、その拒否が何を守るのかを記載してください。
+- テストファイルは、担当タスクIDと検証対象の挙動を述べるコメントで始め、カバレッジを`tasks.md`まで遡れるようにしてください。
+- コードコメントは英語で書いてください。日本語で重複させてはいけません。上記の二言語ドキュメント方針はドキュメントに適用されるものであり、ソースコードのコメントには適用されません。
+- コメントを古くする変更では、同じ変更の中でそのコメントを削除または修正してください。誤解を招くコメントは、無いことより有害です。
+
 ## Pull requestの文章スタイル
 
 - Pull requestのタイトルと説明は、人間のreviewerに向けた簡潔で自然な文章にしてください。

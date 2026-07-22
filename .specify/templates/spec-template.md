@@ -124,10 +124,9 @@
 ### Security and Privacy
 
 - **QR-003**: [Define trust boundaries, permissions, product-issued mutation semantics,
-  intentional authenticated sensitive-content access and acknowledgement, the prohibition
-  on paths or inspected values in operational logs, environment-derived resource behavior
-  without product-defined numeric validation limits, authority revocation or cancellation,
-  cleanup of late work, residual risks, and safe failure behavior]
+  intentional sensitive-content access and acknowledgement, environment-derived resource
+  behavior without product-defined numeric validation limits, authority revocation or
+  cancellation, cleanup of late work, residual risks, and safe failure behavior]
 
 ### Documentation and Participation
 

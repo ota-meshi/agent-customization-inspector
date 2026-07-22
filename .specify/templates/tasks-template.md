@@ -14,9 +14,8 @@ end-to-end, regression, boundary, error, and security-sensitive test tasks for e
 behavioral change, based on its risk and interfaces.
 
 **Constitution-driven safety tests**: When applicable, add preceding negative tests that
-prove operational logs exclude prohibited fields; intentional sensitive-content access is
-authenticated, acknowledged before display, inert, session-only, and free of persistence
-or egress; product-defined numeric resource validation limits are absent; recoverable
+prove intentional sensitive-content access is acknowledged before display, inert,
+session-only, and free of persistence or egress; product-defined numeric resource validation limits are absent; recoverable
 environment or runtime resource failures are safe; and revoked or late work is discarded
 and cleaned up.
 
@@ -77,7 +76,7 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] T006 [P] Implement authentication/authorization framework
 - [ ] T007 [P] Setup API routing and middleware structure
 - [ ] T008 Create base models/entities that all stories depend on
-- [ ] T009 Configure error handling with authenticated session diagnostics and operational logs restricted to fixed codes and opaque IDs
+- [ ] T009 Configure error handling with session diagnostics and ordinary error reporting
 - [ ] T010 Setup environment-derived resource failure handling without product-defined numeric validation limits, plus authority revocation and fail-safe late-work cleanup
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
@@ -106,7 +105,7 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] T016 [US1] Implement [Service] in src/services/[service].py (depends on T014, T015)
 - [ ] T017 [US1] Implement [endpoint/feature] in src/[location]/[file].py
 - [ ] T018 [US1] Add validation, safe environment-failure handling, and rationale comments for non-obvious decisions
-- [ ] T019 [US1] Add path/content-free operational logging for user story 1 operations
+- [ ] T019 [US1] Add actionable error and diagnostic reporting for user story 1 operations
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -169,7 +168,7 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX Code cleanup, rationale comment review, and maintainability refactoring
 - [ ] TXXX Performance optimization across all stories
 - [ ] TXXX [P] Complete cross-cutting unit, integration, regression, boundary, and security tests
-- [ ] TXXX Review trust boundaries, product-issued mutation semantics, intentional authenticated sensitive-content access, path/content-free operational logs, environment-owned resource behavior, late-work cleanup, and safe failure behavior
+- [ ] TXXX Review trust boundaries, product-issued mutation semantics, intentional sensitive-content access, ordinary failure reporting, environment-owned resource behavior, late-work cleanup, and safe failure behavior
 - [ ] TXXX Run formatting, linting, type checking, tests, and documentation validation
 - [ ] TXXX Run quickstart.md validation
 
@@ -265,9 +264,8 @@ With multiple developers:
 - Each user story should be independently completable and testable
 - Every behavioral change requires risk-appropriate automated tests
 - Verify tests fail for the intended reason before implementing when technically feasible
-- Safety-sensitive tasks avoid product-defined numeric resource validation limits;
-  distinguish authenticated session diagnostics from path/content-free operational logs;
-  and test environment/runtime failure handling, product-issued mutation semantics,
+- Safety-sensitive tasks avoid product-defined numeric resource validation limits and
+  test environment/runtime failure handling, product-issued mutation semantics,
   authority revocation, and cleanup of revoked or late work. A generic security-review task
   cannot substitute for these concrete implementation and preceding test tasks
 - No task list is complete without quality gates and English/Japanese documentation parity

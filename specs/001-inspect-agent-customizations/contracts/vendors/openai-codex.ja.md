@@ -123,23 +123,21 @@ Immutable planは、この2つのexact selectorをその順序で持つclosedな
 安全にnon-emptyと確定したoverrideはshort-circuitし、`absent`または安全にemptyと確定したoverrideだけが
 `AGENTS.md`へ進む。
 
-Contractで宣言したstructural existence checkpointでは、`lstat`からのNodeの正確な`ENOENT`だけをdomainがfilesystem
-rejectionから変換する。Candidateの観測前なら`absent`、観測後なら`entry-disappeared`とする。Handlerはmessageではなく
-codeだけを検査する。Fallbackへ進めるのは`absent`だけで、`entry-disappeared`では進まない。正常に返されたlink、type、
-metadata、ancestor/root、canonicalization outcomeがboundaryを満たさない場合はfail closedのままfallbackへ進まない。
-FR-041のevent-confirmed-close observationは既にconfirm済みのsuccessful close lifecycleだけを維持し、fallbackへ進まない。
-`open`または`read`からの`ENOENT`を含むすべてのnon-carveout throw/rejectionは変更せずpropagateし、candidate classificationや
-fallback choiceへ決して変換しない。
+Absentなoverride—fileが存在しない場合—は`AGENTS.md`へのfallbackを進める。Symlinkされたoverrideは
+他のfileと同じようにtargetを透過的にreadする。Readできない、またはbinaryなoverrideは、代わりにそのfileの
+diagnosticとともにbranchを終了し、fallbackへ進まない（FR-035）。予期しないfailureはfallbackを選択せず、
+attemptを通常のerrorとしてfailさせる。
 
 NUL byteを1つでも含むcandidateはbinaryかつdiagnostic-onlyとし、他の点ではpublish可能なgenerationを
-contracted-partialにしてfallbackへ進まない。NULを含まない全byte streamはUTF-8 replacement semanticsで正確に1回だけ
+partialにしてfallbackへ進まない。NULを含まない全byte streamはUTF-8 replacement semanticsで正確に1回だけ
 decodeする。先頭BOMを1つ記録して取り除く。Decodeが`U+FFFD`を挿入した場合、`utf-8-replaced`はその全characterを、parse、
 extraction、display、comparisonに使うgarbled source全体へ保持する。Replacementだけでcompleteとし、別charsetを推測もretryも
 しない。Emptyはoptionalな先頭BOMを除くdecoded stringの`String.prototype.trim().length === 0`を意味し、whitespace-only
 fileはemptyとする。Inspectorは選択したnon-empty fileだけをpublishして両方はpublishしない。
 
-Present emptyまたはrelativeな`CODEX_HOME` override、もしくはthrowせずrejectされたroot outcomeから暗黙fallbackしない。
-Root selection/admission中のnon-carveout throw/rejectionは変更せずpropagateする。同じdirectory配下でもuser config、agent、skill、hook、
+Present emptyまたはrelativeな`CODEX_HOME` override、もしくはmissingまたはreadableなdirectoryではないrootから
+暗黙fallbackせず、そのtoolはabsentまたはfailedとして記録する（FR-014）。Root selection/admission中の予期しない
+failureはattemptを通常のerrorとしてfailさせる。同じdirectory配下でもuser config、agent、skill、hook、
 rule、MCP、plugin、prompt、memory、credential、log、session、cacheはexcludedのままである。
 
 ## Relationship-onlyとexcluded group

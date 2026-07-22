@@ -219,8 +219,9 @@ selection、precedence、trust、surface、default、applicability factはauthor
 8. CLIとIDE integrationは同じsettings locationとprecedenceを共有するが、feature subsetとembedded
    engine versionは異なり得る。架空の別file pathを作らず、surfaceとengine versionをapplicability
    factとして保持する。
-9. Claudeはsupport対象skill symlinkを追跡する一方、Inspectorはすべてのsymlinkを意図的に追跡しない。
-   Vendor fileの欠落ではなくparity limitationとして報告する。
+9. Claudeはsupport対象skill symlinkを追跡し、Inspectorも同じようにsymbolic linkをtarget先まで
+   透過的にreadする。したがってsymlinkされたskillはClaudeがloadする内容として調査される。
+   壊れたlinkはそのfileの`file-unreadable` diagnosticになる。
 10. 現在の公式docsには`.claude/workflows/*.js`、`.worktreeinclude`、keybinding、theme、plugin monitor、
     channel、LSP settingsなどの新しいsurfaceがある。実装前に明示的なexcludedまたはcandidate ruleが
     必要であり、記載がないことはClaudeが無視する証拠ではない。

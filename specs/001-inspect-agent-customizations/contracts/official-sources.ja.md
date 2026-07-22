@@ -232,10 +232,9 @@ OpenAI rowは、official Codex manualが出力したexact first-party Markdown s
 `.md` responseは意図したものであり、drift checkのMarkdown content-type branchで受理する。
 
 2026-07-20のInspector runtime reconciliationはproduct policyであり、upstream Codex behaviorに関するassertion
-ではない。調査対象Codex candidateでは、contract-declaredなstructural `lstat` checkpointからの正確な
-`ENOENT`だけを`absent`または`entry-disappeared`へ変換する。FR-041のevent-confirmed-close observationは既に
-confirm済みのsuccessful close lifecycleだけを維持する。`open`や`read`からの`ENOENT`を含むすべてのnon-carveout
-throwまたはrejectionは変更せずpropagateする。NUL byteはbinaryかつdiagnostic-only outcomeとする。
+ではない。調査対象Codex candidateでは、absentなtargetは文書化されたfallbackを選択し、readできないfileは
+FR-028の下でそのfileのdiagnosticとなり、予期しないfailureはattemptを通常のerrorとしてfailさせる。NUL byteはbinaryかつ
+diagnostic-only outcomeとする。
 NULを含まない全byte streamはUTF-8 replacement semanticsで正確に1回decodeし、invalid sequenceは
 `utf-8-replaced`となり、生成された`U+FFFD`を含む文字化けtextをparsing、extraction、display、comparisonに使用する
 完全なsourceに保持する。Maintained OpenAI assertionは選択した公式sectionだけをparaphraseし、これらInspector所有の

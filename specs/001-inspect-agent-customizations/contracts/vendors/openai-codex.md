@@ -134,19 +134,14 @@ The immutable plan uses the closed `codex-global-first-non-empty` policy with th
 exact selectors in that order. A safely established non-empty override short-circuits; only
 an `absent` or safely established empty override advances to `AGENTS.md`.
 
-At a contract-declared structural existence checkpoint, Node's exact `ENOENT` from `lstat`
-is the only filesystem rejection converted by the domain. Before the candidate is observed
-it becomes `absent`; after observation it becomes `entry-disappeared`. The handler checks the
-code only, never the message. Only `absent` can advance fallback; `entry-disappeared` cannot.
-Successfully returned link, type, metadata, ancestor/root, or canonicalization outcomes that
-fail the boundary remain fail-closed and do not advance. The FR-041
-event-confirmed-close observation retains only already-confirmed successful close lifecycle
-and does not advance fallback. Every non-carveout throw or rejection, including `ENOENT`
-from `open` or `read`, propagates unchanged and is never converted into a candidate
-classification or fallback choice.
+An absent override — the file does not exist — advances fallback to `AGENTS.md`; a
+symlinked override is read through its target like any other file. An unreadable or
+binary override instead ends the branch with that file's diagnostic and does not advance
+fallback (FR-035); an unexpected failure fails the attempt as an ordinary error without
+selecting fallback.
 
 A candidate containing any NUL byte is binary and diagnostic-only, makes an otherwise
-publishable generation contracted-partial, and does not advance fallback. Every non-NUL byte
+publishable generation partial, and does not advance fallback. Every non-NUL byte
 stream is decoded exactly once as UTF-8 with replacement semantics. One leading BOM is
 recorded and removed. If decoding inserts `U+FFFD`, `utf-8-replaced` preserves every such
 character in the complete garbled source used for parsing, extraction, display, and
@@ -155,9 +150,10 @@ means that decoded string after the optional leading BOM has
 `String.prototype.trim().length === 0`, so a whitespace-only file is empty. The Inspector
 publishes the selected non-empty file, never both.
 
-A present empty or relative `CODEX_HOME` override, or a non-throwing rejected root outcome,
-does not fall back silently. A non-carveout throw or rejection during root selection or admission
-propagates unchanged. User config, agents, skills, hooks, rules, MCP, plugins, prompts,
+A present empty or relative `CODEX_HOME` override, or a root that is missing or not a
+readable directory, does not fall back silently; the tool is recorded absent or failed
+(FR-014). An unexpected failure during root selection or admission fails the attempt as
+an ordinary error. User config, agents, skills, hooks, rules, MCP, plugins, prompts,
 memories, credentials, logs, sessions, and caches remain excluded even when they are under
 the same directory.
 

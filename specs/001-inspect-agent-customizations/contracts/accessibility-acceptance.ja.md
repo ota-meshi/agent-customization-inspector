@@ -91,10 +91,10 @@ workflowのいずれか1つでもSC-008は失敗する。
 | 3.2.6 Consistent Help | A | Applicable | `MANUAL-3.2.6` | 反復next-step/help mechanismが存在する場合、同じresponsive variationで同じrelative orderに置かれる。 |
 | 3.3.1 Error Identification | A | Applicable | `AUTO-3.3.1`; `MANUAL-3.3.1` | 検出したinput/workflow errorをtextで識別し、影響するcontrol/stateへ関連付ける。 |
 | 3.3.2 Labels or Instructions | A | Applicable | `AUTO-3.3.2`; `MANUAL-3.3.2` | Controlと必須confirmationに、input前の十分なlabel/instructionがある。 |
-| 3.3.3 Error Suggestion | AA | Applicable | `AUTO-3.3.3`; `MANUAL-3.3.3` | Safeな修正が既知なら、source valueを露出せずにdiagnostic/errorが実用的なnext stepを示す。 |
+| 3.3.3 Error Suggestion | AA | Applicable | `AUTO-3.3.3`; `MANUAL-3.3.3` | Safeな修正が既知なら、diagnosticまたはerrorが実用的なnext stepを示す。 |
 | 3.3.4 Error Prevention (Legal, Financial, Data) | AA | Not applicable | `REVIEW-3.3.4` | Productはlegal/financial commitmentを作らず、durableなuser-controlled dataを変更・削除しない。Global disableはtransient inspection stateだけを削除し、明示的な再enable/rescanで回復できる。 |
 | 3.3.7 Redundant Entry | A | Not applicable | `REVIEW-3.3.7` | 以前入力した情報の再入力を求めない。Acknowledgement/confirmationはactionであってdata entryではない。 |
-| 3.3.8 Accessible Authentication (Minimum) | AA | Applicable | `AUTO-3.3.8`; `MANUAL-3.3.8` | Capability URLのopen/reopenにcognitive-function test、transcription、puzzle、memorizationを要求せず、manual fallbackを利用できる。 |
+| 3.3.8 Accessible Authentication (Minimum) | AA | Applicable | `AUTO-3.3.8`; `MANUAL-3.3.8` | 表示済みlocal session URLのopen/reopenにauthentication step、cognitive-function test、transcription、puzzle、memorizationを要求せず、表示URLのmanual fallbackを利用できる。 |
 | 4.1.2 Name, Role, Value | A | Applicable | `AUTO-4.1.2`; `MANUAL-4.1.2` | Custom control、Monaco integration、state、property、changeが正しいprogrammatic name、role、valueを公開する。 |
 | 4.1.3 Status Messages | AA | Applicable | `AUTO-4.1.3`; `MANUAL-4.1.3` | Scan、rescan、stale、error、comparison、Global、livenessのstatus changeをfocus移動なしでannounceする。 |
 
@@ -128,14 +128,17 @@ checkをすべて再実行する。
   記録する。いずれも黙って省略しない。
 - **Workflow/state scenario**: `S1` populated inventory、filter、tool/source/kind factを伴うRepository discovery、
   `S2` Repository empty state、決定的にreturnされたsource Diagnostic、明示的rescan、および以前のsnapshotをstaleのまま
-  保持してgenericなOperation Errorだけを表示する別のthrown/rejected rescan、`S3` sensitive-content acknowledgement前後の
+  保持してfailed requestのerrorを表示する別のthrown/rejected rescan、`S3` sensitive-content acknowledgement前後の
   file inspectionとMonaco source access、`S4` file diagnosticと実行可能なnext step、`S5` 2-file comparison、
-  Monaco accessible diff、narrow inline alternative、`S6` generation replacement後のstale/removed comparison、
+  Monaco accessible diff、narrow inline alternative、`S6` comparison対象fileのowning sequenceが
+  replacement generationをcommitした後のstale/removed comparison、およびどちらのcomparison対象fileも
+  所有しないsequenceのcommit後もvalidのままのcomparison、
   `S7` Global disabled、selectorを持たないfixed 3-toolのsession-wide consent pending、admit済みsubsetを1 batchでscanして
-  正確に1つのatomic generationとしてcompleteする状態、poisonもpropagationも伴わないevent-confirmed-close success、non-carveoutなthrow/rejectionによるtransaction全体abort、およびrequest前
+  正確に1つのatomic Global generationとしてcompleteする状態、予期しないfailureによるtransaction全体abort、およびrequest前
   full client-data purge、greater content epoch、non-nullな全inspection-data fence、control-onlyのdraining/failed/retry/join state、
-  unconfirmed cleanupのrestart next step、terminal recovery、`remove-active-state` N+1、未公開initial enableだけの
-  `cleanup-only` N caseを扱う明示disable、`S8` 並行表示されるscan/status update、exactな
+  unconfirmed cleanupのrestart next step、terminal recovery、Repository generationをunchangedのままGlobal sequence全体を
+  破棄する`remove-active-state`、committed stateを変えない未公開initial enableだけの
+  `cleanup-only` caseを扱う明示disable、`S8` 並行表示されるscan/status update、exactな
   `{ sessionId, globalContentEpoch, globalDisableInProgress }` liveness stateとrender前purge transition、disable fenceがnullの場合だけの
   Resume inspection、pause/stop/hideまたはuser-frequency control、error recovery、focus restoration。
 - **Input profile**: `I1` AT browse/virtual modeとfocus modeを含むkeyboardのみ、`I2` click activationとcancellationを

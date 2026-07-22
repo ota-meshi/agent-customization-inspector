@@ -1,22 +1,60 @@
 <!--
 Sync Impact Report
-- Version change: 1.0.0 → 1.1.0
-- Modified principles: Quality and Safety Standards — assigned resource capacity to the
-  execution environment instead of product-defined numeric limits, separated intentional
-  authenticated sensitive-content access from incidental disclosure, and prohibited paths
-  or inspected values in operational logs
+- Version change: 4.3.0 → 4.4.0
+- Modified principles: Readable, Maintainable, Intention-Revealing Code — the class
+  obligation is generalized to every class member: fields and methods, including the
+  constructor and private members, carry JSDoc doc comments (a method states what the
+  call does; a field states what it holds and which invariant it maintains).
+- Previous report (4.2.0 → 4.3.0):
+- Modified principles: Readable, Maintainable, Intention-Revealing Code — the
+  documentation obligation now also covers public class members: every public method,
+  including the constructor, carries a JSDoc doc comment stating what the call does and
+  which contract behavior it implements.
+- Previous report (4.1.0 → 4.2.0):
+- Modified principles: Readable, Maintainable, Intention-Revealing Code — the
+  type-documentation obligation now also covers the declarations themselves: every
+  exported type, interface, and constant carries a JSDoc doc comment stating what it
+  represents, in addition to the per-member documentation added in 4.1.0.
+- Previous report (4.0.0 → 4.1.0):
+- Modified principles: Readable, Maintainable, Intention-Revealing Code — expanded the
+  documentation obligation to type members: every closed-union member and every exported
+  interface field carries a JSDoc doc comment stating its meaning and, where one exists,
+  its governing contract. Concrete form and examples live in AGENTS.md's Code commenting
+  policy.
+- Previous report (3.0.0 → 4.0.0):
+- Version change: 3.0.0 → 4.0.0
+- Modified principles: Quality and Safety Standards — the operational-log/telemetry
+  content bullet is removed and the generic-error doctrine is dropped, following the
+  owner's 2026-07-22 decision to remove FR-040/FR-041: the product has no telemetry
+  (outbound traffic is forbidden), terminal and UI output are read by the same user who
+  owns the inspected files, and the unauthenticated session API already serves complete
+  file content, so hiding error causes protected nothing while making failures
+  undebuggable. Errors are reported ordinarily; the closed OperationError entity is
+  deleted. (3.0.0 had narrowed session protection to the loopback binding.)
+- Templates and guidance updated (4.0.0):
+  - ✅ spec.md/spec.ja.md — FR-040/FR-041 and the Operation Error entity removed;
+    failure semantics remain owned by FR-028/FR-030 and the scan-publication table
+  - ⚠ research/plan/data-model/contracts/tasks pairs — ordinary-error alignment in
+    progress
+- Previous report (2.0.0 → 3.0.0):
+- Modified principles: Quality and Safety Standards — the session-protection obligation
+  is narrowed from "the loopback session MUST be protected from other origins"
+  (per-session token, Origin checks) to loopback binding only, following the owner's
+  2026-07-22 decision to adopt the devframe local-tool framework with authentication
+  disabled (config-inspector parity). Served content may include the user's own
+  secrets, so the host binds 127.0.0.1 only and is never exposed beyond the initiating
+  machine; the residual local-process and DNS-rebinding exposure of an unauthenticated
+  loopback host is a documented limitation. "Capability-authenticated" API access and
+  "authenticated" diagnostics language is removed accordingly. (2.0.0 had replaced the
+  adversarial-file model with the trusted-workspace framing.)
 - Added sections: none
 - Removed sections: none
 - Templates and guidance updated:
-  - ✅ .specify/templates/plan-template.md
-  - ✅ .specify/templates/spec-template.md
-  - ✅ .specify/templates/tasks-template.md
-  - ✅ .agents/skills/speckit-tasks/SKILL.md
-  - ✅ .claude/skills/speckit-tasks/SKILL.md
-  - ✅ .github/agents/speckit.tasks.agent.md
-  - ✅ AGENTS.md, AGENTS.ja.md, README.md, and README.ja.md reviewed; no textual
-    changes required
-- Follow-up TODOs: none
+  - ✅ spec.md/spec.ja.md — FR-022/FR-027/QR-002/QR-003/SC-004/SC-007 transport and
+    authentication language aligned to the loopback-only devframe host
+  - ⚠ research/plan/data-model/contracts/tasks pairs — REST/token transport sections
+    superseded; devframe alignment in progress
+- Follow-up TODOs: complete the devframe transport alignment across the spec suite
 -->
 # Agent Customization Inspector Constitution
 
@@ -35,12 +73,29 @@ held to exactly the same standard as human contributions and MUST be reviewed in
 full repository context. Quality is the primary delivery constraint, not a negotiable
 follow-up activity.
 
+Simplicity is the binding tiebreaker: when a proposed mechanism does not change what the
+known requirements deliver, the simpler implementation MUST be chosen. A defensive check
+MUST have a failure mode that actually protects a user. Policy that another layer already
+owns and enforces — the package manager, the runtime or platform, or a test or release
+gate — MUST NOT be re-implemented at product runtime; duplicated policy drifts instead of
+defending. Exact-value assertions about packaged artifacts belong in package tests and
+release gates, and artifacts that ship together MUST NOT re-verify each other at user
+runtime. Verbose equivalents of a simpler construct MUST be simplified. When a
+specification mandates such redundancy, the specification MUST be corrected in both
+languages rather than implemented as written.
+
 ### II. Readable, Maintainable, Intention-Revealing Code
 
 Code MUST use clear names, cohesive modules, explicit control flow, and small units with
 well-defined responsibilities. Non-obvious decisions, invariants, security assumptions,
 trade-offs, and compatibility constraints MUST be documented close to the affected code,
-with comments explaining why the design exists rather than restating syntax. Stale,
+with comments explaining why the design exists rather than restating syntax. Exported
+declarations are documented where they are declared: every exported type, interface, and
+constant MUST carry a JSDoc doc comment stating what it represents; every
+closed-union member and exported interface field MUST carry one stating its meaning and,
+where one exists, its governing contract; and every class member — fields and
+methods, including the constructor and private members — MUST carry one stating what it
+holds or does. Stale,
 redundant, or misleading comments MUST be corrected or removed in the same change.
 Complexity and new abstractions MUST be justified by a concrete current need. Reviewers
 MUST be able to understand the change and its rationale without reverse-engineering the
@@ -79,9 +134,22 @@ migration or support path.
 
 ## Quality and Safety Standards
 
-- Formatting, linting, type checking where applicable, automated tests, and documentation
-  validation MUST run as required quality gates in local verification and CI.
-- Inputs and inspected artifacts MUST be treated as untrusted. Implementations MUST use
+- Linting, type checking where applicable, automated tests, and documentation
+  validation MUST run as required quality gates in local verification and CI. Byte-level
+  formatting is owned declaratively by repository configuration (`.gitattributes`,
+  `.editorconfig`) rather than by a checking gate.
+- The product runs in a workspace the user already trusts: it exists to show what AI
+  agents will read, and inspected customization files are not modeled as an adversary.
+  Three obligations remain regardless of that trust: inspected content MUST NOT be
+  executed (parsing suffices for display), the session host MUST bind to loopback only
+  and MUST NOT be exposed beyond the initiating machine because served content may
+  include the user's own secrets, and displayed content MUST be rendered inert in the
+  browser. The session host runs unauthenticated behind that loopback binding;
+  documentation MUST state the residual limitation that other local processes and, via
+  DNS rebinding, a malicious web page can reach the session while the inspector runs.
+  Failures are reported as ordinary errors: the product defines no log-content rules and
+  no sanitized error envelope, because it has no telemetry and its output is read by the
+  same user who owns the inspected files. Implementations MUST use
   least privilege and safe failure behavior. File size, file or item count, parser shape,
   request or response size, work-queue capacity, time, concurrency, and similar resource
   ceilings MUST NOT be defined as product-specific numeric validation limits. Capacity is
@@ -94,19 +162,13 @@ migration or support path.
   This rule does not prohibit functional
   cardinalities inherent to a feature. Security and privacy implications MUST be reviewed whenever trust boundaries,
   permissions, persistence, networking, or sensitive data change.
-- Operational logs and telemetry MUST contain only stable fixed codes and opaque
-  identifiers. They MUST NOT contain inspected content or metadata, authored values,
-  Source-relative or absolute paths, capabilities, request or response bodies, or raw
-  parser or system errors. An authenticated, session-only product diagnostic MAY show the
-  minimum Source-relative path and metadata needed to resolve a file-specific
-  problem, but that information MUST NOT be copied into operational logs or telemetry.
 - Complete authored content, including credentials and other secrets, MAY be intentionally
   returned by a session API or displayed only when a product specification explicitly
-  requires inspection of that content. API access MUST be capability-authenticated and
-  local and session-scoped. User-facing display MUST be preceded by clear sensitive-content
-  acknowledgement and MUST render the content inert. The content MUST NOT be persisted,
-  sent to a remote service, or copied into operational logs or telemetry. This narrow
-  allowance for intentional authenticated inspection does not permit incidental exposure
+  requires inspection of that content. API access MUST be loopback-local and
+  session-scoped. User-facing display MUST be preceded by clear sensitive-content
+  acknowledgement and MUST render the content inert. The content MUST NOT be persisted or
+  sent to a remote service. This narrow
+  allowance for intentional inspection does not permit incidental exposure
   through any other surface.
 - Dependencies, public contracts, and data formats MUST be explicit and kept as small as
   practical. New dependencies and breaking changes require documented rationale and
@@ -158,4 +220,4 @@ Known violations MUST be resolved before approval; urgency, generated code, and 
 automation do not waive compliance. Reviewers are responsible for examining the complete
 change and recording any residual uncertainty that requires further investigation.
 
-**Version**: 1.1.0 | **Ratified**: 2026-07-15 | **Last Amended**: 2026-07-19
+**Version**: 4.4.0 | **Ratified**: 2026-07-15 | **Last Amended**: 2026-07-22

@@ -241,8 +241,9 @@ applicability facts are not authored metadata and therefore are not additional f
 8. The same settings locations and precedence are shared across CLI and IDE integrations,
    but feature subsets and the embedded engine version can differ. Keep surface and engine
    version as applicability facts rather than creating fictitious alternate file paths.
-9. Claude follows supported skill symlinks, while the Inspector intentionally does not
-   follow any symlink. Report this as a parity limitation, never as a missing vendor file.
+9. Claude follows supported skill symlinks, and the Inspector reads symbolic links
+   through their targets the same way, so a symlinked skill is inspected as the content
+   Claude would load; a broken link yields that file's `file-unreadable` diagnostic.
 10. Current official docs include newer surfaces such as `.claude/workflows/*.js`,
     `.worktreeinclude`, keybindings, themes, plugin monitors, channels, and LSP settings.
     They require an explicit excluded or candidate rule before implementation; silence is

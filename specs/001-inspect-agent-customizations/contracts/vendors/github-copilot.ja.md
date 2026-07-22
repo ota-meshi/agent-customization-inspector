@@ -256,8 +256,9 @@ readできる。
 | `copilot.global.instructions.root` | 正確なconsent済みcapture済み`COPILOT_HOME`。Absent時だけrequest-wideなimport済み`node:os.homedir()` captureと`.copilot`を`node:path.join`した値 | `copilot-instructions.md` | `exact` | `static-candidate` | `copilot.behavior.cli.user.instructions.root` | `copilot.cli.instructions.layering` | FR-013、FR-014、FR-015、FR-018、QR-005 | `github.copilot.cli.instructions`, `github.copilot.instructions.support` |
 | `copilot.global.instructions.path` | 同じ正確なconsent済み`<COPILOT_HOME>` boundary | `instructions/**/*.instructions.md` | 固定`instructions/` directory配下の`recursive-subtree` | `static-candidate` | `copilot.behavior.cli.user.instructions.path`, `copilot.behavior.vscode.user.instructions` | `copilot.cli.instructions.layering`, `copilot.vscode.instructions.layering` | FR-013、FR-014、FR-015、FR-018、QR-005 | `github.copilot.cli.instructions`, `github.copilot.instructions.support`, `vscode.copilot.instructions`, `vscode.copilot.settings` |
 
-Present emptyまたはrelativeな`COPILOT_HOME`、もしくはthrowせずrejectされたroot outcomeはinvalid overrideであり、
-暗黙fallbackしない。Root selection/admission中のnon-carveout throw/rejectionは変更せずpropagateする。同じboundary配下でもuser
+Present emptyまたはrelativeな`COPILOT_HOME`、もしくはmissingまたはreadableなdirectoryではないrootはinvalid
+overrideであり、暗黙fallbackせず、そのtoolはabsentまたはfailedとして記録する（FR-014）。Root selection/admission中の
+予期しないfailureはattemptを通常のerrorとしてfailさせる。同じboundary配下でもuser
 settings、agent、skill、hook、MCP、LSP、extension、plugin、permission、credential、log、session、cacheはexcludedの
 ままである。
 

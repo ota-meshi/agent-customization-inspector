@@ -231,7 +231,6 @@ contracts and are not duplicated here.
 | Rule ID | Excluded input | Behavior refs | Required retained fact | Policy refs | Evidence |
 |---|---|---|---|---|---|
 | `shared.excluded.managed-remote-state` | Managed, organization, hosted, remote, credential, log, cache, session, runtime-state, plugin-installation, and service-side files or values | `claude.behavior.user.mcp-state`; `claude.behavior.user.plugins`; `claude.behavior.user.settings`; `codex.behavior.user.config`; `codex.behavior.user.plugins`; `copilot.behavior.cloud.mcp`; `copilot.behavior.cloud.organization-agents`; `copilot.behavior.cloud.organization-instructions`; `copilot.behavior.cloud.plugins`; `copilot.behavior.cloud.remote-skills` | Record only the source category and its possible effect on a strategy; never create a local path | FR-009, FR-013, FR-014, FR-018, FR-019, FR-021, FR-022, FR-031, FR-039, QR-001, QR-003, QR-005 | `anthropic.claude-code.directory.file-reference`, `anthropic.claude-code.mcp.scopes-precedence`, `anthropic.claude-code.plugins.components-scopes`, `anthropic.claude-code.settings.scopes-precedence`, `github.copilot.cli.reference`, `github.copilot.cloud.instructions`, `github.copilot.custom-agents`, `github.copilot.instructions.support`, `github.copilot.plugins`, `github.copilot.skills`, `openai.codex.config-basic`, `openai.codex.mcp`, `openai.codex.plugins`, `vscode.copilot.plugins` |
-| `shared.excluded.symlink-target` | Any target reachable only by following a symbolic link | `claude.behavior.repo.skills`; `codex.behavior.repo.skills` | Record the unread parity divergence when a vendor can follow it | FR-003, FR-019, FR-022, FR-024, FR-029, QR-001, QR-002, QR-003, QR-005 | `anthropic.claude-code.large-codebases.start-directory`, `anthropic.claude-code.skills.locations-discovery`, `openai.codex.skills` |
 
 ## Registry completeness
 
@@ -240,5 +239,5 @@ This contract defines exactly 39 strategy IDs referenced by the three vendor con
 Rows explicitly marked with no strategy in a vendor contract—such as explicit prompt
 invocation or excluded experimental surfaces—do not acquire an invented strategy here.
 It also defines all 14 relationship-only IDs from the staged allowlist/vendor contracts
-and both shared non-read exclusions. Any future reference to a new ID requires an English
+and the one shared non-read exclusion. Any future reference to a new ID requires an English
 and Japanese definition in this contract in the same change.

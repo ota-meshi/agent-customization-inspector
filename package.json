@@ -17,8 +17,62 @@
   },
   "funding": "https://github.com/sponsors/ota-meshi",
   "type": "module",
-  "main": "dist/index.mjs",
+  "bin": {
+    "agent-customization-inspector": "dist/cli.mjs"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "README.ja.md",
+    "LICENSE"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "clean": "node scripts/clean-build-output.mjs",
+    "dev:prepare": "nuxt prepare",
+    "build": "node scripts/clean-build-output.mjs && nuxt build && tsdown",
+    "verify:package": "node scripts/verify-package-files.mjs",
+    "lint": "eslint .",
+    "typecheck": "vue-tsc --noEmit",
+    "test:unit": "vitest run --project unit",
+    "test:contract": "vitest run --project contract",
+    "test:integration": "vitest run --project integration",
+    "test:security": "vitest run --project security",
+    "test:package": "vitest run --project package",
+    "test:performance": "vitest run --project performance",
+    "test:coverage": "vitest run --project coverage --coverage",
+    "test:e2e": "playwright test",
+    "test:docs": "vitest run --project contract tests/contract/documentation.test.ts"
+  },
+  "dependencies": {
+    "devframe": "0.7.5",
+    "gunshi": "0.37.0",
+    "jsonc-parser": "3.3.1",
+    "smol-toml": "1.7.0",
+    "yaml": "2.9.0"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.12.1",
+    "@nuxt/eslint": "1.16.0",
+    "@nuxt/test-utils": "4.0.3",
+    "@playwright/test": "1.61.1",
+    "@types/node": "24.13.3",
+    "@vitest/coverage-v8": "4.1.10",
+    "@vue/test-utils": "2.4.11",
+    "eslint": "10.7.0",
+    "happy-dom": "20.10.6",
+    "monaco-editor": "0.55.1",
+    "nuxt": "4.4.8",
+    "playwright": "1.61.1",
+    "tsdown": "0.22.8",
+    "typescript": "6.0.3",
+    "vite": "7.3.6",
+    "vitest": "4.1.10",
+    "vue": "3.5.39",
+    "vue-router": "5.2.0",
+    "vue-tsc": "3.3.7"
+  },
+  "packageManager": "pnpm@11.13.0",
+  "engines": {
+    "node": "^24.11.0 || ^26.0.0"
   }
 }

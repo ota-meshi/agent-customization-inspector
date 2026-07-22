@@ -281,9 +281,10 @@ flow required by FR-013 through FR-018, Copilot may read only these rules:
 | `copilot.global.instructions.root` | Exact consented captured `COPILOT_HOME`; only when absent, `node:path.join` of the request-wide imported `node:os.homedir()` capture and `.copilot` | `copilot-instructions.md` | `exact` | `static-candidate` | `copilot.behavior.cli.user.instructions.root` | `copilot.cli.instructions.layering` | FR-013, FR-014, FR-015, FR-018, QR-005 | `github.copilot.cli.instructions`, `github.copilot.instructions.support` |
 | `copilot.global.instructions.path` | The same exact consented `<COPILOT_HOME>` boundary | `instructions/**/*.instructions.md` | `recursive-subtree` below the fixed `instructions/` directory | `static-candidate` | `copilot.behavior.cli.user.instructions.path`, `copilot.behavior.vscode.user.instructions` | `copilot.cli.instructions.layering`, `copilot.vscode.instructions.layering` | FR-013, FR-014, FR-015, FR-018, QR-005 | `github.copilot.cli.instructions`, `github.copilot.instructions.support`, `vscode.copilot.instructions`, `vscode.copilot.settings` |
 
-A present empty or relative `COPILOT_HOME`, or a non-throwing rejected root outcome, is an
-invalid override and does not silently fall back. A non-carveout throw or rejection during root selection
-or admission propagates unchanged. User settings, agents, skills, hooks, MCP, LSP,
+A present empty or relative `COPILOT_HOME`, or a root that is missing or not a readable
+directory, is an invalid override and does not silently fall back; the tool is recorded
+absent or failed (FR-014). An unexpected failure during root selection or admission
+fails the attempt as an ordinary error. User settings, agents, skills, hooks, MCP, LSP,
 extensions, plugins, permissions, credentials, logs, sessions, and caches remain excluded
 even when stored below the same boundary.
 

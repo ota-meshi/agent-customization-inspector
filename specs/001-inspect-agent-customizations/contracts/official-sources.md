@@ -260,11 +260,9 @@ Codex manual. The `.md` response is intentional and is accepted by the drift che
 Markdown content-type branch.
 
 The 2026-07-20 Inspector runtime reconciliation is product policy, not an assertion about
-upstream Codex behavior. For inspected Codex candidates, only an exact `ENOENT` from a
-contract-declared structural `lstat` checkpoint becomes `absent` or
-`entry-disappeared`; the FR-041 event-confirmed-close observation retains only
-already-confirmed successful close lifecycle; every non-carveout throw or rejection
-propagates unchanged, including an `ENOENT` from `open` or `read`. A NUL byte produces the
+upstream Codex behavior. For inspected Codex candidates, an absent target selects the documented
+fallback, a file that cannot be read yields that file's diagnostic under FR-028,
+and an unexpected failure fails the attempt as an ordinary error. A NUL byte produces the
 binary, diagnostic-only outcome.
 Every non-NUL byte stream is decoded once with UTF-8 replacement semantics; invalid
 sequences produce `utf-8-replaced`, and the resulting garbled text containing `U+FFFD` remains in the

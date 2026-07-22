@@ -96,10 +96,10 @@ does not establish a Not-applicable row.
 | 3.2.6 Consistent Help | A | Applicable | `MANUAL-3.2.6` | Repeated next-step/help mechanisms, when present, occur in the same relative order for the same responsive variation. |
 | 3.3.1 Error Identification | A | Applicable | `AUTO-3.3.1`; `MANUAL-3.3.1` | Every detected input or workflow error is identified in text and associated with the affected control/state. |
 | 3.3.2 Labels or Instructions | A | Applicable | `AUTO-3.3.2`; `MANUAL-3.3.2` | Controls and required confirmations have sufficient labels and instructions before input. |
-| 3.3.3 Error Suggestion | AA | Applicable | `AUTO-3.3.3`; `MANUAL-3.3.3` | When a safe correction is known, the diagnostic/error provides a practical next step without exposing source values. |
+| 3.3.3 Error Suggestion | AA | Applicable | `AUTO-3.3.3`; `MANUAL-3.3.3` | When a safe correction is known, the diagnostic or error provides a practical next step. |
 | 3.3.4 Error Prevention (Legal, Financial, Data) | AA | Not applicable | `REVIEW-3.3.4` | The product creates no legal/financial commitment and does not modify or delete durable user-controlled data; Global disable removes only transient inspection state and is recoverable by explicit re-enable/rescan. |
 | 3.3.7 Redundant Entry | A | Not applicable | `REVIEW-3.3.7` | The interface does not ask the user to re-enter previously supplied information; acknowledgements and confirmations are actions, not data entry. |
-| 3.3.8 Accessible Authentication (Minimum) | AA | Applicable | `AUTO-3.3.8`; `MANUAL-3.3.8` | Opening/reopening the capability URL requires no cognitive-function test, transcription, puzzle, or memorization; manual fallback remains available. |
+| 3.3.8 Accessible Authentication (Minimum) | AA | Applicable | `AUTO-3.3.8`; `MANUAL-3.3.8` | Opening/reopening the printed local session URL requires no authentication step, cognitive-function test, transcription, puzzle, or memorization; the printed-URL manual fallback remains available. |
 | 4.1.2 Name, Role, Value | A | Applicable | `AUTO-4.1.2`; `MANUAL-4.1.2` | Custom controls, Monaco integration, state, properties, and changes expose correct programmatic name, role, and value. |
 | 4.1.3 Status Messages | AA | Applicable | `AUTO-4.1.3`; `MANUAL-4.1.3` | Scan, rescan, stale, error, comparison, Global, and liveness status changes are announced without forcing focus. |
 
@@ -135,17 +135,20 @@ Every `MANUAL-*` ID is executed over the Cartesian product of the following clos
   named supported OS has no native forced-colors mode; neither is silently omitted.
 - **Workflow/state scenario**: `S1` Repository discovery with populated inventory, filter,
   and tool/source/kind facts; `S2` Repository empty state, a deterministic returned source
-  Diagnostic, explicit rescan, and a separate thrown/rejected rescan shown only as its generic
-  Operation Error while the prior snapshot remains stale; `S3` file inspection before and after sensitive-content acknowledgement,
+  Diagnostic, explicit rescan, and a separate thrown/rejected rescan shown as the failed
+  request's error while the prior snapshot remains stale; `S3` file inspection before and after sensitive-content acknowledgement,
   including Monaco source access; `S4` file diagnostic and actionable next step; `S5`
   two-file comparison, Monaco accessible diff, and narrow inline alternative; `S6` stale or
-  removed comparison after generation replacement; `S7` Global disabled, selector-free
+  removed comparison after a compared file's owning sequence commits its replacement
+  generation, plus a comparison that stays valid when a sequence owning neither compared
+  file commits; `S7` Global disabled, selector-free
   fixed-three-tool session-wide consent pending, one-batch admitted-subset scan complete with
-  exactly one atomic generation, event-confirmed-close success without poisoning or propagation, whole-transaction abort on a non-carveout throw/rejection, and
+  exactly one atomic Global generation, whole-transaction abort on an unexpected failure, and
   explicit disable covering the pre-request full client-data purge, greater content epoch,
   non-null all-inspection-data fence, control-only draining/failed/retry/join state, restart
-  next step for unconfirmed cleanup, terminal recovery, `remove-active-state` N+1, and the
-  unpublished-initial-enable-only `cleanup-only` N case; `S8` scan/status updates presented in
+  next step for unconfirmed cleanup, terminal recovery, the `remove-active-state` discard of
+  the entire Global sequence with the Repository generation unchanged, and the
+  unpublished-initial-enable-only `cleanup-only` case that changes no committed state; `S8` scan/status updates presented in
   parallel, the exact `{ sessionId, globalContentEpoch, globalDisableInProgress }` liveness
   state and purge-before-render transition, Resume inspection only with a null disable fence,
   pause/stop/hide or user-frequency control, error recovery, and focus restoration.

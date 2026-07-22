@@ -10,53 +10,60 @@
 
 Build a read-only local inspector, launched with `npx`, that inventories and compares
 allowlisted customization files for GitHub Copilot, Claude Code, and OpenAI Codex without
-activating any inspected content. Use one cohesive package: a Nuxt client SPA in `app/`,
-a Node CLI and local inspection host in `src/`, serializable contracts in `shared/`, a
-small project-owned `bin.mjs` integrity bootstrap, and one published `dist/` tree. A fixed clean step removes only
-package-owned prior `.output/`, `.build/`, and `dist/` trees. `nuxt build` produces the
-static browser application in its standard `.output/public` staging tree; fixed assembly
-steps validate and copy its root-absolute assets into `dist/public`, record exact
-inline-script CSP hashes, and copy a manifest-closed tsdown CLI/parser-Worker bundle from
-`.build/server`. The pure Node.js `src/inspection/safe-fs.ts` layer is the sole path by
-which inspected sources are enumerated or read. It uses registry-directed `node:fs/promises`
-traversal, canonical-path checks, opaque scan tickets, and same-`FileHandle` identity and
-metadata checks before and after reads. The browser presents complete authored
+activating any inspected content. Use one cohesive package: a Nuxt client SPA in `src/app/`,
+a Node CLI and local inspection host in `src/server/`, serializable contracts in `src/shared/`, and
+one published `dist/` tree whose `dist/cli.mjs` is the direct `package.json.bin` target. A fixed clean step removes only
+package-owned prior `.output/` and `dist/` trees. `nuxt build` emits the
+static browser application directly into `dist/public` and tsdown emits the CLI
+bundle directly into `dist/`; the `verify:package` gate requires exactly the two
+packaged entry points `dist/public/index.html` and `dist/cli.mjs`
+— there is no staging copy step, no static-asset manifest, and no CSP-hash recording step.
+The Inspector
+runs in a workspace the user already trusts: inspected customization files are not modeled
+as an adversary, and all inspected-source filesystem I/O lives only under
+`src/server/inspection/`, which performs an ordinary recursive `node:fs/promises` walk of
+the fixed inspection-path allowlist with per-file diagnostics for entries it cannot use.
+The browser presents complete authored
 source in a read-only Monaco editor and uses Monaco's diff editor for source comparison;
 recognition metadata is matched by tool/kind/field/occurrence and compares exact authored literals in
 ordinary Vue components, never parser-normalized display values.
 
-After the fixed package-integrity bootstrap has verified package-owned manifests and their
-declared assets, the selected Repository root is captured with no selection-stage filesystem
-or network I/O before session bootstrap: the CLI captures `process.cwd()` once and uses that
-exact string when `--cwd` is omitted.
-On Windows it rejects explicit UNC/server-share/device, current-drive/root-relative, and
-drive-relative values including `C:` and `C:foo` before `resolve`; only a plain relative
-option is resolved against the anchored capture, while an absolute drive option is retained.
-POSIX retains an absolute option or resolves a relative option against the capture. The
-selected absolute result must pass the one shared pure `LexicalAbsoluteRootParts` parser
-with zero selection-stage filesystem/network I/O. The package bootstrap never derives an
-operand from the invocation `cwd` or `--cwd`, accesses a Repository root, or issues DNS, SMB,
-or outbound-network requests. The CLI never calls `process.chdir()` or uses a per-drive
-working directory. Missing, empty, duplicate, pre-resolution-invalid, or parser-rejected
-values fail before session creation or browser launch. Bootstrap generation
-0 synchronously contains the one Repository Source with a stable `sourceId` and escaped,
-non-authorizing root label; only later central boundary admission can grant read authority.
+Root selection is simple and lexical: the CLI captures `process.cwd()` exactly once and
+accepts `--cwd <path>` at most once. An absolute option is kept as given, a relative option
+is resolved against the captured invocation directory, and the result is the selected
+Repository root. The CLI never calls `process.chdir()`. A missing, empty, or duplicate
+`--cwd` value fails with a fixed actionable startup error before session creation or
+browser launch. Bootstrap generation 0 of the Repository sequence synchronously contains
+the one Repository Source with a stable `sourceId` and an escaped root label.
 
 The security boundary is strict: the browser never reads the filesystem,
 the Node host never dynamically imports customization files, and the initial release has
-no static-export, MCP, remote-host, or automatic-watch mode. A loopback-only host sends
-inert DTOs through a versioned HTTP API protected by a random per-process capability. The
-API returns a `FileDetail`, including complete authored source and declared authored values,
-only to a capability-authenticated explicit detail request; the bundled browser makes no
+no static-export, MCP, remote-host, or automatic-watch mode. The local host is the
+devframe local-tool framework — the same foundation eslint/config-inspector uses — with
+authentication disabled: it serves the built SPA from `cli.distDir` (`dist/public`) and
+sends inert DTOs through devframe's RPC session API channel, and devframe owns port
+selection, host binding, and startup browser opening. Protection is the `127.0.0.1`
+loopback bind only — there is no per-session token, Origin check, or hand-written router —
+and the residual exposure of an unauthenticated loopback host (other local processes and,
+via DNS rebinding, a malicious web page) is a documented limitation per Constitution
+v4.0.0. The session API returns a `FileDetail`, including complete authored source and
+declared authored values, only to an explicit detail request; the bundled browser makes no
 such request and constructs no comparison until after its client-memory sensitive-content
 acknowledgement. That acknowledgement is a presentation
-invariant, not an API authorization factor. Environment-variable references remain literal text and
+invariant, not an access-control factor. Environment-variable references remain literal text and
 never authorize process-environment lookup or substitution. Explicit scans use the frozen
-inspection path allowlist, reject symlink traversal, use inert best-effort
-parsers, and atomically replace the in-memory generation so stale generation-owned details
-and comparisons cannot survive a successful rescan. A fatal rescan publishes none of its
+inspection path allowlist, read symbolic links transparently the way an agent loading the
+same path would (a link whose target is missing or unreadable yields that file's per-file
+diagnostic), use inert best-effort
+parsers, and atomically replace the owning sequence's in-memory generation — Repository
+and Global inspection keep independent generation sequences because their lifecycles are
+independent — so that sequence's stale generation-owned details and comparisons cannot
+survive a successful rescan while the other sequence's committed views stay valid. Global
+enable creates the Global sequence at generation 1 without touching Repository state, and
+Global disable discards that sequence without committing anything. A fatal rescan publishes none of its
 uncommitted results and retains the last committed snapshot with a per-Source stale-failure
-entry and actionable lifecycle diagnostic until that Source is refreshed or removed.
+entry — showing the failed request's error or the deterministic lifecycle diagnostic —
+until that Source is refreshed or removed.
 
 Customization discovery is maintained as four contract-versioned registries: documented
 vendor lookup behavior (`behaviorId`), Inspector matcher/read policy (`ruleId`), runtime
@@ -74,12 +81,12 @@ the new root path and a most-specific same-name rule, while the current guide st
 strategy therefore retain `conflict`; the root provenance is path/surface-only, contributes
 no VS Code-owned extractor fields, and preserves unknown schema and total order. Because
 the CLI descendant rule already admits the physical root file, both compatible provenances
-merge into the one `(fileId, copilot, MCP)` recognition and one verified read.
+merge into the one `(fileId, copilot, MCP)` recognition and one read of that file.
 
 Every user-visible inventory/API filesystem locator that identifies an inventoried
 customization file or a safely normalized target within its owning Source is a
-Source-relative Path computed from that Source's one root. This includes primary and alias
-file paths, provenance paths, non-null normalized relationship targets, comparison/filter
+Source-relative Path computed from that Source's one root. This includes file paths,
+provenance paths, non-null normalized relationship targets, comparison/filter
 labels, and file-scoped Diagnostic locations. It is repository-relative only for the
 Repository Source; each Global Source uses its own admitted tool-home root and never shares
 a path namespace with another Source. Authored literals are a separate surface and remain
@@ -89,8 +96,8 @@ Root labels are a distinct presentation surface. An enabled `SourceBoundary.disp
 is the one-way escaped presentation of that Source's root. A
 `GlobalConsentPreview.entries[].displayRoot` originates before admission, when no owning
 Source exists, and is the one-way escaped proposed lexical root; it may be absolute or
-invalid. Neither field is a `SourceRelativePath`, identifies an inventory item, grants read
-authority, or enters operational logs.
+invalid. Neither field is a `SourceRelativePath`, identifies an inventory item, or grants read
+authority.
 
 Every Inspector Repository matcher is explicitly based at the selected Repository root and rendered
 with `./`; a bare `**/` is invalid. `./**/` means only downward Inspector descendant
@@ -116,10 +123,15 @@ compatible minor/patch release. Versions below either floor, Node 25, and future
 outside the contract.
 
 **Primary Dependencies**: Nuxt 4.4.8, Vue Router 5.2.0, tsdown 0.22.8, Vite 7.3.6
-(latest Nuxt-compatible release), `gunshi` 0.37.0, `yaml` 2.9.0,
-`jsonc-parser` 3.3.1, `smol-toml` 1.7.0, and `monaco-editor` 0.55.1. The first lockfile
+(latest Nuxt-compatible release), `devframe` 0.7.5 (exact pin of the pre-1.0 local-tool
+host framework), `gunshi` 0.37.0, `yaml` 2.9.0,
+`jsonc-parser` 3.3.1, `smol-toml` 1.7.0, and `monaco-editor` 0.55.1. devframe's transitive
+tree (h3 2.0.1-rc.22, birpc, crossws, valibot, destr, mrmime, nostics, pathe, ufo) is
+owned by devframe and the lockfile rather than pinned as direct dependencies. The first lockfile
 MUST revalidate these exact stable versions; prereleases and incompatible newer majors
-are not considered eligible “latest” versions.
+are not considered eligible “latest” versions, and the devframe pin plus its
+lockfile-owned h3 release candidate are the one reviewed exception, accepted with the
+framework adoption decision (spec Clarifications § Session 2026-07-22).
 That revalidation is a planning gate, not permission for a task-local package or version
 edit. If any selected package or version changes, implementation stops before configuration
 work, the compatibility decision is reviewed again, every dependency-baseline-bearing
@@ -128,17 +140,14 @@ English/Japanese research, plan, quickstart, and task artifact is synchronized, 
 CI, release, and package-policy
 instructions MUST use only that one synchronized baseline.
 
-**Formatting/Linting**: `pnpm run test:format` runs the dependency-free `node:test` behavioral
-matrix in `tests/unit/check-format.test.mjs`, and `pnpm run format:check` then invokes only the
-project-owned `scripts/check-format.mjs` with Node.js built-ins. The exact recursive roots,
-repository-root files, generated-root pruning, non-symlink rule, three-class exact-path fixture
-exception schema, UTF-8/BOM/CR/trailing-whitespace/final-LF rules, stable content-free failure
-codes, and non-mutation contract are closed in research. The checker never formats inspected
-customization content. ESLint 10.7.0 with `@nuxt/eslint` 1.16.0 remains an independent lint
+**Formatting/Linting**: Byte hygiene is owned declaratively — `.gitattributes`
+(`* text=auto eol=lf`) makes git normalize line endings and `.editorconfig` declares
+charset/final-newline/trailing-whitespace conventions to editors; no repository-wide
+formatting checker or formatting CI job exists (research § 3). ESLint 10.7.0 with
+`@nuxt/eslint` 1.16.0 is the lint
 gate, and the strict TypeScript type check over the application, shared, source, script, and
 test code configured in `tsconfig.json` runs as the equally independent `typecheck` gate.
-Local verification, independent CI jobs, and release run the behavioral test before the
-checker and run ESLint and `typecheck` separately.
+Local verification, independent CI jobs, and release run ESLint and `typecheck` separately.
 
 **Dependency and breaking-change migration gate**: This initial-release baseline has a
 planned migration impact of none because there is no prior published Inspector package,
@@ -157,28 +166,22 @@ required migration steps and compatibility or support window; and rollback/suppo
 give an explicit reasoned no-impact determination. Missing or stale bilingual design evidence
 blocks T002; missing bilingual validation evidence fails the release gate.
 
-`src/cli.ts` uses only Gunshi's stable root `define`/`cli` API. It defines a negatable
+`src/server/cli.ts` uses only Gunshi's stable root `define`/`cli` API. It defines a negatable
 `open` boolean with a true default to provide `--no-open` and a single string-valued
 `cwd` option for `--cwd <path>`, enables `strict: true`, explicitly rejects every
 positional/rest argument before binding, awaits `cli()`, and maps its validation
 `AggregateError` to fixed actionable output plus a nonzero exit. Before creating a
-session it captures `process.cwd()` exactly once and rejects an empty or duplicate `--cwd`.
-If the capture itself throws, the ownerless startup error propagates to the process top level
-under FR-041 without a session, browser, or `OperationError`.
-On Windows it rejects every explicit two-leading-separator UNC/server-share/device spelling,
-single-separator current-drive/root-relative value, and drive-relative value such as `C:` or
-`C:foo` before `resolve`; only a plain relative option is resolved against the captured
-anchored drive-form value, while an absolute drive option is retained. POSIX retains an
-absolute option or resolves a relative option against the capture. The resulting absolute
-string—including the omitted-option capture—must pass the shared pure
-`LexicalAbsoluteRootParts` parser reused by Global preview and central admission. Selection
-performs zero filesystem/network I/O, never changes the process working directory, and never
-uses per-drive working-directory semantics. A rejected launch may therefore contain only the
-fixed package-owned manifest/declared-asset reads already completed before CLI import; it
-contains zero invocation-`cwd`-, `--cwd`-, or selected-root-derived I/O and zero DNS, SMB, or
-outbound-network calls. Built-in
+session it captures `process.cwd()` exactly once and rejects an empty or duplicate `--cwd`
+with a fixed actionable startup error before session creation or browser opening. An
+absolute `--cwd` value is kept as given and a relative value is resolved with
+`node:path.resolve` against the captured invocation directory; the result is the selected
+Repository root. The CLI never calls `process.chdir()`. Built-in
 help/version are handled without binding. The production entry does not import
-`gunshi/agent`, lazy commands, custom plugins, or experimental parser combinators.
+`gunshi/agent`, lazy commands, custom plugins, or experimental parser combinators. After
+validation the CLI starts the devframe host through the app definition in
+`src/server/host/devframe-app.ts`; devframe owns port selection, the `127.0.0.1` bind, and the
+startup browser-open attempt, and the CLI prints the loopback origin once for the FR-001
+manual fallback.
 
 **Storage**: No durable application storage. Session state, inspected file bytes, complete
 authored-source DTOs, diagnostics, the sensitive-content warning acknowledgement, and
@@ -231,11 +234,11 @@ reviewer state and does not establish human review. T1062 separately records act
 creation or prior/current versions, changed denominator semantics, and reviewer
 decision/reference in the bilingual release validation. Either kind of change starts a new
 non-comparable measurement set. The required classes are the exact tool/kind/admitted-source rows,
-rejected selector families, and shared-file combinations for SC-003; prohibited effects,
-Repository/Global boundary rejection, and detectable read-change classes for SC-004;
+rejected selector families, and shared-file combinations for SC-003; prohibited effects
+and Repository/Global boundary rejection for SC-004;
 exact tool/kind/source rows, source/comparison surfaces, literal-credential/environment-
-reference classes, and set/unset referenced-variable states for SC-005; every named failure
-and first/explicit-rescan lifecycle class for SC-007; and every maintained Source Condition
+reference classes, and set/unset referenced-variable states for SC-005; every file-confined
+outcome class and failure class for SC-007; and every maintained Source Condition
 Fact row, tool, product surface, and documented/unavailable state for SC-009. Release records
 name the manifest version and digest plus every executed case ID; missing, omitted,
 unexecuted, or mismatched evidence fails the affected criterion. The maintained usability
@@ -952,7 +955,7 @@ published application code.
 
 **Performance Goals**: On the versioned, published profile in
 `tests/performance/sc002-reference-profile.json`, visibly render a current-request status
-that says queued, names an active phase, or reports complete/`partial` (contracted-partial only)/failed and is exposed to
+that says queued, names an active phase, or reports complete/`partial`/failed and is exposed to
 assistive technology within 1 second, and render the complete inventory with its primary
 list controls operable for one unchanged deterministic fixture containing 100,000 filesystem
 entries and 500 matching files within 10 seconds in at least 9 of exactly 10 fresh-process
@@ -987,7 +990,7 @@ four thresholds: current-request status within 1 second, complete operable inven
 **Constraints**: Inspected customization must cause no execution, child process, dynamic
 import, prohibited direct product-issued network request as defined by FR-022, MCP connection, or product-issued source mutation.
 The two exact FR-022 browser/host classes at the issued `127.0.0.1` authority—closed
-unauthenticated static/SPA `GET`/`HEAD` and capability-authenticated declared API requests—
+static/SPA `GET`/`HEAD` for the packaged UI assets and the local session API channel—
 are authorized internal loopback transport, not outbound requests or MCP connections; every
 request outside those classes and every customization-selected or MCP request remains prohibited. Ordinary
 Node.js filesystem I/O against a lexically indistinguishable pre-mounted POSIX network filesystem or mapped Windows drive may cause
@@ -1006,15 +1009,14 @@ equality between an ambient value and a Source root does not change its provenan
 read authority. The session remains usable when automatic opening is disabled, unsupported,
 or fails.
 No boundary-external bytes are accepted or published;
-no exposed symlink is intentionally followed, and detected path changes commit no bytes;
-the documented active source-root/ancestor mutator and, only where effective `O_NOFOLLOW`
-is unavailable, active final-component mutator remain outside the current threat model;
-explicit opt-in before Global reads; the capability-authenticated loopback API returns
+symbolic links are read transparently, and a link whose target is missing or unreadable
+yields that file's per-file diagnostic;
+explicit opt-in before Global reads; the loopback session API returns
 complete authored source only for explicit detail requests, while the bundled browser does
 not issue those requests or construct a comparison before its in-memory sensitive-content
 acknowledgement; environment-variable references are never resolved or substituted; inert
 text rendering only. The acknowledgement resets on reload or client purge and never travels
-to the API. Displayed metadata fields and relationship kinds
+to the session API. Displayed metadata fields and relationship kinds
 must both belong to the maintained closed presentation-allowlist row for the supported
 `(tool, kind)` and be recognized by the exact extractor for the actual admitted source form;
 entries failing either gate remain available only in complete source text and are never
@@ -1032,28 +1034,16 @@ equivalent. The Inspector defines no product-specific ceiling for file bytes, ag
 bytes, discovered files or entries, parser depth or nodes, diagnostics, graph records,
 messages, request or response bodies, package assets, or retained session data. Capacity is
 inherited from the supported Node.js runtime, parser libraries, operating system,
-filesystem, browser, and current execution environment. Deterministic, non-throwing
-entry-local outcomes may use the contracted-partial path after complete traversal and
-serializable assembly; binary input is one such outcome. Invalid non-NUL UTF-8 is instead a
-complete readable `utf-8-replaced` outcome. A domain layer may catch only two
-contract-declared inspected-source exceptions: Node's exact `ENOENT` code from an `lstat`
-call that the contract declares as a structural existence checkpoint, and — as close
-lifecycle only — a FileHandle close-promise rejection that the `ClosableResourceRegistry`
-observes after that same handle's `close` event has already confirmed closure, recording the
-already-confirmed closure as successful without cause classification, recovery, or
-publication. The structural checkpoint returns only `absent` when the entry
-has not yet been observed or `entry-disappeared` when a previously observed or ticketed
-entry vanishes; it does not inspect the message or apply to another code or operation,
-including `realpath`, `open`, `FileHandle.stat`, or a read. Every non-carveout thrown exception or
-rejected promise from inspected-source reading is not caught, classified, retried, or
-converted into a file, Diagnostic, scan result, or partial generation by filesystem, parser,
-recognition, or scan domain layers. Its trigger-owning outer boundary may catch only to
-express execution lifecycle: a REST-owned operation returns a generic path/content-free
-pre-acceptance HTTP error or accepted-job terminal Operation Error while keeping the process
-and prior snapshot available; an automatic startup operation with no REST owner reaches the
-process top level, with no process/session survival guarantee. Runtime-owned local
-uncaught-error output is an explicit residual disclosure limitation outside the product API,
-logs, and telemetry.
+filesystem, browser, and current execution environment. Error handling is ordinary. A failure confined to one file — an unreadable file, binary
+content, or a parser or extractor failure — becomes that file's actionable diagnostic
+(FR-028), and when the rest of the traversal completes the scan commits a `partial`
+generation containing every complete unaffected file. Invalid non-NUL UTF-8 alone is
+instead a complete readable `utf-8-replaced` outcome. Any other unexpected failure fails
+the affected attempt as an ordinary error: a request-owned session-API operation propagates
+its failure to the caller as devframe serializes it — there is no sanitizing wrapper or
+generic error envelope — while keeping the process, session, and prior committed snapshot
+available (FR-030); an automatic startup operation with no request owner reaches the
+process top level, with no process/session survival guarantee.
 
 Relationship projection remains functionally limited to one direct hop from each
 originating recognition and is non-recursive. This is a semantic/read-authority boundary,
@@ -1064,9 +1054,9 @@ transitive relationship, the Inspector omits that projection before target acces
 the eligible direct relationships and complete authored source, and emits an actionable,
 source-value-free relationship diagnostic.
 The authorized browser defines no heartbeat interval, request timeout, retry delay, or
-memory lease. It performs capability-protected liveness checks only on observable lifecycle
-signals—initial authorization, return to a visible/focused page, explicit Resume, and fresh
-session adoption—and purges on browser/network/runtime rejection, authorization or session
+memory lease. It performs session-liveness checks only on observable lifecycle
+signals—initial adoption, return to a visible/focused page, explicit Resume, and fresh
+session adoption—and purges on browser/network/runtime rejection, session
 mismatch, hidden/page lifecycle events, a greater content epoch, or a non-null disable fence.
 Process loss on a continuously visible idle page has no product-defined wall-clock detection
 guarantee; the next lifecycle signal or authorized request outcome detects it.
@@ -1079,43 +1069,39 @@ Typed derivation uses the closed `DerivationProgram` schema and only direct edge
 exact static seed provenance. A derived provenance cannot seed another derivation edge,
 while an independent static provenance on the same file remains eligible. Values used to
 derive paths must satisfy the supported runtime and platform path representation. After
-complete traversal, a deterministic entry-local non-capacity parser/path failure may omit
-that derivation under the contracted-partial outcome before target access. A memory,
+complete traversal, a parser or path failure confined to one file omits that derivation
+with that file's diagnostic under the `partial` outcome before target access. A memory,
 capacity, or other environment-resource condition has no application-defined classification
 or recovery path when it manifests as a throw or rejection: it propagates to the
 trigger-owning boundary, publishes no result from that attempt, and leaves any prior commit
 unchanged. A deterministic returned derivation outcome may use only the closed complete or
-contracted-partial transitions.
+partial transitions.
 
 The coordinator imposes no product-defined wall-clock scan cutoff. Global disable, process
 shutdown, and explicit operation cancellation irrevocably revoke publication authority.
 Any outstanding Node.js filesystem promise then becomes cleanup-only: late bytes, results,
-DTOs, and operational events are discarded. The API and liveness endpoint remain responsive
+and DTOs are discarded. The API and liveness endpoint remain responsive
 while the event loop can serve them, but physical cleanup cannot be promised before an
 uncancellable kernel operation settles.
 
-Trusted package manifests use the same closed schemas at build, packed-package, and runtime
-verification. Both manifests reject unknown keys, verify the recursively exact declared
-file set, compare every declared length with the actual file length, and verify hashes before
-import or host bind. Their size and record capacity is inherited from Node.js, the
-filesystem, and the current build/runtime environment; a recoverable inability to read,
-parse, hash, or retain a manifest or listed asset fails closed before import or bind.
+Packaged artifacts that ship together are never re-verified against each other at user
+runtime: `dist/` is owned by the clean → `nuxt build` → tsdown pipeline that produced it,
+the devframe host serves that tree as-is from `cli.distDir`, and exact-value assertions
+about the packaged file set live only in the `verify:package` CI/release gate and the
+package tests (Constitution Principle I).
 
-Operational event records use one closed logger schema containing only fixed codes and
-opaque session/source/file/scan/operation IDs. No operational event contains a Source-
-relative/absolute/canonical path, root, filename, inspected content or metadata, authored
-value, capability, body, raw parser/system error, or exception string. An authenticated
-file-scoped `Diagnostic` DTO may retain its minimum Source-relative Path, but no log
-projection may copy it. Fixed CLI help/version text, the one launch-URL line, and fixed
-actionable startup warnings are presentation output rather than operational events and still
-receive inspected-content/path/value negative tests.
+Failures are reported as ordinary errors: per Constitution v4.0.0 the product defines no
+log-content rules and no sanitized error envelope, because it has no telemetry and its
+terminal and UI output are read by the same user who owns the inspected files. A session-only
+file-scoped `Diagnostic` DTO retains its minimum Source-relative Path as its actionable
+location.
 
-**Scale/Scope**: One local user, exactly one Repository source rooted at the parser-accepted
+**Scale/Scope**: One local user, exactly one Repository source rooted at the
 selected Repository root (the exact one-time invocation `process.cwd()` capture by default
-or the accepted single `--cwd` value after the platform-specific pre-resolution gate), zero
+or the accepted single `--cwd` value), zero
 to three admitted tool-specific Global sources produced by one session-wide all-tools
 opt-in (at most one each for Copilot, Claude, and Codex), exactly one root per Source, and
-exactly two distinct physical file IDs in a comparison. Inventory size is governed by the supported runtime and
+exactly two distinct readable customization files in a comparison. Inventory size is governed by the supported runtime and
 execution environment rather than a product-defined item ceiling.
 
 ## Constitution Check
@@ -1137,8 +1123,9 @@ execution environment rather than a product-defined item ceiling.
       rollback/support path, or an explicit reasoned no-impact determination; missing or stale
       bilingual design evidence blocks T002, and missing bilingual validation evidence blocks
       release.
-- [x] **Complete verification**: Rule-specific `test:format` coverage precedes the project-owned
-      non-mutating `format:check` command; both run locally, in independent CI jobs, and again
+- [x] **Complete verification**: Byte hygiene is delegated to `.gitattributes` and
+      `.editorconfig`; lint, typecheck, and the automated suites run locally, in independent
+      CI jobs, and again
       after final release edits. Every repository remediation found by release review reruns the
       complete applicable automated matrix, invalidates and regenerates every affected
       candidate/profile/fixture/human or manual evidence set, and repeats complete-diff/tarball
@@ -1150,10 +1137,13 @@ execution environment rather than a product-defined item ceiling.
       The independent ESLint gate and the independent strict `typecheck` type-checking gate
       run in each workflow as well.
       The test layout covers unit, contract, integration,
-      security, package, performance, end-to-end, error, boundary, accessibility, and adversarial
-      safety scenarios, including all four user stories, the published SC-002 profile/status
-      request/generation protocol, event-confirmed-close success and unchanged propagation of non-carveout thrown or rejected operations to their owning execution boundaries,
-      product-issued mutation and OS-atime separation, path/content-free operational logs,
+      security, package, performance, end-to-end, error, boundary, and accessibility
+      scenarios, including all four user stories, the published SC-002 profile/status
+      request/generation protocol, the ordinary-error failure model (a file-confined
+      failure becomes that file's diagnostic in a `partial` generation per FR-028; any
+      other failure commits nothing, retains the prior snapshot, and reports the failed
+      request's error per FR-030),
+      product-issued mutation and OS-atime separation,
       the product-wide FR-032 negative boundary, the complete bilingual 55-row WCAG Level
       A/AA acceptance matrix, FR-039/SC-009 origin-file-less Source Condition Facts, the
       versioned digest-bound nonzero release-evidence denominators for SC-003/004/005/007/009,
@@ -1165,13 +1155,21 @@ execution environment rather than a product-defined item ceiling.
       a semantically equivalent `*.ja.md` companion. Implementation must update both user
       and contributor guides, all vendor/Repository/User/Global/surface tables, official
       evidence, security boundaries, and diagnostics.
-- [x] **Safe boundaries**: The design freezes read candidates, authenticates local API
-      requests, and separates capability-authenticated API access from the bundled browser's
-      in-memory sensitive-content acknowledgement. That gate covers every authored-value
+- [x] **Safe boundaries**: Per the Constitution's trusted-workspace clause (v4.0.0), the product
+      runs in a workspace the user already trusts and inspected customization files are not
+      modeled as an adversary; the three retained obligations — inspected content is never
+      executed, the session host binds to loopback only and is never exposed beyond the
+      initiating machine because served content may include the user's own secrets, and
+      displayed content is rendered inert — anchor this design. The session host runs
+      unauthenticated behind that loopback binding; the documented residual limitation is
+      that other local processes and, via DNS rebinding, a malicious web page can reach the
+      session while the inspector runs. The design freezes read candidates and keeps the
+      bundled browser's in-memory sensitive-content acknowledgement a presentation
+      invariant separate from the session API. That gate covers every authored-value
       field in `FileDetail` and comparison-derived state. The central full-session purge is
       distinct from ordinary scoped route/Source/generation cleanup, and Global disable is
       the explicit exception that invokes the full purge before its request. Deliberately inspected complete content
-      remains inert, local, session-only, and absent from persistence, egress, and logs.
+      remains inert, local, session-only, and absent from persistence and egress.
       Study capture adapters likewise classify raw traffic only ephemerally and discard it
       before IPC; retained evidence hashes only closed content-free safe events and rejects raw
       header names, framing, wire or encoded representations, every noncanonical derivative, bodies,
@@ -1179,15 +1177,18 @@ execution environment rather than a product-defined item ceiling.
       environment values, and raw errors. The sole exception is strictly validated decoded
       canonical safe `correlationId`, retained in the canonical payload and digest chain; captured
       wire/browser/Inspector bytes are never hash preimages.
-      Authenticated diagnostics may carry only actionable location fields, while
-      operational events contain fixed codes and opaque IDs with no path, content, metadata,
-      capability, body, or raw error. Resource capacity is inherited from Node.js, parser
+      Session diagnostics may carry only actionable location fields. Failures are reported
+      as ordinary errors: per the Constitution v4.0.0 clause, the product defines no
+      log-content rules and no sanitized error envelope, because it has no telemetry and
+      its output is read by the same user who owns the inspected files.
+      Resource capacity is inherited from Node.js, parser
       libraries, the OS, filesystem, browser, and execution environment; recoverable
       failures, authority revocation, late cleanup, and fail-closed behavior are explicit. Product-issued
       mutation is prohibited and distinguished from OS-only atime effects. The design
-      rejects every Node-observable link or unverifiable boundary, discards revoked/late
-      bytes, and records non-atomic, platform-unobservable, and physically uncancellable-I/O
-      residual risks with resolution paths.
+      reads symbolic links transparently, yields per-file diagnostics for broken links,
+      discards
+      revoked/late bytes, and records the physically uncancellable-I/O residual risk with
+      its resolution path.
       The four external terminal descriptors, supervisor-owned product child, adapter-owned pinned
       Chromium/DevTools pipe, bound fd5 writer authority, and external candidate-launch store are
       explicit closed study-equipment boundaries; none is a Constitution exception or waiver.
@@ -1201,10 +1202,11 @@ execution environment rather than a product-defined item ceiling.
 ### Post-design re-check
 
 The data model distinguishes physical files, candidate provenances, documentation status,
-and runtime applicability facts. The HTTP contract returns complete authored source and
-declared authored values only to a capability-authenticated explicit detail request; the
+and runtime applicability facts. The session API contract returns complete authored source and
+declared authored values only to an explicit detail request over the loopback devframe
+channel; the
 bundled SPA makes no `FileDetail` request and constructs no comparison content before its
-client-memory warning gate. The API neither
+client-memory warning gate. The session API neither
 receives nor persists acknowledgement. It provides no masking or reveal workflow, never
 resolves environment-variable references, and emits only metadata
 fields and relationship kinds that belong to the maintained closed presentation-allowlist
@@ -1213,10 +1215,13 @@ permits only explicit static or vendor-specific one-edge
 derived candidates; relationships, components, vendor locators, and excluded inputs cannot
 expand the read boundary. Relationship projection is limited to direct edges one hop from
 each origin, is non-recursive, has zero read authority, and reports any attempted nested/transitive
-projection with an actionable diagnostic before target access. The quickstart covers every stable behavior, rule, strategy, and
+projection with an actionable diagnostic before target access. Failure reporting matches
+the Constitution v4.0.0 ordinary-error clause: a file-confined failure becomes that file's
+diagnostic, any other failure fails its attempt with the failed request's real error —
+RPC-handler failures cross the devframe channel as devframe serializes them — and no
+sanitized envelope, generic error entity, or log-content rule remains in the design. The quickstart covers every stable behavior, rule, strategy, and
 source ID, official-source drift review, the Repository `./` grammar and bare-`**/`
-rejection, `pnpm run test:format` followed by the exact non-mutating
-`pnpm run format:check` command before lint and the remaining tests, all
+rejection, lint and the remaining tests, all
 other required quality gates, and all four end-to-end stories. Monaco is
 client-only, same-origin, and model-lifetime scoped; its own diff engine avoids a
 duplicate dependency while exact authored metadata comparison stays explicit. The
@@ -1227,11 +1232,9 @@ closed ambient platform-key set directly from the launch environment; lexical eq
 Source root changes no provenance and grants no authority. Package gates
 audit the root tarball plus the installed exact production closure for JavaScript-only
 application code, lifecycle/build/download paths, selectors, and native/binary artifacts;
-third-party development/test tooling remains outside the published FR-038 boundary. The Node.js-only
-verification limitation is recorded with its active-mutator/platform residual risk and the
-concrete future public Node.js filesystem API or OS-enforced snapshot/sandbox resolution path required by the
-constitution. The same residual record covers the lack of hard cancellation for a stalled
-kernel filesystem operation: disable, shutdown, or cancellation revokes publication
+third-party development/test tooling remains outside the published FR-038 boundary. The
+one recorded residual verification limitation is the lack of hard cancellation for a
+stalled kernel filesystem operation: disable, shutdown, or cancellation revokes publication
 authority and discards late results, but physical completion awaits the operation. It is not
 treated as passing-test proof or an implicit waiver. No unresolved
 clarification or known constitutional violation remains. The frozen outcome-fixture
@@ -1281,88 +1284,73 @@ specs/001-inspect-agent-customizations/
 ### Source Code (repository root)
 
 ```text
-app/
-├── app.vue
-├── components/
-│   ├── inventory/
-│   ├── inspection/
-│   ├── comparison/
-│   ├── consent/
-│   └── diagnostics/
-├── composables/
-│   ├── api.ts
-│   ├── comparison.ts
-│   ├── filters.ts
-│   ├── liveness.ts
-│   ├── monaco.ts
-│   └── session.ts
-├── pages/
-│   ├── index.vue
-│   ├── compare.vue
-│   ├── global-consent.vue
-│   └── files/[id].vue
-├── locales/
-│   ├── en.ts
-│   └── ja.ts
-└── styles/
-
 src/
-├── cli.ts
-├── launch-browser.ts
-├── host/
-│   ├── api-router.ts
-│   ├── capability.ts
-│   ├── global-consent.ts
-│   ├── operational-events.ts
-│   ├── runtime-failures.ts
-│   ├── server.ts
-│   └── static-files.ts
-├── inspection/
-│   ├── safe-fs.ts
-│   ├── scan.ts
-│   ├── rules/
-│   │   ├── registry.ts
-│   │   ├── types.ts
-│   │   ├── copilot.ts
-│   │   ├── claude.ts
-│   │   └── codex.ts
-│   ├── applicability/
-│   │   ├── conditions.ts
-│   │   ├── context.ts
-│   │   └── precedence.ts
-│   ├── recognizers/
-│   │   ├── claude.ts
-│   │   ├── codex.ts
-│   │   └── copilot.ts
-│   └── parsers/
-│       ├── json.ts
-│       ├── markdown.ts
-│       ├── pool.ts
-│       ├── source-ranges.ts
-│       ├── toml.ts
-│       ├── worker.ts
-│       └── yaml.ts
-└── session/
-    ├── scan-generation.ts
-    ├── stale-failures.ts
-    └── session.ts
-
-shared/
-├── api.ts
-├── diagnostics.ts
-├── entities.ts
-├── operation-errors.ts
-├── operational-events.ts
-├── runtime-failures.ts
-└── registries/
-    ├── vendor-behaviors.ts
-    ├── inspection-rules.ts
-    ├── runtime-composition.ts
-    └── official-sources.ts
+├── app/
+│   ├── app.vue
+│   ├── components/
+│   │   ├── inventory/
+│   │   ├── inspection/
+│   │   ├── comparison/
+│   │   ├── consent/
+│   │   └── diagnostics/
+│   ├── composables/
+│   │   ├── api.ts
+│   │   ├── comparison.ts
+│   │   ├── filters.ts
+│   │   ├── liveness.ts
+│   │   ├── monaco.ts
+│   │   └── session.ts
+│   ├── pages/
+│   │   ├── index.vue
+│   │   ├── compare.vue
+│   │   ├── global-consent.vue
+│   │   └── files/[id].vue
+│   ├── locales/
+│   │   ├── en.ts
+│   │   └── ja.ts
+│   └── styles/
+├── server/
+│   ├── cli.ts
+│   ├── host/
+│   │   ├── devframe-app.ts      # devframe app definition: RPC session API + createDevServer wiring
+│   │   └── global-consent.ts    # Global consent/enable/retry/disable RPC handlers
+│   ├── inspection/
+│   │   ├── scan.ts
+│   │   ├── rules/
+│   │   │   ├── registry.ts
+│   │   │   ├── copilot.ts
+│   │   │   ├── claude.ts
+│   │   │   └── codex.ts
+│   │   ├── applicability/
+│   │   │   ├── conditions.ts
+│   │   │   ├── context.ts
+│   │   │   └── precedence.ts
+│   │   ├── recognizers/
+│   │   │   ├── claude.ts
+│   │   │   ├── codex.ts
+│   │   │   └── copilot.ts
+│   │   └── parsers/
+│   │       ├── json.ts
+│   │       ├── markdown.ts
+│   │       ├── source-ranges.ts
+│   │       ├── toml.ts
+│   │       └── yaml.ts
+│   └── session/
+│       ├── scan-generation.ts
+│       ├── stale-failures.ts
+│       └── session.ts
+└── shared/
+    ├── api.ts
+    ├── diagnostics.ts
+    ├── entities.ts
+    └── registries/
+        ├── vendor-behaviors.ts
+        ├── inspection-rules.ts
+        ├── runtime-composition.ts
+        └── official-sources.ts
 
 tests/
 ├── unit/
-│   ├── check-format.test.mjs
 ├── contract/
 │   └── usability-study-evidence.test.ts
 ├── integration/
@@ -1405,15 +1393,10 @@ tests/
     │   └── manifest.sha256
     ├── repositories/
     ├── global-homes/
-    ├── secrets/
-    └── adversarial/
+    └── secrets/
 
 scripts/
-├── check-format.mjs
 ├── clean-build-output.mjs
-├── assemble-server-manifest.mjs
-├── build-static-manifest.mjs
-├── build-production-graph.mjs
 ├── verify-package-files.mjs
 ├── check-official-sources.ts
 ├── build-usability-study-inputs.mjs
@@ -1424,7 +1407,6 @@ scripts/
 ├── ci.yml
 └── release.yml
 
-bin.mjs
 package.json
 pnpm-lock.yaml
 nuxt.config.ts
@@ -1441,22 +1423,24 @@ README.ja.md
 LICENSE
 ```
 
-**Structure Decision**: Use a single-package `app`/`src`/`shared` separation because the UI
+**Structure Decision**: Place all production source under `src/` — `src/app/` for the
+browser SPA, `src/server/` for the Node-only CLI/host/inspection code, and `src/shared/`
+for isomorphic contracts — because the UI
 and CLI are released and versioned together. Nuxt is configured as an SPA (`ssr: false`)
 with the static Nitro preset, `app.baseURL: '/'`, `app.buildAssetsDir: '/_nuxt/'`, no CDN
 URL, explicit imports, and component auto-discovery disabled. Every nested client route
-therefore resolves the same root-absolute, same-origin asset URLs. Executable `bin.mjs`
-starts with the exact BOM-free, LF-terminated first line `#!/usr/bin/env node` and uses
-Node.js built-ins to parse the packed `package.json`, validate both closed manifests and
-every listed static/server declared length and hash, and dynamically import the validated
-`dist/cli.mjs` only afterward. Manifest and asset processing relies on the supported
-Node.js/filesystem/build-environment capacity; any recoverable inability to read, parse,
-hash, or retain the required data fails closed before import or host bind.
-This pre-CLI phase is the only startup I/O permitted before root selection: every operand is
-fixed package-owned data named by the package/manifests, and it performs no invocation-`cwd`-,
-`--cwd`-, or Repository-root-derived access and no DNS, SMB, or outbound-network request.
+therefore resolves the same root-absolute, same-origin asset URLs. The `src/server/cli.ts` entry
+starts with the exact BOM-free, LF-terminated first line `#!/usr/bin/env node`, tsdown
+preserves that shebang in the packaged `dist/cli.mjs`, and `package.json.bin` maps to it
+directly with no separate bootstrap wrapper: same-tarball artifacts are never re-verified
+at user runtime, and the packaged entry points are enforced by the `verify:package`
+CI/release gate. Root selection itself is purely lexical: capture `process.cwd()`
+once, keep an absolute `--cwd` or resolve a relative one against that capture. The
+inspection I/O contract is directory-level ownership: all inspected-source filesystem I/O
+lives only under `src/server/inspection/`, and no other module enumerates or reads
+inspected sources.
 
-`app/locales/en.ts` and `app/locales/ja.ts` explicitly own user-visible UI copy;
+`src/app/locales/en.ts` and `src/app/locales/ja.ts` explicitly own user-visible UI copy;
 components consume stable message keys so English/Japanese UI parity is planned rather
 than introduced ad hoc. `validation.md` and `validation.ja.md` record final SC evidence and
 remain semantically equivalent. CI and release ownership is explicit under
@@ -1482,9 +1466,9 @@ mirror those modules, require reciprocal IDs,
 and fail the build on duplicates, orphan references, unanchored evidence, an Inspector
 Repository matcher not beginning with `./`, or any bare `**/` matcher.
 
-`shared/entities.ts` owns the closed `EvidenceAssessment` DTO shape, each registry module
+`src/shared/entities.ts` owns the closed `EvidenceAssessment` DTO shape, each registry module
 owns the exact `documentationStatus` and `lifecycleQualifiers` on its own subject records,
-and `src/inspection/rules/registry.ts` is the sole assessment assembler. It resolves the
+and `src/server/inspection/rules/registry.ts` is the sole assessment assembler. It resolves the
 owning rule plus every referenced behavior and strategy, copies one exact subject record per
 `(subjectKind, subjectId)`, rejects missing or duplicate subjects, and sorts by the fixed
 subject-kind/ID order. Recognizers and relationship/fact projection consume that assembled
@@ -1511,25 +1495,24 @@ later task that relies on superseded IDs. The English/Japanese specification, re
 quickstart, and contracts are synchronized; planning and task generation are rerun; and only
 the regenerated task set may continue.
 
-The build first removes only the root-resolved package-owned `.output/`, `.build/`, and
-`dist/` trees. It runs `nuxt build` into Nuxt's standard `.output/public` staging tree; a
-strict normalizer validates that tree and copies only accepted files into a newly created
-`dist/public`, so the design does not assume that Nuxt writes directly to `dist`. The
-normalizer writes the closed `dist/manifests/static-assets.json` inventory and exact CSP
-hashes after rejecting external/relative asset URLs, executable attributes, malformed
-inline scripts, symlinks, and unexpected output. It requires but does not copy Nuxt's
-redundant `200.html` and `404.html` static-host fallbacks and rejects every HTML file except
-the retained `index.html`, because the Node host owns status routing. Before copying or
-hashing, it verifies each declared length against the actual file and uses streaming
-supported by Node.js and the current filesystem. Resource exhaustion or another recoverable
-environment failure aborts assembly without classifying an artifact as valid or invalid.
+The build first removes only the root-resolved package-owned `.output/` and
+`dist/` trees. It runs `nuxt build`, which emits the browser application directly into
+`dist/public` via `nitro.output.publicDir` while build metadata stays in `.output/`, and
+then runs tsdown. There is no staging copy, post-build validator, asset manifest, or
+CSP-hash step: the emitted tree is served as-is by the devframe host from `cli.distDir`
+(`dist/public`), and packaged-artifact assertions live only in the `verify:package`
+CI/release gate and the package tests, because the pipeline that just produced `dist/`
+owns its contents (Implementation simplicity policy).
 
 `package.json` owns the runnable command graph. Its `build` script sequences the fixed
-clean step, Nuxt client build, tsdown `cli`/`parser-worker` build, both manifest assemblers,
-and the recursive exact-set verifier. Its `test:format` script invokes only
-`node --test tests/unit/check-format.test.mjs`; its `format:check` script invokes only
-`node scripts/check-format.mjs`, is non-mutating, and applies the closed scope, exception
-schema, and stable diagnostics from research. Its `typecheck` script runs the strict
+clean step, Nuxt client build, and tsdown `cli`
+build. The separate `verify:package` script runs the
+packaged entry-point verifier `scripts/verify-package-files.mjs`, which requires exactly
+`dist/public/index.html` and `dist/cli.mjs`; it is a CI and
+release gate rather than part of every local
+build, because packaged-artifact verification belongs to that layer. The locked
+production-leaf versions and integrity are asserted directly from `pnpm-lock.yaml` by the
+package tests; no separate production-graph script or evidence file exists. Its `typecheck` script runs the strict
 TypeScript type check over the application, shared, source, script, and test code configured
 in `tsconfig.json` and is a required quality gate in local verification, its own independent
 CI job, and release. `study:evidence:inputs` invokes only
@@ -1539,42 +1522,47 @@ CI job, and release. `study:evidence:inputs` invokes only
 chain, and only the explicit initial-release study protocol may invoke them. CI gives the test
 and checker independent ordered jobs, `test:unit` includes the bootstrap test, and release
 reruns the test followed by the checker after final edits. `check:official-sources` is the only
-documented network-enabled evidence-drift command. The `src/cli.ts` and parser-worker entries,
+documented network-enabled evidence-drift command. The `src/server/cli.ts` entry,
 `tsdown.config.ts`, assembly scripts, and these package scripts are foundation prerequisites:
-no build, package, or manifest quality gate may be scheduled before they exist.
-Setup therefore implements the formatting checker and scaffolds the CLI and parser-worker entries plus every referenced assembly
+no build or package quality gate may be scheduled before they exist.
+Setup therefore implements the formatting checker and scaffolds the CLI entry plus every referenced assembly
 script before it configures or executes package commands, tsdown entries, or CI quality
-gates. The Setup checkpoint is not considered runnable until those paths exist.
-Production `dependencies` is the exact-version leaf set `gunshi`, `yaml`, `jsonc-parser`, and
-`smol-toml`; `open` is absent from every dependency section and production lock closure.
+gates. The Setup stage is not considered runnable until those paths exist.
+Production `dependencies` is the exact-version direct set `devframe`, `gunshi`, `yaml`,
+`jsonc-parser`, and
+`smol-toml`, asserted from `pnpm-lock.yaml` by `tests/package/production-graph.test.ts`;
+devframe's transitives are lockfile-owned, and `open` is absent from every dependency
+section and production lock closure.
 Nuxt/Vue/Vite/tsdown, Monaco, Playwright, and other build/test tooling remain development-
-only, while their assembled product output is covered by the closed manifests.
+only.
 
-Cross-platform CI runs the same pure Node.js safe-filesystem integration and race-detection
-suite on macOS, Linux, and Windows. tsdown uses the named `cli` (`src/cli.ts`) and `parser-worker`
-(`src/inspection/parsers/worker.ts`) entries, `fixedExtension: true`, a clean dedicated
-`.build/server` output directory, disabled source maps/declarations, Node ESM, bundled
+Cross-platform CI runs the same pure Node.js inspection-filesystem integration suite on
+macOS, Linux, and Windows. tsdown uses the single named `cli` entry
+(`src/server/cli.ts`), `fixedExtension: true`, direct `dist/`
+output with `clean: false` (the pipeline's own clean step owns `dist/` removal), disabled
+source maps/declarations, Node ESM, bundled
 project modules, and external declared runtime dependencies via
-`deps.skipNodeModulesBundle: true`. A server assembler accepts only regular `.mjs` files
-with safe relative names from that staging tree, requires `cli.mjs` and
-`parser-worker.mjs`, records every emitted code-split chunk in the closed
-`dist/manifests/server-assets.json`, and copies exactly those files into `dist/`. The host
-starts parser workers only from the fixed package-owned
-`new URL('./parser-worker.mjs', import.meta.url)`.
+`deps.skipNodeModulesBundle: true`. The pipeline's
+clean step guarantees a fresh `dist/`, so every dist-root `.mjs` is by construction a
+tsdown output; the `verify:package` gate requires
+`cli.mjs` as a regular file. The bundled parsers run in-process on the scan path,
+so the CLI bundle is the only tsdown entry.
 
-The final recursive verifier derives the complete `dist/` file set from the static and
-server manifests—both manifests, every listed public asset, and every listed server
-`.mjs`—and rejects a symlink, non-regular file, missing record, or stale/unexpected path
-before `npm pack`. No install-time build or download occurs. `package.json.files` is exactly
-`["bin.mjs", "dist", "README.md", "README.ja.md", "LICENSE"]`; npm also includes
-`package.json`, so the tarball allowlist is that manifest plus those five entries and their
+The `verify:package` gate requires exactly the two packaged entry points —
+`dist/public/index.html` (the SPA shell the devframe host serves) and
+`dist/cli.mjs` — as regular files
+before `npm pack`; the rest of `dist/` is owned by the clean → `nuxt build` → tsdown
+pipeline that just produced it, so no recursive re-verification duplicates that
+ownership. No install-time build or download occurs. `package.json.files` is exactly
+`["dist", "README.md", "README.ja.md", "LICENSE"]`; npm also includes
+`package.json`, so the tarball allowlist is `dist/` plus those four entries and their
 contents, with no source, fixtures, or planning artifacts. The package is CLI-only:
-`package.json.bin` is exactly `{ "agent-customization-inspector": "bin.mjs" }`, while
+`package.json.bin` is exactly `{ "agent-customization-inspector": "dist/cli.mjs" }`, while
 `main`, `module`, and `exports` are absent so no nonexistent library entry point is
-advertised. The package test verifies the shim's exact shebang and executable mode, installs
+advertised. The package test verifies the bin target's exact preserved shebang, installs
 the tarball into an isolated fixture, actually launches its local command through
 `npx --no-install`, observes the loopback URL, and terminates it. This proves that the Nuxt
-assets, CLI, parser Worker, safe-filesystem layer, and runtime dependencies remain usable
+assets, CLI, inspection layer, and runtime dependencies remain usable
 through `npx` from their packaged locations.
 
 The package gate also audits every project/dependency tarball payload and the installed
@@ -1596,141 +1584,52 @@ dependency or artifact fails until explicitly reviewed.
 
 ## Implementation Boundaries
 
-- `src/inspection/rules/types.ts` first owns the minimum closed, immutable, versioned
-  `TraversalPlan` and segment-program types, including stable schema/version discriminants;
-  registry compilation may populate only those already-defined types and cannot widen them.
-  `src/inspection/safe-fs.ts` is the sole component allowed to enumerate or read enabled
-  inspection sources. It creates an internal `InspectionRootContext` by checking every
-  exposed lexical root component with `lstat`, rejecting links, resolving the accepted
-  root with `realpath`, requiring a directory, and recording bigint identity and
-  metadata. It interprets only the immutable versioned `TraversalPlan` compiled from typed
-  matchers. Repository plans may use their explicitly represented descendant
-  programs. Global plans never enumerate the home root: an exact target `lstat`s only its
-  fixed ancestors/target, and the Copilot fixed instructions subtree may `opendir` only that
-  subtree and permitted descendants; neighboring Global paths receive no I/O. For every
-  directory enumeration, it completes checkpoint rows 21–24 immediately before `opendir`,
-  after first preallocating the process-wide resource-registry reservation. It drives the
-  registered `fs.Dir` only with explicit `Dir.read()` calls until null, then repeats rows
-  25–28 while that directory remains open. Only after the directory reaches registry
-  `close-confirmed` may it classify the complete sibling set, descend, or issue a ticket.
-  Those checks compare root, available ancestor, and target-directory identity/type plus
-  bound `mtimeNs`/`ctimeNs`; a detectable create/remove/rename, unverifiable check, or
-  unconfirmed close discards the enumeration. The service retains exact `Dirent.name` raw
-  segments for path operations and separately derives NFC
-  classification segments for matching, sorting, and DTO paths. Distinct raw sibling
-  spellings with one NFC key fail closed as a whole collision group without descent/read; a
-  non-colliding NFD-only spelling is read through its raw segments and displayed as NFC. The
-  collision diagnostic is one pathless session-scoped record because no unambiguous public file path exists.
-  Within one Source scan attempt, static discovery, admission, normalization-collision
-  rejection, and physical grouping complete before any group read, except for the
-  content-dependent Codex ordered fallback. A physical identity is usable only with exact
-  bigint `dev`/`ino`/`nlink`, `ino !== 0n`, stable positive `nlink`, and a group count no
-  greater than `nlink`; otherwise the group is boundary-unverifiable with zero accepted
-  bytes. For one usable verified physical file admitted through multiple allowlisted
-  hard-link paths, exactly one primary handle/content read occurs. Its primary
-  `sourceRelativePath` is the lowest NFC classification path by unsigned UTF-8-byte
-  lexicographic order; the remaining unique paths use the same order in
-  `aliasSourceRelativePaths`. Enumerated raw segments remain associated with each provenance
-  and are its only filesystem operands. A targeted fixed path that forbids parent
-  enumeration instead uses only the exact immutable registry target-spelling segments; it
-  never substitutes NFC classification/display spelling. Inventory filtering, detail labels, and selection match the
-  primary and every alias, while any file-scoped Diagnostic uses the primary path only.
-  Sources, scan attempts, and generations verify and read independently. A hard-link path
-  discovered after group consumption is never merged or reopened: the Codex ordered
-  fallback and a later derived path use their distinct contracted zero-read rejection
-  diagnostics.
-  service rejects links, non-directory traversal objects, and detectable device changes before
-  emitting generation-bound `ScanEntryTicket` objects. A ticket is branded in private JS
-  state, cannot be serialized or reconstructed from a DTO or HTTP request, and can be
-  consumed at most once. Client-supplied paths never authorize I/O.
-- The traversal contract enumerates every structural existence checkpoint before execution.
-  Only the `lstat` wrapper for one of those checkpoints may test whether Node's error code is
-  exactly `ENOENT`: before any successful observation it returns `absent`, and after a
-  successful observation or ticket issuance it returns `entry-disappeared`. Neither outcome
-  grants authority or retains bytes. The wrapper does not inspect an error message, infer a
-  cause, or catch another `lstat` error. The separate event-confirmed-close observation may
-  retain only already-confirmed successful FileHandle close lifecycle. Every non-carveout
-  throw or rejection from any non-structural `lstat` or from `realpath`, `opendir`, `open`,
-  `FileHandle.stat`, byte reading, parsing, close/unregister, or any other operation propagates
-  unchanged under FR-041, even when its code is `ENOENT`.
-- A candidate read reconstructs a path only from its owning root context and ticket. It
-  rechecks the root and each ancestor with bigint `lstat`, comparing `dev`, `ino`, and
-  `mode` with the ticket snapshots; first checks the candidate path with `lstat`, rejects
-  a link or non-regular object, and compares `dev`, `ino`, `mode`, `size`, `mtimeNs`, and
-  `ctimeNs` with enumeration metadata; then uses candidate `realpath` plus `path.relative`
-  for canonical containment and immediately repeats the candidate path `lstat` comparison.
-  It calls `open` only after both path-stat snapshots agree with each other and the
-  enumeration metadata. If `O_NOFOLLOW` exists and is effective on the platform, the open
-  must use it as mandatory
-  final-component defense in depth; absence or ineffective support is not treated as a
-  cross-platform guarantee. Before reading any bytes, the implementation repeats that
-  ordered root/ancestor/candidate-`lstat`/canonical/candidate-`lstat` sequence and compares
-  the same fields with `FileHandle.stat({ bigint: true })`. The reader consumes the authored
-  bytes from that same `FileHandle`, subject only to what Node.js, the filesystem, and the
-  execution environment can provide. While it is still open and before accepting bytes,
-  post-read validation repeats that complete ordered sequence and the same-`FileHandle.stat`
-  comparisons over the same fields, then invokes or joins the registry closer in `finally`
-  and accepts no result until the handle is `close-confirmed`. Any detected link,
-  boundary, identity, type, size, or metadata change rejects the candidate; any collected bytes are discarded, no readable
-  content or receipt is committed, and only a diagnostic-only inventory record may
-  remain. An authenticated Diagnostic is emitted; its Source-relative Path is never
-  projected into the fixed-code/opaque-ID operational event. A changed root aborts
-  that source attempt and preserves its previously committed graph. This candidate-only
-  allowance applies only after complete traversal and registry-confirmed closure of every
-  acquired resource. A root/shared-ancestor or directory-enumeration guard outcome, or any
-  unconfirmed FileHandle or `fs.Dir` close, instead aborts the affected Source attempt and
-  commits no candidate diagnostic-only record, contracted-partial generation, or success
-  receipt.
-- One process-wide `ClosableResourceRegistry` is the sole owner and close-state machine for
-  every inspection `FileHandle` and `fs.Dir`. Before `open`/`opendir`, the coordinator
-  inserts an `opening` reservation; successful acquisition fills that record before the
-  resource can escape, and failed acquisition removes it. The exact resource may be closed
-  once, and all callers join one retained close promise. A fulfilled close, or a FileHandle
-  `close` event, confirms closure. If the event confirms first, a later raw close-promise
-  rejection is observed but treated as successful and neither propagates nor poisons — the
-  event-confirmed-close observation FR-041 declares as close lifecycle.
-  Rejection without confirmation produces `close-unknown`, propagates through the owning
-  REST/startup boundary, and poisons new inspection scheduling until a later FileHandle
-  event confirms it; an unknown `fs.Dir` close requires process restart. Disable reuses this
-  same registry and cannot commit until every resource in its cleanup lineage is
-  `close-confirmed`.
+- All inspected-source filesystem I/O lives only under the `src/server/inspection/`
+  directory; no module outside it enumerates or reads inspected sources. This is
+  directory-level ownership rather than a single authority file. Traversal is an ordinary
+  recursive `node:fs/promises` walk of the fixed inspection-path allowlist compiled from
+  the typed matchers: Repository plans walk downward from the selected Repository root
+  through their explicitly represented descendant programs, while Global plans touch only
+  the documented instruction paths — an exact target checks only its own path, and the
+  Copilot fixed instructions subtree enumerates only that subtree; neighboring Global
+  paths receive no I/O. Traversal and reading follow symbolic links transparently,
+  because the inspector shows what an agent reading the same path would see; recursive
+  traversal tracks visited directories by real path so a link cycle cannot prevent a scan
+  from terminating, and a link whose target is missing or unreadable yields the
+  file-scoped `file-unreadable` diagnostic. Hard links are
+  ordinary files. Raw entry names are the only filesystem operands, while public
+  Source-relative Paths use NFC display segments. Client-supplied paths never authorize
+  I/O; reads are driven by the compiled allowlist plans and server-owned identifiers only.
+- Per-file problems use the closed Diagnostic registry: `root-unreadable` (source scope,
+  error), `file-unreadable` (file scope, error),
+  `file-content-binary` (file scope, warning), and `recognition-parse-failed` (file scope,
+  warning). A selected Repository root that does not exist or cannot be read as a
+  directory fails that scan with the source-scoped `root-unreadable` diagnostic while the
+  session stays usable, and the attempt publishes no partial inventory (FR-002). A
+  consented Global root that is missing or unreadable records that tool as absent or
+  failed without blocking sibling tools. A file that cannot be read — including a symbolic
+  link whose target is missing or unreadable, or a file that
+  disappears between discovery and reading — yields `file-unreadable` without affecting
+  other files.
+- Error handling is ordinary: a failure confined to one file becomes that file's
+  diagnostic, and the scan publishes public status `partial` with every complete unaffected
+  file (FR-028); any other unexpected failure propagates as an ordinary error from its
+  request-owning session-API handler — devframe serializes the RPC failure for the caller,
+  with no sanitizing wrapper — or reaches the process top level for automatic startup work
+  with no request owner; either way it commits nothing from the attempt and retains the
+  prior committed snapshot (FR-030).
 - All inspected-source filesystem work is coordinated with scan serialization so generation
   publication cannot overlap or interleave.
-  Opens use read-only flags; the module exposes no mutation-capable open, write, truncate,
+  Opens use read-only flags; the inspection directory exposes no mutation-capable open,
+  write, truncate,
   create, rename, delete, link, chmod/chown, utimes, xattr, ACL, or equivalent operation.
   Safety tests instrument the calls and compare bytes, length, identity/link state, mode,
   mtime, ctime, and observable xattrs/ACLs before and after; OS-only atime changes are
   recorded separately and prove neither failure nor success. Global disable, process
-  shutdown, or explicit cancellation revokes the ticket/attempt's publication authority. A
+  shutdown, or explicit cancellation revokes the attempt's publication authority. A
   pending promise may perform only cleanup when it settles; late bytes, diagnostics, graph
-  changes, DTOs, and operational events are discarded. The design does not claim physical
+  changes, and DTOs are discarded. The design does not claim physical
   cancellation before Node.js and the kernel report the operation settled.
-- If a successful operation returns required identity/metadata or canonical path data that
-  is unavailable, ambiguous, malformed, or otherwise unusable, the layer returns the
-  deterministic `safe-fs-boundary-unverifiable` boundary or candidate outcome; it never
-  guesses. A root/shared-ancestor or directory-enumeration guard outcome aborts the Source
-  attempt. Only a candidate-local outcome after complete traversal and confirmed closure of
-  every acquired resource may retain the diagnostic record; any unconfirmed close aborts
-  the Source attempt. This classification uses returned data only: the
-  exact structural-`lstat` `ENOENT` conversion above and the FR-041-declared
-  event-confirmed-close observation are the only domain-caught or observed exception cases,
-  and every non-carveout throw or rejection follows FR-041. Every Source-abort case commits no diagnostic-only
-  candidate record, contracted-partial generation, or success receipt.
-- Pure Node.js does not expose a directory-handle-relative open or an atomic equivalent of
-  `RESOLVE_BENEATH`, so the checks above cannot prove kernel-enforced containment against an
-  active adversarial process that replaces the root or an ancestor between path checks, or
-  that replaces the final entry on a Node.js/platform combination without effective
-  `O_NOFOLLOW`.
-  Node also cannot portably identify every Windows reparse tag or every mount transition;
-  same-device bind mounts and reparse metadata that Node does not report remain explicit
-  platform limitations outside test proof.
-  This release's race threat model therefore covers ordinary concurrent edits, every
-  detectable change, and effective-`O_NOFOLLOW` final-component defense; every detected case
-  fails closed. Active source-root/ancestor replacement and final-component replacement only
-  where effective `O_NOFOLLOW` is unavailable are explicitly out of scope. No test result may
-  be described as proof of stronger containment. The concrete resolution path is to adopt a future Node handle-relative API
-  when one is available, or place scanning inside an OS-enforced read-only snapshot/sandbox
-  before expanding that threat model.
 - The four registries form one validated reference graph but grant different authority.
   Vendor behavior records describe upstream lookup without authorizing I/O; only static
   and typed derived Inspector rules authorize reads; runtime strategies project order,
@@ -1742,43 +1641,34 @@ dependency or artifact fails until explicitly reviewed.
   independently addressable rather than sharing an inferred traversal. Every Repository
   selector is compiled into a closed, canonical-round-tripping segment program. Literal,
   one-segment, and non-adjacent recursive-directory tokens express composite
-  descendant/direct-child/subtree rules without a general glob engine. The compiler also
-  emits immutable `TraversalPlan` records; Global preview patterns come from those same
-  records and the consent digest binds their schema, closed selection policy, and canonical
-  programs. The only content-dependent scheduler branch is the exact
-  `codex-global-first-non-empty` policy: it safely probes `AGENTS.override.md`, short-circuits
-  on non-empty content, advances to `AGENTS.md` only when the override is safely established
-  empty or its contract-declared pre-observation structural `lstat` returns exact `ENOENT`
-  and therefore `absent`, and publishes at most one Codex Global instruction file. After one
+  descendant/direct-child/subtree rules without a general glob engine. Global preview
+  entries are the frozen lexical roots, and the consent digest binds their raw values and
+  escaped display per the data model. The only content-dependent scheduler branch is the exact
+  `codex-global-first-non-empty` policy: it probes `AGENTS.override.md`, short-circuits
+  on non-empty content, advances to `AGENTS.md` only when the override is absent or read
+  as empty, and publishes at most one Codex Global instruction file. After one
   optional leading BOM is removed, empty means exactly
   `decodedText.trim().length === 0` under the supported ECMAScript runtime. A decoded
   `utf-8-replaced` string participates unchanged, so any `U+FFFD` makes it non-empty unless
-  other non-whitespace text already does. Binary is a deterministic no-fallback outcome. An
-  exact `ENOENT` from a contract-declared structural recheck after the override was observed
-  becomes `entry-disappeared` and also performs no fallback. The FR-041
-  event-confirmed-close observation leaves the already confirmed close successful and does
-  not select fallback. Every non-carveout thrown or rejected
-  probe follows FR-041, performs no fallback, and, during an initial or retry Global batch,
-  aborts the whole transaction rather than committing a sibling subset.
+  other non-whitespace text already does. A binary or unreadable override ends the branch
+  with its file-scoped diagnostic and no fallback (FR-035).
 - Static matchers and the exact five initial mappings of the closed `DerivationProgram`
   union are the only read authorities. The derivation schema pins a static seed
   provenance/rule/kind, closed declaration field/syntax, seed-relative or source-root base,
   fixed placement/suffix, and deterministic target construction; callback, arbitrary path join, free-form expression,
   glob, and recursive derivation are unrepresentable. Derived segments pass the host-independent NFC/Windows-special grammar
-  and must resolve to exactly one collision-free enumerated `ScanEntryTicket` before read,
-  so ADS, device, trailing-dot/space, ambiguous case/normalization aliases, and 8.3 aliases
-  are rejected before candidate open. A unique NFD raw entry remains eligible through its
-  one NFC classification record. FR-015 through
+  and must resolve to exactly one enumerated allowlisted entry before read,
+  so ADS, device, and trailing-dot/space spellings
+  are rejected before the file is opened. FR-015 through
   FR-018 continue to limit Global reads to the three instruction sets even when the vendor
   behavior registry records other supported User customizations.
 - Tool recognizers attach exactly one `ToolRecognition` per `(fileId, tool, kind)` and sort
   them by the closed tool/kind order. Compatible admissions merge provenances; incompatible
   parsed meanings fail only that recognition's all-or-nothing extraction. A recognition retains every accepted independent
-  candidate provenance while reading one physical file once. A deterministic entry-local
-  non-capacity extraction failure may discard only that recognition under a contracted-partial
-  outcome after complete traversal. A thrown or rejected read/parser/Worker operation is not
-  caught or translated by recognizers or the scan domain; it propagates to the owning outer
-  boundary and contributes no item or generation result from that attempt. Recognizers may parse declarations as
+  candidate provenance for the one underlying file. A parser or extractor failure is
+  file-confined: it discards only that recognition's derived metadata and relationships
+  under the file's `recognition-parse-failed` diagnostic and the `partial` outcome, while
+  the complete readable source stays displayed and comparison-eligible (FR-028). Recognizers may parse declarations as
   inert data but cannot import, evaluate, resolve remote content, or read relationship
   targets. Context extraction may synthesize only closed vendor-documented edges between
   already admitted files or fixed relationship-only defaults; non-file and excluded
@@ -1793,12 +1683,12 @@ dependency or artifact fails until explicitly reviewed.
   serialized as an authored target. Public provenance scope and order use closed
   `ScopeDescriptor`/`OrderDescriptor` unions with Source-relative paths and stable
   comparison keys; unknown order remains null plus condition facts. A derived provenance
-  names the exact `seedProvenanceId`, so hard-link alias seeds do not collapse.
+  names the exact `seedProvenanceId`.
   In particular, Repository-root `.mcp.json` merges the Copilot CLI provenance and the
   exact VS Code 1.118+ path-only provenance without another file/read. CLI `mcpServers`
   extraction remains provenance-specific; the VS Code provenance adds no schema fields or
   inferred winner while the registered release-note/current-guide conflict remains open.
-- `src/inspection/applicability` evaluates only closed composition strategies and their
+- `src/server/inspection/applicability` evaluates only closed composition strategies and their
   cited vendor behavior/rules against available facts. Documentation status, product
   surface, runtime `cwd`/target, trust, approval, enablement,
   selection, agent context, tool availability, installation, instruction-byte budget,
@@ -1814,15 +1704,17 @@ dependency or artifact fails until explicitly reviewed.
   and semantic fingerprints. Offline contract/build validation loads checked-in records;
   only the explicit maintainer drift command may fetch those pages. Startup and scans do
   not access documentation or copy remote page text into the package.
-- Decoding begins only after same-handle reading and every post-read identity check complete.
-  Any `0x00` byte produces `encoding: binary`, no `sourceText`, and diagnostic-only comparison
-  ineligibility. All other bytes are decoded exactly once as UTF-8 with replacement
-  semantics. Exactly one leading UTF-8 BOM is recorded and removed from `sourceText`;
-  otherwise valid input uses `utf-8`, BOM-bearing valid input uses `utf-8-bom`, and any
-  replaced invalid sequence uses `utf-8-replaced` (also recording BOM removal when present).
+- Decoding begins after the file's bytes are read.
+  Any `0x00` byte produces `encoding: binary`, no `sourceText`, the file-scoped
+  `file-content-binary` diagnostic, comparison ineligibility, and makes an otherwise
+  publishable generation `partial`. All other bytes are decoded exactly once as UTF-8 with replacement
+  semantics. Exactly one leading UTF-8 BOM is recorded as `hadLeadingBom` and removed
+  from `sourceText`; the encoding is orthogonal to that record — input decoded without
+  replacement uses `utf-8`, and any replaced invalid sequence uses `utf-8-replaced`.
   Every resulting `U+FFFD` remains in the complete `sourceText` passed to parsing, display,
   extraction, and comparison. No charset detection, alternate decode, sampling, or
-  truncation occurs, and this outcome alone does not make a generation partial.
+  truncation occurs, and the `utf-8-replaced` outcome alone does not make a generation
+  partial.
 - Parsers use safe modes only: YAML core schema without custom tags and with aliases
   disabled, JSONC tree extraction of known fields, TOML lexical-span extraction
   paired with semantic normalization without executing values, and Markdown/frontmatter
@@ -1840,19 +1732,20 @@ dependency or artifact fails until explicitly reviewed.
   registry-defined relationship default has null authored text and an explicit
   `documented-default` origin. Metadata, relationship, and derivation projections may share
   one exact occurrence/range; only partial/nested/crossing or identical overlap between
-  distinct origin occurrences is invalid. All parser work runs through parser `Worker`
-  threads; there is no synchronous host-event-loop fallback. Worker scheduling and capacity
-  follow the supported Node.js runtime, parser libraries, browser, operating system, and
-  execution environment, and the Inspector sets no product-defined worker count, V8
-  heap/stack, message-size, parser-depth/node/scalar, or wall-clock extraction ceiling. A
-  missing, ambiguous, illegally overlapping, or non-round-tripping span, or another
-  deterministic non-throwing parser/extraction outcome, discards that recognition's
-  complete extraction result, including its relationships and derivation declarations, while
+  distinct origin occurrences is invalid. All parser work runs in-process on the scan
+  path with the bundled parser libraries. Parsing capacity
+  follows the supported Node.js runtime, parser libraries, browser, operating system, and
+  execution environment, and the Inspector sets no product-defined V8
+  heap/stack, parser-depth/node/scalar, or wall-clock extraction ceiling. A
+  parser or extraction failure for one file — a missing, ambiguous, illegally overlapping,
+  or non-round-tripping span, a thrown or rejected parse, or another parser/extraction
+  outcome confined to that file — is file-confined under FR-028: it discards that
+  recognition's complete extraction result, including its relationships and derivation
+  declarations, records the file's `recognition-parse-failed` diagnostic, and leaves
   the complete authored source, comparison eligibility, and other successful recognitions
-  remain usable in a contracted partial generation. Any parser/Worker throw or rejection
-  instead propagates without a domain catch, classification, retry, Diagnostic, or partial
-  result and is represented, if REST-owned, only by the generic outer-boundary Operation
-  Error. No parser or
+  usable in a `partial` generation. A failure outside any single file instead fails the
+  affected attempt and is reported as an ordinary error at its request-owning
+  boundary. No parser or
   presentation step replaces an authored slice with its decoded value, resolves environment-variable
   references or performs credential detection, masking, or redaction. The internal
   `semanticValue` name denotes only mechanical typed decoding of an authored literal; it
@@ -1860,20 +1753,27 @@ dependency or artifact fails until explicitly reviewed.
   compliance/quality verdict, or remediation advice. The same prohibition applies to every
   inventory, detail, comparison, Global-control, Diagnostic, Source Condition Fact, API,
   CLI, and documentation projection.
-- The Node host uses `node:http`, a small static MIME table, a random 256-bit capability
-  delivered in the URL fragment, exact Host/Origin checks, no CORS,
-  `Cache-Control: no-store` for API responses, and a restrictive CSP. Before the CLI is
-  imported, project-owned `bin.mjs` validates the packed `engines.node` string as exactly
-  `^24.11.0 || ^26.0.0`, verifies `process.versions.node` is within that expanded range, and
-  validates both closed manifests and every listed static/server hash; an out-of-range
-  runtime exits with a fixed actionable error and the host cannot bind beforehand. The CSP permits
-  same-origin scripts plus only the exact build-recorded SHA-256 hashes for Nuxt's
-  executable inline bootstrap, forbids inline executable attributes, eval, nonces, and
-  external/blob workers, and retains inline style permission only for Monaco layout/theme
-  output. API payloads use IDs rather than caller-supplied filesystem paths. The capability is memory-only; a refresh
-  after fragment removal performs no API call and shows the instruction to reopen the
-  printed process-lifetime launch URL. Only a fixed client-route grammar and build-manifest
-  assets receive the inert SPA shell. Global consent uses a no-I/O lexical preview and a
+- The Node host is devframe 0.7.5: the CLI starts the app definition through
+  `createDevServer` from
+  `devframe/adapters/dev`, sets `auth: false`, and binds `127.0.0.1` only. devframe serves
+  the built SPA from `cli.distDir` (`dist/public`) and owns port selection, host binding,
+  and startup browser opening; the session API is the set of devframe RPC functions
+  declared with `defineRpcFunction` in the app definition's `setup`
+  (`src/server/host/devframe-app.ts`). There is no per-session token, Origin/Host check,
+  hand-written router, or product-owned static-file layer; protection is the loopback
+  bind, and the residual exposure of an unauthenticated loopback host — other local
+  processes and, via DNS rebinding, a malicious web page — is the documented limitation
+  recorded by Constitution v4.0.0. `package.json.bin`
+  maps directly to `dist/cli.mjs`. Node.js
+  compatibility is declared only through the packed `engines.node` range
+  `^24.11.0 || ^26.0.0` and enforced by the package manager's engines mechanism; the
+  CLI re-checks neither the declared string nor the running version, and the packed
+  exact string is asserted by the package tests rather than re-compared at runtime.
+  Session API payloads use IDs rather than caller-supplied filesystem paths. An
+  unexpected RPC-handler failure propagates out of its handler and crosses the devframe
+  channel as devframe serializes it — there is no sanitizing wrapper or generic error
+  envelope; the startup path has no catch, so an ownerless rejection reaches the process
+  top level. Global consent uses a no-I/O lexical preview and a
   session-keyed digest. Each new unconsented preview reads `COPILOT_HOME`,
   `CLAUDE_CONFIG_DIR`, and `CODEX_HOME` exactly once in that order, treats only `undefined`
   as absent, and calls imported `node:os.homedir()` exactly once if any is absent. It uses
@@ -1882,41 +1782,29 @@ dependency or artifact fails until explicitly reviewed.
   Proposed roots are represented and escaped with the supported
   Node.js, browser, and platform string/path facilities rather than product-defined byte
   ceilings. If that environment cannot represent, escape, retain, digest, or serialize a
-  proposed root recoverably, the throw/rejection propagates unchanged to the preview REST
-  boundary. That boundary returns only the generic path/content-free pre-acceptance
-  `OperationError` and creates no preview, authority, job, retained failure state, or success
-  bytes; no preview surface reports or retains the proposed value. Each accepted entry also retains an internal exact raw `lexicalRoot`; the digest binds that raw value, its escaped
-  display, and the immutable traversal-plan schema/selection-policy/program. Enable uses only the stored raw
-  value, never reverses `displayRoot`, and never rereads the environment. Canonical alias
-  differences after consent fail before enumeration instead of silently changing the
-  displayed boundary.
-- `src/launch-browser.ts` prints the closed-grammar capability URL once before attempting
-  launch, revalidates its loopback/port/43-character-base64url form, and uses only
-  `node:child_process.spawn` with `shell: false`, ignored stdio, fixed argv, and `unref()`.
-  The closed platform map is `/usr/bin/open` on macOS and the OS-provided
-  `/usr/bin/xdg-open` on Linux. Windows and every other platform deliberately skip
-  automatic opening in this release because no independent trusted helper boundary is
-  available through the portable Node API; they emit the fixed manual-URL warning and keep
-  the server running. `--no-open` creates no child. Helper failure likewise leaves the
-  server running with the printed URL. The child environment is an exact platform
-  allowlist: macOS `HOME`, `TMPDIR`, `LANG`, `LC_ALL`; Linux `HOME`, `DISPLAY`,
-  `WAYLAND_DISPLAY`, `XDG_CURRENT_DESKTOP`, `DESKTOP_SESSION`,
-  `DBUS_SESSION_BUS_ADDRESS`, `XDG_RUNTIME_DIR`, `LANG`, `LC_ALL`. `BROWSER`,
-  `NODE_OPTIONS`, `NODE_PATH`, every non-allowlisted environment key, all inspection-derived
-  content, paths, and authored values, and extra argv are omitted. The allowlisted keys are
-  copied directly from the launch environment as ambient platform context only; no Source root,
-  preview root, candidate path, file path, or authored value is copied from inspection state
-  into argv or environment, even when its text equals an ambient value lexically. Such equality
-  never changes provenance, grants read authority, or selects a handler. An OS helper may consume the listed desktop/session ambient
-  values, but the Inspector never selects a handler from them. The helper delegates only navigation to the OS default handler and does
-  not select or verify a browser family/version; a successful spawn is not compatibility
-  evidence. If that handler or its resolved browser is unavailable, cannot be identified,
-  or is outside the release-certification baseline, the printed URL and `--no-open` provide
-  the documented manual-opening fallback in a certified browser. No package-owned or user-supplied shell helper, shell command string,
-  or packaged platform helper is permitted; the fixed OS-provided `xdg-open` helper is
-  outside the package payload and is still invoked with `shell: false`. The one terminal launch line is the only
-  intentional capability display and is never copied into operational logs.
-- The capability-authenticated API returns inert DTOs and complete authored values only for
+  proposed root recoverably, the throw/rejection propagates unchanged to the preview
+  session-API request boundary as an ordinary error and creates no preview, authority,
+  job, or retained failure state. Each accepted entry also retains an internal exact raw `lexicalRoot`; the digest binds that raw value and its escaped
+  display. Enable uses only the stored raw
+  value, never reverses `displayRoot`, and never rereads the environment.
+- Startup browser opening is devframe-owned: the CLI prints the plain loopback origin once
+  before devframe attempts the fixed operating-system browser-launch helper permitted by
+  FR-022, and `--no-open` disables that attempt without creating any child process. The
+  helper invocation receives only the printed loopback origin — no inspection-derived
+  content or path, authored value, user-supplied command, or environment-selected handler;
+  no Source root, preview root, candidate path, file path, or authored value is copied
+  from inspection state into argv or environment, and lexical equality between such a
+  value and ambient environment text never changes provenance, grants read authority, or
+  selects a handler. The helper delegates only navigation to the OS default handler and
+  does not select or verify a browser family/version; a successful open is not
+  compatibility evidence. If automatic opening is disabled, unsupported, fails, or the
+  handler or its resolved browser is unavailable, cannot be identified, or is outside the
+  release-certification baseline, the server keeps running and the printed URL plus
+  `--no-open` provide the documented manual-opening fallback in a certified browser
+  (FR-001). Tests instrument the launch path to prove the argv/environment boundary
+  instead of re-implementing a product-owned platform map beside devframe. The one
+  terminal launch line is presentation output.
+- The session API returns inert DTOs and complete authored values only for
   an explicit detail request. The bundled browser holds acknowledgement only in memory,
   resets it on reload or central full-session purge, and issues no `FileDetail` request or
   comparison construction before the sensitive-content warning is acknowledged; this gate
@@ -1938,7 +1826,7 @@ dependency or artifact fails until explicitly reviewed.
   Monaco's diff editor owns literal source comparison; recognition metadata is
   matched by `(tool, kind, fieldId, occurrence)` and compares/renders exact `authoredLiteral` values in
   Vue rather than substituting typed values or serializing them into an editor.
-  Repository comparison acceptance first uses two distinct readable current-generation physical file IDs from the
+  Repository comparison acceptance first uses two distinct readable current-generation customization files from the
   same Repository Source; only after a successful Global commit does US4 verify a readable
   Repository file against a readable Global file while retaining each owning Source and
   Source-relative namespace.
@@ -1955,36 +1843,42 @@ dependency or artifact fails until explicitly reviewed.
   enabled and are verified manually as well as through browser tests. If the browser or
   editor cannot compute the diff with available environment capacity, an actionable
   diagnostic leaves the complete authored side-by-side source visible.
-  `app/composables/liveness.ts` owns the shared central client-data purge implementation and
-  lightweight capability-protected `/api/v1/session/liveness` checks. It issues a check only
-  for initial authorization, return to a visible/focused page, explicit Resume, or fresh
+  `src/app/composables/liveness.ts` owns the shared central client-data purge implementation and
+  lightweight session-liveness checks over the loopback session API channel. It issues a check only
+  for initial adoption, return to a visible/focused page, explicit Resume, or fresh
   session adoption; at most one is in flight, and the browser/network/runtime owns when it
   settles. This single-flight rule serializes state adoption to reject stale responses; it
   is a functional coordination invariant, not a resource-admission or validation ceiling.
   There is no product-defined polling interval, request timeout, retry timer, or
-  memory lease. A network/runtime rejection, `401`/`403`, session mismatch, hidden/page
+  memory lease. A network/runtime rejection, session mismatch, hidden/page
   lifecycle event, observed process loss, or equivalent terminal full-session reset
   disposes editor models/workers/subscriptions, clears all session DTO/DOM/detail/
   comparison/warning state, aborts requests, and increments `clientDataEpoch` so a late
   response cannot restore content. Every SessionSnapshot/FileDetail request captures that
-  epoch, current generation, file ID where applicable, and an exact request token. An older
-  session generation is ignored. Every admitted automatic or explicit scan has an opaque
+  epoch, the owning sequence's current generation — the session snapshot exposes
+  `repositoryGeneration` and a nullable `globalGeneration` — plus a file ID where
+  applicable and an exact request token. An older
+  generation of the owning sequence is ignored. Every admitted automatic or explicit scan has an opaque
   `scanRequestId`; its Source progress and any generation it commits carry the same ID. The
   client stores the current explicit request ID and never treats an older status or inventory
   generation as that request's completion. Before a newer
-  generation is adopted, the epoch increments
-  and all detail/editor/comparison state is aborted/disposed. An equal generation requires
-  the current token. File detail is adopted only when epoch/generation still match and the
+  generation of either sequence is adopted, the epoch increments
+  and the detail/editor/comparison state owned by that sequence's replaced generation is
+  aborted/disposed; the other sequence's committed views stay valid. An equal generation requires
+  the current token. File detail is adopted only when the epoch and the owning sequence's
+  generation still match and the
   readable file still exists. No browser storage, service worker, or response cache
   persists inspected content. Each successful liveness response is bound exactly to
   `{ sessionId, globalContentEpoch, globalDisableInProgress }`: an older epoch is rejected,
   an equal epoch with a null fence establishes or confirms the current baseline, and a greater epoch or non-null fence
-  triggers the full purge and control-only Global recovery before rendering. The capability remains memory-only across a hidden-page purge;
-  on visibility return the retained capability authenticates a fresh session snapshot. The
+  triggers the full purge and control-only Global recovery before rendering. A hidden-page
+  purge retains no session data;
+  on visibility return the client fetches a fresh session snapshot over the same loopback
+  channel. The
   SPA adopts its returned `sessionId` as the new liveness baseline without retaining or
   comparing the purged ID, and constructs the minimal client-side `RecoveryViewState` from
-  epoch, Global control/progress, pathless tool-failure Diagnostics, and generic Operation
-  Errors only. When the disable fence is non-null, the session route supplies the exact
+  epoch, Global control/progress, pathless tool-failure Diagnostics, and the failed
+  requests' errors only. When the disable fence is non-null, the session route supplies the exact
   control-only `GlobalFenceRecoverySnapshot`; when the fence is null, it supplies a normal
   full `InspectionSession`, but the recovering client adopts only those control/error fields
   and discards its inspection graph. If active, disable is available from that view immediately; the SPA fetches
@@ -1993,8 +1887,9 @@ dependency or artifact fails until explicitly reviewed.
   is null and a normal full snapshot can be fetched. It then re-fetches a matching session
   and constructs a fresh inventory summary with default state while
   restoring no old detail, comparison, editor, selection, filter, authored source, or
-  acknowledgement. A later detail/comparison open requires a new acknowledgement. Failed
-  authentication stays ended with the next step to reopen the printed URL.
+  acknowledgement. A later detail/comparison open requires a new acknowledgement. A
+  session that cannot be re-adopted — the host process is gone or replaced — stays ended
+  with the next step to reopen the printed URL.
 - One coordinator serializes cancellable `GlobalEnableOperation` admission and its single
   `GlobalBatchScan`, Repository scans, later explicit single-Source Global rescans, and
   Global-disable transactions so scans do not overlap and generations cannot interleave.
@@ -2021,17 +1916,11 @@ dependency or artifact fails until explicitly reviewed.
   plus `rejected` controls whose `retryDisposition` is `same-preview`; it excludes published,
   pending, and lexical `new-preview-required` controls, and the request cannot add, omit, or
   reorder it. Admission partitions that server-owned set into a deterministic
-  rejected subset and an admitted subset of zero to three roots. A lexically invalid entry,
-  exact `ENOENT` from its contract-declared pre-observation root `lstat`, or non-throwing
-  deterministic link/type/change/boundary/identity rejection excludes only that root and
-  allows admitted siblings to continue. An exact `ENOENT` at a declared structural recheck
-  after observation returns `entry-disappeared`, never fallback. Its closed checkpoint role
-  then maps a root, ancestor, or directory result to Source-fatal stale state, or a terminal-
-  regular-file candidate result to file-scoped `safe-fs-entry-stale` that may contribute only
-  to a post-traversal, confirmed-closure contracted-partial Source. The FR-041
-  event-confirmed-close observation leaves the already confirmed close successful. Every
-  non-carveout throw or
-  rejection applies FR-041 and aborts the entire enable/retry transaction: every sibling's
+  rejected subset and an admitted subset of zero to three roots. A lexically invalid entry
+  or a consented root that is missing or is not a readable directory excludes only that
+  root — recorded as absent or failed per the closed admission outcomes — and
+  allows admitted siblings to continue. Any other unexpected throw or
+  rejection fails the attempt as an ordinary error and aborts the entire enable/retry transaction: every sibling's
   tentative context and result is discarded, no admitted subset is committed, and the exact
   pre-operation snapshot is restored. For initial enable that snapshot has no active
   consent/control; for retry, the pre-existing consent and controls remain available for
@@ -2044,20 +1933,21 @@ dependency or artifact fails until explicitly reviewed.
   publication authority, and one working set. That batch
   assembles one separately identified Global Source for each admitted tool/root pair—never a
   logical Source combining Copilot, Claude, and Codex—and publishes all of them together only
-  through one post-read-verified `committable-complete` or `committable-partial` generation
+  through one `committable-complete` or `committable-partial` Global generation
   commit. Initial enable or retry therefore has exactly one batch-level scan job, result, and
   observable commit.
   After admission and any batch transfer, a final coordinator-locked
   operation-ID/epoch/state check atomically chooses the response disposition. A batch whose
-  operation wins the race returns `202` with its shared `scanRequestId`; an all-rejected
-  operation returns `active-no-job`. A disable-barrier-first race returns `409`, enters
+  operation wins the race returns queued acceptance with its shared `scanRequestId`; an all-rejected
+  operation returns `active-no-job`. A disable-barrier-first race returns the fixed
+  `global-disable-pending` conflict, enters
   draining, and unregisters only after operation-local cleanup, with no late mutation or
   leak.
   The session `globalControl` DTO identifies the fixed confirmed tuple plus pending and
   retryable tools without exposing root authority. Active-consent retry keeps validation and
   admission operation-local: only authority-free `globalEnableInProgress` is newly visible,
   while the exact pre-operation `globalControl`, `pendingTools`, `retryableTools`, batch, and
-  diagnostic projection remains unchanged. Atomic `202 queued` acceptance alone replaces
+  diagnostic projection remains unchanged. Atomic queued acceptance alone replaces
   `pendingTools` with exactly the admitted accepted-batch subset and installs a matching
   `batchStatus`/shared request ID; `active-no-job` leaves pending empty and batch status null
   while atomically committing deterministic control outcomes. Initial enable keeps every
@@ -2076,7 +1966,8 @@ dependency or artifact fails until explicitly reviewed.
   `globalControl.state: disabling` and empties pending/retry arrays only when an active
   control snapshot exists; with only an operation-local initial enable, that control
   projection remains null while the barrier still appears in the control-only recovery DTO.
-  Every ordinary inspection-data route is fenced with `409 global-disable-pending`; the
+  Every ordinary inspection-data route is fenced with the fixed `global-disable-pending`
+  conflict; the
   session route returns only `GlobalFenceRecoverySnapshot`. Each inspection-data handler
   binds its captured `globalContentEpoch` and, under the coordinator lock at final
   publication, requires an unchanged epoch and null fence or discards the body. The liveness
@@ -2084,44 +1975,51 @@ dependency or artifact fails until explicitly reviewed.
   values from one current coordinator-lock snapshot at publication and returns a current
   non-null fence so another tab can observe the barrier.
   The barrier aborts and discards an active uncommitted batch, drains enable admission and
-  every tentative root context/result through the shared resource registry, performs a
+  every tentative root context/result, performs a
   final queued-Global-work cancellation sweep, and requeues the same interrupted Repository
   command exactly once only after terminal success. The requeue preserves its exact
   `operationId`, `scanRequestId`, trigger owner, requested Source, and queue order, returns the
-  existing command to `waiting`, and creates no new REST admission or interim success status.
+  existing command to `waiting`, and creates no new session-API admission or interim success status.
   Success with any public Global consent, control, or
-  Source state publishes exactly Repository-only N+1 and rekeys carried graph IDs; only an
+  Source state uses `remove-active-state`: it discards the entire Global generation
+  sequence and its Sources and commits nothing — the Repository sequence, its generation,
+  and its IDs are untouched; only an
   unpublished operation-local initial-enable may use cleanup-only success, which removes the
-  fence while preserving N and every generation-owned ID.
+  fence while changing no committed state.
   Disable, shutdown, or explicit cancellation leaves pending work cleanup-only and never
-  publishes or interleaves a late result. Disable succeeds only after every lineage resource
-  is `close-confirmed`; an unknown close or other post-acceptance failure keeps the process
-  alive but leaves the data fence and generic Operation Error retryable, with restart as the
+  publishes or interleaves a late result. Disable succeeds only after its drain, close, and
+  final serialization complete; a post-acceptance failure keeps the process
+  alive but leaves the data fence, the failed request's error, and retry/join control in
+  place, with restart as the
   fallback for unrecoverable cleanup. A pre-acceptance failure or true no-op leaves the fence
   null. API and liveness handling continue while the event loop can serve them, but disable
   cannot claim physical drain completion before the underlying promise settles.
-  The Global batch starts from the active session-wide generation, carries every unaffected
-  Repository and previously committed Global Source forward, and builds all admitted
-  replacements off to the side. A successful complete or contracted-partial batch advances
-  the generation exactly once, publishes every assembled Global Source atomically, clears
-  only the participating controls' applicable failure state, rekeys all generation-owned
-  graphs, and invalidates old file IDs, detail DTOs, comparison selection, and editor state
-  once. Carried Sources preserve their stable `sourceId`, semantic inventory, and authored
-  source content. An all-rejected enable/retry commits no generation and changes no carried
-  ID. The same coordinator lock linearizes the generation and payload of every
+  The Global batch owns only the Global generation sequence and builds all admitted
+  replacements off to the side: a successful complete or partial batch commits exactly one
+  Global generation — creating the sequence at generation 1 when no Global generation
+  exists, or advancing it from its last committed snapshot — publishes every assembled
+  Global Source atomically, clears
+  only the participating controls' applicable failure state, rekeys only Global
+  generation-owned graphs and IDs, and invalidates old Global file IDs, detail DTOs,
+  comparison selection, and editor state
+  once. Repository state is not part of the commit: the Repository sequence, its
+  generation, its IDs, and its views are untouched. An all-rejected enable/retry commits
+  no generation and changes no committed
+  ID. The same coordinator lock linearizes the sequence generations and payload of every
   SessionSnapshot/FileDetail envelope; later network delivery cannot mix or relabel them.
   A later explicit rescan remains a single job for one existing Source and may commit one
-  replacement generation under the same complete/contracted-partial rules. Its success
-  clears only that Source's stale-failure entry and lifecycle diagnostic while carrying
+  replacement generation of the owning sequence under the same complete/partial rules. Its success
+  clears only that Source's stale-failure entry and lifecycle diagnostic while preserving
   another Source's failures. Its fatal failure must create or replace only that Source's
-  stale overlay: an accepted throw/rejection references only the generic `OperationError`,
+  stale overlay: an accepted throw/rejection stores the failed request's error message,
   while a deterministic returned fatal outcome references its lifecycle `Diagnostic`.
   This single-Source rescan path does not alter the atomic batch requirement for
   initial enable or retry.
-  Any unexpected non-carveout throw or rejection during a Global batch produces no domain result and
-  follows its trigger-owning REST boundary. Before job acceptance it creates no
-  `scanRequestId`; after acceptance it terminates the one shared request with a generic
-  path/content-free Operation Error. In either case it commits none of the tentative sibling
+  Any unexpected throw or rejection during a Global batch produces no domain result and
+  propagates as an ordinary error at its trigger-owning session-API request boundary. Before
+  job acceptance it creates no
+  `scanRequestId`; after acceptance it terminates the one shared request with the failed
+  request's error. In either case it commits none of the tentative sibling
   Sources or results, leaves the last committed generation and IDs intact, adds no
   `StaleSourceFailure` for an as-yet-uncommitted tool, and retains the exact pre-operation
   consent/control, admitted root contexts and candidate IDs, and prior per-tool graphs for
@@ -2140,12 +2038,10 @@ dependency or artifact fails until explicitly reviewed.
   current base. Explicit Repository rescans, enabled-Global single-Source rescans, and Global
   batches share the same queue rules. Repeated Global disable joins an existing barrier;
   when no tool-specific Global Source or graph, active consent record, retained admitted
-  Global root context, affected `ClosableResourceRegistry` record for a `FileHandle` or
-  `fs.Dir` in `opening`/`open`/`closing`/`close-unknown`, running/queued Global
-  scan/enable command, or retained disable failure exists, and the registry is not poisoned,
-  disable is an immediate no-op even if unrelated Repository work exists. An unrelated
-  registry poison instead returns `409 resource-cleanup-restart-required`; neither branch
-  enumerates or reads the filesystem, creates a job, or changes the generation, epoch, or fence.
+  Global root context, running/queued Global
+  scan/enable command, or retained disable failure exists,
+  disable is an immediate no-op even if unrelated Repository work exists. The no-op branch
+  never enumerates or reads the filesystem, creates a job, or changes the generation, epoch, or fence.
 
 ### Closed Runtime State Tables
 
@@ -2155,52 +2051,51 @@ dependency or artifact fails until explicitly reviewed.
 |---|---|---|
 | Tool-home setting is captured as `undefined` | `preview-default` | From the one request-wide `node:os.homedir()` capture, use active-platform `node:path.join` with that tool's fixed `.copilot`/`.claude`/`.codex` suffix and zero filesystem I/O, then classify the resulting exact string through the ordered rows below; retain this tool in the fixed three-entry confirmation and create no authority |
 | Captured environment setting has length zero | `inputState: present-empty` / `preview-invalid` | Apply this first and only to an environment-origin value; retain the entry in the fixed three-entry confirmation, perform no fallback or filesystem/network I/O, and create no root, Source, job, or generation for it |
-| Otherwise the exact string contains U+0000 or an unpaired UTF-16 surrogate | `inputState: invalid` / `preview-invalid` | Reject before `path.isAbsolute` and before the shared parser, retaining only the invalid preview entry with zero filesystem/network I/O and no authority |
+| Otherwise the exact string contains U+0000 or an unpaired UTF-16 surrogate | `inputState: invalid` / `preview-invalid` | Reject before `path.isAbsolute`, retaining only the invalid preview entry with zero filesystem/network I/O and no authority |
 | Otherwise active-platform `node:path.isAbsolute` returns false | `inputState: relative` / `preview-invalid` | Retain the relative preview entry with zero filesystem/network I/O; do not normalize, resolve, fall back, or create authority |
-| Otherwise the shared pure `LexicalAbsoluteRootParts` parser rejects the absolute spelling | `inputState: invalid` / `preview-invalid` | With zero filesystem/network I/O, reject the closed POSIX U+FFFD, empty/dot/dot-dot component, repeated/non-root trailing separator cases and the closed Windows UNC/network/device/current-drive, malformed-drive, and invalid-component cases; retain no parsed operand or authority |
-| Otherwise the shared parser accepts the absolute spelling, including one outside the ordinary home | `inputState: eligible` / `preview-eligible` | Retain its exact parsed platform operands, escape and digest the stored raw lexical value with zero filesystem/network I/O, keep it in the fixed three-entry confirmation, and await the one all-tools consent action; only this row can reach post-consent admission |
+| Otherwise the string is absolute, including one outside the ordinary home | `inputState: eligible` / `preview-eligible` | Escape and digest the stored exact raw lexical value with zero filesystem/network I/O, keep it in the fixed three-entry confirmation, and await the one all-tools consent action; only this row can reach post-consent admission |
 | Consent/digest is stale, replayed, or mismatched | `consent-rejected` | Perform zero proposed-root I/O; create no authority |
-| A contract-declared pre-observation root `lstat` returns exact `ENOENT` | `absent` | Touch only that proposed root through the centralized structural check; do not fall back or create its Source, and continue partitioning the current server-owned set—all three tools initially or exact `retryableTools` on retry |
-| A contract-declared structural `lstat` returns exact `ENOENT` after the entry was observed or ticketed | `entry-disappeared` | Discard tentative authority/bytes and never fall back. Root/ancestor/directory roles are Source-fatal; terminal regular-file candidate roles map to file-scoped `safe-fs-entry-stale` and may contribute only a post-traversal, confirmed-closure contracted-partial scan outcome; unaffected siblings remain eligible |
-| Post-consent lexical/canonical/link/type/containment/identity checks return a deterministic failure without throwing | `root-rejected` | Touch only the proposed root through `safe-fs`; do not fall back or create its Source, and continue partitioning the current initial-three or exact-retryable set |
-| A FileHandle `close` event confirms closure before that handle's retained close promise rejects | FR-041 event-confirmed-close observation | Retain only the already-confirmed successful close lifecycle; do not classify the cause, poison the registry, propagate the rejection, select fallback, or publish a result from the observation |
-| Any non-carveout proposed-root operation throws or rejects | FR-041 propagation | Abort the whole Global transaction, discard every provisional sibling context/result, publish no admitted subset, and retain the prior snapshot |
-| Post-consent admission succeeds for one or more roots and no non-carveout operation throws or rejects | `root-admitted` batch subset | Atomically attach all admitted private contexts/IDs to their controls and transfer them together to the one `GlobalBatchScan`; create no public Source or graph before its single atomic commit |
+| A consented root is missing or is not a readable directory | `absent` or `root-rejected` | Record that tool as absent or failed without creating its Source and without blocking sibling tools; continue partitioning the current server-owned set—all three tools initially or exact `retryableTools` on retry |
+| Any proposed-root operation throws or rejects unexpectedly | Ordinary-error propagation | Abort the whole Global transaction, discard every provisional sibling context/result, publish no admitted subset, and retain the prior snapshot |
+| Post-consent admission succeeds for one or more roots | `root-admitted` batch subset | Atomically attach all admitted contexts/IDs to their controls and transfer them together to the one `GlobalBatchScan`; create no public Source or graph before its single atomic commit |
 
-#### Verified-byte decoding
+#### Byte decoding
 
-| Verified-byte condition | `encoding` | Source and recognition state |
+| Byte condition | `encoding` | Source and recognition state |
 |---|---|---|
-| Any `0x00` byte | `binary` | Diagnostic-only item; no `sourceText`, parser dispatch, recognition extraction, or comparison eligibility |
-| No NUL, one leading UTF-8 BOM, remaining bytes decode without replacement | `utf-8-bom` | Record and remove the BOM; dispatch the complete remaining text to the Worker |
-| No NUL or BOM and all bytes decode without replacement | `utf-8` | Preserve complete `sourceText`; dispatch it to the Worker |
+| Any `0x00` byte | `binary` | Diagnostic-only item with the file-scoped `file-content-binary` diagnostic; no `sourceText`, parser dispatch, recognition extraction, or comparison eligibility; makes an otherwise publishable generation `partial` |
+| No NUL and all bytes decode without replacement | `utf-8` | Record and remove one leading BOM when present; preserve complete `sourceText`; parse it in-process |
 | No NUL and one or more invalid UTF-8 sequences, with or without one leading BOM | `utf-8-replaced` | Decode exactly once with replacement semantics, record/remove the leading BOM when present, preserve every resulting `U+FFFD`, and use that complete garbled text for parsing, extraction, display, and comparison; this condition alone remains complete |
 
 #### Scan publication and failure ownership
 
 | Terminal condition | Internal outcome and owner | Atomic public result |
 |---|---|---|
-| Complete traversal; every admitted entry complete; assembly/serialization succeed; authority current | `committable-complete`, coordinator | Commit one `complete` generation and complete response; an initial/retry Global batch publishes every admitted tool-specific Source together in this one commit |
-| Complete traversal; only deterministic entry-local non-capacity failures; unaffected entries complete; assembly/serialization succeed; authority current | `committable-partial`, scan assembler then coordinator | Commit one `contracted-partial` generation with affected diagnostics and complete unaffected entries; an initial/retry Global batch still publishes its whole committable admitted subset in this one commit |
-| Fixed-three Global admission deterministically rejects every root and no non-carveout operation throws or rejects | `active-no-job`, Global coordinator | Retain active consent/controls, create no `scanRequestId`, batch, Source, or generation, and preserve every carried ID |
-| A FileHandle `close` event confirms closure before that handle's retained close promise rejects | FR-041 event-confirmed-close observation in the resource registry | Retain only the already-confirmed successful close lifecycle; create no item, Diagnostic, result, or generation from the observation, and neither poison the registry nor propagate the rejection |
-| A non-carveout filesystem, parser, Worker, coordinator, assembly, serialization, or authority operation throws or rejects before a REST job is accepted | Unclassified propagation to the REST request boundary | Create no `scanRequestId`, item, Diagnostic, scan result, response body from the attempt, or generation; abort every tentative Global sibling, return one generic path/content-free HTTP Operation Error, and keep the process/session and prior snapshot available |
-| Such an operation throws or rejects after a REST job is accepted | Unclassified propagation to the accepted-job boundary | Abort the whole request, including every tentative Global batch sibling; commit no attempt result, Source, or generation; retain the prior snapshot and expose one generic path/content-free terminal Operation Error for the one `scanRequestId`; if and only if the accepted job is an explicit rescan, create or replace that Source's stale overlay referencing only this Operation Error; initial scans and initial/retry Global batches create no stale overlay; keep the process/session available |
-| Non-carveout automatic startup work with no REST owner throws or rejects | Unclassified propagation to the process top level | Publish no attempt result or generation; make no process/session survival guarantee. Product API/log/telemetry contains no raw error, while runtime-owned local uncaught-error output remains outside product control |
-| Another deterministic fatal returned outcome that cannot use the complete or contracted-partial transition | Closed coordinator outcome | Abort the attempt, commit no result or generation, retain the prior snapshot, and expose only its fixed path/content-free lifecycle representation; if and only if the attempt is an explicit rescan, create or replace that Source's stale overlay referencing its lifecycle Diagnostic; initial scans and initial/retry Global batches create no stale overlay |
-| Disable/shutdown/supersession/failure revokes authority | `revoked`, coordinator | Discard all late bytes, extraction, diagnostics, DTOs, events, and graph mutations |
-| Transport fails after atomic commit | Existing committed outcome, host | Never relabel or expose a truncated body as partial; allow authenticated refetch of the already committed generation |
+| Complete traversal; every file complete, including readable `utf-8-replaced` results; assembly/serialization succeed; authority current | `committable-complete`, coordinator | Commit one `complete` generation of the owning sequence and a complete response; an initial/retry Global batch publishes every admitted tool-specific Source together in this one Global-sequence commit, touching no Repository state |
+| Complete traversal; one or more files have only file-confined outcomes (unreadable, binary, parse failure) while every unaffected file is complete | `committable-partial`, scan assembler then coordinator | Commit one `partial` generation of the owning sequence with affected-file diagnostics and complete unaffected results; an initial/retry Global batch still publishes its whole committable admitted subset in this one Global-sequence commit |
+| Fixed-three Global admission deterministically rejects every root | `active-no-job`, Global coordinator | Retain active consent/controls, create no `scanRequestId`, batch, Source, or generation, and preserve every existing committed ID exactly |
+| The selected Repository root does not exist or cannot be read as a directory | Deterministic fatal outcome, coordinator | Fail the attempt with the source-scoped `root-unreadable` diagnostic while the session stays usable; commit nothing, publish no partial inventory, and retain the prior snapshot; if and only if the attempt is an explicit rescan, mark the retained snapshot stale for that Source |
+| The attempt fails before commit for any other reason not confined to one file | `failed` for that `scanRequestId`, owning session-API request boundary | Commit nothing from the attempt, including every tentative Global batch sibling; report the failed request's error ordinarily (`scanRequestId` is null before job acceptance); retain any prior committed snapshot; if and only if the accepted job is an explicit rescan, create or replace that Source's stale overlay storing that error's message; keep the process/session available |
+| Automatic startup work with no request owner fails | Propagation to the process top level | Publish no attempt result or generation; make no process/session survival guarantee; the runtime's ordinary uncaught-error reporting applies |
+| Disable/shutdown/supersession/failure revokes authority | `revoked`, coordinator | Discard all late bytes, extraction, diagnostics, DTOs, and graph mutations; commit nothing from the revoked request |
+| Transport fails after atomic commit | Existing committed outcome, host | Never relabel or expose a truncated body as partial; allow refetch of the already committed generation over the loopback session API |
 
 ## Complexity Tracking
 
-The pure Node.js product constraint introduces a documented residual race risk without
-waiving same-handle reads, detected-race fail-closed behavior, source-value-free diagnostic/logging,
-or review requirements.
-The unavoidable implementation costs are tracked explicitly:
+The 2026-07-22 trusted-workspace clarification (spec Clarifications § Session 2026-07-22)
+superseded the earlier adversarial-file inspection machinery, so the complexity rows that
+existed only to justify it were removed rather than reimplemented.
+The same-day devframe adoption (spec Clarifications § Session 2026-07-22, Constitution
+v3.0.0) likewise superseded the per-session capability token, Origin checks, hand-written
+HTTP router, and static-manifest/CSP pipeline, so their complexity rows are gone as well.
+The 2026-07-22 removal of FR-040/FR-041 (spec Clarifications § Session 2026-07-22,
+Constitution v4.0.0) deleted the generic error-envelope and operational-log/telemetry
+machinery, so the complexity rows that existed only to justify them were removed too.
+The remaining unavoidable implementation costs are tracked explicitly:
 
 | Complexity | Why it is required | Simpler option rejected |
 |---|---|---|
-| Repeated `lstat`/`realpath`/`open`/`FileHandle.stat` validation and same-handle reads | Detect ordinary concurrent changes before accepting bytes and discard any result whose identity, metadata, or canonical containment changes | A direct `readFile(path)` or glob-only traversal has no generation-bound authorization, identity agreement, or post-read race detection |
+| Exact-pinned pre-1.0 devframe 0.7.5 host with lockfile-owned transitives (including the h3 2.0.1-rc.22 release candidate) | Reuse the config-inspector-proven local-tool host for static serving, the RPC session API, and browser opening instead of maintaining a hand-written router, token authentication, and static-manifest pipeline; the exact pin holds pre-1.0 API churn and the RC transitive at one reviewed baseline | A floating version range would adopt breaking pre-1.0 changes without review; re-implementing the host in-repo re-creates the complexity devframe already owns |
 | Publication-authority revocation with cleanup-only late continuations | Prevent work completed after disable, shutdown, or cancellation from mutating a newer session state | Treating cancellation as physical kernel-I/O termination would make an unsupported guarantee |
 | Four fixed external terminal-equipment descriptors and supervisor-owned participant launch | Give participant, moderator, and two isolated reviewer slots deterministic nonrecording/no-echo ingress and give the sole product-exit source a real child handle | Implicit shared stdin cannot isolate votes or contexts; a harness without the product process handle cannot attest exit |
 | Adapter-owned pinned Chromium plus anonymous DevTools equipment pipe | Configure attempt-local proxy/auth without env/argv/profile persistence and ground browser/context exit in a direct OS observer | Browser authority in argv, environment, or a persistent profile violates the privacy boundary; an unowned browser has no trustworthy equipment observer |
@@ -2211,16 +2106,7 @@ These controls are required boundary implementations, not Constitution exception
 They preserve the existing closed authority, privacy, provenance, and verification principles; the
 rejected simpler alternatives fail those principles.
 
-**Residual risk and resolution path**: Path validation and `open` are not one atomic kernel
-operation in Node.js, so a sufficiently privileged active mutator may win an undetectable
-root or ancestor replacement race, or a final-entry replacement race where effective
-`O_NOFOLLOW` is unavailable. Approval must treat only those cases as out of scope and must not call
-the current checks a containment proof. Expanding the threat model requires either a future
-Node directory-relative API with atomic beneath/no-follow semantics or an OS-enforced
-read-only snapshot/sandbox around the scan root, followed by a renewed security review and
-adversarial test plan.
-
-Node.js also cannot guarantee wall-clock cancellation of every stalled kernel filesystem
+**Residual risk and resolution path**: Node.js cannot guarantee wall-clock cancellation of every stalled kernel filesystem
 operation. Disable, shutdown, and explicit cancellation therefore revoke publication
 authority and discard late results, while coordinator serialization prevents those results
 from interleaving with a committed generation. Approval MUST NOT describe authority

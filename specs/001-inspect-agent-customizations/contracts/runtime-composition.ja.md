@@ -220,13 +220,12 @@ Vendor固有excluded ruleは各vendor contractで規範定義し、ここでは�
 | Rule ID | Excluded input | Behavior refs | Required retained fact | Policy refs | Evidence |
 |---|---|---|---|---|---|
 | `shared.excluded.managed-remote-state` | Managed、organization、hosted、remote、credential、log、cache、session、runtime-state、plugin-installation、service-side file/value | `claude.behavior.user.mcp-state`、`claude.behavior.user.plugins`、`claude.behavior.user.settings`、`codex.behavior.user.config`、`codex.behavior.user.plugins`、`copilot.behavior.cloud.mcp`、`copilot.behavior.cloud.organization-agents`、`copilot.behavior.cloud.organization-instructions`、`copilot.behavior.cloud.plugins`、`copilot.behavior.cloud.remote-skills` | Source categoryとstrategyへのpossible effectだけ記録し、local pathを作らない | FR-009、FR-013、FR-014、FR-018、FR-019、FR-021、FR-022、FR-031、FR-039、QR-001、QR-003、QR-005 | `anthropic.claude-code.directory.file-reference`、`anthropic.claude-code.mcp.scopes-precedence`、`anthropic.claude-code.plugins.components-scopes`、`anthropic.claude-code.settings.scopes-precedence`、`github.copilot.cli.reference`、`github.copilot.cloud.instructions`、`github.copilot.custom-agents`、`github.copilot.instructions.support`、`github.copilot.plugins`、`github.copilot.skills`、`openai.codex.config-basic`、`openai.codex.mcp`、`openai.codex.plugins`、`vscode.copilot.plugins` |
-| `shared.excluded.symlink-target` | Symbolic linkをfollowしなければ到達できない全target | `claude.behavior.repo.skills`、`codex.behavior.repo.skills` | Vendorがfollowできる場合のunread parity divergenceを記録 | FR-003、FR-019、FR-022、FR-024、FR-029、QR-001、QR-002、QR-003、QR-005 | `anthropic.claude-code.large-codebases.start-directory`、`anthropic.claude-code.skills.locations-discovery`、`openai.codex.skills` |
 
 ## Registry completeness
 
 このcontractは3 vendor contractが参照する正確に39個のstrategy IDを定義する。内訳はGitHub Copilot
 20個、Claude Code 11個、OpenAI Codex 8個である。Explicit prompt invocationやexcluded experimental
 surfaceなど、vendor contractでstrategyなしと明記されたrowに架空のstrategyを追加しない。また、
-staged allowlist/vendor contractの全14個のrelationship-only IDと2個のshared non-read exclusionを
+staged allowlist/vendor contractの全14個のrelationship-only IDと1個のshared non-read exclusionを
 定義する。新しいIDへの将来の参照は、同じ変更でこのcontractの英語・日本語definitionを追加しなければ
 ならない。

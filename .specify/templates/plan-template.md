@@ -50,10 +50,10 @@
 - [ ] **Documentation parity**: Every affected human-authored document and its English or
       Japanese counterpart are listed, along with user and contributor guidance changes.
 - [ ] **Safe boundaries**: Trust boundaries, permissions, mutation semantics, intentional
-      authenticated sensitive-content access and acknowledgement, path/content-free
-      operational logging, environment-derived resource behavior without product-defined
-      numeric validation limits, recoverable failure handling, authority revocation or
-      cancellation, late-work cleanup and residual failure behavior, and dependency or
+      sensitive-content access and acknowledgement, ordinary failure reporting,
+      environment-derived resource behavior without product-defined numeric validation
+      limits, recoverable failure handling, authority revocation or cancellation,
+      late-work cleanup and residual failure behavior, and dependency or
       public-contract impacts are documented.
 - [ ] **Welcoming participation**: Setup, accessibility, contributor workflow, and
       actionable diagnostics are preserved or improved; unavoidable barriers have a

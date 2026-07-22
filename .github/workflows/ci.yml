@@ -1,0 +1,213 @@
+# Continuous integration. Every gate is an independent job.
+#
+# Byte hygiene has no CI job: line endings are owned by .gitattributes and
+# editor conventions by .editorconfig, while code style is the lint job.
+#
+# The six lower-bound certification jobs sample Node.js 24.11.0 and 26.0.0
+# on the three fixed OS/architecture targets. They certify the two declared
+# lower bounds of the runtime compatibility contract `^24.11.0 || ^26.0.0`
+# (exactly `>=24.11.0 <25.0.0 || >=26.0.0 <27.0.0`); the declared Node.js
+# 24/26 engine ranges remain the compatibility contract, and these finite
+# samples do not narrow support to the sampled versions. Node.js 24.18.0 on
+# ubuntu-24.04 x64 is the development/build baseline.
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  NODE_DEV_BASELINE: 24.18.0
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_DEV_BASELINE }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run dev:prepare
+      - run: pnpm run lint
+
+  typecheck:
+    name: Type check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_DEV_BASELINE }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run dev:prepare
+      - run: pnpm run typecheck
+
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_DEV_BASELINE }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run test:unit
+
+  contract:
+    name: Contract tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_DEV_BASELINE }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run test:contract
+
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_DEV_BASELINE }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run test:integration
+
+  security:
+    name: Security tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_DEV_BASELINE }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run test:security
+
+  package:
+    name: Package tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_DEV_BASELINE }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+      - run: pnpm run verify:package
+      - run: pnpm run test:package
+
+  performance:
+    name: Performance tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_DEV_BASELINE }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run test:performance
+
+  documentation:
+    name: Documentation tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_DEV_BASELINE }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run test:docs
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_DEV_BASELINE }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run test:coverage
+
+  browser:
+    name: Browser certification suite
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_DEV_BASELINE }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium firefox webkit
+      - name: Run primary-workflow and accessibility suite
+        if: ${{ hashFiles('tests/e2e/**') != '' }}
+        run: pnpm run test:e2e
+
+  build:
+    name: Development/build baseline (Node.js 24.18.0, ubuntu-24.04 x64)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_DEV_BASELINE }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+      # Packaged-artifact verification is a CI/release gate, not part of
+      # every local build (Implementation simplicity policy).
+      - run: pnpm run verify:package
+
+  certify-lower-bounds:
+    name: Certify Node.js ${{ matrix.node }} on ${{ matrix.os }}
+    # Six jobs: the two declared engine lower bounds crossed with the three
+    # fixed OS/architecture targets (ubuntu-24.04 x64, macos-15 arm64,
+    # windows-2025 x64). See the header note: the declared Node.js 24/26
+    # ranges remain the compatibility contract, not these samples.
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['24.11.0', '26.0.0']
+        os: [ubuntu-24.04, macos-15, windows-2025]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run test:unit

@@ -1,20 +1,56 @@
 <!--
 同期影響レポート
-- バージョン変更: 1.0.0 → 1.1.0
-- 変更した原則: 品質と安全性の基準 — resource容量を製品固有の数値上限ではなく実行環境に委ね、
-  意図した認証済み機密内容accessと偶発的漏えいを分離し、運用logへのpathまたは調査対象値の
-  記録を禁止
+- バージョン変更: 4.3.0 → 4.4.0
+- 変更した原則: 読みやすく、保守しやすく、意図が伝わるコード — classの義務を全memberへ
+  一般化した。フィールドとメソッド（constructorとprivate memberを含む）にJSDoc docコメントを
+  付ける。メソッドは呼び出しが何をするかを、フィールドは何を保持しどのinvariantを維持するかを
+  述べる。
+- 以前のレポート (4.2.0 → 4.3.0):
+- バージョン変更: 4.2.0 → 4.3.0
+- 変更した原則: 読みやすく、保守しやすく、意図が伝わるコード — 文書化義務をclassのpublic
+  memberへも拡張した。Publicメソッド（constructorを含む）には、その呼び出しが何をするか、
+  どのcontract挙動を実装するかを述べるJSDoc docコメントを付ける。
+- 以前のレポート (4.1.0 → 4.2.0):
+- バージョン変更: 4.1.0 → 4.2.0
+- 変更した原則: 読みやすく、保守しやすく、意図が伝わるコード — 型の文書化義務を宣言自体へも
+  拡張した。Exportされた型、interface、定数には、それが何を表すかを述べるJSDoc docコメントを
+  付ける。4.1.0で追加したmemberごとの文書化に加えての義務である。
+- 以前のレポート (4.0.0 → 4.1.0):
+- バージョン変更: 4.0.0 → 4.1.0
+- 変更した原則: 読みやすく、保守しやすく、意図が伝わるコード — 文書化義務を型のmemberへ
+  拡張した。閉じたunionの各memberとexportされたinterfaceの各フィールドには、その意味と、
+  存在する場合は統治するcontractを述べるJSDoc docコメントを付けなければならない。具体的な
+  形式と例はAGENTS.mdのコードコメントの方針が持つ。
+- 以前のレポート (3.0.0 → 4.0.0):
+- バージョン変更: 3.0.0 → 4.0.0
+- 変更した原則: 品質と安全性の基準 — operational log/telemetryの内容規制の項目を削除し、
+  generic error化のdoctrineを廃止した。オーナーの2026-07-22決定によるFR-040/FR-041の削除で
+  ある: productにtelemetryは存在せず（outbound通信は禁止済み）、terminalとUIの出力を読むのは
+  調査対象fileを所有する本人であり、認証なしのsession APIは既にfileの完全な内容を返すため、
+  errorの原因を隠しても何も守られず、failureをdebug不能にするだけだった。Errorは通常どおり
+  報告し、closedなOperationError entityは削除した。（3.0.0はsession保護をloopback bindingへ
+  縮小した版。）
+- 更新したテンプレートとガイダンス (4.0.0):
+  - ✅ spec.md/spec.ja.md — FR-040/FR-041とOperation Error entityを削除。Failureのsemanticsは
+    FR-028/FR-030とscan-publication表が引き続き所有する
+  - ⚠ research/plan/data-model/contracts/tasksペア — 通常error化の整合を実施中
+- 以前のレポート (2.0.0 → 3.0.0):
+- 変更した原則: 品質と安全性の基準 — session保護義務を「loopback sessionを他originから
+  保護する」（sessionごとのtoken、Originチェック）から、loopback bindingのみへ縮小した。
+  オーナーの2026-07-22決定により、devframe local-tool frameworkを認証無効
+  （config-inspectorと同等）で採用したためである。配信contentにはユーザー自身のsecretが
+  含まれ得るため、hostは127.0.0.1だけにbindし、起動元machineの外へ決して公開しない。
+  認証なしloopback hostに残る他local processおよびDNS rebinding経由の露出は文書化した
+  limitationとする。「capability認証済み」API accessと「認証済み」diagnosticの表現も
+  併せて削除した。（2.0.0は敵対的file modelをtrusted-workspace前提へ置換した版。）
 - 追加したセクション: なし
 - 削除したセクション: なし
 - 更新したテンプレートとガイダンス:
-  - ✅ .specify/templates/plan-template.md
-  - ✅ .specify/templates/spec-template.md
-  - ✅ .specify/templates/tasks-template.md
-  - ✅ .agents/skills/speckit-tasks/SKILL.md
-  - ✅ .claude/skills/speckit-tasks/SKILL.md
-  - ✅ .github/agents/speckit.tasks.agent.md
-  - ✅ AGENTS.md、AGENTS.ja.md、README.md、README.ja.mdを確認。本文変更は不要
-- フォローアップTODO: なし
+  - ✅ spec.md/spec.ja.md — FR-022/FR-027/QR-002/QR-003/SC-004/SC-007のtransport/認証
+    表現をloopback-onlyなdevframe hostへ整合
+  - ⚠ research/plan/data-model/contracts/tasksペア — REST/token transport sectionを
+    superseded化、devframe整合を実施中
+- フォローアップTODO: spec suite全体のdevframe transport整合を完了する
 -->
 # Agent Customization Inspector 憲章
 
@@ -31,12 +67,27 @@
 同じ基準を適用し、リポジトリ全体の文脈でレビューしなければならない（MUST）。品質は後回しにできる
 作業ではなく、最優先の提供条件である。
 
+シンプルさは拘束力のある判定基準である。提案する仕組みが既知の要件の達成内容を変えないなら、より
+単純な実装を選ばなければならない（MUST）。防御的なcheckは、userを実際に守るfailure modeを持たな
+ければならない（MUST）。他のlayer（package manager、runtime/platform、testまたはrelease gate）が
+すでに所有しenforceしているpolicyを、製品のruntimeで再実装してはならない（MUST NOT）。重複した
+policyは防御にならずdriftを生むだけである。Packaged artifactに対するexact-valueのassertはpackage
+testとrelease gateに置き、同時に配布されるartifact同士をuser runtimeで相互検証してはならない
+（MUST NOT）。より単純な構文で書ける冗長な等価表現は単純化しなければならない（MUST）。そのような
+冗長性をspecificationが要求している場合は、書かれたとおりに実装せず、両言語のspecificationを修正
+しなければならない（MUST）。
+
 ### II. 読みやすく、保守しやすく、意図が伝わるコード
 
 コードは、明確な名前、凝集したモジュール、明示的な制御フロー、責務が明確な小さな単位を使用しなけれ
 ばならない（MUST）。自明でない判断、不変条件、セキュリティ上の前提、トレードオフ、互換性制約には、
 構文の説明ではなく、なぜその設計が必要なのかを説明するコメントを関連コードの近くに残さなければなら
-ない（MUST）。古い、冗長な、または誤解を招くコメントは、同じ変更で修正または削除しなければならない
+ない（MUST）。Exportされた宣言は宣言の場所で文書化する。Exportされた型、interface、定数には、それが
+何を表すかを述べるJSDoc docコメントを付けなければならず（MUST）、閉じたunionの各memberとexportされた
+interfaceの各フィールドには、その意味と、存在する場合は統治するcontractを述べるJSDoc docコメントを
+付けなければならない（MUST）。Classの全member—フィールドとメソッド、constructorやprivate memberを
+含む—にも、それが何を保持するか、または何をするかを述べるJSDoc docコメントを付けなければならない
+（MUST）。古い、冗長な、または誤解を招くコメントは、同じ変更で修正または削除しなければならない
 （MUST）。複雑さと新しい抽象化には、現在の具体的な必要性がなければならない（MUST）。Reviewerが
 作者の意図を推測し直さなくても、変更とその理由を理解できなければならない（MUST）。
 
@@ -70,9 +121,19 @@ Setup、開発、テスト、Contributionの期待事項は、見つけやすく
 
 ## 品質と安全性の基準
 
-- Formatting、lint、該当する場合のtype check、自動テスト、ドキュメント検証は、ローカル検証とCIの
-  必須品質ゲートとして実行しなければならない（MUST）。
-- 入力と調査対象artifactは信頼できないものとして扱わなければならない（MUST）。実装は最小権限と
+- Lint、該当する場合のtype check、自動テスト、ドキュメント検証は、ローカル検証とCIの
+  必須品質ゲートとして実行しなければならない（MUST）。Byte-levelのformattingはchecking gateではなく、
+  repository設定（`.gitattributes`、`.editorconfig`）が宣言的に所有する。
+- この製品はユーザーが既に信頼しているworkspaceで実行される。存在意義は「AIエージェントが読み込む
+  もの」を見せることであり、調査対象customization fileを敵としてモデル化しない。その信頼と無関係に
+  3つの義務は残る: 調査対象contentを実行してはならない（表示にはparseで足りる）（MUST NOT）、
+  配信contentにユーザー自身のsecretが含まれ得るためsession hostはloopbackだけにbindし、起動元
+  machineの外へ公開してはならない（MUST NOT）、表示contentはbrowserでinertにrenderしなければ
+  ならない（MUST）。Session hostはそのloopback bindingの内側で認証なしに動作する。他のlocal
+  processおよびDNS rebinding経由の悪意あるweb pageがInspector実行中にsessionへ到達し得る残存
+  limitationを、documentationに明記しなければならない（MUST）。Failureは通常のerrorとして
+  報告する。Productはtelemetryを持たず、出力を読むのは調査対象fileを所有する本人であるため、
+  log内容の規制もsanitizeされたerror envelopeも定義しない。実装は最小権限と
   安全な失敗を使用しなければならない（MUST）。File size、fileまたはitemの件数、parser構造、request
   またはresponse size、work queue容量、時間、concurrency、および同様のresource上限を、製品固有の
   数値validation limitとして定義してはならない（MUST NOT）。容量はNode.js runtime、parser、OS、
@@ -82,17 +143,11 @@ Setup、開発、テスト、Contributionの期待事項は、見つけやすく
   （MAY）、調査対象artifactをvalidまたはinvalidに分類してはならない（MUST NOT）。この規則は、featureの本質に含まれる機能上のcardinalityを禁止しない。Trust boundary、
   権限、永続化、network、機密データを変更する場合は、securityとprivacyへの影響をレビューしなけれ
   ばならない（MUST）。
-- 運用logとtelemetryには、安定した固定codeと不透明な識別子だけを含めなければならない（MUST）。
-  調査対象の内容またはmetadata、記述された値、Source相対pathまたは絶対path、capability、requestまた
-  はresponse body、生のparser errorまたはsystem errorを含めてはならない（MUST NOT）。認証済みで
-  session内だけの製品diagnosticには、file固有の問題を解決するために必要最小限のSource相対pathと
-  metadataを表示してよい（MAY）が、その情報を運用logまたはtelemetryへ複製してはならない
-  （MUST NOT）。
 - Credentialその他のsecretを含む記述内容全体は、製品仕様がその内容の調査を明示的に要求する場合に
-  限り、意図的にsession APIから返す、または表示してよい（MAY）。API accessはcapabilityで認証し、
-  localかつsession内に限定しなければならない（MUST）。ユーザー向け表示の前には機密内容について明確
-  な確認を求め、内容を不活性にrenderしなければならない（MUST）。内容を永続化し、remote serviceへ
-  送信し、または運用logもしくはtelemetryへ複製してはならない（MUST NOT）。意図した認証済み調査を
+  限り、意図的にsession APIから返す、または表示してよい（MAY）。API accessはloopback-localかつ
+  session内に限定しなければならない（MUST）。ユーザー向け表示の前には機密内容について明確
+  な確認を求め、内容を不活性にrenderしなければならない（MUST）。内容を永続化し、またはremote serviceへ
+  送信してはならない（MUST NOT）。意図した調査を
   認めるこの限定的な例外は、他のsurfaceからの偶発的な露出を許可しない。
 - Dependency、公開contract、data formatは明示し、実用上可能な限り小さく保たなければならない
   （MUST）。新しいdependencyと破壊的変更には、理由と移行影響の記録が必要である。
@@ -137,4 +192,4 @@ last-amended dateを更新する。
 は承認前に解消しなければならない（MUST）。緊急性、生成code、自動検査の成功は免除理由にならない。
 Reviewerは変更全体を調べ、追加調査が必要な不確実性を記録する責任を負う。
 
-**Version**: 1.1.0 | **Ratified**: 2026-07-15 | **Last Amended**: 2026-07-19
+**Version**: 4.4.0 | **Ratified**: 2026-07-15 | **Last Amended**: 2026-07-22
