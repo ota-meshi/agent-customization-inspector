@@ -19,6 +19,13 @@ import { createOpaqueId, type SupportedTool } from './entities';
  *  - 'recognition-parse-failed' a parser/extractor failed; the source stays
  *                               displayed while derived metadata is omitted
  *                               (FR-028)
+ *  - 'path-normalization-collision' distinct enumerated raw paths in one
+ *                               Source normalize to the same NFC path; the
+ *                               whole collision group is rejected before any
+ *                               member is opened, and because no unambiguous
+ *                               public path exists the record is pathless and
+ *                               session-scoped (spec.md Clarifications
+ *                               § Session 2026-07-20)
  * An unknown code is unrepresentable: adding a code means extending this
  * union and its registry row together.
  */
@@ -26,7 +33,8 @@ export type DiagnosticCode =
   | 'root-unreadable'
   | 'file-unreadable'
   | 'file-content-binary'
-  | 'recognition-parse-failed';
+  | 'recognition-parse-failed'
+  | 'path-normalization-collision';
 
 /**
  * How the UI ranks a diagnostic: 'info' is advisory, 'warning' marks a
@@ -46,8 +54,10 @@ export type DiagnosticScope = 'file' | 'source' | 'session';
 /**
  * `lifecycle` diagnostics live outside a committed generation and are routed
  * to exactly one lifecycle owner (the Repository Source, a Global tool, or a
- * published Source). `candidate-file` diagnostics belong to the generation
- * that discovered the file.
+ * published Source). `candidate-file` diagnostics are generation-owned scan
+ * outcomes: per-file candidate outcomes plus the generation-wide pathless
+ * normalization-collision rejection, which belongs to the generation whose
+ * traversal observed the colliding raw entries.
  */
 export type DiagnosticOwnerKind = 'lifecycle' | 'candidate-file';
 
@@ -68,8 +78,9 @@ export interface DiagnosticRegistryEntry {
  * The closed registry from data-model.md § Diagnostic, keyed by code: the
  * `Record` type makes an unknown or duplicate code unrepresentable and each
  * entry decides the required attachment shape. Ordinary traversal produces
- * only file-confined outcomes (FR-024/FR-028) plus the source-scoped
- * unreadable-root failure (FR-002); an unexpected failure surfaces as an
+ * only file-confined outcomes (FR-024/FR-028), the source-scoped
+ * unreadable-root failure (FR-002), and the pathless session-scoped
+ * normalization-collision rejection; an unexpected failure surfaces as an
  * ordinary error, never as a Diagnostic.
  * Symbolic links are followed transparently, so a broken link surfaces as
  * `file-unreadable` rather than a link-specific code.
@@ -80,6 +91,10 @@ export const DIAGNOSTIC_REGISTRY: Readonly<Record<DiagnosticCode, DiagnosticRegi
     'file-unreadable': { ownerKind: 'candidate-file', scope: 'file', severity: 'error' },
     'file-content-binary': { ownerKind: 'candidate-file', scope: 'file', severity: 'warning' },
     'recognition-parse-failed': { ownerKind: 'candidate-file', scope: 'file', severity: 'warning' },
+    // Session scope is mandated because no unambiguous public path exists for
+    // a colliding group; createDiagnostic therefore rejects any location field
+    // on this code, which is exactly the pathless enforcement T028 requires.
+    'path-normalization-collision': { ownerKind: 'candidate-file', scope: 'session', severity: 'error' },
   };
 
 /**

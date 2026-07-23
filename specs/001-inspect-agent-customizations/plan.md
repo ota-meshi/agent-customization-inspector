@@ -42,8 +42,8 @@ no static-export, MCP, remote-host, or automatic-watch mode. The local host is t
 devframe local-tool framework — the same foundation eslint/config-inspector uses — with
 authentication disabled: it serves the built SPA from `cli.distDir` (`dist/public`) and
 sends inert DTOs through devframe's RPC session API channel, and devframe owns port
-selection, host binding, and startup browser opening. Protection is the `127.0.0.1`
-loopback bind only — there is no per-session token, Origin check, or hand-written router —
+selection, host binding, and startup browser opening. Protection is the loopback-only
+`localhost` bind — there is no per-session token, Origin check, or hand-written router —
 and the residual exposure of an unauthenticated loopback host (other local processes and,
 via DNS rebinding, a malicious web page) is a documented limitation per Constitution
 v4.0.0. The session API returns a `FileDetail`, including complete authored source and
@@ -179,7 +179,7 @@ Repository root. The CLI never calls `process.chdir()`. Built-in
 help/version are handled without binding. The production entry does not import
 `gunshi/agent`, lazy commands, custom plugins, or experimental parser combinators. After
 validation the CLI starts the devframe host through the app definition in
-`src/server/host/devframe-app.ts`; devframe owns port selection, the `127.0.0.1` bind, and the
+`src/server/host/devframe-app.ts`; devframe owns port selection, the loopback `localhost` bind, and the
 startup browser-open attempt, and the CLI prints the loopback origin once for the FR-001
 manual fallback.
 
@@ -943,7 +943,8 @@ declarative static/package data; they require no install script, runtime downloa
 compiler. Package-manager-generated `node_modules/.bin` symlink/`.cmd`/`.ps1` launchers are
 payload-external interoperability metadata and receive a separate exact-target/content audit.
 Development-only tooling is outside the product package and remains separately pinned/audited.
-The server binds only to `127.0.0.1` and has no remote deployment mode.
+The server binds only the loopback interface (host `localhost`) and has no remote
+deployment mode.
 
 **Project Type**: Single publishable ESM npm package containing a static Nuxt web client,
 a Node CLI/local HTTP service, and shared serializable contracts. All project-authored
@@ -989,7 +990,7 @@ four thresholds: current-request status within 1 second, complete operable inven
 
 **Constraints**: Inspected customization must cause no execution, child process, dynamic
 import, prohibited direct product-issued network request as defined by FR-022, MCP connection, or product-issued source mutation.
-The two exact FR-022 browser/host classes at the issued `127.0.0.1` authority—closed
+The two exact FR-022 browser/host classes at the issued `localhost` authority—closed
 static/SPA `GET`/`HEAD` for the packaged UI assets and the local session API channel—
 are authorized internal loopback transport, not outbound requests or MCP connections; every
 request outside those classes and every customization-selected or MCP request remains prohibited. Ordinary
@@ -1340,7 +1341,7 @@ src/
 │       ├── stale-failures.ts
 │       └── session.ts
 └── shared/
-    ├── api.ts
+    ├── api-types.ts
     ├── diagnostics.ts
     ├── entities.ts
     └── registries/
@@ -1640,7 +1641,7 @@ dependency or artifact fails until explicitly reviewed.
   and Cloud behavior, and each vendor's Repository versus User/Global behavior, remain
   independently addressable rather than sharing an inferred traversal. Every Repository
   selector is compiled into a closed, canonical-round-tripping segment program. Literal,
-  one-segment, and non-adjacent recursive-directory tokens express composite
+  regex, and non-adjacent recursive-directory tokens express composite
   descendant/direct-child/subtree rules without a general glob engine. Global preview
   entries are the frozen lexical roots, and the consent digest binds their raw values and
   escaped display per the data model. The only content-dependent scheduler branch is the exact
@@ -1755,7 +1756,7 @@ dependency or artifact fails until explicitly reviewed.
   CLI, and documentation projection.
 - The Node host is devframe 0.7.5: the CLI starts the app definition through
   `createDevServer` from
-  `devframe/adapters/dev`, sets `auth: false`, and binds `127.0.0.1` only. devframe serves
+  `devframe/adapters/dev`, sets `auth: false`, and binds the loopback `localhost` only. devframe serves
   the built SPA from `cli.distDir` (`dist/public`) and owns port selection, host binding,
   and startup browser opening; the session API is the set of devframe RPC functions
   declared with `defineRpcFunction` in the app definition's `setup`

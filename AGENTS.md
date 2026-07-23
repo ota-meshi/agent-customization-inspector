@@ -44,6 +44,13 @@ Above Expediency) to day-to-day coding decisions:
   config file. Example: the vitest `coverage` project stays defined in
   `vitest.config.ts` instead of becoming a chain of `--project` flags in the
   `test:coverage` script.
+- Values that already live in `package.json` (name, version, homepage, description) are
+  read from it with a standard JSON import —
+  `import packageJson from '../../package.json' with { type: 'json' }` — never duplicated
+  as string literals. The bundler tree-shakes the JSON module down to the referenced
+  fields, so the packaged CLI does not read `package.json` at runtime. Example:
+  `src/server/host/devframe-app.ts` sources its devframe metadata this way; only the
+  contract-fixed product `id` stays a literal.
 - When a specification mandates redundant complexity, correct the specification — in both
   languages, in the same change — instead of implementing it as written.
 

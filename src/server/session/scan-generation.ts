@@ -6,6 +6,7 @@
 // disable barrier discards it (FR-042 — disable produces no generation).
 // Every commit rekeys all of its own file IDs.
 import { createOpaqueId } from '../../shared/entities';
+import type { CustomizationFileDto } from '../../shared/api-types';
 import type { SerializedDiagnostic } from '../../shared/diagnostics';
 
 /**
@@ -42,71 +43,6 @@ export type GlobalTransactionKind = 'global-enable' | 'global-scan';
  * previous snapshot's stale marking (FR-030).
  */
 export type GenerationOutcome = 'complete' | 'partial';
-
-/**
- * Per-file rollup of recognition parsing for inventory display — a
- * denormalized view of the file's recognitions and parse diagnostics:
- *  - 'not-applicable'  the file carries no parseable structure (nothing to
- *                      extract, so no parse was attempted)
- *  - 'all-parsed'      every recognition's extraction succeeded
- *  - 'mixed'           some recognitions parsed and some failed (one file
- *                      can carry several tool recognitions)
- *  - 'all-failed'      every attempted parse failed; the source text stays
- *                      displayed and comparison-eligible while only derived
- *                      metadata/relationships are omitted (FR-028)
- */
-export type ParseSummary = 'not-applicable' | 'all-parsed' | 'mixed' | 'all-failed';
-
-/** Fields every discovered file carries regardless of its read outcome. */
-interface CustomizationFileBase {
-  /** Opaque file identity, regenerated on every commit of the owning sequence. */
-  readonly fileId: string;
-  /** The Source this file was discovered in. */
-  readonly sourceId: string;
-  /** NFC display path relative to the owning Source's single root (FR-024). */
-  readonly sourceRelativePath: string;
-  /** File-scoped diagnostics for this file (FR-028); present on every variant. */
-  readonly diagnosticIds: readonly string[];
-}
-
-/**
- * One discovered customization file as committed into a generation
- * snapshot — the transport shape of spec.md § Key Entities · Customization
- * File, discriminated by `encoding` so an impossible combination is
- * unrepresentable. The read state is derived from the discriminator:
- * readable text (`utf-8` | `utf-8-replaced`), diagnostic-only `binary`,
- * and `unknown` for a read that failed before the bytes could be
- * classified (FR-024/FR-028).
- */
-export type CustomizationFileDto =
-  | (CustomizationFileBase & {
-      /** Readable decode classification; BOM presence is recorded separately. */
-      readonly encoding: 'utf-8' | 'utf-8-replaced';
-      /** Whether one leading UTF-8 BOM was recorded and removed (FR-025). */
-      readonly hadLeadingBom: boolean;
-      /** Complete decoded text as authored; readable text always has it. */
-      readonly sourceText: string;
-      /** Exact byte count of the one completed read. */
-      readonly sizeBytes: number;
-      /** Per-file parse rollup for inventory display; see {@link ParseSummary}. */
-      readonly parseSummary: ParseSummary;
-      /** Tool recognitions attached to this file (FR-005). */
-      readonly recognitionIds: readonly string[];
-      /** Authored references from this file, never expanded (FR-010). */
-      readonly relationshipIds: readonly string[];
-    })
-  | (CustomizationFileBase & {
-      /** At least one NUL byte: diagnostic-only, nothing to parse, and no
-       * BOM concept — the NUL check precedes BOM handling (FR-028). */
-      readonly encoding: 'binary';
-      /** Exact byte count of the one completed read. */
-      readonly sizeBytes: number;
-    })
-  | (CustomizationFileBase & {
-      /** The read failed before the bytes could be classified (FR-024);
-       * nothing was accepted, so no other field exists. */
-      readonly encoding: 'unknown';
-    });
 
 /** Fields shared by both sequences' committed generations. */
 interface ScanGenerationBase {

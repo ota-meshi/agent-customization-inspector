@@ -82,7 +82,6 @@ BrowserState
 | `globalContentEpoch` | non-negative safe integer | DTO | 0から開始し、non-no-op Global disable barrierのfirst acceptanceごとにatomic incrementする。全liveness/inspection-data successをbindし、serverはfence時点で未linearizeのsuccessをrejectし、clientはgreater epoch観測後にolder dataをrejectする |
 | `sessionDiagnosticIds` | opaque string[] | DTO | Currentなout-of-generation lifecycle diagnostic |
 | `repositoryFailureDiagnosticId` | opaque session Diagnostic IDまたはnull | DTO | Currentな決定的automatic Repository admission/initial-scan failure。最初のexplicit rescan実行中は保持し、successでclear、terminal failureではそのrescanの`StaleSourceFailure` ownerへatomic replace |
-| `previewDigestKey` | 正確に32 random byte | internal | Global preview用の独立HMAC key。Process-session bootstrapで1回生成し、serialize、log、persist、host process外への送信を行わない |
 | `invocationCwd` | absolute platform path string | internal | CLI validation前に`process.cwd()`から正確に1回captureしたvalue。変更せず、read authorityとして公開しない |
 | `cwdOptionValue` | exact stringまたはnull | internal | 省略時null。それ以外はlifecycle/audit correlation専用にsole validated `--cwd` argumentを保持する。Lexical selection後はfilesystem operandに使わない |
 | `selectedRepositoryRoot` | absolute platform path string | internal | `--cwd`省略時は`invocationCwd`。指定時はabsolute optionをそのまま保持するか、relative optionをplatformの`node:path` resolutionで`invocationCwd`に対してresolveする。Selectionはfilesystem/network I/Oを一切行わない |
@@ -119,16 +118,10 @@ Local hostはauthenticationをdisableしたdevframe local-tool frameworkであ�
 （spec Clarifications § Session 2026-07-22、Constitution v3.0.0）。devframeはpackaged
 `dist/public` treeからbuilt SPAを直接serveし、全session API operationを同じloopback channel上の
 devframe RPC function（`defineRpcFunction`）として公開し、port選択、host binding、startup時の
-browser openを所有する。Session保護は`127.0.0.1` bindのみであり、このmodelはper-session
+browser openを所有する。Session保護はloopback限定の`localhost` bindのみであり、このmodelはper-session
 capability/token entityもrequest-classification recordも定義しない。Unauthenticatedな
 loopback hostの残存exposure — 他local processと、DNS rebinding経由のmalicious web page —
 はdocumented limitationである（QR-003）。
-
-Hostはprocess-session bootstrap中に、独立した32-byte CSPRNG drawから`previewDigestKey`を正確に1回取得する。
-このkeyはconsent integrity（FR-013）のために存在し、transport authenticationではない。
-`sessionId`、各`previewId`、その他全opaque IDに使うdraw/valueとは別とする。Preview置換、consent、retry、
-Global disable、generation changeの間も変更せず、process終了までprocess memoryだけに保持して終了時に破棄する。
-Key生成のthrow/rejectionはsession publishまたはhost bind前にprocess top levelへ到達し、代替keyの導出、persist、rotationを行わない。
 
 `UtcTimestamp`はvalidなcalendar fieldを持つ`YYYY-MM-DDTHH:mm:ss.sssZ` formのexact 24-byte ASCII UTC valueとし、
 このmodelでtimestampと呼ぶ全fieldが使う。`GenerationNumber`はactive Node.js runtimeが表現できるnon-negative safe integerとする。
@@ -272,7 +265,7 @@ Fixed mappingは、Copilot → `COPILOT_HOME`または`node:path.join(capturedHo
 `node:path.join(capturedHomedir, '.codex')`とする。Joinはabsent propertyだけに最大1回行うlexical operationで、existence check
 その他filesystem operationを行わない。Exact stringを`lexicalRoot`とし、empty、relative、NUL-containingその他表現不能な
 resultもstringのままclosed lexical input stateを受け、別fallbackを行わない。Environment access、`homedir()`、join、retention、
-presentation encoding、digest construction、preview serializationがthrow/rejectするかrequired stringを作れない場合、
+presentation encoding、preview serializationがthrow/rejectするかrequired stringを作れない場合、
 operation-local captureをdiscardし、session API requestはacceptance前にそのerrorで通常どおり失敗する。Preview、`scanRequestId`、
 consent、root、Source、authorityを作らない。正常previewがcaptureと3 exact rootをfreezeし、active consent retrievalでは繰り返さない。
 
@@ -285,23 +278,20 @@ Session APIのconsent routeは、正確に1つの`GlobalRootInputCapture`からl
 |---|---|---|
 | `previewId` | exact 43-character unpadded base64url string | 独立した32-byte CSPRNG drawのcanonical encodingでprocess-memory lookup key。新previewは以前の未同意previewをinvalidateし、active consent中はそのexact previewをfreeze/reuse |
 | `previewEpoch` | non-negative safe integer | Internalでserializeしない。New captured previewごとにincrementし、opaque IDをorder valueにせずreplacement/revalidationをbindする |
-| `previewDigest` | 43-character base64url HMAC-SHA-256 | `sessionId`と`previewId`を含むexact `GlobalPreviewDigestEncoding` top recordを対象とし、constant timeで比較。別processの値を受理しない |
 | `allowlistVersion` | date string | Current shipped contract version |
 | `entries` | 正確に3 tool entry | Copilot、Claude、Codexの固定順 |
 | `entries[].tool` | tool enum | Closed value |
 | `entries[].origin` | `default-home \| environment` | Invalidでもenvironment entryを使い、暗黙fallbackしない |
 | `entries[].lexicalRoot` | exact raw string | Internalのみ。Escape前のenvironment/default valueを保持し、log/serializeしない |
 | `entries[].displayRoot` | ASCII `RootPresentationEncoding` string | `lexicalRoot`のexact deterministic encoding。Owning Sourceが存在する前にoriginを持ち、`SourceRelativePath`、inventory-item locator、canonicalization claim、read authorityではない |
-| `entries[].pathPatterns` | non-emptyな固定relative-pattern array | 正確なimmutable Global `TraversalPlan`からrender。隣接customization classなし |
 | `entries[].inputState` | `eligible \| present-empty \| relative \| invalid` | I/O前に下記exact ordered `Global lexical state` algorithmでassignする。`eligible`だけがconsent後boundaryになれる |
 | `excludedRuleIds` | sort済みexcluded rule ID[] | Authored proseを受け付けず表示除外を決める |
 
 Hostはretained raw valueを変えず`RootPresentationEncoding`を適用する。Allocation能力はNode.js、OS、browserから継承する。
 Lexical preview作成中のthrow/rejectionはaccept前のsession API request boundaryへ到達し、`scanRequestId`、normalization、
-canonicalization、root creation、readなしでそのrequestを通常どおり失敗させる。Size-based input stateは作らない。Digestは下記exact
-`GlobalPreviewDigestEncoding`を使い、root fieldはいずれもnullableでない。
-Frozenな各raw `lexicalRoot`とそのescaped `displayRoot`を固定tool順でbindする。Escapeの逆変換やUnicode
-normalizationには依存せず、filesystemから得た値を含まない。
+canonicalization、root creation、readなしでそのrequestを通常どおり失敗させる。Size-based input stateは作らない。Previewはserverが
+保持するopaque `previewId`で識別する唯一のrecordであり、root fieldはいずれもnullableでなく、どのencoding stepも
+escapeの逆変換やUnicode normalizationには依存しない。
 Invalid environment valueはescapeして
 表示するが、許可pathにnormalizeしない。Present-empty、relative、invalid entryは固定preview表示だけを使い、retained `Diagnostic`を
 作らない。Confirmation後は3 entryすべてが`GlobalToolControl`を受け取る。`eligible` entryだけがconsent後admissionへ進み、
@@ -313,7 +303,7 @@ fallback authorityを作らない。
 Admissionは保存済みinternal raw `lexicalRoot`だけを使い、`displayRoot`をpathに使わずenvironmentを再読込しない。
 Preview creation/retrievalはcoordinator lock下でlinearizeする。Consentがactive、initial `GlobalEnableOperation`がregistered、またはnon-complete
 `GlobalDisableOperation`がpreview fenceを保持する間、
-preview取得はID/digestを含む同じ保存済みDTO-visible objectをfield semantics上byte-for-byteで返し、environmentを読み直さずreplacementも
+preview取得はIDを含む同じ保存済みDTO-visible objectをfield semantics上byte-for-byteで返し、environmentを読み直さずreplacementも
 作らない。どちらでもない場合だけnew captureを実行し、`previewEpoch`をincrementしてprior unconsented previewをreplaceできる。
 Initial operationがconsentをactivateせずterminalになった場合、そのoperationをunregisterした後だけfreezeを解除する。Client purge後にexact
 consent表示を復元する唯一のpathであり、in-flight enableが到達不能previewのauthorityをcommitすることを防ぐ。
@@ -323,7 +313,7 @@ consent表示を復元する唯一のpathであり、in-flight enableが到達�
 | Field | Type | Rule |
 |---|---|---|
 | `allowlistVersion` | date string | 表示したcurrent contractと一致すること |
-| `previewId` / `previewDigest` | opaque string | Current in-memory previewと完全一致すること |
+| `previewId` | opaque string | Current in-memory previewと完全一致すること |
 | `confirmedTools` | exact `[copilot, claude, codex]` | 凍結済み3 entryすべてと一致するserver-derived固定set。Requestはselectorを持たずnarrowできない |
 | `confirmedAt` | `UtcTimestamp` | Memoryのみ |
 | `active` | boolean | Global inspection disable時にclearし、tool固有Global Sourceをすべて除去 |
@@ -403,7 +393,7 @@ Consentまたはretained control stateがactiveな間、Global Sourceが0個のi
 既存Sourceを保持するall-rejected retryを含め、
 session snapshotごとに返す。Client purge後、SPAはfresh sessionを取得し、
 `previewId`でpreview routeからexact stored previewを要求して全path/state/exclusionを再表示してからretryを提示する。
-Disableは直ちに利用できる。Published toolは`sources[].tool`から派生しretryableと重複できない。このDTOはadmitted root、digest、source contentを含まず、別取得するfrozen previewがunchanged enable request用digestを提供する。
+Disableは直ちに利用できる。Published toolは`sources[].tool`から派生しretryableと重複できない。このDTOはadmitted rootもsource contentも含まず、別取得するfrozen previewがunchanged enable request用のexact表示stateを提供する。
 `toolFailures`によりfresh clientはsession-ownedな決定的admission/scan Diagnosticをexact toolへattachでき、そのIDは
 `sessionDiagnosticIds`にも存在する。Null `diagnosticId`のcontrolにはrowを作らず、dangling、duplicate、cross-tool、
 non-session Diagnostic referenceはserializationでrejectする。Owning control failureのclearまたはdisable commitまでrowを保持する。
@@ -640,19 +630,21 @@ relationship targetのopen、InspectorのRepository/Global sourceのmergeはで�
 | Field | Type | Rule |
 |---|---|---|
 | `base` | 正確な1 Source-boundary descriptor | Repositoryまたはnamed consent済みtool固有Global boundary。Selectorから推測しない |
-| `selectors` | non-emptyなordered unique `MatcherSelector[]` | 1 static rule所有のalternative。Repository renderingは`./`で始まり、Global renderingはそのtool boundary相対 |
-| `MatcherSelector.rendered` | canonical string | Human contract spelling。Typed segment programから正確にround-tripする |
-| `MatcherSelector.segments` | non-emptyな`MatcherSegment[]` | Closed ordered program。Final tokenはregular fileを表す |
-| `MatcherSegment` | exact discriminated union | `{ kind: 'literal', value: NonEmptyMatcherLiteralSegment }`、`{ kind: 'one-segment', suffix: MatcherLiteralSuffix }`、`{ kind: 'recursive-directories' }`。Executable glob、regular-expression object、implicit discriminator、extra fieldは不可 |
+| `selectors` | non-emptyなordered uniqueなselector program（`MatcherSegment[][]`） | 1 static rule所有のalternative。各programはbase boundary相対のclosed ordered programで、final tokenはregular fileを表す |
+| `MatcherSegment` | exact discriminated union | `{ kind: 'literal', value: NonEmptyMatcherLiteralSegment }`、`{ kind: 'regex', pattern: RegExp }`、`{ kind: 'recursive-directories' }`。Executable glob、implicit discriminator、extra fieldは不可 |
 
 `NonEmptyMatcherLiteralSegment`はnon-empty printable ASCII stringで、code unitはU+0021–U+007Eのうち`/`、`\\`、`:`, `*`、`?`、`\"`、`<`、
 `>`、`|`を除き、`.`と`..`も禁止する。同じclosed typeをstatic fixed prefix、exact target、fixed derived suffixで使う。
-`MatcherLiteralSuffix`はempty stringまたは1 `NonEmptyMatcherLiteralSegment`で、emptyはcanonical bare `*` tokenをrenderし、`one-segment`
-suffixだけで許可する。Compilerはnon-ASCII registry path literalをrejectするため、raw byte/code-unit relevanceと後続NFC classificationは不一致にならない。
-`literal`はcase-sensitiveなexact ASCII segmentを1つmatchする。`one-segment`は`*`と固定literal suffixで表記し、non-empty
-segmentを1つmatchする。Non-terminalならdirectory step、terminalならfile stepとする。`recursive-directories`は
-complete `**` segmentだけで表記し、0個以上のdirectoryをmatchする。Non-terminalかつrecursive token同士の
-隣接不可とする。Build validationは全renderingをcompileしてcanonical round-tripを行い、runtimeはこのimmutable
+Compilerはnon-ASCII registry path literalをrejectするため、fixed prefixとexact targetについてraw byte/code-unit relevanceと後続NFC classificationは不一致にならない。
+`literal`はcase-sensitiveなexact ASCII segmentを1つmatchする。`regex`は1つのJavaScript正規表現を持ち、
+`pattern.test`がraw entry nameにmatchするとき、そのentry nameを正確に1つmatchする — 標準の`RegExp`
+セマンティクスであり、anchoringとescapeはpattern作者の明示的な記述で、その正しさはshipped rule fixtureが
+所有する。Patternがtestするraw entry nameはdisk上ではNFD綴りであり得る。Non-terminalならdirectory step、
+terminalならfile stepとし、regex literal（例: `/\.md$/u`）として書く。`recursive-directories`—`**` step—は
+0個以上のdirectoryをmatchする。Non-terminalかつrecursive token同士の
+隣接不可とする。Registryはtyped segment形式で直接authorし、contract tableもそのauthored programを示す。
+文法・literal alphabet・unique性・selection-policyの義務はbuild/contract validator（registry contract gate）が
+enforceし、runtime logicで再検査しない。Runtimeはこのimmutable
 typed formだけをloadする。これによりdescendant contextとdirect child、またはdescendant contextと固定recursive
 subtreeのcompositeを、曖昧な単一expansion enumを発明せず表現できる。
 
@@ -672,7 +664,7 @@ subtreeのcompositeを、曖昧な単一expansion enumを発明せず表現で�
 | `TraversalSelectorPlan.remainder` | `MatcherSegment[]` | Repositoryのcomplete selector program、Global exact targetではempty、またはGlobal fixed-subtree root直下だけのcomplete dynamic program |
 
 Compilationはclosedかつlosslessなmappingとする。`repository-program`はemptyな`fixedPrefix`とcomplete
-`MatcherSelector.segments`に等しい`remainder`を持つ。`global-exact`はall-literal selectorを、target fileで終わる
+完全なselector programに等しい`remainder`を持つ。`global-exact`はall-literal selectorを、target fileで終わる
 non-emptyな`fixedPrefix`とemptyな`remainder`へcompileする。`global-fixed-subtree`はmaximal leading literal directory
 chainを`fixedPrefix`へcompileし、その直下のnon-emptyなdynamic programを`remainder`として保持する。
 
@@ -717,8 +709,8 @@ release dataである。
 | `lifecycleQualifiers` | `LifecycleQualifier[]` | Separate upstream lifecycle claimをunique fixed orderで保持 |
 | `sourceRefs` | non-empty `OfficialSourceRecord.sourceId`[] | このruleのEvidence cellに直接記載した正確なsourceで、相互検証する。参照behavior/strategyが所有するevidenceは各IDから到達可能なままとし、このregistry fieldへ暗黙copyしない |
 
-Build/contract validatorはpackage前にunique性、field組み合わせ、selector-programのtoken/positionと
-canonical-round-trip rule、exact traversal compile、参照rule ID、closed derivation mapping/acyclic性、fixtureとの
+Build/contract validatorはpackage前にunique性、field組み合わせ、selector-programのtoken/position
+rule、exact traversal compile、参照rule ID、closed derivation mapping/acyclic性、fixtureとの
 完全一致を検証する。
 Runtime loaderはscan前にembedded registry schema、integrity、contract
 versionを検証する。Repository提供pluginでruleを追加する機構は持たない。
@@ -1226,26 +1218,6 @@ Global `inputState`はcaptured stringへ次の正確な順序でassignする。
 readable-directory admissionだけが判定し、後のNode.js/OS rejectionは通常boundary ruleに
 従う。`isAbsolute`またはstate/presentation constructionのthrowはpreview session API boundaryへpropagateし、previewを作らない。
 どのstepもstringをnormalizeせず、separatorを変更せず、filesystemをcallせず、別rootを黙って選ばない。
-
-### GlobalPreviewDigestEncoding
-
-`previewDigest`はprocessの256-bit preview keyを使うHMAC-SHA-256結果をpaddingなし43-character base64urlにした値とする。
-Inputは1つのcanonical byte recordである。`u64(n)`はunsigned 8-byte big-endian integer。`string(s)`はbyte `0x53`、
-`u64(s.length)`、続いてexact ECMAScript UTF-16 code unitごとの2-byte big-endianであり、lone surrogateを保持してreplacement
-encodingを使わない。`array`はbyte `0x41`、`u64(elementCount)`、続いて各element。`record`はbyte `0x4f`、
-`u64(fieldCount)`、続いて宣言順の各`string(fieldName)`とvalue。Integerはbyte `0x49`と`u64`、Boolean falseは
-`0x42 0x00`、trueは`0x42 0x01`、enum/IDはすべて`string`を使う。このdigest schemaはnullを使わない。
-
-Top valueはfield count 6の正確に1 recordで、field orderは`domain`（fixed value
-`agent-customization-inspector/global-preview/v1`）、`sessionId`、`previewId`、`allowlistVersion`、
-`entries`、`excludedRuleIds`とする。EntryはCopilot、Claude、Codex順を保ち、各recordはfield count 6で
-正確に`tool`、`origin`、`lexicalRoot`、`displayRoot`、`pathPatterns`、`inputState`の順とする。したがってdigestは、
-FR-013の要求どおり、frozenな各raw root stringとそのescaped display formを固定tool順でbindする。
-`pathPatterns`は表示順を保ち、同梱allowlistからrenderした固定relative patternである。Arrayはcontract済みorderを保ち、
-`excludedRuleIds`はcontract済みsortを保つ。
-Unknown/missing/extra fieldまたはnoncanonical orderはpreview作成を妨げる。
-Constant-time compareはdecode済み32 digest byteへ行う。Valueが正確に43 ASCII base64url characterでない、正確に32 byteへdecode
-しない、または同じunpadded canonical base64urlへround-tripしない場合はcompare前にrejectする。
 
 ### BrowserState
 
@@ -2689,8 +2661,8 @@ candidate -> readable + not-applicable/all-parsed/mixed/all-failed parse summary
     entryとfailure referenceをclearし、無関係なcommitは両方を保持する。
 15. Coordinator lockは全session snapshot/file-detail envelopeのgenerationとpayloadをlinearizeする。Network deliveryが
     後になってもcapture済みpayloadをrelabelできない。Clientはadopt時にrequest token、generation、epoch、file存在を全て再確認する。
-16. Global previewはraw `lexicalRoot`をprocess memoryだけに保持し、それとescaped `displayRoot`をdigestへbindして、
-    保存済みraw valueをadmissionに使う。Escaped `displayRoot`はpresentationだけで、enableはenvironment inputを再読込しない。
+16. Global previewはraw `lexicalRoot`とescaped `displayRoot`を、`previewId`の背後にある唯一のrecordとしてprocess memory
+    だけに保持し、保存済みraw valueをadmissionに使う。Escaped `displayRoot`はpresentationだけで、enableはenvironment inputを再読込しない。
 17. Product発行のmutation-capable filesystem operation/open flagは存在しない。Testはcontent、length、identity/link state、
     mode、mtime、ctime、observable xattr/ACLを比較する。OS-only atime changeは別に記録し、mutationもsafetyも証明しない。
 18. Syntax parsing、exact authored-literal extraction、mechanical typed decoding、frozen-catalog classification、

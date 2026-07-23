@@ -6,133 +6,24 @@
 // disable). The coordinator serializes scans, keeps one request ID across a
 // scan lifecycle, commits atomic N+1 replacements per sequence, and retains
 // explicit-rescan stale state.
-import {
-  createOpaqueId,
-  createSourceBoundaryDto,
-  type SourceBoundaryDto,
-  type SupportedTool,
-} from '../../shared/entities';
+import { createOpaqueId, createSourceBoundaryDto } from '../../shared/entities';
 import {
   createBootstrapGeneration,
   prepareNextRepositoryGeneration,
-  type CustomizationFileDto,
+  type GenerationOutcome,
   type GlobalScanGeneration,
   type RepositoryScanGeneration,
 } from './scan-generation';
-import {
-  clearStaleFailures,
-  deriveSnapshotState,
-  upsertStaleFailure,
-  type StaleSourceFailure,
-} from './stale-failures';
+import { clearStaleFailures, deriveSnapshotState, upsertStaleFailure } from './stale-failures';
+import type { SourceBoundaryDto } from '../../shared/entities';
+import type {
+  CustomizationFileDto,
+  ScanProgressDto,
+  SessionSnapshot,
+  SourceStatus,
+  StaleSourceFailure,
+} from '../../shared/api-types';
 import type { SerializedDiagnostic } from '../../shared/diagnostics';
-
-/**
- * A Source's operational overlay status (data-model.md § Source):
- *  - 'idle'      bootstrapped, no scan admitted yet
- *  - 'scanning'  an admitted scan is in flight
- *  - 'disabling' the Global disable barrier is draining this Source
- *  - 'ready'     the last commit for this Source was complete
- *  - 'partial'   the last commit carried file-confined diagnostics (FR-028)
- *  - 'failed'    the last attempt failed; an explicit rescan additionally
- *                marks the retained snapshot stale (FR-030)
- */
-export type SourceStatus = 'idle' | 'scanning' | 'disabling' | 'ready' | 'partial' | 'failed';
-
-/**
- * Live progress of one scan attempt, updated while the scan runs and
- * projected into the owning {@link SourceDto}.
- */
-export interface ScanProgressDto {
-  /** The admitted request this progress reports; null only in placeholders. */
-  readonly scanRequestId: string | null;
-  /**
-   * Coarse scan phase for status display: 'waiting' = admitted but not
-   * started, 'cancelling' = publication authority revoked and winding down,
-   * then the ordinary pipeline order — enumerate the allowlist, read file
-   * bytes, expand derived rules, run recognition/parsing — ending 'complete'.
-   */
-  readonly phase:
-    | 'waiting'
-    | 'cancelling'
-    | 'enumerating'
-    | 'reading'
-    | 'deriving'
-    | 'recognizing'
-    | 'complete';
-  /** UTC timestamp of queued admission; null until queued. */
-  readonly queuedAt: string | null;
-  /** UTC timestamp at which scanning started; null until started. */
-  readonly startedAt: string | null;
-  /** Directory entries visited so far. */
-  readonly visitedEntries: number;
-  /** Allowlisted candidate files discovered so far. */
-  readonly candidateFiles: number;
-  /** File bytes read so far. */
-  readonly readBytes: number;
-  /** Diagnostics produced so far. */
-  readonly diagnosticCount: number;
-}
-
-/** One Source's public projection (spec.md § Key Entities · Source). */
-export interface SourceDto {
-  /** Opaque stable Source identity; the Repository's survives every commit. */
-  readonly sourceId: string;
-  /** Which boundary family the Source belongs to. */
-  readonly kind: 'repository' | 'global';
-  /** Owning tool of a Global Source; null for the Repository Source. */
-  readonly tool: SupportedTool | null;
-  /** Whether the Source currently participates in scans. */
-  readonly enabled: boolean;
-  /** Operational overlay status; see {@link SourceStatus}. */
-  readonly status: SourceStatus;
-  /** Non-authorizing root presentation (escaped label + origin). */
-  readonly boundary: SourceBoundaryDto;
-  /** The owning sequence's last committed generation (FR-030). */
-  readonly generation: number;
-  /** The latest admitted scan request for this Source; null before any. */
-  readonly scanRequestId: string | null;
-  /** Live scan progress; null while no scan is running. */
-  readonly progress: ScanProgressDto | null;
-  /** Source Condition Facts (none are implemented yet; FR-039). */
-  readonly conditionFacts: readonly never[];
-  /** Source-scoped diagnostics, e.g. `root-unreadable` (FR-002). */
-  readonly diagnosticIds: readonly string[];
-}
-
-/**
- * The complete public session state served over the session API —
- * rebuilt from internal state on every call
- * (data-model.md § InspectionSession).
- */
-export interface SessionSnapshot {
-  /** Opaque session identity; carries no authority (the host is unauthenticated). */
-  readonly sessionId: string;
-  /** UTC timestamp of session bootstrap. */
-  readonly createdAt: string;
-  /** Every Source's public projection. */
-  readonly sources: readonly SourceDto[];
-  /** Last committed Repository generation (bootstrap generation 0 onward). */
-  readonly repositoryGeneration: number;
-  /** Null while Global inspection is disabled (no Global sequence exists). */
-  readonly globalGeneration: number | null;
-  /** Derived from staleFailures: stale exactly while any entry remains. */
-  readonly snapshotState: 'current' | 'stale-after-fatal-rescan';
-  /** Per-Source stale overlays from failed explicit rescans (FR-030). */
-  readonly staleFailures: readonly StaleSourceFailure[];
-  /** Global consent/control projection (null scaffold until the Global tasks). */
-  readonly globalControl: null;
-  /** Global enable-operation projection (null scaffold until the Global tasks). */
-  readonly globalEnableInProgress: null;
-  /** Global disable-barrier projection (null scaffold until the Global tasks). */
-  readonly globalDisableInProgress: null;
-  /** Increments on the disable purge so clients purge before rendering (FR-042). */
-  readonly globalContentEpoch: number;
-  /** Session-scoped diagnostics. */
-  readonly sessionDiagnosticIds: readonly string[];
-  /** The current Repository `root-unreadable` diagnostic, if any (FR-002). */
-  readonly repositoryFailureDiagnosticId: string | null;
-}
 
 /** The validated CLI selection handed to session bootstrap (FR-001). */
 export interface SessionBootstrapInput {
@@ -190,6 +81,18 @@ export interface InspectionSessionState {
     committedGlobalGeneration: GlobalScanGeneration | null;
     /** Stale overlays from failed explicit rescans, sorted by sourceId. */
     staleFailures: StaleSourceFailure[];
+    /**
+     * Session-owned lifecycle Diagnostics (at most one per lifecycle owner,
+     * data-model.md § Diagnostic), keyed by diagnosticId; every retained
+     * record is referenced by exactly one public owner field.
+     */
+    readonly sessionDiagnostics: Map<string, SerializedDiagnostic>;
+    /**
+     * The current Repository `root-unreadable` lifecycle Diagnostic from the
+     * automatic first scan (FR-002); cleared by the affected Source's
+     * successful commit or replaced by an explicit-rescan stale owner.
+     */
+    repositoryFailureDiagnosticId: string | null;
     /** Per-Source mutable operational overlays. */
     readonly sourceStates: Map<string, MutableSourceState>;
     /** The Repository Source's non-authorizing boundary presentation. */
@@ -205,8 +108,10 @@ function nowIso(): string {
  * Creates the bootstrap session synchronously with zero filesystem I/O.
  * The selection (invocation cwd, `--cwd` value, selected root) is retained
  * internally for later scans and lifecycle correlation; publicly it
- * surfaces only as the non-authorizing boundary presentation, and read
- * authority requires later central boundary admission.
+ * surfaces only as the non-authorizing boundary presentation. There is no
+ * separate admission layer: the first scan simply reads the retained
+ * selected root, and a missing or unreadable root fails that scan with the
+ * source-scoped `root-unreadable` Diagnostic (FR-002).
  */
 export function createInspectionSession(input: SessionBootstrapInput): InspectionSessionState {
   const createdAt = nowIso();
@@ -226,6 +131,8 @@ export function createInspectionSession(input: SessionBootstrapInput): Inspectio
     committedRepositoryGeneration: createBootstrapGeneration(createdAt),
     committedGlobalGeneration: null,
     staleFailures: [],
+    sessionDiagnostics: new Map(),
+    repositoryFailureDiagnosticId: null,
     sourceStates: new Map([
       [
         repositorySourceId,
@@ -278,8 +185,8 @@ export function createInspectionSession(input: SessionBootstrapInput): Inspectio
         globalEnableInProgress: null,
         globalDisableInProgress: null,
         globalContentEpoch: 0,
-        sessionDiagnosticIds: [],
-        repositoryFailureDiagnosticId: null,
+        sessionDiagnosticIds: [...internal.sessionDiagnostics.keys()],
+        repositoryFailureDiagnosticId: internal.repositoryFailureDiagnosticId,
       };
     },
   };
@@ -293,6 +200,16 @@ export function createInspectionSession(input: SessionBootstrapInput): Inspectio
 export type TriggerOwner =
   | { readonly kind: 'startup'; readonly operationId: null }
   | { readonly kind: 'request'; readonly operationId: string };
+
+/**
+ * How a terminal scan failure is represented (data-model.md
+ * § StaleSourceFailure): a deterministic returned fatal outcome carries its
+ * closed lifecycle Diagnostic, while a thrown/rejected accepted job carries
+ * the failed request's error message.
+ */
+export type ScanFailure =
+  | { readonly kind: 'error'; readonly message: string }
+  | { readonly kind: 'diagnostic'; readonly diagnostic: SerializedDiagnostic };
 
 /**
  * Coordinator admission outcome: 'admitted' issues the request-correlated
@@ -432,6 +349,13 @@ export class SessionCoordinator {
     result: {
       readonly files: readonly CustomizationFileDto[];
       readonly diagnostics: readonly SerializedDiagnostic[];
+      /**
+       * The attempt's closed publication outcome (FR-028): 'partial' exactly
+       * when a file-confined outcome exists. The producer decides it; the
+       * coordinator only records it, so a partial result can never be
+       * silently relabeled complete.
+       */
+      readonly outcome: GenerationOutcome;
     },
   ): Promise<void> {
     const attempt = this.attempts.get(scanRequestId);
@@ -457,19 +381,21 @@ export class SessionCoordinator {
       scanRequestId,
       startedAt: sourceState.progress?.startedAt ?? now,
       finishedAt: now,
-      outcome: 'complete',
+      outcome: result.outcome,
       files: result.files,
       diagnostics: result.diagnostics,
     });
     // Atomic replacement: commit the generation, then update overlays. The
-    // stale entry is cleared only for the Source this commit refreshed;
-    // failures for other Sources are carried forward untouched.
+    // stale entry — and any lifecycle Diagnostic it references — is cleared
+    // only for the Source this commit refreshed; failures for other Sources
+    // are carried forward untouched (data-model.md § StaleSourceFailure).
     this.session.internal.committedRepositoryGeneration = next;
+    this.dropLifecycleDiagnosticsFor(attempt.sourceId);
     this.session.internal.staleFailures = clearStaleFailures(
       this.session.internal.staleFailures,
       [attempt.sourceId],
     );
-    sourceState.status = 'ready';
+    sourceState.status = result.outcome === 'partial' ? 'partial' : 'ready';
     sourceState.progress = {
       ...(sourceState.progress ?? {
         scanRequestId,
@@ -486,18 +412,21 @@ export class SessionCoordinator {
   }
 
   /**
-   * Records the terminal failure of an accepted scan. An explicit rescan —
-   * a session-API request for an already committed Source — keeps the last
-   * committed snapshot, marks it stale for this Source, and retains the
-   * failed request's error message as the stale entry's reference (FR-030).
-   * Any other failed scan (the automatic initial scan, or a first scan of a
-   * never-committed Source) has no snapshot to mark stale: the Source is
-   * only marked failed, and its failure surfaces through the source-scoped
-   * diagnostic or the failed request's own error instead of session state.
+   * Records the terminal failure of an accepted scan (FR-030,
+   * data-model.md § Diagnostic lifecycle owners). An explicit rescan — a
+   * session-API request for an already committed Source — keeps the last
+   * committed snapshot and marks it stale with the failure representation:
+   * the failed request's error message, or the deterministic outcome's
+   * lifecycle Diagnostic (retained in the session and referenced by the
+   * stale entry). Any other failed scan (the automatic initial scan, or a
+   * first scan of a never-committed Source) has no snapshot to mark stale:
+   * the Source is marked failed, and a deterministic Repository outcome
+   * retains its Diagnostic through `repositoryFailureDiagnosticId`. The
+   * session keeps at most one current failure record per lifecycle owner.
    * A revoked attempt's failure is discarded like a revoked success
    * (FR-029): it publishes neither 'failed' nor a stale overlay.
    */
-  public failScan(scanRequestId: string, message: string): void {
+  public failScan(scanRequestId: string, failure: ScanFailure): void {
     const attempt = this.attempts.get(scanRequestId);
     if (attempt === undefined || attempt.settled) {
       return;
@@ -514,6 +443,15 @@ export class SessionCoordinator {
       sourceState.progress = null;
       return;
     }
+    // At most one current failure record per lifecycle owner: replacing a
+    // failure drops the record the previous one referenced.
+    this.dropLifecycleDiagnosticsFor(attempt.sourceId);
+    if (failure.kind === 'diagnostic') {
+      this.session.internal.sessionDiagnostics.set(
+        failure.diagnostic.diagnosticId,
+        failure.diagnostic,
+      );
+    }
     // Only an explicit rescan creates the stale overlay — the one case where
     // a previously committed snapshot exists and stays visible
     // (data-model.md § StaleSourceFailure). The coordinator enforces this
@@ -523,13 +461,45 @@ export class SessionCoordinator {
         this.session.internal.staleFailures,
         {
           sourceId: attempt.sourceId,
-          failureRef: { kind: 'error', message },
+          failureRef:
+            failure.kind === 'diagnostic'
+              ? { kind: 'diagnostic', diagnosticId: failure.diagnostic.diagnosticId }
+              : { kind: 'error', message: failure.message },
           failedAt: new Date().toISOString(),
           baseGeneration: this.session.internal.committedRepositoryGeneration.generation,
         },
       );
+    } else if (
+      failure.kind === 'diagnostic' &&
+      attempt.sourceId === this.session.internal.repositorySourceId
+    ) {
+      // Automatic/initial Repository failure: the actionable Diagnostic is
+      // referenced through the session's repository owner field (FR-002).
+      this.session.internal.repositoryFailureDiagnosticId = failure.diagnostic.diagnosticId;
     }
     sourceState.status = 'failed';
     sourceState.progress = null;
+  }
+
+  /**
+   * Drops the lifecycle Diagnostic records currently owned by one Source —
+   * the repository owner reference and any stale-entry reference — so a
+   * successful refresh or a replacing failure never leaves an orphaned
+   * record (data-model.md § Diagnostic: every retained record has exactly
+   * one public owner reference).
+   */
+  private dropLifecycleDiagnosticsFor(sourceId: string): void {
+    if (sourceId === this.session.internal.repositorySourceId) {
+      const previous = this.session.internal.repositoryFailureDiagnosticId;
+      if (previous !== null) {
+        this.session.internal.sessionDiagnostics.delete(previous);
+        this.session.internal.repositoryFailureDiagnosticId = null;
+      }
+    }
+    for (const entry of this.session.internal.staleFailures) {
+      if (entry.sourceId === sourceId && entry.failureRef.kind === 'diagnostic') {
+        this.session.internal.sessionDiagnostics.delete(entry.failureRef.diagnosticId);
+      }
+    }
   }
 }

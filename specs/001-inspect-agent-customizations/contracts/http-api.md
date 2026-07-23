@@ -3,8 +3,8 @@
 [日本語](http-api.ja.md)
 
 **API version**: 1
-**Transport**: devframe 0.7.5 standalone host, bound to `127.0.0.1`, authentication
-disabled (`auth: false`)
+**Transport**: devframe 0.7.5 standalone host, bound to `localhost` (loopback only),
+authentication disabled (`auth: false`)
 **RPC namespace**: every session function is registered under the
 `agent-customization-inspector:` name prefix
 
@@ -15,7 +15,7 @@ it defines is the complete local session transport. It is not a public network A
 session channel accepts opaque IDs and closed commands only; no function accepts a
 filesystem path, URL, command, source text, parser option, glob, or executable content.
 
-FR-022 authorizes exactly two closed internal-loopback classes at the issued `127.0.0.1`
+FR-022 authorizes exactly two closed internal-loopback classes at the issued `localhost`
 authority:
 
 1. **Packaged UI serving** — unauthenticated `GET`/`HEAD` for the packaged UI assets: the
@@ -32,11 +32,13 @@ another machine remains prohibited.
 
 ## Host requirements
 
-1. The process binds a devframe-selected local port on `127.0.0.1` only. There is no host
-   override: no configuration or flag binds `0.0.0.0`, a LAN address, or a Unix socket.
-   Before serving, the host initializes the centralized Node.js filesystem service used
-   for every inspected-source operation; an unavailable filesystem service exits with a
-   fixed actionable CLI error before any session starts. Node.js compatibility is declared
+1. The process binds a devframe-selected local port on the loopback interface only, via
+   the fixed host name `localhost` (which the platform resolver yields as IPv4
+   `127.0.0.1` or IPv6 `::1`). There is no host override: no configuration or flag binds
+   `0.0.0.0`, a LAN address, or a Unix socket.
+   Every inspected-source filesystem operation is issued by the inspection module
+   (`src/server/inspection/`); no other production module imports a Node.js filesystem
+   API, and there is no separate admission service in front of it. Node.js compatibility is declared
    once through `engines.node` and enforced by the package manager, and package/asset
    integrity is enforced by package tests and release gates; the host performs no runtime
    re-verification of its own packaged artifacts (Constitution Principle I).
@@ -54,7 +56,7 @@ another machine remains prohibited.
    and no hand-written router. Nuxt uses `app.baseURL: '/'` and no CDN URL, so the shell
    works unchanged on every client route. Static serving never reaches outside the
    packaged UI output directory and never falls back to an inspected file.
-4. At startup the host prints the exact `http://127.0.0.1:<port>/` URL once to the
+4. At startup the host prints the exact `http://localhost:<port>/` URL once to the
    initiating terminal. Automatic browser opening is devframe-owned and best-effort under
    FR-001: `--no-open` disables it, and a disabled, unsupported, or failed helper emits a
    fixed warning while the server and printed URL remain usable. The helper receives no
@@ -648,8 +650,8 @@ before any proposed Global path is touched:
 
 ```text
 GlobalConsentPreview
-├── previewId, previewDigest, allowlistVersion, traversalPlanVersion
-├── entries[] { tool, origin, displayRoot, pathPatterns[], inputState }
+├── previewId, allowlistVersion, traversalPlanVersion
+├── entries[] { tool, origin, displayRoot, inputState }
 └── excludedRuleIds[]
 ```
 
@@ -669,7 +671,7 @@ path or used as admission input. The preview
 performs no `stat`, `realpath`, directory enumeration, or file read under a
 proposed Global root. Node.js and the execution environment determine whether the value can
 be retained and escaped. A throw/rejection during environment capture, `homedir()`, join,
-retention, presentation encoding, digest construction, or serialization reaches this pre-acceptance RPC boundary and
+retention, presentation encoding, or serialization reaches this pre-acceptance RPC boundary and
 rejects the invocation with its ordinary error (no job or `scanRequestId` is created), creates no read authority, and
 performs no normalization, canonicalization, root creation, or read. Otherwise `displayRoot` shows the exact escaped lexical value; invalid empty
 or relative overrides are shown as invalid instead of falling back. A successful create
@@ -679,15 +681,14 @@ registered enable returns the `global-enable-in-progress` conflict rejection; an
 disable fence returns the `global-disable-pending` conflict rejection, with no environment
 recapture or state change. The read function
 supplies the exact frozen preview for fresh-client recovery; a different preview requires
-disable first. The canonical HMAC digest binds the session, `previewId`, version, ordered tool entries,
-each exact raw `lexicalRoot` using a type-tagged length-prefix encoding, its
-separately length-prefixed escaped `displayRoot`, origins, states, exclusions, and
-the typed `TraversalPlan` version, closed selection policy, and canonical program. It never substitutes escaped
-`displayRoot` for the raw digest input, so two raw values that render similarly cannot
-collide through presentation escaping.
+disable first. The preview is the one server-retained record identified by its opaque
+`previewId`; enable and retry name that ID, and the server acts only on its own stored
+record — there is no cryptographic re-verification of server-retained state.
 
-Every public `pathPatterns` entry is generated from the same shipped static typed
-`TraversalPlan`; it is explanatory display, not a second matcher or authority source.
+The preview intentionally carries no per-pattern display: what is read below an admitted
+root is fixed by the shipped static typed `TraversalPlan` that the retained
+`allowlistVersion`/`traversalPlanVersion` pair identifies, and the consent copy explains
+that scope in plain language.
 After consent and root admission, an exact-file rule reads only its named file and never
 enumerates the Global root; a fixed-instruction-subtree rule enumerates only the plan-named
 instruction subtree for its walk. No operation lists, stats, or reads a sibling setting,
@@ -715,8 +716,7 @@ Parameters:
 {
   "confirmed": true,
   "allowlistVersion": "2026-07-20",
-  "previewId": "opaque-preview-id",
-  "previewDigest": "opaque-keyed-digest"
+  "previewId": "opaque-preview-id"
 }
 ```
 
@@ -732,9 +732,9 @@ GlobalEnableResult
 
 The UI may send this only after showing all three exact Global path sets, lexical input
 states, and exclusions from that preview. The host rejects a false confirmation, stale
-contract version, superseded preview, or non-constant-time digest mismatch. It uses only
+contract version, or superseded preview. It uses only
 the stored internal raw `lexicalRoot` and stored typed traversal program; it never rereads
-environment input, reverse-converts `displayRoot`, or accepts `pathPatterns` as authority.
+environment input or reverse-converts `displayRoot`.
 The parameters intentionally have no tool selector. Initial enable derives the exact fixed
 `[copilot, claude, codex]` set from all three frozen preview entries, including entries that
 are already lexically invalid. A retry derives the exact current server-side
@@ -980,7 +980,7 @@ the post-acceptance failure's ordinary error. Disable itself never returns
   URL, invokes a
   customization command, or writes to an inspected source; the host does not enable
   devframe's optional MCP route.
-- Enabled inspection sources are enumerated/read only through one centralized service built
+- Enabled inspection sources are enumerated/read only by the inspection module built
   on `node:fs/promises`. It accepts validated source IDs and source-relative enumeration
   records, never an arbitrary absolute path supplied by an API request, relationship, or
   source file, and it relies on
@@ -1019,9 +1019,11 @@ the post-acceptance failure's ordinary error. Disable itself never returns
 
 ## Required contract tests
 
-1. Startup fixtures assert that the standalone host's listening socket is bound to
-   `127.0.0.1` on every supported OS and that no configuration or flag binds `0.0.0.0`, a
-   LAN address, or a Unix socket; the printed launch line carries the loopback authority.
+1. Startup fixtures assert that the standalone host's listening socket is bound to a
+   loopback address (IPv4 `127.0.0.1` or IPv6 `::1`, per the platform's `localhost`
+   resolution) on every supported OS and that no configuration or flag binds `0.0.0.0`, a
+   LAN address, or a Unix socket; the printed launch line carries the `localhost`
+   authority.
    Channel fixtures prove that no token, session capability, bearer header, or origin
    classification exists on the session channel and that the shipped documentation states
    the residual unauthenticated-loopback limitation (other local processes; DNS
@@ -1194,8 +1196,9 @@ the post-acceptance failure's ordinary error. Disable itself never returns
    acknowledgement. A later detail/comparison request requires a new acknowledgement.
    Pre-acceptance disable failure and true no-op both leave a null fresh-session fence so a
    purged client can resume immediately.
-8. A Global consent preview touches no proposed path, confirmation is bound to the exact
-   raw internal `lexicalRoot`, typed traversal-plan version/program, and preview digest, and
+8. A Global consent preview touches no proposed path, confirmation names the one
+   server-retained preview by its `previewId` — binding the exact raw internal
+   `lexicalRoot` values and typed traversal-plan version/program it retains — and
    a changed or superseded preview cannot authorize a read.
    Only the create function captures all three environment inputs and atomically creates or
    replaces an unconsented preview; the read function performs zero capture and returns only
@@ -1203,8 +1206,8 @@ the post-acceptance failure's ordinary error. Disable itself never returns
    frozen preview, including through the disable fence. Missing-current, active-consent,
    in-progress-enable, and disable-fence cases return their documented closed outcomes with
    no accidental replacement.
-   Escape-collision, control-character, and backslash fixtures prove the digest length-prefixes the
-   raw value and that enable uses only the stored raw value, never an environment reread or
+   Escape-collision, control-character, and backslash fixtures prove that
+   enable uses only the stored raw value, never an environment reread or
    `displayRoot` reverse conversion. The parameters have no tool selector and initial
    enable always
    evaluates all three frozen entries. Missing or unreadable consented roots and
@@ -1257,7 +1260,7 @@ the post-acceptance failure's ordinary error. Disable itself never returns
    the typed plan, an exact Global target is read without enumerating the Global root, a
    fixed instruction-subtree walk enumerates only that subtree,
    and no neighboring setting, credential, state, or plugin path receives I/O.
-9. The centralized Node.js filesystem service reads only allowlisted inspection paths on
+9. The inspection module reads only allowlisted inspection paths on
    every supported OS. A symlinked customization file is read transparently and its linked
    content is displayed like any other file's; a link whose target is missing or unreadable
    yields the file-scoped `file-unreadable` Diagnostic in a `partial` generation. A
@@ -1271,7 +1274,7 @@ the post-acceptance failure's ordinary error. Disable itself never returns
    equivalent call. Before/after fixtures prove unchanged content, length, identity/link
    state, mode, modification/change time, and extended attributes or ACLs where observable.
    OS-only access-time movement is recorded separately, is neither a failure nor proof, and
-   no product call requests it. Operation lifecycle is centrally managed without
+   no product call requests it. Operation lifecycle is managed without
    a product-defined concurrency ceiling.
 10. The packaged CLI boots the devframe standalone adapter with authentication disabled:
     fixtures assert `auth: false`, the packaged `dist/public` UI directory, and the

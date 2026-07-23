@@ -14,7 +14,7 @@ script/fixtureを追加するとcommandが実行可能になる。Current scaffo
 - 追加compilerやplatform固有build workspaceは不要。Inspected-source accessはpackaged Node.js moduleで実装する
 - Project setup commandでPlaywright 1.61.1がinstallする正確なChromium、Firefox、WebKit revision。これらのpin済み
   revisionは再現可能な自動browser-certification基準であり、userが実行できるbrowserの網羅的な一覧ではない
-- `127.0.0.1`へ到達できるbrowser。Release evidenceでは、OS default handlerが別browserを選ぶ場合も含め、上記certified
+- `localhost`へ到達できるbrowser。Release evidenceでは、OS default handlerが別browserを選ぶ場合も含め、上記certified
   revisionの1つを使う
 
 Toolchain確認:
@@ -58,8 +58,8 @@ pnpm run build
   root-absolute same-origin static assetを`dist/public`へ直接出力する。Post-build validatorも
   生成asset manifestも存在しない。出力treeはそれを生成するpipeline toolが所有し、devframe hostが
   runtimeでそのまま配信する。
-- tsdownはfixed ESM extensionのnamed `cli.mjs` entry、中央集約した
-  Node.js filesystem service、任意のcode-split chunkを`dist/`へ直接出力する。Staging copy stepも
+- tsdownはfixed ESM extensionのnamed `cli.mjs` entry、inspection moduleを含むbundleされた
+  server module、任意のcode-split chunkを`dist/`へ直接出力する。Staging copy stepも
   server側manifestも存在しない。
 - Packaged `dist/cli.mjs`は、`src/server/cli.ts` entryからtsdownが保持したBOMなし、LF終端の正確な先頭行
   `#!/usr/bin/env node`で始まり、package managerがinstall時にlinkされたbinをexecutableにする。
@@ -110,7 +110,7 @@ launchを終了させる。
 
 期待結果:
 
-- devframe hostがbrowser attempt前にlocalな`127.0.0.1` originを正確に1回表示し、non-loopback addressへ
+- devframe hostがbrowser attempt前にlocalな`http://localhost:<port>/` originを正確に1回表示し、non-loopback addressへ
   bindしない。表示URLはplainなoriginであり、per-session token、fragment、その他のsecretを含まない。
   devframe CLI flagである`--no-open`ではbrowserを開かず、browser-helper child processも作らない。
 - Browser表示のRepository source rootは`all-supported` fixture自身。
@@ -199,14 +199,14 @@ pnpm run test:docs
   semanticに編集したりしてはならない。Membership/source-form/extractor/relationshipに変更が必要なら作業を停止し、
   design artifactを同期してplan/task generationを再実行する。
 - Integration/security testは記録済みlocal fixture rootを使い、productの全network/URL/MCP surfaceをinstrumentする。発行済みのexactな
-  `127.0.0.1` authorityにおける2つのexactなFR-022 authorized internal loopback class、すなわちpackaged UI assetへのstatic/SPA
+  `localhost` authorityにおける2つのexactなFR-022 authorized internal loopback class、すなわちpackaged UI assetへのstatic/SPA
   `GET`/`HEAD`とlocal session API channel（どちらもloopback-onlyなdevframe bindの背後でunauthenticated）を別々に分類・検証する。Source containmentとcustomization由来のexecution、child process、MCP
   connection、FR-022で定義した禁止対象のdirect product-issued outbound request、dynamic evaluation、source mutationが0であることを証明する。Explicit
   UNC/server-share/device vectorではfilesystem/DNS/SMB call 0件を証明する。Lexicalに識別不能なpre-mounted/mapped network sourceはOS-mediated
   trafficを発生させ得るためFR-022のplatform/environment limitationとして別に記録する。devframe所有のstartup
   browser openingへinspection由来のcontent/path、authored value、user-supplied command、environment-selected handlerを渡さない。
   実行すべきhost-securityやHTTP-router contract suiteは存在しない。Per-session token、Origin check、hand-written routerは
-  削除済みで、protectionは`127.0.0.1` bindだけであり、unexpectedなsession-API failureはreal errorをrequesting clientへ
+  削除済みで、protectionはloopback限定の`localhost` bindだけであり、unexpectedなsession-API failureはreal errorをrequesting clientへ
   そのままpropagateし、sessionは利用可能なままとする。
 - Package testがtarballをbuild/inspectionし、isolated fixtureへinstallし、packaged Node.js filesystem serviceを
   loadして、working tree/runtime downloadへ依存せず正確な`npx` entryを
@@ -264,7 +264,7 @@ source checkでnetworkを使えるのはこのcommandだけとする。
    Unreadableなoverride（broken symbolic linkを含む）またはbinaryなoverrideは、fallbackせず
    per-file diagnostic（`file-unreadable`または`file-content-binary`）とともにselectionを終了する。
    これらのfixtureでcontent rule、short-circuit、および非選択targetへのoperation 0件を固定する。
-3. Static ruleはtyped literal/one-segment/recursive-directory programとtraversal boundaryだけを許可し、runtimeで
+3. Static ruleはtyped literal/regex/recursive-directory programとtraversal boundaryだけを許可し、runtimeで
    text globを評価しない。Staticとderivedの両ruleが
    受理したfileは両provenanceを保持する1つのinventory fileのままとする。各provenanceは自身のmatched path、
    behavior/strategy/source evidence、scope/order、applicabilityを持つ。Public provenance DTOはSource-relative pathとstable
@@ -520,8 +520,7 @@ Test harnessはisolated fake tool homeを渡し、developerのreal homeを絶対
 6. Stale/changed/cross-session replayed preview ID/digestを拒否する。Digestは各entryについて、stored raw `lexicalRoot`と
    escaped `displayRoot`を、2つの別々のtype tag付きlength-prefixed stringとしてbindする。Typed
    `TraversalPlan` version、closed selection policy、canonical programもbindする。Display fieldをraw fieldの代用にしない。Enableはfrozen raw
-   valueとstored planだけを使い、environmentを再読込せず、`displayRoot`をreverse-convertせず、表示`pathPatterns`を
-   authorityにしない。Digestが別fieldを保持し、admissionが
+   valueとstored planだけを使い、environmentを再読込せず、`displayRoot`をreverse-convertしない。Digestが別fieldを保持し、admissionが
    stored raw valueを使うことをescape-collision、control-character、backslash fixtureで証明する。
    Previewで2 entryがeligible、1 entryがinvalidの場合もrequest側tool selectorは持たない。Initial enableは固定の
    `confirmedTools: [copilot, claude, codex]`を導出して3つすべてをevaluateする。Responseのdisjointな
@@ -933,7 +932,7 @@ failureにする。
 SC-004 manifestは、supported toolごとに1件以上のfixtureと、全prohibited-effect class、すなわちcustomization由来の
 command/code execution、child process、MCP connection、FR-022で定義したdirect product-issued outbound request、
 product-issuedな調査対象source mutationのfixture、およびRepository/Global各source kindのout-of-bound selector
-fixtureを含む。そのcaseは、発行済み`127.0.0.1` authorityにおける2つのexactなFR-022 authorized internal loopback
+fixtureを含む。そのcaseは、発行済み`localhost` authorityにおける2つのexactなFR-022 authorized internal loopback
 classを独立にvalidateし、全fixture rootがlocalであることを記録しつつ、lexicalに識別不能なpre-mounted/mapped network
 filesystemをFR-022のplatform/environment limitationとして文書化し（explicitなUNC/server-share/device vectorでは
 filesystem/DNS/SMB call 0件を証明する）、mutation assertionのためにproduct filesystem operationをinstrumentし、
@@ -1091,7 +1090,7 @@ lockfileが所有する。
 
 再実行すべきhost-securityやHTTP-API-router contract stepは存在しない。devframe local-tool frameworkの採用により
 per-session token、Origin check、hand-written routerは削除済みである。Transport protectionはdevframe hostの
-`127.0.0.1`-only bindとdevframe authenticationの無効化であり、unexpectedなsession-API failureは
+loopback限定の`localhost` bindとdevframe authenticationの無効化であり、unexpectedなsession-API failureは
 real errorをrequesting clientへ返す。Unauthenticatedなloopback hostのresidual exposure、
 すなわち他のlocal processとDNS rebinding経由のmalicious web pageは、documented limitationである。
 

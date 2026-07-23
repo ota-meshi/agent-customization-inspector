@@ -53,6 +53,8 @@ jobs:
       - run: pnpm run typecheck
 
   unit:
+    # Includes the inspection traversal suite
+    # (tests/unit/inspection/**) through the unit project glob (T039).
     name: Unit tests
     runs-on: ubuntu-24.04
     steps:
@@ -79,6 +81,9 @@ jobs:
       - run: pnpm run test:contract
 
   integration:
+    # Includes the traversal publication-boundary suite
+    # (tests/integration/boundaries/**) through the integration project
+    # glob (T039).
     name: Integration tests
     runs-on: ubuntu-24.04
     steps:
@@ -105,6 +110,9 @@ jobs:
       - run: pnpm run test:security
 
   package:
+    # Includes the Node.js-only package-policy suite
+    # (tests/package/node-only-policy.test.ts) through the package project
+    # glob (T039).
     name: Package tests
     runs-on: ubuntu-24.04
     steps:

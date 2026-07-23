@@ -113,23 +113,30 @@ Each selector program has a non-empty ordered sequence of segment tokens from th
 - `literal(value)` matches one case-sensitive exact ASCII segment. `value` is a non-empty
   string of U+0021–U+007E except `/`, `\\`, `:`, `*`, `?`, `\"`, `<`, `>`, and `|`;
   `.` and `..` are also forbidden.
-- `one-segment(suffix)` matches exactly one non-empty segment: `*` when `suffix` is empty,
-  or `*<fixed-literal-suffix>` otherwise. A non-empty suffix has the same closed ASCII
-  type as `literal(value)`; the empty suffix is valid only here and preserves the bare `*`
-  form. It is a directory step when non-terminal and a regular-file step when terminal.
-- `recursive-directories` is rendered only as the complete segment `**`, matches zero or
+- `regex(pattern)` matches exactly one entry name, decided by one JavaScript
+  regular expression applied to the raw entry name with standard
+  `RegExp.prototype.test` semantics — anchoring and escaping are the pattern author's
+  explicit spelling, and the shipped rule fixtures own their correctness. It is a
+  directory step when non-terminal and a regular-file step when terminal, and renders as
+  its regex literal (for example `/\.md$/u`).
+- `recursive-directories` — the `**` step — matches zero or
   more directories, is never terminal, and is never adjacent to another recursive token.
 
 Static fixed prefixes, exact targets, and fixed derived suffixes use that same closed ASCII
 literal type. Registry validation rejects every non-ASCII path literal; consequently exact
-raw-byte/code-unit relevance cannot disagree with later NFC classification. The final token
-must be `literal` or `one-segment` and denotes a regular file. A program
-uses only this closed typed grammar; parser, token, and depth capacity and completion
-behavior come from Node.js, the parser, and the execution environment. The build compiler
-parses the compact selector into this typed program, then requires exact canonical
-round-trip back to the selector. The runtime
-loads only the validated typed program and never passes the text to a general-purpose glob
-or regular-expression evaluator.
+raw-byte/code-unit relevance cannot disagree with later NFC classification for fixed
+prefixes and exact targets, while a `regex` pattern tests the raw entry name (which
+may be an NFD spelling on disk). The final token
+must be `literal` or `regex` and denotes a regular file. A program
+uses only this closed typed grammar; token and depth capacity and completion
+behavior come from Node.js and the execution environment. The registry is authored
+directly in this typed program form — selector text is never a parser input — and the
+contract tables show those authored programs. Grammar and literal obligations are
+enforced by the registry contract gate before release, not re-checked at runtime. The
+runtime loads only the typed program
+and never passes any selector text to a general-purpose glob evaluator; the only pattern
+evaluation is each `regex` step's own regular expression applied to one enumerated
+entry name.
 
 The structured Base, selector list, and segment programs are authoritative. The vendor
 tables' **Expansion** cells are human summaries derived from those programs. They use
@@ -138,28 +145,30 @@ order and may list more than one label for a composite selector.
 
 ### Repository selector requirements
 
-Every Inspector Repository selector starts with the literal `./`, which means the exact
-Repository source root. A bare `**/` prefix is invalid and must fail registry validation.
+Every Inspector Repository selector program is relative to the exact Repository source
+root.
 
-| Form | Required program summary | Meaning |
+| Authored program (Repository base) | Required program summary | Meaning |
 |---|---|---|
-| `./path/file` | `exact` | One exact file relative to the Repository source root |
-| `./path/*` | `direct-child` | Matching direct children of one root-relative directory; `*` never crosses `/` |
-| `./**/name` | `descendant-inventory` | Explicit Inspector inventory at the root and below it; `**` is a complete segment representing zero or more directory segments |
-| `./path/**/*.ext` | `recursive-subtree` | Explicit recursive Inspector inventory below one root-relative subtree, including its root level |
-| `./**/.claude/skills/*/SKILL.md` | `descendant-inventory`, then `direct-child` | Cross-product of possible context directories and exactly one direct skill-name directory; the terminal file remains exact |
-| `./**/.claude/rules/**/*.md` | `descendant-inventory`, then `recursive-subtree` | Cross-product of possible rule-layer roots and the recursive subtree below each fixed `rules` directory |
+| `['path', 'file']` | `exact` | One exact file relative to the Repository source root |
+| `['path', ANY_NAME]` | `direct-child` | Matching direct children of one root-relative directory; a segment never crosses `/` |
+| `[ANY_DIRECTORIES, 'name']` | `descendant-inventory` | Explicit Inspector inventory at the root and below it; `ANY_DIRECTORIES` matches zero or more directory segments |
+| `['path', ANY_DIRECTORIES, /\.ext$/u]` | `recursive-subtree` | Explicit recursive Inspector inventory below one root-relative subtree, including its root level |
+| `[ANY_DIRECTORIES, '.claude', 'skills', ANY_NAME, 'SKILL.md']` | `descendant-inventory`, then `direct-child` | Cross-product of possible context directories and exactly one direct skill-name directory; the terminal file remains exact |
+| `[ANY_DIRECTORIES, '.claude', 'rules', ANY_DIRECTORIES, /\.md$/u]` | `descendant-inventory`, then `recursive-subtree` | Cross-product of possible rule-layer roots and the recursive subtree below each fixed `rules` directory |
 
-`./**/` describes only the Inspector's downward descendant inventory. It does not mean
+A leading `ANY_DIRECTORIES` describes only the Inspector's downward descendant
+inventory. It does not mean
 that a vendor walks downward, walks upward, searches ancestors, recognizes every nested
 repository, or applies the matched file in a particular runtime context. Those claims
 require separate vendor behavior and strategy records.
 
-`*` matches exactly one non-empty segment. `**` is valid only as a complete
-`recursive-directories` token. A `one-segment` token never implies recursion, and a
-literal-only program is exact. Repository rule tables must state Base, Relative selector,
-and the derived Expansion summary separately; the immutable registry must carry the
-one-to-one typed selector programs.
+`ANY_NAME` is the always-matching `regex` step and matches exactly one entry
+name. `**` is the prose name of the
+`recursive-directories` token. A `regex` step never implies recursion, and a
+literal-only program is exact. Repository rule tables must state Base, the authored
+selector program, and the derived Expansion summary separately; the immutable registry
+carries those one-to-one typed selector programs.
 
 ### Global selector requirements
 
@@ -198,9 +207,11 @@ non-whitespace. An unreadable or binary override ends the branch with its file D
 (`file-unreadable` or `file-content-binary`) and no fallback. The
 policy publishes the selected non-empty file and never publishes both selectors.
 
-The no-I/O Global preview renders `pathPatterns` from this same immutable plan; there is
-no separately maintained preview allowlist. The consent digest binds the contract
-version, traversal-plan schema/version, closed selection policy, and canonical selector
+The no-I/O Global preview names each tool's resolved root and lexical state only; it
+carries no per-pattern display, and what is read below an admitted root is fixed by the
+shipped plan the digest-bound versions identify, so there is no separately maintained
+preview allowlist. The consent digest binds the contract version and traversal-plan
+schema/version, which identify the closed selection policy and canonical selector
 programs. An enable
 operation executes the exact plan represented by the accepted preview rather than
 recompiling it from display text.
@@ -212,7 +223,9 @@ Runtime scanning executes the compiled plan as an ordinary recursive walk built 
 public Source-relative Paths use their NFC display segments (FR-024); NFC segments,
 `/`-joined `SourceRelativePath` values, and display strings never reconstruct a
 filesystem path. Selector relevance is decided on the enumerated entry name with exact
-literal and one-segment suffix comparisons. Symbolic links are followed transparently,
+literal comparisons and each `regex` pattern's standard regular-expression test —
+the only pattern evaluation in the product, applied to one entry name at a
+time. Symbolic links are followed transparently,
 because the inspector shows what an agent reading the same path would see; a link whose
 target is missing or unreadable yields that file's `file-unreadable` Diagnostic, and
 recursive traversal tracks visited directories by real path so a link cycle cannot
@@ -239,7 +252,7 @@ ticket, receipt, guard, or resource-registry machinery.
 A root on a network filesystem may cause OS-mediated traffic when it is read. FR-022's
 zero-outbound-request assertion concerns product-issued requests, uses local fixture
 roots, and separately validates the two authorized internal loopback classes at the
-issued `127.0.0.1` authority — static/SPA `GET`/`HEAD` for the packaged UI assets and
+issued `localhost` authority — static/SPA `GET`/`HEAD` for the packaged UI assets and
 the local session API channel — while rejecting every other product
 network/URL/MCP request.
 
@@ -273,7 +286,7 @@ independent.
 
 Only a `static-candidate` or `bounded-derived-candidate` in the shipped, contract-versioned
 registry may request a read. The candidate must belong to an enabled boundary and match
-an entry produced by the ordinary traversal above; the centralized service accepts no
+an entry produced by the ordinary traversal above; the inspection module accepts no
 arbitrary absolute path from an API request, relationship, or source file.
 
 A `bounded-derived-candidate` uses a typed edge from an independently admitted static seed
@@ -282,7 +295,7 @@ and excluded rules, vendor locators, runtime strategies, imports, component refe
 remote sources, and MCP-server-provided instructions never authorize a read.
 
 Read authority for a bounded-derived candidate exists only through a closed, versioned
-`DerivationProgram` interpreted by the centralized service. Each program pins the exact
+`DerivationProgram` interpreted by the inspection module. Each program pins the exact
 static seed rule, declaration field (including a closed matched-path sentinel where
 applicable), and seed kind; chooses its base only from `seed-matched-path-parent` or
 `source-root`; names one closed extraction variant; uses only fixed literal segment tokens
@@ -301,7 +314,7 @@ handles only one literal `./`; U+002F is the sole separator. Empty input/segment
 trailing, or repeated separators, `.`/`..`, backslash, colon, a first-segment home marker,
 controls, unpaired surrogates, and non-NFC segments reject the whole derivation with zero
 target I/O. There is no percent/URL/URI decoding, environment expansion, home resolution, or
-platform path parsing. The interpreter produces typed one-segment tokens, never a path
+platform path parsing. The interpreter produces typed regex tokens, never a path
 string. Fixed suffix alternatives use literal `first-present-exact`: only a missing exact
 classification advances in registry order; the first present path stops later
 alternatives even if its later read or parse result is unsuccessful. An ancestor-
@@ -370,18 +383,21 @@ Contract and fixture validation must prove all of the following:
 
 1. Every `behaviorId`, `ruleId`, `strategyId`, and `sourceId` is defined once, resolves all
    references reciprocally, and has semantically equivalent English and Japanese rows.
-2. Every Repository matcher begins with `./`; a bare `**/` is rejected. Exact,
-   direct-child, `./**/` descendant, and fixed-subtree recursive forms have distinct
-   positive and near-miss fixtures. Matcher fixtures accept canonical bare `*`, reject a
-   misplaced/adjacent `**`, and reject every non-ASCII or forbidden literal/suffix code unit.
-3. A `./**/` fixture proves only downward Inspector inventory and carries separate unknown
+2. Every Repository matcher program is relative to the Repository source root. Exact,
+   direct-child, descendant-inventory, and fixed-subtree recursive forms have distinct
+   positive and near-miss fixtures. Matcher fixtures accept `regex` steps
+   (including `ANY_NAME`), reject a terminal or adjacent
+   `recursive-directories` step, and reject every non-ASCII or forbidden literal code unit.
+3. A leading-`ANY_DIRECTORIES` fixture proves only downward Inspector inventory and
+   carries separate unknown
    or conditional vendor-runtime facts where the upstream traversal is not established.
 4. Typed matchers compile deterministically to immutable versioned plans. Global fixtures
    prove that an exact target is read without enumerating its root, a fixed subtree
    enumerates only that subtree and permitted descendants, and neighboring paths receive
-   zero enumeration, open, or read calls. Preview fixtures prove that
-   `pathPatterns` come from that same plan and that the consent digest binds its version,
-   closed selection policy, and canonical programs. Codex fixtures apply absent, empty,
+   zero enumeration, open, or read calls. Preview fixtures prove that the preview names
+   only the resolved roots and lexical states and that the consent digest binds the
+   allowlist and traversal-plan versions identifying the closed selection policy and
+   canonical programs. Codex fixtures apply absent, empty,
    BOM-only, whitespace-only, non-empty, replacement-decoded, binary, and unreadable cases
    independently to both ordered targets; they prove that the fallback applies only for an
    absent or safely-read empty override, that an unreadable or binary override ends the
@@ -430,8 +446,8 @@ Contract and fixture validation must prove all of the following:
    semantic fingerprints, affected-contract backlinks, and human-only updates. A drift
    result never changes a behavior, rule, or strategy automatically.
 11. The registry fails closed on an unknown matcher, traversal, or derivation kind; an
-   invalid token sequence or position; a selector/program correspondence or canonical-
-   round-trip mismatch; a malformed selector; a duplicate identifier; an orphan reference;
+   invalid token sequence or position; a program/contract-table correspondence
+   mismatch; a malformed selector program; a duplicate identifier; an orphan reference;
    a mismatched contract version; or an English/Japanese semantic difference.
 12. Production-call instrumentation proves one content read per published file per Source
     scan attempt and zero mutation-capable APIs or flags: no

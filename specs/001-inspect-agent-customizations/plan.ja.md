@@ -35,7 +35,7 @@ Security boundaryを厳密にする。Browserはfilesystemを読まず、Node ho
 自動watch modeを設けない。Local hostにはeslint/config-inspectorと同じ基盤であるdevframe local-tool
 frameworkをauthentication無効で採用する。devframeはbuild済みSPAを`cli.distDir`（`dist/public`）から
 配信し、devframeのRPC session API channelを通じてinert DTOを送り、port選択、host binding、起動時の
-browser openを所有する。保護は`127.0.0.1` loopback bindだけであり、per-session token、Origin check、
+browser openを所有する。保護はloopback限定の`localhost` bindだけであり、per-session token、Origin check、
 hand-writtenなrouterは存在しない。認証なしloopback hostの残存exposure（他のlocal processと、
 DNS rebinding経由の悪意あるweb page）は、Constitution v4.0.0が記録するdocumented limitationとする。
 Session APIは明示的なdetail requestにだけ、完全な
@@ -147,7 +147,7 @@ validation `AggregateError`を固定されたactionable outputとnonzero exitへ
 する。CLIは`process.chdir()`を呼ばない。Built-in help/versionはbindせずに処理する。Production entryは`gunshi/agent`、
 lazy command、custom plugin、experimental parser combinatorをimportしない。Validation後、CLIは
 `src/server/host/devframe-app.ts`のapp definitionを通じてdevframe hostを起動する。devframeがport選択、
-`127.0.0.1` bind、起動時のbrowser-open試行を所有し、CLIはFR-001のmanual fallback用にloopback originを
+loopbackの`localhost` bind、起動時のbrowser-open試行を所有し、CLIはFR-001のmanual fallback用にloopback originを
 1回表示する。
 
 **ストレージ**: 永続的application storageは使用しない。Session state、調査対象file byte、記述された完全な
@@ -547,7 +547,7 @@ baseline外のhandler、利用不能なhandler、または識別不能な解決�
 JavaScript application codeとdeclarativeなstatic/package dataだけを含み、install script、runtime download、end-user compilerを必要としない。
 Package-manager生成`node_modules/.bin` symlink/`.cmd`/`.ps1` launcherはpayload外interoperability metadataとして別の
 exact-target/content auditを受ける。Development-only toolingはproduct package外で別にpin/auditする。
-Serverは`127.0.0.1`だけへbindし、remote deployment modeを持たない。
+Serverはloopback interface（host `localhost`）だけへbindし、remote deployment modeを持たない。
 
 **Project type**: 静的Nuxt web client、Node CLI/local HTTP service、shared serializable
 contractを含む単一の公開可能なESM npm package。Project-authored executable application codeはすべて
@@ -580,7 +580,7 @@ SC-002は、その正確な10回のうち同一の9回以上が、現在request�
 閾値ごとに異なる9/10のsubsetを使ってはならない。
 
 **制約**: 調査対象カスタマイズによりexecution、child process、dynamic import、FR-022で定義した禁止対象のdirect product-issued network request、MCP connection、
-product-issued source mutationを発生させない。発行済みのexactな`127.0.0.1` authorityにおける2つのexactなFR-022 browser/host class、
+product-issued source mutationを発生させない。発行済みのexactな`localhost` authorityにおける2つのexactなFR-022 browser/host class、
 すなわちpackaged UI assetとlocal session API channelに対するclosedなstatic/SPA `GET`/`HEAD`はauthorized internal loopback
 transportであり、outbound requestでもMCP connectionでもない。この2 class外のrequest、customization-selected request、MCP requestはすべて禁止対象のままとする。
 Lexicalに識別不能なpre-mounted POSIX network filesystemまたはmapped Windows driveへの通常の
@@ -857,7 +857,7 @@ src/
 │       ├── stale-failures.ts
 │       └── session.ts
 └── shared/
-    ├── api.ts
+    ├── api-types.ts
     ├── diagnostics.ts
     ├── entities.ts
     └── registries/
@@ -1109,7 +1109,7 @@ production dependency/artifactは明示reviewまでfailする。
   正確な選択済みRepository rootから`./`で表記し、bare `**/`を拒否する。明示的な`./**/`は下向きInspector inventoryだけを
   意味する。CopilotのVS Code、CLI、Cloud behaviorと、各vendorのRepository対User/Global behaviorは、推測した
   traversalを共有せず独立してaddress可能に保つ。全Repository selectorをclosedかつcanonical round-tripする
-  segment programへcompileする。Literal、one-segment、非隣接recursive-directory tokenで、general glob
+  segment programへcompileする。Literal、regex、非隣接recursive-directory tokenで、general glob
   engineを使わずcompositeなdescendant/direct-child/subtree ruleを表す。Global preview entryはfrozen lexical rootであり、
   consent digestはdata modelに従ってそのraw valueとescaped displayをbindする。
   Content依存のscheduler branchはexactな`codex-global-first-non-empty` policyだけとする。これは
@@ -1199,7 +1199,7 @@ production dependency/artifactは明示reviewまでfailする。
   すべてのinventory、detail、comparison、Global-control、Diagnostic、Source Condition Fact、API、CLI、documentation
   projectionへ適用する。
 - Node hostはdevframe 0.7.5とする。CLIは`devframe/adapters/dev`の`createDevServer`でapp definitionを
-  起動し、`auth: false`を設定して`127.0.0.1`だけへbindする。devframeはbuild済みSPAを`cli.distDir`
+  起動し、`auth: false`を設定してloopbackの`localhost`だけへbindする。devframeはbuild済みSPAを`cli.distDir`
   （`dist/public`）から配信し、port選択、host binding、起動時のbrowser openを所有する。Session APIは
   app definitionの`setup`（`src/server/host/devframe-app.ts`）で`defineRpcFunction`により宣言するdevframe RPC
   functionの集合とする。Per-session token、Origin/Host check、hand-writtenなrouter、product所有の

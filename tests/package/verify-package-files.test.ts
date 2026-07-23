@@ -2,7 +2,7 @@
 // the gate requires only the two entry points the package contract depends
 // on: the SPA shell (public/index.html) served by the devframe host and the
 // package.json.bin target cli.mjs.
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -58,5 +58,33 @@ describe('verifyPackageFiles', () => {
     const dist = makeDist();
     rmSync(join(dist, 'public', 'index.html'));
     await expect(verifyPackageFiles({ distDir: dist })).rejects.toThrow(/index\.html/u);
+  });
+
+  it('fails safely when the environment cannot read an artifact (T024)', async () => {
+    const dist = makeDist();
+    const shellDir = join(dist, 'public');
+    try {
+      chmodSync(shellDir, 0o000);
+    } catch {
+      return;
+    }
+    try {
+      // Mode-based unreadability does not bind for an elevated user; only
+      // assert the safe failure when the environment actually enforces it.
+      let readable = true;
+      try {
+        statSync(join(shellDir, 'index.html'));
+      } catch {
+        readable = false;
+      }
+      if (readable) {
+        return;
+      }
+      // An artifact the gate cannot completely verify fails the gate; it is
+      // never skipped or reported as verified.
+      await expect(verifyPackageFiles({ distDir: dist })).rejects.toThrow();
+    } finally {
+      chmodSync(shellDir, 0o755);
+    }
   });
 });

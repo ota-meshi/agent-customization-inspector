@@ -100,7 +100,6 @@ BrowserState
 | `globalContentEpoch` | non-negative safe integer | DTO | Starts at zero and increments atomically on first acceptance of each non-no-op Global disable barrier; every liveness and inspection-data success is bound to it so the server rejects a success not yet linearized at the fence and clients reject older data after observing the greater epoch |
 | `sessionDiagnosticIds` | opaque string[] | DTO | Current out-of-generation lifecycle diagnostics |
 | `repositoryFailureDiagnosticId` | opaque session Diagnostic ID or null | DTO | Current deterministic automatic Repository admission/initial-scan failure; retained while the first explicit rescan runs, then cleared on success or atomically replaced by that rescan's `StaleSourceFailure` owner on terminal failure |
-| `previewDigestKey` | exactly 32 random bytes | internal | Independent HMAC key for Global previews; generated once at process-session bootstrap and never serialized, logged, persisted, or sent outside the host process |
 | `invocationCwd` | absolute platform path string | internal | Exact value captured once from `process.cwd()` before CLI validation; never changed or exposed as read authority |
 | `cwdOptionValue` | exact string or null | internal | Null when omitted; otherwise the sole validated `--cwd` argument retained for lifecycle/audit correlation only; it is never used as a filesystem operand after lexical selection |
 | `selectedRepositoryRoot` | absolute platform path string | internal | `invocationCwd` when `--cwd` is omitted; otherwise the absolute option kept as given, or the relative option resolved against `invocationCwd` with the platform `node:path` resolution; selection performs zero filesystem or network I/O |
@@ -149,19 +148,10 @@ The local host is the devframe local-tool framework with authentication disabled
 built SPA directly from the packaged `dist/public` tree, exposes every session API
 operation as a devframe RPC function (`defineRpcFunction`) on the same loopback channel,
 and owns port selection, host binding, and startup browser opening. Session protection
-is the `127.0.0.1` bind only: the model defines no per-session capability or token
+is the loopback-only `localhost` bind: the model defines no per-session capability or token
 entity and no request-classification record, and the residual exposure of an
 unauthenticated loopback host — other local processes and, via DNS rebinding, a
 malicious web page — is the documented limitation (QR-003).
-
-The host obtains `previewDigestKey` from an independent 32-byte CSPRNG draw exactly once
-during process-session bootstrap. This key exists for consent integrity (FR-013), not
-transport authentication. It is distinct from the draws and values used for
-`sessionId`, every `previewId`, and every other opaque ID. It remains
-unchanged across preview replacement, consent, retries, Global disable, and generation
-changes, exists only in process memory until process termination, and is then discarded.
-A key-generation throw/rejection reaches the process top level before session publication
-or host bind; the product never substitutes, derives, persists, or rotates a key.
 
 `UtcTimestamp` is an exact 24-byte ASCII UTC value in
 `YYYY-MM-DDTHH:mm:ss.sssZ` form with valid calendar fields; every field called timestamp in
@@ -341,7 +331,7 @@ absent property. It is lexical and performs no existence check or other filesyst
 operation. Its exact string becomes `lexicalRoot`; empty, relative, NUL-containing, or
 otherwise unrepresentable results remain strings and receive the closed lexical input state
 instead of another fallback. If environment access, `homedir()`, joining, retention,
-presentation encoding, digest construction, or preview serialization throws/rejects or
+presentation encoding, or preview serialization throws/rejects or
 cannot produce the required string, the operation-local capture is discarded and the session API
 request fails ordinarily with that error before acceptance. It creates no preview,
 `scanRequestId`, consent, root, Source, or authority. A successful preview owns the capture
@@ -357,14 +347,12 @@ performs no filesystem operation under any proposed Global root.
 |---|---|---|
 | `previewId` | exact 43-character unpadded base64url string | Canonical encoding of an independent 32-byte CSPRNG draw and a process-memory lookup key; a new preview invalidates the previous unconsented preview, while active consent freezes and reuses its exact preview |
 | `previewEpoch` | non-negative safe integer | Internal and never serialized; increments with every newly captured preview and binds replacement/revalidation without using an opaque ID as an order value |
-| `previewDigest` | 43-character base64url HMAC-SHA-256 | Covers the exact `GlobalPreviewDigestEncoding` top record, including `sessionId` and `previewId`; compared in constant time and never accepted from another process |
 | `allowlistVersion` | date string | Current shipped contract version |
 | `entries` | exactly three tool entries | Fixed Copilot, Claude, and Codex order |
 | `entries[].tool` | tool enum | Closed value |
 | `entries[].origin` | `default-home \| environment` | An environment entry is used even when invalid; no silent fallback |
 | `entries[].lexicalRoot` | exact raw string | Internal only; preserves the pre-escape environment/default value; never logged or serialized |
 | `entries[].displayRoot` | ASCII `RootPresentationEncoding` string | Exact deterministic encoding of `lexicalRoot`; originates before an owning Source exists, and is never a `SourceRelativePath`, inventory-item locator, canonicalization claim, or read authority |
-| `entries[].pathPatterns` | non-empty fixed relative-pattern array | Rendered from the exact immutable Global `TraversalPlan`; no neighboring customization classes |
 | `entries[].inputState` | `eligible \| present-empty \| relative \| invalid` | Assigned by the exact ordered `Global lexical state` algorithm below before I/O; only `eligible` may become a boundary after consent |
 | `excludedRuleIds` | sorted excluded rule ID[] | Drives the displayed exclusions without accepting authored prose |
 
@@ -373,10 +361,9 @@ ability to allocate that value is inherited from Node.js, the operating system,
 and the browser. A throw/rejection during lexical preview creation reaches the session API request
 boundary before acceptance and fails that request ordinarily without a
 `scanRequestId`, normalization, canonicalization, root creation, or read. It does not create
-a size-based input state. The digest uses the exact `GlobalPreviewDigestEncoding` below;
-neither root field is nullable. It binds each frozen raw `lexicalRoot` and its escaped
-`displayRoot` in fixed tool order; it never relies on reversing an escape or on Unicode
-normalization. It contains no filesystem-derived value. An invalid environment value is
+a size-based input state. The preview is the one server-retained record identified by its
+opaque `previewId`; neither root field is nullable, and no encoding step relies on
+reversing an escape or on Unicode normalization. An invalid environment value is
 escaped and displayed but is not normalized into an authorized path. Present-empty,
 relative, and invalid entries use only fixed preview presentation and create no retained
 `Diagnostic`. After confirmation all three entries receive a `GlobalToolControl`; only an
@@ -392,7 +379,7 @@ path and never rereads the environment. Preview creation/retrieval linearizes un
 coordinator lock. While consent is active, an initial `GlobalEnableOperation` is registered,
 or a non-complete `GlobalDisableOperation` retains its preview fence, retrieval returns the
 same DTO-visible object byte-for-byte in field semantics,
-including its ID and digest, and never rereads the environment or creates a replacement.
+including its ID, and never rereads the environment or creates a replacement.
 Only when neither condition holds may a request perform a new capture, increment
 `previewEpoch`, and replace the prior unconsented preview. If an initial operation terminates
 without activating consent, its freeze ends only after the operation unregisters. This is
@@ -404,7 +391,7 @@ in-flight enable from committing authority for an unreachable preview.
 | Field | Type | Rules |
 |---|---|---|
 | `allowlistVersion` | date string | Must equal the displayed current contract |
-| `previewId` / `previewDigest` | opaque strings | Must match the current in-memory preview exactly |
+| `previewId` | opaque string | Must match the current in-memory preview exactly |
 | `confirmedTools` | exact `[copilot, claude, codex]` | Server-derived fixed set matching all three frozen entries; the request contains no selector and cannot narrow it |
 | `confirmedAt` | `UtcTimestamp` | Memory only |
 | `active` | boolean | Cleared when Global inspection is disabled and all tool-specific Global Sources are removed |
@@ -506,8 +493,8 @@ existing Sources. After a client purge, the SPA fetches a fresh session,
 uses `previewId` to require the exact stored preview from the preview route, redisplays all
 paths/states/exclusions, and only then offers retry; disable is available immediately.
 Published tools are derived from `sources[].tool` and cannot also be retryable. The DTO
-contains no admitted root, digest, or source content; the separately fetched
-frozen preview supplies its own digest for the unchanged enable request.
+contains no admitted root or source content; the separately fetched
+frozen preview supplies the exact displayed state for the unchanged enable request.
 `toolFailures` lets a fresh client attach each session-owned deterministic admission/scan
 Diagnostic to its exact tool; its IDs also occur in `sessionDiagnosticIds`. A control with a
 null `diagnosticId` has no row, and serialization rejects a dangling, duplicate, cross-tool,
@@ -832,24 +819,27 @@ Inspector's Repository and Global sources.
 | Field | Type | Rules |
 |---|---|---|
 | `base` | one exact Source-boundary descriptor | Repository or the named consented tool-specific Global boundary; never inferred from a selector |
-| `selectors` | non-empty ordered unique `MatcherSelector[]` | Alternatives owned by one static rule; Repository renderings begin `./`, Global renderings are relative to that tool boundary |
-| `MatcherSelector.rendered` | canonical string | Human contract spelling; must round-trip exactly from its typed segment program |
-| `MatcherSelector.segments` | non-empty `MatcherSegment[]` | Closed ordered program; final token denotes a regular file |
-| `MatcherSegment` | exact discriminated union | `{ kind: 'literal', value: NonEmptyMatcherLiteralSegment }`, `{ kind: 'one-segment', suffix: MatcherLiteralSuffix }`, or `{ kind: 'recursive-directories' }`; no executable glob, regular-expression object, implicit discriminator, or extra field |
+| `selectors` | non-empty ordered unique selector programs (`MatcherSegment[][]`) | Alternatives owned by one static rule, each a closed ordered program relative to the base boundary; the final token denotes a regular file |
+| `MatcherSegment` | exact discriminated union | `{ kind: 'literal', value: NonEmptyMatcherLiteralSegment }`, `{ kind: 'regex', pattern: RegExp }`, or `{ kind: 'recursive-directories' }`; no executable glob, implicit discriminator, or extra field |
 
 A `NonEmptyMatcherLiteralSegment` is a non-empty printable ASCII string whose code units are
 U+0021–U+007E except `/`, `\\`, `:`, `*`, `?`, `\"`, `<`, `>`, and `|`; `.` and `..` are
 also forbidden. This same closed type is used by static fixed prefixes, exact targets, and
-fixed derived suffixes. `MatcherLiteralSuffix` is either the empty string or one
-`NonEmptyMatcherLiteralSegment`; empty renders the canonical bare `*` token and is allowed
-only as a `one-segment` suffix. The compiler rejects any non-ASCII registry path literal, so raw
-byte/code-unit relevance cannot disagree with later NFC classification. A `literal` matches
-one case-sensitive exact ASCII segment. `one-segment` is rendered as `*` plus
-its fixed literal suffix and matches one non-empty segment; it is a directory step when
-non-terminal and a file step when terminal. `recursive-directories` is rendered only as
-the complete `**` segment, matches zero or more directories, is non-terminal, and cannot
-be adjacent to another recursive token. Build validation compiles
-and canonical-round-trips every rendering; runtime loads only this immutable typed form.
+fixed derived suffixes. The compiler rejects any non-ASCII registry path literal, so raw
+byte/code-unit relevance cannot disagree with later NFC classification for fixed prefixes
+and exact targets. A `literal` matches one case-sensitive exact ASCII segment.
+`regex` carries one JavaScript regular expression and matches one entry name exactly
+when `pattern.test` matches the raw entry name — standard `RegExp` semantics, so anchoring
+and escaping are the pattern author's explicit spelling and the shipped rule fixtures own
+their correctness; a pattern tests the raw entry name, which may be an NFD spelling on
+disk. It is a directory step when non-terminal and a file step when terminal, and is
+written as its regex literal (for example `/\.md$/u`). `recursive-directories` — the `**`
+step — matches zero or more directories, is non-terminal, and cannot
+be adjacent to another recursive token. The registry is authored directly in the typed
+segment form, which is also what the contract tables show. Grammar, literal-alphabet,
+uniqueness, and selection-policy obligations are enforced by the build/contract validator
+(the registry contract gate), not re-checked by runtime logic. Runtime loads
+only this immutable typed form.
 This permits composites such as descendant context plus a direct child, or
 descendant context plus a recursive fixed subtree, without inventing a single ambiguous
 expansion enum.
@@ -871,7 +861,7 @@ owns the fixed per-tool inspection-path allowlist that the inspection module tra
 | `TraversalSelectorPlan.remainder` | `MatcherSegment[]` | Repository's complete selector program, empty for a Global exact target, or the complete dynamic program strictly below a Global fixed-subtree root |
 
 Compilation is a closed lossless mapping: `repository-program` has an empty `fixedPrefix`
-and a `remainder` equal to the complete `MatcherSelector.segments`; `global-exact` compiles
+and a `remainder` equal to the complete selector program; `global-exact` compiles
 an all-literal selector into a non-empty `fixedPrefix` ending at the target file with an
 empty `remainder`; `global-fixed-subtree` compiles the maximal leading literal directory
 chain into `fixedPrefix` and keeps the non-empty dynamic program below it as `remainder`.
@@ -923,7 +913,7 @@ the bilingual inspection-rule contract. It is not read from the inspected reposi
 | `sourceRefs` | non-empty `OfficialSourceRecord.sourceId`[] | Exact direct Evidence-cell sources for this rule, reciprocally validated. Evidence owned by referenced behaviors or strategies remains reachable through those IDs and is not silently copied into this registry field |
 
 The build/contract validator checks uniqueness, legal field combinations, selector-program
-token/position and canonical-round-trip rules, exact traversal compilation, referenced
+token/position rules, exact traversal compilation, referenced
 rule IDs, closed derivation mapping/acyclicity, and exact fixture agreement before packaging. The runtime
 loader checks the embedded registry schema, integrity, and contract version before
 scanning. There is no repository-provided plugin for adding rules.
@@ -1566,34 +1556,6 @@ a later Node.js/OS rejection follows the normal boundary rule. A throw during
 `isAbsolute` or state/presentation construction propagates to the preview session API boundary and
 creates no preview. No step normalizes the string, changes separators, calls the
 filesystem, or silently chooses another root.
-
-### GlobalPreviewDigestEncoding
-
-`previewDigest` is the unpadded 43-character base64url result of
-HMAC-SHA-256 under the process's 256-bit preview key. Its input is a single canonical byte
-record. `u64(n)` is an unsigned eight-byte big-endian integer. `string(s)` is byte `0x53`,
-`u64(s.length)`, then each exact ECMAScript UTF-16 code unit as two big-endian bytes; it
-therefore preserves lone surrogates and never uses replacement encoding. `array` is byte
-`0x41`, `u64(elementCount)`, then its elements. `record` is byte `0x4f`, `u64(fieldCount)`,
-then each `string(fieldName)` and value in its declared order. Integers use byte `0x49`
-plus `u64`; Boolean false is bytes `0x42 0x00` and true is bytes `0x42 0x01`; all enums
-and IDs use `string`. Null is not used in this digest schema.
-
-The top value is exactly one record with field count 6 and fields in this exact order:
-`domain`, whose fixed value is `agent-customization-inspector/global-preview/v1`,
-`sessionId`, `previewId`, `allowlistVersion`, `entries`, and
-`excludedRuleIds`. Entries stay in Copilot, Claude, Codex order and each is a field-count-6
-record in exact order `tool`, `origin`, `lexicalRoot`, `displayRoot`, `pathPatterns`,
-`inputState`. The digest therefore binds each frozen raw root string together with its
-escaped display form in fixed tool order, exactly as FR-013 requires. `pathPatterns`
-retain displayed order and are the fixed relative patterns rendered from the shipped
-allowlist. Arrays preserve their already contracted order, while
-`excludedRuleIds` preserve their contracted sort.
-Unknown/missing/extra fields or a noncanonical order prevents preview creation.
-Constant-time comparison uses
-the 32 decoded digest bytes and rejects a value unless it is exactly 43 ASCII base64url
-characters, decodes to exactly 32 bytes, and round-trips to the same unpadded canonical
-base64url before comparison.
 
 ### BrowserState
 
@@ -3458,8 +3420,9 @@ old file records in place.
     and file-detail envelope. Network delivery may occur later, but cannot relabel the
     captured payload. Client request tokens, generation, epoch, and file existence are all
     rechecked at adoption time.
-16. A Global preview retains the raw `lexicalRoot` only in process memory, binds it
-    and its escaped `displayRoot` in the digest, and uses that stored raw value for admission.
+16. A Global preview retains the raw `lexicalRoot` and its escaped `displayRoot` only in
+    process memory as the one record behind its `previewId`, and uses that stored raw value
+    for admission.
     Escaped `displayRoot` is presentation only and environment input is never reread by enable.
 17. Product-issued mutation-capable filesystem operations and open flags are absent. Tests
     compare content, length, identity/link state, mode, mtime, ctime, and observable xattrs/

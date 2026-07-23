@@ -298,7 +298,7 @@ plain JavaScriptであり、`open`はproduction closureに存在しないまま�
 2. **Inspector matcher registry**はstableな`ruleId`を記録し、共通の
    [allowlist grammar](contracts/inspection-path-allowlist.ja.md)に従う。全Repository matcherはBase、ordered Relative
    selector、それらと1対1のtyped segment programを分離し、正確なselected Repository rootから`./`で表記してbare `**/`を
-   拒否する。Literal、one-segment、non-adjacent recursive-directory tokenは1 program内でcomposeできる。`./**/`は
+   拒否する。Literal、regex、non-adjacent recursive-directory tokenは1 program内でcomposeできる。`./**/`は
    明示的な下向きInspector descendant inventoryだけを表し、vendor traversalを主張しない。Build validationは同じ
    programをimmutable versioned `TraversalPlan` dataへcompileし、Global preview patternをそのplanからrenderしてconsentへ
    schema、closed selection policy、canonical programをbindする。Content依存policyはclosedなCodex Global
@@ -607,7 +607,7 @@ inert renderingによってcontent自体の実行、load、navigateを防ぐ。
 **決定**: `@eslint/config-inspector`の基盤であるlocal-tool frameworkの`devframe` 0.7.5をsession hostとして
 採用し、devframe認証を無効化する（`auth: false`。2026-07-22のowner決定、spec.md § Clarifications
 Session 2026-07-22、憲章v3.0.0）。CLIは`devframe/adapters/dev`の`createDevServer`でhostを起動する:
-devframeが`127.0.0.1`へbindし、build済みNuxt SPAを`cli.distDir`（`dist/public`）から直接配信し、
+devframeがloopbackの`localhost`へbindし、build済みNuxt SPAを`cli.distDir`（`dist/public`）から直接配信し、
 session APIを、`defineRpcFunction`で宣言してdefinitionの`setup`で登録するdevframe RPC functionとして
 担う。Port/host解決、SPA fallback付きstatic配信、RPC channel、browser openingはproduct codeではなく
 devframeのpolicyである。Session保護はloopback bindingだけとする: per-session tokenも、Origin/Host分類も、
@@ -662,7 +662,7 @@ acknowledgementはbundled-SPAの必須presentation invariantであり、authoriz
 comparison constructionをgateする。通常のscope限定route、file/Source、generation cleanupはそのpurgeではなく、
 読み込み済みdocumentについてacknowledgementを維持してよい。Global disableは明示的なfull-purge例外である。
 
-Browser attempt前に、解決済みlocal origin `http://127.0.0.1:<port>/`をhostのready callbackから起動元
+Browser attempt前に、解決済みlocal origin `http://localhost:<port>/`をhostのready callbackから起動元
 terminalへ正確に1回表示する（FR-001）。Browser openingはdevframeのpolicyである: CLIのnegatableな
 `--open` flag（default true）はdevframeのopen flagへ対応し、devframeのopenerはその解決済みoriginだけを
 受け取り、inspection由来のcontent/pathを決して受け取らない（FR-022）。Productは解決されたhandlerの
@@ -701,7 +701,7 @@ payloadをsession retrievalごとに繰り返さない。
 - devframeのdefaultであるinteractive OTP認証はconfig-inspector parityのため不採用。devframe自身が、
   printed one-time-codeのround-tripが邪魔になるだけのtrusted single-user localhost tool向けに
   `auth: false`を文書化している。
-- 一般的な`--host` supportとCORSはremote accessがscope外のため不採用。Hostは`127.0.0.1`だけへbindする。
+- 一般的な`--host` supportとCORSはremote accessがscope外のため不採用。Hostはloopbackの`localhost`だけへbindする。
 - RPC channel上のproduct定義push protocolは、lifecycle-triggered liveness check、ordinaryなrequest outcome、
   hidden/pageでの即時purgeにより、product timerなしで必要なobservable teardown signalを得られるため不採用。
 - Project-ownedなbrowser-launch adapter（ambient environment allowlist付きの固定`/usr/bin/open`/`xdg-open`
@@ -851,7 +851,7 @@ integration suiteを実行し、symlink-transparent read、broken linkの`file-u
 link cycleでのscan終了、unreadable file、binary content、全byte decode
 outcome、missing/unreadableなroot、`partial` commitによるper-file failure分離、最後にcommitした
 snapshotへのfatal-rescan rollback、pack後実行を扱う。Local fixture rootとproductの全
-socket/HTTP(S)/DNS/SMB/URI/image/remote-reference/MCP surfaceをinstrumentする。発行済みのexactな`127.0.0.1` authorityにおける
+socket/HTTP(S)/DNS/SMB/URI/image/remote-reference/MCP surfaceをinstrumentする。発行済みのexactな`localhost` authorityにおける
 2つのexactなFR-022 authorized internal loopback class、すなわちpackaged UI asset向けstatic/SPA `GET`/`HEAD`と
 local session API channelを別々に分類・検証する。Inspected contentにより、それ以外のFR-022で定義したdirect product-issued outbound request、MCP connection、child process、dynamic evaluation、product-issued
 source mutationが発生するとtestを失敗させる。Explicit UNC/server-share/device vectorはfilesystem/DNS/SMB call 0件を証明し、lexicalに

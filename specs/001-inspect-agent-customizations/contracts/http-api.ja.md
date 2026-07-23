@@ -3,7 +3,7 @@
 [English](http-api.md)
 
 **API version**: 1
-**Transport**: `127.0.0.1`へbindし、authenticationをdisable（`auth: false`）した
+**Transport**: `localhost`（loopbackのみ）へbindし、authenticationをdisable（`auth: false`）した
 devframe 0.7.5 standalone host
 **RPC namespace**: 全session functionを`agent-customization-inspector:` name prefixで登録する
 
@@ -14,7 +14,7 @@ Public network APIではない。Session channelはopaque IDとclosed commandだ
 filesystem path、URL、command、source text、parser option、glob、executable contentを受け付ける
 functionはない。
 
-FR-022は、発行済みの`127.0.0.1` authorityにおけるexactな2つのclosed internal-loopback class
+FR-022は、発行済みの`localhost` authorityにおけるexactな2つのclosed internal-loopback class
 だけを認可する。
 
 1. **Packaged UI serving** — packaged UI assetへのunauthenticatedな`GET`/`HEAD`。すなわち
@@ -29,10 +29,11 @@ customization-selected destination、別machineへの調査content送信は禁�
 
 ## Host要件
 
-1. Processはdevframeが選択したlocal portへ`127.0.0.1`だけでbindする。Host overrideはなく、どの
-   configuration/flagも`0.0.0.0`、LAN address、Unix socketへbindしない。Serve前にhostは全
-   inspected-source operationに使う中央集約したNode.js filesystem serviceを初期化し、filesystem
-   serviceが利用不能ならsession開始前にfixed actionable CLI errorで終了する。Node.js互換性は
+1. Processはdevframeが選択したlocal portへ、固定のhost名`localhost`（platformのresolverがIPv4 `127.0.0.1`またはIPv6 `::1`として解決する）を通じてloopback interfaceだけでbindする。Host overrideはなく、どの
+   configuration/flagも`0.0.0.0`、LAN address、Unix socketへbindしない。全inspected-source
+   filesystem operationはinspection module（`src/server/inspection/`）が発行する。他の
+   production moduleはNode.jsのfilesystem APIをimportせず、その前段に別のadmission serviceは
+   存在しない。Node.js互換性は
    `engines.node`で1回だけ宣言してpackage managerがenforceし、package/asset integrityはpackage
    testとrelease gateがenforceする。Hostは自身のpackaged artifactをruntimeで再検証しない
    （Constitution Principle I）。
@@ -48,7 +49,7 @@ customization-selected destination、別machineへの調査content送信は禁�
    integrity再検証、HTML alias rule、hand-written routerを一切定義しない。Nuxtは
    `app.baseURL: '/'`、CDN URLなしを使うため、shellは全client routeで変更なしに動作する。
    Static servingはpackaged UI output directoryの外へ到達せず、inspected fileへfallbackしない。
-4. 起動時にhostは正確な`http://127.0.0.1:<port>/` URLを起動元terminalへ1回表示する。自動browser
+4. 起動時にhostは正確な`http://localhost:<port>/` URLを起動元terminalへ1回表示する。自動browser
    openingはdevframe-ownedかつFR-001に基づくbest-effortであり、`--no-open`でdisableでき、
    disabled/unsupported/failedのhelperはfixed warningを出してserverと表示済みURLをusableに保つ。
    Helperはinspection由来のcontentもpathも受け取らない（FR-022）。任意のclient routeのreload/
@@ -578,8 +579,8 @@ createまたはreplaceする。
 
 ```text
 GlobalConsentPreview
-├── previewId, previewDigest, allowlistVersion, traversalPlanVersion
-├── entries[] { tool, origin, displayRoot, pathPatterns[], inputState }
+├── previewId, allowlistVersion, traversalPlanVersion
+├── entries[] { tool, origin, displayRoot, inputState }
 └── excludedRuleIds[]
 ```
 
@@ -596,7 +597,7 @@ stringのまま保持する。
 `displayRoot`は`lexicalRoot`由来のone-way presentation escapeであり、pathへdecodeせずadmission
 inputにも使わない。候補Global root配下の`stat`、`realpath`、directory enumeration、file readを
 行わない。Node.jsと実行環境がvalueを保持・escapeできるかを決める。Environment capture、
-`homedir()`、join、retention、presentation encoding、digest construction、serializationの
+`homedir()`、join、retention、presentation encoding、serializationの
 throw/rejectionはこのaccept前RPC boundaryへ到達し、invocationをordinary errorでrejectする
 （jobも`scanRequestId`も作らない）。Read authorityを作らず、normalization、canonicalization、
 root creation、readを行わない。
@@ -606,14 +607,13 @@ overrideはdefaultへ戻さずinvalidと表示する。Successful createはcompl
 conflict rejection、registered enableでは`global-enable-in-progress` conflict rejection、disable
 fenceでは`global-disable-pending` conflict rejectionを返し、environment recaptureもstate change
 も行わない。Read functionがfresh-client recovery用のexact frozen previewを提供し、別previewには
-先にdisableが必要となる。Canonical HMAC digestはsession、`previewId`、version、順序付きtool
-entry、type tag付きlength-prefix encodingによる各exact raw `lexicalRoot`、および別に
-length-prefixしたescaped `displayRoot`、origin、state、exclusion、typed `TraversalPlan` version、
-closed selection policy、canonical programをbindする。Escaped `displayRoot`をraw digest inputの
-代わりに使わないため、presentation escape上で似て見える2つのraw valueはcollisionしない。
+先にdisableが必要となる。Previewはserverが保持するopaque `previewId`で識別する唯一のrecordで
+あり、enableとretryはそのIDを指名する。Serverは自身のstored recordだけに基づいて動作し、
+server-retained stateのcryptographicな再検証は行わない。
 
-Public `pathPatterns` entryは全て同じshipped static typed `TraversalPlan`から生成し、説明表示で
-あって別matcher/read authorityではない。Consent/root admission後、exact-file ruleは指定fileだけを
+Previewは意図的にpatternごとの表示を持たない。Admitted root配下で何をreadするかは、保持済み
+`allowlistVersion`/`traversalPlanVersion` pairが特定するshipped static typed `TraversalPlan`で
+固定され、consent文言がその範囲を平易な言葉で説明する。Consent/root admission後、exact-file ruleは指定fileだけを
 readしてGlobal rootをenumerateせず、fixed-instruction-subtree ruleはそのwalkに必要なplan指定
 instruction subtreeだけをenumerateする。どのoperationもsibling setting、credential、state、
 plugin、その他neighbor pathをlist、stat、readしない。
@@ -638,8 +638,7 @@ Parameters:
 {
   "confirmed": true,
   "allowlistVersion": "2026-07-20",
-  "previewId": "opaque-preview-id",
-  "previewDigest": "opaque-keyed-digest"
+  "previewId": "opaque-preview-id"
 }
 ```
 
@@ -654,10 +653,10 @@ GlobalEnableResult
 ```
 
 UIはそのpreviewの3 toolすべての正確なGlobal path集合、lexical input state、exclusionを表示した
-後だけ送信できる。Hostはfalse confirmation、古いcontract version、superseded preview、
-constant-time比較で不一致のdigestを拒否する。Stored internal raw `lexicalRoot`とstored typed
-traversal programだけを使い、environment inputを読み直さず、`displayRoot`をreverse-convertせず、
-`pathPatterns`をauthorityとして受け付けない。Parameterは意図的にtool selectorを持たない。Initial
+後だけ送信できる。Hostはfalse confirmation、古いcontract version、superseded previewを
+拒否する。Stored internal raw `lexicalRoot`とstored typed
+traversal programだけを使い、environment inputを読み直さず、`displayRoot`をreverse-convertしない。
+Parameterは意図的にtool selectorを持たない。Initial
 enableは、すでにlexicalにinvalidなentryも含むfrozen preview entry 3件すべてからexact fixed
 `[copilot, claude, codex]` setをderiveする。Retryはcurrent server-side `retryableTools` subset、
 すなわちunpublishedかつnon-pendingのadmitted controlとsame-preview rejected controlだけをexactに
@@ -867,7 +866,7 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
 - Session-channel invocationはMCP serverを起動せず、importを追わず、inspected URLを開かず、
   customization commandをinvokeせず、inspected sourceへwriteしない。Hostはdevframeのoptional
   MCP routeをenableしない。
-- Enabled inspection sourceは`node:fs/promises`上に構築した1つの中央集約serviceだけで
+- Enabled inspection sourceは`node:fs/promises`上に構築したinspection moduleだけで
   enumerate/readする。API request、relationship、source fileが与えた任意absolute pathは受け付け
   ず、validated source IDとsource-relative enumeration recordだけを受け付ける。利用可能な
   capacityはNode.js、OS、filesystem、実行環境から継承する。全openはread-only、non-create、
@@ -900,9 +899,9 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
 
 ## 必須contract test
 
-1. Startup fixtureは、standalone hostのlistening socketが全supported OSで`127.0.0.1`へbindされ、
+1. Startup fixtureは、standalone hostのlistening socketが全supported OSでloopback address（platformの`localhost`解決に応じてIPv4 `127.0.0.1`またはIPv6 `::1`）へbindされ、
    どのconfiguration/flagも`0.0.0.0`、LAN address、Unix socketへbindしないこと、表示済みlaunch
-   lineがloopback authorityを持つことをassertする。Channel fixtureは、session channelにtoken、
+   lineが`localhost` authorityを持つことをassertする。Channel fixtureは、session channelにtoken、
    session capability、bearer header、origin classificationが存在しないこと、shipped
    documentationが残余unauthenticated-loopback limitation（他local process、DNS rebinding）を
    記載することを証明する。Presentation-output testはhelp/version text、1件の
@@ -1050,14 +1049,15 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
    detail/comparison requestにはnew acknowledgementを要求する。Accept前disable failureとtrue
    no-opはいずれもfresh-session fenceをnullのままにするため、purged clientは直ちにresume
    できる。
-8. Global consent previewは候補pathに触れず、confirmationをexact raw internal `lexicalRoot`、
-   typed traversal-plan version/program、preview digestにbindする。Changed/superseded previewは
+8. Global consent previewは候補pathに触れず、confirmationはserverが保持する唯一のpreviewを
+   `previewId`で指名して、そのpreviewが保持するexact raw internal `lexicalRoot`とtyped
+   traversal-plan version/programをbindする。Changed/superseded previewは
    readを許可できない。Create functionだけが3件すべてのenvironment inputをcaptureして
    unconsented previewをatomicにcreate/replaceする。Read functionはcaptureを0回とし、disable
    fence中も含めcurrent/frozen previewだけを返す。Missing-current、active-consent、
    in-progress-enable、disable-fence caseはaccidental replacementなしで文書化したclosed
-   outcomeを返す。Escape-collision、control-character、backslash fixtureはdigestがraw valueを
-   length-prefixし、enableがstored raw valueだけを使ってenvironmentを再読込せず`displayRoot`を
+   outcomeを返す。Escape-collision、control-character、backslash fixtureは、enableがstored raw
+   valueだけを使ってenvironmentを再読込せず`displayRoot`を
    reverse-convertしないことを証明する。Parameterはtool selectorを持たず、initial enableは凍結
    済みentry 3件すべてを必ずevaluateする。Missing/unreadableなconsented rootと決定的なlexical
    outcomeがrejected toolとadmitted toolをpartitionし、unexpectedなthrow/rejectionは
@@ -1098,7 +1098,7 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
    要求する。Traversal fixtureはpublic patternがtyped plan由来で、exact Global targetはGlobal
    rootをenumerateせずにreadされ、fixed instruction-subtree walkはそのsubtreeだけをenumerate
    し、neighboring setting、credential、state、plugin pathへI/Oしないことを証明する。
-9. 中央集約したNode.js filesystem serviceは、全supported OSでallowlisted inspection pathだけを
+9. Inspection moduleは、全supported OSでallowlisted inspection pathだけを
    readする。Symlinkされたcustomization fileは透過的にreadされ、他のfileと同様にlink先content
    を表示する。Targetがmissingまたはunreadableなlinkは`partial` generation内のfile-scopedな
    `file-unreadable` Diagnosticになる。Directory link cycle fixtureは、recursiveなtraversalが
@@ -1111,7 +1111,7 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
    する。Before/after fixtureはcontent、length、identity/link state、mode、
    modification/change time、観測可能なextended attribute/ACLが不変であることを証明する。
    OS-only access-time movementは別に記録し、failureともproofともせず、product callはそれを
-   requestしない。Operationのlifecycleは製品定義のconcurrency上限なしで中央管理する。
+   requestしない。Operationのlifecycleは製品定義のconcurrency上限なしで管理する。
 10. Packaged CLIはauthenticationをdisableしたdevframe standalone adapterをbootする。Fixtureは
     `auth: false`、packaged `dist/public` UI directory、`agent-customization-inspector:`
     function namespaceをassertし、`--no-open`がbrowserを開かないこと、自動openingが

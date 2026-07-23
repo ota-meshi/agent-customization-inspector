@@ -18,7 +18,7 @@ them.
 - The exact Chromium, Firefox, and WebKit revisions installed by Playwright 1.61.1 through
   the project setup command; these pinned revisions are the reproducible automated browser-
   certification baseline, not an exhaustive list of browsers a user may run
-- A browser capable of reaching `127.0.0.1`; for release evidence, use one of those certified
+- A browser capable of reaching `localhost`; for release evidence, use one of those certified
   revisions, including when the OS default handler selects some other browser
 
 Confirm the toolchain:
@@ -67,8 +67,8 @@ Expected:
   is no post-build validator and no generated asset manifest: the emitted tree is owned by
   the pipeline tools that produce it, and the devframe host serves it unchanged at
   runtime.
-- tsdown emits the named `cli.mjs` entry, the centralized Node.js
-  filesystem service, and any code-split chunks with fixed ESM extensions directly into
+- tsdown emits the named `cli.mjs` entry, the bundled server modules including the
+  inspection module, and any code-split chunks with fixed ESM extensions directly into
   `dist/`. There is no staging copy step and no server-side manifest.
 - The packaged `dist/cli.mjs` starts with the exact BOM-free, LF-terminated first line
   `#!/usr/bin/env node` preserved by tsdown from the `src/server/cli.ts` entry; the package
@@ -126,8 +126,8 @@ actionable message rather than a session or session-API error.
 
 Expected:
 
-- The devframe host prints the local `127.0.0.1` origin exactly once before any browser
-  attempt and never binds a non-loopback address. The printed URL is the plain origin: it
+- The devframe host prints the local `http://localhost:<port>/` origin exactly once before
+  any browser attempt and never binds a non-loopback address. The printed URL is the plain origin: it
   carries no per-session token, fragment, or other secret. With `--no-open` — a devframe
   CLI flag — no browser opens and no browser-helper child process is created.
 - The Repository source root shown by the browser is the `all-supported` fixture itself.
@@ -233,7 +233,7 @@ Expected:
    work, synchronizes design artifacts, and reruns plan/task generation.
 - Integration/security tests use recorded local fixture roots and instrument all product
   network/URL/MCP surfaces. They separately classify and validate the two exact FR-022
-  authorized internal loopback classes at the issued `127.0.0.1` authority—static/SPA
+  authorized internal loopback classes at the issued `localhost` authority—static/SPA
   `GET`/`HEAD` for the packaged UI assets and the local session API channel, both
   unauthenticated behind the loopback-only devframe bind—and
   prove zero customization-derived execution, child process, MCP connection, prohibited direct
@@ -244,8 +244,8 @@ Expected:
   startup browser opening receives no inspection-derived
   content/path, authored value, user-supplied command, or environment-selected handler.
   There are no host-security or HTTP-router contract suites to run: the per-session token,
-  Origin checks, and hand-written router are removed, protection is the `127.0.0.1` bind
-  alone, and an unexpected session-API failure propagates its real error to the requesting
+  Origin checks, and hand-written router are removed, protection is the loopback-only
+  `localhost` bind alone, and an unexpected session-API failure propagates its real error to the requesting
   client while the session stays usable.
 - Package tests build a tarball, inspect its contents, install it into an isolated fixture,
   load the packaged Node.js filesystem service, and
@@ -319,7 +319,7 @@ Verify:
    per-file diagnostic (`file-unreadable` or `file-content-binary`) instead of falling
    back. These fixtures
    pin the content rule, short-circuit behavior, and zero operations on an unselected target.
-3. Static rules authorize only their exact typed literal/one-segment/recursive-directory
+3. Static rules authorize only their exact typed literal/regex/recursive-directory
    programs and traversal boundaries, never a text glob evaluated at runtime. A file
    admitted by static and derived rules remains one inventory file retaining both provenances, each
    with its own matched path, behavior/strategy/source evidence, scope/order, and
@@ -656,8 +656,7 @@ real home directory. Verify:
    `lexicalRoot` and the escaped `displayRoot`. It also binds the
    typed `TraversalPlan` version, closed selection policy, and canonical program. The display field never
    substitutes for the raw field. Enable uses only the frozen raw value and stored plan; it
-   never rereads the environment, reverse-converts `displayRoot`, or treats displayed
-   `pathPatterns` as authority. Escape-collision, control-character, and backslash fixtures
+   never rereads the environment or reverse-converts `displayRoot`. Escape-collision, control-character, and backslash fixtures
    prove that digest preserves the separate fields and admission uses the stored raw value.
    A preview with two eligible entries and one invalid entry has no request-side tool
    selector: initial enable derives fixed `confirmedTools: [copilot, claude, codex]`,
@@ -1437,7 +1436,7 @@ prohibited-effect class — customization-derived command or code execution, chi
 MCP connection, direct product-issued outbound request as defined by FR-022, and
 product-issued inspected-source mutation; and for an out-of-bound selector for each
 Repository and Global source kind. Its cases independently validate the two exact FR-022
-authorized internal loopback classes at the issued `127.0.0.1` authority, record that every
+authorized internal loopback classes at the issued `localhost` authority, record that every
 fixture root is local while documenting lexically indistinguishable pre-mounted/mapped
 network filesystems as the FR-022 platform/environment limitation (explicit
 UNC/server-share/device vectors prove zero filesystem, DNS, and SMB calls), instrument
@@ -1645,7 +1644,7 @@ tree is owned by devframe and the lockfile.
 There is no host-security or HTTP-API-router contract step to rerun: the per-session
 token, Origin checks, and hand-written router are removed with the adoption of the
 devframe local-tool framework. Transport protection is the devframe host's
-`127.0.0.1`-only bind with devframe authentication disabled, an unexpected session-API
+loopback-only `localhost` bind with devframe authentication disabled, an unexpected session-API
 failure returns its real error to the requesting client, and the
 residual exposure of an unauthenticated loopback host — other local processes and, via DNS
 rebinding, a malicious web page — is the documented limitation.

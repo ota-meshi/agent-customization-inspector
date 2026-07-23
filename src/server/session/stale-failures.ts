@@ -1,29 +1,8 @@
 // Session-owned explicit-rescan stale-failure overlay. One current entry may
 // exist per published Source; the derived snapshot state is stale exactly
-// while any entry remains.
-
-/**
- * What explains a stale entry: a deterministic Diagnostic or the failed
- * request's error message (FR-030).
- */
-export type StaleFailureRef =
-  | { readonly kind: 'diagnostic'; readonly diagnosticId: string }
-  | { readonly kind: 'error'; readonly message: string };
-
-/**
- * One Source's explicit-rescan stale overlay; the retained snapshot stays
- * visible while this entry exists.
- */
-export interface StaleSourceFailure {
-  /** The Source whose explicit rescan failed. */
-  readonly sourceId: string;
-  /** What explains the failure: a Diagnostic or the failed request's error. */
-  readonly failureRef: StaleFailureRef;
-  /** UTC timestamp of the terminal failure. */
-  readonly failedAt: string;
-  /** The owning sequence's generation that stays visible as stale (FR-030). */
-  readonly baseGeneration: number;
-}
+// while any entry remains. The DTO shape lives in the shared API module;
+// this module owns only the overlay bookkeeping.
+import type { StaleSourceFailure } from '../../shared/api-types';
 
 /**
  * Creates or replaces only the entry for the failing Source. Entries for

@@ -16,6 +16,7 @@ describe('closed diagnostic registry', () => {
       'file-unreadable',
       'file-content-binary',
       'recognition-parse-failed',
+      'path-normalization-collision',
     ]);
   });
 
@@ -26,6 +27,8 @@ describe('closed diagnostic registry', () => {
       expect(DIAGNOSTIC_REGISTRY[code].scope).toBe('file');
       expect(DIAGNOSTIC_REGISTRY[code].ownerKind).toBe('candidate-file');
     }
+    expect(DIAGNOSTIC_REGISTRY['path-normalization-collision'].scope).toBe('session');
+    expect(DIAGNOSTIC_REGISTRY['path-normalization-collision'].ownerKind).toBe('candidate-file');
   });
 });
 
@@ -87,6 +90,30 @@ describe('attachment shapes', () => {
     expect(record.lifecycleOwnerKey).toBe('global:codex');
   });
 
+  it('enforces the pathless session scope for a normalization collision', () => {
+    // No unambiguous public path exists for a colliding group, so every
+    // location field is rejected (spec.md Clarifications § Session 2026-07-20).
+    for (const location of [
+      { sourceId: 's-1' },
+      { sourceId: 's-1', fileId: 'f-1', sourceRelativePath: 'AGENTS.md' },
+      { sourceRelativePath: 'AGENTS.md' },
+    ]) {
+      expect(() =>
+        createDiagnostic({
+          code: 'path-normalization-collision',
+          lifecycleOwnerKey: null,
+          ...location,
+        }),
+      ).toThrow(/session-scoped/u);
+    }
+    const record = createDiagnostic({
+      code: 'path-normalization-collision',
+      lifecycleOwnerKey: null,
+    });
+    expect(record.sourceId).toBeNull();
+    expect(record.fileId).toBeNull();
+    expect(record.sourceRelativePath).toBeNull();
+  });
 });
 
 describe('serialization', () => {
@@ -157,5 +184,44 @@ describe('deterministic aggregation', () => {
     const distinct = candidate('CLAUDE.md', 'file-unreadable');
     const sorted = dedupeAndSortDiagnostics([first, duplicate, distinct]);
     expect(sorted).toHaveLength(2);
+  });
+});
+
+describe('successful complete atomic publication', () => {
+  it('publishes one complete deterministic batch regardless of emitter order', () => {
+    const records = [
+      createDiagnostic({
+        code: 'root-unreadable',
+        lifecycleOwnerKey: 'repository',
+        sourceId: 's-1',
+      }),
+      createDiagnostic({
+        code: 'file-unreadable',
+        lifecycleOwnerKey: null,
+        sourceId: 's-1',
+        fileId: 'f-1',
+        sourceRelativePath: 'AGENTS.md',
+      }),
+      createDiagnostic({ code: 'path-normalization-collision', lifecycleOwnerKey: null }),
+    ];
+    const forward = dedupeAndSortDiagnostics(records).map(serializeDiagnostic);
+    const reversed = dedupeAndSortDiagnostics([...records].reverse()).map(serializeDiagnostic);
+    // The whole batch publishes together: every unique record appears exactly
+    // once and the emitted order is a function of the records, not of the
+    // emitter interleaving of the producing attempt.
+    expect(forward).toHaveLength(records.length);
+    expect(reversed).toEqual(forward);
+  });
+
+  it('keeps internal routing state out of every published record', () => {
+    const published = dedupeAndSortDiagnostics([
+      createDiagnostic({
+        code: 'root-unreadable',
+        lifecycleOwnerKey: 'repository',
+        sourceId: 's-1',
+      }),
+      createDiagnostic({ code: 'path-normalization-collision', lifecycleOwnerKey: null }),
+    ]).map(serializeDiagnostic);
+    expect(JSON.stringify(published)).not.toContain('lifecycleOwnerKey');
   });
 });

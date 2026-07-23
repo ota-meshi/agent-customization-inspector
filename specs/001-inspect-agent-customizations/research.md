@@ -369,7 +369,7 @@ mixed path matrix:
    the common [allowlist grammar](contracts/inspection-path-allowlist.md). Every Repository
    matcher separates Base, ordered Relative selectors, and their one-to-one typed segment
    programs, is rendered from the exact selected Repository root with `./`, and rejects a bare `**/`.
-   Literal, one-segment, and non-adjacent recursive-directory tokens can compose in one program;
+   Literal, regex, and non-adjacent recursive-directory tokens can compose in one program;
    `./**/` denotes explicit downward Inspector descendant inventory only and never asserts
    vendor traversal. Build validation compiles the same programs into immutable versioned
    `TraversalPlan` data; Global preview patterns render from those plans and consent binds
@@ -759,7 +759,7 @@ loading, or navigating.
 `@eslint/config-inspector` — as the session host, with devframe authentication disabled
 (`auth: false`; owner decision 2026-07-22, spec.md § Clarifications Session 2026-07-22,
 Constitution v3.0.0). The CLI starts the host with `createDevServer` from
-`devframe/adapters/dev`: devframe binds `127.0.0.1`, serves the built Nuxt SPA directly
+`devframe/adapters/dev`: devframe binds the loopback `localhost`, serves the built Nuxt SPA directly
 from `cli.distDir` (`dist/public`), and carries the session API as devframe RPC functions
 declared with `defineRpcFunction` and registered in the definition's `setup`. Port and
 host resolution, static serving with the SPA fallback, the RPC channel, and browser
@@ -836,7 +836,7 @@ only the bootstrap generation carries null, and Global disable commits no genera
 all. The client binds current status and rendered
 inventory completion to its admitted request ID and rejects an earlier status or generation.
 
-Print the resolved local `http://127.0.0.1:<port>/` origin exactly once to the initiating
+Print the resolved local `http://localhost:<port>/` origin exactly once to the initiating
 terminal, from the host's ready callback, before any browser attempt (FR-001). Browser
 opening is devframe policy: the CLI's negatable `--open` flag (default true) maps to
 devframe's open flag, devframe's opener receives only that resolved origin — never
@@ -886,7 +886,7 @@ the separate preview avoids repeating a potentially large display payload in eve
   parity: devframe itself documents `auth: false` for trusted single-user localhost tools
   where the printed one-time-code round-trip only gets in the way.
 - General `--host` support and CORS were rejected because remote access is out of scope;
-  the host binds `127.0.0.1` only.
+  the host binds the loopback `localhost` only.
 - A product-defined push protocol on top of the RPC channel was rejected because
   lifecycle-triggered liveness checks, ordinary request outcomes, and the immediate
   hidden/page purge provide the required observable teardown signals without a product
@@ -1086,7 +1086,7 @@ a missing or unreadable root, per-file failure isolation with a `partial` commit
 fatal-rescan rollback to the last committed snapshot, and post-pack execution.
 Instrument tests with local fixture roots and all product socket/HTTP(S)/DNS/SMB/URI/image/
 remote-reference/MCP surfaces. Separately classify and validate the two exact FR-022 authorized
-internal loopback classes at the issued `127.0.0.1` authority—static/SPA
+internal loopback classes at the issued `localhost` authority—static/SPA
 `GET`/`HEAD` for the packaged UI assets and the local session API channel—and fail if inspected content causes
 any other direct product-issued outbound request as defined by FR-022, MCP connection, child
 process, dynamic evaluation, or product-issued source mutation. Explicit UNC/server-share/device vectors prove

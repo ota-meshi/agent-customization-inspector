@@ -1,6 +1,13 @@
 // T024: the fixed clean step removes only the package-owned generated
 // trees and never follows or touches anything else.
-import { existsSync, mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -41,5 +48,33 @@ describe('cleanBuildOutput', () => {
     await cleanBuildOutput(root);
     expect(existsSync(join(root, 'dist'))).toBe(false);
     expect(existsSync(join(root, 'precious', 'data.txt'))).toBe(true);
+  });
+
+  it('fails safely when the environment cannot complete the removal (T024)', async () => {
+    const root = makeRoot();
+    mkdirSync(join(root, 'dist', 'nested'), { recursive: true });
+    writeFileSync(join(root, 'dist', 'nested', 'file.txt'), 'x');
+    try {
+      chmodSync(root, 0o555);
+    } catch {
+      return;
+    }
+    try {
+      // Mode-based write protection does not bind for an elevated user;
+      // only assert the safe failure when the environment enforces it.
+      let protectionBinds = false;
+      try {
+        mkdirSync(join(root, 'probe-dir'));
+      } catch {
+        protectionBinds = true;
+      }
+      if (!protectionBinds) {
+        return;
+      }
+      // A blocked removal rejects instead of silently reporting a clean tree.
+      await expect(cleanBuildOutput(root)).rejects.toThrow();
+    } finally {
+      chmodSync(root, 0o755);
+    }
   });
 });
