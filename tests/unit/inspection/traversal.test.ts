@@ -15,6 +15,7 @@ import {
   collectFsMutationViolations,
   createFixtureRoot,
   snapshotTreeState,
+  tryMakeFifo,
   type CodexTargetCase,
   type TraversalFixtureTree,
 } from '../../fixtures/filesystem/build-filesystem-fixtures';
@@ -166,7 +167,9 @@ describe('ordinary recursive walk (T019)', () => {
       // On a normalization-preserving filesystem the raw NFD spelling is
       // retained as the operand; a normalizing filesystem may return the
       // NFC form from enumeration, which is then both operand and display.
-      expect(['nfd', nfdName]).toContainEqual(file.rawSegments[0]);
+      // The filename is the last segment (rawSegments[0] is the fixed 'nfd'
+      // directory); assert against it so the operand-retention check is real.
+      expect([nfdName, nfdName.normalize('NFC')]).toContainEqual(file.rawSegments[1]);
       expect(file.outcome).toMatchObject({ kind: 'readable', sourceText: 'nfd file\n' });
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -276,6 +279,35 @@ describe('ordinary recursive walk (T019)', () => {
     expect(asFile.kind).toBe('root-unreadable');
     const empty = await runTraversalScan({ root: tree.root, plans: [] });
     expect(empty).toMatchObject({ kind: 'scanned', files: [], collisions: [] });
+  });
+
+  it('fails an existing but unreadable root even when the compiled catalog is empty', async () => {
+    // FR-002: a root that exists as a directory but cannot be read (mode
+    // 000) is root-unreadable, not an empty success. `stat` alone accepts it
+    // and, with an empty catalog, no walk runs to surface the `readdir`
+    // failure — the readability probe closes that gap.
+    const root = createFixtureRoot('inspector-unreadable-root');
+    try {
+      chmodSync(root, 0o000);
+      let protectionBinds = false;
+      try {
+        readdirSync(root);
+      } catch {
+        protectionBinds = true;
+      }
+      if (!protectionBinds) {
+        return;
+      }
+      const result = await runTraversalScan({ root, plans: [] });
+      expect(result.kind).toBe('root-unreadable');
+    } finally {
+      try {
+        chmodSync(root, 0o755);
+      } catch {
+        // Best effort; the directory may already be gone.
+      }
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });
 
@@ -403,6 +435,48 @@ describe('global fixed-subtree walks (T019, FR-018)', () => {
         'copilot-instructions.md',
         'instructions/a.instructions.md',
         'instructions/nested/b.instructions.md',
+      ]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('classifies a non-regular entry at the exact target as unreadable instead of reading it', async () => {
+    const root = createFixtureRoot('inspector-copilot-nonfile');
+    try {
+      // A directory occupying the exact target path cannot be read as a
+      // candidate file; the probe's own type information must classify it
+      // (FR-024) instead of handing it to the one flag-free readFile —
+      // which would fail on a directory and block forever on a FIFO.
+      mkdirSync(join(root, 'copilot-instructions.md'));
+      const result = await runTraversalScan({ root, plans: [COPILOT_PLAN] });
+      if (result.kind !== 'scanned') {
+        throw new Error('expected scanned');
+      }
+      expect(result.files.map((file) => [file.publicPath, file.outcome.kind])).toEqual([
+        ['copilot-instructions.md', 'unreadable'],
+      ]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('classifies a FIFO at the exact target as unreadable without reading it', async () => {
+    const root = createFixtureRoot('inspector-copilot-fifo');
+    try {
+      // Unlike the directory case above (which readFile rejects with EISDIR
+      // anyway), a FIFO makes the probe's type gate load-bearing: a flag-free
+      // readFile on a FIFO blocks forever. This case therefore fails by timeout
+      // if the exact-target `knownUnreadable: !entry.isFile()` gate is removed.
+      if (!tryMakeFifo(join(root, 'copilot-instructions.md'))) {
+        return;
+      }
+      const result = await runTraversalScan({ root, plans: [COPILOT_PLAN] });
+      if (result.kind !== 'scanned') {
+        throw new Error('expected scanned');
+      }
+      expect(result.files.map((file) => [file.publicPath, file.outcome.kind])).toEqual([
+        ['copilot-instructions.md', 'unreadable'],
       ]);
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -553,6 +627,47 @@ describe('Codex override-empty ordered fallback (T020, FR-035)', () => {
     expect((await runCodexCase('absent', 'absent'))?.files).toEqual([]);
     expect((await runCodexCase('absent', 'empty'))?.files).toEqual([]);
     expect((await runCodexCase('empty', 'whitespace-only'))?.files).toEqual([]);
+  });
+
+  it('propagates a binary or replacement-decoded fallback outcome under an empty override', async () => {
+    // Override empty → the fallback branch runs. Its outcome must propagate:
+    // a binary fallback is published diagnostic-only, and a replacement-decoded
+    // fallback is non-empty (a retained U+FFFD is non-whitespace) and published
+    // as readable utf-8-replaced text. The rest of the matrix only ever varies
+    // the override side, leaving these fallback-branch outcomes uncovered.
+    const binary = await runCodexCase('empty', 'binary');
+    expect(binary?.files).toHaveLength(1);
+    expect(binary?.files[0]).toMatchObject({
+      publicPath: 'AGENTS.md',
+      outcome: { kind: 'binary' },
+    });
+    expect(binary?.fallbackTouched).toBe(true);
+
+    const replacement = await runCodexCase('empty', 'replacement-decoded');
+    expect(replacement?.files[0]).toMatchObject({
+      publicPath: 'AGENTS.md',
+      outcome: { kind: 'readable', encoding: 'utf-8-replaced' },
+    });
+  });
+
+  it('publishes an unreadable or broken-link fallback with its diagnostic outcome', async () => {
+    for (const fallbackCase of ['unreadable', 'broken-link'] as const) {
+      const run = await runCodexCase('absent', fallbackCase);
+      if (run === null) {
+        continue;
+      }
+      expect(run.files[0]).toMatchObject({
+        publicPath: 'AGENTS.md',
+        outcome: { kind: 'unreadable' },
+      });
+    }
+  });
+
+  it('publishes nothing for a BOM-only fallback under an empty override', async () => {
+    // A lone BOM trims to empty after one optional leading BOM is removed, so
+    // the fallback yields no Codex instruction file (FR-035).
+    const run = await runCodexCase('empty', 'bom-only');
+    expect(run?.files).toEqual([]);
   });
 
   it('never publishes both selectors', async () => {

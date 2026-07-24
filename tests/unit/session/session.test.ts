@@ -74,6 +74,8 @@ describe('session bootstrap (generation 0)', () => {
     const snapshot = bootstrapSession().snapshot();
     expect(snapshot.repositoryGeneration).toBe(0);
     expect(snapshot.globalGeneration).toBeNull();
+    expect(snapshot.files).toEqual([]);
+    expect(snapshot.diagnostics).toEqual([]);
     expect(snapshot.snapshotState).toBe('current');
     expect(snapshot.staleFailures).toEqual([]);
     expect(snapshot.sessionDiagnosticIds).toEqual([]);
@@ -149,7 +151,12 @@ describe('scan lifecycle', () => {
     }
     coordinator.revokePublicationAuthority(admitted.scanRequestId);
     await coordinator.completeScan(admitted.scanRequestId, { files: [], diagnostics: [], outcome: 'complete' });
-    expect(session.snapshot().repositoryGeneration).toBe(0);
+    const snapshot = session.snapshot();
+    expect(snapshot.repositoryGeneration).toBe(0);
+    // "No later success status": the revoked request also stops being the
+    // Source's visible current request (spec.md § publication matrix).
+    expect(snapshot.sources[0]!.scanRequestId).toBeNull();
+    expect(snapshot.sources[0]!.status).toBe('idle');
   });
 
   it('publishes neither failed status nor a stale overlay for a revoked failure', async () => {
@@ -169,8 +176,50 @@ describe('scan lifecycle', () => {
     coordinator.failScan(second.scanRequestId, { kind: 'error', message: 'ENOENT: late failure' });
     const snapshot = session.snapshot();
     expect(snapshot.sources[0]!.status).toBe('ready');
+    // The overlay reverts to the exact pre-admission state: the committed
+    // request and its retained final complete progress
+    // (data-model.md § ScanProgress) — never the revoked request.
+    expect(snapshot.sources[0]!.scanRequestId).toBe(first.scanRequestId);
+    expect(snapshot.sources[0]!.progress?.phase).toBe('complete');
+    expect(snapshot.sources[0]!.progress?.scanRequestId).toBe(first.scanRequestId);
     expect(snapshot.staleFailures).toEqual([]);
     expect(snapshot.snapshotState).toBe('current');
+  });
+
+  it('restores the retained failure presentation when a revoked late result lands', async () => {
+    const session = bootstrapSession();
+    const coordinator = new SessionCoordinator(session);
+    const sourceId = session.snapshot().sources[0]!.sourceId;
+    const first = coordinator.admitScan(sourceId, { kind: 'startup', operationId: null });
+    if (first.kind !== 'admitted') {
+      throw new Error('expected admission');
+    }
+    await coordinator.completeScan(first.scanRequestId, { files: [], diagnostics: [], outcome: 'complete' });
+    const failing = coordinator.admitScan(sourceId, { kind: 'request', operationId: 'op-r1' });
+    if (failing.kind !== 'admitted') {
+      throw new Error('expected admission');
+    }
+    coordinator.failScan(failing.scanRequestId, { kind: 'error', message: 'EIO: rescan failed' });
+    const retry = coordinator.admitScan(sourceId, { kind: 'request', operationId: 'op-r2' });
+    if (retry.kind !== 'admitted') {
+      throw new Error('expected admission');
+    }
+    coordinator.revokePublicationAuthority(retry.scanRequestId);
+    await coordinator.completeScan(retry.scanRequestId, { files: [], diagnostics: [], outcome: 'complete' });
+    // The discarded late success must not erase the current failure
+    // presentation: the Source reverts to failed with the failed request's
+    // ID and null progress, and the stale overlay stays visible
+    // (data-model.md § ScanProgress: progress is null exactly in idle and
+    // failed, and failed retains the failed request ID).
+    const snapshot = session.snapshot();
+    expect(snapshot.sources[0]!.status).toBe('failed');
+    expect(snapshot.sources[0]!.scanRequestId).toBe(failing.scanRequestId);
+    expect(snapshot.sources[0]!.progress).toBeNull();
+    expect(snapshot.snapshotState).toBe('stale-after-fatal-rescan');
+    expect(snapshot.staleFailures[0]!.failureRef).toEqual({
+      kind: 'error',
+      message: 'EIO: rescan failed',
+    });
   });
 
   it('rests a committed Source at ready when a late success is discarded', async () => {
@@ -190,6 +239,12 @@ describe('scan lifecycle', () => {
     await coordinator.completeScan(second.scanRequestId, { files: [], diagnostics: [], outcome: 'complete' });
     const snapshot = session.snapshot();
     expect(snapshot.sources[0]!.status).toBe('ready');
+    // 'ready' reflects the retained committed generation: the overlay
+    // reverts to that generation's request and final complete progress —
+    // never the revoked request's, which would read as its later success
+    // (spec.md § publication matrix; data-model.md § ScanProgress).
+    expect(snapshot.sources[0]!.scanRequestId).toBe(first.scanRequestId);
+    expect(snapshot.sources[0]!.progress?.phase).toBe('complete');
     expect(snapshot.repositoryGeneration).toBe(1);
   });
 
@@ -328,6 +383,132 @@ describe('scan lifecycle', () => {
     const cleared = session.snapshot();
     expect(cleared.staleFailures).toEqual([]);
     expect(cleared.sessionDiagnosticIds).toEqual([]);
+  });
+
+  it('treats the first requested rescan after a failed automatic scan as explicit', () => {
+    const session = bootstrapSession();
+    const coordinator = new SessionCoordinator(session);
+    const sourceId = session.snapshot().sources[0]!.sourceId;
+    const automatic = coordinator.admitScan(sourceId, { kind: 'startup', operationId: null });
+    if (automatic.kind !== 'admitted') {
+      throw new Error('expected admission');
+    }
+    const automaticDiagnostic = serializeDiagnostic(
+      createDiagnostic({ code: 'root-unreadable', lifecycleOwnerKey: 'repository', sourceId }),
+    );
+    coordinator.failScan(automatic.scanRequestId, {
+      kind: 'diagnostic',
+      diagnostic: automaticDiagnostic,
+    });
+    const rescan = coordinator.admitScan(sourceId, { kind: 'request', operationId: 'op-g' });
+    if (rescan.kind !== 'admitted') {
+      throw new Error('expected admission');
+    }
+    const rescanDiagnostic = serializeDiagnostic(
+      createDiagnostic({
+        code: 'root-unreadable',
+        lifecycleOwnerKey: `published-source:${sourceId}`,
+        sourceId,
+      }),
+    );
+    coordinator.failScan(rescan.scanRequestId, { kind: 'diagnostic', diagnostic: rescanDiagnostic });
+    // The Repository Source always has the bootstrap committed generation 0,
+    // so this user-requested rescan is an explicit rescan: its terminal
+    // failure atomically replaces the automatic-scan repository owner
+    // reference with the stale overlay (data-model.md
+    // § repositoryFailureDiagnosticId).
+    const snapshot = session.snapshot();
+    expect(snapshot.repositoryFailureDiagnosticId).toBeNull();
+    expect(snapshot.snapshotState).toBe('stale-after-fatal-rescan');
+    expect(snapshot.staleFailures[0]!.failureRef).toEqual({
+      kind: 'diagnostic',
+      diagnosticId: rescanDiagnostic.diagnosticId,
+    });
+    expect(snapshot.staleFailures[0]!.baseGeneration).toBe(0);
+    expect(snapshot.sessionDiagnosticIds).toEqual([rescanDiagnostic.diagnosticId]);
+  });
+
+  it('serves the committed inventory and both diagnostic groups in the snapshot', async () => {
+    const session = bootstrapSession();
+    const coordinator = new SessionCoordinator(session);
+    const sourceId = session.snapshot().sources[0]!.sourceId;
+    const first = coordinator.admitScan(sourceId, { kind: 'startup', operationId: null });
+    if (first.kind !== 'admitted') {
+      throw new Error('expected admission');
+    }
+    const generationDiagnostic = serializeDiagnostic(
+      createDiagnostic({
+        code: 'file-content-binary',
+        lifecycleOwnerKey: null,
+        sourceId,
+        fileId: 'seed-file',
+        sourceRelativePath: 'AGENTS.md',
+      }),
+    );
+    await coordinator.completeScan(first.scanRequestId, {
+      files: [
+        {
+          fileId: 'seed-file',
+          sourceId,
+          sourceRelativePath: 'AGENTS.md',
+          encoding: 'binary',
+          sizeBytes: 3,
+          diagnosticIds: [generationDiagnostic.diagnosticId],
+        },
+        {
+          fileId: 'seed-readable',
+          sourceId,
+          sourceRelativePath: 'CLAUDE.md',
+          encoding: 'utf-8',
+          hadLeadingBom: false,
+          sourceText: 'TOP-SECRET-AUTHORED-VALUE',
+          sizeBytes: 25,
+          parseSummary: 'not-applicable',
+          recognitionIds: [],
+          relationshipIds: [],
+          diagnosticIds: [],
+        },
+      ],
+      diagnostics: [generationDiagnostic],
+      outcome: 'partial',
+    });
+    // get-session serves the committed inventory and its generation records
+    // at the top level (contracts/http-api.md § get-session `files[]` /
+    // `diagnostics[]`), with the commit-rekeyed IDs staying coherent
+    // between a file row and its diagnostic.
+    const committed = session.snapshot();
+    expect(committed.files.map((file) => file.sourceRelativePath)).toEqual([
+      'AGENTS.md',
+      'CLAUDE.md',
+    ]);
+    expect(committed.diagnostics.map((entry) => entry.code)).toEqual(['file-content-binary']);
+    expect(committed.diagnostics[0]!.fileId).toBe(committed.files[0]!.fileId);
+    // The snapshot rows are content-free summaries: authored text is served
+    // only by the acknowledgement-gated detail routes (FR-027).
+    expect(JSON.stringify(committed)).not.toContain('TOP-SECRET-AUTHORED-VALUE');
+    expect(JSON.stringify(committed)).not.toContain('sourceText');
+
+    const rescan = coordinator.admitScan(sourceId, { kind: 'request', operationId: 'op-f' });
+    if (rescan.kind !== 'admitted') {
+      throw new Error('expected admission');
+    }
+    const lifecycleDiagnostic = serializeDiagnostic(
+      createDiagnostic({
+        code: 'root-unreadable',
+        lifecycleOwnerKey: `published-source:${sourceId}`,
+        sourceId,
+      }),
+    );
+    coordinator.failScan(rescan.scanRequestId, { kind: 'diagnostic', diagnostic: lifecycleDiagnostic });
+    // A failed explicit rescan keeps the retained generation's records and
+    // adds its session-owned lifecycle record to the same diagnostics[]
+    // projection.
+    const stale = session.snapshot();
+    expect(stale.files).toHaveLength(2);
+    expect(stale.diagnostics.map((entry) => entry.code).sort()).toEqual([
+      'file-content-binary',
+      'root-unreadable',
+    ]);
   });
 
   it('clears the stale entry when the affected source commits successfully', async () => {

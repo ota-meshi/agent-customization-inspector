@@ -109,7 +109,14 @@ function tryMakeUnreadable(absolutePath: string): boolean {
   }
 }
 
-function tryMakeFifo(absolutePath: string): boolean {
+/**
+ * Creates a FIFO (named pipe) at `absolutePath`, returning whether it
+ * succeeded. Exported so tests can materialize a non-regular entry at an exact
+ * target: reading a FIFO with a flag-free `readFile` blocks forever, which is
+ * what makes it, and not a directory, the case that actually exercises the
+ * probe's type gate.
+ */
+export function tryMakeFifo(absolutePath: string): boolean {
   if (process.platform === 'win32') {
     return false;
   }

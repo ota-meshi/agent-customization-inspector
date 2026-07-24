@@ -47,6 +47,15 @@ while [ $i -le $# ]; do
                 echo 'Error: --number requires a value' >&2
                 exit 1
             fi
+            # Reject anything but plain digits before this value ever reaches the
+            # $((10#$BRANCH_NUMBER)) arithmetic evaluation below. The `10#` radix
+            # prefix does NOT sanitize: a value like `1+a[$(cmd)0]` passes the
+            # base parse and then executes `cmd` via arithmetic array-subscript
+            # command substitution. A strict integer form closes that injection.
+            if [[ ! "$next_arg" =~ ^[0-9]+$ ]]; then
+                echo 'Error: --number requires a non-negative integer' >&2
+                exit 1
+            fi
             BRANCH_NUMBER="$next_arg"
             ;;
         --timestamp)

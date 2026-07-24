@@ -93,8 +93,7 @@ Expected:
   manager-generated `.bin` symlinks and `.cmd`/`.ps1` launch shims exist outside those
   payloads and are the only limited interoperability exception: each maps one exact
   declared `package.json.bin` target to audited Node JavaScript, forwards argv only, and
-  adds no input or application logic. Package-owned shell helpers and unexpected shims are
-  rejected. The direct production dependencies are exactly `devframe`, `gunshi`,
+  adds no input or application logic. The direct production dependencies are exactly `devframe`, `gunshi`,
   `jsonc-parser`, `smol-toml`, and `yaml`; devframe's transitive tree is owned by devframe
   and the lockfile, and `open` is absent from every dependency section.
 - Build output contains no fixture, raw customization text, Global content, cache, or
@@ -118,9 +117,9 @@ node dist/cli.mjs --no-open --cwd tests/fixtures/repositories/all-supported
 ```
 
 The CLI captures the invocation `process.cwd()` once. Omission uses that exact string.
-`--cwd` is accepted at most once: an absolute option is kept as given, and a relative
-option is resolved against the captured invocation directory. A missing, empty, or
-duplicate value exits with fixed actionable output before a session or browser attempt.
+`--cwd` is accepted, a repeated option resolving to the parser's last value: an absolute option is kept as given, and a relative
+option is resolved against the captured invocation directory. A missing or empty
+value exits with fixed actionable output before a session or browser attempt.
 Selection never calls `process.chdir()`, and a startup failure ends the launch with an
 actionable message rather than a session or session-API error.
 
@@ -248,14 +247,12 @@ Expected:
   `localhost` bind alone, and an unexpected session-API failure propagates its real error to the requesting
   client while the session stays usable.
 - Package tests build a tarball, inspect its contents, install it into an isolated fixture,
-  load the packaged Node.js filesystem service, and
+  load the packaged inspection module, and
   launch the exact `npx` entry without relying on the working tree or a runtime download.
-  They also audit scripts-disabled and network-disabled normal installs of the complete
-  production closure for the closed payload-JavaScript/no-lifecycle/no-native policy,
-  separate package-manager-generated shim audit, and equal package graph digest on every CI
-  OS. The production-graph tests assert exactly the five direct dependencies `devframe`,
-  `gunshi`, `jsonc-parser`, `smol-toml`, and `yaml` at their locked versions from
-  `pnpm-lock.yaml`, and negative packaging fixtures prove that a missing or non-regular
+  The production-graph tests assert exactly the five approved direct dependencies
+  `devframe`, `gunshi`, `jsonc-parser`, `smol-toml`, and `yaml` — their resolved versions
+  and integrity hashes stay owned by the committed
+  `pnpm-lock.yaml` — and negative packaging fixtures prove that a missing or non-regular
   required entry point fails `verify:package` before publish.
 - The unchanged deterministic performance fixture with 100,000 entries and 500
   customization files is measured in exactly 10 fresh Inspector processes on the same
@@ -294,14 +291,13 @@ Verify:
    a behavior, rule, strategy, or checked-in digest; no product-specific numeric fetch cap is
    part of the contract.
 2. Vendor lookup bases, relative selectors, and traversal modes are validated independently
-   from Inspector matchers. Every Repository matcher has the exact `./` Base and
-   canonical-round-tripping typed segment programs paired one-to-one with its `./`-relative
-   selectors; bare `**/`, unknown/misplaced tokens, adjacent recursive tokens, and
-   selector/program count mismatches are rejected. Fixtures cover descendant-plus-direct-
-   child and descendant-plus-recursive-subtree composites. `./**/` is accepted only as
-   explicit Inspector descendant inventory and never interpreted as proof that a vendor
-   walks downward. Build validation compiles the accepted programs into immutable,
-   versioned `TraversalPlan` data, and runtime tests prove that the filesystem service
+   from Inspector matchers. Every Repository selector is authored directly as a typed
+   segment-array program — literal, regex, and non-adjacent recursive-directory segments,
+   with no glob-looking string form — and the registry contract gate rejects
+   unknown/misplaced tokens and adjacent recursive tokens. Fixtures cover
+   descendant-plus-direct-child and descendant-plus-recursive-subtree composites. Build
+   validation compiles the authored programs into immutable,
+   versioned `TraversalPlan` data, and runtime tests prove that the inspection module
    interprets only that data rather than reparsing selector text or substituting a generic
    walker. A Global exact-file plan never opens the tool-home root and touches only its
    fixed ancestor/target chain; a fixed-instruction-subtree plan opens only that named
@@ -621,8 +617,9 @@ real home directory. Verify:
    `undefined` is absent; `node:os.homedir()` is called exactly once iff any is absent; and
    active-platform `node:path.join` applies only the fixed corresponding suffix. No direct
    `HOME`/`USERPROFILE` selection or existence check occurs.
-2. The consent view shows the exact Copilot, Claude, and Codex lexical roots, relative path
-   patterns, input states, exclusions, and contract version `2026-07-20`. The frozen
+2. The consent view shows the exact Copilot, Claude, and Codex lexical roots, input
+   states, exclusions, and contract version `2026-07-20`, with the read scope explained in
+   plain language rather than per-pattern path displays. The frozen
    internal preview separately retains each exact raw `lexicalRoot` string;
    `displayRoot` is a one-way escaped string and is never decoded into
    read authority. A preview-construction throw/rejection returns its real error with no
@@ -651,13 +648,14 @@ real home directory. Verify:
    initial enable returns that failure's real error and activates no
    consent/control/job, while retry preserves existing state. No numeric root or escaped-
    display ceiling is defined.
-6. A stale, changed, or cross-session replayed preview ID/digest is rejected. For every
-   entry the digest binds two separate type-tagged, length-prefixed strings: the stored raw
-   `lexicalRoot` and the escaped `displayRoot`. It also binds the
-   typed `TraversalPlan` version, closed selection policy, and canonical program. The display field never
+6. A stale, changed, or cross-session replayed preview ID is rejected. Enable names only
+   the one server-retained preview record by its opaque `previewId`; for every entry that
+   record keeps the stored raw `lexicalRoot` and the escaped `displayRoot` as separate
+   fields, together with the record-level `allowlistVersion`/`traversalPlanVersion` pair
+   identifying the closed selection policy and canonical programs. The display field never
    substitutes for the raw field. Enable uses only the frozen raw value and stored plan; it
    never rereads the environment or reverse-converts `displayRoot`. Escape-collision, control-character, and backslash fixtures
-   prove that digest preserves the separate fields and admission uses the stored raw value.
+   prove that the record preserves the separate fields and admission uses the stored raw value.
    A preview with two eligible entries and one invalid entry has no request-side tool
    selector: initial enable derives fixed `confirmedTools: [copilot, claude, codex]`,
    evaluates all three, and returns disjoint `acceptedTools`/`rejectedTools` whose union is
@@ -703,7 +701,7 @@ real home directory. Verify:
    epochs, drains and
    unregisters the enable operation, then releases a late completion; that completion creates
    no control mutation, diagnostic, context, ID, or scan job after the final cancellation
-   sweep. A post-acceptance cleanup, assembly, or serialization failure
+   sweep. A post-acceptance cleanup or assembly failure
    keeps the process alive, the fence closed, the failed request's error retained,
    and retry/join available without restoring content, with process restart presented as
    the fallback next step. A pre-acceptance failure or true no-op leaves the fence null so
@@ -1579,8 +1577,9 @@ different sentinel process values, and prove that source/comparison views preser
 authored text exactly, introduce none of the sentinel values, expose no masking/reveal
 control, and duplicate no customization source value in Diagnostics.
 
-Diagnostic-behavior tests cover code/source/file/argument deduplication and fixed phase/source/
-path/rule/code/occurrence order. A failure while retaining or serializing a Diagnostic is not
+Diagnostic-behavior tests cover the order-only aggregation — fixed phase/source/
+path/rule/code/occurrence order with no dedup pass, so legitimately repeated records (one
+per failed recognition, one per rejected collision group) all publish. A failure while retaining or serializing a Diagnostic is not
 confined to one file: it fails the attempt, publishes no result/generation, and is reported
 as an ordinary error with the failed request's message. Multi-Source cases prove A/B entry-failure pairs coexist, B success preserves A,
 A success clears only A's pair, repeated A failure replaces only A's pair, and Global disable
@@ -1588,7 +1587,7 @@ removes only Global pairs. Repeated client-caused API errors never increase a re
 The same fixtures validate the closed `file | source | session` scope union: file scope
 requires `sourceId`, `fileId`, and `sourceRelativePath`; source scope requires `sourceId` and
 forbids `fileId`/`sourceRelativePath`; session scope forbids all three. Source- and
-session-scoped diagnostics never invent a path for display, deduplication, or ordering.
+session-scoped diagnostics never invent a path for display or ordering.
 
 ## Manual accessibility review
 
@@ -1656,23 +1655,24 @@ affected consumer exists. Otherwise record required consumer actions, compatibil
 window, and rollback/support path. Missing or one-language-only evidence fails the release
 gate.
 
-Audit the unpacked root tarball and an isolated installed production closure. A first
-scripts-disabled, omit-development install must match the exact lockfile/manifest graph and
-verify that every project/dependency tarball payload contains no lifecycle/build requirement,
-platform selector, bundled/optional native package, native/binary/Wasm extension or magic,
-native build source/metadata, non-Node shebang, executable non-JavaScript file, or package-
-owned shell helper. Repeat the audit after a normal-lifecycle install with network access
-disabled from the same verified cache. Compute each `package-payload` digest separately, then
-bind package name, version, integrity, and that payload digest into the production-graph
-digest. Exclude package-manager-generated launch shims from payload and graph digests, require
-the same graph digest on every CI OS, and audit shims separately per OS. Only generated
-`.bin` symlinks and `.cmd`/`.ps1` shims for exact declared `package.json.bin` targets may
-forward argv to audited Node JavaScript; extra input, logic, or any unexpected shim fails.
+Assert the approved production dependency set from `package.json` and the `pnpm-lock.yaml`
+closure: exactly the five direct dependencies `devframe`, `gunshi`, `jsonc-parser`,
+`smol-toml`, and `yaml`, so a graph change fails the gate until the dependency decision is
+explicitly revisited. The committed lockfile owns each resolved version and its integrity
+hash, which is what pins every production package's payload bytes. Only generated
+Package-manager-generated `.bin` symlinks and `.cmd`/`.ps1` shims map to the exact declared
+`package.json.bin` target and forward argv to it.
 Generated HTML shell, CSS, JSON files, documentation, and license files are accepted as
 declarative, non-executable payload artifacts; any HTML-referenced bootstrap script remains
 JavaScript executable code. FR-038 covers project-authored executable application code and
 the published/installed product, while third-party development and test tooling remains
-outside that published boundary and is audited separately.
+outside that published boundary and is audited separately. *(superseded 2026-07-23: the
+per-payload content scans — platform selectors, native/binary/Wasm magic, native build
+source/metadata, non-Node shebangs, shell helpers — plus the scripts-disabled and
+network-disabled install runs, the per-OS shim audit, and the per-dependency version and
+integrity-hash assertions were removed from scope: the committed lockfile already pins
+every resolved version with its integrity hash — so restating those values in a test only
+duplicates the lockfile — and install-time enforcement belongs to the package manager.)*
 
 Launch tests must cover the printed origin line appearing before any browser attempt, zero
 browser-helper child processes under `--no-open`, and inspection remaining usable when
@@ -1681,9 +1681,9 @@ resolution, and the open/suppress flags are devframe-owned, and the tests prove 
 inspection-derived content, path, or authored value reaches that opener. They also cover
 Gunshi's non-binding help/version, strict unknown-option rejection,
 explicit positional/rest rejection, default exact captured `process.cwd()`, and one `--cwd`
-accepted at most once — an absolute option kept as given, a relative option resolved
+accepted with a repeated option resolving to the parser's last value — an absolute option kept as given, a relative option resolved
 against the captured invocation directory, and no `chdir`.
-They reject a missing, empty, or duplicate `--cwd` value with the fixed actionable
+They reject a missing or empty `--cwd` value with the fixed actionable
 startup error before
 session/browser creation and require fixed nonzero
 validation failures and awaited

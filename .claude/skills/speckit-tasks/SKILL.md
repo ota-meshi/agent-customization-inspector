@@ -151,12 +151,10 @@ apply. Test tasks MUST precede their corresponding implementation tasks.
 For safety-sensitive features, tasks MUST avoid product-defined numeric resource validation
 limits and define safe handling for recoverable capacity failures reported by Node.js,
 parsers, the operating system, the filesystem, the browser, or the deployment environment;
-define product-issued mutation semantics; distinguish intentional capability-authenticated
-session content access and diagnostics from operational logs; and test authority revocation
-and cleanup of revoked or late work.
-Operational-log tasks MUST restrict payloads to stable fixed codes and opaque identifiers,
-with no inspected content, metadata, authored values, paths, capabilities, request/response
-bodies, or raw parser/system errors. Every applicable constitutional MUST needs a concrete
+define product-issued mutation semantics; and test authority revocation and cleanup of
+revoked or late work. Errors are reported ordinarily (real messages, ordinary propagation);
+the product defines no operational-log content rules and no sanitized error envelope
+(constitution v4.0.0). Every applicable constitutional MUST needs a concrete
 implementation task and a preceding automated test or explicit validation task; a generic
 security-review task is not a substitute.
 
@@ -230,7 +228,7 @@ Every task MUST strictly follow this format:
 
 - [ ] tasks.md generated with all phases, task IDs, and file paths
 - [ ] Every behavioral change has risk-appropriate test tasks before implementation
-- [ ] Safety tasks make environment-owned resource behavior, mutation semantics, diagnostic/log boundaries, and late-work cleanup executable
+- [ ] Safety tasks make environment-owned resource behavior, mutation semantics, ordinary error reporting, and late-work cleanup executable
 - [ ] Quality-gate and English/Japanese documentation parity tasks are included
 - [ ] Extension hooks dispatched or skipped according to the rules in Mandatory Post-Execution Hooks above
 - [ ] Completion reported to user with task count, story breakdown, and MVP scope

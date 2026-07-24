@@ -64,22 +64,23 @@ deduplicated `EvidenceAssessment[]`; they never flatten it to a scalar or qualif
 
 ## Inspector Repository rules
 
-All bases in this table are the exact Inspector Repository boundary (`./`). A
+All bases in this table are the exact Inspector Repository boundary — the selected
+Repository root, spelled `Repository`. A
 `descendant-inventory` expansion inventories possible runtime contexts below that
 boundary; it does not claim that Codex walks downward. Every row has policy references
 FR-003, FR-004, FR-005, FR-024, QR-001, QR-004, and QR-005 unless a narrower exclusion or
 Global requirement is stated below.
 
-| Rule ID | Base | Relative selector | Expansion | Class | Behavior refs | Documentation status | Evidence |
+| Rule ID | Base | Selector program | Expansion | Class | Behavior refs | Documentation status | Evidence |
 |---|---|---|---|---|---|---|---|
-| `codex.repo.instructions` | `./` | `./**/AGENTS.override.md`; `./**/AGENTS.md` | `descendant-inventory` at the root and every descendant context directory | `static-candidate` | `codex.behavior.repo.instructions` | Documented; runtime chain conditional | `openai.codex.agents-md` |
-| `codex.repo.skill` | `./` | `./**/.agents/skills/*/SKILL.md` | `descendant-inventory` of possible context layers; skill name is one direct child | `static-candidate` | `codex.behavior.repo.skills` | Documented; runtime chain conditional | `openai.codex.skills` |
-| `codex.repo.agent` | `./` | `./**/.codex/agents/*.toml` | `descendant-inventory`; agent file is a direct child | `static-candidate` | `codex.behavior.repo.agents` | Partially documented | `openai.codex.subagents` |
-| `codex.repo.config` | `./` | `./**/.codex/config.toml` | `descendant-inventory` of possible project layers | `static-candidate` | `codex.behavior.repo.config`, `codex.behavior.repo.mcp`, `codex.behavior.repo.hooks` | Documented; trust and runtime chain conditional | `openai.codex.config-basic`, `openai.codex.mcp` |
-| `codex.repo.hooks` | `./` | `./**/.codex/hooks.json` | `descendant-inventory` of possible active config layers | `static-candidate` | `codex.behavior.repo.hooks` | Documented; trust and hook review conditional | `openai.codex.hooks` |
-| `codex.repo.rules` | `./` | `./**/.codex/rules/*.rules` | `descendant-inventory` of layer roots plus `direct-child` within each `rules/` directory | `static-candidate` | `codex.behavior.repo.rules` | Experimental; nested rule directories excluded | `openai.codex.rules` |
-| `codex.repo.plugin-manifest` | `./` | `./.codex-plugin/plugin.json` | `exact`; the selected Repository root is treated as the authored plugin root | `static-candidate` | `codex.behavior.plugin.manifest` | Inspector authored-project policy only; not Codex plugin discovery or activation | `openai.codex.plugins` |
-| `codex.repo.marketplace` | `./` | `./.agents/plugins/marketplace.json`; `./.claude-plugin/marketplace.json` | `exact` | `static-candidate` | `codex.behavior.repo.marketplace` | Exact Repository-root locations | `openai.codex.plugins` |
+| `codex.repo.instructions` | Repository | `[ANY_DIRECTORIES, 'AGENTS.override.md']`; `[ANY_DIRECTORIES, 'AGENTS.md']` | `descendant-inventory` at the root and every descendant context directory | `static-candidate` | `codex.behavior.repo.instructions` | Documented; runtime chain conditional | `openai.codex.agents-md` |
+| `codex.repo.skill` | Repository | `[ANY_DIRECTORIES, '.agents', 'skills', ANY_NAME, 'SKILL.md']` | `descendant-inventory` plus `direct-child` of possible context layers; skill name is one direct child | `static-candidate` | `codex.behavior.repo.skills` | Documented; runtime chain conditional | `openai.codex.skills` |
+| `codex.repo.agent` | Repository | `[ANY_DIRECTORIES, '.codex', 'agents', /\.toml$/u]` | `descendant-inventory` plus `direct-child`; agent file is a direct child | `static-candidate` | `codex.behavior.repo.agents` | Partially documented | `openai.codex.subagents` |
+| `codex.repo.config` | Repository | `[ANY_DIRECTORIES, '.codex', 'config.toml']` | `descendant-inventory` of possible project layers | `static-candidate` | `codex.behavior.repo.config`, `codex.behavior.repo.mcp`, `codex.behavior.repo.hooks` | Documented; trust and runtime chain conditional | `openai.codex.config-basic`, `openai.codex.mcp` |
+| `codex.repo.hooks` | Repository | `[ANY_DIRECTORIES, '.codex', 'hooks.json']` | `descendant-inventory` of possible active config layers | `static-candidate` | `codex.behavior.repo.hooks` | Documented; trust and hook review conditional | `openai.codex.hooks` |
+| `codex.repo.rules` | Repository | `[ANY_DIRECTORIES, '.codex', 'rules', /\.rules$/u]` | `descendant-inventory` of layer roots plus `direct-child` within each `rules/` directory | `static-candidate` | `codex.behavior.repo.rules` | Experimental; nested rule directories excluded | `openai.codex.rules` |
+| `codex.repo.plugin-manifest` | Repository | `['.codex-plugin', 'plugin.json']` | `exact`; the selected Repository root is treated as the authored plugin root | `static-candidate` | `codex.behavior.plugin.manifest` | Inspector authored-project policy only; not Codex plugin discovery or activation | `openai.codex.plugins` |
+| `codex.repo.marketplace` | Repository | `['.agents', 'plugins', 'marketplace.json']`; `['.claude-plugin', 'marketplace.json']` | `exact` | `static-candidate` | `codex.behavior.repo.marketplace` | Exact Repository-root locations | `openai.codex.plugins` |
 
 Inline MCP servers and inline hooks in an accepted `config.toml` are metadata on that
 file; they do not create another candidate. A standalone `.mcp.json` is not a Codex
@@ -126,9 +127,9 @@ inspection. `CODEX_HOME` defaults to `$HOME/.codex`; it does not relocate the se
 Global inspection is disabled at session start. After the exact consent flow required by
 FR-013 through FR-018, Codex may read only this rule:
 
-| Rule ID | Boundary base | Relative selector and selection | Expansion | Class | Behavior refs | Policy refs | Evidence |
+| Rule ID | Boundary base | Selector program and selection | Expansion | Class | Behavior refs | Policy refs | Evidence |
 |---|---|---|---|---|---|---|---|
-| `codex.global.instructions` | Exact consented captured `CODEX_HOME`; only when absent, `node:path.join` of the request-wide imported `node:os.homedir()` capture and `.codex` | Use non-empty `AGENTS.override.md` when present; otherwise `AGENTS.md` | `exact`; first-non-empty selection | `static-candidate` | `codex.behavior.user.instructions` | FR-013, FR-014, FR-017, FR-018, QR-005 | `openai.codex.agents-md` |
+| `codex.global.instructions` | Exact consented captured `CODEX_HOME`; only when absent, `node:path.join` of the request-wide imported `node:os.homedir()` capture and `.codex` | `['AGENTS.override.md']`, then `['AGENTS.md']` | `exact`; first-non-empty selection | `static-candidate` | `codex.behavior.user.instructions` | FR-013, FR-014, FR-017, FR-018, QR-005 | `openai.codex.agents-md` |
 
 The immutable plan uses the closed `codex-global-first-non-empty` policy with those two
 exact selectors in that order. A safely established non-empty override short-circuits; only

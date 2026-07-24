@@ -21,7 +21,7 @@
 ## Requirement Clarity
 
 - [x] CHK006 Are the captured invocation working directory, the Inspector's selected Repository root (`process.cwd()` by default or the lexically resolved `--cwd` value), vendor repository root, VS Code workspace folder, and runtime `cwd` defined as distinct concepts wherever they can differ? [Clarity, Spec §FR-001–FR-002; Contract: Runtime Composition §Required condition facts]
-- [x] CHK007 Is the distinction between a vendor's lookup traversal and the Inspector's downward `./**/` inventory selector explicit for every recursive-looking path? [Clarity, Spec §QR-005; Contract: Inspection Path Allowlist §Vendor locators are not Inspector matchers]
+- [x] CHK007 Is the distinction between a vendor's lookup traversal and the Inspector's downward `ANY_DIRECTORIES` inventory segment explicit for every recursive-looking path? [Clarity, Spec §QR-005; Contract: Inspection Path Allowlist §Vendor locators are not Inspector matchers]
 - [x] CHK008 Are “present,” “recognized,” “supported,” “available,” “applicable,” “selected,” “enabled,” and “effective” defined so that file existence cannot be mistaken for runtime activation? [Clarity, Spec §FR-008–FR-009; Contract: Inspection Path Allowlist §Read authorization and applicability] — Fixed 2026-07-21: added the existence-versus-activation vocabulary defining all eight terms to Inspection Path Allowlist §Read authorization and applicability.
 - [x] CHK009 Is each evidence section narrow enough to support the exact claim made by its behavior, rule, or strategy row rather than only naming a broad parent section? [Clarity, Spec §QR-005; Contract: Official Sources §Record notation and ownership]
 - [x] CHK010 Are minimum versions, rollout state, `preview` or `experimental` lifecycle qualifiers, and effective dates specified whenever a path or precedence rule is not valid across all supported versions? [Clarity, Gap] — Fixed 2026-07-21: Spec §QR-005 now requires an explicit version gate (exact upstream token such as `VS Code 1.118+`, or the `engine-version` condition fact), a version-anchored release-note/changelog citation, and forbids undated or rolling pages from establishing a gate or effective date.
@@ -36,7 +36,7 @@
 ## Acceptance Criteria Quality
 
 - [x] CHK015 Are there objective completeness criteria for evidence coverage, including zero unresolved identifier references, zero orphan sources, and evidence for every maintained behavior, rule, and strategy? [Measurability, Spec §QR-005]
-- [x] CHK016 Are Repository selector acceptance criteria explicit about Base `./`, `./`-prefixed relative selectors, expansion class, and rejection of a bare `**/` prefix? [Measurability, Spec §QR-005]
+- [x] CHK016 Are Repository selector acceptance criteria explicit about the `Repository` Base, authored typed segment programs, expansion class, and the closed token grammar (no adjacent recursive segments)? [Measurability, Spec §QR-005]
 - [x] CHK017 Can each closed `documentationStatus`—`documented`, `partially-documented`, `unknown`, and `conflict`—be assigned using objective evidence criteria, with `documentation-conflict` reserved for `ConditionFact.status` rather than accepted as an alias? [Acceptance Criteria, Spec §QR-005]
 - [x] CHK018 Are drift-review outcomes measurable for unchanged content, changed assertions, missing or duplicate anchors, redirects, and human-reviewed semantic updates? [Acceptance Criteria, Contract: Official Sources §Offline validation and explicit drift review]
 

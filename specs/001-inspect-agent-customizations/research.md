@@ -89,28 +89,27 @@ exactly to `{ "agent-customization-inspector": "dist/cli.mjs" }` — the tsdown 
 preserves the entry shebang, and the package manager makes the linked bin executable at
 install time — and omit `main`, `module`, and
 `exports` because the package has no library API. Use no install script, runtime download,
-or end-user compilation. Keep runtime packages declared under exact `dependencies` so
-`npx` installs auditable versions; tsdown bundles project-owned modules and shared
-contracts, not arbitrary transitive packages. The direct production dependencies are
-exactly the five pinned packages `devframe`, `gunshi`, `jsonc-parser`, `smol-toml`, and
+or end-user compilation. Keep runtime packages declared as caret ranges under
+`dependencies`, with the committed lockfile pinning the exact resolved version and
+integrity so `npx` installs auditable versions; tsdown bundles project-owned modules and
+shared contracts, not arbitrary transitive packages. The direct production dependencies are
+exactly the five packages `devframe`, `gunshi`, `jsonc-parser`, `smol-toml`, and
 `yaml` (§ 3); `open` is absent from every
 dependency section and the production lock closure.
 
-Audit every project/dependency tarball payload and the installed production graph. First install the packed
-artifact with lifecycle scripts disabled and development dependencies omitted, require the
-exact lockfile/manifest graph, and recursively reject lifecycle/build requirements,
-`os`/`cpu`/`libc` selectors, bundled or optional native packages, native/binary/Wasm
-extensions or ELF/Mach-O/PE magic, `binding.gyp`, Rust/C/C++ source, `prebuilds`, and any
-package-owned non-Node shebang, shell helper, or executable non-JavaScript payload. Then
-perform a normal-lifecycle production install with network access disabled from the same
-verified cache. Package-manager-generated `node_modules/.bin` symlinks and Windows
-`.cmd`/`.ps1` shims are the sole payload-external exception: their exact names must come
-from an audited `package.json.bin`; the symlink target or generated body may only dispatch
-to the declared audited Node JavaScript target and forward argv; extra logic, environment/
-configuration input, and unexpected shims fail. The cross-OS production-graph digest covers
-package name/version/integrity and package-payload digests, excludes generated `.bin`
-artifacts, and is paired with the OS-specific shim audit. Any new production dependency or
-artifact fails until explicitly reviewed.
+Assert the approved direct production dependency set — exactly those five names and no
+others — from `package.json` and the `pnpm-lock.yaml` closure, so any new production
+dependency fails until the § 3 decision is explicitly revisited *(superseded 2026-07-23:
+the payload content scans — `os`/`cpu`/`libc` selectors, bundled/optional native packages,
+native/binary/Wasm magic or ELF/Mach-O/PE magic, `binding.gyp`, Rust/C/C++ source,
+`prebuilds`, non-Node shebangs, shell helpers, executable non-JavaScript payloads — plus
+the lifecycle-disabled and network-disabled install runs, the cross-OS shim audit, and the
+per-dependency version and integrity-hash assertions were removed from scope with the
+self-verification cleanups: the committed lockfile already pins every resolved version with
+its integrity hash, so a test that restates those values only duplicates the lockfile, and
+re-scanning hash-fixed content is the redundant re-verification class Constitution
+Principle I removes; install-time lifecycle and network enforcement belongs to the package
+manager's own configuration)*.
 
 **Rationale**: Emitting directly into `dist/` removes the copy steps a staging design
 needs; the single pipeline-owned clean step guarantees a fresh `dist/`, so every emitted
@@ -125,10 +124,10 @@ safe-filesystem layer are included and load from their packaged locations.
 It installs the tarball into an isolated fixture and actually invokes the executable with
 `npx --no-install`, rather than merely inspecting the `bin` mapping; the exact shebang and
 executable mode are asserted before launch.
-Auditing an installed closure closes the gap left by inspecting only the root tarball, while
-the second network-disabled install proves that the normal lifecycle path does not fetch,
-compile, or substitute a platform artifact. Exact direct pins plus the committed lockfile
-make that closure and its cross-OS digest stable for the first release.
+The committed lockfile — every resolved version with its integrity hash — makes the
+production closure stable and its payloads byte-fixed for the first release without
+re-scanning content the hashes already fix and without a test that restates the lockfile's
+own values.
 Root-absolute assets are necessary because the same shell is returned for nested routes
 such as `/files/<fileId>`; a relative `./_nuxt/` URL would resolve beneath that route.
 The official [Nuxt 4 configuration reference](https://nuxt.com/docs/4.x/api/nuxt-config#baseurl)
@@ -173,7 +172,13 @@ they do not define or test product file-size or item-count boundaries.
 
 ## 3. Latest compatible stable dependency baseline
 
-**Decision**: Pin exact versions in `package.json` and `pnpm-lock.yaml`, using pnpm 11.13.0.
+**Decision**: Declare caret ranges in `package.json` and let the committed `pnpm-lock.yaml`
+pin the exact resolved version and integrity of every package, using pnpm 11.13.0
+*(superseded 2026-07-23: `package.json` previously carried exact versions; the lockfile
+already fixes the installed version and its integrity, so an exact specifier duplicated
+that pin in a second place. The caret bound still excludes an incompatible major — and,
+for a 0.x package such as `devframe` or `gunshi`, the next minor — and an upgrade within
+the range happens only on an explicit `pnpm update`, never on a plain install.)*.
 “Latest” means the newest stable version compatible with the selected Nuxt/Vue toolchain,
 not a prerelease or an incompatible major. Re-run the same registry compatibility check
 immediately before creating the first lockfile.
@@ -196,7 +201,7 @@ create a second dependency baseline.
 | CLI | `gunshi` 0.37.0 | Current zero-runtime-dependency ESM CLI framework; its Node.js `>=22` engine requirement fits the declared range; browser opening is owned by the devframe host (§ 8) and adds no further package |
 | Parsers | `yaml` 2.9.0, `jsonc-parser` 3.3.1, `smol-toml` 1.7.0 | Current stable inert data parsers |
 | Source view/diff | `monaco-editor` 0.55.1 | Current stable read-only source and diff editor; its own diff engine avoids a duplicate client dependency |
-| Lint | ESLint 10.7.0, `@nuxt/eslint` 1.16.0 | Current compatible stable releases |
+| Lint | ESLint 10.7.0, `@nuxt/eslint` 1.16.0, `@stylistic/eslint-plugin` 5.10.0 | Current compatible stable releases; `@stylistic` supplies the stylistic rules (e.g. `quotes`) ESLint 10 dropped from core |
 | Unit/integration | Vitest and coverage-v8 4.1.10, Nuxt Test Utils 4.0.3 | Exact matching Vitest/coverage versions; Nuxt-supported test harness |
 | Components/DOM | Vue Test Utils 2.4.11, happy-dom 20.10.6 | Current releases satisfying Nuxt Test Utils peers |
 | Browser/a11y | Playwright 1.61.1, `@axe-core/playwright` 4.12.1 | Current stable browser and accessibility tooling |
@@ -246,7 +251,9 @@ help/version return without binding.
 The production entry does not import `gunshi/agent`, lazy commands, custom plugins, or
 experimental parser combinators. Although Gunshi is one npm-graph leaf, its bundled internal
 argument/plugin/resource code remains part of the audited payload, integrity, license, and
-import-boundary digest. Exact pinning and these tests bound its pre-1.0 API-change risk.
+import-boundary digest. The lockfile-pinned resolved version — upgraded only by an explicit
+`pnpm update`, and bounded by the caret range to the same 0.x minor — plus these tests bound
+its pre-1.0 API-change risk.
 
 The audited 0.37.0 registry tarball has 34 text-only JavaScript, declaration, JSON,
 documentation, and license files (239,298 unpacked bytes), no runtime/optional/peer/bundled
@@ -259,12 +266,13 @@ devframe 0.7.5 is deliberately not a leaf package: it brings the transitive runt
 `mrmime`, `nostics`, `pathe`, and `ufo`. That tree — including the `h3`
 release-candidate pin — is owned by devframe's own dependency declarations and the
 committed lockfile, and is accepted as part of adopting the maintained host layer rather
-than re-decided per member; the installed-production-graph audit and cross-OS digest
-still cover every member's payload, and the audited devframe tarball payload is
-JavaScript/TypeScript text only, so the Node-only package gate holds. devframe is
-pre-1.0: 0.x minors may migrate APIs, so the product pins the exact version and treats
-any bump as a § 3 planning-gate change. `tests/package/production-graph.test.ts` asserts
-exactly the five direct dependencies at their locked versions with registry integrity.
+than re-decided per member; the lockfile pins every member by name, version, and integrity
+hash — identical across OSes — so the payload bytes are fixed at dependency review, and
+devframe's own tarball payload is JavaScript/TypeScript text only, so the Node-only package gate holds. devframe is
+pre-1.0: 0.x minors may migrate APIs, so the caret range excludes them, the committed
+lockfile pins the resolved version, and any bump is a § 3 planning-gate change.
+`tests/package/production-graph.test.ts` asserts exactly the five approved direct
+dependencies; their versions and integrity stay owned by the lockfile.
 
 ### Finite release-certification matrix
 
@@ -320,8 +328,9 @@ Gunshi's official [setup requirements](https://gunshi.dev/guide/introduction/set
 the Node/TypeScript compatibility and closed unknown-option behavior used here.
 The safe-filesystem layer uses only Node's built-in `node:fs/promises`, `node:fs`, and
 `node:path` APIs, so it adds no platform toolchain or runtime package dependency.
-The direct production `dependencies` set is exactly the five pinned packages `devframe`,
-`gunshi`, `jsonc-parser`, `smol-toml`, and `yaml`: the CLI and parser packages are
+The direct production `dependencies` set is exactly the five packages `devframe`,
+`gunshi`, `jsonc-parser`, `smol-toml`, and `yaml` (declared as caret ranges, pinned to
+exact resolved versions by the lockfile): the CLI and parser packages are
 npm-graph leaves, while devframe contributes the transitive host tree recorded above.
 Nuxt/Vue/Vite/tsdown, Monaco, and test tooling are build-
 or development-only because their required output is assembled into the closed product
@@ -378,6 +387,12 @@ mixed path matrix:
    the override first, short-circuits on read non-empty content, advances only from
    absent or empty content, and ends the branch with that file's diagnostic and no
    fallback for an unreadable or binary override (FR-035).
+   *(superseded 2026-07-22/23: selectors are authored directly as typed segment arrays —
+   the `./`-rendered Base/selector string form, the bare-`**/` rejection, the canonical
+   selector round-trip, and the rendering layer were removed, and the consent digest was
+   removed with the self-verification cleanups; the preview is the server-retained record
+   identified by `previewId` and bound through `allowlistVersion`/`traversalPlanVersion`.
+   The token vocabulary, composability, and the Codex first-non-empty policy remain.)*
 3. The **runtime composition registry** records stable `strategyId` values for selection,
    precedence, layering, fallbacks, condition projection, and relationship-only rules in
    [runtime composition](contracts/runtime-composition.md). A strategy refers to behavior
@@ -400,9 +415,9 @@ because each loses which official assertion applies to which subject.
 
 The selected Repository root remains the immutable Repository inventory boundary. The CLI
 captures `process.cwd()` once and uses that exact string by default. `--cwd` is accepted
-at most once: an absolute option is kept as given and a relative option is resolved
-against the captured invocation directory (FR-001). A missing or empty value or a
-duplicate option fails with a fixed actionable startup error before session/browser
+with a repeated option resolving to the parser's last value: an absolute option is kept as given and a relative option is resolved
+against the captured invocation directory (FR-001). A missing or empty value
+fails with a fixed actionable startup error before session/browser
 creation, the CLI never calls `process.chdir()`, and bootstrap creates the one
 non-authorizing Repository Source before any scan I/O. Vendor runtime roots,
 walk directions, target files, trust, enablement, selection, installation, and product
@@ -445,7 +460,8 @@ Inspector matcher look like vendor lookup behavior:
   Copilot CLI instead has its own documented standard-location traversal from runtime
   context toward its repository boundary, and Cloud/code-review surfaces have another
   support and composition model. These are separate behavior rows. Inspector matchers may
-  inventory possible descendant contexts only through explicit `./**/`, with applicability
+  inventory possible descendant contexts only through an explicit leading
+  `ANY_DIRECTORIES` segment, with applicability
   left conditional; no VS Code row is reused as a CLI or Cloud traversal rule. VS Code MCP
   has one deliberate versioned exception to the current-guide view: the 1.118 release note
   adds exact workspace-root `.mcp.json` and announces most-specific same-name deduplication,
@@ -738,8 +754,9 @@ compared structurally rather than as serialized lines, while literal spelling di
 remain observable. The official
 [diff editor options](https://microsoft.github.io/monaco-editor/typedoc/interfaces/editor_editor_api.editor.IDiffEditorOptions.html)
 and [Monaco repository](https://github.com/microsoft/monaco-editor) document those editor,
-worker, accessibility, and model-lifecycle capabilities. Exact version pinning and the
-packaged browser tests protect the deliberately narrow ESM imports during upgrades.
+worker, accessibility, and model-lifecycle capabilities. The lockfile-pinned resolved
+version and the packaged browser tests protect the deliberately narrow ESM imports during
+upgrades.
 No content-based display transform is applied: sensitive authored values remain visible
 after the required warning, while inert rendering prevents their content from executing,
 loading, or navigating.
@@ -771,18 +788,23 @@ page can reach the unauthenticated session (QR-003). The session API still expos
 file IDs and closed commands, never client paths.
 
 Before Global consent, expose a
-lexical/no-I/O path preview over the session API and bind confirmation to its session-keyed
-digest. Retain
+lexical/no-I/O path preview over the session API as the one server-retained record
+identified by its opaque `previewId`, which confirmation names. Retain
 one operation-local input capture per new unconsented preview: read `COPILOT_HOME`,
 `CLAUDE_CONFIG_DIR`, and `CODEX_HOME` once each in that order; treat only `undefined` as
 absent; when any is absent call imported `node:os.homedir()` once and use active-platform
 `node:path.join` with fixed `.copilot`, `.claude`, and `.codex` suffixes. Do not independently
 select `HOME` or `USERPROFILE`, and perform no existence check during capture. Retain
-the exact raw `lexicalRoot` internally and bind it, the escaped display, and the immutable
-`TraversalPlan` schema/selection-policy/canonical programs in the digest. Preview parsing
+the exact raw `lexicalRoot`, the escaped display, and the immutable
+`TraversalPlan` schema/selection-policy/canonical programs in that server-retained record,
+bound to the shipped plans through the `allowlistVersion`/`traversalPlanVersion` pair. Preview parsing
 and transport inherit capacity from Node.js, the browser, and the execution environment;
 the product does not impose a byte limit on the proposed root or escaped display. Enable uses only
-that stored raw value, never reverses display text and never rereads the environment. Invoke
+that stored raw value, never reverses display text and never rereads the environment.
+*(superseded 2026-07-23: the session-keyed consent digest was removed with the
+self-verification cleanups — the preview is the one server-retained record identified by
+its opaque `previewId`, and enable names that ID; the capture rules and raw/display
+retention remain.)* Invoke
 the liveness route only on observable lifecycle transitions: initial
 load, return to visible/focused state, explicit Resume, and adoption of a fresh
 session. Allow at most one check in flight and let the browser/network/runtime own request
@@ -863,8 +885,8 @@ against other local processes and DNS-rebinding pages, and the owner chose
 config-inspector parity over that default, so the residual exposure of the
 unauthenticated loopback host is a documented limitation (Constitution v3.0.0, QR-003)
 bounded by the trusted-workspace model — the session serves only what the launching user
-can already read. Digest-bound preview consent still proves which lexical roots and
-patterns the user saw before the host touches them, and recoverable Node.js or browser
+can already read. The server-retained frozen preview named by consent still proves which
+lexical roots the user saw before the host touches them, and recoverable Node.js or browser
 failures during preview construction fail without authorizing an unseen value.
 Lifecycle-triggered liveness checks and ordinary request outcomes expose session loss at
 observable boundaries without persisting data or defining a product timer; immediate
@@ -1061,8 +1083,10 @@ allowing a release to shrink its denominator implicitly.
 Four registry fixture suites validate every behavior/rule/strategy/source ID, reciprocal
 evidence links, exact section anchors, English/Japanese parity, and the rule that only the
 Inspector matcher registry can authorize a read. Matcher fixtures reject a Repository
-selector without `./` or with bare `**/`, distinguish exact/direct-child/explicit
-descendant inventory, and prove that `./**/` does not satisfy a vendor traversal fact.
+selector program that violates the closed token grammar (for example adjacent
+recursive-directory segments), distinguish exact/direct-child/explicit
+descendant inventory, and prove that a leading `ANY_DIRECTORIES` segment does not satisfy
+a vendor traversal fact.
 Targeted regression fixtures cover Copilot's separate VS Code/CLI/Cloud lookup tables,
 Claude project settings only at the exact selected Repository root, non-recursive Codex rule directories,
 plugin activation versus authored manifest inventory, and zero Global reads beyond
@@ -2024,8 +2048,8 @@ integrity, or confuse presentation with API authorization.
    *(superseded 2026-07-22: FR-001 keeps an absolute `--cwd` as given and resolves a
    relative one against the captured `process.cwd()`; the shared `LexicalAbsoluteRootParts`
    parser and the Windows spelling taxonomy were removed. The single capture, the
-   no-`chdir` rule, and the fixed startup error for a missing/empty/duplicate option
-   remain.)*
+   no-`chdir` rule, and the fixed startup error for a missing/empty option
+   remain (a repeated option is later resolved by the parser's last-wins, superseded 2026-07-23).)*
 2. Global consent is one selector-free all-tools action. Initial processing always evaluates
    all three frozen preview entries; retry derives the complete current server-side
    `retryableTools` set: non-pending unpublished `admitted` controls plus `rejected` controls
@@ -2056,8 +2080,9 @@ integrity, or confuse presentation with API authorization.
    linked admissions deterministically choose the unsigned UTF-8-bytewise lowest NFC path as
    primary and sort the rest as aliases while preserving every raw provenance.
    *(superseded 2026-07-22: hard links are ordinary files with no grouping, primary/alias
-   selection, or read-once semantics, and the normalization-collision rejection was
-   removed; raw names still perform filesystem I/O while NFC owns display.)*
+   selection, or read-once semantics; the normalization-collision rejection is retained and
+   records the session-scoped `path-normalization-collision` Diagnostic per rejected group
+   (the closed registry's fifth code). Raw names still perform filesystem I/O while NFC owns display.)*
 6. Presentation Allowlist rows are already approved design input. The implementation gate
    verifies them and their bilingual digest only. A semantic change stops work and requires
    synchronized design plus regenerated plan/tasks before consumption.

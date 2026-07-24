@@ -23,10 +23,11 @@ source of truthである。Runtime combinationの詳細は
 - **Vendor locator**はbase、relative locator、traversalに分けて表す。特定のruntime contextから
   Claude Codeが探索する場所を記述する。
 - **Inspector matcher**は、選択済みRepositoryまたはGlobal inventory root相対である。この文書の
-  Repository matcherはすべて`./`で始まる。Global selectorは別に命名したconsent済みboundary相対であり、
-  そのprefixを再利用しない。Matcherは、現在のrunでClaudeがloadする場所ではなく、Inspectorがinventory
+  Repository matcherはすべてそのrootを基点にauthorしたtyped segment programである。Global selectorは
+  別に命名したconsent済みboundary相対であり、Repository rootを基点にしない。Matcherは、現在のrunで
+  Claudeがloadする場所ではなく、Inspectorがinventory
   できる場所を記述する。
-- Repository matcherの`./**/`は0個以上のdescendant directory segmentを意味する。各表はmatcherが
+- Repository matcherの先頭`ANY_DIRECTORIES` segmentは0個以上のdescendant directory segmentを意味する。各表はmatcherが
   inventory root、descendant、または両方のどれに届くかを明記する。
 - `documented`、`partially-documented`、`unknown`、`conflict`はclosedなupstream documentation-status valueであり、
   runtimeでのeffectivenessではない。Trust、approval、enablement、target file、runtime `cwd`、CLI flag、
@@ -92,18 +93,18 @@ relationshipは、「subagentは別のsubagentをspawnできない」という�
 fileをloadしたという主張には変換しない。より狭いexclusionまたはGlobal requirementを後述しない限り、
 全行のpolicy referenceはFR-003、FR-004、FR-005、FR-024、QR-001、QR-004、QR-005である。
 
-| Rule ID | Base | Relative selector | Expansion | Class | Behavior refs | Runtime/documentation status | Evidence |
+| Rule ID | Base | Selector program | Expansion | Class | Behavior refs | Runtime/documentation status | Evidence |
 |---|---|---|---|---|---|---|---|
-| `claude.repo.instructions` | `./` | `./**/CLAUDE.md`、`./**/CLAUDE.local.md` | `descendant-inventory`。Rootと全descendantを含み`**`は0 segmentも含む | `static-candidate` | `claude.behavior.repo.instructions.launch`、`claude.behavior.repo.instructions.ancestor`、`claude.behavior.repo.instructions.descendant` | Eligibilityはlaunch `cwd`、ancestry、read対象subtreeに依存。Nested `.claude/CLAUDE.md`はlaunch directory直下の正確な`.claude` fileである場合だけeligibleで、documented lazy-descendant formではない | `anthropic.claude-code.memory.locations-load`、`anthropic.claude-code.sdk.setting-sources` |
-| `claude.repo.rules` | `./` | `./**/.claude/rules/**/*.md` | 可能なrule-layer rootの`descendant-inventory`と各fixed rules directory内`recursive-subtree` | `static-candidate` | `claude.behavior.repo.rules` | 文書化されたruntime layer上のdirectoryだけeligibilityが既知。Nested inventoryはconditional | `anthropic.claude-code.memory.locations-load` |
-| `claude.repo.skill` | `./` | `./**/.claude/skills/*/SKILL.md` | `descendant-inventory`。Skill nameは正確に1 direct child | `static-candidate` | `claude.behavior.repo.skills` | Plain-skill ancestor/lazy discoveryと、正確なlaunch-`cwd`だけのskills-directory plugin discoveryは異なる | `anthropic.claude-code.skills.locations-discovery`、`anthropic.claude-code.plugins.components-scopes` |
-| `claude.repo.command` | `./` | `./**/.claude/commands/**/*.md` | 可能なcommand rootの`descendant-inventory`と各fixed commands directory内`recursive-subtree` | `static-candidate` | `claude.behavior.repo.commands` | Recursive command namespaceはdocumented。文書化されたproject/user locationを超えるruntime-layer traversalはconditional | `anthropic.claude-code.skills.locations-discovery`、`anthropic.claude-code.changelog.legacy-command-nesting` |
-| `claude.repo.agent` | `./` | `./**/.claude/agents/**/*.md` | 可能なagent rootの`descendant-inventory`と各fixed agents directory内`recursive-subtree` | `static-candidate` | `claude.behavior.repo.agents` | DirectoryがcwdからGit rootまでのlayer chainまたはallowed additional directoryに参加する場合だけeligible | `anthropic.claude-code.subagents.scope-context` |
-| `claude.repo.settings` | `./` | `./.claude/settings.json`、`./.claude/settings.local.json` | 各selectorを`exact` | `static-candidate` | `claude.behavior.repo.settings` | Claudeのexact launch-`cwd` ruleと一致。Parent/descendant setting matcherなし | `anthropic.claude-code.large-codebases.start-directory`、`anthropic.claude-code.settings.scopes-precedence` |
-| `claude.repo.mcp` | `./` | `./.mcp.json` | `exact` | `static-candidate` | `claude.behavior.repo.mcp` | Source rootがClaudeのproject rootであること、およびtrust/approvalがcondition | `anthropic.claude-code.mcp.scopes-precedence` |
-| `claude.repo.output-style` | `./` | `./**/.claude/output-styles/*.md` | `descendant-inventory`。Style fileは各fixed output-styles directoryのdirect child | `static-candidate` | `claude.behavior.repo.output-style` | Active sessionのancestor layerであることとsettings/session stateによるselectionが必要 | `anthropic.claude-code.output-styles.locations` |
-| `claude.repo.plugin-manifest` | `./` | `./.claude-plugin/plugin.json` | `exact`。Selected Repository rootをauthored plugin rootとして扱う | `static-candidate` | `claude.behavior.repo.plugin` | Inspectorのauthoring policyだけ。Claudeは任意のRepository rootにあるこのpathをauto-discoveryせず、存在はactivationを証明しない。Nested local manifestへは`claude.derived.local-plugin-manifest`からだけ到達できる | `anthropic.claude-code.plugins.components-scopes`、`anthropic.claude-code.marketplaces.catalog-sources` |
-| `claude.repo.marketplace` | `./` | `./.claude-plugin/marketplace.json` | `exact`。Selected Repository rootをauthored marketplace rootとして扱う | `static-candidate` | `claude.behavior.repo.marketplace` | Inspectorのauthoring policyだけ。Claudeは任意のRepository rootからこのcatalogをauto-registerしない。Explicit registrationはruntime conditionのまま | `anthropic.claude-code.marketplaces.catalog-sources` |
+| `claude.repo.instructions` | Repository | `[ANY_DIRECTORIES, 'CLAUDE.md']`、`[ANY_DIRECTORIES, 'CLAUDE.local.md']` | `descendant-inventory`。Rootと全descendantを含み`ANY_DIRECTORIES`は0 segmentも含む | `static-candidate` | `claude.behavior.repo.instructions.launch`、`claude.behavior.repo.instructions.ancestor`、`claude.behavior.repo.instructions.descendant` | Eligibilityはlaunch `cwd`、ancestry、read対象subtreeに依存。Nested `.claude/CLAUDE.md`はlaunch directory直下の正確な`.claude` fileである場合だけeligibleで、documented lazy-descendant formではない | `anthropic.claude-code.memory.locations-load`、`anthropic.claude-code.sdk.setting-sources` |
+| `claude.repo.rules` | Repository | `[ANY_DIRECTORIES, '.claude', 'rules', ANY_DIRECTORIES, /\.md$/u]` | 可能なrule-layer rootの`descendant-inventory`と各fixed rules directory内`recursive-subtree` | `static-candidate` | `claude.behavior.repo.rules` | 文書化されたruntime layer上のdirectoryだけeligibilityが既知。Nested inventoryはconditional | `anthropic.claude-code.memory.locations-load` |
+| `claude.repo.skill` | Repository | `[ANY_DIRECTORIES, '.claude', 'skills', ANY_NAME, 'SKILL.md']` | `descendant-inventory` plus `direct-child`。Skill nameは正確に1 direct child | `static-candidate` | `claude.behavior.repo.skills` | Plain-skill ancestor/lazy discoveryと、正確なlaunch-`cwd`だけのskills-directory plugin discoveryは異なる | `anthropic.claude-code.skills.locations-discovery`、`anthropic.claude-code.plugins.components-scopes` |
+| `claude.repo.command` | Repository | `[ANY_DIRECTORIES, '.claude', 'commands', ANY_DIRECTORIES, /\.md$/u]` | 可能なcommand rootの`descendant-inventory`と各fixed commands directory内`recursive-subtree` | `static-candidate` | `claude.behavior.repo.commands` | Recursive command namespaceはdocumented。文書化されたproject/user locationを超えるruntime-layer traversalはconditional | `anthropic.claude-code.skills.locations-discovery`、`anthropic.claude-code.changelog.legacy-command-nesting` |
+| `claude.repo.agent` | Repository | `[ANY_DIRECTORIES, '.claude', 'agents', ANY_DIRECTORIES, /\.md$/u]` | 可能なagent rootの`descendant-inventory`と各fixed agents directory内`recursive-subtree` | `static-candidate` | `claude.behavior.repo.agents` | DirectoryがcwdからGit rootまでのlayer chainまたはallowed additional directoryに参加する場合だけeligible | `anthropic.claude-code.subagents.scope-context` |
+| `claude.repo.settings` | Repository | `['.claude', 'settings.json']`、`['.claude', 'settings.local.json']` | 各selectorを`exact` | `static-candidate` | `claude.behavior.repo.settings` | Claudeのexact launch-`cwd` ruleと一致。Parent/descendant setting matcherなし | `anthropic.claude-code.large-codebases.start-directory`、`anthropic.claude-code.settings.scopes-precedence` |
+| `claude.repo.mcp` | Repository | `['.mcp.json']` | `exact` | `static-candidate` | `claude.behavior.repo.mcp` | Source rootがClaudeのproject rootであること、およびtrust/approvalがcondition | `anthropic.claude-code.mcp.scopes-precedence` |
+| `claude.repo.output-style` | Repository | `[ANY_DIRECTORIES, '.claude', 'output-styles', /\.md$/u]` | `descendant-inventory` plus `direct-child`。Style fileは各fixed output-styles directoryのdirect child | `static-candidate` | `claude.behavior.repo.output-style` | Active sessionのancestor layerであることとsettings/session stateによるselectionが必要 | `anthropic.claude-code.output-styles.locations` |
+| `claude.repo.plugin-manifest` | Repository | `['.claude-plugin', 'plugin.json']` | `exact`。Selected Repository rootをauthored plugin rootとして扱う | `static-candidate` | `claude.behavior.repo.plugin` | Inspectorのauthoring policyだけ。Claudeは任意のRepository rootにあるこのpathをauto-discoveryせず、存在はactivationを証明しない。Nested local manifestへは`claude.derived.local-plugin-manifest`からだけ到達できる | `anthropic.claude-code.plugins.components-scopes`、`anthropic.claude-code.marketplaces.catalog-sources` |
+| `claude.repo.marketplace` | Repository | `['.claude-plugin', 'marketplace.json']` | `exact`。Selected Repository rootをauthored marketplace rootとして扱う | `static-candidate` | `claude.behavior.repo.marketplace` | Inspectorのauthoring policyだけ。Claudeは任意のRepository rootからこのcatalogをauto-registerしない。Explicit registrationはruntime conditionのまま | `anthropic.claude-code.marketplaces.catalog-sources` |
 
 受理済みsettings、skill、agent、plugin、marketplace fileに内包されたhookとinline MCP declarationは、
 そのcandidateのmetadataである。別のfilesystem matcherは作らない。
@@ -134,9 +135,9 @@ fileをloadしたという主張には変換しない。より狭いexclusionま
 FR-016とFR-018が許可するのは、下記のuser instruction fileだけである。他のUser fileをvendorが
 supportしていても、このconsent boundaryは拡張しない。
 
-| Rule ID | Global base | Relative selector | Expansion | Class | Behavior refs | Policy refs | Status | Evidence |
+| Rule ID | Global base | Selector program | Expansion | Class | Behavior refs | Policy refs | Status | Evidence |
 |---|---|---|---|---|---|---|---|---|
-| `claude.global.instructions` | 正確なconsent済みcapture済み`CLAUDE_CONFIG_DIR`。Absent時だけrequest-wideなimport済み`node:os.homedir()` captureと`.claude`を`node:path.join`した値 | `CLAUDE.md` | `exact`。Global selectorはRepositoryの`./` prefixを再利用しない | `static-candidate` | `claude.behavior.user.instructions` | FR-013、FR-014、FR-016、FR-018、QR-005 | FR-016によりaccepted。隣接する全User configuration/stateはFR-018によりexcluded | `anthropic.claude-code.memory.locations-load`、`anthropic.claude-code.directory.file-reference` |
+| `claude.global.instructions` | 正確なconsent済みcapture済み`CLAUDE_CONFIG_DIR`。Absent時だけrequest-wideなimport済み`node:os.homedir()` captureと`.claude`を`node:path.join`した値 | `['CLAUDE.md']` | `exact`。Global selectorはRepository rootを基点にしない | `static-candidate` | `claude.behavior.user.instructions` | FR-013、FR-014、FR-016、FR-018、QR-005 | FR-016によりaccepted。隣接する全User configuration/stateはFR-018によりexcluded | `anthropic.claude-code.memory.locations-load`、`anthropic.claude-code.directory.file-reference` |
 
 Environment validation、consent、canonicalization、およびabsentな`CLAUDE_CONFIG_DIR`とinvalid valueの
 扱いは、親allowlistで定義するInspector方針であり、Claude Codeのvendor lookup claimではない。

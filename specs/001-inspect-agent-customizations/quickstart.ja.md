@@ -78,8 +78,7 @@ pnpm run build
   生成HTML shell、CSS、JSON file、必須documentation/license fileはdeclarativeかつnon-executableなartifactとする。
   Package manager生成の`.bin` symlinkと
   `.cmd`/`.ps1` launch shimはpayload外の唯一の限定interop例外とし、それぞれexactな宣言済み`package.json.bin` targetを
-  audit済みNode JavaScriptへ対応させ、argvだけをforwardして追加input/application logicを持たせない。Package-owned shell
-  helperとunexpected shimは拒否する。Directなproduction dependencyは正確に`devframe`、`gunshi`、`jsonc-parser`、
+  audit済みNode JavaScriptへ対応させ、argvだけをforwardして追加input/application logicを持たせない。Directなproduction dependencyは正確に`devframe`、`gunshi`、`jsonc-parser`、
   `smol-toml`、`yaml`とする。devframeのtransitive treeはdevframeとlockfileが所有し、`open`は全dependency
   sectionで不在とする。
 - Build outputにfixture、raw customization text、Global content、cache、inspected machineを公開する
@@ -102,9 +101,9 @@ cd /path/to/agent-customization-inspector
 node dist/cli.mjs --no-open --cwd tests/fixtures/repositories/all-supported
 ```
 
-CLIは呼び出し時の`process.cwd()`を1回だけcaptureする。省略時はそのexact stringを使う。`--cwd`は最大1回だけ
-受理し、absolute optionはそのまま保持し、relative optionはcaptureした呼び出しdirectoryに対してresolveする。
-Missing、empty、duplicateのvalueは、sessionまたはbrowser attemptより前に固定されたactionable outputを出して終了する。
+CLIは呼び出し時の`process.cwd()`を1回だけcaptureする。省略時はそのexact stringを使う。`--cwd`は
+受理し（反復指定はparserのlast valueへ解決）、absolute optionはそのまま保持し、relative optionはcaptureした呼び出しdirectoryに対してresolveする。
+Missing/emptyのvalueは、sessionまたはbrowser attemptより前に固定されたactionable outputを出して終了する。
 Selectionは`process.chdir()`を呼ばず、startup failureはsessionやsession-API errorではなくactionableなmessageとともに
 launchを終了させる。
 
@@ -208,12 +207,11 @@ pnpm run test:docs
   実行すべきhost-securityやHTTP-router contract suiteは存在しない。Per-session token、Origin check、hand-written routerは
   削除済みで、protectionはloopback限定の`localhost` bindだけであり、unexpectedなsession-API failureはreal errorをrequesting clientへ
   そのままpropagateし、sessionは利用可能なままとする。
-- Package testがtarballをbuild/inspectionし、isolated fixtureへinstallし、packaged Node.js filesystem serviceを
+- Package testがtarballをbuild/inspectionし、isolated fixtureへinstallし、packaged inspection moduleを
   loadして、working tree/runtime downloadへ依存せず正確な`npx` entryを
-  launchする。Production closure全体のscripts-disabled installとnetwork-disabled normal installもauditし、closedな
-  payload-JavaScript/no-lifecycle/no-native policy、package-manager生成shimの別audit、全CI OSで同じpackage graph digestを
-  確認する。Production-graph testは`pnpm-lock.yaml`から、locked versionのdirect dependency 5件、すなわち
-  `devframe`、`gunshi`、`jsonc-parser`、`smol-toml`、`yaml`を正確にassertし、negative packaging fixtureは、
+  launchする。Production-graph testは承認済みのdirect dependency 5件、すなわち
+  `devframe`、`gunshi`、`jsonc-parser`、`smol-toml`、`yaml`を正確にassertし（resolved versionとintegrity hashは
+  commit済み`pnpm-lock.yaml`が所有し続ける）、negative packaging fixtureは、
   missingまたはnon-regularなrequired entry pointがpublish前に`verify:package`をfailさせることを証明する。
 - 内容を変更しない100,000 entry/500 customization fileのdeterministic performance fixtureを、同じversion付き
   checked-in profile上の正確に10個のfresh Inspector processで測定する。同じ9件以上の各runが、後述timer/cache protocolの
@@ -246,11 +244,11 @@ source checkでnetworkを使えるのはこのcommandだけとする。
    official HTTPS hostとexact section selection/normalizationを強制する。Recoverableなnetworkまたは実行環境failureは
    behavior/rule/strategy/check-in済みdigestを自動更新せずfail closedし、製品固有の数値fetch capはcontractに含めない。
 2. Vendor lookup base、relative selector、traversal modeをInspector matcherから独立して検証する。全Repository
-   matcherは正確な`./` Baseと、`./` relative selectorに1対1で対応してcanonical round-tripするtyped segment
-   programを持つ。Bare `**/`、unknown/misplaced token、隣接するrecursive token、selector/program件数不一致を
-   拒否する。Fixtureはdescendant-plus-direct-childとdescendant-plus-recursive-subtreeのcompositeを扱う。`./**/`は
-   明示的なInspector descendant inventoryとしてだけ受理し、vendorの下向きwalkの証明とは解釈しない。Build validationは
-   accepted programをimmutableかつversionedな`TraversalPlan` dataへcompileし、runtime testはfilesystem serviceがselector
+   selectorはtyped segment array program — literal、regex、非隣接recursive-directory segmentで、globのように
+   見えるstring形式を持たない — として直接authorし、registry contract gateがunknown/misplaced tokenと
+   隣接recursive tokenを拒否する。Fixtureはdescendant-plus-direct-childとdescendant-plus-recursive-subtreeの
+   compositeを扱う。Build validationは
+   authored programをimmutableかつversionedな`TraversalPlan` dataへcompileし、runtime testはinspection moduleがselector
    textを再parseしたりgeneric walkerへ置換したりせず、そのdataだけをinterpretすることを証明する。Global exact-file planは
    tool-home rootをopenせずfixed ancestor/target chainだけにtouchし、fixed-instruction-subtree planはそのnamed subtreeと
    permitted descendantだけをopenする。隣接する全Global setting、credential、state、plugin、その他neighbor pathへの
@@ -497,8 +495,8 @@ Test harnessはisolated fake tool homeを渡し、developerのreal homeを絶対
    派生する。Instrumented captureは`COPILOT_HOME`、`CLAUDE_CONFIG_DIR`、`CODEX_HOME`をこの順で正確に1回ずつcaptureし、
    `undefined`だけをabsentとし、いずれかがabsentの場合だけ`node:os.homedir()`を正確に1回callし、active-platform
    `node:path.join`が対応する固定suffixだけを適用することを証明する。`HOME`/`USERPROFILE`の直接選択もexistence checkも行わない。
-2. Consent viewが正確なCopilot/Claude/Codex lexical root、relative path pattern、input state、除外、
-   contract version `2026-07-20`を表示する。Frozen internal previewは各exact raw `lexicalRoot` stringを別に保持する。
+2. Consent viewが正確なCopilot/Claude/Codex lexical root、input state、除外、
+   contract version `2026-07-20`を表示し、read scopeはpatternごとのpath表示ではなく平易な言葉で説明する。Frozen internal previewは各exact raw `lexicalRoot` stringを別に保持する。
    `displayRoot`はone-way escaped stringで、decodeしてread authorityにしない。
    Preview constructionのthrow/rejectionは、`scanRequestId`もauthorityも与えずreal errorを返す。
 3. Opt-in後は文書化instruction candidateだけが0から3つの別識別tool-specific Global Sourceに表示される。
@@ -517,10 +515,11 @@ Test harnessはisolated fake tool homeを渡し、developerのreal homeを絶対
 5. 注入したunexpectedなadmission failureはtransaction全体をabortさせる。Initial enableはそのfailureの
    real errorを返し、consent/control/jobをactivateしない。Retryでは既存stateを維持する。
    Rootまたはescaped displayの数値上限は定義しない。
-6. Stale/changed/cross-session replayed preview ID/digestを拒否する。Digestは各entryについて、stored raw `lexicalRoot`と
-   escaped `displayRoot`を、2つの別々のtype tag付きlength-prefixed stringとしてbindする。Typed
-   `TraversalPlan` version、closed selection policy、canonical programもbindする。Display fieldをraw fieldの代用にしない。Enableはfrozen raw
-   valueとstored planだけを使い、environmentを再読込せず、`displayRoot`をreverse-convertしない。Digestが別fieldを保持し、admissionが
+6. Stale/changed/cross-session replayed preview IDを拒否する。Enableはserverが保持する唯一のpreview recordを
+   opaque `previewId`で指名する。そのrecordは各entryについて、stored raw `lexicalRoot`と
+   escaped `displayRoot`を別々のfieldとして保持し、closed selection policyとcanonical program
+   を特定するrecordレベルの`allowlistVersion`/`traversalPlanVersion` pairも保持する。Display fieldをraw fieldの代用にしない。Enableはfrozen raw
+   valueとstored planだけを使い、environmentを再読込せず、`displayRoot`をreverse-convertしない。Recordが別fieldを保持し、admissionが
    stored raw valueを使うことをescape-collision、control-character、backslash fixtureで証明する。
    Previewで2 entryがeligible、1 entryがinvalidの場合もrequest側tool selectorは持たない。Initial enableは固定の
    `confirmedTools: [copilot, claude, codex]`を導出して3つすべてをevaluateする。Responseのdisjointな
@@ -552,7 +551,7 @@ Test harnessはisolated fake tool homeを渡し、developerのreal homeを絶対
    removeする。
    Validation/admissionをpauseするfixtureでdisableを受理し、command/content両epochをincrementしてenable operationをdrain/unregisterした後に
    late completionを解放する。そのcompletionは最後のcancellation sweep後にcontrol mutation、diagnostic、context、ID、scan
-   jobを一切作らない。Accept後のcleanup、assembly、serialization failureではprocessをaliveに保ち、fenceを閉じ、
+   jobを一切作らない。Accept後のcleanup、assembly failureではprocessをaliveに保ち、fenceを閉じ、
    failしたrequestのerrorをretainし、contentを復元せずretry/joinを利用可能にして、fallbackの次の手順として
    process restartを提示する。Accept前failureまたはtrue no-opではfenceをnullのままにし、既にpurge済みのclientがfreshな
    full snapshotを直ちに取得できるようにする。
@@ -793,7 +792,7 @@ distribution、digestの変更は両resultを無効にし、final pairがvalid e
   Missing、duplicate、malformed、mismatchをcriticalとする。
 - Contract/data modelの`StudyBrowserAttemptBinding`、`StudyBrowserRequestCandidate`、`StudyServerCorrelationClaim`、
   `StudyParticipantNavigationGrant`、`StudyBrowserBrokerDecision`を使う。Supervisor/brokerがattempt/bindingを生成し、prepared/open/closedの
-  byte-identical snapshotをharness/browser adapterへ配布して両ACKを要求する。Ordered pre-readiness release、open両ACK、discovery-context ACK後だけreadinessを返し、その後だけgrant/candidateを許可する。Terminalization-decisionで両copyをterminalizingへ移す。Adapterはbrowser/grant/marker/reservation/candidate/pendingだけをdestroyしclosed ACKまでbindingを保持し、harnessはsynthesis/closed dual ACKまでbinding/fixed scheduleを保持する。両closed ACK後だけdestroy/nextとする。Stateはexact `prepared | open | terminalizing | closed`、live bindingは最大1件とする。
+  byte-identical snapshotをharness/browser adapterへ配布して両ACKを要求する。Ordered pre-readiness release、open両ACK、discovery-context ACK後だけreadinessを返し、その後だけgrant/candidateを許可する。`terminalization-decision`で両copyをterminalizingへ移す。Adapterはbrowser/grant/marker/reservation/candidate/pendingだけをdestroyしclosed ACKまでbindingを保持し、harnessはsynthesis/closed dual ACKまでbinding/fixed scheduleを保持する。両closed ACK後だけdestroy/nextとする。Stateはexact `prepared | open | terminalizing | closed`、live bindingは最大1件とする。
 - Supervisorをsole participant-launch controller/direct OS child observerとpre-bootstrap exitを含むsole product-exit sourceにし、harnessはschedule/bindingだけを担う。Probe close時のserialized child stateがalready exitedならproduct-exit、liveならpremature-probe-close、normal 4-outcome/zero-pending closeならterminalization 0とする。Browser adapterはsole attempt-bound equipment observerで、`browser-exit`はactual browser process/context exitだけ、`equipment-failure`はcontroller/proxy/auth healthy中のexternal browser/OS/environment bootstrap failureだけをreportする。Adapter/proxy/controller/CDP/auth/marker/IPC/implementation/child-management faultはrun invalidとしoutcomeをsynthesizeしない。
   First valid cause wins/later reject、premature closeは`equipment-failure`へmapする。Terminalizationはaccepted row/joinをfreezeし、missing
   context/failure/reviewだけをfixed orderで作る。Evidence-role failureはrun invalid/synthesis 0とする。Byte-identical decisionをharness/adapterへfanoutし、
@@ -1034,7 +1033,7 @@ root-absolute assetは全client routeでdevframe hostを通じてそのままboo
 証明し、negative fixtureはmissingまたはnon-regularなrequired entry pointがpublish前にgateをfailさせることを
 証明する。これらpackage所有checkはいずれもcustomization validity/lint resultを報告しない。
 
-Diagnostic-behavior testはcode/source/file/argument deduplicationと固定phase/source/path/rule/code/occurrence順を扱う。
+Diagnostic-behavior testはorder-only aggregation — dedup passなしの固定phase/source/path/rule/code/occurrence順で、正当に繰り返されるrecord（failed recognitionごとに1件、rejected collision groupごとに1件）がすべてpublishされること — を扱う。
 Diagnosticのretention/serialization中のfailureは単一fileに限定されない。Attemptをfailさせ、result/generationをpublishせず、
 failしたrequestのmessageを持つordinary errorとして報告する。
 Multi-Source caseではA/Bのentry-failure pairが共存し、B successがAを保持し、A successだけがAのpairをclearし、
@@ -1042,7 +1041,7 @@ A再failureがAのpairだけを置換し、Global disableがGlobal pairだけを
 diagnostic countを増やさない。
 同じfixtureでclosedな`file | source | session` scope unionも検証する。File scopeは`sourceId`、`fileId`、
 `sourceRelativePath`を必須とし、source scopeは`sourceId`を必須にして`fileId`/`sourceRelativePath`を禁止し、session scopeは
-3 fieldすべてを禁止する。Source/session scopeのdiagnosticが表示、deduplication、orderingのためにpathを捏造してはならない。
+3 fieldすべてを禁止する。Source/session scopeのdiagnosticが表示、orderingのためにpathを捏造してはならない。
 
 ## Manual accessibility review
 
@@ -1099,18 +1098,19 @@ Release recordでは、acceptしたdependencyまたは破壊的なpublic-contrac
 initial baselineをno impactとして記録する。それ以外では必要なconsumer action、compatibility/support window、
 rollback/support pathを記録する。Evidenceが欠落するか一方の言語だけならrelease gateをfailureとする。
 
-展開したroot tarballとisolated install済みproduction closureをauditする。最初のscript-disabledかつdevelopment
-dependency省略installはexact lockfile/manifest graphと一致し、全project/dependency tarball payloadにlifecycle/build
-requirement、platform selector、bundled/optional native package、native/binary/Wasm extensionまたはmagic、native build
-source/metadata、non-Node shebang、executable non-JavaScript file、package-owned shell helperがないことを検証する。同じ
-verified cacheからnetwork accessを無効にしたnormal lifecycle install後にauditを反復する。`package-payload` digestをpackage
-ごとに別計算し、package name、version、integrity、そのpayload digestをproduction-graph digestへbindする。Package manager
-生成launch shimはpayload/graph digestから除外し、全CI OSで同じgraph digestを要求してshimはOS別にauditする。Exactな宣言済み
-`package.json.bin` targetをaudit済みNode JavaScriptへargvだけforwardする生成`.bin` symlinkと`.cmd`/`.ps1` shimだけを許可し、
-追加input/logicまたはunexpected shimはfailureとする。生成HTML shell、CSS、JSON file、documentation、license fileは
+承認済みproduction dependency setを`package.json`と`pnpm-lock.yaml` closureからassertする。すなわちdirect
+dependency 5件、`devframe`、`gunshi`、`jsonc-parser`、`smol-toml`、`yaml`を正確にassertし、graph変更は
+dependency決定が明示的に見直されるまでgateをfailさせる。各resolved versionとそのintegrity hashはcommit済み
+lockfileが所有し、全production packageのpayload byteをpinするのはこのlockfileである。
+Exactな宣言済み
+Package-manager生成`.bin` symlinkと`.cmd`/`.ps1` shimは、exactな宣言済み`package.json.bin` targetへmapしてargvをforwardする。生成HTML shell、CSS、JSON file、documentation、license fileは
 declarativeかつnon-executableなpayload artifactとして受理し、HTMLが参照するbootstrap scriptはJavaScript executable codeの
 ままとする。FR-038はproject-authored executable application codeと公開/install済みproductを対象とし、third-party
-development/test toolingはその公開boundary外で別にauditする。
+development/test toolingはその公開boundary外で別にauditする。*（superseded 2026-07-23: payloadごとのcontent scan —
+platform selector、native/binary/Wasm magic、native build source/metadata、non-Node shebang、shell helper — と、
+scripts-disabled/network-disabled installの各run、OS別shim audit、およびdependency単位のversion/integrity hash
+assertionはscopeから外した。commit済みlockfileが各resolved versionとintegrity hashを既にpinしており——それらを
+testで再記述してもlockfileを二重化するだけであり——install時のenforcementはpackage managerが所有する）*。
 
 Launch testは、browser attempt前に表示されるorigin line、`--no-open`でbrowser-helper child processが
 0件であること、automatic openingがdisabled、unsupported、failedでもinspectionが利用可能なままであることを扱う。
@@ -1118,8 +1118,8 @@ Automatic opening、port/host resolution、open/suppress flagはdevframe所有�
 content、path、authored valueがそのopenerへ到達しないことを証明する。
 Gunshiのbindしないhelp/version、strict unknown-option拒否、明示的なpositional/rest拒否、固定されnonzero
 validation failure、await済みcompletionに加え、defaultでcaptureしたexact `process.cwd()`と、
-最大1回だけ受理する単一`--cwd`、すなわちabsolute optionをそのまま保持すること、relative optionをcaptureした
-呼び出しdirectoryに対してresolveすること、`chdir`なし、およびmissing/empty/duplicateな
+反復指定をparserのlast valueへ解決する`--cwd`、すなわちabsolute optionをそのまま保持すること、relative optionをcaptureした
+呼び出しdirectoryに対してresolveすること、`chdir`なし、およびmissing/emptyな
 `--cwd` valueをsession/browser作成前に固定actionable startup errorでrejectすることも扱う。
 Testはさらに、automatic openingがOS default handlerへ委譲するだけでversionを
 certifyできないことも証明する。Release recordはpin済みPlaywright revisionを使用し、`--no-open`と表示URLをmanual certified-browser

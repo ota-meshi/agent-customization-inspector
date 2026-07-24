@@ -62,10 +62,11 @@ Consequently:
 ### Repository
 
 The Repository boundary is the selected root: the exact one-time captured invocation
-`process.cwd()` when `--cwd` is omitted. `--cwd` is accepted at most once; an absolute
+`process.cwd()` when `--cwd` is omitted. `--cwd` is accepted, a repeated option resolving
+to the parser's last value; an absolute
 value is kept as given, and a relative value is resolved against the captured invocation
-directory with the active platform's `node:path.resolve`. A missing or empty value or a
-duplicate option fails with a fixed actionable startup error before session/browser
+directory with the active platform's `node:path.resolve`. A missing or empty value
+fails with a fixed actionable startup error before session/browser
 creation (FR-001). Selection performs zero filesystem/network I/O and no `chdir`.
 Generation 0 contains the one Repository Source created with zero filesystem I/O; its
 escaped root label carries no read authority, and the first scan reads the retained
@@ -105,8 +106,7 @@ Every static Inspector rule separates these fields:
 | Field | Meaning |
 |---|---|
 | **Base** | One exact enabled boundary: `Repository` or one named consented `Global` vendor boundary |
-| **Relative selectors** | A non-empty ordered list of boundary-relative, `/`-normalized selectors; none contains an absolute path, environment expansion, home expansion, URI, or implicit ancestor search |
-| **Selector programs** | Exactly one closed segment program per selector, in the same order; a program can contain multiple typed expansion steps |
+| **Selector programs** | A non-empty ordered list of authored typed segment programs, each relative to the Base; a program can contain multiple typed expansion steps and cannot represent an absolute path, environment expansion, home expansion, URI, or implicit ancestor search |
 
 Each selector program has a non-empty ordered sequence of segment tokens from this closed union:
 
@@ -138,7 +138,7 @@ and never passes any selector text to a general-purpose glob evaluator; the only
 evaluation is each `regex` step's own regular expression applied to one enumerated
 entry name.
 
-The structured Base, selector list, and segment programs are authoritative. The vendor
+The structured Base and authored segment programs are authoritative. The vendor
 tables' **Expansion** cells are human summaries derived from those programs. They use
 `exact`, `direct-child`, `descendant-inventory`, and `recursive-subtree` labels in program
 order and may list more than one label for a composite selector.
@@ -174,8 +174,9 @@ carries those one-to-one typed selector programs.
 
 A Global rule names one exact consented vendor boundary as Base and gives a selector
 relative to that boundary. Environment/default-home resolution belongs to boundary
-creation, not to the selector. Global selectors do not reuse the Repository `./` prefix,
-do not authorize another vendor boundary, and cannot expand the paths permitted by
+creation, not to the selector. A Global selector is authored against its consented vendor
+boundary, never against the Repository root,
+does not authorize another vendor boundary, and cannot expand the paths permitted by
 FR-015 through FR-018.
 
 ### Traversal-plan compilation and Global least privilege
@@ -209,10 +210,10 @@ policy publishes the selected non-empty file and never publishes both selectors.
 
 The no-I/O Global preview names each tool's resolved root and lexical state only; it
 carries no per-pattern display, and what is read below an admitted root is fixed by the
-shipped plan the digest-bound versions identify, so there is no separately maintained
-preview allowlist. The consent digest binds the contract version and traversal-plan
-schema/version, which identify the closed selection policy and canonical selector
-programs. An enable
+shipped plan the retained `allowlistVersion`/`traversalPlanVersion` pair identifies, so
+there is no separately maintained
+preview allowlist. Those versions identify the closed selection policy and canonical
+selector programs. An enable
 operation executes the exact plan represented by the accepted preview rather than
 recompiling it from display text.
 
@@ -395,8 +396,8 @@ Contract and fixture validation must prove all of the following:
    prove that an exact target is read without enumerating its root, a fixed subtree
    enumerates only that subtree and permitted descendants, and neighboring paths receive
    zero enumeration, open, or read calls. Preview fixtures prove that the preview names
-   only the resolved roots and lexical states and that the consent digest binds the
-   allowlist and traversal-plan versions identifying the closed selection policy and
+   only the resolved roots and lexical states and that the retained preview record binds
+   the allowlist and traversal-plan versions identifying the closed selection policy and
    canonical programs. Codex fixtures apply absent, empty,
    BOM-only, whitespace-only, non-empty, replacement-decoded, binary, and unreadable cases
    independently to both ordered targets; they prove that the fallback applies only for an
@@ -425,7 +426,7 @@ Contract and fixture validation must prove all of the following:
    Cross-Source/attempt/generation fixtures prove independent reads.
 8. Root-selection fixtures cover the captured one-time `process.cwd()`, an absolute
    `--cwd` kept as given, a relative `--cwd` resolved against the capture, and the fixed
-   startup error for a missing, empty, or duplicate option, with zero `chdir` calls and
+   startup error for a missing or empty option, with zero `chdir` calls and
    zero selection-time filesystem I/O. Traversal fixtures on every supported OS prove that
    a symlinked customization file is read transparently and displays its linked content, a
    link whose target is missing or unreadable yields `file-unreadable` in a `partial`

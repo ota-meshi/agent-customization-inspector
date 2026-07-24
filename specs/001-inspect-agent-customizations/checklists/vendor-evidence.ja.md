@@ -21,7 +21,7 @@
 ## 要件の明確性
 
 - [x] CHK006 取得済みinvocation working directory、Inspectorのselected Repository root（defaultの`process.cwd()`またはlexicalにresolveした`--cwd`値）、vendor repository root、VS Code workspace folder、およびruntime `cwd`が、相違し得るすべての箇所で別概念として定義されているか？ [Clarity, Spec §FR-001–FR-002; Contract: Runtime Composition §Required condition facts]
-- [x] CHK007 再帰的に見えるすべてのpathについて、vendorのlookup traversalとInspectorの下方向`./**/` inventory selectorの違いが明示されているか？ [Clarity, Spec §QR-005; Contract: Inspection Path Allowlist §Vendor locators are not Inspector matchers]
+- [x] CHK007 再帰的に見えるすべてのpathについて、vendorのlookup traversalとInspectorの下方向`ANY_DIRECTORIES` inventory segmentの違いが明示されているか？ [Clarity, Spec §QR-005; Contract: Inspection Path Allowlist §Vendor locators are not Inspector matchers]
 - [x] CHK008 fileの存在をruntime activationと誤認できないように、「present」「recognized」「supported」「available」「applicable」「selected」「enabled」「effective」が定義されているか？ [Clarity, Spec §FR-008–FR-009; Contract: Inspection Path Allowlist §Read authorization and applicability] — 2026-07-21修正: Inspection Path Allowlist §Read authorization and applicabilityに、8語すべてを定義するexistence/activation区別vocabularyを追加。
 - [x] CHK009 各根拠sectionは、広い親sectionを示すだけではなく、behavior、rule、またはstrategyの行が述べる正確なclaimを裏付けられる粒度になっているか？ [Clarity, Spec §QR-005; Contract: Official Sources §Record notation and ownership]
 - [x] CHK010 pathまたはprecedence ruleがサポートする全versionで有効ではない場合に、minimum version、rollout state、`preview`または`experimental` lifecycle qualifier、およびeffective dateが記載されているか？ [Clarity, Gap] — 2026-07-21修正: Spec §QR-005が、明示的なversion gate（`VS Code 1.118+`のような正確なupstream token、または`engine-version` condition fact）、version付きrelease note/changelogの引用を必須化し、日付なし/rollingなpageによるgateやeffective dateの確立を禁止。
@@ -36,7 +36,7 @@
 ## Acceptance criteriaの品質
 
 - [x] CHK015 未解決のidentifier referenceが0件、orphan sourceが0件、すべての保守対象behavior、rule、およびstrategyに根拠があることを含む、evidence coverageの客観的な完全性基準があるか？ [Measurability, Spec §QR-005]
-- [x] CHK016 Repository selectorのacceptance criteriaは、Base `./`、`./`で始まるrelative selector、expansion class、およびbare `**/` prefixの拒否を明示しているか？ [Measurability, Spec §QR-005]
+- [x] CHK016 Repository selectorのacceptance criteriaは、`Repository` Base、authorしたtyped segment program、expansion class、およびclosed token grammar（隣接recursive segmentなし）を明示しているか？ [Measurability, Spec §QR-005]
 - [x] CHK017 Closedな`documentationStatus`である`documented`、`partially-documented`、`unknown`、`conflict`を客観的な根拠基準で割り当て、`documentation-conflict`をaliasとして受理せず`ConditionFact.status`専用にできるか？ [Acceptance Criteria, Spec §QR-005]
 - [x] CHK018 変更なしのcontent、変更されたassertion、欠落または重複したanchor、redirect、および人によるsemantic updateについて、drift reviewの結果を測定できるか？ [Acceptance Criteria, Contract: Official Sources §Offline validation and explicit drift review]
 

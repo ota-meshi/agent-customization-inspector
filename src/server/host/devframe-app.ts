@@ -24,6 +24,7 @@ import { createDevServer, type CreateDevServerOptions } from 'devframe/adapters/
 import packageJson from '../../../package.json' with { type: 'json' };
 import type { DevframeDefinition } from 'devframe';
 import { createOpaqueId } from '../../shared/entities';
+import type { LifecycleOwnerKey } from '../../shared/diagnostics';
 import { REPOSITORY_TRAVERSAL_PLANS } from '../inspection/rules/registry';
 import { runTraversalScan } from '../inspection/traversal';
 import { assembleScanPublication } from '../inspection/scan';
@@ -93,13 +94,18 @@ function packagedPublicDir(): string {
  * with its retained `root-unreadable` lifecycle Diagnostic and no partial
  * inventory (FR-002); any other throw propagates to the caller's boundary —
  * the accepted-job catch for a session-API rescan (FR-030), or the process
- * top level for the ownerless automatic startup scan. Exported for the CLI,
- * which runs the automatic first scan through the same job.
+ * top level for the ownerless automatic startup scan. The trigger-owning
+ * caller supplies the root-failure lifecycle owner (data-model.md
+ * § Diagnostic): `repository` for the automatic first scan,
+ * `published-source:<sourceId>` for an explicit rescan of the published
+ * Source. Exported for the CLI, which runs the automatic first scan
+ * through the same job.
  */
 export async function executeRepositoryScan(
   context: InspectorHostContext,
   scanRequestId: string,
   sourceId: string,
+  rootFailureOwner: LifecycleOwnerKey,
 ): Promise<void> {
   const result = await runTraversalScan({
     root: context.session.internal.selectedRepositoryRoot,
@@ -107,7 +113,7 @@ export async function executeRepositoryScan(
   });
   const publication = assembleScanPublication({
     sourceId,
-    rootFailureOwner: 'repository',
+    rootFailureOwner,
     result,
   });
   if (publication.kind === 'publishable') {
@@ -224,7 +230,16 @@ export function createInspectorDevframe(context: InspectorHostContext): Devframe
           // terminal failure is retained as the Source's stale overlay with
           // the failed request's real error message, never re-thrown into a
           // later unrelated invocation (FR-030).
-          void executeRepositoryScan(context, admission.scanRequestId, repository.sourceId).catch(
+          void executeRepositoryScan(
+            context,
+            admission.scanRequestId,
+            repository.sourceId,
+            // An explicit rescan of the published Repository Source: a
+            // deterministic root failure belongs to that Source's stale
+            // overlay, not the automatic-scan repository owner
+            // (data-model.md § Diagnostic).
+            `published-source:${repository.sourceId}`,
+          ).catch(
             (error: unknown) => {
               context.coordinator.failScan(admission.scanRequestId, {
                 kind: 'error',

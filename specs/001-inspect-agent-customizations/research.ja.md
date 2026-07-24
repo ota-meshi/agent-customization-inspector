@@ -73,23 +73,23 @@ CIとrelease gateで実行し、全local buildの内側では実行しない。`
 それらのentryがcomplete tarball allowlistである。`package.json.bin`は正確に
 `{ "agent-customization-inspector": "dist/cli.mjs" }`とする。tsdown bundleがentryのshebangを保持し、
 package managerがinstall時にlinkされたbinをexecutableにする。library APIがないため`main`、`module`、`exports`を
-省略する。Install script、runtime download、end-user compileを使わない。Runtime packageは正確な
-`dependencies`として宣言し、`npx`に監査可能なversionをinstallさせる。tsdownはproject所有moduleとshared
-contractをbundleし、任意のtransitive packageはbundleしない。Directなproduction dependencyはpin済みの
+省略する。Install script、runtime download、end-user compileを使わない。Runtime packageは
+`dependencies`にcaret rangeとして宣言し、commit済みlockfileがexactなresolved versionとintegrityをpinすることで
+`npx`に監査可能なversionをinstallさせる。tsdownはproject所有moduleとshared
+contractをbundleし、任意のtransitive packageはbundleしない。Directなproduction dependencyは
 `devframe`、`gunshi`、`jsonc-parser`、`smol-toml`、`yaml`の正確に5つとし（§ 3）、`open`を全dependency
 sectionとproduction lock closureから除外する。
 
-全project/dependency tarball payloadとinstall済みproduction graphをauditする。最初にpacked artifactをlifecycle script無効かつ
-development dependency省略でinstallし、lockfile/manifestどおりのexact graphを要求する。Recursive auditは
-lifecycle/build requirement、`os`/`cpu`/`libc` selector、bundledまたはoptional native package、
-native/binary/Wasm extensionまたはELF/Mach-O/PE magic、`binding.gyp`、Rust/C/C++ source、`prebuilds`、package-owned
-non-Node shebang、shell helper、executable non-JavaScript payloadを拒否する。その後、同じverified cacheからnetwork
-accessを無効にしてnormal lifecycleのproduction installを実行する。Package-manager生成`node_modules/.bin` symlinkと
-Windows `.cmd`/`.ps1` shimだけをpayload外例外とし、exact nameはaudit済み`package.json.bin`由来、symlink target/
-generated bodyは宣言済みaudit済みNode JavaScript targetへのdispatchとargv forwardだけを行い、extra logic、environment/
-configuration input、unexpected shimを拒否する。Cross-OS production-graph digestはpackage name/version/integrityと
-package-payload digestを対象としてgenerated `.bin` artifactを除外し、OS固有shim auditを併用する。New production
-dependencyまたはartifactは明示reviewまでfailする。
+承認済みのdirect production dependency set — その5つのnameだけで他は含まない — を`package.json`と
+`pnpm-lock.yaml` closureからassertする。これによりnew production dependencyは§ 3の決定が明示的に
+見直されるまでfailする*（superseded 2026-07-23: payload content scan — `os`/`cpu`/`libc` selector、
+bundled/optional native package、native/binary/Wasm magicまたはELF/Mach-O/PE magic、`binding.gyp`、Rust/C/C++ source、
+`prebuilds`、non-Node shebang、shell helper、executable non-JavaScript payload — と、lifecycle-disabled/
+network-disabled installの各run、cross-OS shim audit、およびdependency単位のversion/integrity hash
+assertionはself-verificationの整理でscopeから外した。commit済みlockfileが各resolved versionと
+integrity hashを既にpinしているため、それらの値をtestで再記述してもlockfileを二重化するだけであり、
+hashが固定したcontentの再scanは憲章原則Iが
+除いた冗長な再検証classである。install時のlifecycleとnetwork enforcementはpackage manager自身の設定が所有する）*。
 
 **理由**: `dist/`への直接出力はstaging設計が必要とするcopy stepを除去する。Pipeline所有の単一clean stepが
 新鮮な`dist/`を保証するため、出力される全fileは構成上pipeline自身のtoolが所有し、stale outputの拒否に
@@ -101,9 +101,9 @@ platform-sensitiveまたは変化するtransitive codeの暗黙inlineを避け�
 定義する。Web、CLI、safe-filesystem layerがpackaged locationからloadできることはtarball
 smoke testで証明する。Tarballをisolated fixtureへinstallしてexecutableを実際に`npx --no-install`でinvokeし、
 `bin` mappingのinspectionだけで済ませない。起動前にexact shebang/executable modeもassertする。
-Install済みclosureのauditによりroot tarballだけのinspectionが残すgapを閉じ、2回目のnetwork-disabled installにより
-normal lifecycle pathがplatform artifactをfetch、compile、substituteしないことを証明する。Exactなdirect pinと
-commit済みlockfileが初期リリースのclosureとcross-OS digestをstableにする。
+commit済みlockfile — integrity hash付きの各resolved version — が、hashが既に固定したcontentを再scanせず、
+lockfile自身の値をtestで再記述もせずに、初期リリースのproduction closureをstableにし
+payloadをbyte-fixedにする。
 `/files/<fileId>`のようなnested routeにも同じshellを返すためroot-absolute assetが必要で、
 relativeな`./_nuxt/` URLはそのroute配下へ誤ってresolveされる。
 公式[Nuxt 4 configuration reference](https://nuxt.com/docs/4.x/api/nuxt-config#baseurl)は`baseURL`、
@@ -139,7 +139,12 @@ product独自のfile-size/item-count境界を定義・検証しない。
 
 ## 3. 最新の互換stable dependency基準
 
-**決定**: `package.json`と`pnpm-lock.yaml`へ正確なversionをpinし、pnpm 11.13.0を使用する。
+**決定**: `package.json`にはcaret rangeを宣言し、commit済み`pnpm-lock.yaml`が全packageのexactな
+resolved versionとintegrityをpinする。pnpm 11.13.0を使用する
+*（superseded 2026-07-23: 以前は`package.json`にもexact versionを記載していた。lockfileが既にinstall
+されるversionとintegrityを固定しているため、exact specifierはpinを二重管理していた。caret boundは
+非互換majorを——`devframe`や`gunshi`のような0.x packageでは次のminorも——除外し続け、range内への
+upgradeは明示的な`pnpm update`時だけで、通常のinstallでは発生しない。）*。
 「最新」は選択したNuxt/Vue toolchainと互換性がある最新stable versionを意味し、prereleaseや非互換majorを
 意味しない。最初のlockfile作成直前に同じregistry互換性確認を再実行する。
 このcheckはplanning gateとして扱う。選択済みpackageまたはversionが1つでも変わる場合、configuration
@@ -161,7 +166,7 @@ research、plan、quickstart、task artifactをすべて同期して`/speckit.pl
 | CLI | `gunshi` 0.37.0 | 現行のruntime dependency 0件のESM CLI framework。Node.js `>=22` engine requirementは宣言済みrangeと互換。Browser openingはdevframe hostが所有し（§ 8）、追加packageを必要としない |
 | Parser | `yaml` 2.9.0、`jsonc-parser` 3.3.1、`smol-toml` 1.7.0 | 現行stable inert data parser |
 | Source view/diff | `monaco-editor` 0.55.1 | 現行stable read-only source/diff editor。固有diff engineによりclient dependency重複を避ける |
-| Lint | ESLint 10.7.0、`@nuxt/eslint` 1.16.0 | 現行互換stable release |
+| Lint | ESLint 10.7.0、`@nuxt/eslint` 1.16.0、`@stylistic/eslint-plugin` 5.10.0 | 現行互換stable release。`@stylistic`はESLint 10がcoreから外したstylistic rule（例: `quotes`）を提供する |
 | Unit/integration | Vitestとcoverage-v8 4.1.10、Nuxt Test Utils 4.0.3 | Vitest/coverageを同じversionにし、Nuxt supportのtest harnessを使う |
 | Component/DOM | Vue Test Utils 2.4.11、happy-dom 20.10.6 | Nuxt Test Utils peerを満たす現行release |
 | Browser/a11y | Playwright 1.61.1、`@axe-core/playwright` 4.12.1 | 現行stable browser/accessibility tooling |
@@ -200,7 +205,7 @@ CLIはGunshiのstableなroot `define`/`cli` APIだけを使用する。Negatable
 固定された安全なrendererと明示的な`AggregateError`処理によってnonzero exitへ対応付ける。Built-in help/versionはbindせずreturnする。
 Production entryは`gunshi/agent`、lazy command、custom plugin、experimental parser combinatorをimportしない。
 Gunshiはnpm graph上の1 leafだが、bundle済みinternal argument/plugin/resource codeもpayload、integrity、license、
-import-boundary digestの監査対象とする。Exact pinとこれらのtestによってpre-1.0 API変更riskを有界化する。
+import-boundary digestの監査対象とする。Lockfileがpinするresolved version（明示的な`pnpm update`でのみ更新され、caret rangeにより同じ0.x minorに限定される）とこれらのtestによってpre-1.0 API変更riskを有界化する。
 
 監査した0.37.0のregistry tarballはtext-onlyのJavaScript、declaration、JSON、documentation、license file
 34件（unpacked 239,298 byte）で、runtime/optional/peer/bundled dependency、install lifecycle hook、platform
@@ -211,11 +216,12 @@ devframe 0.7.5は意図的にleaf packageではない: transitiveなruntime tree
 `crossws`、`valibot`、`@valibot/to-json-schema`、`destr`、`mrmime`、`nostics`、`pathe`、`ufo`を持ち込む。
 このtree（`h3` release-candidate pinを含む）はdevframe自身のdependency宣言とcommit済みlockfileが所有し、
 member単位のproduct決定として再判断するのではなく、maintainされたhost layerの採用の一部として受け入れる。
-Install済みproduction-graph auditとcross-OS digestは引き続き全memberのpayloadを対象とし、監査した
-devframe tarball payloadはJavaScript/TypeScript textだけであるためNode-only package gateは維持される。
-devframeはpre-1.0であり、0.x minorがAPIをmigrateし得るため、productはexact versionをpinし、あらゆる
-bumpを§ 3のplanning-gate changeとして扱う。`tests/package/production-graph.test.ts`は、5つのdirect
-dependencyがlocked versionでregistry integrityを持つことを正確にassertする。
+lockfileが全memberをname/version/integrity hashでpinし（OS間で同一）、payload byteはdependency review時に
+固定される。devframe自身のtarball payloadはJavaScript/TypeScript textだけであるためNode-only package gateは維持される。
+devframeはpre-1.0であり、0.x minorがAPIをmigrateし得るため、caret rangeがそれらを除外し、commit済み
+lockfileがresolved versionをpinし、あらゆる
+bumpを§ 3のplanning-gate changeとして扱う。`tests/package/production-graph.test.ts`は、承認済みの5つの
+direct dependencyであることを正確にassertする。versionとintegrityはlockfileが所有し続ける。
 
 ### 有限なrelease-certification行列
 
@@ -259,8 +265,8 @@ Gunshi公式の[setup requirement](https://gunshi.dev/guide/introduction/setup)�
 Node/TypeScript互換性とclosedなunknown-option behaviorの根拠にする。
 Safe-filesystem layerはNode built-inの`node:fs/promises`、`node:fs`、`node:path` APIだけを使用するため、
 platform toolchainやruntime package dependencyを追加しない。
-Directなproduction `dependencies` setはpin済みの`devframe`、`gunshi`、`jsonc-parser`、`smol-toml`、`yaml`の
-正確に5つとする: CLIとparserのpackageはnpm graph上のleafであり、devframeは上記のtransitive host treeを
+Directなproduction `dependencies` setは`devframe`、`gunshi`、`jsonc-parser`、`smol-toml`、`yaml`の
+正確に5つとする（caret rangeで宣言し、lockfileがexactなresolved versionへpinする）: CLIとparserのpackageはnpm graph上のleafであり、devframeは上記のtransitive host treeを
 持ち込む。
 Nuxt/Vue/Vite/tsdown、Monaco、test toolingは必要outputをclosed product assetへassembleするためbuild/development-onlyとする。
 Lockfileとisolated install済みproduction closureの両方をauditする。
@@ -305,6 +311,11 @@ plain JavaScriptであり、`open`はproduction closureに存在しないまま�
    first-non-empty branchだけで、overrideを先にprobeし、readしたnon-empty contentならshort-circuitし、absentまたは
    emptyの場合だけ次へ進む。Unreadableまたはbinaryのoverrideはそのfileのdiagnosticで
    branchを終了し、fallbackしない（FR-035）。
+   *（superseded 2026-07-22/23: selectorはtyped segment arrayとして直接authorする。`./`表記の
+   Base/selector string形式、bare `**/`拒否、canonical selector round-trip、rendering layerは削除され、
+   consent digestもself-verificationの整理で削除された。Previewはserverが保持し`previewId`で識別する
+   recordであり、`allowlistVersion`/`traversalPlanVersion`でbindする。Token語彙、composability、
+   Codex first-non-empty policyは残る。）*
 3. **Runtime composition registry**は、selection、precedence、layering、fallback、condition projection、
    relationship-only ruleを表すstable `strategyId`を
    [runtime composition](contracts/runtime-composition.ja.md)に記録する。Strategyはpathを再記述せずbehavior IDと
@@ -323,9 +334,9 @@ behavior/rule/strategy recordごとのassessmentをsort・deduplicateして保�
 縮約、qualifier unionは、どのofficial assertionがどのsubjectへ適用されるかを失うため不採用とした。
 
 選択したRepository rootはimmutableなRepository inventory boundaryのままとする。CLIは`process.cwd()`を1回だけ
-captureし、defaultではその正確な文字列を使う。`--cwd`は最大1回だけ受理し、absolute optionはそのまま保持し、
-relative optionはcaptureした起動directoryに対してresolveする（FR-001）。Missing/empty valueまたは
-duplicate optionはsession/browser作成前に固定のactionable startup errorで失敗させ、CLIは`process.chdir()`を
+captureし、defaultではその正確な文字列を使う。`--cwd`は受理し（反復指定はparserのlast valueへ解決）、absolute optionはそのまま保持し、
+relative optionはcaptureした起動directoryに対してresolveする（FR-001）。Missing/empty valueは
+session/browser作成前に固定のactionable startup errorで失敗させ、CLIは`process.chdir()`を
 決して呼ばず、bootstrapはscan I/Oより前に、readを認可しない唯一のRepository Sourceを作成する。Vendor runtime root、
 walk方向、target file、trust、enablement、selection、installation、product surfaceは、matcherやfile存在から導出せず
 独立したbehavior/strategy factにする。Behavior record、source record、strategy、relationship、excluded ruleはreadを
@@ -357,7 +368,7 @@ tableではInspector matcherがvendor lookup behaviorのように見える箇所
   `**/.github/copilot-instructions.md`と書くとnested workspace fileを示唆してしまう。Copilot CLIはruntime
   contextからrepository boundaryへ向かう独自の文書化済みstandard-location traversalを持ち、Cloud/code-
   review surfaceはさらに別のsupport/composition modelを持つ。これらは別behavior rowにする。Inspector matcherが
-  possible descendant contextをinventoryする場合は明示的な`./**/`だけを使い、applicabilityはconditionalのままに
+  possible descendant contextをinventoryする場合は明示的な先頭`ANY_DIRECTORIES` segmentだけを使い、applicabilityはconditionalのままに
   する。VS Code rowをCLIまたはCloud traversal ruleとして再利用しない。VS Code MCPにはcurrent-guide viewに対する
   意図的なversion付き例外が1つある。1.118 release noteはexact workspace root `.mcp.json`を追加してmost-specific
   same-name deduplicationを告知する一方、current MCP guideは`.vscode/mcp.json`とUser configurationを網羅的location
@@ -588,8 +599,8 @@ text-diff packageは責務を重複させる。Metadataにはset-like recognitio
 identity付きfieldというdomain semanticsがあり、serialized lineではなくstructureとして比較しつつliteral spellingの差を
 観測可能にする必要がある。公式[diff editor options](https://microsoft.github.io/monaco-editor/typedoc/interfaces/editor_editor_api.editor.IDiffEditorOptions.html)と
 [Monaco repository](https://github.com/microsoft/monaco-editor)がeditor、worker、accessibility、model
-lifecycle capabilityを文書化している。意図的に狭いESM importはexact version pinとpackaged browser
-testでupgrade時に保護する。
+lifecycle capabilityを文書化している。意図的に狭いESM importはlockfileがpinするresolved versionと
+packaged browser testでupgrade時に保護する。
 Content-based display transformは適用しない。必須warning後も記述済みsensitive valueは表示したままとし、
 inert renderingによってcontent自体の実行、load、navigateを防ぐ。
 
@@ -615,14 +626,17 @@ hand-written HTTP routerも存在しない。残余limitationは防御ではな�
 local processと、DNS rebinding経由のmalicious web pageが無認証sessionへ到達し得る（QR-003）。Session APIは
 引き続きfile IDとclosed commandだけを公開し、client pathを使わない。
 
-Global consent前に、lexical/no-I/O path previewをsession API上で公開し、session-keyed digestへ
-confirmationをbindする。このsectionの固定contractとして、new unconsented previewごとにoperation-local input captureを1つ作る。
+Global consent前に、lexical/no-I/O path previewをsession API上で、serverが保持しopaque `previewId`で識別する
+唯一のrecordとして公開し、confirmationがそのIDを指名する。このsectionの固定contractとして、new unconsented previewごとにoperation-local input captureを1つ作る。
 `COPILOT_HOME`、`CLAUDE_CONFIG_DIR`、`CODEX_HOME`をこの順で1回ずつreadし、`undefined`だけをabsentとする。1つでも
 absentならimport済み`node:os.homedir()`を1回callして、active-platform `node:path.join`と固定suffix `.copilot`、
 `.claude`、`.codex`を使う。`HOME`/`USERPROFILE`を独自選択せず、capture中にexistence checkを行わない。正確なraw
-`lexicalRoot`をinternal stateに保持し、その値、
-escaped display、immutableな`TraversalPlan` schema/selection-policy/canonical programをconsent digestにbindする。Enableは
+`lexicalRoot`、escaped display、immutableな`TraversalPlan` schema/selection-policy/canonical programを、serverが保持する
+そのrecordに保持し、`allowlistVersion`/`traversalPlanVersion` pairで同梱planへbindする。Enableは
 stored raw valueだけを使い、display textから逆変換せず、environmentを再readしない。
+*（superseded 2026-07-23: session-keyed consent digestはself-verificationの整理で削除された。
+Previewはserverが保持しopaque `previewId`で識別する唯一のrecordであり、enableはそのIDを指名する。
+Capture ruleとraw/display保持は残る。）*
 また、各SessionSnapshot/FileDetail requestは`clientDataEpoch`、owning sequenceのgeneration — session snapshotは
 `repositoryGeneration`とnullableな`globalGeneration`を公開する — 、正確なrequest token、該当時は
 file IDをcaptureする。Old snapshotは無視し、いずれかのsequenceのnew generationをadoptする前にepochをincrementし、
@@ -682,8 +696,8 @@ devframe channelを渡り、sanitizer wrapperを持たない。Trade-offは明�
 （2026-07-22）: devframeのdefaultであるinteractive OTP認証なら他のlocal processやDNS rebinding pageから
 sessionをgateできるが、ownerはそのdefaultよりconfig-inspector parityを選んだ。したがって無認証loopback
 hostの残余exposureは、sessionが起動userの既に読める内容だけを配信するというtrusted-workspace modelに
-有界化された、文書化済みlimitationである（憲章v3.0.0、QR-003）。Digest-bound preview consentは引き続き、
-hostがpathへ触れる前にuserが見たlexical root/patternを証明し、preview構築中のNode.jsまたはbrowserの
+有界化された、文書化済みlimitationである（憲章v3.0.0、QR-003）。Consentが指名するserver保持frozen
+previewは引き続き、hostがpathへ触れる前にuserが見たlexical rootを証明し、preview構築中のNode.jsまたはbrowserの
 recoverable failureは未表示valueをauthorizeせずfailする。Lifecycle-triggered liveness checkとordinaryな
 request outcomeは、dataを永続化せずproduct timerを定義せず、観測可能なboundaryでsession lossを公開する。
 Hidden pageで直ちにpurgeすればbackground retentionを避けられ、continuously visibleなidle page上のprocess
@@ -836,9 +850,9 @@ unexecuted、digest-mismatched case、required classの空集合、fixture欠落
 黙ったdelete/reclassifyを認めず、caseのremove/reclassify、required-class定義の変更、expected outcomeの変更ではmanifest versionをincrementして明示的なreviewを受ける。Fixture byteだけを変更する場合は、影響するfixture digestとcanonical manifest digestを更新する。どちらの変更も新しい直接比較不能なmeasurement setを開始し、digest driftだけでdenominator semanticsの変更を認可しない。Automated contractはtable-drivenなprevious/current manifest revision pairでこれらのtransition ruleを検証し、reviewer stateを推測しない。実際のrelease diffについては、T1062が初回作成またはprior/current version、変更したcase ID、required-class定義またはexpected outcome、明示的なreviewer decision/referenceをbilingual validation recordへ記録する。これによりmaintained suiteを
 進化可能にしつつ、releaseがdenominatorを暗黙に縮小することを防ぐ。4つのregistry fixture suiteは
 全behavior/rule/strategy/source ID、相互evidence link、正確なsection anchor、英日parity、Inspector matcher
-registryだけがreadを認可できることをvalidateする。Matcher fixtureは`./`なしのRepository selectorとbare
-`**/`を拒否し、exact/direct-child/explicit descendant inventoryを区別し、`./**/`がvendor traversal factを
-satisfiedにしないことを証明する。Targeted regression fixtureはCopilotの別々のVS Code/CLI/Cloud lookup表、
+registryだけがreadを認可できることをvalidateする。Matcher fixtureはclosed token grammarに違反するRepository selector program（例: 隣接する
+recursive-directory segment）を拒否し、exact/direct-child/explicit descendant inventoryを区別し、先頭の
+`ANY_DIRECTORIES` segmentがvendor traversal factをsatisfiedにしないことを証明する。Targeted regression fixtureはCopilotの別々のVS Code/CLI/Cloud lookup表、
 選択した正確なRepository rootだけのClaude project settings、non-recursiveなCodex rule directory、plugin activation対
 authored manifest inventory、FR-015からFR-018外へのGlobal read 0件を扱う。
 さらに、tool別Global Sourceが0から3つで各tool最大1つ、各Sourceが正確に1つのrootとSource-relative Path
@@ -1378,8 +1392,8 @@ mutationとしてscoreすること、server-side acknowledgement stateは、plat
    readを認可しないRepository Sourceを同期的に含み、admissionは後で行う。
    *（superseded 2026-07-22: FR-001はabsolute `--cwd`をそのまま保持し、relative optionをcaptureした
    `process.cwd()`に対してresolveする。Shared `LexicalAbsoluteRootParts` parserとWindows spelling
-   taxonomyは削除された。単一capture、no-`chdir` rule、missing/empty/duplicate optionへの固定
-   startup errorは残る。）*
+   taxonomyは削除された。単一capture、no-`chdir` rule、missing/empty optionへの固定
+   startup errorは残る（反復optionはのちにparserのlast-winsで解決、superseded 2026-07-23）。）*
 2. Global consentはselectorなしのall-tools action 1件とする。Initial processingは必ずfrozen preview entry 3件全てを評価し、
    retryはcurrent server-side `retryableTools`のcomplete set、すなわちnon-pending unpublished `admitted` controlと
    `retryDisposition: same-preview`の`rejected` controlを導出し、lexicalな`new-preview-required`を除外する。決定的に
@@ -1404,8 +1418,9 @@ mutationとしてscoreすること、server-side acknowledgement stateは、plat
    所有する。Normalization collisionでは曖昧なfileを作らない。Hard-link admissionでは、unsigned UTF-8 bytewiseで最小のNFC
    pathをprimaryとして決定的に選び、残りをaliasとしてsortし、全raw provenanceを保持する。
    *（superseded 2026-07-22: hard linkはgrouping、primary/alias選択、read-once semanticsを持たない
-   ordinaryなfileであり、normalization-collision rejectionは削除された。Raw nameは引き続き
-   filesystem I/Oを行い、NFCがdisplayを所有する。）*
+   ordinaryなfileである。Normalization-collision rejectionは保持され、rejectされたgroupごとに
+   session-scopedな`path-normalization-collision` Diagnostic（closed registryの5番目のcode）を記録する。
+   Raw nameは引き続きfilesystem I/Oを行い、NFCがdisplayを所有する。）*
 6. Presentation Allowlist rowは承認済みdesign inputである。Implementation gateはrowとそのbilingual digestだけをverifyする。
    Semantic changeではworkを停止し、designを同期してplan/taskを再生成してから利用する。
 

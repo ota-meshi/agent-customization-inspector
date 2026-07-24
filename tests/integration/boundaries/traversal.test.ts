@@ -205,6 +205,47 @@ describe('recognition parse failure keeps the source displayed (FR-028)', () => 
     }
   });
 
+  it('keeps one distinct diagnostic per failed recognition on the same file', async () => {
+    const root = createFixtureRoot('inspector-parsefail-multi');
+    try {
+      writeFileSync(join(root, 'AGENTS.md'), 'root agents\n');
+      const result = await runTraversalScan({ root, plans: [AGENTS_PLAN] });
+      const publication = assembleScanPublication({
+        sourceId: 'src-1',
+        rootFailureOwner: 'repository',
+        result,
+        recognitions: new Map([
+          [
+            'AGENTS.md',
+            [
+              { recognitionId: 'rec-a', parseStatus: 'failed' as const },
+              { recognitionId: 'rec-b', parseStatus: 'failed' as const },
+            ],
+          ],
+        ]),
+      });
+      if (publication.kind !== 'publishable') {
+        throw new Error('expected a publishable outcome');
+      }
+      // One record per failed recognition (FR-028): the two failures share
+      // every public field and still publish separately — and every file
+      // diagnostic ID must resolve to a published record.
+      const parseFailures = publication.diagnostics.filter(
+        (entry) => entry.code === 'recognition-parse-failed',
+      );
+      expect(parseFailures).toHaveLength(2);
+      const affected = publication.files.find((file) => file.sourceRelativePath === 'AGENTS.md');
+      if (affected?.encoding !== 'utf-8') {
+        throw new Error('expected the readable variant');
+      }
+      expect([...affected.diagnosticIds].sort()).toEqual(
+        parseFailures.map((entry) => entry.diagnosticId).sort(),
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('commits the readable source with only derived data omitted, rekeying the tuple coherently', () => {
     const { session } = bootstrapSession('/fixture-root');
     const parseDiagnostic = serializeDiagnostic(

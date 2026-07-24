@@ -14,6 +14,7 @@ import { createOpaqueId } from '../../shared/entities';
 import {
   createDiagnostic,
   serializeDiagnostic,
+  sortDiagnostics,
   type DiagnosticRecord,
   type LifecycleOwnerKey,
 } from '../../shared/diagnostics';
@@ -244,6 +245,8 @@ export function assembleScanPublication(input: ScanPublicationInput): ScanPublic
     kind: 'publishable',
     outcome: hasFileConfinedOutcome ? 'partial' : 'complete',
     files,
-    diagnostics: diagnostics.map(serializeDiagnostic),
+    // The attempt publishes its records in the contracted deterministic
+    // order — owner rank, scope, path, code (data-model.md § Diagnostic).
+    diagnostics: sortDiagnostics(diagnostics).map(serializeDiagnostic),
   };
 }

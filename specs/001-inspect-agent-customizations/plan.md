@@ -29,9 +29,9 @@ recognition metadata is matched by tool/kind/field/occurrence and compares exact
 ordinary Vue components, never parser-normalized display values.
 
 Root selection is simple and lexical: the CLI captures `process.cwd()` exactly once and
-accepts `--cwd <path>` at most once. An absolute option is kept as given, a relative option
+accepts `--cwd <path>`, resolving a repeated option to the parser's last value. An absolute option is kept as given, a relative option
 is resolved against the captured invocation directory, and the result is the selected
-Repository root. The CLI never calls `process.chdir()`. A missing, empty, or duplicate
+Repository root. The CLI never calls `process.chdir()`. A missing or empty
 `--cwd` value fails with a fixed actionable startup error before session creation or
 browser launch. Bootstrap generation 0 of the Repository sequence synchronously contains
 the one Repository Source with a stable `sourceId` and an escaped root label.
@@ -99,8 +99,9 @@ Source exists, and is the one-way escaped proposed lexical root; it may be absol
 invalid. Neither field is a `SourceRelativePath`, identifies an inventory item, or grants read
 authority.
 
-Every Inspector Repository matcher is explicitly based at the selected Repository root and rendered
-with `./`; a bare `**/` is invalid. `./**/` means only downward Inspector descendant
+Every Inspector Repository matcher is explicitly based at the selected Repository root and
+authored as a typed segment-array program with no glob-looking rendered string form; a
+leading `ANY_DIRECTORIES` segment means only downward Inspector descendant
 inventory, never vendor traversal. Static candidates, vendor-specific one-edge
 derivations, relationship-only references, and exclusions remain distinct. File existence
 is kept separate from product surface, runtime root/`cwd`, target matching, trust,
@@ -123,13 +124,15 @@ compatible minor/patch release. Versions below either floor, Node 25, and future
 outside the contract.
 
 **Primary Dependencies**: Nuxt 4.4.8, Vue Router 5.2.0, tsdown 0.22.8, Vite 7.3.6
-(latest Nuxt-compatible release), `devframe` 0.7.5 (exact pin of the pre-1.0 local-tool
+(latest Nuxt-compatible release), `devframe` 0.7.5 (the pre-1.0 local-tool
 host framework), `gunshi` 0.37.0, `yaml` 2.9.0,
-`jsonc-parser` 3.3.1, `smol-toml` 1.7.0, and `monaco-editor` 0.55.1. devframe's transitive
+`jsonc-parser` 3.3.1, `smol-toml` 1.7.0, and `monaco-editor` 0.55.1. Each is declared as a
+caret range in `package.json`; the committed lockfile pins these exact resolved versions
+with integrity. devframe's transitive
 tree (h3 2.0.1-rc.22, birpc, crossws, valibot, destr, mrmime, nostics, pathe, ufo) is
-owned by devframe and the lockfile rather than pinned as direct dependencies. The first lockfile
-MUST revalidate these exact stable versions; prereleases and incompatible newer majors
-are not considered eligible “latest” versions, and the devframe pin plus its
+owned by devframe and the lockfile rather than declared as direct dependencies. The first lockfile
+MUST revalidate these exact stable resolved versions; prereleases and incompatible newer majors
+are not considered eligible “latest” versions, and the devframe choice plus its
 lockfile-owned h3 release candidate are the one reviewed exception, accepted with the
 framework adoption decision (spec Clarifications § Session 2026-07-22).
 That revalidation is a planning gate, not permission for a task-local package or version
@@ -171,8 +174,9 @@ blocks T002; missing bilingual validation evidence fails the release gate.
 `cwd` option for `--cwd <path>`, enables `strict: true`, explicitly rejects every
 positional/rest argument before binding, awaits `cli()`, and maps its validation
 `AggregateError` to fixed actionable output plus a nonzero exit. Before creating a
-session it captures `process.cwd()` exactly once and rejects an empty or duplicate `--cwd`
-with a fixed actionable startup error before session creation or browser opening. An
+session it captures `process.cwd()` exactly once and rejects an empty `--cwd`
+with a fixed actionable startup error before session creation or browser opening; a
+repeated `--cwd` resolves to the parser's last value. An
 absolute `--cwd` value is kept as given and a relative value is resolved with
 `node:path.resolve` against the captured invocation directory; the result is the selected
 Repository root. The CLI never calls `process.chdir()`. Built-in
@@ -941,7 +945,7 @@ browser is the actionable fallback. Published project/dependency package payload
 application code contain only platform-independent JavaScript application code and
 declarative static/package data; they require no install script, runtime download, or end-user
 compiler. Package-manager-generated `node_modules/.bin` symlink/`.cmd`/`.ps1` launchers are
-payload-external interoperability metadata and receive a separate exact-target/content audit.
+payload-external interoperability metadata that map to the declared `package.json.bin` target.
 Development-only tooling is outside the product package and remains separately pinned/audited.
 The server binds only the loopback interface (host `localhost`) and has no remote
 deployment mode.
@@ -1221,8 +1225,8 @@ the Constitution v4.0.0 ordinary-error clause: a file-confined failure becomes t
 diagnostic, any other failure fails its attempt with the failed request's real error —
 RPC-handler failures cross the devframe channel as devframe serializes them — and no
 sanitized envelope, generic error entity, or log-content rule remains in the design. The quickstart covers every stable behavior, rule, strategy, and
-source ID, official-source drift review, the Repository `./` grammar and bare-`**/`
-rejection, lint and the remaining tests, all
+source ID, official-source drift review, the typed segment-array selector grammar and its
+contract-gate rejections, lint and the remaining tests, all
 other required quality gates, and all four end-to-end stories. Monaco is
 client-only, same-origin, and model-lifetime scoped; its own diff engine avoids a
 duplicate dependency while exact authored metadata comparison stays explicit. The
@@ -1231,9 +1235,10 @@ permitted product child process to a fixed startup OS helper that receives no in
 content/path, authored value, user command, or environment-selected handler. It copies only the
 closed ambient platform-key set directly from the launch environment; lexical equality with a
 Source root changes no provenance and grants no authority. Package gates
-audit the root tarball plus the installed exact production closure for JavaScript-only
-application code, lifecycle/build/download paths, selectors, and native/binary artifacts;
-third-party development/test tooling remains outside the published FR-038 boundary. The
+assert the approved direct production dependency set from `package.json` and the
+`pnpm-lock.yaml` closure, while the committed lockfile pins each resolved version with its
+integrity hash, so the production payloads stay byte-pinned by their
+digests; third-party development/test tooling remains outside the published FR-038 boundary. The
 one recorded residual verification limitation is the lack of hard cancellation for a
 stalled kernel filesystem operation: disable, shutdown, or cancellation revokes publication
 authority and discards late results, but physical completion awaits the operation. It is not
@@ -1464,8 +1469,9 @@ a closed graph. `vendor-behaviors.ts` mirrors documented vendor lookup statement
 `official-sources.ts` is the development/test-only offline evidence-map counterpart and is
 never imported by the startup or scan entry graph. The four conformance JSON fixtures
 mirror those modules, require reciprocal IDs,
-and fail the build on duplicates, orphan references, unanchored evidence, an Inspector
-Repository matcher not beginning with `./`, or any bare `**/` matcher.
+and fail the build on duplicates, orphan references, unanchored evidence, or an Inspector
+Repository matcher whose authored segment program violates the closed token grammar (for
+example adjacent recursive-directory segments).
 
 `src/shared/entities.ts` owns the closed `EvidenceAssessment` DTO shape, each registry module
 owns the exact `documentationStatus` and `lifecycleQualifiers` on its own subject records,
@@ -1511,9 +1517,9 @@ build. The separate `verify:package` script runs the
 packaged entry-point verifier `scripts/verify-package-files.mjs`, which requires exactly
 `dist/public/index.html` and `dist/cli.mjs`; it is a CI and
 release gate rather than part of every local
-build, because packaged-artifact verification belongs to that layer. The locked
-production-leaf versions and integrity are asserted directly from `pnpm-lock.yaml` by the
-package tests; no separate production-graph script or evidence file exists. Its `typecheck` script runs the strict
+build, because packaged-artifact verification belongs to that layer. The package tests
+assert the approved production-leaf set; the locked versions and their integrity stay owned
+by the committed lockfile, and no separate production-graph script or evidence file exists. Its `typecheck` script runs the strict
 TypeScript type check over the application, shared, source, script, and test code configured
 in `tsconfig.json` and is a required quality gate in local verification, its own independent
 CI job, and release. `study:evidence:inputs` invokes only
@@ -1566,22 +1572,20 @@ the tarball into an isolated fixture, actually launches its local command throug
 assets, CLI, inspection layer, and runtime dependencies remain usable
 through `npx` from their packaged locations.
 
-The package gate also audits every project/dependency tarball payload and the installed
-production graph, not only the root tarball. It first installs with lifecycle scripts
-disabled and development dependencies omitted, checks the exact graph against the
-lockfile/package manifest, and rejects any `preinstall`/`install`/`postinstall` or build
-requirement; `os`/`cpu`/`libc` selector; bundled/optional native package;
-native/binary/Wasm extension or ELF/Mach-O/PE magic; `binding.gyp`, Rust/C/C++ source,
-`prebuilds`; package-owned non-Node shebang, shell helper, or executable non-JavaScript
-payload. It then performs a network-disabled normal lifecycle install from the same
-verified cache. Package-manager-generated `node_modules/.bin` symlinks and Windows
-`.cmd`/`.ps1` shims are the sole payload-external exception: exact names must come from an
-audited `package.json.bin`, their symlink target or generated body may only dispatch to that
-declared audited Node JavaScript target and forward argv, and no extra logic, environment/
-configuration input, or unexpected shim is accepted. The cross-OS production-graph digest
-covers package name/version/integrity and package-payload digests, excludes generated
-`.bin` artifacts, and is accompanied by the OS-specific shim audit. Any new production
-dependency or artifact fails until explicitly reviewed.
+The package gate asserts the approved direct production dependency set — exactly those five
+names and no others — from `package.json` and the `pnpm-lock.yaml` closure, so any new
+production dependency fails until the research.md § 3 decision is explicitly revisited. The
+committed lockfile owns each resolved version and its integrity hash, which is what keeps
+the production payload bytes fixed (superseded 2026-07-23:
+the payload content scans — native/binary/Wasm magic, shell-helper and shebang audits,
+lifecycle-disabled and network-disabled install runs, and the cross-OS shim audit — plus
+the per-dependency version and integrity-hash assertions were
+removed from scope with the self-verification cleanups: those are properties of the exact
+hash-pinned payloads, established once at dependency review, and re-scanning content the
+integrity hash already fixes — or restating in a test the values the lockfile already
+pins — is the redundant re-verification class removed by
+Constitution Principle I; install-time lifecycle and network enforcement belongs to the
+package manager's own configuration).
 
 ## Implementation Boundaries
 
@@ -1601,10 +1605,10 @@ dependency or artifact fails until explicitly reviewed.
   ordinary files. Raw entry names are the only filesystem operands, while public
   Source-relative Paths use NFC display segments. Client-supplied paths never authorize
   I/O; reads are driven by the compiled allowlist plans and server-owned identifiers only.
-- Per-file problems use the closed Diagnostic registry: `root-unreadable` (source scope,
-  error), `file-unreadable` (file scope, error),
-  `file-content-binary` (file scope, warning), and `recognition-parse-failed` (file scope,
-  warning). A selected Repository root that does not exist or cannot be read as a
+- Per-file problems use the closed Diagnostic registry: `root-unreadable` (source scope for
+  a published Source, session scope for an unpublished Global tool; error), `file-unreadable` (file scope, error),
+  `file-content-binary` (file scope, warning), `recognition-parse-failed` (file scope,
+  warning), and `path-normalization-collision` (session scope, error). A selected Repository root that does not exist or cannot be read as a
   directory fails that scan with the source-scoped `root-unreadable` diagnostic while the
   session stays usable, and the attempt publishes no partial inventory (FR-002). A
   consented Global root that is missing or unreadable records that tool as absent or
@@ -1635,16 +1639,16 @@ dependency or artifact fails until explicitly reviewed.
   Vendor behavior records describe upstream lookup without authorizing I/O; only static
   and typed derived Inspector rules authorize reads; runtime strategies project order,
   conditions, and relationship-only edges; official source records provide evidence and
-  never change a rule automatically. Every Repository matcher separates Base, Relative
-  selector, and Expansion, renders from the exact selected Repository root with `./`, and rejects bare
-  `**/`. An explicit `./**/` is downward Inspector inventory only. Copilot VS Code, CLI,
+  never change a rule automatically. Every Repository selector is authored directly as a
+  typed segment-array program — literal, regex, and non-adjacent recursive-directory
+  segments compose descendant/direct-child/subtree rules without a general glob engine or
+  a glob-looking string form — and compiles deterministically into the immutable versioned
+  `TraversalPlan` data. Copilot VS Code, CLI,
   and Cloud behavior, and each vendor's Repository versus User/Global behavior, remain
-  independently addressable rather than sharing an inferred traversal. Every Repository
-  selector is compiled into a closed, canonical-round-tripping segment program. Literal,
-  regex, and non-adjacent recursive-directory tokens express composite
-  descendant/direct-child/subtree rules without a general glob engine. Global preview
-  entries are the frozen lexical roots, and the consent digest binds their raw values and
-  escaped display per the data model. The only content-dependent scheduler branch is the exact
+  independently addressable rather than sharing an inferred traversal. Global preview
+  entries are the frozen lexical roots of the one server-retained record identified by its
+  opaque `previewId`; what would be read below an admitted root is bound by the retained
+  `allowlistVersion`/`traversalPlanVersion` pair. The only content-dependent scheduler branch is the exact
   `codex-global-first-non-empty` policy: it probes `AGENTS.override.md`, short-circuits
   on non-empty content, advances to `AGENTS.md` only when the override is absent or read
   as empty, and publishes at most one Codex Global instruction file. After one
@@ -1774,19 +1778,19 @@ dependency or artifact fails until explicitly reviewed.
   unexpected RPC-handler failure propagates out of its handler and crosses the devframe
   channel as devframe serializes it — there is no sanitizing wrapper or generic error
   envelope; the startup path has no catch, so an ownerless rejection reaches the process
-  top level. Global consent uses a no-I/O lexical preview and a
-  session-keyed digest. Each new unconsented preview reads `COPILOT_HOME`,
+  top level. Global consent uses a no-I/O lexical preview retained server-side as the one
+  record identified by its opaque `previewId`. Each new unconsented preview reads `COPILOT_HOME`,
   `CLAUDE_CONFIG_DIR`, and `CODEX_HOME` exactly once in that order, treats only `undefined`
   as absent, and calls imported `node:os.homedir()` exactly once if any is absent. It uses
   active-platform `node:path.join` with fixed `.copilot`, `.claude`, and `.codex` suffixes
   only for absent entries and never independently chooses `HOME` or `USERPROFILE`.
   Proposed roots are represented and escaped with the supported
   Node.js, browser, and platform string/path facilities rather than product-defined byte
-  ceilings. If that environment cannot represent, escape, retain, digest, or serialize a
+  ceilings. If that environment cannot represent, escape, retain, or serialize a
   proposed root recoverably, the throw/rejection propagates unchanged to the preview
   session-API request boundary as an ordinary error and creates no preview, authority,
-  job, or retained failure state. Each accepted entry also retains an internal exact raw `lexicalRoot`; the digest binds that raw value and its escaped
-  display. Enable uses only the stored raw
+  job, or retained failure state. Each accepted entry also retains an internal exact raw
+  `lexicalRoot` beside its escaped display in that record. Enable uses only the stored raw
   value, never reverses `displayRoot`, and never rereads the environment.
 - Startup browser opening is devframe-owned: the CLI prints the plain loopback origin once
   before devframe attempts the fixed operating-system browser-launch helper permitted by
@@ -1902,7 +1906,7 @@ dependency or artifact fails until explicitly reviewed.
   and offers one all-tools confirmation action with no UI or API per-tool selector.
   `confirmedTools` is that complete tuple, including a frozen entry whose lexical preview is
   invalid; eligibility never narrows consent. The server owns one internal
-  `GlobalToolControl` for each tuple member. After non-I/O request/digest validation, an
+  `GlobalToolControl` for each tuple member. After non-I/O request/`previewId` validation, an
   initial enable keeps the frozen consent and all three controls operation-local and
   unobservable throughout root admission; it creates no session `globalControl` or pending
   state yet. A retry instead uses the existing active consent/control state as its exact
@@ -1988,8 +1992,8 @@ dependency or artifact fails until explicitly reviewed.
   unpublished operation-local initial-enable may use cleanup-only success, which removes the
   fence while changing no committed state.
   Disable, shutdown, or explicit cancellation leaves pending work cleanup-only and never
-  publishes or interleaves a late result. Disable succeeds only after its drain, close, and
-  final serialization complete; a post-acceptance failure keeps the process
+  publishes or interleaves a late result. Disable succeeds only after its drain and close
+  complete; a post-acceptance failure keeps the process
   alive but leaves the data fence, the failed request's error, and retry/join control in
   place, with restart as the
   fallback for unrecoverable cleanup. A pre-acceptance failure or true no-op leaves the fence
@@ -2054,8 +2058,8 @@ dependency or artifact fails until explicitly reviewed.
 | Captured environment setting has length zero | `inputState: present-empty` / `preview-invalid` | Apply this first and only to an environment-origin value; retain the entry in the fixed three-entry confirmation, perform no fallback or filesystem/network I/O, and create no root, Source, job, or generation for it |
 | Otherwise the exact string contains U+0000 or an unpaired UTF-16 surrogate | `inputState: invalid` / `preview-invalid` | Reject before `path.isAbsolute`, retaining only the invalid preview entry with zero filesystem/network I/O and no authority |
 | Otherwise active-platform `node:path.isAbsolute` returns false | `inputState: relative` / `preview-invalid` | Retain the relative preview entry with zero filesystem/network I/O; do not normalize, resolve, fall back, or create authority |
-| Otherwise the string is absolute, including one outside the ordinary home | `inputState: eligible` / `preview-eligible` | Escape and digest the stored exact raw lexical value with zero filesystem/network I/O, keep it in the fixed three-entry confirmation, and await the one all-tools consent action; only this row can reach post-consent admission |
-| Consent/digest is stale, replayed, or mismatched | `consent-rejected` | Perform zero proposed-root I/O; create no authority |
+| Otherwise the string is absolute, including one outside the ordinary home | `inputState: eligible` / `preview-eligible` | Escape and retain the stored exact raw lexical value in the server-retained preview record with zero filesystem/network I/O, keep it in the fixed three-entry confirmation, and await the one all-tools consent action; only this row can reach post-consent admission |
+| Consent names a stale, replayed, or superseded `previewId` | `consent-rejected` | Perform zero proposed-root I/O; create no authority |
 | A consented root is missing or is not a readable directory | `absent` or `root-rejected` | Record that tool as absent or failed without creating its Source and without blocking sibling tools; continue partitioning the current server-owned set—all three tools initially or exact `retryableTools` on retry |
 | Any proposed-root operation throws or rejects unexpectedly | Ordinary-error propagation | Abort the whole Global transaction, discard every provisional sibling context/result, publish no admitted subset, and retain the prior snapshot |
 | Post-consent admission succeeds for one or more roots | `root-admitted` batch subset | Atomically attach all admitted contexts/IDs to their controls and transfer them together to the one `GlobalBatchScan`; create no public Source or graph before its single atomic commit |
@@ -2096,7 +2100,7 @@ The remaining unavoidable implementation costs are tracked explicitly:
 
 | Complexity | Why it is required | Simpler option rejected |
 |---|---|---|
-| Exact-pinned pre-1.0 devframe 0.7.5 host with lockfile-owned transitives (including the h3 2.0.1-rc.22 release candidate) | Reuse the config-inspector-proven local-tool host for static serving, the RPC session API, and browser opening instead of maintaining a hand-written router, token authentication, and static-manifest pipeline; the exact pin holds pre-1.0 API churn and the RC transitive at one reviewed baseline | A floating version range would adopt breaking pre-1.0 changes without review; re-implementing the host in-repo re-creates the complexity devframe already owns |
+| Lockfile-pinned pre-1.0 devframe 0.7.5 host with lockfile-owned transitives (including the h3 2.0.1-rc.22 release candidate) | Reuse the config-inspector-proven local-tool host for static serving, the RPC session API, and browser opening instead of maintaining a hand-written router, token authentication, and static-manifest pipeline; the exact pin holds pre-1.0 API churn and the RC transitive at one reviewed baseline | A floating version range would adopt breaking pre-1.0 changes without review; re-implementing the host in-repo re-creates the complexity devframe already owns |
 | Publication-authority revocation with cleanup-only late continuations | Prevent work completed after disable, shutdown, or cancellation from mutating a newer session state | Treating cancellation as physical kernel-I/O termination would make an unsupported guarantee |
 | Four fixed external terminal-equipment descriptors and supervisor-owned participant launch | Give participant, moderator, and two isolated reviewer slots deterministic nonrecording/no-echo ingress and give the sole product-exit source a real child handle | Implicit shared stdin cannot isolate votes or contexts; a harness without the product process handle cannot attest exit |
 | Adapter-owned pinned Chromium plus anonymous DevTools equipment pipe | Configure attempt-local proxy/auth without env/argv/profile persistence and ground browser/context exit in a direct OS observer | Browser authority in argv, environment, or a persistent profile violates the privacy boundary; an unowned browser has no trustworthy equipment observer |

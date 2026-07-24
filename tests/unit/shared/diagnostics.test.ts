@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DIAGNOSTIC_REGISTRY,
   createDiagnostic,
-  dedupeAndSortDiagnostics,
+  sortDiagnostics,
   serializeDiagnostic,
 } from '../../../src/shared/diagnostics';
 
@@ -158,7 +158,7 @@ describe('deterministic aggregation', () => {
       sourceId: 's-2',
     });
     const fileProblem = candidate('AGENTS.md', 'file-unreadable');
-    const sorted = dedupeAndSortDiagnostics([fileProblem, codexFailure, repositoryFailure]);
+    const sorted = sortDiagnostics([fileProblem, codexFailure, repositoryFailure]);
     expect(sorted.map((record) => record.lifecycleOwnerKey)).toEqual([
       'repository',
       'global:codex',
@@ -170,7 +170,7 @@ describe('deterministic aggregation', () => {
     const later = candidate('b/skill.md', 'file-unreadable');
     const earlier = candidate('a/skill.md', 'file-content-binary');
     const sameFileOtherCode = candidate('a/skill.md', 'file-unreadable');
-    const sorted = dedupeAndSortDiagnostics([later, earlier, sameFileOtherCode]);
+    const sorted = sortDiagnostics([later, earlier, sameFileOtherCode]);
     expect(sorted.map((record) => [record.sourceRelativePath, record.code])).toEqual([
       ['a/skill.md', 'file-content-binary'],
       ['a/skill.md', 'file-unreadable'],
@@ -178,12 +178,24 @@ describe('deterministic aggregation', () => {
     ]);
   });
 
-  it('deduplicates identical observations while keeping distinct files', () => {
-    const first = candidate('AGENTS.md', 'file-unreadable');
-    const duplicate = { ...first };
-    const distinct = candidate('CLAUDE.md', 'file-unreadable');
-    const sorted = dedupeAndSortDiagnostics([first, duplicate, distinct]);
+  it('keeps legitimately repeated same-field observations as separate records', () => {
+    // Two rejected collision groups share every public field (pathless,
+    // session-scoped) and still publish one record each (spec.md
+    // Clarifications § Session 2026-07-20); ordering never merges records.
+    const groupA = createDiagnostic({
+      code: 'path-normalization-collision',
+      lifecycleOwnerKey: null,
+    });
+    const groupB = createDiagnostic({
+      code: 'path-normalization-collision',
+      lifecycleOwnerKey: null,
+    });
+    const sorted = sortDiagnostics([groupA, groupB]);
     expect(sorted).toHaveLength(2);
+    expect(sorted.map((record) => record.diagnosticId)).toEqual([
+      groupA.diagnosticId,
+      groupB.diagnosticId,
+    ]);
   });
 });
 
@@ -204,8 +216,8 @@ describe('successful complete atomic publication', () => {
       }),
       createDiagnostic({ code: 'path-normalization-collision', lifecycleOwnerKey: null }),
     ];
-    const forward = dedupeAndSortDiagnostics(records).map(serializeDiagnostic);
-    const reversed = dedupeAndSortDiagnostics([...records].reverse()).map(serializeDiagnostic);
+    const forward = sortDiagnostics(records).map(serializeDiagnostic);
+    const reversed = sortDiagnostics([...records].reverse()).map(serializeDiagnostic);
     // The whole batch publishes together: every unique record appears exactly
     // once and the emitted order is a function of the records, not of the
     // emitter interleaving of the producing attempt.
@@ -214,7 +226,7 @@ describe('successful complete atomic publication', () => {
   });
 
   it('keeps internal routing state out of every published record', () => {
-    const published = dedupeAndSortDiagnostics([
+    const published = sortDiagnostics([
       createDiagnostic({
         code: 'root-unreadable',
         lifecycleOwnerKey: 'repository',

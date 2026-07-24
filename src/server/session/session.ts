@@ -18,6 +18,7 @@ import { clearStaleFailures, deriveSnapshotState, upsertStaleFailure } from './s
 import type { SourceBoundaryDto } from '../../shared/entities';
 import type {
   CustomizationFileDto,
+  CustomizationFileSummaryDto,
   ScanProgressDto,
   SessionSnapshot,
   SourceStatus,
@@ -105,6 +106,42 @@ function nowIso(): string {
 }
 
 /**
+ * Projects one committed file into its content-free snapshot summary row
+ * (contracts/http-api.md § get-session `files[]`). `sourceText` is
+ * deliberately never copied: complete authored content is served only by
+ * the acknowledgement-gated detail routes (FR-027), so the session
+ * snapshot cannot leak it to a client that has not acknowledged the
+ * sensitive-value warning.
+ */
+function summarizeFile(file: CustomizationFileDto): CustomizationFileSummaryDto {
+  const base = {
+    fileId: file.fileId,
+    sourceId: file.sourceId,
+    sourceRelativePath: file.sourceRelativePath,
+    diagnosticIds: file.diagnosticIds,
+  };
+  switch (file.encoding) {
+    case 'utf-8':
+    case 'utf-8-replaced':
+      return {
+        ...base,
+        encoding: file.encoding,
+        hadLeadingBom: file.hadLeadingBom,
+        sizeBytes: file.sizeBytes,
+        parseSummary: file.parseSummary,
+        // Scaffold until the vendor recognizer phases store ToolRecognition
+        // entities: no production recognizer exists yet, so every committed
+        // file has zero summaries (see api-types.ts § CustomizationFileSummaryDto).
+        recognitions: [],
+      };
+    case 'binary':
+      return { ...base, encoding: file.encoding, sizeBytes: file.sizeBytes };
+    case 'unknown':
+      return { ...base, encoding: file.encoding };
+  }
+}
+
+/**
  * Creates the bootstrap session synchronously with zero filesystem I/O.
  * The selection (invocation cwd, `--cwd` value, selected root) is retained
  * internally for later scans and lifecycle correlation; publicly it
@@ -177,6 +214,18 @@ export function createInspectionSession(input: SessionBootstrapInput): Inspectio
             diagnosticIds: [...repository.diagnosticIds],
           },
         ],
+        files: [
+          ...internal.committedRepositoryGeneration.files,
+          ...(internal.committedGlobalGeneration?.files ?? []),
+        ].map(summarizeFile),
+        // Semantic emission order (data-model.md § Diagnostic): session-owned
+        // lifecycle records (repository, Global tools, published Sources)
+        // precede the generations' candidate-owned records.
+        diagnostics: [
+          ...internal.sessionDiagnostics.values(),
+          ...internal.committedRepositoryGeneration.diagnostics,
+          ...(internal.committedGlobalGeneration?.diagnostics ?? []),
+        ],
         repositoryGeneration: internal.committedRepositoryGeneration.generation,
         globalGeneration: internal.committedGlobalGeneration?.generation ?? null,
         snapshotState: deriveSnapshotState(internal.staleFailures),
@@ -234,6 +283,19 @@ interface AttemptState {
   publicationAuthority: 'active' | 'revoked';
   /** True once the attempt terminally completed or failed; settled attempts are inert. */
   settled: boolean;
+  /**
+   * The Source overlay exactly as admission found it. A revoked attempt's
+   * discarded late result restores it wholesale, so the committed status
+   * with its final complete progress, or a retained failure presentation,
+   * survives the discard and the revoked request never surfaces as a
+   * settled outcome (spec.md § publication matrix "No later success
+   * status"; data-model.md § ScanProgress null/retention rules).
+   */
+  readonly priorOverlay: {
+    readonly status: SourceStatus;
+    readonly scanRequestId: string | null;
+    readonly progress: ScanProgressDto | null;
+  };
 }
 
 /**
@@ -267,22 +329,6 @@ export class SessionCoordinator {
   }
 
   /**
-   * The status a Source rests at when no scan is running and no result was
-   * published: 'idle' before its first commit, otherwise the last committed
-   * outcome's status ('partial' for a partial commit, 'ready' otherwise).
-   * Used by the FR-029 late-result discard branches so a discarded result
-   * never misrepresents a committed Source as never-scanned.
-   */
-  private restingStatus(sourceId: string): SourceStatus {
-    if (!this.hasCommittedBefore.has(sourceId)) {
-      return 'idle';
-    }
-    return this.session.internal.committedRepositoryGeneration.outcome === 'partial'
-      ? 'partial'
-      : 'ready';
-  }
-
-  /**
    * Admits one scan command for a Source and issues its opaque
    * `scanRequestId` (FR-030). While a scan for the same Source is running
    * or queued, returns the fixed `conflict` instead of stacking attempts.
@@ -300,10 +346,24 @@ export class SessionCoordinator {
       }
     }
     const scanRequestId = createOpaqueId();
-    // Only a session-API-triggered rescan of an already committed Source counts as
-    // "explicit": automatic first scans and initial commits never create
-    // stale-failure overlays (data-model.md § StaleSourceFailure).
-    const explicit = triggerOwner.kind === 'request' && this.hasCommittedBefore.has(sourceId);
+    // Captured before the overlay is overwritten below; a revoked attempt's
+    // discarded late result restores exactly this state.
+    const priorOverlay = {
+      status: sourceState.status,
+      scanRequestId: sourceState.scanRequestId,
+      progress: sourceState.progress,
+    };
+    // Only a session-API-triggered rescan of a Source with a committed
+    // snapshot counts as "explicit": automatic first scans and initial
+    // commits never create stale-failure overlays (data-model.md
+    // § StaleSourceFailure). The Repository Source always has one — the
+    // bootstrap committed generation 0 — so its very first user-requested
+    // rescan after a failed automatic scan already leaves the stale overlay
+    // on terminal failure instead of silently discarding it.
+    const explicit =
+      triggerOwner.kind === 'request' &&
+      (sourceId === this.session.internal.repositorySourceId ||
+        this.hasCommittedBefore.has(sourceId));
     this.attempts.set(scanRequestId, {
       scanRequestId,
       sourceId,
@@ -311,6 +371,7 @@ export class SessionCoordinator {
       explicit,
       publicationAuthority: 'active',
       settled: false,
+      priorOverlay,
     });
     sourceState.status = 'scanning';
     sourceState.scanRequestId = scanRequestId;
@@ -362,19 +423,27 @@ export class SessionCoordinator {
     if (attempt === undefined || attempt.settled) {
       return;
     }
-    attempt.settled = true;
     const sourceState = this.session.internal.sourceStates.get(attempt.sourceId);
     if (sourceState === undefined) {
       return;
     }
     if (attempt.publicationAuthority === 'revoked') {
-      // Cleanup-only (FR-029): the late result is discarded, public
-      // generation state is untouched, and the Source rests at the status
-      // its committed history implies.
-      sourceState.status = this.restingStatus(attempt.sourceId);
-      sourceState.progress = null;
+      // Cleanup-only: the late result is discarded, public generation state
+      // is untouched, and the Source overlay reverts to the exact
+      // pre-admission state (see {@link AttemptState.priorOverlay}).
+      attempt.settled = true;
+      sourceState.status = attempt.priorOverlay.status;
+      sourceState.scanRequestId = attempt.priorOverlay.scanRequestId;
+      sourceState.progress = attempt.priorOverlay.progress;
       return;
     }
+    // The attempt is marked settled only after the fallible commit below
+    // succeeds. Generation preparation regenerates opaque IDs and can throw;
+    // if it did after an early `settled = true`, the rejecting promise would
+    // reach the caller's catch but `failScan` would find the attempt already
+    // settled and silently drop it, leaving the Source stuck 'scanning' with
+    // no stale/failed record. Leaving it unsettled lets that `failScan`
+    // record the terminal failure (FR-030).
     const now = new Date().toISOString();
     const next = prepareNextRepositoryGeneration(this.session.internal.committedRepositoryGeneration, {
       scannedSourceIds: [attempt.sourceId],
@@ -409,6 +478,9 @@ export class SessionCoordinator {
       phase: 'complete' as const,
     };
     this.hasCommittedBefore.add(attempt.sourceId);
+    // Terminal: the commit succeeded, so the attempt is now settled and a
+    // late duplicate result for the same request is ignored (FR-029).
+    attempt.settled = true;
   }
 
   /**
@@ -437,10 +509,12 @@ export class SessionCoordinator {
       return;
     }
     if (attempt.publicationAuthority === 'revoked') {
-      // FR-029 late-result discard: a failure that lands after revocation
-      // publishes nothing.
-      sourceState.status = this.restingStatus(attempt.sourceId);
-      sourceState.progress = null;
+      // Late-result discard: a failure that lands after revocation
+      // publishes nothing, and the Source overlay reverts to the exact
+      // pre-admission state (see {@link AttemptState.priorOverlay}).
+      sourceState.status = attempt.priorOverlay.status;
+      sourceState.scanRequestId = attempt.priorOverlay.scanRequestId;
+      sourceState.progress = attempt.priorOverlay.progress;
       return;
     }
     // At most one current failure record per lifecycle owner: replacing a

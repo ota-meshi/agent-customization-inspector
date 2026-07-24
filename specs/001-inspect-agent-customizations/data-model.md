@@ -132,8 +132,9 @@ message. `toolFailureDiagnostics` contains exactly the pathless session Diagnost
 referenced by `globalControl.toolFailures`. It has no generation, Source, Repository failure,
 stale-failure, unrelated Diagnostic or error, file, path, authored value, or resource field.
 
-The CLI captures `process.cwd()` exactly once and accepts `--cwd <path>` at most once. A
-missing or empty value or a duplicate option is a fixed actionable startup error emitted
+The CLI captures `process.cwd()` exactly once and accepts `--cwd <path>`; a repeated
+`--cwd` resolves to the argument parser's last value (last-wins). A
+missing or empty value is a fixed actionable startup error emitted
 before session creation or browser opening (FR-001). An absolute option is kept as given; a
 relative option is resolved against the captured `invocationCwd`. Root selection uses no
 `process.chdir()`, environment reread, or filesystem I/O; whether the selected root exists
@@ -171,36 +172,31 @@ startup operation reaches the process top level. Unrecoverable engine/process te
 and runtime-owned uncaught-error output cannot be converted into or controlled by an
 application Diagnostic.
 
-Successful API responses contain complete DTOs and are never deliberately truncated. Except
-for the explicitly two-stage Global-disable barrier below, for every session API command whose
-success admits a job or changes committed authority, control, or Source state, the
-coordinator first prepares tentative IDs, state, job, disposition, and the exact success
-envelope without publishing any of them. While holding the same serialization lock, the host
-fully JSON-serializes and UTF-8-encodes that envelope into one immutable response buffer.
-A serialization/encoding throw or rejection discards the tentative IDs/job/state, publishes
-no attempt, admission, control transition, response disposition, or generation, retains the
-prior snapshot, and fails the trigger-owning session API request ordinarily with no admitted
-`scanRequestId`. Once the complete buffer exists, the coordinator
-revalidates the operation ID, epoch, abort/barrier state, and base snapshot under that lock,
-then atomically commits the exact tentative state/job/disposition and binds that immutable
-buffer to the accepted response. A failed revalidation discards the buffer and follows its
-contracted conflict/cancellation outcome without partial mutation. A socket close, write
-throw/rejection, or other delivery failure after commit never rolls back or duplicates the
-accepted job/state, records no second failure, reports no successful payload,
-and never converts a truncated body into a partial DTO; the client recovers from a fresh
-session snapshot. Serialization of a failed request's error belongs to the devframe RPC
-transport boundary, which serializes handler errors as-is. Monaco and the browser likewise use their
+Successful API responses contain complete DTOs and are never deliberately truncated.
+Response serialization is owned by the devframe RPC channel: the handler commits its
+state/job under the coordinator lock and returns the declared result value, and devframe
+serializes that value — successes and handler errors alike — as-is (superseded 2026-07-23:
+the tentative-state preparation, the pre-serialized immutable response buffer, and the
+under-lock revalidation/commit ordering were removed with the self-verification cleanups —
+they belonged to the pre-devframe hand-rolled host, cannot be expressed on the devframe
+channel without a redundant second serialization, and every declared result is a plain
+JSON value whose serialization cannot fail outside an implementation bug). A
+serialization/encoding or delivery failure after the handler returns never rolls back or
+duplicates the committed job/state, records no second failure,
+and never converts a truncated body into a partial DTO; the request reports its ordinary
+error and the client recovers from a fresh
+session snapshot, exactly as for a transport failure. Monaco and the browser likewise use their
 environment-provided capabilities; comparison failure leaves both complete authored source
 views available.
 
 An authority-free live-operation projection such as `globalEnableInProgress` is not an
 admitted success and may appear while its owning session API request is still running. It contains
-no candidate state or authority, is removed if that operation fails before its buffer-bound
+no candidate state or authority, is removed if that operation fails before its atomic
 commit, and does not weaken the success-response gate for any committed state.
 
 Global disable is the sole exception because barrier acceptance must revoke publication
 authority before asynchronous drain can complete and cannot truthfully be rolled back. Its
-acceptance mutation, terminal success-buffer gate, retained request failure, and retry rules
+acceptance mutation, terminal success gate, retained request failure, and retry rules
 are closed by `GlobalDisableOperation`; no other command may copy that exception.
 
 ### Source
@@ -348,6 +344,7 @@ performs no filesystem operation under any proposed Global root.
 | `previewId` | exact 43-character unpadded base64url string | Canonical encoding of an independent 32-byte CSPRNG draw and a process-memory lookup key; a new preview invalidates the previous unconsented preview, while active consent freezes and reuses its exact preview |
 | `previewEpoch` | non-negative safe integer | Internal and never serialized; increments with every newly captured preview and binds replacement/revalidation without using an opaque ID as an order value |
 | `allowlistVersion` | date string | Current shipped contract version |
+| `traversalPlanVersion` | date string | Version of the shipped typed traversal-plan set; with `allowlistVersion` this record-level pair identifies the closed selection policy and canonical selector programs the preview binds |
 | `entries` | exactly three tool entries | Fixed Copilot, Claude, and Codex order |
 | `entries[].tool` | tool enum | Closed value |
 | `entries[].origin` | `default-home \| environment` | An environment entry is used even when invalid; no silent fallback |
@@ -355,6 +352,16 @@ performs no filesystem operation under any proposed Global root.
 | `entries[].displayRoot` | ASCII `RootPresentationEncoding` string | Exact deterministic encoding of `lexicalRoot`; originates before an owning Source exists, and is never a `SourceRelativePath`, inventory-item locator, canonicalization claim, or read authority |
 | `entries[].inputState` | `eligible \| present-empty \| relative \| invalid` | Assigned by the exact ordered `Global lexical state` algorithm below before I/O; only `eligible` may become a boundary after consent |
 | `excludedRuleIds` | sorted excluded rule ID[] | Drives the displayed exclusions without accepting authored prose |
+
+`allowlistVersion` and `traversalPlanVersion` are both `YYYY-MM-DD` date strings that name
+the shipped contract as a whole and the shipped compiled `TraversalPlan` set, respectively.
+Each is bumped in lockstep with any change to what it identifies — `allowlistVersion` when
+the presentation allowlist / vendor contracts change, `traversalPlanVersion` when any
+compiled plan in the shipped set changes — and each has one canonical current value baked
+into the shipped registry, not derived at runtime. They are distinct from the per-plan
+`TraversalPlan.schemaVersion` (fixed literal `1`), which versions the plan-record shape, not
+the plan set's contents; a plan-set change bumps `traversalPlanVersion` without changing
+`schemaVersion`.
 
 The host applies `RootPresentationEncoding` without changing the retained raw value. Its
 ability to allocate that value is inherited from Node.js, the operating system,
@@ -456,9 +463,9 @@ successful admission preallocates its unpublished Source ID before queuing the s
 provisional subset scan. A deterministic fatal initial scan destroys the entire batch
 working set but leaves this control for exact-consent retry; every retry re-admits the
 same frozen root—readable directory or not—before scanning, without mutating the
-pre-operation control until its atomic buffer-bound disposition commits either the
-rejected state or the admitted replacement. An unexpected throw/rejection or serialization
-failure discards only tentative state and leaves every pre-operation field active and
+pre-operation control until its atomic disposition commits either the
+rejected state or the admitted replacement. An unexpected throw/rejection discards only
+operation-local state and leaves every pre-operation field active and
 unchanged. A post-consent admission failure therefore commits a `rejected` control only at
 that disposition and can be revalidated under the same preview. A successful Source commit
 publishes the preallocated ID and binds its `SourceBoundary` to the admitted root. A
@@ -480,7 +487,7 @@ No DTO can create or mutate this authority.
 | `state` | `active \| disabling` | `disabling` begins when the priority barrier is accepted and lasts until the field becomes null at its single commit |
 | `previewId` | exact 43-character base64url string | Equals the active 256-bit `GlobalConsentPreview.previewId`; an opaque lookup reference that is neither a filesystem path nor any grant of authority |
 | `confirmedTools` | exact `[copilot, claude, codex]` | Fixed all-tools consent set; never client-selected |
-| `pendingTools` | sorted tool enum[] | Admitted tools owned by one accepted subset scan only after atomic buffer-bound batch acceptance; initial and retry validation/admission are operation-local and unobservable; empty with null `batchStatus` while `disabling` after cancellation begins |
+| `pendingTools` | sorted tool enum[] | Admitted tools owned by one accepted subset scan only after atomic batch acceptance; initial and retry validation/admission are operation-local and unobservable; empty with null `batchStatus` while `disabling` after cancellation begins |
 | `batchStatus` | `GlobalBatchStatus \| null` | Non-null from accepted admitted-subset queueing through terminal success/failure; preserves the promoted `scanRequestId` for fresh-snapshot and lost-acceptance-response recovery |
 | `retryableTools` | sorted tool enum[] | While `active`, exactly each non-pending unpublished `admitted` control and each `rejected` control whose `retryDisposition` is `same-preview`; it retains the exact pre-operation projection during operation-local retry validation, lexical `new-preview-required` controls are excluded, `unvalidated` exists only in non-serialized operation-local work, and the array is empty while `disabling` |
 | `toolFailures` | fixed-tool-order `{ tool, diagnosticId }[]` | Exact public ownership map for every non-null `GlobalToolControl.diagnosticId`; each tool and diagnostic ID is unique, and a thrown/rejected batch failure never appears here |
@@ -510,7 +517,7 @@ batch; it does not repeat Diagnostic IDs or create another owner reference. A th
 failure uses `{ kind: 'error', message }`, carrying the failed request's error
 message. There is no tool-independent deterministic Global batch failure:
 every returned deterministic failure is attributed to at least one exact tool, while
-cross-tool assembly/invariant/retention/serialization failures throw or reject and are
+cross-tool assembly/invariant/retention failures throw or reject and are
 recorded as the failed request's error. On success, `batchStatus` is removed only in the same commit that
 publishes every new Source with the same `Source.scanRequestId`; `active-no-job` creates no
 status. Retry acceptance replaces a prior failed status, and disable acceptance clears it
@@ -568,7 +575,7 @@ and snapshots its controls, failed `batchStatus`, diagnostics, and pending state
 mutation, then publishes only the authority-free
 `globalEnableInProgress { kind: 'retry', operationId, previewId }` projection. Retry
 validation/admission is otherwise operation-local and unobservable until a
-buffer-bound batch or active-no-job disposition commits. Root validation/admission
+an atomic batch or active-no-job disposition commits. Root validation/admission
 and scan-job creation run only under the coordinator. Before and after every asynchronous
 boundary, a continuation must prove the same active `operationId`, `commandEpoch`, exact
 preview object/`previewEpoch`, and non-aborted signal plus either the same initial
@@ -585,25 +592,21 @@ every owned tool reaches a deterministic validation outcome, the coordinator per
 general pre-acceptance response transaction under its lock. It first validates the current
 operation ID/command epoch/preview object/preview epoch/signal and prepares, without publication, either the initial consent plus
 three controls or the retry partition, a candidate batch/`scanRequestId` and
-`queued`, or no job/null ID and `active-no-job`, together with the exact projected
-success envelope. It fully validates, JSON-serializes, UTF-8-encodes, and length-materializes
-that envelope into one immutable buffer before activating controls, transferring a job,
-replacing a failed `batchStatus`, clearing superseded
-diagnostics for newly admitted tools, or choosing a public disposition. Serialization failure
-discards the initial provisional state or restores the retry's exact pre-operation
-control/pending/batch-status snapshot; the candidate ID never becomes a `scanRequestId` and the
-request fails ordinarily with no admitted request ID. After the buffer exists, the
-coordinator revalidates the same operation ID/command epoch/preview object/preview epoch/
+`queued`, or no job/null ID and `active-no-job`. The
+coordinator then revalidates the same operation ID/command epoch/preview object/preview epoch/
 signal and barrier state under the same lock and only then atomically activates/applies the
 controls, clears the prior `diagnosticId` for each tool admitted into this accepted batch,
 promotes and enqueues the one candidate batch, creates its `batchStatus`, and sets
 `pendingTools`, or commits active-no-job with null `batchStatus` while retaining/replacing
 only rejected-tool diagnostics, chooses the disposition,
-marks the operation complete, unregisters it, and binds that exact buffer. No observer can
+marks the operation complete, unregisters it, and returns the declared result value for
+the devframe channel to serialize (superseded 2026-07-23: the pre-serialized immutable
+envelope buffer and its serialization-failure unwind were removed with the
+self-verification cleanups). No observer can
 see a per-tool Source commit. If the disable barrier has already linearized before that
-commit, the prepared buffer/state are discarded, the check instead chooses
+commit, the prepared state is discarded, the check instead chooses
 `global-disable-pending`, and cancellation drains. A drained operation becomes
-`cancelled` and is unregistered before barrier cleanup. Thus either the operation wins with a committed/buffer-bound queued acceptance, or the barrier
+`cancelled` and is unregistered before barrier cleanup. Thus either the operation wins with a committed queued acceptance, or the barrier
 wins with the conflict, never both. Terminal operation history is not retained; the one accepted batch
 remains represented by all of its admitted tools in `pendingTools` and by its exact
 `batchStatus.scanRequestId` until it finishes. A failed status remains with empty
@@ -623,7 +626,6 @@ itself can record the accepted job's error under its promoted non-null request I
 | `baseGenerations` | `{ repository: GenerationNumber, global: GenerationNumber \| null }` | Exact per-sequence committed generations at acceptance; the barrier commits no generation in either sequence — `remove-active-state` discards the whole Global sequence and `cleanup-only` changes no committed state |
 | `status` | `draining \| committing \| failed \| complete` | `failed` retains revoked authority and retryable cleanup state; it is not rolled back to active |
 | `frozenPreview` | internal exact preview reference | Retains the pre-barrier preview through `failed`; preview capture/replacement remains fenced until terminal success |
-| `successBuffer` | immutable UTF-8 buffer or null | Created only after drain/cleanup and complete final-snapshot construction, before the removal commit |
 
 A no-op disable with no active/queued Global authority and no retained disable failure uses
 the ordinary single-stage response gate and mutates nothing. Otherwise request validation
@@ -642,8 +644,8 @@ authority, changes an existing `globalControl` to `disabling`, empties `pendingT
 `batchStatus`, increments `globalContentEpoch`, activates the public Global-content access
 fence, and aborts the active/queued `GlobalEnableOperation` and Global scans. An
 operation-local initial enable has no control snapshot to expose, but the same internal
-barrier still revokes and drains it. This acceptance phase deliberately precedes terminal
-response serialization and is the only two-stage exception in the model. A second disable
+barrier still revokes and drains it. This acceptance phase deliberately precedes the
+terminal success commit and is the only two-stage exception in the model. A second disable
 while the operation is `draining` or `committing` joins the same completion; disconnecting a
 joined transport never cancels the barrier.
 
@@ -667,7 +669,7 @@ overwrite rule.
 
 The same fence rejects every full session/inventory/generation/Source/file/detail/
 Diagnostic/relationship/comparison data request and selects only
-`GlobalFenceRecoverySnapshot`. It does not depend on drain, close, final serialization, or terminal commit succeeding.
+`GlobalFenceRecoverySnapshot`. It does not depend on drain, close, or terminal commit succeeding.
 Disable retry inherits the already incremented `globalContentEpoch` and must not make the
 retained graph readable again. No Repository or Global inspection data is public until
 terminal success or process restart.
@@ -677,28 +679,27 @@ cancellation sweep, waits for the affected in-flight work to settle while discar
 late results, and prepares the zero-I/O discard of the Global sequence. A drained enable continuation
 can never enqueue a job or mutate a control. This ordering prevents validation that
 finishes after acceptance from adding authority after the sweep. If the barrier wins
-before enable's buffer-bound disposition, that enable returns the fixed `global-disable-pending` conflict;
+before enable's atomic disposition, that enable returns the fixed `global-disable-pending` conflict;
 if enable chose queued acceptance first, the barrier cancels/removes its accepted batch normally.
 Expected cancellation creates no Diagnostic or retained error.
 
 After cleanup, while holding the coordinator lock, disable prepares the exact final public
-state and success envelope without removing public controls or Sources. Neither commit kind
+state without removing public controls or Sources. Neither commit kind
 prepares a new generation: `remove-active-state` prepares the discard of the entire Global
 sequence while the Repository sequence, its generation, and its IDs stay untouched and are
-never rekeyed by disable; `cleanup-only` changes no committed state at all. It fully
-validates, JSON-serializes, UTF-8-encodes, and length-materializes that
-envelope as `successBuffer`, then revalidates operation ID, epoch, barrier state, and
+never rekeyed by disable; `cleanup-only` changes no committed state at all. It then
+revalidates operation ID, epoch, barrier state, and
 `baseGenerations`. Only then does one atomic terminal commit remove the frozen preview and all
 remaining operation-local state and clear the retained failed request's error. For
 `remove-active-state` that same commit discards the committed Global generation and removes
 all Global Sources/controls/consent and their stale failures/diagnostics/batch errors; for
 `cleanup-only` it performs no public graph transition. It then marks the
-operation complete and binds the exact buffer. A later re-enable creates a fresh Global
+operation complete and returns the final result for the devframe channel to serialize. A later re-enable creates a fresh Global
 sequence starting at generation 1; the incremented `globalContentEpoch` distinguishes the
 eras. Delivery failure after that commit never rolls back or creates another error.
 
-Any unexpected throw/rejection after barrier acceptance—including drain,
-final assembly, or success serialization—propagates to the triggering session API boundary and is
+Any unexpected throw/rejection after barrier acceptance—including drain or
+final assembly—propagates to the triggering session API boundary and is
 reported ordinarily as that failed request's error. The operation becomes `failed` and
 atomically retains that error message for join/retry display; because the retained error
 lives on the failed operation itself, it exists even when only an operation-local initial
@@ -854,7 +855,7 @@ owns the fixed per-tool inspection-path allowlist that the inspection module tra
 |---|---|---|
 | `schemaVersion` | literal `1` | Unknown versions fail registry loading |
 | `boundary` | exact Source-boundary descriptor | Copied from the matcher and never inferred from request/display text |
-| `selectors` | non-empty ordered `TraversalSelectorPlan[]` | One-to-one canonical compilation of matcher selectors |
+| `selectors` | non-empty ordered `TraversalSelectorPlan[]` | Deterministic one-to-one compilation of the authored typed selector programs |
 | `selectionPolicy` | `all-matches \| codex-global-first-non-empty` | Closed scheduler policy; the second value is valid only for `codex.global.instructions` with the exact ordered selectors `AGENTS.override.md`, `AGENTS.md` |
 | `TraversalSelectorPlan.mode` | `repository-program \| global-exact \| global-fixed-subtree` | Closed operation class; no generic ambient-root walker |
 | `TraversalSelectorPlan.fixedPrefix` | NFC literal segment array | Empty for Repository; for Global it includes the complete path through the exact target or fixed-subtree root, including that terminal target/subtree segment |
@@ -1470,11 +1471,16 @@ attachment scope; the client's bilingual catalog, keyed by `code`, supplies the
 equivalent English and Japanese message and the practical next action for every
 error. `lifecycleOwnerKey`
 identifies the one lifecycle instance and
-is never serialized. Candidates are deduplicated by code, `lifecycleOwnerKey`,
-source/file IDs, and Source-relative Path. They are emitted in
+is never serialized. Candidates are emitted in
 fixed phase, lifecycle-owner semantic order (Repository, fixed Global tool order, then the
 existing public Source order), scope, Source-relative Path, rule/code, then emitter-
-occurrence order; an opaque Source ID never supplies the sort order. A scan candidate belongs to one
+occurrence order; an opaque Source ID never supplies the sort order. Aggregation is
+order-only: each emitter creates every observation exactly once — legitimately repeated
+records exist (one per failed recognition, one per rejected collision group) — so there is
+no deduplication pass, and a double emission is an ordinary implementation bug owned by
+tests and review, not a runtime filter (superseded 2026-07-23: the dedup pass keyed by
+code/`lifecycleOwnerKey`/source-file IDs/Source-relative Path and its internal
+observation-key disambiguator were removed). A scan candidate belongs to one
 committed generation. An out-of-generation lifecycle candidate—including a fatal scan attempt
 that cannot be committed—belongs to the session only and is never inserted into a
 generation or Source ID list. Malformed-request and other client-caused
@@ -1504,12 +1510,17 @@ The inspection-traversal subset is exactly:
 
 | Code | Scope | Severity |
 |---|---|---|
-| `root-unreadable` | `source` | `error` |
+| `root-unreadable` | `source` for a published Source; `session` for an unpublished Global tool | `error` |
 | `file-unreadable` | `file` | `error` |
 | `file-content-binary` | `file` | `warning` |
 | `recognition-parse-failed` | `file` | `warning` |
+| `path-normalization-collision` | `session` | `error` |
 
-No other code in this subset is valid. `root-unreadable` records a Source root that does
+No other code in this subset is valid. `root-unreadable` is the one code whose scope is
+context-dependent: the registry's default `source` scope applies to a published Source (the
+only case the initial release produces — the Repository Source), while an unpublished Global
+tool has no Source to attach to, so the Global tasks construct the record as pathless
+session scope (below). Every other code has a single fixed scope. `root-unreadable` records a Source root that does
 not exist or cannot be read as a directory: for a published Source (the Repository Source,
 or a published Global Source at rescan) it is source-scoped with that `sourceId`, while
 for an unpublished Global tool it is an out-of-generation, pathless session-scoped
@@ -1522,7 +1533,10 @@ NUL-byte diagnostic-only outcome (FR-025); and `recognition-parse-failed` record
 FR-028 parser or extractor failure that keeps the complete readable source displayed and
 comparison-eligible while omitting only the affected recognition's derived
 metadata/relationships. Each of these three file-confined outcomes makes an otherwise
-publishable generation `partial`. File rows require the coherent already admitted candidate
+publishable generation `partial`. `path-normalization-collision` records one rejected
+normalization-collision group as a pathless session-scoped record (spec.md Clarifications
+§ Session 2026-07-20): no unambiguous public path exists, so it is not a file-confined
+outcome and does not make the generation partial by itself. File rows require the coherent already admitted candidate
 tuple. No row can carry OS error text, an outside path, filesystem handle/descriptor, or
 source bytes.
 
@@ -3289,9 +3303,9 @@ failed/stale -> scanning (waiting or active) -> ready/partial (clears this Sourc
 0 sources -- consent preview --> 0 sources (no Source or I/O)
 0 sources -- registered initial enable --> globalEnableInProgress; validate all 3 frozen entries operation-locally
 0 admitted roots ------------> active-no-job (active control, no Source/generation)
-1..3 admitted roots ---------> buffer-bound queued acceptance + batchStatus(waiting/id) --> running --> one atomic Global generation containing every ready/partial Source
+1..3 admitted roots ---------> atomic queued acceptance + batchStatus(waiting/id) --> running --> one atomic Global generation containing every ready/partial Source
                                                                         \-> failed(tool failures or the failed request's error; same id)
-exact retryable subset ------> same buffer-bound batch lifecycle; lexical-ineligible controls require disable/new preview
+exact retryable subset ------> same atomic batch lifecycle; lexical-ineligible controls require disable/new preview
 unexpected pre-accept throw/rejection --> ordinary request error; no subset Source/generation from the transaction
 ready/partial -- accepted per-source rescan --> scanning --> ready/partial
                                                      \-> failed/stale (creates own entry)
@@ -3407,7 +3421,8 @@ old file records in place.
     and lifecycle qualifiers in the fixed order above. A missing, duplicate, orphaned, or
     language-divergent record fails the build.
 13. Vendor lookup bases/traversal and Inspector matchers are different record types. Every
-    Repository matcher starts with `./`; bare `**/` is invalid, and `./**/` can mean only
+    Repository matcher is an authored typed segment program based at the selected
+    Repository root; a leading `ANY_DIRECTORIES` segment can mean only
     explicit downward Inspector inventory—not vendor traversal or runtime selection.
 14. `snapshotState` is derived from session-owned `staleFailures`, never stored in or used
     to mutate a committed generation. Each entry names one Source and carries its

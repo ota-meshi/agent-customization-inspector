@@ -60,8 +60,11 @@ customization-selected destination、別machineへの調査content送信は禁�
    machine外への送信を禁止している。Terminal/UI outputを読むのはinspected fileを所有する同じ
    userであるため、failureは通常どおり報告する。すなわち実際のerror messageを、product定義の
    content filterなしで表示または返却する。
-6. 各functionは文書化済みparameterだけを受け付け、strict manual type/enum guardで検証する。
-   Extra key、path-shaped value、malformed argumentは文書化済みsafe rejectionで拒否する。宣言する
+6. 宣言済みparameterを持つ各functionは、その文書化済みparameterだけを受け付け、strict manual type/enum guardで検証する。
+   Extra key、path-shaped value、malformed argumentは文書化済みsafe rejectionで拒否する。`Parameters: none`と
+   宣言したfunctionはinputを一切readしないため、boundaryで検証するものがない
+   （superseded 2026-07-23: every-functionのargument拒否ruleを絞った。functionがreadしないargumentの拒否は
+   保護すべきfailure modeを持たないruntime guardである）。宣言する
    全resultとrejectionは1つのcompleteなstrict-JSON-serializable valueとする。Transport容量は
    製品定義のrequest-size上限ではなくNode.js、devframe、実行環境から継承する。
 
@@ -119,14 +122,14 @@ Inspection graphを返さないpreview/command successは`{ globalContentEpoch, 
 outcomeとする。これによりcontrol resultをgeneration snapshotとして提示せずepoch-awareに保つ。
 
 APIはparameter、file、item件数、parser構造、snapshot、detail、resultについて製品固有の数値上限を
-定義しない。容量はNode.js、parser、OS、filesystem、browser、実行環境から継承する。Atomicな
-publication前にserialization/encodingがthrowまたはrejectされた場合、triggerを所有するRPC boundaryへ
-ordinary errorとしてpropagateし、そのattemptのresultまたはgenerationをpublishせず、以前の
-snapshotを維持する。Domain layerはcauseを一切classifyしない。Hostはsuccessの
-completeなimmutable result valueを1つbindし、同じvalueを変更せずchannelへ渡す。Atomic commit後に
-transport deliveryが失敗した場合、commit済みoutcomeとsnapshotを変更しない。Successful resultを
-報告せず、部分的にdeliverされたmessageをpartial resultとして扱わず、clientがcommit済み
-generationを再取得できるようにする。
+定義しない。容量はNode.js、parser、OS、filesystem、browser、実行環境から継承する。Response
+serializationはdevframe channelが所有する。Handlerは宣言済みresult valueを返し、handlerがreturnした
+後のserialization/encodingまたはdelivery failureは、handlerがcommitしたstateをrollbackも
+duplicateもせずそのrequestの通常のerrorとして報告する。Successful resultを
+報告せず、部分的にdeliverされたmessageをpartial resultとして扱わず、clientはtransport failureと
+まったく同じようにcommit済みgenerationを再取得する
+（superseded 2026-07-23: 事前serialize済みimmutable result bufferとserialization失敗時の
+publish-nothing orderingはself-verificationの整理で削除された）。Domain layerはfailureのcauseを一切classifyしない。
 
 決定的rejection:
 
@@ -187,7 +190,7 @@ InspectionSession
 │   sessionDiagnosticIds, repositoryFailureDiagnosticId
 ├── sources[]
 │   ├── sourceId, kind, tool, enabled, status, generation, scanRequestId
-│   ├── root { displayRoot, origin }
+│   ├── boundary { displayRoot, origin }
 │   ├── conditionFacts[] { tool, surface, ruleId, affectedRuleIds, behaviorRefs, strategyRefs, sourceRefs,
 │   │                      evidenceAssessments[] { subjectKind, subjectId,
 │   │                                                documentationStatus, lifecycleQualifiers[] },
@@ -236,7 +239,7 @@ Sourceは`repositoryGeneration`を、各Global Sourceは`globalGeneration`を運
 entryの`baseGeneration`も同様にaffected Sourceのowning sequenceのgenerationを参照する。一方の
 sequenceのcommitはそのsequenceのgeneration-owned IDとviewだけをrekey/invalidateし、他方の
 sequenceのfile、detail、comparison view、IDには触れない（FR-030）。
-`root.displayRoot`はone-way escapedなroot presentation labelであり、`SourceRelativePath`、
+`boundary.displayRoot`はone-way escapedなroot presentation labelであり、`SourceRelativePath`、
 inventory-item locator、caller input、read authorityではない。同じ区別を
 admission前のconsent-preview `displayRoot`にも適用する。Owning Sourceが存在する前のabsoluteまたは
 invalidなlexical rootを表し得る。
@@ -795,8 +798,8 @@ drainし、最後のqueued-Global-work cancellation sweepを実行する。中�
 せず、expected cancellationはDiagnosticを作らずerrorもretainしない。
 
 Barrierが`draining`または`committing`の間に受けたrequestは同じ`operationId`とterminal resultへ
-joinし、いずれかのtransport disconnectでもcancelしない。Drain、final assembly、success
-serialization failureを含むaccept後のunexpectedなthrow/rejectionは、still-pendingなその
+joinし、いずれかのtransport disconnectでもcancelしない。Drainまたはfinal assembly
+failureを含むaccept後のunexpectedなthrow/rejectionは、still-pendingなその
 invocationを実際のerrorでrejectする。`globalDisableInProgress.state`は`failed`となって同じ
 messageをその`message` fieldとしてretainし、processはaliveのまま、prior
 generationはinternalに残り、全inspection-data fenceを閉じたままとする。Failed cleanupでcontentを
@@ -1011,7 +1014,7 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
    resultをdeliveryしても確定済みqueued acceptanceを維持する。Fence fixtureはfirst non-no-op
    acceptanceが`globalContentEpoch`をincrementし、session functionを即control-onlyにしてその他
    全inspection-data functionがretained `failed`中も含め`global-disable-pending` conflict
-   rejectionを返すことを証明する。Accept後のdrain rejectionとfinal serialization rejectionを
+   rejectionを返すことを証明する。Accept後のdrain rejectionを
    注入し、failed requestのerror messageが`state: 'failed'`の間
    `globalDisableInProgress.message`だけにretainされること、process
    survival、content非再公開、

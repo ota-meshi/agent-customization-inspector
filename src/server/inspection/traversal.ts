@@ -264,8 +264,9 @@ async function probeExactTarget(
   fixedPrefix: readonly string[],
 ): Promise<PendingCandidate | null> {
   const absolutePath = join(root, ...fixedPrefix);
+  let entry;
   try {
-    await lstat(absolutePath);
+    entry = await lstat(absolutePath);
   } catch (error) {
     const code = (error as { code?: string }).code;
     if (code === 'ENOENT' || code === 'ENOTDIR') {
@@ -274,7 +275,22 @@ async function probeExactTarget(
     }
     return { rawSegments: [...fixedPrefix], knownUnreadable: true };
   }
-  return { rawSegments: [...fixedPrefix], knownUnreadable: false };
+  if (entry.isSymbolicLink()) {
+    // Transparent read through the link (FR-024): a dangling or unreadable
+    // target is this candidate's file-unreadable outcome, not absence.
+    try {
+      const target = await stat(absolutePath);
+      return { rawSegments: [...fixedPrefix], knownUnreadable: !target.isFile() };
+    } catch {
+      return { rawSegments: [...fixedPrefix], knownUnreadable: true };
+    }
+  }
+  // The probe's own type information classifies a non-regular entry
+  // (directory, FIFO, socket, device) as this candidate's file-unreadable
+  // outcome: the one flag-free readFile cannot read it as a candidate file
+  // and would block indefinitely on a FIFO (FR-024). The Repository walk
+  // gets the same gate from its directory-entry types.
+  return { rawSegments: [...fixedPrefix], knownUnreadable: !entry.isFile() };
 }
 
 // The Codex override-empty ordered fallback (FR-035) — the one
@@ -388,6 +404,29 @@ export async function runTraversalScan(input: TraversalScanInput): Promise<Trave
   }
 
   const discovered = new Map<string, PendingCandidate>();
+
+  // A Repository scan must fail on a selected root that exists but cannot be
+  // read as a directory (mode 000), not just a missing/non-directory one
+  // (FR-002). The `stat` classification above accepts an unreadable
+  // directory, and when the shipped catalog is empty there is no
+  // repository-program walk below to surface the `readdir` failure. When any
+  // selector is present the correct path already runs — a repository-program
+  // walk enumerates the root and reports its own root `readdir` failure, and
+  // a Global exact/subtree scan deliberately never enumerates its tool-home
+  // root — so this readability probe applies only to the empty-catalog
+  // Repository scan and never enumerates a Global root.
+  if (
+    repositoryPrograms.length === 0 &&
+    exactTargets.length === 0 &&
+    subtreeWalks.length === 0 &&
+    fallbackRuns.length === 0
+  ) {
+    try {
+      await readdir(input.root);
+    } catch {
+      return { kind: 'root-unreadable' };
+    }
+  }
 
   if (repositoryPrograms.length > 0) {
     const visited = new Set<string>();

@@ -4,10 +4,12 @@
 // session synchronously with zero filesystem I/O, starts the loopback
 // devframe host, and kicks the automatic first Repository scan. This file
 // is the direct `package.json.bin` target: tsdown preserves the shebang in
-// the bundled `dist/cli.mjs`. The exhaustive Gunshi surface contract —
-// strict unknown/positional rejection fixtures, duplicate-option errors,
-// help/version text, and launch-line fixtures — is completed by the
-// Phase 3 CLI tasks (T043/T047) on top of this entry.
+// the bundled `dist/cli.mjs`. A repeated `--cwd` follows Gunshi's
+// deterministic last-wins; the product adds no duplicate-option check
+// (FR-001, superseded 2026-07-23). The exhaustive Gunshi surface contract —
+// strict unknown/positional rejection fixtures, help/version text, and
+// launch-line fixtures — is completed by the Phase 3 CLI tasks (T043/T047)
+// on top of this entry.
 import { isAbsolute, resolve } from 'node:path';
 import { cli, define } from 'gunshi';
 import packageJson from '../../package.json' with { type: 'json' };
@@ -76,7 +78,7 @@ const command = define({
       operationId: null,
     });
     if (admission.kind === 'admitted') {
-      void executeRepositoryScan(context, admission.scanRequestId, repositorySourceId);
+      void executeRepositoryScan(context, admission.scanRequestId, repositorySourceId, 'repository');
     }
   },
 });

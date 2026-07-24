@@ -24,6 +24,42 @@ import type { EvidenceAssessment, SourceBoundaryDto, SupportedTool } from './ent
  */
 export type ParseSummary = 'not-applicable' | 'all-parsed' | 'mixed' | 'all-failed';
 
+/**
+ * One recognition's closed extraction state (data-model.md
+ * § ToolRecognition):
+ *  - 'not-attempted'  no allowlisted extractor applies to this recognition
+ *  - 'parsed'         extraction completed for this recognition
+ *  - 'failed'         extraction failed all-or-nothing for this recognition
+ *                     only (FR-028); the file's complete source stays
+ *                     displayed and comparison-eligible
+ */
+export type RecognitionParseStatus = 'not-attempted' | 'parsed' | 'failed';
+
+/**
+ * One tool recognition as summarized on an inventory row
+ * (contracts/http-api.md § get-session `files[]` recognition summaries):
+ * exactly tool, kind, parse status, provenance count, and the
+ * recognition's diagnostic IDs — no recognition ID and never extraction
+ * content.
+ */
+export interface RecognitionSummaryDto {
+  /** The recognizing tool. */
+  readonly tool: SupportedTool;
+  /**
+   * The recognized customization kind (data-model.md § ToolRecognition).
+   * The closed kind catalog and its wire spellings are owned by the vendor
+   * recognizer phases and their contract gate; no recognizer exists yet, so
+   * this stays an open string until those phases fix the union.
+   */
+  readonly kind: string;
+  /** Closed extraction state; see {@link RecognitionParseStatus}. */
+  readonly parseStatus: RecognitionParseStatus;
+  /** How many rule/path admissions back this recognition (data-model.md § ToolRecognition `provenances`). */
+  readonly provenanceCount: number;
+  /** Recognition-scoped extraction-failure diagnostics (FR-028). */
+  readonly diagnosticIds: readonly string[];
+}
+
 /** Fields every discovered file carries regardless of its read outcome. */
 interface CustomizationFileBase {
   /** Opaque file identity, regenerated on every commit of the owning sequence. */
@@ -57,7 +93,7 @@ export type CustomizationFileDto =
       readonly sizeBytes: number;
       /** Per-file parse rollup for inventory display; see {@link ParseSummary}. */
       readonly parseSummary: ParseSummary;
-      /** Tool recognitions attached to this file (FR-005). */
+      /** Tool recognitions attached to this file (FR-005, data-model.md § CustomizationFile). */
       readonly recognitionIds: readonly string[];
       /** Authored references from this file, never expanded (FR-010). */
       readonly relationshipIds: readonly string[];
@@ -72,6 +108,44 @@ export type CustomizationFileDto =
   | (CustomizationFileBase & {
       /** The read failed before the bytes could be classified (FR-024);
        * nothing was accepted, so no other field exists. */
+      readonly encoding: 'unknown';
+    });
+
+/**
+ * One inventory row of the session snapshot's committed files
+ * (contracts/http-api.md § get-session `files[]`): the identity, path,
+ * diagnostics, and per-variant summary fields of a committed
+ * {@link CustomizationFileDto} — never its `sourceText`. Complete authored
+ * content is served only through the detail routes after the in-memory
+ * sensitive-value acknowledgement (FR-027), so the snapshot must not carry
+ * it.
+ */
+export type CustomizationFileSummaryDto =
+  | (CustomizationFileBase & {
+      /** Readable decode classification; BOM presence is recorded separately. */
+      readonly encoding: 'utf-8' | 'utf-8-replaced';
+      /** Whether one leading UTF-8 BOM was recorded and removed (FR-025). */
+      readonly hadLeadingBom: boolean;
+      /** Exact byte count of the one completed read. */
+      readonly sizeBytes: number;
+      /** Per-file parse rollup for inventory display; see {@link ParseSummary}. */
+      readonly parseSummary: ParseSummary;
+      /**
+       * Recognition summaries per the get-session contract row. Projected
+       * empty until the vendor recognizer phases store `ToolRecognition`
+       * entities — the summary data (tool, kind, provenance count) lives on
+       * those entities, and no production recognizer exists yet.
+       */
+      readonly recognitions: readonly RecognitionSummaryDto[];
+    })
+  | (CustomizationFileBase & {
+      /** At least one NUL byte (FR-028); the summary adds only the size. */
+      readonly encoding: 'binary';
+      /** Exact byte count of the one completed read. */
+      readonly sizeBytes: number;
+    })
+  | (CustomizationFileBase & {
+      /** The read failed before classification (FR-024); nothing to add. */
       readonly encoding: 'unknown';
     });
 
@@ -366,6 +440,18 @@ export interface SessionSnapshot {
   readonly createdAt: string;
   /** Every Source's public projection. */
   readonly sources: readonly SourceDto[];
+  /**
+   * The committed inventory of both sequences' current generations as
+   * content-free summary rows (contracts/http-api.md § get-session
+   * `files[]`); `sourceText` is served only by the acknowledgement-gated
+   * detail routes (FR-027).
+   */
+  readonly files: readonly CustomizationFileSummaryDto[];
+  /**
+   * Active-generation Diagnostic records plus session-owned lifecycle
+   * records (contracts/http-api.md § get-session `diagnostics[]`).
+   */
+  readonly diagnostics: readonly SerializedDiagnostic[];
   /** Last committed Repository generation (bootstrap generation 0 onward). */
   readonly repositoryGeneration: number;
   /** Null while Global inspection is disabled (no Global sequence exists). */
@@ -417,6 +503,35 @@ export interface ScanAdmission {
 }
 
 /**
+ * The closed catalog of deterministic rejection codes
+ * (contracts/http-api.md § Common results and errors). Each 4xx-class conflict
+ * or validation failure is a declared functional outcome carrying exactly one
+ * of these fixed codes; the union keeps a producer from emitting, and a
+ * consumer from matching, a code outside the contract.
+ */
+export type RejectionCode =
+  /** A referenced resource (e.g. a `FileDetail` file ID) belongs to a superseded generation. */
+  | 'stale-resource'
+  /** A duplicate explicit rescan was requested while a Repository scan is already running or queued. */
+  | 'scan-in-progress'
+  /** A Global enable commit was requested while one is already in progress. */
+  | 'global-enable-in-progress'
+  /** An operation was requested while a Global disable is still pending. */
+  | 'global-disable-pending'
+  /** A preview mutation was attempted while active consent has frozen the preview. */
+  | 'consent-preview-frozen'
+  /** An operation referenced a consent preview that does not exist. */
+  | 'consent-preview-missing'
+  /** A Global enable commit was attempted without the required consent. */
+  | 'consent-required'
+  /** The submitted `allowlistVersion` no longer matches the server's current allowlist. */
+  | 'allowlist-version-mismatch'
+  /** The confirmed preview does not match the server's frozen preview. */
+  | 'consent-preview-mismatch'
+  /** A Global retry found no retryable tool (an empty tool projection). */
+  | 'no-retryable-global-tool';
+
+/**
  * The deterministic rejection envelope
  * (contracts/http-api.md § Common results and errors): each 4xx-class
  * conflict or validation failure is a named closed variant with a fixed
@@ -427,8 +542,8 @@ export interface ScanAdmission {
 export interface DeterministicRejection {
   /** The closed rejection payload. */
   readonly error: {
-    /** Fixed rejection code, e.g. `scan-in-progress` (contracts/http-api.md). */
-    readonly code: string;
+    /** One code from the closed {@link RejectionCode} catalog (contracts/http-api.md). */
+    readonly code: RejectionCode;
   };
 }
 

@@ -65,6 +65,7 @@ jobs:
           node-version: ${{ env.NODE_DEV_BASELINE }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm run dev:prepare
       - run: pnpm run test:unit
 
   contract:
@@ -78,6 +79,7 @@ jobs:
           node-version: ${{ env.NODE_DEV_BASELINE }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm run dev:prepare
       - run: pnpm run test:contract
 
   integration:
@@ -94,6 +96,7 @@ jobs:
           node-version: ${{ env.NODE_DEV_BASELINE }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm run dev:prepare
       - run: pnpm run test:integration
 
   security:
@@ -164,6 +167,7 @@ jobs:
           node-version: ${{ env.NODE_DEV_BASELINE }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm run dev:prepare
       - run: pnpm run test:coverage
 
   browser:
@@ -218,4 +222,5 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm run dev:prepare
       - run: pnpm run test:unit

@@ -56,9 +56,9 @@ traversalを継承しない。
 ### Repository
 
 Repository boundaryはselected rootである。`--cwd`を省略した場合は呼び出し時に1回captureしたexact
-`process.cwd()`を使う。`--cwd`は最大1回だけ受理する。Absolute valueはそのまま保持し、relative valueは
-active platformの`node:path.resolve`でcapture済みの呼び出しdirectoryに対してresolveする。Valueの欠落/empty、
-optionの重複は、session/browser作成前に固定actionable startup errorでfailureとなる（FR-001）。Selectionは
+`process.cwd()`を使う。`--cwd`を受理する（反復指定はparserのlast valueへ解決）。Absolute valueはそのまま保持し、relative valueは
+active platformの`node:path.resolve`でcapture済みの呼び出しdirectoryに対してresolveする。Valueの欠落/emptyは、
+session/browser作成前に固定actionable startup errorでfailureとなる（FR-001）。Selectionは
 filesystem/network I/Oを0件とし、`chdir`を行わない。Generation 0はfilesystem I/Oなしで作成した1つの
 Repository Sourceを持つ。そのescape済みroot labelはread authorityを与えず、最初のscanがretained selected
 rootをreadする。Rootが存在しないかdirectoryとしてreadできない場合、そのscanはsource-scopedな
@@ -91,8 +91,7 @@ directoryは、仕様が変更されるまでexcludedのままとする。
 | Field | 意味 |
 |---|---|
 | **Base** | 有効な1つの正確なboundary。`Repository`またはconsent済みのnamed `Global` vendor boundary |
-| **Relative selector** | Boundary相対かつ`/`でnormalizeしたselectorのnon-empty ordered list。Absolute path、environment expansion、home expansion、URI、暗黙のancestor searchを含まない |
-| **Selector program** | Selectorごとに同じ順序で正確に1つのclosed segment program。1 programは複数のtyped expansion stepを持てる |
+| **Selector program** | Base相対にauthorしたtyped segment programのnon-empty ordered list。1 programは複数のtyped expansion stepを持て、absolute path、environment expansion、home expansion、URI、暗黙のancestor searchを表現できない |
 
 各selector programは次のclosed unionからなるnon-emptyなordered segment token列を持つ。
 
@@ -118,7 +117,7 @@ programだけをloadし、いかなるselector textもgeneral-purpose glob evalu
 Product内で唯一のpattern評価は、各`regex` step自身の正規表現をenumerateした1つのentry nameへ
 適用することである。
 
-Structured Base、selector list、segment programをauthoritativeとする。Vendor tableの**Expansion** cellはprogramから導く
+Structured Baseとauthorしたsegment programをauthoritativeとする。Vendor tableの**Expansion** cellはprogramから導く
 human summaryで、`exact`、`direct-child`、`descendant-inventory`、`recursive-subtree` labelをprogram順に使う。
 Composite selectorでは複数labelを記載できる。
 
@@ -148,8 +147,8 @@ typed selector programを保持しなければならない。
 
 Global ruleは1つの正確なconsent済みvendor boundaryをBaseとして指定し、そのboundary相対のselectorを持つ。
 Environment/default-homeの解決はboundary作成の責務であり、selectorの責務ではない。Global selectorは
-Repository用の`./` prefixを再利用せず、別vendor boundaryを認可せず、FR-015からFR-018が許可するpathを
-拡張できない。
+consent済みvendor boundaryを基点にauthorし、Repository rootを基点にせず、別vendor boundaryを認可せず、
+FR-015からFR-018が許可するpathを拡張できない。
 
 ### Traversal planのcompileとGlobalのleast privilege
 
@@ -176,9 +175,9 @@ Unreadableまたはbinaryなoverrideは、そのfile Diagnostic（`file-unreadab
 branchを終了し、fallbackしない。Policyは選択したnon-empty fileをpublishし、両selectorを同時にはpublishしない。
 
 No-I/O Global previewは各toolのresolved rootとlexical stateだけを提示し、patternごとの表示を持たない。
-Admitted root配下で何をreadするかはdigestがbindするversionが特定する同梱planで固定されるため、
-別管理のpreview allowlistは存在しない。Consent digestはcontract versionとtraversal-plan
-schema/versionへbindし、それらがclosed selection policyとcanonical selector programを特定する。
+Admitted root配下で何をreadするかは保持済み`allowlistVersion`/`traversalPlanVersion` pairが特定する
+同梱planで固定されるため、別管理のpreview allowlistは存在しない。そのversionがclosed selection policyと
+canonical selector programを特定する。
 Enable operationはdisplay textから再compileせず、accepted previewが表す正確なplanを実行する。
 
 ### 通常のtraversalとfileごとのoutcome
@@ -331,8 +330,8 @@ Contractとfixtureのvalidationは、次をすべて証明しなければなら�
 4. Typed matcherがimmutableかつversionedなplanへdeterministicallyにcompileされる。Global fixtureは、
    exact targetがrootをenumerateせずにreadされ、fixed subtreeがそのsubtreeと許可されたdescendantだけを
    enumerateし、隣接pathへのenumeration、open、read callが0件であることを証明する。Preview fixtureは
-   previewがresolved rootとlexical stateだけを提示すること、consent digestがclosed selection policyと
-   canonical programを特定するallowlist/traversal-plan versionへbindすることを証明する。Codex fixtureは両ordered targetへ独立にabsent、empty、BOM-only、
+   previewがresolved rootとlexical stateだけを提示すること、保持済みpreview recordがclosed selection policyと
+   canonical programを特定するallowlist/traversal-plan versionをbindすることを証明する。Codex fixtureは両ordered targetへ独立にabsent、empty、BOM-only、
    whitespace-only、non-empty、replacement-decoded、binary、unreadable caseを適用し、fallbackがabsent
    または安全にreadしたempty overrideの場合だけ適用されること、unreadable/binaryなoverrideがそのfile
    Diagnosticでbranchを終了してfallbackしないこと、両selectorを同時にpublishしないことを証明する。
@@ -352,7 +351,7 @@ Contractとfixtureのvalidationは、次をすべて証明しなければなら�
    pathは、grouping、alias、read-once behaviorを持たない2つの通常の独立fileである。
    Cross-Source/attempt/generation fixtureは独立readを証明する。
 8. Root-selection fixtureは、1回だけcaptureした`process.cwd()`、そのまま保持するabsolute `--cwd`、
-   captureに対してresolveするrelative `--cwd`、value欠落/empty/option重複時の固定startup errorを扱い、
+   captureに対してresolveするrelative `--cwd`、value欠落/empty時の固定startup errorを扱い、
    `chdir` call 0件とselection時filesystem I/O 0件を証明する。全supported OS上のtraversal fixtureは、
    symlinkされたcustomization fileが透過的にreadされてlink先contentを表示すること、targetがmissing
    またはunreadableなlinkが`partial` generation内の`file-unreadable`となること、directory link cycleが

@@ -69,9 +69,13 @@ another machine remains prohibited.
    initiating machine. Terminal and UI output are read by the same user who owns the
    inspected files, so failures are reported ordinarily: the real error message is
    printed or returned without a product-defined content filter.
-6. Every function accepts only its documented parameters, validated by strict manual
+6. Every function with declared parameters accepts only those documented parameters,
+   validated by strict manual
    type/enum guards; extra keys, path-shaped values, and malformed arguments are rejected
-   with the documented safe rejections. Every declared result and rejection is one
+   with the documented safe rejections. A function declared with `Parameters: none` reads
+   no input, so it has nothing to validate at its boundary (superseded 2026-07-23: the
+   every-function argument-rejection rule was narrowed — rejecting arguments a function
+   never reads is a runtime guard with no protective failure mode). Every declared result and rejection is one
    complete strict-JSON-serializable value. Transport capacity is inherited from Node.js,
    devframe, and the execution environment rather than a product-defined request-size
    ceiling.
@@ -138,14 +142,15 @@ control results epoch-aware without presenting them as generation snapshots.
 The API defines no product-specific numeric limit for parameters, files, item counts,
 parser structures, snapshots, details, or results. Capacity is inherited from Node.js,
 the parser, the operating system, the filesystem, the browser, and the execution
-environment. A serialization/encoding throw or rejection before atomic publication
-propagates to the trigger-owning RPC boundary as an ordinary error, publishes no result or
-generation from the attempt, and retains the prior snapshot. No domain layer classifies
-its cause. The host binds one complete immutable result
-value for a success and hands that unchanged value to the channel. If transport delivery
-fails after the atomic commit, the committed outcome and snapshot remain unchanged; no
+environment. Response serialization is owned by the devframe channel: the handler returns
+its declared result value, and a serialization/encoding or delivery failure after the
+handler returns is reported as that request's ordinary error without rolling back or
+duplicating any state the handler committed — no
 successful result is reported, a partially delivered message is never a partial result,
-and the client may refetch the committed generation.
+and the client refetches the committed generation, exactly as for a transport failure
+(superseded 2026-07-23: the pre-serialized immutable result buffer and the
+publishes-nothing-on-serialization-failure ordering were removed with the
+self-verification cleanups). No domain layer classifies the failure's cause.
 
 Deterministic rejections:
 
@@ -210,7 +215,7 @@ InspectionSession
 │   sessionDiagnosticIds, repositoryFailureDiagnosticId
 ├── sources[]
 │   ├── sourceId, kind, tool, enabled, status, generation, scanRequestId
-│   ├── root { displayRoot, origin }
+│   ├── boundary { displayRoot, origin }
 │   ├── conditionFacts[] { tool, surface, ruleId, affectedRuleIds, behaviorRefs, strategyRefs, sourceRefs,
 │   │                      evidenceAssessments[] { subjectKind, subjectId,
 │   │                                                documentationStatus, lifecycleQualifiers[] },
@@ -261,7 +266,7 @@ Source carries `globalGeneration`. Each `staleFailures` entry's `baseGeneration`
 references the affected Source's owning sequence. A commit in one sequence rekeys and
 invalidates only that sequence's generation-owned IDs and views; the other sequence's
 files, detail, comparison views, and IDs are untouched (FR-030).
-`root.displayRoot` is a one-way escaped root presentation label, not a
+`boundary.displayRoot` is a one-way escaped root presentation label, not a
 `SourceRelativePath`, inventory-item locator, caller input, or read authority. The same distinction applies to a pre-admission consent-preview `displayRoot`,
 which may represent an absolute or invalid lexical root before any owning Source exists.
 The bootstrap Repository root has `origin: process-cwd` when `--cwd` was omitted and
@@ -896,8 +901,8 @@ Expected cancellation creates no Diagnostic and retains no error.
 
 A request received while the barrier is `draining` or `committing` joins the same
 `operationId` and terminal result; disconnecting any transport does not cancel it. An
-unexpected post-acceptance throw/rejection, including drain, final
-assembly, or success serialization failure, rejects that still-pending invocation with
+unexpected post-acceptance throw/rejection, including drain or final
+assembly failure, rejects that still-pending invocation with
 the real error; `globalDisableInProgress.state` becomes `failed` and retains the same
 message as its `message` field, the
 process remains alive, the prior generation stays internal, and every inspection-data fence
@@ -1151,7 +1156,7 @@ the post-acceptance failure's ordinary error. Disable itself never returns
    function
    returns the `global-disable-pending` conflict rejection, including throughout retained
    `failed`. They inject
-   a post-acceptance drain and a final-serialization rejection, and verify that the
+   a post-acceptance drain rejection, and verify that the
    failed request's error message is retained only in `globalDisableInProgress.message`
    while `state: 'failed'`, plus process
    survival, no content re-exposure, and idempotent retry.

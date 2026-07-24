@@ -23,10 +23,10 @@ filesystem I/Oはすべて`src/server/inspection/` directory配下だけに置�
 sourceをread-only Monaco editorで表示し、source比較にはMonaco diff editorを使う。Recognition metadataは
 tool/kind/field/occurrenceで対応付け、parser-normalized表示値ではなくexact authored literalを通常のVue componentで比較・表示する。
 
-Root selectionは単純かつlexicalとする。CLIは`process.cwd()`を正確に1回captureし、`--cwd <path>`を最大1回
-acceptする。Absolute optionはそのまま保持し、relative optionはcapture済みinvocation directoryに対して
-resolveし、その結果をselected Repository rootとする。CLIは`process.chdir()`を呼ばない。Missing、empty、
-duplicateな`--cwd` valueは、session作成またはbrowser起動より前に固定actionable startup errorでfailする。
+Root selectionは単純かつlexicalとする。CLIは`process.cwd()`を正確に1回captureし、`--cwd <path>`を
+acceptする（反復指定はparserのlast valueへ解決）。Absolute optionはそのまま保持し、relative optionはcapture済みinvocation directoryに対して
+resolveし、その結果をselected Repository rootとする。CLIは`process.chdir()`を呼ばない。Missing/emptyな
+`--cwd` valueは、session作成またはbrowser起動より前に固定actionable startup errorでfailする。
 Repository sequenceのbootstrap generation 0は、stableな`sourceId`とescape済みroot labelを持つ1つの
 Repository Sourceをsynchronousに含む。
 
@@ -81,8 +81,9 @@ escaped presentationである。`GlobalConsentPreview.entries[].displayRoot`はo
 originを持つproposed lexical rootのone-way escaped presentationで、absoluteまたはinvalidになり得る。どちらも
 `SourceRelativePath`ではなく、inventory itemを識別せず、read authorityを与えない。
 
-全Inspector Repository matcherは選択されたRepository rootを明示baseとし、`./`から始めて表記する。Bareな`**/`はinvalidで、
-`./**/`が意味するのは下向きInspector descendant inventoryだけであり、vendor traversalではない。Static
+全Inspector Repository matcherは選択されたRepository rootを明示baseとし、globのように見えるrendered string
+形式を持たないtyped segment array programとしてauthorする。先頭の`ANY_DIRECTORIES` segmentが意味するのは
+下向きInspector descendant inventoryだけであり、vendor traversalではない。Static
 candidate、vendor-specific one-edge derivation、relationship-only reference、exclusionを分離する。File存在と
 product surface、runtime root/`cwd`、target match、trust、enablement、selection、installation、managed policy、
 external runtime factを別に保ち、inventoryをeffective agent configurationに見せない。Originating fileを
@@ -99,13 +100,14 @@ Vue 3.5.39とする。6つのNode/OS floor jobはcompatibleな全minor/patch rel
 宣言した2つの下限をcertifyする。各floor未満、Node 25、将来のmajorはcontract外とする。
 
 **主要依存関係**: Nuxt 4.4.8、Vue Router 5.2.0、tsdown 0.22.8、Vite 7.3.6
-（Nuxtと互換性のある最新release）、`devframe` 0.7.5（pre-1.0 local-tool host frameworkのexact pin）、
+（Nuxtと互換性のある最新release）、`devframe` 0.7.5（pre-1.0 local-tool host framework）、
 `gunshi` 0.37.0、`yaml` 2.9.0、
-`jsonc-parser` 3.3.1、`smol-toml` 1.7.0、`monaco-editor` 0.55.1。devframeのtransitive tree
+`jsonc-parser` 3.3.1、`smol-toml` 1.7.0、`monaco-editor` 0.55.1。いずれも`package.json`にはcaret rangeで
+宣言し、commit済みlockfileがこれらのexactなresolved versionとintegrityをpinする。devframeのtransitive tree
 （h3 2.0.1-rc.22、birpc、crossws、valibot、destr、mrmime、nostics、pathe、ufo）はdirect dependencyとして
-pinせず、devframeとlockfileが所有する。最初のlockfile作成時に
-これらの正確なstable versionを再確認しなければならない（MUST）。Prereleaseや互換性のない
-新しいmajorは「最新」の対象にしないが、devframe pinとそのlockfile所有h3 release candidateは、
+宣言せず、devframeとlockfileが所有する。最初のlockfile作成時に
+これらの正確なstable resolved versionを再確認しなければならない（MUST）。Prereleaseや互換性のない
+新しいmajorは「最新」の対象にしないが、devframeの選定とそのlockfile所有h3 release candidateは、
 framework採用決定（spec Clarifications § Session 2026-07-22）とともにacceptした唯一のreview済み
 例外とする。
 この再確認はplanning gateであり、task内だけでpackageまたはversionを変更する許可ではない。選択済み
@@ -141,8 +143,8 @@ compatibility/support window、rollback/support pathを含めるか、理由付�
 default trueとして定義して`--no-open`を提供し、単一のstring-valued `cwd` optionで`--cwd <path>`を提供する。
 `strict: true`を有効にし、bind前にすべてのpositional/rest argumentを明示的に拒否し、`cli()`をawaitし、
 validation `AggregateError`を固定されたactionable outputとnonzero exitへ対応付ける。Session作成前に
-`process.cwd()`を正確に1回captureし、emptyまたはduplicateな`--cwd`はsession作成またはbrowser起動より前に
-固定actionable startup errorで拒否する。Absoluteな`--cwd` valueはそのまま保持し、relative valueは
+`process.cwd()`を正確に1回captureし、empty valueの`--cwd`はsession作成またはbrowser起動より前に
+固定actionable startup errorで拒否する（反復`--cwd`はparserのlast valueへ解決）。Absoluteな`--cwd` valueはそのまま保持し、relative valueは
 `node:path.resolve`でcapture済みinvocation directoryに対してresolveし、その結果をselected Repository rootと
 する。CLIは`process.chdir()`を呼ばない。Built-in help/versionはbindせずに処理する。Production entryは`gunshi/agent`、
 lazy command、custom plugin、experimental parser combinatorをimportしない。Validation後、CLIは
@@ -545,8 +547,8 @@ handlerへ渡すだけでbrowser family/versionを選択または検証せず、
 baseline外のhandler、利用不能なhandler、または識別不能な解決先browserの場合、自動openはbest-effortのままとし、表示済みURLと
 `--no-open`を使ってcertified browserでmanual openすることをactionable fallbackとする。公開project/dependency package payloadとproject-authored installed application codeはplatform非依存の
 JavaScript application codeとdeclarativeなstatic/package dataだけを含み、install script、runtime download、end-user compilerを必要としない。
-Package-manager生成`node_modules/.bin` symlink/`.cmd`/`.ps1` launcherはpayload外interoperability metadataとして別の
-exact-target/content auditを受ける。Development-only toolingはproduct package外で別にpin/auditする。
+Package-manager生成`node_modules/.bin` symlink/`.cmd`/`.ps1` launcherはpayload外interoperability metadataであり、
+宣言済み`package.json.bin` targetへmapする。Development-only toolingはproduct package外で別にpin/auditする。
 Serverはloopback interface（host `localhost`）だけへbindし、remote deployment modeを持たない。
 
 **Project type**: 静的Nuxt web client、Node CLI/local HTTP service、shared serializable
@@ -742,16 +744,16 @@ derived candidateだけを許可し、relationship、component、vendor locator�
 projectionの試行をtarget access前にactionableなdiagnosticで報告する。Failure報告はConstitution v4.0.0の
 ordinary-error clauseに一致する。1 fileに限定されるfailureはそのfileのdiagnosticとなり、それ以外のfailureは
 failed requestの実errorとともにattemptをfailさせ（RPC handlerのfailureはdevframeがserializeするままdevframe
-channelを渡る）、sanitized envelope、generic error entity、log-content ruleは設計に残らない。Quickstartは全stable behavior/rule/strategy/source ID、official-source drift review、Repositoryの
-`./` grammarとbare `**/` rejection、lintと残りのtest、
+channelを渡る）、sanitized envelope、generic error entity、log-content ruleは設計に残らない。Quickstartは全stable behavior/rule/strategy/source ID、official-source drift review、typed segment array
+selector grammarとそのcontract-gate rejection、lintと残りのtest、
 その他の必須品質gate、4つのend-to-end storyを扱う。Monacoはclient-only、
 same-origin、model lifetime scopeとし、固有diff engineでdependency重複を避け、exact authored metadata比較を
 明示的に保つ。Project-owned browser launcherによりshellを含む`open` packageを除去し、許可する唯一のproduct child
 processを、inspection由来のcontent/path、authored value、user command、environment-selected handlerを受け取らない固定startup
 OS helperへ限定する。Closedなambient platform key setだけをlaunch environmentから直接copyし、Source rootとのlexical一致は
-provenanceを変えずauthorityを与えない。Package gateはroot tarballと
-exactなinstall済みproduction closureのJavaScript-only application code、lifecycle/build/download path、selector、
-native/binary artifactをauditする。Third-party development/test toolingはpublished FR-038 boundary外のままとする。
+provenanceを変えずauthorityを与えない。Package gateは承認済みのdirect production dependency setを
+`package.json`と`pnpm-lock.yaml` closureからassertし、commit済みlockfileが各resolved versionとintegrity hashを
+pinすることでproduction payloadをそのdigestでbyte-pinし続ける。Third-party development/test toolingはpublished FR-038 boundary外のままとする。
 記録する唯一のresidual verification limitationは、stalled kernel filesystem operationをhard-cancelできない
 点である。Disable、shutdown、cancellationはpublication authorityをrevokeしてlate resultを破棄するが、physical completionは
 operationがsettleするまで待つ。Passing testによるproofや暗黙のwaiverとして扱わない。未解決clarificationまたは既知の憲章違反は残っていない。Frozen outcome-fixture
@@ -971,8 +973,8 @@ verification、release evidenceは最後に実施する。
 read authority、`runtime-composition.ts`はstrategyとrelationship-only policy、`official-sources.ts`はdevelopment/
 test専用offline evidence mapのimplementation counterpartを所有し、startupまたはscan entry graphからimport
 しない。4つのconformance JSON fixtureはこれらmoduleをmirrorし、相互IDを要求し、duplicate、orphan reference、
-anchorなしevidence、`./`で
-始まらないInspector Repository matcher、bare `**/` matcherがあればbuildをfailさせる。
+anchorなしevidence、またはauthorしたsegment programがclosed token grammarに違反する（例:
+隣接するrecursive-directory segment）Inspector Repository matcherがあればbuildをfailさせる。
 
 `src/shared/entities.ts`はclosedな`EvidenceAssessment` DTO shapeを所有し、各registry moduleは自身のsubject recordにある
 exactな`documentationStatus`と`lifecycleQualifiers`を所有し、`src/server/inspection/rules/registry.ts`だけがassessmentを
@@ -1007,9 +1009,9 @@ Buildは最初にroot-resolvedなpackage所有の`.output/`、`dist/` treeだけ
 `cli` buildを順に実行する。別の`verify:package` scriptは
 packaged entry-point verifier `scripts/verify-package-files.mjs`を実行し、正確に
 `dist/public/index.html`、`dist/cli.mjs`を要求する。Packaged artifactの検証はCI/release gateの層に属するため、
-これは全local buildの一部ではなくCIとreleaseのgateである。Locked済みproduction-leafのversionと
-integrityはpackage testが`pnpm-lock.yaml`から直接assertし、別のproduction-graph scriptやevidence fileは
-存在しない。`typecheck` scriptは
+これは全local buildの一部ではなくCIとreleaseのgateである。Package testは承認済みproduction-leaf setを
+assertし、locked versionとそのintegrityはcommit済みlockfileが所有し続ける。別のproduction-graph scriptや
+evidence fileは存在しない。`typecheck` scriptは
 `tsconfig.json`で設定したapplication、shared、source、script、test codeへのstrict TypeScript type checkを実行し、
 local verification、独自の独立CI job、releaseで必須のquality gateとする。`study:evidence:inputs`は
 `node scripts/build-usability-study-inputs.mjs`だけを、`study:evidence:capture`は
@@ -1053,17 +1055,17 @@ fixtureへinstallし、local commandを実際に`npx --no-install`で起動し�
 Nuxt asset、CLI、inspection layer、runtime dependencyがpackaged locationから`npx`で
 利用できることを証明する。
 
-Package gateはroot tarballだけでなく全project/dependency tarball payloadとinstall済みproduction graphもauditする。
-最初にlifecycle scriptをdisabled、development dependencyをomitしてinstallし、exact graphをlockfile/package manifestと
-比較して、`preinstall`/`install`/`postinstall`またはbuild requirement、`os`/`cpu`/`libc` selector、bundled/optional
-native package、native/binary/Wasm extensionまたはELF/Mach-O/PE magic、`binding.gyp`、Rust/C/C++ source、
-`prebuilds`、package-owned non-Node shebang、shell helper、executable non-JavaScript payloadを拒否する。その後、同じ
-verified cacheからnetwork-disabledなnormal lifecycle installを行う。Package-manager生成`node_modules/.bin`
-symlinkとWindows `.cmd`/`.ps1` shimだけをpayload外例外とし、exact nameはaudit済み`package.json.bin`由来、symlink
-target/generated bodyは宣言済みaudit済みNode JavaScript targetへのdispatchとargv forwardだけを行い、extra logic、
-environment/configuration input、unexpected shimを許可しない。Cross-OS production-graph digestはpackage name/version/
-integrityとpackage-payload digestを対象としgenerated `.bin` artifactを除外するが、OS固有shim auditを併用する。New
-production dependency/artifactは明示reviewまでfailする。
+Package gateは、承認済みのdirect production dependency set — その5つのnameだけで他は含まない — を
+`package.json`と`pnpm-lock.yaml` closureからassertする。これによりnew production dependencyは
+research.md § 3の決定が明示的に見直されるまでfailする。各resolved versionとそのintegrity hashは
+commit済みlockfileが所有し、production payload byteを固定し続けるのはこのlockfileである（superseded 2026-07-23:
+payload content scan — native/binary/Wasm magic、shell helperとshebang audit、lifecycle-disabled/
+network-disabled installの各run、cross-OS shim audit — とdependency単位のversion/integrity hash assertionは
+self-verificationの整理でscopeから外した。これらは
+exactなhash-pinned payloadの性質であり、dependency review時に一度確立されるもので、integrity hashが既に固定した
+contentを再scanすること、あるいはlockfileが既にpinしている値をtestで再記述することは、憲章原則Iが除いた
+冗長な再検証classである。install時のlifecycleとnetwork enforcementは
+package manager自身の設定が所有する）。
 
 ## 実装boundary
 
@@ -1080,9 +1082,9 @@ production dependency/artifactは明示reviewまでfailする。
   Hard linkは通常のfileとする。Filesystem operandにはraw entry nameだけを使い、publicな
   Source-relative PathはNFC display segmentを使う。Client指定pathはI/Oを認可せず、readは
   compile済みallowlist planとserver所有identifierだけで駆動する。
-- File別の問題はclosedなDiagnostic registryを使う。`root-unreadable`（source scope、error）、
+- File別の問題はclosedなDiagnostic registryを使う。`root-unreadable`（published Sourceではsource scope、未公開Global toolではsession scope、error）、
   `file-unreadable`（file scope、error）、`file-content-binary`（file scope、warning）、
-  `recognition-parse-failed`（file scope、warning）。
+  `recognition-parse-failed`（file scope、warning）、`path-normalization-collision`（session scope、error）。
   選択済みRepository rootが存在しないかdirectoryとしてreadできない場合、そのscanはsource-scoped
   `root-unreadable` diagnosticでfailし、sessionは利用可能なまま残り、そのattemptはpartial inventoryを
   publishしない（FR-002）。Consent済みGlobal rootがmissingまたはunreadableな場合は、sibling toolを
@@ -1105,13 +1107,13 @@ production dependency/artifactは明示reviewまでfailする。
 - 4つのregistryは1つのreference graphとしてvalidateするが、与えるauthorityは異なる。Vendor behavior recordは
   upstream lookupを記述するだけでI/Oを認可せず、static/typed derived Inspector ruleだけがreadを認可し、
   runtime strategyはorder、condition、relationship-only edgeをprojectし、official source recordはevidenceを
-  提供するだけでruleを自動変更しない。全Repository matcherはBase、Relative selector、Expansionを分離し、
-  正確な選択済みRepository rootから`./`で表記し、bare `**/`を拒否する。明示的な`./**/`は下向きInspector inventoryだけを
-  意味する。CopilotのVS Code、CLI、Cloud behaviorと、各vendorのRepository対User/Global behaviorは、推測した
-  traversalを共有せず独立してaddress可能に保つ。全Repository selectorをclosedかつcanonical round-tripする
-  segment programへcompileする。Literal、regex、非隣接recursive-directory tokenで、general glob
-  engineを使わずcompositeなdescendant/direct-child/subtree ruleを表す。Global preview entryはfrozen lexical rootであり、
-  consent digestはdata modelに従ってそのraw valueとescaped displayをbindする。
+  提供するだけでruleを自動変更しない。全Repository selectorはtyped segment array programとして直接author
+  する。Literal、regex、非隣接recursive-directory segmentで、general glob engineもglobのように見える
+  string形式も使わずcompositeなdescendant/direct-child/subtree ruleを表し、immutableかつversionedな
+  `TraversalPlan` dataへ決定的にcompileする。CopilotのVS Code、CLI、Cloud behaviorと、各vendorのRepository対User/Global behaviorは、推測した
+  traversalを共有せず独立してaddress可能に保つ。Global preview entryは、serverが保持しopaque `previewId`で
+  識別する唯一のrecordのfrozen lexical rootであり、admitted root配下で何をreadするかは保持済み
+  `allowlistVersion`/`traversalPlanVersion` pairがbindする。
   Content依存のscheduler branchはexactな`codex-global-first-non-empty` policyだけとする。これは
   `AGENTS.override.md`をprobeし、non-emptyならshort-circuitし、overrideがabsentまたはemptyとして
   readされた場合だけ`AGENTS.md`へ進み、publishするCodex
@@ -1212,15 +1214,15 @@ production dependency/artifactは明示reviewまでfailする。
   Session API payloadはcaller指定filesystem pathではなくIDを使用する。RPC handlerのunexpected failureは
   handlerからpropagateし、devframeがserializeするままdevframe channelを渡る。Sanitizing wrapperやgeneric error
   envelopeは存在せず、startup pathはcatchを持たないためownerless rejectionはprocess top levelへ到達する。
-  Global consentはI/Oなしの
-  lexical previewとsession-keyed digestを使う。New unconsented previewごとに`COPILOT_HOME`、`CLAUDE_CONFIG_DIR`、
+  Global consentはI/Oなしのlexical previewを使い、serverはそれをopaque `previewId`で識別する
+  唯一のrecordとして保持する。New unconsented previewごとに`COPILOT_HOME`、`CLAUDE_CONFIG_DIR`、
   `CODEX_HOME`をこの順で正確に1回ずつreadし、`undefined`だけをabsentとし、1つでもabsentならimport済み
   `node:os.homedir()`を正確に1回callする。Absent entryだけにactive-platformの`node:path.join`と固定suffix `.copilot`、
   `.claude`、`.codex`を使い、`HOME`/`USERPROFILE`を独自選択しない。Proposed rootはproduct定義のbyte上限ではなくsupported Node.js、browser、
-  platformのstring/path facilityで表現・escapeする。Environmentがproposed rootをrecoverableに表現、escape、retain、digest、
+  platformのstring/path facilityで表現・escapeする。Environmentがproposed rootをrecoverableに表現、escape、retain、
   serializeできない場合、そのthrow/rejectionを通常のerrorとして変更せずpreviewのsession-API request boundaryへ
   伝播させ、preview、authority、job、retained failure stateを作成しない。Accepted entryはinternal exact raw
-  `lexicalRoot`も保持し、digestはそのraw valueとescaped displayをbindする。Enableは保存済みraw valueだけを使い、`displayRoot`を逆変換せずenvironmentを
+  `lexicalRoot`もescaped displayと並べて同じrecordに保持する。Enableは保存済みraw valueだけを使い、`displayRoot`を逆変換せずenvironmentを
   再読込しない。
 - 起動時のbrowser openはdevframeが所有する。CLIは、devframeがFR-022で許可された固定OS browser-launch
   helperを試行する前にplainなloopback originを1回表示し、`--no-open`はchild processを一切作らずにその
@@ -1298,7 +1300,7 @@ production dependency/artifactは明示reviewまでfailする。
   1つのconsent recordは常にfixed closed-order tuple `[copilot, claude, codex]`をpreviewし、UI/APIのper-tool selectorを
   持たない1つのall-tools confirmation actionを提供する。`confirmedTools`は、lexical previewがinvalidなfrozen entryも含む
   この完全なtupleとし、eligibilityによってconsentをnarrowしない。Serverはtuple memberごとにinternal `GlobalToolControl`を
-  1つ所有する。Filesystem I/Oを伴わないrequest/digest validation後も、initial enableはfrozen consentと3 controlすべてを
+  1つ所有する。Filesystem I/Oを伴わないrequest/`previewId` validation後も、initial enableはfrozen consentと3 controlすべてを
   root admission中operation-localかつ観測不能に保ち、session `globalControl`またはpending stateをまだ作成しない。Retryは
   existing active consent/control stateを正確なpre-operation snapshotとして使用する。どちらもnew root contextとcandidate
   Source/boundary IDをoperation-localに保つ。Owned toolすべてが決定的なadmission outcomeに達した後の1回のcoordinator decisionで
@@ -1355,7 +1357,7 @@ production dependency/artifactは明示reviewまでfailする。
   未公開のoperation-local initial-enableだけがcleanup-only successを使い、committed stateを何も変えずに
   fenceをremoveする。
   Disable、shutdown、明示的cancellation後のpending workはcleanupだけを行い、late resultをpublish/interleaveしない。Drain、
-  close、final serializationが完了した後だけdisableは成功する。Accept後failureではprocessを維持する一方、
+  closeが完了した後だけdisableは成功する。Accept後failureではprocessを維持する一方、
   data fence、failed requestのerror、retry/join controlを保持し、unrecoverable cleanupではrestartをfallbackとする。Accept前failureまたは
   true no-opはfenceをnullのままにする。Event loopが処理できる間はAPI/liveness handlingを継続するが、underlying promiseが
   settleする前にdisableがphysical drain完了をclaimしてはならない。
@@ -1400,8 +1402,8 @@ production dependency/artifactは明示reviewまでfailする。
 | Capture済みenvironment設定のlengthが0 | `inputState: present-empty` / `preview-invalid` | Environment-origin valueだけに最初に適用する。Entryをfixed three-entry confirmationに保持し、fallbackもfilesystem/network I/Oも行わず、そのentry用root、Source、job、generationを作らない |
 | それ以外でexact stringがU+0000またはunpaired UTF-16 surrogateを含む | `inputState: invalid` / `preview-invalid` | `path.isAbsolute`より前にrejectし、filesystem/network I/O 0件かつauthorityなしでinvalid preview entryだけを保持する |
 | それ以外でactive-platform `node:path.isAbsolute`がfalseを返す | `inputState: relative` / `preview-invalid` | Filesystem/network I/O 0件でrelative preview entryを保持し、normalize、resolve、fallback、authority作成を行わない |
-| それ以外（通常のhome外を含むabsolute string） | `inputState: eligible` / `preview-eligible` | 保存するexact raw lexical valueをfilesystem/network I/Oなしでescape/digestし、fixed three-entry confirmationに保持して1回のall-tools consent actionを待つ。このrowだけがconsent後admissionへ進める |
-| Consent/digestがstale、replayed、または不一致 | `consent-rejected` | Proposed-root I/Oを行わず、authorityを作らない |
+| それ以外（通常のhome外を含むabsolute string） | `inputState: eligible` / `preview-eligible` | 保存するexact raw lexical valueをfilesystem/network I/Oなしでescapeしてserver保持preview recordに保持し、fixed three-entry confirmationに保持して1回のall-tools consent actionを待つ。このrowだけがconsent後admissionへ進める |
+| Consentがstale、replayed、またはsupersededな`previewId`を指名 | `consent-rejected` | Proposed-root I/Oを行わず、authorityを作らない |
 | Consent済みrootがmissing、またはreadableなdirectoryでない | `absent`または`root-rejected` | そのSourceを作らず、sibling toolをblockせずにそのtoolをabsentまたはfailedとして記録する。initialでは全3 tool、retryではexact `retryableTools`というcurrent server-owned setのpartitionを続行する |
 | Proposed-root operationがunexpectedにthrowまたはreject | 通常のerror propagation | Global transaction全体をabortし、全provisional sibling context/resultを破棄し、admitted subsetを一切publishせず以前のsnapshotを保持する |
 | 1件以上のrootでconsent後admissionが成功 | `root-admitted` batch subset | 全admitted context/IDを各controlへatomicにattachし、一緒に1つの`GlobalBatchScan`へtransferして、その1回のatomic commit前にpublic Source/graphを作らない |
@@ -1441,7 +1443,7 @@ generic error-envelopeとoperational-log/telemetry機構を削除したため、
 
 | 複雑さ | 必要な理由 | 不採用とした単純案 |
 |---|---|---|
-| Lockfile所有transitive（h3 2.0.1-rc.22 release candidateを含む）を持つexact pinのpre-1.0 devframe 0.7.5 host | Hand-writtenなrouter、token authentication、static-manifest pipelineを維持する代わりに、config-inspectorで実証済みのlocal-tool hostをstatic配信、RPC session API、browser openに再利用する。Exact pinはpre-1.0のAPI churnとRC transitiveを1つのreview済みbaselineに固定する | Floating version rangeはreviewなしにbreakingなpre-1.0変更を取り込む。Hostのin-repo再実装はdevframeがすでに所有する複雑さを再現する |
+| Lockfile所有transitive（h3 2.0.1-rc.22 release candidateを含む）を持つlockfile-pinnedなpre-1.0 devframe 0.7.5 host | Hand-writtenなrouter、token authentication、static-manifest pipelineを維持する代わりに、config-inspectorで実証済みのlocal-tool hostをstatic配信、RPC session API、browser openに再利用する。Exact pinはpre-1.0のAPI churnとRC transitiveを1つのreview済みbaselineに固定する | Floating version rangeはreviewなしにbreakingなpre-1.0変更を取り込む。Hostのin-repo再実装はdevframeがすでに所有する複雑さを再現する |
 | Publication-authority revocationとcleanup-onlyなlate continuation | Disable、shutdown、cancellation後に完了したworkが新しいsession stateを変更するのを防ぐ | Cancellationをphysicalなkernel-I/O terminationと扱うと未対応の保証になる |
 | 4件の固定external terminal-equipment descriptorとsupervisor-owned participant launch | Participant、moderator、isolated reviewer slot 2件へ決定的なnonrecording/no-echo ingressを与え、sole product-exit sourceへ実child handleを与える | Implicit shared stdinはvote/contextを分離できず、product process handleを持たないharnessはexitをattestできない |
 | Adapter-owned pinned Chromiumとanonymous DevTools equipment pipe | Env/argv/profileへ永続化せずattempt-local proxy/authを設定し、browser/context exitをdirect OS observerへgroundする | Browser authorityをargv/environment/persistent profileへ置くとprivacy boundaryに違反し、ownerのないbrowserは信頼できるequipment observerを持たない |

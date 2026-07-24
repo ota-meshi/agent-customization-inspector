@@ -57,21 +57,21 @@ provenanceとrelationship DTOは、直接参照するrule/behavior/strategyのas
 
 ## Inspector Repository rule
 
-この表のBaseはすべて正確なInspector Repository boundary (`./`)である。`descendant-inventory` expansionは
+この表のBaseはすべて正確なInspector Repository boundary — selected Repository root、表記は`Repository` — である。`descendant-inventory` expansionは
 boundary配下の可能なruntime contextをinventoryするだけであり、Codexが下向きwalkするとは主張しない。
 より狭いexclusionまたはGlobal requirementを後述しない限り、全行のpolicy referenceはFR-003、FR-004、
 FR-005、FR-024、QR-001、QR-004、QR-005である。
 
-| Rule ID | Base | Relative selector | Expansion | Class | Behavior refs | Documentation status | Evidence |
+| Rule ID | Base | Selector program | Expansion | Class | Behavior refs | Documentation status | Evidence |
 |---|---|---|---|---|---|---|---|
-| `codex.repo.instructions` | `./` | `./**/AGENTS.override.md`、`./**/AGENTS.md` | Rootと全descendant context directoryの`descendant-inventory` | `static-candidate` | `codex.behavior.repo.instructions` | Documented。Runtime chainはconditional | `openai.codex.agents-md` |
-| `codex.repo.skill` | `./` | `./**/.agents/skills/*/SKILL.md` | 可能なcontext layerの`descendant-inventory`。Skill nameは1 direct child | `static-candidate` | `codex.behavior.repo.skills` | Documented。Runtime chainはconditional | `openai.codex.skills` |
-| `codex.repo.agent` | `./` | `./**/.codex/agents/*.toml` | `descendant-inventory`。Agent fileはdirect child | `static-candidate` | `codex.behavior.repo.agents` | Partially documented | `openai.codex.subagents` |
-| `codex.repo.config` | `./` | `./**/.codex/config.toml` | 可能なproject layerの`descendant-inventory` | `static-candidate` | `codex.behavior.repo.config`, `codex.behavior.repo.mcp`, `codex.behavior.repo.hooks` | Documented。Trust/runtime chainはconditional | `openai.codex.config-basic`, `openai.codex.mcp` |
-| `codex.repo.hooks` | `./` | `./**/.codex/hooks.json` | 可能なactive config layerの`descendant-inventory` | `static-candidate` | `codex.behavior.repo.hooks` | Documented。Trust/hook reviewはconditional | `openai.codex.hooks` |
-| `codex.repo.rules` | `./` | `./**/.codex/rules/*.rules` | Layer rootの`descendant-inventory`と各`rules/`内`direct-child` | `static-candidate` | `codex.behavior.repo.rules` | Experimental。Nested rule directoryはexcluded | `openai.codex.rules` |
-| `codex.repo.plugin-manifest` | `./` | `./.codex-plugin/plugin.json` | `exact`。Selected Repository rootをauthored plugin rootとして扱う | `static-candidate` | `codex.behavior.plugin.manifest` | Inspectorのauthored-project policyだけ。Codex plugin discovery/activationではない | `openai.codex.plugins` |
-| `codex.repo.marketplace` | `./` | `./.agents/plugins/marketplace.json`、`./.claude-plugin/marketplace.json` | `exact` | `static-candidate` | `codex.behavior.repo.marketplace` | 正確なRepository-root location | `openai.codex.plugins` |
+| `codex.repo.instructions` | Repository | `[ANY_DIRECTORIES, 'AGENTS.override.md']`、`[ANY_DIRECTORIES, 'AGENTS.md']` | Rootと全descendant context directoryの`descendant-inventory` | `static-candidate` | `codex.behavior.repo.instructions` | Documented。Runtime chainはconditional | `openai.codex.agents-md` |
+| `codex.repo.skill` | Repository | `[ANY_DIRECTORIES, '.agents', 'skills', ANY_NAME, 'SKILL.md']` | 可能なcontext layerの`descendant-inventory` plus `direct-child`。Skill nameは1 direct child | `static-candidate` | `codex.behavior.repo.skills` | Documented。Runtime chainはconditional | `openai.codex.skills` |
+| `codex.repo.agent` | Repository | `[ANY_DIRECTORIES, '.codex', 'agents', /\.toml$/u]` | `descendant-inventory` plus `direct-child`。Agent fileはdirect child | `static-candidate` | `codex.behavior.repo.agents` | Partially documented | `openai.codex.subagents` |
+| `codex.repo.config` | Repository | `[ANY_DIRECTORIES, '.codex', 'config.toml']` | 可能なproject layerの`descendant-inventory` | `static-candidate` | `codex.behavior.repo.config`, `codex.behavior.repo.mcp`, `codex.behavior.repo.hooks` | Documented。Trust/runtime chainはconditional | `openai.codex.config-basic`, `openai.codex.mcp` |
+| `codex.repo.hooks` | Repository | `[ANY_DIRECTORIES, '.codex', 'hooks.json']` | 可能なactive config layerの`descendant-inventory` | `static-candidate` | `codex.behavior.repo.hooks` | Documented。Trust/hook reviewはconditional | `openai.codex.hooks` |
+| `codex.repo.rules` | Repository | `[ANY_DIRECTORIES, '.codex', 'rules', /\.rules$/u]` | Layer rootの`descendant-inventory`と各`rules/`内`direct-child` | `static-candidate` | `codex.behavior.repo.rules` | Experimental。Nested rule directoryはexcluded | `openai.codex.rules` |
+| `codex.repo.plugin-manifest` | Repository | `['.codex-plugin', 'plugin.json']` | `exact`。Selected Repository rootをauthored plugin rootとして扱う | `static-candidate` | `codex.behavior.plugin.manifest` | Inspectorのauthored-project policyだけ。Codex plugin discovery/activationではない | `openai.codex.plugins` |
+| `codex.repo.marketplace` | Repository | `['.agents', 'plugins', 'marketplace.json']`、`['.claude-plugin', 'marketplace.json']` | `exact` | `static-candidate` | `codex.behavior.repo.marketplace` | 正確なRepository-root location | `openai.codex.plugins` |
 
 受理済み`config.toml`内のinline MCP serverとinline hookはそのfileのmetadataであり、別candidateを作らない。
 Standalone `.mcp.json`はCodex Repository candidateではない。Inspectorは任意の
@@ -115,9 +115,9 @@ Local marketplace entryからこれらcomponentへ再帰展開してはならな
 Global inspectionはsession開始時に無効である。FR-013からFR-018の正確なconsent flow後、Codexは次のruleだけを
 readできる。
 
-| Rule ID | Boundary base | Relative selectorとselection | Expansion | Class | Behavior refs | Policy refs | Evidence |
+| Rule ID | Boundary base | Selector programとselection | Expansion | Class | Behavior refs | Policy refs | Evidence |
 |---|---|---|---|---|---|---|---|
-| `codex.global.instructions` | 正確なconsent済みcapture済み`CODEX_HOME`。Absent時だけrequest-wideなimport済み`node:os.homedir()` captureと`.codex`を`node:path.join`した値 | Non-empty `AGENTS.override.md`があれば使用し、なければ`AGENTS.md` | `exact`、first-non-empty selection | `static-candidate` | `codex.behavior.user.instructions` | FR-013、FR-014、FR-017、FR-018、QR-005 | `openai.codex.agents-md` |
+| `codex.global.instructions` | 正確なconsent済みcapture済み`CODEX_HOME`。Absent時だけrequest-wideなimport済み`node:os.homedir()` captureと`.codex`を`node:path.join`した値 | `['AGENTS.override.md']`、次に`['AGENTS.md']` | `exact`、first-non-empty selection | `static-candidate` | `codex.behavior.user.instructions` | FR-013、FR-014、FR-017、FR-018、QR-005 | `openai.codex.agents-md` |
 
 Immutable planは、この2つのexact selectorをその順序で持つclosedな`codex-global-first-non-empty` policyを使う。
 安全にnon-emptyと確定したoverrideはshort-circuitし、`absent`または安全にemptyと確定したoverrideだけが

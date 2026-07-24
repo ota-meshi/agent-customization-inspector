@@ -674,8 +674,8 @@ descriptor `6` inputをenableし、LF前byteがliteral `npx --no-install agent-c
 exact one LF-terminated ASCII lineだけをacceptする。Shell/parser/substitution/extra option/prefix/suffix/CR/second line/
 terminal history/echo/recordingを禁止する。Subject distribution identityを再検証し、exact `repository/` cwdかつsame
 external terminal equipmentでdirect spawnする。Sanitized child envはfixed product env、上記exact 2-entry audited `PATH`、
-sole exact `NODE_OPTIONS=--import=<bound-capture-script-file-url>`、exact control endpoint/token、minimum current safe run/
-subject contextだけとし、raw candidate/proxy authority、browserAttemptId、internal channel、他study valueをargv/env/cwd/
+sole exact `NODE_OPTIONS=--import=<bound-capture-script-file-url>`、exact control endpoint/token、probeに必要な最小scopeのcurrent safe `INSPECTOR_STUDY_RUN_ID`/`INSPECTOR_STUDY_SUBJECT_ID` value（run/
+subject context）だけとし、raw candidate/proxy authority、browserAttemptId、internal channel、他study valueをargv/env/cwd/
 terminal/application inputへ入れない。Command bufferをspawn直後にwipeし、supervisorがOS child handle/waitをownする。
 Attempt close/terminalization/child exit/abort/crashでchild viewをcloseしfd6をdrain/resetしてpending input/output/stateを
 wipeし、prior bytes/history/context absenceを証明する。Fixed surface/slot reuseだけを許し、participant process/probe
@@ -800,10 +800,10 @@ attempt/stop/finalizeへ進めない。Failureはcleanup+invalid、PID/handle/pa
 
 Browser-context proxy usernameはliteral `study`、passwordはexact marker secretとする。
 3件の`capture-start`後、当該attemptのparticipant `npx`/first capturable request直前に、browserはfixed proxy-local URI
-`http://inspector-study.invalid/.well-known/proxy-auth-bootstrap`だけをnavigateする。First requestはBasicなしで、
+`http://inspector-study.invalid/.well-known/proxy-auth-bootstrap`だけをnavigateする。First requestは`Proxy-Authorization`なしで、
 bodyless `407` exact 1件を受け、そのraw response headerは順にexact
 `Proxy-Authenticate: Basic realm="inspector-study"`, `Connection: close`の2件だけとする。
-次にexact UTF-8 `study:<browserProxyMarkerSecret>`のcanonical RFC 4648 padded base64を持つBasic field exact 1件で
+次にexact UTF-8 `study:<browserProxyMarkerSecret>`のcanonical RFC 4648 padded base64を持つcanonical `Proxy-Authorization: Basic <credentials>` field exact 1件で
 retryし、sole header exact `Connection: close`だけを持つfixed bodyless `204`を受ける。両exchangeはstream live中も
 proxy-local equipment trafficで、DNS/connect/application/candidate/correlation/evidenceを0件とする。他status/
 header name/order/value/body/network/evidence effectをadapter/proxyが生成した場合はrun invalidとする。Internal outputが
@@ -876,7 +876,7 @@ Closed ordered decision tableは次とする。
 | 上記participant条件のいずれかを欠くparticipant-shaped valid-secret request（nonexact target/no grant/replay/user-activated page-script navigationを含む） | `unknown`; open binding ID | Browser-only fail-closed critical `unauthorized-request`、attributable/prohibited trueでblock。 |
 | Valid secret、participantではない、`userClass: missing`、かつ`originEvidenceClass: exact-issued`または（Origin missingかつReferer exact-issued） | `bundled-spa`; open binding ID | Exact authorized-static/APIだけforward/join。全nonexact/unauthorizedはbrowser-only product-attributable/prohibitedとしてblock。 |
 | Valid secretかつextension-scheme origin | `browser-extension`; subject/process N/A | 常にbrowser-only unrelated、effect none、attributable/prohibited falseでblock。 |
-| その他valid-secret projection | `unknown`; open binding ID | Browser-only fail-closed critical、`effectClass: unauthorized-request`、attributable/prohibited trueでblock。 |
+| その他valid-secret projection | `unknown`; open binding ID | Browser-only fail-closed critical request: 該当に応じて`requestClass: unclassifiable \| prohibited`、`effectClass: unauthorized-request`、`productAttributable: true`、`prohibited: true`でblock。 |
 | Bootstrap後のsyntactically valid missing secret | `other-host-process`; subject/process N/A | Browser-only unrelated/falseでblock。 |
 | Invalid/duplicate/malformed/noncanonical/unknown/stale/mismatched secret | `unknown`; subject/process N/A | Browser-only unrelated/falseでblock。 |
 

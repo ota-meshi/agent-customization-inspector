@@ -87,6 +87,13 @@ export interface DiagnosticRegistryEntry {
  */
 export const DIAGNOSTIC_REGISTRY: Readonly<Record<DiagnosticCode, DiagnosticRegistryEntry>> =
   {
+    // `root-unreadable` is the one context-dependent scope (data-model.md
+    // § Diagnostic): this default `source` scope applies to a published
+    // Source (the Repository Source — the only case the initial release
+    // produces). An unpublished Global tool has no Source to attach to, so
+    // the future Global tasks construct it as a pathless session-scoped
+    // lifecycle record (`global:<tool>` owner) rather than through this
+    // fixed-scope entry.
     'root-unreadable': { ownerKind: 'lifecycle', scope: 'source', severity: 'error' },
     'file-unreadable': { ownerKind: 'candidate-file', scope: 'file', severity: 'error' },
     'file-content-binary': { ownerKind: 'candidate-file', scope: 'file', severity: 'warning' },
@@ -262,38 +269,18 @@ const SCOPE_RANK: Readonly<Record<DiagnosticScope, number>> = {
   file: 2,
 };
 
-// Candidates are deduplicated by every identity-bearing field except the
-// server-generated diagnosticId, so re-emitting the same observation twice
-// in one attempt cannot double-report it.
-function dedupeKey(record: DiagnosticRecord): string {
-  return JSON.stringify([
-    record.code,
-    record.lifecycleOwnerKey,
-    record.sourceId,
-    record.fileId,
-    record.sourceRelativePath,
-  ]);
-}
-
 /**
- * Deduplicates candidates and emits them in the deterministic order:
- * lifecycle-owner semantic order, scope, Source-relative Path, code, then
- * emitter-occurrence order. Opaque IDs never supply the sort order.
+ * Emits candidates in the deterministic order: lifecycle-owner semantic
+ * order, scope, Source-relative Path, code, then emitter-occurrence order.
+ * Opaque IDs never supply the sort order. There is deliberately no
+ * dedupe pass: every emitter creates each observation exactly once —
+ * legitimately repeated records exist (one per failed recognition, one per
+ * rejected collision group) and a double emission would be an ordinary
+ * implementation bug owned by tests and review, not a runtime filter.
  */
-export function dedupeAndSortDiagnostics(
-  candidates: readonly DiagnosticRecord[],
-): DiagnosticRecord[] {
-  const seen = new Set<string>();
-  const unique: { record: DiagnosticRecord; occurrence: number }[] = [];
-  for (const [occurrence, record] of candidates.entries()) {
-    const key = dedupeKey(record);
-    if (seen.has(key)) {
-      continue;
-    }
-    seen.add(key);
-    unique.push({ record, occurrence });
-  }
-  unique.sort((left, right) => {
+export function sortDiagnostics(candidates: readonly DiagnosticRecord[]): DiagnosticRecord[] {
+  const entries = candidates.map((record, occurrence) => ({ record, occurrence }));
+  entries.sort((left, right) => {
     const ownerDelta =
       lifecycleOwnerRank(left.record.lifecycleOwnerKey) -
       lifecycleOwnerRank(right.record.lifecycleOwnerKey);
@@ -316,5 +303,5 @@ export function dedupeAndSortDiagnostics(
     }
     return left.occurrence - right.occurrence;
   });
-  return unique.map((item) => item.record);
+  return entries.map((item) => item.record);
 }
