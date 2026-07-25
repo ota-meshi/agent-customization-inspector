@@ -30,6 +30,8 @@
     "clean": "node scripts/clean-build-output.mjs",
     "dev:prepare": "nuxt prepare",
     "build": "node scripts/clean-build-output.mjs && nuxt build && tsdown",
+    "start": "node dist/cli.mjs",
+    "build-and-start": "pnpm run build && pnpm run start",
     "verify:package": "node scripts/verify-package-files.mjs",
     "lint": "eslint .",
     "typecheck": "vue-tsc --noEmit",

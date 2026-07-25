@@ -101,8 +101,35 @@ Expected:
 
 ## Run the local inspector manually
 
-Build first, then launch from a conformance fixture so that the fixture directory—not the
-repository containing the implementation—is the process `cwd`:
+From a fresh checkout, one script builds and launches:
+
+```bash
+pnpm run build-and-start
+```
+
+`start` launches without building, for when `dist/` is already current:
+
+```bash
+pnpm start
+```
+
+Both run the packaged `dist/cli.mjs` — the exact `package.json.bin` entry an installed user
+gets — so a local launch exercises the shipped path rather than a development-only one.
+`start` deliberately does not build: rebuilding under it would hide which `dist/` is
+running, which is the one thing a launch check needs to be sure of. Pass options without a
+`--` separator, because pnpm forwards that separator to the command, where the strict
+rest-argument rejection refuses it:
+
+```bash
+pnpm start --no-open --cwd /path/to/repository
+```
+
+Read the printed URL rather than assuming a port. devframe selects another local port when
+its default is already bound, so a stale inspector left running would otherwise take the
+connection.
+
+To exercise root selection, launch from a conformance fixture so that the fixture
+directory—not the repository containing the implementation—is the process `cwd`:
 
 ```bash
 cd tests/fixtures/repositories/all-supported

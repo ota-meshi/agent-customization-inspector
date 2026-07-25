@@ -86,8 +86,33 @@ pnpm run build
 
 ## Local Inspectorをmanual実行
 
-先にbuildし、implementation repositoryではなくfixture directoryがprocess `cwd`になるようconformance
-fixtureから起動する。
+Fresh checkoutからは、1つのscriptでbuildとlaunchを行う。
+
+```bash
+pnpm run build-and-start
+```
+
+`dist/`が最新の場合は、buildせずにlaunchする`start`を使う。
+
+```bash
+pnpm start
+```
+
+どちらもpackaged `dist/cli.mjs`——installした利用者が得るのと同じ`package.json.bin` entry——を
+実行するため、manual launchはdevelopment専用経路ではなく出荷される経路を確認する。`start`が
+buildしないのは意図的で、裏でrebuildするとどの`dist/`が動いているか分からなくなり、それは
+launch確認が最も確実にしたい一点だからである。Optionは`--` separatorなしで渡す。pnpmはその
+separatorをcommandへそのまま転送し、strictなrest-argument rejectionが拒否するためである。
+
+```bash
+pnpm start --no-open --cwd /path/to/repository
+```
+
+Portを決め打ちせず、printされたURLを読む。devframeはdefault portが既にbindされていれば別の
+local portを選ぶため、実行したままの古いinspectorが接続を奪う可能性がある。
+
+Root selectionを確認するには、implementation repositoryではなくfixture directoryがprocess `cwd`に
+なるようconformance fixtureから起動する。
 
 ```bash
 cd tests/fixtures/repositories/all-supported
