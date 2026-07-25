@@ -33,18 +33,21 @@ import type { SupportedTool } from '../../../shared/entities';
  *                            another recursive token
  */
 export type MatcherSegment =
+  /** One case-sensitive exact literal path segment. */
   | {
       /** One case-sensitive exact ASCII segment. */
       readonly kind: 'literal';
       /** The closed non-empty ASCII literal (no separators or glob chars). */
       readonly value: string;
     }
+  /** One raw entry name selected by a JavaScript regular expression. */
   | {
       /** Exactly one entry name, decided by the pattern. */
       readonly kind: 'regex';
       /** Standard JS regular expression tested against the raw entry name. */
       readonly pattern: RegExp;
     }
+  /** The recursive `**` step over zero or more directories. */
   | {
       /** The `**` step: zero or more directories. */
       readonly kind: 'recursive-directories';
@@ -165,8 +168,18 @@ export function createProgramLevel(states: readonly ProgramState[]): ProgramLeve
  * Never inferred from a selector.
  */
 export type MatcherBase =
-  | { readonly kind: 'repository' }
-  | { readonly kind: 'global'; readonly tool: SupportedTool };
+  /** The one selected Repository boundary. */
+  | {
+      /** Selects the Repository boundary. */
+      readonly kind: 'repository';
+    }
+  /** One consented tool-specific Global boundary. */
+  | {
+      /** Selects a Global boundary. */
+      readonly kind: 'global';
+      /** The supported tool whose Global root owns the matcher. */
+      readonly tool: SupportedTool;
+    };
 
 /**
  * One static rule's structured matcher: the exact base boundary plus its
@@ -188,7 +201,11 @@ export interface StructuredInspectorMatcher {
  *    literal targets `AGENTS.override.md`, `AGENTS.md` (FR-035); that
  *    validity is a registry contract-gate obligation
  */
-export type SelectionPolicy = 'all-matches' | 'codex-global-first-non-empty';
+export type SelectionPolicy =
+  /** Every selector match is an admitted candidate. */
+  | 'all-matches'
+  /** The exact Codex Global override/fallback pair selects its first non-empty file. */
+  | 'codex-global-first-non-empty';
 
 /**
  * Closed traversal operation class (data-model.md § TraversalPlan):
@@ -200,7 +217,13 @@ export type SelectionPolicy = 'all-matches' | 'codex-global-first-non-empty';
  *                            dynamic program strictly below it
  * There is deliberately no generic ambient-root walker.
  */
-export type TraversalSelectorMode = 'repository-program' | 'global-exact' | 'global-fixed-subtree';
+export type TraversalSelectorMode =
+  /** Execute the complete selector program below the Repository root. */
+  | 'repository-program'
+  /** Read one exact target below an admitted Global root. */
+  | 'global-exact'
+  /** Enter a fixed Global subtree before executing the remaining program. */
+  | 'global-fixed-subtree';
 
 /**
  * One compiled selector of a TraversalPlan: the closed lossless mapping of
@@ -264,7 +287,13 @@ export const ANY_DIRECTORIES: MatcherSegment = Object.freeze({ kind: 'recursive-
  * string syntax to parse — a selector is authored as this array, e.g.
  * `['.claude', 'skills', ANY_NAME, 'SKILL.md']` or `['docs', /\.md$/u]`.
  */
-export type SelectorSegmentInput = string | RegExp | MatcherSegment;
+export type SelectorSegmentInput =
+  /** A case-sensitive exact literal entry name. */
+  | string
+  /** A dynamic single-name step with standard JavaScript semantics. */
+  | RegExp
+  /** A precompiled matcher segment such as {@link ANY_DIRECTORIES}. */
+  | MatcherSegment;
 
 // Maps one authored segment onto the closed union; grammar and alphabet
 // conformance of the shipped catalogs is owned by the registry contract

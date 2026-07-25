@@ -6,27 +6,38 @@
 
 /**
  * The closed set of supported AI agents (spec.md FR-004,
- * contracts/official-sources.md): 'copilot' is GitHub Copilot, 'claude' is
- * Claude Code, 'codex' is OpenAI Codex. The same identifiers attribute
- * repository files at recognition time and own the per-tool Global
- * Sources — only the Global side is per-tool at the Source level, because
- * each tool has its own Global root while one Repository root holds every
- * tool's files.
+ * contracts/official-sources.md). The same identifiers attribute repository
+ * files at recognition time and own the per-tool Global Sources.
  */
-export type SupportedTool = 'copilot' | 'claude' | 'codex';
+export type SupportedTool =
+  /** GitHub Copilot. */
+  | 'copilot'
+  /** Claude Code. */
+  | 'claude'
+  /** OpenAI Codex. */
+  | 'codex';
 
 /**
- * Decode classification per spec.md § Byte Decode Outcomes. Orthogonal to
- * BOM presence, which `hadLeadingBom` records separately:
- *  - 'utf-8'          the bytes decoded without replacement
- *  - 'utf-8-replaced' invalid sequences decoded once with replacement
- *                     semantics; the text keeps every U+FFFD and stays
- *                     readable and comparable (FR-025)
- *  - 'binary'         at least one NUL byte; diagnostic-only, no source text
- *  - 'unknown'        no decode happened — the read failed before the bytes
- *                     could be classified
+ * The readable subset of the decode classification
+ * (spec.md § Byte Decode Outcomes).
  */
-export type FileEncoding = 'utf-8' | 'utf-8-replaced' | 'binary' | 'unknown';
+export type ReadableFileEncoding =
+  /** The bytes decoded as UTF-8 without replacement. */
+  | 'utf-8'
+  /** Invalid UTF-8 decoded once with replacement while remaining readable (FR-025). */
+  | 'utf-8-replaced';
+
+/**
+ * Complete decode classification per spec.md § Byte Decode Outcomes,
+ * orthogonal to BOM presence, which `hadLeadingBom` records separately.
+ */
+export type FileEncoding =
+  /** Readable text, with or without replacement; see {@link ReadableFileEncoding}. */
+  | ReadableFileEncoding
+  /** At least one NUL byte made the file diagnostic-only with no source text. */
+  | 'binary'
+  /** The read failed before any bytes could be classified. */
+  | 'unknown';
 
 /**
  * Result of the single decode pass (spec.md § Byte Decode Outcomes),
@@ -36,14 +47,16 @@ export type FileEncoding = 'utf-8' | 'utf-8-replaced' | 'binary' | 'unknown';
  * bytes — while readable input always carries complete text.
  */
 export type DecodedSourceBytes =
+  /** A readable UTF-8 result with complete source text and its BOM record. */
   | {
       /** Readable decode classification; see {@link FileEncoding}. */
-      readonly encoding: 'utf-8' | 'utf-8-replaced';
+      readonly encoding: ReadableFileEncoding;
       /** Whether one leading UTF-8 BOM was recorded and removed (FR-025). */
       readonly hadLeadingBom: boolean;
       /** Complete decoded text; never null for readable input. */
       readonly sourceText: string;
     }
+  /** A NUL-containing binary result with no readable text or BOM concept. */
   | {
       /** At least one NUL byte: diagnostic-only, no text, no BOM concept. */
       readonly encoding: 'binary';
@@ -94,16 +107,65 @@ export function decodeSourceBytes(bytes: Uint8Array): DecodedSourceBytes {
   return { encoding, hadLeadingBom, sourceText };
 }
 
+/** How a Source root was selected (FR-001, FR-013). */
+export type SourceBoundaryOrigin =
+  /** The one invocation working directory captured when `--cwd` was omitted. */
+  | 'process-cwd'
+  /** The validated explicit `--cwd` selection. */
+  | 'cwd-option'
+  /** A tool's fixed Global suffix below the default home directory. */
+  | 'default-home'
+  /** A Global root selected from the tool's captured home environment variable. */
+  | 'environment';
+
 /**
- * How a Source root was selected (FR-001, FR-013):
- *  - 'process-cwd'  the one captured invocation cwd (no --cwd given)
- *  - 'cwd-option'   the validated --cwd value
- *  - 'default-home' a Global root derived from homedir + the tool's fixed
- *                   suffix because its environment setting was absent
- *  - 'environment'  a Global root taken from the captured tool-home
- *                   environment variable
+ * The label shown for each origin. It sits beside the union so a new origin
+ * cannot compile without its text, the same way {@link DIAGNOSTIC_REGISTRY}
+ * fixes a diagnostic's message: the closed vocabulary and how it reads are
+ * one decision, not two files (amended 2026-07-24 — this previously lived in
+ * a client message catalog).
  */
-export type SourceBoundaryOrigin = 'process-cwd' | 'cwd-option' | 'default-home' | 'environment';
+export const SOURCE_BOUNDARY_ORIGIN_TEXT: Readonly<Record<SourceBoundaryOrigin, string>> = {
+  /** Label for the invocation working-directory origin. */
+  'process-cwd': 'invocation working directory',
+  /** Label for the explicit `--cwd` origin. */
+  'cwd-option': '--cwd option',
+  /** Label for a tool root derived below the default home. */
+  'default-home': 'default home directory',
+  /** Label for a tool root supplied by an environment variable. */
+  environment: 'environment variable',
+};
+
+/** A Source's operational overlay status (data-model.md § Source). */
+export type SourceStatus =
+  /** Bootstrapped with no scan admitted yet. */
+  | 'idle'
+  /** An admitted scan is in flight. */
+  | 'scanning'
+  /** The Global disable barrier is draining this Source. */
+  | 'disabling'
+  /** The last committed scan completed without a file-confined diagnostic. */
+  | 'ready'
+  /** The last committed scan retained at least one file-confined diagnostic. */
+  | 'partial'
+  /** The last attempt failed while any prior committed snapshot was retained. */
+  | 'failed';
+
+/** The label shown for each status; see {@link SOURCE_BOUNDARY_ORIGIN_TEXT}. */
+export const SOURCE_STATUS_TEXT: Readonly<Record<SourceStatus, string>> = {
+  /** Label for a bootstrapped Source with no admitted scan. */
+  idle: 'Idle',
+  /** Label for a Source whose admitted scan is in flight. */
+  scanning: 'Scanning',
+  /** Label for a Global Source draining behind the disable barrier. */
+  disabling: 'Disabling',
+  /** Label for a Source whose latest commit was complete. */
+  ready: 'Ready',
+  /** Label for a Source whose latest commit retained file-confined diagnostics. */
+  partial: 'Partial',
+  /** Label for a Source whose latest attempt failed. */
+  failed: 'Failed',
+};
 
 /** The non-authorizing public presentation of a Source root (FR-002). */
 export interface SourceBoundaryDto {
@@ -150,21 +212,28 @@ export function encodeRootPresentation(value: string): string {
   return encoded;
 }
 
-/**
- * Closed evidence completeness enum (spec.md QR-005):
- *  - 'documented'            the cited official sections fully establish the
- *                            maintained assertion
- *  - 'partially-documented'  they establish part but not all of it
- *  - 'unknown'               they establish no determination for it
- *  - 'conflict'              retained official assertions are incompatible
- */
-export type DocumentationStatus = 'documented' | 'partially-documented' | 'unknown' | 'conflict';
+/** Closed evidence-completeness enum (spec.md QR-005). */
+export type DocumentationStatus =
+  /** The cited official sections fully establish the maintained assertion. */
+  | 'documented'
+  /** The cited official sections establish part but not all of the assertion. */
+  | 'partially-documented'
+  /** The cited official sections establish no determination for the assertion. */
+  | 'unknown'
+  /** Retained official assertions are incompatible. */
+  | 'conflict';
 
 /**
  * Upstream lifecycle claims for an assertion (spec.md QR-005). An empty
  * qualifier list means only that no claim is made — never 'stable'.
  */
-export type LifecycleQualifier = 'preview' | 'experimental' | 'deprecated';
+export type LifecycleQualifier =
+  /** Upstream documents the subject as preview. */
+  | 'preview'
+  /** Upstream documents the subject as experimental. */
+  | 'experimental'
+  /** Upstream documents the subject as deprecated. */
+  | 'deprecated';
 
 /**
  * Fixed presentation order for lifecycle qualifiers. The order is part of
@@ -174,8 +243,11 @@ export type LifecycleQualifier = 'preview' | 'experimental' | 'deprecated';
  * `stable` would turn missing documentation into a positive claim.
  */
 export const LIFECYCLE_QUALIFIER_ORDER: readonly LifecycleQualifier[] = [
+  /** Preview claims render first. */
   'preview',
+  /** Experimental claims render after preview. */
   'experimental',
+  /** Deprecation claims render last. */
   'deprecated',
 ];
 
@@ -194,12 +266,16 @@ export function normalizeLifecycleQualifiers(
 }
 
 /**
- * What an EvidenceAssessment is about (contracts/inspection-path-allowlist.md
- * § identifier ownership): 'behavior' = a documented vendor behavior
- * statement, 'rule' = an Inspector policy rule, 'strategy' = a runtime
- * composition/projection strategy.
+ * What an EvidenceAssessment is about
+ * (contracts/inspection-path-allowlist.md § identifier ownership).
  */
-export type EvidenceSubjectKind = 'behavior' | 'rule' | 'strategy';
+export type EvidenceSubjectKind =
+  /** A documented vendor-behavior statement. */
+  | 'behavior'
+  /** An Inspector policy rule. */
+  | 'rule'
+  /** A runtime composition or projection strategy. */
+  | 'strategy';
 
 /**
  * The atomic evidence state for one behavior/rule/strategy subject

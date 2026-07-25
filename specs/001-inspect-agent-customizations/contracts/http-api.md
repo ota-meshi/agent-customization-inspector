@@ -58,14 +58,15 @@ another machine remains prohibited.
    packaged UI output directory and never falls back to an inspected file.
 4. At startup the host prints the exact `http://localhost:<port>/` URL once to the
    initiating terminal. Automatic browser opening is devframe-owned and best-effort under
-   FR-001: `--no-open` disables it, and a disabled, unsupported, or failed helper emits a
-   fixed warning while the server and printed URL remain usable. The helper receives no
-   inspection-derived content or path (FR-022). A reload or direct navigation of any
-   client route needs no token: the served shell embeds no session data, and the freshly
-   loaded SPA adopts state only through the RPC channel.
-5. Beyond fixed help/version text, the required one-time initiating-terminal launch line,
-   and fixed actionable startup warnings, the host defines no telemetry or
-   operational-event stream; FR-022 already prohibits transmitting anything off the
+   FR-001: `--no-open` silently suppresses opening, and an unsupported or failed helper
+   does not block startup; the printed URL remains the fallback. The product fabricates no
+   browser-opening outcome warning because devframe exposes no helper outcome. The helper
+   receives no inspection-derived content or path (FR-022). A reload or direct navigation
+   of any client route needs no token: the served shell embeds no session data, and the
+   freshly loaded SPA adopts state only through the RPC channel.
+5. Beyond fixed help/version text and the required one-time initiating-terminal launch
+   line, the host defines no telemetry or operational-event stream; FR-022 already
+   prohibits transmitting anything off the
    initiating machine. Terminal and UI output are read by the same user who owns the
    inspected files, so failures are reported ordinarily: the real error message is
    printed or returned without a product-defined content filter.
@@ -85,7 +86,6 @@ another machine remains prohibited.
 | Function | Kind | Purpose |
 |---|---|---|
 | `agent-customization-inspector:get-session` | read | Full `InspectionSession` snapshot, or the control-only `GlobalFenceRecoverySnapshot` while fenced |
-| `agent-customization-inspector:get-liveness` | read | Exact `{ sessionId, globalContentEpoch, globalDisableInProgress }` liveness projection |
 | `agent-customization-inspector:get-file-detail` | read | One active-generation `FileDetail` |
 | `agent-customization-inspector:rescan-repository` | command | Accept one explicit Repository scan command |
 | `agent-customization-inspector:get-global-consent-preview` | read | Current or frozen `GlobalConsentPreview` |
@@ -131,8 +131,7 @@ acceptance remains a bounded pre-fence-authorized response; the browser rejects 
 it after observing the greater epoch or fence.
 
 The normal result shape does not apply to the exact control-only
-`GlobalFenceRecoverySnapshot` or the exact liveness projection documented below; neither
-contains a generation or inspection graph.
+`GlobalFenceRecoverySnapshot`, which contains no generation or inspection graph.
 
 A preview or command success that returns no inspection graph uses
 `{ globalContentEpoch, data }` and omits the result-level generation fields;
@@ -196,10 +195,10 @@ process.
 Parameters: none.
 
 Returns the current session snapshot and scan progress. The client invokes this function
-when source state changes; lifecycle-triggered session verification uses the separate
-lightweight liveness function below. The product defines no timer, filesystem watcher, or
-server-initiated push of inspection data; the devframe channel is used request/response
-only for the declared functions.
+on initial adoption and when source state changes; there is no separate liveness probe and
+no page-lifecycle refetch (amended 2026-07-24 — see § Concurrency and lifecycle). The
+product defines no timer, filesystem watcher, or server-initiated push of inspection data;
+the devframe channel is used request/response only for the declared functions.
 
 Result data:
 
@@ -236,7 +235,7 @@ disable barrier is accepted, this function instead returns only this exact contr
 
 ```text
 GlobalFenceRecoverySnapshot
-├── sessionId, liveness, globalContentEpoch
+├── sessionId, globalContentEpoch
 ├── globalControl, globalEnableInProgress, globalDisableInProgress (required and non-null)
 └── toolFailureDiagnostics[]
 ```
@@ -320,7 +319,7 @@ central full client-data purge), one current generation per sequence
 (`currentRepositoryGeneration` and `currentGlobalGeneration`), and an opaque request
 token for every state-bearing request. A session result carrying an older value for
 either sequence is ignored. An equal-generations result is adopted only when its token is
-still the latest poll token and its captured epoch equals `clientDataEpoch`. When a valid
+still the latest request token and its captured epoch equals `clientDataEpoch`. When a valid
 result carries a newer generation for one sequence, the SPA aborts that sequence's
 outstanding data requests, disposes only that sequence's generation-owned editors/models
 and every detail or comparison state that includes one of that sequence's files, sets
@@ -349,8 +348,8 @@ scan with the source-scoped `root-unreadable` Diagnostic while the session stays
 (FR-002). A startup throw/rejection may terminate the process, so no later readable
 snapshot is promised.
 
-The sensitive-content warning is client-owned: the SPA's bilingual catalog supplies the
-fixed text explaining that opening detail or comparison surfaces displays complete
+The sensitive-content warning is client-owned: the component that renders it supplies fixed
+English text explaining that opening detail or comparison surfaces displays complete
 authored values, including possible credentials; the API sends no warning fields.
 Protected values include complete source text, declared authored
 metadata, authored relationship targets, and either comparison side.
@@ -417,46 +416,6 @@ Global disable removes it. It never identifies one tool and never creates a
 `StaleSourceFailure`.
 
 Outcomes: the full or fenced DTO.
-
-### `agent-customization-inspector:get-liveness`
-
-Parameters: none.
-
-The success result is exactly
-`{ sessionId, globalContentEpoch, globalDisableInProgress }`. At final publication the
-handler obtains all three values from one current coordinator-lock snapshot; unlike an
-inspection-data success, it does not require a null fence and returns the current non-null
-projection so another tab can observe disable. The SPA invokes this function only for
-initial session adoption, return to a visible/focused page, explicit Resume, or fresh
-session adoption, with at most one invocation in flight. That single-flight rule
-serializes state adoption to reject stale results and is a functional coordination
-invariant, not a resource-admission or validation ceiling. It defines no polling interval,
-request timeout, retry timer, or memory lease; the browser/network/runtime owns request
-settlement. A matching `sessionId`, equal epoch, and null disable projection establishes
-or confirms the current baseline. An older epoch is rejected. Before baseline
-confirmation or rendering, a greater epoch or non-null projection invokes the central full
-purge, adopts the new epoch, and enters control-only recovery. This is how a lifecycle
-check observes another tab's disable.
-
-A network/runtime rejection, a lost or failed channel connection, a mismatched session, or
-a hidden/page lifecycle event also purges before rendering the ended/recovery view.
-Process loss on a continuously visible idle page has no product-defined wall-clock
-detection guarantee and is handled by the next lifecycle check or request outcome. Any
-recovery fetch adopts only the fresh `sessionId`, `globalContentEpoch`, `globalControl`,
-`globalEnableInProgress`, `globalDisableInProgress`, the exact tool-failure Diagnostics,
-the retained failed-request error messages (a failed `batchStatus` and the failed disable
-projection's `message`) when present, and an
-optionally reverified frozen preview. It restores no inventory, generation, Source, file,
-detail, relationship, comparison, editor, warning acknowledgement, or authored source. A
-null disable projection permits **Resume inspection**, which refetches a matching full
-session and atomically builds the default inventory view. A draining/committing fence
-offers join/wait; a failed fence offers retry-disable. Global retry is rebuilt only after
-the matching frozen preview is retrieved, `globalEnableInProgress` is null,
-`pendingTools` is empty, and `retryableTools` is non-empty. An unreachable or ended host
-process leaves the session-ended view in place. A liveness call never extends Node process
-lifetime, returns no inspection graph, and is never stored or cached.
-
-Outcomes: the exact liveness projection.
 
 ### `agent-customization-inspector:get-file-detail`
 
@@ -968,13 +927,15 @@ the post-acceptance failure's ordinary error. Disable itself never returns
   generation 0; the Global enable commit creates its sequence at generation 1, and disable
   discards that sequence without committing a generation (FR-042). Barrier cancellation
   emits none.
-- Session retrieval and lifecycle-triggered liveness checks never extend the Node process
-  lifetime or persist data and define no product-specific time threshold. An exact matching
-  session/equal-epoch result with a null disable projection confirms the current baseline.
+- Session retrieval never extends the Node process lifetime or persists data and defines
+  no product-specific time threshold. There is no liveness probe: the product does not model
+  a second browser tab, and a lost host closes the loopback socket, which the transport
+  reports to the page without being asked (amended 2026-07-24). Every response is still
+  checked, so a matching session with an equal epoch and a null disable projection confirms
+  the current baseline.
   A greater epoch or non-null projection runs the central purge before entering control-only
-  recovery; network/runtime failure, channel loss, session mismatch, or hidden/page
-  lifecycle
-  events purge before an ended view.
+  recovery; network/runtime failure, channel loss, or session mismatch
+  purges before an ended view. A page-lifecycle event is not a purge trigger (amended 2026-07-24): FR-027 purges after a document-liveness failure or an equivalent terminal reset, and neither switching tabs nor navigating away is either — a discarded document frees its own memory, and a bfcached one holds the same user's view of their own files on their own machine, which the trusted-workspace model does not treat as exposure. The client installs no visibility or unload listener.
   The purge increments a
   client epoch so a late in-flight result cannot repopulate DTOs or editor state, disposes
   Monaco models/editors/workers and subscriptions, clears DOM/store content and warning
@@ -1182,21 +1143,20 @@ the post-acceptance failure's ordinary error. Disable itself never returns
    operation or a product-defined completion deadline.
 7. Reloading every client route discloses no session data: the served shell embeds no
    snapshot, and the freshly loaded SPA adopts state only through the loopback RPC channel.
-   Liveness tests require the exact `{ sessionId, globalContentEpoch,
-   globalDisableInProgress }` result and cover lifecycle-triggered checks,
-   browser/network/runtime
-   rejection, channel loss, hidden/page lifecycle purge, port reuse with a different
+   Session-response and recovery tests cover browser/network/runtime rejection, channel
+   loss, port reuse with a different
    `sessionId`, older/equal/greater epochs, null/draining/committing/failed projections, and a late in-flight
    result after the client epoch changed; none may leave or automatically restore pre-purge inventory,
    detail, comparison, editor, or authored-content DTO/DOM state or the warning
-   acknowledgement. With active consent, hidden-to-visible recovery reconnects over the
-   loopback channel, adopts the returned `sessionId` without retaining/comparing the
-   purged ID, and constructs only the closed recovery projections. Disable is available from
+   acknowledgement. With active consent, recovery after a greater epoch, non-null fence, or
+   explicit Resume reconnects over the loopback channel, adopts the returned `sessionId`
+   without retaining/comparing the purged ID, and constructs only the closed recovery
+   projections. Disable is available from
    active control/enable state immediately; draining/committing joins or waits, failed offers
    retry-disable, and retrieving/verifying the same frozen preview rebuilds only eligible
    retry controls. The explicit Resume inspection action is absent while the fence is
-   non-null. With a null fence it re-fetches a matching full session and constructs a fresh
-   inventory summary with default state, but restores no
+   non-null. With a null fence the page re-fetches a matching full session and constructs a
+   fresh inventory summary with default state, but restores no
    pre-purge authored content, selection, filter, detail, comparison, editor, or
    acknowledgement. A later detail/comparison request requires a new acknowledgement.
    Pre-acceptance disable failure and true no-op both leave a null fresh-session fence so a

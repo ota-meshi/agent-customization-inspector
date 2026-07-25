@@ -247,7 +247,9 @@ export function createInspectionSession(input: SessionBootstrapInput): Inspectio
  * with its operation ID (FR-030 request correlation).
  */
 export type TriggerOwner =
+  /** The ownerless automatic startup scan, which has no operation ID. */
   | { readonly kind: 'startup'; readonly operationId: null }
+  /** An explicit session-API request with its operation ID. */
   | { readonly kind: 'request'; readonly operationId: string };
 
 /**
@@ -257,7 +259,9 @@ export type TriggerOwner =
  * the failed request's error message.
  */
 export type ScanFailure =
+  /** A thrown or rejected accepted job, preserving its real error message. */
   | { readonly kind: 'error'; readonly message: string }
+  /** A deterministic returned fatal outcome with its lifecycle Diagnostic. */
   | { readonly kind: 'diagnostic'; readonly diagnostic: SerializedDiagnostic };
 
 /**
@@ -266,7 +270,9 @@ export type ScanFailure =
  * scan for the same Source is already active (FR-030).
  */
 export type AdmitScanResult =
+  /** The scan was admitted and received its request-correlated ID. */
   | { readonly kind: 'admitted'; readonly scanRequestId: string }
+  /** The Source already has a running or queued scan (FR-030). */
   | { readonly kind: 'conflict' };
 
 /** Coordinator-internal state of one admitted scan attempt. */
@@ -279,8 +285,12 @@ interface AttemptState {
   readonly triggerOwner: TriggerOwner;
   /** True for a user-requested rescan; its failure leaves a stale overlay (FR-030). */
   readonly explicit: boolean;
-  /** Set to 'revoked' by a disable barrier; a revoked attempt commits nothing. */
-  publicationAuthority: 'active' | 'revoked';
+  /** Whether the attempt may still publish; a revoked attempt commits nothing. */
+  publicationAuthority:
+    /** The admitted attempt may publish its terminal result. */
+    | 'active'
+    /** A disable barrier revoked publication authority. */
+    | 'revoked';
   /** True once the attempt terminally completed or failed; settled attempts are inert. */
   settled: boolean;
   /**

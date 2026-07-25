@@ -7,7 +7,14 @@
 // re-verified at serialization time (FR-002, T028). Platform-neutral by
 // design — no node: imports — so the client build can import it.
 import type { SerializedDiagnostic } from './diagnostics';
-import type { EvidenceAssessment, SourceBoundaryDto, SupportedTool } from './entities';
+import type {
+  EvidenceAssessment,
+  ReadableFileEncoding,
+  SourceBoundaryDto,
+  SourceStatus,
+  SupportedTool,
+} from './entities';
+import type { RejectionCode } from './rejection-codes';
 
 /**
  * Per-file rollup of recognition parsing for inventory display
@@ -22,7 +29,15 @@ import type { EvidenceAssessment, SourceBoundaryDto, SupportedTool } from './ent
  *                      comparison-eligible while only derived
  *                      metadata/relationships are omitted (FR-028)
  */
-export type ParseSummary = 'not-applicable' | 'all-parsed' | 'mixed' | 'all-failed';
+export type ParseSummary =
+  /** No recognition attempted extraction, so no parse result applies. */
+  | 'not-applicable'
+  /** At least one recognition parsed and none failed. */
+  | 'all-parsed'
+  /** Parsed and failed recognitions coexist on the file. */
+  | 'mixed'
+  /** At least one recognition failed and none parsed; authored source remains available. */
+  | 'all-failed';
 
 /**
  * One recognition's closed extraction state (data-model.md
@@ -33,7 +48,13 @@ export type ParseSummary = 'not-applicable' | 'all-parsed' | 'mixed' | 'all-fail
  *                     only (FR-028); the file's complete source stays
  *                     displayed and comparison-eligible
  */
-export type RecognitionParseStatus = 'not-attempted' | 'parsed' | 'failed';
+export type RecognitionParseStatus =
+  /** No allowlisted extractor applies to this recognition. */
+  | 'not-attempted'
+  /** Extraction completed for this recognition. */
+  | 'parsed'
+  /** Extraction failed for this recognition while authored source remains available. */
+  | 'failed';
 
 /**
  * One tool recognition as summarized on an inventory row
@@ -82,9 +103,10 @@ interface CustomizationFileBase {
  * classified (FR-024/FR-028).
  */
 export type CustomizationFileDto =
+  /** A readable file with complete authored source and derived graph references. */
   | (CustomizationFileBase & {
       /** Readable decode classification; BOM presence is recorded separately. */
-      readonly encoding: 'utf-8' | 'utf-8-replaced';
+      readonly encoding: ReadableFileEncoding;
       /** Whether one leading UTF-8 BOM was recorded and removed (FR-025). */
       readonly hadLeadingBom: boolean;
       /** Complete decoded text as authored; readable text always has it. */
@@ -98,6 +120,7 @@ export type CustomizationFileDto =
       /** Authored references from this file, never expanded (FR-010). */
       readonly relationshipIds: readonly string[];
     })
+  /** A NUL-containing diagnostic-only file with no source text. */
   | (CustomizationFileBase & {
       /** At least one NUL byte: diagnostic-only, nothing to parse, and no
        * BOM concept — the NUL check precedes BOM handling (FR-028). */
@@ -105,6 +128,7 @@ export type CustomizationFileDto =
       /** Exact byte count of the one completed read. */
       readonly sizeBytes: number;
     })
+  /** A file whose bytes could not be read or classified. */
   | (CustomizationFileBase & {
       /** The read failed before the bytes could be classified (FR-024);
        * nothing was accepted, so no other field exists. */
@@ -121,9 +145,10 @@ export type CustomizationFileDto =
  * it.
  */
 export type CustomizationFileSummaryDto =
+  /** Inventory projection of a readable file, excluding complete source text. */
   | (CustomizationFileBase & {
       /** Readable decode classification; BOM presence is recorded separately. */
-      readonly encoding: 'utf-8' | 'utf-8-replaced';
+      readonly encoding: ReadableFileEncoding;
       /** Whether one leading UTF-8 BOM was recorded and removed (FR-025). */
       readonly hadLeadingBom: boolean;
       /** Exact byte count of the one completed read. */
@@ -138,28 +163,35 @@ export type CustomizationFileSummaryDto =
        */
       readonly recognitions: readonly RecognitionSummaryDto[];
     })
+  /** Inventory projection of a NUL-containing diagnostic-only file. */
   | (CustomizationFileBase & {
       /** At least one NUL byte (FR-028); the summary adds only the size. */
       readonly encoding: 'binary';
       /** Exact byte count of the one completed read. */
       readonly sizeBytes: number;
     })
+  /** Inventory projection of a file that could not be read or classified. */
   | (CustomizationFileBase & {
       /** The read failed before classification (FR-024); nothing to add. */
       readonly encoding: 'unknown';
     });
 
-/**
- * A Source's operational overlay status (data-model.md § Source):
- *  - 'idle'      bootstrapped, no scan admitted yet
- *  - 'scanning'  an admitted scan is in flight
- *  - 'disabling' the Global disable barrier is draining this Source
- *  - 'ready'     the last commit for this Source was complete
- *  - 'partial'   the last commit carried file-confined diagnostics (FR-028)
- *  - 'failed'    the last attempt failed; an explicit rescan additionally
- *                marks the retained snapshot stale (FR-030)
- */
-export type SourceStatus = 'idle' | 'scanning' | 'disabling' | 'ready' | 'partial' | 'failed';
+/** The coarse scan phase shown in live progress (data-model.md § ScanProgress). */
+export type ScanProgressPhase =
+  /** Admitted but not yet started. */
+  | 'waiting'
+  /** Publication authority was revoked and work is winding down. */
+  | 'cancelling'
+  /** The allowlisted traversal program is enumerating candidates. */
+  | 'enumerating'
+  /** Candidate file bytes are being read. */
+  | 'reading'
+  /** Derived traversal rules are being expanded. */
+  | 'deriving'
+  /** Recognizers and parsers are processing readable candidates. */
+  | 'recognizing'
+  /** The attempt reached its terminal progress state. */
+  | 'complete';
 
 /**
  * Live progress of one scan attempt, updated while the scan runs and
@@ -168,20 +200,8 @@ export type SourceStatus = 'idle' | 'scanning' | 'disabling' | 'ready' | 'partia
 export interface ScanProgressDto {
   /** The admitted request this progress reports; null only in placeholders. */
   readonly scanRequestId: string | null;
-  /**
-   * Coarse scan phase for status display: 'waiting' = admitted but not
-   * started, 'cancelling' = publication authority revoked and winding down,
-   * then the ordinary pipeline order — enumerate the allowlist, read file
-   * bytes, expand derived rules, run recognition/parsing — ending 'complete'.
-   */
-  readonly phase:
-    | 'waiting'
-    | 'cancelling'
-    | 'enumerating'
-    | 'reading'
-    | 'deriving'
-    | 'recognizing'
-    | 'complete';
+  /** Coarse status-display phase in documented pipeline order. */
+  readonly phase: ScanProgressPhase;
   /** UTC timestamp of queued admission; null until queued. */
   readonly queuedAt: string | null;
   /** UTC timestamp at which scanning started; null until started. */
@@ -203,30 +223,55 @@ export interface ScanProgressDto {
  * never inferred from file existence.
  */
 export type ConditionFactKey =
+  /** Which documented product or agent surface applies. */
   | 'surface'
+  /** Which documented engine version applies. */
   | 'engine-version'
+  /** The runtime working-directory input, without treating it as a Source. */
   | 'runtime-cwd'
+  /** A documented workspace-root condition. */
   | 'workspace-root'
+  /** A documented repository-root condition. */
   | 'repository-root'
+  /** A documented project-root condition. */
   | 'project-root'
+  /** A documented worked-path condition. */
   | 'worked-path'
+  /** Whether a documented target matcher applies. */
   | 'target-match'
+  /** Whether a documented scope is available. */
   | 'scope-availability'
+  /** A documented feature-state condition. */
   | 'feature-state'
+  /** A documented workspace or runtime trust condition. */
   | 'trust'
+  /** A documented approval condition. */
   | 'approval'
+  /** A documented enablement condition. */
   | 'enablement'
+  /** A documented selection condition. */
   | 'selection'
+  /** The documented settings inputs relevant to the subject. */
   | 'settings-inputs'
+  /** A documented plugin-state condition. */
   | 'plugin-state'
+  /** A documented agent-context condition. */
   | 'agent-context'
+  /** A documented event condition. */
   | 'event'
+  /** Which documented behavior variant applies. */
   | 'documentation-variant'
+  /** Whether the relevant tool is available. */
   | 'tool-availability'
+  /** A documented installation condition. */
   | 'installation'
+  /** A documented managed-policy condition. */
   | 'managed-policy'
+  /** A documented instruction-byte-budget condition. */
   | 'instruction-byte-budget'
+  /** A documented content-limit condition. */
   | 'content-limits'
+  /** A required external runtime input that the Inspector does not infer. */
   | 'external-runtime';
 
 /**
@@ -238,9 +283,13 @@ export type ConditionFactKey =
  * from `DocumentationStatus`, which grades evidence completeness.
  */
 export type ConditionFactStatus =
+  /** The retained evidence establishes that the condition holds. */
   | 'satisfied'
+  /** The retained evidence establishes that the condition does not hold. */
   | 'unsatisfied'
+  /** A required input is absent, so no determination is made. */
   | 'unknown'
+  /** Retained official assertions about the condition are incompatible. */
   | 'documentation-conflict';
 
 /**
@@ -250,9 +299,13 @@ export type ConditionFactStatus =
  * input the Inspector does not read.
  */
 export type ConditionFactBasis =
+  /** The determination comes from inspected repository data. */
   | 'inspected-data'
+  /** The determination comes from a retained official rule. */
   | 'official-rule'
+  /** The required input is intentionally outside the Inspector's read boundary. */
   | 'excluded-input'
+  /** The required runtime input is not read by the Inspector. */
   | 'runtime-input';
 
 /**
@@ -308,16 +361,19 @@ export interface SourceConditionFactDto {
  * objects. Each variant carries only the fields listed for it.
  */
 export type ScopeDescriptor =
+  /** Scope covering the owning Source's single root. */
   | {
       /** The owning Repository or tool-specific Global Source root. */
       readonly kind: 'source-root';
     }
+  /** Scope covering one Source-relative directory subtree. */
   | {
       /** One Source-relative directory and its descendants. */
       readonly kind: 'directory-subtree';
       /** The subtree root, relative to the owning admission's Source. */
       readonly path: string;
     }
+  /** Scope covering one exact matcher-selected path. */
   | {
       /** The exact admitted path and immutable matcher-selector alternative. */
       readonly kind: 'matching-path';
@@ -326,6 +382,7 @@ export type ScopeDescriptor =
       /** Index of the immutable matcher selector that admitted the path. */
       readonly selectorIndex: number;
     }
+  /** Scope derived from one authored metadata occurrence. */
   | {
       /** References one DeclaredMetadataEntry without duplicating its value. */
       readonly kind: 'declared';
@@ -335,6 +392,13 @@ export type ScopeDescriptor =
       readonly occurrence: number;
     };
 
+/** Which end of a documented path-layer chain takes precedence. */
+export type OrderDirection =
+  /** Broader path layers precede narrower descendants. */
+  | 'broad-to-narrow'
+  /** Narrower path layers precede broader ancestors. */
+  | 'narrow-to-broad';
+
 /**
  * One component of a documented order (data-model.md § OrderDescriptor).
  * Components are already in documented pipeline order; unknown or
@@ -342,16 +406,18 @@ export type ScopeDescriptor =
  * applicability/documentation facts, never a fabricated rank.
  */
 export type OrderComponent =
+  /** One documented path-depth ordering component. */
   | {
       /** Documented path-layer order only. */
       readonly kind: 'path-depth';
       /** Which end of the layer chain wins. */
-      readonly direction: 'broad-to-narrow' | 'narrow-to-broad';
+      readonly direction: OrderDirection;
       /** This component's non-negative layer depth. */
       readonly depth: number;
       /** The Source-relative path of this layer. */
       readonly path: string;
     }
+  /** One fixed registry-rank ordering component. */
   | {
       /** Fixed documented fallback/precedence rank within one strategy. */
       readonly kind: 'registry-rank';
@@ -360,6 +426,7 @@ export type OrderComponent =
       /** The non-negative documented rank. */
       readonly rank: number;
     }
+  /** One authored source-occurrence ordering component. */
   | {
       /** Authored declaration order without copying its value. */
       readonly kind: 'source-occurrence';
@@ -378,12 +445,19 @@ export interface OrderDescriptor {
   readonly components: readonly OrderComponent[];
 }
 
+/** Which independent Source family a public Source belongs to. */
+export type SourceKind =
+  /** The one Source selected from the invocation Repository boundary. */
+  | 'repository'
+  /** One consent-gated tool-specific Global Source. */
+  | 'global';
+
 /** One Source's public projection (spec.md § Key Entities · Source). */
 export interface SourceDto {
   /** Opaque stable Source identity; the Repository's survives every commit. */
   readonly sourceId: string;
   /** Which boundary family the Source belongs to. */
-  readonly kind: 'repository' | 'global';
+  readonly kind: SourceKind;
   /** Owning tool of a Global Source; null for the Repository Source. */
   readonly tool: SupportedTool | null;
   /** Whether the Source currently participates in scans. */
@@ -409,8 +483,27 @@ export interface SourceDto {
  * request's error message (FR-030).
  */
 export type StaleFailureRef =
-  | { readonly kind: 'diagnostic'; readonly diagnosticId: string }
-  | { readonly kind: 'error'; readonly message: string };
+  /** A deterministic lifecycle Diagnostic explains the failed attempt. */
+  | {
+      /** Selects the Diagnostic-reference variant. */
+      readonly kind: 'diagnostic';
+      /** Opaque ID of the retained Diagnostic. */
+      readonly diagnosticId: string;
+    }
+  /** The accepted request's ordinary thrown or rejected error explains the failure. */
+  | {
+      /** Selects the ordinary-error variant. */
+      readonly kind: 'error';
+      /** The failed accepted request's real error message. */
+      readonly message: string;
+    };
+
+/** Whether a session snapshot has an unresolved explicit-rescan failure. */
+export type SnapshotState =
+  /** No explicit-rescan stale overlay remains. */
+  | 'current'
+  /** At least one fatal explicit-rescan overlay retains a prior commit. */
+  | 'stale-after-fatal-rescan';
 
 /**
  * One Source's explicit-rescan stale overlay
@@ -457,7 +550,7 @@ export interface SessionSnapshot {
   /** Null while Global inspection is disabled (no Global sequence exists). */
   readonly globalGeneration: number | null;
   /** Derived from staleFailures: stale exactly while any entry remains. */
-  readonly snapshotState: 'current' | 'stale-after-fatal-rescan';
+  readonly snapshotState: SnapshotState;
   /** Per-Source stale overlays from failed explicit rescans (FR-030). */
   readonly staleFailures: readonly StaleSourceFailure[];
   /** Global consent/control projection (null scaffold until the Global tasks). */
@@ -475,19 +568,37 @@ export interface SessionSnapshot {
 }
 
 /**
- * The exact control-only liveness projection
- * (contracts/http-api.md § get-liveness): obtained from one current
- * coordinator-lock snapshot, may carry a non-null disable projection so
- * another tab can observe disable, and never contains a generation or
- * inspection graph.
+ * The inspection-data success envelope
+ * (contracts/http-api.md § Common results and errors): every normal
+ * inspection-data success carries the Global content epoch and both
+ * sequence generations beside its payload, so the client can apply the
+ * epoch/generation adoption guards without inspecting the payload. Shared
+ * by the host handlers and the browser client so the wire shape has exactly
+ * one definition.
  */
-export interface LivenessProjection {
-  /** Opaque session identity for baseline confirmation. */
-  readonly sessionId: string;
-  /** Current Global content epoch; a greater value forces a client purge. */
+export interface InspectionDataResult<Data> {
+  /** Current Global content epoch at final publication. */
   readonly globalContentEpoch: number;
-  /** Current disable-barrier projection (null scaffold until the Global tasks). */
-  readonly globalDisableInProgress: null;
+  /** The Repository sequence's committed generation. */
+  readonly repositoryGeneration: number;
+  /** The Global sequence's committed generation; null while disabled. */
+  readonly globalGeneration: number | null;
+  /** The complete immutable payload bound under the coordinator lock. */
+  readonly data: Data;
+}
+
+/**
+ * A command or preview success that returns no inspection graph
+ * (contracts/http-api.md § Common results and errors):
+ * `{ globalContentEpoch, data }` without the result-level generation
+ * fields, so a control result stays epoch-aware without presenting itself
+ * as a generation snapshot.
+ */
+export interface CommandResult<Data> {
+  /** Current Global content epoch at final publication. */
+  readonly globalContentEpoch: number;
+  /** The command's documented result payload. */
+  readonly data: Data;
 }
 
 /**
@@ -501,35 +612,6 @@ export interface ScanAdmission {
   /** The updated Source projection at admission time. */
   readonly source: SourceDto;
 }
-
-/**
- * The closed catalog of deterministic rejection codes
- * (contracts/http-api.md § Common results and errors). Each 4xx-class conflict
- * or validation failure is a declared functional outcome carrying exactly one
- * of these fixed codes; the union keeps a producer from emitting, and a
- * consumer from matching, a code outside the contract.
- */
-export type RejectionCode =
-  /** A referenced resource (e.g. a `FileDetail` file ID) belongs to a superseded generation. */
-  | 'stale-resource'
-  /** A duplicate explicit rescan was requested while a Repository scan is already running or queued. */
-  | 'scan-in-progress'
-  /** A Global enable commit was requested while one is already in progress. */
-  | 'global-enable-in-progress'
-  /** An operation was requested while a Global disable is still pending. */
-  | 'global-disable-pending'
-  /** A preview mutation was attempted while active consent has frozen the preview. */
-  | 'consent-preview-frozen'
-  /** An operation referenced a consent preview that does not exist. */
-  | 'consent-preview-missing'
-  /** A Global enable commit was attempted without the required consent. */
-  | 'consent-required'
-  /** The submitted `allowlistVersion` no longer matches the server's current allowlist. */
-  | 'allowlist-version-mismatch'
-  /** The confirmed preview does not match the server's frozen preview. */
-  | 'consent-preview-mismatch'
-  /** A Global retry found no retryable tool (an empty tool projection). */
-  | 'no-retryable-global-tool';
 
 /**
  * The deterministic rejection envelope
@@ -547,5 +629,10 @@ export interface DeterministicRejection {
   };
 }
 
-/** Re-exported so API consumers resolve every wire type from one module. */
-export type { SerializedDiagnostic };
+/**
+ * Re-exported so API consumers resolve every wire type from one module.
+ * `SourceStatus` is declared in `entities.ts` beside its display text, the
+ * same split `FileEncoding` already uses: the closed vocabulary lives with
+ * the entities, the DTO that carries it lives here.
+ */
+export type { RejectionCode, SerializedDiagnostic, SourceStatus };

@@ -54,6 +54,23 @@ Above Expediency) to day-to-day coding decisions:
 - When a specification mandates redundant complexity, correct the specification — in both
   languages, in the same change — instead of implementing it as written.
 
+## Naming policy
+
+- Prefer the longer name that is always understandable to the shorter one that needs
+  surrounding context. A reader meeting an identifier for the first time — in an import
+  line, a file tree, or a stack trace — should be able to say what it is.
+- Name what a thing is, not what it resembles. Architectural metaphors (`shell`, `manager`,
+  `helper`, `util`) describe a shape rather than contents and go stale as the contents
+  change. Example: the module holding the browser's reactive session state is
+  `src/app/session/view-state.ts`; it was once `shell.ts`, which named a page frame that
+  actually lives in the component.
+- A directory supplies context, so a name inside it need not repeat it —
+  `session/api-client.ts`, not `session/session-api-client.ts`. It must still be meaningful
+  when read together with that directory: `session/state.ts` is weaker than
+  `session/view-state.ts`, because only the latter says whose state and what it is for.
+- Renaming to satisfy this policy is a documentation change too: update both language
+  versions of every specification artifact that names the old identifier in the same change.
+
 ## Code commenting policy
 
 - Follow Constitution Principle II: document non-obvious decisions, invariants, security
@@ -86,6 +103,12 @@ Above Expediency) to day-to-day coding decisions:
 - Every exported function, class, and constant that implements a specified contract carries
   a doc comment naming that contract behavior. Rejection and fail-closed branches state
   what the rejection protects.
+- An exported member that exists only so a test can reach it is still public API. Its doc
+  comment states that it is test-only and why the behavior is not observable through the
+  module's own surface. Prefer removing the need: assert what the module renders, returns,
+  or requests rather than what it stores. Example: a client-data epoch counter needs no
+  accessor, because the behavior it guards — a response captured before a purge never
+  repopulates state — is observable from that discarded response.
 - Test files begin with a comment naming the owning task ID and the behavior under test, so
   coverage can be traced back to `tasks.md`.
 - Write code comments in English. Do not duplicate them in Japanese; the bilingual

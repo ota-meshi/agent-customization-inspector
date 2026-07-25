@@ -36,7 +36,7 @@ ID, so an ID cannot be reused by another criterion.
 | ID form | Exact execution location and record rule |
 |---|---|
 | `AUTO-{criterion}` | A deterministic test whose title contains the complete ID in `tests/e2e/accessibility.spec.ts`. The test runs against the packed release candidate in all three Playwright 1.61.1 projects and asserts the row's product-specific acceptance; a supporting unit/contract test may add evidence but cannot replace this test. Record the ID, all three project results, artifact path, and pass/fail in the WCAG results table in `validation.md`. |
-| `MANUAL-{criterion}` | The procedure is the row's product-specific acceptance, executed in every applicable cell of the closed manual matrix below. Record one result for every `(ID, locale, platform, viewport, mode, scenario, input)` cell in the manual-cell table in `validation.md`, with evidence and reviewer. |
+| `MANUAL-{criterion}` | The procedure is the row's product-specific acceptance, executed in every applicable cell of the closed manual matrix below. Record one result for every `(ID, platform, viewport, mode, scenario, input)` cell in the manual-cell table in `validation.md`, with evidence and reviewer. |
 | `REVIEW-{criterion}` | Against the complete release diff, packed-file manifest, and rendered packed interface, recheck that the row's stated absent precondition remains absent. Record the ID, examined diff/manifest/build identifiers, reviewer, rationale, evidence, and pass/fail in the WCAG results table in `validation.md`. |
 
 Rows that name both `AUTO-*` and `MANUAL-*` require both. Automated results are evidence,
@@ -70,7 +70,7 @@ does not establish a Not-applicable row.
 | 2.1.1 Keyboard | A | Applicable | `AUTO-2.1.1`; `MANUAL-2.1.1` | Every operation in all four primary workflows, including Monaco source/diff access, works from the keyboard. |
 | 2.1.2 No Keyboard Trap | A | Applicable | `AUTO-2.1.2`; `MANUAL-2.1.2` | Focus can enter and leave every control, dialog, editor, error, and consent state using standard keyboard operation. |
 | 2.1.4 Character Key Shortcuts | A | Not applicable | `REVIEW-2.1.4` | No single printable character activates an application command; read-only editor defaults are checked for the same property. |
-| 2.2.1 Timing Adjustable | A | Not applicable | `REVIEW-2.2.1` | No visible user task has a time limit. Network deadlines and hidden-page security purges do not expire a visible interaction, and Resume restores an operable fresh summary without requiring completion within a fixed time. |
+| 2.2.1 Timing Adjustable | A | Not applicable | `REVIEW-2.2.1` | No visible user task has a time limit. Network settlement and terminal session reset do not expire a visible interaction, and restarting the inspector restores an operable fresh session without requiring completion within a fixed time. |
 | 2.2.2 Pause, Stop, Hide | A | Applicable | `AUTO-2.2.2`; `MANUAL-2.2.2` | Automatically started scan/status updates presented in parallel with other content can be paused, stopped, hidden, or changed to a user-controlled update frequency. A documented essential exception must identify the exact update, prove why no alternative satisfies its purpose, and receive explicit release approval. |
 | 2.3.1 Three Flashes or Below Threshold | A | Not applicable | `REVIEW-2.3.1` | No shipped animation or state transition flashes; inspected content never renders active media or animation. |
 | 2.4.1 Bypass Blocks | A | Applicable | `AUTO-2.4.1`; `MANUAL-2.4.1` | Keyboard and assistive-technology users can bypass repeated navigation and reach the main workflow content. |
@@ -87,7 +87,7 @@ does not establish a Not-applicable row.
 | 2.5.4 Motion Actuation | A | Not applicable | `REVIEW-2.5.4` | No function uses device or user motion as input. |
 | 2.5.7 Dragging Movements | AA | Not applicable | `REVIEW-2.5.7` | No application function requires dragging; selection, comparison, filtering, editor navigation, and consent have non-drag controls. |
 | 2.5.8 Target Size (Minimum) | AA | Applicable | `AUTO-2.5.8`; `MANUAL-2.5.8` | Pointer targets meet the minimum size or one of the criterion's explicit exceptions, recorded per exception. |
-| 3.1.1 Language of Page | A | Applicable | `AUTO-3.1.1` | Each English/Japanese presentation sets the correct primary page language. |
+| 3.1.1 Language of Page | A | Applicable | `AUTO-3.1.1` | The shell sets the primary page language to the one language it ships (`lang="en"`), never a negotiated value. |
 | 3.1.2 Language of Parts | AA | Applicable | `MANUAL-3.1.2` | Human-language changes are identified where required; code, paths, authored source, product names, and technical identifiers use the criterion's applicable treatment. |
 | 3.2.1 On Focus | A | Applicable | `AUTO-3.2.1`; `MANUAL-3.2.1` | Receiving focus alone never changes context. |
 | 3.2.2 On Input | A | Applicable | `AUTO-3.2.2`; `MANUAL-3.2.2` | Input changes have predictable effects; any context change is described before use. |
@@ -101,14 +101,17 @@ does not establish a Not-applicable row.
 | 3.3.7 Redundant Entry | A | Not applicable | `REVIEW-3.3.7` | The interface does not ask the user to re-enter previously supplied information; acknowledgements and confirmations are actions, not data entry. |
 | 3.3.8 Accessible Authentication (Minimum) | AA | Applicable | `AUTO-3.3.8`; `MANUAL-3.3.8` | Opening/reopening the printed local session URL requires no authentication step, cognitive-function test, transcription, puzzle, or memorization; the printed-URL manual fallback remains available. |
 | 4.1.2 Name, Role, Value | A | Applicable | `AUTO-4.1.2`; `MANUAL-4.1.2` | Custom controls, Monaco integration, state, properties, and changes expose correct programmatic name, role, and value. |
-| 4.1.3 Status Messages | AA | Applicable | `AUTO-4.1.3`; `MANUAL-4.1.3` | Scan, rescan, stale, error, comparison, Global, and liveness status changes are announced without forcing focus. |
+| 4.1.3 Status Messages | AA | Applicable | `AUTO-4.1.3`; `MANUAL-4.1.3` | Scan, rescan, stale, error, comparison, Global, and session-ended status changes are announced without forcing focus. |
 
 ## Closed manual execution matrix
 
 Manual acceptance uses the packed release candidate, never a development server. Before
 execution, freeze the tarball digest, Playwright 1.61.1 package version and bundled browser
 revisions, supported OS version, actual browser/engine version, assistive-technology version,
-locale pack, and display scaling in `validation.md`. The three required platform cells are:
+OS locale pack, and display scaling in `validation.md`. The UI language is not a matrix
+axis: the product ships one UI language (amended 2026-07-24), so the OS locale pack is
+frozen as an environment fact rather than executed as a dimension. The three required
+platform cells are:
 
 | Platform ID | Supported OS, engine, and assistive technology |
 |---|---|
@@ -123,7 +126,6 @@ check.
 
 Every `MANUAL-*` ID is executed over the Cartesian product of the following closed sets:
 
-- **Locale**: `L1` English (`en`); `L2` Japanese (`ja`).
 - **Viewport/profile**: `V1` 1440×900 CSS px landscape, 100% zoom, default spacing;
   `V2` 390×844 CSS px portrait, 100%, default spacing; `V3` 844×390 CSS px landscape,
   100%, default spacing; `V4` 1280×720 CSS px landscape, 200% browser zoom, default
@@ -149,16 +151,16 @@ Every `MANUAL-*` ID is executed over the Cartesian product of the following clos
   next step for unconfirmed cleanup, terminal recovery, the `remove-active-state` discard of
   the entire Global sequence with the Repository generation unchanged, and the
   unpublished-initial-enable-only `cleanup-only` case that changes no committed state; `S8` scan/status updates presented in
-  parallel, the exact `{ sessionId, globalContentEpoch, globalDisableInProgress }` liveness
-  state and purge-before-render transition, Resume inspection only with a null disable fence,
+  parallel, the purge-before-render transition on a greater epoch or non-null fence,
+  Resume inspection only with a null disable fence,
   pause/stop/hide or user-frequency control, error recovery, and focus restoration.
 - **Input profile**: `I1` keyboard only, including AT browse/virtual and focus modes; `I2`
   primary pointer through click activation and cancellation; `I3` mouse hover followed by
   keyboard focus, dismissal, pointer transfer, and persistence checks.
 
 The cell key is
-`(MANUAL-ID, L#, P#, V#, M#, S#, I#)`. The closed product contains
-`2 × 3 × 5 × 3 × 8 × 3 = 2,160` keyed cells per `MANUAL-*` ID, including cells that receive
+`(MANUAL-ID, P#, V#, M#, S#, I#)`. The closed product contains
+`3 × 5 × 3 × 8 × 3 = 1,080` keyed cells per `MANUAL-*` ID, including cells that receive
 an explicit N/A result. Execute every applicable cell; sampling, rotating
 platforms, or substituting automated evidence is prohibited. If a criterion cannot apply to
 a particular cell because its triggering component or OS capability is objectively absent,

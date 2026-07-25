@@ -8,7 +8,6 @@ import { createDiagnostic, serializeDiagnostic } from '../../../src/shared/diagn
 import type {
   ConditionFactStatus,
   CustomizationFileDto,
-  LivenessProjection,
   OrderComponent,
   ScopeDescriptor,
   SessionSnapshot,
@@ -71,15 +70,6 @@ describe('session snapshot DTO', () => {
     expectTypeOf<SessionSnapshot>().not.toHaveProperty('selectedRepositoryRoot');
     expectTypeOf<SessionSnapshot>().not.toHaveProperty('invocationCwd');
     expectTypeOf<SessionSnapshot>().not.toHaveProperty('internal');
-  });
-
-  it('keeps the liveness projection control-only', () => {
-    // The liveness DTO is exactly { sessionId, globalContentEpoch,
-    // globalDisableInProgress } — no generation or inspection graph
-    // (contracts/http-api.md § get-liveness).
-    expectTypeOf<keyof LivenessProjection>().toEqualTypeOf<
-      'sessionId' | 'globalContentEpoch' | 'globalDisableInProgress'
-    >();
   });
 });
 

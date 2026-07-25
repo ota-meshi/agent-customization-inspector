@@ -1,0 +1,314 @@
+// T043: the Gunshi root command surface (FR-001, contracts/http-api.md
+// § Host requirements #4/#5). Covers the positive default-true `open` flag
+// and its generated `--no-open`, optional `--cwd <path>` with last-wins
+// repetition, the one captured `process.cwd()`, purely lexical absolute and
+// relative resolution, zero selection I/O and no `process.chdir()`, fixed
+// actionable rejection of an empty option value and of operands, strict
+// unknown-option rejection, non-binding help/version, and the single
+// loopback launch line.
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { resolve } from 'node:path';
+
+// The invocation directory is captured once when the CLI module loads, so
+// the spy is installed before the dynamic import below and its value is the
+// captured one for every test in this file.
+const CAPTURED_CWD = resolve('/captured/invocation');
+const cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(CAPTURED_CWD);
+
+vi.mock('../../src/server/host/devframe-app', () => ({
+  startInspectorHost: vi.fn(),
+  executeRepositoryScan: vi.fn(),
+}));
+
+const { executeRepositoryScan, startInspectorHost } = await import(
+  '../../src/server/host/devframe-app'
+);
+const { runInspectorCli } = await import('../../src/server/cli');
+
+/** The exact source-value-free CLI rejection for an empty `--cwd`. */
+const CWD_VALUE_REQUIRED = '--cwd requires a non-empty path value.';
+/** The exact source-value-free CLI rejection for an extra operand. */
+const NO_OPERANDS_ACCEPTED =
+  'This command accepts options only. Pass the inspected directory with --cwd <path>.';
+
+/** The mocked host start, typed for its captured options. */
+const startHost = vi.mocked(startInspectorHost);
+
+/** The retained selected root of the session the run created. */
+function selectedRoot(): string {
+  const options = startHost.mock.calls[0]?.[0];
+  if (options === undefined) {
+    throw new Error('the host was never started');
+  }
+  return options.context.session.internal.selectedRepositoryRoot;
+}
+
+let chdirSpy: ReturnType<typeof vi.spyOn>;
+let logSpy: ReturnType<typeof vi.spyOn>;
+let errorSpy: ReturnType<typeof vi.spyOn>;
+let closeHost: ReturnType<typeof vi.fn>;
+// A real run installs its shutdown handlers once; this file runs the command
+// many times in one process, so each run's handlers are removed afterwards
+// rather than accumulating on the shared process object.
+let priorSignalListeners: Record<'SIGINT' | 'SIGTERM', unknown[]>;
+
+beforeEach(() => {
+  priorSignalListeners = {
+    SIGINT: [...process.listeners('SIGINT')],
+    SIGTERM: [...process.listeners('SIGTERM')],
+  };
+  vi.mocked(executeRepositoryScan).mockReset();
+  vi.mocked(executeRepositoryScan).mockResolvedValue(undefined);
+  startHost.mockReset();
+  closeHost = vi.fn().mockResolvedValue(undefined);
+  startHost.mockImplementation(async (options) => {
+    await options.onReady?.({
+      origin: 'http://localhost:9999',
+      port: 9999,
+      app: {} as never,
+    });
+    return {
+      origin: 'http://localhost:9999',
+      close: closeHost,
+    } as never;
+  });
+  cwdSpy.mockClear();
+  chdirSpy = vi.spyOn(process, 'chdir').mockImplementation(() => {});
+  logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+  errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  process.exitCode = undefined;
+});
+
+afterEach(() => {
+  for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+    for (const listener of process.listeners(signal)) {
+      if (!priorSignalListeners[signal].includes(listener)) {
+        process.removeListener(signal, listener);
+      }
+    }
+  }
+  chdirSpy.mockRestore();
+  logSpy.mockRestore();
+  errorSpy.mockRestore();
+  process.exitCode = undefined;
+});
+
+describe('root selection', () => {
+  it('propagates a process.cwd() failure before creating a session or browser', async () => {
+    const failure = new Error('invocation directory unavailable');
+    cwdSpy.mockImplementationOnce(() => {
+      throw failure;
+    });
+    // Re-evaluate the entry module so its one module-load capture observes
+    // the injected ownerless failure. The already imported command remains
+    // available to the other tests in this file.
+    vi.resetModules();
+    await expect(import('../../src/server/cli')).rejects.toBe(failure);
+    expect(startHost).not.toHaveBeenCalled();
+    expect(executeRepositoryScan).not.toHaveBeenCalled();
+  });
+
+  it('uses the exact captured invocation directory when --cwd is omitted', async () => {
+    await runInspectorCli([]);
+    expect(selectedRoot()).toBe(CAPTURED_CWD);
+    expect(startHost.mock.calls[0]?.[0].context.session.internal.cwdOptionValue).toBeNull();
+  });
+
+  it('keeps an absolute --cwd exactly as given', async () => {
+    const absolute = resolve('/elsewhere/repo');
+    await runInspectorCli(['--cwd', absolute]);
+    expect(selectedRoot()).toBe(absolute);
+  });
+
+  it('resolves a relative --cwd against the captured invocation directory', async () => {
+    await runInspectorCli(['--cwd', 'nested/repo']);
+    expect(selectedRoot()).toBe(resolve(CAPTURED_CWD, 'nested/repo'));
+  });
+
+  it('resolves a repeated --cwd to the parser last value', async () => {
+    await runInspectorCli(['--cwd', 'first', '--cwd', 'second']);
+    expect(selectedRoot()).toBe(resolve(CAPTURED_CWD, 'second'));
+  });
+
+  it('never re-reads or changes the process working directory', async () => {
+    await runInspectorCli(['--cwd', 'nested/repo']);
+    // The one capture happened at module load; selection reads it again from
+    // the retained string, never from the process.
+    expect(cwdSpy).not.toHaveBeenCalled();
+    expect(chdirSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('browser opening', () => {
+  it('defaults the positive open flag to true', async () => {
+    await runInspectorCli([]);
+    expect(startHost.mock.calls[0]?.[0].openBrowser).toBe(true);
+  });
+
+  it('disables opening through the generated --no-open', async () => {
+    await runInspectorCli(['--no-open']);
+    expect(startHost.mock.calls[0]?.[0].openBrowser).toBe(false);
+  });
+
+  it('prints the loopback URL exactly once as the manual fallback', async () => {
+    await runInspectorCli(['--no-open']);
+    expect(logSpy.mock.calls).toEqual([['http://localhost:9999/']]);
+  });
+});
+
+describe('rejections before any session or browser exists', () => {
+  it.each([
+    ['a separate empty value', ['--cwd', '']],
+    ['an inline empty value', ['--cwd=']],
+  ])('rejects %s with the fixed source-value-free message', async (_label, argv) => {
+    await runInspectorCli(argv);
+    expect(errorSpy).toHaveBeenCalledWith(CWD_VALUE_REQUIRED);
+    expect(process.exitCode).toBe(1);
+    expect(startHost).not.toHaveBeenCalled();
+  });
+
+  it('rejects a missing --cwd value through the parser type validation', async () => {
+    // The parser owns "the option needs a value"; the product does not
+    // re-implement that check (Implementation simplicity policy).
+    await expect(runInspectorCli(['--cwd'])).rejects.toThrow();
+    expect(startHost).not.toHaveBeenCalled();
+  });
+
+  it('rejects a positional operand', async () => {
+    await runInspectorCli(['extra']);
+    expect(errorSpy).toHaveBeenCalledWith(NO_OPERANDS_ACCEPTED);
+    expect(process.exitCode).toBe(1);
+    expect(startHost).not.toHaveBeenCalled();
+  });
+
+  it('rejects a rest argument after --', async () => {
+    await runInspectorCli(['--', 'rest']);
+    expect(errorSpy).toHaveBeenCalledWith(NO_OPERANDS_ACCEPTED);
+    expect(process.exitCode).toBe(1);
+    expect(startHost).not.toHaveBeenCalled();
+  });
+
+  it('rejects an undeclared option strictly', async () => {
+    // Gunshi renders the validation errors and throws, so the entry's
+    // top-level await exits nonzero without starting a host.
+    await expect(runInspectorCli(['--unknown'])).rejects.toThrow();
+    expect(startHost).not.toHaveBeenCalled();
+  });
+
+  it('never echoes a rejected option value back to the terminal', async () => {
+    await runInspectorCli(['--cwd', '']);
+    for (const call of errorSpy.mock.calls) {
+      expect(String(call[0])).toBe(CWD_VALUE_REQUIRED);
+    }
+  });
+});
+
+describe('non-binding help and version', () => {
+  it('renders help without creating a session or opening a browser', async () => {
+    await runInspectorCli(['--help']);
+    expect(startHost).not.toHaveBeenCalled();
+    expect(executeRepositoryScan).not.toHaveBeenCalled();
+  });
+
+  it('renders the version without creating a session or opening a browser', async () => {
+    await runInspectorCli(['--version']);
+    expect(startHost).not.toHaveBeenCalled();
+    expect(executeRepositoryScan).not.toHaveBeenCalled();
+  });
+});
+
+describe('automatic first scan', () => {
+  it('starts exactly one Repository scan before host startup', async () => {
+    await runInspectorCli(['--no-open']);
+    expect(startHost).toHaveBeenCalledTimes(1);
+    expect(executeRepositoryScan).toHaveBeenCalledTimes(1);
+    const [, , sourceId, owner] = vi.mocked(executeRepositoryScan).mock.calls[0] ?? [];
+    expect(typeof sourceId).toBe('string');
+    expect(owner).toBe('repository');
+  });
+
+  it('commits the automatic scan before publishing or opening the launch URL', async () => {
+    const order: string[] = [];
+    vi.mocked(executeRepositoryScan).mockImplementationOnce(async () => {
+      order.push('scan-committed');
+    });
+    logSpy.mockImplementation(() => {
+      order.push('launch-line');
+    });
+    startHost.mockImplementationOnce(async (options) => {
+      order.push('host-listening');
+      await options.onReady?.({
+        origin: 'http://localhost:9999',
+        port: 9999,
+        app: {} as never,
+      });
+      // devframe invokes its browser helper only after onReady resolves.
+      order.push('browser-open');
+      return {
+        origin: 'http://localhost:9999',
+        close: closeHost,
+      } as never;
+    });
+
+    await runInspectorCli([]);
+
+    expect(order).toEqual([
+      'scan-committed',
+      'host-listening',
+      'launch-line',
+      'browser-open',
+    ]);
+  });
+
+  it('propagates an automatic-scan rejection before URL publication or browser opening', async () => {
+    const failure = new Error('automatic scan collapsed');
+    const order: string[] = [];
+    vi.mocked(executeRepositoryScan).mockImplementationOnce(async () => {
+      order.push('scan-started');
+      throw failure;
+    });
+    await expect(runInspectorCli([])).rejects.toBe(failure);
+
+    expect(order).toEqual(['scan-started']);
+    expect(startHost).not.toHaveBeenCalled();
+    expect(logSpy).not.toHaveBeenCalled();
+    expect(closeHost).not.toHaveBeenCalled();
+  });
+});
+
+describe('graceful shutdown', () => {
+  it.each(['SIGINT', 'SIGTERM'] as const)('closes the host once on %s', async (signal) => {
+    await runInspectorCli(['--no-open']);
+    const addedListeners = process
+      .listeners(signal)
+      .filter((listener) => !priorSignalListeners[signal].includes(listener));
+    expect(addedListeners).toHaveLength(1);
+    addedListeners[0]?.(signal);
+    expect(closeHost).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes after an interrupt between URL publication and host-handle return', async () => {
+    startHost.mockImplementationOnce(async (options) => {
+      await options.onReady?.({
+        origin: 'http://localhost:9999',
+        port: 9999,
+        app: {} as never,
+      });
+      const addedListeners = process
+        .listeners('SIGINT')
+        .filter((listener) => !priorSignalListeners.SIGINT.includes(listener));
+      expect(addedListeners).toHaveLength(1);
+      addedListeners[0]?.('SIGINT');
+      expect(closeHost).not.toHaveBeenCalled();
+      return {
+        origin: 'http://localhost:9999',
+        close: closeHost,
+      } as never;
+    });
+
+    await runInspectorCli(['--no-open']);
+
+    expect(closeHost).toHaveBeenCalledTimes(1);
+  });
+});

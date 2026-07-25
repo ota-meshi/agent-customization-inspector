@@ -73,12 +73,13 @@ InspectionSession
 └── Diagnostic (session/source-level failures)
 
 BrowserState
+├── ClientDataState (request/epoch/session/fence guards and central purge)
 ├── FilterState
 ├── ComparisonSelection (zero or exactly two readable files)
 ├── EditorModelState (zero or more, active route/generation only)
 ├── SensitiveContentNoticeState (session-only presentation state)
 ├── RecoveryViewState (control-only post-purge recovery and explicit resume)
-└── SessionLivenessState (page lifecycle-check and purge state)
+└── SessionViewState (booting/inspection/recovery/ended view and transport-loss adoption)
 ```
 
 ## Entities
@@ -97,7 +98,7 @@ BrowserState
 | `globalControl` | `GlobalControlView \| null` | DTO | Null only when no active consent/control state exists; lets a fresh client recover immediate disable and preview-gated retry controls after a purge without exposing raw roots |
 | `globalEnableInProgress` | `{ kind: 'initial-enable' \| 'retry', operationId, previewId } \| null` | DTO | Read-only coordinator projection for any registered Global enable operation; contains no tool subset/outcome, root, context, source/boundary/scan ID, job, or authority and lets a fresh client suppress duplicate retry, refetch the frozen preview, and invoke disable |
 | `globalDisableInProgress` | `{ operationId, state: 'draining' \| 'committing' \| 'failed', message? } \| null` | DTO | Read-only projection of a non-complete disable barrier, including when `globalControl` is null; contains no root/content/resource ledger, selects the control-only all-inspection-data fence, carries the failed request's error message in `message` only while `failed`, and lets a fresh client join or retry cleanup |
-| `globalContentEpoch` | non-negative safe integer | DTO | Starts at zero and increments atomically on first acceptance of each non-no-op Global disable barrier; every liveness and inspection-data success is bound to it so the server rejects a success not yet linearized at the fence and clients reject older data after observing the greater epoch |
+| `globalContentEpoch` | non-negative safe integer | DTO | Starts at zero and increments atomically on first acceptance of each non-no-op Global disable barrier; every ordinary success is bound to it so the server rejects an inspection-data success not yet linearized at the fence and clients reject older data after observing the greater epoch |
 | `sessionDiagnosticIds` | opaque string[] | DTO | Current out-of-generation lifecycle diagnostics |
 | `repositoryFailureDiagnosticId` | opaque session Diagnostic ID or null | DTO | Current deterministic automatic Repository admission/initial-scan failure; retained while the first explicit rescan runs, then cleared on success or atomically replaced by that rescan's `StaleSourceFailure` owner on terminal failure |
 | `invocationCwd` | absolute platform path string | internal | Exact value captured once from `process.cwd()` before CLI validation; never changed or exposed as read authority |
@@ -125,17 +126,18 @@ unchanged Repository generation. Process restart is the fallback for unrecoverab
 ### GlobalFenceRecoverySnapshot
 
 This exact DTO is the only session response while `globalDisableInProgress` is non-null. It
-contains `{ sessionId, liveness, globalContentEpoch, globalControl,
-globalEnableInProgress, globalDisableInProgress, toolFailureDiagnostics }`. The disable
+contains `{ sessionId, globalContentEpoch, globalControl, globalEnableInProgress,
+globalDisableInProgress, toolFailureDiagnostics }`. The disable
 projection is required and non-null and, while `failed`, carries the failed request's error
 message. `toolFailureDiagnostics` contains exactly the pathless session Diagnostics
 referenced by `globalControl.toolFailures`. It has no generation, Source, Repository failure,
 stale-failure, unrelated Diagnostic or error, file, path, authored value, or resource field.
 
 The CLI captures `process.cwd()` exactly once and accepts `--cwd <path>`; a repeated
-`--cwd` resolves to the argument parser's last value (last-wins). A
-missing or empty value is a fixed actionable startup error emitted
-before session creation or browser opening (FR-001). An absolute option is kept as given; a
+`--cwd` resolves to the argument parser's last value (last-wins). An explicit empty value
+produces a fixed actionable, source-value-free startup error before session creation or
+browser opening; a missing value is rejected at the same boundary by Gunshi's typed
+argument validation, which the product does not duplicate (FR-001). An absolute option is kept as given; a
 relative option is resolved against the captured `invocationCwd`. Root selection uses no
 `process.chdir()`, environment reread, or filesystem I/O; whether the selected root exists
 and is readable is decided by the first scan (FR-002), not at selection time. At process
@@ -1090,7 +1092,7 @@ duplicate scan command.
 Disable or process shutdown stops new scheduling and revokes `publicationAuthority`. A
 still-pending Node.js filesystem promise moves the attempt to `cleanup-only`; every late
 byte, graph/Diagnostic/DTO/log result is discarded and opened handles are closed during
-cleanup. API and liveness processing continue. A disable barrier can revoke Global
+cleanup. API processing continues. A disable barrier can revoke Global
 authority immediately but cannot claim physical drain before an uncancellable kernel
 operation settles.
 
@@ -1451,7 +1453,7 @@ retaining a relationship; only independent candidate admission can authorize a r
 | Field | Type | Rules |
 |---|---|---|
 | `diagnosticId` | opaque ASCII string | Server-generated and unique within generation/session |
-| `code` | stable closed code | Suitable for objective tests and documentation links; the registry fixes each code's scope, severity, and localized message/next-step text, so none of them serializes |
+| `code` | stable closed code | Suitable for objective tests and documentation links; the shared registry fixes each code's scope, severity, and actionable English message/next-step text, so none of them serializes |
 | `severity` | `info \| warning \| error` | Registry-fixed by `code` and not serialized; does not imply vendor validation |
 | `scope` | `file \| source \| session` | Registry-fixed by `code` and not serialized; required attachment discriminator; independent of generation-scoped versus session-lifecycle lifetime |
 | `sourceId` | optional opaque ASCII ID | Required for `file` and `source`; forbidden for `session` |
@@ -1466,10 +1468,11 @@ combination is invalid. Scope is orthogonal to lifetime: for example, a generati
 deterministic assembly-outcome Diagnostic may be session-scoped, while a fatal rescan lifecycle record may
 be source-scoped.
 
-The closed diagnostic-code registry fixes each code's severity and
-attachment scope; the client's bilingual catalog, keyed by `code`, supplies the
-equivalent English and Japanese message and the practical next action for every
-error. `lifecycleOwnerKey`
+The closed diagnostic-code registry lives beside the closed code union in the shared
+module and fixes each code's severity, attachment scope, and one actionable English
+message that identifies the problem and a practical next step. The server and browser read
+that same registry; there is no client message catalog or localized/bilingual runtime
+variant. `lifecycleOwnerKey`
 identifies the one lifecycle instance and
 is never serialized. Candidates are emitted in
 fixed phase, lifecycle-owner semantic order (Repository, fixed Global tool order, then the
@@ -1576,11 +1579,15 @@ filesystem, or silently chooses another root.
 This state is not authoritative and is never persisted.
 
 - `FilterState`: selected source/tool/kind and Source-relative Path query.
-- `ClientDataState`: a monotonic `clientDataEpoch`, the current per-sequence generations
-  (`repositoryGeneration` and nullable `globalGeneration` from the adopted snapshot), and
-  one request token per session/detail request. Every session response is adopted only when
-  its request token still belongs to the current epoch. A sequence generation lower than
-  the current one is ignored. Before adopting a sequence's greater generation, the client
+- `ClientDataState`: a monotonic `clientDataEpoch`, the adopted `sessionId` and
+  `globalContentEpoch`, the current per-sequence generations (`repositoryGeneration` and
+  nullable `globalGeneration` from the adopted snapshot), and one exact request token per
+  request family. Every ordinary settlement first requires its request token to remain
+  current and its captured client epoch to equal `clientDataEpoch`; a late rejection has no
+  authority to purge newer state. Every ordinary success is then checked against the
+  adopted session identity, Global content epoch, and null disable fence before it can
+  mutate browser state. A sequence generation lower than the current one is ignored. Before
+  adopting a sequence's greater generation, the client
   aborts the detail/comparison requests bound to that sequence's files, disposes that
   sequence's detail/editor/comparison objects, and only then replaces that sequence's
   inventory entries; the other sequence's state, requests, and models are untouched
@@ -1613,7 +1620,7 @@ This state is not authoritative and is never persisted.
   they are not central client-data purges and may retain acknowledgement for the loaded
   document. Global disable instead uses the central full-session purge below.
 - A Global-disable action purges all inspection content locally before sending the request; observing
-  a greater `globalContentEpoch` or non-null `globalDisableInProgress` in any session
+  a greater `globalContentEpoch` or non-null `globalDisableInProgress` in any ordinary
   response repeats the idempotent purge before rendering it. The client increments
   `clientDataEpoch`, aborts every request that could return inspection data, disposes every
   editor/model/comparison, clears warning/filter state, removes all Source, generation, file,
@@ -1623,67 +1630,50 @@ This state is not authoritative and is never persisted.
   snapshot obtains content only after terminal disable success or process restart. If the
   request fails before barrier acceptance, or is a true no-op, a fresh
   session snapshot has a null fence and the purged client may immediately fetch a new full snapshot.
-- `RecoveryViewState`: created after any central purge once a fresh session snapshot is
-  fetched. This includes Global-disable action, liveness epoch/fence
-  observation, and hidden/page-lifecycle purge. It holds only the adopted `sessionId`, the fresh
-  `globalContentEpoch`, `globalControl`, `globalEnableInProgress`, and
-  `globalDisableInProgress` projections,
-  the exact pathless session Diagnostics referenced by `globalControl.toolFailures`, the
-  failed request's error retained by a failed `globalControl.batchStatus` or disable
-  projection when present,
-  and an optional newly verified frozen preview. It offers **Resume inspection** only when
-  `globalDisableInProgress` is null and a normal full snapshot can be fetched. It offers immediate disable when control or any enable is active,
-  join/wait while disable drains, retry-disable when disable is failed, and Global retry only
-  after the preview is verified, `globalEnableInProgress` is null, `pendingTools` is empty,
-  and `retryableTools` is non-empty.
-  Resume fetches the session again, requires the returned
-  `sessionId` to match the adopted liveness baseline, and atomically constructs a fresh
-  inventory-summary view with default filters. It restores no prior detail, comparison,
-  editor, warning acknowledgement, or authored source; opening detail/comparison later
-  requires a new acknowledgement. If that fetch fails or the returned `sessionId` does not
-  match, only the session-lost
-  next step to reopen the printed process-lifetime URL remains.
-- `SessionLivenessState`: stores the expected `sessionId`, last observed
-  `globalContentEpoch`, and the same `clientDataEpoch`. It calls the
-  liveness route only for initial page load, return to a visible/focused page, explicit
-  Resume, or fresh session adoption, with at most one request in flight. This single-flight
-  rule serializes state adoption to reject stale responses and is a functional coordination
-  invariant rather than a resource-admission or validation ceiling. It defines no polling
-  interval, request timeout, retry timer, or memory lease; the browser/network/runtime
-  owns request settlement. A network/runtime rejection or session-ID mismatch synchronously invokes one central
-  purge before rendering the session-ended view: dispose every Monaco editor/model/worker
-  and subscription, clear comparison/notice/filter state, remove all source/detail/metadata/
-  diagnostic DTOs and DOM text, abort pending requests, and increment the epoch so every
-  response captured under the prior epoch is ignored. `visibilitychange` to hidden,
-  `pagehide`, and `beforeunload` invoke the same purge immediately, avoiding background-
-  timer retention. Returning to a visible page requires a fresh session snapshot;
-  a new warning acknowledgement is required only if the user later opens source/detail or
-  comparison content. Each successful liveness body is exactly `{ sessionId,
-  globalContentEpoch, globalDisableInProgress }`, with all three values obtained from one
-  current coordinator-lock snapshot at final publication. It does not require a null fence
-  and returns a current non-null projection so another tab can observe disable. Before
-  confirming the current baseline or rendering,
-  a greater epoch or non-null disable projection invokes the same full purge, adopts the
-  greater epoch, and enters control-only recovery; an older epoch is rejected and an equal
-  null projection is the only ordinary baseline confirmation. Thus another tab's disable is
-  observed by the next lifecycle-triggered liveness check or other session response.
-  Process loss on a continuously visible idle page has no product-defined wall-clock detection
-  guarantee and is handled on the next observable lifecycle or request outcome. After a
-  hidden-page purge, the client fetches a fresh session snapshot and
-  adopts its returned `sessionId` as the new liveness baseline without retaining or
-  comparing the purged ID. It constructs `RecoveryViewState` only from
-  `globalContentEpoch`, `globalControl`, `globalEnableInProgress`,
-  `globalDisableInProgress`, the exact pathless session
-  Diagnostics referenced by `globalControl.toolFailures`, the failed request's error
-  retained by a failed `globalControl.batchStatus` or disable projection when present,
-  and an optional newly verified frozen preview. It discards every other field without
-  restoring inventory, detail, comparison, or acknowledgement state. If
-  `globalControl` or `globalEnableInProgress` identifies a preview, the client fetches the
-  matching frozen preview before rebuilding applicable controls, while a failed fetch or
-  session-ID mismatch
-  remains on the session-ended view. No service worker, browser storage, or HTTP cache persists
-  content. The application guarantees removal of its live references, not physical
-  zeroization of browser-process memory outside JavaScript control.
+- `RecoveryViewState`: created after the Global-disable pre-send purge or after an ordinary
+  response exposes a greater epoch or non-null fence and a fresh session snapshot is
+  fetched. It is not created by page visibility or navigation. A network/runtime RPC
+  rejection, transport-reported channel loss, or session mismatch instead leaves the
+  session-ended view after the central purge. Recovery holds only the adopted `sessionId`,
+  the fresh `globalContentEpoch`, `globalControl`, `globalEnableInProgress`, and
+  `globalDisableInProgress` projections, the exact pathless session Diagnostics referenced
+  by `globalControl.toolFailures`, the failed request's error retained by a failed
+  `globalControl.batchStatus` or disable projection when present, and an optional newly
+  verified frozen preview. It offers **Resume inspection** only when
+  `globalDisableInProgress` is null and a normal full snapshot can be fetched. It offers
+  immediate disable when control or any enable is active, join/wait while disable drains,
+  retry-disable when disable is failed, and Global retry only after the preview is verified,
+  `globalEnableInProgress` is null, `pendingTools` is empty, and `retryableTools` is
+  non-empty. Resume fetches the session again, requires the returned `sessionId` to match
+  the adopted recovery baseline, and atomically constructs a fresh inventory-summary view
+  with default filters. It restores no prior detail, comparison, editor, warning
+  acknowledgement, or authored source; opening detail/comparison later requires a new
+  acknowledgement. If that fetch fails or the returned `sessionId` does not match, only the
+  session-lost next step to reopen the printed process-lifetime URL remains.
+- `SessionViewState`: stores the current booting/inspection/recovery/ended view and adopts
+  devframe's connection-status signal directly. There is no separate liveness RPC, probe,
+  or DTO. Initial adoption, source-state refresh, and explicit Resume use the ordinary
+  session function; elapsed time, an idle page, and page-lifecycle events issue no request.
+  The client installs no visibility, focus, or unload listener, and
+  `visibilitychange`, `pagehide`, and `beforeunload` trigger neither a purge nor a refetch.
+  A discarded document releases its own references; a bfcached document retains the same
+  user's view of their own files on their own machine, which the trusted-workspace model
+  does not treat as exposure. A current network/runtime RPC rejection,
+  transport-reported channel loss, or session-ID mismatch synchronously invokes one central
+  purge before rendering the session-ended view: dispose every Monaco
+  editor/model/worker and subscription, clear comparison/notice/filter state, remove all
+  source/detail/metadata/diagnostic DTOs and DOM text, abort pending requests, and increment
+  the epoch so every response captured under the prior epoch is ignored. Before any
+  ordinary response confirms the current baseline or renders, its request token,
+  `clientDataEpoch`, session identity, Global content epoch, and fence must still pass. An
+  older epoch is rejected, an equal epoch plus a null fence confirms the baseline, and a
+  greater epoch or non-null fence invokes the same purge and enters control-only recovery.
+  The product does not model proactive observation by a second tab. It defines no polling
+  interval, request timeout, retry timer, or memory lease, and gives process loss on a
+  continuously idle visible page no product-defined wall-clock detection guarantee.
+  No service worker, browser storage, or HTTP cache persists content. The application
+  guarantees removal of its live references, not physical zeroization of browser-process
+  memory outside JavaScript control.
 
 ## Release usability-study evidence
 
@@ -2909,7 +2899,7 @@ The closed observation-class fields are:
 | `actorClass` | `inspector \| bundled-spa \| browser-extension \| other-host-process \| operating-system \| participant \| unknown` |
 | `authorityClass` | `exact-issued \| other-loopback \| remote \| unclassifiable \| not-applicable` |
 | `requestClass` | `authorized-static \| authorized-api \| prohibited \| unrelated \| os-mediated \| unclassifiable \| not-applicable` |
-| `targetClass` | `static-manifested-asset \| static-spa-shell \| static-client-route-fallback \| api-get-session \| api-get-session-liveness \| api-get-file \| api-post-repository-rescan \| api-get-global-consent-preview \| api-post-global-consent-preview \| api-post-global-enable \| api-post-global-rescan \| api-post-global-disable \| other-loopback \| remote \| mcp \| unclassifiable \| not-applicable` |
+| `targetClass` | `static-manifested-asset \| static-spa-shell \| static-client-route-fallback \| api-get-session \| api-get-file \| api-post-repository-rescan \| api-get-global-consent-preview \| api-post-global-consent-preview \| api-post-global-enable \| api-post-global-rescan \| api-post-global-disable \| other-loopback \| remote \| mcp \| unclassifiable \| not-applicable` |
 | `methodClass` | `get \| head \| post \| other \| unclassifiable \| not-applicable` |
 | `capabilityClass` | `valid \| missing \| invalid \| unclassifiable \| not-applicable` |
 | `originClass` | `exact-same-origin \| missing \| mismatched \| unclassifiable \| not-applicable` |
@@ -2946,7 +2936,6 @@ requires `originClass: exact-same-origin`:
 | `targetClass` | `methodClass` | Exact HTTP contract route |
 |---|---|---|
 | `api-get-session` | `get` | `/api/v1/session` |
-| `api-get-session-liveness` | `get` | `/api/v1/session/liveness` |
 | `api-get-file` | `get` | `/api/v1/files/{fileId}` with a valid opaque ID |
 | `api-post-repository-rescan` | `post` | `/api/v1/repository/rescan` |
 | `api-get-global-consent-preview` | `get` | `/api/v1/global/consent-preview` |
@@ -3406,11 +3395,15 @@ old file records in place.
    Acknowledgement is presentation-only, not an access-control factor (FR-027): the session
    API is reachable only through the loopback-bound local host and
    never receives or persists acknowledgement.
-   Lifecycle-triggered liveness checks and the central purge remove all application-held
-   session content when browser/network/runtime failure, session mismatch, or
-   hidden/page lifecycle events make session loss observable. They define no product-specific
-   time threshold. Generation
-   replacement increments `clientDataEpoch`; a response cannot revive an older generation.
+   A current browser/network/runtime RPC rejection, transport-reported channel loss,
+   session mismatch, Global-disable pre-send action, or response-observed greater
+   Global epoch/non-null fence invokes the central purge and removes all
+   application-held session content. Every ordinary response applies its request-token,
+   `clientDataEpoch`, session, Global-epoch, and fence guards, so a response cannot revive
+   an older generation or purged state. Page-lifecycle events invoke neither purge nor
+   refetch, and the client installs no visibility or unload listener. The transport reports
+   host loss without a separate liveness probe, polling interval, or product-specific
+   wall-clock guarantee for a continuously idle visible page.
 12. Every behavior, rule, strategy, and source ID is defined exactly once in its owning
     bilingual contract and executable registry. Registry `sourceRefs` arrays equal the
     owning row's direct Evidence cell and are reciprocal with the official-source reverse

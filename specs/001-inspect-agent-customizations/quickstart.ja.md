@@ -103,7 +103,8 @@ node dist/cli.mjs --no-open --cwd tests/fixtures/repositories/all-supported
 
 CLIは呼び出し時の`process.cwd()`を1回だけcaptureする。省略時はそのexact stringを使う。`--cwd`は
 受理し（反復指定はparserのlast valueへ解決）、absolute optionはそのまま保持し、relative optionはcaptureした呼び出しdirectoryに対してresolveする。
-Missing/emptyのvalueは、sessionまたはbrowser attemptより前に固定されたactionable outputを出して終了する。
+明示的なempty valueはsessionまたはbrowser attemptより前に固定actionableかつsource-value-freeなoutputを出して終了し、
+valueの欠落は同じboundaryでGunshiのtyped argument validationによりrejectされる。
 Selectionは`process.chdir()`を呼ばず、startup failureはsessionやsession-API errorではなくactionableなmessageとともに
 launchを終了させる。
 
@@ -118,11 +119,14 @@ launchを終了させる。
   `scanRequestId`を識別する。一般的なspinner/loading label、変化しない
   control、scan stateを示さないacknowledgement、以前のscanのstatusは数えない。
 - 最初のcomplete inventoryが表示され、凍結path contract外のfileを含まない。
-- Process停止でserver sessionを破棄する。読み込み済みpageでは、lifecycle-triggered liveness checkまたは別のsession requestが
-  browser/network/runtime failureまたはsession mismatchを観測した場合、session-ended view前に全DTO、DOM source value、
-  editor model/worker、comparison、warning acknowledgementをpurgeし、hidden/page lifecycle eventでは直ちにpurgeする。
-  Product定義のinterval、timeout、leaseでこのtransitionを制御しない。Portを再利用して再起動しても`sessionId`が変わり、late responseや以前の
-  表示stateは戻らない。
+- Process停止でserver sessionを破棄する。読み込み済みpageでは、devframeが問い合わせなしにtransport経由でloopback
+  hostの喪失を報告する。Transportが報告するchannel loss、またはcurrentかつnon-supersededなsession RPCの
+  browser/network/runtime rejectionは、session-ended view前に全DTO、DOM source value、editor model/worker、
+  comparison、warning acknowledgementをpurgeする。SPAはliveness RPCを発行せず、visibility、unload、その他の
+  page-lifecycle listenerを設置せず、pageがhiddenになっただけではpurgeせず、visibilityへ戻ってもrefetchしない。
+  Polling interval、request timeout、retry timer、memory lease、continuously idleなpageに対するwall-clockの
+  process-loss保証を定義しない。Portを再利用して再起動しても`sessionId`が変わり、purge前にcaptureしたresponseも
+  session identityが一致しないresponseも、以前の表示stateを復元しない。
 - Sessionはloopback bindの背後でunauthenticatedである。Per-session token、Origin/Host check、
   hand-written routerは存在せず、browser storage/cookieへ何も保存しない。Inspector実行中は他のlocal
   processと、DNS rebinding経由のmalicious web pageがsessionへ到達し得ることを、documentedなresidual
@@ -207,9 +211,12 @@ pnpm run test:docs
   実行すべきhost-securityやHTTP-router contract suiteは存在しない。Per-session token、Origin check、hand-written routerは
   削除済みで、protectionはloopback限定の`localhost` bindだけであり、unexpectedなsession-API failureはreal errorをrequesting clientへ
   そのままpropagateし、sessionは利用可能なままとする。
-- Package testがtarballをbuild/inspectionし、isolated fixtureへinstallし、packaged inspection moduleを
-  loadして、working tree/runtime downloadへ依存せず正確な`npx` entryを
-  launchする。Production-graph testは承認済みのdirect dependency 5件、すなわち
+- Phase 3 checkpointのpackage testは、無関係なworking directoryから`dist/cli.mjs`をlaunchし、
+  packaged shell、closed manifest field、printed-URL fallback、調査対象fixtureが変更されないこと、
+  graceful shutdownを検証する。これはpackaged pathだけのisolationであり、現行gateはtarballをinstallせず、
+  installed package linkもinvokeしない。T917が、isolated fixtureへpack/installし、working treeまたは
+  runtime downloadへ依存せず`npx --no-install`でlaunchするfinal-release testを所有する。
+  Production-graph testは承認済みのdirect dependency 5件、すなわち
   `devframe`、`gunshi`、`jsonc-parser`、`smol-toml`、`yaml`を正確にassertし（resolved versionとintegrity hashは
   commit済み`pnpm-lock.yaml`が所有し続ける）、negative packaging fixtureは、
   missingまたはnon-regularなrequired entry pointがpublish前に`verify:package`をfailさせることを証明する。
@@ -369,7 +376,11 @@ pnpm exec playwright test tests/e2e/discovery.spec.ts
 
 ```bash
 pnpm exec playwright test tests/e2e/inspection-safety.spec.ts
-pnpm exec playwright test tests/e2e/session-liveness.spec.ts
+pnpm exec playwright test tests/e2e/boot.spec.ts
+pnpm exec vitest run --project unit \
+  tests/unit/app/api-client.test.ts \
+  tests/unit/app/session-view-state.test.ts \
+  tests/unit/app/client-data.test.ts
 pnpm run test:security
 ```
 
@@ -456,25 +467,28 @@ pnpm exec playwright test tests/e2e/comparison.spec.ts
    発生させない。
 8. `/`、`/compare`、`/global-consent`、`/files/<fileId>`のdirect loadが、devframe hostが配信する同じ
    root-absolute assetからbootする。
-9. Liveness testはlifecycle-triggered check、browser/network/runtime rejection、hidden/page lifecycle purge、port再利用後の
-   session-ID mismatch、client epoch変更後のlate in-flight responseを扱い、pre-purge inventory/detail/comparison/editor/
-   authored-content DTO/DOM stateまたはacknowledgementが残留・自動復活しないことを証明する。Successful liveness bodyは正確に
-   `{ sessionId, globalContentEpoch, globalDisableInProgress }`とする。Current baselineのconfirmまたはrender前にgreater epochまたは
+9. Session-loss/response-guard testは、devframe transportが報告するchannel loss、currentかつnon-supersededなRPCの
+   browser/network/runtime rejection、session-ID mismatch、greater Global content epochまたはnon-null disable fence、
+   client epoch変更後のlate in-flight responseを扱う。Channel lossまたはcurrent RPC rejectionはshared full
+   client-data purgeを実行してsession-ended viewへ入り、pre-purge inventory/detail/comparison/editor/authored-content
+   DTO/DOM stateまたはacknowledgementが残留・自動復活しないことを証明する。SPAはliveness functionを呼ばず、
+   visibility、unload、その他のpage-lifecycle listenerを設置せず、経過時間、pageのhidden化、visibilityへの復帰を
+   理由にrequestを発行しない。Event-drivenなhost-loss signalはdevframeが所有し、productはcontinuously idleなpageに
+   wall-clockのprocess-loss deadlineを設定しない。Ordinaryなinspection-data responseのrender前にgreater epochまたは
    non-null disable projectionをfull client-data purge triggerとして扱いcontrol-only recoveryへ入る。Older epochはrejectし、
-   equal epochかつnull projectionだけをordinary baseline confirmationとする。Deterministic delivery pauseはlinearize済み
+   equal epochかつnull projectionだけがcurrent baselineをconfirmできる。Deterministic delivery pauseはlinearize済み
    SessionSnapshot/FileDetailを保持したまま、scan commitがowning sequenceのgenerationを進めるかGlobal-disable acceptanceが
    epochを変更する間を扱い、envelopeと
-   payloadが混在せず、全inspection-data successが最終publish時にepoch不変かつfence nullを再checkすることを証明する。Liveness successは代わりに
-   1つのcurrent coordinator-lock snapshotからexactな`{ sessionId, globalContentEpoch, globalDisableInProgress }`値へbindし、
-   current fenceがnon-nullでも返すことを証明する。SPAのmonotonic
+   payloadが混在せず、全inspection-data successが最終publish時にepoch不変かつfence nullを再checkすることを証明する。SPAのmonotonic
    `clientDataEpoch`、sequence別generation（`repositoryGeneration`とnullableな`globalGeneration`）、latest request tokenを検証し、
    old-generationまたはsuperseded token/epochの
    responseがstateを再作成できないことを証明する。いずれかのsequenceのnewer generationをadoptする場合は先にclient epochを進め、
    そのsequenceのold requestと
    generation-owned stateをabort/disposeし、他方のsequenceのcommit済みviewは有効なままとする。File detailはcapture済み
    `(clientDataEpoch, owning sequenceのgeneration, fileId)`がlive 3値と全て一致する場合だけadoptする。
-10. Global-disable activationまたはlivenessで観測したepoch/fenceを含む任意のcentral purge後、recoveryは
-    loopback session API経由でfresh sessionを取得する。Purge済みIDを保持・比較せず返された`sessionId`を採用し、client-side
+10. Global disableはdistinctなrecovery pathを維持する。SPAはdisable request送信前にcentral full client-data purgeを
+    実行し、任意のresponseでgreater epochまたはnon-null fenceを観測した場合はrender前に再びpurgeする。その後
+    recoveryはloopback session API経由でfresh sessionを取得する。Purge済みIDを保持・比較せず返された`sessionId`を採用し、client-side
     `RecoveryViewState`だけを構築する。Disable fenceがnon-nullならsession routeはexactでcontrol-onlyな
     `GlobalFenceRecoverySnapshot`を返す。Fenceがnullならnormal full `InspectionSession`を返すが、recoveryは`globalContentEpoch`、Global controlと
     enable/disable projection、それらが参照するpathless session Diagnosticとretain済みfailure error、任意のnewly verified
@@ -538,8 +552,8 @@ Test harnessはisolated fake tool homeを渡し、developerのreal homeを絶対
    barrierが先の順序なら固定conflictを返し、
    late side effect/operation-history leakなしとし、
    次のenableを許可する。Validation中、admission後かつmutation前、単一batch enqueue/disposition直前でpauseして両順序を扱う。
-7. Disableは全inspection dataに対するpriority security barrierである。Request送信前にSPAはliveness failureと同じfull
-   client-data purgeを実行する。Non-no-op barrierのfirst acceptanceは`globalContentEpoch`をatomicにincrementし、non-null
+7. Disableは全inspection dataに対するpriority security barrierである。Request送信前にSPAはFR-027のfull client-data
+   purgeを実行する。Non-no-op barrierのfirst acceptanceは`globalContentEpoch`をatomicにincrementし、non-null
    `globalDisableInProgress`をinstallし、publication authorityをrevokeする。Session routeは
    `GlobalFenceRecoverySnapshot`だけを返し、その他すべてのinspection-data routeは固定の`global-disable-pending` conflictを返す。
    その後active uncommitted workをdiscardし、queued Global workをcancelする。PublicなGlobal consent、control、Source stateのいずれかが存在する場合、`remove-active-state`は
@@ -754,7 +768,7 @@ distribution、digestの変更は両resultを無効にし、final pairがvalid e
   extension/host-process trafficはproductへ帰属させず記録し、観測できるOS-mediated mounted/mapped-source trafficはFR-022
   limitationとして別に記録する。
   Privacy-safeでexactなroute/target classifier `targetClass`を使い、closed literalを
-  `static-manifested-asset | static-spa-shell | static-client-route-fallback | api-get-session | api-get-session-liveness | api-get-file |
+  `static-manifested-asset | static-spa-shell | static-client-route-fallback | api-get-session | api-get-file |
   api-post-repository-rescan | api-get-global-consent-preview | api-post-global-consent-preview | api-post-global-enable |
   api-post-global-rescan | api-post-global-disable | other-loopback | remote | mcp | unclassifiable | not-applicable`とする。Authority、target、route、method、capability、origin、same-host、attribution、request class、
   prohibited statusにまたがるcontractのclosed truth tableを使う。全rowに`eventCode: observation`、not-applicable workflow class、observed outcome
@@ -983,8 +997,9 @@ Coordinator testはslot、queue capacity、scheduling deadlineを定義せず、
 generation atomicity、cancellation、disable/shutdown/supersession時のauthority revoke、late-result discardを保つ。
 Independent-sequence fixtureは、Repository rescanのcommitがRepositoryのfile IDだけをrekeyしてcommit済みGlobal
 detail/comparison viewを有効なまま残すこと、Global rescanも同様にcommit済みRepository viewを有効なまま残すこと、
-Global disableがgenerationを一切commitせずGlobal sequenceを破棄することを証明する。Liveness
-protocolとSC-002のtime thresholdはcapacity上限ではなくacceptance criterionである。Testは、processを終了させる
+Global disableがgenerationを一切commitせずGlobal sequenceを破棄することを証明する。Session-loss/response-guard
+contractとSC-002のtime thresholdはcapacity上限ではなくacceptance criterionであり、productはcontinuously idleなpageに
+process-loss detection deadlineを設定しない。Testは、processを終了させる
 out-of-memoryからのrecoveryや、uncancellableなNode.js/kernel I/Oの
 physical cancellationは保証しない。
 
@@ -1054,7 +1069,7 @@ SC-008を立証できない。Contractはsamplingしない完全なexecution mat
    Global consent open、Global enable/disable、rescan、inventory returnを行う。
 2. Visible focus、logical focus order、skip/navigation landmark、unique label、status announcement、
    error/next-step association、generation replacement時にfocusを失わないことを確認する。
-3. 両locale、3つのpin済みOS/engine/AT profile、5つの正確なviewport/orientation/zoom/text-spacing profile、
+3. 3つのpin済みOS/engine/AT profile、5つの正確なviewport/orientation/zoom/text-spacing profile、
    3つのUI mode、8つのworkflow/state scenario、3つのinput profileの全contract cellを実行する。Native
    forced-colorsに関する2つの明示的N/A platform cellと、row固有の各cell N/Aを個別に記録する。
 4. Tool、state、severity、selection、diffを色だけで示していないことを確認する。
@@ -1119,8 +1134,9 @@ content、path、authored valueがそのopenerへ到達しないことを証明�
 Gunshiのbindしないhelp/version、strict unknown-option拒否、明示的なpositional/rest拒否、固定されnonzero
 validation failure、await済みcompletionに加え、defaultでcaptureしたexact `process.cwd()`と、
 反復指定をparserのlast valueへ解決する`--cwd`、すなわちabsolute optionをそのまま保持すること、relative optionをcaptureした
-呼び出しdirectoryに対してresolveすること、`chdir`なし、およびmissing/emptyな
-`--cwd` valueをsession/browser作成前に固定actionable startup errorでrejectすることも扱う。
+呼び出しdirectoryに対してresolveすること、`chdir`なし、明示的なempty `--cwd` valueをsession/browser
+作成前に固定actionableかつsource-value-freeなstartup errorでrejectすること、およびvalueの欠落を
+Gunshiのtyped argument validationでrejectすることも扱う。
 Testはさらに、automatic openingがOS default handlerへ委譲するだけでversionを
 certifyできないことも証明する。Release recordはpin済みPlaywright revisionを使用し、`--no-open`と表示URLをmanual certified-browser
 fallbackとする。`pnpm run test:docs`はplanning setを公開せず、repository内の全英日document
@@ -1136,7 +1152,7 @@ concernが0件になるまでcomplete-diff/tarball reviewを反復する。次�
 fileをeditせずexternal release/pull-request check logへcaptureする。その後repositoryをeditした場合は全outcome/approvalを無効にし、
 Constitution/final-gate sequence前にremediation、candidate/study/evidence digest再validation、applicable gate再実行、complete-diff reviewへ戻る。
 
-`pnpm run test:package`は新規pack済みtarballをisolated fixtureへinstallし、
-`npx --no-install agent-customization-inspector --no-open`をspawnし、valid loopback launch URLを観測してprocessを
-終了し、起動したCLIがbrowser-helper childをspawnしなかったことをassertしなければならない。Tarball/mapping
-inspectionだけではlaunch testにならない。
+T917完了後、final-releaseの`pnpm run test:package` gateは新規pack済みtarballをisolated
+fixtureへinstallし、`npx --no-install agent-customization-inspector --no-open`をspawnし、valid
+loopback launch URLを観測してprocessを終了し、起動したCLIがbrowser-helper childをspawnしなかった
+ことをassertしなければならない。Tarball/mapping inspectionだけではlaunch testにならない。

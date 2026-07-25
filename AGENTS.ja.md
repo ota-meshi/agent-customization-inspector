@@ -29,6 +29,22 @@
 - `package.json`にすでにある値（name、version、homepage、description）は、文字列literalとして複製せず、標準のJSON import — `import packageJson from '../../package.json' with { type: 'json' }` — で読み取ってください。BundlerがJSON moduleを参照されたフィールドだけにtree-shakeするため、packagedされたCLIはruntimeで`package.json`を読みません。例: `src/server/host/devframe-app.ts`はdevframeのmetadataをこの方法で取得し、contractで固定された製品`id`だけをliteralのまま維持します。
 - Specificationが冗長な複雑さを要求している場合は、書かれたとおりに実装せず、同じ変更の中で両言語のspecificationを修正してください。
 
+## 命名方針
+
+- 短くて周囲の文脈を必要とする名前より、長くても常に意味が分かる名前を選んでください。
+  import行、file tree、stack traceなどで初めてその識別子に出会った読み手が、それが何かを
+  言える状態にします。
+- 似ているものではなく、実体を名前にしてください。`shell`、`manager`、`helper`、`util`のような
+  architectural metaphorは中身ではなく形を述べるもので、中身が変わると古くなります。
+  例: browserのreactiveなsession stateを持つmoduleは`src/app/session/view-state.ts`です。
+  以前は`shell.ts`でしたが、その名前が指すpage frameは実際にはcomponent側にあります。
+- Directoryが文脈を供給するため、その中の名前で繰り返す必要はありません——
+  `session/session-api-client.ts`ではなく`session/api-client.ts`です。ただしdirectoryと
+  合わせて読んだときに意味が通る必要があります。`session/state.ts`は`session/view-state.ts`より
+  弱く、誰のstateで何のためのものかを述べているのは後者だけです。
+- この方針に従う改名もdocumentation changeです。古い識別子を書いている仕様artifactは、
+  同じ変更の中で英日両方を更新してください。
+
 ## コードコメントの方針
 
 - 憲章の原則IIに従い、自明でない判断、不変条件、セキュリティ上の前提、トレードオフ、互換性の制約を、影響を受けるコードの近くに文書化してください。Reviewerが作者の意図をリバースエンジニアリングせずに、変更とその理由を理解できなければなりません。
@@ -39,6 +55,7 @@
 - 宣言自体も文書化してください。Exportされたinterface、type alias、定数には、その型や値が何を表すか、統治するartifactがあればそれを述べるJSDoc docコメントを付けます。
 - Classの全member—フィールドとメソッド、constructorやprivate memberを含む—にJSDoc docコメントを付けてください。メソッドは呼び出しが何をするかとどのcontract挙動を実装するかを、フィールドは何を保持しどのinvariantを維持するかを述べます。
 - 仕様化されたcontractを実装するexportされた関数・クラス・定数には、そのcontractの挙動を述べるdocコメントを付けてください。拒否やfail-closedの分岐には、その拒否が何を守るのかを記載してください。
+- テストからだけ到達させるために存在するexported memberも、public APIです。そのdoc commentに、テスト専用であることと、なぜそのmoduleの表面からはその挙動を観測できないのかを明記してください。可能なら必要性自体をなくしてください——moduleが保持する値ではなく、renderする内容、返す値、発行するrequestを検証します。例: client-data epochのcounterにaccessorは不要です。それが守る挙動——purge前にcaptureしたresponseがstateを復活させないこと——は、破棄されたそのresponseから観測できるためです。
 - テストファイルは、担当タスクIDと検証対象の挙動を述べるコメントで始め、カバレッジを`tasks.md`まで遡れるようにしてください。
 - コードコメントは英語で書いてください。日本語で重複させてはいけません。上記の二言語ドキュメント方針はドキュメントに適用されるものであり、ソースコードのコメントには適用されません。
 - コメントを古くする変更では、同じ変更の中でそのコメントを削除または修正してください。誤解を招くコメントは、無いことより有害です。

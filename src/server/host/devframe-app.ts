@@ -29,8 +29,9 @@ import { REPOSITORY_TRAVERSAL_PLANS } from '../inspection/rules/registry';
 import { runTraversalScan } from '../inspection/traversal';
 import { assembleScanPublication } from '../inspection/scan';
 import type {
+  CommandResult,
   DeterministicRejection,
-  LivenessProjection,
+  InspectionDataResult,
   ScanAdmission,
   SessionSnapshot,
 } from '../../shared/api-types';
@@ -42,34 +43,6 @@ export interface InspectorHostContext {
   readonly session: InspectionSessionState;
   /** The serialized scan coordinator owning admission and commits. */
   readonly coordinator: SessionCoordinator;
-}
-
-/**
- * The inspection-data success envelope (contracts/http-api.md § Common
- * results and errors): every normal inspection-data success carries the
- * epoch and both sequence generations beside its payload.
- */
-export interface InspectionDataResult<Data> {
-  /** Current Global content epoch at final publication. */
-  readonly globalContentEpoch: number;
-  /** The Repository sequence's committed generation. */
-  readonly repositoryGeneration: number;
-  /** The Global sequence's committed generation; null while disabled. */
-  readonly globalGeneration: number | null;
-  /** The complete immutable payload bound under the coordinator lock. */
-  readonly data: Data;
-}
-
-/**
- * A command success that returns no inspection graph
- * (contracts/http-api.md): `{ globalContentEpoch, data }` without the
- * result-level generation fields.
- */
-export interface CommandResult<Data> {
-  /** Current Global content epoch at final publication. */
-  readonly globalContentEpoch: number;
-  /** The command's documented result payload. */
-  readonly data: Data;
 }
 
 // The packaged SPA shell directory. The server bundle is emitted to the
@@ -188,22 +161,6 @@ export function createInspectorDevframe(context: InspectorHostContext): Devframe
         },
       });
       ctx.rpc.register({
-        name: 'agent-customization-inspector:get-liveness',
-        type: 'query',
-        jsonSerializable: true,
-        // Exactly the control-only projection from one current snapshot —
-        // no generation and no inspection graph (contracts/http-api.md
-        // § get-liveness).
-        handler: (): LivenessProjection => {
-          const snapshot = context.session.snapshot();
-          return {
-            sessionId: snapshot.sessionId,
-            globalContentEpoch: snapshot.globalContentEpoch,
-            globalDisableInProgress: snapshot.globalDisableInProgress,
-          };
-        },
-      });
-      ctx.rpc.register({
         name: 'agent-customization-inspector:rescan-repository',
         type: 'action',
         jsonSerializable: true,
@@ -269,7 +226,7 @@ export interface StartInspectorHostOptions {
    * and best-effort semantics; `false` maps from `--no-open`.
    */
   readonly openBrowser?: boolean;
-  /** Called once the loopback server is bound; the CLI prints the URL here. */
+  /** Called after loopback bind and before devframe's browser helper. */
   readonly onReady?: CreateDevServerOptions['onReady'];
 }
 

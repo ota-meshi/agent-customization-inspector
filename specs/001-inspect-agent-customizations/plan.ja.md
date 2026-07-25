@@ -25,8 +25,9 @@ tool/kind/field/occurrenceで対応付け、parser-normalized表示値ではな�
 
 Root selectionは単純かつlexicalとする。CLIは`process.cwd()`を正確に1回captureし、`--cwd <path>`を
 acceptする（反復指定はparserのlast valueへ解決）。Absolute optionはそのまま保持し、relative optionはcapture済みinvocation directoryに対して
-resolveし、その結果をselected Repository rootとする。CLIは`process.chdir()`を呼ばない。Missing/emptyな
-`--cwd` valueは、session作成またはbrowser起動より前に固定actionable startup errorでfailする。
+resolveし、その結果をselected Repository rootとする。CLIは`process.chdir()`を呼ばない。明示的にemptyな
+`--cwd` valueは、session作成またはbrowser起動より前に固定actionableかつsource-value-freeなstartup errorでfailする。
+Valueの欠落は同じboundaryでGunshiのtyped argument validationによりrejectされ、productはparser所有のcheckを重複実装しない。
 Repository sequenceのbootstrap generation 0は、stableな`sourceId`とescape済みroot labelを持つ1つの
 Repository Sourceをsynchronousに含む。
 
@@ -142,9 +143,10 @@ compatibility/support window、rollback/support pathを含めるか、理由付�
 `src/server/cli.ts`はGunshiのstableなroot `define`/`cli` APIだけを使用する。Negatableな`open` booleanを
 default trueとして定義して`--no-open`を提供し、単一のstring-valued `cwd` optionで`--cwd <path>`を提供する。
 `strict: true`を有効にし、bind前にすべてのpositional/rest argumentを明示的に拒否し、`cli()`をawaitし、
-validation `AggregateError`を固定されたactionable outputとnonzero exitへ対応付ける。Session作成前に
-`process.cwd()`を正確に1回captureし、empty valueの`--cwd`はsession作成またはbrowser起動より前に
-固定actionable startup errorで拒否する（反復`--cwd`はparserのlast valueへ解決）。Absoluteな`--cwd` valueはそのまま保持し、relative valueは
+parser所有のvalidation `AggregateError`を通常どおりnonzeroのprocess exitへ伝播させる。Session作成前に
+`process.cwd()`を正確に1回captureし、明示的なempty valueの`--cwd`はsession作成またはbrowser起動より前に
+固定actionableかつsource-value-freeなstartup errorで拒否し、valueの欠落は同じboundaryでGunshiのtyped
+validationによりrejectする（反復`--cwd`はparserのlast valueへ解決）。Absoluteな`--cwd` valueはそのまま保持し、relative valueは
 `node:path.resolve`でcapture済みinvocation directoryに対してresolveし、その結果をselected Repository rootと
 する。CLIは`process.chdir()`を呼ばない。Built-in help/versionはbindせずに処理する。Production entryは`gunshi/agent`、
 lazy command、custom plugin、experimental parser combinatorをimportしない。Validation後、CLIは
@@ -172,7 +174,7 @@ Applicableまたはcriterion固有の理由を持つNot-applicable stateと必�
 Applicable row数をSC-008 denominatorにする。全Applicable rowの必須check、全Not-applicable rationaleの再validation、4つの
 keyboard workflow、英日recordの意味的等価性がすべてpassした場合だけrelease gateをpassし、severity labelでfailureを免除しない。
 Criterion固有のstable IDでautomated checkをexact E2E test titleへ、manual checkを各rowのexpected observationへbindする。
-Closed manual matrixはpacked tarball、両locale、3つのsupported OS/browser/assistive-technology cell、正確なresponsive/zoom/spacing
+Closed manual matrixはpacked tarball、3つのsupported OS/browser/assistive-technology cell、正確なresponsive/zoom/spacing
 profile、visual mode、workflow state、input profileを使う。実行前にactual version/revision valueをfreezeし、releaseまたはmatrixを
 変更した場合は全manual checkを再実行し、applicableなcellをsamplingまたは暗黙省略しない。SC-003、SC-004、SC-005、SC-007、
 SC-009では、check-in済みの`tests/fixtures/outcomes/manifest.json`とcanonicalな
@@ -323,21 +325,10 @@ Failure後だけmoderatorがbyte-identical `StudySafetyReviewCase`をfresh isola
 このedgeの`safe-payload`はnonworkflow browser observation専用で、workflow outcomeを運んだりbypassしたりしない。Supervisorだけがcurrent workflowまたはN/Aをtagしてsafe payloadをconstructし、
 adapterがstored candidateとvalidateし、watchdog ACK後だけsemantic ACKを返す。Blocked/browser-onlyはそのACK後に`browser-only-released`、joinedはbrowser/server両safe ACK後に`joined-pair-released`とする。
 
-Request payloadにはprivacy-safeでexactなroute/target classifier `targetClass`を追加する。Closed literalは
-`static-manifested-asset | static-spa-shell | static-client-route-fallback | api-get-session | api-get-session-liveness | api-get-file |
-api-post-repository-rescan | api-get-global-consent-preview | api-post-global-consent-preview | api-post-global-enable |
-api-post-global-rescan | api-post-global-disable | other-loopback | remote | mcp | unclassifiable | not-applicable`とする。Contractはauthority、target、route、method、capability、origin、
-same-host、attribution、request class、prohibited statusにまたがるtruth tableをcloseする。全rowは`eventCode: observation`、
-not-applicable workflow class、observed outcome class、correlation-context subject/process ID、fresh event/correlation IDを持つ。Exact authorized-static/
-declared-API table rowだけがeffect `none`と`prohibited: false`を使う。Table外のproduct-attributable exact-issued requestはrequest
-observation、該当する`participant | bundled-spa | inspector` actor、exact-issued authority、prohibited request class、observed closed target/method/capability/origin、
-unauthorized-request、true same-host/attribution/prohibitedを使う。Other-loopbackはother-loopback authority/target、prohibited request class、
-observed closed method、not-applicable capability/origin、unauthorized-request、同じ3件のtrue booleanを使う。Remoteはremote
-authority/target、prohibited request class、observed closed method、not-applicable capability/origin、prohibited-outbound-request、false
-same-host、true attribution/prohibitedを使う。Fully unclassifiableなproduct-correlated requestはunknown actor、unclassifiableな
-authority/request/target/method/capability/origin、unauthorized-request、false same-host、true attribution/prohibitedを使う。MCPはMCP
-observation、Inspector actor、target `mcp`、not-applicable authority/request/method/capability/origin、effect `mcp-connection`、false
-same-host、true attribution/prohibitedを使う。Browser trafficについてproxy/serverはexact Chromium-controlled `Sec-Fetch-Dest`、
+Request payloadはcontractがcloseしたprivacy-safeなtarget、method、capability、origin、authority、request、
+effect、attribution、prohibition classを使う。それらのclosed literalとtruth tableは
+`contracts/usability-study-evidence.md`/`contracts/usability-study-evidence.ja.md`が所有し、planでは再掲しない。
+Browser trafficについてproxy/serverはexact Chromium-controlled `Sec-Fetch-Dest`、
 `Sec-Fetch-Mode`、`Sec-Fetch-Site`、`Sec-Fetch-User`とOrigin/Refererを独立projectし、raw inputをdiscardして同じprojectionを要求するが、Fetch Metadataをhuman attestationにしない。
 Product-probe readiness後かつsole expected initial navigation直前に、supervisorはroot `schemaVersion`, `studyRunId`, `browserAttemptId`,
 `correlationId`, `state`、state `armed | consumed | destroyed`のfresh runtime-only `StudyParticipantNavigationGrant`を生成し、browser adapterへ送る。
@@ -627,11 +618,11 @@ boundaryでありresource quotaではない。Generic relationshipのread author
 target自身のrelationshipをoriginating edgeからprojectしない。Parser、recognizer、compositionのoutputがnestedまたはtransitive
 relationshipを作ろうとする場合、target access前にそのprojectionを省略し、eligibleなdirect relationshipと記述された完全な
 sourceを保持し、actionableかつsource値を含まないrelationship diagnosticをemitする。
-Authorized browserはheartbeat interval、request timeout、retry delay、memory leaseをproduct固有値として定義しない。
-Initial adoption、visible/focused pageへの復帰、明示的Resume、fresh session adoptionという観測可能なlifecycle signalでだけ
-session-liveness checkを行い、browser/network/runtime rejection、session mismatch、hidden/page lifecycle event、
-greater content epoch、non-null disable fenceでpurgeする。Continuously visibleなidle page上のprocess lossにはproduct定義の
-wall-clock検出保証を設けず、次のlifecycle signalまたはauthorized request outcomeで検出する。
+Authorized browserはheartbeat interval、request timeout、retry delay、memory lease、およびliveness probeを定義しない
+（2026-07-24 修正）。browser/network/runtime rejection、transportが報告するchannel loss、session mismatch、
+greater content epoch、non-null disable fenceでpurgeする。host喪失はloopback socketのcloseとしてdevframeが問い合わせなしにpageへ報告するため、
+process lossはpollingせずに検出される。Page-lifecycle eventはtriggerに含めない: FR-027はfailureまたは同等のterminal reset後にpurgeするもので、
+tab切り替えもページからの離脱もそのどちらでもないため、clientはvisibility/unload listenerを設置しない。
 Monacoには記述された完全なsourceを渡す。Browserまたはeditor runtimeがdiffを計算できない場合、UIは完全な
 read-only side-by-side sourceを利用可能なまま保ち、どちらのartifactもvalid/invalidと扱わずactionableなcomparison
 failureを報告する。HTTP deliveryはAPI DTOをtruncateしない。
@@ -648,7 +639,7 @@ partial transitionだけとする。
 Coordinatorはproduct定義のwall-clock scan cutoffを設けない。Global disable、process shutdown、明示的operation
 cancellationはpublication authorityを取消不能にrevokeする。その時点で未完了のNode.js filesystem promiseは
 cleanup-only continuationとなり、late byte/result、DTOをすべて破棄する。Event loopが処理できる間は
-APIとliveness endpointをresponsiveに保つが、取消不能なkernel operationがsettleする前のphysical cleanupは保証しない。
+APIをresponsiveに保つが、取消不能なkernel operationがsettleする前のphysical cleanupは保証しない。
 
 同時に配布されるpackaged artifactをuser runtimeで相互検証しない。`dist/`はそれを生成した
 clean → `nuxt build` → tsdown pipelineが所有し、devframe hostはそのtreeを`cli.distDir`からそのまま
@@ -675,6 +666,8 @@ execution environmentによって決まる。
 - [x] **読みやすい実装**: `host`、`inspection/rules`、`recognizers`、`parsers`、`session`が
       別々のinvariantを所有する。Vendor behavior、Inspector matcher、runtime composition、official evidenceは
       4つのclosed registryに分け、vendor固有policyを分離し、shared behaviorは小さく明示的に保つ。
+      全moduleとexported nameは、似ているものではなく実体を述べる。短い名前が理解に周囲の文脈を
+      必要とするなら、長い方を採る（AGENTS.md § Naming policy）。
 - [x] **Dependencyおよびpublic-contract governance**: 未公開のinitial baselineについて、T001が確認する
       理由付きno-migration-impact判断を記録する。Acceptする新規・変更dependencyおよび破壊的な
       public-contract変更は、理由、影響を受けるconsumer/contract/data/workflow、移行・compatibility手順、
@@ -805,7 +798,7 @@ specs/001-inspect-agent-customizations/
 ```text
 src/
 ├── app/
-│   ├── app.vue
+│   ├── App.vue
 │   ├── components/
 │   │   ├── inventory/
 │   │   ├── inspection/
@@ -813,20 +806,18 @@ src/
 │   │   ├── consent/
 │   │   └── diagnostics/
 │   ├── composables/
-│   │   ├── api.ts
 │   │   ├── comparison.ts
 │   │   ├── filters.ts
-│   │   ├── liveness.ts
-│   │   ├── monaco.ts
-│   │   └── session.ts
+│   │   └── monaco.ts
+│   ├── session/
+│   │   ├── api-client.ts
+│   │   ├── client-data.ts
+│   │   └── view-state.ts
 │   ├── pages/
 │   │   ├── index.vue
 │   │   ├── compare.vue
 │   │   ├── global-consent.vue
 │   │   └── files/[id].vue
-│   ├── locales/
-│   │   ├── en.ts
-│   │   └── ja.ts
 │   └── styles/
 ├── server/
 │   ├── cli.ts
@@ -862,6 +853,7 @@ src/
     ├── api-types.ts
     ├── diagnostics.ts
     ├── entities.ts
+    ├── rejection-codes.ts
     └── registries/
         ├── vendor-behaviors.ts
         ├── inspection-rules.ts
@@ -955,8 +947,22 @@ relativeな値はそのcaptureに対してresolveする。Inspection I/O contrac
 調査対象sourceへのfilesystem I/Oはすべて`src/server/inspection/` directory配下だけに置き、他のmoduleは
 調査対象sourceをenumerate/readしない。
 
-`src/app/locales/en.ts`と`src/app/locales/ja.ts`をuser-visible UI copyの明示ownerとし、componentはstable message keyを
-使用して英日UI parityをad hocに追加しない。`validation.md`と`validation.ja.md`はfinal SC evidenceを記録し、
+`src/app/session/`はsession transportとlifecycleのmoduleを保持する——shared client-data purge（`client-data.ts`)、
+guarded RPC client（`api-client.ts`)、およびそれらを受けpage-lifecycle listenerを設置しないreactive browser view state（`view-state.ts`）である。
+`client-data.ts`はdependency leafで何もimportしないため、API clientとview stateはmodule cycleなしに同じ`clientDataEpoch`を
+観測できる。liveness moduleは存在しない——2026-07-24に、transport自身のconnection-status signalがhost喪失を、
+response経路のepoch/fence checkが残りをカバーすると判断し、probeを削除した。
+これらはいずれもVue composableではなく、closure-localなstateを持ち1度だけ構築されるplain factoryであるため、
+`use*` reactivityを約束する名前のdirectory配下に置くと実態を誤って説明することになる。よって
+`src/app/composables/`の外に置く（2026-07-24 修正）。
+
+User-visible UI copyはそれを描画するcomponentに書き、message catalogは持たない（2026-07-24 修正）。
+UIは1言語だけ出荷するため、QR-004の二言語義務はuser/contributor documentationとWCAG applicability matrixに掛かり、
+動作中の画面には掛からない。よってmanual accessibility matrixにlocale軸は無く、shellはnegotiateせず固定の
+`lang="en"`を設定する。message名をkeyとするcatalogは、keyとその唯一のstringの間にlookupを足すだけになる。
+例外は閉じたunionが固定するtext——Source status、boundary origin、Diagnostic code——であり、
+これらは`src/shared/entities.ts`と`src/shared/diagnostics.ts`のunionのそばで宣言する。
+新しいmemberはtextなしではcompileできず、serverとbrowserは同じ語彙を1か所から読む。`validation.md`と`validation.ja.md`はfinal SC evidenceを記録し、
 意味的に同等に保つ。`.github/workflows/`でCI/releaseのownershipを明示し、documentation parity、package
 exact-set、release gateを含める。
 
@@ -1263,13 +1269,12 @@ package manager自身の設定が所有する）。
   個別にdisposeする。Accessible diff viewer、意味のあるARIA label、keyboard navigation、narrow-screen
   inline viewを有効に保ち、browser testとmanual checkの両方で検証する。Browserまたはeditorが利用可能なenvironment
   capacityでdiffを計算できない場合も、記述された完全なside-by-side sourceを表示し、actionable diagnosticを示す。
-  `src/app/composables/liveness.ts`はshared central client-data purge実装と、loopback session API
-  channel上の軽量なsession-liveness checkを所有する。Initial adoption、visible/focused pageへの復帰、明示的Resume、fresh session
-  adoptionの場合だけcheckを発行し、同時にin-flightにするのは最大1件とし、そのsettlementはbrowser/network/runtimeが所有する。
-  このsingle-flight ruleはstale responseを拒否するためstate adoptionをserializeするfunctional coordination invariantであり、
-  resource admissionまたはvalidation ceilingではない。Product定義のpolling interval、request timeout、retry timer、memory leaseは
-  設けない。Network/runtime rejection、
-  session mismatch、hidden/page lifecycle event、観測したprocess loss、または同等のterminal full-session resetではeditor model/worker/subscriptionをdisposeし、全session DTO/DOM/detail/comparison/warning stateをclearして
+  `src/app/session/client-data.ts`はshared central client-data purge実装を所有し、
+  `src/app/session/view-state.ts`はloopback session API channel上で`App.vue`が描画するreactive valueを所有する。
+  listenerは一切設置しない: liveness probeも、product定義のpolling interval、request timeout、retry timer、
+  memory leaseも、page-lifecycle purgeも無い。transportがhost喪失を自ら報告するため、
+  process lossはpollingせずにended viewになる。Network/runtime rejection、
+  session mismatch、観測したprocess loss、または同等のterminal full-session resetではeditor model/worker/subscriptionをdisposeし、全session DTO/DOM/detail/comparison/warning stateをclearして
   requestをabortし、`clientDataEpoch`をincrementしてlate responseによるcontent復活を防ぐ。全SessionSnapshot/FileDetail
   requestはepoch、owning sequenceのcurrent generation — session snapshotは`repositoryGeneration`とnullableな
   `globalGeneration`を公開する — 、該当時file ID、exact request tokenをcaptureする。Owning sequenceのolder generationは無視し、
@@ -1278,12 +1283,12 @@ package manager自身の設定が所有する）。
   completionとして扱わない。いずれかのsequenceのnewer generation採用前にepochをincrementし、そのsequenceの置換された
   generationが所有するdetail/editor/comparison stateをabort/disposeする。他方のsequenceのcommit済みviewは有効なままとする。Equal generationは
   current tokenを要求し、file detailはepochとowning sequenceのgenerationがcurrentのままでreadable fileが存在する場合だけ採用する。Browser storage、service
-  worker、response cacheへinspected contentを永続化しない。Successful liveness responseは正確に
-  `{ sessionId, globalContentEpoch, globalDisableInProgress }`へbindする。Older epochをrejectし、equal epochかつnull fenceで
-  current baselineをestablishまたはconfirmし、greater epochまたはnon-null fenceではrender前にfull purgeとcontrol-only Global recoveryを実行する。
-  Hidden-page purgeはsession dataを一切保持せず、
-  visibleへ戻るとclientは同じloopback channelでfresh session snapshotを取得する。SPAはpurge済みIDを保持・比較せず、
-  返された`sessionId`をnew liveness baselineとして採用し、epoch、Global control/progress、pathless tool-failure Diagnostic、
+  worker、response cacheへinspected contentを永続化しない。全responseは採用済みの
+  `{ sessionId, globalContentEpoch }` baselineに対してcheckする。Older epochをrejectし、equal epochかつnull fenceで
+  current baselineをconfirmし、greater epochまたはnon-null fenceではrender前にfull purgeを実行する。Control-only Global recoveryと、
+  同じloopback channelを通じた後続のfresh session snapshot取得はT1027が所有し、そのrecoveryはpurge前のsession dataを一切保持しない。
+  SPAはpurge済みIDを保持・比較せず、
+  返された`sessionId`をnew baselineとして採用し、epoch、Global control/progress、pathless tool-failure Diagnostic、
   failed requestのerrorだけから最小限のclient-side `RecoveryViewState`を構築する。Disable fenceがnon-nullならsession routeはexactで
   control-onlyな`GlobalFenceRecoverySnapshot`を返す。Fenceがnullならnormal full `InspectionSession`を返すが、recovering clientは
   そのcontrol/error fieldだけを採用してinspection graphを破棄する。Activeなら
@@ -1359,7 +1364,7 @@ package manager自身の設定が所有する）。
   Disable、shutdown、明示的cancellation後のpending workはcleanupだけを行い、late resultをpublish/interleaveしない。Drain、
   closeが完了した後だけdisableは成功する。Accept後failureではprocessを維持する一方、
   data fence、failed requestのerror、retry/join controlを保持し、unrecoverable cleanupではrestartをfallbackとする。Accept前failureまたは
-  true no-opはfenceをnullのままにする。Event loopが処理できる間はAPI/liveness handlingを継続するが、underlying promiseが
+  true no-opはfenceをnullのままにする。Event loopが処理できる間はAPI handlingを継続するが、underlying promiseが
   settleする前にdisableがphysical drain完了をclaimしてはならない。
   Global batchはGlobal generation sequenceだけを所有し、全admitted replacementを別に構築する。正常なcompleteまたは
   partial batchは正確に1つのGlobal generationをcommitする — Global generationが存在しなければsequenceをgeneration 1で

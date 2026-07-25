@@ -57,8 +57,9 @@ traversalを継承しない。
 
 Repository boundaryはselected rootである。`--cwd`を省略した場合は呼び出し時に1回captureしたexact
 `process.cwd()`を使う。`--cwd`を受理する（反復指定はparserのlast valueへ解決）。Absolute valueはそのまま保持し、relative valueは
-active platformの`node:path.resolve`でcapture済みの呼び出しdirectoryに対してresolveする。Valueの欠落/emptyは、
-session/browser作成前に固定actionable startup errorでfailureとなる（FR-001）。Selectionは
+active platformの`node:path.resolve`でcapture済みの呼び出しdirectoryに対してresolveする。明示的なempty valueは
+session/browser作成前に固定actionableかつsource-value-freeなstartup errorでfailureとなり、valueの欠落は同じ
+boundaryでGunshiのtyped argument validationによりrejectされる。Productはparser所有のcheckを重複実装しない（FR-001）。Selectionは
 filesystem/network I/Oを0件とし、`chdir`を行わない。Generation 0はfilesystem I/Oなしで作成した1つの
 Repository Sourceを持つ。そのescape済みroot labelはread authorityを与えず、最初のscanがretained selected
 rootをreadする。Rootが存在しないかdirectoryとしてreadできない場合、そのscanはsource-scopedな
@@ -351,7 +352,8 @@ Contractとfixtureのvalidationは、次をすべて証明しなければなら�
    pathは、grouping、alias、read-once behaviorを持たない2つの通常の独立fileである。
    Cross-Source/attempt/generation fixtureは独立readを証明する。
 8. Root-selection fixtureは、1回だけcaptureした`process.cwd()`、そのまま保持するabsolute `--cwd`、
-   captureに対してresolveするrelative `--cwd`、value欠落/empty時の固定startup errorを扱い、
+   captureに対してresolveするrelative `--cwd`、明示的なempty valueへの固定startup error、および
+   Gunshiのtyped missing-value rejectionを扱い、
    `chdir` call 0件とselection時filesystem I/O 0件を証明する。全supported OS上のtraversal fixtureは、
    symlinkされたcustomization fileが透過的にreadされてlink先contentを表示すること、targetがmissing
    またはunreadableなlinkが`partial` generation内の`file-unreadable`となること、directory link cycleが

@@ -32,7 +32,7 @@ workflowのいずれか1つでもSC-008は失敗する。
 | ID形式 | 正確な実行場所と記録rule |
 |---|---|
 | `AUTO-{criterion}` | `tests/e2e/accessibility.spec.ts`に置き、test titleへ完全なIDを含めるdeterministic test。Packed release candidateに対してPlaywright 1.61.1の3 projectすべてで実行し、行のproduct固有受入条件をassertする。補助unit/contract testはevidenceを追加できるが、このtestを置き換えられない。`validation.ja.md`のWCAG result tableへ、ID、3 projectすべての結果、artifact path、pass/failを記録する。 |
-| `MANUAL-{criterion}` | Procedureは行のproduct固有受入条件であり、下記の閉じたmanual matrixのapplicableな全cellで実行する。`validation.ja.md`のmanual-cell tableへ、`(ID, locale, platform, viewport, mode, scenario, input)`の各cellごとにresult、evidence、reviewerを記録する。 |
+| `MANUAL-{criterion}` | Procedureは行のproduct固有受入条件であり、下記の閉じたmanual matrixのapplicableな全cellで実行する。`validation.ja.md`のmanual-cell tableへ、`(ID, platform, viewport, mode, scenario, input)`の各cellごとにresult、evidence、reviewerを記録する。 |
 | `REVIEW-{criterion}` | 完全なrelease diff、packed-file manifest、render済みpacked interfaceに対して、行に記載した不在preconditionが引き続き不在か再確認する。`validation.ja.md`のWCAG result tableへ、ID、調査したdiff/manifest/build identifier、reviewer、rationale、evidence、pass/failを記録する。 |
 
 `AUTO-*`と`MANUAL-*`の両方を指定する行では両方を必須とする。自動結果はevidenceであり、必須の手動checkを
@@ -65,7 +65,7 @@ workflowのいずれか1つでもSC-008は失敗する。
 | 2.1.1 Keyboard | A | Applicable | `AUTO-2.1.1`; `MANUAL-2.1.1` | Monaco source/diff accessを含む4つの主要workflowの全operationがkeyboardで動作する。 |
 | 2.1.2 No Keyboard Trap | A | Applicable | `AUTO-2.1.2`; `MANUAL-2.1.2` | 標準keyboard操作で全control、dialog、editor、error、consent stateへfocusを出入りさせられる。 |
 | 2.1.4 Character Key Shortcuts | A | Not applicable | `REVIEW-2.1.4` | 単一の印字可能文字でapplication commandを起動しない。Read-only editor defaultも同じ性質か確認する。 |
-| 2.2.1 Timing Adjustable | A | Not applicable | `REVIEW-2.2.1` | Visibleなuser taskにtime limitがない。Network deadlineとhidden-page security purgeはvisible interactionを期限切れにせず、Resumeで固定時間内の完了を要求せずにoperableな新規summaryへ戻れる。 |
+| 2.2.1 Timing Adjustable | A | Not applicable | `REVIEW-2.2.1` | Visibleなuser taskにtime limitがない。Network settlementとterminal session resetはvisible interactionを期限切れにせず、inspectorの再起動で固定時間内の完了を要求せずにoperableなfresh sessionへ戻れる。 |
 | 2.2.2 Pause, Stop, Hide | A | Applicable | `AUTO-2.2.2`; `MANUAL-2.2.2` | 他contentと並行表示される自動開始scan/status updateをpause、stop、hide、またはuser制御のupdate frequencyへ変更できる。文書化したessential exceptionでは、正確なupdateを識別し、代替ではpurposeを満たせない理由を証明し、releaseの明示承認を得る。 |
 | 2.3.1 Three Flashes or Below Threshold | A | Not applicable | `REVIEW-2.3.1` | 同梱animation/state transitionはflashせず、調査対象contentをactive media/animationとしてrenderしない。 |
 | 2.4.1 Bypass Blocks | A | Applicable | `AUTO-2.4.1`; `MANUAL-2.4.1` | Keyboard/assistive-technology userが反復navigationをskipして主要workflow contentへ移動できる。 |
@@ -82,7 +82,7 @@ workflowのいずれか1つでもSC-008は失敗する。
 | 2.5.4 Motion Actuation | A | Not applicable | `REVIEW-2.5.4` | Device/user motionをinputに使うfunctionがない。 |
 | 2.5.7 Dragging Movements | AA | Not applicable | `REVIEW-2.5.7` | Draggingを必要とするapplication functionがない。Selection、comparison、filtering、editor navigation、consentにnon-drag controlがある。 |
 | 2.5.8 Target Size (Minimum) | AA | Applicable | `AUTO-2.5.8`; `MANUAL-2.5.8` | Pointer targetがminimum sizeまたはcriterionの明示的exceptionを満たし、exceptionを個別に記録する。 |
-| 3.1.1 Language of Page | A | Applicable | `AUTO-3.1.1` | English/Japanese表示が正しいprimary page languageを設定する。 |
+| 3.1.1 Language of Page | A | Applicable | `AUTO-3.1.1` | shellは出荷する唯一のUI言語をprimary page languageとして設定し（`lang="en"`）、negotiateした値は使わない。 |
 | 3.1.2 Language of Parts | AA | Applicable | `MANUAL-3.1.2` | 必要なhuman-language changeを識別する。Code、path、authored source、product name、technical identifierにはcriterion上適切な扱いを適用する。 |
 | 3.2.1 On Focus | A | Applicable | `AUTO-3.2.1`; `MANUAL-3.2.1` | Focusを受け取るだけではcontextを変更しない。 |
 | 3.2.2 On Input | A | Applicable | `AUTO-3.2.2`; `MANUAL-3.2.2` | Input changeの効果がpredictableであり、context changeがある場合は使用前に説明する。 |
@@ -96,13 +96,13 @@ workflowのいずれか1つでもSC-008は失敗する。
 | 3.3.7 Redundant Entry | A | Not applicable | `REVIEW-3.3.7` | 以前入力した情報の再入力を求めない。Acknowledgement/confirmationはactionであってdata entryではない。 |
 | 3.3.8 Accessible Authentication (Minimum) | AA | Applicable | `AUTO-3.3.8`; `MANUAL-3.3.8` | 表示済みlocal session URLのopen/reopenにauthentication step、cognitive-function test、transcription、puzzle、memorizationを要求せず、表示URLのmanual fallbackを利用できる。 |
 | 4.1.2 Name, Role, Value | A | Applicable | `AUTO-4.1.2`; `MANUAL-4.1.2` | Custom control、Monaco integration、state、property、changeが正しいprogrammatic name、role、valueを公開する。 |
-| 4.1.3 Status Messages | AA | Applicable | `AUTO-4.1.3`; `MANUAL-4.1.3` | Scan、rescan、stale、error、comparison、Global、livenessのstatus changeをfocus移動なしでannounceする。 |
+| 4.1.3 Status Messages | AA | Applicable | `AUTO-4.1.3`; `MANUAL-4.1.3` | Scan、rescan、stale、error、comparison、Global、session-endedのstatus changeをfocus移動なしでannounceする。 |
 
 ## 閉じたmanual実行matrix
 
 Manual acceptanceではdevelopment serverではなくpacked release candidateを使用する。実行前にtarball digest、
 Playwright 1.61.1 package versionとbundled browser revision、supported OS version、実際のbrowser/engine version、
-assistive-technology version、locale pack、display scalingを`validation.ja.md`へfreezeする。必須platform cellは次の3つである。
+assistive-technology version、OS locale pack、display scalingを`validation.ja.md`へfreezeする。UI言語はmatrixの軸ではない: productはUI言語を1つだけ出荷するため（2026-07-24 修正）、OS locale packはdimensionとして実行せず環境factとしてfreezeする。必須platform cellは次の3つである。
 
 | Platform ID | Supported OS、engine、assistive technology |
 |---|---|
@@ -116,7 +116,6 @@ checkをすべて再実行する。
 
 各`MANUAL-*` IDを次の閉じた集合の直積で実行する。
 
-- **Locale**: `L1` English（`en`）、`L2` Japanese（`ja`）。
 - **Viewport/profile**: `V1` 1440×900 CSS px landscape、100% zoom、default spacing、
   `V2` 390×844 CSS px portrait、100%、default spacing、`V3` 844×390 CSS px landscape、
   100%、default spacing、`V4` 1280×720 CSS px landscape、200% browser zoom、default
@@ -138,14 +137,14 @@ checkをすべて再実行する。
   full client-data purge、greater content epoch、non-nullな全inspection-data fence、control-onlyのdraining/failed/retry/join state、
   unconfirmed cleanupのrestart next step、terminal recovery、Repository generationをunchangedのままGlobal sequence全体を
   破棄する`remove-active-state`、committed stateを変えない未公開initial enableだけの
-  `cleanup-only` caseを扱う明示disable、`S8` 並行表示されるscan/status update、exactな
-  `{ sessionId, globalContentEpoch, globalDisableInProgress }` liveness stateとrender前purge transition、disable fenceがnullの場合だけの
+  `cleanup-only` caseを扱う明示disable、`S8` 並行表示されるscan/status update、greater epochまたはnon-null fenceでの
+  render前purge transition、disable fenceがnullの場合だけの
   Resume inspection、pause/stop/hideまたはuser-frequency control、error recovery、focus restoration。
 - **Input profile**: `I1` AT browse/virtual modeとfocus modeを含むkeyboardのみ、`I2` click activationとcancellationを
   通るprimary pointer、`I3` mouse hoverに続くkeyboard focus、dismissal、pointer transfer、persistence check。
 
-Cell keyは`(MANUAL-ID, L#, P#, V#, M#, S#, I#)`である。閉じた直積は、明示的なN/A resultを持つcellも含め、
-各`MANUAL-*` IDにつき`2 × 3 × 5 × 3 × 8 × 3 = 2,160`個のkey付きcellを持つ。Applicableな全cellを実行し、sampling、platformの
+Cell keyは`(MANUAL-ID, P#, V#, M#, S#, I#)`である。閉じた直積は、明示的なN/A resultを持つcellも含め、
+各`MANUAL-*` IDにつき`3 × 5 × 3 × 8 × 3 = 1,080`個のkey付きcellを持つ。Applicableな全cellを実行し、sampling、platformの
 持ち回り、自動evidenceによる代用を禁止する。Trigger componentまたはOS capabilityが客観的に存在せず、特定cellに
 criterionを適用できない場合、その個別cellをN/Aとして、正確な技術的rationaleとevidenceを記録する。空欄、暗黙、
 group単位のN/Aはgateを失敗させる。各実行cellの期待観察は、対応するmatrix行のproduct固有受入条件である。

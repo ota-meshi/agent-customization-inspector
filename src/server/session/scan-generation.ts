@@ -16,7 +16,11 @@ import type { SerializedDiagnostic } from '../../shared/diagnostics';
  *  - 'repository-scan'  the automatic initial scan or an explicit rescan of
  *                       the Repository Source (FR-030)
  */
-export type RepositoryTransactionKind = 'bootstrap' | 'repository-scan';
+export type RepositoryTransactionKind =
+  /** Synchronous generation 0 with no filesystem I/O or request ID. */
+  | 'bootstrap'
+  /** An automatic initial scan or explicit Repository rescan (FR-030). */
+  | 'repository-scan';
 
 /**
  * Which atomic commit produced a Global generation, in lifecycle order:
@@ -28,7 +32,11 @@ export type RepositoryTransactionKind = 'bootstrap' | 'repository-scan';
  * Global disable is deliberately not a kind: it discards the whole Global
  * sequence instead of committing one (FR-042).
  */
-export type GlobalTransactionKind = 'global-enable' | 'global-scan';
+export type GlobalTransactionKind =
+  /** The consent commit that creates and atomically publishes the Global sequence. */
+  | 'global-enable'
+  /** An explicit rescan of enabled Global Sources. */
+  | 'global-scan';
 
 /**
  * The committed generation's public status (spec.md § Closed Scan
@@ -42,7 +50,11 @@ export type GlobalTransactionKind = 'global-enable' | 'global-scan';
  * generation at all — failure is the absence of a commit plus the retained
  * previous snapshot's stale marking (FR-030).
  */
-export type GenerationOutcome = 'complete' | 'partial';
+export type GenerationOutcome =
+  /** Every admitted file has a complete result. */
+  | 'complete'
+  /** At least one file has a file-confined diagnostic-only outcome (FR-028). */
+  | 'partial';
 
 /** Fields shared by both sequences' committed generations. */
 interface ScanGenerationBase {

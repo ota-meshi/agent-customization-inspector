@@ -38,8 +38,10 @@ together must not re-verify each other at user runtime (Constitution Principle I
 Startup work is subject to
 the capacity of Node.js, the operating system, and the execution environment; the product
 does not impose byte or item-count limits, and no host bind precedes validation.
-The executable shim starts with the exact BOM-free, LF-terminated first line
-`#!/usr/bin/env node`; this is part of the package contract, not a release-time repair.
+The `src/server/cli.ts` entry starts with the exact BOM-free, LF-terminated first line
+`#!/usr/bin/env node`, which tsdown preserves in the bundle; this is part of the package
+contract, not a release-time repair. There is no separate executable shim — `bin` maps
+directly to the packaged `dist/cli.mjs` (§ 2).
 
 Cross-platform CI runs the same Node.js filesystem integration cases on
 macOS, Linux, and Windows; the published package itself contains no platform-specific
@@ -416,9 +418,10 @@ because each loses which official assertion applies to which subject.
 The selected Repository root remains the immutable Repository inventory boundary. The CLI
 captures `process.cwd()` once and uses that exact string by default. `--cwd` is accepted
 with a repeated option resolving to the parser's last value: an absolute option is kept as given and a relative option is resolved
-against the captured invocation directory (FR-001). A missing or empty value
-fails with a fixed actionable startup error before session/browser
-creation, the CLI never calls `process.chdir()`, and bootstrap creates the one
+against the captured invocation directory (FR-001). An explicit empty value fails with a
+fixed actionable, source-value-free startup error before session/browser creation; a missing
+value is rejected there by Gunshi's typed argument validation, which the product does not
+duplicate. The CLI never calls `process.chdir()`, and bootstrap creates the one
 non-authorizing Repository Source before any scan I/O. Vendor runtime roots,
 walk directions, target files, trust, enablement, selection, installation, and product
 surface are independent behavior/strategy facts rather than implications of a matcher or
@@ -804,35 +807,34 @@ that stored raw value, never reverses display text and never rereads the environ
 *(superseded 2026-07-23: the session-keyed consent digest was removed with the
 self-verification cleanups — the preview is the one server-retained record identified by
 its opaque `previewId`, and enable names that ID; the capture rules and raw/display
-retention remain.)* Invoke
-the liveness route only on observable lifecycle transitions: initial
-load, return to visible/focused state, explicit Resume, and adoption of a fresh
-session. Allow at most one check in flight and let the browser/network/runtime own request
-settlement. This single-flight rule serializes state adoption so stale responses cannot win;
-it is a functional coordination invariant, not a resource-admission or validation ceiling.
-Define no polling interval, request timeout, retry timer, or memory lease. Use a
-shared `clientDataEpoch`-guarded purge for network/runtime rejection, session
-mismatch, hidden/page lifecycle events, a Global-disable click before request dispatch, and
-observation of a greater Global content epoch or non-null disable fence; it removes all
-DOM/DTO/editor/warning state and prevents late responses from restoring content. Process loss
-on a continuously visible idle page has no product-defined wall-clock detection guarantee and
-is handled by the next lifecycle signal or ordinary request outcome. A hidden-page purge
-retains no session data. On visibility return, the SPA requests a fresh session over the
-RPC channel and adopts its returned `sessionId` as the new liveness
-baseline without retaining or comparing the purged ID. A successful liveness body is exactly
-`{ sessionId, globalContentEpoch, globalDisableInProgress }`: an older epoch is rejected,
-equal epoch plus a null fence confirms the baseline, and a greater epoch or non-null fence
-purges before render and enters client-side `RecoveryViewState`. A non-null fence makes the session
-route return the exact control-only `GlobalFenceRecoverySnapshot`; a null fence makes it
-return a normal full `InspectionSession`, from which the recovering client adopts only the
-control/error projection and discards the inspection graph. Active consent
-makes disable available from that view immediately; the preview route returns the exact
-frozen preview so retry controls can be reconstructed without browser persistence or an
-environment reread. The recovery view offers Resume inspection only when the fence is null
-and a normal full snapshot can be fetched; that explicit action re-fetches a matching
-session and builds a default fresh inventory summary without restoring
-old detail, comparison, editor, selection, filter, authored source, or acknowledgement. A
-later detail/comparison open requires a new acknowledgement.
+retention remain.)* Define no separate liveness RPC or probe. devframe reports host loss
+through its own connection-status signal without being queried. The SPA installs no
+visibility, focus, or unload listener, and a page-lifecycle event triggers neither a purge
+nor a refetch. Define no polling interval, request timeout, retry timer, or memory lease.
+A current network/runtime RPC rejection, a transport-reported channel loss, or a session
+mismatch invokes the shared `clientDataEpoch`-guarded purge before the ended view is
+rendered. A Global-disable click invokes the same purge before request dispatch, and
+observing a greater Global content epoch or non-null disable fence in an ordinary response
+repeats it before rendering and enters client-side `RecoveryViewState`. The purge removes
+all DOM/DTO/editor/warning state and prevents late responses from restoring content; a
+settlement whose request token is no longer current or whose captured `clientDataEpoch`
+predates the purge is a no-op, including a late rejection. The transport signal has no
+product-defined delivery deadline, so process loss on a continuously idle visible page has
+no product-defined wall-clock detection guarantee.
+
+A non-null fence makes the session route return the exact control-only
+`GlobalFenceRecoverySnapshot`; a null fence makes it return a normal full
+`InspectionSession`, from which the recovering client adopts only the control/error
+projection and discards the inspection graph. Recovery adopts the returned `sessionId` as
+the new baseline without retaining or comparing the purged ID. Active consent makes disable
+available from that view immediately; the preview route returns the exact frozen preview so
+retry controls can be reconstructed without browser persistence or an environment reread.
+The recovery view offers Resume inspection only when the fence is null and a normal full
+snapshot can be fetched; that explicit action re-fetches a matching session and builds a
+default fresh inventory summary without restoring old detail, comparison, editor,
+selection, filter, authored source, or acknowledgement. A later detail/comparison open
+requires a new acknowledgement. This recovery is driven by the Global-disable
+purge/epoch/fence path, not by page visibility or navigation.
 
 The session API returns complete authored content only for an explicit
 detail request. Sensitive-content acknowledgement is a mandatory bundled-SPA presentation
@@ -842,16 +844,18 @@ API, resets on document reload and the central full-session purge, and gates eve
 route, file/Source, and generation cleanup is not that purge and may retain acknowledgement
 for the loaded document; Global disable is the explicit full-purge exception.
 
-Every SessionSnapshot/FileDetail request captures the client epoch, the owning sequence's
-generation — the session snapshot exposes `repositoryGeneration` and a nullable
-`globalGeneration` — plus an exact request token and file ID where applicable. Older
-snapshots are ignored; before adopting a newer generation of either sequence the client
-increments the epoch and aborts/disposes the detail, comparison, and editor objects owned
-by that sequence's replaced generation, while the other sequence's committed views stay
-valid. Equal-generation snapshots require their current token.
-File detail is adopted only if the epoch and the owning sequence's generation still match
-and the readable file still exists. The server captures each envelope's generations and
-payload together under the coordinator lock, so delayed network delivery cannot mix them.
+Every ordinary response is checked against its exact request token, captured
+`clientDataEpoch`, adopted `sessionId`, `globalContentEpoch`, and null disable fence before
+it can mutate browser state. Every SessionSnapshot/FileDetail request additionally captures
+the owning sequence's generation — the session snapshot exposes `repositoryGeneration` and
+a nullable `globalGeneration` — and a file ID where applicable. Older snapshots are
+ignored; before adopting a newer generation of either sequence the client increments the
+epoch and aborts/disposes the detail, comparison, and editor objects owned by that
+sequence's replaced generation, while the other sequence's committed views stay valid.
+Equal-generation snapshots require their current token. File detail is adopted only if the
+epoch and the owning sequence's generation still match and the readable file still exists.
+The server captures each envelope's generations and payload together under the coordinator
+lock, so delayed network delivery cannot mix them.
 Each automatic or explicit scan also receives an opaque `scanRequestId`. Source progress,
 the rescan admission response, and a successful source-scan generation carry that same ID;
 only the bootstrap generation carries null, and Global disable commits no generation at
@@ -888,9 +892,11 @@ bounded by the trusted-workspace model — the session serves only what the laun
 can already read. The server-retained frozen preview named by consent still proves which
 lexical roots the user saw before the host touches them, and recoverable Node.js or browser
 failures during preview construction fail without authorizing an unseen value.
-Lifecycle-triggered liveness checks and ordinary request outcomes expose session loss at
-observable boundaries without persisting data or defining a product timer; immediate
-hidden-page purge avoids background retention, and a continuously visible idle page
+devframe's connection-status signal and guarded current RPC outcomes expose session loss
+without persisting data or defining a product timer. Page lifecycle is not a session-loss
+signal and causes no purge or refetch; a discarded document releases its own references,
+while a bfcached document retains only the same user's view of their own files on their own
+machine under the accepted trusted-workspace model. A continuously idle visible page
 intentionally has no product-defined wall-clock process-loss guarantee.
 The recovery DTO keeps all-failed Global consent visible even when no Source exists, while
 the separate preview avoids repeating a potentially large display payload in every session retrieval.
@@ -909,10 +915,10 @@ the separate preview avoids repeating a potentially large display payload in eve
   where the printed one-time-code round-trip only gets in the way.
 - General `--host` support and CORS were rejected because remote access is out of scope;
   the host binds the loopback `localhost` only.
-- A product-defined push protocol on top of the RPC channel was rejected because
-  lifecycle-triggered liveness checks, ordinary request outcomes, and the immediate
-  hidden/page purge provide the required observable teardown signals without a product
-  timer.
+- A product-defined push or liveness protocol on top of the RPC channel was rejected
+  because devframe already reports host loss and every ordinary response applies the
+  request-token, client-epoch, session, Global-epoch, and fence guards. The supported
+  single-browser-session use has no requirement for proactive second-tab observation.
 - The project-owned browser-launch adapter (a fixed `/usr/bin/open`/`xdg-open` spawn with
   an ambient environment allowlist) was superseded together with the hand-written host:
   browser opening is devframe policy, and its opener receives only the resolved local
@@ -948,9 +954,9 @@ Global-rescan commands. Every inspection-data route then returns
 `409 global-disable-pending`; the session route returns only
 `GlobalFenceRecoverySnapshot`. Every inspection-data success binds its captured epoch and
 rechecks an unchanged epoch plus a null fence under the coordinator lock at final
-publication. Every liveness success instead binds exact `{ sessionId, globalContentEpoch,
-globalDisableInProgress }` values from one current coordinator-lock snapshot at publication
-and returns a current non-null fence. The
+publication. The disabling page learns the fence from its own disable response and
+subsequent session fetches; there is no separate liveness response or second-tab
+projection. The
 barrier sets `globalControl.state: disabling` and empties pending/retry arrays only when
 active consent/control exists; an operation-local initial enable has a null control
 projection but a visible fence. It aborts/discards active uncommitted work and queued
@@ -1017,8 +1023,9 @@ operation cannot be recovered from or bounded by the application contract.
 Disable, shutdown, and generation replacement revoke publication authority independently of
 elapsed time. Results that settle after revocation are discarded, acquired resources are
 released when the underlying operation permits cleanup, and revoked data cannot repopulate
-the session. The liveness path remains independently scheduled by Node.js, but no claim is
-made that it can survive runtime exhaustion or a blocked/terminated process.
+the session. Session RPC work remains scheduled by Node.js and devframe may report channel
+loss, but no product probe or timer can survive runtime exhaustion or a blocked/terminated
+process, and no such wall-clock guarantee is claimed.
 
 **Rationale**: Serialization plus atomic per-sequence generations prevent lost updates and
 mixed old/new results. Repository and Global keep independent sequences because their
@@ -1057,7 +1064,7 @@ case, and all four Playwright user stories. Evaluate SC-008 against the complete
 WCAG 2.2 Level A/AA applicability matrix and objective pass rule in
 [the accessibility acceptance contract](contracts/accessibility-acceptance.md), combining
 criterion-specific stable check IDs with the specified automated, keyboard, and manual
-evidence. Its closed manual matrix freezes the packed candidate, both locales, three
+evidence. Its closed manual matrix freezes the packed candidate, three
 supported OS/browser/assistive-technology cells, responsive/visual profiles, workflow
 states, and input profiles; every applicable cell is recorded, and a frozen-value change
 reruns all manual checks. An axe severity result alone is
@@ -1095,10 +1102,12 @@ one per tool, exactly one root and Source-relative Path namespace per Source, ex
 credential display, no reveal controls, and no environment-variable substitution.
 Lifecycle fixtures cover concurrent unresolved failures for all four Sources, per-Source
 clear/replace/removal, and automatic-first-failure current state. Browser fixtures cover
-lifecycle-triggered checks, browser/network/runtime rejection, hidden/page purge, port reuse
-with a mismatched session, the absence of a wall-clock guarantee for process loss on a
-continuously visible idle page, and paused snapshot/detail delivery across scan commits and disable barriers with epoch,
-owning-sequence generation, token, and file-existence rejection of late responses. Preview fixtures cover
+current browser/network/runtime RPC rejection, transport-reported channel loss, port reuse
+with a mismatched session, the absence of any page-lifecycle listener, purge, or refetch,
+the absence of a wall-clock guarantee for process loss on a continuously idle visible page,
+and paused snapshot/detail delivery across scan commits and disable barriers with
+request-token, `clientDataEpoch`, session, Global-epoch/fence, owning-sequence generation,
+and file-existence rejection of late responses and rejections. Preview fixtures cover
 raw/display escape collisions and prove enable uses the stored raw root. Matcher fixtures
 also prove Global exact targets never enumerate the root, fixed subtrees touch only their
 allowed descendants, and neighboring paths receive zero I/O. Raw-path fixtures read an
@@ -1545,7 +1554,7 @@ messages. Only fixed codes, protocol-owner-generated opaque
 IDs, booleans/enums, safe integers, and evidence digests enter canonical safe-payload bytes.
 Each request additionally uses the exact privacy-safe route/target classifier `targetClass`:
 `static-manifested-asset | static-spa-shell | static-client-route-fallback | api-get-session |
-api-get-session-liveness | api-get-file | api-post-repository-rescan |
+api-get-file | api-post-repository-rescan |
 api-get-global-consent-preview | api-post-global-consent-preview | api-post-global-enable |
 api-post-global-rescan | api-post-global-disable | other-loopback | remote | mcp |
 unclassifiable | not-applicable`. A closed truth table allows only the authorized-static and declared-API combinations across authority,
@@ -2047,9 +2056,10 @@ integrity, or confuse presentation with API authorization.
    synchronously contains the stable, non-authorizing Repository Source; admission is later.
    *(superseded 2026-07-22: FR-001 keeps an absolute `--cwd` as given and resolves a
    relative one against the captured `process.cwd()`; the shared `LexicalAbsoluteRootParts`
-   parser and the Windows spelling taxonomy were removed. The single capture, the
-   no-`chdir` rule, and the fixed startup error for a missing/empty option
-   remain (a repeated option is later resolved by the parser's last-wins, superseded 2026-07-23).)*
+   parser and the Windows spelling taxonomy were removed. The single capture and
+   no-`chdir` rule remain. Gunshi's typed argument validation owns a missing value, while
+   only an explicit empty value receives the product's fixed startup error; a repeated
+   option is later resolved by the parser's last-wins (superseded 2026-07-23).)*
 2. Global consent is one selector-free all-tools action. Initial processing always evaluates
    all three frozen preview entries; retry derives the complete current server-side
    `retryableTools` set: non-pending unpublished `admitted` controls plus `rejected` controls

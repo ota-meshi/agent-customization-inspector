@@ -48,7 +48,7 @@
 - [x] QR-005が`documentationStatus`を`documented | partially-documented | unknown | conflict`へclosedにし、重複のないlifecycle qualifierを`preview`、`experimental`、`deprecated`順で保持し、empty qualifierを`stable`でなくlifecycle claimなしと定義し、`documentation-conflict`を`ConditionFact.status`専用にし、provenance/relationshipの`EvidenceAssessment[]`へ全subject recordをlossyな縮約なしで保持することを要求している
 - [x] 固定browser helperがinspection由来のpath/contentを受け取らず、closedなambient platform key setだけを直接copyでき、Source rootとのlexical一致がprovenanceを変えずauthorityを与えずhandlerを選択しない
 - [x] SC-008が、Level A/AA全基準のbilingual applicability matrix、criterion固有の非適用理由、automated/manual check mapping、0件ではないapplicable-criterion denominator、failure 0件の合格ruleを定義している
-- [x] ApplicableなSC-008 rowがcriterion固有のstable check IDとexpected observationを持ち、closed manual matrixが両locale、release/environment version、responsive/visual profile、workflow state、input profileを固定して、未記録のsamplingを許さない
+- [x] ApplicableなSC-008 rowがcriterion固有のstable check IDとexpected observationを持ち、closed manual matrixがrelease/environment version、responsive/visual profile、workflow state、input profileを固定して、未記録のsamplingを許さない
 - [x] WCAG 2.2 criterion 2.2.2が、他contentと並行する自動更新scan/status informationをapplicableとして扱い、criterion準拠のessential exceptionを立証しない限り、検証済みpause/stop/hideまたはuser-frequency mechanismを要求する
 
 ## 機能の準備状況
@@ -135,6 +135,11 @@
   taxonomyをresearch、verification table、task noteへ伝播した。さらに4つのlifecycle trigger、non-trigger test、
   single-flight coordination、stale settlement rejection、timerなしの実装ownershipをT042とT049へ割り当てた後、
   すべての項目に合格した。
+- 検証iteration 21と22に記録したliveness固有の結論は歴史的なもので、2026-07-24にsupersedeされた。Current
+  designには独立したliveness probeもlifecycle-triggered checkもなく、page-lifecycle eventをpurge/refetch
+  triggerにせず、host lossはdevframeのtransport signalで観測する。全ordinary responseはrequest token、
+  client epoch、session identity、Global epoch、fenceでguardする。両iterationのpublication-taxonomyに関する
+  結論は引き続き有効である。
 - 2026-07-20の検証iteration 23では、日本語T075とT321へ省略されていたbinary、BOM、typed literal、malformed
   extraction、tree-token UTF-16 range、environment-owned parser capacity、source-value-free extractionの義務を復元した。
   その後、新しいcontext-isolated分析でcritical/high findingが0件であることを確認した。

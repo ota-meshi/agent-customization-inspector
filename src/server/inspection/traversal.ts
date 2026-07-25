@@ -22,7 +22,7 @@
 // the trusted-workspace model accepts.
 import { lstat, readFile, readdir, realpath, stat } from './fs-io';
 import { join } from 'node:path';
-import { decodeSourceBytes } from '../../shared/entities';
+import { decodeSourceBytes, type ReadableFileEncoding } from '../../shared/entities';
 import {
   assertLoadableTraversalPlan,
   createProgramLevel,
@@ -42,11 +42,12 @@ import {
  *                  unreadable
  */
 export type CandidateOutcome =
+  /** A readable candidate carrying its complete decoded source. */
   | {
       /** Readable text with its decode classification. */
       readonly kind: 'readable';
       /** Whether replacement decoding occurred; see spec.md § Byte Decode Outcomes. */
-      readonly encoding: 'utf-8' | 'utf-8-replaced';
+      readonly encoding: ReadableFileEncoding;
       /** Whether one leading UTF-8 BOM was recorded and removed (FR-025). */
       readonly hadLeadingBom: boolean;
       /** Complete decoded text as authored. */
@@ -54,12 +55,14 @@ export type CandidateOutcome =
       /** Exact byte count of the one completed read. */
       readonly sizeBytes: number;
     }
+  /** A NUL-containing candidate that is diagnostic-only. */
   | {
       /** NUL-containing diagnostic-only content (FR-025). */
       readonly kind: 'binary';
       /** Exact byte count of the one completed read. */
       readonly sizeBytes: number;
     }
+  /** A candidate whose bytes could not be read or classified. */
   | {
       /** The read failed before bytes could be classified (FR-024). */
       readonly kind: 'unreadable';
@@ -103,6 +106,7 @@ export interface NormalizationCollision {
  *                       source-scoped Diagnostic and no partial inventory
  */
 export type TraversalScanResult =
+  /** A completed traversal with its ordered candidates and rejected collisions. */
   | {
       /** Traversal completed (possibly with file-confined outcomes). */
       readonly kind: 'scanned';
@@ -111,6 +115,7 @@ export type TraversalScanResult =
       /** Rejected normalization-collision groups (members received no read). */
       readonly collisions: readonly NormalizationCollision[];
     }
+  /** A root that could not be enumerated as a readable directory. */
   | {
       /** The root failed enumeration; the attempt fails (FR-002). */
       readonly kind: 'root-unreadable';

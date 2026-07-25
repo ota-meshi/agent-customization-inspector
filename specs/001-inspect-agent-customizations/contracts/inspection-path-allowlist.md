@@ -65,9 +65,10 @@ The Repository boundary is the selected root: the exact one-time captured invoca
 `process.cwd()` when `--cwd` is omitted. `--cwd` is accepted, a repeated option resolving
 to the parser's last value; an absolute
 value is kept as given, and a relative value is resolved against the captured invocation
-directory with the active platform's `node:path.resolve`. A missing or empty value
-fails with a fixed actionable startup error before session/browser
-creation (FR-001). Selection performs zero filesystem/network I/O and no `chdir`.
+directory with the active platform's `node:path.resolve`. An explicit empty value fails
+with a fixed actionable, source-value-free startup error before session/browser creation;
+a missing value is rejected at the same boundary by Gunshi's typed argument validation,
+which the product does not duplicate (FR-001). Selection performs zero filesystem/network I/O and no `chdir`.
 Generation 0 contains the one Repository Source created with zero filesystem I/O; its
 escaped root label carries no read authority, and the first scan reads the retained
 selected root, failing with the source-scoped `root-unreadable` Diagnostic when the root
@@ -425,8 +426,8 @@ Contract and fixture validation must prove all of the following:
    ordinary independent files with no grouping, alias, or read-once behavior.
    Cross-Source/attempt/generation fixtures prove independent reads.
 8. Root-selection fixtures cover the captured one-time `process.cwd()`, an absolute
-   `--cwd` kept as given, a relative `--cwd` resolved against the capture, and the fixed
-   startup error for a missing or empty option, with zero `chdir` calls and
+   `--cwd` kept as given, a relative `--cwd` resolved against the capture, the fixed
+   startup error for an explicit empty option, and Gunshi's typed missing-value rejection, with zero `chdir` calls and
    zero selection-time filesystem I/O. Traversal fixtures on every supported OS prove that
    a symlinked customization file is read transparently and displays its linked content, a
    link whose target is missing or unreadable yields `file-unreadable` in a `partial`

@@ -8,6 +8,7 @@ import {
   sortDiagnostics,
   serializeDiagnostic,
 } from '../../../src/shared/diagnostics';
+import type { DiagnosticCode } from '../../../src/shared/diagnostics';
 
 describe('closed diagnostic registry', () => {
   it('contains exactly the trusted-workspace outcome codes', () => {
@@ -29,6 +30,24 @@ describe('closed diagnostic registry', () => {
     }
     expect(DIAGNOSTIC_REGISTRY['path-normalization-collision'].scope).toBe('session');
     expect(DIAGNOSTIC_REGISTRY['path-normalization-collision'].ownerKind).toBe('candidate-file');
+  });
+
+  it('gives every code a fixed problem statement and practical next step', () => {
+    const messages: Record<DiagnosticCode, string> = {
+      'root-unreadable':
+        'The selected root does not exist or cannot be read as a directory. Check the path and run the inspector again from a readable directory.',
+      'file-unreadable':
+        'This file could not be read. It may have been removed or its permissions may deny reading; other files were unaffected. Check that the file exists and is readable, then rescan.',
+      'file-content-binary':
+        'This file contains NUL bytes, so it is recorded without source text and nothing was parsed from it. Use a binary-capable viewer if you need to inspect its contents.',
+      'recognition-parse-failed':
+        'One recognition could not be parsed, so its derived metadata and relationships are omitted. Review the complete source text that remains available, then rescan after correcting the file if you need the derived metadata.',
+      'path-normalization-collision':
+        'Two entries normalize to the same display path, so they could not be listed unambiguously and were rejected. Rename one entry so the normalized paths differ, then rescan.',
+    };
+    for (const [code, message] of Object.entries(messages) as [DiagnosticCode, string][]) {
+      expect(DIAGNOSTIC_REGISTRY[code].message).toBe(message);
+    }
   });
 });
 

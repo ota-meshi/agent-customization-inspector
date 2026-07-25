@@ -18,7 +18,12 @@ import {
   type DiagnosticRecord,
   type LifecycleOwnerKey,
 } from '../../shared/diagnostics';
-import type { CustomizationFileDto, SerializedDiagnostic } from '../../shared/api-types';
+import type {
+  CustomizationFileDto,
+  ParseSummary,
+  RecognitionParseStatus,
+  SerializedDiagnostic,
+} from '../../shared/api-types';
 import type { GenerationOutcome } from '../session/scan-generation';
 import type { TraversalScanResult } from './traversal';
 
@@ -34,6 +39,7 @@ import type { TraversalScanResult } from './traversal';
  *                     and no generation (FR-002)
  */
 export type ScanPublication =
+  /** A complete traversal that may commit one atomic generation. */
   | {
       /** Traversal completed and one atomic generation may commit. */
       readonly kind: 'publishable';
@@ -44,6 +50,7 @@ export type ScanPublication =
       /** The attempt's serialized diagnostics. */
       readonly diagnostics: readonly SerializedDiagnostic[];
     }
+  /** An unreadable Source root that fails without a generation commit. */
   | {
       /** The Source attempt failed; nothing commits (FR-002). */
       readonly kind: 'source-failed';
@@ -63,7 +70,7 @@ export interface CandidateRecognitionOutcome {
    * Closed extraction state: 'not-attempted' means no allowlisted extractor
    * applies, 'failed' is all-or-nothing for this recognition only (FR-028).
    */
-  readonly parseStatus: 'not-attempted' | 'parsed' | 'failed';
+  readonly parseStatus: RecognitionParseStatus;
 }
 
 /** Input of {@link assembleScanPublication}: one Source's completed traversal. */
@@ -95,7 +102,7 @@ export interface ScanPublicationInput {
 // the last three projections.
 function projectParseSummary(
   recognitions: readonly CandidateRecognitionOutcome[],
-): 'not-applicable' | 'all-parsed' | 'mixed' | 'all-failed' {
+): ParseSummary {
   const parsed = recognitions.some((recognition) => recognition.parseStatus === 'parsed');
   const failed = recognitions.some((recognition) => recognition.parseStatus === 'failed');
   if (parsed && failed) {

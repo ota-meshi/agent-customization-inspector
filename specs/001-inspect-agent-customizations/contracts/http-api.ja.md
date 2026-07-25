@@ -50,13 +50,14 @@ customization-selected destination、別machineへの調査content送信は禁�
    `app.baseURL: '/'`、CDN URLなしを使うため、shellは全client routeで変更なしに動作する。
    Static servingはpackaged UI output directoryの外へ到達せず、inspected fileへfallbackしない。
 4. 起動時にhostは正確な`http://localhost:<port>/` URLを起動元terminalへ1回表示する。自動browser
-   openingはdevframe-ownedかつFR-001に基づくbest-effortであり、`--no-open`でdisableでき、
-   disabled/unsupported/failedのhelperはfixed warningを出してserverと表示済みURLをusableに保つ。
-   Helperはinspection由来のcontentもpathも受け取らない（FR-022）。任意のclient routeのreload/
-   direct navigationにtokenは不要である。Serveされるshellはsession dataをembedせず、新しく
-   loadしたSPAはRPC channelだけを通じてstateをadoptする。
-5. 固定help/version text、必須の起動元terminal向け1回限りlaunch line、固定actionable startup
-   warningのほかに、hostはtelemetryもoperational-event streamも定義しない。FR-022が既に起動
+   openingはdevframe-ownedかつFR-001に基づくbest-effortであり、`--no-open`はopeningを何も出力
+   せずに抑止する。Unsupportedまたはfailedのhelperはstartupを妨げず、表示済みURLがfallbackとして
+   残る。devframeはhelper outcomeを公開しないため、productはbrowser
+   opening outcomeのwarningを捏造しない。Helperはinspection由来のcontentもpathも受け取らない
+   （FR-022）。任意のclient routeのreload/direct navigationにtokenは不要である。Serveされる
+   shellはsession dataをembedせず、新しくloadしたSPAはRPC channelだけを通じてstateをadoptする。
+5. 固定help/version textと必須の起動元terminal向け1回限りlaunch lineのほかに、hostはtelemetryも
+   operational-event streamも定義しない。FR-022が既に起動
    machine外への送信を禁止している。Terminal/UI outputを読むのはinspected fileを所有する同じ
    userであるため、failureは通常どおり報告する。すなわち実際のerror messageを、product定義の
    content filterなしで表示または返却する。
@@ -73,7 +74,6 @@ customization-selected destination、別machineへの調査content送信は禁�
 | Function | Kind | Purpose |
 |---|---|---|
 | `agent-customization-inspector:get-session` | read | Full `InspectionSession` snapshot、またはfence中のcontrol-only `GlobalFenceRecoverySnapshot` |
-| `agent-customization-inspector:get-liveness` | read | Exactな`{ sessionId, globalContentEpoch, globalDisableInProgress }` liveness projection |
 | `agent-customization-inspector:get-file-detail` | read | Active-generationの`FileDetail` 1件 |
 | `agent-customization-inspector:rescan-repository` | command | 明示Repository scan command 1件の受理 |
 | `agent-customization-inspector:get-global-consent-preview` | read | Currentまたはfrozenの`GlobalConsentPreview` |
@@ -114,8 +114,8 @@ payloadを構築し、immutable success resultをbindする前にsession coordin
 ならない。Disable受理前に完全にbind済みのresultはboundedなpre-fence-authorized responseとして
 残り得るが、browserはgreater epochまたはfenceを観測後にこれをrejectまたはpurgeする。
 
-通常のresult shapeは、後述するexactなcontrol-only `GlobalFenceRecoverySnapshot`またはexact
-liveness projectionには適用しない。どちらもgenerationまたはinspection graphを含まない。
+通常のresult shapeは、後述するexactなcontrol-only `GlobalFenceRecoverySnapshot`には適用しない。
+これはgenerationもinspection graphも含まない。
 
 Inspection graphを返さないpreview/command successは`{ globalContentEpoch, data }`を
 使い、result-levelのgeneration fieldを省略する。文書化済みresult内部のgenerationは明示的なcommand
@@ -171,10 +171,11 @@ snapshotは保持済みIDのままreadableに残る。Automatic startupのthrow/
 
 Parameters: なし。
 
-Current session snapshotとscan progressを返す。Source state変化時はclientがこのfunctionを
-invokeし、lifecycle-triggeredなsession verificationには後述の軽量liveness functionを使う。
-Productはinspection dataのtimer、filesystem watcher、server-initiated pushを定義しない。devframe
-channelは宣言済みfunctionのrequest/responseとしてだけ使う。
+Current session snapshotとscan progressを返す。clientは初回adoption時とSource state変化時に
+このfunctionをinvokeする。独立したliveness probeもpage-lifecycleでの再取得も存在しない
+（2026-07-24 修正、§ Concurrency and lifecycleを参照）。Productはinspection dataのtimer、
+filesystem watcher、server-initiated pushを定義しない。
+devframe channelは宣言済みfunctionのrequest/responseとしてだけ使う。
 
 Result data:
 
@@ -211,7 +212,7 @@ InspectionSession
 
 ```text
 GlobalFenceRecoverySnapshot
-├── sessionId, liveness, globalContentEpoch
+├── sessionId, globalContentEpoch
 ├── globalControl, globalEnableInProgress, globalDisableInProgress（requiredかつnon-null）
 └── toolFailureDiagnostics[]
 ```
@@ -287,7 +288,7 @@ shipped closed kind orderを使い、opaque IDをtie-breakにしない。
 SPAは単調増加する`clientDataEpoch`（中央full client-data purgeだけがincrementする）、sequence
 ごとのcurrent generation（`currentRepositoryGeneration`と`currentGlobalGeneration`）、
 state-bearing requestごとのopaque request tokenを所有する。どちらかのsequenceについてolderな値を
-運ぶsession resultは無視する。Equal-generationsのresultはtokenがlatest poll tokenのままで、
+運ぶsession resultは無視する。Equal-generationsのresultはtokenがlatest request tokenのままで、
 capture済みepochが`clientDataEpoch`と一致する場合だけadoptする。Valid resultがあるsequenceの
 newer generationを運ぶ場合、SPAはそのsequenceのoutstanding data requestをabortし、そのsequence
 のgeneration-owned editor/modelと、そのsequenceのfileを含むdetail/comparison stateだけを
@@ -315,7 +316,7 @@ sessionをusableに保ったままsource-scopedな`root-unreadable` Diagnostic�
 しない。
 
 Sensitive-content warningはclient所有とする。detail/comparison surfaceを開くとcredentialを含む
-可能性があるcompleteなauthored valueを表示することはSPAの二言語catalogの固定textが説明し、
+可能性があるcompleteなauthored valueを表示することは、それをrenderするcomponentの固定English textが説明し、
 APIはwarning fieldを送らない。
 Protected valueには完全なsource text、declared authored metadata、authored relationship target、
 comparisonの両sideを含む。SPAは
@@ -375,41 +376,6 @@ disable commitまで保持する。Failed `batchStatus`のerror messageは、act
 supersedeし、Global disableはremoveする。1 toolを識別せず、`StaleSourceFailure`を作らない。
 
 Outcomes: fullまたはfenced DTO。
-
-### `agent-customization-inspector:get-liveness`
-
-Parameters: なし。
-
-Success resultはexactに`{ sessionId, globalContentEpoch, globalDisableInProgress }`とする。
-Handlerは最終publish時に3値すべてを1つのcurrent coordinator-lock snapshotから取得する。
-Inspection-data successと異なりfence nullを要求せず、別tabがdisableを観測できるようcurrent
-non-null projectionも返す。SPAはinitial session adoption、visible/focused pageへの復帰、明示的
-Resume、fresh session adoptionの場合だけこのfunctionをinvokeし、in-flight invocationは最大1件と
-する。このsingle-flight ruleはstale resultを拒否するためstate adoptionをserializeするfunctional
-coordination invariantであり、resource admissionまたはvalidation ceilingではない。Polling
-interval、request timeout、retry timer、memory leaseを定義せず、request settlementは
-browser/network/runtimeが所有する。`sessionId`一致、equal epoch、null disable projectionでcurrent
-baselineをestablishまたはconfirmする。Older epochはrejectする。Baseline confirmまたはrenderの前に
-greater epochまたはnon-null projectionを観測した場合、中央full purgeを実行してnew epochをadopt
-し、control-only recoveryへ入る。Lifecycle checkはこの仕組みで別tabのdisableを観測する。
-
-Network/runtime rejection、channel connectionのlost/failed、session mismatch、hidden/page
-lifecycle eventでもended/recovery viewのrender前にpurgeする。Continuously visibleなidle page上の
-process lossにはproduct定義のwall-clock検出保証を設けず、次のlifecycle checkまたはrequest
-outcomeで扱う。Recovery fetchはfreshな`sessionId`、`globalContentEpoch`、`globalControl`、
-`globalEnableInProgress`、`globalDisableInProgress`、exactなtool-failure Diagnostic、存在する
-場合のretain済みfailed-request error message（failed `batchStatus`とfailed disable
-projectionの`message`）、
-optionally reverified frozen previewだけをadoptする。Inventory、
-generation、Source、file、detail、relationship、comparison、editor、warning acknowledgement、
-authored sourceを復元しない。Null disable projectionでは**Resume inspection**を許可し、matching
-full sessionを再取得してdefault inventory viewをatomicに構築する。Draining/committing fenceでは
-join/wait、failed fenceではretry-disableを提示する。Global retryはmatching frozen preview取得済み、
-`globalEnableInProgress`がnull、`pendingTools`がempty、`retryableTools`がnon-emptyの場合だけ再構築
-する。Host processへ到達不能または終了済みの場合はsession-ended viewを維持する。Liveness callは
-Node process lifetimeを延長せず、inspection graphを返さず、保存もcacheもしない。
-
-Outcomes: exactなliveness projection。
 
 ### `agent-customization-inspector:get-file-detail`
 
@@ -857,11 +823,13 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
   Global enable commitはそのsequenceをgeneration 1として作成し、disableはgenerationをcommit
   せずにそのsequenceを破棄する（FR-042）。Barrier
   cancellationは何もemitしない。
-- Session retrievalとlifecycle-triggered liveness checkはNode process lifetimeを延長せずdataを
-  永続化せず、product固有のtime thresholdを定義しない。Matching session/equal epochかつdisable
-  projectionがnullのexact resultでcurrent baselineをconfirmする。Greater epochまたはnon-null
+- Session retrievalはNode process lifetimeを延長せずdataを永続化せず、product固有のtime
+  thresholdを定義しない。Liveness probeは存在しない——productは2枚目のbrowser tabをmodelせず、
+  host喪失はloopback socketのcloseとしてtransportが問い合わせなしにpageへ報告するためである
+  （2026-07-24 修正）。全responseは引き続きcheckされるので、matching sessionでepochが等しく
+  disable projectionがnullのresultはcurrent baselineをconfirmする。Greater epochまたはnon-null
   projectionではcontrol-only recoveryへ入る前に中央purgeを実行し、network/runtime failure、
-  channel loss、session mismatch、hidden/page lifecycle eventではended view表示前にpurgeする。
+  channel loss、session mismatchではended view表示前にpurgeする。Page-lifecycle eventはpurge triggerではない（2026-07-24 修正）: FR-027はdocument-liveness failureまたは同等のterminal reset後にpurgeするものであり、tab切り替えもページからの離脱もそのどちらでもない。破棄されたdocumentは自分のmemoryを解放し、bfcacheに入ったdocumentが保持するのは同じユーザーが自分のマシンで自分のファイルを見た状態であって、trusted-workspace modelはこれをexposureとして扱わない。clientはvisibility/unload listenerを設置しない。
   Purgeはclient epochをincrementしてlate in-flight resultによるDTO/editor stateの復活を防ぎ、
   Monaco model/editor/worker/subscriptionをdisposeし、DOM/store contentとwarning
   acknowledgementをclearしてpending requestをabortする。Node process終了時はserver側session
@@ -1035,18 +1003,16 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
    `root-unreadable`とgenerationなしのfailed Source attemptを証明する。Underlying
    Node.js/kernel operationのhard cancellationや製品定義のcompletion deadlineはassertしない。
 7. 全client routeのreloadはsession dataを一切開示しない。Serveされるshellはsnapshotをembed
-   せず、新しくloadしたSPAはloopback RPC channelだけを通じてstateをadoptする。Liveness testは
-   exactな`{ sessionId, globalContentEpoch, globalDisableInProgress }` resultを要求し、
-   lifecycle-triggered check、browser/network/runtime rejection、channel loss、hidden/page
-   lifecycle purge、異なる`sessionId`でのport再利用、older/equal/greater epoch、
+   せず、新しくloadしたSPAはloopback RPC channelだけを通じてstateをadoptする。Session response/recovery testは
+   browser/network/runtime rejection、channel loss、異なる`sessionId`でのport再利用、older/equal/greater epoch、
    null/draining/committing/failed projection、client epoch変更後のlate in-flight resultを扱い、
    pre-purge inventory/detail/comparison/editor/authored-content DTO/DOM stateまたはwarning
-   acknowledgementが残留・復活しないことを証明する。Active consentがあるhidden-to-visible
-   recoveryではloopback channel経由で再接続し、purge済みIDを保持・比較せず返された`sessionId`を
+   acknowledgementが残留・復活しないことを証明する。Active consentがあるgreater epoch、non-null fence、または
+   明示Resume後のrecoveryではloopback channel経由で再接続し、purge済みIDを保持・比較せず返された`sessionId`を
    採用してclosed recovery projectionだけを構築する。Active control/enable stateからdisableを
    直ちに利用でき、draining/committingではjoin/wait、failedではretry-disableを提示し、同じ
    frozen previewを取得・検証した後はeligible retry controlだけを再構築する。Fenceがnon-nullの
-   間は明示Resume inspection actionを表示しない。Null fenceではmatching full sessionを再取得
+   間は明示Resume inspection actionを表示しない。Null fenceではpageがmatching full sessionを再取得
    してdefault stateのfresh inventory summaryを構築するが、pre-purge authored content、
    selection、filter、detail、comparison、editor、acknowledgementを復元しない。後の
    detail/comparison requestにはnew acknowledgementを要求する。Accept前disable failureとtrue

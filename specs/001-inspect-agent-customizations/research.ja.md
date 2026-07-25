@@ -335,8 +335,9 @@ behavior/rule/strategy recordごとのassessmentをsort・deduplicateして保�
 
 選択したRepository rootはimmutableなRepository inventory boundaryのままとする。CLIは`process.cwd()`を1回だけ
 captureし、defaultではその正確な文字列を使う。`--cwd`は受理し（反復指定はparserのlast valueへ解決）、absolute optionはそのまま保持し、
-relative optionはcaptureした起動directoryに対してresolveする（FR-001）。Missing/empty valueは
-session/browser作成前に固定のactionable startup errorで失敗させ、CLIは`process.chdir()`を
+relative optionはcaptureした起動directoryに対してresolveする（FR-001）。明示的なempty valueは
+session/browser作成前に固定actionableかつsource-value-freeなstartup errorで失敗させる。Valueの欠落は
+そこでGunshiのtyped argument validationによりrejectされ、productはそのcheckを重複実装しない。CLIは`process.chdir()`を
 決して呼ばず、bootstrapはscan I/Oより前に、readを認可しない唯一のRepository Sourceを作成する。Vendor runtime root、
 walk方向、target file、trust、enablement、selection、installation、product surfaceは、matcherやfile存在から導出せず
 独立したbehavior/strategy factにする。Behavior record、source record、strategy、relationship、excluded ruleはreadを
@@ -637,12 +638,14 @@ stored raw valueだけを使い、display textから逆変換せず、environmen
 *（superseded 2026-07-23: session-keyed consent digestはself-verificationの整理で削除された。
 Previewはserverが保持しopaque `previewId`で識別する唯一のrecordであり、enableはそのIDを指名する。
 Capture ruleとraw/display保持は残る。）*
-また、各SessionSnapshot/FileDetail requestは`clientDataEpoch`、owning sequenceのgeneration — session snapshotは
-`repositoryGeneration`とnullableな`globalGeneration`を公開する — 、正確なrequest token、該当時は
-file IDをcaptureする。Old snapshotは無視し、いずれかのsequenceのnew generationをadoptする前にepochをincrementし、
+また、ordinary responseはbrowser stateを変更する前に、正確なrequest token、capture済み
+`clientDataEpoch`、adopt済み`sessionId`、`globalContentEpoch`、null disable fenceに対してcheckする。
+各SessionSnapshot/FileDetail requestはさらにowning sequenceのgeneration — session snapshotは
+`repositoryGeneration`とnullableな`globalGeneration`を公開する — と、該当時はfile IDをcaptureする。
+Old snapshotは無視し、いずれかのsequenceのnew generationをadoptする前にepochをincrementし、
 そのsequenceの置換されたgenerationが所有するdetail、comparison、editor objectをabort/disposeする。他方のsequenceの
-commit済みviewは有効なままとする。Equal-generation snapshotはcurrent tokenと一致する
-場合だけ、FileDetailはepochとowning sequenceのgenerationが一致しreadable fileがまだ存在する場合だけadoptする。
+commit済みviewは有効なままとする。Equal-generation snapshotはcurrent tokenと一致する場合だけ、
+FileDetailはepochとowning sequenceのgenerationが一致しreadable fileがまだ存在する場合だけadoptする。
 Serverはcoordinator lock下で各response envelopeのsequence generationとpayloadを一緒にcaptureする。
 自動または明示的な各scanにはopaqueな`scanRequestId`も付与する。Source progress、rescan admission response、
 successfulなsource-scan generationは同じIDを持ち、nullを使うのはbootstrap generationだけであり、Global disableは
@@ -650,25 +653,29 @@ generationを一切commitしない。Clientはcurrent
 statusとrender済みinventoryのcompletionをadmit済みrequest IDへbindし、以前のstatus/generationを拒否する。
 
 Preview parse/transportのcapacityはNode.js、browser、実行環境に従い、proposed rootや
-escaped displayへproduct独自のbyte上限を設けない。Liveness routeは、initial load、visible/focused
-stateへの復帰、明示的Resume、fresh session採用という観測可能なlifecycle transitionだけで呼ぶ。In-flight checkは最大1件とし、
-request settlementはbrowser/network/runtimeに委ねる。このsingle-flight ruleはstale responseを拒否するためstate adoptionを
-serializeするfunctional coordination invariantであり、resource admissionまたはvalidation ceilingではない。Polling interval、
-request timeout、retry timer、memory leaseを定義しない。
-Network/runtime rejection、session mismatch、hidden/page lifecycle event、request dispatch前の
-Global-disable click、greater Global content epochまたはnon-null disable fenceの観測には、`clientDataEpoch` guard付きのshared purgeを使い、
-全DOM/DTO/editor/warning stateを除去してlate responseによるcontent復活を防ぐ。Continuously visibleなidle page上のprocess lossには
-product定義のwall-clock検出保証を設けず、次のlifecycle signalまたはordinaryなrequest outcomeで扱う。Hidden-page purgeは
-session dataを保持しない。Visibleへ戻るとSPAはRPC channel経由でfresh sessionを取得し、purge済みIDを
-保持・比較せず、返された`sessionId`をnew liveness baselineとして採用する。Successful liveness bodyは正確に
-`{ sessionId, globalContentEpoch, globalDisableInProgress }`とする。Older epochはrejectし、equal epochかつnull fenceはbaselineを
-confirmし、greater epochまたはnon-null fenceではrender前にpurgeしてclient-side `RecoveryViewState`へ入る。Non-null fenceならsession routeは
-exactでcontrol-onlyな`GlobalFenceRecoverySnapshot`を返す。Null fenceならnormal full `InspectionSession`を返すが、recovering clientは
-control/error projectionだけを採用してinspection graphを破棄する。Active consent中は
-そのviewからdisableを直ちに利用でき、preview routeがexact frozen previewを返した後だけbrowser persistenceや
-environment再readなしでretry controlを再構築できる。Recovery viewはfenceがnullでnormal full snapshotを取得可能な場合だけ
-Resume inspectionを提示する。この明示actionはmatching sessionを再取得してdefaultのfresh inventory summaryを構築するが、old detail、comparison、editor、selection、
-filter、authored source、acknowledgementを復元しない。後のdetail/comparison openにはnew acknowledgementを要求する。
+escaped displayへproduct独自のbyte上限を設けない。独立したliveness RPC/probeは定義しない。
+devframeは問い合わせなしに自身のconnection-status signalでhost lossを報告する。SPAはvisibility、
+focus、unload listenerを設置せず、page-lifecycle eventをpurgeまたはrefetchのtriggerにしない。
+Polling interval、request timeout、retry timer、memory leaseを定義しない。Currentなnetwork/runtime
+RPC rejection、transportが報告するchannel loss、session mismatchでは、ended viewをrenderする前に
+`clientDataEpoch` guard付きshared purgeを実行する。Global-disable clickではrequest dispatch前に同じ
+purgeを実行し、ordinary responseでgreater Global content epochまたはnon-null disable fenceを観測した
+場合もrender前に繰り返してclient-side `RecoveryViewState`へ入る。Purgeは全DOM/DTO/editor/warning
+stateを除去してlate responseによるcontent復活を防ぐ。Request tokenがcurrentでないsettlement、または
+capture済み`clientDataEpoch`がpurgeより古いsettlementは、late rejectionを含めno-opとする。Transport
+signalにはproduct定義のdelivery deadlineがないため、continuously idleでvisibleなpage上のprocess
+lossにはproduct定義のwall-clock検出保証を設けない。
+
+Non-null fenceならsession routeはexactでcontrol-onlyな`GlobalFenceRecoverySnapshot`を返す。
+Null fenceならnormal full `InspectionSession`を返すが、recovering clientはcontrol/error projectionだけを
+採用してinspection graphを破棄する。Recoveryはpurge済みIDを保持・比較せず、返された`sessionId`を
+new baselineとして採用する。Active consent中はそのviewからdisableを直ちに利用でき、preview routeが
+exact frozen previewを返した後だけbrowser persistenceやenvironment再readなしでretry controlを再構築
+できる。Recovery viewはfenceがnullでnormal full snapshotを取得可能な場合だけResume inspectionを提示
+する。この明示actionはmatching sessionを再取得してdefaultのfresh inventory summaryを構築するが、
+old detail、comparison、editor、selection、filter、authored source、acknowledgementを復元しない。後の
+detail/comparison openにはnew acknowledgementを要求する。このrecoveryはGlobal-disableの
+purge/epoch/fence pathがtriggerし、page visibilityまたはnavigationはtriggerにしない。
 
 Session APIは、明示的なdetail requestにだけ完全なauthored contentを返す。Sensitive-content
 acknowledgementはbundled-SPAの必須presentation invariantであり、authorization credentialではない。Client memoryだけに
@@ -698,10 +705,12 @@ sessionをgateできるが、ownerはそのdefaultよりconfig-inspector parity�
 hostの残余exposureは、sessionが起動userの既に読める内容だけを配信するというtrusted-workspace modelに
 有界化された、文書化済みlimitationである（憲章v3.0.0、QR-003）。Consentが指名するserver保持frozen
 previewは引き続き、hostがpathへ触れる前にuserが見たlexical rootを証明し、preview構築中のNode.jsまたはbrowserの
-recoverable failureは未表示valueをauthorizeせずfailする。Lifecycle-triggered liveness checkとordinaryな
-request outcomeは、dataを永続化せずproduct timerを定義せず、観測可能なboundaryでsession lossを公開する。
-Hidden pageで直ちにpurgeすればbackground retentionを避けられ、continuously visibleなidle page上のprocess
-lossには意図的にproduct定義のwall-clock保証を設けない。
+recoverable failureは未表示valueをauthorizeせずfailする。devframeのconnection-status signalとguard済みの
+current RPC outcomeは、dataを永続化せずproduct timerを定義せずにsession lossを公開する。Page lifecycleは
+session-loss signalではなく、purgeもrefetchも行わない。Discardされたdocumentは自身のreferenceをreleaseし、
+bfcache documentが保持するのはaccepted trusted-workspace modelのもとで同じuserが自身のmachine上で見た自身の
+fileだけである。Continuously idleでvisibleなpageには意図的にproduct定義のwall-clock process-loss保証を
+設けない。
 Recovery DTOはSourceが0個でもall-failed Global consentを可視に保ち、previewを分離することで大きくなり得るdisplay
 payloadをsession retrievalごとに繰り返さない。
 
@@ -716,8 +725,9 @@ payloadをsession retrievalごとに繰り返さない。
   printed one-time-codeのround-tripが邪魔になるだけのtrusted single-user localhost tool向けに
   `auth: false`を文書化している。
 - 一般的な`--host` supportとCORSはremote accessがscope外のため不採用。Hostはloopbackの`localhost`だけへbindする。
-- RPC channel上のproduct定義push protocolは、lifecycle-triggered liveness check、ordinaryなrequest outcome、
-  hidden/pageでの即時purgeにより、product timerなしで必要なobservable teardown signalを得られるため不採用。
+- RPC channel上のproduct定義push/liveness protocolは不採用。devframeがhost lossを既に報告し、全ordinary
+  responseにrequest-token、client-epoch、session、Global-epoch、fence guardを適用する。Support対象の
+  single-browser-session useには別tabをproactiveに観測するrequirementがない。
 - Project-ownedなbrowser-launch adapter（ambient environment allowlist付きの固定`/usr/bin/open`/`xdg-open`
   spawn）はhand-written hostとともにsupersededとなった。Browser openingはdevframeのpolicyであり、その
   openerは解決済みlocal originだけを受け取る。
@@ -743,9 +753,9 @@ transactionをserializeする。Product独自のqueue、slot、concurrency capac
 barrierの最初のaccept時、command epochと`globalContentEpoch`をatomicにincrementし、non-null
 `globalDisableInProgress`をinstallし、publication authorityをrevokeして新しいGlobal-enable/Global-rescan commandを拒否する。
 全inspection-data routeは`409 global-disable-pending`を返し、session routeは`GlobalFenceRecoverySnapshot`だけを返す。
-各inspection-data successはcaptureしたepochへbindし、最終publish時にcoordinator lock下でepoch不変かつfence nullを再checkする。各liveness successは
-代わりにpublish時の1つのcurrent coordinator-lock snapshotからexactな`{ sessionId, globalContentEpoch, globalDisableInProgress }`値へbindし、
-current fenceがnon-nullでも返す。Active
+各inspection-data successはcaptureしたepochへbindし、最終publish時にcoordinator lock下でepoch不変かつ
+fence nullを再checkする。Disableを実行したpageは自身のdisable responseと後続session fetchからfenceを知る。
+独立したliveness responseまたは別tab用projectionは存在しない。Active
 consent/controlが存在する場合だけ`globalControl.state: disabling`としてpending/retry arrayをemptyにし、operation-local initial
 enableだけならcontrol projectionはnullだがfenceを表示する。Active uncommitted workとqueued Global workを
 abort/discardし、terminal success後だけ中断Repository commandをrequeueする。
@@ -792,7 +802,8 @@ recoverもboundもできない。
 
 Disable、shutdown、generation replacementはelapsed timeと無関係にpublication authorityをrevokeする。Revoke後にsettleした
 resultは破棄し、取得済みresourceはunderlying operationがcleanupを許す時点でreleaseし、revoked dataをsessionへ戻さない。
-Liveness pathはNode.js上で独立scheduleするが、runtime exhaustionやblocked/terminated processをsurviveするとは主張しない。
+Session RPC workはNode.js上でscheduleされ、devframeはchannel lossを報告できるが、runtime exhaustionや
+blocked/terminated processをsurviveするproduct probe/timerは存在せず、そのようなwall-clock保証を主張しない。
 
 **理由**: Serializationとatomicなper-sequence generationはlost updateとold/new result混在を防ぐ。Repositoryと
 Globalはlifecycleが独立している — Repository Sourceは常に存在し、Global sourceはenableからdisableの間だけ
@@ -839,7 +850,7 @@ Pure recognizer/parserとliteral-display DTO、session API contract、source bou
 100k/500 performance case、4つのPlaywright user storyをtestする。SC-008は
 [accessibility受入contract](contracts/accessibility-acceptance.ja.md)のWCAG 2.2 Level A/AA全55行applicability matrixと
 客観的pass ruleに対し、criterion固有のstable check IDと指定済みautomated、keyboard、manual evidenceを組み合わせて評価する。
-Closed manual matrixはpacked candidate、両locale、3つのsupported OS/browser/assistive-technology cell、responsive/visual
+Closed manual matrixはpacked candidate、3つのsupported OS/browser/assistive-technology cell、responsive/visual
 profile、workflow state、input profileをfreezeし、applicableな全cellを記録して、frozen value変更時は全manual checkを再実行する。
 Axeのseverity結果だけを
 受入evidenceとせず、Applicable行のfailureをpassへ変更できない。SC-003、SC-004、SC-005、SC-007、SC-009は、
@@ -858,9 +869,11 @@ authored manifest inventory、FR-015からFR-018外へのGlobal read 0件を扱�
 さらに、tool別Global Sourceが0から3つで各tool最大1つ、各Sourceが正確に1つのrootとSource-relative Path
 namespaceを持つこと、literal credentialのexact表示、reveal controlがないこと、環境変数を置換しないことを
 検証する。Lifecycle fixtureは全4 Sourceの未解決failure共存、Source別clear/replace/removal、自動初回failureの
-current stateを扱う。Browser fixtureはlifecycle-triggered check、browser/network/runtime rejection、hidden/page purge、
-session mismatchを伴うport再利用、continuously visibleなidle page上のprocess lossにwall-clock保証がないこと、late responseの
-epoch rejectionを扱う。macOS、Linux、Windowsでpure Node.js
+current stateを扱う。Browser fixtureはcurrentなbrowser/network/runtime RPC rejection、transportが報告する
+channel loss、session mismatchを伴うport再利用、page-lifecycle listener/purge/refetchが存在しないこと、
+continuously idleでvisibleなpage上のprocess lossにwall-clock保証がないこと、scan commit/disable barrierを
+またぐsnapshot/detail deliveryについてrequest token、`clientDataEpoch`、session、Global epoch/fence、owning
+sequence generation、file existenceでlate response/rejectionを拒否することを扱う。macOS、Linux、Windowsでpure Node.js
 integration suiteを実行し、symlink-transparent read、broken linkの`file-unreadable` diagnostic、
 link cycleでのscan終了、unreadable file、binary content、全byte decode
 outcome、missing/unreadableなroot、`partial` commitによるper-file failure分離、最後にcommitした
@@ -1073,7 +1086,7 @@ canonical payload/digest chainへ入れる場合である。Captured wire/browse
 正確に1件を運ぶが、primary-workflow observation 1件からcount/chain対象のevent messageを任意件生成できる。Fixed code、
 protocol-owner-generated opaque ID、boolean/enum、safe integer、evidence digestだけがcanonical safe-payload byteへ入る。各requestはさらにprivacy-safeで
 exactなroute/target classifier `targetClass`を使う。Closed literalは
-`static-manifested-asset | static-spa-shell | static-client-route-fallback | api-get-session | api-get-session-liveness | api-get-file |
+`static-manifested-asset | static-spa-shell | static-client-route-fallback | api-get-session | api-get-file |
 api-post-repository-rescan | api-get-global-consent-preview | api-post-global-consent-preview | api-post-global-enable |
 api-post-global-rescan | api-post-global-disable | other-loopback | remote | mcp | unclassifiable | not-applicable`とする。Closed truth tableはauthority、target、route、method、capability、origin、same-host、attribution、request
 class、prohibited statusにまたがるauthorized-static/declared-API combinationだけを許可する。全rowは`eventCode: observation`、
@@ -1392,8 +1405,9 @@ mutationとしてscoreすること、server-side acknowledgement stateは、plat
    readを認可しないRepository Sourceを同期的に含み、admissionは後で行う。
    *（superseded 2026-07-22: FR-001はabsolute `--cwd`をそのまま保持し、relative optionをcaptureした
    `process.cwd()`に対してresolveする。Shared `LexicalAbsoluteRootParts` parserとWindows spelling
-   taxonomyは削除された。単一capture、no-`chdir` rule、missing/empty optionへの固定
-   startup errorは残る（反復optionはのちにparserのlast-winsで解決、superseded 2026-07-23）。）*
+   taxonomyは削除された。単一captureとno-`chdir` ruleは残る。Valueの欠落はGunshiのtyped argument
+   validationが所有し、productの固定startup errorを受けるのは明示的なempty valueだけである。反復optionは
+   のちにparserのlast-winsで解決する（superseded 2026-07-23）。）*
 2. Global consentはselectorなしのall-tools action 1件とする。Initial processingは必ずfrozen preview entry 3件全てを評価し、
    retryはcurrent server-side `retryableTools`のcomplete set、すなわちnon-pending unpublished `admitted` controlと
    `retryDisposition: same-preview`の`rejected` controlを導出し、lexicalな`new-preview-required`を除外する。決定的に

@@ -48,7 +48,7 @@
 - [x] QR-005 closes `documentationStatus` to `documented | partially-documented | unknown | conflict`, keeps duplicate-free lifecycle qualifiers in `preview`, `experimental`, `deprecated` order, defines empty qualifiers as no lifecycle claim rather than `stable`, reserves `documentation-conflict` for `ConditionFact.status`, and requires provenance/relationship `EvidenceAssessment[]` to preserve every subject record without lossy aggregation
 - [x] The fixed browser helper receives no inspection-derived path or content; only a closed ambient platform-key set may be copied directly, and lexical equality with a Source root neither changes provenance nor grants authority or selects a handler
 - [x] SC-008 defines a bilingual all-Level-A-and-AA applicability matrix, criterion-specific non-applicability rationale, automated/manual check mappings, a nonzero applicable-criterion denominator, and a zero-failure pass rule
-- [x] Every applicable SC-008 row has stable criterion-specific check IDs and an expected observation, and the closed manual matrix fixes both locales, release/environment versions, responsive and visual profiles, workflow states, and input profiles with no unrecorded sampling
+- [x] Every applicable SC-008 row has stable criterion-specific check IDs and an expected observation, and the closed manual matrix fixes release/environment versions, responsive and visual profiles, workflow states, and input profiles with no unrecorded sampling
 - [x] WCAG 2.2 criterion 2.2.2 treats parallel automatically updating scan/status information as applicable and requires a tested pause/stop/hide or user-frequency mechanism unless a criterion-compliant essential exception is proved
 
 ## Feature Readiness
@@ -159,6 +159,12 @@
   through research, verification tables, and task notes; and assigning all four lifecycle
   triggers, non-trigger tests, single-flight coordination, stale-settlement rejection, and
   timer-free implementation ownership to T042 and T049.
+- The liveness-specific conclusions recorded in validation iterations 21 and 22 are
+  historical and were superseded on 2026-07-24. The current design has no separate liveness
+  probe or lifecycle-triggered check, treats no page-lifecycle event as a purge or refetch
+  trigger, relies on devframe's transport signal for host loss, and guards every ordinary
+  response by request token, client epoch, session identity, Global epoch, and fence. The
+  publication-taxonomy conclusions in those iterations remain in force.
 - Validation iteration 23 passed all items on 2026-07-20 after restoring the omitted binary,
   BOM, typed-literal, malformed-extraction, tree-token UTF-16 range, environment-owned parser
   capacity, and source-value-free extraction obligations in Japanese T075 and T321; a fresh

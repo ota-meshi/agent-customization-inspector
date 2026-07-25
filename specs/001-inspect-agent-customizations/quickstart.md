@@ -118,8 +118,9 @@ node dist/cli.mjs --no-open --cwd tests/fixtures/repositories/all-supported
 
 The CLI captures the invocation `process.cwd()` once. Omission uses that exact string.
 `--cwd` is accepted, a repeated option resolving to the parser's last value: an absolute option is kept as given, and a relative
-option is resolved against the captured invocation directory. A missing or empty
-value exits with fixed actionable output before a session or browser attempt.
+option is resolved against the captured invocation directory. An explicit empty value exits
+with fixed actionable, source-value-free output before a session or browser attempt. A
+missing value is rejected at the same boundary by Gunshi's typed argument validation.
 Selection never calls `process.chdir()`, and a startup failure ends the launch with an
 actionable message rather than a session or session-API error.
 
@@ -136,13 +137,17 @@ Expected:
   request's opaque `scanRequestId`. A generic spinner/loading label,
   unchanged control, acknowledgement without scan state, or earlier-scan status does not count.
 - The first complete inventory appears without any file outside the frozen path contract.
-- Stopping the process destroys the server session. On a loaded page, a lifecycle-triggered
-  liveness check or another session request that observes browser/network/runtime failure
-  or session mismatch purges every DTO, DOM source value, editor
-  model/worker, comparison, and warning acknowledgement before the session-ended view; a
-  hidden/page lifecycle event purges immediately. No product-defined interval, timeout, or
-  lease controls this transition. Restarting—even with port reuse—has a different
-  `sessionId`, and no late response or previously displayed state returns.
+- Stopping the process destroys the server session. On a loaded page, devframe reports loss
+  of the loopback host through its transport without being queried. A transport-reported
+  channel loss or browser/network/runtime rejection of the current, non-superseded session
+  RPC purges every DTO, DOM source value, editor model/worker, comparison, and warning
+  acknowledgement before the session-ended view. The SPA issues no liveness RPC, installs
+  no visibility, unload, or other page-lifecycle listener, does not purge merely because the
+  page becomes hidden, and does not refetch when it returns to visibility. It defines no
+  polling interval, request timeout, retry timer, memory lease, or wall-clock process-loss
+  guarantee for a continuously idle page. Restarting—even with port reuse—has a different
+  `sessionId`, and neither a response captured before the purge nor one with a mismatched
+  session identity restores previously displayed state.
 - The session is unauthenticated behind the loopback bind: there is no per-session token,
   Origin or Host check, or hand-written router, and nothing is stored in browser storage
   or a cookie. The documented residual limitation is that other local processes and, via
@@ -246,9 +251,12 @@ Expected:
   Origin checks, and hand-written router are removed, protection is the loopback-only
   `localhost` bind alone, and an unexpected session-API failure propagates its real error to the requesting
   client while the session stays usable.
-- Package tests build a tarball, inspect its contents, install it into an isolated fixture,
-  load the packaged inspection module, and
-  launch the exact `npx` entry without relying on the working tree or a runtime download.
+- At the Phase 3 checkpoint, package tests launch `dist/cli.mjs` from an unrelated working
+  directory and verify the packaged shell, closed manifest fields, printed-URL fallback,
+  unchanged inspected fixture, and graceful shutdown. This is packaged-path isolation only:
+  the current gate neither installs a tarball nor invokes an installed package link. T917 owns
+  the final-release test that packs and installs into an isolated fixture and launches
+  `npx --no-install` without relying on the working tree or a runtime download.
   The production-graph tests assert exactly the five approved direct dependencies
   `devframe`, `gunshi`, `jsonc-parser`, `smol-toml`, and `yaml` — their resolved versions
   and integrity hashes stay owned by the committed
@@ -453,7 +461,11 @@ Verify:
 
 ```bash
 pnpm exec playwright test tests/e2e/inspection-safety.spec.ts
-pnpm exec playwright test tests/e2e/session-liveness.spec.ts
+pnpm exec playwright test tests/e2e/boot.spec.ts
+pnpm exec vitest run --project unit \
+  tests/unit/app/api-client.test.ts \
+  tests/unit/app/session-view-state.test.ts \
+  tests/unit/app/client-data.test.ts
 pnpm run test:security
 ```
 
@@ -563,22 +575,25 @@ Verify:
    external request or `blob:` worker.
 8. Direct loads of `/`, `/compare`, `/global-consent`, and `/files/<fileId>` all boot from
    the same root-absolute assets served by the devframe host.
-9. Liveness tests cover lifecycle-triggered checks, browser/network/runtime rejection,
-   hidden/page lifecycle purge, session-ID mismatch after port reuse, and a late in-flight
-   response after the client epoch changes; no pre-purge inventory, detail, comparison,
-   editor, authored-content DTO/DOM state, or acknowledgement remains or is automatically
-   restored. The successful liveness body is exactly
-   `{ sessionId, globalContentEpoch, globalDisableInProgress }`. Before confirming the current baseline or
-   rendering it, the client treats a greater epoch or non-null disable projection as a full
-   client-data purge trigger and enters control-only recovery; an older epoch is rejected,
-   and only an equal epoch with a null projection is an ordinary baseline confirmation. Deterministic
+9. Session-loss and response-guard tests cover a devframe-transport-reported channel loss,
+   browser/network/runtime rejection of the current non-superseded RPC, session-ID mismatch,
+   greater Global content epoch or non-null disable fence, and a late in-flight response after
+   the client epoch changes. A channel loss or current RPC rejection performs the shared full
+   client-data purge and enters the session-ended view; no pre-purge inventory, detail,
+   comparison, editor, authored-content DTO/DOM state, or acknowledgement remains or is
+   automatically restored. The SPA calls no liveness function, installs no visibility,
+   unload, or other page-lifecycle listener, and issues no request because time elapsed, the
+   page became hidden, or it returned to visibility. Devframe owns the event-driven host-loss
+   signal, and the product sets no wall-clock process-loss deadline for a continuously idle
+   page. Before rendering an ordinary inspection-data response, the client treats a greater
+   epoch or non-null disable projection as a full client-data purge trigger and enters
+   control-only recovery; an older epoch is rejected, and only an equal epoch with a null
+   projection may confirm the current baseline. Deterministic
    delivery pauses hold an already-linearized SessionSnapshot or FileDetail while a scan
    commit advances the owning sequence's generation or a
    Global-disable acceptance changes the epoch, proving that envelope and
    payload never mix and that every inspection-data success rechecks an unchanged epoch plus
-   a null fence at final publication. A liveness success instead binds exact `{ sessionId,
-   globalContentEpoch, globalDisableInProgress }` values from one current coordinator-lock
-   snapshot and returns a current non-null fence. They verify the SPA's monotonic `clientDataEpoch`,
+   a null fence at final publication. They verify the SPA's monotonic `clientDataEpoch`,
    per-sequence generations (`repositoryGeneration` and nullable `globalGeneration`), and
    latest request token: an older-generation or superseded-token/
    epoch response cannot repopulate state; adopting a newer generation of a sequence first
@@ -587,8 +602,10 @@ Verify:
    state while the other sequence's committed views stay valid. A file detail is
    adopted only when its captured `(clientDataEpoch, owning-sequence generation, fileId)` still
    matches all three live values.
-10. After any central purge, including Global-disable activation or an epoch/fence observed by
-    liveness, recovery fetches a fresh session over the loopback session API. It adopts
+10. Global disable retains its distinct recovery path: the SPA performs a central full
+    client-data purge before sending the disable request, and a greater epoch or non-null
+    fence observed in any response causes another purge before rendering. Recovery
+    then fetches a fresh session over the loopback session API. It adopts
     the returned `sessionId` without retaining or comparing the
     purged ID and constructs only client-side `RecoveryViewState`. With a non-null disable
     fence, the session route returns the exact control-only `GlobalFenceRecoverySnapshot`;
@@ -681,7 +698,7 @@ real home directory. Verify:
    validation, after admission but before mutation, and immediately before the single batch enqueue/
    disposition.
 7. Disable is a priority security barrier over all inspection data. Before sending the
-   request, the SPA performs the same full client-data purge as a liveness failure. First
+   request, the SPA performs the FR-027 full client-data purge. First
    acceptance of a non-no-op barrier atomically increments `globalContentEpoch`, installs a
    non-null `globalDisableInProgress`, revokes publication authority, and makes the session
    route return only `GlobalFenceRecoverySnapshot`; every other inspection-data route returns
@@ -1098,7 +1115,7 @@ unless the final pair exactly matches valid evidence.
   observable OS-mediated mounted/mapped-source traffic separately as the FR-022 limitation.
   Use exact privacy-safe route/target classifier `targetClass` with closed literals
   `static-manifested-asset | static-spa-shell | static-client-route-fallback | api-get-session |
-  api-get-session-liveness | api-get-file | api-post-repository-rescan |
+  api-get-file | api-post-repository-rescan |
   api-get-global-consent-preview | api-post-global-consent-preview | api-post-global-enable |
   api-post-global-rescan | api-post-global-disable | other-loopback | remote | mcp |
   unclassifiable | not-applicable`, and apply the contract's closed truth table across
@@ -1515,8 +1532,9 @@ queue capacity, or a scheduling deadline. Independent-sequence fixtures prove th
 Repository rescan commit rekeys only Repository file IDs and leaves committed Global
 detail and comparison views valid, that a Global rescan likewise leaves committed
 Repository views valid, and that Global disable discards the Global sequence without
-committing any generation. The liveness protocol and SC-002 timing thresholds
-remain acceptance criteria, not capacity ceilings. Tests do not claim recovery from
+committing any generation. The session-loss and response-guard contracts and SC-002 timing
+thresholds remain acceptance criteria, not capacity ceilings; the product sets no process-loss
+detection deadline for a continuously idle page. Tests do not claim recovery from
 process-ending out-of-memory conditions or physical
 cancellation of uncancellable Node.js or kernel I/O.
 
@@ -1603,7 +1621,7 @@ not establish SC-008. The contract freezes the complete, non-sampled execution m
 2. Confirm visible focus, logical focus order, skip/navigation landmarks, unique labels,
    status announcements, error/next-step association, and no focus loss on generation
    replacement.
-3. Execute every contract cell across both locales; the three pinned OS/engine/AT profiles;
+3. Execute every contract cell across the three pinned OS/engine/AT profiles;
    all five exact viewport, orientation, zoom, and text-spacing profiles; all three UI modes;
    all eight workflow/state scenarios; and all three input profiles. Record the two explicit
    native-forced-colors N/A platform cells and every row-specific cell N/A individually.
@@ -1683,9 +1701,9 @@ Gunshi's non-binding help/version, strict unknown-option rejection,
 explicit positional/rest rejection, default exact captured `process.cwd()`, and one `--cwd`
 accepted with a repeated option resolving to the parser's last value — an absolute option kept as given, a relative option resolved
 against the captured invocation directory, and no `chdir`.
-They reject a missing or empty `--cwd` value with the fixed actionable
-startup error before
-session/browser creation and require fixed nonzero
+They reject an explicit empty `--cwd` value with the fixed actionable, source-value-free
+startup error before session/browser creation and reject a missing value through Gunshi's
+typed argument validation. They require nonzero
 validation failures and awaited
 completion. Tests also prove that automatic opening merely delegates to the operating
 system's default handler and cannot certify its version; the release
@@ -1713,7 +1731,8 @@ Any later repository edit invalidates every outcome and approval and returns to 
 candidate/study/evidence digest revalidation, applicable gate reruns, and complete-diff review
 before the Constitution/final-gate sequence.
 
-`pnpm run test:package` must install the newly packed tarball into an isolated fixture,
-spawn `npx --no-install agent-customization-inspector --no-open`, observe a valid loopback
-launch URL, assert that the launched CLI spawned no browser-helper child, and terminate the
-process; inspecting the tarball or mapping alone is not a launch test.
+After T917, the final-release `pnpm run test:package` gate must install the newly packed
+tarball into an isolated fixture, spawn
+`npx --no-install agent-customization-inspector --no-open`, observe a valid loopback launch
+URL, assert that the launched CLI spawned no browser-helper child, and terminate the process;
+inspecting the tarball or mapping alone is not a launch test.

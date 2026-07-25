@@ -31,9 +31,10 @@ ordinary Vue components, never parser-normalized display values.
 Root selection is simple and lexical: the CLI captures `process.cwd()` exactly once and
 accepts `--cwd <path>`, resolving a repeated option to the parser's last value. An absolute option is kept as given, a relative option
 is resolved against the captured invocation directory, and the result is the selected
-Repository root. The CLI never calls `process.chdir()`. A missing or empty
-`--cwd` value fails with a fixed actionable startup error before session creation or
-browser launch. Bootstrap generation 0 of the Repository sequence synchronously contains
+Repository root. The CLI never calls `process.chdir()`. An explicit empty `--cwd` value
+fails with a fixed actionable, source-value-free startup error before session creation or
+browser launch; a missing value is rejected at the same boundary by Gunshi's typed argument
+validation, which the product does not duplicate. Bootstrap generation 0 of the Repository sequence synchronously contains
 the one Repository Source with a stable `sourceId` and an escaped root label.
 
 The security boundary is strict: the browser never reads the filesystem,
@@ -172,10 +173,11 @@ blocks T002; missing bilingual validation evidence fails the release gate.
 `src/server/cli.ts` uses only Gunshi's stable root `define`/`cli` API. It defines a negatable
 `open` boolean with a true default to provide `--no-open` and a single string-valued
 `cwd` option for `--cwd <path>`, enables `strict: true`, explicitly rejects every
-positional/rest argument before binding, awaits `cli()`, and maps its validation
-`AggregateError` to fixed actionable output plus a nonzero exit. Before creating a
-session it captures `process.cwd()` exactly once and rejects an empty `--cwd`
-with a fixed actionable startup error before session creation or browser opening; a
+positional/rest argument before binding, awaits `cli()`, and lets a parser-owned validation
+`AggregateError` propagate ordinarily to a nonzero process exit. Before creating a
+session it captures `process.cwd()` exactly once and rejects an explicit empty `--cwd`
+with a fixed actionable, source-value-free startup error before session creation or browser
+opening; a missing value is rejected at that boundary by Gunshi's typed validation. A
 repeated `--cwd` resolves to the parser's last value. An
 absolute `--cwd` value is kept as given and a relative value is resolved with
 `node:path.resolve` against the captured invocation directory; the result is the selected
@@ -214,7 +216,7 @@ every required check for every Applicable row passes, every Not-applicable ratio
 revalidated, all four keyboard workflows pass, and the English/Japanese records remain
 semantically equivalent; severity labels cannot waive a failure. Criterion-specific stable
 IDs bind automated checks to exact E2E test titles and manual checks to each row's expected
-observation. The closed manual matrix uses the packed tarball, both locales, all three
+observation. The closed manual matrix uses the packed tarball, all three
 supported OS/browser/assistive-technology cells, exact responsive/zoom/spacing profiles,
 visual modes, workflow states, and input profiles. Actual version/revision values are frozen
 before execution; any release or matrix change reruns every manual check, and no applicable
@@ -544,7 +546,9 @@ precede `browser-only-released`; both browser and server safe-payload ACKs must 
 `joined-pair-released`.
 
 Request payloads use the contract's closed privacy-safe target, method, capability, origin,
-authority, request, effect, attribution, and prohibition classes. For browser traffic, the
+authority, request, effect, attribution, and prohibition classes. Those closed literals and
+their truth table are owned by `contracts/usability-study-evidence.md` and
+`contracts/usability-study-evidence.ja.md`; the plan does not restate them. For browser traffic, the
 proxy and server independently project exact Chromium-controlled `Sec-Fetch-Dest`,
 `Sec-Fetch-Mode`, `Sec-Fetch-Site`, and `Sec-Fetch-User` plus Origin/Referer to closed classes,
 discard raw inputs, and require identical projections. Fetch Metadata is not human attestation.
@@ -1059,12 +1063,13 @@ transitive relationship, the Inspector omits that projection before target acces
 the eligible direct relationships and complete authored source, and emits an actionable,
 source-value-free relationship diagnostic.
 The authorized browser defines no heartbeat interval, request timeout, retry delay, or
-memory lease. It performs session-liveness checks only on observable lifecycle
-signals—initial adoption, return to a visible/focused page, explicit Resume, and fresh
-session adoption—and purges on browser/network/runtime rejection, session
-mismatch, hidden/page lifecycle events, a greater content epoch, or a non-null disable fence.
-Process loss on a continuously visible idle page has no product-defined wall-clock detection
-guarantee; the next lifecycle signal or authorized request outcome detects it.
+memory lease, and no liveness probe (amended 2026-07-24). It purges on browser/network/
+runtime rejection, a transport-reported channel loss, session mismatch, a greater content
+epoch, or a non-null disable fence. A lost host closes the loopback socket, which devframe
+reports to the page without being asked, so process loss is detected without polling for
+it. A page-lifecycle event is not among the triggers: FR-027 purges after a failure or an
+equivalent terminal reset, and neither switching tabs nor navigating away is either, so the
+client installs no visibility or unload listener.
 Monaco receives complete authored source. If the browser or editor runtime cannot compute a
 diff, the UI keeps the complete read-only side-by-side source available and reports an
 actionable comparison failure without treating either artifact as valid or invalid. HTTP
@@ -1085,7 +1090,7 @@ partial transitions.
 The coordinator imposes no product-defined wall-clock scan cutoff. Global disable, process
 shutdown, and explicit operation cancellation irrevocably revoke publication authority.
 Any outstanding Node.js filesystem promise then becomes cleanup-only: late bytes, results,
-and DTOs are discarded. The API and liveness endpoint remain responsive
+and DTOs are discarded. The API remains responsive
 while the event loop can serve them, but physical cleanup cannot be promised before an
 uncancellable kernel operation settles.
 
@@ -1120,7 +1125,9 @@ execution environment rather than a product-defined item ceiling.
       and `session` own separate invariants; vendor behavior, Inspector
       matchers, runtime composition, and official evidence have four closed registries,
       while vendor-specific policy remains isolated and shared behavior stays small and
-      explicit.
+      explicit. Every module and exported name states what it is rather than what it
+      resembles, and the longer name wins whenever the shorter one needs surrounding
+      context to be understood (AGENTS.md § Naming policy).
 - [x] **Dependency and public-contract governance**: The initial unpublished baseline has a
       reasoned no-migration-impact determination that T001 must confirm. Every accepted new
       or changed dependency and breaking public-contract change must record rationale,
@@ -1292,7 +1299,7 @@ specs/001-inspect-agent-customizations/
 ```text
 src/
 ├── app/
-│   ├── app.vue
+│   ├── App.vue
 │   ├── components/
 │   │   ├── inventory/
 │   │   ├── inspection/
@@ -1300,20 +1307,18 @@ src/
 │   │   ├── consent/
 │   │   └── diagnostics/
 │   ├── composables/
-│   │   ├── api.ts
 │   │   ├── comparison.ts
 │   │   ├── filters.ts
-│   │   ├── liveness.ts
-│   │   ├── monaco.ts
-│   │   └── session.ts
+│   │   └── monaco.ts
+│   ├── session/
+│   │   ├── api-client.ts
+│   │   ├── client-data.ts
+│   │   └── view-state.ts
 │   ├── pages/
 │   │   ├── index.vue
 │   │   ├── compare.vue
 │   │   ├── global-consent.vue
 │   │   └── files/[id].vue
-│   ├── locales/
-│   │   ├── en.ts
-│   │   └── ja.ts
 │   └── styles/
 ├── server/
 │   ├── cli.ts
@@ -1349,6 +1354,7 @@ src/
     ├── api-types.ts
     ├── diagnostics.ts
     ├── entities.ts
+    ├── rejection-codes.ts
     └── registries/
         ├── vendor-behaviors.ts
         ├── inspection-rules.ts
@@ -1446,9 +1452,29 @@ inspection I/O contract is directory-level ownership: all inspected-source files
 lives only under `src/server/inspection/`, and no other module enumerates or reads
 inspected sources.
 
-`src/app/locales/en.ts` and `src/app/locales/ja.ts` explicitly own user-visible UI copy;
-components consume stable message keys so English/Japanese UI parity is planned rather
-than introduced ad hoc. `validation.md` and `validation.ja.md` record final SC evidence and
+`src/app/session/` holds the session transport and lifecycle modules — the shared
+client-data purge (`client-data.ts`), the guarded RPC client (`api-client.ts`), and the
+reactive browser view state they feed (`view-state.ts`), which installs no page-lifecycle
+listener.
+`client-data.ts` is the dependency leaf and imports nothing, so the API client and the
+view state observe the same `clientDataEpoch` without a module cycle. There is no liveness
+module: the probe it owned was removed on 2026-07-24 once the transport's own
+connection-status signal covered host loss and the response-path epoch/fence checks
+covered the rest. They live outside
+`src/app/composables/` because none of them is a Vue composable: each is a plain factory
+that owns closure-local state and is constructed once, so filing them under a directory
+whose name promises `use*` reactivity would misdescribe them (amended 2026-07-24).
+
+User-visible UI copy is written in the component that renders it; there is no message
+catalog (amended 2026-07-24). The UI ships one language, so QR-004's bilingual obligation
+is on user and contributor documentation and on the WCAG applicability matrices, not on the
+running screen: the manual accessibility matrix has no locale axis and the shell states a
+fixed `lang="en"` rather than negotiating one. A catalog keyed by message name would
+therefore only add a lookup between a key and its one string. The exception is text a
+closed union fixes — a Source status, a boundary origin, a Diagnostic code — which is
+declared beside that union in `src/shared/entities.ts` and `src/shared/diagnostics.ts` so a
+new member cannot compile without its text, and so the server and the browser read the same
+vocabulary from one place. `validation.md` and `validation.ja.md` record final SC evidence and
 remain semantically equivalent. CI and release ownership is explicit under
 `.github/workflows/`, including documentation parity, package exact-set, and release gates.
 
@@ -1848,15 +1874,13 @@ package manager's own configuration).
   enabled and are verified manually as well as through browser tests. If the browser or
   editor cannot compute the diff with available environment capacity, an actionable
   diagnostic leaves the complete authored side-by-side source visible.
-  `src/app/composables/liveness.ts` owns the shared central client-data purge implementation and
-  lightweight session-liveness checks over the loopback session API channel. It issues a check only
-  for initial adoption, return to a visible/focused page, explicit Resume, or fresh
-  session adoption; at most one is in flight, and the browser/network/runtime owns when it
-  settles. This single-flight rule serializes state adoption to reject stale responses; it
-  is a functional coordination invariant, not a resource-admission or validation ceiling.
-  There is no product-defined polling interval, request timeout, retry timer, or
-  memory lease. A network/runtime rejection, session mismatch, hidden/page
-  lifecycle event, observed process loss, or equivalent terminal full-session reset
+  `src/app/session/client-data.ts` owns the shared central client-data purge
+  implementation, and `src/app/session/view-state.ts` owns the reactive values `App.vue`
+  renders over the loopback session API channel. It installs no listener at all: there is no
+  liveness probe, no product-defined polling interval, request timeout, retry timer, or
+  memory lease, and no page-lifecycle purge. The transport reports a lost host on its own, so
+  process loss becomes the ended view without being polled for. A network/runtime rejection,
+  session mismatch, observed process loss, or equivalent terminal full-session reset
   disposes editor models/workers/subscriptions, clears all session DTO/DOM/detail/
   comparison/warning state, aborts requests, and increments `clientDataEpoch` so a late
   response cannot restore content. Every SessionSnapshot/FileDetail request captures that
@@ -1873,14 +1897,13 @@ package manager's own configuration).
   the current token. File detail is adopted only when the epoch and the owning sequence's
   generation still match and the
   readable file still exists. No browser storage, service worker, or response cache
-  persists inspected content. Each successful liveness response is bound exactly to
-  `{ sessionId, globalContentEpoch, globalDisableInProgress }`: an older epoch is rejected,
-  an equal epoch with a null fence establishes or confirms the current baseline, and a greater epoch or non-null fence
-  triggers the full purge and control-only Global recovery before rendering. A hidden-page
-  purge retains no session data;
-  on visibility return the client fetches a fresh session snapshot over the same loopback
-  channel. The
-  SPA adopts its returned `sessionId` as the new liveness baseline without retaining or
+  persists inspected content. Every response is checked against the adopted
+  `{ sessionId, globalContentEpoch }` baseline: an older epoch is rejected, an equal epoch
+  with a null fence confirms the current baseline, and a greater epoch or non-null fence
+  triggers the full purge before rendering. T1027 owns the control-only Global recovery and
+  the subsequent fresh session-snapshot fetch over the same loopback channel; that recovery
+  retains no session data from before the purge. The
+  SPA adopts its returned `sessionId` as the new baseline without retaining or
   comparing the purged ID, and constructs the minimal client-side `RecoveryViewState` from
   epoch, Global control/progress, pathless tool-failure Diagnostics, and the failed
   requests' errors only. When the disable fence is non-null, the session route supplies the exact
@@ -1975,10 +1998,10 @@ package manager's own configuration).
   conflict; the
   session route returns only `GlobalFenceRecoverySnapshot`. Each inspection-data handler
   binds its captured `globalContentEpoch` and, under the coordinator lock at final
-  publication, requires an unchanged epoch and null fence or discards the body. The liveness
-  handler instead binds exact `{ sessionId, globalContentEpoch, globalDisableInProgress }`
-  values from one current coordinator-lock snapshot at publication and returns a current
-  non-null fence so another tab can observe the barrier.
+  publication, requires an unchanged epoch and null fence or discards the body. The
+  disabling page learns the fence from its own disable response and its subsequent session
+  fetches; no separate projection exists, because the product does not model a second tab
+  observing the barrier (amended 2026-07-24).
   The barrier aborts and discards an active uncommitted batch, drains enable admission and
   every tentative root context/result, performs a
   final queued-Global-work cancellation sweep, and requeues the same interrupted Repository
@@ -1997,7 +2020,7 @@ package manager's own configuration).
   alive but leaves the data fence, the failed request's error, and retry/join control in
   place, with restart as the
   fallback for unrecoverable cleanup. A pre-acceptance failure or true no-op leaves the fence
-  null. API and liveness handling continue while the event loop can serve them, but disable
+  null. API handling continues while the event loop can serve it, but disable
   cannot claim physical drain completion before the underlying promise settles.
   The Global batch owns only the Global generation sequence and builds all admitted
   replacements off to the side: a successful complete or partial batch commits exactly one

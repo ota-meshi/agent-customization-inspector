@@ -2,46 +2,38 @@
 // trusted-workspace inspection model (spec.md FR-024/FR-028,
 // data-model.md § Diagnostic). The registry fixes everything about a code
 // except its per-instance attachment values, so a record and its DTO carry
-// only `code` plus those values: scope, severity, and the localized
-// message/next-step text are derived from `code` through this shared
-// module and the client's bilingual catalog. `lifecycleOwnerKey` is
-// internal routing state and never serializes.
+// only `code` plus those values: scope, severity, and the actionable message
+// text are all derived from `code` through this one registry.
+// `lifecycleOwnerKey` is internal routing state and never serializes.
 import { createOpaqueId, type SupportedTool } from './entities';
 
 /**
- * The closed set of diagnostic codes (data-model.md § Diagnostic):
- *  - 'root-unreadable'          the selected/configured root does not exist
- *                               or cannot be read as a directory (FR-002)
- *  - 'file-unreadable'          a file's read failed, including a symbolic
- *                               link with a missing/unreadable target (FR-024)
- *  - 'file-content-binary'      the file contains a NUL byte; diagnostic-only
- *                               with no source text (FR-025)
- *  - 'recognition-parse-failed' a parser/extractor failed; the source stays
- *                               displayed while derived metadata is omitted
- *                               (FR-028)
- *  - 'path-normalization-collision' distinct enumerated raw paths in one
- *                               Source normalize to the same NFC path; the
- *                               whole collision group is rejected before any
- *                               member is opened, and because no unambiguous
- *                               public path exists the record is pathless and
- *                               session-scoped (spec.md Clarifications
- *                               § Session 2026-07-20)
- * An unknown code is unrepresentable: adding a code means extending this
- * union and its registry row together.
+ * The closed set of diagnostic codes (data-model.md § Diagnostic). An
+ * unknown code is unrepresentable: adding one means extending this union
+ * and its registry row together.
  */
 export type DiagnosticCode =
+  /** The selected Source root does not exist or cannot be read (FR-002). */
   | 'root-unreadable'
+  /** An admitted candidate file disappeared or could not be read (FR-024). */
   | 'file-unreadable'
+  /** The file contains a NUL byte and is diagnostic-only (FR-025). */
   | 'file-content-binary'
+  /** A parser/extractor failed while complete source text remains available (FR-028). */
   | 'recognition-parse-failed'
+  /** Distinct raw paths normalize to one ambiguous NFC display path. */
   | 'path-normalization-collision';
 
 /**
- * How the UI ranks a diagnostic: 'info' is advisory, 'warning' marks a
- * degraded but usable outcome (e.g. binary content), 'error' marks an item
- * or Source that could not be read.
+ * How the UI ranks a diagnostic without asserting vendor validity.
  */
-export type DiagnosticSeverity = 'info' | 'warning' | 'error';
+export type DiagnosticSeverity =
+  /** Advisory information that does not degrade the result. */
+  | 'info'
+  /** A degraded but still usable outcome, such as binary content. */
+  | 'warning'
+  /** An item or Source could not be read or represented. */
+  | 'error';
 
 /**
  * Where a diagnostic attaches (spec.md § Key Entities · Diagnostic): 'file'
@@ -49,7 +41,13 @@ export type DiagnosticSeverity = 'info' | 'warning' | 'error';
  * sourceId, 'session' carries no location field at all. createDiagnostic
  * enforces the shapes.
  */
-export type DiagnosticScope = 'file' | 'source' | 'session';
+export type DiagnosticScope =
+  /** Attached to one coherent source/file/path tuple. */
+  | 'file'
+  /** Attached to one Source and no file/path. */
+  | 'source'
+  /** Attached to the session with no location fields. */
+  | 'session';
 
 /**
  * `lifecycle` diagnostics live outside a committed generation and are routed
@@ -59,7 +57,11 @@ export type DiagnosticScope = 'file' | 'source' | 'session';
  * normalization-collision rejection, which belongs to the generation whose
  * traversal observed the colliding raw entries.
  */
-export type DiagnosticOwnerKind = 'lifecycle' | 'candidate-file';
+export type DiagnosticOwnerKind =
+  /** Retained outside a generation and routed through one lifecycle owner. */
+  | 'lifecycle'
+  /** Owned by the generation whose candidate traversal emitted it. */
+  | 'candidate-file';
 
 /**
  * What the closed registry fixes about one code besides the code itself:
@@ -72,6 +74,16 @@ export interface DiagnosticRegistryEntry {
   readonly scope: DiagnosticScope;
   /** Fixed UI ranking for this code; see {@link DiagnosticSeverity}. */
   readonly severity: DiagnosticSeverity;
+  /**
+   * The actionable sentence shown for this code, stating what happened and
+   * what the user can do about it (FR-028). The wire DTO carries only the
+   * code, so the text is derived here rather than sent per instance: it is
+   * fixed by the code exactly like `scope` and `severity`, and keeping it in
+   * this one `Record` means a new code cannot compile without its text
+   * (amended 2026-07-24 — it previously lived in a separate client message
+   * catalog, which was a second map over the same closed union).
+   */
+  readonly message: string;
 }
 
 /**
@@ -87,21 +99,53 @@ export interface DiagnosticRegistryEntry {
  */
 export const DIAGNOSTIC_REGISTRY: Readonly<Record<DiagnosticCode, DiagnosticRegistryEntry>> =
   {
-    // `root-unreadable` is the one context-dependent scope (data-model.md
-    // § Diagnostic): this default `source` scope applies to a published
-    // Source (the Repository Source — the only case the initial release
-    // produces). An unpublished Global tool has no Source to attach to, so
-    // the future Global tasks construct it as a pathless session-scoped
-    // lifecycle record (`global:<tool>` owner) rather than through this
-    // fixed-scope entry.
-    'root-unreadable': { ownerKind: 'lifecycle', scope: 'source', severity: 'error' },
-    'file-unreadable': { ownerKind: 'candidate-file', scope: 'file', severity: 'error' },
-    'file-content-binary': { ownerKind: 'candidate-file', scope: 'file', severity: 'warning' },
-    'recognition-parse-failed': { ownerKind: 'candidate-file', scope: 'file', severity: 'warning' },
-    // Session scope is mandated because no unambiguous public path exists for
-    // a colliding group; createDiagnostic therefore rejects any location field
-    // on this code, which is exactly the pathless enforcement T028 requires.
-    'path-normalization-collision': { ownerKind: 'candidate-file', scope: 'session', severity: 'error' },
+    /**
+     * A published Source root is unreadable. An unpublished Global tool has
+     * no Source to attach to, so later Global tasks construct its equivalent
+     * as a pathless session-scoped lifecycle record (data-model.md).
+     */
+    'root-unreadable': {
+      ownerKind: 'lifecycle',
+      scope: 'source',
+      severity: 'error',
+      message:
+        'The selected root does not exist or cannot be read as a directory. Check the path and run the inspector again from a readable directory.',
+    },
+    /** One admitted candidate file disappeared or could not be read. */
+    'file-unreadable': {
+      ownerKind: 'candidate-file',
+      scope: 'file',
+      severity: 'error',
+      message:
+        'This file could not be read. It may have been removed or its permissions may deny reading; other files were unaffected. Check that the file exists and is readable, then rescan.',
+    },
+    /** One candidate contains NUL bytes and therefore has no source text. */
+    'file-content-binary': {
+      ownerKind: 'candidate-file',
+      scope: 'file',
+      severity: 'warning',
+      message:
+        'This file contains NUL bytes, so it is recorded without source text and nothing was parsed from it. Use a binary-capable viewer if you need to inspect its contents.',
+    },
+    /** One recognition parser failed while the authored source remains available. */
+    'recognition-parse-failed': {
+      ownerKind: 'candidate-file',
+      scope: 'file',
+      severity: 'warning',
+      message:
+        'One recognition could not be parsed, so its derived metadata and relationships are omitted. Review the complete source text that remains available, then rescan after correcting the file if you need the derived metadata.',
+    },
+    /**
+     * A colliding path group has no unambiguous public location, so this code
+     * is session-scoped and rejects every location field (T028).
+     */
+    'path-normalization-collision': {
+      ownerKind: 'candidate-file',
+      scope: 'session',
+      severity: 'error',
+      message:
+        'Two entries normalize to the same display path, so they could not be listed unambiguously and were rejected. Rename one entry so the normalized paths differ, then rescan.',
+    },
   };
 
 /**
@@ -119,14 +163,17 @@ export const DIAGNOSTIC_REGISTRY: Readonly<Record<DiagnosticCode, DiagnosticRegi
  * never serializes — it is routing state, not API data.
  */
 export type LifecycleOwnerKey =
+  /** The automatic Repository Source root-failure owner. */
   | 'repository'
+  /** One unpublished Global tool's root-failure owner. */
   | `global:${SupportedTool}`
+  /** One published Source's explicit-rescan failure owner. */
   | `published-source:${string}`;
 
 /**
  * One constructed diagnostic instance: `code`, its per-instance attachment
  * values, and the internal lifecycle owner key. Scope, severity, ownership,
- * and localized texts are registry-derived from `code`, never stored.
+ * and message text are registry-derived from `code`, never stored.
  */
 export interface DiagnosticRecord {
   /** Opaque per-instance identity. */
@@ -210,9 +257,9 @@ export function createDiagnostic(input: DiagnosticInput): DiagnosticRecord {
 
 /**
  * Public projection of {@link DiagnosticRecord} without the internal
- * lifecycle owner key. Clients derive scope, severity, and the localized
- * message/next-step text from `code` through the shared registry and their
- * bilingual catalog.
+ * lifecycle owner key. Clients derive scope, severity, and the actionable
+ * message text from `code` through {@link DIAGNOSTIC_REGISTRY}; none of them
+ * is sent per instance.
  */
 export interface SerializedDiagnostic {
   /** Opaque per-instance identity. */

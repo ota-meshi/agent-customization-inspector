@@ -182,6 +182,9 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium firefox webkit
+      # The browser suite drives the packaged CLI (dist/cli.mjs serving
+      # dist/public), so the build is a prerequisite of this job.
+      - run: pnpm run build
       - name: Run primary-workflow and accessibility suite
         if: ${{ hashFiles('tests/e2e/**') != '' }}
         run: pnpm run test:e2e

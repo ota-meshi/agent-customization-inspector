@@ -1180,7 +1180,7 @@ Classification valueは次のclosed setとする。
 | `actorClass` | `inspector \| bundled-spa \| browser-extension \| other-host-process \| operating-system \| participant \| unknown` |
 | `authorityClass` | `exact-issued \| other-loopback \| remote \| unclassifiable \| not-applicable` |
 | `requestClass` | `authorized-static \| authorized-api \| prohibited \| unrelated \| os-mediated \| unclassifiable \| not-applicable` |
-| `targetClass` | `static-manifested-asset \| static-spa-shell \| static-client-route-fallback \| api-get-session \| api-get-session-liveness \| api-get-file \| api-post-repository-rescan \| api-get-global-consent-preview \| api-post-global-consent-preview \| api-post-global-enable \| api-post-global-rescan \| api-post-global-disable \| other-loopback \| remote \| mcp \| unclassifiable \| not-applicable` |
+| `targetClass` | `static-manifested-asset \| static-spa-shell \| static-client-route-fallback \| api-get-session \| api-get-file \| api-post-repository-rescan \| api-get-global-consent-preview \| api-post-global-consent-preview \| api-post-global-enable \| api-post-global-rescan \| api-post-global-disable \| other-loopback \| remote \| mcp \| unclassifiable \| not-applicable` |
 | `methodClass` | `get \| head \| post \| other \| unclassifiable \| not-applicable` |
 | `capabilityClass` | `valid \| missing \| invalid \| unclassifiable \| not-applicable` |
 | `originClass` | `exact-same-origin \| missing \| mismatched \| unclassifiable \| not-applicable` |
@@ -1219,7 +1219,6 @@ exact-issued authority、authorized-api request、`capabilityClass: valid`、sam
 | Adapter memory内だけでclassifyするexact raw route | `methodClass` | `targetClass` |
 |---|---|---|
 | `GET /api/v1/session` | `get` | `api-get-session` |
-| `GET /api/v1/session/liveness` | `get` | `api-get-session-liveness` |
 | `GET /api/v1/files/{fileId}` | `get` | `api-get-file` |
 | `POST /api/v1/repository/rescan` | `post` | `api-post-repository-rescan` |
 | `GET /api/v1/global/consent-preview` | `get` | `api-get-global-consent-preview` |

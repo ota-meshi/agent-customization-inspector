@@ -2,7 +2,7 @@
 // exist per published Source; the derived snapshot state is stale exactly
 // while any entry remains. The DTO shape lives in the shared API module;
 // this module owns only the overlay bookkeeping.
-import type { StaleSourceFailure } from '../../shared/api-types';
+import type { SnapshotState, StaleSourceFailure } from '../../shared/api-types';
 
 /**
  * Creates or replaces only the entry for the failing Source. Entries for
@@ -33,6 +33,6 @@ export function clearStaleFailures(
 /** The snapshot is stale exactly while any stale entry remains (FR-030). */
 export function deriveSnapshotState(
   failures: readonly StaleSourceFailure[],
-): 'current' | 'stale-after-fatal-rescan' {
+): SnapshotState {
   return failures.length === 0 ? 'current' : 'stale-after-fatal-rescan';
 }
