@@ -38,7 +38,7 @@
 - [x] SC-003、SC-004、SC-005、SC-007、SC-009が、stable case ID、fixtureごとのdigest、0件ではないrequired class、実行した正確なcase record、denominator semantics変更時のpaired automated manifest-version transition test、独立したT1062 human-review record、fixture-byteのみ変更時のfixture/canonical digest両方の更新、欠落・省略・重複・不一致evidenceの必須failureを持つversion付きrelease-evidence fixture manifestを使用する
 - [x] Bundled-browserの全`FileDetail` requestとcomparison構築が、source text、declared metadata、authored relationship target、comparisonの両sideを扱う1つのacknowledgement gateを共有する。通常のroute、Source、generation cleanupはscope限定のままとし、Global disableはrequest前とgreater-epoch/non-null-fence観測時にfull-session purgeを行う明示的な例外とする
 - [x] ClosedなGlobal-root tableがabsent/default、empty、invalid、relative、通常のhome外を含むeligible rootを区別し、missingまたはreadableではないconsent済みrootを他toolをblockせずにabsent/failedとして記録し、readableなrootを1つのatomic batch commitへadmitする
-- [x] Repository-root selectionを取得済み`process.cwd()`またはresolveした1つの`--cwd`値へ限定し、`chdir`を行わず、invalidなoption shapeをsession作成前にrejectし、bootstrap時にgeneration-0 Repository Sourceを正確に1つ作成する
+- [x] Repository-root selectionを取得済み`process.cwd()`またはresolveした1つの`--root`値へ限定し、`chdir`を行わず、invalidなoption shapeをsession作成前にrejectし、bootstrap時にgeneration-0 Repository Sourceを正確に1つ作成する
 - [x] Selectorを持たない1回のsession-wide Global actionを固定Copilot/Claude/Codex previewへbindし、3 entryすべてを評価し、missingまたはunreadableなrootを他toolをblockせずに除外して、admit済みSourceを1 batchかつ1 atomic generationで公開する。予期しないfailureはtransaction全体をabortする
 - [x] Active-consent Global retryはfrozen preview/fixed tupleを再利用し、pending workがemptyになった後だけcompleteなretryable target setをserver側でderiveし、既存Source/prior snapshotを保持し、全件rejectならrequest/job/generationを作らず、それ以外はrequest-correlatedな1 atomic batchをpublishする
 - [x] Filesystem operationはraw entry nameを使用し、publicなSource-relative PathはNFCのdisplay segmentを使用する。Hard linkは通常のfileであり、symbolic linkはtargetを透過的にreadし、壊れたlinkはper-file diagnosticになる
@@ -114,7 +114,7 @@
   abort-attempt wordingから決定的かつentry-localでthrowしないfailureを除外し、source textを検証済みnon-binary UTF-8
   replacement decode成功時だけに限定した。さらにSC-003/004/005/007/009のdenominatorをversion付きでdigest-boundなrelease-evidence manifestに
   freezeし、authored-value acknowledgementとclient-data-purgeのscopeをclosedにした後、すべての項目に合格した。
-- 2026-07-20の検証iteration 17では、selected rootと`--cwd` behavior、authorityを持たないgeneration-0 Repository Source作成、
+- 2026-07-20の検証iteration 17では、selected rootと`--root` behavior、authorityを持たないgeneration-0 Repository Source作成、
   selectorなしのfixed 3-tool Global batch、structural `lstat`の正確な`ENOENT`処理、REST対startupのOperation Error ownership、
   文字化けを維持するUTF-8 replacement、raw/NFCとhard-link identity rule、Codexの正確なempty判定、verification-onlyな
   Presentation Allowlist gateをclosedにした後、すべての項目に合格した。

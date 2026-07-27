@@ -1,4 +1,4 @@
-// T025: production dependency graph — exactly the five approved direct runtime
+// T025: production dependency graph — exactly the seven approved direct runtime
 // dependencies and the absence of `open`. Versions are not asserted here: the
 // committed lockfile already fixes every resolved version and its integrity, so
 // re-stating them in a test would duplicate the lockfile rather than protect a
@@ -19,6 +19,11 @@ const APPROVED_PRODUCTION_DEPENDENCIES: readonly string[] = [
   'gunshi',
   'jsonc-parser',
   'smol-toml',
+  // Frontmatter delimiter handling, parsed with the `yaml` engine below rather
+  // than a second one: a package carrying its own `js-yaml` would give one
+  // document two meanings, because js-yaml 3 is YAML 1.1 and `yaml` is 1.2.
+  'vfile',
+  'vfile-matter',
   'yaml',
 ];
 
@@ -29,7 +34,7 @@ describe('node-only production policy', () => {
     scripts?: Record<string, string>;
   };
 
-  it('declares exactly the five approved direct production dependencies', () => {
+  it('declares exactly the seven approved direct production dependencies', () => {
     // A drive-by dependency addition must fail here until the production-graph
     // decision (research.md § 3) is explicitly revisited.
     expect(Object.keys(manifest.dependencies ?? {}).sort()).toEqual(

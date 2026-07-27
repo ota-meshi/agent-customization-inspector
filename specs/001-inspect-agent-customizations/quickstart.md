@@ -93,8 +93,9 @@ Expected:
   manager-generated `.bin` symlinks and `.cmd`/`.ps1` launch shims exist outside those
   payloads and are the only limited interoperability exception: each maps one exact
   declared `package.json.bin` target to audited Node JavaScript, forwards argv only, and
-  adds no input or application logic. The direct production dependencies are exactly `devframe`, `gunshi`,
-  `jsonc-parser`, `smol-toml`, and `yaml`; devframe's transitive tree is owned by devframe
+  adds no input or application logic. The direct production dependencies are exactly the seven
+  packages `devframe`, `gunshi`, `jsonc-parser`, `smol-toml`, `vfile`, `vfile-matter`, and
+  `yaml`; devframe's transitive tree is owned by devframe
   and the lockfile, and `open` is absent from every dependency section.
 - Build output contains no fixture, raw customization text, Global content, cache, or
   source-map path that exposes an inspected machine.
@@ -121,7 +122,7 @@ running, which is the one thing a launch check needs to be sure of. Pass options
 rest-argument rejection refuses it:
 
 ```bash
-pnpm start --no-open --cwd /path/to/repository
+pnpm start --no-open --root /path/to/repository
 ```
 
 Read the printed URL rather than assuming a port. devframe selects another local port when
@@ -140,11 +141,11 @@ The equivalent explicit-root launch from another directory is:
 
 ```bash
 cd /path/to/agent-customization-inspector
-node dist/cli.mjs --no-open --cwd tests/fixtures/repositories/all-supported
+node dist/cli.mjs --no-open --root tests/fixtures/repositories/all-supported
 ```
 
 The CLI captures the invocation `process.cwd()` once. Omission uses that exact string.
-`--cwd` is accepted, a repeated option resolving to the parser's last value: an absolute option is kept as given, and a relative
+`--root` is accepted, a repeated option resolving to the parser's last value: an absolute option is kept as given, and a relative
 option is resolved against the captured invocation directory. An explicit empty value exits
 with fixed actionable, source-value-free output before a session or browser attempt. A
 missing value is rejected at the same boundary by Gunshi's typed argument validation.
@@ -196,7 +197,7 @@ inspection-derived content or path, authored value, user-supplied command, or
 environment-selected handler, and `--no-open`-style suppression flags are devframe CLI
 flags rather than hand-written product options. A missing or failing opener leaves the
 server running: the already printed local origin is the FR-001 fallback. Apart from the
-optional single `--cwd`, there is no repository picker/ancestor-root discovery,
+optional single `--root`, there is no repository picker/ancestor-root discovery,
 remote-host flag, static-export command, or MCP command in the initial release.
 
 Failures are reported ordinarily. A startup problem ends the launch with an actionable
@@ -284,8 +285,8 @@ Expected:
   the current gate neither installs a tarball nor invokes an installed package link. T917 owns
   the final-release test that packs and installs into an isolated fixture and launches
   `npx --no-install` without relying on the working tree or a runtime download.
-  The production-graph tests assert exactly the five approved direct dependencies
-  `devframe`, `gunshi`, `jsonc-parser`, `smol-toml`, and `yaml` — their resolved versions
+  The production-graph tests assert exactly the seven approved direct dependencies
+  `devframe`, `gunshi`, `jsonc-parser`, `smol-toml`, `vfile`, `vfile-matter`, and `yaml` — their resolved versions
   and integrity hashes stay owned by the committed
   `pnpm-lock.yaml` — and negative packaging fixtures prove that a missing or non-regular
   required entry point fails `verify:package` before publish.
@@ -309,7 +310,6 @@ Expected:
 pnpm exec vitest run tests/contract/vendor-behaviors
 pnpm exec vitest run tests/contract/inspection-rules
 pnpm exec vitest run tests/contract/runtime-composition
-pnpm exec vitest run tests/contract/official-sources
 ```
 
 The tests above are offline. A maintainer runs `pnpm run check:official-sources` explicitly
@@ -317,10 +317,10 @@ when reviewing upstream drift; it is the only source check allowed to use the ne
 
 Verify:
 
-1. Every shipped `behaviorId`, `ruleId`, `strategyId`, and `sourceId` occurs in exactly one
-   owning bilingual contract and its matching immutable registry. Every cross-reference
-   resolves, and every `sourceRefs` entry is reciprocal with its
-   `OfficialSourceRecord`; offline tests recompute its semantic fingerprint. The explicit
+1. Every shipped `behaviorId`, `ruleId`, and `strategyId` occurs in exactly one owning
+   bilingual contract and its matching immutable registry. Every cross-reference resolves,
+   and every citation in a record's `evidence` array is reciprocal with the official-sources
+   contract row it cites; offline tests recompute its semantic fingerprint. The explicit
    drift check enforces official HTTPS hosts plus exact section selection and normalization.
    Recoverable network or execution-environment failures fail closed without auto-updating
    a behavior, rule, strategy, or checked-in digest; no product-specific numeric fetch cap is
@@ -453,7 +453,7 @@ pnpm exec playwright test tests/e2e/discovery.spec.ts
 Verify:
 
 1. With no option, Repository Source equals the exact captured child-process
-   `process.cwd()`. With relative/absolute `--cwd`, it equals the selected root;
+   `process.cwd()`. With relative/absolute `--root`, it equals the selected root;
    the process working directory is unchanged and no picker/ancestor search appears.
 2. Source, tool, kind, and Source-relative Path filters work with keyboard and pointer
    input; every inventory-file or safely normalized target path is relative to its owning
@@ -1050,7 +1050,7 @@ unless the final pair exactly matches valid evidence.
   working directory before the prompt. The interval includes entering the fixed fd6 line
   `npx --no-install agent-customization-inspector --no-open`, launching the Inspector from
   that prepared root, and completing the required printed-URL fallback in the pinned certified
-  browser. Changing directory or supplying `--cwd` is not a participant action in this study;
+  browser. Changing directory or supplying `--root` is not a participant action in this study;
   the automated User Story 1 tests verify those product capabilities. At least 19 of 20
   participants must succeed within two minutes.
 - For SC-006, place every participant—regardless of SC-001 result—in the same prepared
@@ -1681,8 +1681,8 @@ the exact `package.json.files` entries `dist`, `README.md`, `README.ja.md`, and
 the remaining `dist` contents are Nuxt/tsdown build output and are not re-enumerated by a
 product manifest. Inspect the exact `bin` mapping and absence of `main`/`module`/`exports`,
 license notices, exact shebang/executable mode, and the published README pair. The direct
-production dependencies are exactly `devframe`, `gunshi`, `jsonc-parser`, `smol-toml`, and
-`yaml`; `open` must be absent from every dependency section, while devframe's transitive
+production dependencies are exactly the seven packages `devframe`, `gunshi`, `jsonc-parser`,
+`smol-toml`, `vfile`, `vfile-matter`, and `yaml`; `open` must be absent from every dependency section, while devframe's transitive
 tree is owned by devframe and the lockfile.
 
 There is no host-security or HTTP-API-router contract step to rerun: the per-session
@@ -1701,8 +1701,8 @@ window, and rollback/support path. Missing or one-language-only evidence fails t
 gate.
 
 Assert the approved production dependency set from `package.json` and the `pnpm-lock.yaml`
-closure: exactly the five direct dependencies `devframe`, `gunshi`, `jsonc-parser`,
-`smol-toml`, and `yaml`, so a graph change fails the gate until the dependency decision is
+closure: exactly the seven direct dependencies `devframe`, `gunshi`, `jsonc-parser`,
+`smol-toml`, `vfile`, `vfile-matter`, and `yaml`, so a graph change fails the gate until the dependency decision is
 explicitly revisited. The committed lockfile owns each resolved version and its integrity
 hash, which is what pins every production package's payload bytes. Only generated
 Package-manager-generated `.bin` symlinks and `.cmd`/`.ps1` shims map to the exact declared
@@ -1711,13 +1711,12 @@ Generated HTML shell, CSS, JSON files, documentation, and license files are acce
 declarative, non-executable payload artifacts; any HTML-referenced bootstrap script remains
 JavaScript executable code. FR-038 covers project-authored executable application code and
 the published/installed product, while third-party development and test tooling remains
-outside that published boundary and is audited separately. *(superseded 2026-07-23: the
-per-payload content scans — platform selectors, native/binary/Wasm magic, native build
-source/metadata, non-Node shebangs, shell helpers — plus the scripts-disabled and
-network-disabled install runs, the per-OS shim audit, and the per-dependency version and
-integrity-hash assertions were removed from scope: the committed lockfile already pins
-every resolved version with its integrity hash — so restating those values in a test only
-duplicates the lockfile — and install-time enforcement belongs to the package manager.)*
+outside that published boundary and is audited separately. Per-payload content scans — platform selectors, native/binary/Wasm magic, native build
+source/metadata, non-Node shebangs, shell helpers — along with scripts-disabled and
+network-disabled install runs, the per-OS shim audit, and per-dependency version and
+integrity-hash assertions are out of scope: the committed lockfile already pins every
+resolved version with its integrity hash, so restating those values in a test only
+duplicates the lockfile, and install-time enforcement belongs to the package manager.
 
 Launch tests must cover the printed origin line appearing before any browser attempt, zero
 browser-helper child processes under `--no-open`, and inspection remaining usable when
@@ -1725,10 +1724,10 @@ automatic opening is disabled, unsupported, or fails — automatic opening, port
 resolution, and the open/suppress flags are devframe-owned, and the tests prove that no
 inspection-derived content, path, or authored value reaches that opener. They also cover
 Gunshi's non-binding help/version, strict unknown-option rejection,
-explicit positional/rest rejection, default exact captured `process.cwd()`, and one `--cwd`
+explicit positional/rest rejection, default exact captured `process.cwd()`, and one `--root`
 accepted with a repeated option resolving to the parser's last value — an absolute option kept as given, a relative option resolved
 against the captured invocation directory, and no `chdir`.
-They reject an explicit empty `--cwd` value with the fixed actionable, source-value-free
+They reject an explicit empty `--root` value with the fixed actionable, source-value-free
 startup error before session/browser creation and reject a missing value through Gunshi's
 typed argument validation. They require nonzero
 validation failures and awaited

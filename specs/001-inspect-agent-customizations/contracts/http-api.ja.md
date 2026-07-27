@@ -63,9 +63,8 @@ customization-selected destination、別machineへの調査content送信は禁�
    content filterなしで表示または返却する。
 6. 宣言済みparameterを持つ各functionは、その文書化済みparameterだけを受け付け、strict manual type/enum guardで検証する。
    Extra key、path-shaped value、malformed argumentは文書化済みsafe rejectionで拒否する。`Parameters: none`と
-   宣言したfunctionはinputを一切readしないため、boundaryで検証するものがない
-   （superseded 2026-07-23: every-functionのargument拒否ruleを絞った。functionがreadしないargumentの拒否は
-   保護すべきfailure modeを持たないruntime guardである）。宣言する
+   宣言したfunctionはinputを一切readしないため、boundaryで検証するものがない。functionがreadしないargumentの拒否は、
+保護すべきfailure modeを持たないruntime guardだからである。宣言する
    全resultとrejectionは1つのcompleteなstrict-JSON-serializable valueとする。Transport容量は
    製品定義のrequest-size上限ではなくNode.js、devframe、実行環境から継承する。
 
@@ -127,9 +126,7 @@ serializationはdevframe channelが所有する。Handlerは宣言済みresult v
 後のserialization/encodingまたはdelivery failureは、handlerがcommitしたstateをrollbackも
 duplicateもせずそのrequestの通常のerrorとして報告する。Successful resultを
 報告せず、部分的にdeliverされたmessageをpartial resultとして扱わず、clientはtransport failureと
-まったく同じようにcommit済みgenerationを再取得する
-（superseded 2026-07-23: 事前serialize済みimmutable result bufferとserialization失敗時の
-publish-nothing orderingはself-verificationの整理で削除された）。Domain layerはfailureのcauseを一切classifyしない。
+まったく同じようにcommit済みgenerationを再取得する。Domain layerはfailureのcauseを一切classifyしない。
 
 決定的rejection:
 
@@ -142,8 +139,7 @@ publish-nothing orderingはself-verificationの整理で削除された）。Dom
 ```
 
 各functionのoutcomeは、宣言済みのclosed resultまたはrejection variantのいずれか1つ、または
-unexpected failureのordinary errorとする。かつてのHTTP status semanticsはそのvariantとして
-存続する。すなわちqueued command acceptanceは文書化済みacceptance result、各`4xx`
+unexpected failureのordinary errorとする。HTTP status semanticsはそのvariantが担う。すなわちqueued command acceptanceは文書化済みacceptance result、各`4xx`
 conflict/validation failureは同じ`code`を持つ名前付き決定的rejection（例:
 `stale-resource`、`scan-in-progress`、`global-enable-in-progress`、
 `global-disable-pending`、`consent-preview-frozen`、`consent-preview-missing`、
@@ -173,7 +169,7 @@ Parameters: なし。
 
 Current session snapshotとscan progressを返す。clientは初回adoption時とSource state変化時に
 このfunctionをinvokeする。独立したliveness probeもpage-lifecycleでの再取得も存在しない
-（2026-07-24 修正、§ Concurrency and lifecycleを参照）。Productはinspection dataのtimer、
+（§ Concurrency and lifecycleを参照）。Productはinspection dataのtimer、
 filesystem watcher、server-initiated pushを定義しない。
 devframe channelは宣言済みfunctionのrequest/responseとしてだけ使う。
 
@@ -200,12 +196,31 @@ InspectionSession
 │                         diagnosticCount, queuedAt, startedAt }
 ├── files[]
 │   └── fileId, sourceId, sourceRelativePath, diagnostic IDs, and encoding as the variant
-│       discriminator — readable text adds parseSummary, sizeBytes, hadLeadingBom, and
-│       recognition summaries { tool, kind, parseStatus, provenance count, diagnostic IDs };
-│       binary adds only sizeBytes; unknown adds nothing
+│       discriminator — readable text adds parseSummary, sizeBytes, and hadLeadingBom;
+│       binary adds only sizeBytes; unknown adds nothing. A file publishes its own facts
+│       only; what it was recognized as belongs to a per-kind inventory below
+├── skills[]
+│   └── declaredName null | string,
+│       definitions[] { fileId, tools[], companionFiles[], diagnostic IDs },
+│       sameNameResolutions[] { tool, resolution } — empty unless several definitions
 └── diagnostics[] { diagnosticId, code, sourceId?, fileId?, sourceRelativePath? }
     （active-generation recordとsession-owned lifecycle record）
 ```
+
+一覧rowの単位はfileではなくkindが決める。Skillは宣言名1つである — vendor自身のselectorが使う
+identifierであり、それを収めるdirectory名と一致する必要はない — したがって1つの名前を宣言する複数の
+`SKILL.md`は、複数の定義を持つ1つのentryとして公開され、名前を宣言しない定義が他のentryへまとめられる
+ことはない。MCP serverはcarrier内の`[mcp_servers.*]`宣言1つであり、admit済みの`.codex/config.toml` 1つは
+宣言したserverの数だけrowを公開する。Instructions fileはfile自身である。他のkindの単位は、その一覧を出荷するtaskが、そのkind自身の
+vendor contractから決める。したがって物理fileは
+`files[]`に自身の事実 — path、read結果、size、diagnostic — とともに1度だけ現れ、各kindの一覧は
+`fileId`で参照してそれらを繰り返さない。
+
+`sameNameResolutions`は、複数の定義が宣言する名前を各認識productがどう解決するかを述べる。これにより
+groupingがInspectorの記録していない優劣を暗示することはない。定義が1つのentryはこれを持たない。解決
+すべきものが無いからである。Skill strategyが出荷レジストリに無いproductも持たない。そのproductは
+skillを認識しないため、どのentryもそこへ到達しない。記述はproductごとに異なり、vendor contractは
+そのうち2つを不完全と記録している。
 
 このfull DTOを返すのは`globalDisableInProgress`がnullの間だけとする。Non-no-op disable barrier
 受理後は、このfunctionが代わりに次のexact control DTOだけを返す。
@@ -244,7 +259,7 @@ sequenceのfile、detail、comparison view、IDには触れない（FR-030）。
 inventory-item locator、caller input、read authorityではない。同じ区別を
 admission前のconsent-preview `displayRoot`にも適用する。Owning Sourceが存在する前のabsoluteまたは
 invalidなlexical rootを表し得る。
-Bootstrap Repository rootは`--cwd`省略時に`origin: process-cwd`、指定時に`origin: cwd-option`を
+Bootstrap Repository rootは`--root`省略時に`origin: process-cwd`、指定時に`origin: root-option`を
 持つ。APIはretained raw rootもcanonical rootも公開しない。
 各`conditionFacts` entryはevidence-linkedでorigin-file-lessなSource Condition Factであり、`files`と
 recognitionから分離する。Physical/synthetic file、file ID/path/text、comparison target、
@@ -274,9 +289,9 @@ normalized source-relative path、file IDの決定的順序。
 `not-applicable | all-parsed | mixed | all-failed`とする。全recognitionが`not-attempted`なら
 `not-applicable`、1件以上が`parsed`で`failed`がなければ`all-parsed`、1件以上が`failed`で`parsed`が
 なければ`all-failed`、`parsed`と`failed`が共存すれば`mixed`とする。`not-attempted` recordは後3
-projectionを変えない。Recognition summaryはtool/kind、recognition-level `parseStatus`、provenance
-count、diagnostic IDだけを持ち、aggregate documentation/applicability status、parse result、
-winnerを発明しない。Record-by-recordのevidence/applicabilityは後述するdetail
+projectionを変えない。Fileはrecognition summaryを持たない: 何として認識されたかはkindごとの一覧に属し、
+各rowはそのkindを識別するものだけを運ぶ。Aggregateなdocumentation/applicability status、parse result、
+winnerを発明することはない。Record-by-recordのevidence/applicabilityは後述するdetail
 provenance/relationshipだけに保持する。
 
 1 generation内で各`(fileId, tool, kind)`に対する`ToolRecognition`は正確に1つとする。Compatible
@@ -302,12 +317,13 @@ Retainする全failed-request error messageはexact 1つの`staleFailures` entry
 `batchStatus`、またはfailed disable projectionの`globalDisableInProgress.message`が所有し、
 Diagnostic
 listには一切入れない。
-`scope`はdiagnostic lifetimeと独立した必須attachment discriminatorである。Legalなlocation shapeは
-正確に3つだけで、`file`は`sourceId`、`fileId`、当該fileのSource-relative Pathをすべて持ち、
-`source`は`sourceId`だけを持ち、`session`はlocation fieldを1つも持たない。Source/session scopeの
+`scope`はdiagnostic lifetimeと独立した必須attachment discriminatorである。Location fieldは
+常に3つとも存在し、そのscopeが使わないものはnullとする。Legalな組み合わせは3つだけで、`file`は
+`sourceId`、`fileId`、当該fileのSource-relative Pathがすべてnon-null、`source`は`sourceId`が
+non-nullで他の2つがnull、`session`は3つともnullとする。Source/session scopeの
 recordはfile IDやpathを捏造しない。それ以外の組合せはserialization前に拒否する。
 Progressは`idle`、`failed`でnull、active workおよびdata modelで定義したfinal `ready`/`partial`
-counterではpresentとする。最初のlegal snapshotは、capture済み`process.cwd()`または単一の`--cwd`
+counterではpresentとする。最初のlegal snapshotは、capture済み`process.cwd()`または単一の`--root`
 からlexicalに選択したexact 1つのidle Repository Sourceを持ち、file/diagnosticなしのbootstrap
 generation 0である。Escape済みroot labelはpresentation専用でread authorityを与えない。最初の
 scanがretained selected rootをreadし、rootが存在しないかdirectoryとしてreadできない場合は、
@@ -800,8 +816,11 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
   domain state mutationなしでowning boundaryへpropagateする。Disableはpriority
   barrierのjoin/no-op ruleに従う。全自動/明示scanは1つのopaque `scanRequestId`を受け、実際の
   dequeue時にowning sequenceのcurrentなgenerationから開始する。
-- 全scanと`GlobalEnableOperation`に`AbortSignal`を渡し、process shutdownは全workをabortする。
-  Global disableは上記priority barrierで、active uncommitted transactionをabortし、enable
+- Workの停止はcancellation signalではなく、attemptのpublication authorityをrevokeすることで行う。
+  Revokeされたattemptのlate resultは破棄され、Source overlayはadmission前の状態へ正確に戻るため、
+  そのattemptが生成したものは何もcommitされない。実行中のreadはそのまま完了させる。中断しても、
+  破棄が既に与えているもの以上は得られないからである。Process shutdownはhostをcloseする前に全attemptを
+  revokeする。Global disableは上記priority barrierで、active uncommitted transactionをrevokeし、enable
   validationをabort/drainして最後のqueued Global work cancellation sweep後にfixedなcleanup-only
   またはremove-active-state dispositionを次にcompleteし、terminal success後だけ中断した
   Repository commandを1回requeueする。Operationの完了はNode.jsと実行環境に従う。Disable、
@@ -826,10 +845,10 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
 - Session retrievalはNode process lifetimeを延長せずdataを永続化せず、product固有のtime
   thresholdを定義しない。Liveness probeは存在しない——productは2枚目のbrowser tabをmodelせず、
   host喪失はloopback socketのcloseとしてtransportが問い合わせなしにpageへ報告するためである
-  （2026-07-24 修正）。全responseは引き続きcheckされるので、matching sessionでepochが等しく
+  。全responseは引き続きcheckされるので、matching sessionでepochが等しく
   disable projectionがnullのresultはcurrent baselineをconfirmする。Greater epochまたはnon-null
   projectionではcontrol-only recoveryへ入る前に中央purgeを実行し、network/runtime failure、
-  channel loss、session mismatchではended view表示前にpurgeする。Page-lifecycle eventはpurge triggerではない（2026-07-24 修正）: FR-027はdocument-liveness failureまたは同等のterminal reset後にpurgeするものであり、tab切り替えもページからの離脱もそのどちらでもない。破棄されたdocumentは自分のmemoryを解放し、bfcacheに入ったdocumentが保持するのは同じユーザーが自分のマシンで自分のファイルを見た状態であって、trusted-workspace modelはこれをexposureとして扱わない。clientはvisibility/unload listenerを設置しない。
+  channel loss、session mismatchではended view表示前にpurgeする。Page-lifecycle eventはpurge triggerではない: FR-027はdocument-liveness failureまたは同等のterminal reset後にpurgeするものであり、tab切り替えもページからの離脱もそのどちらでもない。破棄されたdocumentは自分のmemoryを解放し、bfcacheに入ったdocumentが保持するのは同じユーザーが自分のマシンで自分のファイルを見た状態であって、trusted-workspace modelはこれをexposureとして扱わない。clientはvisibility/unload listenerを設置しない。
   Purgeはclient epochをincrementしてlate in-flight resultによるDTO/editor stateの復活を防ぎ、
   Monaco model/editor/worker/subscriptionをdisposeし、DOM/store contentとwarning
   acknowledgementをclearしてpending requestをabortする。Node process終了時はserver側session
@@ -888,7 +907,7 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
    actionable Diagnosticへの参照、throw/rejectionではfailed requestのerror messageを運ぶ。
    Stale-failure fixtureはそのretained messageがstale snapshotとともに返ることをassertする。
    Bootstrap generation 0はcapture済み
-   `process.cwd()`/`--cwd`から選択したexact 1つのnon-authorizing Repository Sourceを持つ。
+   `process.cwd()`/`--root`から選択したexact 1つのnon-authorizing Repository Sourceを持つ。
    Multi-Source sequenceではA/Bのentry-failure pairが共存し、B successがAをclearせず、Aの
    partial successだけがAのpairをclearし、Aの再failureがAのpairだけを置換し、Global disableが
    除去Global Sourceのpairだけをclearすることを証明する。Diagnostic DTO fixtureは正確に3つの

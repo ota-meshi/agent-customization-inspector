@@ -102,7 +102,7 @@ workflowのいずれか1つでもSC-008は失敗する。
 
 Manual acceptanceではdevelopment serverではなくpacked release candidateを使用する。実行前にtarball digest、
 Playwright 1.61.1 package versionとbundled browser revision、supported OS version、実際のbrowser/engine version、
-assistive-technology version、OS locale pack、display scalingを`validation.ja.md`へfreezeする。UI言語はmatrixの軸ではない: productはUI言語を1つだけ出荷するため（2026-07-24 修正）、OS locale packはdimensionとして実行せず環境factとしてfreezeする。必須platform cellは次の3つである。
+assistive-technology version、OS locale pack、display scalingを`validation.ja.md`へfreezeする。UI言語はmatrixの軸ではない: productはUI言語を1つだけ出荷するため、OS locale packはdimensionとして実行せず環境factとしてfreezeする。必須platform cellは次の3つである。
 
 | Platform ID | Supported OS、engine、assistive technology |
 |---|---|

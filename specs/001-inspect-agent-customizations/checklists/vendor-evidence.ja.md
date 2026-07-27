@@ -20,7 +20,7 @@
 
 ## 要件の明確性
 
-- [x] CHK006 取得済みinvocation working directory、Inspectorのselected Repository root（defaultの`process.cwd()`またはlexicalにresolveした`--cwd`値）、vendor repository root、VS Code workspace folder、およびruntime `cwd`が、相違し得るすべての箇所で別概念として定義されているか？ [Clarity, Spec §FR-001–FR-002; Contract: Runtime Composition §Required condition facts]
+- [x] CHK006 取得済みinvocation working directory、Inspectorのselected Repository root（defaultの`process.cwd()`またはlexicalにresolveした`--root`値）、vendor repository root、VS Code workspace folder、およびruntime `cwd`が、相違し得るすべての箇所で別概念として定義されているか？ [Clarity, Spec §FR-001–FR-002; Contract: Runtime Composition §Required condition facts]
 - [x] CHK007 再帰的に見えるすべてのpathについて、vendorのlookup traversalとInspectorの下方向`ANY_DIRECTORIES` inventory segmentの違いが明示されているか？ [Clarity, Spec §QR-005; Contract: Inspection Path Allowlist §Vendor locators are not Inspector matchers]
 - [x] CHK008 fileの存在をruntime activationと誤認できないように、「present」「recognized」「supported」「available」「applicable」「selected」「enabled」「effective」が定義されているか？ [Clarity, Spec §FR-008–FR-009; Contract: Inspection Path Allowlist §Read authorization and applicability] — 2026-07-21修正: Inspection Path Allowlist §Read authorization and applicabilityに、8語すべてを定義するexistence/activation区別vocabularyを追加。
 - [x] CHK009 各根拠sectionは、広い親sectionを示すだけではなく、behavior、rule、またはstrategyの行が述べる正確なclaimを裏付けられる粒度になっているか？ [Clarity, Spec §QR-005; Contract: Official Sources §Record notation and ownership]
@@ -60,7 +60,7 @@
 
 - [x] CHK029 英語版と日本語版の要件で、同一のID、path、URL、確認したsection、version、subject-keyed documentation status、lifecycle qualifier、およびsemantic caveatを保持することが要求されているか？ [Completeness, Spec §QR-004–QR-005]
 - [x] CHK030 registry validationとdrift validationは、source integrityを確立できない場合にdeterministic、complete-or-explicitly-failed、かつactionableであり、product固有のnumerical resource ceilingを定義しないことを要求されているか？ [Non-Functional, Contract: Inspection Path Allowlist §Common conformance requirements]
-- [x] CHK031 credential、cookie、repository data、response body、および保持されるremote contentについて、official-source reviewのprivacy要件が明示されているか？ [Security, Data Model §OfficialSourceRecord]
+- [x] CHK031 credential、cookie、repository data、response body、および保持されるremote contentについて、official-source reviewのprivacy要件が明示されているか？ [Security, Data Model §EvidenceCitation]
 - [x] CHK032 一つのvendor surfaceを更新するときに、無関係なvendor、surface、Inspector policy、またはcomposition strategyを変更せずに済むownership modelになっているか？ [Maintainability, Spec §QR-001]
 - [x] CHK033 各behavior、rule、strategyがsubject-keyedな`EvidenceAssessment`を正確に1件所有し、provenanceとrelationship DTOがsort/deduplicate済みrecord単位の`EvidenceAssessment[]`をscalar、best/worst value、qualifier unionへ縮約せず保持するか？ [Acceptance Criteria, Spec §QR-005]
 - [x] CHK034 Lifecycle qualifierを重複なしの固定順`preview`、`experimental`、`deprecated`に限定し、empty arrayを`stable`でなくlifecycle claimなしと明示しているか？ [Acceptance Criteria, Spec §QR-005]

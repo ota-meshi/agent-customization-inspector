@@ -9,6 +9,7 @@
 // Environment note: this suite exercises browser-side code, so it names
 // happy-dom explicitly — the `coverage` project runs the same files under
 // the Node environment its contract and integration members need.
+import { DevframeConnectionError } from 'devframe/client';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -17,7 +18,7 @@ import {
   type ClientDataGuard,
   type SessionRpcFunctionName,
 } from '../../../src/app/session/api-client';
-import type { InspectionDataResult, SessionSnapshot } from '../../../src/shared/api-types';
+import type { InspectionDataResult, SessionSnapshot, SourceDto } from '../../../src/shared/api-types';
 
 /** A snapshot skeleton; each test overrides only the fields it asserts on. */
 function snapshot(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot {
@@ -26,6 +27,7 @@ function snapshot(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot {
     createdAt: '2026-07-24T00:00:00.000Z',
     sources: [],
     files: [],
+    skills: [],
     diagnostics: [],
     repositoryGeneration: 0,
     globalGeneration: null,
@@ -90,6 +92,52 @@ function guard(): ClientDataGuard & { advance: () => void; purges: string[] } {
     purges,
   };
 }
+
+/** The one Source a rescan admission names, as the host projects it. */
+const REPOSITORY_SOURCE: SourceDto = {
+  sourceId: 'src-repo',
+  kind: 'repository',
+  tool: null,
+  enabled: true,
+  status: 'ready',
+  boundary: { displayRoot: '/tmp/repo', origin: 'process-cwd' },
+  generation: 2,
+  scanRequestId: 'req-1',
+  progress: null,
+  conditionFacts: [],
+  diagnosticIds: [],
+};
+
+describe('a newer generation abandons data, not commands', () => {
+  it('keeps an in-flight rescan while superseding the snapshot fetch', async () => {
+    // A rescan is work the user asked for and is waiting on its admission
+    // response. Adopting a newer snapshot invalidates that sequence's *data*,
+    // not a command still in flight (contracts/http-api.md § Concurrency and
+    // lifecycle), so the command must settle on its own terms.
+    let releaseRescan: ((value: unknown) => void) | undefined;
+    const channel = {
+      call: (method: SessionRpcFunctionName) =>
+        method === SESSION_RPC_FUNCTIONS.rescanRepository
+          ? new Promise((resolve) => {
+              releaseRescan = resolve;
+            })
+          : Promise.resolve(sessionResult(snapshot(), { repositoryGeneration: 2 })),
+    };
+    const client = createSessionApiClient({ channel, clientData: guard() });
+    const rescan = client.rescanRepository();
+    // A snapshot at a newer generation arrives while the command is pending.
+    const adopted = await client.fetchSession();
+    expect(adopted.kind).toBe('adopted');
+    releaseRescan!({
+      globalContentEpoch: 0,
+      repositoryGeneration: 2,
+      globalGeneration: null,
+      data: { scanRequestId: 'req-1', source: REPOSITORY_SOURCE },
+    });
+    // Not discarded: the command's own token is still the latest of its family.
+    expect(await rescan).toMatchObject({ kind: 'accepted', scanRequestId: 'req-1' });
+  });
+});
 
 describe('session API client — invoked functions', () => {
   it('calls nothing outside the closed session function catalog', async () => {
@@ -297,13 +345,26 @@ describe('session API client — inspection-data guards', () => {
     expect(clientData.purges).toEqual(['channel-failure']);
   });
 
-  it('purges and reports the real error when the channel rejects', async () => {
+  it('purges and ends the session when the channel itself is gone', async () => {
     const clientData = guard();
-    const scripted = scriptedChannel([new Error('socket closed')]);
+    const scripted = scriptedChannel([new DevframeConnectionError('connection', 'socket closed')]);
     const client = createSessionApiClient({ channel: scripted.channel, clientData });
     const outcome = await client.fetchSession();
-    expect(outcome).toMatchObject({ kind: 'failed' });
+    expect(outcome).toMatchObject({ kind: 'failed', fatal: true });
     expect(clientData.purges).toEqual(['channel-failure']);
+  });
+
+  it('keeps the session for a handler or delivery failure', async () => {
+    // A handler that threw, or a serialization failure after it returned, is
+    // that request's own error (contracts/http-api.md § Concurrency and
+    // lifecycle). Purging for it would discard a committed snapshot the user is
+    // still reading over one failed call.
+    const clientData = guard();
+    const scripted = scriptedChannel([new Error('handler blew up')]);
+    const client = createSessionApiClient({ channel: scripted.channel, clientData });
+    const outcome = await client.fetchSession();
+    expect(outcome).toMatchObject({ kind: 'failed', fatal: false });
+    expect(clientData.purges).toEqual([]);
   });
 
   it('discards a superseded rejection without purging newer client state', async () => {

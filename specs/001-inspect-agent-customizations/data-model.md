@@ -39,11 +39,13 @@ reviewer decision/reference.
 
 ```text
 ContractRegistry (immutable, contract-versioned)
-├── OfficialSourceRecord
 ├── VendorBehaviorStatement
+│   └── EvidenceCitation (one or more)
 ├── RuntimeCompositionStrategy
+│   └── EvidenceCitation (one or more)
 └── InspectionRuleRegistry
     └── InspectionRule
+        └── EvidenceCitation (one or more)
 
 InspectionSession
 ├── Source (exactly one Repository)
@@ -102,8 +104,8 @@ BrowserState
 | `sessionDiagnosticIds` | opaque string[] | DTO | Current out-of-generation lifecycle diagnostics |
 | `repositoryFailureDiagnosticId` | opaque session Diagnostic ID or null | DTO | Current deterministic automatic Repository admission/initial-scan failure; retained while the first explicit rescan runs, then cleared on success or atomically replaced by that rescan's `StaleSourceFailure` owner on terminal failure |
 | `invocationCwd` | absolute platform path string | internal | Exact value captured once from `process.cwd()` before CLI validation; never changed or exposed as read authority |
-| `cwdOptionValue` | exact string or null | internal | Null when omitted; otherwise the sole validated `--cwd` argument retained for lifecycle/audit correlation only; it is never used as a filesystem operand after lexical selection |
-| `selectedRepositoryRoot` | absolute platform path string | internal | `invocationCwd` when `--cwd` is omitted; otherwise the absolute option kept as given, or the relative option resolved against `invocationCwd` with the platform `node:path` resolution; selection performs zero filesystem or network I/O |
+| `rootOptionValue` | exact string or null | internal | Null when omitted; otherwise the sole validated `--root` argument retained for lifecycle/audit correlation only; it is never used as a filesystem operand after lexical selection |
+| `selectedRepositoryRoot` | absolute platform path string | internal | `invocationCwd` when `--root` is omitted; otherwise the absolute option kept as given, or the relative option resolved against `invocationCwd` with the platform `node:path` resolution; selection performs zero filesystem or network I/O |
 
 `InspectionSession` is the normal full snapshot and is returned only while
 `globalDisableInProgress` is null. Once a disable barrier is accepted, the committed
@@ -133,8 +135,8 @@ message. `toolFailureDiagnostics` contains exactly the pathless session Diagnost
 referenced by `globalControl.toolFailures`. It has no generation, Source, Repository failure,
 stale-failure, unrelated Diagnostic or error, file, path, authored value, or resource field.
 
-The CLI captures `process.cwd()` exactly once and accepts `--cwd <path>`; a repeated
-`--cwd` resolves to the argument parser's last value (last-wins). An explicit empty value
+The CLI captures `process.cwd()` exactly once and accepts `--root <path>`; a repeated
+`--root` resolves to the argument parser's last value (last-wins). An explicit empty value
 produces a fixed actionable, source-value-free startup error before session creation or
 browser opening; a missing value is rejected at the same boundary by Gunshi's typed
 argument validation, which the product does not duplicate (FR-001). An absolute option is kept as given; a
@@ -177,12 +179,9 @@ application Diagnostic.
 Successful API responses contain complete DTOs and are never deliberately truncated.
 Response serialization is owned by the devframe RPC channel: the handler commits its
 state/job under the coordinator lock and returns the declared result value, and devframe
-serializes that value — successes and handler errors alike — as-is (superseded 2026-07-23:
-the tentative-state preparation, the pre-serialized immutable response buffer, and the
-under-lock revalidation/commit ordering were removed with the self-verification cleanups —
-they belonged to the pre-devframe hand-rolled host, cannot be expressed on the devframe
-channel without a redundant second serialization, and every declared result is a plain
-JSON value whose serialization cannot fail outside an implementation bug). A
+serializes that value — successes and handler errors alike — as-is. A second, pre-serialized copy cannot be expressed on the devframe channel
+without redundant serialization, and every declared result is a plain JSON value whose
+serialization cannot fail outside an implementation bug. A
 serialization/encoding or delivery failure after the handler returns never rolls back or
 duplicates the committed job/state, records no second failure,
 and never converts a truncated body into a partial DTO; the request reports its ordinary
@@ -210,9 +209,9 @@ are closed by `GlobalDisableOperation`; no other command may copy that exception
 | `tool` | `copilot \| claude \| codex \| null` | Repository pairs with null; each Global Source pairs with exactly one supported tool, and no two Global Sources share a tool |
 | `enabled` | boolean | Repository and every published Global Source are true; absence means only that no Source is published for that tool, while `globalControl` distinguishes disabled, pending, and retryable control states; a disabling source remains true until atomic removal |
 | `status` | `idle \| scanning \| disabling \| ready \| partial \| failed` | Follows transitions below; public `partial` denotes only a generation committed after complete traversal in which one or more files have file-confined outcomes (unreadable, binary, parse failure) while every unaffected file is complete; `failed` means the latest attempt failed while the last committed snapshot remains available; only a fatal explicit rescan marks that snapshot stale |
-| `boundary` | `SourceBoundary` | Exactly one selected root: the captured `process.cwd()` or resolved `--cwd` for Repository, or the one consented home root for this Global Source's tool |
+| `boundary` | `SourceBoundary` | Exactly one selected root: the captured `process.cwd()` or resolved `--root` for Repository, or the one consented home root for this Global Source's tool |
 | `generation` | `GenerationNumber` | Equals the owning sequence's last committed generation: `repositoryGeneration` for the Repository Source and `globalGeneration` for every published Global Source |
-| `scanRequestId` | opaque ASCII string or null | Latest admitted scan for this Source; set immediately on admission and retained through waiting/scanning/ready/partial/failed so status cannot be confused with an older request; null only before any scan admission |
+| `scanRequestId` | opaque ASCII string or null | Latest admitted scan for this Source; set immediately on admission and retained through waiting/scanning/ready/partial/failed so status cannot be confused with an older request; null only before any scan admission, or after every admitted attempt for the Source has had its publication authority revoked — a revoked attempt's overlay reverts to the exact pre-admission state, so the Source states no request rather than one whose result was discarded |
 | `progress` | `ScanProgress` or null | Non-null only while `scanning`/`disabling` or after `ready`/`partial`; null for `idle` and `failed` |
 | `conditionFacts` | `SourceConditionFact[]` | Source-level facts for documented non-file behavior or excluded/runtime inputs that have no originating file |
 | `diagnosticIds` | opaque string[] | Source-scoped diagnostics in the last committed generation |
@@ -239,7 +238,7 @@ input that has no originating file.
 | `affectedRuleIds` | non-empty sorted inspection-rule ID[] | Candidate or relationship-only subset of the shipped registry; controls which provenance/edge may project the fact |
 | `behaviorRefs` | sorted `VendorBehaviorStatement.behaviorId`[] | Exact surface/scope lookup statements that explain the fact; never grants a read |
 | `strategyRefs` | sorted `RuntimeCompositionStrategy.strategyId`[] | Exact composition or selection statements used by the projection |
-| `sourceRefs` | non-empty sorted `OfficialSourceRecord.sourceId`[] | Stable evidence exposed for the fact and reciprocally validated; never grants a read |
+| `sourceRefs` | non-empty sorted source ID[] | The official-sources rows behind the fact, reciprocally validated; the citations themselves stay on the registry records, and this never grants a read |
 | `evidenceAssessments` | `EvidenceAssessment[]` | Exactly one assessment for `ruleId` and every `behaviorRefs`/`strategyRefs` member; no aggregate status |
 | `condition` | `ConditionFact` | Fixed reason code and any documented status; `satisfied` records a non-file runtime fact but still grants no read authority and never duplicates an authored source value |
 
@@ -255,7 +254,7 @@ and never initiates local or hosted I/O.
 | `tool` | `copilot \| claude \| codex \| null` | internal | Must equal the owning Source's already-published tool; Repository uses null |
 | `displayRoot` | ASCII `RootPresentationEncoding` string | DTO | Deterministic encoding of the Source root; not a `SourceRelativePath`, inventory-item locator, caller input, or read authority |
 | `root` | exact absolute platform path string | internal | The selected Repository root or this tool's consented home root; the base path for every inspected-source filesystem operation of this Source |
-| `origin` | `process-cwd \| cwd-option \| default-home \| environment` | DTO | Explains how the root was selected without granting read authority |
+| `origin` | `process-cwd \| root-option \| default-home \| environment` | DTO | Explains how the root was selected without granting read authority |
 
 Every Source has exactly one boundary and root. The Repository boundary exists in
 generation 0 with an escaped `displayRoot`; a Global boundary's `tool` must match its
@@ -563,7 +562,6 @@ attributed to its exact accepted request.
 | `scanRequestId` | opaque ASCII string or null | Allocated once only when at least one root is admitted and the single subset scan is accepted; shared by that batch and its one committed Global generation |
 | `status` | `waiting \| validating \| admitting \| queueing-batch \| draining \| cancelled \| complete` | `draining` begins when disable aborts the operation; no new authority or job may be published afterward |
 | `responseDisposition` | `unset \| queued \| active-no-job \| global-disable-pending` | Chosen exactly once at the coordinator linearization point; `queued` describes one atomic admitted-subset job |
-| `abortSignal` | internal `AbortSignal` | Shared by root validation/admission and every pre-queue filesystem call |
 
 Initial enable registers this command and freezes the exact current preview object/epoch
 under the same coordinator lock while keeping the provisional consent, three controls,
@@ -602,9 +600,7 @@ promotes and enqueues the one candidate batch, creates its `batchStatus`, and se
 `pendingTools`, or commits active-no-job with null `batchStatus` while retaining/replacing
 only rejected-tool diagnostics, chooses the disposition,
 marks the operation complete, unregisters it, and returns the declared result value for
-the devframe channel to serialize (superseded 2026-07-23: the pre-serialized immutable
-envelope buffer and its serialization-failure unwind were removed with the
-self-verification cleanups). No observer can
+the devframe channel to serialize. No observer can
 see a per-tool Source commit. If the disable barrier has already linearized before that
 commit, the prepared state is discarded, the check instead chooses
 `global-disable-pending`, and cancellation drains. A drained operation becomes
@@ -712,49 +708,51 @@ failed operation; another terminal failure replaces the retained error, while te
 success alone clears it. Because the trigger is a session API request, this failure does not terminate the
 process. Coordinator queueing uses no product-defined numeric capacity.
 
-### OfficialSourceRecord
+### EvidenceCitation
 
-`tests/fixtures/conformance/official-sources.json` is immutable release/test data, never
-input from the inspected repository and never fetched during product startup or scanning.
+Every maintained behavior, rule, and strategy cites the reviewed official sections it was
+checked against inside the record itself. Keeping the citation beside the claim avoids a
+separate subject-keyed citation layer and makes the basis of each record directly
+inspectable.
 
 | Field | Type | Rules |
 |---|---|---|
-| `sourceId` | stable dotted string | Unique; every behavior, rule, and strategy `sourceRefs` entry resolves only to this key |
-| `canonicalUrl` | absolute HTTPS URL | Exact authored URL on `officialHost`; no credentials, query, or fragment |
-| `officialHost` | lowercase DNS hostname | Exact per-record host allowlist; the URL and every permitted redirect hop must match it exactly, with no implied subdomain or sibling host |
-| `sectionAnchors` | non-empty exact heading-text strings | Exact rendered heading text only; no heading ID, URL fragment, CSS/XPath, or other executable selector |
-| `affectedBehaviorIds` | sorted behavior ID[] | Reciprocal with every referenced `VendorBehaviorStatement.sourceRefs` entry |
-| `affectedRuleIds` | sorted rule ID[] | Reciprocal with every referenced `InspectionRule.sourceRefs` entry |
-| `affectedStrategyIds` | sorted strategy ID[] | Reciprocal with every referenced `RuntimeCompositionStrategy.sourceRefs` entry |
-| `reviewedOn` | ISO date | Updated only after human semantic review |
-| `normalizationVersion` | literal `1` | Selects the checked-in deterministic normalization algorithm |
-| `snapshotFingerprint` | lowercase SHA-256 | Digest of normalized text from only the selected official sections |
-| `assertions` | non-empty maintained assertion[] | Stable assertion ID, paraphrased expected semantics, and affected behavior, rule, or strategy IDs; never copied page text |
-| `semanticFingerprint` | lowercase SHA-256 | Digest of canonical JSON for sorted maintained assertions |
+| `sourceId` | closed source-ID union | The official-sources contract row this citation is of; the page's stable identity, unchanged when a vendor moves the page (QR-005) |
+| `url` | absolute HTTPS URL | Exact authored URL on `officialHost`; no credentials, query, or fragment |
+| `officialHost` | lowercase DNS hostname | Exact host allowlist for this citation; no implied subdomain or sibling host |
+| `sections` | non-empty exact heading-text strings | Exact rendered heading text only; no heading ID, URL fragment, CSS/XPath, or other executable selector |
+| `reviewedOn` | ISO date | Updated only after those sections are read and compared against the claim the citing record makes; confirming a heading still exists does not advance it, and the comparison's performer is not restricted |
+| `establishes` | paraphrased assertion | What the reviewed sections establish for the citing record; never copied page text |
 
-The offline contract test validates IDs, reciprocal contract-record links, exact official hosts,
-and recomputes `semanticFingerprint`; it never contacts the network. The explicit
-maintainer drift command sends no credentials, cookies, repository data, or other local
-state. Per source it accepts UTF-8 HTML/Markdown and follows only HTTPS redirects whose
-every hop remains on the source's allowlisted official host; redirect loops fail closed.
-A redirect to a different final URL is reported for review rather than silently
-changing `canonicalUrl`; downgrade, cross-host redirect, wrong content type,
-missing/duplicate anchor, decode failure, or a recoverable network/runtime failure is a
-hard drift-check failure.
+The single normative row per reviewed page remains
+[Official Sources](contracts/official-sources.md); these citations are its implementation
+counterpart, not a second registry. One page cited by several records therefore repeats its
+URL and review date, which is accepted deliberately in exchange for stating the basis beside
+the claim.
 
-Normalization selects each anchored heading through the next heading of equal or higher
-level, removes document chrome plus script/style nodes, preserves prose and code text,
-decodes entities, applies Unicode NFC and LF endings, trims line edges, collapses horizontal
-whitespace, and joins sections in listed order before SHA-256. A digest or assertion drift
-never changes a behavior, rule, or strategy automatically. A maintainer reviews all affected contract records and both
-language contracts/research, then explicitly updates anchors, assertions, fingerprints,
-and `reviewedOn`; no remote page text or response body is checked in.
+Citations are compiled out of the packaged CLI, together with the vendor locators that share
+their build flag. Nothing in the product reads either — an `EvidenceAssessment` records how
+completely a subject is documented, never where, and no DTO field carries a locator — so the
+build replaces `__ACI_SHIP_MAINTENANCE_DATA__` with `false`, every citation array folds to
+empty, and every `locator` folds to null. The substitution fails
+silently if it is ever misspelled or dropped, so the package suite asserts the built artifact
+carries no URL, host, review date, paraphrase, or locator value.
 
-At least one affected-ID array is non-empty. Every assertion names a non-empty subset of
-that record's reverse-indexed behavior, rule, or strategy IDs rather than a generic product
-area. An unsupported record fails
-offline contract/build validation before packaging; the scanner never loads this test map,
-and no source record, anchor, or assertion is truncated.
+The explicit maintainer drift command sends no credentials, cookies, repository data, or
+other local state. Per cited page it accepts UTF-8 HTML/Markdown and follows only HTTPS
+redirects whose every hop remains on that citation's allowlisted host; redirect loops fail
+closed. A redirect to a different final URL is reported for review rather than silently
+changing `url`; downgrade, cross-host redirect, wrong content type, missing/duplicate
+heading, decode failure, or a recoverable network/runtime failure is a hard drift-check
+failure.
+
+Normalization selects each cited heading through the next heading of equal or higher level,
+removes document chrome plus script/style nodes, preserves prose and code text, decodes
+entities, applies Unicode NFC and LF endings, trims line edges, collapses horizontal
+whitespace, and joins sections in listed order before SHA-256. A drift result never changes a
+behavior, rule, or strategy automatically. A maintainer reviews every citing record and both
+language contracts/research, then explicitly updates headings, paraphrases, and `reviewedOn`;
+no remote page text or response body is checked in.
 
 ### DocumentationStatus, LifecycleQualifier, and EvidenceAssessment
 
@@ -778,24 +776,37 @@ condition result and is not a `DocumentationStatus` alias.
 documentation. It explains where the product looks; it is not a filesystem matcher and
 can never authorize a read.
 
+The four locator parts are one field because they are one description of the vendor's own
+locator, and because a packaged CLI drops them together: no DTO field carries any of them,
+and a published `SourceConditionFactDto` names the behaviors that explain a fact by ID
+rather than by value. Modelling them as four independently nullable fields would permit a
+half-described record that no build produces. `activationConditions` is deliberately not
+part of the locator and stays in every build, because `ConditionFact.key` is a wire type
+that FR-039 requires the product to publish.
+
+An upward traversal descriptor names its stop condition, because that is what decides
+which directories the walk reaches: `ancestor-chain-to-repository-root` ends at the
+repository root, while `ancestor-chain-to-filesystem-root` keeps going past it. How a
+vendor recognizes a repository root belongs in the record — Codex takes the nearest
+ancestor holding a `project_root_markers` entry, default `.git` and user-overridable.
+
 | Field | Type | Rules |
 |---|---|---|
 | `behaviorId` | stable dotted string | Unique and defined in exactly one bilingual vendor contract |
 | `tool` | tool enum | Owning product |
 | `surfaces` | non-empty surface enum[] | For example VS Code, CLI, cloud, or shared local Codex clients; no implicit “all” |
-| `vendorScope` | closed scope enum | Repository/workspace, User, hosted/managed, plugin, or runtime-only |
-| `lookupBase` | closed locator-base descriptor | Workspace root, Git/repository root, runtime `cwd`, target-path chain, tool home, profile data, active config layer, registered catalog, or hosted state |
-| `relativeSelector` | vendor-relative string or null | Path text only; does not contain Inspector glob semantics or grant authority |
-| `traversal` | closed traversal descriptor | Exact, ancestor chain, standard-location chain, recursive-under-base, lazy descendant, explicit registration, or none |
+| `locator` | `VendorLocator` or null | Where the vendor looks and how it walks, as one field: `vendorScope` (repository/workspace, User, hosted/managed, plugin, or runtime-only), `lookupBase` (workspace root, Git/repository root, runtime `cwd`, target-path chain, tool home, profile data, active config layer, registered catalog, or hosted state), `relativeSelector` (path text only; no Inspector glob semantics and no authority), and `traversal` (exact, ancestor-chain-to-repository-root, ancestor-chain-to-filesystem-root, standard-location chain, recursive-under-base, lazy descendant, explicit registration, or none). Null in a packaged CLI |
 | `activationConditions` | condition-key enum[] | Trust, feature flags, target match, installation, enablement, runtime version, and other required inputs |
-| `strategyRefs` | sorted strategy ID[] | Composition/selection records applicable to this behavior |
 | `documentationStatus` | `DocumentationStatus` | `conflict` retains all conflicting source assertions |
 | `lifecycleQualifiers` | `LifecycleQualifier[]` | Unique fixed order; empty makes no stability claim |
-| `sourceRefs` | non-empty source ID[] | Exact official sections reviewed for this statement; reciprocal with source records |
+| `evidence` | non-empty `EvidenceCitation[]` | The reviewed documentation establishing this record (§ EvidenceCitation); empty in a packaged CLI |
 
 The registry never encodes an ancestor walk as `**/`. Lookup base, relative selector, and
 traversal are separate closed fields. Two surfaces with different bases or traversal have
 different behavior IDs even when the relative filename is identical.
+
+A behavior statement carries no cross-registry reference of its own; see
+§ RegistryRelations.
 
 ### RuntimeCompositionStrategy
 
@@ -806,12 +817,11 @@ deduplication, or precedence without turning it into read authority.
 |---|---|---|
 | `strategyId` | stable dotted string | Unique and defined in the bilingual runtime-composition contract |
 | `tool` / `surfaces` | tool enum / non-empty surface enum[] | Exact product and surface boundary |
-| `operations` | non-empty ordered closed enum[] | Each entry is `append \| concatenate \| select-first \| select-closest \| replace \| merge-map \| deduplicate \| filter \| unknown-order`; array order is the documented pipeline order |
-| `inputBehaviorRefs` | non-empty sorted behavior ID[] | Only documented inputs; excluded/user/hosted inputs remain explicit conditions |
+| `operations` | non-empty ordered closed enum[] | Each entry is `append \| concatenate \| select-first \| select-closest \| replace \| merge-map \| deduplicate \| filter \| retain-all \| unknown-order`; array order is the documented pipeline order. `retain-all` states that every documented input remains available and none is merged away — the absence of a collapsing entry does not state it, because the array records the steps a source documents rather than the steps it rules out |
 | `requiredConditionKeys` | condition-key enum[] | Every input required before a terminal applicability result is permitted |
 | `documentationStatus` | `DocumentationStatus` | Partial/unknown/conflicting order never becomes a fabricated winner |
 | `lifecycleQualifiers` | `LifecycleQualifier[]` | Unique fixed order; independent of documentation completeness |
-| `sourceRefs` | non-empty source ID[] | Reciprocal official evidence for the operations |
+| `evidence` | non-empty `EvidenceCitation[]` | The reviewed documentation establishing this record (§ EvidenceCitation); empty in a packaged CLI |
 
 Strategies are immutable contract data. They can explain or project an applicability
 assessment, but cannot enumerate a directory, open a relationship target, or merge the
@@ -822,7 +832,7 @@ Inspector's Repository and Global sources.
 | Field | Type | Rules |
 |---|---|---|
 | `base` | one exact Source-boundary descriptor | Repository or the named consented tool-specific Global boundary; never inferred from a selector |
-| `selectors` | non-empty ordered unique selector programs (`MatcherSegment[][]`) | Alternatives owned by one static rule, each a closed ordered program relative to the base boundary; the final token denotes a regular file |
+| `selectors` | non-empty ordered unique selector programs (`MatcherSegment[][]`) | Alternatives owned by one static rule, each a closed ordered program relative to the Source root; the final token denotes a regular file |
 | `MatcherSegment` | exact discriminated union | `{ kind: 'literal', value: NonEmptyMatcherLiteralSegment }`, `{ kind: 'regex', pattern: RegExp }`, or `{ kind: 'recursive-directories' }`; no executable glob, implicit discriminator, or extra field |
 
 A `NonEmptyMatcherLiteralSegment` is a non-empty printable ASCII string whose code units are
@@ -838,7 +848,14 @@ their correctness; a pattern tests the raw entry name, which may be an NFD spell
 disk. It is a directory step when non-terminal and a file step when terminal, and is
 written as its regex literal (for example `/\.md$/u`). `recursive-directories` — the `**`
 step — matches zero or more directories, is non-terminal, and cannot
-be adjacent to another recursive token. The registry is authored directly in the typed
+be adjacent to another recursive token.
+
+`recursive-directories` is the one downward axis, and there is deliberately no upward one.
+A vendor lookup that walks from a runtime working directory up to the repository root
+terminates at the selected root, because the selected root *is* that repository root
+(FR-001); the chain therefore has exactly one in-scope layer and needs no notation. The
+Inspector never reads above a Source root: such a path has no `SourceRelativePath` and lies
+outside the boundary entirely. The registry is authored directly in the typed
 segment form, which is also what the contract tables show. Grammar, literal-alphabet,
 uniqueness, and selection-policy obligations are enforced by the build/contract validator
 (the registry contract gate), not re-checked by runtime logic. Runtime loads
@@ -863,8 +880,8 @@ owns the fixed per-tool inspection-path allowlist that the inspection module tra
 | `TraversalSelectorPlan.fixedPrefix` | NFC literal segment array | Empty for Repository; for Global it includes the complete path through the exact target or fixed-subtree root, including that terminal target/subtree segment |
 | `TraversalSelectorPlan.remainder` | `MatcherSegment[]` | Repository's complete selector program, empty for a Global exact target, or the complete dynamic program strictly below a Global fixed-subtree root |
 
-Compilation is a closed lossless mapping: `repository-program` has an empty `fixedPrefix`
-and a `remainder` equal to the complete selector program; `global-exact` compiles
+Compilation is a closed mapping: `repository-program` has an empty `fixedPrefix` and a
+`remainder` equal to the complete selector program; `global-exact` compiles
 an all-literal selector into a non-empty `fixedPrefix` ending at the target file with an
 empty `remainder`; `global-fixed-subtree` compiles the maximal leading literal directory
 chain into `fixedPrefix` and keeps the non-empty dynamic program below it as `remainder`.
@@ -891,6 +908,44 @@ means that, after removal of one optional leading UTF-8 BOM, the decoded string 
 `U+FFFD` is non-whitespace, so `utf-8-replaced` text is non-empty (FR-035). A binary or
 unreadable override ends the branch with its diagnostic and no fallback.
 
+### RegistryRelations
+
+Cross-registry references are separate immutable release data, not fields of the records
+they connect. A record states what one thing is; a relation states how
+it depends on another registry, and separating them keeps each vendor catalog readable as a
+description of that product while making the whole reference graph reviewable in one place.
+
+| Subject | Field | Type | Rules |
+|---|---|---|---|
+| strategy | `consumesBehaviors` | non-empty ordered behavior record[] | Every documented input the strategy composes, User scope included — a behavior grants no read authority, so naming one states what the vendor documents rather than what the Inspector may open; what stays out is what the strategy does not compose at all, and excluded surfaces and hosted inputs remain explicit conditions |
+| rule | `basedOnBehaviors` | ordered behavior record[] | Documented vendor behavior the policy is based on; never a restatement of it |
+| rule | `explainedByStrategies` | ordered strategy record[] | Composition facts used for order/applicability, never for path admission |
+
+Each edge holds the referenced record itself rather than its identifier, which the acyclic
+graph makes possible: `const` references across a cycle would fail at module evaluation.
+Arrays are ordered by the referenced identifier so a materialization is byte-stable, and
+identity — an edge holds the record the registry publishes, not an equal-looking copy — is
+a contract-gate obligation, because the type alone cannot distinguish them.
+
+Every edge runs one way, so the graph is acyclic: behavior ← strategy ← rule. A behavior
+has no relation at all. No relation grants read authority; only an `InspectionRule`
+discovery class does.
+
+Which reviewed documentation establishes a record is not a relation: every behavior, rule,
+and strategy states its own citations in a non-empty ordered `evidence` array on the record
+itself (§ EvidenceCitation), so the basis sits beside the claim it supports. Citations are
+maintenance evidence that nothing in the product reads — an `EvidenceAssessment` records how
+completely a subject is documented, never where — so `tsdown.config.ts` compiles them out of
+the packaged CLI through the `__ACI_SHIP_MAINTENANCE_DATA__` define. Without that exclusion
+every reviewed URL, review date, and paraphrased assertion would ship in the CLI.
+
+One reference kind deliberately stays on its record for a different reason:
+`InspectionRule.policyRefs` names FR/QR clauses owned by the specification rather than
+another registry. Each relation map is keyed by its closed identifier catalog and complete
+over it, so a record without declared references fails the build. The
+conformance fixture materializes every reference as an identifier: JSON has no references,
+and inlining a record would restate a definition one contract alone owns.
+
 ### InspectionRule
 
 `InspectionRule` is immutable release data maintained as the implementation counterpart of
@@ -899,21 +954,18 @@ the bilingual inspection-rule contract. It is not read from the inspected reposi
 | Field | Type | Rules |
 |---|---|---|
 | `ruleId` | stable dotted string | Unique within a registry; retained across versions only while semantics stay compatible |
-| `contractVersion` | date string | Must match `GlobalConsent` and the shipped registry |
 | `tool` | tool enum or `shared` | `shared` is limited to cross-vendor safety/derivation rules |
 | `discoveryClass` | `static-candidate \| bounded-derived-candidate \| relationship-only \| excluded` | Only the first two may authorize a read |
 | `kind` | customization-kind enum or null | Null for a cross-kind relationship/exclusion |
 | `sourceKinds` | source-kind enum[] | Repository, Global, or both as explicitly contracted |
 | `matcher` | `StructuredInspectorMatcher` or null | Static rules only; never a vendor locator, ambient path, executable glob, or untyped selector string |
 | `derivation` | closed derived-target mapping or null | Present only for `bounded-derived-candidate` rules: a fixed registry mapping that resolves one derived target path from an allowlisted declared occurrence of an independently admitted seed file (or from the seed's matched path) plus fixed literal registry suffixes; no callback, free-form path expression, glob, regular expression, or recursive derivation |
-| `behaviorRefs` | sorted behavior ID[] | Exact upstream lookup statements relevant to this policy; exclusions may reference documented User behavior without authorizing it |
-| `policyRefs` | non-empty sorted specification ID[] | FR/QR clauses that authorize or intentionally exclude the surface |
-| `strategyRefs` | sorted strategy ID[] | Composition facts used for order/applicability, never for path admission |
+| `policyRefs` | sorted specification ID[] | FR/QR clauses that authorize or intentionally exclude the surface; non-empty in a maintained build and empty in a packaged CLI, because they are reviewer traceability that no DTO carries |
 | `conditionKeys` | condition-key enum[] | Runtime facts needed before applicability can be assessed |
 | `precedenceGroup` | stable string or null | Links only rules with documented selection/order semantics |
 | `documentationStatus` | `DocumentationStatus` | Describes upstream documentation completeness/consistency, not runtime state |
 | `lifecycleQualifiers` | `LifecycleQualifier[]` | Separate upstream lifecycle claims in unique fixed order |
-| `sourceRefs` | non-empty `OfficialSourceRecord.sourceId`[] | Exact direct Evidence-cell sources for this rule, reciprocally validated. Evidence owned by referenced behaviors or strategies remains reachable through those IDs and is not silently copied into this registry field |
+| `evidence` | non-empty `EvidenceCitation[]` | The reviewed documentation establishing this record (§ EvidenceCitation); empty in a packaged CLI |
 
 The build/contract validator checks uniqueness, legal field combinations, selector-program
 token/position rules, exact traversal compilation, referenced
@@ -1197,7 +1249,56 @@ environment references as authored text. It never reads, resolves, or substitute
 referenced process-environment value while building source, metadata, relationships, or
 comparison DTOs.
 
+### Inventory unit
+
+An inventory row's unit is decided by the recognized kind, not by the physical file. The
+shipped kinds do not agree on one:
+
+| Kind | The unit one row shows |
+|---|---|
+| `skill` | One declared name. The vendor's own selectors use it, and it need not match the directory holding the `SKILL.md`, so several files may declare one name and one entry lists each of them as a definition |
+| `MCP` | One `[mcp_servers.*]` declaration inside an admitted carrier, so one `.codex/config.toml` publishes as many rows as it declares servers |
+| `instructions`, `settings/config` | The file itself |
+
+A CustomizationFile therefore publishes its own facts once — Source-relative Path, read
+outcome, size, diagnostics — and each kind's inventory refers to it by `fileId` rather than
+repeating them. One shared row shape cannot express either of the first two units: grouping
+by name would break the one recognition per `(fileId, tool, kind)` rule that ToolRecognition
+rests on, and a file-shaped row cannot become the N rows one carrier's declarations need.
+
+A grouped entry never implies a winner the Inspector has not recorded. Each entry states how
+every recognizing product resolves a name several definitions declare, because the recorded
+statements differ: Codex does not merge same-name skills and both stay available with no
+documented order, Copilot's CLI resolves the first in a documented source order, and Copilot
+in VS Code documents no duplicate precedence at all (contracts/runtime-composition.md).
+
+A statement is published only for a product whose composition strategy is in the shipped
+registry. That is not a gap in the row: a product with no skill rule recognizes no skill, so
+no entry can reach it, and restating a contract table in the product before its strategy
+record exists would put a claim there that nothing can check it against. Shipping a
+product's skill rule ships its strategy and its statement together. An entry with one
+definition states no resolution.
+
 ### ToolRecognition
+
+A recognition record's details are discriminated by `kind`, because what identifies a
+recognition differs by kind and does not fit one shared optional field: a skill declares a
+single `name`, while an MCP carrier declares one per server. A skill's details carry that
+declared name — the one authored value outside the FR-027 acknowledgement gate, because it
+is presentation identity rather than content (FR-007) — absent, never empty, when the file
+declares none.
+
+A recognition is not an inventory row. The row's unit is the kind's own (§ Inventory unit),
+so each kind's inventory is built from these records rather than published as one summary
+per file: a skill's rows group records by declared name, and an MCP carrier's rows will
+split one record's declarations into a row apiece. A file publishes no recognition summary
+of its own, so nothing has to state how many admissions back a record — the detail view
+shows each provenance with its own scope and evidence.
+
+A skill's details also carry the sorted companion file list its census produced; the list is
+empty, never absent, when the `SKILL.md` sits alone, because being a directory is what a
+skill is and every recognized skill has been enumerated. Its `length` is the only count
+published (contracts/inspection-path-allowlist.md § Bounded companion census).
 
 | Field | Type | Rules |
 |---|---|---|
@@ -1205,7 +1306,7 @@ comparison DTOs.
 | `fileId` | opaque string | Many recognitions may reference one physical file |
 | `provenances` | ordered admission record[] | Sorted, non-empty set of rule/path admissions for this shared tool/kind interpretation; each record carries its `ruleId`, matched `SourceRelativePath`, the seed file and declared occurrence for a derived candidate, `ScopeDescriptor`, optional `OrderDescriptor`, `ApplicabilityAssessment`, and record-by-record `EvidenceAssessment[]` (exactly one per rule and referenced behavior/strategy; no lossy aggregate) |
 | `tool` | `copilot \| claude \| codex` | Required |
-| `kind` | closed customization-kind enum | Instructions, rule, skill, agent, prompt/command, hook, MCP, settings/config, output style, plugin, marketplace, or skill metadata |
+| `details` | kind-discriminated payload | The recognized kind plus what identifies a recognition of that kind — for a skill, its declared name and companion file list. One field, so projecting it is a copy rather than a per-kind reconstruction |
 | `parseStatus` | `not-attempted \| parsed \| failed` | `not-attempted` means no allowlisted extractor applies; `failed` is all-or-nothing for this recognition only |
 | `declaredMetadata` | ordered `DeclaredMetadataEntry[]` | Only allowlisted closed field IDs; source-occurrence order and accepted duplicates are preserved |
 | `diagnosticIds` | opaque string[] | Recognition-scoped extraction failures within the owning file |
@@ -1481,9 +1582,7 @@ occurrence order; an opaque Source ID never supplies the sort order. Aggregation
 order-only: each emitter creates every observation exactly once — legitimately repeated
 records exist (one per failed recognition, one per rejected collision group) — so there is
 no deduplication pass, and a double emission is an ordinary implementation bug owned by
-tests and review, not a runtime filter (superseded 2026-07-23: the dedup pass keyed by
-code/`lifecycleOwnerKey`/source-file IDs/Source-relative Path and its internal
-observation-key disambiguator were removed). A scan candidate belongs to one
+tests and review, not a runtime filter. A scan candidate belongs to one
 committed generation. An out-of-generation lifecycle candidate—including a fatal scan attempt
 that cannot be committed—belongs to the session only and is never inserted into a
 generation or Source ID list. Malformed-request and other client-caused
@@ -3351,7 +3450,7 @@ old file records in place.
    fatal attempt creates no public IDs and leaves the retained generation's IDs unchanged.
 2. Exactly one Repository Source exists from bootstrap and its boundary is the
    selected Repository root: the exact captured invocation `process.cwd()` by default or
-   the single `--cwd` value resolved against it. It is not required to be a Git root, and
+   the single `--root` value resolved against it. It is not required to be a Git root, and
    its label grants no read authority.
 3. Global is disabled in every new process. A session has zero to three Global Sources,
    at most one each for Copilot, Claude, and Codex; every Source owns exactly one boundary
@@ -3405,9 +3504,9 @@ old file records in place.
    host loss without a separate liveness probe, polling interval, or product-specific
    wall-clock guarantee for a continuously idle visible page.
 12. Every behavior, rule, strategy, and source ID is defined exactly once in its owning
-    bilingual contract and executable registry. Registry `sourceRefs` arrays equal the
-    owning row's direct Evidence cell and are reciprocal with the official-source reverse
-    index. Runtime provenance and relationship DTOs may expose the deterministic union of
+    bilingual contract and executable registry. A record's own `evidence` citations equal
+    the owning row's direct Evidence cell and are reciprocal with the official-source
+    reverse index. Runtime provenance and relationship DTOs may expose the deterministic union of
     those direct records for display, but that derived union never changes registry
     backlinks. Their `evidenceAssessments` contain exactly one record for the owning rule
     and every referenced behavior/strategy, preserving each record's documentation status
@@ -3415,8 +3514,10 @@ old file records in place.
     language-divergent record fails the build.
 13. Vendor lookup bases/traversal and Inspector matchers are different record types. Every
     Repository matcher is an authored typed segment program based at the selected
-    Repository root; a leading `ANY_DIRECTORIES` segment can mean only
-    explicit downward Inspector inventory—not vendor traversal or runtime selection.
+    Repository root; an `ANY_DIRECTORIES` segment can mean only explicit downward
+    Inspector inventory—not vendor traversal or runtime selection. A vendor lookup that
+    runs upward terminates at that same selected root, so it is never a selector token
+    either.
 14. `snapshotState` is derived from session-owned `staleFailures`, never stored in or used
     to mutate a committed generation. Each entry names one Source and carries its
     current actionable failure reference (a lifecycle `Diagnostic` or the failed request's

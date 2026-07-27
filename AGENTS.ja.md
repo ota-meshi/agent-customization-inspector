@@ -5,6 +5,25 @@
 プロジェクトの開発とレビューは、
 [プロジェクト憲章](.specify/memory/constitution.ja.md)に従います。
 
+作業方針はこのファイルに置きます。単一の変更が何をするかではなく、作業の進め方が定まったときは、
+同じ変更の中で両言語でここに書いてください。会話で合意しただけの方針は、次のセッションには存在しません。
+
+## ドキュメントの内容方針
+
+- 最終状態を書いてください。仕様・契約・コメントは、今何が真であるかを記述するものであり、どう
+  してそうなったかを記述するものではありません。「以前は」「改名した」「2026-XX-XX 修正」といった
+  記述と旧名そのものを落としてください。読者に必要なのは規則であり、変更履歴はバージョン管理に
+  あります。
+- 理由は残し、経緯は落としてください。結果だけからは判断しにくい決定については、なぜ代替案を
+  却下したのかを述べます。ただし編集の経過としてではなく、設計の性質として現在形で書きます。
+- 性質上が変更ログである artifact は3つあり、そこだけが日付付き entry を保持します: `tasks.md`、
+  specification が受けた質問とそれを解決した回答を日付付き session として記録する `spec.md` の
+  `## Clarifications` section、そして各 check がどう満たされたかを記録する `checklists/` です。それ以外には書かないでください — requirement にも、contract
+  clause にも、plan の段落にも、code comment にもです。この3つでも旧名は書かないでください。task が
+  今何を要求するか、回答が今どうであるかを記録し、以前どう書かれていたかは記録しません。
+- 履歴記述の削除も他の編集と同様です。その括弧が `FR-` 識別子のような規範参照を一緒に持っていな
+  いか確認してください。
+
 ## ドキュメントの言語方針
 
 - 人が作成するリポジトリ内のすべてのドキュメントについて、英語版と日本語版の両方を作成し、維持してください。
@@ -27,7 +46,26 @@
 - 不要な間接化や、より単純な構文で書ける冗長な等価表現を避けてください。例: 固定の相対dynamic importは`import(new URL('./module.mjs', import.meta.url).href)`ではなく`import('./module.mjs')`と書きます。
 - シンプル化とは複雑さの総量を減らすことであり、移動させることではありません。宣言的な定義を削除して同じ情報をより長いコマンドラインや別のファイルへ書き移すのはシンプル化ではありません。宣言的な設定は、それを所有するconfigファイルに置いてください。例: vitestの`coverage` projectは`test:coverage` scriptの`--project` flagの連鎖にせず、`vitest.config.ts`内の定義のまま維持します。
 - `package.json`にすでにある値（name、version、homepage、description）は、文字列literalとして複製せず、標準のJSON import — `import packageJson from '../../package.json' with { type: 'json' }` — で読み取ってください。BundlerがJSON moduleを参照されたフィールドだけにtree-shakeするため、packagedされたCLIはruntimeで`package.json`を読みません。例: `src/server/host/devframe-app.ts`はdevframeのmetadataをこの方法で取得し、contractで固定された製品`id`だけをliteralのまま維持します。
+- 一覧のrowの単位は、列挙される対象自身のものであり、それが見つかった入れ物のものではありません。ある領域の2つの要素が異なる数え方をされるとき — fileごとに1 row、file内の宣言ごとに1 row、複数fileが共有する名前ごとに1 row — それらはrow型を共有しません。1つの形をoptional fieldで広げて全部に合わせると、どの要素についても不変条件が成り立たない型ができます。例: inventoryはfile自身の事実を1度だけ公開し、kindごとに別々の一覧を公開します。Skillのrowは宣言名1つ、MCPのrowはcarrier内の宣言1つだからです。
+- 公開するのは1つの事実だけにし、事実とそこから導けるものを併せて公開しないでください。2つの状態は食い違いえますが、1つなら食い違えません。導出値は表示する場所で計算し、walkに必要な境界は成り立つことを期待せず境界として表現してください。例: skillのcompanion censusはsort済みのfile listを公開し、rowが`length`を描画します。File件数を独立したfieldにはしません。
+- 2つの状態の食い違いを検出するだけのgateは、同じ規則を持つ3つ目の場所です。ある値が別の値からどう導かれるかをcheckが符号化しなければならないなら、その対応こそが導出です。対応をtestに費やして手書きの値を残すのではなく、導出として1度だけ書き、手書きの値を削除してください。規則をtestへ移すことは単純化ではありません。例: 製品の同名skillに関する文は、その製品のskill ruleが名指すstrategyの`operations`から導出します。したがって製品ごとのtableは存在せず、それらから乖離することも、整合gateも不要です。導出が正直であるのは、導出が何も発明しない場合だけです。結果を確立しない形は文を生まず、それが何を意味するかの決定はenumに対する演算ではなくevidence reviewの仕事です。
+- 同等のものを手で書く前に、platform自身の語彙に手を伸ばしてください。適用できそうに見えるplatform構成要素が適合しない場合は、その理由をコメントに書き、次の読み手が再提案しなくて済むようにします。例: client-dataのpurgeは、なぜ`DisposableStack`ではないのかを記録しています。あれは逆順に1度だけdisposeしunregisterを持たない一方、このpurgeは出入りするownerに対して登録順で繰り返し実行されるからです。
+- 不変性の機構は`readonly`型で全部です。Compile済み・出荷済みのdataをruntimeで再凍結しないでください。このcodebaseが生成し消費するdataに対する`Object.freeze`は、userが経験する何も守りません。そのdataを辿るdeep freezeは、プログラムを自分自身から守るために書かれたtraversalです。例: `compileTraversalPlan`はplanを記述どおりに返します。`TraversalPlan`が不変の出荷dataであることは型の性質であり、runtimeのpassではありません。
+- Iterableが既に持っている挙動に到達するために、それをmaterializeしないでください。配列の分割代入、`for...of`、呼び出しへのspreadは、いずれもiterator protocolを直接消費します。したがってそれらの手前に置く`[...set]`は何も得ないコピーです。`const [first, ...rest] = set`が言語のできることそのものです。コピーするのは、元が本当に持っていないものを得る場合だけにしてください — 元が変化する間も保持したい配列、またはpushするアルゴリズムのための可変配列です。
+- 変更を伴うmethodがコピーの理由になっているときは、変更を伴わないmethodを使ってください。`array.toSorted(compare)`が`[...array].sort(compare)`の書き下していた操作です。`toReversed`と`with`も同様です。
 - Specificationが冗長な複雑さを要求している場合は、書かれたとおりに実装せず、同じ変更の中で両言語のspecificationを修正してください。
+
+## ユーザー可視テキストの方針
+
+- あるコンポーネントだけが描画するテキストは、描画する場所に書いてください。UI 言語は 1 つなので、
+  識別子をキーにした message catalog は、キーとその唯一の文字列との間の間接参照にしかなりません。
+- 閉じた union が定める text は例外です。ラベル表はコンポーネントではなくその union の隣に置いて
+  ください。そうすればラベルなしに新しいメンバーを追加してもコンパイルが通らなくなります。
+  `entities.ts` が `CUSTOMIZATION_KIND_TEXT`・`SUPPORTED_TOOL_TEXT`・`FILE_ENCODING_TEXT`・
+  `SOURCE_BOUNDARY_ORIGIN_TEXT`・`SOURCE_STATUS_TEXT` を持ち、diagnostic の text は
+  `DIAGNOSTIC_REGISTRY` にあります。
+- 判定基準は再利用ではなく網羅性です。`Readonly<Record<ClosedUnion, string>>` は、今日たまたま 1 つの
+  コンポーネントしか読まなくても union の隣に置きます。表の完全性を保つのはコンパイラだからです。
 
 ## 命名方針
 
@@ -37,7 +75,7 @@
 - 似ているものではなく、実体を名前にしてください。`shell`、`manager`、`helper`、`util`のような
   architectural metaphorは中身ではなく形を述べるもので、中身が変わると古くなります。
   例: browserのreactiveなsession stateを持つmoduleは`src/app/session/view-state.ts`です。
-  以前は`shell.ts`でしたが、その名前が指すpage frameは実際にはcomponent側にあります。
+  `shell`のような名前が指すpage frameは実際にはcomponent側にあります。
 - Directoryが文脈を供給するため、その中の名前で繰り返す必要はありません——
   `session/session-api-client.ts`ではなく`session/api-client.ts`です。ただしdirectoryと
   合わせて読んだときに意味が通る必要があります。`session/state.ts`は`session/view-state.ts`より
@@ -58,7 +96,32 @@
 - テストからだけ到達させるために存在するexported memberも、public APIです。そのdoc commentに、テスト専用であることと、なぜそのmoduleの表面からはその挙動を観測できないのかを明記してください。可能なら必要性自体をなくしてください——moduleが保持する値ではなく、renderする内容、返す値、発行するrequestを検証します。例: client-data epochのcounterにaccessorは不要です。それが守る挙動——purge前にcaptureしたresponseがstateを復活させないこと——は、破棄されたそのresponseから観測できるためです。
 - テストファイルは、担当タスクIDと検証対象の挙動を述べるコメントで始め、カバレッジを`tasks.md`まで遡れるようにしてください。
 - コードコメントは英語で書いてください。日本語で重複させてはいけません。上記の二言語ドキュメント方針はドキュメントに適用されるものであり、ソースコードのコメントには適用されません。
+- 防御的な分岐 — guard、catch、fail-closedなearly return — には、そこへ到達する呼び出し元を名指ししてください。そのcaseが起きたらなぜ悪いかではなく、どの呼び出し元がそれを生むかです。名指しできない分岐は、書かずに削除してください。
 - コメントを古くする変更では、同じ変更の中でそのコメントを削除または修正してください。誤解を招くコメントは、無いことより有害です。
+
+## 公式出典の検証方針
+
+Registry recordは`EvidenceCitation`を通じてvendorの公式ドキュメントを引用し、その`sections`
+fieldは実際にレンダリングされた見出しのexact textを保持する。この引用の検証はドキュメント作業で
+あり、固有の失敗モードがある。
+
+- ページのraw bytesを読む。`curl`で取得し、`<h1>`–`<h4>`に対する正規表現で見出しを抽出する。
+  引用URLが`.md`版なら`^#{1,4} `に対して行う。要約器が出した見出し一覧は根拠にならない。実在する
+  本文見出しを「存在しない」と報告することがあり、正しい引用を誤って書き換える原因になる。
+- 本文見出しとサイトナビゲーションを区別する。これらのドキュメントサイトはナビゲーションにも同じ
+  heading tagを使う。本文見出しは自身のtextに対応する`id` slugを持つ。
+- 配信HTMLに見出しが無いことは、それだけではdriftを意味しない。client renderingのページは目次
+  だけを配信するため、見出しは存在しても`<h*>` elementは存在しない。目次のanchor slugがその証拠に
+  なる。`code.claude.com/docs/en/changelog`のversionごとの見出しがこの挙動である。
+- ページはfull URLまたはレンダリングされたtitleで呼ぶ。パスの末尾だけで呼んではならない。
+  `https://code.claude.com/docs/en/memory`を「memoryページ」と書くと、実際に取得したページの
+  話ではなくassistant自身のmemoryの話に読める。
+- `reviewedOn`は、引用sectionとrecordを突き合わせた後にだけ進める。ページが確立する内容は保守
+  対象のparaphraseに記述する。ページが述べていない主張は`documented`ではなく
+  `partially-documented`である。
+- ページの移転はcitationの変更であって、recordの書き換えではない。引用した見出しが消えた場合は、
+  recordを弱める前に別の公式URLに内容が移っていないか探す。これらのvendorはページをhost間で移転させ、
+  本文はそのまま残すことがある。
 
 ## Pull requestの文章スタイル
 

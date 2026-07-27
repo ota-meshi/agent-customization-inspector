@@ -93,7 +93,7 @@ describe('SourceBoundary DTO', () => {
   });
 
   it('covers the four closed origins', () => {
-    for (const origin of ['process-cwd', 'cwd-option', 'default-home', 'environment'] as const) {
+    for (const origin of ['process-cwd', 'root-option', 'default-home', 'environment'] as const) {
       expect(createSourceBoundaryDto('/r', origin).origin).toBe(origin);
     }
   });

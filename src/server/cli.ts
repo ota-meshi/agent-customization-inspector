@@ -1,16 +1,22 @@
 #!/usr/bin/env node
 // CLI entry (FR-001, T038/T047): captures the invocation working directory
-// exactly once, resolves the optional `--cwd` lexically, bootstraps the
+// exactly once, resolves the optional `--root` lexically, bootstraps the
 // session synchronously with zero filesystem I/O, completes the Phase 3
 // automatic Repository scan, and starts the loopback devframe host. This file
 // is the direct `package.json.bin` target: tsdown preserves the shebang in
-// the bundled `dist/cli.mjs`. A repeated `--cwd` follows Gunshi's
+// the bundled `dist/cli.mjs`. A repeated `--root` follows Gunshi's
 // deterministic last-wins; the product adds no duplicate-option check
-// (FR-001, superseded 2026-07-23).
+// (FR-001).
+//
+// The option is `--root` because what it names is the repository root, not a
+// working directory. Vendor lookups that walk upward from a working directory
+// terminate at that repository root, so equating the two is what makes every
+// Repository matcher a plainly anchored program instead of an ancestor
+// search.
 //
 // Root selection is purely lexical and therefore performs no filesystem or
 // network I/O of its own and never calls `process.chdir()`: an absolute
-// `--cwd` is kept exactly as given and a relative one is resolved against
+// `--root` is kept exactly as given and a relative one is resolved against
 // the one captured invocation directory. Whether the resulting root exists
 // is not selection's question — the first scan answers it, and a missing or
 // unreadable root becomes that scan's source-scoped `root-unreadable`
@@ -39,7 +45,7 @@ const invocationCwd = process.cwd();
  * requirement, never the rejected value, so a pasted path never re-enters
  * terminal output (contracts/http-api.md § Host requirements #5).
  */
-const CWD_VALUE_REQUIRED = '--cwd requires a non-empty path value.';
+const ROOT_VALUE_REQUIRED = '--root requires a non-empty path value.';
 
 /**
  * The fixed actionable rejection for extra operands. The command takes
@@ -47,34 +53,36 @@ const CWD_VALUE_REQUIRED = '--cwd requires a non-empty path value.';
  * a different surface, so it is rejected rather than silently ignored.
  */
 const NO_OPERANDS_ACCEPTED =
-  'This command accepts options only. Pass the inspected directory with --cwd <path>.';
+  'This command accepts options only. Pass the inspected repository root with --root <path>.';
 
 /**
  * Resolves the selected Repository root lexically (FR-001): the captured
- * invocation directory when `--cwd` was omitted, the option value unchanged
+ * invocation directory when `--root` was omitted, the option value unchanged
  * when it is absolute, and the option resolved against the captured
  * directory when it is relative. Uses `node:path` operations only — it
  * never touches the filesystem, so it makes no claim about whether the root
- * exists.
+ * exists, and it never probes for a repository marker to find one.
  */
 function selectRepositoryRoot(
   capturedInvocationCwd: string,
-  cwdOptionValue: string | null,
+  rootOptionValue: string | null,
 ): string {
-  if (cwdOptionValue === null) {
+  if (rootOptionValue === null) {
     return capturedInvocationCwd;
   }
-  return isAbsolute(cwdOptionValue) ? cwdOptionValue : resolve(capturedInvocationCwd, cwdOptionValue);
+  return isAbsolute(rootOptionValue)
+    ? rootOptionValue
+    : resolve(capturedInvocationCwd, rootOptionValue);
 }
 
 /**
  * The root Gunshi command (FR-001): a negatable default-true `open` flag
- * and an optional `--cwd <path>` whose resolution is purely lexical.
+ * and an optional `--root <path>` whose resolution is purely lexical.
  */
 const command = define({
   name: packageJson.name,
   args: {
-    cwd: {
+    root: {
       type: 'string',
       description: 'Repository root to inspect (default: the invocation working directory)',
     },
@@ -95,33 +103,31 @@ const command = define({
       process.exitCode = 1;
       return;
     }
-    const cwdOptionValue = ctx.values.cwd ?? null;
-    if (cwdOptionValue === null && ctx.explicit.cwd) {
-      // `--cwd ''` and `--cwd=` parse successfully, but Gunshi drops the
-      // empty value, so `values.cwd` is indistinguishable from an omitted
+    const rootOptionValue = ctx.values.root ?? null;
+    if (rootOptionValue === null && ctx.explicit.root) {
+      // `--root ''` and `--root=` parse successfully, but Gunshi drops the
+      // empty value, so `values.root` is indistinguishable from an omitted
       // option. `explicit` is the signal that separates them: without this
       // check an empty value would silently mean "the invocation
       // directory", selecting a root the caller never named. A missing
-      // value (`--cwd` with nothing after it) is already the parser's own
+      // value (`--root` with nothing after it) is already the parser's own
       // typed validation error, so it is not re-checked here.
-      console.error(CWD_VALUE_REQUIRED);
+      console.error(ROOT_VALUE_REQUIRED);
       process.exitCode = 1;
       return;
     }
-    const selectedRepositoryRoot = selectRepositoryRoot(invocationCwd, cwdOptionValue);
+    const selectedRepositoryRoot = selectRepositoryRoot(invocationCwd, rootOptionValue);
     const session = createInspectionSession({
       invocationCwd,
-      cwdOptionValue,
+      rootOptionValue,
       selectedRepositoryRoot,
     });
     const coordinator = new SessionCoordinator(session);
     const context = { session, coordinator };
     // Automatic first Repository scan (FR-002), owned by the ownerless
-    // startup trigger. At this Phase 3 checkpoint the catalog is empty, so
-    // completing it before host startup is both deterministic and the
-    // simplest way to ensure the SPA's one initial fetch cannot become
-    // stranded on generation 0. T071 owns the later progress surface when
-    // real family traversal plans make an in-flight scan user-visible.
+    // startup trigger. Completing it before host startup is both
+    // deterministic and the simplest way to ensure the SPA's one initial
+    // fetch cannot become stranded on generation 0.
     const repositorySourceId = session.internal.repositorySourceId;
     const admission = coordinator.admitScan(repositorySourceId, {
       kind: 'startup',
@@ -154,8 +160,13 @@ const command = define({
         return;
       }
       closeWhenReady = true;
+      // A running scan outlives the host it was started for: closing the server
+      // stops new requests but not the attempt already reading. Revoking its
+      // publication authority first means a result arriving after shutdown
+      // commits nothing (data-model.md § ScanAttempt).
+      context.coordinator.revokeAllPublicationAuthority();
       if (closeHost !== null) {
-        void closeHost();
+        void reportCloseFailure(closeHost());
       }
     };
     for (const signal of ['SIGINT', 'SIGTERM'] as const) {
@@ -174,10 +185,26 @@ const command = define({
     });
     closeHost = () => server.close();
     if (closeWhenReady) {
-      void closeHost();
+      await reportCloseFailure(closeHost());
     }
   },
 });
+
+/**
+ * Awaits a host close and reports a failure instead of dropping it. Shutdown is
+ * started from a signal handler and from the pre-ready interrupt path, where
+ * there is no caller left to await the promise: without this a rejected close
+ * becomes an unhandled rejection and the launch still exits zero, reporting a
+ * clean shutdown that did not happen.
+ */
+async function reportCloseFailure(closing: Promise<void>): Promise<void> {
+  try {
+    await closing;
+  } catch (error) {
+    process.exitCode = 1;
+    console.error(error);
+  }
+}
 
 /**
  * Runs the root command for one argument vector and awaits its completion.

@@ -1,0 +1,20 @@
+{
+  "strategies": {
+    "codex.skills.discovery": {
+      "consumesBehaviors": [
+        "codex.behavior.repo.skills",
+        "codex.behavior.user.skills"
+      ]
+    }
+  },
+  "rules": {
+    "codex.repo.skill": {
+      "basedOnBehaviors": [
+        "codex.behavior.repo.skills"
+      ],
+      "explainedByStrategies": [
+        "codex.skills.discovery"
+      ]
+    }
+  }
+}

@@ -38,7 +38,7 @@
 - [x] SC-003, SC-004, SC-005, SC-007, and SC-009 use a frozen versioned release-evidence fixture manifest with stable case IDs, per-fixture digests, nonzero required classes, exact executed-case records, paired automated manifest-version transition tests for denominator-semantic changes, a separate T1062 human-review record, both fixture and canonical digest updates for fixture-byte-only changes, and mandatory failure for missing, omitted, duplicate, or mismatched evidence
 - [x] Every bundled-browser `FileDetail` request and comparison construction shares one acknowledgement gate covering source text, declared metadata, authored relationship targets, and both comparison sides; ordinary route, Source, and generation cleanup remains scoped, while Global disable is the explicit full-session-purge exception before request and again on greater-epoch or non-null-fence observation
 - [x] The closed Global-root table distinguishes absent/default, empty, invalid, relative, and eligible roots including those outside the ordinary home, records a missing or unreadable consented root as absent or failed without blocking the others, and admits readable roots into one atomic batch commit
-- [x] Repository-root selection is closed to captured `process.cwd()` or one resolved `--cwd` value, performs no `chdir`, rejects invalid option shapes before session creation, and creates exactly one generation-0 Repository Source at bootstrap
+- [x] Repository-root selection is closed to captured `process.cwd()` or one resolved `--root` value, performs no `chdir`, rejects invalid option shapes before session creation, and creates exactly one generation-0 Repository Source at bootstrap
 - [x] One selector-free session-wide Global action binds the fixed Copilot/Claude/Codex preview, evaluates all three entries, excludes a missing or unreadable root without blocking the others, and publishes every admitted Source in one batch and one atomic generation; an unexpected failure aborts the whole transaction
 - [x] Active-consent Global retry reuses the frozen preview and fixed tuple, derives the complete retryable target set server-side only after pending work empties, preserves existing Sources and the prior snapshot, creates no request/job/generation for an all-rejected retry, and otherwise publishes one request-correlated atomic batch
 - [x] Filesystem operations use raw entry names while public Source-relative Paths use NFC display segments; hard links are ordinary files, and symbolic links are read through their targets, with a broken link yielding a per-file diagnostic
@@ -133,7 +133,7 @@
   digest-bound release-evidence manifest; and closing the authored-value acknowledgement and
   client-data-purge scope.
 - Validation iteration 17 passed all items on 2026-07-20 after closing selected-root and
-  `--cwd` behavior, non-authorizing generation-0 Repository Source creation, selector-free
+  `--root` behavior, non-authorizing generation-0 Repository Source creation, selector-free
   fixed-three-tool Global batching, exact structural-`lstat` `ENOENT` handling, REST versus
   startup Operation Error ownership, as-is garbled-text UTF-8 replacement, raw/NFC and hard-link
   identity rules, exact Codex emptiness, and the verification-only Presentation Allowlist gate.

@@ -1,6 +1,6 @@
 // T043: the Gunshi root command surface (FR-001, contracts/http-api.md
 // § Host requirements #4/#5). Covers the positive default-true `open` flag
-// and its generated `--no-open`, optional `--cwd <path>` with last-wins
+// and its generated `--no-open`, optional `--root <path>` with last-wins
 // repetition, the one captured `process.cwd()`, purely lexical absolute and
 // relative resolution, zero selection I/O and no `process.chdir()`, fixed
 // actionable rejection of an empty option value and of operands, strict
@@ -26,11 +26,11 @@ const { executeRepositoryScan, startInspectorHost } = await import(
 );
 const { runInspectorCli } = await import('../../src/server/cli');
 
-/** The exact source-value-free CLI rejection for an empty `--cwd`. */
-const CWD_VALUE_REQUIRED = '--cwd requires a non-empty path value.';
+/** The exact source-value-free CLI rejection for an empty `--root`. */
+const ROOT_VALUE_REQUIRED = '--root requires a non-empty path value.';
 /** The exact source-value-free CLI rejection for an extra operand. */
 const NO_OPERANDS_ACCEPTED =
-  'This command accepts options only. Pass the inspected directory with --cwd <path>.';
+  'This command accepts options only. Pass the inspected repository root with --root <path>.';
 
 /** The mocked host start, typed for its captured options. */
 const startHost = vi.mocked(startInspectorHost);
@@ -109,30 +109,30 @@ describe('root selection', () => {
     expect(executeRepositoryScan).not.toHaveBeenCalled();
   });
 
-  it('uses the exact captured invocation directory when --cwd is omitted', async () => {
+  it('uses the exact captured invocation directory when --root is omitted', async () => {
     await runInspectorCli([]);
     expect(selectedRoot()).toBe(CAPTURED_CWD);
-    expect(startHost.mock.calls[0]?.[0].context.session.internal.cwdOptionValue).toBeNull();
+    expect(startHost.mock.calls[0]?.[0].context.session.internal.rootOptionValue).toBeNull();
   });
 
-  it('keeps an absolute --cwd exactly as given', async () => {
+  it('keeps an absolute --root exactly as given', async () => {
     const absolute = resolve('/elsewhere/repo');
-    await runInspectorCli(['--cwd', absolute]);
+    await runInspectorCli(['--root', absolute]);
     expect(selectedRoot()).toBe(absolute);
   });
 
-  it('resolves a relative --cwd against the captured invocation directory', async () => {
-    await runInspectorCli(['--cwd', 'nested/repo']);
+  it('resolves a relative --root against the captured invocation directory', async () => {
+    await runInspectorCli(['--root', 'nested/repo']);
     expect(selectedRoot()).toBe(resolve(CAPTURED_CWD, 'nested/repo'));
   });
 
-  it('resolves a repeated --cwd to the parser last value', async () => {
-    await runInspectorCli(['--cwd', 'first', '--cwd', 'second']);
+  it('resolves a repeated --root to the parser last value', async () => {
+    await runInspectorCli(['--root', 'first', '--root', 'second']);
     expect(selectedRoot()).toBe(resolve(CAPTURED_CWD, 'second'));
   });
 
   it('never re-reads or changes the process working directory', async () => {
-    await runInspectorCli(['--cwd', 'nested/repo']);
+    await runInspectorCli(['--root', 'nested/repo']);
     // The one capture happened at module load; selection reads it again from
     // the retained string, never from the process.
     expect(cwdSpy).not.toHaveBeenCalled();
@@ -159,19 +159,19 @@ describe('browser opening', () => {
 
 describe('rejections before any session or browser exists', () => {
   it.each([
-    ['a separate empty value', ['--cwd', '']],
-    ['an inline empty value', ['--cwd=']],
+    ['a separate empty value', ['--root', '']],
+    ['an inline empty value', ['--root=']],
   ])('rejects %s with the fixed source-value-free message', async (_label, argv) => {
     await runInspectorCli(argv);
-    expect(errorSpy).toHaveBeenCalledWith(CWD_VALUE_REQUIRED);
+    expect(errorSpy).toHaveBeenCalledWith(ROOT_VALUE_REQUIRED);
     expect(process.exitCode).toBe(1);
     expect(startHost).not.toHaveBeenCalled();
   });
 
-  it('rejects a missing --cwd value through the parser type validation', async () => {
+  it('rejects a missing --root value through the parser type validation', async () => {
     // The parser owns "the option needs a value"; the product does not
     // re-implement that check (Implementation simplicity policy).
-    await expect(runInspectorCli(['--cwd'])).rejects.toThrow();
+    await expect(runInspectorCli(['--root'])).rejects.toThrow();
     expect(startHost).not.toHaveBeenCalled();
   });
 
@@ -197,9 +197,9 @@ describe('rejections before any session or browser exists', () => {
   });
 
   it('never echoes a rejected option value back to the terminal', async () => {
-    await runInspectorCli(['--cwd', '']);
+    await runInspectorCli(['--root', '']);
     for (const call of errorSpy.mock.calls) {
-      expect(String(call[0])).toBe(CWD_VALUE_REQUIRED);
+      expect(String(call[0])).toBe(ROOT_VALUE_REQUIRED);
     }
   });
 });
@@ -310,5 +310,25 @@ describe('graceful shutdown', () => {
     await runInspectorCli(['--no-open']);
 
     expect(closeHost).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports a rejected close and fails the launch instead of dropping it', async () => {
+    // Shutdown after the handle exists is started from a signal handler with
+    // no caller left to await it. An unreported rejection would exit zero,
+    // telling the user the inspector shut down cleanly when it did not.
+    const failure = new Error('close failed');
+    closeHost.mockRejectedValueOnce(failure);
+    const reported = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    await runInspectorCli(['--no-open']);
+    const addedListeners = process
+      .listeners('SIGINT')
+      .filter((listener) => !priorSignalListeners.SIGINT.includes(listener));
+    addedListeners[0]?.('SIGINT');
+    // The handler cannot be awaited, so the rejection settles a turn later.
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(reported).toHaveBeenCalledWith(failure);
+    expect(process.exitCode).toBe(1);
+    reported.mockRestore();
   });
 });

@@ -73,6 +73,18 @@ export function createClientDataPurge(): ClientDataPurge {
       };
     },
     purge(reason) {
+      // A disposer clears state this module's own owners hold; it performs no
+      // I/O and cannot fail for a reason outside the program. So there is no
+      // try/catch: one that threw would be a bug in an owner, and letting it
+      // reach the caller is how that bug is found. Catching it here would only
+      // hide it, and a purge that continued past it would leave the client
+      // holding state it has already decided to discard.
+      //
+      // Not a `DisposableStack`: it disposes once, in reverse registration
+      // order, and offers no way to unregister. This purge runs repeatedly,
+      // runs in registration order so request abortion precedes the state
+      // those requests would repopulate, and its owners come and go with the
+      // components holding them.
       for (const disposer of disposers) {
         disposer(reason);
       }

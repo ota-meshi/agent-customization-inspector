@@ -25,9 +25,7 @@ import packageJson from '../../../package.json' with { type: 'json' };
 import type { DevframeDefinition } from 'devframe';
 import { createOpaqueId } from '../../shared/entities';
 import type { LifecycleOwnerKey } from '../../shared/diagnostics';
-import { REPOSITORY_TRAVERSAL_PLANS } from '../inspection/rules/registry';
-import { runTraversalScan } from '../inspection/traversal';
-import { assembleScanPublication } from '../inspection/scan';
+import { runSourceScan } from '../inspection/scan';
 import type {
   CommandResult,
   DeterministicRejection,
@@ -80,20 +78,30 @@ export async function executeRepositoryScan(
   sourceId: string,
   rootFailureOwner: LifecycleOwnerKey,
 ): Promise<void> {
-  const result = await runTraversalScan({
-    root: context.session.internal.selectedRepositoryRoot,
-    plans: REPOSITORY_TRAVERSAL_PLANS,
-  });
-  const publication = assembleScanPublication({
+  const publication = await runSourceScan({
     sourceId,
+    // The retained raw selected root, never the escaped display boundary: the
+    // boundary is a one-way presentation label and grants no read authority
+    // (FR-001/FR-002).
+    root: context.session.internal.selectedRepositoryRoot,
     rootFailureOwner,
-    result,
+    // A refresh during a long scan shows where the attempt is rather than the
+    // zeros it was admitted with. The coordinator ignores a report for a
+    // revoked or settled attempt, so a superseded scan cannot speak for the
+    // Source (contracts/http-api.md § get-session `progress`).
+    onProgress: (update) => {
+      context.coordinator.reportProgress(scanRequestId, update);
+    },
   });
   if (publication.kind === 'publishable') {
     await context.coordinator.completeScan(scanRequestId, {
       files: publication.files,
+      recognitions: publication.recognitions,
       diagnostics: publication.diagnostics,
       outcome: publication.outcome,
+      visitedEntries: publication.visitedEntries,
+      candidateFiles: publication.candidateFiles,
+      readBytes: publication.readBytes,
     });
     return;
   }

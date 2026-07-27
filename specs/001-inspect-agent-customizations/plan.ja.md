@@ -23,10 +23,10 @@ filesystem I/Oはすべて`src/server/inspection/` directory配下だけに置�
 sourceをread-only Monaco editorで表示し、source比較にはMonaco diff editorを使う。Recognition metadataは
 tool/kind/field/occurrenceで対応付け、parser-normalized表示値ではなくexact authored literalを通常のVue componentで比較・表示する。
 
-Root selectionは単純かつlexicalとする。CLIは`process.cwd()`を正確に1回captureし、`--cwd <path>`を
+Root selectionは単純かつlexicalとする。CLIは`process.cwd()`を正確に1回captureし、`--root <path>`を
 acceptする（反復指定はparserのlast valueへ解決）。Absolute optionはそのまま保持し、relative optionはcapture済みinvocation directoryに対して
 resolveし、その結果をselected Repository rootとする。CLIは`process.chdir()`を呼ばない。明示的にemptyな
-`--cwd` valueは、session作成またはbrowser起動より前に固定actionableかつsource-value-freeなstartup errorでfailする。
+`--root` valueは、session作成またはbrowser起動より前に固定actionableかつsource-value-freeなstartup errorでfailする。
 Valueの欠落は同じboundaryでGunshiのtyped argument validationによりrejectされ、productはparser所有のcheckを重複実装しない。
 Repository sequenceのbootstrap generation 0は、stableな`sourceId`とescape済みroot labelを持つ1つの
 Repository Sourceをsynchronousに含む。
@@ -56,8 +56,9 @@ sequenceを破棄する。Fatal rescanはuncommitted resultを1件もpublishせ�
 決定的なlifecycle diagnosticを示すSource別stale-failure entry付きで、そのSourceがrefreshまたは除去されるまで保持する。
 
 Customization discoveryは、文書化済みvendor lookup behavior（`behaviorId`）、Inspector matcher/read policy
-（`ruleId`）、runtime composition strategy（`strategyId`）、official source record（`sourceId`）という4つの
-contract-versioned registryとして保守する。
+（`ruleId`）、runtime composition strategy（`strategyId`）という3つのcontract-versioned registryとして
+保守する。各recordは、それを確立するofficial pageを`sourceId`をkeyとする自身の`evidence`配列で引用し、
+専用のregistryは持たない。
 共通allowlist contractはmatcher grammarとsafety invariant、Copilot・Claude・Codexの個別contractはvendor
 behaviorとtool固有rule、composition contractはorderとrelationship-only rule、source registryは正確な公式
 URL/section evidenceとreview metadataを所有する。RepositoryとUser/Global behaviorは別表とし、Copilotの
@@ -141,12 +142,12 @@ compatibility/support window、rollback/support pathを含めるか、理由付�
 英日design evidenceが欠落またはstaleならT002をblockし、英日validation evidenceが欠落すればrelease gateをfailする。
 
 `src/server/cli.ts`はGunshiのstableなroot `define`/`cli` APIだけを使用する。Negatableな`open` booleanを
-default trueとして定義して`--no-open`を提供し、単一のstring-valued `cwd` optionで`--cwd <path>`を提供する。
+default trueとして定義して`--no-open`を提供し、単一のstring-valued `root` optionで`--root <path>`を提供する。
 `strict: true`を有効にし、bind前にすべてのpositional/rest argumentを明示的に拒否し、`cli()`をawaitし、
 parser所有のvalidation `AggregateError`を通常どおりnonzeroのprocess exitへ伝播させる。Session作成前に
-`process.cwd()`を正確に1回captureし、明示的なempty valueの`--cwd`はsession作成またはbrowser起動より前に
+`process.cwd()`を正確に1回captureし、明示的なempty valueの`--root`はsession作成またはbrowser起動より前に
 固定actionableかつsource-value-freeなstartup errorで拒否し、valueの欠落は同じboundaryでGunshiのtyped
-validationによりrejectする（反復`--cwd`はparserのlast valueへ解決）。Absoluteな`--cwd` valueはそのまま保持し、relative valueは
+validationによりrejectする（反復`--root`はparserのlast valueへ解決）。Absoluteな`--root` valueはそのまま保持し、relative valueは
 `node:path.resolve`でcapture済みinvocation directoryに対してresolveし、その結果をselected Repository rootと
 する。CLIは`process.chdir()`を呼ばない。Built-in help/versionはbindせずに処理する。Production entryは`gunshi/agent`、
 lazy command、custom plugin、experimental parser combinatorをimportしない。Validation後、CLIは
@@ -619,7 +620,7 @@ target自身のrelationshipをoriginating edgeからprojectしない。Parser、
 relationshipを作ろうとする場合、target access前にそのprojectionを省略し、eligibleなdirect relationshipと記述された完全な
 sourceを保持し、actionableかつsource値を含まないrelationship diagnosticをemitする。
 Authorized browserはheartbeat interval、request timeout、retry delay、memory lease、およびliveness probeを定義しない
-（2026-07-24 修正）。browser/network/runtime rejection、transportが報告するchannel loss、session mismatch、
+。browser/network/runtime rejection、transportが報告するchannel loss、session mismatch、
 greater content epoch、non-null disable fenceでpurgeする。host喪失はloopback socketのcloseとしてdevframeが問い合わせなしにpageへ報告するため、
 process lossはpollingせずに検出される。Page-lifecycle eventはtriggerに含めない: FR-027はfailureまたは同等のterminal reset後にpurgeするもので、
 tab切り替えもページからの離脱もそのどちらでもないため、clientはvisibility/unload listenerを設置しない。
@@ -651,7 +652,7 @@ Failureは通常のerrorとして報告する。Constitution v4.0.0に従い、p
 file-scope `Diagnostic` DTOは、actionableなlocationとして必要最小限のSource-relative Pathを保持する。
 
 **規模・scope**: ローカルuser 1人、選択済みRepository root（defaultでは1回captureしたexact invocation
-`process.cwd()`、またはaccepted single `--cwd` value）をrootとするRepository sourceを正確に1つ、session-wideな
+`process.cwd()`、またはaccepted single `--root` value）をrootとするRepository sourceを正確に1つ、session-wideな
 all-tools opt-in 1回から作るadmit済みのtool別Global sourceを0から3つ（Copilot、Claude、Codexごとに最大1つ）、Sourceごとにrootを正確に1つ、
 comparison内は異なるreadableなカスタマイズファイル正確に2件。Inventory sizeはproduct定義のitem上限ではなくsupported runtimeと
 execution environmentによって決まる。
@@ -855,10 +856,22 @@ src/
     ├── entities.ts
     ├── rejection-codes.ts
     └── registries/
-        ├── vendor-behaviors.ts
+        ├── identifier-types.ts       # closed BehaviorId/StrategyId/RuleId unions
+        ├── behavior-types.ts         # record shapes, one per registry
+        ├── strategy-types.ts
+        ├── rule-types.ts
+        ├── relation-types.ts         # the edge kinds between the registries
+        ├── evidence-types.ts         # on-record citations
+        ├── maintenance-data.ts       # the build flag that drops data the product never reads
+        ├── vendor-behaviors.ts       # aggregates: the public surface
         ├── inspection-rules.ts
         ├── runtime-composition.ts
-        └── official-sources.ts
+        ├── relations.ts              # the graph the recognizer walks
+        └── codex/                    # one directory per vendor, four files each
+            ├── behaviors.ts
+            ├── strategies.ts
+            ├── rules.ts
+            └── relations.ts
 
 tests/
 ├── unit/
@@ -898,7 +911,7 @@ tests/
     │   ├── vendor-behaviors.json
     │   ├── inspection-rules.json
     │   ├── runtime-composition.json
-    │   └── official-sources.json
+    │   └── relations.json
     ├── outcomes/
     │   ├── manifest.json
     │   └── manifest.sha256
@@ -942,7 +955,7 @@ LICENSE
 BOMなし、LF終端の正確な先頭行`#!/usr/bin/env node`で始まり、tsdownがpackaged `dist/cli.mjs`でそのshebangを
 保持し、`package.json.bin`は別のbootstrap wrapperなしでそれを直接指す。同時に配布されるartifact同士を
 user runtimeで相互検証せず、packaged entry pointは`verify:package` CI/release gateがenforceする。
-Root selection自体は純粋にlexicalとする。`process.cwd()`を1回captureし、absoluteな`--cwd`は保持し、
+Root selection自体は純粋にlexicalとする。`process.cwd()`を1回captureし、absoluteな`--root`は保持し、
 relativeな値はそのcaptureに対してresolveする。Inspection I/O contractはdirectory-levelのownershipとする。
 調査対象sourceへのfilesystem I/Oはすべて`src/server/inspection/` directory配下だけに置き、他のmoduleは
 調査対象sourceをenumerate/readしない。
@@ -950,13 +963,13 @@ relativeな値はそのcaptureに対してresolveする。Inspection I/O contrac
 `src/app/session/`はsession transportとlifecycleのmoduleを保持する——shared client-data purge（`client-data.ts`)、
 guarded RPC client（`api-client.ts`)、およびそれらを受けpage-lifecycle listenerを設置しないreactive browser view state（`view-state.ts`）である。
 `client-data.ts`はdependency leafで何もimportしないため、API clientとview stateはmodule cycleなしに同じ`clientDataEpoch`を
-観測できる。liveness moduleは存在しない——2026-07-24に、transport自身のconnection-status signalがhost喪失を、
-response経路のepoch/fence checkが残りをカバーすると判断し、probeを削除した。
+観測できる。liveness moduleは存在しない——独自のprobeは、host喪失をカバーするtransport自身の
+connection-status signalと、残りをカバーするresponse経路のepoch/fence checkを重複させるだけである。
 これらはいずれもVue composableではなく、closure-localなstateを持ち1度だけ構築されるplain factoryであるため、
 `use*` reactivityを約束する名前のdirectory配下に置くと実態を誤って説明することになる。よって
-`src/app/composables/`の外に置く（2026-07-24 修正）。
+`src/app/composables/`の外に置く。
 
-User-visible UI copyはそれを描画するcomponentに書き、message catalogは持たない（2026-07-24 修正）。
+User-visible UI copyはそれを描画するcomponentに書き、message catalogは持たない。
 UIは1言語だけ出荷するため、QR-004の二言語義務はuser/contributor documentationとWCAG applicability matrixに掛かり、
 動作中の画面には掛からない。よってmanual accessibility matrixにlocale軸は無く、shellはnegotiateせず固定の
 `lang="en"`を設定する。message名をkeyとするcatalogは、keyとその唯一のstringの間にlookupを足すだけになる。
@@ -974,11 +987,12 @@ Configuration/Settings → Output Styles → Marketplaces → Plugin Manifests �
 Inventory、Detail、Comparison Acceptanceをこの順で完了する。Global inspection（US4、P3）、cross-cutting
 verification、release evidenceは最後に実施する。
 
-4つのregistry moduleは、1つのvalidatorがclosed graphとしてloadする場合もownershipを分離する。
+3つのregistry moduleは、1つのvalidatorがclosed graphとしてloadする場合もownershipを分離する。
 `vendor-behaviors.ts`は文書化済みvendor lookup statement、`inspection-rules.ts`だけがstatic/derived matcherの
-read authority、`runtime-composition.ts`はstrategyとrelationship-only policy、`official-sources.ts`はdevelopment/
-test専用offline evidence mapのimplementation counterpartを所有し、startupまたはscan entry graphからimport
-しない。4つのconformance JSON fixtureはこれらmoduleをmirrorし、相互IDを要求し、duplicate、orphan reference、
+read authority、`runtime-composition.ts`はstrategyとrelationship-only policyを所有する。Evidenceは専用moduleを
+持たない: 維持対象の各recordが自身のcitationを`evidence`配列に書くため、根拠は支える主張の隣に置かれ、
+そこから乖離しうる並行mapにはならない。Packaged CLIはそれらのcitationをcompile除去する。Conformance JSON
+fixtureはこれらmoduleをmirrorし、相互IDを要求し、duplicate、orphan reference、
 anchorなしevidence、またはauthorしたsegment programがclosed token grammarに違反する（例:
 隣接するrecursive-directory segment）Inspector Repository matcherがあればbuildをfailさせる。
 
@@ -1031,7 +1045,7 @@ buildまたはpackage quality gateを配置しない。
 実装し、CLI entryと参照される全assembly scriptをscaffoldする。それらのpathが存在するまでSetup stageを
 runnableとみなさない。
 Production `dependencies`はexact-versionのdirect set `devframe`、`gunshi`、`yaml`、`jsonc-parser`、
-`smol-toml`とし、`tests/package/production-graph.test.ts`が`pnpm-lock.yaml`から直接assertする。
+`smol-toml`、`vfile`、`vfile-matter`とし、`tests/package/production-graph.test.ts`が`pnpm-lock.yaml`から直接assertする。
 devframeのtransitiveはlockfileが所有し、`open`を
 全dependency sectionとproduction lock closureから除外する。Nuxt/Vue/Vite/tsdown、Monaco、Playwright、その他
 build/test toolingはdevelopment-onlyとする。
@@ -1056,22 +1070,21 @@ clean → `nuxt build` → tsdown pipelineが所有するため、recursiveな�
 tarball allowlistは`dist/`と上記4 entryおよびその内容だけで、source、fixture、planning artifactを
 含めない。PackageはCLI-onlyとし、`package.json.bin`は正確に
 `{ "agent-customization-inspector": "dist/cli.mjs" }`、`main`、`module`、`exports`は不在とし、存在しないlibrary
-entry pointをadvertiseしない。Package testはbin targetの保持された正確なshebangを検証し、tarballをisolated
-fixtureへinstallし、local commandを実際に`npx --no-install`で起動し、loopback URLを観測して終了する。これにより
-Nuxt asset、CLI、inspection layer、runtime dependencyがpackaged locationから`npx`で
-利用できることを証明する。
+entry pointをadvertiseしない。Package testはbin targetの保持された正確なshebangを検証し、binが指すbuild済み
+`dist/cli.mjs`を起動し、loopback URLを観測して終了する。これによりNuxt asset、CLI、inspection layerがbuild済み
+locationから解決されることを証明する。Pack済みtarballは証明しない: tarballをisolated fixtureへinstallし
+`npx --no-install`で起動するのはT917であり、release gateが所有する。
 
-Package gateは、承認済みのdirect production dependency set — その5つのnameだけで他は含まない — を
+Package gateは、承認済みのdirect production dependency set — その7つのnameだけで他は含まない — を
 `package.json`と`pnpm-lock.yaml` closureからassertする。これによりnew production dependencyは
 research.md § 3の決定が明示的に見直されるまでfailする。各resolved versionとそのintegrity hashは
-commit済みlockfileが所有し、production payload byteを固定し続けるのはこのlockfileである（superseded 2026-07-23:
-payload content scan — native/binary/Wasm magic、shell helperとshebang audit、lifecycle-disabled/
-network-disabled installの各run、cross-OS shim audit — とdependency単位のversion/integrity hash assertionは
-self-verificationの整理でscopeから外した。これらは
-exactなhash-pinned payloadの性質であり、dependency review時に一度確立されるもので、integrity hashが既に固定した
-contentを再scanすること、あるいはlockfileが既にpinしている値をtestで再記述することは、憲章原則Iが除いた
-冗長な再検証classである。install時のlifecycleとnetwork enforcementは
-package manager自身の設定が所有する）。
+commit済みlockfileが所有し、production payload byteを固定し続けるのはこのlockfileである。payload content scan — native/binary/Wasm magic、shell helperとshebang audit、
+lifecycle-disabled/network-disabled installの各run、cross-OS shim audit — と
+dependency単位のversion/integrity hash assertionはscope外とする。これらはexactな
+hash-pinned payloadの性質であり、dependency review時に一度確立されるものであって、
+integrity hashが既に固定したcontentを再scanすること、あるいはlockfileが既にpinしている
+値をtestで再記述することは、憲章原則Iが除く冗長な再検証だからである。install時の
+lifecycleとnetwork enforcementはpackage manager自身の設定が所有する。
 
 ## 実装boundary
 
@@ -1110,7 +1123,7 @@ package manager自身の設定が所有する）。
   shutdown、明示的cancellationはattemptのpublication authorityをrevokeする。Pending promiseはsettle時にcleanupだけを
   行ってよく、late byte、diagnostic、graph change、DTOは破棄する。Node.jsとkernelがoperationのsettleを
   報告する前にphysical cancellationしたとはclaimしない。
-- 4つのregistryは1つのreference graphとしてvalidateするが、与えるauthorityは異なる。Vendor behavior recordは
+- 3つのregistryは1つのreference graphとしてvalidateするが、与えるauthorityは異なる。Vendor behavior recordは
   upstream lookupを記述するだけでI/Oを認可せず、static/typed derived Inspector ruleだけがreadを認可し、
   runtime strategyはorder、condition、relationship-only edgeをprojectし、official source recordはevidenceを
   提供するだけでruleを自動変更しない。全Repository selectorはtyped segment array programとして直接author
@@ -1273,11 +1286,12 @@ package manager自身の設定が所有する）。
   `src/app/session/view-state.ts`はloopback session API channel上で`App.vue`が描画するreactive valueを所有する。
   listenerは一切設置しない: liveness probeも、product定義のpolling interval、request timeout、retry timer、
   memory leaseも、page-lifecycle purgeも無い。transportがhost喪失を自ら報告するため、
-  process lossはpollingせずにended viewになる。Network/runtime rejection、
-  session mismatch、観測したprocess loss、または同等のterminal full-session resetではeditor model/worker/subscriptionをdisposeし、全session DTO/DOM/detail/comparison/warning stateをclearして
+  process lossはpollingせずにended viewになる。通常のhandler/delivery rejectionはそのrequest自身の
+  errorであり、commit済みsnapshotは画面に残り、次のrefreshが成功しうる（FR-030）。Channel喪失、
+  未対応のsession protocol、session mismatch、または同等のterminal full-session resetではeditor model/worker/subscriptionをdisposeし、全session DTO/DOM/detail/comparison/warning stateをclearして
   requestをabortし、`clientDataEpoch`をincrementしてlate responseによるcontent復活を防ぐ。全SessionSnapshot/FileDetail
   requestはepoch、owning sequenceのcurrent generation — session snapshotは`repositoryGeneration`とnullableな
-  `globalGeneration`を公開する — 、該当時file ID、exact request tokenをcaptureする。Owning sequenceのolder generationは無視し、
+  `globalGeneration`を公開する — 該当時file ID、exact request tokenをcaptureする。Owning sequenceのolder generationは無視し、
   admitted済みの自動または明示scanはそれぞれopaqueな`scanRequestId`を持ち、そのSource progressとcommitするgenerationは
   同じIDを保持する。Clientはcurrent explicit request IDを保存し、それ以前のstatusまたはinventory generationをそのrequestの
   completionとして扱わない。いずれかのsequenceのnewer generation採用前にepochをincrementし、そのsequenceの置換された
@@ -1390,7 +1404,7 @@ package manager自身の設定が所有する）。
   保持する各Diagnosticはgeneration/session-lifecycleのlifetimeと独立して、正確に1つのattachment scopeを使う。File scopeは
   matching `sourceId`、`fileId`、Source-relative Pathを必須とし、source scopeは`sourceId`だけを必須とし、session scopeは
   これらのlocation fieldを一切許可しない。Invalidな組合せを拒否し、source/session recordはfile IDやpathを捏造しない。
-  Generation 0は、capture済みの呼び出しworking directoryとoptionalな`--cwd`からlexicalに選択したexact 1つのidleな
+  Generation 0は、capture済みの呼び出しworking directoryとoptionalな`--root`からlexicalに選択したexact 1つのidleな
   Repository Sourceを持ち、file/diagnosticを持たないcommit済みzero-I/O bootstrap snapshotとし、初回fatal attemptでもlegalな
   retained current baseを持つ。明示Repository rescan、enabled-Global single-Source rescan、Global batchは同じqueue ruleを使う。
   Global disableの再要求は既存barrierへjoinし、tool固有Global Source/graph、active consent record、retained admitted Global
@@ -1436,14 +1450,12 @@ package manager自身の設定が所有する）。
 
 ## 複雑さの追跡
 
-2026-07-22のtrusted-workspace clarification（spec Clarifications § Session 2026-07-22）が従来の
-adversarial-file inspection機構をsupersedeしたため、その正当化だけのために存在した複雑さのrowは
-再実装せず削除した。同日のdevframe採用（spec Clarifications § Session 2026-07-22、Constitution
-v3.0.0）も同様にper-session capability token、Origin check、hand-writtenなHTTP router、
-static-manifest/CSP pipelineをsupersedeしたため、それらの複雑さのrowも存在しない。
-2026-07-22のFR-040/FR-041削除（spec Clarifications § Session 2026-07-22、Constitution v4.0.0）は
-generic error-envelopeとoperational-log/telemetry機構を削除したため、その正当化だけのために存在した
-複雑さのrowも削除した。
+Trusted-workspace clarification（spec Clarifications § Session 2026-07-22）により、正当化すべき
+adversarial-file inspection機構は存在しないため、この表にそのrowはない。devframe採用
+（spec Clarifications § Session 2026-07-22、Constitution v3.0.0）により、per-session capability token、
+Origin check、hand-writtenなHTTP router、static-manifest/CSP pipelineのrowも同様に存在しない。
+FR-040/FR-041を採らない（spec Clarifications § Session 2026-07-22、Constitution v4.0.0）ため、
+generic error-envelopeもoperational-log/telemetry機構も存在せず、それらのrowも同様に存在しない。
 残る避けられない実装costを明示的に追跡する。
 
 | 複雑さ | 必要な理由 | 不採用とした単純案 |

@@ -78,8 +78,8 @@ pnpm run build
   生成HTML shell、CSS、JSON file、必須documentation/license fileはdeclarativeかつnon-executableなartifactとする。
   Package manager生成の`.bin` symlinkと
   `.cmd`/`.ps1` launch shimはpayload外の唯一の限定interop例外とし、それぞれexactな宣言済み`package.json.bin` targetを
-  audit済みNode JavaScriptへ対応させ、argvだけをforwardして追加input/application logicを持たせない。Directなproduction dependencyは正確に`devframe`、`gunshi`、`jsonc-parser`、
-  `smol-toml`、`yaml`とする。devframeのtransitive treeはdevframeとlockfileが所有し、`open`は全dependency
+  audit済みNode JavaScriptへ対応させ、argvだけをforwardして追加input/application logicを持たせない。Directなproduction dependencyは正確に7件、`devframe`、`gunshi`、
+  `jsonc-parser`、`smol-toml`、`vfile`、`vfile-matter`、`yaml`とする。devframeのtransitive treeはdevframeとlockfileが所有し、`open`は全dependency
   sectionで不在とする。
 - Build outputにfixture、raw customization text、Global content、cache、inspected machineを公開する
   source-map pathが含まれない。
@@ -105,7 +105,7 @@ launch確認が最も確実にしたい一点だからである。Optionは`--` 
 separatorをcommandへそのまま転送し、strictなrest-argument rejectionが拒否するためである。
 
 ```bash
-pnpm start --no-open --cwd /path/to/repository
+pnpm start --no-open --root /path/to/repository
 ```
 
 Portを決め打ちせず、printされたURLを読む。devframeはdefault portが既にbindされていれば別の
@@ -123,10 +123,10 @@ node ../../../../dist/cli.mjs --no-open
 
 ```bash
 cd /path/to/agent-customization-inspector
-node dist/cli.mjs --no-open --cwd tests/fixtures/repositories/all-supported
+node dist/cli.mjs --no-open --root tests/fixtures/repositories/all-supported
 ```
 
-CLIは呼び出し時の`process.cwd()`を1回だけcaptureする。省略時はそのexact stringを使う。`--cwd`は
+CLIは呼び出し時の`process.cwd()`を1回だけcaptureする。省略時はそのexact stringを使う。`--root`は
 受理し（反復指定はparserのlast valueへ解決）、absolute optionはそのまま保持し、relative optionはcaptureした呼び出しdirectoryに対してresolveする。
 明示的なempty valueはsessionまたはbrowser attemptより前に固定actionableかつsource-value-freeなoutputを出して終了し、
 valueの欠落は同じboundaryでGunshiのtyped argument validationによりrejectされる。
@@ -171,7 +171,7 @@ frameworkが所有する。devframeはbuild済みSPAを`dist/public`から配信
 user-supplied command、environment-selected handlerを受け取らない。`--no-open`系のsuppression flagは
 hand-writtenなproduct optionではなくdevframe CLI flagである。Openerがmissingまたはfailedでもserverは
 継続し、既に表示したlocal originがFR-001のfallbackである。
-任意の単一`--cwd`を除き、初期リリースにはrepository picker/ancestor-root discovery、remote-host flag、
+任意の単一`--root`を除き、初期リリースにはrepository picker/ancestor-root discovery、remote-host flag、
 static-export command、MCP commandはない。
 
 Failureはordinaryに報告する。Startupの問題はactionableなmessageとともにlaunchを終了させ、failした
@@ -241,8 +241,8 @@ pnpm run test:docs
   graceful shutdownを検証する。これはpackaged pathだけのisolationであり、現行gateはtarballをinstallせず、
   installed package linkもinvokeしない。T917が、isolated fixtureへpack/installし、working treeまたは
   runtime downloadへ依存せず`npx --no-install`でlaunchするfinal-release testを所有する。
-  Production-graph testは承認済みのdirect dependency 5件、すなわち
-  `devframe`、`gunshi`、`jsonc-parser`、`smol-toml`、`yaml`を正確にassertし（resolved versionとintegrity hashは
+  Production-graph testは承認済みのdirect dependency 7 件、すなわち
+  `devframe`、`gunshi`、`jsonc-parser`、`smol-toml`、`vfile`、`vfile-matter`、`yaml`を正確にassertし（resolved versionとintegrity hashは
   commit済み`pnpm-lock.yaml`が所有し続ける）、negative packaging fixtureは、
   missingまたはnon-regularなrequired entry pointがpublish前に`verify:package`をfailさせることを証明する。
 - 内容を変更しない100,000 entry/500 customization fileのdeterministic performance fixtureを、同じversion付き
@@ -262,7 +262,6 @@ pnpm run test:docs
 pnpm exec vitest run tests/contract/vendor-behaviors
 pnpm exec vitest run tests/contract/inspection-rules
 pnpm exec vitest run tests/contract/runtime-composition
-pnpm exec vitest run tests/contract/official-sources
 ```
 
 上記testはofflineである。Maintainerはupstream drift review時だけ`pnpm run check:official-sources`を明示実行し、
@@ -270,9 +269,9 @@ source checkでnetworkを使えるのはこのcommandだけとする。
 
 確認項目:
 
-1. 全shipped `behaviorId`、`ruleId`、`strategyId`、`sourceId`が厳密に1つの所有bilingual contractと対応する
-   immutable registryに存在する。全cross-referenceが解決し、全`sourceRefs` entryが対応する
-   `OfficialSourceRecord`と相互一致し、offline testがsemantic fingerprintを再計算する。明示drift checkは
+1. 全shipped `behaviorId`、`ruleId`、`strategyId`が厳密に1つの所有bilingual contractと対応する
+   immutable registryに存在する。全cross-referenceが解決し、recordの`evidence`配列にある全citationが
+   引用先のofficial-sources contract rowと相互一致し、offline testがsemantic fingerprintを再計算する。明示drift checkは
    official HTTPS hostとexact section selection/normalizationを強制する。Recoverableなnetworkまたは実行環境failureは
    behavior/rule/strategy/check-in済みdigestを自動更新せずfail closedし、製品固有の数値fetch capはcontractに含めない。
 2. Vendor lookup base、relative selector、traversal modeをInspector matcherから独立して検証する。全Repository
@@ -375,7 +374,7 @@ pnpm exec playwright test tests/e2e/discovery.spec.ts
 確認項目:
 
 1. OptionなしではRepository Sourceがcapture済みchild-process `process.cwd()`のexact valueと等しい。Relative/absolute
-   `--cwd`では選択したrootと等しく、process working directoryは変化せず、picker/ancestor searchもない。
+   `--root`では選択したrootと等しく、process working directoryは変化せず、picker/ancestor searchもない。
 2. Source、tool、kind、Source-relative Path filterをkeyboard/pointerで操作できる。全inventory-file pathまたは安全に
    normalize済みのtarget pathはowning Sourceの1 rootからの相対値であり、Sourceをまたぐpath namespaceを意味しない。
    Escape済みのenabled-Source root labelとconsent-preview root labelはpresentation-onlyのままで、Source-relative Pathではなく、
@@ -755,7 +754,7 @@ distribution、digestの変更は両resultを無効にし、final pairがvalid e
   画面に開かれて操作可能になった時点で終了する。機材はprompt提示前に、verified distributionの`repository/` working
   directoryを意図するRepository rootとして準備する。固定fd6行
   `npx --no-install agent-customization-inspector --no-open`の入力、その準備済みrootからのInspector起動、pin済みcertified
-  browserで必要なprinted-URL fallbackを完了するまでを計測に含める。Directory移動または`--cwd`指定はこのstudyの
+  browserで必要なprinted-URL fallbackを完了するまでを計測に含める。Directory移動または`--root`指定はこのstudyの
   participant操作ではなく、それらのproduct capabilityはautomatedなUser Story 1テストで検証する。20人中19人以上が
   2分以内に成功しなければならない。
 - SC-006はSC-001結果にかかわらず、全参加者を同じ指定fileが開いた同一の準備済みInspector stateへ置く。そのstateの
@@ -1123,8 +1122,8 @@ exact `package.json.files` entryの`dist`、`README.md`、`README.ja.md`、`LICE
 を含むことをassertする。残りの`dist` contentはNuxt/tsdownのbuild outputであり、
 product manifestで再列挙しない。Exact `bin` mappingと
 `main`/`module`/`exports`不在、license notice、保持されたexact shebang、
-公開README pairを確認する。Directなproduction dependencyは正確に`devframe`、`gunshi`、`jsonc-parser`、
-`smol-toml`、`yaml`とし、`open`は全dependency sectionで不在とする。devframeのtransitive treeはdevframeと
+公開README pairを確認する。Directなproduction dependencyは正確に7件、`devframe`、`gunshi`、
+`jsonc-parser`、`smol-toml`、`vfile`、`vfile-matter`、`yaml`とし、`open`は全dependency sectionで不在とする。devframeのtransitive treeはdevframeと
 lockfileが所有する。
 
 再実行すべきhost-securityやHTTP-API-router contract stepは存在しない。devframe local-tool frameworkの採用により
@@ -1139,18 +1138,19 @@ initial baselineをno impactとして記録する。それ以外では必要なc
 rollback/support pathを記録する。Evidenceが欠落するか一方の言語だけならrelease gateをfailureとする。
 
 承認済みproduction dependency setを`package.json`と`pnpm-lock.yaml` closureからassertする。すなわちdirect
-dependency 5件、`devframe`、`gunshi`、`jsonc-parser`、`smol-toml`、`yaml`を正確にassertし、graph変更は
+dependency 7 件、`devframe`、`gunshi`、`jsonc-parser`、`smol-toml`、`vfile`、`vfile-matter`、`yaml`を正確にassertし、graph変更は
 dependency決定が明示的に見直されるまでgateをfailさせる。各resolved versionとそのintegrity hashはcommit済み
 lockfileが所有し、全production packageのpayload byteをpinするのはこのlockfileである。
 Exactな宣言済み
 Package-manager生成`.bin` symlinkと`.cmd`/`.ps1` shimは、exactな宣言済み`package.json.bin` targetへmapしてargvをforwardする。生成HTML shell、CSS、JSON file、documentation、license fileは
 declarativeかつnon-executableなpayload artifactとして受理し、HTMLが参照するbootstrap scriptはJavaScript executable codeの
 ままとする。FR-038はproject-authored executable application codeと公開/install済みproductを対象とし、third-party
-development/test toolingはその公開boundary外で別にauditする。*（superseded 2026-07-23: payloadごとのcontent scan —
-platform selector、native/binary/Wasm magic、native build source/metadata、non-Node shebang、shell helper — と、
-scripts-disabled/network-disabled installの各run、OS別shim audit、およびdependency単位のversion/integrity hash
-assertionはscopeから外した。commit済みlockfileが各resolved versionとintegrity hashを既にpinしており——それらを
-testで再記述してもlockfileを二重化するだけであり——install時のenforcementはpackage managerが所有する）*。
+development/test toolingはその公開boundary外で別にauditする。payloadごとのcontent scan — platform selector、native/binary/Wasm magic、native build
+source/metadata、non-Node shebang、shell helper — と、scripts-disabled/network-disabled
+installの各run、OS別shim audit、およびdependency単位のversion/integrity hash assertionは
+scope外とする。commit済みlockfileが各resolved versionとintegrity hashを既にpinしており、
+それらをtestで再記述してもlockfileを二重化するだけであり、install時のenforcementは
+package managerが所有するからである。
 
 Launch testは、browser attempt前に表示されるorigin line、`--no-open`でbrowser-helper child processが
 0件であること、automatic openingがdisabled、unsupported、failedでもinspectionが利用可能なままであることを扱う。
@@ -1158,8 +1158,8 @@ Automatic opening、port/host resolution、open/suppress flagはdevframe所有�
 content、path、authored valueがそのopenerへ到達しないことを証明する。
 Gunshiのbindしないhelp/version、strict unknown-option拒否、明示的なpositional/rest拒否、固定されnonzero
 validation failure、await済みcompletionに加え、defaultでcaptureしたexact `process.cwd()`と、
-反復指定をparserのlast valueへ解決する`--cwd`、すなわちabsolute optionをそのまま保持すること、relative optionをcaptureした
-呼び出しdirectoryに対してresolveすること、`chdir`なし、明示的なempty `--cwd` valueをsession/browser
+反復指定をparserのlast valueへ解決する`--root`、すなわちabsolute optionをそのまま保持すること、relative optionをcaptureした
+呼び出しdirectoryに対してresolveすること、`chdir`なし、明示的なempty `--root` valueをsession/browser
 作成前に固定actionableかつsource-value-freeなstartup errorでrejectすること、およびvalueの欠落を
 Gunshiのtyped argument validationでrejectすることも扱う。
 Testはさらに、automatic openingがOS default handlerへ委譲するだけでversionを

@@ -5,7 +5,7 @@
 // devframe host (dist/public/index.html) and the Node server bundle
 // (dist/cli.mjs, the package.json.bin target). Anything further would
 // re-verify sibling build output the same pipeline just produced.
-import { stat } from 'node:fs/promises';
+import { lstat, readFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -24,12 +24,28 @@ export async function verifyPackageFiles({ distDir }) {
     const target = join(dist, ...entry.split('/'));
     let stats;
     try {
-      stats = await stat(target);
+      // `lstat`, not `stat`: the entry itself must be a regular file. `stat`
+      // resolves the link, so a symbolic link to one would pass a check whose
+      // whole purpose is that the packaged entry is the file (T024).
+      stats = await lstat(target);
     } catch {
       throw new Error(`dist/ is missing the required entry ${entry}`);
     }
     if (!stats.isFile()) {
-      throw new Error(`dist/ required entry is not a regular file: ${entry}`);
+      throw new Error(
+        stats.isSymbolicLink()
+          ? `dist/ required entry is a symbolic link, not a regular file: ${entry}`
+          : `dist/ required entry is not a regular file: ${entry}`,
+      );
+    }
+    // Metadata alone does not make an entry usable: a file whose bytes cannot
+    // be read would ship and fail on the user's machine instead of here. One
+    // open per entry is what turns this from a name check into a verification
+    // (T024 safe failure).
+    try {
+      await readFile(target);
+    } catch {
+      throw new Error(`dist/ required entry cannot be read: ${entry}`);
     }
   }
   return { verifiedEntries: [...REQUIRED_PACKAGE_ENTRIES] };

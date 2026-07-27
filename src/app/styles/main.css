@@ -64,6 +64,9 @@ body {
 }
 
 .aci-list {
+  /* Markerless, so every such list carries `role="list"`: WebKit drops list
+     semantics from a list with no marker, and VoiceOver stops announcing the
+     item count (QR-004). */
   list-style: none;
   margin: 0;
   padding: 0;
@@ -124,4 +127,155 @@ body {
   border-left: 3px solid var(--aci-accent);
   overflow-wrap: anywhere;
   padding-left: 0.75rem;
+}
+
+/* Inventory surface (T071). Layout only: the meaning of a row comes from its
+ * text, so nothing here is the sole carrier of information (WCAG 1.4.1). */
+
+.aci-scan-status,
+.aci-filters {
+  border: 1px solid var(--aci-border);
+  border-radius: 0.5rem;
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+}
+
+.aci-scan-status h3,
+.aci-filters h3 {
+  font-size: 1rem;
+  margin: 0 0 0.5rem;
+}
+
+.aci-source-summary,
+.aci-scan-status dl {
+  display: grid;
+  gap: 0.25rem 1rem;
+  grid-template-columns: max-content minmax(0, 1fr);
+  margin: 0;
+}
+
+.aci-source-summary dt,
+.aci-scan-status dt {
+  color: var(--aci-muted);
+}
+
+.aci-source-summary dd,
+.aci-scan-status dd {
+  margin: 0;
+  min-width: 0;
+}
+
+/* The filter controls wrap instead of scrolling sideways, so a narrow
+ * viewport or a large text size never hides one (WCAG 1.4.10). */
+.aci-filter-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1rem;
+}
+
+.aci-filter-grid p {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  margin: 0.25rem 0;
+}
+
+.aci-filter-grid label {
+  color: var(--aci-muted);
+  font-size: 0.875rem;
+}
+
+.aci-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0.25rem;
+}
+
+.aci-inventory {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.aci-item {
+  border: 1px solid var(--aci-border);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.aci-item p {
+  margin: 0.125rem 0;
+}
+
+.aci-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  list-style: none;
+  margin: 0.25rem 0;
+  padding: 0;
+}
+
+.aci-muted {
+  color: var(--aci-muted);
+}
+
+/* Customization-kind tabs. Colors come from the same system-color tokens as the
+   rest of the shell, so the strip follows the OS light/dark scheme instead of
+   pinning one palette. The selected tab is marked by weight and a border as
+   well as color, so it survives a monochrome or forced-colors rendering
+   (WCAG 2.2 AA, QR-004). */
+.aci-kind-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--aci-border);
+  margin: 1rem 0 0.5rem;
+}
+
+.aci-kind-tab {
+  background: none;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 0.25rem 0.25rem 0 0;
+  color: var(--aci-muted);
+  cursor: pointer;
+  font: inherit;
+  padding: 0.4rem 0.75rem;
+}
+
+.aci-kind-tab:hover {
+  color: var(--aci-text);
+}
+
+.aci-kind-tab[aria-selected='true'] {
+  background: var(--aci-surface);
+  border-color: var(--aci-border);
+  color: var(--aci-text);
+  font-weight: 600;
+  /* Covers the strip's own bottom border so the selected tab joins the panel. */
+  margin-bottom: -1px;
+}
+
+.aci-kind-tab:focus-visible {
+  outline: 2px solid var(--aci-accent);
+  outline-offset: -2px;
+}
+
+.aci-kind-count {
+  color: var(--aci-muted);
+  font-variant-numeric: tabular-nums;
+  margin-left: 0.4rem;
+}
+
+.aci-kind-tab[aria-selected='true'] .aci-kind-count {
+  color: inherit;
+}
+
+/* The declared name sits above the path as a secondary label: the path stays
+   the row's identity, because two skills may declare the same name. */
+.aci-declared-name {
+  font-weight: 600;
+  margin: 0;
 }

@@ -1,5 +1,5 @@
 // T025: Node.js-only production policy — the production dependency closure
-// derived from pnpm-lock.yaml is exactly the five approved roots and excludes
+// derived from pnpm-lock.yaml is exactly the seven approved roots and excludes
 // `open`, and the CLI uses only gunshi's root API (research.md § 3, plan.md
 // § Technical Context). Versions, registry integrity, and installed payload
 // digests are not asserted here: the committed lockfile owns them, and a test
@@ -71,12 +71,45 @@ function splitClosureKey(closureKey: string): { name: string; version: string } 
 describe('production closure policy', () => {
   const closure = productionClosure();
 
-  it('resolves the closure from the five approved roots', () => {
+  it('resolves the closure from the seven approved roots', () => {
     const names = new Set(closure.map((key) => splitClosureKey(key).name));
-    for (const root of ['devframe', 'gunshi', 'jsonc-parser', 'smol-toml', 'yaml']) {
+    for (const root of ['devframe', 'gunshi', 'jsonc-parser', 'smol-toml', 'vfile', 'vfile-matter', 'yaml']) {
       expect(names.has(root)).toBe(true);
     }
     expect(names.has('open')).toBe(false);
+  });
+
+  it('contains nothing beyond the reviewed closure', () => {
+    // Naming the roots and denying one package proves nothing about what the
+    // lockfile actually pulls in: a new transitive could enter with no gate
+    // objecting. The whole closure is the reviewed set, so it is pinned here
+    // and a change to it is a change a reviewer has to look at.
+    const reviewed = [
+      '@types/unist',
+      '@valibot/to-json-schema',
+      'birpc',
+      'crossws',
+      'destr',
+      'devframe',
+      'gunshi',
+      'h3',
+      'jsonc-parser',
+      'mrmime',
+      'nostics',
+      'pathe',
+      'rou3',
+      'smol-toml',
+      'srvx',
+      'typescript',
+      'ufo',
+      'unist-util-stringify-position',
+      'valibot',
+      'vfile',
+      'vfile-matter',
+      'vfile-message',
+      'yaml',
+    ];
+    expect([...new Set(closure.map((key) => splitClosureKey(key).name))].sort()).toEqual(reviewed);
   });
 });
 
@@ -116,7 +149,11 @@ describe('root-API-only gunshi imports', () => {
           walk(absolute);
         } else if (/\.(?:ts|mts|cts|vue)$/u.test(entry.name)) {
           const text = readFileSync(absolute, 'utf8');
-          if (/from\s+['"]gunshi\/[^'"]+['"]/u.test(text)) {
+          // Every spelling that reaches a subpath, not just a static `from`:
+          // a side-effect import, a dynamic `import()`, and `require()` all
+          // load the same module, so matching one form would pass a build that
+          // used another.
+          if (/['"]gunshi\/[^'"]+['"]/u.test(text)) {
             offenders.push(relative(REPO_ROOT, absolute));
           }
         }

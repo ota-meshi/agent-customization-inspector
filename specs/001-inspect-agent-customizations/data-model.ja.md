@@ -21,11 +21,13 @@ classの空集合、fixture/digest drift、未実行case、declared minimum未�
 
 ```text
 ContractRegistry（immutable、contract-versioned）
-├── OfficialSourceRecord
 ├── VendorBehaviorStatement
+│   └── EvidenceCitation（1つ以上）
 ├── RuntimeCompositionStrategy
+│   └── EvidenceCitation（1つ以上）
 └── InspectionRuleRegistry
     └── InspectionRule
+        └── EvidenceCitation（1つ以上）
 
 InspectionSession
 ├── Source（Repositoryを正確に1つ）
@@ -84,8 +86,8 @@ BrowserState
 | `sessionDiagnosticIds` | opaque string[] | DTO | Currentなout-of-generation lifecycle diagnostic |
 | `repositoryFailureDiagnosticId` | opaque session Diagnostic IDまたはnull | DTO | Currentな決定的automatic Repository admission/initial-scan failure。最初のexplicit rescan実行中は保持し、successでclear、terminal failureではそのrescanの`StaleSourceFailure` ownerへatomic replace |
 | `invocationCwd` | absolute platform path string | internal | CLI validation前に`process.cwd()`から正確に1回captureしたvalue。変更せず、read authorityとして公開しない |
-| `cwdOptionValue` | exact stringまたはnull | internal | 省略時null。それ以外はlifecycle/audit correlation専用にsole validated `--cwd` argumentを保持する。Lexical selection後はfilesystem operandに使わない |
-| `selectedRepositoryRoot` | absolute platform path string | internal | `--cwd`省略時は`invocationCwd`。指定時はabsolute optionをそのまま保持するか、relative optionをplatformの`node:path` resolutionで`invocationCwd`に対してresolveする。Selectionはfilesystem/network I/Oを一切行わない |
+| `rootOptionValue` | exact stringまたはnull | internal | 省略時null。それ以外はlifecycle/audit correlation専用にsole validated `--root` argumentを保持する。Lexical selection後はfilesystem operandに使わない |
+| `selectedRepositoryRoot` | absolute platform path string | internal | `--root`省略時は`invocationCwd`。指定時はabsolute optionをそのまま保持するか、relative optionをplatformの`node:path` resolutionで`invocationCwd`に対してresolveする。Selectionはfilesystem/network I/Oを一切行わない |
 
 `InspectionSession`はnormal full snapshotで、`globalDisableInProgress`がnullの場合だけ返す。Disable barrier acceptance後はcommit済み各generation/全Sourceを
 cleanup/retry用にinternal保持してよいが、full session、inventory、generation、Source、file、detail、Diagnostic、relationship、authored metadata、
@@ -106,7 +108,7 @@ disable projectionはrequired/non-nullで、`failed`中はfailed requestのerror
 pathless session Diagnosticだけを含む。Generation、Source、Repository failure、
 stale failure、unrelated Diagnostic/error、file、path、authored value、resource fieldを一切持たない。
 
-CLIは`process.cwd()`を正確に1回captureし、`--cwd <path>`を受理する（反復`--cwd`は引数parserのlast valueへ解決）。明示的な
+CLIは`process.cwd()`を正確に1回captureし、`--root <path>`を受理する（反復`--root`は引数parserのlast valueへ解決）。明示的な
 empty valueはsession作成とbrowser openの前にfixedでactionableかつsource-value-freeなstartup errorとし、
 valueの欠落は同じboundaryでGunshiのtyped argument validationによりrejectする。Productはparser所有のcheckを重複実装しない（FR-001）。Absolute optionはそのまま保持し、
 relative optionはcapture済み`invocationCwd`に対してresolveする。Root selectionは`process.chdir()`、environment reread、
@@ -139,11 +141,9 @@ controlできるとは主張しない。
 
 成功するAPI responseはcomplete DTOを返し、意図的にtruncateしない。Response serializationは
 devframe RPC channelが所有する。Handlerはcoordinator lock下でstate/jobをcommitして宣言済み
-result valueを返し、devframeがその値を — successもhandler errorも — そのままserializeする
-（superseded 2026-07-23: tentative state準備、事前serialize済みimmutable response buffer、
-lock下のrevalidation/commit orderingはself-verificationの整理で削除された。これらはdevframe
-以前のhand-rolled hostに属し、devframe channel上では冗長な二重serializeなしに表現できず、
-宣言済みresultはすべてplainなJSON値で、そのserializeは実装バグ以外では失敗しない）。
+result valueを返し、devframeがその値を — successもhandler errorも — そのままserializeする。事前serialize済みの二重コピーはdevframe channel上では
+冗長な二重serializeなしに表現できず、宣言済みresultはすべてplainなJSON値で、そのserializeは
+実装バグ以外では失敗しない。
 Handlerがreturnした後のserialization/encodingまたはdelivery failureはcommit済みjob/stateを
 rollbackまたはduplicateせず、2件目のfailureを記録せず、truncated bodyをpartial DTOへ
 変換しない。Requestは通常のerrorを報告し、clientはtransport failureとまったく同じように
@@ -167,9 +167,9 @@ Global disableだけは、asynchronous drain完了前にbarrier acceptanceがpub
 | `tool` | `copilot \| claude \| codex \| null` | Repositoryはnullと組み合わせる。各Global Sourceはsupport対象toolを正確に1つ持ち、2つのGlobal Sourceが同じtoolを共有しない |
 | `enabled` | boolean | Repositoryとpublishedな全Global Sourceはtrue。AbsenceはそのtoolにSource未公開であることだけを表し、disabled/pending/retryable control stateは`globalControl`で区別する。Disabling sourceはatomic removalまでtrue |
 | `status` | `idle \| scanning \| disabling \| ready \| partial \| failed` | 後述transitionに従う。Publicな`partial`は、traversal完了後に1つ以上のfileがfile-confined outcome（unreadable、binary、parse failure）だけを持ち、影響のない全fileがcompleteであるgenerationのcommitだけを示す。`failed`は最新attemptが失敗し、最後のcommit済みsnapshotが利用可能であることを示す。Fatalな明示rescanだけがsnapshotをstaleにする |
-| `boundary` | `SourceBoundary` | 選択済みrootを正確に1つ持つ。Repositoryはcapture済み`process.cwd()`またはresolve済み`--cwd`、GlobalはそのSourceのtoolについてconsent済みの1つのhome root |
+| `boundary` | `SourceBoundary` | 選択済みrootを正確に1つ持つ。Repositoryはcapture済み`process.cwd()`またはresolve済み`--root`、GlobalはそのSourceのtoolについてconsent済みの1つのhome root |
 | `generation` | `GenerationNumber` | 所属sequenceの最後にcommit済みgenerationと一致する。Repository Sourceは`repositoryGeneration`、公開済み各Global Sourceは`globalGeneration` |
-| `scanRequestId` | opaque ASCII stringまたはnull | このSourceで最後にadmitしたscan。Admission直後に設定し、waiting/scanning/ready/partial/failedを通して保持して古いrequestのstatusとの混同を防ぐ。Scan admission前だけnull |
+| `scanRequestId` | opaque ASCII stringまたはnull | このSourceで最後にadmitしたscan。Admission直後に設定し、waiting/scanning/ready/partial/failedを通して保持して古いrequestのstatusとの混同を防ぐ。Scan admission前、またはこのSourceでadmitした全attemptのpublication authorityがrevokeされた後だけnull。Revokeされたattemptのoverlayはadmission前の状態へ正確に戻るため、Sourceは結果を破棄されたrequestではなく「requestなし」を述べる |
 | `progress` | `ScanProgress`またはnull | `scanning`/`disabling`中および`ready`/`partial`後だけnon-null。`idle`、`failed`ではnull |
 | `conditionFacts` | `SourceConditionFact[]` | 起点fileを持たないdocumented non-file behaviorまたはexcluded/runtime inputについてのsource-level fact |
 | `diagnosticIds` | opaque string[] | 最後のcommit済みgenerationのsource-scoped diagnostic |
@@ -193,7 +193,7 @@ policy、その他起点fileを持たないexcluded/runtime inputの正準な説
 | `affectedRuleIds` | non-emptyなsort済みinspection-rule ID[] | 同梱registryのcandidate/relationship-only subsetで、factを投影できるprovenance/edgeを制御 |
 | `behaviorRefs` | sort済み`VendorBehaviorStatement.behaviorId`[] | Factを説明する正確なsurface/scope lookup statement。Readを許可しない |
 | `strategyRefs` | sort済み`RuntimeCompositionStrategy.strategyId`[] | Projectionに使った正確なcomposition/selection statement |
-| `sourceRefs` | non-emptyなsort済み`OfficialSourceRecord.sourceId`[] | Factで公開し相互validationするstable evidence。Readを許可しない |
+| `sourceRefs` | non-emptyなsort済みsource ID[] | Factの根拠となるofficial-sources row。相互validationする。Citation自体はregistry record上に残る。Readを許可しない |
 | `evidenceAssessments` | `EvidenceAssessment[]` | `ruleId`と全`behaviorRefs`/`strategyRefs` memberごとに正確に1 assessment。Aggregate statusなし |
 | `condition` | `ConditionFact` | 固定reason codeと任意のdocumented status。`satisfied`はnon-file runtime factを記録するだけでread authorityを与えず、authored source valueを複製しない |
 
@@ -208,7 +208,7 @@ targetを持たず、local/hosted I/Oを開始しない。
 | `tool` | `copilot \| claude \| codex \| null` | internal | 公開済みowning Sourceのtoolと一致し、Repositoryはnull |
 | `displayRoot` | ASCII `RootPresentationEncoding` string | DTO | Source rootのdeterministic encoding。`SourceRelativePath`、inventory-item locator、caller input、read authorityではない |
 | `root` | exact absolute platform path string | internal | 選択済みRepository rootまたはそのtoolのconsent済みhome root。このSourceの全inspected-source filesystem operationのbase path |
-| `origin` | `process-cwd \| cwd-option \| default-home \| environment` | DTO | Read authorityを与えずrootの選択理由を示す |
+| `origin` | `process-cwd \| root-option \| default-home \| environment` | DTO | Read authorityを与えずrootの選択理由を示す |
 
 各Sourceは正確に1つのboundaryとrootを持つ。Repository boundaryはgeneration 0からescape済み`displayRoot`とともに存在し、
 Global boundaryの`tool`は所有Sourceとactive `GlobalToolControl`に一致する。複数tool homeを1つのSourceへ結合しない。
@@ -444,7 +444,6 @@ retained errorをclearする。Repository operationとpublish済みSourceのresc
 | `scanRequestId` | opaque ASCII stringまたはnull | Rootを1つ以上admitして単一subset scanをacceptした場合だけ正確に1回allocateし、そのbatchとcommitする1つのGlobal generationで共有する |
 | `status` | `waiting \| validating \| admitting \| queueing-batch \| draining \| cancelled \| complete` | Disableがabortすると`draining`になり、以後new authority/jobをpublishできない |
 | `responseDisposition` | `unset \| queued \| active-no-job \| global-disable-pending` | Coordinator linearization pointで正確に1回選択し、`queued`は1つのatomic admitted-subset jobを表す |
-| `abortSignal` | internal `AbortSignal` | Root validation/admissionとqueue前filesystem callすべてで共有 |
 
 Initial enableは同じcoordinator lock下でcommandを登録してexact current preview object/epochをfreezeするが、provisional consent、3件のcontrol、candidate ID、全admission outcomeを
 operation-localかつ観測不能に保ち、3 entryすべての決定的validationが終わる前に`globalControl`を作成せず
@@ -466,9 +465,7 @@ pre-acceptance response transactionを行う。最初にcurrent operation ID/com
 operation ID/command epoch/preview object/preview epoch/signal/barrier stateを再検証し、その後だけcontrolをatomic activate/applyする。
 Accepted batchへadmitされた各toolのprior `diagnosticId`をclearし、candidate batch/IDをpromote/enqueueして`batchStatus`を作り
 `pendingTools`を設定するか、null `batchStatus`でrejected-tool diagnosticだけをretain/replaceしてactive-no-jobをcommitし、disposition選択、
-`complete`化、unregisterをatomicに行い、宣言済みresult valueをdevframe channelのserialize対象として返す
-（superseded 2026-07-23: 事前serialize済みimmutable envelope bufferとそのserialization-failure unwindは
-self-verificationの整理で削除された）。
+`complete`化、unregisterをatomicに行い、宣言済みresult valueをdevframe channelのserialize対象として返す。
 Per-tool Source commitはobserverに一切見えない。Disable barrierがそのcommit前に先にlinearizeした場合、prepared stateをdiscardし、
 同じcheckは`global-disable-pending`を選んでcancellationを
 drainする。Drain済みoperationは`cancelled`となり、barrier cleanup前に
@@ -540,42 +537,43 @@ priorなcommit済み各generationをcurrentに保ち、success body/removal comm
 後のGlobal-disable requestはidempotent cleanupをstart/resumeしてfailed operationをreplaceする。別terminal failureはretained errorをreplaceし、terminal
 successだけがclearする。Session API requestがtriggerなのでprocessは終了しない。Coordinator queueにproduct固有の数値capacityを設けない。
 
-### OfficialSourceRecord
+### EvidenceCitation
 
-`tests/fixtures/conformance/official-sources.json`はimmutableなrelease/test dataで、検査対象Repositoryのinputでは
-なく、product startup/scan中にfetchしない。
+維持対象のbehavior、rule、strategyは、reviewした公式sectionをrecord自身の中でciteする。
+Citationを主張の隣に置くことで、subjectをkeyとする別のcitation layerを避け、各recordの根拠を
+直接確認できるようにする。
 
-| Field | Type | Rule |
+| Field | Type | Rules |
 |---|---|---|
-| `sourceId` | stable dotted string | Unique。Behavior、rule、strategyの全`sourceRefs` entryはこのkeyだけを参照 |
-| `canonicalUrl` | absolute HTTPS URL | `officialHost`上の正確なauthored URL。Credential、query、fragmentなし |
-| `officialHost` | lowercase DNS hostname | Recordごとのexact host allowlist。URLと許可する全redirect hopが正確に一致し、subdomainやsibling hostを暗黙に許可しない |
-| `sectionAnchors` | non-emptyなexact heading-text string | Exact rendered heading textだけ。Heading ID、URL fragment、CSS/XPath、その他executable selectorは不可 |
-| `affectedBehaviorIds` | sort済みbehavior ID[] | 参照する全`VendorBehaviorStatement.sourceRefs` entryと相互一致 |
-| `affectedRuleIds` | sort済みrule ID[] | 参照する全`InspectionRule.sourceRefs` entryと相互一致 |
-| `affectedStrategyIds` | sort済みstrategy ID[] | 参照する全`RuntimeCompositionStrategy.sourceRefs` entryと相互一致 |
-| `reviewedOn` | ISO date | Human semantic review後だけ更新 |
-| `normalizationVersion` | literal `1` | Checked-in deterministic normalization algorithmを選択 |
-| `snapshotFingerprint` | lowercase SHA-256 | 選択したofficial sectionだけのnormalized text digest |
-| `assertions` | non-emptyなmaintained assertion[] | Stable assertion ID、paraphrase済み期待semantics、affected behavior、rule、strategy ID。Page textをcopyしない |
-| `semanticFingerprint` | lowercase SHA-256 | Sort済みmaintained assertionのcanonical JSON digest |
+| `sourceId` | 閉じたsource ID union | このcitationが対応するofficial-sources contract row。Pageの安定した同一性であり、vendorがpageを移動しても変わらない（QR-005） |
+| `url` | 絶対HTTPS URL | `officialHost`上のexactなauthored URL。credential、query、fragmentなし |
+| `officialHost` | 小文字DNS hostname | このcitationのexact host allowlist。subdomainやsibling hostは含意しない |
+| `sections` | non-emptyなexact heading text | Renderされたheading textのみ。heading ID、URL fragment、CSS/XPath等のselectorは不可 |
+| `reviewedOn` | ISO date | 該当sectionを読み、引用元recordの主張と突き合わせた後にのみ更新する。見出しの実在確認では進めない。実施者は限定しない |
+| `establishes` | Paraphraseしたassertion | Reviewしたsectionがciteするrecordに対して確立する内容。Page textのcopyは不可 |
 
-Offline contract testはID、相互contract-record link、exact official hostをvalidateして`semanticFingerprint`を再計算し、
-networkへ接続しない。明示maintainer drift commandはcredential、cookie、Repository data、その他local stateを
-送信しない。UTF-8 HTML/Markdownだけを受理し、全HTTPS redirect hopがそのsourceのallowlist済みofficial host内に
-留まることを要求し、redirect loopはfail closedとする。別final URLへのredirectは
-`canonicalUrl`を黙って変えずreview対象として報告する。Downgrade、cross-host redirect、誤content type、
-anchor欠落/重複、decode failure、recover可能なnetwork/runtime failureはhard drift-check failureとする。
+Reviewしたpageごとの規範的な1 rowは引き続き[Official Sources](contracts/official-sources.md)が持つ。
+ここでのcitationはその実装対応物であり、第二のregistryではない。したがって複数recordからciteされるpageは
+URLとreview日を繰り返すが、これは主張の隣に根拠を書くこととの引き換えとして意図的に受け入れる。
 
-Normalizationは各anchored headingから同level以上の次heading直前までを選択し、document chromeとscript/style
-nodeを除去してprose/code textを保持し、entity decode、Unicode NFC、LF ending、line edge trim、horizontal
-whitespace collapseを適用し、列挙順にsectionをjoinしてSHA-256を計算する。Digest/assertion driftからbehavior、rule、strategyを
-自動変更しない。Maintainerがaffected contract recordと両言語contract/researchをreviewした後、anchor、assertion、
-fingerprint、`reviewedOn`を明示更新する。Remote page text/response bodyはcheck inしない。
+Citationはpackaged CLIからcompileで除去される。同じbuild flagを共有するvendor locatorも一緒に除去される。
+製品はどちらも読まない — `EvidenceAssessment`はsubjectがどれだけ文書化されているかを記録するのであって
+どこにあるかではなく、locatorを運ぶDTO fieldも存在しない — ため、buildは`__ACI_SHIP_MAINTENANCE_DATA__`を
+`false`に置換し、citation配列はすべて空に、`locator`はすべてnullに畳まれる。この置換は綴りを誤るか定義を失うと黙って
+失敗するので、package suiteがbuild済みartifactにURL、host、review日、paraphrase、locator値が含まれない
+ことを検査する。
 
-Affected-ID arrayの少なくとも1つはnon-emptyとする。各assertionはgenericなproduct areaではなく、そのrecordの
-reverse-index済みbehavior、rule、strategy IDのnon-empty subsetを指定する。Unsupportedなrecordはpackage前のoffline contract/build
-validationをfailさせる。Scannerはこのtest mapをloadせず、source record、anchor、assertionをtruncateしない。
+明示的なmaintainer drift commandはcredential、cookie、repository data、その他のlocal stateを送らない。
+Citeされたpageごとに UTF-8のHTML/Markdownを受け付け、全hopがそのcitationのallowlist hostに留まるHTTPS
+redirectだけを追う。Redirect loopはfail closedとする。異なる最終URLへのredirectは`url`を黙って変えずreview
+対象として報告する。Downgrade、cross-host redirect、誤ったcontent type、heading の欠落/重複、decode失敗、
+回復可能なnetwork/runtime失敗はいずれもdrift checkのhard failureとする。
+
+Normalizationは各cited headingから同レベル以上の次のheadingまでを選択し、document chromeとscript/style
+nodeを除去し、proseとcode textを保持し、entityをdecodeし、Unicode NFCとLF行末を適用し、行端をtrimし、
+水平whitespaceをcollapseし、列挙順にsectionをjoinしてSHA-256を計算する。Drift結果がbehavior、rule、
+strategyを自動変更することはない。Maintainerはciteしている全recordと両言語のcontract/researchをreviewした
+後、heading、paraphrase、`reviewedOn`を明示的に更新する。Remote pageのtextやresponse bodyはcheck inしない。
 
 ### DocumentationStatus、LifecycleQualifier、EvidenceAssessment
 
@@ -594,23 +592,33 @@ subject-kind順`behavior`、`rule`、`strategy`、次に`subjectId`でsortする
 `VendorBehaviorStatement`は、upstream documentationに対するatomicかつsurface-specificな解釈を記録する。
 Productのlookup場所を説明するものでfilesystem matcherではなく、readを許可できない。
 
+Locatorの4要素を1 fieldにするのは、それらがvendor自身のlocatorという1つの記述だからであり、また
+packaged CLIがまとめて落とすからである。どのDTO fieldもこれらを運ばず、publishされる
+`SourceConditionFactDto`はfactを説明するbehaviorを値ではなくIDで名指す。4つを独立にnull許容にすると、
+どのbuildも生成しない「半分だけ記述されたrecord」を型が許してしまう。`activationConditions`は意図的に
+locatorに含めず全buildで保持する。`ConditionFact.key`はwire typeであり、FR-039がproductにその
+publishを要求しているからである。
+
+上向きtraversal descriptorは停止条件を名前に含める。walkがどのdirectoryへ到達するかを決めるのがそれだから
+である。`ancestor-chain-to-repository-root`はrepository rootで終わり、`ancestor-chain-to-filesystem-root`
+はそれを越えて進む。Vendorがrepository rootをどう認識するかはrecord側に属する — Codexは
+`project_root_markers` entryを持つ最近傍のancestorを採り、既定は`.git`でユーザーが上書きできる。
+
 | Field | Type | Rule |
 |---|---|---|
 | `behaviorId` | stable dotted string | Uniqueで、厳密に1つのbilingual vendor contractだけで定義 |
 | `tool` | tool enum | 所有product |
 | `surfaces` | non-empty surface enum[] | VS Code、CLI、cloud、shared local Codex clientなど。暗黙の“all”なし |
-| `vendorScope` | closed scope enum | Repository/workspace、User、hosted/managed、plugin、runtime-only |
-| `lookupBase` | closed locator-base descriptor | Workspace root、Git/repository root、runtime `cwd`、target-path chain、tool home、profile data、active config layer、registered catalog、hosted state |
-| `relativeSelector` | vendor-relative stringまたはnull | Path textだけ。Inspector glob semanticsを含まずauthorityを与えない |
-| `traversal` | closed traversal descriptor | Exact、ancestor chain、standard-location chain、recursive-under-base、lazy descendant、explicit registration、none |
+| `locator` | `VendorLocator`またはnull | Vendorがどこを見てどう辿るかを1 fieldにまとめる。`vendorScope`（repository/workspace、User、hosted/managed、plugin、runtime-only）、`lookupBase`（workspace root、Git/repository root、runtime `cwd`、target-path chain、tool home、profile data、active config layer、registered catalog、hosted state）、`relativeSelector`（path textだけ。Inspector glob semanticsを含まずauthorityを与えない）、`traversal`（exact、ancestor-chain-to-repository-root、ancestor-chain-to-filesystem-root、standard-location chain、recursive-under-base、lazy descendant、explicit registration、none）。Packaged CLIではnull |
 | `activationConditions` | condition-key enum[] | Trust、feature flag、target match、installation、enablement、runtime version、その他必須input |
-| `strategyRefs` | sort済みstrategy ID[] | このbehaviorに適用するcomposition/selection record |
 | `documentationStatus` | `DocumentationStatus` | `conflict`は競合する全source assertionを保持 |
 | `lifecycleQualifiers` | `LifecycleQualifier[]` | Unique fixed order。Emptyはstability claimをしない |
-| `sourceRefs` | non-empty source ID[] | このstatementのためreviewした正確なofficial section。Source recordと相互一致 |
+| `evidence` | non-emptyな`EvidenceCitation[]` | このrecordを確立するreview済みdocumentation（§ EvidenceCitation）。Packaged CLIでは空 |
 
 Registryはancestor walkを`**/`で表さない。Lookup base、relative selector、traversalを別々のclosed fieldにする。
 Relative filenameが同じでもbase/traversalが異なる2 surfaceは、異なるbehavior IDを持つ。
+
+Behavior statementはregistry間の参照を自身に持たない。§ RegistryRelationsを参照。
 
 ### RuntimeCompositionStrategy
 
@@ -621,12 +629,11 @@ authorityへ変えずに記録する。
 |---|---|---|
 | `strategyId` | stable dotted string | Uniqueで、bilingual runtime-composition contractで定義 |
 | `tool` / `surfaces` | tool enum / non-empty surface enum[] | 正確なproduct/surface boundary |
-| `operations` | non-emptyなordered closed enum[] | 各entryは`append \| concatenate \| select-first \| select-closest \| replace \| merge-map \| deduplicate \| filter \| unknown-order`。Array orderは文書化済みpipeline order |
-| `inputBehaviorRefs` | non-emptyなsort済みbehavior ID[] | Documented inputだけ。Excluded/user/hosted inputは明示conditionのまま |
+| `operations` | non-emptyなordered closed enum[] | 各entryは`append \| concatenate \| select-first \| select-closest \| replace \| merge-map \| deduplicate \| filter \| retain-all \| unknown-order`。Array orderは文書化済みpipeline order。`retain-all`は、文書化された全inputが利用可能なまま残りどれもmerge されないことを述べる。Collapsing entryが無いことはそれを述べない。Arrayは、あるsourceが文書化しているstepを記録するのであって、そのsourceが排除しているstepを記録するのではないからである |
 | `requiredConditionKeys` | condition-key enum[] | Terminal applicability resultを許す前に必要な全input |
 | `documentationStatus` | `DocumentationStatus` | Partial/unknown/conflicting orderからwinnerを捏造しない |
 | `lifecycleQualifiers` | `LifecycleQualifier[]` | Unique fixed order。Documentation completenessと分離 |
-| `sourceRefs` | non-empty source ID[] | Operationsに対する相互一致するofficial evidence |
+| `evidence` | non-emptyな`EvidenceCitation[]` | このrecordを確立するreview済みdocumentation（§ EvidenceCitation）。Packaged CLIでは空 |
 
 Strategyはimmutable contract dataである。Applicability assessmentを説明・projectできるが、directoryのenumerate、
 relationship targetのopen、InspectorのRepository/Global sourceのmergeはできない。
@@ -636,7 +643,7 @@ relationship targetのopen、InspectorのRepository/Global sourceのmergeはで�
 | Field | Type | Rule |
 |---|---|---|
 | `base` | 正確な1 Source-boundary descriptor | Repositoryまたはnamed consent済みtool固有Global boundary。Selectorから推測しない |
-| `selectors` | non-emptyなordered uniqueなselector program（`MatcherSegment[][]`） | 1 static rule所有のalternative。各programはbase boundary相対のclosed ordered programで、final tokenはregular fileを表す |
+| `selectors` | non-emptyなordered uniqueなselector program（`MatcherSegment[][]`） | 1 static rule所有のalternative。各programはSource rootに相対なclosed ordered programで、final tokenはregular fileを表す |
 | `MatcherSegment` | exact discriminated union | `{ kind: 'literal', value: NonEmptyMatcherLiteralSegment }`、`{ kind: 'regex', pattern: RegExp }`、`{ kind: 'recursive-directories' }`。Executable glob、implicit discriminator、extra fieldは不可 |
 
 `NonEmptyMatcherLiteralSegment`はnon-empty printable ASCII stringで、code unitはU+0021–U+007Eのうち`/`、`\\`、`:`, `*`、`?`、`\"`、`<`、
@@ -647,8 +654,12 @@ Compilerはnon-ASCII registry path literalをrejectするため、fixed prefix�
 セマンティクスであり、anchoringとescapeはpattern作者の明示的な記述で、その正しさはshipped rule fixtureが
 所有する。Patternがtestするraw entry nameはdisk上ではNFD綴りであり得る。Non-terminalならdirectory step、
 terminalならfile stepとし、regex literal（例: `/\.md$/u`）として書く。`recursive-directories`—`**` step—は
-0個以上のdirectoryをmatchする。Non-terminalかつrecursive token同士の
-隣接不可とする。Registryはtyped segment形式で直接authorし、contract tableもそのauthored programを示す。
+0個以上のdirectoryをmatchする。non-terminalかつrecursive token同士の隣接不可とする。
+
+`recursive-directories`が唯一の下向きの軸であり、上向きの軸は意図的に持たない。Runtime working directoryから
+repository rootへ上る vendor lookupは選択済みrootで終わる。選択済みrootがそのrepository rootだからである（FR-001）。
+したがってchainのin-scopeなlayerは正確に1つで、表現すべき記法はない。InspectorはSource rootより上を読むことはない。
+そのpathは`SourceRelativePath`を持たず、boundaryの外にある。Registryはtyped segment形式で直接authorし、contract tableもそのauthored programを示す。
 文法・literal alphabet・unique性・selection-policyの義務はbuild/contract validator（registry contract gate）が
 enforceし、runtime logicで再検査しない。Runtimeはこのimmutable
 typed formだけをloadする。これによりdescendant contextとdirect child、またはdescendant contextと固定recursive
@@ -669,8 +680,7 @@ subtreeのcompositeを、曖昧な単一expansion enumを発明せず表現で�
 | `TraversalSelectorPlan.fixedPrefix` | NFC literal segment array | Repositoryではempty。Globalではexact targetまたはfixed-subtree rootまでのcomplete pathを、そのterminal target/subtree segmentを含めて持つ |
 | `TraversalSelectorPlan.remainder` | `MatcherSegment[]` | Repositoryのcomplete selector program、Global exact targetではempty、またはGlobal fixed-subtree root直下だけのcomplete dynamic program |
 
-Compilationはclosedかつlosslessなmappingとする。`repository-program`はemptyな`fixedPrefix`とcomplete
-完全なselector programに等しい`remainder`を持つ。`global-exact`はall-literal selectorを、target fileで終わる
+Compilationはclosedなmappingとする。`repository-program`はemptyな`fixedPrefix`と、完全なselector programに等しい`remainder`を持つ。`global-exact`はall-literal selectorを、target fileで終わる
 non-emptyな`fixedPrefix`とemptyな`remainder`へcompileする。`global-fixed-subtree`はmaximal leading literal directory
 chainを`fixedPrefix`へcompileし、その直下のnon-emptyなdynamic programを`remainder`として保持する。
 
@@ -690,6 +700,39 @@ regular fileをpublishする。それ以外ではCodex instruction fileをpublis
 一方で保持した`U+FFFD`はnon-whitespaceのため、`utf-8-replaced` textはnon-emptyである（FR-035）。Binaryまたはunreadableな
 overrideはそのdiagnosticとともにbranchを終了し、fallbackしない。
 
+### RegistryRelations
+
+Registry間の参照は、接続するrecordのfieldではなく独立したimmutable release dataである
+。Recordは「それが何か」を述べ、relationは「他のregistryにどう依存するか」を
+述べる。分離することで、各vendor catalogはその製品の記述として読め、reference graph全体は1箇所で
+レビューできる。
+
+| Subject | Field | Type | Rules |
+|---|---|---|---|
+| strategy | `consumesBehaviors` | non-emptyな順序付きbehavior record[] | そのstrategyが合成する文書化済みinputすべて。User scopeも含む — behaviorはread authorityを与えないため、behaviorを名指すことはInspectorが何を開いてよいかではなくvendorが何を文書化しているかを述べる。除外されるのはstrategyがそもそも合成しないものであり、excluded surfaceとhosted inputはexplicit conditionのまま |
+| rule | `basedOnBehaviors` | 順序付きbehavior record[] | Policyが根拠とする文書化されたvendor behavior。その再記述ではない |
+| rule | `explainedByStrategies` | 順序付きstrategy record[] | Order/applicabilityに使うcomposition fact。Path admissionには使わない |
+
+各edgeはidentifierではなく参照先recordそのものを保持する。これは非循環graphだから可能であり、
+循環をまたぐ`const`参照はmodule評価時に失敗する。配列は参照先identifier順に並べてmaterializationを
+byte-stableに保つ。同一性 — edgeはregistryが公開するrecordを保持し、同形のcopyであってはならない — は
+contract gateの義務である。型だけでは両者を区別できないためである。
+
+すべてのedgeは一方向で、graphは非循環である: behavior ← strategy ← rule。Behaviorはrelationを
+持たない。Relationは読み取り権限を与えない。権限は`InspectionRule`のdiscovery classだけが持つ。
+
+どのreview済みdocumentationがrecordを確立するかはrelationではない: 全behavior・rule・strategyが
+自身のcitationをrecord上のnon-emptyな順序付き`evidence`配列に書くため（§ EvidenceCitation）、根拠は
+支える主張の隣に置かれる。Citationは製品が一切読まないmaintenance evidenceであり — `EvidenceAssessment`は
+subjectがどれだけ文書化されているかを記録するのであって、どこにあるかではない — `tsdown.config.ts`が
+`__ACI_SHIP_MAINTENANCE_DATA__` defineでpackaged CLIからcompile除去する。この除外がなければ、
+review済みURL・review日・paraphrase済みassertionがすべて出荷CLIに入る。
+
+1種類の参照は別の理由でrecord側に残す。`InspectionRule.policyRefs`は他registryではなく
+specificationが所有するFR/QR clauseを指す。各relation mapはclosed identifier catalogをkeyとし
+網羅的であるため、参照を宣言しないrecordはbuildに失敗する。Conformance fixtureはすべての参照をidentifierとして
+materializeする。JSONに参照はなく、recordを展開すると1契約が単独所有する定義を再記述してしまうためである。
+
 ### InspectionRule
 
 `InspectionRule`は、二言語inspection-rule contractのimplementation counterpartとして保守するimmutableな
@@ -699,21 +742,18 @@ release dataである。
 | Field | Type | Rule |
 |---|---|---|
 | `ruleId` | stable dotted string | 1 registry内でunique。Semanticsがcompatibleな間だけversion間で維持 |
-| `contractVersion` | date string | `GlobalConsent`および同梱registryと一致 |
 | `tool` | tool enumまたは`shared` | `shared`はvendor横断のsafety/derivation ruleだけ |
 | `discoveryClass` | `static-candidate \| bounded-derived-candidate \| relationship-only \| excluded` | 最初の2つだけがreadを許可可能 |
 | `kind` | customization-kind enumまたはnull | Kind横断relationship/exclusionはnull |
 | `sourceKinds` | source-kind enum[] | Contractに明示されたRepository、Global、または両方 |
 | `matcher` | `StructuredInspectorMatcher`またはnull | Static ruleだけ。Vendor locator、ambient path、executable glob、untyped selector stringではない |
 | `derivation` | closed derived-target mappingまたはnull | `bounded-derived-candidate` ruleだけに存在する。独立してadmit済みのseed fileのallowlist済み宣言occurrence（またはseedのmatched path）と固定literal registry suffixから、derived target pathを1つresolveする固定registry mapping。Callback、自由形式path expression、glob、正規表現、再帰derivationは持たない |
-| `behaviorRefs` | sort済みbehavior ID[] | このpolicyに関連する正確なupstream lookup statement。Exclusionはreadを許可せずdocumented User behaviorを参照可能 |
-| `policyRefs` | non-emptyなsort済みspecification ID[] | Surfaceを許可または意図的に除外するFR/QR clause |
-| `strategyRefs` | sort済みstrategy ID[] | Order/applicabilityに使うcomposition fact。Path admissionには使わない |
+| `policyRefs` | sort済みspecification ID[] | Surfaceを許可または意図的に除外するFR/QR clause。保守buildではnon-emptyで、packaged CLIではempty。どのDTOも運ばないreviewer向けtraceabilityだからである |
 | `conditionKeys` | condition-key enum[] | 適用可能性判定前に必要なruntime fact |
 | `precedenceGroup` | stable stringまたはnull | 文書化されたselection/order semanticsを持つruleだけを結ぶ |
 | `documentationStatus` | `DocumentationStatus` | Runtime stateではなくupstream documentationのcompleteness/consistencyを表す |
 | `lifecycleQualifiers` | `LifecycleQualifier[]` | Separate upstream lifecycle claimをunique fixed orderで保持 |
-| `sourceRefs` | non-empty `OfficialSourceRecord.sourceId`[] | このruleのEvidence cellに直接記載した正確なsourceで、相互検証する。参照behavior/strategyが所有するevidenceは各IDから到達可能なままとし、このregistry fieldへ暗黙copyしない |
+| `evidence` | non-emptyな`EvidenceCitation[]` | このrecordを確立するreview済みdocumentation（§ EvidenceCitation）。Packaged CLIでは空 |
 
 Build/contract validatorはpackage前にunique性、field組み合わせ、selector-programのtoken/position
 rule、exact traversal compile、参照rule ID、closed derivation mapping/acyclic性、fixtureとの
@@ -932,7 +972,49 @@ Inspectorは`$TOKEN`、`${TOKEN}`、platform上の同等なenvironment reference
 扱う。Source、metadata、relationship、comparison DTOの構築時に、参照先process environment値をread、resolve、
 substituteしない。
 
+### 一覧の単位
+
+一覧rowの単位は物理fileではなく認識されたkindが決める。出荷済みのkindは1つの単位で一致しない:
+
+| Kind | 1 rowが示す単位 |
+|---|---|
+| `skill` | 宣言名1つ。Vendor自身のselectorがそれを使い、`SKILL.md`を収めるdirectory名と一致する必要もないため、複数fileが1つの名前を宣言することがあり、1 entryがそれぞれを定義として列挙する |
+| `MCP` | Admit済みcarrier内の`[mcp_servers.*]`宣言1つ。したがって1つの`.codex/config.toml`は宣言したserverの数だけrowを公開する |
+| `instructions`、`settings/config` | File自身 |
+
+したがってCustomizationFileは自身の事実 — Source相対Path、read結果、size、diagnostic — を1度だけ
+公開し、各kindの一覧はそれを繰り返さず`fileId`で参照する。共有された1つのrow形では最初の2つの単位を
+表現できない: 名前でgroupingするとToolRecognitionが依拠する`(fileId, tool, kind)`ごとに1 recognitionと
+いう規定を壊し、file形のrowは1 carrierの宣言が必要とするN行になりようがない。
+
+GroupingされたentryがInspectorの記録していない優劣を暗示することはない。各entryは、複数の定義が宣言する
+名前を各認識productがどう解決するかを述べる。記録された記述が異なるためである: Codexは同名skillをmergeせず
+両方が有効なまま残り文書化された順序は無い。CopilotのCLIは文書化されたsource orderの最初を解決する。
+VS CodeのCopilotは重複時の優先順位を一切文書化していない（contracts/runtime-composition.md）。
+
+記述を公開するのは、composition strategyが出荷レジストリにあるproductだけとする。これはrowの欠落では
+ない: skill ruleを持たないproductはskillを認識しないため、どのentryもそこへ到達せず、strategy recordが
+存在しないうちにcontract表をproductへ書き写すことは、照合対象の無い主張を置くことになる。Productの
+skill ruleを出荷する作業が、そのstrategyと記述を一緒に出荷する。定義が1つのentryは解決規則を述べない。
+
 ### ToolRecognition
+
+Recognition recordのdetailsは`kind`で判別する。Recognitionを識別する情報はkindごとに異なり、1つの共有
+optional fieldには収まらないからである: skillは単一の`name`を宣言するが、MCP carrierはserverごとに1つ
+宣言する。Skillのdetailsはその宣言済み名を運ぶ。これはFR-027のacknowledgement gateの外にある唯一の
+authored値であり、contentではなくpresentation identityだからである（FR-007）。Fileが宣言していない場合、
+名前はemptyではなくabsentとする。
+
+Recognitionは一覧rowではない。Rowの単位はkind自身のものであり（§ 一覧の単位）、各kindの一覧はfileごとの
+summaryとして公開されるのではなく、これらのrecordから組み立てられる: skillのrowはrecordを宣言名でgrouping
+し、MCP carrierのrowは1 recordの宣言をrowごとに分割することになる。Fileは自身のrecognition summaryを
+公開しないため、1 recordを裏づけるadmission数を述べる必要もない — detail viewが各provenanceをそれ自身の
+scopeとevidenceとともに示す。
+
+Skillのdetailsは、censusが得たsort済みcompanion file listも運ぶ。`SKILL.md`が単独で置かれている場合、
+listはabsentではなくemptyとする。Directoryであることこそがskillの正体であり、認識されたskillは必ず
+列挙済みだからである。公開される件数はその`length`だけである
+（contracts/inspection-path-allowlist.md § Bounded companion census）。
 
 | Field | Type | Rule |
 |---|---|---|
@@ -940,7 +1022,7 @@ substituteしない。
 | `fileId` | opaque string | 複数recognitionが1 physical fileを参照可能 |
 | `provenances` | ordered admission record[] | 共有tool/kind解釈についてのrule/path admissionのsort済み非空set。各recordは`ruleId`、matched `SourceRelativePath`、derived candidateではseed fileと宣言occurrence、`ScopeDescriptor`、任意の`OrderDescriptor`、`ApplicabilityAssessment`、record-by-record `EvidenceAssessment[]`（ruleと参照behavior/strategyごとに正確に1件。Lossy aggregateなし）を持つ |
 | `tool` | `copilot \| claude \| codex` | 必須 |
-| `kind` | closed customization-kind enum | Instruction、rule、skill、agent、prompt/command、hook、MCP、settings/config、output style、plugin、marketplace、skill metadata |
+| `details` | kind判別payload | 認識されたkindと、そのkindのrecognitionを識別するもの — skillなら宣言名とcompanion file list。1 fieldであるため、射影はkindごとの再構成ではなくcopyで済む |
 | `parseStatus` | `not-attempted \| parsed \| failed` | `not-attempted`はallowlist extractorが非該当。`failed`はこのrecognitionだけall-or-nothing |
 | `declaredMetadata` | ordered `DeclaredMetadataEntry[]` | Allowlist対象のclosed field IDだけ。Source occurrence順と受理したduplicateを保持 |
 | `diagnosticIds` | opaque string[] | Owning fileのrecognition-scoped extraction failure |
@@ -1166,9 +1248,7 @@ Candidateは
 固定phase、lifecycle-owner semantic order（Repository、固定Global tool順、既存public Source順）、scope、Source-relative Path、rule/code、
 emitter occurrence順でemitする。Opaque Source ID自体をsort orderに使わない。Aggregationはorder-onlyとする。
 各emitterは各observationを正確に1回作成し、正当に繰り返されるrecord（failed recognitionごとに1件、rejected collision groupごとに1件）が
-存在するため、dedup passはなく、二重emitはtests/reviewが受け持つ通常の実装バグでありruntime filterではない
-（superseded 2026-07-23: code/`lifecycleOwnerKey`/source-file ID/Source-relative Pathをkeyとするdedup passと、その内部の
-observation-key disambiguatorは削除した）。
+存在するため、dedup passはなく、二重emitはtests/reviewが受け持つ通常の実装バグでありruntime filterではない。
 
 Scan candidateは1つのcommit済みgenerationに属する。Commit不能なfatal scan attemptを含むout-of-generation lifecycle
 candidateはsessionだけに属し、generation/Source ID listへ入れない。Malformed request、その他client起因
@@ -2628,7 +2708,7 @@ candidate -> readable + not-applicable/all-parsed/mixed/all-failed parse summary
    固定の`stale-resource` rejectionを返す。Commitは自sequenceのIDとviewだけをrekey/invalidateする。
    Fatal attemptはpublic IDを作らず、保持generationのIDを変えない。
 2. BootstrapからRepository Sourceは正確に1つ存在し、そのboundaryは選択済みRepository root、すなわちdefaultでは
-   captureした呼び出し時のexact `process.cwd()`、指定時はそれに対してresolveした単一の`--cwd` valueである。
+   captureした呼び出し時のexact `process.cwd()`、指定時はそれに対してresolveした単一の`--root` valueである。
    Git rootである必要はなく、labelはread authorityを与えない。
 3. Globalは全新processでdisabledである。SessionはGlobal Sourceを0から3つ持ち、Copilot、Claude、Codexごとに
    最大1つとする。各Sourceはcurrent allowlistで同じtoolについてconsent済みのboundaryを正確に1つ所有する。
@@ -2669,14 +2749,14 @@ candidate -> readable + not-applicable/all-parsed/mixed/all-failed parse summary
    visibility/unload listenerを設置しない。Transportは独立したliveness probeやpolling intervalなしに
    host lossを報告するが、continuously idleでvisibleなpageにproduct固有のwall-clock保証を設けない。
 12. 全behavior、rule、strategy、source IDは、所有するbilingual contractとexecutable registryで正確に1回だけ
-    定義する。Registryの`sourceRefs` arrayは所有rowのdirect Evidence cellと一致し、official-source逆引きindexと
+    定義する。Record自身の`evidence` citationは所有rowのdirect Evidence cellと一致し、official-source逆引きindexと
     相互一致する。Runtime provenance/relationship DTOは表示用にこれらdirect recordのdeterministic unionを公開してよいが、
     そのderived unionはregistry backlinkを変更しない。`evidenceAssessments`はowning ruleと全referenced behavior/strategyごとに正確に1 recordを持ち、
     各recordのdocumentation status/lifecycle qualifierを上記fixed orderで保持する。Missing、duplicate、orphan、language-divergentなrecordは
     buildをfailさせる。
 13. Vendor lookup base/traversalとInspector matcherは別record typeである。全Repository matcherはselected
-    Repository rootを基点にauthorしたtyped segment programである。先頭の`ANY_DIRECTORIES` segmentは明示的な下向きInspector inventoryだけを意味し、vendor traversalや
-    runtime selectionを意味しない。
+    Repository rootを基点にauthorしたtyped segment programである。`ANY_DIRECTORIES` segmentは明示的な下向きInspector inventoryだけを意味し、vendor traversalや
+    runtime selectionを意味しない。上へ辿るvendor lookupも同じselected rootで終わるため、selector tokenにはならない。
 14. `snapshotState`はsession所有の`staleFailures`から派生し、commit済みgenerationへ保存せず変更にも
     使わない。各entryは1つのSourceとそのcurrentな実行可能failure reference（lifecycle `Diagnostic`またはfailed requestのerror message）を持ち、
     そこから`ScanAttempt`やworking-set memberへ到達できない。そのSourceのcomplete/partial正常scanまたはSource除去だけが

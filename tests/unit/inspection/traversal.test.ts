@@ -28,7 +28,7 @@ import { runTraversalScan } from '../../../src/server/inspection/traversal';
 // Wrap the inspection module's closed fs surface in pass-through spies:
 // the product's calls stay real (fixtures are actually read) while the
 // suite asserts exactly which operations ran — production-call
-// instrumentation per contracts/inspection-path-allowlist.md § 12. Node
+// instrumentation per contracts/inspection-path-allowlist.md § Symlink and read invariants. Node
 // builtins cannot be intercepted from dependency modules, which is why the
 // product routes its I/O through the fs-io test seam.
 vi.mock('../../../src/server/inspection/fs-io', async (importOriginal) => {

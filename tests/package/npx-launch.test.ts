@@ -140,7 +140,7 @@ describe('packaged launch', () => {
     await writeFile(join(fixture, 'AGENTS.md'), '# fixture instructions\n', 'utf8');
     // Launched from an unrelated working directory: the packaged shell must
     // resolve from the CLI's own location, never from the inspected tree.
-    launched = await launchCli(tmpdir(), ['--no-open', '--cwd', fixture]);
+    launched = await launchCli(tmpdir(), ['--no-open', '--root', fixture]);
   }, 60_000);
 
   afterAll(async () => {
@@ -190,7 +190,7 @@ describe('graceful shutdown', () => {
   it('closes the loopback listener on an interrupt', async () => {
     const fixture = await mkdtemp(join(tmpdir(), 'aci-npx-shutdown-'));
     try {
-      const launched = await launchCli(tmpdir(), ['--no-open', '--cwd', fixture]);
+      const launched = await launchCli(tmpdir(), ['--no-open', '--root', fixture]);
       await expect(shutdown(launched)).resolves.toBe(0);
       await expect(fetch(launched.origin)).rejects.toThrow();
     } finally {

@@ -18,6 +18,159 @@ export type SupportedTool =
   | 'codex';
 
 /**
+ * The closed presentation order of {@link SupportedTool}
+ * (contracts/http-api.md § get-session: "Recognition arrays use the shipped
+ * closed tool order, then the shipped closed kind order, with no opaque ID
+ * tie-break"). Opaque IDs are regenerated every generation, so they must
+ * never supply a sort order.
+ */
+export const SUPPORTED_TOOL_ORDER: readonly SupportedTool[] = [
+  /** Copilot recognitions sort first. */
+  'copilot',
+  /** Claude recognitions sort after Copilot. */
+  'claude',
+  /** Codex recognitions sort last. */
+  'codex',
+];
+
+/**
+ * The closed customization-kind catalog shared by every tool
+ * (data-model.md § ToolRecognition). The spellings are the exact
+ * `ToolRecognition.kind` wire values fixed by the vendors' Presentation
+ * Allowlist tables; a kind is shared vocabulary even though each recognizer
+ * owns its own path and interpretation rules.
+ */
+export type CustomizationKind =
+  /** An agent instruction file such as `AGENTS.md`. */
+  | 'instructions'
+  /** One authored rule file. */
+  | 'rule'
+  /** A skill entry point such as `SKILL.md`. */
+  | 'skill'
+  /** A custom-agent definition. */
+  | 'agent'
+  /** A reusable prompt or slash command. */
+  | 'prompt/command'
+  /** A lifecycle hook declaration. */
+  | 'hook'
+  /** An MCP server declaration carrier. */
+  | 'MCP'
+  /** A settings or configuration carrier. */
+  | 'settings/config'
+  /** An output-style definition. */
+  | 'output style'
+  /** A plugin manifest. */
+  | 'plugin'
+  /** A plugin marketplace catalog. */
+  | 'marketplace'
+  /** Skill-local metadata beside a `SKILL.md`. */
+  | 'skill metadata';
+
+/**
+ * The closed presentation order of {@link CustomizationKind}, exactly as the
+ * kind catalog is listed in data-model.md § ToolRecognition. It is the
+ * secondary recognition sort key after {@link SUPPORTED_TOOL_ORDER}.
+ */
+export const CUSTOMIZATION_KIND_ORDER: readonly CustomizationKind[] = [
+  /** Instruction files sort first. */
+  'instructions',
+  /** Rule files follow instructions. */
+  'rule',
+  /** Skills follow rules. */
+  'skill',
+  /** Custom agents follow skills. */
+  'agent',
+  /** Prompts and commands follow agents. */
+  'prompt/command',
+  /** Hooks follow prompts and commands. */
+  'hook',
+  /** MCP carriers follow hooks. */
+  'MCP',
+  /** Settings and config carriers follow MCP. */
+  'settings/config',
+  /** Output styles follow settings and config. */
+  'output style',
+  /** Plugin manifests follow output styles. */
+  'plugin',
+  /** Marketplace catalogs follow plugin manifests. */
+  'marketplace',
+  /** Skill metadata sorts last. */
+  'skill metadata',
+];
+
+/** The label shown for each kind; see {@link SOURCE_BOUNDARY_ORIGIN_TEXT}. */
+export const CUSTOMIZATION_KIND_TEXT: Readonly<Record<CustomizationKind, string>> = {
+  /** Label for an instruction file. */
+  instructions: 'Instructions',
+  /** Label for a rule file. */
+  rule: 'Rule',
+  /** Label for a skill entry point. */
+  skill: 'Skill',
+  /** Label for a custom-agent definition. */
+  agent: 'Agent',
+  /** Label for a prompt or slash command. */
+  'prompt/command': 'Prompt / command',
+  /** Label for a hook declaration. */
+  hook: 'Hook',
+  /** Label for an MCP declaration carrier. */
+  MCP: 'MCP',
+  /** Label for a settings or configuration carrier. */
+  'settings/config': 'Settings / config',
+  /** Label for an output-style definition. */
+  'output style': 'Output style',
+  /** Label for a plugin manifest. */
+  plugin: 'Plugin',
+  /** Label for a marketplace catalog. */
+  marketplace: 'Marketplace',
+  /** Label for skill-local metadata. */
+  'skill metadata': 'Skill metadata',
+};
+
+/** The label shown for each tool; see {@link SOURCE_BOUNDARY_ORIGIN_TEXT}. */
+export const SUPPORTED_TOOL_TEXT: Readonly<Record<SupportedTool, string>> = {
+  /** Label for GitHub Copilot. */
+  copilot: 'GitHub Copilot',
+  /** Label for Claude Code. */
+  claude: 'Claude Code',
+  /** Label for OpenAI Codex. */
+  codex: 'OpenAI Codex',
+};
+
+/**
+ * How a product resolves a skill name that several definitions declare
+ * (contracts/runtime-composition.md). A grouped inventory row publishes this
+ * instead of ordering its definitions, because the Inspector states what the
+ * vendors state and no more (FR-007).
+ */
+export type SameNameSkillResolution =
+  /**
+   * Every same-name definition stays available and none is merged away; the
+   * cited section documents no order among the scopes, so none is claimed.
+   */
+  | 'all-remain'
+  /** The first definition in the product's documented source order wins. */
+  | 'select-first'
+  /**
+   * The product's surfaces do not agree, so no single statement is true of it:
+   * Copilot's CLI resolves the first in a documented order while VS Code and
+   * Cloud document no duplicate precedence at all.
+   */
+  | 'surface-dependent';
+
+/**
+ * The sentence shown for each resolution; see {@link SOURCE_BOUNDARY_ORIGIN_TEXT}.
+ * Each states what the product documents and never which definition wins here.
+ */
+export const SAME_NAME_SKILL_RESOLUTION_TEXT: Readonly<Record<SameNameSkillResolution, string>> = {
+  /** Label for a product that keeps every same-name definition. */
+  'all-remain': 'keeps all of them, in no documented order',
+  /** Label for a product with a documented source order. */
+  'select-first': 'uses the first in its documented source order',
+  /** Label for a product whose surfaces do not agree. */
+  'surface-dependent': 'depends on the surface; no single documented rule',
+};
+
+/**
  * The readable subset of the decode classification
  * (spec.md § Byte Decode Outcomes).
  */
@@ -38,6 +191,18 @@ export type FileEncoding =
   | 'binary'
   /** The read failed before any bytes could be classified. */
   | 'unknown';
+
+/** The label shown for each decode outcome; see {@link SOURCE_BOUNDARY_ORIGIN_TEXT}. */
+export const FILE_ENCODING_TEXT: Readonly<Record<FileEncoding, string>> = {
+  /** Decoded as UTF-8 without replacement. */
+  'utf-8': 'Readable text',
+  /** Decoded once with replacement; the complete text is still available. */
+  'utf-8-replaced': 'Readable text (decoded with replacement characters)',
+  /** A NUL byte made the file diagnostic-only. */
+  binary: 'Binary — recorded without source text',
+  /** The read failed before the bytes could be classified. */
+  unknown: 'Could not be read',
+};
 
 /**
  * Result of the single decode pass (spec.md § Byte Decode Outcomes),
@@ -109,10 +274,10 @@ export function decodeSourceBytes(bytes: Uint8Array): DecodedSourceBytes {
 
 /** How a Source root was selected (FR-001, FR-013). */
 export type SourceBoundaryOrigin =
-  /** The one invocation working directory captured when `--cwd` was omitted. */
+  /** The one invocation working directory captured when `--root` was omitted. */
   | 'process-cwd'
-  /** The validated explicit `--cwd` selection. */
-  | 'cwd-option'
+  /** The validated explicit `--root` selection. */
+  | 'root-option'
   /** A tool's fixed Global suffix below the default home directory. */
   | 'default-home'
   /** A Global root selected from the tool's captured home environment variable. */
@@ -122,14 +287,13 @@ export type SourceBoundaryOrigin =
  * The label shown for each origin. It sits beside the union so a new origin
  * cannot compile without its text, the same way {@link DIAGNOSTIC_REGISTRY}
  * fixes a diagnostic's message: the closed vocabulary and how it reads are
- * one decision, not two files (amended 2026-07-24 — this previously lived in
- * a client message catalog).
+ * one decision, not two files (a client message catalog would split it in two).
  */
 export const SOURCE_BOUNDARY_ORIGIN_TEXT: Readonly<Record<SourceBoundaryOrigin, string>> = {
   /** Label for the invocation working-directory origin. */
   'process-cwd': 'invocation working directory',
-  /** Label for the explicit `--cwd` origin. */
-  'cwd-option': '--cwd option',
+  /** Label for the explicit `--root` origin. */
+  'root-option': '--root option',
   /** Label for a tool root derived below the default home. */
   'default-home': 'default home directory',
   /** Label for a tool root supplied by an environment variable. */

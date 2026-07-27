@@ -198,7 +198,7 @@ Cloud-agent layerとして挙げない。したがってhosted personal Chat set
 
 ## Inspector Repository matcher rule
 
-この表のBaseはすべて正確なInspector Repository boundary、すなわち取得済み`process.cwd()`または`--cwd`から得たselected Repository rootであり、表記は`Repository`とする。
+この表のBaseはすべて正確なInspector Repository boundary、すなわち取得済み`process.cwd()`または`--root`から得たselected Repository rootであり、表記は`Repository`とする。
 Inspectorはその上位からworkspace、project、Git rootを探索しない。`ANY_DIRECTORIES`で始まるselector programは明示的にanchorされた
 Inspector inventoryであり、VS Code、CLI、Cloudが下向きにwalkするという主張ではない。より狭いexclusionまたはGlobal requirementを後述しない限り、全行のpolicy referenceは
 FR-003、FR-004、FR-005、FR-024、QR-001、QR-004、QR-005である。

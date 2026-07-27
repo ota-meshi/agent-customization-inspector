@@ -1,51 +1,68 @@
 <script setup lang="ts">
-// The SPA shell (T049). Phase 3 renders the first user-visible increment:
-// one enabled Repository Source and its escaped, non-authorizing selected-
-// root label, the inventory committed by the automatic first scan, and the
-// ended view for a host that is gone. It deliberately shows almost no
-// product content — no Repository picker, no ancestor discovery, and no
-// inventory beyond what a committed generation actually contains.
+// The SPA shell (T049, extended by T071). The shell owns exactly three
+// things: the one RPC connection, the session view state derived from it, and
+// which of the three surfaces — booting, the inspection route, or the ended
+// view — is on screen. Everything the inspection route renders lives in
+// `pages/index.vue` and the inventory components it composes.
 //
-// User-visible copy is written where it renders (amended 2026-07-24). The
-// message catalog this component used to read from existed to hold English
-// and Japanese in lockstep through one shared interface; the product now
-// ships one UI language, so the catalog was pure indirection between a key
-// and its only string.
+// The view state is provided rather than passed, because a Nuxt route takes
+// no props: the shell publishes the one instance under
+// {@link SESSION_VIEW_STATE} and the route injects it. There is deliberately
+// only one — a second view state would open a second request-token space over
+// the same connection and let two adoptions race.
 //
-// Text that a closed union fixes is the exception: it belongs beside that
-// union, not here, so a new member cannot compile without its label. Status
-// and origin labels come from `entities.ts` and diagnostic text from
-// `DIAGNOSTIC_REGISTRY`, each declared next to the vocabulary it names. What
-// this component authors is only the copy it alone renders.
+// The shell still shows almost no product content of its own: no Repository
+// picker, no ancestor discovery, and no inventory beyond what a committed
+// generation actually contains.
+//
+// What this component authors is only the copy it alone renders; text a closed
+// union fixes comes from beside that union — status and origin labels from
+// `entities.ts`, diagnostic text from `DIAGNOSTIC_REGISTRY` (AGENTS.md
+// User-visible copy policy).
 //
 // Every dependency is an explicit import: auto-imports and implicit
 // components are disabled (nuxt.config.ts) so the client's dependency graph
 // is reviewable by reading this file.
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
+import { computed, onBeforeUnmount, onMounted, provide, ref, shallowRef, watchEffect } from 'vue';
+import { NuxtPage } from '#components';
 import { connectDevframe, isCallableStatus } from 'devframe/client';
-import { createSessionViewState, type SessionViewState } from './session/view-state';
-import { DIAGNOSTIC_REGISTRY } from '../shared/diagnostics';
-import { SOURCE_BOUNDARY_ORIGIN_TEXT, SOURCE_STATUS_TEXT } from '../shared/entities';
+import {
+  SESSION_VIEW_STATE,
+  createSessionViewState,
+  type SessionView,
+} from './session/view-state';
 import './styles/main.css';
 
 /** The product name, used for both the page heading and the document title. */
 const APP_NAME = 'Agent Customization Inspector';
 
-const sessionViewState = shallowRef<SessionViewState | null>(null);
+// The RPC channel is bound after `connectDevframe` resolves, but `provide`
+// must run synchronously during setup. The view state is therefore created
+// now over a channel that defers to this holder — construction performs no
+// I/O, so nothing is sent before the connection exists — and a call issued
+// before binding fails ordinarily instead of silently resolving.
+let rpcCall: ((method: string) => Promise<unknown>) | null = null;
+const sessionViewState = createSessionViewState({
+  channel: {
+    call: (method) =>
+      rpcCall === null
+        ? Promise.reject(new Error('the local inspection session is not connected yet'))
+        : rpcCall(method),
+  },
+});
+provide(SESSION_VIEW_STATE, sessionViewState);
+
 const startupErrorMessage = shallowRef<string | null>(null);
 const heading = ref<HTMLHeadingElement | null>(null);
 // Unbinds the connection-status subscription; owned by this component,
 // rather than the session view state, because the RPC client is created here.
 let unbindConnection: (() => void) | null = null;
 
-const view = computed(() =>
-  startupErrorMessage.value === null
-    ? (sessionViewState.value?.view.value ?? 'booting')
-    : 'ended',
+const view = computed<SessionView>(() =>
+  startupErrorMessage.value === null ? sessionViewState.view.value : 'ended',
 );
-const snapshot = computed(() => sessionViewState.value?.snapshot.value ?? null);
 const errorMessage = computed(
-  () => startupErrorMessage.value ?? sessionViewState.value?.errorMessage.value ?? null,
+  () => startupErrorMessage.value ?? sessionViewState.errorMessage.value,
 );
 // These two regions stay mounted from the first render, so asynchronous
 // session and error transitions are announced without moving keyboard focus
@@ -64,16 +81,41 @@ const statusAnnouncement = computed(() => {
     }
   }
 });
+/**
+ * The document title, which states the view the page is in (WCAG 2.4.2,
+ * contracts/accessibility-acceptance.md). Setting it once would leave the
+ * ordinary inventory title on a session that has ended.
+ */
+const documentTitle = computed(() => {
+  switch (view.value) {
+    case 'booting':
+      return `Connecting — ${APP_NAME}`;
+    case 'inspection':
+      return APP_NAME;
+    case 'ended':
+      return `Session ended — ${APP_NAME}`;
+    default: {
+      const unhandledView: never = view.value;
+      return unhandledView;
+    }
+  }
+});
+watchEffect(() => {
+  document.title = documentTitle.value;
+});
+
 const errorAnnouncement = computed(() =>
   errorMessage.value === null ? '' : `Error: ${errorMessage.value}`,
 );
+
+/** Set by teardown, so a connection that arrives afterwards is abandoned. */
+let unmounted = false;
 
 onMounted(async () => {
   // The UI ships one language, so the document language is fixed rather than
   // negotiated: `lang` must state what the content actually is (WCAG 3.1.1),
   // never what the browser would have preferred.
   document.documentElement.lang = 'en';
-  document.title = APP_NAME;
   // Move keyboard focus to the top of the freshly rendered shell before any
   // asynchronous adoption can change what is on screen.
   heading.value?.focus();
@@ -81,8 +123,8 @@ onMounted(async () => {
   // is exchanged and the native credential prompt is disabled: prompting
   // would ask the user for something that does not exist.
   const rpc = await connectDevframe({ simpleAuth: false }).catch((cause: unknown) => {
-    // Connection metadata/channel construction can fail before view state
-    // exists. Surface that real browser/network error as the same terminal
+    // Connection metadata/channel construction can fail before any request is
+    // issued. Surface that real browser/network error as the same terminal
     // session view instead of leaving the shell indefinitely "Connecting".
     startupErrorMessage.value = cause instanceof Error ? cause.message : String(cause);
     return null;
@@ -90,31 +132,35 @@ onMounted(async () => {
   if (rpc === null) {
     return;
   }
+  // Teardown may have run while the connection was being established. Binding
+  // a listener now would leave it bound forever — the unbind was already
+  // called — and `start()` would adopt session data into a disposed view.
+  if (unmounted) {
+    return;
+  }
   // devframe types `call` against its own built-in function map, so a
   // product-registered name is narrowed away. The by-name overload accepts
   // any string at runtime; this cast selects it without widening the
   // product's own closed catalog, which `SessionRpcChannel` still enforces.
   const call = rpc.call as (method: string) => Promise<unknown>;
-  const created = createSessionViewState({
-    channel: { call: (method) => call(method) },
-  });
-  sessionViewState.value = created;
+  rpcCall = (method) => call(method);
   // The transport reports a lost host without being asked, which is why the
   // product has no liveness probe: a closed loopback socket becomes the
   // ended view immediately rather than at the next interaction. `on` returns
   // its own unbind, kept for teardown.
   unbindConnection = rpc.events.on('connection:status', (status) => {
     if (!isCallableStatus(status)) {
-      created.reportChannelLost(rpc.connectionError);
+      sessionViewState.reportChannelLost(rpc.connectionError);
     }
   });
-  await created.start();
+  await sessionViewState.start();
 });
 
 onBeforeUnmount(() => {
+  unmounted = true;
   unbindConnection?.();
   unbindConnection = null;
-  sessionViewState.value?.dispose();
+  sessionViewState.dispose();
 });
 </script>
 
@@ -122,8 +168,9 @@ onBeforeUnmount(() => {
   <main class="aci-shell">
     <h1 ref="heading" tabindex="-1">{{ APP_NAME }}</h1>
     <p class="aci-tagline">
-      Browse the customization files AI coding agents would read in this repository. Nothing is
-      executed, connected to, or modified.
+      Browse the customization files AI coding agents look for in this repository. Being listed
+      is not being loaded: whether a product actually uses one depends on runtime conditions
+      this tool does not evaluate. Nothing is executed, connected to, or modified.
     </p>
     <p class="aci-live-region" role="status" aria-live="polite" aria-atomic="true">
       {{ statusAnnouncement }}
@@ -132,51 +179,21 @@ onBeforeUnmount(() => {
       {{ errorAnnouncement }}
     </p>
 
-    <p v-if="view === 'booting'" class="aci-empty">
-      Connecting to the local inspection session…
-    </p>
-
-    <template v-else-if="view === 'inspection' && snapshot">
-      <h2>Sources</h2>
-      <ul class="aci-list">
-        <li v-for="source in snapshot.sources" :key="source.sourceId" class="aci-source">
-          <strong>{{ source.tool ?? 'Repository' }}</strong>
-          <dl>
-            <dt>Status</dt>
-            <dd>{{ SOURCE_STATUS_TEXT[source.status] }}</dd>
-            <dt>Selected root</dt>
-            <dd class="aci-display-root">
-              {{ source.boundary.displayRoot }} ({{ SOURCE_BOUNDARY_ORIGIN_TEXT[source.boundary.origin] }})
-            </dd>
-          </dl>
-        </li>
-      </ul>
-      <p class="aci-note">
-        This label is an escaped presentation of the selected root. It is not a path you can open
-        and grants no read access.
-      </p>
-
-      <h2>Customization files</h2>
-      <p v-if="snapshot.files.length === 0" class="aci-empty">
-        No customization files have been committed yet.
-      </p>
-      <ul v-else class="aci-list">
-        <li v-for="file in snapshot.files" :key="file.fileId" class="aci-path">
-          {{ file.sourceRelativePath }}
-        </li>
-      </ul>
-
-      <h2>Diagnostics</h2>
-      <p v-if="snapshot.diagnostics.length === 0" class="aci-empty">No diagnostics.</p>
-      <ul v-else class="aci-list">
-        <li v-for="diagnostic in snapshot.diagnostics" :key="diagnostic.diagnosticId">
-          {{ DIAGNOSTIC_REGISTRY[diagnostic.code].message }}
-          <span v-if="diagnostic.sourceRelativePath" class="aci-path">
-            {{ diagnostic.sourceRelativePath }}
-          </span>
-        </li>
-      </ul>
+    <template v-if="view === 'booting'">
+      <p class="aci-empty">Connecting to the local inspection session…</p>
+      <!-- The way out of this view, offered whenever the page is in it — the
+           first connect included, where it is simply redundant beside the
+           request already in flight. The inventory route owns the refresh
+           control and is not rendered yet, so without this the only way forward
+           is reloading the page, and the two states that need a retry look
+           different: a non-fatal first `get-session` failure leaves an error
+           beside this text, while a purge (a session identity the host no
+           longer has) clears the error too. A control conditioned on the error
+           would be absent for exactly the second one. -->
+      <button type="button" @click="sessionViewState.refresh()">Retry connecting</button>
     </template>
+
+    <NuxtPage v-else-if="view === 'inspection'" />
 
     <template v-else>
       <h2>Session ended</h2>

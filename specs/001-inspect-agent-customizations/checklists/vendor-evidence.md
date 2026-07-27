@@ -20,7 +20,7 @@
 
 ## Requirement Clarity
 
-- [x] CHK006 Are the captured invocation working directory, the Inspector's selected Repository root (`process.cwd()` by default or the lexically resolved `--cwd` value), vendor repository root, VS Code workspace folder, and runtime `cwd` defined as distinct concepts wherever they can differ? [Clarity, Spec §FR-001–FR-002; Contract: Runtime Composition §Required condition facts]
+- [x] CHK006 Are the captured invocation working directory, the Inspector's selected Repository root (`process.cwd()` by default or the lexically resolved `--root` value), vendor repository root, VS Code workspace folder, and runtime `cwd` defined as distinct concepts wherever they can differ? [Clarity, Spec §FR-001–FR-002; Contract: Runtime Composition §Required condition facts]
 - [x] CHK007 Is the distinction between a vendor's lookup traversal and the Inspector's downward `ANY_DIRECTORIES` inventory segment explicit for every recursive-looking path? [Clarity, Spec §QR-005; Contract: Inspection Path Allowlist §Vendor locators are not Inspector matchers]
 - [x] CHK008 Are “present,” “recognized,” “supported,” “available,” “applicable,” “selected,” “enabled,” and “effective” defined so that file existence cannot be mistaken for runtime activation? [Clarity, Spec §FR-008–FR-009; Contract: Inspection Path Allowlist §Read authorization and applicability] — Fixed 2026-07-21: added the existence-versus-activation vocabulary defining all eight terms to Inspection Path Allowlist §Read authorization and applicability.
 - [x] CHK009 Is each evidence section narrow enough to support the exact claim made by its behavior, rule, or strategy row rather than only naming a broad parent section? [Clarity, Spec §QR-005; Contract: Official Sources §Record notation and ownership]
@@ -60,7 +60,7 @@
 
 - [x] CHK029 Are English and Japanese requirements required to preserve identical IDs, paths, URLs, reviewed sections, versions, subject-keyed documentation statuses, lifecycle qualifiers, and semantic caveats? [Completeness, Spec §QR-004–QR-005]
 - [x] CHK030 Are registry and drift validations required to be deterministic, complete-or-explicitly-failed, and actionable when they cannot establish source integrity, without defining a product-specific numeric resource ceiling? [Non-Functional, Contract: Inspection Path Allowlist §Common conformance requirements]
-- [x] CHK031 Are privacy requirements for official-source review explicit about credentials, cookies, repository data, response bodies, and retained remote content? [Security, Data Model §OfficialSourceRecord]
+- [x] CHK031 Are privacy requirements for official-source review explicit about credentials, cookies, repository data, response bodies, and retained remote content? [Security, Data Model §EvidenceCitation]
 - [x] CHK032 Does the ownership model allow one vendor surface to be updated without changing unrelated vendors, surfaces, Inspector policies, or composition strategies? [Maintainability, Spec §QR-001]
 - [x] CHK033 Does every behavior, rule, and strategy own exactly one subject-keyed `EvidenceAssessment`, and do provenance and relationship DTOs retain the sorted/deduplicated record-by-record `EvidenceAssessment[]` without reducing it to a scalar, best/worst value, or qualifier union? [Acceptance Criteria, Spec §QR-005]
 - [x] CHK034 Are lifecycle qualifiers limited to duplicate-free `preview`, `experimental`, `deprecated` order, with an empty array explicitly meaning no lifecycle claim rather than `stable`? [Acceptance Criteria, Spec §QR-005]

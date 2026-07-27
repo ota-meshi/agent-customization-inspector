@@ -55,16 +55,18 @@ traversalを継承しない。
 
 ### Repository
 
-Repository boundaryはselected rootである。`--cwd`を省略した場合は呼び出し時に1回captureしたexact
-`process.cwd()`を使う。`--cwd`を受理する（反復指定はparserのlast valueへ解決）。Absolute valueはそのまま保持し、relative valueは
+Repository boundaryはselected rootである。`--root`を省略した場合は呼び出し時に1回captureしたexact
+`process.cwd()`を使う。`--root`を受理する（反復指定はparserのlast valueへ解決）。Absolute valueはそのまま保持し、relative valueは
 active platformの`node:path.resolve`でcapture済みの呼び出しdirectoryに対してresolveする。明示的なempty valueは
 session/browser作成前に固定actionableかつsource-value-freeなstartup errorでfailureとなり、valueの欠落は同じ
 boundaryでGunshiのtyped argument validationによりrejectされる。Productはparser所有のcheckを重複実装しない（FR-001）。Selectionは
 filesystem/network I/Oを0件とし、`chdir`を行わない。Generation 0はfilesystem I/Oなしで作成した1つの
 Repository Sourceを持つ。そのescape済みroot labelはread authorityを与えず、最初のscanがretained selected
 rootをreadする。Rootが存在しないかdirectoryとしてreadできない場合、そのscanはsource-scopedな
-`root-unreadable` Diagnosticでfailする（FR-002）。Inspectorはselected rootの上位を
-Gitまたはproductのproject rootを探すためにwalkしない。Repository inventoryはselected root配下の通常の
+`root-unreadable` Diagnosticでfailする（FR-002）。InspectorはSource rootより上を読むことはない。そのpathは
+`SourceRelativePath`を持たず、boundaryの外にある。Rootを見つけるためにrepository markerをprobeすることもない。
+Selected rootが既にrepository rootだからである — runtime working directoryから上るvendor lookupは正確にそこで
+終わる（FR-001）。Repository inventoryはselected root配下の通常の
 recursive traversalである。Vendorが異なるruntime rootやwalk方向を使う場合、そのfactはvendor contractと
 runtime-composition contractに属し、このboundaryを変更しない。
 
@@ -92,7 +94,7 @@ directoryは、仕様が変更されるまでexcludedのままとする。
 | Field | 意味 |
 |---|---|
 | **Base** | 有効な1つの正確なboundary。`Repository`またはconsent済みのnamed `Global` vendor boundary |
-| **Selector program** | Base相対にauthorしたtyped segment programのnon-empty ordered list。1 programは複数のtyped expansion stepを持て、absolute path、environment expansion、home expansion、URI、暗黙のancestor searchを表現できない |
+| **Selector program** | Source rootに対して相対にauthorしたtyped segment programのnon-empty ordered list。Programはabsolute path、environment expansion、home expansion、URI、暗黙のancestor searchを表現できない |
 
 各selector programは次のclosed unionからなるnon-emptyなordered segment token列を持つ。
 
@@ -102,8 +104,9 @@ directoryは、仕様が変更されるまでexcludedのままとする。
   raw entry nameへ標準の`RegExp.prototype.test`セマンティクスで適用する — anchoringとescapeは
   pattern作者の明示的な記述であり、その正しさはshipped rule fixtureが所有する。Non-terminalなら
   directory step、terminalならregular-file stepとし、regex literal（例: `/\.md$/u`）として表記する。
-- `recursive-directories`はsegment `**`と表記し、0個以上のdirectoryをmatchする。Terminalにはできず、
-  別のrecursive tokenと隣接不可とする。
+- `recursive-directories`はsegment `**`と表記し、0個以上のdirectoryをmatchする。terminalにはできず、
+  別のrecursive tokenと隣接不可とする。下降のstepのみであり、parent directoryを名指すtokenは存在せず、必要でもない。
+  Allowlistは選択されたrootにanchorされ、そのrootのcustomizationを報告するからである（FR-003）。
 
 Static fixed prefix、exact target、fixed derived suffixも同じclosed ASCII literal typeを使う。Registry validationは全non-ASCII
 path literalをrejectするため、fixed prefixとexact targetについてはexact raw-byte/code-unit relevanceと後続NFC
@@ -130,19 +133,81 @@ Composite selectorでは複数labelを記載できる。
 |---|---|---|
 | `['path', 'file']` | `exact` | Repository source root相対の正確な1 file |
 | `['path', ANY_NAME]` | `direct-child` | Root相対の1 directoryのmatching direct child。Segmentは`/`をcrossしない |
-| `[ANY_DIRECTORIES, 'name']` | `descendant-inventory` | Root levelとその下を対象にした明示的なInspector inventory。`ANY_DIRECTORIES`は0個以上のdirectory segmentにmatchする |
+| `[ANY_DIRECTORIES, 'name']` | `descendant-inventory` | Root levelとその配下の全directoryを対象にした明示的なInspector inventory |
 | `['path', ANY_DIRECTORIES, /\.ext$/u]` | `recursive-subtree` | Root相対の1 subtree内の明示的なrecursive Inspector inventory。Subtree root levelも含む |
-| `[ANY_DIRECTORIES, '.claude', 'skills', ANY_NAME, 'SKILL.md']` | `descendant-inventory`の後に`direct-child` | Possible context directoryと正確に1つのdirect skill-name directoryのcross-product。Terminal fileはexact |
-| `[ANY_DIRECTORIES, '.claude', 'rules', ANY_DIRECTORIES, /\.md$/u]` | `descendant-inventory`の後に`recursive-subtree` | Possible rule-layer rootと各固定`rules` directory配下のrecursive subtreeのcross-product |
+| `['.agents', 'skills', ANY_NAME, 'SKILL.md']` | `exact`の後に`direct-child` | Source rootで適用する1つのanchored program。Terminal fileはexact |
 
-先頭の`ANY_DIRECTORIES`が表すのはInspectorの下向きdescendant inventoryだけである。Vendorが下向きまたは上向きにwalkする、
-ancestorを探す、すべてのnested repositoryを認識する、あるruntime contextでmatch fileを適用する、のいずれも
-意味しない。これらの主張には別のvendor behavior recordとstrategy recordが必要である。
+`ANY_DIRECTORIES`が唯一の方向性を持つ軸であり、それは下向きである。それが表すのは
+anchorより下のdirectoryに対するInspectorのinventoryだけである。Vendorが下向きまたは上向きにwalkする、ancestorを
+探す、すべてのnested repositoryを認識する、あるruntime contextでmatch fileを適用する、のいずれも意味しない。
+これらの主張には別のvendor behavior recordとstrategy recordが必要である。
+
+上向きの軸は意図的に持たない。Allowlistは選択されたrootにanchorされ、そのrootのcustomizationを報告する
+（FR-003）。したがってruntime working directoryから上るvendor lookupが与えるin-scopeなlayerはちょうど1つであり、
+表現すべき記法はなく、そのように解決するvendorのruleは素直にanchorしたprogramとして書く。代わりに先頭
+`ANY_DIRECTORIES`で書くと、このproductが選択しないworking directoryに属するnested copyをinventoryしてしまい、
+問われたrootを過剰近似することになる。
+
+Vendor lookupの起点となるworking directoryは引き続き`runtime-cwd` condition factであり、Sourceを選んだ
+invocation directoryとは意図的に区別する。`$CWD`と`$REPO_ROOT`を同一視するのはlookupの*終点*を定めることであって
+runtimeの起点を定めることではないため、実行中のagentが実際にどのlayerから始めるかはconditionalのままである。
 
 `ANY_NAME`は常にmatchする`regex` stepで、entry nameを正確に1つmatchする。`**`は
 `recursive-directories` tokenの通称である。`regex` stepはrecursionを暗黙に含まず、literal-only programはexactとする。
 Repository rule tableはBase、authored selector program、derived Expansion summaryを別々に記載し、immutable registryはその1対1の
 typed selector programを保持しなければならない。
+
+### Bounded companion census
+
+Customizationの中にはfileではなくdirectoryであるものがある。Skillが最も分かりやすい例である:
+admitされるのは`SKILL.md`で、その傍らのscript、reference、assetこそがskillを一段落以上のものに
+している。そこで、そうしたkindのadmit済みcandidateを含むdirectoryを再帰的に列挙し、付随する
+regular fileをlistにする。
+
+Censusが適用されるかどうかは、ruleの個別宣言ではなく認識されたkindから決まる。Directoryで
+あることはkindの正体の一部であり、そのkindをadmitするruleはすべてcensusを求める。Rule単位の
+flagは、片方が既に決めていることを二重に述べるだけである。
+
+Censusの結果は件数ではなく、sortされたSource相対Pathのlistである。Inventory rowはその件数を述べ、
+file detail viewは各fileを名指す。件数をlistから導けば事実は1つで済み、両方を公開すれば食い違いうる
+2つの状態になる。
+
+Censusは列挙であってadmitではない。Byteを読まず、candidateをadmitせず、自身のdiagnosticを生成せず、
+列挙した対象に読み取り権限を与えない。列挙されたfileは元のままである — relationship targetであり、
+そのedge経由で読まれることはない — ため、列挙がcandidateへの昇格になってはならず、censusに現れることは
+それらがvendorにloadされる証拠でもない。
+
+Censusはallowlist walkの一部ではない。Traversalはshipped selector programを実行し、どのfileを
+読んでよいかに答える。Censusはcustomization自身のdirectoryに他に何があるかに答えるもので、どの
+selectorもそれを表現せず、censusを持つkindだけがそれを求める。したがってtraversalが既にadmitした
+candidateに対して実行し、起点はadmit済みcandidate自身のdirectoryだけである。任意のpathは存在しない。
+Censusは、そのcustomizationのkindごとのdetailsを組み立てる場所で、認識されたkindとcandidate自身の
+pathから実行する。どちらもrecognitionが既に保持しているため、どのkindがcensusを求めるかを
+先行するphaseが知る必要はない。
+
+したがってcensus結果は、censusを持つkindのrecognitionには必ずlistとして存在し、admitされたfileが
+単独で置かれている場合はemptyになる。「censusが実行されなかった」状態は存在せず、「何も付随しない」
+と区別する必要もない。PathはNFCの表示spellingであるため、1つのpathへ正規化される複数のraw entry名は
+1件として数える。Censusが列挙するのはcandidateに付随するpathの集合であり、directory entryの集合ではない。
+通常のwalkはそうしたgroupを、いずれかを選ぶのではなく拒否する。Censusはdiagnosticを公開しないため、
+同じpathを2行出しても読み手には区別できない。
+Seed自身とVCS internalsを除外し、通常のtraversalと同じreal-path cycle規則でsymbolic linkを辿るため、
+subtreeへ戻るlinkは無限に辿られず終了する。
+
+下降は二重に封じ込められている。Censusはdirectoryのreal pathがcensus root内にある場合にだけそこへ入り、
+census root自身もそのreal pathがSource rootのreal path内にある場合にだけ有効とする。2つめのcheckは
+冗長ではない: candidate自身のdirectoryがtreeの外へのsymbolic linkでありうるため、そのreal pathは
+外部のdirectoryをcensus rootにしてしまう。そのように到達したcandidateには何も付随しない — Sourceは
+inspectionが認可された範囲の境界であり、その外はどのSourceにも属さない。このwalkを有界にしているのは
+この封じ込めである。通常のtraversalはselector programが有界にしており、どのselectorも一致し得なく
+なった時点で下降を止める。Censusにはselectorが無いため、封じ込めがなければancestorへのlink 1つで
+repository全体を1つのskillのcompanionとして報告してしまう。列挙は同じようには封じ込めない:
+fileへのsymbolic linkはentry自身のpathで列挙する。Directoryに置かれているのはそのentryであり、
+それを読むagentも同様にlinkを解決するからである。
+
+列挙のfailureは1 fileに限定されず、通常のwalkと同様に伝播する。空のlistはadmitされたfileが単独で
+置かれていることを述べるため、permissionやI/O errorに対してそれを返すことは、読んでいないことを根拠に
+directoryについての事実を公開することになる。
 
 ### Global selectorの要件
 
@@ -192,7 +257,10 @@ product内で唯一のpattern評価であり、一度に1つのentry nameへ適�
 readするagentが見るものを表示するからである。Targetがmissingまたはunreadableなlinkはそのfileの
 `file-unreadable` Diagnosticになり、recursiveなtraversalはreal pathで訪問済みdirectoryを追跡して
 link cycleがscanの終了を妨げないようにする。Hard linkは通常のfileであり、physical-identity grouping、
-read-once semantics、primary/alias path selectionは存在しない。`.git/`、`.hg/`、`.svn/`内部は
+read-once semantics、primary/alias path selectionは存在しない。`.git/`、`.hg/`、`.svn/`内部の判定は、directoryの解決済みreal pathをwalk自身のcontainer — Source root、
+またはtargeted walkに与えられたfixed subtree — からの相対で行う。したがって別名でそれらの内部へ到達する
+entryも除外される一方、Source root自身のpathにそのsegmentが含まれているだけの場合は通常のrootとして
+走査する。`.git/`、`.hg/`、`.svn/`内部は
 traversal対象外とする。
 
 1 fileに限定された問題はそのfileに閉じる（FR-028）。Unreadable fileはfile-scopedな
@@ -324,10 +392,12 @@ Contractとfixtureのvalidationは、次をすべて証明しなければなら�
    rowがsemantically equivalentである。
 2. 全Repository matcher programがRepository source root相対である。Exact、direct-child、descendant-inventory、fixed-
    subtree recursive formに、それぞれ別のpositive fixtureとnear-miss fixtureがある。Matcher fixtureは`regex`
-   step（`ANY_NAME`を含む）をacceptし、
-   terminalまたはadjacentな`recursive-directories` step、全non-ASCIIまたはforbidden literal code unitをrejectする。
-3. 先頭`ANY_DIRECTORIES`のfixtureが証明するのは下向きInspector inventoryだけであり、upstream traversalが確立していない場合は
-   vendor-runtime factを別のunknownまたはconditionalとして保持する。
+   step（`ANY_NAME`を含む）をacceptし、terminal・adjacentな`recursive-directories` step、
+   全non-ASCIIまたはforbidden literal code unitをrejectする。
+3. 上向きに解決するvendorのanchored fixtureは、Source rootより上のdirectoryを開かないこと、repository marker
+   probeを行わないこと、同じpathのwell-formedなcopyがroot直下の1 directory下にある場合はcandidateではなく
+   near missになることを証明する。またupstream traversalが確立していない場合は、vendor-runtime factを別の
+   unknownまたはconditionalとして保持する。
 4. Typed matcherがimmutableかつversionedなplanへdeterministicallyにcompileされる。Global fixtureは、
    exact targetがrootをenumerateせずにreadされ、fixed subtreeがそのsubtreeと許可されたdescendantだけを
    enumerateし、隣接pathへのenumeration、open、read callが0件であることを証明する。Preview fixtureは
@@ -351,8 +421,8 @@ Contractとfixtureのvalidationは、次をすべて証明しなければなら�
    scope/order、applicabilityをcollapseしない。同じunderlying fileへのhard linkである2つのallowlisted
    pathは、grouping、alias、read-once behaviorを持たない2つの通常の独立fileである。
    Cross-Source/attempt/generation fixtureは独立readを証明する。
-8. Root-selection fixtureは、1回だけcaptureした`process.cwd()`、そのまま保持するabsolute `--cwd`、
-   captureに対してresolveするrelative `--cwd`、明示的なempty valueへの固定startup error、および
+8. Root-selection fixtureは、1回だけcaptureした`process.cwd()`、そのまま保持するabsolute `--root`、
+   captureに対してresolveするrelative `--root`、明示的なempty valueへの固定startup error、および
    Gunshiのtyped missing-value rejectionを扱い、
    `chdir` call 0件とselection時filesystem I/O 0件を証明する。全supported OS上のtraversal fixtureは、
    symlinkされたcustomization fileが透過的にreadされてlink先contentを表示すること、targetがmissing

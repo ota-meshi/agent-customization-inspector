@@ -14,7 +14,16 @@
 // are deliberately not re-checked at runtime (AGENTS.md Implementation
 // simplicity policy). Per-vendor rule catalogs arrive with their inventory
 // phases; this module owns only the shared closed grammar and compilation.
-import type { SupportedTool } from '../../../shared/entities';
+import {
+  buildEvidenceAssessments,
+  type CustomizationKind,
+  type DocumentationStatus,
+  type EvidenceAssessment,
+  type LifecycleQualifier,
+  type SupportedTool,
+} from '../../../shared/entities';
+import type { InspectionRule } from '../../../shared/registries/rule-types';
+import type { RuleRelations } from '../../../shared/registries/relation-types';
 
 /**
  * One typed segment of a selector program
@@ -74,19 +83,71 @@ function segmentMatchesName(segment: MatcherSegment, name: string): boolean {
 }
 
 /**
- * One in-flight matching position inside one selector program: the program
- * plus the next segment index to consume. Plain data the walk threads
- * through directory levels.
+ * Which authored selector admitted a candidate — the provenance the walk
+ * threads through every matching position so a discovered file arrives with
+ * the identity of the rule that admitted it. Without it, a vendor module
+ * would have to re-derive the admitting rule by matching the public path
+ * again, which is exactly the selector reinterpretation the contract forbids
+ * (contracts/inspection-path-allowlist.md § "Vendor locators are not
+ * Inspector matchers"; FR-019).
+ */
+export interface SelectorOrigin {
+  /** Index of the admitting plan within the scan's compiled plan list. */
+  readonly planIndex: number;
+  /** Index of the admitting selector program within that plan. */
+  readonly selectorIndex: number;
+}
+
+/** True when two origins name the same authored selector. */
+function sameOrigin(left: SelectorOrigin, right: SelectorOrigin): boolean {
+  return left.planIndex === right.planIndex && left.selectorIndex === right.selectorIndex;
+}
+
+/**
+ * Deduplicates and orders origins so a candidate's admissions are stable
+ * regardless of enumeration order — two selectors of one plan, or two plans,
+ * can legitimately admit the same physical file
+ * (contracts/inspection-path-allowlist.md § Rule classes).
+ */
+export function normalizeSelectorOrigins(
+  origins: readonly SelectorOrigin[],
+): SelectorOrigin[] {
+  const unique: SelectorOrigin[] = [];
+  for (const origin of origins) {
+    if (!unique.some((existing) => sameOrigin(existing, origin))) {
+      unique.push(origin);
+    }
+  }
+  unique.sort((left, right) =>
+    left.planIndex !== right.planIndex
+      ? left.planIndex - right.planIndex
+      : left.selectorIndex - right.selectorIndex,
+  );
+  return unique;
+}
+
+/**
+ * One in-flight matching position inside one selector program: the program,
+ * the next segment index to consume, and which authored selector it came
+ * from. Plain data the walk threads through directory levels.
  */
 export interface ProgramState {
   /** The complete closed segment program being matched. */
   readonly program: readonly MatcherSegment[];
   /** The next segment index to consume. */
   readonly position: number;
+  /** Which authored selector this position belongs to. */
+  readonly origin: SelectorOrigin;
 }
 
 // `**` matches zero or more directories, so a state whose next token is
 // recursive also activates the state after it at the same level.
+//
+// The identity of a state includes the selector it came from. Two selectors can
+// share one program — a rule spread over another, or two rules authored from
+// one exported matcher — and each is a separate admission the candidate
+// retains, so collapsing them by program and position alone would silently drop
+// one provenance (data-model.md § ToolRecognition).
 function closeOverRecursion(states: readonly ProgramState[]): ProgramState[] {
   const closed: ProgramState[] = [];
   const queue = [...states];
@@ -94,14 +155,18 @@ function closeOverRecursion(states: readonly ProgramState[]): ProgramState[] {
     const state = queue.pop()!;
     if (
       closed.some(
-        (existing) => existing.program === state.program && existing.position === state.position,
+        (existing) =>
+          existing.program === state.program &&
+          existing.position === state.position &&
+          existing.origin.planIndex === state.origin.planIndex &&
+          existing.origin.selectorIndex === state.origin.selectorIndex,
       )
     ) {
       continue;
     }
     closed.push(state);
     if (state.program[state.position]?.kind === 'recursive-directories') {
-      queue.push({ program: state.program, position: state.position + 1 });
+      queue.push({ program: state.program, position: state.position + 1, origin: state.origin });
     }
   }
   return closed;
@@ -109,8 +174,13 @@ function closeOverRecursion(states: readonly ProgramState[]): ProgramState[] {
 
 /** The grammar queries one directory level answers; see {@link createProgramLevel}. */
 export interface ProgramLevel {
-  /** True when any active program accepts `name` as its terminal regular file. */
-  matchesFile(name: string): boolean;
+  /**
+   * The authored selectors that accept `name` as their terminal regular file,
+   * deduplicated and ordered. Empty means no program admits the entry. The
+   * walk needs the origins rather than a boolean because each admission is a
+   * separate rule provenance the candidate retains.
+   */
+  admissionsForFile(name: string): SelectorOrigin[];
   /**
    * The program states that continue matching below directory `name`: the
    * `**` step consumes the directory and keeps matching, and a non-terminal
@@ -129,15 +199,19 @@ export interface ProgramLevel {
 export function createProgramLevel(states: readonly ProgramState[]): ProgramLevel {
   const active = closeOverRecursion(states);
   return {
-    matchesFile(name) {
-      return active.some((state) => {
-        const segment = state.program[state.position];
-        return (
-          segment !== undefined &&
-          state.position === state.program.length - 1 &&
-          segmentMatchesName(segment, name)
-        );
-      });
+    admissionsForFile(name) {
+      return normalizeSelectorOrigins(
+        active
+          .filter((state) => {
+            const segment = state.program[state.position];
+            return (
+              segment !== undefined &&
+              state.position === state.program.length - 1 &&
+              segmentMatchesName(segment, name)
+            );
+          })
+          .map((state) => state.origin),
+      );
     },
     statesForDirectory(name) {
       const next: ProgramState[] = [];
@@ -153,7 +227,7 @@ export function createProgramLevel(states: readonly ProgramState[]): ProgramLeve
           state.position < state.program.length - 1 &&
           segmentMatchesName(segment, name)
         ) {
-          next.push({ program: state.program, position: state.position + 1 });
+          next.push({ program: state.program, position: state.position + 1, origin: state.origin });
         }
       }
       return next;
@@ -185,11 +259,25 @@ export type MatcherBase =
  * One static rule's structured matcher: the exact base boundary plus its
  * non-empty ordered selector programs
  * (data-model.md § StructuredInspectorMatcher).
+ *
+ * These two fields are the complete statement of what the Inspector walks —
+ * no other record narrows or widens it. There is deliberately no upward axis.
+ * A vendor lookup that walks from a runtime working directory up to the
+ * repository root terminates at the selected root, because the selected root
+ * *is* that repository root (FR-001); the chain therefore has exactly one
+ * in-scope layer and needs no notation. `ANY_DIRECTORIES` remains the one
+ * downward axis.
+ *
+ * What the *vendor* documents about its own lookup lives on its
+ * `VendorBehaviorStatement`, and what stays unknowable at inspection time is a
+ * `ConditionFactKey`; neither grants or removes read authority here
+ * (contracts/inspection-path-allowlist.md § "Vendor locators are not
+ * Inspector matchers").
  */
 export interface StructuredInspectorMatcher {
   /** The one boundary every selector is relative to. */
   readonly base: MatcherBase;
-  /** Non-empty ordered unique selector programs. */
+  /** Non-empty ordered unique selector programs, each anchored at {@link base}. */
   readonly selectors: readonly (readonly MatcherSegment[])[];
 }
 
@@ -271,14 +359,14 @@ export interface TraversalPlan {
  * selector array. Unlike a glob `*`, it also matches names with a leading
  * dot.
  */
-export const ANY_NAME: MatcherSegment = Object.freeze({ kind: 'regex', pattern: /(?:)/u });
+export const ANY_NAME: MatcherSegment = { kind: 'regex', pattern: /(?:)/u };
 
 /**
  * Authoring token: matches zero or more directories of any spelling
  * (`recursive-directories`, the `**` step). Never terminal and never
  * adjacent to another ANY_DIRECTORIES.
  */
-export const ANY_DIRECTORIES: MatcherSegment = Object.freeze({ kind: 'recursive-directories' });
+export const ANY_DIRECTORIES: MatcherSegment = { kind: 'recursive-directories' };
 
 /**
  * Authoring input for one selector segment: a plain string is an exact
@@ -389,9 +477,124 @@ export function compileSelectorPrograms(
 }
 
 /**
- * The shipped Repository traversal-plan catalog a Repository scan executes
- * (FR-003). The per-vendor inventory phases contribute their compiled rule
- * plans here; until the first vendor rule ships, the allowlist is genuinely
- * empty and a Repository scan legitimately publishes an empty inventory.
+ * One shipped rule paired with its compiled plan — the unit a scan submits to
+ * the traversal module. The pairing is what lets a discovered candidate carry
+ * its admitting rule identity: the traversal reports the plan index that
+ * admitted each file, and the caller resolves it here rather than re-matching
+ * the public path (FR-019).
  */
-export const REPOSITORY_TRAVERSAL_PLANS: readonly TraversalPlan[] = [];
+export interface CompiledInspectionRule {
+  /**
+   * The shipped rule record itself, so a consumer never looks one up by ID:
+   * everything a recognition needs about the admitting rule — its identity,
+   * its documentation state — is reachable from here.
+   */
+  readonly rule: InspectionRule;
+  /** The rule's graph edges, resolved once here rather than per candidate. */
+  readonly relations: RuleRelations;
+  /**
+   * The recognizing product, proven non-`shared` when the plan was compiled.
+   * Kept beside the record because `InspectionRule.tool` still admits
+   * `shared`, which a candidate-admitting rule never is.
+   */
+  readonly tool: SupportedTool;
+  /**
+   * The recognized kind, proven non-null when the plan was compiled — the
+   * same reason `tool` is repeated.
+   */
+  readonly kind: CustomizationKind;
+  /** The immutable plan compiled from the rule's structured matcher. */
+  readonly plan: TraversalPlan;
+}
+
+/**
+ * Resolves the rules that admitted one discovered candidate from the selector
+ * origins the traversal reported. `rules` is the exact list whose plans the
+ * scan submitted, so `planIndex` is a direct lookup — no public path is
+ * re-matched and no selector text is reinterpreted (FR-019).
+ */
+export function resolveAdmittingRules(
+  rules: readonly CompiledInspectionRule[],
+  admissions: readonly SelectorOrigin[],
+): CompiledInspectionRule[] {
+  return admissions.map((admission) => {
+    const rule = rules[admission.planIndex];
+    if (rule === undefined) {
+      throw new TypeError(`traversal reported an unknown plan index: ${admission.planIndex}`);
+    }
+    return rule;
+  });
+}
+
+/**
+ * The evidence-bearing fields shared by every registry subject a provenance
+ * can cite. Declared structurally so this module — which owns the grammar and
+ * the assembler — needs no runtime import of the registry data modules, which
+ * author their matchers against the tokens declared above (importing them back
+ * would be a module cycle).
+ */
+export interface EvidenceBearingSubject {
+  /** How completely official sources establish this subject's assertion. */
+  readonly documentationStatus: DocumentationStatus;
+  /** The subject's upstream lifecycle claims; empty never means `stable`. */
+  readonly lifecycleQualifiers: readonly LifecycleQualifier[];
+}
+
+/**
+ * Input of {@link assembleRuleEvidenceAssessments}: the compiled rule, whole.
+ *
+ * Not the rule beside separately supplied subject arrays. The compiled record
+ * already carries both its `rule` and the `relations` naming every behavior and
+ * strategy that rule references, so taking it leaves the caller nothing to get
+ * wrong — no ID paired with another rule's evidence state, and no array that is
+ * empty, extra, or from a different rule than the one being assembled.
+ */
+export type RuleEvidenceAssemblyInput = CompiledInspectionRule;
+
+/**
+ * The sole `EvidenceAssessment[]` assembler (QR-005, T060/T061): resolves the
+ * owning rule plus every referenced behavior and strategy and copies each
+ * subject's exact record once.
+ *
+ * There is nothing to resolve: the caller hands over the subject records
+ * themselves, because a relation holds the record rather than its identifier.
+ * A reference that points at nothing is therefore unrepresentable, which is
+ * why no lookup here tests for `undefined`.
+ *
+ * The result is deliberately never reduced to a scalar, a worst status, or a
+ * qualifier union: a reduction would hide which specific behavior, rule, or
+ * strategy carries the weaker documentation state, which is the one thing
+ * QR-005 exists to keep visible. Duplicate rejection, the fixed qualifier
+ * order, and the fixed subject sort all come from
+ * {@link buildEvidenceAssessments}, so there is exactly one implementation of
+ * those rules.
+ */
+export function assembleRuleEvidenceAssessments(
+  input: RuleEvidenceAssemblyInput,
+): EvidenceAssessment[] {
+  const assessments: EvidenceAssessment[] = [
+    {
+      subjectKind: 'rule',
+      subjectId: input.rule.ruleId,
+      documentationStatus: input.rule.documentationStatus,
+      lifecycleQualifiers: input.rule.lifecycleQualifiers,
+    },
+  ];
+  for (const behavior of input.relations.basedOnBehaviors) {
+    assessments.push({
+      subjectKind: 'behavior',
+      subjectId: behavior.behaviorId,
+      documentationStatus: behavior.documentationStatus,
+      lifecycleQualifiers: behavior.lifecycleQualifiers,
+    });
+  }
+  for (const strategy of input.relations.explainedByStrategies) {
+    assessments.push({
+      subjectKind: 'strategy',
+      subjectId: strategy.strategyId,
+      documentationStatus: strategy.documentationStatus,
+      lifecycleQualifiers: strategy.lifecycleQualifiers,
+    });
+  }
+  return buildEvidenceAssessments(assessments);
+}

@@ -8,8 +8,10 @@
 // design — no node: imports — so the client build can import it.
 import type { SerializedDiagnostic } from './diagnostics';
 import type {
+  CustomizationKind,
   EvidenceAssessment,
   ReadableFileEncoding,
+  SameNameSkillResolution,
   SourceBoundaryDto,
   SourceStatus,
   SupportedTool,
@@ -57,26 +59,175 @@ export type RecognitionParseStatus =
   | 'failed';
 
 /**
- * One tool recognition as summarized on an inventory row
- * (contracts/http-api.md § get-session `files[]` recognition summaries):
- * exactly tool, kind, parse status, provenance count, and the
- * recognition's diagnostic IDs — no recognition ID and never extraction
- * content.
+ * One rule/path admission behind a recognition
+ * (data-model.md § ToolRecognition `provenances`). Admissions are retained
+ * separately rather than collapsed into a recognition-level winner, because
+ * scope, order, applicability, and evidence differ per admission even when
+ * two rules admit the same physical file.
  */
-export interface RecognitionSummaryDto {
+export interface CandidateProvenanceDto {
+  /** The inspection rule that admitted the candidate. */
+  readonly ruleId: string;
+  /** The admitted Source-relative Path, as displayed (NFC). */
+  readonly matchedPath: string;
+  /** Where the admitted customization applies; see {@link ScopeDescriptor}. */
+  readonly scope: ScopeDescriptor;
+  /**
+   * Exactly one assessment for the admitting rule and for every behavior and
+   * strategy it references, sorted and never reduced to a scalar (QR-005).
+   */
+  readonly evidenceAssessments: readonly EvidenceAssessment[];
+}
+
+/**
+ * The per-kind payload of a recognition: the kind itself plus whatever
+ * identifies a recognition of that kind (data-model.md § ToolRecognition).
+ *
+ * It is one field rather than fields spread across the record because what
+ * identifies a recognition differs by kind and does not fit a shared optional:
+ * a skill declares a single `name`, while an MCP carrier declares one per
+ * server. Keeping it in a single union also means a summary is a copy of the
+ * record's payload rather than a per-kind reconstruction of it — no projection
+ * has to branch just to move a value across.
+ *
+ * The kind lives here rather than beside this field so there is one discriminant
+ * and no second copy that could disagree with it.
+ */
+export type RecognitionDetails =
+  /** A skill, identified by the name authored in its own file. */
+  | {
+      /** The recognized customization kind. */
+      readonly kind: 'skill';
+      /**
+       * The skill's own declared name, exactly as authored, or absent when the
+       * recognizer extracted none (FR-007).
+       *
+       * This is the one authored value outside the FR-027 acknowledgement gate.
+       * It is presentation identity rather than content: it is the identifier
+       * the vendor's own selectors and menus use, it is not recoverable from
+       * the Source-relative Path — a skill's `name` need not match its
+       * directory — and a list that cannot name what it lists is not an
+       * inventory.
+       *
+       * Absent, never empty: an authored empty string is a different fact from
+       * no name at all, and collapsing them would report one as the other.
+       */
+      readonly declaredName?: string;
+      /**
+       * The Source-relative Paths of the files accompanying the `SKILL.md` in
+       * its own directory, sorted — the scripts, references, and assets that
+       * make a skill more than a paragraph
+       * (contracts/inspection-path-allowlist.md § Bounded companion census).
+       *
+       * Listed, never read and never admitted: the list says what is beside the
+       * file, not that the vendor loads any of it. The inventory row shows how
+       * many there are and the detail view shows which; the count is `length`
+       * rather than a second field, because two states can disagree and one
+       * cannot.
+       *
+       * Always present, empty when the `SKILL.md` sits alone: being a directory
+       * is what a skill is, so every recognized skill has been enumerated and
+       * there is no "nobody looked" state to distinguish.
+       */
+      readonly companionFiles: readonly string[];
+    }
+  /** Every other kind, until its recognizer phase gives it its own identity. */
+  | {
+      /** The recognized customization kind. */
+      readonly kind: Exclude<CustomizationKind, 'skill'>;
+    };
+
+/**
+ * One `SKILL.md` behind an inventory entry
+ * (contracts/http-api.md § get-session `skills[]`). It names its file by
+ * `fileId` and repeats nothing the file publishes for itself — path, size, read
+ * outcome, and file-scoped diagnostics all stay on {@link
+ * CustomizationFileSummaryDto}.
+ */
+export interface SkillDefinitionDto {
+  /** The `SKILL.md` this definition is authored in; joins to `files[]`. */
+  readonly fileId: string;
+  /**
+   * The tools that recognized this file as a skill, in the contracted tool
+   * order. Several products read one location — `.agents/skills/<name>/` is
+   * both a Codex and a Copilot skill location — so one file may be several.
+   */
+  readonly tools: readonly SupportedTool[];
+  /**
+   * The Source-relative Paths of the files accompanying this `SKILL.md` in its
+   * own directory, sorted — the scripts, references, and assets that make a
+   * skill more than a paragraph
+   * (contracts/inspection-path-allowlist.md § Bounded companion census).
+   *
+   * Listed, never read and never admitted: the list says what is beside the
+   * file, not that the vendor loads any of it. The row shows how many there are
+   * and the detail view shows which; the count is `length` rather than a second
+   * field, because two states can disagree and one cannot. Empty when the
+   * `SKILL.md` sits alone — being a directory is what a skill is, so every
+   * recognized skill has been enumerated.
+   */
+  readonly companionFiles: readonly string[];
+  /** Recognition-scoped extraction-failure diagnostics (FR-028). */
+  readonly diagnosticIds: readonly string[];
+}
+
+/**
+ * One row of the skill inventory (contracts/http-api.md § get-session
+ * `skills[]`, data-model.md § Inventory unit): one declared name and every
+ * `SKILL.md` that declares it.
+ *
+ * The name is the unit rather than the file because that is what the vendors'
+ * own selectors use, and it need not match the directory holding the file. A
+ * file-shaped row could not express it: two files may declare one name.
+ */
+export interface SkillInventoryEntryDto {
+  /**
+   * The declared name, or null for the definitions that declare none. Null is
+   * its own entry rather than a member of any named one: a file that declares
+   * no name has not joined a name, and folding it in would report a name it
+   * does not have.
+   */
+  readonly declaredName: string | null;
+  /** The `SKILL.md` files declaring this name, in Source-relative Path order. */
+  readonly definitions: readonly SkillDefinitionDto[];
+  /**
+   * How each recognizing tool resolves this name, sorted by tool. Empty for a
+   * single definition, because there is nothing to resolve.
+   *
+   * A grouped row publishes this instead of ordering its definitions: the
+   * shipped statements differ per tool and two of the three are incomplete, so
+   * an order would be a winner the Inspector has not recorded (FR-007).
+   */
+  readonly sameNameResolutions: readonly SameNameSkillResolutionDto[];
+}
+
+/** One tool's same-name resolution on a {@link SkillInventoryEntryDto}. */
+export interface SameNameSkillResolutionDto {
+  /** The tool the statement belongs to. */
+  readonly tool: SupportedTool;
+  /** What that tool documents; see {@link SameNameSkillResolution}. */
+  readonly resolution: SameNameSkillResolution;
+}
+
+/**
+ * One recognition entity: what one rule recognized in one file, carrying the
+ * kind-discriminated {@link RecognitionDetails} that identify it. Each kind's
+ * inventory row is projected from these, so a row copies the payload rather
+ * than reconstructing it per kind.
+ */
+export interface ToolRecognitionDto {
+  /** Opaque identity, unique within the owning generation. */
+  readonly recognitionId: string;
+  /** The file this recognition is attached to. */
+  readonly fileId: string;
   /** The recognizing tool. */
   readonly tool: SupportedTool;
-  /**
-   * The recognized customization kind (data-model.md § ToolRecognition).
-   * The closed kind catalog and its wire spellings are owned by the vendor
-   * recognizer phases and their contract gate; no recognizer exists yet, so
-   * this stays an open string until those phases fix the union.
-   */
-  readonly kind: string;
+  /** The kind and its per-kind identity; see {@link RecognitionDetails}. */
+  readonly details: RecognitionDetails;
   /** Closed extraction state; see {@link RecognitionParseStatus}. */
   readonly parseStatus: RecognitionParseStatus;
-  /** How many rule/path admissions back this recognition (data-model.md § ToolRecognition `provenances`). */
-  readonly provenanceCount: number;
+  /** Sorted non-empty rule/path admissions behind this recognition. */
+  readonly provenances: readonly CandidateProvenanceDto[];
   /** Recognition-scoped extraction-failure diagnostics (FR-028). */
   readonly diagnosticIds: readonly string[];
 }
@@ -155,13 +306,6 @@ export type CustomizationFileSummaryDto =
       readonly sizeBytes: number;
       /** Per-file parse rollup for inventory display; see {@link ParseSummary}. */
       readonly parseSummary: ParseSummary;
-      /**
-       * Recognition summaries per the get-session contract row. Projected
-       * empty until the vendor recognizer phases store `ToolRecognition`
-       * entities — the summary data (tool, kind, provenance count) lives on
-       * those entities, and no production recognizer exists yet.
-       */
-      readonly recognitions: readonly RecognitionSummaryDto[];
     })
   /** Inventory projection of a NUL-containing diagnostic-only file. */
   | (CustomizationFileBase & {
@@ -198,7 +342,12 @@ export type ScanProgressPhase =
  * projected into the owning {@link SourceDto}.
  */
 export interface ScanProgressDto {
-  /** The admitted request this progress reports; null only in placeholders. */
+  /**
+   * The admitted request this progress reports, equal to `Source.scanRequestId`
+   * for any waiting, active, or finished source scan. Null for barrier-owned
+   * disable progress, which belongs to a Global operation rather than to one
+   * scanned Source (data-model.md § ScanProgress).
+   */
   readonly scanRequestId: string | null;
   /** Coarse status-display phase in documented pipeline order. */
   readonly phase: ScanProgressPhase;
@@ -344,7 +493,12 @@ export interface SourceConditionFactDto {
   readonly behaviorRefs: readonly string[];
   /** Sorted composition/selection strategies used by the projection. */
   readonly strategyRefs: readonly string[];
-  /** Sorted non-empty official evidence records; never grants a read. */
+  /**
+   * Sorted non-empty keys of the official-sources contract rows behind the
+   * fact (contracts/official-sources.md); never grants a read. Evidence lives
+   * on the registry records themselves, so these name the cited rows rather
+   * than entries in a registry of their own.
+   */
   readonly sourceRefs: readonly string[];
   /**
    * Exactly one assessment for `ruleId` and every referenced behavior and
@@ -468,9 +622,21 @@ export interface SourceDto {
   readonly boundary: SourceBoundaryDto;
   /** The owning sequence's last committed generation (FR-030). */
   readonly generation: number;
-  /** The latest admitted scan request for this Source; null before any. */
+  /**
+   * The latest admitted scan request for this Source. Null before any
+   * admission, and again once every admitted attempt has had its publication
+   * authority revoked: a revoked attempt's overlay reverts to the exact
+   * pre-admission state, so the Source states no request rather than one whose
+   * result was discarded (data-model.md § Source).
+   */
   readonly scanRequestId: string | null;
-  /** Live scan progress; null while no scan is running. */
+  /**
+   * This Source's scan progress, which outlives the scan: the completed
+   * counters and the `complete` phase stay so a Ready or Partial Source can
+   * state what its committed attempt did. Null while the Source is `idle` or
+   * `failed` — a Source that has never been scanned, and one whose attempt
+   * failed, both state no progress (data-model.md § Source `progress`).
+   */
   readonly progress: ScanProgressDto | null;
   /** Origin-file-less Source Condition Facts (FR-039). */
   readonly conditionFacts: readonly SourceConditionFactDto[];
@@ -534,12 +700,20 @@ export interface SessionSnapshot {
   /** Every Source's public projection. */
   readonly sources: readonly SourceDto[];
   /**
-   * The committed inventory of both sequences' current generations as
-   * content-free summary rows (contracts/http-api.md § get-session
-   * `files[]`); `sourceText` is served only by the acknowledgement-gated
-   * detail routes (FR-027).
+   * Every discovered file of both sequences' current generations, with its own
+   * facts only — path, read outcome, size, diagnostics (contracts/http-api.md
+   * § get-session `files[]`). What a file was recognized as belongs to the
+   * per-kind inventories, which refer to it by `fileId`. `sourceText` is served
+   * only by the acknowledgement-gated detail routes (FR-027).
    */
   readonly files: readonly CustomizationFileSummaryDto[];
+  /**
+   * The skill inventory: one entry per declared name
+   * (data-model.md § Inventory unit). A row's unit is decided by the kind, not
+   * by the file, so each kind publishes its own inventory as its recognizer
+   * phase ships rather than widening one shared row shape.
+   */
+  readonly skills: readonly SkillInventoryEntryDto[];
   /**
    * Active-generation Diagnostic records plus session-owned lifecycle
    * records (contracts/http-api.md § get-session `diagnostics[]`).

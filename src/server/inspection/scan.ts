@@ -1,15 +1,24 @@
-// Closed file-confined publication matrix for one Source scan attempt
-// (spec.md § Closed Scan Publication Outcomes, FR-002/FR-028/FR-030). This
-// module converts the traversal module's typed per-file results into the
-// exact publication input of a generation commit: a file-confined outcome
-// stays confined to its file as a diagnostic-only item and makes an
-// otherwise publishable generation `partial`; an unreadable root fails the
-// Source attempt with the source-scoped Diagnostic and publishes no partial
+// Repository scan orchestration and the closed file-confined publication
+// matrix for one Source scan attempt (T067; spec.md § Closed Scan Publication
+// Outcomes, FR-002/FR-028/FR-030). This module submits the shipped compiled
+// allowlist to the traversal module, consumes its typed per-file results,
+// resolves each candidate's admitting rules from the selector origins the
+// traversal reported, hands them to the owning vendor recognizer, and turns
+// the whole thing into the exact publication input of a generation commit.
+//
+// It performs no filesystem I/O itself: directory enumeration and file
+// reading stay in `traversal.ts` (FR-019, QR-003), and this module never
+// re-matches a public path against a selector — the admissions come from the
+// walk that actually admitted the file.
+//
+// The publication matrix is closed and total: a file-confined outcome stays
+// confined to its file as a diagnostic-only item and makes an otherwise
+// publishable generation `partial`; an unreadable root fails the Source
+// attempt with the source-scoped Diagnostic and publishes no partial
 // inventory; and a failure that is not confined to one file is never
 // converted into a Diagnostic — it propagates ordinarily from the traversal
 // call, aborts the attempt without a commit, and is reported as the failed
-// request's real error (FR-030 retains the last committed snapshot). It
-// performs no filesystem I/O itself.
+// request's real error (FR-030 retains the last committed snapshot).
 import { createOpaqueId } from '../../shared/entities';
 import {
   createDiagnostic,
@@ -21,19 +30,33 @@ import {
 import type {
   CustomizationFileDto,
   ParseSummary,
-  RecognitionParseStatus,
   SerializedDiagnostic,
+  ToolRecognitionDto,
 } from '../../shared/api-types';
 import type { GenerationOutcome } from '../session/scan-generation';
-import type { TraversalScanResult } from './traversal';
+import { CODEX_REPOSITORY_RULES } from './rules/codex';
+import { resolveAdmittingRules, type CompiledInspectionRule } from './rules/registry';
+import { recognizeCodexCandidate, type RecognitionInput } from './recognizers/codex';
+import { join } from 'node:path';
+import { runTraversalScan, type TraversalScanResult } from './traversal';
+
+/**
+ * The shipped Repository rule catalog a Repository scan executes (FR-003),
+ * in fixed vendor order. Each inventory phase contributes its vendor module
+ * here; while only Codex skills ship, a repository with no `SKILL.md`
+ * legitimately publishes an empty inventory rather than an error.
+ */
+export const REPOSITORY_INSPECTION_RULES: readonly CompiledInspectionRule[] = [
+  ...CODEX_REPOSITORY_RULES,
+];
 
 /**
  * The assembled publication of one completed traversal
  * (spec.md § Closed Scan Publication Outcomes):
  *  - 'publishable'    traversal completed; the commit input carries every
  *                     file (complete or diagnostic-only) plus the attempt's
- *                     diagnostics, with `outcome` `partial` exactly when a
- *                     file-confined outcome exists (FR-028)
+ *                     recognitions and diagnostics, with `outcome` `partial`
+ *                     exactly when a file-confined outcome exists (FR-028)
  *  - 'source-failed'  the root was missing or unreadable: the attempt fails
  *                     with the source-scoped `root-unreadable` Diagnostic
  *                     and no generation (FR-002)
@@ -47,8 +70,26 @@ export type ScanPublication =
       readonly outcome: GenerationOutcome;
       /** Every published file, complete and diagnostic-only alike. */
       readonly files: readonly CustomizationFileDto[];
+      /** Every recognition attached to a published readable file. */
+      readonly recognitions: readonly ToolRecognitionDto[];
       /** The attempt's serialized diagnostics. */
       readonly diagnostics: readonly SerializedDiagnostic[];
+      /**
+       * How many directory entries the walk looked at. The committed progress
+       * reports it, so a finished scan states what it did rather than the zero
+       * its counters were admitted with (contracts/http-api.md § get-session
+       * `progress`).
+       */
+      readonly visitedEntries: number;
+      /**
+       * Allowlisted candidate files the traversal discovered
+       * (data-model.md § ScanProgress). Carried through rather than derived
+       * from `files`: a normalization-collision group is discovered and then
+       * rejected, so the published count is the smaller number.
+       */
+      readonly candidateFiles: number;
+      /** Bytes the attempt accepted, as counted while reading. */
+      readonly readBytes: number;
     }
   /** An unreadable Source root that fails without a generation commit. */
   | {
@@ -58,25 +99,17 @@ export type ScanPublication =
       readonly diagnostic: SerializedDiagnostic;
     };
 
-/**
- * One recognition outcome produced for a readable file by the recognizers
- * (data-model.md § ToolRecognition). The publication matrix consumes only
- * the closed extraction state; extraction content stays recognizer-owned.
- */
-export interface CandidateRecognitionOutcome {
-  /** Opaque recognition identity within the producing attempt. */
-  readonly recognitionId: string;
-  /**
-   * Closed extraction state: 'not-attempted' means no allowlisted extractor
-   * applies, 'failed' is all-or-nothing for this recognition only (FR-028).
-   */
-  readonly parseStatus: RecognitionParseStatus;
-}
-
 /** Input of {@link assembleScanPublication}: one Source's completed traversal. */
 export interface ScanPublicationInput {
   /** The scanned Source every published record belongs to. */
   readonly sourceId: string;
+  /**
+   * The retained raw selected root the traversal ran from. A candidate's raw
+   * segments are relative to it, so it is what turns them back into the
+   * filesystem operand a recognizer is given; see
+   * {@link RecognitionInput.absolutePath}.
+   */
+  readonly root: string;
   /**
    * The lifecycle owner a `root-unreadable` failure attaches to: the
    * automatic first Repository scan uses `repository`, an explicit rescan of
@@ -86,23 +119,29 @@ export interface ScanPublicationInput {
    * this module never guesses it.
    */
   readonly rootFailureOwner: LifecycleOwnerKey;
+  /**
+   * The exact rule list whose plans produced `result`. Candidate admissions
+   * are plan indexes into this list, so passing a different list would
+   * misattribute provenance.
+   */
+  readonly rules: readonly CompiledInspectionRule[];
   /** The traversal module's typed result for this attempt. */
   readonly result: TraversalScanResult;
   /**
-   * Recognition outcomes per readable file, keyed by its NFC public path.
-   * Absent entries mean nothing recognized the file (`not-applicable`).
-   * The vendor recognizer phases populate this; the matrix arm for a
-   * `failed` recognition exists independently of them (FR-028).
+   * How one readable candidate's admissions become recognitions. Defaults to
+   * {@link recognizeCandidate}, the shipped vendor dispatch. It is a
+   * parameter for the same reason `rules` is: the publication matrix owns the
+   * closed per-file outcome table and must stay independent of which vendors
+   * happen to ship, so the recognizer set is data it is given rather than a
+   * dependency it hard-codes.
    */
-  readonly recognitions?: ReadonlyMap<string, readonly CandidateRecognitionOutcome[]>;
+  readonly recognize?: (input: RecognitionInput) => Promise<ToolRecognitionDto[]>;
 }
 
 // Projects the closed per-file parse rollup from recognition states
 // (data-model.md § CustomizationFile): `not-attempted` records never change
 // the last three projections.
-function projectParseSummary(
-  recognitions: readonly CandidateRecognitionOutcome[],
-): ParseSummary {
+function projectParseSummary(recognitions: readonly ToolRecognitionDto[]): ParseSummary {
   const parsed = recognitions.some((recognition) => recognition.parseStatus === 'parsed');
   const failed = recognitions.some((recognition) => recognition.parseStatus === 'failed');
   if (parsed && failed) {
@@ -117,13 +156,24 @@ function projectParseSummary(
   return 'not-applicable';
 }
 
+// Dispatches one readable candidate's admissions to the owning vendor
+// recognizers. Only tools with a shipped recognizer contribute; an admission
+// whose tool has no recognizer yet simply produces no recognition, which is
+// what "the rule is not shipped for this milestone" must look like — never a
+// fabricated recognition of an unknown kind.
+function recognizeCandidate(input: RecognitionInput): Promise<ToolRecognitionDto[]> {
+  return recognizeCodexCandidate(input);
+}
+
 /**
  * Assembles the closed publication matrix from one traversal result
  * (FR-002/FR-024/FR-025/FR-028). Every mapping is per-file and total:
  *  - a readable file publishes its complete decoded text (a replacement
- *    decode is complete, not partial);
+ *    decode is complete, not partial) plus the recognitions its admissions
+ *    produced;
  *  - a NUL-containing file publishes a diagnostic-only `binary` item with
- *    its coherent `sourceId`/`fileId`/`sourceRelativePath` tuple;
+ *    its coherent `sourceId`/`fileId`/`sourceRelativePath` tuple and is never
+ *    recognized, because recognition would need content it has none of;
  *  - an unreadable or disappeared file publishes a diagnostic-only
  *    `unknown` item the same way;
  *  - a `failed` recognition on a readable file publishes its
@@ -136,8 +186,15 @@ function projectParseSummary(
  *    file-confined outcome, so it does not make the generation partial.
  * Diagnostic construction happens here so a caller cannot fabricate a
  * Source or path the traversal never admitted.
+ *
+ * The assembly awaits the recognizers it is given rather than performing any
+ * filesystem operation itself: what a recognition needs from disk — the census
+ * a rule declares — is a per-kind detail that the recognizer owns, so this
+ * module stays the closed per-file outcome table and nothing more.
  */
-export function assembleScanPublication(input: ScanPublicationInput): ScanPublication {
+export async function assembleScanPublication(
+  input: ScanPublicationInput,
+): Promise<ScanPublication> {
   if (input.result.kind === 'root-unreadable') {
     // Source-scoped with sourceId only: the failed attempt publishes no
     // partial inventory (FR-002). The lifecycle owner is the published
@@ -155,6 +212,7 @@ export function assembleScanPublication(input: ScanPublicationInput): ScanPublic
   }
 
   const files: CustomizationFileDto[] = [];
+  const recognitions: ToolRecognitionDto[] = [];
   const diagnostics: DiagnosticRecord[] = [];
   let hasFileConfinedOutcome = false;
 
@@ -162,16 +220,33 @@ export function assembleScanPublication(input: ScanPublicationInput): ScanPublic
     const fileId = createOpaqueId();
     switch (candidate.outcome.kind) {
       case 'readable': {
-        const recognitions = input.recognitions?.get(candidate.publicPath) ?? [];
+        const admissions = resolveAdmittingRules(input.rules, candidate.admissions).map(
+          (compiled, index) => ({ compiled, origin: candidate.admissions[index]! }),
+        );
+        const fileRecognitions = await (input.recognize ?? recognizeCandidate)({
+          fileId,
+          matchedPath: candidate.publicPath,
+          absolutePath: join(input.root, ...candidate.rawSegments),
+          sourceRoot: input.root,
+          admissions,
+          sourceText: candidate.outcome.sourceText,
+        });
         const fileDiagnosticIds: string[] = [];
-        for (const recognition of recognitions) {
+        // A failed recognition keeps the complete readable source displayed and
+        // comparison-eligible; only that recognition's derived
+        // metadata/relationships are omitted, and the diagnostic makes the
+        // generation partial (FR-028).
+        //
+        // The record is one diagnostic that both its owners reference: the
+        // recognition, because the failure is recognition-scoped and a row that
+        // lists recognitions has no other way to reach it, and the file,
+        // because the outcome is file-confined and the file is what a reader
+        // asks about first. A recognizer never sees the diagnostic ID it will
+        // be given, so the ID is attached here rather than inside it.
+        const published = fileRecognitions.map((recognition) => {
           if (recognition.parseStatus !== 'failed') {
-            continue;
+            return recognition;
           }
-          // A failed recognition keeps the complete readable source
-          // displayed and comparison-eligible; only that recognition's
-          // derived metadata/relationships are omitted, and the file-scoped
-          // diagnostic makes the generation partial (FR-028).
           hasFileConfinedOutcome = true;
           const diagnostic = createDiagnostic({
             code: 'recognition-parse-failed',
@@ -182,7 +257,12 @@ export function assembleScanPublication(input: ScanPublicationInput): ScanPublic
           });
           diagnostics.push(diagnostic);
           fileDiagnosticIds.push(diagnostic.diagnosticId);
-        }
+          return {
+            ...recognition,
+            diagnosticIds: [...recognition.diagnosticIds, diagnostic.diagnosticId],
+          };
+        });
+        recognitions.push(...published);
         files.push({
           fileId,
           sourceId: input.sourceId,
@@ -191,8 +271,8 @@ export function assembleScanPublication(input: ScanPublicationInput): ScanPublic
           hadLeadingBom: candidate.outcome.hadLeadingBom,
           sourceText: candidate.outcome.sourceText,
           sizeBytes: candidate.outcome.sizeBytes,
-          parseSummary: projectParseSummary(recognitions),
-          recognitionIds: recognitions.map((recognition) => recognition.recognitionId),
+          parseSummary: projectParseSummary(published),
+          recognitionIds: published.map((recognition) => recognition.recognitionId),
           relationshipIds: [],
           diagnosticIds: fileDiagnosticIds,
         });
@@ -252,8 +332,84 @@ export function assembleScanPublication(input: ScanPublicationInput): ScanPublic
     kind: 'publishable',
     outcome: hasFileConfinedOutcome ? 'partial' : 'complete',
     files,
+    recognitions,
+    visitedEntries: input.result.visitedEntries,
+    candidateFiles: input.result.candidateFiles,
+    readBytes: input.result.readBytes,
     // The attempt publishes its records in the contracted deterministic
     // order — owner rank, scope, path, code (data-model.md § Diagnostic).
     diagnostics: sortDiagnostics(diagnostics).map(serializeDiagnostic),
   };
+}
+
+/** Input of {@link runSourceScan}: one Source attempt over the shipped catalog. */
+export interface SourceScanInput {
+  /** The scanned Source every published record belongs to. */
+  readonly sourceId: string;
+  /**
+   * The retained raw selected root, never the escaped display boundary
+   * (FR-001/FR-002). The boundary grants no read authority and cannot be
+   * decoded back into a path.
+   */
+  readonly root: string;
+  /** The lifecycle owner of a `root-unreadable` failure; see {@link ScanPublicationInput}. */
+  readonly rootFailureOwner: LifecycleOwnerKey;
+  /** The compiled rule catalog to execute; defaults to the shipped Repository set. */
+  readonly rules?: readonly CompiledInspectionRule[];
+  /** The vendor recognizer dispatch; see {@link ScanPublicationInput.recognize}. */
+  readonly recognize?: (input: RecognitionInput) => Promise<ToolRecognitionDto[]>;
+  /**
+   * Called as the attempt moves through its phases, so a refresh mid-scan shows
+   * where it is. The attempt ignores what it returns.
+   */
+  readonly onProgress?: (update: {
+    readonly phase: 'enumerating' | 'reading' | 'recognizing';
+    readonly visitedEntries: number;
+    readonly candidateFiles: number;
+    readonly readBytes: number;
+    /** Attempt-local diagnostics accumulated so far (data-model.md § ScanProgress). */
+    readonly diagnosticCount: number;
+  }) => void;
+}
+
+/**
+ * Runs one Source scan attempt end to end: traverse the compiled allowlist
+ * from the retained raw root, then assemble the closed publication matrix.
+ * A failure that is not confined to one file propagates unchanged to the
+ * trigger-owning boundary — the accepted-job catch for a session-API rescan
+ * (FR-030) or the process top level for the ownerless startup scan — because
+ * converting it here would fabricate a partial result out of an attempt that
+ * never completed.
+ */
+export async function runSourceScan(input: SourceScanInput): Promise<ScanPublication> {
+  const rules = input.rules ?? REPOSITORY_INSPECTION_RULES;
+  const result = await runTraversalScan({
+    root: input.root,
+    plans: rules.map((rule) => rule.plan),
+    ...(input.onProgress === undefined ? {} : { onProgress: input.onProgress }),
+  });
+  if (result.kind === 'scanned') {
+    // Reading is done; what follows is recognizing what was read, which is the
+    // phase a mid-scan refresh should now see.
+    input.onProgress?.({
+      phase: 'recognizing',
+      visitedEntries: result.visitedEntries,
+      candidateFiles: result.candidateFiles,
+      readBytes: result.readBytes,
+      // What the attempt has accumulated at this point: one per rejected
+      // normalization-collision group. The per-file outcomes assembly turns
+      // into diagnostics are not counted yet, because assembly has not run —
+      // reporting the terminal total here would state a number the attempt
+      // has not reached (data-model.md § ScanProgress).
+      diagnosticCount: result.collisions.length,
+    });
+  }
+  return assembleScanPublication({
+    sourceId: input.sourceId,
+    root: input.root,
+    rootFailureOwner: input.rootFailureOwner,
+    rules,
+    result,
+    ...(input.recognize === undefined ? {} : { recognize: input.recognize }),
+  });
 }

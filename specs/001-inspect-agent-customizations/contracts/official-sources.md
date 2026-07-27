@@ -19,7 +19,7 @@ runtime.
 
 ## Record notation and ownership
 
-Each table row owns one `OfficialSourceRecord` key and the following authored fields:
+Each table row is one official source, identified by a stable key, and owns the following authored fields:
 
 - `canonicalUrl` is the exact HTTPS URL shown in the row. It has no credentials, query,
   or fragment.
@@ -29,7 +29,7 @@ Each table row owns one `OfficialSourceRecord` key and the following authored fi
   descriptor. It is not a CSS/XPath selector or a URL fragment. The drift checker must
   find exactly one matching heading for every listed entry. Anchor and heading-text
   capacity and completion behavior are inherited from Node.js and the execution environment.
-- `reviewedOn` is the date of the last human semantic review. It is authored per row;
+- `reviewedOn` is the date those sections were last read and compared against the claims the citing records make, by whoever performed the comparison. Confirming that a cited heading still exists is a narrower check and does not advance the date. It is authored per row;
   records not re-reviewed during the 2026-07-20 reconciliation retain `2026-07-15`.
 - Every row uses `normalizationVersion: 1`.
 
@@ -68,19 +68,25 @@ Sort by `subjectKind` in fixed `behavior`, `rule`, `strategy` order and then by 
 and reject duplicate `(subjectKind, subjectId)` records. The assessment is backed by that
 subject's complete `sourceRefs` set and does not change the reverse-index ownership below.
 
-The checked-in `tests/fixtures/conformance/official-sources.json` is the machine-readable
-materialization of these rows. It additionally contains the three derived affected-ID
-arrays, maintained paraphrased assertions, `snapshotFingerprint`, and
-`semanticFingerprint` required by the data model. It must not introduce another
-`sourceId`, URL, host, anchor, or review date.
+The `evidence` array on each maintained behavior, rule, and strategy record is the
+machine-readable materialization of these rows: a citation states its reviewed URL,
+headings, review date, and maintained paraphrase on the record it supports, so a claim and
+its basis cannot drift apart. A citation must not introduce a URL, host, anchor, or review
+date this page does not carry.
 
-The registry contains exactly the rows below. Each fixture record has a non-empty maintained
-assertion set. Every assertion has a stable assertion ID, paraphrased expected semantics,
-and affected IDs that are subsets of that source's exact
-reverse index; copied page text and generic product-area targets are forbidden.
-`snapshotFingerprint` is the lowercase SHA-256 of the selected normalized sections.
-`semanticFingerprint` is the lowercase SHA-256 of canonical JSON for the assertions after
-their stable sort. No field is truncated.
+The registry contains exactly the rows below. A citation of one of them carries its source
+ID, its URL and host, the exact reviewed headings, the review date, and one maintained
+paraphrase of what those headings establish for the citing record; copied page text and
+generic product-area targets are forbidden. No field is truncated.
+
+Two fields belong to the maintainer-only drift command (T1032) and exist nowhere until it
+runs. `snapshotFingerprint` is the lowercase SHA-256 of the selected normalized sections,
+`null` before a capture: it digests remote page text, which the offline gate never fetches,
+so writing a value without an actual capture would record evidence that was never gathered.
+`semanticFingerprint` is the lowercase SHA-256 of canonical JSON over the maintained
+paraphrases after a stable sort, recomputed offline once the command has something to sort.
+A per-source reverse index — which behaviors, rules, and strategies a page affects — is
+derived by that same command from the citations; no record publishes one today.
 
 Only these exact official hosts are valid in this release:
 
@@ -89,7 +95,7 @@ Only these exact official hosts are valid in this release:
 | GitHub | `docs.github.com` |
 | Microsoft | `code.visualstudio.com` |
 | Anthropic | `code.claude.com` |
-| OpenAI | `learn.chatgpt.com` |
+| OpenAI | `learn.chatgpt.com`; `developers.openai.com` |
 
 Accepted first-party evidence classes form one hierarchy across all vendors. General
 guides, reference pages, and versioned release notes or changelogs on the exact hosts
@@ -140,9 +146,9 @@ exact inverse index from the Evidence cells:
 4. Invert every `(ownerId, sourceId)` edge. Sort and deduplicate each source's results into
    `affectedBehaviorIds`, `affectedRuleIds`, and `affectedStrategyIds`. At least one of the
    three arrays must be non-empty.
-5. Require reciprocal equality with the arrays materialized in
-   `official-sources.json`. A missing edge, extra edge, duplicate edge, unknown source,
-   unknown owner, orphan source, or differing owner type fails the offline contract test.
+5. Require reciprocal equality with the citations carried by the records themselves. A
+   missing edge, extra edge, duplicate edge, unknown source, unknown owner, orphan source,
+   or differing owner type fails the offline contract test.
 6. Parse the Japanese counterparts independently and require the same owner IDs,
    `sourceId` tokens, and edges. Japanese files validate semantic parity but are not a
    second input to the generated arrays.
@@ -238,19 +244,19 @@ and does not admit an unregistered source repository or issue as substitute evid
 
 | `sourceId` | `canonicalUrl` | `officialHost` | Exact `sectionAnchors` | `reviewedOn` |
 |---|---|---|---|---|
-| `anthropic.claude-code.directory.file-reference` | <https://code.claude.com/docs/en/claude-directory> | `code.claude.com` | `File reference` | `2026-07-15` |
-| `anthropic.claude-code.memory.locations-load` | <https://code.claude.com/docs/en/memory> | `code.claude.com` | `Choose where to put CLAUDE.md files`; `How CLAUDE.md files load`; `Organize rules with .claude/rules/`; `Auto memory` | `2026-07-15` |
-| `anthropic.claude-code.large-codebases.start-directory` | <https://code.claude.com/docs/en/large-codebases> | `code.claude.com` | `Choose where to start Claude`; `Layer CLAUDE.md files by directory`; `Add per-directory skills` | `2026-07-15` |
+| `anthropic.claude-code.directory.file-reference` | <https://code.claude.com/docs/en/claude-directory> | `code.claude.com` | `File reference` | `2026-07-25` |
+| `anthropic.claude-code.memory.locations-load` | <https://code.claude.com/docs/en/memory> | `code.claude.com` | `Choose where to put CLAUDE.md files`; `How CLAUDE.md files load`; `Organize rules with .claude/rules/`; `Auto memory` | `2026-07-25` |
+| `anthropic.claude-code.large-codebases.start-directory` | <https://code.claude.com/docs/en/large-codebases> | `code.claude.com` | `Choose where to start Claude`; `Layer CLAUDE.md files by directory`; `Add per-directory skills` | `2026-07-25` |
 | `anthropic.claude-code.sdk.setting-sources` | <https://code.claude.com/docs/en/agent-sdk/claude-code-features> | `code.claude.com` | `Control filesystem settings with settingSources`; `CLAUDE.md load locations` | `2026-07-15` |
-| `anthropic.claude-code.settings.scopes-precedence` | <https://code.claude.com/docs/en/settings> | `code.claude.com` | `Configuration scopes`; `Settings precedence`; `Plugin configuration` | `2026-07-15` |
-| `anthropic.claude-code.skills.locations-discovery` | <https://code.claude.com/docs/en/skills> | `code.claude.com` | `Where skills live`; `How a skill gets its command name` | `2026-07-15` |
-| `anthropic.claude-code.subagents.scope-context` | <https://code.claude.com/docs/en/sub-agents> | `code.claude.com` | `Choose the subagent scope`; `Scope MCP servers to a subagent`; `Preload skills into subagents`; `Enable persistent memory`; `What loads at startup`; `Spawn nested subagents` | `2026-07-15` |
-| `anthropic.claude-code.hooks.locations-resolution` | <https://code.claude.com/docs/en/hooks> | `code.claude.com` | `Hook locations`; `The /hooks menu` | `2026-07-15` |
-| `anthropic.claude-code.mcp.scopes-precedence` | <https://code.claude.com/docs/en/mcp> | `code.claude.com` | `MCP installation scopes`; `Plugin-provided MCP servers` | `2026-07-15` |
-| `anthropic.claude-code.output-styles.locations` | <https://code.claude.com/docs/en/output-styles> | `code.claude.com` | `Create a custom output style`; `How output styles work` | `2026-07-15` |
-| `anthropic.claude-code.plugins.components-scopes` | <https://code.claude.com/docs/en/plugins-reference> | `code.claude.com` | `Plugin installation scopes`; `Skills-directory plugins`; `Plugin manifest schema`; `File locations reference` | `2026-07-15` |
-| `anthropic.claude-code.marketplaces.catalog-sources` | <https://code.claude.com/docs/en/plugin-marketplaces> | `code.claude.com` | `Create the marketplace file`; `Plugin sources` | `2026-07-15` |
-| `anthropic.claude-code.ide.shared-differences` | <https://code.claude.com/docs/en/ide-integrations> | `code.claude.com` | `Configure settings`; `VS Code extension vs. Claude Code CLI`; `Manage marketplaces` | `2026-07-15` |
+| `anthropic.claude-code.settings.scopes-precedence` | <https://code.claude.com/docs/en/settings> | `code.claude.com` | `Configuration scopes`; `Settings precedence`; `Plugin configuration` | `2026-07-25` |
+| `anthropic.claude-code.skills.locations-discovery` | <https://code.claude.com/docs/en/skills> | `code.claude.com` | `Where skills live`; `How a skill gets its command name` | `2026-07-25` |
+| `anthropic.claude-code.subagents.scope-context` | <https://code.claude.com/docs/en/sub-agents> | `code.claude.com` | `Choose the subagent scope`; `Scope MCP servers to a subagent`; `Preload skills into subagents`; `Enable persistent memory`; `What loads at startup`; `Let subagents spawn their own subagents` | `2026-07-25` |
+| `anthropic.claude-code.hooks.locations-resolution` | <https://code.claude.com/docs/en/hooks> | `code.claude.com` | `Hook locations`; `The /hooks menu` | `2026-07-25` |
+| `anthropic.claude-code.mcp.scopes-precedence` | <https://code.claude.com/docs/en/mcp> | `code.claude.com` | `MCP installation scopes`; `Plugin-provided MCP servers` | `2026-07-25` |
+| `anthropic.claude-code.output-styles.locations` | <https://code.claude.com/docs/en/output-styles> | `code.claude.com` | `Create a custom output style`; `How output styles work` | `2026-07-25` |
+| `anthropic.claude-code.plugins.components-scopes` | <https://code.claude.com/docs/en/plugins-reference> | `code.claude.com` | `Plugin installation scopes`; `Skills-directory plugins`; `Plugin manifest schema`; `File locations reference` | `2026-07-25` |
+| `anthropic.claude-code.marketplaces.catalog-sources` | <https://code.claude.com/docs/en/plugin-marketplaces> | `code.claude.com` | `Create the marketplace file`; `Plugin sources` | `2026-07-25` |
+| `anthropic.claude-code.ide.shared-differences` | <https://code.claude.com/docs/en/ide-integrations> | `code.claude.com` | `Configure settings`; `VS Code extension vs. Claude Code CLI`; `Manage marketplaces` | `2026-07-25` |
 | `anthropic.claude-code.changelog.legacy-command-nesting` | <https://code.claude.com/docs/en/changelog> | `code.claude.com` | `1.0.45`; `1.0.51` | `2026-07-15` |
 
 ## OpenAI official sources
@@ -268,36 +274,44 @@ Every non-NUL byte stream is decoded once with UTF-8 replacement semantics; inva
 sequences produce `utf-8-replaced`, and the resulting garbled text containing `U+FFFD` remains in the
 complete source used for parsing, extraction, display, and comparison. Maintained OpenAI
 assertions must paraphrase only the selected official sections and must not encode these
-Inspector-owned filesystem or decoding choices. Because no selected official text or
-maintained OpenAI assertion changed in this reconciliation, its `snapshotFingerprint`,
-`semanticFingerprint`, and `reviewedOn` remain unchanged.
+Inspector-owned filesystem or decoding choices. A reconciliation that changes no selected
+official text and no maintained assertion advances no `reviewedOn`, and leaves the two
+fingerprints as they were — which, until the maintainer-only drift command has run, is
+absent.
 
 | `sourceId` | `canonicalUrl` | `officialHost` | Exact `sectionAnchors` | `reviewedOn` |
 |---|---|---|---|---|
-| `openai.codex.agents-md` | <https://learn.chatgpt.com/docs/agent-configuration/agents-md.md> | `learn.chatgpt.com` | `How Codex discovers guidance`; `Customize fallback filenames` | `2026-07-15` |
-| `openai.codex.config-basic` | <https://learn.chatgpt.com/docs/config-file/config-basic.md> | `learn.chatgpt.com` | `Codex configuration file`; `Configuration precedence`; `Feature flags` | `2026-07-15` |
-| `openai.codex.custom-prompts` | <https://learn.chatgpt.com/docs/custom-prompts.md> | `learn.chatgpt.com` | `Custom Prompts` | `2026-07-15` |
-| `openai.codex.hooks` | <https://learn.chatgpt.com/docs/hooks.md> | `learn.chatgpt.com` | `Where Codex looks for hooks`; `Review and trust hooks`; `Config shape`; `Plugin-bundled hooks` | `2026-07-15` |
-| `openai.codex.mcp` | <https://learn.chatgpt.com/docs/extend/mcp.md> | `learn.chatgpt.com` | `Connect Codex to an MCP server` | `2026-07-15` |
-| `openai.codex.memories` | <https://learn.chatgpt.com/docs/customization/memories.md> | `learn.chatgpt.com` | `How local Codex memories work`; `Local memory storage`; `Configure local memories` | `2026-07-15` |
-| `openai.codex.plugins` | <https://learn.chatgpt.com/docs/build-plugins.md> | `learn.chatgpt.com` | `Build your own curated plugin list`; `Add a marketplace from the CLI`; `Create a plugin manually`; `Marketplace metadata`; `How the ChatGPT desktop app uses marketplaces`; `Plugin structure` | `2026-07-15` |
-| `openai.codex.rules` | <https://learn.chatgpt.com/docs/agent-configuration/rules.md> | `learn.chatgpt.com` | `Create a rules file` | `2026-07-15` |
-| `openai.codex.skills` | <https://learn.chatgpt.com/docs/build-skills.md> | `learn.chatgpt.com` | `How Codex uses skills`; `Where to save skills`; `Distribute skills with plugins`; `Optional metadata` | `2026-07-15` |
-| `openai.codex.subagents` | <https://learn.chatgpt.com/docs/agent-configuration/subagents.md> | `learn.chatgpt.com` | `Orchestration and thread controls`; `Custom agents` | `2026-07-15` |
+| `openai.codex.agents-md` | <https://learn.chatgpt.com/docs/agent-configuration/agents-md.md> | `learn.chatgpt.com` | `How Codex discovers guidance`; `Customize fallback filenames` | `2026-07-25` |
+| `openai.codex.config-basic` | <https://learn.chatgpt.com/docs/config-file/config-basic.md> | `learn.chatgpt.com` | `Codex configuration file`; `Configuration precedence`; `Feature flags` | `2026-07-25` |
+| `openai.codex.custom-prompts` | <https://learn.chatgpt.com/docs/custom-prompts.md> | `learn.chatgpt.com` | `Custom Prompts` | `2026-07-25` |
+| `openai.codex.hooks` | <https://learn.chatgpt.com/docs/hooks.md> | `learn.chatgpt.com` | `Where Codex looks for hooks`; `Review and trust hooks`; `Config shape`; `Plugin-bundled hooks` | `2026-07-25` |
+| `openai.codex.mcp` | <https://learn.chatgpt.com/docs/extend/mcp.md> | `learn.chatgpt.com` | `Connect Codex to an MCP server` | `2026-07-25` |
+| `openai.codex.memories` | <https://learn.chatgpt.com/docs/customization/memories.md> | `learn.chatgpt.com` | `How local Codex memories work`; `Local memory storage`; `Configure local memories` | `2026-07-25` |
+| `openai.codex.plugins` | <https://developers.openai.com/plugins/build/plugins.md> | `developers.openai.com` | `Build your own curated plugin list`; `Add a marketplace from the CLI`; `Create a plugin manually`; `Marketplace metadata`; `How local marketplaces work`; `Plugin structure` | `2026-07-25` |
+| `openai.codex.rules` | <https://learn.chatgpt.com/docs/agent-configuration/rules.md> | `learn.chatgpt.com` | `Create a rules file` | `2026-07-25` |
+| `openai.codex.skills` | <https://learn.chatgpt.com/docs/build-skills.md> | `learn.chatgpt.com` | `How ChatGPT and Codex use skills`; `Where Codex loads local skills`; `Distribute skills with plugins`; `Optional metadata` | `2026-07-25` |
+| `openai.codex.subagents` | <https://learn.chatgpt.com/docs/agent-configuration/subagents.md> | `learn.chatgpt.com` | `Orchestration and thread controls`; `Custom agents` | `2026-07-25` |
 
 ## Offline validation and explicit drift review
 
 Normal product startup, Repository inspection, Global inspection, tests, and the packaged
-runtime never fetch an official page and never load this development/test fixture. The
-offline contract check is:
+runtime never fetch an official page. Citations live on the records they support, so the
+offline contract check is the suite that already covers those records:
 
 ```sh
-pnpm exec vitest run tests/contract/official-sources
+pnpm exec vitest run tests/contract
 ```
 
-It validates the exact registry/Evidence set equality, bilingual edge parity, reciprocal
-affected IDs, official hosts, record schema, assertion targets, and recomputed
-`semanticFingerprint` without network access.
+It validates without network access that every citation names a source ID, an HTTPS URL on
+its own stated host with no credentials, query, or fragment, non-empty reviewed sections, a
+review date, and a maintained paraphrase; that each citation resolves to its normative row
+above — same URL, same host, and sections drawn from the ones that row lists — and that the
+row reads identically in both languages; and that one source ID resolves to exactly one
+page, so two records cannot disagree about where a page is after it moves.
+
+Reciprocal affected IDs and `semanticFingerprint` recomputation are not covered yet: no
+record publishes a reverse index, and no fingerprint is captured until the maintainer-only
+drift command runs. The tasks that ship them are named in tasks.md.
 
 Only a maintainer explicitly runs the networked drift review, at minimum before every
 frozen release candidate and whenever a material upstream change to a supported surface
@@ -312,7 +326,13 @@ accepts only UTF-8 HTML or Markdown, and every redirect hop must retain the row'
 `officialHost`. Request, response, redirect, and decoding capacity comes from Node.js and
 the execution environment; a recoverable environment failure fails closed. An HTTPS
 downgrade, cross-host redirect, wrong content type, decoding failure, or missing or duplicate
-heading is a hard failure. A different
+heading is a hard failure. A client-rendered page is the one exception, and only for the
+heading check: such a page serves its table of contents and no `<h*>` element at all, so the
+heading exists while no element carrying it does. The command accepts a cited heading whose
+anchor slug appears exactly once in the served table of contents, and reports which headings
+were established that way. Without that carve-out the check would report drift for every
+citation on a client-rendered page — a hard failure the maintainer can only ever dismiss,
+which is how a gate stops being read. A different
 final URL on the same host is reported for review and never silently replaces
 `canonicalUrl`.
 

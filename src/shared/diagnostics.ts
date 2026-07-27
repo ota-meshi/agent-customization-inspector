@@ -80,8 +80,8 @@ export interface DiagnosticRegistryEntry {
    * code, so the text is derived here rather than sent per instance: it is
    * fixed by the code exactly like `scope` and `severity`, and keeping it in
    * this one `Record` means a new code cannot compile without its text
-   * (amended 2026-07-24 — it previously lived in a separate client message
-   * catalog, which was a second map over the same closed union).
+   * (a separate client message catalog would be a second map over the same
+   * closed union).
    */
   readonly message: string;
 }
@@ -243,6 +243,16 @@ export function createDiagnostic(input: DiagnosticInput): DiagnosticRecord {
   } else {
     if (input.lifecycleOwnerKey === null) {
       throw new TypeError('an out-of-generation lifecycle diagnostic requires an owner key');
+    }
+    // A `published-source:<id>` owner names the Source the record is attached
+    // to, so the two must be the same Source. Left unchecked, a record could
+    // claim one Source's lifecycle while pointing at another
+    // (data-model.md § Diagnostic lifecycle owners).
+    const published = /^published-source:(.+)$/u.exec(input.lifecycleOwnerKey);
+    if (published !== null && published[1] !== sourceId) {
+      throw new TypeError(
+        'a published-source lifecycle owner must name the diagnostic\'s own sourceId',
+      );
     }
   }
   return {

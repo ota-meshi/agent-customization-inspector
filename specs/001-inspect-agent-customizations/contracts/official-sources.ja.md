@@ -17,7 +17,7 @@ Source registryはevidence metadataであって、Inspectorのread authorityで�
 
 ## Record表記とownership
 
-各table rowは1つの`OfficialSourceRecord` keyと、次のauthored fieldを所有する。
+各table rowは1つのofficial sourceであり、stableなkeyで識別され、次のauthored fieldを所有する。
 
 - `canonicalUrl`はrowに示した正確なHTTPS URLである。Credential、query、fragmentを含まない。
 - `officialHost`は、そのrecordだけに対するexact host allowlistである。Subdomainやsibling hostを暗黙に
@@ -26,7 +26,7 @@ Source registryはevidence metadataであって、Inspectorのread authorityで�
   CSS/XPath selectorでもURL fragmentでもない。Drift checkerは、列挙した各entryに対して正確に1つの
   matching headingを見つけなければならない。Anchorとheading-textのcapacityおよびcompletion behaviorは、
   Node.jsと実行環境から継承する。
-- `reviewedOn`は、最後にhuman semantic reviewを実施した日であり、rowごとに記述する。
+- `reviewedOn`は、該当sectionを最後に読み、引用元recordの主張と突き合わせた日であり、実施者は問わない。引用した見出しがまだ存在することの確認はより狭い検査であり、この日付を進めない。rowごとに記述する。
   2026-07-20 reconciliationで再reviewしていないrecordは`2026-07-15`を保持する。
 - 全rowが`normalizationVersion: 1`を使用する。
 
@@ -62,16 +62,22 @@ strategy subjectを参照するprovenanceまたはrelationshipは、subject単�
 `(subjectKind, subjectId)` recordをrejectする。Assessmentは該当subjectのcompleteな`sourceRefs` setに
 裏付けられ、後述するreverse-index ownershipを変更しない。
 
-Checked-inする`tests/fixtures/conformance/official-sources.json`は、これらrowのmachine-readableな
-materializationである。さらにdata modelが要求する3つのderived affected-ID array、maintainedな
-paraphrased assertion、`snapshotFingerprint`、`semanticFingerprint`を含む。別の`sourceId`、URL、host、
-anchor、review dateを導入してはならない。
+維持対象の各behavior・rule・strategy recordが持つ`evidence`配列が、これらrowのmachine-readableな
+materializationである: citationは、review済みURL・見出し・review日・maintainedなparaphraseを、それが支える
+record上に書く。したがって主張と根拠は互いに乖離しえない。Citationは、このpageが持たないURL、host、anchor、
+review dateを導入してはならない。
 
-Registryは以下のrowだけを持つ。各fixture recordはnon-emptyなmaintained assertion setを持つ。各assertionは
-stable assertion ID、paraphrase済みexpected semantics、そのsourceのexact reverse
-indexのsubsetであるaffected IDを持つ。Page textのcopyとgeneric product-area targetは禁止する。
-`snapshotFingerprint`は選択・normalizeしたsectionのlowercase SHA-256、`semanticFingerprint`はstable sort後の
-assertionに対するcanonical JSONのlowercase SHA-256である。Fieldはtruncateしない。
+Registryは以下のrowだけを持つ。Rowを引用するcitationは、source ID、URLとhost、正確なreview済み見出し、
+review日、そしてそれらの見出しが引用元recordに対して確立する内容のmaintainedなparaphrase 1件を持つ。
+Page textのcopyとgeneric product-area targetは禁止する。Fieldをtruncateしない。
+
+2つのfieldはmaintainer専用のdrift command（T1032）に属し、それが実行されるまでどこにも存在しない。
+`snapshotFingerprint`は選択したnormalized sectionのlowercase SHA-256で、capture前は`null`とする。
+Remote page textをdigestするが、offline gateはそれをfetchしないため、実際のcaptureなしに値を書くことは
+収集していないevidenceを記録することになる。`semanticFingerprint`はmaintainedなparaphraseをstable sortした
+canonical JSONのlowercase SHA-256で、commandがsort対象を持った時点でoffline再計算する。Sourceごとの
+逆引きindex — あるpageがどのbehavior・rule・strategyに影響するか — も同じcommandがcitationから導出する。
+今日それを公開するrecordは無い。
 
 このreleaseでは、次のexact official hostだけを許可する。
 
@@ -80,7 +86,7 @@ assertionに対するcanonical JSONのlowercase SHA-256である。Fieldはtrunc
 | GitHub | `docs.github.com` |
 | Microsoft | `code.visualstudio.com` |
 | Anthropic | `code.claude.com` |
-| OpenAI | `learn.chatgpt.com` |
+| OpenAI | `learn.chatgpt.com`; `developers.openai.com` |
 
 受理する第一者evidence classは、全vendor横断で1つのhierarchyを形成する。上記exact host上の
 general guide、reference page、version付きrelease noteまたはchangelogだけを受理classとする。
@@ -124,7 +130,7 @@ issue/discussion statementはすべてのdocumentation classより下位であ�
 4. 全`(ownerId, sourceId)` edgeを反転する。Sourceごとの結果をsort・deduplicateして
    `affectedBehaviorIds`、`affectedRuleIds`、`affectedStrategyIds`へ格納する。3 arrayのうち少なくとも
    1つはnon-emptyでなければならない。
-5. `official-sources.json`にmaterializeしたarrayとのreciprocal equalityを要求する。Edgeの欠落・余分・
+5. Record自身が運ぶcitationとのreciprocal equalityを要求する。Edgeの欠落・余分・
    重複、unknown source、unknown owner、orphan source、owner typeの不一致はoffline contract testを
    failさせる。
 6. 日本語counterpartを独立にparseし、同じowner ID、`sourceId` token、edgeを要求する。日本語fileは
@@ -211,19 +217,19 @@ conflictとして保持し、未登録のsource repositoryやissueを代替evide
 
 | `sourceId` | `canonicalUrl` | `officialHost` | Exact `sectionAnchors` | `reviewedOn` |
 |---|---|---|---|---|
-| `anthropic.claude-code.directory.file-reference` | <https://code.claude.com/docs/en/claude-directory> | `code.claude.com` | `File reference` | `2026-07-15` |
-| `anthropic.claude-code.memory.locations-load` | <https://code.claude.com/docs/en/memory> | `code.claude.com` | `Choose where to put CLAUDE.md files`; `How CLAUDE.md files load`; `Organize rules with .claude/rules/`; `Auto memory` | `2026-07-15` |
-| `anthropic.claude-code.large-codebases.start-directory` | <https://code.claude.com/docs/en/large-codebases> | `code.claude.com` | `Choose where to start Claude`; `Layer CLAUDE.md files by directory`; `Add per-directory skills` | `2026-07-15` |
+| `anthropic.claude-code.directory.file-reference` | <https://code.claude.com/docs/en/claude-directory> | `code.claude.com` | `File reference` | `2026-07-25` |
+| `anthropic.claude-code.memory.locations-load` | <https://code.claude.com/docs/en/memory> | `code.claude.com` | `Choose where to put CLAUDE.md files`; `How CLAUDE.md files load`; `Organize rules with .claude/rules/`; `Auto memory` | `2026-07-25` |
+| `anthropic.claude-code.large-codebases.start-directory` | <https://code.claude.com/docs/en/large-codebases> | `code.claude.com` | `Choose where to start Claude`; `Layer CLAUDE.md files by directory`; `Add per-directory skills` | `2026-07-25` |
 | `anthropic.claude-code.sdk.setting-sources` | <https://code.claude.com/docs/en/agent-sdk/claude-code-features> | `code.claude.com` | `Control filesystem settings with settingSources`; `CLAUDE.md load locations` | `2026-07-15` |
-| `anthropic.claude-code.settings.scopes-precedence` | <https://code.claude.com/docs/en/settings> | `code.claude.com` | `Configuration scopes`; `Settings precedence`; `Plugin configuration` | `2026-07-15` |
-| `anthropic.claude-code.skills.locations-discovery` | <https://code.claude.com/docs/en/skills> | `code.claude.com` | `Where skills live`; `How a skill gets its command name` | `2026-07-15` |
-| `anthropic.claude-code.subagents.scope-context` | <https://code.claude.com/docs/en/sub-agents> | `code.claude.com` | `Choose the subagent scope`; `Scope MCP servers to a subagent`; `Preload skills into subagents`; `Enable persistent memory`; `What loads at startup`; `Spawn nested subagents` | `2026-07-15` |
-| `anthropic.claude-code.hooks.locations-resolution` | <https://code.claude.com/docs/en/hooks> | `code.claude.com` | `Hook locations`; `The /hooks menu` | `2026-07-15` |
-| `anthropic.claude-code.mcp.scopes-precedence` | <https://code.claude.com/docs/en/mcp> | `code.claude.com` | `MCP installation scopes`; `Plugin-provided MCP servers` | `2026-07-15` |
-| `anthropic.claude-code.output-styles.locations` | <https://code.claude.com/docs/en/output-styles> | `code.claude.com` | `Create a custom output style`; `How output styles work` | `2026-07-15` |
-| `anthropic.claude-code.plugins.components-scopes` | <https://code.claude.com/docs/en/plugins-reference> | `code.claude.com` | `Plugin installation scopes`; `Skills-directory plugins`; `Plugin manifest schema`; `File locations reference` | `2026-07-15` |
-| `anthropic.claude-code.marketplaces.catalog-sources` | <https://code.claude.com/docs/en/plugin-marketplaces> | `code.claude.com` | `Create the marketplace file`; `Plugin sources` | `2026-07-15` |
-| `anthropic.claude-code.ide.shared-differences` | <https://code.claude.com/docs/en/ide-integrations> | `code.claude.com` | `Configure settings`; `VS Code extension vs. Claude Code CLI`; `Manage marketplaces` | `2026-07-15` |
+| `anthropic.claude-code.settings.scopes-precedence` | <https://code.claude.com/docs/en/settings> | `code.claude.com` | `Configuration scopes`; `Settings precedence`; `Plugin configuration` | `2026-07-25` |
+| `anthropic.claude-code.skills.locations-discovery` | <https://code.claude.com/docs/en/skills> | `code.claude.com` | `Where skills live`; `How a skill gets its command name` | `2026-07-25` |
+| `anthropic.claude-code.subagents.scope-context` | <https://code.claude.com/docs/en/sub-agents> | `code.claude.com` | `Choose the subagent scope`; `Scope MCP servers to a subagent`; `Preload skills into subagents`; `Enable persistent memory`; `What loads at startup`; `Let subagents spawn their own subagents` | `2026-07-25` |
+| `anthropic.claude-code.hooks.locations-resolution` | <https://code.claude.com/docs/en/hooks> | `code.claude.com` | `Hook locations`; `The /hooks menu` | `2026-07-25` |
+| `anthropic.claude-code.mcp.scopes-precedence` | <https://code.claude.com/docs/en/mcp> | `code.claude.com` | `MCP installation scopes`; `Plugin-provided MCP servers` | `2026-07-25` |
+| `anthropic.claude-code.output-styles.locations` | <https://code.claude.com/docs/en/output-styles> | `code.claude.com` | `Create a custom output style`; `How output styles work` | `2026-07-25` |
+| `anthropic.claude-code.plugins.components-scopes` | <https://code.claude.com/docs/en/plugins-reference> | `code.claude.com` | `Plugin installation scopes`; `Skills-directory plugins`; `Plugin manifest schema`; `File locations reference` | `2026-07-25` |
+| `anthropic.claude-code.marketplaces.catalog-sources` | <https://code.claude.com/docs/en/plugin-marketplaces> | `code.claude.com` | `Create the marketplace file`; `Plugin sources` | `2026-07-25` |
+| `anthropic.claude-code.ide.shared-differences` | <https://code.claude.com/docs/en/ide-integrations> | `code.claude.com` | `Configure settings`; `VS Code extension vs. Claude Code CLI`; `Manage marketplaces` | `2026-07-25` |
 | `anthropic.claude-code.changelog.legacy-command-nesting` | <https://code.claude.com/docs/en/changelog> | `code.claude.com` | `1.0.45`; `1.0.51` | `2026-07-15` |
 
 ## OpenAI公式ソース
@@ -238,33 +244,42 @@ diagnostic-only outcomeとする。
 NULを含まない全byte streamはUTF-8 replacement semanticsで正確に1回decodeし、invalid sequenceは
 `utf-8-replaced`となり、生成された`U+FFFD`を含む文字化けtextをparsing、extraction、display、comparisonに使用する
 完全なsourceに保持する。Maintained OpenAI assertionは選択した公式sectionだけをparaphraseし、これらInspector所有の
-filesystemまたはdecode方針をencodeしてはならない。このreconciliationでは選択した公式textもmaintained OpenAI
-assertionも変わらないため、`snapshotFingerprint`、`semanticFingerprint`、`reviewedOn`は変更しない。
+filesystemまたはdecode方針をencodeしてはならない。選択した公式textもmaintained assertionも変えない
+reconciliationは`reviewedOn`を進めず、2つのfingerprintも当時のままとする — maintainer専用のdrift commandが
+実行されるまで、それは不在である。
 
 | `sourceId` | `canonicalUrl` | `officialHost` | Exact `sectionAnchors` | `reviewedOn` |
 |---|---|---|---|---|
-| `openai.codex.agents-md` | <https://learn.chatgpt.com/docs/agent-configuration/agents-md.md> | `learn.chatgpt.com` | `How Codex discovers guidance`; `Customize fallback filenames` | `2026-07-15` |
-| `openai.codex.config-basic` | <https://learn.chatgpt.com/docs/config-file/config-basic.md> | `learn.chatgpt.com` | `Codex configuration file`; `Configuration precedence`; `Feature flags` | `2026-07-15` |
-| `openai.codex.custom-prompts` | <https://learn.chatgpt.com/docs/custom-prompts.md> | `learn.chatgpt.com` | `Custom Prompts` | `2026-07-15` |
-| `openai.codex.hooks` | <https://learn.chatgpt.com/docs/hooks.md> | `learn.chatgpt.com` | `Where Codex looks for hooks`; `Review and trust hooks`; `Config shape`; `Plugin-bundled hooks` | `2026-07-15` |
-| `openai.codex.mcp` | <https://learn.chatgpt.com/docs/extend/mcp.md> | `learn.chatgpt.com` | `Connect Codex to an MCP server` | `2026-07-15` |
-| `openai.codex.memories` | <https://learn.chatgpt.com/docs/customization/memories.md> | `learn.chatgpt.com` | `How local Codex memories work`; `Local memory storage`; `Configure local memories` | `2026-07-15` |
-| `openai.codex.plugins` | <https://learn.chatgpt.com/docs/build-plugins.md> | `learn.chatgpt.com` | `Build your own curated plugin list`; `Add a marketplace from the CLI`; `Create a plugin manually`; `Marketplace metadata`; `How the ChatGPT desktop app uses marketplaces`; `Plugin structure` | `2026-07-15` |
-| `openai.codex.rules` | <https://learn.chatgpt.com/docs/agent-configuration/rules.md> | `learn.chatgpt.com` | `Create a rules file` | `2026-07-15` |
-| `openai.codex.skills` | <https://learn.chatgpt.com/docs/build-skills.md> | `learn.chatgpt.com` | `How Codex uses skills`; `Where to save skills`; `Distribute skills with plugins`; `Optional metadata` | `2026-07-15` |
-| `openai.codex.subagents` | <https://learn.chatgpt.com/docs/agent-configuration/subagents.md> | `learn.chatgpt.com` | `Orchestration and thread controls`; `Custom agents` | `2026-07-15` |
+| `openai.codex.agents-md` | <https://learn.chatgpt.com/docs/agent-configuration/agents-md.md> | `learn.chatgpt.com` | `How Codex discovers guidance`; `Customize fallback filenames` | `2026-07-25` |
+| `openai.codex.config-basic` | <https://learn.chatgpt.com/docs/config-file/config-basic.md> | `learn.chatgpt.com` | `Codex configuration file`; `Configuration precedence`; `Feature flags` | `2026-07-25` |
+| `openai.codex.custom-prompts` | <https://learn.chatgpt.com/docs/custom-prompts.md> | `learn.chatgpt.com` | `Custom Prompts` | `2026-07-25` |
+| `openai.codex.hooks` | <https://learn.chatgpt.com/docs/hooks.md> | `learn.chatgpt.com` | `Where Codex looks for hooks`; `Review and trust hooks`; `Config shape`; `Plugin-bundled hooks` | `2026-07-25` |
+| `openai.codex.mcp` | <https://learn.chatgpt.com/docs/extend/mcp.md> | `learn.chatgpt.com` | `Connect Codex to an MCP server` | `2026-07-25` |
+| `openai.codex.memories` | <https://learn.chatgpt.com/docs/customization/memories.md> | `learn.chatgpt.com` | `How local Codex memories work`; `Local memory storage`; `Configure local memories` | `2026-07-25` |
+| `openai.codex.plugins` | <https://developers.openai.com/plugins/build/plugins.md> | `developers.openai.com` | `Build your own curated plugin list`; `Add a marketplace from the CLI`; `Create a plugin manually`; `Marketplace metadata`; `How local marketplaces work`; `Plugin structure` | `2026-07-25` |
+| `openai.codex.rules` | <https://learn.chatgpt.com/docs/agent-configuration/rules.md> | `learn.chatgpt.com` | `Create a rules file` | `2026-07-25` |
+| `openai.codex.skills` | <https://learn.chatgpt.com/docs/build-skills.md> | `learn.chatgpt.com` | `How ChatGPT and Codex use skills`; `Where Codex loads local skills`; `Distribute skills with plugins`; `Optional metadata` | `2026-07-25` |
+| `openai.codex.subagents` | <https://learn.chatgpt.com/docs/agent-configuration/subagents.md> | `learn.chatgpt.com` | `Orchestration and thread controls`; `Custom agents` | `2026-07-25` |
 
 ## Offline validationと明示drift review
 
-通常のproduct startup、Repository inspection、Global inspection、test、packaged runtimeはofficial pageをfetchせず、
-このdevelopment/test fixtureもloadしない。Offline contract checkは次のcommandである。
+通常のproduct startup、Repository inspection、Global inspection、test、packaged runtimeはofficial pageを
+fetchしない。Citationは支えるrecord上にあるため、offline contract checkはそれらrecordを既に対象とする
+suiteである。
 
 ```sh
-pnpm exec vitest run tests/contract/official-sources
+pnpm exec vitest run tests/contract
 ```
 
-Network accessなしで、exact registry/Evidence set equality、bilingual edge parity、reciprocal affected ID、
-official host、record schema、assertion target、再計算した`semanticFingerprint`をvalidateする。
+Network accessなしで次をvalidateする。各citationがsource ID、credential/query/fragmentを含まず自身が
+述べたhost上にあるHTTPS URL、non-emptyなreview済みsection、review日、maintainedなparaphraseを持つこと。
+各citationが上記の規範的rowへ解決すること — 同一のURL、同一のhost、そのrowが挙げるsectionから取られた
+section — およびそのrowが両言語で同一であること。そして1つのsource IDが正確に1 pageへ解決すること
+— pageが移動した後に2つのrecordが所在で食い違えないこと。
+
+Reciprocal affected IDと`semanticFingerprint`の再計算はまだ対象外である。Reverse indexを公開するrecordは
+無く、fingerprintはmaintainer専用のdrift commandが実行されるまで取得されない。それらを出荷するtaskは
+tasks.mdに記載する。
 
 Networkを使用するdrift reviewはmaintainerだけが明示実行し、少なくともすべてのfrozen release candidate前と、
 supported surfaceへのmaterialなupstream変更を認知した時点で実行する。
@@ -276,7 +291,7 @@ pnpm run check:official-sources
 このcommandはcredential、cookie、Repository contents、その他local stateを送信しない。UTF-8 HTMLまたはMarkdownだけを
 受理し、全redirect hopはrowのexact `officialHost`を維持しなければならない。Request、response、redirect、decodeの
 capacityはNode.jsと実行環境から継承し、recoverableなenvironment failureはfail closedする。HTTPS downgrade、
-cross-host redirect、誤ったcontent type、decode failure、headingの欠落または重複はhard failureとする。同一host上の
+cross-host redirect、誤ったcontent type、decode failure、headingの欠落または重複はhard failureとする。ただしclient-renderedなページだけは例外とし、その例外はheading checkにのみ適用する。そうしたページはtable of contentsだけを配信して`<h*>` elementを一切出さないため、headingは存在するのにそれを担うelementが存在しない。Commandは、引用されたheadingのanchor slugが配信されたtable of contents内にちょうど1回現れる場合にそのheadingを受理し、その方法で確認したheadingを報告する。この例外がないと、client-renderedなページ上の全citationに対してdriftを報告することになる。Maintainerが却下する以外にないhard failureは、gateが読まれなくなる原因そのものである。同一host上の
 異なるfinal URLはreview対象として報告し、`canonicalUrl`を黙って置き換えない。
 
 Normalization version `1`は、列挙した各headingから同level以上の次heading直前までを選択し、document

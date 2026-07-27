@@ -24,7 +24,7 @@ vi.mock('../../../src/server/session/scan-generation', async (importOriginal) =>
 function bootstrapSession() {
   return createInspectionSession({
     invocationCwd: '/repo',
-    cwdOptionValue: null,
+    rootOptionValue: null,
     selectedRepositoryRoot: '/repo',
   });
 }
@@ -42,8 +42,12 @@ describe('completeScan preparation failure (T026 regression)', () => {
     await expect(
       coordinator.completeScan(admitted.scanRequestId, {
         files: [],
+        recognitions: [],
         diagnostics: [],
         outcome: 'complete',
+        visitedEntries: 0,
+        candidateFiles: 0,
+      readBytes: 0,
       }),
     ).rejects.toThrow('EIO: generation rekey failed');
 

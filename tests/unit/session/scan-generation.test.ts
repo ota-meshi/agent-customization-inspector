@@ -16,6 +16,7 @@ function commitInput(
   scanRequestId: string,
   files: Parameters<typeof prepareNextRepositoryGeneration>[1]['files'] = [],
   diagnostics: Parameters<typeof prepareNextRepositoryGeneration>[1]['diagnostics'] = [],
+  recognitions: Parameters<typeof prepareNextRepositoryGeneration>[1]['recognitions'] = [],
 ) {
   return {
     scannedSourceIds: ['src-1'],
@@ -24,6 +25,7 @@ function commitInput(
     finishedAt: NOW,
     outcome: 'complete' as const,
     files,
+    recognitions,
     diagnostics,
   };
 }
@@ -56,8 +58,8 @@ describe('prepareNextRepositoryGeneration', () => {
   });
 
   it('regenerates every file ID on commit (rekeying)', () => {
-    const makeFile = () => ({
-      fileId: 'stale-id',
+    const makeFile = (fileId: string) => ({
+      fileId,
       sourceId: 'src-1',
       sourceRelativePath: 'AGENTS.md',
       parseSummary: 'not-applicable' as const,
@@ -69,14 +71,16 @@ describe('prepareNextRepositoryGeneration', () => {
       relationshipIds: [],
       diagnosticIds: [],
     });
-    const next = prepareNextRepositoryGeneration(base, commitInput('scan-2', [makeFile(), makeFile()]));
+    const next = prepareNextRepositoryGeneration(
+      base,
+      commitInput('scan-2', [makeFile('stale-a'), makeFile('stale-b')]),
+    );
     const ids = next.files.map((file) => file.fileId);
-    expect(ids[0]).not.toBe('stale-id');
-    expect(ids[1]).not.toBe('stale-id');
+    expect(ids[0]).not.toBe('stale-a');
+    expect(ids[1]).not.toBe('stale-b');
     expect(ids[0]).not.toBe(ids[1]);
     expect(ids[0]).toMatch(/^[A-Za-z0-9_-]{22}$/u);
   });
-
   it('rewrites file-scoped diagnostic references through the same rekey map', () => {
     const file = {
       fileId: 'stale-id',

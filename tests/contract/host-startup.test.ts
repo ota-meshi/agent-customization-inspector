@@ -12,8 +12,10 @@ import packageJson from '../../package.json' with { type: 'json' };
 import {
   createInspectorDevframe,
   executeRepositoryScan,
+  startInspectorHost,
   type InspectorHostContext,
 } from '../../src/server/host/devframe-app';
+import { createDevServer } from 'devframe/adapters/dev';
 import { SessionCoordinator, createInspectionSession } from '../../src/server/session/session';
 import { runTraversalScan } from '../../src/server/inspection/traversal';
 import type { InspectionDataResult, SessionSnapshot } from '../../src/shared/api-types';
@@ -21,6 +23,38 @@ import type { InspectionDataResult, SessionSnapshot } from '../../src/shared/api
 vi.mock('../../src/server/inspection/traversal', () => ({
   runTraversalScan: vi.fn(),
 }));
+
+vi.mock('devframe/adapters/dev', () => ({
+  createDevServer: vi.fn(async () => ({ origin: 'http://localhost:1234', close: vi.fn() })),
+}));
+
+describe('host startup', () => {
+  it('hands the inspector definition to devframe and forwards only its options', async () => {
+    // The suite otherwise exercises the definition directly, which cannot show
+    // that anything starts a server with it: `startInspectorHost` is the one
+    // call the CLI makes, and an option it dropped — `openBrowser`, `onReady` —
+    // would silently change what a launch does.
+    const context = hostContext();
+    const onReady = vi.fn();
+    await startInspectorHost({ context, openBrowser: false, onReady });
+    expect(vi.mocked(createDevServer)).toHaveBeenCalledTimes(1);
+    const [definition, options] = vi.mocked(createDevServer).mock.calls[0]!;
+    // The definition this suite exercises everywhere else — identified by the
+    // contract-fixed product id, and carrying the same `setup` that registers
+    // the RPC catalog.
+    expect(definition.id).toBe(createInspectorDevframe(context).id);
+    expect(typeof definition.setup).toBe('function');
+    expect(options).toEqual({ openBrowser: false, onReady });
+  });
+
+  it('passes no server options when the launch names none', async () => {
+    await startInspectorHost({ context: hostContext() });
+    const [, options] = vi.mocked(createDevServer).mock.calls.at(-1)!;
+    // An absent option must stay absent rather than becoming an explicit
+    // `undefined`, which devframe would read as a value the launch chose.
+    expect(options).toEqual({});
+  });
+});
 
 /** One registered RPC function as captured from the definition's `setup`. */
 interface CapturedRpcFunction {
@@ -34,7 +68,7 @@ interface CapturedRpcFunction {
 function hostContext(): InspectorHostContext {
   const session = createInspectionSession({
     invocationCwd: '/repo',
-    cwdOptionValue: null,
+    rootOptionValue: null,
     selectedRepositoryRoot: '/repo',
   });
   return { session, coordinator: new SessionCoordinator(session) };

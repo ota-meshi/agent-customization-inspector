@@ -73,12 +73,12 @@ Global requirement is stated below.
 
 | Rule ID | Base | Selector program | Expansion | Class | Behavior refs | Documentation status | Evidence |
 |---|---|---|---|---|---|---|---|
-| `codex.repo.instructions` | Repository | `[ANY_DIRECTORIES, 'AGENTS.override.md']`; `[ANY_DIRECTORIES, 'AGENTS.md']` | `descendant-inventory` at the root and every descendant context directory | `static-candidate` | `codex.behavior.repo.instructions` | Documented; runtime chain conditional | `openai.codex.agents-md` |
-| `codex.repo.skill` | Repository | `[ANY_DIRECTORIES, '.agents', 'skills', ANY_NAME, 'SKILL.md']` | `descendant-inventory` plus `direct-child` of possible context layers; skill name is one direct child | `static-candidate` | `codex.behavior.repo.skills` | Documented; runtime chain conditional | `openai.codex.skills` |
-| `codex.repo.agent` | Repository | `[ANY_DIRECTORIES, '.codex', 'agents', /\.toml$/u]` | `descendant-inventory` plus `direct-child`; agent file is a direct child | `static-candidate` | `codex.behavior.repo.agents` | Partially documented | `openai.codex.subagents` |
-| `codex.repo.config` | Repository | `[ANY_DIRECTORIES, '.codex', 'config.toml']` | `descendant-inventory` of possible project layers | `static-candidate` | `codex.behavior.repo.config`, `codex.behavior.repo.mcp`, `codex.behavior.repo.hooks` | Documented; trust and runtime chain conditional | `openai.codex.config-basic`, `openai.codex.mcp` |
-| `codex.repo.hooks` | Repository | `[ANY_DIRECTORIES, '.codex', 'hooks.json']` | `descendant-inventory` of possible active config layers | `static-candidate` | `codex.behavior.repo.hooks` | Documented; trust and hook review conditional | `openai.codex.hooks` |
-| `codex.repo.rules` | Repository | `[ANY_DIRECTORIES, '.codex', 'rules', /\.rules$/u]` | `descendant-inventory` of layer roots plus `direct-child` within each `rules/` directory | `static-candidate` | `codex.behavior.repo.rules` | Experimental; nested rule directories excluded | `openai.codex.rules` |
+| `codex.repo.instructions` | Repository | `['AGENTS.override.md']`; `['AGENTS.md']` | `exact` for each selector at the Repository root; the page walks the repository root down to the runtime `cwd` | `static-candidate` | `codex.behavior.repo.instructions` | Documented; runtime chain conditional | `openai.codex.agents-md` |
+| `codex.repo.skill` | Repository | `['.agents', 'skills', ANY_NAME, 'SKILL.md']` | `exact` then `direct-child`, anchored at the Repository root; skill name is one direct child. Codex's skill scan runs *upward* from its working directory. The allowlist is anchored at the selected Repository root and reports that root's customizations (FR-003), so a nested `.agents/skills` one directory below belongs to a working directory this product does not select and is a near miss rather than a candidate; the dependency on that directory is the recognition's `runtime-cwd` condition | `static-candidate` | `codex.behavior.repo.skills` | Documented; runtime chain conditional | `openai.codex.skills` |
+| `codex.repo.agent` | Repository | `['.codex', 'agents', /\.toml$/u]` | `direct-child` of the Repository root's `.codex/agents/`; the page names `.codex/agents/` for project scope and documents no nested search | `static-candidate` | `codex.behavior.repo.agents` | Partially documented | `openai.codex.subagents` |
+| `codex.repo.config` | Repository | `['.codex', 'config.toml']` | `exact` at the Repository root; the page loads project config layers from the project root down to the runtime `cwd` | `static-candidate` | `codex.behavior.repo.config`, `codex.behavior.repo.mcp`, `codex.behavior.repo.hooks` | Documented; trust and runtime chain conditional | `openai.codex.config-basic`, `openai.codex.mcp` |
+| `codex.repo.hooks` | Repository | `['.codex', 'hooks.json']` | `exact` at the Repository root; the page names `<repo>/.codex/hooks.json` as the project location | `static-candidate` | `codex.behavior.repo.hooks` | Documented; trust and hook review conditional | `openai.codex.hooks` |
+| `codex.repo.rules` | Repository | `['.codex', 'rules', /\.rules$/u]` | `direct-child` of the Repository root's `rules/` directory; the page names `<repo>/.codex/rules/` and documents no nested recursion | `static-candidate` | `codex.behavior.repo.rules` | Experimental; nested rule directories excluded | `openai.codex.rules` |
 | `codex.repo.plugin-manifest` | Repository | `['.codex-plugin', 'plugin.json']` | `exact`; the selected Repository root is treated as the authored plugin root | `static-candidate` | `codex.behavior.plugin.manifest` | Inspector authored-project policy only; not Codex plugin discovery or activation | `openai.codex.plugins` |
 | `codex.repo.marketplace` | Repository | `['.agents', 'plugins', 'marketplace.json']`; `['.claude-plugin', 'marketplace.json']` | `exact` | `static-candidate` | `codex.behavior.repo.marketplace` | Exact Repository-root locations | `openai.codex.plugins` |
 
@@ -107,8 +107,11 @@ those components.
 ## Documented User behavior
 
 This table records what Codex supports for maintainers. It does not expand Global
-inspection. `CODEX_HOME` defaults to `$HOME/.codex`; it does not relocate the separate
-`$HOME/.agents` directories.
+inspection. The cited pages document `$HOME/.agents/skills` as the user skill location and
+`~/.codex` as the user configuration directory, and none of them documents an override that
+relocates `$HOME/.agents`. The Inspector therefore treats the two directories as distinct
+and records no relocation; a `CODEX_HOME` override moves only the `<CODEX_HOME>` locators in
+the table below.
 
 | Behavior ID | User behavior | User locator | Strategy / composition | Inspector status | Evidence |
 |---|---|---|---|---|---|

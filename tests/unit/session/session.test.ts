@@ -24,7 +24,7 @@ vi.mock('../../../src/server/inspection/fs-io', async (importOriginal) => {
 function bootstrapSession() {
   return createInspectionSession({
     invocationCwd: '/repo',
-    cwdOptionValue: null,
+    rootOptionValue: null,
     selectedRepositoryRoot: '/repo',
   });
 }
@@ -45,24 +45,24 @@ describe('session bootstrap (generation 0)', () => {
     expect(typeof repository.sourceId).toBe('string');
   });
 
-  it('selects the process-cwd origin when --cwd is omitted', () => {
+  it('selects the process-cwd origin when --root is omitted', () => {
     const session = bootstrapSession();
     expect(session.snapshot().sources[0]!.boundary.origin).toBe('process-cwd');
   });
 
-  it('selects the cwd-option origin for a validated --cwd', () => {
+  it('selects the root-option origin for a validated --root', () => {
     const session = createInspectionSession({
       invocationCwd: '/elsewhere',
-      cwdOptionValue: '/repo',
+      rootOptionValue: '/repo',
       selectedRepositoryRoot: '/repo',
     });
-    expect(session.snapshot().sources[0]!.boundary.origin).toBe('cwd-option');
+    expect(session.snapshot().sources[0]!.boundary.origin).toBe('root-option');
   });
 
   it('escapes the boundary label without exposing authority fields', () => {
     const session = createInspectionSession({
       invocationCwd: '/repo with space',
-      cwdOptionValue: null,
+      rootOptionValue: null,
       selectedRepositoryRoot: '/repo with space',
     });
     const boundary = session.snapshot().sources[0]!.boundary;
@@ -122,7 +122,7 @@ describe('scan lifecycle', () => {
     const during = session.snapshot().sources[0]!;
     expect(during.status).toBe('scanning');
     expect(during.scanRequestId).toBe(admitted.scanRequestId);
-    await coordinator.completeScan(admitted.scanRequestId, { files: [], diagnostics: [], outcome: 'complete' });
+    await coordinator.completeScan(admitted.scanRequestId, { files: [], recognitions: [], diagnostics: [], outcome: 'complete', visitedEntries: 0, candidateFiles: 0, readBytes: 0 });
     const after = session.snapshot().sources[0]!;
     expect(after.status).toBe('ready');
     expect(after.scanRequestId).toBe(admitted.scanRequestId);
@@ -150,7 +150,7 @@ describe('scan lifecycle', () => {
       throw new Error('expected admission');
     }
     coordinator.revokePublicationAuthority(admitted.scanRequestId);
-    await coordinator.completeScan(admitted.scanRequestId, { files: [], diagnostics: [], outcome: 'complete' });
+    await coordinator.completeScan(admitted.scanRequestId, { files: [], recognitions: [], diagnostics: [], outcome: 'complete', visitedEntries: 0, candidateFiles: 0, readBytes: 0 });
     const snapshot = session.snapshot();
     expect(snapshot.repositoryGeneration).toBe(0);
     // "No later success status": the revoked request also stops being the
@@ -167,7 +167,7 @@ describe('scan lifecycle', () => {
     if (first.kind !== 'admitted') {
       throw new Error('expected admission');
     }
-    await coordinator.completeScan(first.scanRequestId, { files: [], diagnostics: [], outcome: 'complete' });
+    await coordinator.completeScan(first.scanRequestId, { files: [], recognitions: [], diagnostics: [], outcome: 'complete', visitedEntries: 0, candidateFiles: 0, readBytes: 0 });
     const second = coordinator.admitScan(sourceId, { kind: 'request', operationId: 'op-1' });
     if (second.kind !== 'admitted') {
       throw new Error('expected admission');
@@ -194,7 +194,7 @@ describe('scan lifecycle', () => {
     if (first.kind !== 'admitted') {
       throw new Error('expected admission');
     }
-    await coordinator.completeScan(first.scanRequestId, { files: [], diagnostics: [], outcome: 'complete' });
+    await coordinator.completeScan(first.scanRequestId, { files: [], recognitions: [], diagnostics: [], outcome: 'complete', visitedEntries: 0, candidateFiles: 0, readBytes: 0 });
     const failing = coordinator.admitScan(sourceId, { kind: 'request', operationId: 'op-r1' });
     if (failing.kind !== 'admitted') {
       throw new Error('expected admission');
@@ -205,7 +205,7 @@ describe('scan lifecycle', () => {
       throw new Error('expected admission');
     }
     coordinator.revokePublicationAuthority(retry.scanRequestId);
-    await coordinator.completeScan(retry.scanRequestId, { files: [], diagnostics: [], outcome: 'complete' });
+    await coordinator.completeScan(retry.scanRequestId, { files: [], recognitions: [], diagnostics: [], outcome: 'complete', visitedEntries: 0, candidateFiles: 0, readBytes: 0 });
     // The discarded late success must not erase the current failure
     // presentation: the Source reverts to failed with the failed request's
     // ID and null progress, and the stale overlay stays visible
@@ -230,13 +230,13 @@ describe('scan lifecycle', () => {
     if (first.kind !== 'admitted') {
       throw new Error('expected admission');
     }
-    await coordinator.completeScan(first.scanRequestId, { files: [], diagnostics: [], outcome: 'complete' });
+    await coordinator.completeScan(first.scanRequestId, { files: [], recognitions: [], diagnostics: [], outcome: 'complete', visitedEntries: 0, candidateFiles: 0, readBytes: 0 });
     const second = coordinator.admitScan(sourceId, { kind: 'request', operationId: 'op-2' });
     if (second.kind !== 'admitted') {
       throw new Error('expected admission');
     }
     coordinator.revokePublicationAuthority(second.scanRequestId);
-    await coordinator.completeScan(second.scanRequestId, { files: [], diagnostics: [], outcome: 'complete' });
+    await coordinator.completeScan(second.scanRequestId, { files: [], recognitions: [], diagnostics: [], outcome: 'complete', visitedEntries: 0, candidateFiles: 0, readBytes: 0 });
     const snapshot = session.snapshot();
     expect(snapshot.sources[0]!.status).toBe('ready');
     // 'ready' reflects the retained committed generation: the overlay
@@ -271,7 +271,7 @@ describe('scan lifecycle', () => {
     if (first.kind !== 'admitted') {
       throw new Error('expected admission');
     }
-    await coordinator.completeScan(first.scanRequestId, { files: [], diagnostics: [], outcome: 'complete' });
+    await coordinator.completeScan(first.scanRequestId, { files: [], recognitions: [], diagnostics: [], outcome: 'complete', visitedEntries: 0, candidateFiles: 0, readBytes: 0 });
     expect(session.snapshot().snapshotState).toBe('current');
 
     const rescan = coordinator.admitScan(sourceId, { kind: 'request', operationId: 'op-2' });
@@ -298,7 +298,7 @@ describe('scan lifecycle', () => {
     if (admitted.kind !== 'admitted') {
       throw new Error('expected admission');
     }
-    await coordinator.completeScan(admitted.scanRequestId, { files: [], diagnostics: [], outcome: 'complete' });
+    await coordinator.completeScan(admitted.scanRequestId, { files: [], recognitions: [], diagnostics: [], outcome: 'complete', visitedEntries: 0, candidateFiles: 0, readBytes: 0 });
     // One opaque ID spans admission, status, and the committed generation
     // (FR-030 request correlation).
     expect(session.internal.committedRepositoryGeneration.scanRequestId).toBe(
@@ -357,7 +357,7 @@ describe('scan lifecycle', () => {
     if (first.kind !== 'admitted') {
       throw new Error('expected admission');
     }
-    await coordinator.completeScan(first.scanRequestId, { files: [], diagnostics: [], outcome: 'complete' });
+    await coordinator.completeScan(first.scanRequestId, { files: [], recognitions: [], diagnostics: [], outcome: 'complete', visitedEntries: 0, candidateFiles: 0, readBytes: 0 });
     const rescan = coordinator.admitScan(sourceId, { kind: 'request', operationId: 'op-d' });
     if (rescan.kind !== 'admitted') {
       throw new Error('expected admission');
@@ -379,7 +379,7 @@ describe('scan lifecycle', () => {
     if (retry.kind !== 'admitted') {
       throw new Error('expected admission');
     }
-    await coordinator.completeScan(retry.scanRequestId, { files: [], diagnostics: [], outcome: 'complete' });
+    await coordinator.completeScan(retry.scanRequestId, { files: [], recognitions: [], diagnostics: [], outcome: 'complete', visitedEntries: 0, candidateFiles: 0, readBytes: 0 });
     const cleared = session.snapshot();
     expect(cleared.staleFailures).toEqual([]);
     expect(cleared.sessionDiagnosticIds).toEqual([]);
@@ -446,6 +446,10 @@ describe('scan lifecycle', () => {
       }),
     );
     await coordinator.completeScan(first.scanRequestId, {
+      recognitions: [],
+      visitedEntries: 0,
+      candidateFiles: 0,
+      readBytes: 0,
       files: [
         {
           fileId: 'seed-file',
@@ -519,7 +523,7 @@ describe('scan lifecycle', () => {
     if (first.kind !== 'admitted') {
       throw new Error('expected admission');
     }
-    await coordinator.completeScan(first.scanRequestId, { files: [], diagnostics: [], outcome: 'complete' });
+    await coordinator.completeScan(first.scanRequestId, { files: [], recognitions: [], diagnostics: [], outcome: 'complete', visitedEntries: 0, candidateFiles: 0, readBytes: 0 });
     const rescan = coordinator.admitScan(sourceId, { kind: 'request', operationId: 'op-3' });
     if (rescan.kind !== 'admitted') {
       throw new Error('expected admission');
@@ -529,7 +533,7 @@ describe('scan lifecycle', () => {
     if (retry.kind !== 'admitted') {
       throw new Error('expected admission');
     }
-    await coordinator.completeScan(retry.scanRequestId, { files: [], diagnostics: [], outcome: 'complete' });
+    await coordinator.completeScan(retry.scanRequestId, { files: [], recognitions: [], diagnostics: [], outcome: 'complete', visitedEntries: 0, candidateFiles: 0, readBytes: 0 });
     const snapshot = session.snapshot();
     expect(snapshot.snapshotState).toBe('current');
     expect(snapshot.staleFailures).toEqual([]);

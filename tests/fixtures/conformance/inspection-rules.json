@@ -1,0 +1,72 @@
+[
+  {
+    "ruleId": "codex.repo.skill",
+    "tool": "codex",
+    "discoveryClass": "static-candidate",
+    "kind": "skill",
+    "sourceKinds": [
+      "repository"
+    ],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".agents"
+          },
+          {
+            "kind": "literal",
+            "value": "skills"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/(?:)/u"
+          },
+          {
+            "kind": "literal",
+            "value": "SKILL.md"
+          }
+        ]
+      ]
+    },
+    "derivation": null,
+    "policyRefs": [
+      "FR-003",
+      "FR-004",
+      "FR-005",
+      "FR-024",
+      "QR-001",
+      "QR-004",
+      "QR-005"
+    ],
+    "conditionKeys": [
+      "surface",
+      "engine-version",
+      "runtime-cwd",
+      "repository-root",
+      "scope-availability",
+      "feature-state",
+      "enablement",
+      "selection",
+      "managed-policy"
+    ],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.skills",
+        "url": "https://learn.chatgpt.com/docs/build-skills.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": [
+          "Where Codex loads local skills"
+        ],
+        "reviewedOn": "2026-07-25",
+        "establishes": "Repository skills live at .agents/skills/<name>/SKILL.md, which is the exact location this rule admits; the User scope the same page documents is a different Source boundary the rule may not read."
+      }
+    ]
+  }
+]

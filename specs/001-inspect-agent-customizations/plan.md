@@ -29,9 +29,9 @@ recognition metadata is matched by tool/kind/field/occurrence and compares exact
 ordinary Vue components, never parser-normalized display values.
 
 Root selection is simple and lexical: the CLI captures `process.cwd()` exactly once and
-accepts `--cwd <path>`, resolving a repeated option to the parser's last value. An absolute option is kept as given, a relative option
+accepts `--root <path>`, resolving a repeated option to the parser's last value. An absolute option is kept as given, a relative option
 is resolved against the captured invocation directory, and the result is the selected
-Repository root. The CLI never calls `process.chdir()`. An explicit empty `--cwd` value
+Repository root. The CLI never calls `process.chdir()`. An explicit empty `--root` value
 fails with a fixed actionable, source-value-free startup error before session creation or
 browser launch; a missing value is rejected at the same boundary by Gunshi's typed argument
 validation, which the product does not duplicate. Bootstrap generation 0 of the Repository sequence synchronously contains
@@ -66,9 +66,11 @@ uncommitted results and retains the last committed snapshot with a per-Source st
 entry — showing the failed request's error or the deterministic lifecycle diagnostic —
 until that Source is refreshed or removed.
 
-Customization discovery is maintained as four contract-versioned registries: documented
-vendor lookup behavior (`behaviorId`), Inspector matcher/read policy (`ruleId`), runtime
-composition strategies (`strategyId`), and official source records (`sourceId`). The common
+Customization discovery is maintained as three contract-versioned registries: documented
+vendor lookup behavior (`behaviorId`), Inspector matcher/read policy (`ruleId`), and runtime
+composition strategies (`strategyId`). Each record cites the official pages establishing it
+in its own `evidence` array, keyed by `sourceId`, rather than through a registry of its
+own. The common
 allowlist contract owns matcher grammar and safety
 invariants; separate Copilot, Claude, and Codex contracts own vendor behavior and
 tool-specific rules; the composition contract owns ordering and relationship-only rules;
@@ -172,14 +174,14 @@ blocks T002; missing bilingual validation evidence fails the release gate.
 
 `src/server/cli.ts` uses only Gunshi's stable root `define`/`cli` API. It defines a negatable
 `open` boolean with a true default to provide `--no-open` and a single string-valued
-`cwd` option for `--cwd <path>`, enables `strict: true`, explicitly rejects every
+`root` option for `--root <path>`, enables `strict: true`, explicitly rejects every
 positional/rest argument before binding, awaits `cli()`, and lets a parser-owned validation
 `AggregateError` propagate ordinarily to a nonzero process exit. Before creating a
-session it captures `process.cwd()` exactly once and rejects an explicit empty `--cwd`
+session it captures `process.cwd()` exactly once and rejects an explicit empty `--root`
 with a fixed actionable, source-value-free startup error before session creation or browser
 opening; a missing value is rejected at that boundary by Gunshi's typed validation. A
-repeated `--cwd` resolves to the parser's last value. An
-absolute `--cwd` value is kept as given and a relative value is resolved with
+repeated `--root` resolves to the parser's last value. An
+absolute `--root` value is kept as given and a relative value is resolved with
 `node:path.resolve` against the captured invocation directory; the result is the selected
 Repository root. The CLI never calls `process.chdir()`. Built-in
 help/version are handled without binding. The production entry does not import
@@ -1063,7 +1065,7 @@ transitive relationship, the Inspector omits that projection before target acces
 the eligible direct relationships and complete authored source, and emits an actionable,
 source-value-free relationship diagnostic.
 The authorized browser defines no heartbeat interval, request timeout, retry delay, or
-memory lease, and no liveness probe (amended 2026-07-24). It purges on browser/network/
+memory lease, and no liveness probe. It purges on browser/network/
 runtime rejection, a transport-reported channel loss, session mismatch, a greater content
 epoch, or a non-null disable fence. A lost host closes the loopback socket, which devframe
 reports to the page without being asked, so process loss is detected without polling for
@@ -1108,7 +1110,7 @@ location.
 
 **Scale/Scope**: One local user, exactly one Repository source rooted at the
 selected Repository root (the exact one-time invocation `process.cwd()` capture by default
-or the accepted single `--cwd` value), zero
+or the accepted single `--root` value), zero
 to three admitted tool-specific Global sources produced by one session-wide all-tools
 opt-in (at most one each for Copilot, Claude, and Codex), exactly one root per Source, and
 exactly two distinct readable customization files in a comparison. Inventory size is governed by the supported runtime and
@@ -1356,10 +1358,22 @@ src/
     ├── entities.ts
     ├── rejection-codes.ts
     └── registries/
-        ├── vendor-behaviors.ts
+        ├── identifier-types.ts       # closed BehaviorId/StrategyId/RuleId unions
+        ├── behavior-types.ts         # record shapes, one per registry
+        ├── strategy-types.ts
+        ├── rule-types.ts
+        ├── relation-types.ts         # the edge kinds between the registries
+        ├── evidence-types.ts         # on-record citations
+        ├── maintenance-data.ts       # the build flag that drops data the product never reads
+        ├── vendor-behaviors.ts       # aggregates: the public surface
         ├── inspection-rules.ts
         ├── runtime-composition.ts
-        └── official-sources.ts
+        ├── relations.ts              # the graph the recognizer walks
+        └── codex/                    # one directory per vendor, four files each
+            ├── behaviors.ts
+            ├── strategies.ts
+            ├── rules.ts
+            └── relations.ts
 
 tests/
 ├── unit/
@@ -1399,7 +1413,7 @@ tests/
     │   ├── vendor-behaviors.json
     │   ├── inspection-rules.json
     │   ├── runtime-composition.json
-    │   └── official-sources.json
+    │   └── relations.json
     ├── outcomes/
     │   ├── manifest.json
     │   └── manifest.sha256
@@ -1447,7 +1461,7 @@ preserves that shebang in the packaged `dist/cli.mjs`, and `package.json.bin` ma
 directly with no separate bootstrap wrapper: same-tarball artifacts are never re-verified
 at user runtime, and the packaged entry points are enforced by the `verify:package`
 CI/release gate. Root selection itself is purely lexical: capture `process.cwd()`
-once, keep an absolute `--cwd` or resolve a relative one against that capture. The
+once, keep an absolute `--root` or resolve a relative one against that capture. The
 inspection I/O contract is directory-level ownership: all inspected-source filesystem I/O
 lives only under `src/server/inspection/`, and no other module enumerates or reads
 inspected sources.
@@ -1458,15 +1472,15 @@ reactive browser view state they feed (`view-state.ts`), which installs no page-
 listener.
 `client-data.ts` is the dependency leaf and imports nothing, so the API client and the
 view state observe the same `clientDataEpoch` without a module cycle. There is no liveness
-module: the probe it owned was removed on 2026-07-24 once the transport's own
-connection-status signal covered host loss and the response-path epoch/fence checks
-covered the rest. They live outside
+module: a probe of its own would duplicate the transport's connection-status signal, which
+covers host loss, and the response-path epoch/fence checks, which cover the rest. They live
+outside
 `src/app/composables/` because none of them is a Vue composable: each is a plain factory
 that owns closure-local state and is constructed once, so filing them under a directory
-whose name promises `use*` reactivity would misdescribe them (amended 2026-07-24).
+whose name promises `use*` reactivity would misdescribe them.
 
 User-visible UI copy is written in the component that renders it; there is no message
-catalog (amended 2026-07-24). The UI ships one language, so QR-004's bilingual obligation
+catalog. The UI ships one language, so QR-004's bilingual obligation
 is on user and contributor documentation and on the WCAG applicability matrices, not on the
 running screen: the manual accessibility matrix has no locale axis and the shell states a
 fixed `lang="en"` rather than negotiating one. A catalog keyed by message name would
@@ -1488,12 +1502,13 @@ Manifests → Hooks. Repository-wide Inventory, Detail, and Comparison Acceptanc
 that order; Global inspection (US4, P3), cross-cutting verification, and release evidence
 remain last.
 
-The four registry modules have distinct ownership even though one validator loads them as
+The three registry modules have distinct ownership even though one validator loads them as
 a closed graph. `vendor-behaviors.ts` mirrors documented vendor lookup statements;
-`inspection-rules.ts` alone carries static/derived matcher read authority;
-`runtime-composition.ts` carries strategy and relationship-only policy; and
-`official-sources.ts` is the development/test-only offline evidence-map counterpart and is
-never imported by the startup or scan entry graph. The four conformance JSON fixtures
+`inspection-rules.ts` alone carries static/derived matcher read authority; and
+`runtime-composition.ts` carries strategy and relationship-only policy. Evidence has no
+module of its own: each maintained record states its citations in an `evidence` array, so
+the basis sits beside the claim it supports rather than in a parallel map that can drift
+from it, and the packaged CLI compiles those citations out. The conformance JSON fixtures
 mirror those modules, require reciprocal IDs,
 and fail the build on duplicates, orphan references, unanchored evidence, or an Inspector
 Repository matcher whose authored segment program violates the closed token grammar (for
@@ -1562,8 +1577,8 @@ Setup therefore implements the formatting checker and scaffolds the CLI entry pl
 script before it configures or executes package commands, tsdown entries, or CI quality
 gates. The Setup stage is not considered runnable until those paths exist.
 Production `dependencies` is the exact-version direct set `devframe`, `gunshi`, `yaml`,
-`jsonc-parser`, and
-`smol-toml`, asserted from `pnpm-lock.yaml` by `tests/package/production-graph.test.ts`;
+`jsonc-parser`, `smol-toml`, `vfile`, and
+`vfile-matter`, asserted from `pnpm-lock.yaml` by `tests/package/production-graph.test.ts`;
 devframe's transitives are lockfile-owned, and `open` is absent from every dependency
 section and production lock closure.
 Nuxt/Vue/Vite/tsdown, Monaco, Playwright, and other build/test tooling remain development-
@@ -1592,26 +1607,24 @@ ownership. No install-time build or download occurs. `package.json.files` is exa
 contents, with no source, fixtures, or planning artifacts. The package is CLI-only:
 `package.json.bin` is exactly `{ "agent-customization-inspector": "dist/cli.mjs" }`, while
 `main`, `module`, and `exports` are absent so no nonexistent library entry point is
-advertised. The package test verifies the bin target's exact preserved shebang, installs
-the tarball into an isolated fixture, actually launches its local command through
-`npx --no-install`, observes the loopback URL, and terminates it. This proves that the Nuxt
-assets, CLI, inspection layer, and runtime dependencies remain usable
-through `npx` from their packaged locations.
+advertised. The package test verifies the bin target's exact preserved shebang, launches the
+built `dist/cli.mjs` the bin points at, observes the loopback URL, and terminates it. That
+proves the Nuxt assets, CLI, and inspection layer resolve from their built locations. It does
+not prove the packed tarball: installing one into an isolated fixture and launching it
+through `npx --no-install` is T917, which the release gate owns.
 
-The package gate asserts the approved direct production dependency set — exactly those five
+The package gate asserts the approved direct production dependency set — exactly those seven
 names and no others — from `package.json` and the `pnpm-lock.yaml` closure, so any new
 production dependency fails until the research.md § 3 decision is explicitly revisited. The
 committed lockfile owns each resolved version and its integrity hash, which is what keeps
-the production payload bytes fixed (superseded 2026-07-23:
-the payload content scans — native/binary/Wasm magic, shell-helper and shebang audits,
-lifecycle-disabled and network-disabled install runs, and the cross-OS shim audit — plus
-the per-dependency version and integrity-hash assertions were
-removed from scope with the self-verification cleanups: those are properties of the exact
-hash-pinned payloads, established once at dependency review, and re-scanning content the
-integrity hash already fixes — or restating in a test the values the lockfile already
-pins — is the redundant re-verification class removed by
-Constitution Principle I; install-time lifecycle and network enforcement belongs to the
-package manager's own configuration).
+the production payload bytes fixed. Payload content scans — native/binary/Wasm magic, shell-helper and shebang audits,
+lifecycle-disabled and network-disabled install runs, and the cross-OS shim audit — and
+per-dependency version and integrity-hash assertions are out of scope: they are properties
+of the exact hash-pinned payloads, established once at dependency review, and re-scanning
+content the integrity hash already fixes — or restating in a test the values the lockfile
+already pins — is the redundant re-verification Constitution Principle I excludes.
+Install-time lifecycle and network enforcement belongs to the package manager's own
+configuration.
 
 ## Implementation Boundaries
 
@@ -1661,7 +1674,7 @@ package manager's own configuration).
   pending promise may perform only cleanup when it settles; late bytes, diagnostics, graph
   changes, and DTOs are discarded. The design does not claim physical
   cancellation before Node.js and the kernel report the operation settled.
-- The four registries form one validated reference graph but grant different authority.
+- The three registries form one validated reference graph but grant different authority.
   Vendor behavior records describe upstream lookup without authorizing I/O; only static
   and typed derived Inspector rules authorize reads; runtime strategies project order,
   conditions, and relationship-only edges; official source records provide evidence and
@@ -1879,8 +1892,10 @@ package manager's own configuration).
   renders over the loopback session API channel. It installs no listener at all: there is no
   liveness probe, no product-defined polling interval, request timeout, retry timer, or
   memory lease, and no page-lifecycle purge. The transport reports a lost host on its own, so
-  process loss becomes the ended view without being polled for. A network/runtime rejection,
-  session mismatch, observed process loss, or equivalent terminal full-session reset
+  process loss becomes the ended view without being polled for. An ordinary handler or
+  delivery rejection is that request's own error: the committed snapshot stays on screen and
+  another refresh can still succeed (FR-030). A lost channel, an unsupported session
+  protocol, a session mismatch, or an equivalent terminal full-session reset
   disposes editor models/workers/subscriptions, clears all session DTO/DOM/detail/
   comparison/warning state, aborts requests, and increments `clientDataEpoch` so a late
   response cannot restore content. Every SessionSnapshot/FileDetail request captures that
@@ -2001,7 +2016,7 @@ package manager's own configuration).
   publication, requires an unchanged epoch and null fence or discards the body. The
   disabling page learns the fence from its own disable response and its subsequent session
   fetches; no separate projection exists, because the product does not model a second tab
-  observing the barrier (amended 2026-07-24).
+  observing the barrier.
   The barrier aborts and discards an active uncommitted batch, drains enable admission and
   every tentative root context/result, performs a
   final queued-Global-work cancellation sweep, and requeues the same interrupted Repository
@@ -2062,7 +2077,7 @@ package manager's own configuration).
   fabricate a file ID or path.
   Generation 0 is a committed zero-I/O bootstrap snapshot with exactly one idle Repository
   Source selected lexically from the captured invocation working directory and optional
-  `--cwd`, and with no files or diagnostics, so a fatal first attempt has a legal retained
+  `--root`, and with no files or diagnostics, so a fatal first attempt has a legal retained
   current base. Explicit Repository rescans, enabled-Global single-Source rescans, and Global
   batches share the same queue rules. Repeated Global disable joins an existing barrier;
   when no tool-specific Global Source or graph, active consent record, retained admitted
@@ -2110,15 +2125,13 @@ package manager's own configuration).
 
 ## Complexity Tracking
 
-The 2026-07-22 trusted-workspace clarification (spec Clarifications § Session 2026-07-22)
-superseded the earlier adversarial-file inspection machinery, so the complexity rows that
-existed only to justify it were removed rather than reimplemented.
-The same-day devframe adoption (spec Clarifications § Session 2026-07-22, Constitution
-v3.0.0) likewise superseded the per-session capability token, Origin checks, hand-written
-HTTP router, and static-manifest/CSP pipeline, so their complexity rows are gone as well.
-The 2026-07-22 removal of FR-040/FR-041 (spec Clarifications § Session 2026-07-22,
-Constitution v4.0.0) deleted the generic error-envelope and operational-log/telemetry
-machinery, so the complexity rows that existed only to justify them were removed too.
+The trusted-workspace clarification (spec Clarifications § Session 2026-07-22) leaves no
+adversarial-file inspection machinery to justify, so the table carries no row for it.
+Devframe adoption (spec Clarifications § Session 2026-07-22, Constitution v3.0.0) leaves
+none for a per-session capability token, Origin checks, a hand-written HTTP router, or a
+static-manifest/CSP pipeline. Without FR-040/FR-041 (spec Clarifications § Session
+2026-07-22, Constitution v4.0.0) there is no generic error-envelope and no
+operational-log/telemetry machinery, so the table carries no row for those either.
 The remaining unavoidable implementation costs are tracked explicitly:
 
 | Complexity | Why it is required | Simpler option rejected |

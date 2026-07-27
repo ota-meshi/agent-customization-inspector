@@ -10,12 +10,19 @@
 // render behind a Global disable. That check runs on every response rather
 // than being probed for: the product has no separate liveness function, so
 // a fence or epoch change is discovered by the next request either way
-// (contracts/http-api.md § Concurrency and lifecycle, amended 2026-07-24).
+// (contracts/http-api.md § Concurrency and lifecycle).
 //
 // The client performs no persistence of any kind: no browser storage, no
 // service worker, and no response cache holds inspected content. It also
 // calls nothing outside the closed function catalog below.
-import type { InspectionDataResult, SessionSnapshot } from '../../shared/api-types';
+import type {
+  CommandResult,
+  InspectionDataResult,
+  ScanAdmission,
+  SessionSnapshot,
+  SourceDto,
+} from '../../shared/api-types';
+import { DevframeConnectionError } from 'devframe/client';
 import { isRejectionCode, type RejectionCode } from '../../shared/rejection-codes';
 import type { ClientDataPurge, PurgeReason } from './client-data';
 
@@ -29,6 +36,8 @@ import type { ClientDataPurge, PurgeReason } from './client-data';
 export const SESSION_RPC_FUNCTIONS = {
   /** Full `InspectionSession` snapshot, or the fenced control DTO. */
   getSession: 'agent-customization-inspector:get-session',
+  /** Accept one explicit Repository scan command. */
+  rescanRepository: 'agent-customization-inspector:rescan-repository',
 } as const;
 
 /** One member of the closed {@link SESSION_RPC_FUNCTIONS} catalog. */
@@ -114,10 +123,60 @@ export type SessionFetchOutcome =
       readonly reason: PurgeReason;
     }
   | {
-      /** The channel or session protocol failed; the shared purge already ran. */
+      /** The call failed; see {@link fatal} for whether the session survived. */
       readonly kind: 'failed';
       /** The real transport error, or the fixed actionable unsupported-protocol error. */
       readonly error: Error;
+      /**
+       * True when the channel itself is gone or the protocol was unsupported:
+       * the shared purge has run and no refetch recovers. False for a handler
+       * or delivery failure, which is this request's error alone and leaves the
+       * committed view intact (contracts/http-api.md § Concurrency and
+       * lifecycle).
+       */
+      readonly fatal: boolean;
+    };
+
+/**
+ * The outcome of one guarded `rescan-repository` command. A rescan is a
+ * command, not an inspection-data read: its success carries the admitted
+ * request ID and the updated Source summary, and never a generation snapshot
+ * (contracts/http-api.md § Common results and errors).
+ */
+export type RescanOutcome =
+  | {
+      /** The command was admitted; the accepted job runs on the host. */
+      readonly kind: 'accepted';
+      /** The opaque request ID every later status for this command carries. */
+      readonly scanRequestId: string;
+      /** The Source projection as of admission, carrying that same ID. */
+      readonly source: SourceDto;
+    }
+  | {
+      /** A declared closed functional rejection, such as `scan-in-progress`. */
+      readonly kind: 'rejected';
+      /** The fixed contract code; see {@link RejectionCode}. */
+      readonly code: RejectionCode;
+    }
+  | {
+      /** An ordinary staleness outcome; nothing was admitted or rendered. */
+      readonly kind: 'discarded';
+      /** Which guard dropped the response; see {@link DiscardReason}. */
+      readonly reason: DiscardReason;
+    }
+  | {
+      /** The shared purge already ran; the shell has no data to render. */
+      readonly kind: 'purged';
+      /** Which documented trigger ran the purge; see {@link PurgeReason}. */
+      readonly reason: PurgeReason;
+    }
+  | {
+      /** The call failed; see {@link fatal} for whether the session survived. */
+      readonly kind: 'failed';
+      /** The real transport error, or the fixed unsupported-protocol error. */
+      readonly error: Error;
+      /** True when the channel is gone or the protocol was unsupported. */
+      readonly fatal: boolean;
     };
 
 /** Construction inputs for {@link createSessionApiClient}. */
@@ -132,6 +191,8 @@ export interface SessionApiClientOptions {
 export interface SessionApiClient {
   /** Issues one guarded `get-session` request. */
   readonly fetchSession: () => Promise<SessionFetchOutcome>;
+  /** Issues one guarded `rescan-repository` command. */
+  readonly rescanRepository: () => Promise<RescanOutcome>;
   /**
    * Aborts every outstanding request and supersedes every issued token, so
    * a settlement that arrives afterwards is discarded instead of rendered.
@@ -187,20 +248,55 @@ export function createSessionApiClient(options: SessionApiClientOptions): Sessio
 
   // The latest issued token per response family. A settlement whose token is
   // no longer the latest is a late response and is discarded (FR-029 has the
-  // server-side counterpart; this is the client half).
+  // server-side counterpart; this is the client half). The rescan command has
+  // its own family: a superseded snapshot fetch must not silently invalidate
+  // an in-flight command, and vice versa.
   let latestSessionToken: symbol | null = null;
+  let latestRescanToken: symbol | null = null;
 
-  // Every outstanding request's controller, so a purge or a newer-generation
-  // adoption can abort them. The product defines no request timeout, retry
-  // timer, or memory lease: the browser/network/runtime owns settlement.
-  const outstanding = new Set<AbortController>();
+  // Outstanding controllers, split by what a generation adoption may abort. A
+  // newer generation invalidates that sequence's *data* — the snapshot a fetch
+  // was going to deliver — but it says nothing about a command still waiting
+  // for its admission response, and aborting one would lose work the user asked
+  // for (contracts/http-api.md § Concurrency and lifecycle). A purge abandons
+  // both. The product defines no request timeout, retry timer, or memory lease:
+  // the browser/network/runtime owns settlement.
+  const outstandingData = new Set<AbortController>();
+  const outstandingCommands = new Set<AbortController>();
 
-  function abortOutstandingRequests(): void {
+  /** Abandons the inspection-data requests a newer generation supersedes. */
+  function abortDataRequests(): void {
     latestSessionToken = null;
-    for (const controller of outstanding) {
+    for (const controller of outstandingData) {
       controller.abort();
     }
-    outstanding.clear();
+    outstandingData.clear();
+  }
+
+  function abortOutstandingRequests(): void {
+    abortDataRequests();
+    latestRescanToken = null;
+    for (const controller of outstandingCommands) {
+      controller.abort();
+    }
+    outstandingCommands.clear();
+  }
+
+  /**
+   * Classifies a rejected call. A lost channel is terminal: the host is gone,
+   * no refetch recovers from it, and the client purges before rendering the
+   * ended view. Anything else — a handler that threw, a serialization or
+   * delivery failure after it returned — is that one request's ordinary error
+   * (contracts/http-api.md § Concurrency and lifecycle). Purging for it would
+   * discard a snapshot the user is still reading over a single failed call.
+   */
+  function failureOutcome(cause: unknown): { kind: 'failed'; error: Error; fatal: boolean } {
+    const error = cause instanceof Error ? cause : new Error(String(cause));
+    const fatal = error instanceof DevframeConnectionError;
+    if (fatal) {
+      clientData.purge('channel-failure');
+    }
+    return { kind: 'failed', error, fatal };
   }
 
   /**
@@ -230,13 +326,13 @@ export function createSessionApiClient(options: SessionApiClientOptions): Sessio
     const token = Symbol('get-session');
     const controller = new AbortController();
     latestSessionToken = token;
-    outstanding.add(controller);
+    outstandingData.add(controller);
     const capturedClientDataEpoch = clientData.epoch();
     let settled: unknown;
     try {
       settled = await channel.call(SESSION_RPC_FUNCTIONS.getSession);
     } catch (cause: unknown) {
-      outstanding.delete(controller);
+      outstandingData.delete(controller);
       // A rejected call is still a settlement: if its request was already
       // superseded, aborted, or captured before a purge, it has no authority
       // to purge the newer client state (T042/T049).
@@ -249,12 +345,9 @@ export function createSessionApiClient(options: SessionApiClientOptions): Sessio
       if (discarded !== null) {
         return { kind: 'discarded', reason: discarded };
       }
-      // A lost or failed channel connection purges before rendering the
-      // ended view; the real error is surfaced ordinarily.
-      clientData.purge('channel-failure');
-      return { kind: 'failed', error: cause instanceof Error ? cause : new Error(String(cause)) };
+      return failureOutcome(cause);
     }
-    outstanding.delete(controller);
+    outstandingData.delete(controller);
     const discarded = guardSettlement(token, latestSessionToken, controller, capturedClientDataEpoch);
     if (discarded !== null) {
       return { kind: 'discarded', reason: discarded };
@@ -271,7 +364,7 @@ export function createSessionApiClient(options: SessionApiClientOptions): Sessio
         'The local session returned an unsupported rejection. Restart the inspector and reload this page.',
       );
       clientData.purge('channel-failure');
-      return { kind: 'failed', error };
+      return { kind: 'failed', error, fatal: true };
     }
     const result = settled as InspectionDataResult<SessionSnapshot>;
     // Session identity is the outermost adoption boundary. Compare it before
@@ -322,11 +415,11 @@ export function createSessionApiClient(options: SessionApiClientOptions): Sessio
       advancedSequences.push('global');
     }
     if (advancedSequences.length > 0) {
-      // Only this sequence's generation-owned requests are aborted; the
-      // other sequence's committed views stay valid and are not refetched.
-      // Phase 3 has exactly one inspection-data request family, so the
-      // abort is the whole outstanding set.
-      abortOutstandingRequests();
+      // Only this sequence's generation-owned data requests are aborted; the
+      // other sequence's committed views stay valid and are not refetched, and
+      // a command awaiting its admission response is untouched. Phase 3 has
+      // exactly one inspection-data request family, so that is all of them.
+      abortDataRequests();
     }
     sessionId = result.data.sessionId;
     globalContentEpoch = result.globalContentEpoch;
@@ -335,8 +428,79 @@ export function createSessionApiClient(options: SessionApiClientOptions): Sessio
     return { kind: 'adopted', snapshot: result.data, advancedSequences };
   }
 
+  /**
+   * Issues the explicit Repository rescan command. It never adopts a
+   * snapshot: the host resolves this invocation with its acceptance, and the
+   * committed result arrives through the next `get-session`. The command's
+   * own guards still run, so an acceptance that lands after a purge or after
+   * a newer command was issued is discarded rather than shown as the active
+   * request.
+   */
+  async function rescanRepository(): Promise<RescanOutcome> {
+    const token = Symbol('rescan-repository');
+    const controller = new AbortController();
+    latestRescanToken = token;
+    outstandingCommands.add(controller);
+    const capturedClientDataEpoch = clientData.epoch();
+    let settled: unknown;
+    try {
+      settled = await channel.call(SESSION_RPC_FUNCTIONS.rescanRepository);
+    } catch (cause: unknown) {
+      outstandingCommands.delete(controller);
+      const discarded = guardSettlement(
+        token,
+        latestRescanToken,
+        controller,
+        capturedClientDataEpoch,
+      );
+      if (discarded !== null) {
+        return { kind: 'discarded', reason: discarded };
+      }
+      return failureOutcome(cause);
+    }
+    outstandingCommands.delete(controller);
+    const discarded = guardSettlement(
+      token,
+      latestRescanToken,
+      controller,
+      capturedClientDataEpoch,
+    );
+    if (discarded !== null) {
+      return { kind: 'discarded', reason: discarded };
+    }
+    const rejection = asRejectionCode(settled);
+    if (rejection !== null) {
+      return { kind: 'rejected', code: rejection };
+    }
+    if (hasErrorEnvelope(settled)) {
+      const error = new Error(
+        'The local session returned an unsupported rejection. Restart the inspector and reload this page.',
+      );
+      clientData.purge('channel-failure');
+      return { kind: 'failed', error, fatal: true };
+    }
+    const result = settled as CommandResult<ScanAdmission>;
+    // A command result carries no generation fields, so only the epoch guard
+    // applies: a greater epoch means a Global purge happened while the
+    // command was in flight and the admitted request belongs to state this
+    // page must drop before rendering anything again.
+    if (globalContentEpoch !== null && result.globalContentEpoch > globalContentEpoch) {
+      clientData.purge('global-content-epoch-advanced');
+      return { kind: 'purged', reason: 'global-content-epoch-advanced' };
+    }
+    if (globalContentEpoch !== null && result.globalContentEpoch < globalContentEpoch) {
+      return { kind: 'discarded', reason: 'older-global-content-epoch' };
+    }
+    return {
+      kind: 'accepted',
+      scanRequestId: result.data.scanRequestId,
+      source: result.data.source,
+    };
+  }
+
   return {
     fetchSession,
+    rescanRepository,
     abortOutstandingRequests,
     resetBaseline: () => {
       sessionId = null;

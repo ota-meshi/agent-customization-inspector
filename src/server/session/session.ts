@@ -6,7 +6,8 @@
 // disable). The coordinator serializes scans, keeps one request ID across a
 // scan lifecycle, commits atomic N+1 replacements per sequence, and retains
 // explicit-rescan stale state.
-import { createOpaqueId, createSourceBoundaryDto } from '../../shared/entities';
+import { SUPPORTED_TOOL_ORDER, createOpaqueId, createSourceBoundaryDto } from '../../shared/entities';
+import { sameNameSkillResolutionFor } from '../../shared/registries/skill-resolution';
 import {
   createBootstrapGeneration,
   prepareNextRepositoryGeneration,
@@ -15,14 +16,18 @@ import {
   type RepositoryScanGeneration,
 } from './scan-generation';
 import { clearStaleFailures, deriveSnapshotState, upsertStaleFailure } from './stale-failures';
-import type { SourceBoundaryDto } from '../../shared/entities';
+import type { SourceBoundaryDto, SupportedTool } from '../../shared/entities';
 import type {
   CustomizationFileDto,
   CustomizationFileSummaryDto,
+  SameNameSkillResolutionDto,
+  ScanProgressPhase,
   ScanProgressDto,
   SessionSnapshot,
+  SkillInventoryEntryDto,
   SourceStatus,
   StaleSourceFailure,
+  ToolRecognitionDto,
 } from '../../shared/api-types';
 import type { SerializedDiagnostic } from '../../shared/diagnostics';
 
@@ -30,8 +35,8 @@ import type { SerializedDiagnostic } from '../../shared/diagnostics';
 export interface SessionBootstrapInput {
   /** The one captured `process.cwd()` (FR-001). */
   readonly invocationCwd: string;
-  /** The validated `--cwd` value; null when the option was omitted. */
-  readonly cwdOptionValue: string | null;
+  /** The validated `--root` value; null when the option was omitted. */
+  readonly rootOptionValue: string | null;
   /** The resolved selected Repository root (FR-001). */
   readonly selectedRepositoryRoot: string;
 }
@@ -47,9 +52,18 @@ interface MutableSourceState {
   readonly sourceId: string;
   /** Operational overlay status; see {@link SourceStatus}. */
   status: SourceStatus;
-  /** The latest admitted scan request for this Source; null before any. */
+  /**
+   * The latest admitted scan request for this Source. Null before any
+   * admission, and again once every admitted attempt has been revoked
+   * (data-model.md § Source).
+   */
   scanRequestId: string | null;
-  /** Live scan progress; null while no scan is running. */
+  /**
+   * This Source's scan progress, which outlives the scan: the completed
+   * counters and the `complete` phase stay so a Ready or Partial Source can
+   * state what its committed attempt did. Null while the Source is `idle` or
+   * `failed` (data-model.md § Source `progress`).
+   */
   progress: ScanProgressDto | null;
   /** Diagnostic IDs currently attached to this Source. */
   diagnosticIds: readonly string[];
@@ -72,8 +86,8 @@ export interface InspectionSessionState {
     readonly repositorySourceId: string;
     /** The one captured `process.cwd()` (FR-001); identity, not read authority. */
     readonly invocationCwd: string;
-    /** The sole validated `--cwd` value, null when omitted; retained for lifecycle correlation (data-model.md § InspectionSession). */
-    readonly cwdOptionValue: string | null;
+    /** The sole validated `--root` value, null when omitted; retained for lifecycle correlation (data-model.md § InspectionSession). */
+    readonly rootOptionValue: string | null;
     /** The selected Repository root later scans traverse (FR-001); never serialized. */
     readonly selectedRepositoryRoot: string;
     /** Last committed Repository generation (never null after bootstrap). */
@@ -81,7 +95,7 @@ export interface InspectionSessionState {
     /** Last committed Global generation; null while disabled (FR-042). */
     committedGlobalGeneration: GlobalScanGeneration | null;
     /** Stale overlays from failed explicit rescans, sorted by sourceId. */
-    staleFailures: StaleSourceFailure[];
+    staleFailures: readonly StaleSourceFailure[];
     /**
      * Session-owned lifecycle Diagnostics (at most one per lifecycle owner,
      * data-model.md § Diagnostic), keyed by diagnosticId; every retained
@@ -129,10 +143,6 @@ function summarizeFile(file: CustomizationFileDto): CustomizationFileSummaryDto 
         hadLeadingBom: file.hadLeadingBom,
         sizeBytes: file.sizeBytes,
         parseSummary: file.parseSummary,
-        // Scaffold until the vendor recognizer phases store ToolRecognition
-        // entities: no production recognizer exists yet, so every committed
-        // file has zero summaries (see api-types.ts § CustomizationFileSummaryDto).
-        recognitions: [],
       };
     case 'binary':
       return { ...base, encoding: file.encoding, sizeBytes: file.sizeBytes };
@@ -142,8 +152,153 @@ function summarizeFile(file: CustomizationFileDto): CustomizationFileSummaryDto 
 }
 
 /**
+ * Projects the skill inventory from a generation's recognitions
+ * (contracts/http-api.md § get-session `skills[]`, data-model.md § Inventory
+ * unit): one entry per declared name, each listing every `SKILL.md` that
+ * declares it.
+ *
+ * The name is the grouping key because that is the unit the vendors' own
+ * selectors use; the file is not, since two files may declare one name. A
+ * definition that declares none gets its own entry keyed by its file: a file
+ * with no name has not joined a name, and grouping the nameless together would
+ * assert an identity none of them has.
+ *
+ * `pathByFileId` orders the definitions, so the projection needs no filesystem
+ * access and two snapshots of one generation publish the same rows.
+ */
+function projectSkillInventory(
+  recognitions: readonly ToolRecognitionDto[],
+  pathByFileId: ReadonlyMap<string, string>,
+): SkillInventoryEntryDto[] {
+  // Keyed by declared name, or by file ID for the nameless — the `\u0000`
+  // prefix cannot collide with an authored name, which is a YAML scalar.
+  const byName = new Map<string, { name: string | null; byFile: Map<string, MutableDefinition> }>();
+  for (const recognition of recognitions) {
+    if (recognition.details.kind !== 'skill') {
+      continue;
+    }
+    const name = recognition.details.declaredName ?? null;
+    const key = name ?? `\u0000${recognition.fileId}`;
+    let entry = byName.get(key);
+    if (entry === undefined) {
+      entry = { name, byFile: new Map() };
+      byName.set(key, entry);
+    }
+    // One file recognized by several products is one definition with several
+    // tools, never one definition per product: the file is what the row lists.
+    const definition = entry.byFile.get(recognition.fileId);
+    if (definition === undefined) {
+      entry.byFile.set(recognition.fileId, {
+        fileId: recognition.fileId,
+        tools: [recognition.tool],
+        companionFiles: recognition.details.companionFiles,
+        diagnosticIds: [...recognition.diagnosticIds],
+      });
+    } else {
+      definition.tools.push(recognition.tool);
+      definition.diagnosticIds.push(...recognition.diagnosticIds);
+    }
+  }
+
+  const entries = [...byName.values()].map((entry): SkillInventoryEntryDto => {
+    const definitions = [...entry.byFile.values()]
+      .map((definition) => ({
+        ...definition,
+        tools: definition.tools.toSorted(
+          (left, right) => SUPPORTED_TOOL_ORDER.indexOf(left) - SUPPORTED_TOOL_ORDER.indexOf(right),
+        ),
+      }))
+      .sort((left, right) =>
+        compareStrings(pathByFileId.get(left.fileId) ?? '', pathByFileId.get(right.fileId) ?? ''),
+      );
+    return {
+      declaredName: entry.name,
+      definitions,
+      // Nothing to resolve with one definition, so the row states no rule
+      // rather than a rule that applies to nothing.
+      sameNameResolutions:
+        definitions.length > 1 ? resolutionsFor(definitions.flatMap((one) => one.tools)) : [],
+    };
+  });
+  // Named entries in name order, then the nameless in path order: the row's own
+  // key sorts it, and a file ID never decides a visible order.
+  return entries.sort((left, right) => {
+    if (left.declaredName !== null && right.declaredName !== null) {
+      return compareStrings(left.declaredName, right.declaredName);
+    }
+    if (left.declaredName === null && right.declaredName === null) {
+      return compareStrings(
+        pathByFileId.get(left.definitions[0]!.fileId) ?? '',
+        pathByFileId.get(right.definitions[0]!.fileId) ?? '',
+      );
+    }
+    return left.declaredName === null ? 1 : -1;
+  });
+}
+
+/** A {@link SkillDefinitionDto} while its tools and diagnostics accumulate. */
+interface MutableDefinition {
+  /** The `SKILL.md` this definition is authored in. */
+  readonly fileId: string;
+  /** The tools recognizing it, unsorted until the entry is built. */
+  readonly tools: SupportedTool[];
+  /** The census result, identical across recognitions of one file. */
+  readonly companionFiles: readonly string[];
+  /** Recognition-scoped diagnostics, accumulated across tools. */
+  readonly diagnosticIds: string[];
+}
+
+/**
+ * The same-name resolution of each product behind a grouped entry, deduplicated
+ * and in the contracted tool order. It states what each vendor documents so the
+ * grouping never implies a winner the Inspector has not recorded (FR-007).
+ *
+ * Each statement is derived from the product's own shipped strategies, so it
+ * cannot disagree with them. A product that establishes none contributes no
+ * statement rather than a guessed one; a product with no skill rule also
+ * recognizes no skill, so it cannot reach this at all.
+ */
+function resolutionsFor(tools: readonly SupportedTool[]): SameNameSkillResolutionDto[] {
+  return [...new Set(tools)]
+    .sort((left, right) => SUPPORTED_TOOL_ORDER.indexOf(left) - SUPPORTED_TOOL_ORDER.indexOf(right))
+    .flatMap((tool) => {
+      const resolution = sameNameSkillResolutionFor(tool);
+      return resolution === null ? [] : [{ tool, resolution }];
+    });
+}
+
+/** Locale-independent string order, so every host sorts a snapshot alike. */
+function compareStrings(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
+/**
+ * Builds the snapshot's deterministic inventory order: Source kind, the
+ * Global tool where present, the normalized Source-relative path, then the
+ * file ID (contracts/http-api.md § get-session). Only the last key uses an
+ * opaque ID, and only as a total-order tie-break between two files that agree
+ * on every meaningful key.
+ */
+function sortInventory(
+  rows: readonly CustomizationFileSummaryDto[],
+  sourceOrder: ReadonlyMap<string, number>,
+): CustomizationFileSummaryDto[] {
+  return rows.toSorted((left, right) => {
+    const sourceDelta =
+      (sourceOrder.get(left.sourceId) ?? 0) - (sourceOrder.get(right.sourceId) ?? 0);
+    if (sourceDelta !== 0) {
+      return sourceDelta;
+    }
+    if (left.sourceRelativePath !== right.sourceRelativePath) {
+      return left.sourceRelativePath < right.sourceRelativePath ? -1 : 1;
+    }
+    return left.fileId < right.fileId ? -1 : left.fileId > right.fileId ? 1 : 0;
+  });
+}
+
+/**
  * Creates the bootstrap session synchronously with zero filesystem I/O.
- * The selection (invocation cwd, `--cwd` value, selected root) is retained
+ * The selection (invocation cwd, `--root` value, selected root) is retained
  * internally for later scans and lifecycle correlation; publicly it
  * surfaces only as the non-authorizing boundary presentation. There is no
  * separate admission layer: the first scan simply reads the retained
@@ -156,14 +311,14 @@ export function createInspectionSession(input: SessionBootstrapInput): Inspectio
   const repositorySourceId = createOpaqueId();
   const boundary = createSourceBoundaryDto(
     input.selectedRepositoryRoot,
-    input.cwdOptionValue === null ? 'process-cwd' : 'cwd-option',
+    input.rootOptionValue === null ? 'process-cwd' : 'root-option',
   );
   const internal: InspectionSessionState['internal'] = {
     sessionId,
     createdAt,
     repositorySourceId,
     invocationCwd: input.invocationCwd,
-    cwdOptionValue: input.cwdOptionValue,
+    rootOptionValue: input.rootOptionValue,
     selectedRepositoryRoot: input.selectedRepositoryRoot,
     committedRepositoryGeneration: createBootstrapGeneration(createdAt),
     committedGlobalGeneration: null,
@@ -196,13 +351,22 @@ export function createInspectionSession(input: SessionBootstrapInput): Inspectio
       if (repository === undefined) {
         throw new Error('the repository source state is missing');
       }
+      const committedFiles = [
+        ...internal.committedRepositoryGeneration.files,
+        ...(internal.committedGlobalGeneration?.files ?? []),
+      ];
+      // The path a definition sorts by is the file's own fact, so the skill
+      // projection reads it here instead of restating it per definition.
+      const pathByFileId = new Map(
+        committedFiles.map((file) => [file.fileId, file.sourceRelativePath]),
+      );
       return {
         sessionId,
         createdAt,
         sources: [
           {
             sourceId: repositorySourceId,
-            kind: 'repository' as const,
+            kind: 'repository',
             tool: null,
             enabled: true,
             status: repository.status,
@@ -214,10 +378,20 @@ export function createInspectionSession(input: SessionBootstrapInput): Inspectio
             diagnosticIds: [...repository.diagnosticIds],
           },
         ],
-        files: [
-          ...internal.committedRepositoryGeneration.files,
-          ...(internal.committedGlobalGeneration?.files ?? []),
-        ].map(summarizeFile),
+        files: sortInventory(
+          committedFiles.map((file) => summarizeFile(file)),
+          // Only the Repository Source exists at this milestone, so the
+          // Source-kind key is constant; the Global tasks extend this map
+          // with the fixed Global tool order.
+          new Map([[repositorySourceId, 0]]),
+        ),
+        skills: projectSkillInventory(
+          [
+            ...internal.committedRepositoryGeneration.recognitions,
+            ...(internal.committedGlobalGeneration?.recognitions ?? []),
+          ],
+          pathByFileId,
+        ),
         // Semantic emission order (data-model.md § Diagnostic): session-owned
         // lifecycle records (repository, Global tools, published Sources)
         // precede the generations' candidate-owned records.
@@ -229,7 +403,7 @@ export function createInspectionSession(input: SessionBootstrapInput): Inspectio
         repositoryGeneration: internal.committedRepositoryGeneration.generation,
         globalGeneration: internal.committedGlobalGeneration?.generation ?? null,
         snapshotState: deriveSnapshotState(internal.staleFailures),
-        staleFailures: [...internal.staleFailures],
+        staleFailures: internal.staleFailures,
         globalControl: null,
         globalEnableInProgress: null,
         globalDisableInProgress: null,
@@ -291,14 +465,12 @@ interface AttemptState {
     | 'active'
     /** A disable barrier revoked publication authority. */
     | 'revoked';
-  /** True once the attempt terminally completed or failed; settled attempts are inert. */
-  settled: boolean;
   /**
    * The Source overlay exactly as admission found it. A revoked attempt's
    * discarded late result restores it wholesale, so the committed status
    * with its final complete progress, or a retained failure presentation,
    * survives the discard and the revoked request never surfaces as a
-   * settled outcome (spec.md § publication matrix "No later success
+   * terminal outcome (spec.md § publication matrix "No later success
    * status"; data-model.md § ScanProgress null/retention rules).
    */
   readonly priorOverlay: {
@@ -320,9 +492,12 @@ export class SessionCoordinator {
   private readonly session: InspectionSessionState;
 
   /**
-   * Every admitted attempt by its scanRequestId, including settled ones: a
-   * settled attempt keeps its entry so a late result is recognized and
-   * discarded instead of committed (FR-029).
+   * The attempts still running, by scanRequestId. An entry is removed the
+   * moment its attempt reaches a terminal outcome, so presence in this map is
+   * the single record of "still running": a late result for a removed ID finds
+   * nothing and is discarded instead of committed (FR-029). A commit that
+   * throws removes nothing, which is what lets the failure the caller reports
+   * still be recorded against the same attempt.
    */
   private readonly attempts = new Map<string, AttemptState>();
 
@@ -351,7 +526,7 @@ export class SessionCoordinator {
     // At most one scan command per source is running or queued; a duplicate
     // returns the documented conflict instead of stacking attempts.
     for (const attempt of this.attempts.values()) {
-      if (attempt.sourceId === sourceId && !attempt.settled) {
+      if (attempt.sourceId === sourceId) {
         return { kind: 'conflict' };
       }
     }
@@ -380,14 +555,13 @@ export class SessionCoordinator {
       triggerOwner,
       explicit,
       publicationAuthority: 'active',
-      settled: false,
       priorOverlay,
     });
     sourceState.status = 'scanning';
     sourceState.scanRequestId = scanRequestId;
     sourceState.progress = {
       scanRequestId,
-      phase: 'enumerating' as const,
+      phase: 'enumerating',
       queuedAt: null,
       startedAt: new Date().toISOString(),
       visitedEntries: 0,
@@ -411,14 +585,63 @@ export class SessionCoordinator {
   }
 
   /**
+   * Revokes every running attempt at once, for a shutdown that cannot name
+   * them: closing the host stops new requests but not a scan already reading,
+   * and a result arriving afterwards must commit nothing.
+   */
+  public revokeAllPublicationAuthority(): void {
+    for (const attempt of this.attempts.values()) {
+      attempt.publicationAuthority = 'revoked';
+    }
+  }
+
+  /**
+   * Advances a running scan's progress (contracts/http-api.md § get-session
+   * `progress`). The attempt reports what it has done so far, so a refresh
+   * mid-scan shows the phase it is in rather than the zeros an admission
+   * starts at. A revoked or unknown request writes nothing: progress
+   * is presentation, and a superseded attempt must not speak for the Source.
+   */
+  public reportProgress(
+    scanRequestId: string,
+    update: {
+      readonly phase: ScanProgressPhase;
+      readonly visitedEntries: number;
+      readonly candidateFiles: number;
+      readonly readBytes: number;
+      /** Attempt-local diagnostics accumulated so far (data-model.md § ScanProgress). */
+      readonly diagnosticCount: number;
+    },
+  ): void {
+    const attempt = this.attempts.get(scanRequestId);
+    if (attempt === undefined || attempt.publicationAuthority !== 'active') {
+      return;
+    }
+    const sourceState = this.session.internal.sourceStates.get(attempt.sourceId);
+    if (sourceState?.progress?.scanRequestId !== scanRequestId) {
+      return;
+    }
+    sourceState.progress = {
+      ...sourceState.progress,
+      phase: update.phase,
+      visitedEntries: update.visitedEntries,
+      candidateFiles: update.candidateFiles,
+      readBytes: update.readBytes,
+      diagnosticCount: update.diagnosticCount,
+    };
+  }
+
+  /**
    * Commits an attempt's result as its sequence's exact N+1 generation and
    * clears stale state only for the Sources it refreshed (FR-030). A
-   * revoked or already settled attempt commits nothing.
+   * revoked or already terminal attempt commits nothing.
    */
   public async completeScan(
     scanRequestId: string,
     result: {
       readonly files: readonly CustomizationFileDto[];
+      /** The attempt's recognitions; rekeyed with their files by the commit. */
+      readonly recognitions: readonly ToolRecognitionDto[];
       readonly diagnostics: readonly SerializedDiagnostic[];
       /**
        * The attempt's closed publication outcome (FR-028): 'partial' exactly
@@ -427,10 +650,25 @@ export class SessionCoordinator {
        * silently relabeled complete.
        */
       readonly outcome: GenerationOutcome;
+      /**
+       * How many directory entries the attempt's walk looked at. The committed
+       * progress reports it, so a finished scan states its own work rather than
+       * the zero an admission starts the counters at.
+       */
+      readonly visitedEntries: number;
+      /**
+       * Allowlisted candidate files the walk discovered
+       * (data-model.md § ScanProgress). Distinct from `files.length`: a
+       * normalization-collision group is discovered and then rejected, so the
+       * published set is smaller than what traversal found.
+       */
+      readonly candidateFiles: number;
+      /** Bytes the attempt accepted, as counted while reading. */
+      readonly readBytes: number;
     },
   ): Promise<void> {
     const attempt = this.attempts.get(scanRequestId);
-    if (attempt === undefined || attempt.settled) {
+    if (attempt === undefined) {
       return;
     }
     const sourceState = this.session.internal.sourceStates.get(attempt.sourceId);
@@ -440,20 +678,23 @@ export class SessionCoordinator {
     if (attempt.publicationAuthority === 'revoked') {
       // Cleanup-only: the late result is discarded, public generation state
       // is untouched, and the Source overlay reverts to the exact
-      // pre-admission state (see {@link AttemptState.priorOverlay}).
-      attempt.settled = true;
+      // pre-admission state (see {@link AttemptState.priorOverlay}). That
+      // includes `scanRequestId`, which becomes null again when the revoked
+      // attempt was the Source's first: a Source whose every admission was
+      // revoked states no request rather than one whose result was thrown
+      // away (data-model.md § Source `scanRequestId`).
+      this.attempts.delete(scanRequestId);
       sourceState.status = attempt.priorOverlay.status;
       sourceState.scanRequestId = attempt.priorOverlay.scanRequestId;
       sourceState.progress = attempt.priorOverlay.progress;
       return;
     }
-    // The attempt is marked settled only after the fallible commit below
-    // succeeds. Generation preparation regenerates opaque IDs and can throw;
-    // if it did after an early `settled = true`, the rejecting promise would
-    // reach the caller's catch but `failScan` would find the attempt already
-    // settled and silently drop it, leaving the Source stuck 'scanning' with
-    // no stale/failed record. Leaving it unsettled lets that `failScan`
-    // record the terminal failure (FR-030).
+    // The entry is removed only after the fallible commit below succeeds.
+    // Generation preparation regenerates opaque IDs and can throw; removing it
+    // first would leave the rejecting promise reaching the caller's catch while
+    // `failScan` found no attempt and silently dropped it, leaving the Source
+    // stuck 'scanning' with no stale/failed record. Keeping it lets that
+    // `failScan` record the terminal failure (FR-030).
     const now = new Date().toISOString();
     const next = prepareNextRepositoryGeneration(this.session.internal.committedRepositoryGeneration, {
       scannedSourceIds: [attempt.sourceId],
@@ -462,6 +703,7 @@ export class SessionCoordinator {
       finishedAt: now,
       outcome: result.outcome,
       files: result.files,
+      recognitions: result.recognitions,
       diagnostics: result.diagnostics,
     });
     // Atomic replacement: commit the generation, then update overlays. The
@@ -475,22 +717,28 @@ export class SessionCoordinator {
       [attempt.sourceId],
     );
     sourceState.status = result.outcome === 'partial' ? 'partial' : 'ready';
+    // The completed counters are what the attempt actually did. Leaving them at
+    // the zero an admission starts them with would report "0 files" beside a
+    // published inventory (contracts/http-api.md § get-session `progress`).
     sourceState.progress = {
-      ...(sourceState.progress ?? {
-        scanRequestId,
-        queuedAt: null,
-        startedAt: now,
-        visitedEntries: 0,
-        candidateFiles: 0,
-        readBytes: 0,
-        diagnosticCount: 0,
-      }),
-      phase: 'complete' as const,
+      scanRequestId,
+      queuedAt: sourceState.progress?.queuedAt ?? null,
+      startedAt: sourceState.progress?.startedAt ?? now,
+      phase: 'complete',
+      visitedEntries: result.visitedEntries,
+      candidateFiles: result.candidateFiles,
+      // The attempt's own tally, not a sum over the publication: a collision
+      // member is never opened and an empty override is read but not published,
+      // so deriving it here would understate the work.
+      readBytes: result.readBytes,
+      diagnosticCount: result.diagnostics.length,
     };
     this.hasCommittedBefore.add(attempt.sourceId);
-    // Terminal: the commit succeeded, so the attempt is now settled and a
-    // late duplicate result for the same request is ignored (FR-029).
-    attempt.settled = true;
+    // Terminal: the entry is removed, which is the whole record that this
+    // attempt is over. A late duplicate result for the same request finds no
+    // entry and is ignored (FR-029), and the map stays bounded by the number of
+    // *running* attempts rather than by session lifetime.
+    this.attempts.delete(scanRequestId);
   }
 
   /**
@@ -510,10 +758,13 @@ export class SessionCoordinator {
    */
   public failScan(scanRequestId: string, failure: ScanFailure): void {
     const attempt = this.attempts.get(scanRequestId);
-    if (attempt === undefined || attempt.settled) {
+    if (attempt === undefined) {
       return;
     }
-    attempt.settled = true;
+    // A terminal attempt leaves the map whatever its outcome. Every admission
+    // walks the retained entries, so a failure that stayed would slow each
+    // later admission and keep the map growing for the life of the session.
+    this.attempts.delete(scanRequestId);
     const sourceState = this.session.internal.sourceStates.get(attempt.sourceId);
     if (sourceState === undefined) {
       return;

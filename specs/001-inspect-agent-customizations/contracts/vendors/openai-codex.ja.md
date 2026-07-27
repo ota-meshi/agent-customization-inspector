@@ -64,12 +64,12 @@ FR-005、FR-024、QR-001、QR-004、QR-005である。
 
 | Rule ID | Base | Selector program | Expansion | Class | Behavior refs | Documentation status | Evidence |
 |---|---|---|---|---|---|---|---|
-| `codex.repo.instructions` | Repository | `[ANY_DIRECTORIES, 'AGENTS.override.md']`、`[ANY_DIRECTORIES, 'AGENTS.md']` | Rootと全descendant context directoryの`descendant-inventory` | `static-candidate` | `codex.behavior.repo.instructions` | Documented。Runtime chainはconditional | `openai.codex.agents-md` |
-| `codex.repo.skill` | Repository | `[ANY_DIRECTORIES, '.agents', 'skills', ANY_NAME, 'SKILL.md']` | 可能なcontext layerの`descendant-inventory` plus `direct-child`。Skill nameは1 direct child | `static-candidate` | `codex.behavior.repo.skills` | Documented。Runtime chainはconditional | `openai.codex.skills` |
-| `codex.repo.agent` | Repository | `[ANY_DIRECTORIES, '.codex', 'agents', /\.toml$/u]` | `descendant-inventory` plus `direct-child`。Agent fileはdirect child | `static-candidate` | `codex.behavior.repo.agents` | Partially documented | `openai.codex.subagents` |
-| `codex.repo.config` | Repository | `[ANY_DIRECTORIES, '.codex', 'config.toml']` | 可能なproject layerの`descendant-inventory` | `static-candidate` | `codex.behavior.repo.config`, `codex.behavior.repo.mcp`, `codex.behavior.repo.hooks` | Documented。Trust/runtime chainはconditional | `openai.codex.config-basic`, `openai.codex.mcp` |
-| `codex.repo.hooks` | Repository | `[ANY_DIRECTORIES, '.codex', 'hooks.json']` | 可能なactive config layerの`descendant-inventory` | `static-candidate` | `codex.behavior.repo.hooks` | Documented。Trust/hook reviewはconditional | `openai.codex.hooks` |
-| `codex.repo.rules` | Repository | `[ANY_DIRECTORIES, '.codex', 'rules', /\.rules$/u]` | Layer rootの`descendant-inventory`と各`rules/`内`direct-child` | `static-candidate` | `codex.behavior.repo.rules` | Experimental。Nested rule directoryはexcluded | `openai.codex.rules` |
+| `codex.repo.instructions` | Repository | `['AGENTS.override.md']`、`['AGENTS.md']` | Repository rootでの各selectorの`exact`。ページはrepository rootからruntime `cwd`へ下る | `static-candidate` | `codex.behavior.repo.instructions` | Documented。Runtime chainはconditional | `openai.codex.agents-md` |
+| `codex.repo.skill` | Repository | `['.agents', 'skills', ANY_NAME, 'SKILL.md']` | Repository rootにanchorした`exact`の後に`direct-child`。Skill nameは1 direct child。Codexのskill scanはworking directoryから*上向き*に走る。Allowlistは選択されたRepository rootにanchorされ、そのrootのcustomizationを報告する（FR-003）ため、1つ下のnested `.agents/skills`はこのproductが選択しないworking directoryに属し、candidateではなくnear missとなる。そのdirectoryへの依存はrecognitionの`runtime-cwd` conditionである | `static-candidate` | `codex.behavior.repo.skills` | Documented。Runtime chainはconditional | `openai.codex.skills` |
+| `codex.repo.agent` | Repository | `['.codex', 'agents', /\.toml$/u]` | Repository rootの`.codex/agents/`の`direct-child`。ページはproject scopeとして`.codex/agents/`を挙げ、nested searchは文書化していない | `static-candidate` | `codex.behavior.repo.agents` | Partially documented | `openai.codex.subagents` |
+| `codex.repo.config` | Repository | `['.codex', 'config.toml']` | Repository rootでの`exact`。ページはproject config layerをproject rootからruntime `cwd`へ読み込む | `static-candidate` | `codex.behavior.repo.config`, `codex.behavior.repo.mcp`, `codex.behavior.repo.hooks` | Documented。Trust/runtime chainはconditional | `openai.codex.config-basic`, `openai.codex.mcp` |
+| `codex.repo.hooks` | Repository | `['.codex', 'hooks.json']` | Repository rootでの`exact`。ページはproject locationとして`<repo>/.codex/hooks.json`を挙げる | `static-candidate` | `codex.behavior.repo.hooks` | Documented。Trust/hook reviewはconditional | `openai.codex.hooks` |
+| `codex.repo.rules` | Repository | `['.codex', 'rules', /\.rules$/u]` | Repository rootの`rules/` directoryの`direct-child`。ページは`<repo>/.codex/rules/`を挙げ、nested recursionは文書化していない | `static-candidate` | `codex.behavior.repo.rules` | Experimental。Nested rule directoryはexcluded | `openai.codex.rules` |
 | `codex.repo.plugin-manifest` | Repository | `['.codex-plugin', 'plugin.json']` | `exact`。Selected Repository rootをauthored plugin rootとして扱う | `static-candidate` | `codex.behavior.plugin.manifest` | Inspectorのauthored-project policyだけ。Codex plugin discovery/activationではない | `openai.codex.plugins` |
 | `codex.repo.marketplace` | Repository | `['.agents', 'plugins', 'marketplace.json']`、`['.claude-plugin', 'marketplace.json']` | `exact` | `static-candidate` | `codex.behavior.repo.marketplace` | 正確なRepository-root location | `openai.codex.plugins` |
 
@@ -95,8 +95,10 @@ Local marketplace entryからこれらcomponentへ再帰展開してはならな
 
 ## 文書化済みUser behavior
 
-この表はmaintainer向けにCodexの対応を記録するもので、Global inspectionを拡張しない。`CODEX_HOME`の既定値は
-`$HOME/.codex`だが、別の`$HOME/.agents` directoryは移動しない。
+この表はmaintainer向けにCodexの対応を記録するもので、Global inspectionを拡張しない。引用ページはuser skillの
+場所として`$HOME/.agents/skills`を、user configuration directoryとして`~/.codex`を文書化しているが、
+`$HOME/.agents`を再配置するoverrideはいずれのページも文書化していない。したがってInspectorは両directoryを
+別物として扱い、再配置は記録しない。`CODEX_HOME` overrideが動かすのは下表の`<CODEX_HOME>` locatorだけである。
 
 | Behavior ID | User behavior | User locator | Strategy / composition | Inspector status | Evidence |
 |---|---|---|---|---|---|

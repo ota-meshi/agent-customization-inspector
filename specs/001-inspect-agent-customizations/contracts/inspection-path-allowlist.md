@@ -62,7 +62,7 @@ Consequently:
 ### Repository
 
 The Repository boundary is the selected root: the exact one-time captured invocation
-`process.cwd()` when `--cwd` is omitted. `--cwd` is accepted, a repeated option resolving
+`process.cwd()` when `--root` is omitted. `--root` is accepted, a repeated option resolving
 to the parser's last value; an absolute
 value is kept as given, and a relative value is resolved against the captured invocation
 directory with the active platform's `node:path.resolve`. An explicit empty value fails
@@ -72,11 +72,14 @@ which the product does not duplicate (FR-001). Selection performs zero filesyste
 Generation 0 contains the one Repository Source created with zero filesystem I/O; its
 escaped root label carries no read authority, and the first scan reads the retained
 selected root, failing with the source-scoped `root-unreadable` Diagnostic when the root
-does not exist or cannot be read as a directory (FR-002). The Inspector does not walk
-above the selected root to find a Git or product project root. Repository inventory is an
-ordinary recursive traversal below the selected root. A
-vendor may use a different runtime root or walk direction; that fact belongs to the vendor
-and runtime-composition contracts and never changes this boundary.
+does not exist or cannot be read as a directory (FR-002). The Inspector never walks above
+a Source's own root: such a path has no `SourceRelativePath` and lies outside the boundary
+entirely. It also never probes for a repository marker to find a root, because the selected
+root already *is* the repository root — a vendor lookup that walks upward from a runtime
+working directory terminates exactly there (FR-001). Repository inventory is an ordinary
+recursive traversal below the selected root. A vendor may use a
+different runtime root or walk direction; that fact belongs to the vendor and
+runtime-composition contracts and never changes this boundary.
 
 ### Global
 
@@ -107,7 +110,7 @@ Every static Inspector rule separates these fields:
 | Field | Meaning |
 |---|---|
 | **Base** | One exact enabled boundary: `Repository` or one named consented `Global` vendor boundary |
-| **Selector programs** | A non-empty ordered list of authored typed segment programs, each relative to the Base; a program can contain multiple typed expansion steps and cannot represent an absolute path, environment expansion, home expansion, URI, or implicit ancestor search |
+| **Selector programs** | A non-empty ordered list of authored typed segment programs, each relative to the Source root; a program cannot represent an absolute path, environment expansion, home expansion, URI, or implicit ancestor search |
 
 Each selector program has a non-empty ordered sequence of segment tokens from this closed union:
 
@@ -121,7 +124,10 @@ Each selector program has a non-empty ordered sequence of segment tokens from th
   directory step when non-terminal and a regular-file step when terminal, and renders as
   its regex literal (for example `/\.md$/u`).
 - `recursive-directories` — the `**` step — matches zero or
-  more directories, is never terminal, and is never adjacent to another recursive token.
+  more directories, is never terminal, and never adjacent to another
+  recursive token. It is a downward step only: no selector token names a parent
+  directory, and none needs to: the allowlist is anchored at the selected root and reports
+  that root's customizations (FR-003).
 
 Static fixed prefixes, exact targets, and fixed derived suffixes use that same closed ASCII
 literal type. Registry validation rejects every non-ASCII path literal; consequently exact
@@ -153,16 +159,26 @@ root.
 |---|---|---|
 | `['path', 'file']` | `exact` | One exact file relative to the Repository source root |
 | `['path', ANY_NAME]` | `direct-child` | Matching direct children of one root-relative directory; a segment never crosses `/` |
-| `[ANY_DIRECTORIES, 'name']` | `descendant-inventory` | Explicit Inspector inventory at the root and below it; `ANY_DIRECTORIES` matches zero or more directory segments |
+| `[ANY_DIRECTORIES, 'name']` | `descendant-inventory` | Explicit Inspector inventory at the root and every directory below it |
 | `['path', ANY_DIRECTORIES, /\.ext$/u]` | `recursive-subtree` | Explicit recursive Inspector inventory below one root-relative subtree, including its root level |
-| `[ANY_DIRECTORIES, '.claude', 'skills', ANY_NAME, 'SKILL.md']` | `descendant-inventory`, then `direct-child` | Cross-product of possible context directories and exactly one direct skill-name directory; the terminal file remains exact |
-| `[ANY_DIRECTORIES, '.claude', 'rules', ANY_DIRECTORIES, /\.md$/u]` | `descendant-inventory`, then `recursive-subtree` | Cross-product of possible rule-layer roots and the recursive subtree below each fixed `rules` directory |
+| `['.agents', 'skills', ANY_NAME, 'SKILL.md']` | `exact`, then `direct-child` | One anchored program at the Source root; the terminal file remains exact |
 
-A leading `ANY_DIRECTORIES` describes only the Inspector's downward descendant
-inventory. It does not mean
-that a vendor walks downward, walks upward, searches ancestors, recognizes every nested
-repository, or applies the matched file in a particular runtime context. Those claims
-require separate vendor behavior and strategy records.
+`ANY_DIRECTORIES` is the one directional axis, and it points downward. It describes only the Inspector's inventory of directories below its anchor.
+It does not mean that a vendor walks downward, walks upward, searches ancestors, recognizes
+every nested repository, or applies the matched file in a particular runtime context. Those
+claims require separate vendor behavior and strategy records.
+
+There is deliberately no upward axis. The allowlist is anchored at the selected root and
+reports that root's customizations (FR-003), so a vendor lookup that walks upward from a
+runtime working directory contributes exactly one in-scope layer and needs no notation; a
+rule whose vendor resolves it that way is written as a plainly anchored program. Writing it
+with a leading `ANY_DIRECTORIES` instead would inventory nested copies belonging to working
+directories this product does not select, over-approximating the root it was asked about.
+
+The working directory a vendor lookup starts from is still the `runtime-cwd` condition
+fact, deliberately distinct from the invocation directory that selected the Source. Equating
+`$CWD` with `$REPO_ROOT` fixes the lookup's *endpoint*, not its runtime origin, so which
+layer a running agent would actually start from stays conditional.
 
 `ANY_NAME` is the always-matching `regex` step and matches exactly one entry
 name. `**` is the prose name of the
@@ -170,6 +186,67 @@ name. `**` is the prose name of the
 literal-only program is exact. Repository rule tables must state Base, the authored
 selector program, and the derived Expansion summary separately; the immutable registry
 carries those one-to-one typed selector programs.
+
+### Bounded companion census
+
+Some customizations are directories rather than files. A skill is the clearest case: the
+`SKILL.md` is admitted, and the scripts, references, and assets beside it are what make the
+skill more than a paragraph, so the directory holding an admitted candidate of such a kind
+is enumerated recursively to list the regular files accompanying it.
+
+Whether a census applies follows from the recognized kind, not from a separate declaration
+on a rule. Being a directory is part of what a kind *is*, so every rule that admits that kind
+wants the census and a per-rule flag would state twice what one of them already decides.
+
+The census result is the list of Source-relative Paths, sorted, not a count of them. The
+paths are NFC display spellings, so raw entry names that normalize to one path contribute
+one entry: what the census lists is the set of paths accompanying the candidate, not the
+set of directory entries. The ordinary walk rejects such a group rather than choosing
+between its members, and the census publishes no diagnostic, so listing one path twice
+would show two rows a reader cannot tell apart. The
+inventory row states how many there are and the file detail view names each one; deriving
+the number from the list keeps a single fact, where publishing both would be two states that
+can disagree.
+
+A census is enumeration, never admission. It reads no bytes, admits no candidate, produces
+no diagnostic of its own, and grants no read authority to anything it lists. The files it
+lists remain exactly what they were — relationship targets that are never read through
+those edges — so listing them must not promote them to candidates, and appearing in a census
+is not evidence that the vendor loads any of them.
+
+A census is not part of the allowlist walk. The traversal executes the shipped selector
+programs and answers which files may be read; a census answers what else sits in a
+customization's own directory, which no selector expresses and only a kind that has one
+wants. It therefore runs over the candidates the traversal already admitted, rooted only at
+an admitted candidate's own directory: there is no arbitrary path. It runs where that
+customization's per-kind details are built, from the recognized kind and the candidate's own
+path — both of which recognition already holds — so no earlier phase has to know which kinds
+want a census.
+
+A census result is therefore a list on every recognition of a kind that has one, empty when
+the admitted file sits alone. There is no "no census ran" state to tell apart from "nothing
+accompanies it". It excludes the seed
+itself and VCS internals, and it follows symbolic links under the same real-path cycle rules
+as the ordinary traversal, so a link back into the subtree terminates rather than being
+walked forever.
+
+Descent is contained twice. A census enters a directory only when that directory's real path
+is inside the census root, and the census root itself counts only when its own real path is
+inside the Source root's. The second check is not redundant: a candidate's directory may
+itself be a symbolic link out of the tree, and its real path would then make an outside
+directory the census root. A candidate reached that way accompanies nothing — the Source is
+the boundary of what was authorized for inspection, and what lies beyond it belongs to no
+Source. Containment is what bounds this walk. The ordinary traversal is
+bounded by its selector program, which stops descending once no selector can still match; a
+census has no selector, so without containment a link to an ancestor would report an entire
+repository as one skill's companions. Listing is not contained in the same way: a symbolic
+link to a file is listed at the entry's own path, because the entry is what sits in the
+directory and an agent reading it would resolve the link too.
+
+An enumeration failure is not confined to one file and propagates, exactly as it does in the
+ordinary walk. The empty list states that the admitted file sits alone, so returning it for a
+permission or I/O error would publish a fact about the directory on the strength of not
+having read it.
 
 ### Global selector requirements
 
@@ -233,7 +310,11 @@ target is missing or unreadable yields that file's `file-unreadable` Diagnostic,
 recursive traversal tracks visited directories by real path so a link cycle cannot
 prevent a scan from terminating. Hard links are ordinary files: there is no
 physical-identity grouping, no read-once semantics, and no primary/alias path selection.
-`.git/`, `.hg/`, and `.svn/` internals are excluded from traversal.
+`.git/`, `.hg/`, and `.svn/` internals are excluded from traversal. The exclusion is
+judged on the resolved real path of a directory relative to the walk's own container — the
+Source root, or the fixed subtree a targeted walk was given — so an entry that reaches
+those internals under another name is excluded too, while a Source root whose own path
+contains such a segment is an ordinary root that is scanned normally.
 
 A problem confined to one file stays confined (FR-028): an unreadable file yields
 the file-scoped `file-unreadable` Diagnostic, NUL-containing content yields
@@ -387,12 +468,14 @@ Contract and fixture validation must prove all of the following:
    references reciprocally, and has semantically equivalent English and Japanese rows.
 2. Every Repository matcher program is relative to the Repository source root. Exact,
    direct-child, descendant-inventory, and fixed-subtree recursive forms have distinct
-   positive and near-miss fixtures. Matcher fixtures accept `regex` steps
-   (including `ANY_NAME`), reject a terminal or adjacent
-   `recursive-directories` step, and reject every non-ASCII or forbidden literal code unit.
-3. A leading-`ANY_DIRECTORIES` fixture proves only downward Inspector inventory and
-   carries separate unknown
-   or conditional vendor-runtime facts where the upstream traversal is not established.
+   positive and near-miss fixtures. Matcher fixtures accept `regex` steps (including
+   `ANY_NAME`), reject a terminal or adjacent `recursive-directories` step, and reject
+   every non-ASCII or forbidden literal code unit.
+3. An anchored fixture for a vendor that resolves upward proves that no directory above
+   the Source root is opened, that no repository-marker probe occurs, and that a nested
+   well-formed copy of the same path one directory below the root is a near miss rather
+   than a candidate. It carries separate unknown or conditional vendor-runtime facts where
+   the upstream traversal is not established.
 4. Typed matchers compile deterministically to immutable versioned plans. Global fixtures
    prove that an exact target is read without enumerating its root, a fixed subtree
    enumerates only that subtree and permitted descendants, and neighboring paths receive
@@ -426,7 +509,7 @@ Contract and fixture validation must prove all of the following:
    ordinary independent files with no grouping, alias, or read-once behavior.
    Cross-Source/attempt/generation fixtures prove independent reads.
 8. Root-selection fixtures cover the captured one-time `process.cwd()`, an absolute
-   `--cwd` kept as given, a relative `--cwd` resolved against the capture, the fixed
+   `--root` kept as given, a relative `--root` resolved against the capture, the fixed
    startup error for an explicit empty option, and Gunshi's typed missing-value rejection, with zero `chdir` calls and
    zero selection-time filesystem I/O. Traversal fixtures on every supported OS prove that
    a symlinked customization file is read transparently and displays its linked content, a

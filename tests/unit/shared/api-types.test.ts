@@ -67,9 +67,28 @@ describe('one-root Source DTO', () => {
 
 describe('session snapshot DTO', () => {
   it('excludes internal authority state by construction', () => {
-    expectTypeOf<SessionSnapshot>().not.toHaveProperty('selectedRepositoryRoot');
-    expectTypeOf<SessionSnapshot>().not.toHaveProperty('invocationCwd');
-    expectTypeOf<SessionSnapshot>().not.toHaveProperty('internal');
+    // The exact member set, not three named absences: naming what must not be
+    // there proves nothing about a fourth field a later change adds, and the
+    // wire snapshot is exactly the surface that must not grow a root, a handle,
+    // or any other locator without someone deciding to.
+    expectTypeOf<keyof SessionSnapshot>().toEqualTypeOf<
+      | 'sessionId'
+      | 'createdAt'
+      | 'sources'
+      | 'files'
+      | 'skills'
+      | 'diagnostics'
+      | 'repositoryGeneration'
+      | 'globalGeneration'
+      | 'snapshotState'
+      | 'staleFailures'
+      | 'globalControl'
+      | 'globalEnableInProgress'
+      | 'globalDisableInProgress'
+      | 'globalContentEpoch'
+      | 'sessionDiagnosticIds'
+      | 'repositoryFailureDiagnosticId'
+    >();
   });
 });
 

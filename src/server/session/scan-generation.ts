@@ -6,7 +6,7 @@
 // disable barrier discards it (FR-042 — disable produces no generation).
 // Every commit rekeys all of its own file IDs.
 import { createOpaqueId } from '../../shared/entities';
-import type { CustomizationFileDto } from '../../shared/api-types';
+import type { CustomizationFileDto, ToolRecognitionDto } from '../../shared/api-types';
 import type { SerializedDiagnostic } from '../../shared/diagnostics';
 
 /**
@@ -72,6 +72,12 @@ interface ScanGenerationBase {
   readonly outcome: GenerationOutcome;
   /** The sequence's complete committed inventory. */
   readonly files: readonly CustomizationFileDto[];
+  /**
+   * Every recognition attached to a file of this generation. Recognitions are
+   * generation-scoped entities the files reference by ID, so a commit rekeys
+   * them together with the files they belong to.
+   */
+  readonly recognitions: readonly ToolRecognitionDto[];
   /** Diagnostics committed with this generation. */
   readonly diagnostics: readonly SerializedDiagnostic[];
 }
@@ -115,31 +121,67 @@ export interface ScanCommitInput {
   readonly outcome: GenerationOutcome;
   /** Files to publish; their IDs are rekeyed by the commit, not taken from here. */
   readonly files: readonly CustomizationFileDto[];
+  /** Recognitions to publish; their IDs are rekeyed by the commit as well. */
+  readonly recognitions: readonly ToolRecognitionDto[];
   /** The attempt's diagnostics, already serialized for the DTO. */
   readonly diagnostics: readonly SerializedDiagnostic[];
 }
 
-// Every file ID — including IDs for an unchanged file — is regenerated on
-// commit so no stale client reference can survive: a client holding
-// generation-N IDs must refetch rather than silently read N+1 data through
-// an old handle. File-scoped diagnostics are rewritten through the same
-// old-to-new map so their coherent sourceId/fileId/path tuples keep
-// pointing at the files this commit publishes.
+// Every generation-owned ID — file and recognition alike, including IDs for
+// an unchanged file — is regenerated on commit so no stale client reference
+// can survive: a client holding generation-N IDs must refetch rather than
+// silently read N+1 data through an old handle. File-scoped diagnostics,
+// recognition back-references, and each file's `recognitionIds` are rewritten
+// through the same old-to-new maps so every coherent tuple keeps pointing at
+// the records this commit publishes.
 function rekeyCommit(input: ScanCommitInput): {
   files: readonly CustomizationFileDto[];
+  recognitions: readonly ToolRecognitionDto[];
   diagnostics: readonly SerializedDiagnostic[];
 } {
-  const rekeyedIds = new Map<string, string>();
-  const files = input.files.map((file) => {
-    const fileId = createOpaqueId();
-    rekeyedIds.set(file.fileId, fileId);
-    return { ...file, fileId };
+  // Assigned per record rather than per distinct incoming ID, so every
+  // committed record has its own fresh identity even if a producer reused a
+  // provisional ID; the lookup maps below are what references resolve through.
+  const assignedFileIds = input.files.map(() => createOpaqueId());
+  const rekeyedFileIds = rekeyMap(
+    input.files.map((file) => file.fileId),
+    assignedFileIds,
+  );
+  const assignedRecognitionIds = input.recognitions.map(() => createOpaqueId());
+  const rekeyedRecognitionIds = rekeyMap(
+    input.recognitions.map((recognition) => recognition.recognitionId),
+    assignedRecognitionIds,
+  );
+  // A missing entry means the producer emitted a reference to a record it
+  // never published, which is an authoring bug rather than a runtime state:
+  // failing here is better than committing a generation whose IDs dangle.
+  const remap = (map: Map<string, string>, id: string): string => {
+    const next = map.get(id);
+    if (next === undefined) {
+      throw new TypeError(`a commit referenced an unpublished generation-owned ID: ${id}`);
+    }
+    return next;
+  };
+  const files = input.files.map((file, index) => {
+    const fileId = assignedFileIds[index]!;
+    return 'recognitionIds' in file
+      ? {
+          ...file,
+          fileId,
+          recognitionIds: file.recognitionIds.map((id) => remap(rekeyedRecognitionIds, id)),
+        }
+      : { ...file, fileId };
   });
+  const recognitions = input.recognitions.map((recognition, index) => ({
+    ...recognition,
+    recognitionId: assignedRecognitionIds[index]!,
+    fileId: remap(rekeyedFileIds, recognition.fileId),
+  }));
   const diagnostics = input.diagnostics.map((diagnostic) => {
-    const fileId = diagnostic.fileId === null ? undefined : rekeyedIds.get(diagnostic.fileId);
-    return fileId === undefined ? diagnostic : { ...diagnostic, fileId };
+    const fileId = diagnostic.fileId === null ? null : remap(rekeyedFileIds, diagnostic.fileId);
+    return fileId === diagnostic.fileId ? diagnostic : { ...diagnostic, fileId };
   });
-  return { files, diagnostics };
+  return { files, recognitions, diagnostics };
 }
 
 /** Builds the empty zero-I/O Repository generation 0 (FR-002). */
@@ -154,8 +196,18 @@ export function createBootstrapGeneration(now: string): RepositoryScanGeneration
     finishedAt: now,
     outcome: 'complete',
     files: [],
+    recognitions: [],
     diagnostics: [],
   };
+}
+
+/**
+ * Pairs each provisional ID with the one assigned to it. Both come from
+ * `createOpaqueId`, which draws 16 crypto-random bytes, so the provisional IDs
+ * of one commit are distinct and the map is total over them.
+ */
+function rekeyMap(provisional: readonly string[], assigned: readonly string[]): Map<string, string> {
+  return new Map(provisional.map((id, index) => [id, assigned[index]!]));
 }
 
 /** Builds the exact N+1 Repository replacement generation (FR-030). */
@@ -163,7 +215,7 @@ export function prepareNextRepositoryGeneration(
   current: RepositoryScanGeneration,
   input: ScanCommitInput,
 ): RepositoryScanGeneration {
-  const { files, diagnostics } = rekeyCommit(input);
+  const { files, recognitions, diagnostics } = rekeyCommit(input);
   return {
     generation: current.generation + 1,
     baseGeneration: current.generation,
@@ -174,6 +226,7 @@ export function prepareNextRepositoryGeneration(
     finishedAt: input.finishedAt,
     outcome: input.outcome,
     files,
+    recognitions,
     diagnostics,
   };
 }
@@ -185,7 +238,7 @@ export function prepareNextRepositoryGeneration(
  * exists at all.
  */
 export function createGlobalEnableGeneration(input: ScanCommitInput): GlobalScanGeneration {
-  const { files, diagnostics } = rekeyCommit(input);
+  const { files, recognitions, diagnostics } = rekeyCommit(input);
   return {
     generation: 1,
     baseGeneration: 0,
@@ -196,6 +249,7 @@ export function createGlobalEnableGeneration(input: ScanCommitInput): GlobalScan
     finishedAt: input.finishedAt,
     outcome: input.outcome,
     files,
+    recognitions,
     diagnostics,
   };
 }
@@ -205,7 +259,7 @@ export function prepareNextGlobalGeneration(
   current: GlobalScanGeneration,
   input: ScanCommitInput,
 ): GlobalScanGeneration {
-  const { files, diagnostics } = rekeyCommit(input);
+  const { files, recognitions, diagnostics } = rekeyCommit(input);
   return {
     generation: current.generation + 1,
     baseGeneration: current.generation,
@@ -216,6 +270,7 @@ export function prepareNextGlobalGeneration(
     finishedAt: input.finishedAt,
     outcome: input.outcome,
     files,
+    recognitions,
     diagnostics,
   };
 }

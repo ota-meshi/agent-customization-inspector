@@ -6,7 +6,8 @@
 // aborts the attempt with nothing committed, external fixture mutation is
 // not a product mutation, and late results after revocation are discarded
 // without hard-cancellation claims (FR-002, FR-029, FR-030).
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -20,9 +21,14 @@ import {
 import {
   ANY_DIRECTORIES,
   compileSelectorPrograms,
+  type CompiledInspectionRule,
+  type TraversalPlan,
 } from '../../../src/server/inspection/rules/registry';
 import { runTraversalScan } from '../../../src/server/inspection/traversal';
 import { assembleScanPublication } from '../../../src/server/inspection/scan';
+import { CODEX_REPO_SKILL_RULE } from '../../../src/shared/registries/codex/rules';
+import { CODEX_RULE_RELATIONS } from '../../../src/shared/registries/codex/relations';
+import type { RecognitionParseStatus, ToolRecognitionDto } from '../../../src/shared/api-types';
 import { createDiagnostic, serializeDiagnostic } from '../../../src/shared/diagnostics';
 import {
   SessionCoordinator,
@@ -32,7 +38,7 @@ import { prepareNextRepositoryGeneration } from '../../../src/server/session/sca
 
 // Pass-through spies over the inspection module's closed fs surface —
 // production-call instrumentation for the external-mutation case
-// (contracts/inspection-path-allowlist.md § 12).
+// (contracts/inspection-path-allowlist.md § Symlink and read invariants).
 vi.mock('../../../src/server/inspection/fs-io', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../src/server/inspection/fs-io')>();
   return Object.fromEntries(
@@ -45,10 +51,48 @@ vi.mock('../../../src/server/inspection/fs-io', async (importOriginal) => {
 
 const AGENTS_PLAN = compileSelectorPrograms({ kind: 'repository' }, [[ANY_DIRECTORIES, 'AGENTS.md']]);
 
+// These suites exercise the publication matrix itself, so they pair the plan
+// under test with a stand-in rule identity rather than the shipped Codex
+// catalog: the matrix must behave identically for whichever rule admitted a
+// candidate.
+function codexSkillRule(plan: TraversalPlan): CompiledInspectionRule {
+  return {
+    rule: CODEX_REPO_SKILL_RULE,
+    relations: CODEX_RULE_RELATIONS['codex.repo.skill'],
+    tool: 'codex',
+    kind: 'skill',
+    plan,
+  };
+}
+
+const AGENTS_RULES: readonly CompiledInspectionRule[] = [codexSkillRule(AGENTS_PLAN)];
+
+// A recognizer stand-in for the FR-028 parse-failure arm. No shipped
+// recognizer can return `failed` yet — extraction arrives with the Codex
+// detail phase — so the matrix's own behavior is driven through the same
+// dispatch seam the production recognizers are injected on.
+function fakeRecognition(
+  fileId: string,
+  recognitionId: string,
+  parseStatus: RecognitionParseStatus,
+): ToolRecognitionDto {
+  return {
+    recognitionId,
+    fileId,
+    tool: 'codex',
+    // These cases assert the parse-summary projection, so the kind is the one
+    // the fixture's `AGENTS.md` actually is and carries no per-kind detail.
+    details: { kind: 'instructions' },
+    parseStatus,
+    provenances: [],
+    diagnosticIds: [],
+  };
+}
+
 function bootstrapSession(root: string) {
   const session = createInspectionSession({
     invocationCwd: root,
-    cwdOptionValue: null,
+    rootOptionValue: null,
     selectedRepositoryRoot: root,
   });
   return { session, coordinator: new SessionCoordinator(session) };
@@ -59,9 +103,11 @@ describe('file-confined outcomes publish a partial generation (FR-028)', () => {
     const tree = buildTraversalFixtureTree('inspector-integration');
     try {
       const result = await runTraversalScan({ root: tree.root, plans: [AGENTS_PLAN] });
-      const publication = assembleScanPublication({
+      const publication = await assembleScanPublication({
         sourceId: 'src-1',
+        root: tree.root,
         rootFailureOwner: 'repository',
+        rules: AGENTS_RULES,
         result,
       });
       if (publication.kind !== 'publishable') {
@@ -120,11 +166,15 @@ describe('file-confined outcomes publish a partial generation (FR-028)', () => {
       if (!tree.capabilities.normalizationCollisions) {
         return;
       }
-      const plans = [compileSelectorPrograms({ kind: 'repository' }, [['collision', /\.md$/u]])];
-      const result = await runTraversalScan({ root: tree.root, plans });
-      const publication = assembleScanPublication({
+      const rules = [
+        codexSkillRule(compileSelectorPrograms({ kind: 'repository' }, [['collision', /\.md$/u]])),
+      ];
+      const result = await runTraversalScan({ root: tree.root, plans: rules.map((rule) => rule.plan) });
+      const publication = await assembleScanPublication({
         sourceId: 'src-1',
+        root: tree.root,
         rootFailureOwner: 'repository',
+        rules,
         result,
       });
       if (publication.kind !== 'publishable') {
@@ -141,6 +191,13 @@ describe('file-confined outcomes publish a partial generation (FR-028)', () => {
       // A collision is not a file-confined outcome of the closed table, so
       // it does not make the generation partial by itself (FR-030).
       expect(publication.outcome).toBe('complete');
+      // `candidateFiles` is what traversal discovered, not what the generation
+      // published (data-model.md § ScanProgress). Both members of the group
+      // were discovered and then rejected, so deriving this from `files` would
+      // report the walk as having found nothing at all.
+      expect(publication.files).toHaveLength(0);
+      expect(publication.candidateFiles).toBeGreaterThan(0);
+      expect(publication.candidateFiles).toBe(result.kind === 'scanned' ? result.candidateFiles : 0);
     } finally {
       tree.restore();
       rmSync(tree.root, { recursive: true, force: true });
@@ -156,19 +213,19 @@ describe('recognition parse failure keeps the source displayed (FR-028)', () => 
       mkdirSync(join(root, 'docs'));
       writeFileSync(join(root, 'docs', 'AGENTS.md'), 'docs agents\n');
       const result = await runTraversalScan({ root, plans: [AGENTS_PLAN] });
-      const publication = assembleScanPublication({
+      const publication = await assembleScanPublication({
         sourceId: 'src-1',
+        root: root,
         rootFailureOwner: 'repository',
+        rules: AGENTS_RULES,
         result,
-        recognitions: new Map([
-          [
-            'AGENTS.md',
-            [
-              { recognitionId: 'rec-failed', parseStatus: 'failed' as const },
-              { recognitionId: 'rec-parsed', parseStatus: 'parsed' as const },
-            ],
-          ],
-        ]),
+        recognize: async ({ fileId, matchedPath }) =>
+          matchedPath === 'AGENTS.md'
+            ? [
+                fakeRecognition(fileId, 'rec-failed', 'failed'),
+                fakeRecognition(fileId, 'rec-parsed', 'parsed'),
+              ]
+            : [],
       });
       if (publication.kind !== 'publishable') {
         throw new Error('expected a publishable outcome');
@@ -195,6 +252,18 @@ describe('recognition parse failure keeps the source displayed (FR-028)', () => 
         fileId: affected.fileId,
         sourceRelativePath: 'AGENTS.md',
       });
+      // The failure is recognition-scoped (FR-028), so the recognition carries
+      // it too: a row built from recognitions has no other way to reach it, and
+      // a diagnostic nothing references is a diagnostic nobody sees. Both
+      // owners reference the one published record.
+      const failed = publication.recognitions.find(
+        (recognition) => recognition.recognitionId === 'rec-failed',
+      );
+      expect(failed?.diagnosticIds).toEqual(affected.diagnosticIds);
+      const parsed = publication.recognitions.find(
+        (recognition) => recognition.recognitionId === 'rec-parsed',
+      );
+      expect(parsed?.diagnosticIds).toEqual([]);
       // A file with no recognitions stays complete and not-applicable.
       const unaffected = publication.files.find(
         (file) => file.sourceRelativePath === 'docs/AGENTS.md',
@@ -210,19 +279,16 @@ describe('recognition parse failure keeps the source displayed (FR-028)', () => 
     try {
       writeFileSync(join(root, 'AGENTS.md'), 'root agents\n');
       const result = await runTraversalScan({ root, plans: [AGENTS_PLAN] });
-      const publication = assembleScanPublication({
+      const publication = await assembleScanPublication({
         sourceId: 'src-1',
+        root: root,
         rootFailureOwner: 'repository',
+        rules: AGENTS_RULES,
         result,
-        recognitions: new Map([
-          [
-            'AGENTS.md',
-            [
-              { recognitionId: 'rec-a', parseStatus: 'failed' as const },
-              { recognitionId: 'rec-b', parseStatus: 'failed' as const },
-            ],
-          ],
-        ]),
+        recognize: async ({ fileId }) => [
+          fakeRecognition(fileId, 'rec-a', 'failed'),
+          fakeRecognition(fileId, 'rec-b', 'failed'),
+        ],
       });
       if (publication.kind !== 'publishable') {
         throw new Error('expected a publishable outcome');
@@ -265,6 +331,7 @@ describe('recognition parse failure keeps the source displayed (FR-028)', () => 
         startedAt: '2026-07-22T00:00:00.000Z',
         finishedAt: '2026-07-22T00:00:01.000Z',
         outcome: 'partial',
+        recognitions: [],
         files: [
           {
             fileId: 'file-1',
@@ -301,9 +368,11 @@ describe('unreadable root fails the Source attempt (FR-002)', () => {
   it('produces the source-scoped diagnostic and commits no partial generation', async () => {
     const missingRoot = join(createFixtureRoot('inspector-missing'), 'absent');
     const result = await runTraversalScan({ root: missingRoot, plans: [AGENTS_PLAN] });
-    const publication = assembleScanPublication({
+    const publication = await assembleScanPublication({
       sourceId: 'src-1',
+      root: missingRoot,
       rootFailureOwner: 'repository',
+      rules: AGENTS_RULES,
       result,
     });
     if (publication.kind !== 'source-failed') {
@@ -325,9 +394,11 @@ describe('unreadable root fails the Source attempt (FR-002)', () => {
     if (admitted.kind !== 'admitted') {
       throw new Error('expected admission');
     }
-    const sessionPublication = assembleScanPublication({
+    const sessionPublication = await assembleScanPublication({
       sourceId,
+      root: missingRoot,
       rootFailureOwner: 'repository',
+      rules: AGENTS_RULES,
       result,
     });
     if (sessionPublication.kind !== 'source-failed') {
@@ -422,6 +493,146 @@ describe('external mutation during a scan is not a product mutation', () => {
       rmSync(root, { recursive: true, force: true });
     }
   });
+
+  it('aborts the attempt when a read exhausts descriptors instead of blaming the file', async () => {
+    // The Constitution requires a recoverable environment or resource failure
+    // to abort the publication attempt and publish nothing. Folding `EMFILE`
+    // into that file's outcome would report the machine running out of
+    // descriptors as the user's file being unreadable.
+    const root = mkdtempSync(join(tmpdir(), 'inspector-emfile-'));
+    try {
+      writeFileSync(join(root, 'AGENTS.md'), 'root\n');
+      const failure = Object.assign(new Error('too many open files'), { code: 'EMFILE' });
+      vi.mocked(fsIo.readFile).mockRejectedValueOnce(failure);
+      try {
+        await expect(runTraversalScan({ root, plans: [AGENTS_PLAN] })).rejects.toThrow(failure);
+      } finally {
+        vi.mocked(fsIo.readFile).mockReset();
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('reports discovered candidates while it is still enumerating', async () => {
+    // `candidateFiles` is "discovered so far" (data-model.md § ScanProgress).
+    // Reporting a constant here would publish a counter that never moves until
+    // the attempt is over, which is the one moment progress is not for.
+    const root = mkdtempSync(join(tmpdir(), 'inspector-progress-'));
+    try {
+      mkdirSync(join(root, 'a', 'b'), { recursive: true });
+      for (const path of ['AGENTS.md', 'a/AGENTS.md', 'a/b/AGENTS.md']) {
+        writeFileSync(join(root, path), 'x\n');
+      }
+      const enumerating: number[] = [];
+      await runTraversalScan({
+        root,
+        plans: [AGENTS_PLAN],
+        onProgress: (update) => {
+          if (update.phase === 'enumerating') {
+            enumerating.push(update.candidateFiles);
+          }
+        },
+      });
+      expect(enumerating.length).toBeGreaterThan(1);
+      expect(Math.max(...enumerating)).toBeGreaterThan(0);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('fails the Source when the selected root is a symbolic-link cycle', async () => {
+    // A root that cannot be enumerated as a directory is the FR-002
+    // `root-unreadable` outcome, whatever errno says so. `ELOOP` reaching the
+    // caller as an exception would end the launch with an unexpected failure
+    // instead of the actionable Diagnostic.
+    const parent = mkdtempSync(join(tmpdir(), 'inspector-eloop-'));
+    try {
+      const root = join(parent, 'loop');
+      try {
+        symlinkSync(root, root);
+      } catch {
+        return;
+      }
+      expect(await runTraversalScan({ root, plans: [AGENTS_PLAN] })).toEqual({
+        kind: 'root-unreadable',
+      });
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
+  it('scans a root that itself lives under a VCS-internal path', async () => {
+    // The exclusion is about what a walk descends into, judged from the walk's
+    // own container. Testing the whole absolute path would make a checkout at
+    // `…/.git/worktree` — or a fixture directory that happens to sit under
+    // one — scan nothing at all.
+    const parent = mkdtempSync(join(tmpdir(), 'inspector-vcs-root-'));
+    try {
+      const root = join(parent, '.git', 'worktree');
+      // A nested directory, so the descent check actually runs: the root's own
+      // path is not what the walk tests, every directory below it is.
+      mkdirSync(join(root, 'packages'), { recursive: true });
+      writeFileSync(join(root, 'AGENTS.md'), 'x\n');
+      writeFileSync(join(root, 'packages', 'AGENTS.md'), 'x\n');
+      const result = await runTraversalScan({ root, plans: [AGENTS_PLAN] });
+      if (result.kind !== 'scanned') {
+        throw new Error('expected a scanned outcome');
+      }
+      expect(result.files.map((file) => file.publicPath)).toEqual([
+        'AGENTS.md',
+        'packages/AGENTS.md',
+      ]);
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
+  it('aborts the attempt when any filesystem call exhausts a resource', async () => {
+    // The rule is the same at every call site, not only at the one that reads
+    // bytes: `readdir` running out of descriptors is the machine, not the
+    // repository, and classifying it as `root-unreadable` would send the user
+    // to fix a root that is fine.
+    const root = mkdtempSync(join(tmpdir(), 'inspector-resource-'));
+    try {
+      writeFileSync(join(root, 'AGENTS.md'), 'x\n');
+      // The calls this plan actually makes: enumerate, resolve the root, read
+      // a candidate. `lstat` belongs to the exact-target probe, which a
+      // repository-program walk never reaches.
+      for (const call of ['readdir', 'realpath', 'readFile'] as const) {
+        const failure = Object.assign(new Error('out of descriptors'), { code: 'EMFILE' });
+        vi.mocked(fsIo[call]).mockRejectedValueOnce(failure as never);
+        try {
+          await expect(runTraversalScan({ root, plans: [AGENTS_PLAN] })).rejects.toThrow(failure);
+        } finally {
+          vi.mocked(fsIo[call]).mockReset();
+        }
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps a permission failure as that file\'s own outcome', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'inspector-eacces-'));
+    try {
+      writeFileSync(join(root, 'AGENTS.md'), 'root\n');
+      vi.mocked(fsIo.readFile).mockRejectedValueOnce(
+        Object.assign(new Error('permission denied'), { code: 'EACCES' }),
+      );
+      try {
+        const result = await runTraversalScan({ root, plans: [AGENTS_PLAN] });
+        if (result.kind !== 'scanned') {
+          throw new Error('expected a scanned outcome');
+        }
+        expect(result.files[0]?.outcome.kind).toBe('unreadable');
+      } finally {
+        vi.mocked(fsIo.readFile).mockReset();
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('late results after revocation are discarded (FR-029)', () => {
@@ -439,9 +650,11 @@ describe('late results after revocation are discarded (FR-029)', () => {
       // not committed — and the scan itself is not claimed to be killed.
       coordinator.revokePublicationAuthority(admitted.scanRequestId);
       const result = await runTraversalScan({ root: tree.root, plans: [AGENTS_PLAN] });
-      const publication = assembleScanPublication({
+      const publication = await assembleScanPublication({
         sourceId,
+        root: tree.root,
         rootFailureOwner: 'repository',
+        rules: AGENTS_RULES,
         result,
       });
       if (publication.kind !== 'publishable') {
@@ -449,8 +662,12 @@ describe('late results after revocation are discarded (FR-029)', () => {
       }
       await coordinator.completeScan(admitted.scanRequestId, {
         files: publication.files,
+        recognitions: publication.recognitions,
         diagnostics: publication.diagnostics,
         outcome: publication.outcome,
+        visitedEntries: 0,
+        candidateFiles: 0,
+      readBytes: publication.readBytes,
       });
       const snapshot = session.snapshot();
       expect(snapshot.repositoryGeneration).toBe(0);

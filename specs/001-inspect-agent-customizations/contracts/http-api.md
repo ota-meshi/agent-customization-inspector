@@ -10,8 +10,8 @@ authentication disabled (`auth: false`)
 
 This contract connects the static Nuxt SPA to the same-process Node inspection host
 through the devframe local-tool framework, the same foundation eslint/config-inspector
-uses. The file keeps its historical `http-api` filename for stable cross-references; what
-it defines is the complete local session transport. It is not a public network API. The
+uses. The `http-api` filename is kept stable so cross-references resolve; what it defines
+is the complete local session transport. It is not a public network API. The
 session channel accepts opaque IDs and closed commands only; no function accepts a
 filesystem path, URL, command, source text, parser option, glob, or executable content.
 
@@ -74,9 +74,8 @@ another machine remains prohibited.
    validated by strict manual
    type/enum guards; extra keys, path-shaped values, and malformed arguments are rejected
    with the documented safe rejections. A function declared with `Parameters: none` reads
-   no input, so it has nothing to validate at its boundary (superseded 2026-07-23: the
-   every-function argument-rejection rule was narrowed — rejecting arguments a function
-   never reads is a runtime guard with no protective failure mode). Every declared result and rejection is one
+   no input, so it has nothing to validate at its boundary — rejecting arguments a
+function never reads is a runtime guard with no protective failure mode. Every declared result and rejection is one
    complete strict-JSON-serializable value. Transport capacity is inherited from Node.js,
    devframe, and the execution environment rather than a product-defined request-size
    ceiling.
@@ -146,10 +145,7 @@ its declared result value, and a serialization/encoding or delivery failure afte
 handler returns is reported as that request's ordinary error without rolling back or
 duplicating any state the handler committed — no
 successful result is reported, a partially delivered message is never a partial result,
-and the client refetches the committed generation, exactly as for a transport failure
-(superseded 2026-07-23: the pre-serialized immutable result buffer and the
-publishes-nothing-on-serialization-failure ordering were removed with the
-self-verification cleanups). No domain layer classifies the failure's cause.
+and the client refetches the committed generation, exactly as for a transport failure. No domain layer classifies the failure's cause.
 
 Deterministic rejections:
 
@@ -162,8 +158,8 @@ Deterministic rejections:
 ```
 
 Every function's outcome is one of its declared closed result or rejection variants, or
-the ordinary error of an unexpected failure. The former HTTP status semantics survive as
-those variants: queued command acceptance is the documented acceptance result, and each
+the ordinary error of an unexpected failure. Those variants carry the HTTP status
+semantics: queued command acceptance is the documented acceptance result, and each
 `4xx` conflict or validation failure is a named deterministic rejection with the same
 `code` (for example `stale-resource`, `scan-in-progress`, `global-enable-in-progress`,
 `global-disable-pending`, `consent-preview-frozen`, `consent-preview-missing`,
@@ -196,7 +192,7 @@ Parameters: none.
 
 Returns the current session snapshot and scan progress. The client invokes this function
 on initial adoption and when source state changes; there is no separate liveness probe and
-no page-lifecycle refetch (amended 2026-07-24 — see § Concurrency and lifecycle). The
+no page-lifecycle refetch (see § Concurrency and lifecycle). The
 product defines no timer, filesystem watcher, or server-initiated push of inspection data;
 the devframe channel is used request/response only for the declared functions.
 
@@ -223,12 +219,34 @@ InspectionSession
 │                         diagnosticCount, queuedAt, startedAt }
 ├── files[]
 │   └── fileId, sourceId, sourceRelativePath, diagnostic IDs, and encoding as the variant
-│       discriminator — readable text adds parseSummary, sizeBytes, hadLeadingBom, and
-│       recognition summaries { tool, kind, parseStatus, provenance count, diagnostic IDs };
-│       binary adds only sizeBytes; unknown adds nothing
+│       discriminator — readable text adds parseSummary, sizeBytes, and hadLeadingBom;
+│       binary adds only sizeBytes; unknown adds nothing. A file publishes its own facts
+│       only; what it was recognized as belongs to a per-kind inventory below
+├── skills[]
+│   └── declaredName null | string,
+│       definitions[] { fileId, tools[], companionFiles[], diagnostic IDs },
+│       sameNameResolutions[] { tool, resolution } — empty unless several definitions
 └── diagnostics[] { diagnosticId, code, sourceId?, fileId?, sourceRelativePath? }
     (active-generation records plus session-owned lifecycle records)
 ```
+
+An inventory row's unit is decided by the kind, not by the file. A skill is one declared
+name — the identifier the vendor's own selectors use, which need not match the directory
+holding it — so several `SKILL.md` files declaring one name publish one entry with several
+definitions, and a definition that declares no name is never folded into another entry. An
+MCP server is one `[mcp_servers.*]` declaration inside its carrier, so one admitted
+`.codex/config.toml` publishes as many rows as it declares servers. An instructions file is
+the file itself. Every other kind's unit is settled by the task that ships its inventory,
+from that kind's own vendor contract. A physical file therefore appears once in `files[]` with its own facts —
+path, read outcome, size, diagnostics — and each kind's inventory refers to it by `fileId`
+and repeats none of them.
+
+`sameNameResolutions` states how each recognizing product resolves a name that several
+definitions declare, so grouping never implies a winner the Inspector has not recorded. An
+entry with one definition carries none, because there is nothing to resolve, and a product
+whose skill strategy is not in the shipped registry contributes none either — it recognizes
+no skill, so no entry can reach it. The statements differ by product, and the vendor
+contracts record two of them as incomplete.
 
 This full DTO is returned only while `globalDisableInProgress` is null. After a non-no-op
 disable barrier is accepted, this function instead returns only this exact control DTO:
@@ -268,8 +286,8 @@ files, detail, comparison views, and IDs are untouched (FR-030).
 `boundary.displayRoot` is a one-way escaped root presentation label, not a
 `SourceRelativePath`, inventory-item locator, caller input, or read authority. The same distinction applies to a pre-admission consent-preview `displayRoot`,
 which may represent an absolute or invalid lexical root before any owning Source exists.
-The bootstrap Repository root has `origin: process-cwd` when `--cwd` was omitted and
-`origin: cwd-option` otherwise; the API never exposes the retained raw or canonical root.
+The bootstrap Repository root has `origin: process-cwd` when `--root` was omitted and
+`origin: root-option` otherwise; the API never exposes the retained raw or canonical root.
 Every `conditionFacts` entry is an evidence-linked, origin-file-less Source Condition Fact:
 it stays distinct from `files` and recognitions and cannot create a physical or synthetic
 file, file ID/path/text, comparison target, relationship origin, local or hosted read, or
@@ -302,10 +320,11 @@ Global tool where present, normalized source-relative path, then file ID.
 recognition is `not-attempted`, `all-parsed` when at least one is `parsed` and none is
 `failed`, `all-failed` when at least one is `failed` and none is `parsed`, and `mixed` when
 `parsed` and `failed` coexist. `not-attempted` records do not change the last three
-projections. Recognition summaries contain tool/kind, recognition-level `parseStatus`,
-provenance count, and diagnostic IDs only; they never invent an aggregate documentation or
-applicability status, parse result, or winner. Record-by-record evidence/applicability stays
-on the detail provenances and relationships below.
+projections. A file carries no recognition summary: what it was recognized as belongs to
+the per-kind inventories, and each of their rows carries only what identifies that kind —
+never an invented aggregate documentation or applicability status, parse result, or winner.
+Record-by-record evidence and applicability stay on the detail provenances and relationships
+below.
 
 Within one generation there is exactly one `ToolRecognition` for each
 `(fileId, tool, kind)`. Compatible provenances merge into that recognition. If those
@@ -334,14 +353,15 @@ entry, the failed `batchStatus`, or the failed disable projection's
 `globalDisableInProgress.message`; it never enters either
 Diagnostic list.
 `scope` is an obligatory attachment discriminator, independent of diagnostic lifetime.
-The only legal location shapes are: `file`, with `sourceId`, `fileId`, and that file's
-Source-relative Path all present; `source`, with only `sourceId` present; and `session`,
-with all three location fields absent. Source- and session-scoped records never invent a
+The three location fields are always present and are null where the scope does not use
+them. The only legal shapes are: `file`, with `sourceId`, `fileId`, and that file's
+Source-relative Path all non-null; `source`, with `sourceId` non-null and the other two
+null; and `session`, with all three null. Source- and session-scoped records never invent a
 file ID or path. Serialization rejects any other combination.
 Progress is null for `idle` and `failed`; it is present for active work and
 for final `ready`/`partial` counters as defined in the data model. The first legal snapshot
 is bootstrap generation 0 with exactly one idle Repository Source selected lexically from
-captured `process.cwd()` or the single `--cwd`, and no files/diagnostics. Its escaped root
+captured `process.cwd()` or the single `--root`, and no files/diagnostics. Its escaped root
 label is presentation only and carries no read authority; the first scan reads the retained
 selected root, and a root that does not exist or cannot be read as a directory fails that
 scan with the source-scoped `root-unreadable` Diagnostic while the session stays usable
@@ -901,8 +921,12 @@ the post-acceptance failure's ordinary error. Disable itself never returns
   boundary without domain state mutation. Disable follows its priority barrier join/no-op rules. Every
   automatic or explicit scan receives one opaque `scanRequestId` and starts from its
   owning sequence's generation current when it actually dequeues.
-- Every scan and `GlobalEnableOperation` receives an `AbortSignal`. Process shutdown aborts
-  all work. Global disable is the priority barrier documented above: it aborts any active
+- Work is stopped by revoking an attempt's publication authority, not by a cancellation
+  signal: a revoked attempt's late result is discarded and its Source overlay reverts to the
+  exact pre-admission state, so nothing it produced can commit. A read already in flight is
+  allowed to finish, because interrupting it would buy nothing the discard does not already
+  give. Process shutdown revokes every attempt before closing the host. Global disable is
+  the priority barrier documented above: it revokes any active
   uncommitted transaction, aborts/drains enable validation, performs a final queued-Global-
   work cancellation sweep, completes its fixed cleanup-only or remove-active-state
   disposition next, and requeues an interrupted Repository command once only after terminal
@@ -930,12 +954,12 @@ the post-acceptance failure's ordinary error. Disable itself never returns
 - Session retrieval never extends the Node process lifetime or persists data and defines
   no product-specific time threshold. There is no liveness probe: the product does not model
   a second browser tab, and a lost host closes the loopback socket, which the transport
-  reports to the page without being asked (amended 2026-07-24). Every response is still
+  reports to the page without being asked. Every response is still
   checked, so a matching session with an equal epoch and a null disable projection confirms
   the current baseline.
   A greater epoch or non-null projection runs the central purge before entering control-only
   recovery; network/runtime failure, channel loss, or session mismatch
-  purges before an ended view. A page-lifecycle event is not a purge trigger (amended 2026-07-24): FR-027 purges after a document-liveness failure or an equivalent terminal reset, and neither switching tabs nor navigating away is either — a discarded document frees its own memory, and a bfcached one holds the same user's view of their own files on their own machine, which the trusted-workspace model does not treat as exposure. The client installs no visibility or unload listener.
+  purges before an ended view. A page-lifecycle event is not a purge trigger: FR-027 purges after a document-liveness failure or an equivalent terminal reset, and neither switching tabs nor navigating away is either — a discarded document frees its own memory, and a bfcached one holds the same user's view of their own files on their own machine, which the trusted-workspace model does not treat as exposure. The client installs no visibility or unload listener.
   The purge increments a
   client epoch so a late in-flight result cannot repopulate DTOs or editor state, disposes
   Monaco models/editors/workers and subscriptions, clears DOM/store content and warning
@@ -1007,7 +1031,7 @@ the post-acceptance failure's ordinary error. Disable itself never returns
    or the failed request's error message for a throw/rejection; the stale-failure fixture
    asserts that retained message is returned with the stale snapshot.
    Bootstrap generation 0 contains exactly one non-authorizing Repository Source selected
-   from captured `process.cwd()`/`--cwd`. Multi-Source sequences prove that A and B entry-failure pairs
+   from captured `process.cwd()`/`--root`. Multi-Source sequences prove that A and B entry-failure pairs
    coexist, B's success does not clear A, A's partial success clears only A's pair,
    a repeated A failure replaces only A's pair, and Global disable clears only pairs for
    removed Global Sources. Diagnostic DTO fixtures accept exactly the three scoped shapes:

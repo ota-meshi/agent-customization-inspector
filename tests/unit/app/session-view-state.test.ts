@@ -6,11 +6,12 @@
 //
 // There is nothing here about page-lifecycle events: the module installs no
 // listener, because FR-027 purges after a failure or terminal reset and
-// neither switching tabs nor navigating away is either (amended 2026-07-24).
+// neither switching tabs nor navigating away is either.
 //
 // Environment note: this suite exercises browser-side code, so it names
 // happy-dom explicitly — the `coverage` project runs the same files under
 // the Node environment its contract and integration members need.
+import { DevframeConnectionError } from 'devframe/client';
 import { describe, expect, it } from 'vitest';
 
 import { createSessionViewState } from '../../../src/app/session/view-state';
@@ -41,6 +42,7 @@ function bootstrapSnapshot(overrides: Partial<SessionSnapshot> = {}): SessionSna
       },
     ],
     files: [],
+    skills: [],
     diagnostics: [],
     repositoryGeneration: 0,
     globalGeneration: null,
@@ -89,7 +91,7 @@ describe('session view state — generation 0', () => {
     await state.start();
     expect(state.view.value).toBe('inspection');
     // One call, and it is the session snapshot: there is no liveness probe
-    // in front of it (amended 2026-07-24).
+    // in front of it.
     expect(scripted.calls).toEqual([SESSION_RPC_FUNCTIONS.getSession]);
     const snapshot = state.snapshot.value;
     expect(snapshot?.sources).toHaveLength(1);
@@ -161,12 +163,72 @@ describe('session view state — session loss', () => {
     state.dispose();
   });
 
-  it('renders the ended view with the real error when a request fails', async () => {
-    const scripted = channelFrom([new Error('connection refused')]);
+  it('renders the ended view with the real error when the channel is gone', async () => {
+    const scripted = channelFrom([new DevframeConnectionError('connection', 'connection refused')]);
     const state = createSessionViewState({ channel: scripted.channel });
     await state.start();
     expect(state.view.value).toBe('ended');
     expect(state.errorMessage.value).toBe('connection refused');
+    state.dispose();
+  });
+
+  it('dispatches one rescan at a time', async () => {
+    // A second dispatch while one is in flight would supersede the first's
+    // token and lose the request ID the host was already working under.
+    let calls = 0;
+    const channel = {
+      call: (method: string) => {
+        if (method.endsWith('rescan-repository')) {
+          calls += 1;
+          return new Promise(() => {}); // never settles
+        }
+        return Promise.resolve(sessionResult(bootstrapSnapshot()));
+      },
+    };
+    const state = createSessionViewState({ channel });
+    await state.start();
+    void state.requestRescan();
+    void state.requestRescan();
+    expect(calls).toBe(1);
+    state.dispose();
+  });
+
+  it('never repopulates the view with data captured before a purge', async () => {
+    // The client's own guard and this module's assignment are in different
+    // microtasks. A purge landing in that gap clears the view; the assignment
+    // must not put the pre-purge snapshot back (FR-027, FR-042).
+    let releaseFetch: ((value: unknown) => void) | undefined;
+    const channel = {
+      call: () =>
+        new Promise((resolve) => {
+          releaseFetch = resolve;
+        }),
+    };
+    const state = createSessionViewState({ channel });
+    const started = state.start();
+    // A purge runs while the fetch is still in flight.
+    state.dispose();
+    releaseFetch!(sessionResult(bootstrapSnapshot()));
+    await started;
+    expect(state.snapshot.value).toBeNull();
+    state.dispose();
+  });
+
+  it('keeps the view when one request fails without losing the channel', async () => {
+    // The first fetch establishes a view; the second fails inside the handler.
+    // The committed snapshot stays on screen and the error is reported beside
+    // it, because one failed call is not a lost session.
+    const scripted = channelFrom([
+      sessionResult(bootstrapSnapshot()),
+      new Error('handler blew up'),
+    ]);
+    const state = createSessionViewState({ channel: scripted.channel });
+    await state.start();
+    expect(state.view.value).toBe('inspection');
+    await state.refresh();
+    expect(state.view.value).toBe('inspection');
+    expect(state.errorMessage.value).toBe('handler blew up');
+    expect(state.snapshot.value).not.toBeNull();
     state.dispose();
   });
 

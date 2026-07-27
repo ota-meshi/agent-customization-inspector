@@ -217,7 +217,7 @@ setting must therefore not be projected into a Cloud-agent instruction chain.
 ## Inspector Repository matcher rules
 
 Every Base in this table is the exact Inspector Repository boundary — the
-selected Repository root from captured `process.cwd()` or `--cwd`, spelled `Repository`.
+selected Repository root from captured `process.cwd()` or `--root`, spelled `Repository`.
 The Inspector does not search above it for a workspace, project,
 or Git root. A selector program beginning with `ANY_DIRECTORIES` is an explicitly
 anchored Inspector inventory,

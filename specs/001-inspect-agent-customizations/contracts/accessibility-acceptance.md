@@ -109,7 +109,7 @@ Manual acceptance uses the packed release candidate, never a development server.
 execution, freeze the tarball digest, Playwright 1.61.1 package version and bundled browser
 revisions, supported OS version, actual browser/engine version, assistive-technology version,
 OS locale pack, and display scaling in `validation.md`. The UI language is not a matrix
-axis: the product ships one UI language (amended 2026-07-24), so the OS locale pack is
+axis: the product ships one UI language, so the OS locale pack is
 frozen as an environment fact rather than executed as a dimension. The three required
 platform cells are:
 
