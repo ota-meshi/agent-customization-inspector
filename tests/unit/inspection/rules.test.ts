@@ -9,6 +9,7 @@
 // over-broad allowlist becomes visible is by naming the paths it must not
 // reach.
 import { rmSync } from 'node:fs';
+import { sep } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import * as fsIo from '../../../src/server/inspection/fs-io';
@@ -140,7 +141,9 @@ describe('the bounded companion census', () => {
     }
     const opened = vi
       .mocked(fsIo.readFile)
-      .mock.calls.map((call) => String(call[0]).slice(fixture.root.length + 1))
+      .mock.calls.map((call) =>
+        String(call[0]).slice(fixture.root.length + 1).split(sep).join('/'),
+      )
       .sort();
     const admitted = publication.files
       .filter((file) => file.encoding !== 'unknown')
@@ -188,7 +191,9 @@ describe('anchored inventory and near misses', () => {
     const result = await scanFixture();
     const opened = vi
       .mocked(fsIo.readFile)
-      .mock.calls.map((call) => String(call[0]).slice(fixture.root.length + 1));
+      .mock.calls.map((call) =>
+        String(call[0]).slice(fixture.root.length + 1).split(sep).join('/'),
+      );
     // A broken link is discovered as unreadable without a read attempt, so
     // the opened set is the admitted set minus those.
     const expectedOpened = result.files
