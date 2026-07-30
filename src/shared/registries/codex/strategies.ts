@@ -7,8 +7,8 @@
 // (contracts/runtime-composition.md § "Runtime composition is not Inspector
 // source merging"). Its `requiredConditionKeys` are the inputs that must all
 // be known before a projection may state a terminal applicability result — an
-// unavailable input keeps the projection `unknown` and never defaults to
-// satisfied.
+// unavailable input keeps the projection non-terminal (`conditional`, per the
+// decision table's row 6) and never defaults to satisfied.
 //
 // Each strategy is its own `export const` so a relation can name it directly.
 // Each record is declared with `satisfies` rather than a type annotation, and

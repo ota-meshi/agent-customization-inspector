@@ -8,8 +8,9 @@ The model has two representations:
   authored content while an atomic snapshot is being built. They never enter public DTOs
   or Diagnostics.
 - **Public DTOs** contain Source-relative locator fields for inventoried files and safely
-  normalized in-Source targets, complete authored source text for readable files, exact
-  returned declared-metadata/relationship source slices, escaped non-authorizing root
+  normalized in-Source targets, complete authored source text for readable files, the value a
+  parser resolved for each allowlisted declared-metadata field, the exact decoded source
+  slice of an authored relationship target, escaped non-authorizing root
   presentation labels, recognitions, relationships, diagnostics, and opaque
   generation-scoped IDs. Environment-variable references in
   authored content remain literal text and never authorize reading process-environment
@@ -57,8 +58,8 @@ InspectionSession
 ├── ScanAttempt (zero or more queued; at most one running; never public before commit)
 ├── RepositoryScanGeneration (exactly one last committed; the Repository sequence exists from bootstrap)
 │   └── CustomizationFile
-│       ├── ToolRecognition (one or more)
-│       │   ├── DeclaredMetadataEntry (zero or more, ordered authored occurrences)
+│       ├── ToolRecognition (zero or more; empty exactly for a census-listed companion)
+│       │   ├── DeclaredMetadataEntry (zero or more, one per allowlisted field)
 │       │   └── ApplicabilityAssessment (one per rule/path admission record)
 │       ├── Relationship (zero or more)
 │       │   └── ApplicabilityAssessment
@@ -79,7 +80,6 @@ BrowserState
 ├── FilterState
 ├── ComparisonSelection (zero or exactly two readable files)
 ├── EditorModelState (zero or more, active route/generation only)
-├── SensitiveContentNoticeState (session-only presentation state)
 ├── RecoveryViewState (control-only post-purge recovery and explicit resume)
 └── SessionViewState (booting/inspection/recovery/ended view and transport-loss adoption)
 ```
@@ -149,7 +149,7 @@ identity, and no Global Sources before automatically queuing the first Repositor
 has no repository picker, ancestor search, profile, cache, or resume identifier.
 
 The local host is the devframe local-tool framework with authentication disabled
-(spec Clarifications § Session 2026-07-22; Constitution v3.0.0). devframe serves the
+(spec Clarifications § Session 2026-07-22; Constitution § Quality and Safety Standards). devframe serves the
 built SPA directly from the packaged `dist/public` tree, exposes every session API
 operation as a devframe RPC function (`defineRpcFunction`) on the same loopback channel,
 and owns port selection, host binding, and startup browser opening. Session protection
@@ -208,7 +208,7 @@ are closed by `GlobalDisableOperation`; no other command may copy that exception
 | `kind` | `repository \| global` | Exactly one Repository source; zero to three Global Sources |
 | `tool` | `copilot \| claude \| codex \| null` | Repository pairs with null; each Global Source pairs with exactly one supported tool, and no two Global Sources share a tool |
 | `enabled` | boolean | Repository and every published Global Source are true; absence means only that no Source is published for that tool, while `globalControl` distinguishes disabled, pending, and retryable control states; a disabling source remains true until atomic removal |
-| `status` | `idle \| scanning \| disabling \| ready \| partial \| failed` | Follows transitions below; public `partial` denotes only a generation committed after complete traversal in which one or more files have file-confined outcomes (unreadable, binary, parse failure) while every unaffected file is complete; `failed` means the latest attempt failed while the last committed snapshot remains available; only a fatal explicit rescan marks that snapshot stale |
+| `status` | `idle \| scanning \| disabling \| ready \| partial \| failed` | Follows transitions below; public `partial` denotes only a generation committed after complete traversal in which one or more files have file-confined outcomes (unreadable, an admitted candidate's binary content, parse failure — a census-listed companion's binary bytes are its ordinary fact and confine nothing, FR-025) while every unaffected file is complete; `failed` means the latest attempt failed while the last committed snapshot remains available; only a fatal explicit rescan marks that snapshot stale |
 | `boundary` | `SourceBoundary` | Exactly one selected root: the captured `process.cwd()` or resolved `--root` for Repository, or the one consented home root for this Global Source's tool |
 | `generation` | `GenerationNumber` | Equals the owning sequence's last committed generation: `repositoryGeneration` for the Repository Source and `globalGeneration` for every published Global Source |
 | `scanRequestId` | opaque ASCII string or null | Latest admitted scan for this Source; set immediately on admission and retained through waiting/scanning/ready/partial/failed so status cannot be confused with an older request; null only before any scan admission, or after every admitted attempt for the Source has had its publication authority revoked — a revoked attempt's overlay reverts to the exact pre-admission state, so the Source states no request rather than one whose result was discarded |
@@ -280,16 +280,23 @@ records, and normalized relationship targets.
 | Field | Type | Rules |
 |---|---|---|
 | `sourceId` | opaque ID | Binds the path to one owning Source; never accepted alone as read authority |
-| `value` | NFC POSIX-style string | Display segments joined with `/`, relative to that Source root; no leading slash, URI scheme, NUL, empty or dot segment, `..`, home shorthand, or environment expansion |
+| `value` | POSIX-style string | The exact raw entry names joined with `/`, relative to that Source root; no leading slash, URI scheme, NUL, empty or dot segment, `..`, home shorthand, or environment expansion |
 
 For the Repository Source, `value` is relative to the selected Repository root. For a
-Global Source, it is relative to that tool's admitted home root. Public Source-relative
-Paths use NFC display segments while filesystem operations use the raw entry names
-returned by traversal (FR-024); the NFC value is presentation, filtering, lookup, and
-selection identity, not an I/O operand. Presentation escapes control characters without
-changing the stored value. On the wire, `sourceRelativePath` serializes only the
-normalized `value` string; the containing file DTO's `sourceId` supplies the public
-ownership link.
+Global Source, it is relative to that tool's admitted home root. The value is the
+presentation, filtering, lookup, and selection identity and is spelled exactly as the
+raw entry names traversal returned (FR-024); filesystem operations use the retained raw
+segments rather than re-parsing it. A raw name is the string Node.js returned for the
+entry — `fs` decodes names as UTF-8 by documented default, so a platform name that is
+not valid UTF-8 arrives replacement-decoded, and a name the platform cannot resolve
+again through that string surfaces as the affected operation's ordinary failure. Presentation escapes control characters and the bidirectional formatting characters
+(U+061C, U+200E, U+200F, U+202A–U+202E, U+2066–U+2069) without
+changing the stored value: those characters reorder the text around them, so a path
+carrying one would render as a different path than the one it identifies. A path label with
+no character that draws — one built only from whitespace or default-ignorable code points
+such as U+200B — is instead spelled out in full, because a label that renders as nothing
+leaves its control with neither visible text nor an accessible name. On the wire, `sourceRelativePath` serializes only the `value`
+string; the containing file DTO's `sourceId` supplies the public ownership link.
 
 ### Packaged dist contents
 
@@ -838,9 +845,9 @@ Inspector's Repository and Global sources.
 A `NonEmptyMatcherLiteralSegment` is a non-empty printable ASCII string whose code units are
 U+0021–U+007E except `/`, `\\`, `:`, `*`, `?`, `\"`, `<`, `>`, and `|`; `.` and `..` are
 also forbidden. This same closed type is used by static fixed prefixes, exact targets, and
-fixed derived suffixes. The compiler rejects any non-ASCII registry path literal, so raw
-byte/code-unit relevance cannot disagree with later NFC classification for fixed prefixes
-and exact targets. A `literal` matches one case-sensitive exact ASCII segment.
+fixed derived suffixes. The compiler rejects any non-ASCII registry path literal, so exact raw
+byte/code-unit comparison is the whole relevance test for fixed prefixes and exact
+targets. A `literal` matches one case-sensitive exact ASCII segment.
 `regex` carries one JavaScript regular expression and matches one entry name exactly
 when `pattern.test` matches the raw entry name — standard `RegExp` semantics, so anchoring
 and escaping are the pattern author's explicit spelling and the shipped rule fixtures own
@@ -877,7 +884,7 @@ owns the fixed per-tool inspection-path allowlist that the inspection module tra
 | `selectors` | non-empty ordered `TraversalSelectorPlan[]` | Deterministic one-to-one compilation of the authored typed selector programs |
 | `selectionPolicy` | `all-matches \| codex-global-first-non-empty` | Closed scheduler policy; the second value is valid only for `codex.global.instructions` with the exact ordered selectors `AGENTS.override.md`, `AGENTS.md` |
 | `TraversalSelectorPlan.mode` | `repository-program \| global-exact \| global-fixed-subtree` | Closed operation class; no generic ambient-root walker |
-| `TraversalSelectorPlan.fixedPrefix` | NFC literal segment array | Empty for Repository; for Global it includes the complete path through the exact target or fixed-subtree root, including that terminal target/subtree segment |
+| `TraversalSelectorPlan.fixedPrefix` | ASCII literal segment array | Empty for Repository; for Global it includes the complete path through the exact target or fixed-subtree root, including that terminal target/subtree segment |
 | `TraversalSelectorPlan.remainder` | `MatcherSegment[]` | Repository's complete selector program, empty for a Global exact target, or the complete dynamic program strictly below a Global fixed-subtree root |
 
 Compilation is a closed mapping: `repository-program` has an empty `fixedPrefix` and a
@@ -989,8 +996,8 @@ state. Both generation entities share these fields:
 | `baseGeneration` | `GenerationNumber` | The same sequence's last committed generation from which the serialized transaction started; `0` for bootstrap and for the sequence-creating Global enable commit |
 | `scannedSourceIds` | sorted opaque source ID[] | One for a Repository/per-Source Global rescan, one to three for an initial/retry Global batch, and empty for bootstrap |
 | `startedAt` / `finishedAt` | `UtcTimestamp` | Both present on every committed generation; in-flight timing belongs to `ScanAttempt`/`ScanProgress` |
-| `outcome` | `complete \| partial` | `partial` means only the file-confined outcome of the Closed Scan Publication Outcomes table: traversal completed and one or more files have only file-confined outcomes (unreadable, binary, parse failure) while every unaffected file is complete; `utf-8-replaced` is complete, and a thrown/rejected attempt is never a generation |
-| `files` | `CustomizationFile[]` | All enabled Sources of the owning sequence, deterministically sorted by source, Source-relative Path, then ID |
+| `outcome` | `complete \| partial` | `partial` means only the file-confined outcome of the Closed Scan Publication Outcomes table: traversal completed and one or more files have only file-confined outcomes (unreadable, an admitted candidate's binary content, parse failure — a census-listed companion's binary bytes are its ordinary fact and confine nothing, FR-025) while every unaffected file is complete; `utf-8-replaced` is complete, and a thrown/rejected attempt is never a generation |
+| `files` | `CustomizationFile[]` | All enabled Sources of the owning sequence; the published snapshot projection establishes the deterministic source, Source-relative Path, then ID order in the one place a reader receives the list, so the retained assembly order carries no contract of its own |
 | `diagnostics` | `Diagnostic[]` | Never duplicate customization source or declared-metadata values |
 
 `RepositoryScanGeneration` adds `transactionKind: bootstrap | repository-scan` and a
@@ -1131,8 +1138,8 @@ Repository failure record. Both report that no new inventory was committed. Expe
 Global-disable barrier emits no failure diagnostic;
 a different deterministic returned safe failure is an out-of-generation session-lifecycle Diagnostic.
 Its attachment scope follows the `Diagnostic` rules below: a file-scoped record carries
-`sourceId`, `fileId`, and Source-relative Path together; source- and session-scoped records
-never fabricate a file ID or path. It never carries customization source values and never
+`sourceId`, `fileId`, and Source-relative Path together; a source-scoped record carries the
+`sourceId` alone and never fabricates a file ID or path. It never carries customization source values and never
 enters `Source.diagnosticIds`. The
 coordinator then starts the next queued transaction from the still-current N. A later
 successful complete or partial scan of the affected Source replaces N with N+1
@@ -1201,12 +1208,11 @@ owning runtime/session API error rule rather than saturating or wrapping.
 | `fileId` | 128-bit, 22-character base64url opaque string | DTO | Newly generated for every generation; API never accepts a path |
 | `sourceId` | opaque string | DTO | Must identify one enabled Source |
 | `sourceRelativePath` | `SourceRelativePath` | DTO | The file's identity within its Source: display, filtering, lookup, and selection path relative to the owning Source root |
-| `encoding` | `utf-8 \| utf-8-replaced \| binary \| unknown` | DTO | Closed variant discriminator; the read state is derived from it (readable text, diagnostic-only `binary`, failed-read `unknown`); invalid non-NUL sequences remain readable as replacement-decoded text |
-| `parseSummary` | `not-applicable \| all-parsed \| mixed \| all-failed` | DTO | Readable text only; projection of recognition-level extraction states; never a vendor validation result |
+| `encoding` | `utf-8 \| utf-8-replaced \| binary \| unknown` | DTO | Closed variant discriminator; the read state is derived from it (readable text, textless `binary`, failed-read `unknown`); invalid non-NUL sequences remain readable as replacement-decoded text |
 | `sizeBytes` | non-negative integer | DTO | Present exactly for readable text and `binary` — the outcomes with accepted bytes |
 | `hadLeadingBom` | boolean | DTO | Readable text only — a BOM concept does not exist for the other variants; true exactly when one leading UTF-8 BOM was recorded and removed before publishing `sourceText`; independent of whether replacement occurred |
 | `sourceText` | string | DTO | Readable text only, never null; complete decoded authored source; literal values and environment-variable reference syntax are preserved exactly; never HTML |
-| `recognitionIds` | opaque string[] | DTO | Readable text only; at least one for an accepted customization file |
+| `recognitionIds` | opaque string[] | DTO | Readable text only; at least one for an admitted candidate, and empty for a census-listed companion, which is published without being recognized |
 | `relationshipIds` | opaque string[] | DTO | Readable text only; refer to the same generation |
 | `diagnosticIds` | opaque string[] | DTO | Present on every variant; refer to the same generation |
 
@@ -1218,14 +1224,16 @@ record-by-record evidence assessments stay attached to that admission rather tha
 lossy file-level aggregate.
 
 `encoding` discriminates the three closed per-file outcomes (FR-024/FR-028): readable
-text (`utf-8` or `utf-8-replaced`), diagnostic-only `binary`, and `unknown` for a failed
+text (`utf-8` or `utf-8-replaced`), textless `binary`, and `unknown` for a failed
 read; a separate read-state field would only repeat the discriminator. Readable text and
 `binary` are the only outcomes with accepted bytes and carry `sizeBytes`. `unknown`
 records a file that disappeared between discovery and reading or failed with a read
 error, including a symbolic link whose target is missing or unreadable (FR-024); it
-carries no size, text, BOM record, parse summary, recognitions, or relationships. Each
-non-readable outcome carries its file-scoped diagnostic and is ineligible for
-comparison.
+carries no size, text, BOM record, parse summary, recognitions, or relationships. A
+non-readable outcome is ineligible for comparison. Whether it carries a file-scoped
+diagnostic depends on what was expected of the file: `unknown` always does, and `binary`
+does for an admitted candidate, where a census-listed companion's binary bytes are the
+ordinary fact of an asset (FR-025).
 Encoding is assigned from the bytes of the one completed read.
 Any NUL byte yields `encoding: binary` with no text and no BOM record — the NUL check
 precedes BOM handling, so a BOM concept does not exist for binary bytes. Otherwise
@@ -1234,14 +1242,13 @@ BOM sets `hadLeadingBom: true` and is removed from `sourceText`. Input decoded w
 replacement uses `utf-8`; any inserted `U+FFFD` uses `utf-8-replaced`; both are
 orthogonal to whether a leading BOM was removed. Replacement-decoded text remains
 readable, and its exact garbled `sourceText` proceeds through parsing, display, extraction,
-and comparison; it does not make the generation partial by itself. Only binary input is
-diagnostic-only and comparison-ineligible. Charset guessing, alternate decoding, sampling,
+and comparison; it does not make the generation partial by itself. Binary input is textless and
+comparison-ineligible; whether it is also a Diagnostic is FR-025's split between an
+admitted candidate and a census-listed companion. Charset guessing, alternate decoding, sampling,
 and truncation are unrepresentable; no product byte, line, or item ceiling affects this
 state machine.
-`parseSummary` is `not-applicable` when every recognition is `not-attempted`, `all-parsed`
-when at least one is parsed and none failed, `all-failed` when at least one failed and none
-parsed, and `mixed` when parsed and failed recognitions coexist; `not-attempted` records do
-not change the last three projections. A file with a failed recognition may still be
+A file carries no parse rollup: a recognition's own `parseStatus` is the parse fact,
+and a file-level aggregate had no reader. A file with a failed recognition may still be
 readable text and show its complete source; its diagnostic describes only Inspector
 extraction, not validity for the vendor.
 The inspector treats strings such as `$TOKEN`, `${TOKEN}`, and platform-equivalent
@@ -1262,7 +1269,11 @@ shipped kinds do not agree on one:
 
 A CustomizationFile therefore publishes its own facts once — Source-relative Path, read
 outcome, size, diagnostics — and each kind's inventory refers to it by `fileId` rather than
-repeating them. One shared row shape cannot express either of the first two units: grouping
+repeating them. A companion is never a row of its own, whatever it carries (FR-003), so a
+row states the diagnostics of the files in its own census beside the definition that owns
+them, each named by its path: a read that failed inside a customization's directory is one
+of the files that made the generation partial, and the row of the customization holding it
+is the only place an inventory can say so (FR-028). One shared row shape cannot express either of the first two units: grouping
 by name would break the one recognition per `(fileId, tool, kind)` rule that ToolRecognition
 rests on, and a file-shaped row cannot become the N rows one carrier's declarations need.
 
@@ -1284,9 +1295,9 @@ definition states no resolution.
 A recognition record's details are discriminated by `kind`, because what identifies a
 recognition differs by kind and does not fit one shared optional field: a skill declares a
 single `name`, while an MCP carrier declares one per server. A skill's details carry that
-declared name — the one authored value outside the FR-027 acknowledgement gate, because it
-is presentation identity rather than content (FR-007) — absent, never empty, when the file
-declares none.
+declared name — the one authored value an inventory row carries, because it is presentation
+identity rather than content (FR-007, FR-027) — absent, never empty, when the file declares
+none.
 
 A recognition is not an inventory row. The row's unit is the kind's own (§ Inventory unit),
 so each kind's inventory is built from these records rather than published as one summary
@@ -1300,6 +1311,14 @@ empty, never absent, when the `SKILL.md` sits alone, because being a directory i
 skill is and every recognized skill has been enumerated. Its `length` is the only count
 published (contracts/inspection-path-allowlist.md § Bounded companion census).
 
+Each listed path is also a `CustomizationFile` of the same generation: a directory-shaped
+customization is read whole, so its accompanying files are read once each and published like
+any other file — with their own identity, path, read outcome, and complete authored source.
+They carry no recognition, because no rule admitted them and nothing classified them, so
+they appear in no kind's inventory; the list here is what associates them with the
+customization they belong to, and it is what a detail surface builds that customization's
+directory from.
+
 | Field | Type | Rules |
 |---|---|---|
 | `recognitionId` | opaque string | Unique within generation |
@@ -1308,7 +1327,7 @@ published (contracts/inspection-path-allowlist.md § Bounded companion census).
 | `tool` | `copilot \| claude \| codex` | Required |
 | `details` | kind-discriminated payload | The recognized kind plus what identifies a recognition of that kind — for a skill, its declared name and companion file list. One field, so projecting it is a copy rather than a per-kind reconstruction |
 | `parseStatus` | `not-attempted \| parsed \| failed` | `not-attempted` means no allowlisted extractor applies; `failed` is all-or-nothing for this recognition only |
-| `declaredMetadata` | ordered `DeclaredMetadataEntry[]` | Only allowlisted closed field IDs; source-occurrence order and accepted duplicates are preserved |
+| `declaredMetadata` | ordered `DeclaredMetadataEntry[]` | Only allowlisted closed field IDs, one entry per field, in the allowlist row's order |
 | `diagnosticIds` | opaque string[] | Recognition-scoped extraction failures within the owning file |
 
 The maintained supported-customization documentation is the normative presentation
@@ -1362,58 +1381,70 @@ and is reported ordinarily as the failed request's error when a session API boun
 
 Recognitions are ordered by the closed tool order `copilot`, `claude`, `codex`, then the
 kind order listed in the table, never by opaque ID. Cross-file metadata comparison uses
-`(tool, kind, fieldId, occurrence)`; it does not compare two unrelated recognitions merely
+`(tool, kind, fieldId)`; it does not compare two unrelated recognitions merely
 because their field IDs coincide.
 
-### SourceTextRange and ExtractedSourceOccurrence
+### Field reading
 
-Every authored projection is first represented internally by one
-`ExtractedSourceOccurrence`. Its key is the owning recognition plus a closed `fieldId` and
-zero-based occurrence; it carries one exact authored literal, one typed semantic value when
-available, and one `SourceTextRange`. A range is a half-open `{ start, end }` pair measured
-in ECMAScript UTF-16 code units and is valid only when
-`sourceText.slice(start, end) === authoredLiteral`.
+An extractor reports what a parser resolves the file's allowlisted fields to, which is what
+the product loading that file has: quoting and escapes resolved, `007` read as `7`, a key
+declared twice resolved to its later declaration, an alias resolved to the value it points
+at, and a tag outside the schema leaving the scalar it carried. None of those is refused.
+The Inspector describes what a product reads out of a customization; it is not a validator
+standing between the two, and the complete authored bytes are on the same detail response as
+`sourceText` for any reader who needs the spelling.
 
-Metadata, an authored relationship, and derivation may all reference that same
-occurrence and therefore reuse its exact range. Exact range reuse is legal only through the
-same occurrence key and identical literal. Distinct emitted occurrences must have disjoint
-ranges: partial, crossing, containment, or identical overlap under different origin keys is
-ambiguous and fails that recognition's complete extraction. An extractor that emits child
-value occurrences does not also emit their enclosing collection as a distinct metadata
-occurrence. JSONC, YAML, TOML, Markdown/frontmatter/import, astral-character, isolated-
-surrogate, and combining-character fixtures must round-trip with `String.prototype.slice`.
+The one refusal is a document that cannot be parsed at all, which yields no values to
+report. It is atomic per recognition: nothing is published for that recognition rather than
+the fields that happened to parse, because a partial extraction cannot say which authored
+values it skipped. Its file stays admitted, readable, and comparison-eligible.
+
+Fields carry no source coordinates. Nothing points into a document — the detail surface
+shows a file whole and an inventory row shows a declared name — so a range would be a field
+every entry carries for no reader, and one nothing could check: an extractor takes a value
+out of the same text it would measure, so requiring the two to agree can only restate the
+value and stays true when the measurement itself is wrong. A projection that must point into
+a source introduces coordinates together with the check that makes them meaningful.
+
+Values are read in whole characters — an astral character is two UTF-16 code units and a
+combining mark is two code points — so JSONC, YAML, TOML, Markdown/frontmatter/import,
+astral-character, and combining-character fixtures must survive extraction and JSON
+transport unaltered.
 
 ### DeclaredMetadataEntry
 
 | Field | Type | Visibility | Rules |
 |---|---|---|---|
 | `fieldId` | closed metadata-field identifier | DTO | Registry-owned identity for an allowlisted field/path; never an arbitrary authored key |
-| `occurrence` | zero-based integer | DTO | Counts occurrences of this `fieldId` in source order and, together with `fieldId`, is the stable metadata-comparison identity |
-| `authoredLiteral` | string | DTO | Exact decoded-`sourceText` slice for the value token/span, including authored quotes, escapes, block/collection punctuation, and environment-reference syntax; never replaced by a decoded value |
-| `sourceOccurrenceKey` | closed field/occurrence origin key | internal | References the one shared `ExtractedSourceOccurrence`; relationship/derivation projections reuse this key rather than copying a span |
-| `sourceRange` | `SourceTextRange` | internal | UTF-16 half-open range whose `String.prototype.slice` must equal `authoredLiteral` |
-| `semanticValue` | `SemanticMetadataValue` or null | internal | Separately decoded value for typed classification, relationship normalization, and derivation only; never serialized or displayed; null when the syntax supports literal display but no unambiguous typed value |
+| `value` | string | DTO | The value the parser resolved for that field, as the text a product loading the file would have; never masked, redacted, or shortened, and never an environment-variable reference the host resolved |
 
-`SemanticMetadataValue` is a closed, JSON-safe discriminated union for null, boolean,
-string, integer, float, date/time, array, and object values. Integer, float, and date/time
-payloads use canonical strings plus their explicit type tag so JavaScript number
-precision and parser-specific date objects cannot change the semantic value. Arrays and
-objects recursively contain the same union as supported by the selected parser and runtime;
-objects use ordered key/value entries rather than a JavaScript object map.
-Despite the field name, this union is mechanical typed decoding of an authored literal. It
-cannot represent natural-language meaning or intent, semantic rank, validity/correctness/
-effectiveness/compliance/quality, policy/remediation advice, or a fix action. Inspector-
-owned schema/registry validation never converts it into a customization-file verdict.
+One entry per field, not per authored occurrence: a key declared twice resolves to one value
+for the product reading the file, and that resolution is what is reported. The comparison
+identity of these entries is therefore `(tool, kind, fieldId)`.
 
-The array is serialized in exact source-occurrence order. Accepted duplicate field
-occurrences remain separate rather than being collapsed by a map. JSON transport escaping
-does not alter the DTO string after JSON decoding. JSONC syntax-tree ranges, YAML
-CST/source-token ranges, TOML lexical spans cross-checked with semantic parsing, and
-Markdown/frontmatter/import spans must reproduce the exact substring. Missing,
-ambiguous, illegally overlapping, or non-round-tripping spans discard the recognition's complete
-metadata/relationship/derivation extraction. Structural comparison matches
-`(tool, kind, fieldId, occurrence)` and compares `authoredLiteral`, so semantically equal but lexically
-different values remain visibly different.
+An entry is a field the syntax resolves to a string, number, or boolean scalar. A null
+scalar declares the absence of a value, which the entry's absence already records; an entry
+reading `null` would present a spelling the product does not select by. A text form of a
+structure is never an entry, because it would be a value the file does not contain.
+
+The presentation allowlists also name item and map-entry occurrences of list- and
+map-valued keys — `copilot.skill.allowed-tool`, `copilot.mcp.server.arg`, and
+`marketplace.plugin.keyword` among them (contracts/vendors/*.md § Presentation
+Allowlist). No shipped extractor reads one, so this model carries no shape for them: the
+extractor that reads one brings the shape its items need and the comparison identity that
+distinguishes them, in the same change. Until then a list-valued key produces no entry
+rather than a flattened spelling of its structure.
+
+Reading a value is mechanical. It cannot represent natural-language meaning or intent,
+semantic rank, validity/correctness/effectiveness/compliance/quality, policy/remediation
+advice, or a fix action. Inspector-owned schema/registry validation never converts it into a
+customization-file verdict.
+
+The array is serialized in the allowlist row's order. JSON transport escaping does not
+alter the DTO string after JSON decoding. A document an extractor cannot parse discards that
+recognition's complete metadata/relationship/derivation extraction, while its complete
+authored bytes stay available as `sourceText` — which is where a reader goes for the
+spelling a value no longer carries.
 
 ### ScopeDescriptor and OrderDescriptor
 
@@ -1427,7 +1458,7 @@ on implementation-specific objects.
 | `source-root` | none | The owning Repository or tool-specific Global Source root |
 | `directory-subtree` | `path: SourceRelativePath` | One Source-relative directory and its descendants |
 | `matching-path` | `path: SourceRelativePath`, `selectorIndex: non-negative integer` | The exact admitted path and immutable matcher-selector alternative |
-| `declared` | `fieldId`, `occurrence` | References one `DeclaredMetadataEntry` without duplicating its authored value |
+| `declared` | `fieldId`, `occurrence` | References one authored declaration of that field without duplicating its value; not an index into the entry list, which holds one resolved entry per field |
 
 Any path field belongs to the same Source as the owning admission record. The stable scope key
 is the variant order above, then Source-relative path, selector index, field ID, and
@@ -1453,8 +1484,12 @@ plus applicability/documentation facts, never a fabricated rank.
 |---|---|---|
 | `summary` | `authored \| available \| selected \| omitted \| shadowed \| disabled \| conditional \| unknown` | Convenience projection only; never called `effective` |
 | `conditions` | `ConditionFact[]` | Sorted/deduplicated by key, reason code, basis, then status; no missing input defaults to true |
-| `strategyRefs` | sorted strategy ID[] | Strategies used by the projection; empty when only authorship is known |
-| `evaluatedFromGeneration` | integer | The owning sequence's generation this assessment was computed from; prevents facts from surviving a rescan |
+
+An assessment carries no `strategyRefs` and no `evaluatedFromGeneration`. The record that
+carries the assessment already publishes one `EvidenceAssessment` per strategy, with the
+documentation status a list of IDs cannot carry, and the generation the assessment was
+computed from is the one the response carrying it was bound under. Either field would be a
+second copy of a value already present, and two copies can disagree.
 
 Each `ConditionFact` has a `key` (`surface`, `engine-version`, `runtime-cwd`,
 `workspace-root`, `repository-root`, `project-root`, `worked-path`, `target-match`,
@@ -1471,8 +1506,10 @@ required input for that conclusion are known. Otherwise it remains `conditional`
 
 The shipped condition-reason registry maps every `reasonCode` to one allowed key/basis/
 status shape, whether it is required for a conclusion, and one projection role
-(`authorship`, `availability`, `selection`, `omission`, `shadowing`, `disablement`, or
-`documentation-uncertainty`). An emitter cannot choose a summary directly. Projection is
+(`availability`, `selection`, `omission`, `shadowing`, `disablement`, or
+`documentation-uncertainty`). There is no `authorship` role: row 8 below is reached from
+the record's origin rather than from a fact, so a role naming it would be a value no row
+asks for. An emitter cannot choose a summary directly. Projection is
 recomputed each generation using this decision table; the first proven row wins:
 
 | Priority | Summary | Complete proof required |
@@ -1482,7 +1519,7 @@ recomputed each generation using this decision table; the first proven row wins:
 | 3 | `omitted` | A complete surface/target/selection/budget rule proves exclusion, with no higher-priority proof |
 | 4 | `selected` | A documented selection rule proves inclusion and every condition capable of preventing that selection is satisfied |
 | 5 | `unknown` | Documentation is absent/conflicting for a required composition or applicability rule, and no sufficient negative proof above exists |
-| 6 | `conditional` | A documented applicability path exists, but a required runtime/excluded input is unknown or conflicting, and no sufficient negative proof exists |
+| 6 | `conditional` | A documented applicability path exists, but a required runtime/excluded input is unobserved, and no sufficient negative proof exists. A required input whose own documentation conflicts is row 5: the documentation is the disagreement, not a missing runtime observation |
 | 7 | `available` | Every documented availability requirement is satisfied, no unresolved fact can prevent availability, and no selection result is claimed |
 | 8 | `authored` | Only the accepted authored declaration is proven; installation/availability is intentionally not claimed |
 
@@ -1506,8 +1543,6 @@ quality, or advise remediation.
 | `kind` | `import \| declared-component \| skill-resource \| plugin-source \| agent-reference \| context-inheritance \| runtime-reference \| order \| fallback` | Descriptive only |
 | `targetOrigin` | `authored \| documented-default` | `authored` requires one exact source occurrence; `documented-default` is allowed only for a fixed registry-defined default such as an omitted Codex plugin hook |
 | `authoredTarget` | string or null | For `authored`, exact decoded-source slice for this target token/span, including authored quoting and escapes; for `documented-default`, null so a synthetic path is never presented as authored |
-| `sourceOccurrenceKey` | internal occurrence reference or null | For `authored`, references the same `ExtractedSourceOccurrence` used by metadata/derivation when applicable; null for `documented-default` |
-| `targetSourceRange` | `SourceTextRange` or null | Required internally for `authored`, uses UTF-16 offsets, and must reproduce `authoredTarget`; null for `documented-default` |
 | `semanticTarget` | string | Internal separately decoded authored target or fixed registry default used only for path normalization/applicability; never substituted for an authored display value |
 | `normalizedTarget` | `SourceRelativePath` or null | Set only when lexical normalization is safe and the target remains in the owning Source |
 | `boundaryStatus` | `inside \| outside \| invalid \| unknown` | Does not authorize a read |
@@ -1543,9 +1578,6 @@ relationship `ruleId`/kind, declaration-field identifier, then source-occurrence
 Distinct authored source occurrences remain distinct edges even when their semantic targets
 match. A documented default uses `authoredTarget: null`; the UI labels it as a documented
 default and may display the `normalizedTarget`, never as source-authored text.
-When one declared field drives metadata, a relationship, and derivation, all three
-projections reference its one occurrence/range; only overlaps between distinct origin
-occurrences trigger extraction failure.
 Opaque IDs never participate in ordering. No target is opened while constructing or
 retaining a relationship; only independent candidate admission can authorize a read.
 
@@ -1556,18 +1588,21 @@ retaining a relationship; only independent candidate admission can authorize a r
 | `diagnosticId` | opaque ASCII string | Server-generated and unique within generation/session |
 | `code` | stable closed code | Suitable for objective tests and documentation links; the shared registry fixes each code's scope, severity, and actionable English message/next-step text, so none of them serializes |
 | `severity` | `info \| warning \| error` | Registry-fixed by `code` and not serialized; does not imply vendor validation |
-| `scope` | `file \| source \| session` | Registry-fixed by `code` and not serialized; required attachment discriminator; independent of generation-scoped versus session-lifecycle lifetime |
-| `sourceId` | optional opaque ASCII ID | Required for `file` and `source`; forbidden for `session` |
-| `fileId` | optional opaque ASCII ID | Required only for `file`; forbidden for `source` and `session` |
-| `sourceRelativePath` | optional Source-relative Path | Required only for `file`, must equal that file's path within `sourceId`, and is forbidden for `source` and `session` |
+| `scope` | `file \| source` | Registry-fixed by `code` and not serialized; required attachment discriminator; independent of generation-scoped versus session-lifecycle lifetime |
+| `sourceId` | opaque ASCII ID | Required for both scopes: every diagnostic this product produces belongs to a Source, so none of them is pathless |
+| `fileId` | optional opaque ASCII ID | Required only for `file`; forbidden for `source` |
+| `sourceRelativePath` | optional Source-relative Path | Required only for `file`, must equal that file's path within `sourceId`, and is forbidden for `source` |
 | `lifecycleOwnerKey` | `repository \| global:<tool> \| published-source:<sourceId> \| null` | Internal and never serialized; required and non-null for every out-of-generation lifecycle Diagnostic, null for generation-owned candidates, and validated against the one public owner reference |
 
-The three legal attachment shapes are therefore exactly: `file` with non-null
-`sourceId`, `fileId`, and `sourceRelativePath`; `source` with non-null `sourceId` and null
-file/path fields; and `session` with all three location fields null. A DTO using any other
-combination is invalid. Scope is orthogonal to lifetime: for example, a generation-wide
-deterministic assembly-outcome Diagnostic may be session-scoped, while a fatal rescan lifecycle record may
-be source-scoped.
+The two legal attachment shapes are therefore exactly: `file` with non-null
+`sourceId`, `fileId`, and `sourceRelativePath`; and `source` with non-null `sourceId` and
+null file/path fields. A DTO using any other combination is invalid. There is no pathless
+scope: a diagnostic states what happened while reading something, and the Source it was
+read under is the least context that makes it resolvable — a record naming neither would
+tell a reader that something failed somewhere. Scope is orthogonal to lifetime: a fatal
+rescan lifecycle record and a per-file read failure are both source- or file-scoped, and
+which of the two they are says nothing about whether they live inside a committed
+generation.
 
 The closed diagnostic-code registry lives beside the closed code union in the shared
 module and fixes each code's severity, attachment scope, and one actionable English
@@ -1580,7 +1615,7 @@ fixed phase, lifecycle-owner semantic order (Repository, fixed Global tool order
 existing public Source order), scope, Source-relative Path, rule/code, then emitter-
 occurrence order; an opaque Source ID never supplies the sort order. Aggregation is
 order-only: each emitter creates every observation exactly once — legitimately repeated
-records exist (one per failed recognition, one per rejected collision group) — so there is
+records exist (one per failed recognition) — so there is
 no deduplication pass, and a double emission is an ordinary implementation bug owned by
 tests and review, not a runtime filter. A scan candidate belongs to one
 committed generation. An out-of-generation lifecycle candidate—including a fatal scan attempt
@@ -1616,30 +1651,27 @@ The inspection-traversal subset is exactly:
 | `file-unreadable` | `file` | `error` |
 | `file-content-binary` | `file` | `warning` |
 | `recognition-parse-failed` | `file` | `warning` |
-| `path-normalization-collision` | `session` | `error` |
 
-No other code in this subset is valid. `root-unreadable` is the one code whose scope is
-context-dependent: the registry's default `source` scope applies to a published Source (the
-only case the initial release produces — the Repository Source), while an unpublished Global
-tool has no Source to attach to, so the Global tasks construct the record as pathless
-session scope (below). Every other code has a single fixed scope. `root-unreadable` records a Source root that does
-not exist or cannot be read as a directory: for a published Source (the Repository Source,
-or a published Global Source at rescan) it is source-scoped with that `sourceId`, while
-for an unpublished Global tool it is an out-of-generation, pathless session-scoped
-lifecycle record whose `lifecycleOwnerKey` is `global:<tool>` and whose sole public owner
-is `GlobalControlView.toolFailures`; the Diagnostic itself never fabricates a Source or
-path. `file-unreadable` records a per-file read failure, including a file that disappears
+No other code in this subset is valid, and every code has one fixed scope.
+`root-unreadable` records a Source root that does not exist or cannot be read as a
+directory, source-scoped with that Source's `sourceId` — the Repository Source, or a
+published Global Source at rescan. An unpublished Global tool has no Source to attach a
+record to, and this model has no pathless scope to fall back on: how that failure is
+carried arrives with the Global phase that produces it, together with the owner that
+publishes it (`GlobalControlView.toolFailures`) and the `lifecycleOwnerKey`
+`global:<tool>` that routes it. A Diagnostic never fabricates a Source or a path to fill
+the gap. `file-unreadable` records a per-file read failure, including a file that disappears
 between discovery and reading and a symbolic link whose target is missing or unreadable
-(FR-024); `file-content-binary` records the
-NUL-byte diagnostic-only outcome (FR-025); and `recognition-parse-failed` records an
+(FR-024); `file-content-binary` records an admitted
+candidate's NUL-byte diagnostic-only outcome (FR-025) — a census-listed companion's binary
+bytes are the ordinary fact of an asset, published with no Diagnostic; and
+`recognition-parse-failed` records an
 FR-028 parser or extractor failure that keeps the complete readable source displayed and
 comparison-eligible while omitting only the affected recognition's derived
 metadata/relationships. Each of these three file-confined outcomes makes an otherwise
-publishable generation `partial`. `path-normalization-collision` records one rejected
-normalization-collision group as a pathless session-scoped record (spec.md Clarifications
-§ Session 2026-07-20): no unambiguous public path exists, so it is not a file-confined
-outcome and does not make the generation partial by itself. File rows require the coherent already admitted candidate
-tuple. No row can carry OS error text, an outside path, filesystem handle/descriptor, or
+publishable generation `partial`. File rows require the coherent tuple of a file the generation already
+published — an admitted candidate, or a file a companion census listed beside one and the
+scan read the same way. No row can carry OS error text, an outside path, filesystem handle/descriptor, or
 source bytes.
 
 ### RootPresentationEncoding and Global lexical state
@@ -1707,22 +1739,20 @@ This state is not authoritative and is never persisted.
   complete authored `sourceText`. The owning editor, subscriptions, and every model are disposed
   independently on route close, selection replacement, file removal, source disable, or
   the owning sequence's generation change.
-- `SensitiveContentNoticeState`: the fixed warning object plus an `acknowledged` boolean for
-  the current authorized browser-session memory lifetime. The UI requires acknowledgement
-  before its first `FileDetail` request or comparison construction because complete source
-  text, declared authored metadata, authored relationship targets, and either comparison
-  side may contain sensitive values. Once acknowledged it covers every such authored-value
-  surface in that SPA document; document reload or browser-document close loses it. This
-  client-only state is never sent to the API, grants no read authority, and is discarded by
-  the central full-session purge path. Route close, selection replacement, file or Source
-  removal and generation change dispose their scoped models independently;
-  they are not central client-data purges and may retain acknowledgement for the loaded
-  document. Global disable instead uses the central full-session purge below.
+- There is no sensitive-content state of any kind: no acknowledged flag, no notice, and no
+  confirmation step in front of a `FileDetail` request or a comparison (FR-027). The session
+  is loopback-bound and the files are the viewer's own, so a confirmation would guard nothing
+  while making every file take two interactions to read, and a standing notice would spend
+  the screen telling a reader about their own repository. What bounds authored content instead
+  is where it can be reached — one file or comparison at a time, never through an inventory or
+  session response — and how long it is held, which the central full-session purge below
+  ends. Route close, selection replacement, file or Source removal, and generation change
+  dispose their scoped models independently and are not central client-data purges.
 - A Global-disable action purges all inspection content locally before sending the request; observing
   a greater `globalContentEpoch` or non-null `globalDisableInProgress` in any ordinary
   response repeats the idempotent purge before rendering it. The client increments
   `clientDataEpoch`, aborts every request that could return inspection data, disposes every
-  editor/model/comparison, clears warning/filter state, removes all Source, generation, file,
+  editor/model/comparison, clears filter state, removes all Source, generation, file,
   detail, authored metadata, relationship, and Diagnostic DTO/DOM text, and retains only
   the control/error projections needed to join or retry
   disable. A failed accepted barrier does not restore purged content; a later new full
@@ -1745,9 +1775,9 @@ This state is not authoritative and is never persisted.
   `globalEnableInProgress` is null, `pendingTools` is empty, and `retryableTools` is
   non-empty. Resume fetches the session again, requires the returned `sessionId` to match
   the adopted recovery baseline, and atomically constructs a fresh inventory-summary view
-  with default filters. It restores no prior detail, comparison, editor, warning
-  acknowledgement, or authored source; opening detail/comparison later requires a new
-  acknowledgement. If that fetch fails or the returned `sessionId` does not match, only the
+  with default filters. It restores no prior detail, comparison, editor state, or authored
+  source; opening detail/comparison later fetches it again from the fresh session. If that
+  fetch fails or the returned `sessionId` does not match, only the
   session-lost next step to reopen the printed process-lifetime URL remains.
 - `SessionViewState`: stores the current booting/inspection/recovery/ended view and adopts
   devframe's connection-status signal directly. There is no separate liveness RPC, probe,
@@ -1760,7 +1790,7 @@ This state is not authoritative and is never persisted.
   does not treat as exposure. A current network/runtime RPC rejection,
   transport-reported channel loss, or session-ID mismatch synchronously invokes one central
   purge before rendering the session-ended view: dispose every Monaco
-  editor/model/worker and subscription, clear comparison/notice/filter state, remove all
+  editor/model/worker and subscription, clear comparison and filter state, remove all
   source/detail/metadata/diagnostic DTOs and DOM text, abort pending requests, and increment
   the epoch so every response captured under the prior epoch is ignored. Before any
   ordinary response confirms the current baseline or renders, its request token,
@@ -3459,7 +3489,7 @@ old file records in place.
    its Source root. A parsed value admits a candidate only when
    it satisfies that exact derivation rule; relationships and excluded rules never do.
    No client-supplied path string authorizes a read. Raw entry-name segments drive
-   filesystem operations while NFC segments are display-only. Global traversal
+   filesystem operations, and joined with `/` they are the published display path. Global traversal
    performs only the exact operations represented by the consent-bound `TraversalPlan`.
 5. A discovered file has one `CustomizationFile` record per Source/generation, identified
    by its Source-relative Path, and at most one
@@ -3467,11 +3497,9 @@ old file records in place.
    no physical-identity grouping (FR-024, FR-019). Different Sources,
    attempts, and generations read independently.
 6. Every readable file DTO returns its complete authored `sourceText`; every returned
-   declared-metadata value and authored relationship target is an exact validated source
-   UTF-16-indexed `String.prototype.slice`, while a documented default has null authored
-   text and an explicit origin. Metadata/relationship/derivation may reuse one exact
-   occurrence range; distinct origins may not overlap. Comparison uses authored slices and
-   `(tool, kind, fieldId, occurrence)` so literal differences survive semantic decoding.
+   declared-metadata value is the value its parser resolved for that field, while a
+   documented default has null authored text and an explicit origin. Comparison uses each
+   field's resolved value and `(tool, kind, fieldId)`.
    Environment references remain literal and never cause a process-environment
    lookup or substitution. Session Diagnostics may carry only their actionable
    location fields.
@@ -3489,11 +3517,10 @@ old file records in place.
     environment capacity failure into a customization-validity verdict.
 11. Browser editor models use opaque in-memory identities, never filesystem or remote URLs,
    and never retain source beyond the active route and generation. Source and comparison
-   surfaces present and receive in-memory acknowledgement of the session's sensitive-content
-   notice before the bundled SPA requests detail content or constructs a comparison.
-   Acknowledgement is presentation-only, not an access-control factor (FR-027): the session
-   API is reachable only through the loopback-bound local host and
-   never receives or persists acknowledgement.
+   surfaces carry no notice about what content may contain, and no confirmation step stands
+   in front of a detail request or a comparison (FR-027), because
+   the session API is reachable only through the loopback-bound local host and that binding is
+   the whole boundary.
    A current browser/network/runtime RPC rejection, transport-reported channel loss,
    session mismatch, Global-disable pre-send action, or response-observed greater
    Global epoch/non-null fence invokes the central purge and removes all
@@ -3537,7 +3564,7 @@ old file records in place.
     compare content, length, identity/link state, mode, mtime, ctime, and observable xattrs/
     ACLs. OS-only atime changes are recorded separately and prove neither mutation nor
     safety.
-18. Syntax parsing, exact authored-literal extraction, mechanical typed decoding,
+18. Syntax parsing, reading the value a parser resolves for an allowlisted field,
     frozen-catalog classification, and documented structural projection are the only
     interpretation operations. No DTO or internal projection can express natural-language
     interpretation/ranking, customization validity/correctness/effectiveness/compliance/

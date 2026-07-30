@@ -182,11 +182,10 @@ into the exclusion rule or a union.
 ## Normative initial-release presentation allowlist
 
 This table is the closed FR-007 presentation allowlist for OpenAI Codex. The kind
-spellings are the exact `ToolRecognition.kind` values. A field ID names one authored
-source occurrence class, not an arbitrary key supplied by the inspected file. A repeated
-array item or dynamic map entry produces another source-ordered occurrence under the same
-field ID; for server, Hook-event, environment, header, tool, and named-component `*.name`
-IDs, the authored map key is the occurrence. `marketplace.plugin.source` is the one
+spellings are the exact `ToolRecognition.kind` values. A field ID names one field of the recognized
+kind, not an arbitrary key supplied by the inspected file, and produces one entry holding
+the value its parser resolved for that field; for server, Hook-event, environment, header,
+tool, and named-component `*.name` IDs, that value is the authored map key. `marketplace.plugin.source` is the one
 cross-vendor derivation field: it denotes either a plain-string source or the `path` leaf
 of an object source.
 

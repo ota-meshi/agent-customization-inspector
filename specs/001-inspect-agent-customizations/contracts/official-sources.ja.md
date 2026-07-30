@@ -156,7 +156,7 @@ digest inputとする。Heading、prose、blank line、連続table後のlineはh
 
 | Vendor | 英語table SHA-256 | 日本語table SHA-256 |
 |---|---|---|
-| GitHub Copilot | `974ac8fdf76d16925ab7bc3505a22863314e2938981e40e09f1d428bb2ef244f` | `92e27ba7f5444f28a8d29087eca52d3bfbac95652e6551405feb9238c3a07a1a` |
+| GitHub Copilot | `712877da354e87bcb98da9827e35d7088e190b393a02096e7b202535a0069daa` | `c1b1232657dfe403c364bc8d25702a21a74120b90209dcfa27aaafaef77cca86` |
 | Claude Code | `c41502612324aef171de5ead0ba73dcc9234e378f630e31ff04aa8a4b6f66f9f` | `75f6689a1c04551e3991f27bdf8637516c3959970336d75009eb417ca21dc66b` |
 | OpenAI Codex | `c1de96a1764c6ba7355e1784d6bbabb3262ebc7e51ef7cbaa6b64f621aa38b1b` | `d06588c649e9fbd969bc89816d8be3ced41b9b02601a2a6b0fc0e6c08636c248` |
 

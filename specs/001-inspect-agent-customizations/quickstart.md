@@ -166,17 +166,20 @@ Expected:
   unchanged control, acknowledgement without scan state, or earlier-scan status does not count.
 - The first complete inventory appears without any file outside the frozen path contract.
 - Stopping the process destroys the server session. On a loaded page, devframe reports loss
-  of the loopback host through its transport without being queried. A transport-reported
-  channel loss or browser/network/runtime rejection of the current, non-superseded session
-  RPC purges every DTO, DOM source value, editor model/worker, comparison, and warning
-  acknowledgement before the session-ended view. The SPA issues no liveness RPC, installs
+  of the loopback host through its transport without being queried. A transport-reported channel loss —
+  or a protocol the client cannot speak — purges every DTO, DOM source value, editor
+  model/worker, and comparison before the session-ended view. An ordinary rejection of the
+  current session RPC, from a handler or from delivery, is that request's error alone: the
+  committed snapshot stays on screen and another refresh can still succeed
+  (contracts/http-api.md § Concurrency and lifecycle). The SPA issues no liveness RPC, installs
   no visibility, unload, or other page-lifecycle listener, does not purge merely because the
   page becomes hidden, and does not refetch when it returns to visibility. It defines no
   polling interval, request timeout, retry timer, memory lease, or wall-clock process-loss
   guarantee for a continuously idle page. Restarting—even with port reuse—has a different
   `sessionId`, and neither a response captured before the purge nor one with a mismatched
   session identity restores previously displayed state.
-- The session is unauthenticated behind the loopback bind: there is no per-session token,
+- The session is unauthenticated behind the loopback bind: the product adds no
+  per-session token,
   Origin or Host check, or hand-written router, and nothing is stored in browser storage
   or a cookie. The documented residual limitation is that other local processes and, via
   DNS rebinding, a malicious web page can reach the session while the inspector runs.
@@ -229,6 +232,7 @@ Run every gate before considering an implementation change complete:
 ```bash
 pnpm run build
 pnpm run verify:package
+pnpm run format:check
 pnpm run lint
 pnpm run typecheck
 pnpm run test:unit
@@ -244,8 +248,9 @@ pnpm run test:docs
 
 Expected:
 
-- The build completes. Byte hygiene needs no gate run: line endings are normalized by
-  `.gitattributes` and editor conventions come from `.editorconfig`.
+- The build completes. Code formatting is Prettier's (`pnpm run format` rewrites,
+  `format:check` gates); line endings are normalized by `.gitattributes` and editor
+  conventions come from `.editorconfig`.
 - Lint and type checking complete without ignored failures.
 - Unit tests cover path classification, ordering, parser failure isolation, exact authored-value
   presentation, environment-reference non-resolution, diagnostics, state transitions, and
@@ -275,9 +280,9 @@ Expected:
   recorded separately as the FR-022 platform/environment limitation. The devframe-owned
   startup browser opening receives no inspection-derived
   content/path, authored value, user-supplied command, or environment-selected handler.
-  There are no host-security or HTTP-router contract suites to run: the per-session token,
-  Origin checks, and hand-written router are removed, protection is the loopback-only
-  `localhost` bind alone, and an unexpected session-API failure propagates its real error to the requesting
+  There are no host-security or HTTP-router contract suites to run: protection is the
+  loopback-only `localhost` bind alone — no per-session token, Origin check, or product
+  router exists — and an unexpected session-API failure propagates its real error to the requesting
   client while the session stays usable.
 - At the Phase 3 checkpoint, package tests launch `dist/cli.mjs` from an unrelated working
   directory and verify the packaged shell, closed manifest fields, printed-URL fallback,
@@ -463,13 +468,10 @@ Verify:
 3. One physical `AGENTS.md`, `CLAUDE.md`, skill, `.mcp.json`, or marketplace remains one
    file without duplicate content and has exactly one recognition for each
    `(fileId, tool, kind)`; compatible admissions merge as provenances of that record. Each
-   recognition exposes only `not-attempted | parsed | failed`, while the file-level
-   `parseSummary` exposes only `not-applicable | all-parsed | mixed | all-failed`, derived
-   from the complete recognition set with `not-attempted` neutral: all `not-attempted` is
-   `not-applicable`; one or more `parsed` and no `failed` is `all-parsed`; one or more
-   `failed` and no `parsed` is `all-failed`; and the coexistence of `parsed` and `failed` is
-   `mixed`. Recognition order is the closed tool order followed by the closed kind order,
-   never an opaque-ID tie-break.
+   recognition exposes only `not-attempted | parsed | failed`; a file carries no
+   parse rollup, because the recognition's own state is the parse fact and a
+   file-level aggregate had no reader. Recognition order is the closed tool order
+   followed by the closed kind order, never an opaque-ID tie-break.
 4. Near-miss paths remain absent and an empty repository shows a successful supported-
    scope explanation.
 5. The first snapshot has bootstrap Repository generation 0 with exactly one stable-ID idle
@@ -500,24 +502,22 @@ Verify:
 
 1. Hook commands, scripts, plugin components, URIs, markup, and MCP declarations appear as
    inert text/data and never execute, connect, load, or navigate.
-2. Before any `FileDetail` request or comparison construction, the UI states that complete
-   authored content may contain sensitive values. The acknowledgement gates complete source
-   text, declared authored metadata, authored relationship targets, and either comparison
-   side. After that warning, every maintained literal credential and
-   displayed metadata value appears exactly as authored in source and comparison views;
-   no mask or reveal control exists. JSONC escaped strings, YAML quoted/block scalars,
-   TOML quoted strings/datetimes, collection punctuation, and accepted duplicate fields
-   retain their exact source slices, source order, and occurrences after API transport.
-   Structural metadata comparison matches `(tool, kind, fieldId, occurrence)` and exposes
-   lexical differences even when typed semantic values are equal. Boundary-sized TOML integers,
+2. A detail or comparison surface shows the file exactly as written, with no notice about
+   what it may contain and no confirmation step in front of it: opening a file from the
+   inventory takes one interaction, and neither guards anything a loopback-bound session
+   over the viewer's own files does not already.
+   Every maintained literal credential appears exactly as authored in source and comparison
+   views, and every displayed metadata value is the one its parser resolved for that field;
+   no mask or reveal control exists. A key declared twice resolves to its later declaration,
+   so there is one value per field and structural metadata comparison matches
+   `(tool, kind, fieldId)`. Boundary-sized TOML integers,
    floats, and date/time values retain their typed canonical semantic payload without
-   JavaScript precision loss while their authored spellings remain unchanged. The
-   acknowledgement exists only in browser memory as a presentation gate: it is never sent
-   to or persisted by the host, no acknowledgement API/field exists, and the
-   acknowledgement is not an access-control factor — the session API is reachable only
-   through the loopback-bound local host. Document reload and
-   the central full-session client-data purge reset it; scoped route, selection, file/Source,
-   Global, and generation cleanup may retain it for the loaded document.
+   JavaScript precision loss while their authored spellings remain unchanged. No
+   acknowledgement API, field, or client state exists, and none is needed: the session API is
+   reachable only through the loopback-bound local host, which is the whole boundary.
+   Authored content is reachable only one file or comparison at a time and is dropped by the
+   central full-session client-data purge; scoped route, selection, file/Source, Global, and
+   generation cleanup dispose only their own models.
 3. Environment-variable references remain literal text even when sentinel process values
    are set; no referenced process-environment value appears in any displayed content.
 4. Session Diagnostics contain only their documented closed fields. A failed session-API
@@ -535,23 +535,22 @@ Verify:
    failure as an ordinary error with its real message; a startup failure
    ends the launch with an actionable message. File size and collection counts never produce a
    valid/invalid, correctness, compliance, or lint verdict.
-6. Any NUL byte yields a binary diagnostic-only item (`file-content-binary`) and an
-   otherwise publishable `partial` generation. Otherwise decode exactly once with
+6. Any NUL byte yields a textless `binary` item — for an admitted candidate that is
+   diagnostic-only (`file-content-binary`) and an otherwise publishable `partial`
+   generation; a census-listed companion's binary bytes are the ordinary fact of an
+   asset. Otherwise decode exactly once with
    UTF-8 replacement semantics, record/remove one leading BOM, label any replacement result
    `utf-8-replaced`, and preserve every `U+FFFD` through parser, source, and comparison. That
    garbled readable text is complete by itself; no alternate decoder runs and it does not
    make the scan partial. A parser or extractor failure discards only that recognition's
    whole result with its `recognition-parse-failed` diagnostic and retains the complete
-   authored source and comparison eligibility. Every half-open `SourceTextRange` is measured
-   in ECMAScript UTF-16 code units and must round-trip exactly through
-   `sourceText.slice(start, end)`; astral characters, unpaired surrogates, combining
-   sequences, and ordinary BMP text verify that UTF-8 byte counts are never reused as
-   offsets. Metadata, relationship, and derivation outputs for the same logical origin
-   occurrence may reuse one exactly identical span. Identical, partial, nested, or crossing
-   overlap between distinct origin occurrences, and any missing, ambiguous, or non-round-
-   tripping span, fails that recognition all-or-nothing. An authored relationship uses the
-   exact target token slice, while `normalizedTarget` and derivation use only the separate typed
-   semantic value; neither normalized value is substituted for authored display. The
+   authored source and comparison eligibility. Every declared value is the one its parser
+   resolved; astral characters and combining sequences survive extraction
+   and JSON transport whole. No entry and no response carries source coordinates,
+   because nothing points into a document. A document an extractor cannot parse fails that
+   recognition all-or-nothing. An authored relationship uses the exact target token slice,
+   while `normalizedTarget` and derivation use only the separately decoded value; neither
+   normalized value is substituted for authored display. The
    conditional Codex default `hooks/hooks.json` relation instead has
    `targetOrigin: documented-default` and null `authoredTarget`, while an explicit hook
    field is `authored` and replaces the default.
@@ -564,8 +563,8 @@ Verify:
    omission, shadowing, and unknown inputs never alter those assessments or become an
    invented “effective” result.
 8. Inventory, Detail, Comparison, Global controls, Diagnostics, Source Condition Facts, API
-   responses, CLI text, and documentation remain within syntactic parsing, exact
-   authored-literal extraction, mechanical typed decoding, frozen-catalog classification,
+   responses, CLI text, and documentation remain within syntactic parsing, reading the
+   value a parser resolves for an allowlisted field, frozen-catalog classification,
    and documented structural scope/order/condition/selection/reference projection. They do
    not interpret or rank natural-language meaning or intent, decide correctness, validity,
    compliance, effectiveness, or quality, or offer policy/remediation advice, validation,
@@ -580,8 +579,8 @@ pnpm exec playwright test tests/e2e/comparison.spec.ts
 Verify:
 
 1. In the Repository comparison flow, exactly two distinct readable active-generation files
-   from the same Repository Source can be selected; binary and other diagnostic-only items
-   cannot be selected. Cross-Source comparison is verified only after Global enablement in
+   from the same Repository Source can be selected; items without source text —
+   binary among them — cannot be selected. Cross-Source comparison is verified only after Global enablement in
    the next workflow.
 2. Read-only Monaco source models contain the complete authored text without masking or
    environment substitution, disable links/editing, and use opaque in-memory URIs rather
@@ -600,15 +599,15 @@ Verify:
    labeled controls and the accessible diff viewer without a focus trap.
 7. The packed app loads its editor worker from a same-origin static asset with no
    external request or `blob:` worker.
-8. Direct loads of `/`, `/compare`, `/global-consent`, and `/files/<fileId>` all boot from
+8. Direct loads of `/`, `/compare`, `/global-consent`, and `/skills/<fileId>` all boot from
    the same root-absolute assets served by the devframe host.
 9. Session-loss and response-guard tests cover a devframe-transport-reported channel loss,
-   browser/network/runtime rejection of the current non-superseded RPC, session-ID mismatch,
+   channel loss or unsupported protocol on the current non-superseded RPC, session-ID mismatch,
    greater Global content epoch or non-null disable fence, and a late in-flight response after
    the client epoch changes. A channel loss or current RPC rejection performs the shared full
    client-data purge and enters the session-ended view; no pre-purge inventory, detail,
-   comparison, editor, authored-content DTO/DOM state, or acknowledgement remains or is
-   automatically restored. The SPA calls no liveness function, installs no visibility,
+   comparison, editor, or authored-content DTO/DOM state remains or is automatically
+   restored. The SPA calls no liveness function, installs no visibility,
    unload, or other page-lifecycle listener, and issues no request because time elapsed, the
    page became hidden, or it returned to visibility. Devframe owns the event-driven host-loss
    signal, and the product sets no wall-clock process-loss deadline for a continuously idle
@@ -640,11 +639,12 @@ Verify:
     `globalContentEpoch`, Global control and enable/disable projections, their referenced
     pathless session Diagnostics and retained failure errors, and any newly verified frozen
     preview, and discards the inspection graph. It restores no inventory, Source, file, generation, detail, comparison, editor,
-    authored source, selection, filter, or acknowledgement. Disable/join/wait, retry-disable,
+    authored source, selection, or filter. Disable/join/wait, retry-disable,
     or an eligible Global retry is available from that state as applicable. The explicit
     Resume inspection action appears only when `globalDisableInProgress` is null; it
     re-fetches the matching session and atomically constructs a fresh inventory summary with
-    default filters. A later detail/comparison request requires a new acknowledgement.
+    default filters. A later detail/comparison request fetches it again from the fresh
+    session.
 
 ### 4. Opt in to Global inspection
 
@@ -1542,8 +1542,9 @@ resource, or operational cause.
 
 Per-file diagnostic fixtures cover each file-confined class: an unreadable or
 disappeared-before-read file — including a symbolic link whose target is missing or
-unreadable — yields `file-unreadable`; NUL-containing content yields the
-diagnostic-only `file-content-binary` item; a parser or extractor failure yields
+unreadable — yields `file-unreadable`; an admitted candidate's NUL-containing content
+yields the diagnostic-only `file-content-binary` item, where a census-listed companion's
+binary bytes yield none; a parser or extractor failure yields
 `recognition-parse-failed` while the complete readable source stays displayed and
 comparison-eligible; and a boundary-crossing reference is reported without reading its
 target. Each fixture proves that the affected item retains enough Source and
@@ -1568,11 +1569,11 @@ cancellation of uncancellable Node.js or kernel I/O.
 Traversal-plan call traces additionally prove that Repository traversal executes the
 compiled immutable plan, a Global exact target never opens the tool-home root, a fixed
 instruction-subtree walk opens only that subtree, and every neighboring Global path has
-zero I/O. Path-spelling fixtures keep the exact raw `Dirent.name` segment separate from its
-NFC display segment: filesystem operations use the raw entry name, public Source-relative
-Paths use NFC display segments, and a targeted fixed path uses the immutable registry
-target spelling as its sole I/O operand, so a non-colliding NFD-only name is read through
-the raw segment and displayed as NFC. Hard links are ordinary files: two hard-linked paths
+zero I/O. Path-spelling fixtures prove the exact raw `Dirent.name` segment is the one spelling:
+filesystem operations use the raw entry name, a public Source-relative Path is those
+names joined with `/`, and a targeted fixed path uses the immutable registry target
+spelling as its sole I/O operand, so an NFD-only name is read through and published as
+its raw segment. Hard links are ordinary files: two hard-linked paths
 that both match allowlisted selectors are simply two inventory files, with no identity
 grouping, alias ranking, or per-group bookkeeping to test. Symbolic links are followed
 transparently, exactly as agents resolve them, so a symlinked customization file is
@@ -1624,7 +1625,7 @@ control, and duplicate no customization source value in Diagnostics.
 
 Diagnostic-behavior tests cover the order-only aggregation — fixed phase/source/
 path/rule/code/occurrence order with no dedup pass, so legitimately repeated records (one
-per failed recognition, one per rejected collision group) all publish. A failure while retaining or serializing a Diagnostic is not
+per failed recognition) all publish. A failure while retaining or serializing a Diagnostic is not
 confined to one file: it fails the attempt, publishes no result/generation, and is reported
 as an ordinary error with the failed request's message. Multi-Source cases prove A/B entry-failure pairs coexist, B success preserves A,
 A success clears only A's pair, repeated A failure replaces only A's pair, and Global disable
@@ -1642,9 +1643,9 @@ the packed release candidate and recheck every `REVIEW-*` rationale against the 
 diff, the packed tarball's file list, and the rendered packed interface. An axe severity result alone does
 not establish SC-008. The contract freezes the complete, non-sampled execution matrix:
 
-1. Use only the keyboard to launch/follow the URL, filter, acknowledge the sensitive-content
-   warning, open and close a file, select two files, compare, open Global consent,
-   enable/disable Global, rescan, and return to inventory.
+1. Use only the keyboard to launch/follow the URL, filter, open and close a file, select two
+   files, compare, open Global consent, enable/disable Global, rescan, and return to
+   inventory.
 2. Confirm visible focus, logical focus order, skip/navigation landmarks, unique labels,
    status announcements, error/next-step association, and no focus loss on generation
    replacement.
@@ -1662,11 +1663,12 @@ not establish SC-008. The contract freezes the complete, non-sampled execution m
 
 ## Release package verification
 
-After all release-evidence and remediation edits are final, rerun the formatting behavioral
-test and repository checker in the following order; neither command may rewrite the tree.
+After all release-evidence and remediation edits are final, rerun the following in order;
+none of these commands may rewrite the tree.
 
 ```bash
 pnpm outdated
+pnpm run format:check
 pnpm run test:package
 pnpm run test:docs
 git diff --check
@@ -1685,13 +1687,15 @@ production dependencies are exactly the seven packages `devframe`, `gunshi`, `js
 `smol-toml`, `vfile`, `vfile-matter`, and `yaml`; `open` must be absent from every dependency section, while devframe's transitive
 tree is owned by devframe and the lockfile.
 
-There is no host-security or HTTP-API-router contract step to rerun: the per-session
-token, Origin checks, and hand-written router are removed with the adoption of the
-devframe local-tool framework. Transport protection is the devframe host's
-loopback-only `localhost` bind with devframe authentication disabled, an unexpected session-API
+There is no host-security or HTTP-API-router contract step to rerun: devframe owns
+hosting policy, so the product has no per-session token, product-owned Origin check, or
+hand-written router. Transport protection is the devframe host's
+loopback-only `localhost` bind with
+devframe authentication disabled, an unexpected session-API
 failure returns its real error to the requesting client, and the
-residual exposure of an unauthenticated loopback host — other local processes and, via DNS
-rebinding, a malicious web page — is the documented limitation.
+residual exposure of an unauthenticated loopback host — other local processes and, via
+DNS rebinding, a malicious web page — is the documented
+limitation.
 
 For the release record, document the migration impact for every accepted dependency or
 breaking public-contract decision. Record the initial baseline as no impact only after

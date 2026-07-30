@@ -59,7 +59,7 @@ export interface RuntimeCompositionStrategy {
   readonly surfaces: readonly VendorSurface[];
   /** Non-empty operations in documented pipeline order. */
   readonly operations: readonly CompositionOperation[];
-   /** Inputs required before a terminal applicability result is permitted. */
+  /** Inputs required before a terminal applicability result is permitted. */
   readonly requiredConditionKeys: readonly ConditionFactKey[];
   /** How completely official sources establish the operations (QR-005). */
   readonly documentationStatus: DocumentationStatus;

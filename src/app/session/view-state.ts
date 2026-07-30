@@ -32,13 +32,17 @@
 //
 // This module registers its own clearing with the purge, so the central
 // purge stays one call site: no caller enumerates what "client data" means.
-// The FR-027 sensitive-value acknowledgement is not held here: Phase 3 has no
-// detail surface to gate, so the state and its reset belong to the phase that
-// builds one (T084/T100), registered with this same purge.
-import { shallowRef, type InjectionKey, type ShallowRef } from 'vue';
-import { createSessionApiClient, type SessionRpcChannel } from './api-client';
-import { createClientDataPurge } from './client-data';
-import type { RejectionCode, SessionSnapshot } from '../../shared/api-types';
+//
+// There is no acknowledgement gate in front of authored content (FR-027). It
+// would protect nothing: the session API is reachable
+// only through the loopback bind, which FR-027 itself named as the whole
+// boundary, and the files being shown are the viewer's own. What the gate did
+// do was make every file take two interactions to read. The detail route says
+// what it is showing instead.
+import { shallowRef, type InjectionKey } from 'vue';
+import { SessionApiClient, type SessionRpcChannel } from './api-client';
+import { ClientDataPurge } from './client-data';
+import type { FileDetailDto, RejectionCode, SessionSnapshot } from '../../shared/api-types';
 
 /**
  * Which surface is showing. Only 'inspection' may display inspection data.
@@ -69,147 +73,269 @@ export type RescanState =
   /** The host returned a declared closed rejection for the command. */
   | 'rejected';
 
-/** Construction inputs for {@link createSessionViewState}. */
+/**
+ * Where the one open file detail stands (contracts/http-api.md
+ * § get-file-detail):
+ *  - 'idle'             no file is open, or the open one was cleaned up
+ *  - 'loading'          a detail request is in flight
+ *  - 'ready'            a detail passed every guard and may be rendered
+ *  - 'companion-failed' the held entry stays shown; only the selected
+ *                       companion's request failed
+ *  - 'stale'            the host answered `stale-resource`: the file belongs
+ *                       to no current generation, which is what a rescan
+ *                       makes of every file ID a page was holding
+ */
+export type FileDetailState =
+  /** No file is open. */
+  | 'idle'
+  /** A detail request is in flight. */
+  | 'loading'
+  /** A detail passed every guard and is rendered. */
+  | 'ready'
+  /**
+   * The held entry point is still shown, but the selected companion's own
+   * request failed ordinarily. Only the pane is failed: the recognition and
+   * the file tree describe the skill rather than the file that did not load,
+   * and dropping them would discard good state over one file's error.
+   */
+  | 'companion-failed'
+  /** The requested file belongs to no current generation. */
+  | 'stale';
+
+/** Construction inputs for {@link SessionViewState}. */
 export interface SessionViewStateOptions {
   /** The devframe RPC channel every request is issued on. */
   readonly channel: SessionRpcChannel;
 }
 
 /**
- * The reactive values and commands `App.vue` binds to. Every member here has
- * a render site or a caller in that component; nothing is exposed only so a
- * test can read it, because this module's behavior is observable through the
- * state it publishes and the requests it issues.
+ * The reactive values and commands `App.vue` binds to — the browser's view of
+ * the one host session. Every public member has a render site or a caller in
+ * that component; nothing is exposed only so a test can read it, because this
+ * module's behavior is observable through the state it publishes and the
+ * requests it issues.
+ *
+ * Construction performs no I/O; {@link SessionViewState.start} issues the
+ * first request, so a caller can assert the exact request sequence from a
+ * quiescent starting point.
  */
-export interface SessionViewState {
+export class SessionViewState {
+  /** The shared client-data purge; every owner below registers with it. */
+  readonly #clientData: ClientDataPurge;
+
+  /** The guarded API client every request goes through. */
+  readonly #client: SessionApiClient;
+
   /** Which surface to render; see {@link SessionView}. */
-  readonly view: ShallowRef<SessionView>;
+  public readonly view = shallowRef<SessionView>('booting');
+
   /** The adopted snapshot; null in every non-'inspection' view. */
-  readonly snapshot: ShallowRef<SessionSnapshot | null>;
+  public readonly snapshot = shallowRef<SessionSnapshot | null>(null);
+
   /** The real error message of a failed request; null while none is retained. */
-  readonly errorMessage: ShallowRef<string | null>;
+  public readonly errorMessage = shallowRef<string | null>(null);
+
   /** Where the one explicit rescan command stands; see {@link RescanState}. */
-  readonly rescanState: ShallowRef<RescanState>;
+  public readonly rescanState = shallowRef<RescanState>('idle');
+
   /**
    * The `scanRequestId` of the currently admitted rescan command, or null.
    * Progress and status are shown only while they carry this exact ID, so
    * older status or inventory can never satisfy a newer command (FR-030).
    */
-  readonly activeScanRequestId: ShallowRef<string | null>;
-  /** The closed rejection code of a refused rescan command; null otherwise. */
-  readonly rescanRejection: ShallowRef<RejectionCode | null>;
-  /** Adopts the initial snapshot. */
-  readonly start: () => Promise<void>;
-  /**
-   * Refetches and adopts the snapshot on demand. This is the only way status
-   * advances: the product defines no timer, filesystem watcher, or
-   * server-initiated push (contracts/http-api.md § get-session), so nothing
-   * on this page updates by itself and there is no automatic update to pause.
-   */
-  readonly refresh: () => Promise<void>;
-  /**
-   * Dispatches one explicit Repository rescan and adopts the resulting
-   * status. The host resolves the command with its acceptance, so the
-   * committed generation arrives through a later {@link refresh}.
-   */
-  readonly requestRescan: () => Promise<void>;
-  /**
-   * Adopts a channel loss reported by the transport (devframe's
-   * `connection:status`). Purges and shows the ended view without waiting
-   * for a request to fail, so a dead host is visible immediately rather
-   * than at the next interaction.
-   */
-  readonly reportChannelLost: (error: Error | null) => void;
-  /** Abandons every outstanding request. */
-  readonly dispose: () => void;
-}
+  public readonly activeScanRequestId = shallowRef<string | null>(null);
 
-/**
- * Creates the session view state. Construction performs no I/O;
- * {@link SessionViewState.start} issues the first request, so a caller can
- * assert the exact request sequence from a quiescent starting point.
- */
-export function createSessionViewState(options: SessionViewStateOptions): SessionViewState {
-  const clientData = createClientDataPurge();
-  const client = createSessionApiClient({
-    channel: options.channel,
-    clientData: { epoch: clientData.epoch, purge: clientData.purge },
-  });
-  const view = shallowRef<SessionView>('booting');
-  const snapshot = shallowRef<SessionSnapshot | null>(null);
-  const errorMessage = shallowRef<string | null>(null);
-  const rescanState = shallowRef<RescanState>('idle');
-  const activeScanRequestId = shallowRef<string | null>(null);
-  const rescanRejection = shallowRef<RejectionCode | null>(null);
+  /** The closed rejection code of a refused rescan command; null otherwise. */
+  public readonly rescanRejection = shallowRef<RejectionCode | null>(null);
+
+  /**
+   * The open skill's entry point — the `SKILL.md` whose recognitions say what
+   * the skill is. Non-null exactly in 'ready' and 'companion-failed', where
+   * the entry is what keeps the page standing.
+   */
+  public readonly skillDetail = shallowRef<FileDetailDto | null>(null);
+
+  /**
+   * The companion file being read, or null when the entry point itself is.
+   * The entry point is already held above, so opening it again would be one
+   * detail under two names.
+   */
+  public readonly openCompanion = shallowRef<FileDetailDto | null>(null);
+
+  /** Where the open skill stands; see {@link FileDetailState}. */
+  public readonly skillDetailState = shallowRef<FileDetailState>('idle');
+
+  /**
+   * The subject the active route reports for the document title — the skill
+   * detail page writes its heading's name here, so the title says which skill
+   * a tab shows rather than only which surface (WCAG 2.4.2,
+   * contracts/accessibility-acceptance.md: a descriptive, state-appropriate
+   * document title per route). Null when the active route has no subject
+   * beyond itself; the shell then titles the route by its surface name. The
+   * reporting page owns clearing it on unmount.
+   */
+  public readonly pageSubject = shallowRef<string | null>(null);
+
+  /**
+   * Counts skill requests, so a settlement can tell whether the page still
+   * wants what it asked for. A purge, a superseded request, and a closed route
+   * are three different ways for that to stop being true, and only this one
+   * covers the route.
+   */
+  #skillRequestVersion = 0;
+
+  /**
+   * Which surface set the retained {@link SessionViewState.errorMessage}:
+   * a session-level operation, or the open skill's detail requests. Kept so
+   * {@link SessionViewState.closeSkill} can drop a detail failure with the
+   * route that owned it — left behind, the message would sit on the inventory
+   * with no file context and no retry control — without erasing an error a
+   * session operation is still reporting.
+   */
+  #errorOwner: 'session' | 'skill' = 'session';
+
+  /**
+   * Disposers of component-owned holders of the open detail's content — the
+   * Monaco model above all. {@link closeSkill} runs them synchronously,
+   * because the contract orders dispose before replace (data-model.md
+   * § BrowserState): a sequence's greater generation is adopted only after
+   * the previous generation's editor objects are gone, and waiting for the
+   * reactive unmount would leave them alive for one render flush after the
+   * replacement. The purge reaches them through the same path — its disposer
+   * closes the skill.
+   */
+  readonly #openContentOwners = new Set<() => void>();
+
   /**
    * Increments on every rescan the user issues. A refresh captures it when it
    * starts and only clears command state it still matches, so a refresh that
    * began before a rescan cannot erase that rescan's outcome.
    */
-  let commandVersion = 0;
+  #commandVersion = 0;
 
-  // Requests are superseded before the state they would populate is cleared,
-  // so a settlement that lands mid-purge cannot repopulate anything.
-  clientData.register(() => {
-    client.abortOutstandingRequests();
-    // Session identity, Global epoch, and sequence generations belong to the
-    // purged client model too. Reset them after aborting old requests so the
-    // first post-purge response establishes one coherent fresh baseline
-    // instead of being compared across different host sessions.
-    client.resetBaseline();
-  });
-  clientData.register(() => {
-    // Everything this module holds from the purged session: the snapshot and
-    // its inventory/Source/file/diagnostic graph, and any retained error.
-    // Later phases register their own owners (detail, comparison, editor
-    // models, filters, and the FR-027 acknowledgement) with this same purge
-    // rather than extending this callback.
-    snapshot.value = null;
-    errorMessage.value = null;
-    // The rescan command belongs to the purged session too: its request ID
-    // is meaningless against a different host session, and leaving it set
-    // would let a post-purge status be mistaken for that command's result.
-    rescanState.value = 'idle';
-    activeScanRequestId.value = null;
-    rescanRejection.value = null;
-    // 'ended' is set by its own reporter and must survive the purge it runs:
-    // a dead channel is not something a refetch recovers from.
-    if (view.value !== 'ended') {
-      view.value = 'booting';
-    }
-  });
+  /**
+   * The one in-flight session refresh, or null. Concurrent callers — the boot
+   * retry pressed while the first request is still out, or a rescan adopting
+   * its result — join it instead of issuing another: a second request would
+   * supersede the first's token and discard a good response, and if only the
+   * second failed, the boot would strand on an error the first had already
+   * answered.
+   */
+  #refreshInFlight: Promise<void> | null = null;
 
-  /** Fetches and adopts the snapshot, or leaves the current view intact. */
-  async function refresh(): Promise<void> {
+  /** Wires the client and registers this state's owners with the purge. */
+  public constructor(options: SessionViewStateOptions) {
+    this.#clientData = new ClientDataPurge();
+    this.#client = new SessionApiClient({
+      channel: options.channel,
+      clientData: this.#clientData,
+    });
+
+    // Requests are superseded before the state they would populate is cleared,
+    // so a settlement that lands mid-purge cannot repopulate anything.
+    this.#clientData.register(() => {
+      this.#client.abortOutstandingRequests();
+      // Session identity, Global epoch, and sequence generations belong to the
+      // purged client model too. Reset them after aborting old requests so the
+      // first post-purge response establishes one coherent fresh baseline
+      // instead of being compared across different host sessions.
+      this.#client.resetBaseline();
+    });
+    this.#clientData.register(() => {
+      // Everything this module holds from the purged session: the snapshot and
+      // its inventory/Source/file/diagnostic graph, the open skill's authored
+      // source, and any retained error. Later phases register their own owners
+      // (comparison, editor models, filters) with this same purge rather than
+      // extending this callback.
+      this.snapshot.value = null;
+      this.errorMessage.value = null;
+      this.closeSkill();
+      // The rescan command belongs to the purged session too: its request ID
+      // is meaningless against a different host session, and leaving it set
+      // would let a post-purge status be mistaken for that command's result.
+      this.rescanState.value = 'idle';
+      this.activeScanRequestId.value = null;
+      this.rescanRejection.value = null;
+      // 'ended' is set by its own reporter and must survive the purge it runs:
+      // a dead channel is not something a refetch recovers from.
+      if (this.view.value !== 'ended') {
+        this.view.value = 'booting';
+      }
+    });
+  }
+
+  /**
+   * Refetches and adopts the snapshot on demand, or leaves the current view
+   * intact. This is the only way status advances: the product defines no
+   * timer, filesystem watcher, or server-initiated push
+   * (contracts/http-api.md § get-session), so nothing on this page updates by
+   * itself and there is no automatic update to pause.
+   */
+  public refresh(): Promise<void> {
+    this.#refreshInFlight ??= this.#refreshOnce().finally(() => {
+      this.#refreshInFlight = null;
+    });
+    return this.#refreshInFlight;
+  }
+
+  /**
+   * Waits out any in-flight fetch, then issues one that starts now. The
+   * rescan recovery needs a request that began after its failure — an
+   * in-flight fetch may predate the commit the recovery must observe — so
+   * joining {@link refresh}'s coalesced request is not enough.
+   */
+  async #refreshFreshly(): Promise<void> {
+    await this.#refreshInFlight;
+    await this.refresh();
+  }
+
+  /** One fetch-and-adopt pass; every caller goes through {@link refresh}. */
+  async #refreshOnce(): Promise<void> {
     // The client guards its own settlement against a purge, but that guard and
     // this assignment are in different microtasks: a purge running in the gap
     // clears the view, and the assignment below would then repopulate it with
     // data captured before it. Re-reading the epoch here puts the check and the
     // commit in one synchronous step (FR-027, FR-042).
-    const capturedEpoch = clientData.epoch();
-    const capturedCommandVersion = commandVersion;
-    const outcome = await client.fetchSession();
+    const capturedEpoch = this.#clientData.epoch();
+    const capturedCommandVersion = this.#commandVersion;
+    const outcome = await this.#client.fetchSession();
     // Every branch below writes state the purge owns, so the check belongs
     // ahead of all of them. A fatal failure is the one exception: it purges on
     // its way here, so its own purge must not silence its report.
-    const purged = clientData.epoch() !== capturedEpoch;
+    const purged = this.#clientData.epoch() !== capturedEpoch;
     switch (outcome.kind) {
       case 'adopted':
         if (purged) {
           return;
         }
-        snapshot.value = outcome.snapshot;
-        errorMessage.value = null;
-        view.value = 'inspection';
+        // A commit rekeys every generation-owned ID, so the open detail names
+        // a file that no longer exists. Dropping it here is the generation
+        // half of the FR-027 cleanup: the route notices and re-requests under
+        // the new generation, which is also how a removed file becomes the
+        // `stale-resource` state instead of stale content on screen.
+        if (outcome.advancedSequences.length > 0) {
+          this.closeSkill();
+        }
+        this.snapshot.value = outcome.snapshot;
+        // A refresh success answers session-level failures only: a retained
+        // skill-owned error still describes the open detail's own failed
+        // request, which this success says nothing about.
+        if (this.#errorOwner === 'session') {
+          this.errorMessage.value = null;
+        }
+        this.view.value = 'inspection';
         // A rejection describes a command that is now history. The snapshot
         // just adopted is the state the user asked about, so a stale
         // `scan-in-progress` must not outlive it and sit beside a Ready source.
         // `accepted` is different: it names a scan still running. A refresh
         // that started before a later rescan clears nothing: the rejection it
         // would erase belongs to a command it never saw.
-        if (rescanState.value === 'rejected' && commandVersion === capturedCommandVersion) {
-          rescanState.value = 'idle';
-          rescanRejection.value = null;
+        if (
+          this.rescanState.value === 'rejected' &&
+          this.#commandVersion === capturedCommandVersion
+        ) {
+          this.rescanState.value = 'idle';
+          this.rescanRejection.value = null;
         }
         return;
       case 'failed':
@@ -219,14 +345,15 @@ export function createSessionViewState(options: SessionViewStateOptions): Sessio
         if (purged && !outcome.fatal) {
           return;
         }
-        errorMessage.value = outcome.error.message;
+        this.#errorOwner = 'session';
+        this.errorMessage.value = outcome.error.message;
         // Only a lost channel or an unsupported protocol ends the session. A
         // handler or delivery failure is this request's error alone, so the
         // committed snapshot the user is reading stays on screen and another
         // refresh can still succeed (contracts/http-api.md § Concurrency and
         // lifecycle).
         if (outcome.fatal) {
-          view.value = 'ended';
+          this.view.value = 'ended';
         }
         return;
       case 'purged':
@@ -246,47 +373,55 @@ export function createSessionViewState(options: SessionViewStateOptions): Sessio
    * failure ended the session, a discard means a newer command superseded
    * this one).
    */
-  async function requestRescan(): Promise<void> {
+  public async requestRescan(): Promise<void> {
     // One command at a time. A second dispatch while one is in flight would
     // supersede the first's token and lose the request ID it was admitted
     // with — work the host is already doing, which nothing would then name.
-    if (rescanState.value === 'requesting') {
+    if (this.rescanState.value === 'requesting') {
       return;
     }
-    commandVersion += 1;
-    rescanState.value = 'requesting';
-    rescanRejection.value = null;
-    // The previous command's ID stops naming "this scan" the moment a new one
-    // is asked for. Keeping it until admission would let the progress of a
-    // finished scan render as the progress of the one the user just started.
-    activeScanRequestId.value = null;
+    this.#commandVersion += 1;
+    const capturedCommandVersion = this.#commandVersion;
+    this.rescanState.value = 'requesting';
+    this.rescanRejection.value = null;
+    // The previous command's ID is deliberately kept until the new command is
+    // admitted. Until then the scan that ID names is still the one running —
+    // dispatching again while one is active is exactly the `scan-in-progress`
+    // rejection — and clearing it here would sever the running scan's
+    // correlated progress the moment the user pressed the button a second
+    // time. `accepted` below overwrites it; a rejection or failure leaves the
+    // running scan's correlation intact.
     // Same boundary as `refresh`: a purge between the client's guard and this
     // commit must not be overwritten by a command state captured before it.
-    const capturedEpoch = clientData.epoch();
-    const outcome = await client.rescanRepository();
+    const capturedEpoch = this.#clientData.epoch();
+    // A rejection describes the session as of dispatch. The generation is
+    // captured so a rejection that settles after a newer commit was adopted
+    // can be recognized as history; see the 'rejected' branch.
+    const capturedGeneration = this.snapshot.value?.repositoryGeneration ?? null;
+    const outcome = await this.#client.rescanRepository();
     // As in `refresh`: every branch writes state the purge owns.
-    const purged = clientData.epoch() !== capturedEpoch;
+    const purged = this.#clientData.epoch() !== capturedEpoch;
     switch (outcome.kind) {
       case 'accepted':
         if (purged) {
           return;
         }
-        rescanState.value = 'accepted';
-        activeScanRequestId.value = outcome.scanRequestId;
+        this.rescanState.value = 'accepted';
+        this.activeScanRequestId.value = outcome.scanRequestId;
         // The admission's own `SourceDto` is the Source as of acceptance, so
         // the row shows `scanning` even if the refresh below is slow or fails.
         // Waiting for the refresh alone would leave a Ready row beside an
         // accepted scan.
-        if (snapshot.value !== null) {
-          snapshot.value = {
-            ...snapshot.value,
-            sources: snapshot.value.sources.map((source) =>
+        if (this.snapshot.value !== null) {
+          this.snapshot.value = {
+            ...this.snapshot.value,
+            sources: this.snapshot.value.sources.map((source) =>
               source.sourceId === outcome.source.sourceId ? outcome.source : source,
             ),
           };
         }
         // The committed generation arrives on this refresh.
-        await refresh();
+        await this.refresh();
         return;
       case 'rejected':
         // The rejection belongs to the purged session's command; writing it
@@ -294,48 +429,289 @@ export function createSessionViewState(options: SessionViewStateOptions): Sessio
         if (purged) {
           return;
         }
-        rescanState.value = 'rejected';
-        rescanRejection.value = outcome.code;
+        // A `scan-in-progress` rejection names a scan that was still running
+        // at dispatch. A refresh racing this settlement can adopt that scan's
+        // committed generation first; the rejection then describes a state
+        // the page no longer shows, and surfacing it would put "already
+        // running" beside a Ready source until the next refresh.
+        if (
+          capturedGeneration !== null &&
+          this.snapshot.value !== null &&
+          this.snapshot.value.repositoryGeneration > capturedGeneration
+        ) {
+          this.rescanState.value = 'idle';
+          return;
+        }
+        this.rescanState.value = 'rejected';
+        this.rescanRejection.value = outcome.code;
         return;
       case 'failed':
         if (purged && !outcome.fatal) {
           return;
         }
-        rescanState.value = 'idle';
-        errorMessage.value = outcome.error.message;
+        this.rescanState.value = 'idle';
         if (outcome.fatal) {
-          view.value = 'ended';
+          this.#errorOwner = 'session';
+          this.errorMessage.value = outcome.error.message;
+          this.view.value = 'ended';
+          return;
         }
+        // The failure is published immediately — a recovery fetch takes time
+        // and a known error must not wait for it (the fetch's own success
+        // clears session errors, so it is restated below).
+        this.#errorOwner = 'session';
+        this.errorMessage.value = outcome.error.message;
+        // A delivery failure can hide a command the host accepted: the scan
+        // may be running or already committed, and a transport failure after
+        // an atomic commit leaves it committed — the client refetches through
+        // the session API (contracts/http-api.md § Concurrency and
+        // lifecycle). The fetch must start after the failure: an in-flight
+        // one may predate the commit it exists to observe.
+        await this.#refreshFreshly();
+        // Restated only while this command still owns the slot: a purge
+        // started a different session, and a newer command — the version
+        // check — owns the state now and must not inherit this error.
+        if (
+          this.#clientData.epoch() !== capturedEpoch ||
+          this.#commandVersion !== capturedCommandVersion
+        ) {
+          return;
+        }
+        this.#errorOwner = 'session';
+        this.errorMessage.value = outcome.error.message;
         return;
       case 'purged':
         // The disposer already cleared the command state along with the view.
         return;
       case 'discarded':
-        rescanState.value = 'idle';
+        // Superseded, and the command that superseded it owns the state now —
+        // including across a purge, where the version advanced too. Writing
+        // `idle` unconditionally would return the newer command to a state the
+        // user has already left.
+        if (this.#commandVersion === capturedCommandVersion) {
+          this.rescanState.value = 'idle';
+        }
         return;
     }
   }
 
-  return {
-    view,
-    snapshot,
-    errorMessage,
-    rescanState,
-    activeScanRequestId,
-    rescanRejection,
-    start: refresh,
-    refresh,
-    requestRescan,
-    reportChannelLost(error) {
-      // Purge first: the disposer clears the retained error along with
-      // everything else, so the reported message is set afterwards or it
-      // would be wiped by its own purge.
-      clientData.purge('channel-failure');
-      view.value = 'ended';
-      errorMessage.value = error === null ? null : error.message;
-    },
-    dispose: client.abortOutstandingRequests,
-  };
+  /**
+   * Drops the open skill and the authored source it holds, and invalidates any
+   * request still in flight for it.
+   *
+   * Advancing the version is the load-bearing half. A detail request that
+   * settles after the route left would otherwise assign the source it fetched
+   * to state nothing is showing, so leaving a file would put its content back
+   * in memory a moment after taking it out.
+   */
+  public closeSkill(): void {
+    this.#skillRequestVersion += 1;
+    // Component-owned content first, synchronously: the callers of this
+    // method — a purge, a route close, and the adoption of a greater
+    // generation — all require the editor objects gone before what follows,
+    // not one render flush later (data-model.md § BrowserState).
+    for (const disposer of this.#openContentOwners) {
+      disposer();
+    }
+    this.skillDetail.value = null;
+    this.openCompanion.value = null;
+    this.skillDetailState.value = 'idle';
+    // A detail failure belongs to the route that requested it. Session-owned
+    // errors survive: they describe the session, not the file the reader just
+    // left.
+    if (this.#errorOwner === 'skill') {
+      this.errorMessage.value = null;
+    }
+  }
+
+  /**
+   * Requests one skill's entry point and the file being read from it, and
+   * adopts both, or records why the skill could not be shown.
+   *
+   * The entry point is fetched even when a companion is what the reader
+   * selected, because a companion carries no recognition of its own: what the
+   * skill is comes from the `SKILL.md`, and a page that showed only the
+   * companion's detail would say nothing was recognized here.
+   *
+   * Every write to the skill state happens in this function, behind one
+   * ownership check, so the three ways an invocation stops owning the page —
+   * a purge cleared it, `closeSkill` left it, a newer `openSkill` superseded
+   * it — cannot each grow their own handling.
+   */
+  public async openSkill(entryFileId: string, openFileId: string): Promise<void> {
+    this.#skillRequestVersion += 1;
+    const requested = this.#skillRequestVersion;
+    // The new selection owns the page now: a previous file's retained detail
+    // error would otherwise sit beside this selection's loading and stale
+    // states, describing a file the page no longer shows.
+    if (this.#errorOwner === 'skill') {
+      this.errorMessage.value = null;
+    }
+    // Same boundary as `refresh`: the client guards its own settlement against
+    // a purge, but that guard and the writes below are different microtasks,
+    // so the epoch is re-read at each write to make the check and the commit
+    // one synchronous step (FR-027, FR-042). `closeSkill` advances the version
+    // without aborting the request — leaving the route is not an error and
+    // cancels nothing already sent — which is why the version is the other
+    // half of this check: without it, a detail settling after the reader
+    // returned to the inventory would put a skill's error on it.
+    const capturedEpoch = this.#clientData.epoch();
+    const owns = (): boolean =>
+      requested === this.#skillRequestVersion && this.#clientData.epoch() === capturedEpoch;
+    // The entry point already on screen when the skill has not changed. Keeping
+    // it is what makes selecting another file of one skill a change to the
+    // source alone: clearing it would take the page through its loading state,
+    // unmounting the tree the reader is using — and the link they just
+    // activated with it, dropping keyboard focus to the document.
+    const held =
+      this.skillDetail.value?.file.fileId === entryFileId ? this.skillDetail.value : null;
+    if (held !== null && this.skillDetailState.value === 'companion-failed') {
+      // A retry — or another file selected — from the failed pane: the entry
+      // stays, and the pane returns to its in-flight state so the failed
+      // branch and its retry button unmount. Left standing, the button could
+      // dispatch a second request whose supersession discards the first's
+      // success and then fails alone.
+      this.skillDetailState.value = 'ready';
+    }
+    if (held === null) {
+      this.skillDetailState.value = 'loading';
+      // The previous skill's authored source is dropped before the next one is
+      // asked for, so a slow request never leaves one file's content on screen
+      // under another skill's heading.
+      this.skillDetail.value = null;
+      this.openCompanion.value = null;
+    }
+    /**
+     * Fetches one detail and settles every non-detail outcome, so the entry
+     * point and the companion cannot drift into different handling. A `stale`
+     * or failed settlement clears whatever is on screen: on the held path that
+     * is the previous file, which the tree and the URL no longer name, and
+     * showing it under the newer selection would claim a file the page does
+     * not have.
+     */
+    const fetchOwned = async (fileId: string): Promise<FileDetailDto | null> => {
+      const outcome = await this.#client.fetchFileDetail(fileId);
+      switch (outcome.kind) {
+        case 'adopted':
+          return owns() ? outcome.detail : null;
+        case 'rejected':
+          // The one rejection these requests can receive: the file belongs to
+          // no current generation. It is a declared functional outcome, shown
+          // as its own state rather than as an error.
+          if (owns()) {
+            this.skillDetail.value = null;
+            this.openCompanion.value = null;
+            this.skillDetailState.value = 'stale';
+            // The rejection proves this client's snapshot is older than the
+            // host's committed generation, so the inventory's links carry
+            // IDs that would all answer the same way. Refetching now makes
+            // "return to the inventory and open it again" true instead of a
+            // loop through the same stale ID.
+            void this.refresh();
+          }
+          return null;
+        case 'failed':
+          // A fatal failure is the transport reporting the host is gone, which
+          // is true of the session rather than of this request, so it is the
+          // one outcome a no-longer-owning request still reports.
+          if (outcome.fatal) {
+            this.#errorOwner = 'session';
+            this.errorMessage.value = outcome.error.message;
+            this.view.value = 'ended';
+          } else if (owns()) {
+            // A companion's own failure fails only the pane: the held entry
+            // still describes the skill — its recognition and file tree are
+            // not what failed — where an entry failure leaves nothing to show.
+            if (fileId !== entryFileId && this.skillDetail.value !== null) {
+              this.openCompanion.value = null;
+              this.skillDetailState.value = 'companion-failed';
+            } else {
+              this.skillDetail.value = null;
+              this.openCompanion.value = null;
+              this.skillDetailState.value = 'idle';
+            }
+            this.#errorOwner = 'skill';
+            this.errorMessage.value = outcome.error.message;
+          }
+          return null;
+        case 'purged':
+          // The disposer already cleared the detail along with the view.
+          return null;
+        case 'discarded':
+          // A newer selection superseded this request and owns the state now.
+          return null;
+      }
+    };
+    const entry = held ?? (await fetchOwned(entryFileId));
+    if (entry === null || !owns()) {
+      return;
+    }
+    // Published the moment it is owned, not with the companion: a companion's
+    // own failure must fail only the pane, and that requires the entry to
+    // already be the page's held state — a direct link to a companion starts
+    // with none.
+    this.skillDetail.value = entry;
+    // One request when the entry point is what is open: it is already here, and
+    // asking again would put one file's detail in two places. A companion the
+    // page is already holding is reused for the same reason the entry is —
+    // returning to it is a change of selection, not of content, and the
+    // refetch it would replace could fail and take good state with it.
+    const heldCompanion =
+      this.openCompanion.value?.file.fileId === openFileId ? this.openCompanion.value : null;
+    const companion =
+      openFileId === entryFileId ? null : (heldCompanion ?? (await fetchOwned(openFileId)));
+    if ((openFileId !== entryFileId && companion === null) || !owns()) {
+      return;
+    }
+    this.openCompanion.value = companion;
+    this.skillDetailState.value = 'ready';
+    // A detail success answers detail failures only; a session-owned error —
+    // a failed refresh, say — is still true of the session and stays.
+    if (this.#errorOwner === 'skill') {
+      this.errorMessage.value = null;
+    }
+  }
+
+  /** Adopts the initial snapshot; the same fetch-and-adopt as {@link refresh}. */
+  public async start(): Promise<void> {
+    await this.refresh();
+  }
+
+  /**
+   * Adopts a channel loss reported by the transport (devframe's
+   * `connection:status`). Purges and shows the ended view without waiting
+   * for a request to fail, so a dead host is visible immediately rather
+   * than at the next interaction.
+   */
+  public reportChannelLost(error: Error | null): void {
+    // Purge first: the disposer clears the retained error along with
+    // everything else, so the reported message is set afterwards or it
+    // would be wiped by its own purge.
+    this.#clientData.purge('channel-failure');
+    this.view.value = 'ended';
+    this.#errorOwner = 'session';
+    this.errorMessage.value = error === null ? null : error.message;
+  }
+
+  /** Abandons every outstanding request. */
+  public dispose(): void {
+    this.#client.abortOutstandingRequests();
+  }
+
+  /**
+   * Registers one component-owned holder of the open detail's content,
+   * returning its unregister function. Exists because a Monaco model is owned
+   * by the component that mounted it while the disposal order is this
+   * module's contract: the central purge (FR-027) and the adoption of a
+   * greater generation must both dispose editor models synchronously, and
+   * waiting for the reactive unmount would leave authored content in the
+   * model for one render flush after everything else was already gone. Both
+   * paths run through {@link closeSkill}.
+   */
+  public registerOpenContentOwner(disposer: () => void): () => void {
+    this.#openContentOwners.add(disposer);
+    return () => this.#openContentOwners.delete(disposer);
+  }
 }
 
 /**

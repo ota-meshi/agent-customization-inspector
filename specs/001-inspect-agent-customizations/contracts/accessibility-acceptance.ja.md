@@ -70,10 +70,10 @@ workflowのいずれか1つでもSC-008は失敗する。
 | 2.3.1 Three Flashes or Below Threshold | A | Not applicable | `REVIEW-2.3.1` | 同梱animation/state transitionはflashせず、調査対象contentをactive media/animationとしてrenderしない。 |
 | 2.4.1 Bypass Blocks | A | Applicable | `AUTO-2.4.1`; `MANUAL-2.4.1` | Keyboard/assistive-technology userが反復navigationをskipして主要workflow contentへ移動できる。 |
 | 2.4.2 Page Titled | A | Applicable | `AUTO-2.4.2`; `MANUAL-2.4.2` | 各client routeがstateに合ったdescriptiveなdocument titleを公開する。 |
-| 2.4.3 Focus Order | A | Applicable | `AUTO-2.4.3`; `MANUAL-2.4.3` | Route change、warning gate、rescan、Global commit、disable、error、generation replacementでfocus orderがlogicalなままである。 |
+| 2.4.3 Focus Order | A | Applicable | `AUTO-2.4.3`; `MANUAL-2.4.3` | Route change、rescan、Global commit、disable、error、generation replacementでfocus orderがlogicalなままである。 |
 | 2.4.4 Link Purpose (In Context) | A | Applicable | `AUTO-2.4.4`; `MANUAL-2.4.4` | 全link/link-like navigationのpurposeがaccessible textとcontextから分かる。調査対象linkは不活性なtextのままである。 |
 | 2.4.5 Multiple Ways | AA | Not applicable | `REVIEW-2.4.5` | Root inventoryだけがstandalone pageであり、file、comparison、consent routeは単一local inspection processの結果またはstepである。新しいstandalone pageが追加された場合、この行をApplicableへ変更する。 |
-| 2.4.6 Headings and Labels | AA | Applicable | `AUTO-2.4.6`; `MANUAL-2.4.6` | Filter、source fact、diagnostic、warning、comparison、Global controlを含むheading/labelがtopicまたはpurposeを説明する。 |
+| 2.4.6 Headings and Labels | AA | Applicable | `AUTO-2.4.6`; `MANUAL-2.4.6` | Filter、source fact、diagnostic、comparison、Global controlを含むheading/labelがtopicまたはpurposeを説明する。 |
 | 2.4.7 Focus Visible | AA | Applicable | `AUTO-2.4.7`; `MANUAL-2.4.7` | 全keyboard-operable elementがすべてのsupported visual modeでvisible focus indicatorを持つ。 |
 | 2.4.11 Focus Not Obscured (Minimum) | AA | Applicable | `AUTO-2.4.11`; `MANUAL-2.4.11` | Sticky region、dialog、Monaco surface、progress、responsive layoutがfocused component全体を隠さない。 |
 | 2.5.1 Pointer Gestures | A | Not applicable | `REVIEW-2.5.1` | Multipointまたはpath-based pointer gestureを必要とするfunctionがない。 |
@@ -127,8 +127,7 @@ checkをすべて再実行する。
   記録する。いずれも黙って省略しない。
 - **Workflow/state scenario**: `S1` populated inventory、filter、tool/source/kind factを伴うRepository discovery、
   `S2` Repository empty state、決定的にreturnされたsource Diagnostic、明示的rescan、および以前のsnapshotをstaleのまま
-  保持してfailed requestのerrorを表示する別のthrown/rejected rescan、`S3` sensitive-content acknowledgement前後の
-  file inspectionとMonaco source access、`S4` file diagnosticと実行可能なnext step、`S5` 2-file comparison、
+  保持してfailed requestのerrorを表示する別のthrown/rejected rescan、`S3` file inspection、Monaco source access、`S4` file diagnosticと実行可能なnext step、`S5` 2-file comparison、
   Monaco accessible diff、narrow inline alternative、`S6` comparison対象fileのowning sequenceが
   replacement generationをcommitした後のstale/removed comparison、およびどちらのcomparison対象fileも
   所有しないsequenceのcommit後もvalidのままのcomparison、

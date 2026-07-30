@@ -43,9 +43,8 @@ function serializeSegment(segment: MatcherSegment): SerializedSegment {
  * boundary where the graph turns back into identifiers.
  */
 export function serializeRelations(): unknown {
-  const identify = (
-    records: readonly { behaviorId?: string; strategyId?: string }[],
-  ): string[] => records.map((record) => record.behaviorId ?? record.strategyId!);
+  const identify = (records: readonly { behaviorId?: string; strategyId?: string }[]): string[] =>
+    records.map((record) => record.behaviorId ?? record.strategyId!);
   const sorted = <Edges>(
     subjects: Readonly<Record<string, Edges>>,
     project: (edges: Edges) => Record<string, string[]>,
@@ -68,14 +67,16 @@ export function serializeRelations(): unknown {
 
 /** Serializes the vendor-behavior registry, sorted by `behaviorId`. */
 export function serializeVendorBehaviors(): unknown {
-  return Object.values(VENDOR_BEHAVIOR_STATEMENTS)
-    .toSorted((left, right) => (left.behaviorId < right.behaviorId ? -1 : 1));
+  return Object.values(VENDOR_BEHAVIOR_STATEMENTS).toSorted((left, right) =>
+    left.behaviorId < right.behaviorId ? -1 : 1,
+  );
 }
 
 /** Serializes the strategy registry, sorted by `strategyId`. */
 export function serializeRuntimeComposition(): unknown {
-  return Object.values(RUNTIME_COMPOSITION_STRATEGIES)
-    .toSorted((left, right) => (left.strategyId < right.strategyId ? -1 : 1));
+  return Object.values(RUNTIME_COMPOSITION_STRATEGIES).toSorted((left, right) =>
+    left.strategyId < right.strategyId ? -1 : 1,
+  );
 }
 
 /** Serializes the inspection-rule registry, sorted by `ruleId`. */
@@ -89,9 +90,7 @@ export function serializeInspectionRules(): unknown {
           ? null
           : {
               base: rule.matcher.base,
-              selectors: rule.matcher.selectors.map((selector) =>
-                selector.map(serializeSegment),
-              ),
+              selectors: rule.matcher.selectors.map((selector) => selector.map(serializeSegment)),
             },
     }));
 }

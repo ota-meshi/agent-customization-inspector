@@ -20,20 +20,16 @@ import {
 } from '../../fixtures/filesystem/build-filesystem-fixtures';
 import {
   ANY_DIRECTORIES,
-  compileSelectorPrograms,
+  TraversalPlan,
   type CompiledInspectionRule,
-  type TraversalPlan,
 } from '../../../src/server/inspection/rules/registry';
 import { runTraversalScan } from '../../../src/server/inspection/traversal';
 import { assembleScanPublication } from '../../../src/server/inspection/scan';
 import { CODEX_REPO_SKILL_RULE } from '../../../src/shared/registries/codex/rules';
 import { CODEX_RULE_RELATIONS } from '../../../src/shared/registries/codex/relations';
 import type { RecognitionParseStatus, ToolRecognitionDto } from '../../../src/shared/api-types';
-import { createDiagnostic, serializeDiagnostic } from '../../../src/shared/diagnostics';
-import {
-  SessionCoordinator,
-  createInspectionSession,
-} from '../../../src/server/session/session';
+import { DiagnosticRecord } from '../../../src/shared/diagnostics';
+import { SessionCoordinator, InspectionSession } from '../../../src/server/session/session';
 import { prepareNextRepositoryGeneration } from '../../../src/server/session/scan-generation';
 
 // Pass-through spies over the inspection module's closed fs surface —
@@ -49,7 +45,9 @@ vi.mock('../../../src/server/inspection/fs-io', async (importOriginal) => {
   );
 });
 
-const AGENTS_PLAN = compileSelectorPrograms({ kind: 'repository' }, [[ANY_DIRECTORIES, 'AGENTS.md']]);
+const AGENTS_PLAN = TraversalPlan.fromPrograms({ kind: 'repository' }, [
+  [ANY_DIRECTORIES, 'AGENTS.md'],
+]);
 
 // These suites exercise the publication matrix itself, so they pair the plan
 // under test with a stand-in rule identity rather than the shipped Codex
@@ -67,10 +65,11 @@ function codexSkillRule(plan: TraversalPlan): CompiledInspectionRule {
 
 const AGENTS_RULES: readonly CompiledInspectionRule[] = [codexSkillRule(AGENTS_PLAN)];
 
-// A recognizer stand-in for the FR-028 parse-failure arm. No shipped
-// recognizer can return `failed` yet — extraction arrives with the Codex
-// detail phase — so the matrix's own behavior is driven through the same
-// dispatch seam the production recognizers are injected on.
+// A recognizer stand-in for the FR-028 parse-failure arm. The shipped Codex
+// recognizer reaches `failed` only through a malformed `SKILL.md`, so the
+// matrix's own behavior — which is about the publication outcome and not about
+// any one vendor's extractor — is driven through the same dispatch seam the
+// production recognizers are injected on.
 function fakeRecognition(
   fileId: string,
   recognitionId: string,
@@ -84,16 +83,18 @@ function fakeRecognition(
     // the fixture's `AGENTS.md` actually is and carries no per-kind detail.
     details: { kind: 'instructions' },
     parseStatus,
+    // A failed recognition publishes no metadata at all, and this stand-in
+    // extracts nothing in the first place (FR-028).
+    declaredMetadata: [],
     provenances: [],
     diagnosticIds: [],
   };
 }
 
 function bootstrapSession(root: string) {
-  const session = createInspectionSession({
+  const session = new InspectionSession({
     invocationCwd: root,
     rootOptionValue: null,
-    selectedRepositoryRoot: root,
   });
   return { session, coordinator: new SessionCoordinator(session) };
 }
@@ -160,16 +161,25 @@ describe('file-confined outcomes publish a partial generation (FR-028)', () => {
     }
   });
 
-  it('publishes one pathless session-scoped diagnostic per rejected collision group', async () => {
-    const tree = buildTraversalFixtureTree('inspector-collision');
+  it('publishes two spellings of one display name as two ordinary files', async () => {
+    const tree = buildTraversalFixtureTree('inspector-siblings');
     try {
-      if (!tree.capabilities.normalizationCollisions) {
+      if (!tree.capabilities.normalizationSiblings) {
         return;
       }
+      // Distinct raw entries that would render alike are two real files the
+      // agent's own filesystem holds apart, so each publishes at its own raw
+      // path with its own bytes — nothing is normalized, rejected, or
+      // diagnosed (FR-024).
       const rules = [
-        codexSkillRule(compileSelectorPrograms({ kind: 'repository' }, [['collision', /\.md$/u]])),
+        codexSkillRule(
+          TraversalPlan.fromPrograms({ kind: 'repository' }, [['siblings', /\.md$/u]]),
+        ),
       ];
-      const result = await runTraversalScan({ root: tree.root, plans: rules.map((rule) => rule.plan) });
+      const result = await runTraversalScan({
+        root: tree.root,
+        plans: rules.map((rule) => rule.plan),
+      });
       const publication = await assembleScanPublication({
         sourceId: 'src-1',
         root: tree.root,
@@ -180,24 +190,14 @@ describe('file-confined outcomes publish a partial generation (FR-028)', () => {
       if (publication.kind !== 'publishable') {
         throw new Error('expected a publishable outcome');
       }
-      expect(publication.files).toEqual([]);
-      expect(publication.diagnostics).toHaveLength(1);
-      expect(publication.diagnostics[0]).toMatchObject({
-        code: 'path-normalization-collision',
-        sourceId: null,
-        fileId: null,
-        sourceRelativePath: null,
-      });
-      // A collision is not a file-confined outcome of the closed table, so
-      // it does not make the generation partial by itself (FR-030).
+      expect(publication.files).toHaveLength(2);
+      expect(new Set(publication.files.map((file) => file.sourceRelativePath)).size).toBe(2);
+      expect(publication.diagnostics).toEqual([]);
       expect(publication.outcome).toBe('complete');
-      // `candidateFiles` is what traversal discovered, not what the generation
-      // published (data-model.md § ScanProgress). Both members of the group
-      // were discovered and then rejected, so deriving this from `files` would
-      // report the walk as having found nothing at all.
-      expect(publication.files).toHaveLength(0);
-      expect(publication.candidateFiles).toBeGreaterThan(0);
-      expect(publication.candidateFiles).toBe(result.kind === 'scanned' ? result.candidateFiles : 0);
+      expect(publication.candidateFiles).toBe(2);
+      expect(publication.candidateFiles).toBe(
+        result.kind === 'scanned' ? result.candidateFiles : 0,
+      );
     } finally {
       tree.restore();
       rmSync(tree.root, { recursive: true, force: true });
@@ -219,13 +219,19 @@ describe('recognition parse failure keeps the source displayed (FR-028)', () => 
         rootFailureOwner: 'repository',
         rules: AGENTS_RULES,
         result,
-        recognize: async ({ fileId, matchedPath }) =>
-          matchedPath === 'AGENTS.md'
-            ? [
-                fakeRecognition(fileId, 'rec-failed', 'failed'),
-                fakeRecognition(fileId, 'rec-parsed', 'parsed'),
-              ]
-            : [],
+        recognize: async ({ fileId, matchedPath }) => ({
+          recognitions:
+            matchedPath === 'AGENTS.md'
+              ? [
+                  fakeRecognition(fileId, 'rec-failed', 'failed'),
+                  fakeRecognition(fileId, 'rec-parsed', 'parsed'),
+                ]
+              : [],
+          // This stand-in is an instructions recognizer, and an instructions
+          // file is one file rather than a directory, so it has no census.
+          companions: [],
+          companionCollisions: 0,
+        }),
       });
       if (publication.kind !== 'publishable') {
         throw new Error('expected a publishable outcome');
@@ -240,7 +246,6 @@ describe('recognition parse failure keeps the source displayed (FR-028)', () => 
       // The complete source stays displayed and comparison-eligible; only
       // the failed recognition's derived data is omitted.
       expect(affected.sourceText).toBe('root agents\n');
-      expect(affected.parseSummary).toBe('mixed');
       expect(affected.recognitionIds).toEqual(['rec-failed', 'rec-parsed']);
       expect(affected.diagnosticIds).toHaveLength(1);
       const diagnostic = publication.diagnostics.find(
@@ -268,7 +273,7 @@ describe('recognition parse failure keeps the source displayed (FR-028)', () => 
       const unaffected = publication.files.find(
         (file) => file.sourceRelativePath === 'docs/AGENTS.md',
       );
-      expect(unaffected).toMatchObject({ parseSummary: 'not-applicable', diagnosticIds: [] });
+      expect(unaffected).toMatchObject({ diagnosticIds: [] });
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -285,10 +290,14 @@ describe('recognition parse failure keeps the source displayed (FR-028)', () => 
         rootFailureOwner: 'repository',
         rules: AGENTS_RULES,
         result,
-        recognize: async ({ fileId }) => [
-          fakeRecognition(fileId, 'rec-a', 'failed'),
-          fakeRecognition(fileId, 'rec-b', 'failed'),
-        ],
+        recognize: async ({ fileId }) => ({
+          recognitions: [
+            fakeRecognition(fileId, 'rec-a', 'failed'),
+            fakeRecognition(fileId, 'rec-b', 'failed'),
+          ],
+          companions: [],
+          companionCollisions: 0,
+        }),
       });
       if (publication.kind !== 'publishable') {
         throw new Error('expected a publishable outcome');
@@ -314,50 +323,41 @@ describe('recognition parse failure keeps the source displayed (FR-028)', () => 
 
   it('commits the readable source with only derived data omitted, rekeying the tuple coherently', () => {
     const { session } = bootstrapSession('/fixture-root');
-    const parseDiagnostic = serializeDiagnostic(
-      createDiagnostic({
-        code: 'recognition-parse-failed',
-        lifecycleOwnerKey: null,
-        sourceId: 'src-1',
-        fileId: 'file-1',
-        sourceRelativePath: 'AGENTS.md',
-      }),
-    );
-    const next = prepareNextRepositoryGeneration(
-      session.internal.committedRepositoryGeneration,
-      {
-        scannedSourceIds: ['src-1'],
-        scanRequestId: 'scan-1',
-        startedAt: '2026-07-22T00:00:00.000Z',
-        finishedAt: '2026-07-22T00:00:01.000Z',
-        outcome: 'partial',
-        recognitions: [],
-        files: [
-          {
-            fileId: 'file-1',
-            sourceId: 'src-1',
-            sourceRelativePath: 'AGENTS.md',
-            encoding: 'utf-8',
-            hadLeadingBom: false,
-            sourceText: '# complete authored source\n',
-            sizeBytes: 27,
-            // The failed recognition omits only its derived data; the file
-            // itself stays readable and comparison-eligible.
-            parseSummary: 'all-failed',
-            recognitionIds: [],
-            relationshipIds: [],
-            diagnosticIds: [parseDiagnostic.diagnosticId],
-          },
-        ],
-        diagnostics: [parseDiagnostic],
-      },
-    );
+    const parseDiagnostic = new DiagnosticRecord({
+      code: 'recognition-parse-failed',
+      lifecycleOwnerKey: null,
+      sourceId: 'src-1',
+      fileId: 'file-1',
+      sourceRelativePath: 'AGENTS.md',
+    }).serialize();
+    const next = prepareNextRepositoryGeneration(session.committedRepositoryGeneration, {
+      scannedSourceIds: ['src-1'],
+      scanRequestId: 'scan-1',
+      startedAt: '2026-07-22T00:00:00.000Z',
+      finishedAt: '2026-07-22T00:00:01.000Z',
+      outcome: 'partial',
+      recognitions: [],
+      files: [
+        {
+          fileId: 'file-1',
+          sourceId: 'src-1',
+          sourceRelativePath: 'AGENTS.md',
+          encoding: 'utf-8',
+          hadLeadingBom: false,
+          sourceText: '# complete authored source\n',
+          sizeBytes: 27,
+          recognitionIds: [],
+          relationshipIds: [],
+          diagnosticIds: [parseDiagnostic.diagnosticId],
+        },
+      ],
+      diagnostics: [parseDiagnostic],
+    });
     const file = next.files[0]!;
     if (file.encoding !== 'utf-8') {
       throw new Error('expected the readable variant');
     }
     expect(file.sourceText).toBe('# complete authored source\n');
-    expect(file.parseSummary).toBe('all-failed');
     // Rekeying keeps the diagnostic tuple pointing at the republished file.
     expect(next.diagnostics[0]!.fileId).toBe(file.fileId);
     expect(next.outcome).toBe('partial');
@@ -412,9 +412,7 @@ describe('unreadable root fails the Source attempt (FR-002)', () => {
     expect(snapshot.repositoryGeneration).toBe(0);
     expect(snapshot.sources[0]!.status).toBe('failed');
     expect(snapshot.snapshotState).toBe('current');
-    expect(snapshot.repositoryFailureDiagnosticId).toBe(
-      sessionPublication.diagnostic.diagnosticId,
-    );
+    expect(snapshot.repositoryFailureDiagnosticId).toBe(sessionPublication.diagnostic.diagnosticId);
     expect(snapshot.sessionDiagnosticIds).toEqual([sessionPublication.diagnostic.diagnosticId]);
   });
 });
@@ -467,8 +465,7 @@ describe('external mutation during a scan is not a product mutation', () => {
       writeFileSync(join(root, 'AGENTS.md'), 'root\n');
       const mutationTarget = join(root, 'AGENTS.md');
       const trigger = join(root, 'a', 'AGENTS.md');
-      const actual =
-        await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises');
+      const actual = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises');
       // The harness — not the product — rewrites a sibling fixture while
       // the scan is reading another file.
       vi.mocked(fsIo.readFile).mockImplementation(async (path, options) => {
@@ -483,9 +480,7 @@ describe('external mutation during a scan is not a product mutation', () => {
         // The instrumented product surface stayed read-only even though the
         // tree changed under it (FR-023): the change is attributed to the
         // external writer, not to a product request.
-        expect(
-          collectFsMutationViolations(fsIo as unknown as Record<string, unknown>),
-        ).toEqual([]);
+        expect(collectFsMutationViolations(fsIo as unknown as Record<string, unknown>)).toEqual([]);
       } finally {
         vi.mocked(fsIo.readFile).mockReset();
       }
@@ -613,7 +608,7 @@ describe('external mutation during a scan is not a product mutation', () => {
     }
   });
 
-  it('keeps a permission failure as that file\'s own outcome', async () => {
+  it("keeps a permission failure as that file's own outcome", async () => {
     const root = mkdtempSync(join(tmpdir(), 'inspector-eacces-'));
     try {
       writeFileSync(join(root, 'AGENTS.md'), 'root\n');
@@ -667,7 +662,7 @@ describe('late results after revocation are discarded (FR-029)', () => {
         outcome: publication.outcome,
         visitedEntries: 0,
         candidateFiles: 0,
-      readBytes: publication.readBytes,
+        readBytes: publication.readBytes,
       });
       const snapshot = session.snapshot();
       expect(snapshot.repositoryGeneration).toBe(0);

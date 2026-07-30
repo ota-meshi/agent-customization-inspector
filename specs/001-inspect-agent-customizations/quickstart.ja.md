@@ -146,15 +146,16 @@ launchを終了させる。
 - 最初のcomplete inventoryが表示され、凍結path contract外のfileを含まない。
 - Process停止でserver sessionを破棄する。読み込み済みpageでは、devframeが問い合わせなしにtransport経由でloopback
   hostの喪失を報告する。Transportが報告するchannel loss、またはcurrentかつnon-supersededなsession RPCの
-  browser/network/runtime rejectionは、session-ended view前に全DTO、DOM source value、editor model/worker、
-  comparison、warning acknowledgementをpurgeする。SPAはliveness RPCを発行せず、visibility、unload、その他の
+  clientが解釈できないprotocolは、session-ended view前に全DTO、DOM source value、editor model/worker、
+  comparisonをpurgeする。SPAはliveness RPCを発行せず、visibility、unload、その他の
   page-lifecycle listenerを設置せず、pageがhiddenになっただけではpurgeせず、visibilityへ戻ってもrefetchしない。
   Polling interval、request timeout、retry timer、memory lease、continuously idleなpageに対するwall-clockの
   process-loss保証を定義しない。Portを再利用して再起動しても`sessionId`が変わり、purge前にcaptureしたresponseも
   session identityが一致しないresponseも、以前の表示stateを復元しない。
-- Sessionはloopback bindの背後でunauthenticatedである。Per-session token、Origin/Host check、
-  hand-written routerは存在せず、browser storage/cookieへ何も保存しない。Inspector実行中は他のlocal
-  processと、DNS rebinding経由のmalicious web pageがsessionへ到達し得ることを、documentedなresidual
+- Sessionはloopback bindの背後でunauthenticatedである。Productはper-session token、Origin/Host
+  check、hand-written routerを追加せず、browser storage/cookieへ何も保存しない。Inspector実行中は
+  他のlocal processと、DNS rebinding経由のmalicious web pageがsessionへ到達し得ることを、
+  documentedなresidual
   limitationとする。
 
 通常利用の同等launch contract:
@@ -196,6 +197,7 @@ conditionは別に記録し、participantがprohibited hintなしでoriginal 2-m
 ```bash
 pnpm run build
 pnpm run verify:package
+pnpm run format:check
 pnpm run lint
 pnpm run typecheck
 pnpm run test:unit
@@ -211,8 +213,9 @@ pnpm run test:docs
 
 期待結果:
 
-- Buildが完了する。Byte衛生にgate実行は不要である。line endingは`.gitattributes`がnormalizeし、
-  editor慣習は`.editorconfig`が宣言する。
+- Buildが完了する。Code formattingはPrettierが所有する（`pnpm run format`が書き換え、
+  `format:check`がgateする）。line endingは`.gitattributes`がnormalizeし、editor慣習は
+  `.editorconfig`が宣言する。
 - Lint/type checkがignored failureなしで完了する。
 - Unit testがpath classification、order、parser failure isolation、記述された値の完全表示、環境変数参照の非解決、
   diagnostic、state transition、deterministic projectionを扱う。
@@ -381,11 +384,9 @@ pnpm exec playwright test tests/e2e/discovery.spec.ts
    read authorityを与えない。
 3. 1 physical `AGENTS.md`、`CLAUDE.md`、skill、`.mcp.json`、marketplaceをcontent重複のない1 fileとして保ち、
    `(fileId, tool, kind)`ごとに正確に1 recognitionを持つ。Compatible admissionはそのrecordのprovenanceとしてmergeする。
-   各recognitionが公開するのは`not-attempted | parsed | failed`だけで、file-level `parseSummary`が公開するのはcompleteな
-   recognition setから導出した`not-applicable | all-parsed | mixed | all-failed`だけとし、`not-attempted`は中立に扱う。全件
-   `not-attempted`なら`not-applicable`、`parsed`が1件以上かつ`failed`が0件なら`all-parsed`、`failed`が1件以上かつ
-   `parsed`が0件なら`all-failed`、`parsed`と`failed`が共存するなら`mixed`とする。Recognition orderはclosed tool order、
-   次にclosed kind orderとし、opaque IDをtie-breakにしない。
+   各recognitionが公開するのは`not-attempted | parsed | failed`だけである。Fileはparse rollupを持たない。
+   Recognition自身のstateがparseの事実であり、file-levelのaggregateには読み手がいなかったからである。
+   Recognition orderはclosed tool order、次にclosed kind orderとし、opaque IDをtie-breakにしない。
 4. Near-miss pathがなく、empty repositoryに成功したsupport scope説明を表示する。
 5. 最初のsnapshotはRepositoryのbootstrap generation 0を持ち、stable IDのidleなRepository Sourceを正確に1つ、
    escaped selected-root labelを持ち、調査対象Source I/O、file、Diagnosticは0件で、`globalGeneration`はnullとする。
@@ -412,19 +413,17 @@ pnpm run test:security
 
 1. Hook command、script、plugin component、URI、markup、MCP declarationをinert text/dataとして表示し、
    execute/connect/load/navigateしない。
-2. 任意の`FileDetail` requestまたはcomparison構築前に、記述された完全なcontentには機密値が含まれ得ることをUIが
-   示す。Acknowledgementは完全なsource text、declared authored metadata、authored relationship target、comparisonの両sideを
-   gateする。警告後は、
-   maintained fixtureの全literal credentialと表示metadata値をsource/comparison viewへ記述されたまま表示し、
-   mask/reveal controlを設けない。JSONC escaped string、YAML quoted/block scalar、TOML quoted string/datetime、
-   collection punctuation、受理したduplicate fieldは、API transport後もexact source slice、source order、occurrenceを
-   保持する。Structural metadata comparisonは`(tool, kind, fieldId, occurrence)`で対応付け、typed semantic valueが同値でも
-   lexical differenceを表示する。Boundary-sizeのTOML integer、float、date/time valueはJavaScript precision lossなく
-   typed canonical semantic payloadを保ち、authored spellingも変更しない。Acknowledgementはpresentation gateとして
-   browser memoryだけに存在し、hostへ送信も永続化もしない。Acknowledgement API/fieldは存在せず、
-   acknowledgementはaccess-control factorではない。Session APIはloopback-boundなlocal hostを通じてだけ
-   到達できる。Document reloadと中央full-session client-data purgeでresetし、scope限定の
-   route、selection、file/Source、Global、generation cleanupでは読み込み済みdocumentについて維持してよい。
+2. Detailまたはcomparisonのsurfaceは、fileを記述されたとおりそのまま表示する。何が含まれ得るかについての
+   注意書きも、その前に立つ確認stepも持たない。inventoryからfileを開くのは1回の操作であり、どちらも
+   閲覧者自身のfileに対するloopback束縛のsessionが既に守っていないものは何も守らない。
+   maintained fixtureの全literal credentialをsource/comparison viewへ記述されたまま表示し、表示metadata値は
+   そのfieldについてparserが解決した値とする。mask/reveal controlは設けない。2回宣言されたkeyは後の宣言へ
+   解決されるため値はfieldごとに1件であり、structural metadata comparisonは`(tool, kind, fieldId)`で対応付ける。Boundary-sizeのTOML integer、float、date/time valueはJavaScript precision lossなく
+   typed canonical semantic payloadを保ち、authored spellingも変更しない。Acknowledgement API、field、
+   client stateはいずれも存在せず、必要でもない。Session APIはloopback-boundなlocal hostを通じてだけ
+   到達でき、その境界がすべてだからである。Authored contentへはfileまたはcomparisonを1つずつ開くことでのみ
+   到達でき、中央full-session client-data purgeが破棄する。scope限定のroute、selection、file/Source、Global、
+   generation cleanupは自分のmodelだけをdisposeする。
 3. Sentinel process valueを設定しても環境変数参照をリテラルtextのまま保ち、参照先process environment値を
    表示contentへ混入させない。
 4. Session Diagnosticは文書化済みのclosed fieldだけを含む。Failしたsession-API requestはgenericなerror envelopeや
@@ -439,18 +438,18 @@ pnpm run test:security
    publishせず、prior snapshotがあれば維持し、real messageを持つordinary errorとしてfailureを報告する。
    Startup failureはactionableなmessageとともにlaunchを終了させる。File sizeとcollection件数からvalid/invalid、
    correctness、compliance、lintのverdictを一切作らない。
-6. NUL byteが1つでもあればbinary diagnostic-only item（`file-content-binary`）とし、他の条件でpublish可能なattemptは
-   `partial` generationにする。NUL byteがなければUTF-8 replacement semanticsで正確に1回decodeし、先頭BOM 1つを記録して
+6. NUL byteが1つでもあればtextを持たない`binary` itemとする。admit済みcandidateではdiagnostic-only
+   （`file-content-binary`）とし、他の条件でpublish可能なattemptは`partial` generationにする。census掲載
+   companionのbinary bytesはassetの通常の事実である。NUL byteがなければUTF-8 replacement semanticsで正確に1回decodeし、先頭BOM 1つを記録して
    除去し、replacement resultを`utf-8-replaced`とlabelし、全`U+FFFD`をparser、source、comparisonまで保持する。その
    garbled readable textはそれ自体でcompleteであり、alternate decoderは実行せず、それ自体でscanをpartialにしない。
    Parser/extractor failureは対象recognitionのresult全体だけを`recognition-parse-failed` diagnosticとともに破棄し、
-   完全なauthored sourceとcomparison eligibilityを保持する。全half-open
-   `SourceTextRange`はECMAScript UTF-16 code unitで測り、`sourceText.slice(start, end)`で正確にround-tripしなければ
-   ならない。Astral character、unpaired surrogate、combining sequence、通常BMP textにより、UTF-8 byte countをoffsetへ
-   再利用しないことを検証する。同じlogical origin occurrenceのmetadata/relationship/derivation outputはexactly identicalな
-   span 1つをreuseできる。Distinct origin occurrence間のidentical/partial/nested/crossing overlap、missing/ambiguous/
-   non-round-tripping spanは、そのrecognitionをall-or-nothingでfailureにする。Authored relationshipはexact target token
-   sliceを使い、`normalizedTarget`とderivationには別のtyped semantic valueだけを使ってnormalized valueをauthored表示へ
+   完全なauthored sourceとcomparison eligibilityを保持する。全declared valueはそのparserが解決した値とする。
+   Astral character、combining sequenceは、extractionとJSON transportを丸ごと通過する。
+   Documentを指すものが存在しないため、entryもresponseもsource座標を持たない。
+   Parseできなかったdocumentは、そのrecognitionをall-or-nothingでfailureにする。
+   Authored relationshipはexact target token
+   sliceを使い、`normalizedTarget`とderivationには別のdecoded valueだけを使ってnormalized valueをauthored表示へ
    置換しない。Conditional Codex default `hooks/hooks.json` relationは`targetOrigin: documented-default`かつnull
    `authoredTarget`とし、explicit hook fieldは`authored`としてdefaultを置換する。
 7. Evidence assessmentとapplicability factを分離する。Provenanceとedgeはsort済みrecord単位の
@@ -460,7 +459,7 @@ pnpm run test:security
    表示する。Runtimeの`ConditionFact.status: documentation-conflict`、conditionality、disablement、omission、
    shadowing、unknown inputはassessmentを変更せず、発明した“effective”結果にもならない。
 8. Inventory、Detail、Comparison、Global control、Diagnostic、Source Condition Fact、API response、CLI text、
-   documentationは、syntactic parsing、exact authored-literal extraction、mechanical typed decoding、
+   documentationは、syntactic parsing、allowlist fieldについてparserが解決した値の読み取り、
    frozen-catalog classification、documented structural scope/order/condition/selection/reference projectionの範囲に
    留まる。Natural-languageの意味やintentをinterpret/rankせず、correctness、validity、compliance、effectiveness、
    qualityを判定せず、policy/remediation advice、validation、lint、synchronization、conversion、formatting、fixingを
@@ -475,7 +474,7 @@ pnpm exec playwright test tests/e2e/comparison.spec.ts
 確認項目:
 
 1. Repository comparison flowでは、同じRepository Sourceからactive-generationのreadableなdistinct fileを正確に2つ選べ、
-   binaryその他のdiagnostic-only itemは選べない。Cross-Source comparisonは次のworkflowでGlobal enable後にだけ検証する。
+   source textを持たないitem — binaryを含む — は選べない。Cross-Source comparisonは次のworkflowでGlobal enable後にだけ検証する。
 2. Read-only Monaco source modelがmasking/環境置換なしで記述された完全なtextを保持し、link/editingを無効にし、
    filesystem pathではなくopaqueなin-memory URIを使う。
 3. Monacoがsemantic ranking、merge、lint、validation、format、convert、fix suggestionなしでliteral
@@ -489,13 +488,13 @@ pnpm exec playwright test tests/e2e/comparison.spec.ts
    diffへ入り、navigateし、抜けられる。
 7. Packed appがeditor workerをsame-origin static assetからloadし、external requestも`blob:` workerも
    発生させない。
-8. `/`、`/compare`、`/global-consent`、`/files/<fileId>`のdirect loadが、devframe hostが配信する同じ
+8. `/`、`/compare`、`/global-consent`、`/skills/<fileId>`のdirect loadが、devframe hostが配信する同じ
    root-absolute assetからbootする。
 9. Session-loss/response-guard testは、devframe transportが報告するchannel loss、currentかつnon-supersededなRPCの
-   browser/network/runtime rejection、session-ID mismatch、greater Global content epochまたはnon-null disable fence、
+   現在の非supersededなRPCでのchannel lossまたは解釈できないprotocol、session-ID mismatch、greater Global content epochまたはnon-null disable fence、
    client epoch変更後のlate in-flight responseを扱う。Channel lossまたはcurrent RPC rejectionはshared full
    client-data purgeを実行してsession-ended viewへ入り、pre-purge inventory/detail/comparison/editor/authored-content
-   DTO/DOM stateまたはacknowledgementが残留・自動復活しないことを証明する。SPAはliveness functionを呼ばず、
+   DTO/DOM stateが残留・自動復活しないことを証明する。SPAはliveness functionを呼ばず、
    visibility、unload、その他のpage-lifecycle listenerを設置せず、経過時間、pageのhidden化、visibilityへの復帰を
    理由にrequestを発行しない。Event-drivenなhost-loss signalはdevframeが所有し、productはcontinuously idleなpageに
    wall-clockのprocess-loss deadlineを設定しない。Ordinaryなinspection-data responseのrender前にgreater epochまたは
@@ -517,9 +516,9 @@ pnpm exec playwright test tests/e2e/comparison.spec.ts
     `GlobalFenceRecoverySnapshot`を返す。Fenceがnullならnormal full `InspectionSession`を返すが、recoveryは`globalContentEpoch`、Global controlと
     enable/disable projection、それらが参照するpathless session Diagnosticとretain済みfailure error、任意のnewly verified
     frozen previewだけを採用し、inspection graphを破棄する。Inventory、Source、file、generation、detail、comparison、editor、authored source、selection、
-    filter、acknowledgementは復元しない。状態に応じてdisable/join/wait、retry-disable、またはeligibleなGlobal retryを利用できる。
+    filterは復元しない。状態に応じてdisable/join/wait、retry-disable、またはeligibleなGlobal retryを利用できる。
     明示Resume inspection actionは`globalDisableInProgress`がnullの場合だけ表示し、matching sessionを再取得してdefault
-    filterのfresh inventory summaryをatomicに構築する。後のdetail/comparison requestにはnew acknowledgementを要求する。
+    filterのfresh inventory summaryをatomicに構築する。後のdetail/comparison requestはfresh sessionから改めて取得する。
 
 ### 4. Global inspectionへのopt-in
 
@@ -1010,8 +1009,8 @@ API responseとauthored sourceをtruncateしない。Error pathはcustomization�
 lint verdictを作らず、failureをcapacity、resource、operational causeで分類しない。
 
 Per-file diagnostic fixtureは各file-confined classを扱う。Unreadableまたは発見からread前までに消失したfile
-（targetがmissingまたはunreadableなsymbolic linkを含む）は`file-unreadable`を生じる。NULを含むcontentは
-diagnostic-onlyの`file-content-binary` itemを生じる。Parser/extractor failureは`recognition-parse-failed`を生じ、
+（targetがmissingまたはunreadableなsymbolic linkを含む）は`file-unreadable`を生じる。admit済みcandidateのNULを含むcontentは
+diagnostic-onlyの`file-content-binary` itemを生じ、census掲載companionのbinary bytesは何も生じない。Parser/extractor failureは`recognition-parse-failed`を生じ、
 完全なreadable sourceは表示およびcomparison-eligibleのまま残る。Boundary-crossing referenceはtargetをreadせずに
 報告される。各fixtureは、affected itemが問題解決に十分なSourceとsource-relative path contextを保持し、同じscanが
 完全な非影響fileをすべてpublishすることを証明する。Source rootがmissingまたはunreadableな場合は代わりにそのSourceの
@@ -1029,9 +1028,9 @@ physical cancellationは保証しない。
 
 Traversal-plan call traceはさらに、Repository traversalがcompile済みimmutable planを実行し、Global exact targetがtool-home
 rootをopenせず、fixed instruction-subtree walkがそのsubtreeだけをopenし、隣接Global pathへのI/Oが0であることを証明する。
-Path-spelling fixtureはexact raw `Dirent.name` segmentとNFC display segmentを分離する。Filesystem operationはraw entry
-nameを使い、publicなSource-relative PathはNFC display segmentを使い、targeted fixed pathはimmutable registry target
-spellingだけをI/O operandにするため、collisionのないNFD-only nameはraw segmentでreadしてNFC表示する。Hard linkは
+Path-spelling fixtureはexact raw `Dirent.name` segmentが唯一の綴りであることを証明する。Filesystem operationはraw entry
+nameを使い、publicなSource-relative Pathはその名前を`/`でjoinしたものであり、targeted fixed pathはimmutable registry target
+spellingだけをI/O operandにするため、NFD-only nameはraw segmentでreadされそのraw綴りのまま公開される。Hard linkは
 ordinaryなfileである。2つのhard-linkされたpathが両方ともallowlisted selectorにmatchするなら、それは単に2つの
 inventory fileであり、identity grouping、alias ranking、group単位のbookkeepingはtest対象として存在しない。
 Symbolic linkはagentが解決するのとまったく同じようにtransparentにfollowされ、symlinkされたcustomization fileは
@@ -1072,7 +1071,7 @@ root-absolute assetは全client routeでdevframe hostを通じてそのままboo
 証明し、negative fixtureはmissingまたはnon-regularなrequired entry pointがpublish前にgateをfailさせることを
 証明する。これらpackage所有checkはいずれもcustomization validity/lint resultを報告しない。
 
-Diagnostic-behavior testはorder-only aggregation — dedup passなしの固定phase/source/path/rule/code/occurrence順で、正当に繰り返されるrecord（failed recognitionごとに1件、rejected collision groupごとに1件）がすべてpublishされること — を扱う。
+Diagnostic-behavior testはorder-only aggregation — dedup passなしの固定phase/source/path/rule/code/occurrence順で、正当に繰り返されるrecord（failed recognitionごとに1件）がすべてpublishされること — を扱う。
 Diagnosticのretention/serialization中のfailureは単一fileに限定されない。Attemptをfailさせ、result/generationをpublishせず、
 failしたrequestのmessageを持つordinary errorとして報告する。
 Multi-Source caseではA/Bのentry-failure pairが共存し、B successがAを保持し、A successだけがAのpairをclearし、
@@ -1089,7 +1088,7 @@ release candidateに対してcriterion固有の全`AUTO-*` checkを合格させ�
 packed tarballのfile list、render済みpacked interfaceに対して全`REVIEW-*` rationaleを再確認する。Axeのseverity resultだけでは
 SC-008を立証できない。Contractはsamplingしない完全なexecution matrixを固定する。
 
-1. Keyboardだけでlaunch/URL follow、filter、機密content警告のacknowledge、file open/close、2 file select/compare、
+1. Keyboardだけでlaunch/URL follow、filter、file open/close、2 file select/compare、
    Global consent open、Global enable/disable、rescan、inventory returnを行う。
 2. Visible focus、logical focus order、skip/navigation landmark、unique label、status announcement、
    error/next-step association、generation replacement時にfocusを失わないことを確認する。
@@ -1105,11 +1104,12 @@ SC-008を立証できない。Contractはsamplingしない完全なexecution mat
 
 ## Release package検証
 
-全release evidence/remediation editを確定した後、formatting behavioral testとrepository checkerを次の順で再実行する。
-どちらのcommandもtreeを書き換えてはならない。
+全release evidence/remediation editを確定した後、次を順に再実行する。
+いずれのcommandもtreeを書き換えてはならない。
 
 ```bash
 pnpm outdated
+pnpm run format:check
 pnpm run test:package
 pnpm run test:docs
 git diff --check
@@ -1126,10 +1126,11 @@ product manifestで再列挙しない。Exact `bin` mappingと
 `jsonc-parser`、`smol-toml`、`vfile`、`vfile-matter`、`yaml`とし、`open`は全dependency sectionで不在とする。devframeのtransitive treeはdevframeと
 lockfileが所有する。
 
-再実行すべきhost-securityやHTTP-API-router contract stepは存在しない。devframe local-tool frameworkの採用により
-per-session token、Origin check、hand-written routerは削除済みである。Transport protectionはdevframe hostの
-loopback限定の`localhost` bindとdevframe authenticationの無効化であり、unexpectedなsession-API failureは
-real errorをrequesting clientへ返す。Unauthenticatedなloopback hostのresidual exposure、
+再実行すべきhost-securityやHTTP-API-router contract stepは存在しない。devframeがhosting policy
+を所有するため、productはper-session token、product所有のOrigin check、hand-written routerを
+持たない。Transport protectionはdevframe hostのloopback限定`localhost` bindであり、devframe
+authenticationは無効化されており、unexpectedなsession-API
+failureはreal errorをrequesting clientへ返す。Unauthenticatedなloopback hostのresidual exposure、
 すなわち他のlocal processとDNS rebinding経由のmalicious web pageは、documented limitationである。
 
 Release recordでは、acceptしたdependencyまたは破壊的なpublic-contract判断ごとにmigration impactを記録する。

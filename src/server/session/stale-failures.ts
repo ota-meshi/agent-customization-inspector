@@ -31,8 +31,6 @@ export function clearStaleFailures(
 }
 
 /** The snapshot is stale exactly while any stale entry remains (FR-030). */
-export function deriveSnapshotState(
-  failures: readonly StaleSourceFailure[],
-): SnapshotState {
+export function deriveSnapshotState(failures: readonly StaleSourceFailure[]): SnapshotState {
   return failures.length === 0 ? 'current' : 'stale-after-fatal-rescan';
 }

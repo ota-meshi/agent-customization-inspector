@@ -17,13 +17,16 @@ policy agreed in conversation and left there is a policy the next session does n
 - Keep the reason, drop the chronology. When a decision is hard to judge from its outcome
   alone, state why the alternative was rejected — in the present tense, as a property of
   the design rather than as an account of an edit.
-- Three artifacts are change logs by nature and keep their dated entries: `tasks.md`; the
+- Four artifacts are change logs by nature and keep their dated entries: `tasks.md`; the
   `## Clarifications` section of `spec.md`, whose dated sessions record the questions a
-  specification was asked and the answers that settled them; and the `checklists/`, whose
-  items record how each check came to be satisfied. Nowhere else — not a
+  specification was asked and the answers that settled them; the `checklists/`, whose
+  items record how each check came to be satisfied; and the constitution's Sync Impact
+  Report comment, which the constitution workflow prescribes and which holds only the
+  latest amendment's report, never a stack of previous ones. Nowhere else — not a
   requirement, not a contract clause, not a plan paragraph, not a code comment. Even in
-  those three, never write the superseded name: record what the task now requires, or what
-  the answer now is, not what it used to say.
+  those four, never write the superseded name or requirement: the body records what the
+  task now requires, or what the answer now is, and a dated amendment note records only
+  that — and briefly why — it changed, not what it used to say.
 - Removing a historical note is an edit like any other: check that the parenthetical did
   not also carry a normative cross-reference such as an `FR-` identifier.
 
@@ -39,6 +42,23 @@ policy agreed in conversation and left there is a policy the next session does n
 - Before completing a documentation change, compare both versions for omissions, stale statements, and inconsistent technical details.
 - This policy applies to new documents and to existing documents whenever they are modified. Generated files and vendored third-party documentation are excluded.
 
+## Vendored agent customizations
+
+`.agents/skills/` and `.claude/skills/` hold third-party skills this repository did not
+author. They are what the inspector inspects, so they are kept byte-identical to the upstream
+they were taken from and are never edited here: a local correction would make the fixture
+something no user of that skill has, and would drift from the copy it claims to be.
+
+- Their defects are upstream's and stay in place. Example: `plugin-creator`'s
+  `agents/openai.yaml` names `./assets/plugin-creator-small.svg` and
+  `./assets/plugin-creator.png`, and the skill ships no `assets/` directory. A skill whose
+  own manifest points at something it does not carry is a real thing this product exists to
+  show, not a thing to fix here.
+- Their whitespace is upstream's too, so `git diff --check` reports on them — currently two
+  lines under `.claude/skills/skill-creator/scripts/`. No gate in this repository runs that
+  check, and nothing fails because of it.
+- Updating one means taking a newer upstream copy whole, never patching what is here.
+
 ## Implementation simplicity policy
 
 Simple implementation takes priority. This applies Constitution Principle I (Quality
@@ -47,6 +67,11 @@ Above Expediency) to day-to-day coding decisions:
 - Choose the simplest implementation that fully satisfies the known requirements.
   Simplicity outranks speculative robustness: add a mechanism only for a demonstrated
   requirement, never "just in case".
+- A clause in this repository's own specification is a decision, not evidence of need.
+  Before implementing one, name the surface that would be wrong without it; if that surface
+  does not exist yet, the mechanism arrives with it. Example: exact authored slices,
+  specified for a comparison surface no phase has built, needed a module that re-parsed
+  what the frontmatter package had already parsed into the value the detail surface shows.
 - Do not re-implement policy that another layer already owns and enforces — the package
   manager, the runtime or platform, or a test or release gate. Duplicated policy drifts
   instead of defending. Example: Node.js compatibility is declared once through
@@ -102,9 +127,9 @@ Above Expediency) to day-to-day coding decisions:
 - A `readonly` type is the whole immutability mechanism. Compiled or shipped data is not
   re-frozen at runtime: `Object.freeze` over data this codebase produces and consumes
   defends against nothing a user experiences, and a deep freeze walking that data is a
-  traversal written to protect the program from itself. Example: `compileTraversalPlan`
-  returns its plan as authored — `TraversalPlan` being immutable shipped data is a property
-  of the type, not a runtime pass.
+  traversal written to protect the program from itself. Example: the `TraversalPlan`
+  constructor returns its plan as authored — its being immutable shipped data is a
+  property of the type, not a runtime pass.
 - Never materialize an iterable to reach behavior it already has. Array destructuring,
   `for...of`, and spreading into a call all consume the iterator protocol directly, so
   `[...set]` in front of one of them is a copy that buys nothing —
@@ -117,6 +142,72 @@ Above Expediency) to day-to-day coding decisions:
 - When a specification mandates redundant complexity, correct the specification — in both
   languages, in the same change — instead of implementing it as written.
 
+## Formatting policy
+
+- Code formatting is Prettier's, never fixed by hand: `pnpm run format` rewrites and
+  `pnpm run format:check` gates. `prettier.config.js` sets only what the codebase had
+  already settled (width 100, single quotes); everything else is Prettier's default so
+  there is less to drift.
+- ESLint keeps only non-formatting rules. `@stylistic/quotes` stays because it forbids
+  no-substitution template literals — a decision about what a string is, which Prettier
+  does not make — and `vue/html-self-closing` is configured to agree with Prettier's
+  output rather than disabled.
+- `.prettierignore` excludes what must not be reformatted: vendored skills stay
+  byte-identical to upstream, spec-kit scaffolding is taken from upstream whole,
+  Markdown is bilingual authored prose whose vendor-contract tables are frozen by
+  recorded SHA-256 digests, and files other tools own and rewrite (lockfiles,
+  `.claude/settings.local.json`) belong to those tools. Vendored skills are ignored
+  each by name, never as a whole `.agents/` or `.claude/` directory: those directories
+  also receive skills authored in this repository, which are formatted like any other
+  source. Taking a new vendored skill includes adding its `.prettierignore` line in
+  the same change.
+
+## Class and interface policy
+
+- A type whose values production code constructs in exactly one place is a class,
+  not an interface satisfied by an object literal: the constructor is then the one
+  place that says how the value's data came to be, so reading the class is reading
+  the propagation. Example: `CompiledInspectionRule` compiles a shipped record —
+  guards, plan, narrowed `kind` — in its constructor; `InventoryFilterView` derives
+  every inventory view in its constructor; `InspectionSession`, `SessionViewState`,
+  `SessionApiClient`, and `ClientDataPurge` replaced factory closures whose state
+  had no declared home.
+- A value that only transcribes another object's fields instead holds the source
+  object and derives each value where it is read — a getter naming its origin, or a
+  constructor assignment made where a guard has already narrowed the source's own
+  field. Example: `CompanionSourceFile` holds the census entry and the candidate's
+  directory and derives both of its published addresses from them.
+- What every vendor shares lives in an abstract base; what is one vendor's — its
+  `tool` literal, its relations catalog — lives in that vendor's subclass. Example:
+  `CodexCompiledRule` extends `CompiledInspectionRule`.
+- Constructor parameter properties are banned, and ESLint enforces it
+  (`@typescript-eslint/parameter-properties`): a parameter property hides a
+  declaration inside a signature, so the class body no longer lists what the class
+  holds and there is no place for the field's own doc comment. Every field is
+  declared in the body, with its JSDoc, and assigned in the constructor.
+- A getter never casts with `as`. When a narrowed type needs proving, the
+  constructor proves it — a guard that throws, then an assignment made where the
+  control flow has narrowed the source — and the field holds the narrow type.
+- Private state is `#`-private, not TypeScript `private`: `private` is erased at
+  runtime, so its fields would still appear in `Object.keys` and widen the runtime
+  surface past the declared API.
+- Interfaces remain for genuine contracts with more than one producer: wire DTOs
+  (strict JSON carries no prototypes, so a serialized shape must stay a plain
+  object), authored registry records, options bags several callers assemble, and
+  boundaries that tests satisfy with literal doubles (`CandidateRecognition`,
+  `SessionRpcChannel`). Vue component props stay interfaces because the framework
+  consumes them as shapes.
+
+## Agent-run Playwright verification policy
+
+- When Coding Agent runs Playwright tests for local verification, run only the `chromium` project
+  (Chrome) unless the user explicitly requests additional browsers. Select it explicitly,
+  for example with `--project=chromium`; do not invoke a command that runs every configured
+  browser.
+- This default governs CodingAgent-initiated local verification only. It does not change CI,
+  release, or other project-owned suites whose configuration explicitly requires broader
+  browser coverage.
+
 ## User-visible copy policy
 
 - Copy a component alone renders is written where it renders. There is one UI
@@ -126,10 +217,25 @@ Above Expediency) to day-to-day coding decisions:
   beside that union, not in the component, so a new member cannot compile
   without its label. `entities.ts` holds `CUSTOMIZATION_KIND_TEXT`,
   `SUPPORTED_TOOL_TEXT`, `FILE_ENCODING_TEXT`, `SOURCE_BOUNDARY_ORIGIN_TEXT`,
-  and `SOURCE_STATUS_TEXT`; diagnostic text lives in `DIAGNOSTIC_REGISTRY`.
+  `SOURCE_STATUS_TEXT`, `SAME_NAME_SKILL_RESOLUTION_TEXT`,
+  `DOCUMENTATION_STATUS_TEXT`, and `LIFECYCLE_QUALIFIER_TEXT`; diagnostic text
+  lives in `DIAGNOSTIC_REGISTRY`.
+- A `-types` module ships zero runtime code, and a table is runtime data, so
+  the tables for the unions those modules declare live in a `*-text.ts`
+  companion beside them: `api-text.ts` for `api-types.ts`, and
+  `registries/identifier-text.ts` for `registries/identifier-types.ts`. The
+  compiler check the policy asks for works wherever the table lives.
 - The test is exhaustiveness, not reuse. A `Readonly<Record<ClosedUnion, string>>`
   belongs beside its union even when exactly one component reads it today,
   because the compiler is what keeps the table complete.
+- No surface renders a contract identifier. `codex.skill.name`, `codex.repo.skill`,
+  `runtime-cwd`, and `partially-documented` are tokens a registry record is keyed
+  by and a contract gate is checked against; to someone reading their own file
+  they stand where an answer should be. Each is rendered through the table for
+  its union, which is why an ID a DTO carries is typed as its closed union rather
+  than as `string` — that is what keeps the table complete. Ordinary words that
+  happen to be members stay as they are: `environment` is captioned "environment
+  variable" and `MCP` is captioned "MCP".
 
 ## Naming policy
 
@@ -161,6 +267,10 @@ Above Expediency) to day-to-day coding decisions:
   mandated by the specification, name the governing artifact in the comment (for example
   `FR-030`, `data-model.md § Diagnostic`, or `research.md § 5`) so reviewers can check the
   code against its contract.
+- Open the artifact before naming it, and run the mechanism before crediting it. An
+  unchecked rationale reads exactly like a checked one, so a comment citing a clause its
+  artifact does not contain, or crediting a check that cannot fail, is what keeps the
+  mistake in place through every later review.
 - Every closed union, enum-like type, and fixed catalog documents each member in a JSDoc
   doc comment (`/** ... */`) on the declaration, so editors surface it on hover: what the
   value means, when it is produced, and the governing artifact when one exists (for
@@ -203,7 +313,8 @@ Registry records cite official vendor documentation through `EvidenceCitation`, 
 documentation work with its own failure modes:
 
 - Read the page's raw bytes. Fetch it with `curl` and extract headings with a regex over
-  `<h1>`–`<h4>`, or over `^#{1,4} ` when the cited URL is a `.md` variant. A summarizer's
+  `<h1>`–`<h4>`, or over `^#{1,4} ` — the trailing space matters, since `#####` and
+  `####text` are neither — when the cited URL is a `.md` variant. A summarizer's
   inventory of a page's headings is not evidence: one reports real content headings as
   absent often enough to turn a correct citation into a wrong "fix".
 - Distinguish content headings from site navigation. These documentation sites render

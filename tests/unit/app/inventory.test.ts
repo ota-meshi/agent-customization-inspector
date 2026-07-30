@@ -1,9 +1,11 @@
 // T058: the browser-side inventory behavior — generation-aware filters over
 // the committed snapshot, the request-correlated rescan/retry lifecycle, the
-// empty state, and the guarantee that a session summary carries neither
-// authored source nor a declared value.
+// empty state, and the guarantee that a session summary carries no authored
+// source. The one authored value it does carry is the skill's declared name,
+// which is presentation identity rather than content (FR-007/T1064): every
+// other authored value stays behind the one-file-at-a-time detail route.
 //
-// These suites drive the plain factories rather than mounting the components.
+// These suites drive the session classes rather than mounting the components.
 // The unit project has no single-file-component compiler, and adding one would
 // change the shared dependency baseline for a rendering claim the browser
 // acceptance suite (`tests/e2e/codex-skills-list.spec.ts`) already makes
@@ -15,7 +17,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { ref, shallowRef, type Ref } from 'vue';
 
 import { useInventoryFilters } from '../../../src/app/composables/filters';
-import { createSessionViewState } from '../../../src/app/session/view-state';
+import { SessionViewState } from '../../../src/app/session/view-state';
 import type {
   CustomizationFileSummaryDto,
   SessionSnapshot,
@@ -48,7 +50,6 @@ function file(path: string): CustomizationFileSummaryDto {
     encoding: 'utf-8',
     hadLeadingBom: false,
     sizeBytes: 12,
-    parseSummary: 'not-applicable',
   };
 }
 
@@ -58,12 +59,21 @@ function file(path: string): CustomizationFileSummaryDto {
  * one row with two definitions gives one.
  */
 function skill(declaredName: string | null, ...paths: readonly string[]): SkillInventoryEntryDto {
+  return skillWithCompanions([], declaredName, ...paths);
+}
+
+/** A skill entry whose one definition ships the given companion files. */
+function skillWithCompanions(
+  companionFiles: readonly string[],
+  declaredName: string | null,
+  ...paths: readonly string[]
+): SkillInventoryEntryDto {
   return {
     declaredName,
     definitions: paths.map((path) => ({
       fileId: `file-${path}`,
       tools: ['codex'],
-      companionFiles: [],
+      companionFiles,
       diagnosticIds: [],
     })),
     sameNameResolutions:
@@ -127,6 +137,84 @@ describe('inventory filters over the committed snapshot', () => {
     expect(filters.view.availableTools.value).toEqual(['codex']);
     expect(filters.view.availableKinds.value).toEqual(['skill']);
     expect(filters.view.availableSources.value).toEqual([REPOSITORY_SOURCE]);
+  });
+
+  it('leaves a skill\u2019s own supporting files out of the unrecognized list', () => {
+    // A companion is read and published, but it belongs to the customization
+    // whose directory holds it and that customization already has a row.
+    // Listing it as a file nothing recognized would be true of the file and
+    // misleading about why it was read.
+    const snapshot = shallowRef<SessionSnapshot | null>(
+      snapshotWith(
+        [
+          file('.agents/skills/greet/SKILL.md'),
+          file('.agents/skills/greet/scripts/run.sh'),
+          file('other/SKILL.md'),
+        ],
+        [
+          skillWithCompanions(
+            ['.agents/skills/greet/scripts/run.sh'],
+            'greet',
+            '.agents/skills/greet/SKILL.md',
+          ),
+        ],
+      ),
+    );
+    const filters = withSelection(snapshot);
+    expect(filters.view.unrecognizedRows.value.map((row) => row.sourceRelativePath)).toEqual([
+      'other/SKILL.md',
+    ]);
+  });
+
+  it('keeps a companion out of the rows even when its read failed', () => {
+    // FR-003 is explicit that an accompanying file acquires no inventory row of
+    // its own, and a diagnostic does not buy it one. What names the file is the
+    // row of the skill whose directory holds it: `SkillRow` resolves the census
+    // files' diagnostics beside the definition, which is what keeps a `partial`
+    // generation able to say which file (FR-028).
+    const brokenLink: CustomizationFileSummaryDto = {
+      fileId: 'file-.agents/skills/greet/notes.md',
+      sourceId: 'src-repo',
+      sourceRelativePath: '.agents/skills/greet/notes.md',
+      diagnosticIds: ['diag-unreadable'],
+      encoding: 'unknown',
+    };
+    const binaryAsset: CustomizationFileSummaryDto = {
+      fileId: 'file-.agents/skills/greet/logo.png',
+      sourceId: 'src-repo',
+      sourceRelativePath: '.agents/skills/greet/logo.png',
+      diagnosticIds: [],
+      encoding: 'binary',
+      sizeBytes: 12,
+    };
+    const snapshot = shallowRef<SessionSnapshot | null>(
+      snapshotWith(
+        [
+          file('.agents/skills/greet/SKILL.md'),
+          file('.agents/skills/greet/scripts/run.sh'),
+          brokenLink,
+          binaryAsset,
+        ],
+        [
+          skillWithCompanions(
+            [
+              '.agents/skills/greet/scripts/run.sh',
+              '.agents/skills/greet/notes.md',
+              '.agents/skills/greet/logo.png',
+            ],
+            'greet',
+            '.agents/skills/greet/SKILL.md',
+          ),
+        ],
+      ),
+    );
+    const filters = withSelection(snapshot);
+    expect(filters.view.unrecognizedRows.value).toEqual([]);
+    // The file is still reachable by path, which is how the skill's row states
+    // its census diagnostics.
+    expect(
+      filters.view.filesByPath.value.get('.agents/skills/greet/notes.md')?.diagnosticIds,
+    ).toEqual(['diag-unreadable']);
   });
 
   it('narrows by source, tool, and Source-relative path', () => {
@@ -247,7 +335,7 @@ describe('the request-correlated rescan lifecycle', () => {
     const calls: string[] = [];
     return {
       calls,
-      state: createSessionViewState({
+      state: new SessionViewState({
         channel: {
           call: (method) => {
             calls.push(method);
@@ -389,7 +477,7 @@ describe('session summaries expose no authored content', () => {
   it('carries no source text or declared value on any published file', () => {
     const published = file('.agents/skills/secretive/SKILL.md');
     // The summary variant simply has no field for it: complete authored
-    // content is served only through the acknowledgement-gated detail route
+    // content is served only through the detail route
     // (FR-027), so the snapshot cannot leak it. A file publishes its own facts
     // and nothing about what it was recognized as.
     expect(Object.keys(published).sort()).toEqual([
@@ -397,7 +485,6 @@ describe('session summaries expose no authored content', () => {
       'encoding',
       'fileId',
       'hadLeadingBom',
-      'parseSummary',
       'sizeBytes',
       'sourceId',
       'sourceRelativePath',
@@ -416,7 +503,7 @@ describe('session summaries expose no authored content', () => {
     vi.useFakeTimers();
     try {
       const calls: string[] = [];
-      const state = createSessionViewState({
+      const state = new SessionViewState({
         channel: {
           call: (method) => {
             calls.push(method);

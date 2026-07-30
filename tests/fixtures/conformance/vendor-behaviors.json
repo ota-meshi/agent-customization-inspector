@@ -2,9 +2,7 @@
   {
     "behaviorId": "codex.behavior.repo.skills",
     "tool": "codex",
-    "surfaces": [
-      "codex-local-clients"
-    ],
+    "surfaces": ["codex-local-clients"],
     "locator": {
       "vendorScope": "repository",
       "lookupBase": "runtime-cwd",
@@ -29,9 +27,7 @@
         "sourceId": "openai.codex.skills",
         "url": "https://learn.chatgpt.com/docs/build-skills.md",
         "officialHost": "learn.chatgpt.com",
-        "sections": [
-          "Where Codex loads local skills"
-        ],
+        "sections": ["Where Codex loads local skills"],
         "reviewedOn": "2026-07-25",
         "establishes": "Local Codex clients discover repository skills at .agents/skills/<name>/SKILL.md, scanning each directory on the chain from the runtime working directory to the repository root, and do not merge same-name skills."
       }
@@ -40,9 +36,7 @@
   {
     "behaviorId": "codex.behavior.user.skills",
     "tool": "codex",
-    "surfaces": [
-      "codex-local-clients"
-    ],
+    "surfaces": ["codex-local-clients"],
     "locator": {
       "vendorScope": "user",
       "lookupBase": "profile-data",
@@ -67,9 +61,7 @@
         "sourceId": "openai.codex.skills",
         "url": "https://learn.chatgpt.com/docs/build-skills.md",
         "officialHost": "learn.chatgpt.com",
-        "sections": [
-          "Where Codex loads local skills"
-        ],
+        "sections": ["Where Codex loads local skills"],
         "reviewedOn": "2026-07-25",
         "establishes": "Local Codex clients additionally discover user skills at $HOME/.agents/skills/<name>/SKILL.md, alongside repository, admin, and system scopes."
       }

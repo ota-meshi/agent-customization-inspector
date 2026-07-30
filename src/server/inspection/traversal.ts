@@ -14,8 +14,8 @@
 // discovered file, with no mutation-capable API or flag. External
 // modification during a scan is therefore not a threat to defend against: a
 // file that disappears or cannot be read surfaces as that file's
-// `file-unreadable` Diagnostic (FR-024), a NUL-containing file surfaces as
-// diagnostic-only `file-content-binary` (FR-025), and a failure that is not
+// `file-unreadable` Diagnostic (FR-024), a NUL-containing candidate surfaces
+// as diagnostic-only `file-content-binary` (FR-025), and a failure that is not
 // confined to one file propagates ordinarily and fails the attempt without
 // a commit (FR-028/FR-030). The residual limitation is inherent: reads are
 // not atomic snapshots, so concurrent external writes may interleave, which
@@ -25,7 +25,7 @@ import { isAbsolute, join, relative, sep } from 'node:path';
 import { decodeSourceBytes, type ReadableFileEncoding } from '../../shared/entities';
 import {
   assertLoadableTraversalPlan,
-  createProgramLevel,
+  ProgramLevel,
   normalizeSelectorOrigins,
   type MatcherSegment,
   type ProgramState,
@@ -38,7 +38,7 @@ import {
  * (spec.md § Byte Decode Outcomes, FR-024/FR-028):
  *  - 'readable'    the one completed read decoded as `utf-8` or
  *                  `utf-8-replaced` text with complete decoded content
- *  - 'binary'      at least one NUL byte; diagnostic-only, no source text
+ *  - 'binary'      at least one NUL byte; no source text
  *  - 'unreadable'  the read failed — the file disappeared after discovery,
  *                  was unreadable, or is a link whose target is missing or
  *                  unreadable
@@ -57,9 +57,9 @@ export type CandidateOutcome =
       /** Exact byte count of the one completed read. */
       readonly sizeBytes: number;
     }
-  /** A NUL-containing candidate that is diagnostic-only. */
+  /** A NUL-containing file, published without source text. */
   | {
-      /** NUL-containing diagnostic-only content (FR-025). */
+      /** NUL-containing content (FR-025); whether it is also a Diagnostic is the publisher's split. */
       readonly kind: 'binary';
       /** Exact byte count of the one completed read. */
       readonly sizeBytes: number;
@@ -72,13 +72,14 @@ export type CandidateOutcome =
 
 /**
  * One discovered candidate file with its read outcome. Raw entry-name
- * segments stay the filesystem operands while the NFC public path is
- * presentation/identity only (FR-024); neither reconstructs the other.
+ * segments stay the filesystem operands, and the public path is those names
+ * `/`-joined (FR-024); the joined string is never decoded back into an
+ * operand.
  */
 export interface TraversalCandidate {
   /** Exact raw entry-name segments used for filesystem operations. */
   readonly rawSegments: readonly string[];
-  /** Collision-free NFC display path, `/`-joined, relative to the root. */
+  /** The raw entry names `/`-joined, relative to the root; the public identity. */
   readonly publicPath: string;
   /**
    * Every authored selector that admitted this file, deduplicated and
@@ -93,55 +94,31 @@ export interface TraversalCandidate {
 }
 
 /**
- * One rejected Unicode-normalization collision group: distinct raw paths
- * normalized to the same NFC path, so no unambiguous public path exists.
- * The whole group is rejected before any member is opened and surfaces as
- * one pathless session-scoped Diagnostic (spec.md Clarifications
- * § Session 2026-07-20); the raw members here are internal evidence for the
- * scan layer and never serialize.
- */
-export interface NormalizationCollision {
-  /** The ambiguous NFC path shared by every member; never published. */
-  readonly nfcPath: string;
-  /** The distinct raw segment paths that collided. */
-  readonly rawMembers: readonly (readonly string[])[];
-}
-
-/**
  * The result of one Source scan attempt (FR-002, FR-024):
- *  - 'scanned'          traversal completed; per-file outcomes and any
- *                       rejected collision groups are listed
+ *  - 'scanned'          traversal completed; per-file outcomes are listed
  *  - 'root-unreadable'  the selected root does not exist or cannot be read
  *                       as a directory; the Source attempt fails with the
  *                       source-scoped Diagnostic and no partial inventory
  */
 export type TraversalScanResult =
-  /** A completed traversal with its ordered candidates and rejected collisions. */
+  /** A completed traversal with its ordered candidates. */
   | {
       /** Traversal completed (possibly with file-confined outcomes). */
       readonly kind: 'scanned';
       /** Deterministically ordered per-file results. */
       readonly files: readonly TraversalCandidate[];
-      /** Rejected normalization-collision groups (members received no read). */
-      readonly collisions: readonly NormalizationCollision[];
       /**
        * How many directory entries the walk looked at, so a completed scan can
        * report what it did rather than the zero its counters started at
        * (contracts/http-api.md § get-session `progress`).
        */
       readonly visitedEntries: number;
-      /**
-       * Allowlisted candidate files this walk discovered
-       * (data-model.md § ScanProgress). Not the number the generation
-       * publishes: a normalization-collision group is discovered and then
-       * rejected, so deriving this from the published files would report the
-       * walk as having found less than it did.
-       */
+      /** Allowlisted candidate files this walk discovered (data-model.md § ScanProgress). */
       readonly candidateFiles: number;
       /**
        * Bytes this attempt accepted. Counted as they are read, because the
-       * publication cannot supply it: a collision member is never opened, and
-       * an override read that turned out empty still cost the read.
+       * publication cannot supply it: an override read that turned out empty
+       * still cost the read without publishing.
        */
       readonly readBytes: number;
     }
@@ -187,9 +164,19 @@ function rawKey(segments: readonly string[]): string {
   return segments.join('\u0000');
 }
 
-/** Derives the NFC public display path from raw segments (FR-024). */
+/**
+ * Derives the public Source-relative Path from raw segments (FR-024): the
+ * exact entry names, joined with `/`. No spelling is normalized away — the
+ * published path is the path an agent reading the same tree operates on, and
+ * presentation concerns (control characters) are escaped at render time
+ * without changing this stored value. An entry name is the string Node.js
+ * returned for it (`fs` decodes names as UTF-8 by documented default); a
+ * platform name that is not valid UTF-8 arrives replacement-decoded, and one
+ * the platform cannot resolve again through that string surfaces as the
+ * affected operation's ordinary failure (FR-024).
+ */
 export function toPublicPath(rawSegments: readonly string[]): string {
-  return rawSegments.map((segment) => segment.normalize('NFC')).join('/');
+  return rawSegments.join('/');
 }
 
 /**
@@ -204,23 +191,32 @@ const RESOURCE_EXHAUSTION_CODES = new Set(['EMFILE', 'ENFILE', 'ENOMEM']);
 /**
  * Rethrows a resource-exhaustion failure so the attempt aborts, and returns
  * otherwise so the caller can classify what is genuinely a fact about the path
- * it was reading. Every filesystem call in this module goes through it: a rule
- * that held only for `readFile` would report the machine running out of
- * descriptors as an unreadable file at one call site and as an unreadable root
- * at another.
+ * it was reading. Every filesystem call in this module and in the companion
+ * census goes through it: a rule that held only for `readFile` would report the
+ * machine running out of descriptors as an unreadable file at one call site and
+ * as an unreadable root at another.
  */
-function rethrowIfResourceExhaustion(error: unknown): void {
+export function rethrowIfResourceExhaustion(error: unknown): void {
   if (RESOURCE_EXHAUSTION_CODES.has((error as { code?: string }).code ?? '')) {
     throw error;
   }
 }
 
-// Reads one discovered file exactly once with an ordinary read-only
-// `fs/promises` read and classifies its bytes (FR-024/FR-025). Reading goes
-// through the platform's transparent symlink resolution; a read failure that
-// is a fact about the file — permissions, a broken link, a directory — is that
-// file's file-confined outcome.
-async function readCandidate(absolutePath: string): Promise<CandidateOutcome> {
+/**
+ * Reads one discovered file exactly once with an ordinary read-only
+ * `fs/promises` read and classifies its bytes (FR-024/FR-025). Reading goes
+ * through the platform's transparent symlink resolution; a read failure that
+ * is a fact about the file — permissions, a broken link, a directory — is that
+ * file's file-confined outcome.
+ *
+ * Exported because the walk is not the only thing that reads a file the scan
+ * publishes: `scan.ts` calls this again for each file a companion census
+ * listed, and those files must be read the same way — one read, the same
+ * decode, the same closed outcome — rather than through a second read path
+ * that could drift from this one. The census itself reads nothing; it
+ * enumerates, and the scan reads what it enumerated.
+ */
+export async function readCandidate(absolutePath: string): Promise<CandidateOutcome> {
   let bytes: Buffer;
   try {
     bytes = await readFile(absolutePath);
@@ -287,7 +283,7 @@ async function walkDirectory(
 ): Promise<void> {
   // The grammar's stepping semantics live in the registry beside the
   // segment union; the walk only asks its two closed questions per entry.
-  const level = createProgramLevel(states);
+  const level = new ProgramLevel(states);
   const entries = await readdir(absoluteDir, { withFileTypes: true });
   entries.sort((left, right) => (left.name < right.name ? -1 : left.name > right.name ? 1 : 0));
   counters.visitedEntries += entries.length;
@@ -408,10 +404,12 @@ async function walkDirectory(
  * what an agent reading the same path would see, and an agent resolves links
  * too, so a link to a skill file is that skill file.
  *
- * Errors propagate rather than being classified here. The caller decides what a
- * broken link means in its own context — a candidate's `file-unreadable`
- * diagnostic during the walk, an entry that accompanies nothing during a
- * census — and this function has no way to tell those apart.
+ * Errors propagate rather than being classified here. Both callers turn a
+ * broken link into the same answer — the walk gives the candidate a
+ * `file-unreadable` diagnostic, and the census lists the entry anyway so the
+ * scan's own read produces that diagnostic for it — but each does so with the
+ * context this function does not have: which file it was looking at and on
+ * whose behalf.
  */
 export async function statThroughLink(
   absolutePath: string,
@@ -534,9 +532,8 @@ export interface TraversalScanInput {
    * it (contracts/http-api.md § get-session `progress`).
    *
    * Every counter is the attempt's own tally rather than a projection of the
-   * published result: a candidate rejected for a normalization collision was
-   * still visited, and an override read that turned out empty still cost bytes,
-   * so counting the publication afterwards would understate the work.
+   * published result: an override read that turned out empty still cost
+   * bytes, so counting the publication afterwards would understate the work.
    */
   readonly onProgress?: (update: {
     readonly phase: 'enumerating' | 'reading';
@@ -545,8 +542,7 @@ export interface TraversalScanInput {
     readonly readBytes: number;
     /**
      * Attempt-local diagnostics accumulated so far (data-model.md
-     * § ScanProgress). Zero through both traversal phases: a collision group
-     * is only rejected once enumeration has finished, and the per-file
+     * § ScanProgress). Zero through both traversal phases: the per-file
      * outcomes assembly turns into diagnostics are decided after this walk.
      */
     readonly diagnosticCount: number;
@@ -555,8 +551,7 @@ export interface TraversalScanInput {
 
 /**
  * Runs one Source scan attempt: enumerates the compiled allowlist with an
- * ordinary recursive walk, rejects normalization-collision groups before any
- * member read, then reads every surviving discovered file exactly once
+ * ordinary recursive walk, then reads every discovered file exactly once
  * (FR-019, FR-024, FR-028). A missing or unreadable root returns the
  * `root-unreadable` result that fails the Source attempt (FR-002); a failure
  * not confined to one file propagates to the caller unchanged.
@@ -751,30 +746,11 @@ export async function runTraversalScan(input: TraversalScanInput): Promise<Trave
     }
   }
 
-  // Reject whole normalization-collision groups before opening any member
-  // (spec.md Clarifications § Session 2026-07-20).
-  const byNfcPath = new Map<string, PendingCandidate[]>();
-  for (const candidate of discovered.values()) {
-    const nfcPath = toPublicPath(candidate.rawSegments);
-    const group = byNfcPath.get(nfcPath);
-    if (group === undefined) {
-      byNfcPath.set(nfcPath, [candidate]);
-    } else {
-      group.push(candidate);
-    }
-  }
-  const collisions: NormalizationCollision[] = [];
   const files: TraversalCandidate[] = [];
   // Bytes this attempt accepted, counted as they are read. The publication
-  // cannot supply it: a collision member is never opened and an empty override
-  // is read but not published.
+  // cannot supply it: an empty override is read but not published.
   let readBytes = 0;
-  for (const [nfcPath, group] of byNfcPath) {
-    if (group.length > 1) {
-      collisions.push({ nfcPath, rawMembers: group.map((member) => member.rawSegments) });
-      continue;
-    }
-    const candidate = group[0]!;
+  for (const candidate of discovered.values()) {
     const outcome = candidate.knownUnreadable
       ? ({ kind: 'unreadable' } as const)
       : await readCandidate(join(input.root, ...candidate.rawSegments));
@@ -788,7 +764,7 @@ export async function runTraversalScan(input: TraversalScanInput): Promise<Trave
     });
     files.push({
       rawSegments: candidate.rawSegments,
-      publicPath: nfcPath,
+      publicPath: toPublicPath(candidate.rawSegments),
       admissions: normalizeSelectorOrigins(candidate.origins),
       outcome,
     });
@@ -822,22 +798,13 @@ export async function runTraversalScan(input: TraversalScanInput): Promise<Trave
     }
   }
 
-  // Deterministic result order: public path, then raw operands — opaque IDs
-  // and enumeration interleaving never supply the order.
-  files.sort((left, right) =>
-    left.publicPath !== right.publicPath
-      ? left.publicPath < right.publicPath
-        ? -1
-        : 1
-      : rawKey(left.rawSegments) < rawKey(right.rawSegments)
-        ? -1
-        : 1,
-  );
-  collisions.sort((left, right) => (left.nfcPath < right.nfcPath ? -1 : 1));
+  // Deterministic result order: the public path, which is unique — it is the
+  // raw entry names joined, and a filesystem holds one entry per name — so
+  // opaque IDs and enumeration interleaving never supply the order.
+  files.sort((left, right) => (left.publicPath < right.publicPath ? -1 : 1));
   return {
     kind: 'scanned',
     files,
-    collisions,
     visitedEntries: counters.visitedEntries,
     candidateFiles: discovered.size,
     readBytes,

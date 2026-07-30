@@ -18,14 +18,57 @@ export default withNuxt()
       'test-results/**',
     ],
   })
+  // Config entries are named for the file unit they cover, one entry per
+  // unit: a rule joins the entry whose `files` it applies to.
   .append({
-    // Every regular expression carries the u (or v) flag so it runs in
-    // Unicode mode: proper surrogate handling and strict escape rules. The
-    // lint layer owns this policy; there is no runtime re-check.
-    name: 'agent-customization-inspector/require-unicode-regexp',
+    name: 'agent-customization-inspector/all-sources',
     files: ['**/*.{ts,tsx,mts,cts,vue,js,jsx,mjs,cjs}'],
+    plugins: { '@stylistic': stylistic },
     rules: {
+      // Every regular expression carries the u (or v) flag so it runs in
+      // Unicode mode: proper surrogate handling and strict escape rules. The
+      // lint layer owns this policy; there is no runtime re-check.
       'require-unicode-regexp': 'error',
+      // Standard quote style: single quotes, and a no-substitution template
+      // literal must be written as a plain string (`allowTemplateLiterals:
+      // 'never'`). The codebase already follows this, so it is a no-op today;
+      // its purpose here is that a dynamic `import(`node:fs`)` can no longer
+      // pass — it is reported as a quote violation and, once rewritten as a
+      // string, the fs import restriction below catches it. This replaces a
+      // hand-written `no-restricted-syntax` selector with the standard rule
+      // (ESLint 10 dropped the core `quotes` rule, so `@stylistic/quotes`
+      // supplies it).
+      '@stylistic/quotes': [
+        'error',
+        'single',
+        { allowTemplateLiterals: 'never', avoidEscape: true },
+      ],
+    },
+  })
+  .append({
+    name: 'agent-customization-inspector/vue-sources',
+    files: ['**/*.vue'],
+    rules: {
+      // Prettier owns formatting and always writes void elements self-closed;
+      // the base config's `void: 'never'` would flag every formatted
+      // `<input />`. The rule stays on, in agreement with Prettier's output,
+      // so element style remains linted rather than unchecked.
+      'vue/html-self-closing': [
+        'error',
+        { html: { void: 'always', normal: 'always', component: 'always' } },
+      ],
+    },
+  })
+  .append({
+    name: 'agent-customization-inspector/typescript-sources',
+    files: ['**/*.{ts,tsx,mts,cts,vue}'],
+    rules: {
+      // Class fields are declared as fields, never as constructor parameter
+      // properties (AGENTS.md Class and interface policy): a parameter
+      // property hides a declaration inside a signature, so the class body no
+      // longer lists what the class holds, and there is no place for the
+      // field's own doc comment.
+      '@typescript-eslint/parameter-properties': 'error',
     },
   })
   .append({
@@ -39,10 +82,10 @@ export default withNuxt()
     // concatenated specifier) is an ordinary implementation bug owned by
     // review, not something a static linter can guarantee against. A
     // no-substitution template-literal specifier cannot slip through: the
-    // `@stylistic/quotes` rule below forbids it repo-wide (forcing it to a
+    // `@stylistic/quotes` rule in the all-sources entry above forbids it repo-wide (forcing it to a
     // plain string this selector then matches). Tests and scripts are outside
     // the boundary.
-    name: 'agent-customization-inspector/inspection-io-boundary',
+    name: 'agent-customization-inspector/src-outside-inspection',
     files: ['src/**/*.{ts,tsx,mts,cts,vue,js,jsx,mjs,cjs}'],
     ignores: ['src/server/inspection/**'],
     rules: {
@@ -69,22 +112,5 @@ export default withNuxt()
             'Inspected-source filesystem I/O lives only under src/server/inspection/ (QR-003).',
         },
       ],
-    },
-  })
-  .append({
-    // Standard quote style: single quotes, and a no-substitution template
-    // literal must be written as a plain string (`allowTemplateLiterals:
-    // 'never'`). The codebase already follows this, so it is a no-op today;
-    // its purpose here is that a dynamic `import(`node:fs`)` can no longer
-    // pass — it is reported as a quote violation and, once rewritten as a
-    // string, the fs import restriction above catches it. This replaces a
-    // hand-written `no-restricted-syntax` selector with the standard rule
-    // (ESLint 10 dropped the core `quotes` rule, so `@stylistic/quotes`
-    // supplies it).
-    name: 'agent-customization-inspector/quotes',
-    files: ['**/*.{ts,tsx,mts,cts,vue,js,jsx,mjs,cjs}'],
-    plugins: { '@stylistic': stylistic },
-    rules: {
-      '@stylistic/quotes': ['error', 'single', { allowTemplateLiterals: 'never', avoidEscape: true }],
     },
   });

@@ -41,6 +41,8 @@ const props = defineProps<{
   skillRows: readonly SkillInventoryEntryDto[];
   /** Every published file by ID, so a row can resolve the files it names. */
   filesById: ReadonlyMap<string, CustomizationFileSummaryDto>;
+  /** The same files by path, so a row can resolve its definition's census. */
+  filesByPath: ReadonlyMap<string, CustomizationFileSummaryDto>;
   /** How many rows the committed generation published before filtering. */
   totalCount: number;
   /** The generation's diagnostics, resolved per row. */
@@ -71,6 +73,7 @@ const rowCount = computed(() => (props.kind === 'skill' ? props.skillRows.length
           :key="entry.declaredName ?? entry.definitions[0]!.fileId"
           :entry="entry"
           :files-by-id="filesById"
+          :files-by-path="filesByPath"
           :diagnostics="diagnostics"
         />
       </template>

@@ -14,12 +14,16 @@
 import { DevframeConnectionError } from 'devframe/client';
 import { describe, expect, it } from 'vitest';
 
-import { createSessionViewState } from '../../../src/app/session/view-state';
+import { SessionViewState } from '../../../src/app/session/view-state';
 import {
   SESSION_RPC_FUNCTIONS,
   type SessionRpcFunctionName,
 } from '../../../src/app/session/api-client';
-import type { InspectionDataResult, SessionSnapshot } from '../../../src/shared/api-types';
+import type {
+  FileDetailDto,
+  InspectionDataResult,
+  SessionSnapshot,
+} from '../../../src/shared/api-types';
 
 /** Bootstrap generation 0 exactly as the host publishes it (FR-002). */
 function bootstrapSnapshot(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot {
@@ -87,7 +91,7 @@ function channelFrom(responses: readonly unknown[]) {
 describe('session view state — generation 0', () => {
   it('renders the bootstrap Repository Source from one request', async () => {
     const scripted = channelFrom([sessionResult(bootstrapSnapshot())]);
-    const state = createSessionViewState({ channel: scripted.channel });
+    const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
     expect(state.view.value).toBe('inspection');
     // One call, and it is the session snapshot: there is no liveness probe
@@ -111,7 +115,7 @@ describe('session view state — generation 0', () => {
 
   it('issues no further request once the first snapshot is adopted', async () => {
     const scripted = channelFrom([sessionResult(bootstrapSnapshot())]);
-    const state = createSessionViewState({ channel: scripted.channel });
+    const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
     const settled = scripted.calls.length;
     // No wall-clock detection guarantee exists for a page nobody interacts
@@ -135,7 +139,7 @@ describe('session view state — generation 0', () => {
       seen.push(`window:${type}`);
     }) as typeof window.addEventListener;
     try {
-      const state = createSessionViewState({ channel: scripted.channel });
+      const state = new SessionViewState({ channel: scripted.channel });
       await state.start();
       state.dispose();
     } finally {
@@ -151,7 +155,7 @@ describe('session view state — generation 0', () => {
 describe('session view state — session loss', () => {
   it('adopts a transport-reported loss immediately', async () => {
     const scripted = channelFrom([sessionResult(bootstrapSnapshot())]);
-    const state = createSessionViewState({ channel: scripted.channel });
+    const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
     expect(state.view.value).toBe('inspection');
     // devframe pushes the closed socket; nothing had to be asked, and no
@@ -165,7 +169,7 @@ describe('session view state — session loss', () => {
 
   it('renders the ended view with the real error when the channel is gone', async () => {
     const scripted = channelFrom([new DevframeConnectionError('connection', 'connection refused')]);
-    const state = createSessionViewState({ channel: scripted.channel });
+    const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
     expect(state.view.value).toBe('ended');
     expect(state.errorMessage.value).toBe('connection refused');
@@ -185,7 +189,7 @@ describe('session view state — session loss', () => {
         return Promise.resolve(sessionResult(bootstrapSnapshot()));
       },
     };
-    const state = createSessionViewState({ channel });
+    const state = new SessionViewState({ channel });
     await state.start();
     void state.requestRescan();
     void state.requestRescan();
@@ -204,7 +208,7 @@ describe('session view state — session loss', () => {
           releaseFetch = resolve;
         }),
     };
-    const state = createSessionViewState({ channel });
+    const state = new SessionViewState({ channel });
     const started = state.start();
     // A purge runs while the fetch is still in flight.
     state.dispose();
@@ -222,7 +226,7 @@ describe('session view state — session loss', () => {
       sessionResult(bootstrapSnapshot()),
       new Error('handler blew up'),
     ]);
-    const state = createSessionViewState({ channel: scripted.channel });
+    const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
     expect(state.view.value).toBe('inspection');
     await state.refresh();
@@ -234,7 +238,7 @@ describe('session view state — session loss', () => {
 
   it('ends the view when the host returns an unsupported rejection code', async () => {
     const scripted = channelFrom([{ error: { code: 'invented-rejection' } }]);
-    const state = createSessionViewState({ channel: scripted.channel });
+    const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
     expect(state.view.value).toBe('ended');
     expect(state.errorMessage.value).toBe(
@@ -257,7 +261,7 @@ describe('session view state — session loss', () => {
         });
       },
     };
-    const state = createSessionViewState({ channel });
+    const state = new SessionViewState({ channel });
     const started = state.start();
     while (calls.length === 0) {
       await Promise.resolve();
@@ -297,7 +301,7 @@ describe('session view state — session loss', () => {
         }),
       ),
     ]);
-    const state = createSessionViewState({ channel: scripted.channel });
+    const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
     expect(state.snapshot.value?.sessionId).toBe('session-a');
 
@@ -313,5 +317,119 @@ describe('session view state — session loss', () => {
     expect(state.view.value).toBe('inspection');
     expect(state.snapshot.value?.sessionId).toBe('session-b');
     state.dispose();
+  });
+});
+
+/** One committed readable file's detail, keyed by the ID under test. */
+function detailFor(fileId: string): InspectionDataResult<FileDetailDto> {
+  return {
+    globalContentEpoch: 0,
+    repositoryGeneration: 0,
+    globalGeneration: null,
+    data: {
+      file: {
+        fileId,
+        sourceId: 'source-repository',
+        sourceRelativePath: `.agents/skills/greet/${fileId}.md`,
+        encoding: 'utf-8',
+        hadLeadingBom: false,
+        sourceText: `# ${fileId}\n`,
+        sizeBytes: 8,
+        recognitionIds: [],
+        relationshipIds: [],
+        diagnosticIds: [],
+      },
+      recognitions: [],
+      diagnostics: [],
+    },
+  };
+}
+
+describe('session view state — companion failures stay confined to the pane', () => {
+  it('keeps the held entry and fails only the pane when a companion request fails', async () => {
+    const scripted = channelFrom([
+      sessionResult(bootstrapSnapshot()),
+      detailFor('entry-1'),
+      new Error('companion chunk lost'),
+    ]);
+    const state = new SessionViewState({ channel: scripted.channel });
+    await state.start();
+    await state.openSkill('entry-1', 'entry-1');
+    expect(state.skillDetailState.value).toBe('ready');
+
+    await state.openSkill('entry-1', 'companion-1');
+    // The recognition and the file tree describe the skill, not the file
+    // that did not load, so the entry survives its companion's failure.
+    expect(state.skillDetail.value?.file.fileId).toBe('entry-1');
+    expect(state.openCompanion.value).toBeNull();
+    expect(state.skillDetailState.value).toBe('companion-failed');
+    expect(state.errorMessage.value).toBe('companion chunk lost');
+  });
+
+  it('returns the pane to its in-flight state the moment a retry dispatches', async () => {
+    const scripted = channelFrom([
+      sessionResult(bootstrapSnapshot()),
+      detailFor('entry-1'),
+      new Error('companion chunk lost'),
+      detailFor('companion-1'),
+    ]);
+    const state = new SessionViewState({ channel: scripted.channel });
+    await state.start();
+    await state.openSkill('entry-1', 'entry-1');
+    await state.openSkill('entry-1', 'companion-1');
+    expect(state.skillDetailState.value).toBe('companion-failed');
+
+    const retry = state.openSkill('entry-1', 'companion-1');
+    // Synchronously back in flight: the failed branch — and its retry
+    // button — unmounts, so a second click cannot double-dispatch.
+    expect(state.skillDetailState.value).toBe('ready');
+    await retry;
+    expect(state.skillDetailState.value).toBe('ready');
+    expect(state.openCompanion.value?.file.fileId).toBe('companion-1');
+    // A detail success clears the skill-owned error it answers.
+    expect(state.errorMessage.value).toBeNull();
+  });
+
+  it('reuses a held companion instead of refetching it', async () => {
+    const scripted = channelFrom([
+      sessionResult(bootstrapSnapshot()),
+      detailFor('entry-1'),
+      detailFor('companion-1'),
+    ]);
+    const state = new SessionViewState({ channel: scripted.channel });
+    await state.start();
+    await state.openSkill('entry-1', 'entry-1');
+    await state.openSkill('entry-1', 'companion-1');
+    const requestsBefore = scripted.calls.length;
+
+    await state.openSkill('entry-1', 'companion-1');
+    // Returning to what is already held is a change of selection, not of
+    // content: no request leaves, and the held detail stays adopted.
+    expect(scripted.calls.length).toBe(requestsBefore);
+    expect(state.openCompanion.value?.file.fileId).toBe('companion-1');
+    expect(state.skillDetailState.value).toBe('ready');
+  });
+
+  it('drops a skill-owned error with the route and keeps it through a refresh success', async () => {
+    const scripted = channelFrom([
+      sessionResult(bootstrapSnapshot()),
+      detailFor('entry-1'),
+      new Error('companion chunk lost'),
+      sessionResult(bootstrapSnapshot()),
+    ]);
+    const state = new SessionViewState({ channel: scripted.channel });
+    await state.start();
+    await state.openSkill('entry-1', 'entry-1');
+    await state.openSkill('entry-1', 'companion-1');
+    expect(state.errorMessage.value).toBe('companion chunk lost');
+
+    // A refresh success answers session-level failures only; the retained
+    // message still describes the open detail's own failed request.
+    await state.refresh();
+    expect(state.errorMessage.value).toBe('companion chunk lost');
+
+    // Leaving the route takes the detail failure with it.
+    state.closeSkill();
+    expect(state.errorMessage.value).toBeNull();
   });
 });

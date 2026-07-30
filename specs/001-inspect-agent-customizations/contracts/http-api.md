@@ -23,8 +23,10 @@ authority:
    including the SPA shell, its client-route fallback, and devframe's own
    connection-discovery metadata. Served static content contains no session data.
 2. **Local session RPC channel** — the devframe RPC channel (WebSocket upgrade plus
-   strict-JSON messages at the same loopback authority) carrying the functions declared
-   below.
+   devframe's own message frames at the same loopback authority) carrying the functions
+   declared below. The frame encoding belongs to devframe: this adapter carries every
+   message as structured-clone text, and the product declares no per-function wire
+   format.
 
 Neither class is an outbound request or MCP connection. Any non-loopback or remote
 authority, customization-selected destination, or transmission of inspected content to
@@ -42,13 +44,16 @@ another machine remains prohibited.
    once through `engines.node` and enforced by the package manager, and package/asset
    integrity is enforced by package tests and release gates; the host performs no runtime
    re-verification of its own packaged artifacts (Constitution Principle I).
-2. The session host runs unauthenticated behind the loopback binding. There is no
-   per-session token or capability, no bearer header, no origin or fetch-metadata
-   classification, and no CORS emission; devframe authentication is disabled
+2. The session host runs unauthenticated behind the loopback binding. The product adds
+   no per-session token or capability, no bearer header, no origin or fetch-metadata
+   classification of its own, and no CORS emission; devframe authentication is disabled
    (`auth: false`), matching config-inspector. Loopback binding is the complete host-side
-   protection (QR-003, Constitution v3.0.0). The residual limitation is documented: other
+   protection (QR-003, Constitution § Quality and Safety Standards). The residual limitation is documented: other
    local processes and, via DNS rebinding, a malicious web page can reach the session
-   while the inspector runs. Served content may include the user's own secrets, so the
+   while the inspector runs. devframe applies its own origin gate to the WebSocket
+   upgrade — the reason no product-owned check stands beside it — but that gate admits
+   any hostname its loopback test matches, so it does not narrow this limitation
+   (research.md § 8). Served content may include the user's own secrets, so the
    host is never exposed beyond the initiating machine.
 3. Static serving is devframe-owned. The served SPA shell and assets are exactly what the
    Nuxt build emitted into the packaged `dist/public`; the product defines no
@@ -76,7 +81,8 @@ another machine remains prohibited.
    with the documented safe rejections. A function declared with `Parameters: none` reads
    no input, so it has nothing to validate at its boundary — rejecting arguments a
 function never reads is a runtime guard with no protective failure mode. Every declared result and rejection is one
-   complete strict-JSON-serializable value. Transport capacity is inherited from Node.js,
+   complete JSON-serializable value — plain objects, arrays, strings, numbers, and
+   booleans, with no `Map`, `Set`, `Date`, or class instance. Transport capacity is inherited from Node.js,
    devframe, and the execution environment rather than a product-defined request-size
    ceiling.
 
@@ -97,6 +103,15 @@ Comparison views are constructed client-side from two `get-file-detail` results;
 no separate comparison function. There is also no masking, redaction, reveal, or
 environment-resolution function anywhere in the catalog, and the host does not enable
 devframe's optional MCP route.
+
+The same channel also carries devframe's own built-ins, registered unconditionally by
+the framework rather than by this catalog: `devframe:agent:list-tools` /
+`invoke-tool` / `list-resources` / `read-resource` (empty — the product registers no
+agent tools or resources), `devframe:rpc:server-state:subscribe` / `get` / `set` /
+`patch` (unused — the product shares no server state), and `devframe:streaming:*`
+(unused — the product declares no streaming channel). The editor and finder helpers
+(`devframe:open-in-editor`, `devframe:open-in-finder`) are opt-in recipes this product
+does not import, so they are not registered.
 
 ## Common results and errors
 
@@ -219,12 +234,12 @@ InspectionSession
 │                         diagnosticCount, queuedAt, startedAt }
 ├── files[]
 │   └── fileId, sourceId, sourceRelativePath, diagnostic IDs, and encoding as the variant
-│       discriminator — readable text adds parseSummary, sizeBytes, and hadLeadingBom;
+│       discriminator — readable text adds sizeBytes and hadLeadingBom;
 │       binary adds only sizeBytes; unknown adds nothing. A file publishes its own facts
 │       only; what it was recognized as belongs to a per-kind inventory below
 ├── skills[]
 │   └── declaredName null | string,
-│       definitions[] { fileId, tools[], companionFiles[], diagnostic IDs },
+│       definitions[] { fileId, tools[], companionFiles[] },
 │       sameNameResolutions[] { tool, resolution } — empty unless several definitions
 └── diagnostics[] { diagnosticId, code, sourceId?, fileId?, sourceRelativePath? }
     (active-generation records plus session-owned lifecycle records)
@@ -240,6 +255,13 @@ the file itself. Every other kind's unit is settled by the task that ships its i
 from that kind's own vendor contract. A physical file therefore appears once in `files[]` with its own facts —
 path, read outcome, size, diagnostics — and each kind's inventory refers to it by `fileId`
 and repeats none of them.
+
+`files[]` also carries the files accompanying a directory-shaped customization: a skill is
+read whole, so the scripts, references, and assets inside its own directory are published
+like any other file (contracts/inspection-path-allowlist.md § Bounded companion census).
+They belong to no kind's inventory, because no rule admitted them and nothing recognized
+them; the owning skill's `definitions[].companionFiles` is what names them, and a client
+resolves each to its `fileId` through `files[]` to offer the customization's directory.
 
 `sameNameResolutions` states how each recognizing product resolves a name that several
 definitions declare, so grouping never implies a winner the Inspector has not recorded. An
@@ -309,22 +331,18 @@ failure surfaces as that request's ordinary error. Initial Global-enable failure
 all pre-existing entries and the derived snapshot state.
 Each `sourceRelativePath` is relative to its owning Source's single root; the
 API never substitutes an absolute or canonical filesystem path for it.
-Public Source-relative Paths serialize with NFC display segments while filesystem
-operations use the raw entry names internally (FR-024). Hard links are ordinary files:
+A public Source-relative Path serializes as the exact raw entry names joined with `/`,
+the same spelling filesystem operations use internally (FR-024). Hard links are ordinary files:
 there is no physical-identity grouping, no primary-path selection, and no alias path
 list.
 The inventory summary does not include source text. Deterministic sort order is source kind,
-Global tool where present, normalized source-relative path, then file ID.
-`parseSummary` is the file-level closed projection
-`not-applicable | all-parsed | mixed | all-failed`: it is `not-applicable` when every
-recognition is `not-attempted`, `all-parsed` when at least one is `parsed` and none is
-`failed`, `all-failed` when at least one is `failed` and none is `parsed`, and `mixed` when
-`parsed` and `failed` coexist. `not-attempted` records do not change the last three
-projections. A file carries no recognition summary: what it was recognized as belongs to
+Global tool where present, source-relative path, then file ID.
+A file carries no recognition summary and no parse rollup — a recognition's own
+`parseStatus` is the parse fact, and a file-level aggregate had no reader: what a file
+was recognized as belongs to
 the per-kind inventories, and each of their rows carries only what identifies that kind —
 never an invented aggregate documentation or applicability status, parse result, or winner.
-Record-by-record evidence and applicability stay on the detail provenances and relationships
-below.
+Record-by-record evidence and applicability stay on the detail provenances below.
 
 Within one generation there is exactly one `ToolRecognition` for each
 `(fileId, tool, kind)`. Compatible provenances merge into that recognition. If those
@@ -355,9 +373,9 @@ Diagnostic list.
 `scope` is an obligatory attachment discriminator, independent of diagnostic lifetime.
 The three location fields are always present and are null where the scope does not use
 them. The only legal shapes are: `file`, with `sourceId`, `fileId`, and that file's
-Source-relative Path all non-null; `source`, with `sourceId` non-null and the other two
-null; and `session`, with all three null. Source- and session-scoped records never invent a
-file ID or path. Serialization rejects any other combination.
+Source-relative Path all non-null; and `source`, with `sourceId` non-null and the other two
+null. There is no pathless scope — every diagnostic belongs to a Source — and a
+source-scoped record never invents a file ID or path. Serialization rejects any other combination.
 Progress is null for `idle` and `failed`; it is present for active work and
 for final `ready`/`partial` counters as defined in the data model. The first legal snapshot
 is bootstrap generation 0 with exactly one idle Repository Source selected lexically from
@@ -368,24 +386,26 @@ scan with the source-scoped `root-unreadable` Diagnostic while the session stays
 (FR-002). A startup throw/rejection may terminate the process, so no later readable
 snapshot is promised.
 
-The sensitive-content warning is client-owned: the component that renders it supplies fixed
-English text explaining that opening detail or comparison surfaces displays complete
-authored values, including possible credentials; the API sends no warning fields.
-Protected values include complete source text, declared authored
-metadata, authored relationship targets, and either comparison side.
-Before requesting any `FileDetail` or constructing a comparison, the SPA
-requires an in-memory acknowledgement for the current browser session. The
-acknowledgement is client-only, is not sent to this API, and is not persisted by either side.
-The acknowledgement is presentation-only, not an access-control factor (FR-027): loopback
-binding is the complete host-side protection (QR-003), and the API neither accepts nor
-claims to enforce a presentation acknowledgement. The shipped SPA nevertheless
-must obtain that acknowledgement before it requests detail or constructs comparison. A
-newly loaded browser document and the central full-session client-data purge reset it. Route
-closure, selection replacement, file or Source removal, and generation replacement are
-scoped cleanup rather than that central purge and may retain acknowledgement for the loaded
-document; a generation replacement in either sequence disposes only that sequence's
-scoped models. Global disable uses the central purge and therefore resets it. It grants
-no filesystem authority and does not alter the returned content.
+No surface carries a notice about what authored content may contain, and the API sends no
+warning fields for one. A viewer of the reader's own files over a loopback-bound session has
+nothing to warn about, and a standing notice spends the screen telling a reader about their
+own repository. Nothing stands in front of the content either. There is no acknowledgement step and no
+acknowledgement state (FR-027): loopback binding is the complete host-side protection
+(QR-003), so a confirmation would guard nothing while making every file take two
+interactions to read, and the API neither accepts nor claims to enforce one.
+Authored values — complete source text, declared authored metadata, authored relationship
+targets, and either comparison side — are reachable only by requesting one `FileDetail` or
+constructing one comparison at a time; no inventory or session response carries them. The one
+exception is a skill's `declaredName`, which an inventory entry carries as the identity a row
+is listed under: the vendors' own selectors and menus name a skill by it, it is not
+recoverable from the Source-relative Path, and a list that cannot name what it lists is not
+an inventory (FR-007, data-model.md § ToolRecognition). Every other declared value stays
+behind an explicit detail request. The
+central full-session client-data purge drops what the client holds. Route closure, selection
+replacement, file or Source removal, and generation replacement are scoped cleanup rather
+than that central purge; a generation replacement in either sequence disposes only that
+sequence's scoped models. Global disable uses the central purge. None of this grants
+filesystem authority or alters the returned content.
 
 `globalControl` is null only when Global consent/control state is inactive. Otherwise
 `state` is `active` or `disabling`, and `previewId` identifies the frozen active preview.
@@ -439,57 +459,57 @@ Outcomes: the full or fenced DTO.
 
 ### `agent-customization-inspector:get-file-detail`
 
-Parameters:
+Parameters: one opaque file ID, as the function's single positional argument.
 
 ```json
-{ "fileId": "opaque-file-id" }
+"opaque-file-id"
 ```
 
 Returns one active-generation file detail:
 
 ```text
 FileDetail
-├── file summary fields including parseSummary
-├── sourceText (readable text only; absent for binary/unknown)
+├── file — one CustomizationFile, discriminated by encoding:
+│   ├── fileId, sourceId, sourceRelativePath, encoding, diagnosticIds[]
+│   ├── readable text adds hadLeadingBom, sourceText, sizeBytes,
+│   │   recognitionIds[], relationshipIds[] (empty this release; see below)
+│   └── binary adds sizeBytes; unknown adds nothing further
 ├── recognitions[]
-│   ├── recognitionId, fileId, tool, kind, parseStatus, diagnosticIds[]
-│   ├── declaredMetadata[] { closed fieldId, zero-based occurrence, exact authoredLiteral }
-│   └── provenances[] { provenanceId, ruleId, discoveryClass, matchedPath,
-│                       seedFileId, seedProvenanceId, seedRuleId,
-│                       declarationKey, scope, evidenceAssessments[], order,
-│                       behaviorRefs, strategyRefs, sourceRefs,
-│                       applicability { summary, strategyRefs, evaluatedFromGeneration,
-│                                       condition facts[] } }
-├── relationships[] { relationshipId, fromFileId, fromRecognitionId, fromProvenanceId,
-│                     ruleId, kind, targetOrigin, authoredTarget (exact slice or null),
-│                     normalizedTarget, boundary status, resolution status,
-│                     evidenceAssessments[], behaviorRefs, strategyRefs, sourceRefs,
-│                     applicability { summary, strategyRefs, evaluatedFromGeneration,
-│                                     condition facts[] } }
+│   ├── recognitionId, fileId, tool, parseStatus, diagnosticIds[]
+│   ├── details { kind; a skill's also carries declaredName — absent when the
+│   │             recognizer extracted none — and companionFiles[] }
+│   ├── declaredMetadata[] { closed fieldId, resolved value }
+│   └── provenances[] { ruleId, discoveryClass, matchedPath, scope,
+│                       evidenceAssessments[],
+│                       applicability { summary, conditions[] } }
 └── diagnostics[]
 ```
 
-Every derived provenance identifies one exact independently admitted static seed through
-all three `seedFileId`, `seedProvenanceId`, and `seedRuleId`; static provenances serialize
-all three as null. `scope` is the closed `ScopeDescriptor` union (`source-root`,
-`directory-subtree`, `matching-path`, or `declared`), and `order` is null or the closed
-`OrderDescriptor` with one to four ordered `path-depth`, `registry-rank`, or
-`source-occurrence` components. Their exact fields and stable comparison keys are defined
-in the [data-model contract](../data-model.md#scopedescriptor-and-orderdescriptor); the API
-does not accept or return implementation-specific scope/order objects.
+This tree is the response shape: a client can rely on exactly these fields and no
+others. There is no `relationships` array of edge records — no shipped recognition can
+produce an edge, so the array would be empty in every response, and it arrives with the
+relationship phases that populate it; the readable file's `relationshipIds` above is the
+same fact as an ID list, present and empty. A provenance likewise carries neither `provenanceId` (nothing
+points back at an admission until relationships do), `order` and the derived-seed
+triple `seedFileId`/`seedProvenanceId`/`seedRuleId` (no shipped rule is derived and no
+shipped strategy documents an order; they arrive with the derivation and ordering
+phases), `declarationKey` (the one shipped kind is a whole file), nor
+`behaviorRefs`/`strategyRefs`/`sourceRefs` (the referenced subjects are already each an
+`evidenceAssessments` record, and citations are maintenance data a packaged CLI does
+not carry). `scope` is the closed `ScopeDescriptor` union (`source-root`,
+`directory-subtree`, `matching-path`, or `declared`); its exact fields and stable
+comparison keys are defined in the
+[data-model contract](../data-model.md#scopedescriptor-and-orderdescriptor), and the
+API does not accept or return implementation-specific scope objects.
 
-For a readable file, `sourceText`, every `declaredMetadata[].authoredLiteral`, and every
-relationship with `targetOrigin: authored` preserve exact structurally delimited,
-round-tripping slices of decoded source without
-credential detection, masking, redaction, or a reveal step. The metadata array preserves
-source-occurrence order and accepted duplicates; `occurrence` is scoped to its recognition,
-and the full comparison identity is `(tool, kind, fieldId, occurrence)`. Authored quoting,
-escapes, block/collection punctuation, numeric/date spelling,
-and environment-reference syntax are returned rather than a parser-normalized value. A
-separate internal typed semantic value may drive classification, target normalization, or
-plan-defined derivation but is never serialized or displayed. JSON transport escaping must
-round-trip to the same `authoredLiteral` string at the client. Environment-variable
-references remain literal strings: the host never reads,
+For a readable file, `sourceText` is the complete decoded source and every
+`declaredMetadata[].value` is the value its parser resolved for that field — quoting and
+escapes resolved, `007` read as `7`, a key declared twice read as its later declaration —
+without credential detection, masking, redaction, or a reveal step. One entry per field in
+the allowlist row's order, so the comparison identity is `(tool, kind, fieldId)`; a field
+resolving to something other than a scalar has no entry, because a row names scalar fields.
+JSON transport escaping must round-trip to the same string at the client. Environment-variable
+references remain the characters that were written: the host never reads,
 resolves, or substitutes the referenced process-environment value. The only environment
 values used by inspection are the specifically documented tool-home variables used to derive
 Global roots through the consent flow.
@@ -498,8 +518,8 @@ A registry-defined `targetOrigin: documented-default` relationship instead has
 default and never implies that the synthetic path occurred in source.
 
 Across Inventory, Detail, Comparison, Global controls, Diagnostics, Source Condition Facts,
-every API result, CLI output, and documentation, the product is limited to syntax-only parsing, exact authored
-literal extraction, mechanical typed decoding, frozen-catalog classification, and documented
+every API result, CLI output, and documentation, the product is limited to syntax-only parsing, reading the
+value a parser resolves for an allowlisted field, frozen-catalog classification, and documented
 structural scope/order/condition/selection/reference projection. It never interprets or
 ranks natural-language meaning or intent; decides customization correctness, validity,
 compliance, effectiveness, or quality; or provides policy/remediation advice, validation,
@@ -511,8 +531,10 @@ FR-028; any other unexpected RPC-owned failure propagates as the request's ordin
 and never becomes a Diagnostic.
 
 The file encoding state is assigned from the bytes of one completed ordinary read. Any NUL
-byte yields `binary` with no `sourceText` or BOM record, no comparison eligibility,
-and an otherwise publishable `partial` generation. Every other byte sequence is
+byte yields `binary` with no `sourceText` or BOM record and no comparison eligibility; for
+an admitted candidate that is diagnostic-only and makes an otherwise publishable generation
+`partial`, while a census-listed companion's binary bytes are the ordinary fact of an asset
+(FR-025). Every other byte sequence is
 decoded exactly once as UTF-8 with replacement semantics. One leading BOM sets
 `hadLeadingBom: true` and is removed. Text decoded without replacement uses `utf-8`; any inserted
 `U+FFFD` uses `utf-8-replaced`. That exact garbled complete `sourceText` continues through
@@ -532,24 +554,21 @@ recognition produces this failed-recognition state and its file-scoped
 source stays displayed and comparison-eligible (FR-028). A failure that is not confined to
 one file fails the attempt and is exposed, when RPC-owned, as the request's ordinary
 error. Structural metadata comparison uses
-`(tool, kind, fieldId, occurrence)`, so two tools or kinds never collide merely because
-their field and occurrence match.
+`(tool, kind, fieldId)`, so two tools or kinds never collide merely because their field
+matches.
 
-Every internal `SourceTextRange` used to produce metadata, an authored relationship target,
-or a derivation is a half-open `{ start, end }` measured in ECMAScript UTF-16 code units.
-`sourceText.slice(start, end)` must equal the returned authored literal exactly. UTF-8 byte
-measurements are kept separate and never reused as offsets; no Unicode normalization,
-code-point counting, or grapheme counting changes the range. Metadata, relationship, and
-derivation outputs for the same logical source occurrence may reuse one exactly identical
-range. Different logical occurrences may not partially overlap, nest, or cross; any such
-overlap, ambiguous boundary, or non-round-tripping range fails the affected recognition
-all-or-nothing.
+A declared value carries whole characters — an astral character is two UTF-16 code units
+and a combining mark is two code points — so it survives extraction and JSON transport
+unaltered, and no Unicode normalization is applied to it. No response carries source
+coordinates: nothing points into a document, and a range beside the value it was taken from
+asserts nothing the value does not already state. A document an extractor cannot parse
+fails the affected recognition all-or-nothing, while its complete `sourceText` stays
+available — which is where a reader goes for the spelling a value no longer carries.
 
 The result uses inert JSON strings. The SPA must render `sourceText` and metadata through
 Vue text bindings, not `v-html`, Markdown rendering, clickable links, URI handlers, or image
-loads. The result is held only in memory, is never durably cached, and is never logged. The
-SPA requests it only after showing and receiving the client-only sensitive-content
-acknowledgement described above.
+loads. The result is held only in memory, is never durably cached, and is never logged. The SPA
+requests one file at a time and shows it with no notice beside it.
 
 A detail request token captures exactly `(clientDataEpoch, the owning sequence's current
 generation, fileId)`. The SPA adopts the result only when all three captured values still
@@ -962,8 +981,8 @@ the post-acceptance failure's ordinary error. Disable itself never returns
   purges before an ended view. A page-lifecycle event is not a purge trigger: FR-027 purges after a document-liveness failure or an equivalent terminal reset, and neither switching tabs nor navigating away is either — a discarded document frees its own memory, and a bfcached one holds the same user's view of their own files on their own machine, which the trusted-workspace model does not treat as exposure. The client installs no visibility or unload listener.
   The purge increments a
   client epoch so a late in-flight result cannot repopulate DTOs or editor state, disposes
-  Monaco models/editors/workers and subscriptions, clears DOM/store content and warning
-  acknowledgement, and aborts pending requests. Closing the Node process destroys the
+  Monaco models/editors/workers and subscriptions, clears DOM/store content, and aborts
+  pending requests. Closing the Node process destroys the
   server-side session state, complete source content, source roots, generations, and
   diagnostics.
 - No session-channel invocation starts an MCP server, follows an import, opens an inspected
@@ -984,9 +1003,10 @@ the post-acceptance failure's ordinary error. Disable itself never returns
   Diagnostic, and recursive traversal tracks visited directories by real path so a link
   cycle cannot prevent a scan from terminating (FR-024). Hard links are ordinary files with
   no physical-identity grouping. A file whose read fails yields `file-unreadable`, and
-  NUL-containing content yields `file-content-binary`; each outcome is file-confined, keeps
-  every unaffected file complete, and makes an otherwise publishable generation `partial`
-  (FR-028). A selected root that does not exist or cannot be read as a directory fails the
+  an admitted candidate's NUL-containing content yields `file-content-binary` — a
+  census-listed companion's binary bytes yield none; each Diagnostic-bearing outcome is
+  file-confined, keeps every unaffected file complete, and makes an otherwise publishable
+  generation `partial` (FR-028). A selected root that does not exist or cannot be read as a directory fails the
   Source attempt with `root-unreadable` and publishes no generation for that attempt
   (FR-002). There is no repeated identity re-verification between operations, no
   race-detection taxonomy, and no ticket, receipt, or resource-registry machinery (FR-019).
@@ -1014,8 +1034,9 @@ the post-acceptance failure's ordinary error. Disable itself never returns
    resolution) on every supported OS and that no configuration or flag binds `0.0.0.0`, a
    LAN address, or a Unix socket; the printed launch line carries the `localhost`
    authority.
-   Channel fixtures prove that no token, session capability, bearer header, or origin
-   classification exists on the session channel and that the shipped documentation states
+   Channel fixtures prove that the product adds no token, session capability, bearer
+   header, or origin classification to the session channel — the WebSocket origin gate
+   there is devframe's own — and that the shipped documentation states
    the residual unauthenticated-loopback limitation (other local processes; DNS
    rebinding). Presentation-output tests cover help/version text, the one launch-URL
    line, and fixed startup warnings; an unexpected startup failure prints its ordinary
@@ -1047,21 +1068,17 @@ the post-acceptance failure's ordinary error. Disable itself never returns
    retained prior snapshot afterward. Request-owned rejections reject with the real
    error without exiting the process; automatic startup read rejection reaches the process
    top level and makes no product process-liveness guarantee.
-3. Readable file detail returns complete authored source, exact metadata/authored-relationship source
-   slices, credentials, and environment-reference text without masks or reveal controls.
-   JSONC escape spelling, YAML quote/block spelling, TOML quote/date spelling, collection
-   punctuation, source order, and accepted duplicate occurrences survive transport and
-   structural comparison; a normalized semantic value is never substituted for display.
-   File summaries expose only `not-applicable | all-parsed | mixed | all-failed`, while the
-   exactly one recognition per `(fileId, tool, kind)` exposes
-   `not-attempted | parsed | failed` and its own diagnostic IDs. Compatible provenance
+3. Readable file detail returns complete authored source and, for every allowlisted field,
+   the value its parser resolved — credentials and environment-reference text included,
+   without masks or reveal controls. There is one value per field: a key declared twice
+   resolves to its later declaration.
+   A file summary exposes no parse rollup at all; the exactly one recognition per
+   `(fileId, tool, kind)` exposes `not-attempted | parsed | failed` and its own diagnostic
+   IDs, which is where a reader learns what a parse did. Compatible provenance
    merges once, inconsistent meaning fails that recognition all-or-nothing, and arrays use
    closed tool-then-kind order. Comparison keys are
-   `(tool, kind, fieldId, occurrence)`. Astral characters, unpaired surrogates, combining
-   sequences, and ordinary BMP text prove that `SourceTextRange` uses UTF-16
-   `String.prototype.slice` offsets while UTF-8 measurements remain separate. One logical
-   occurrence may reuse an identical span across metadata/relationship/derivation output;
-   partial, nested, or crossing overlaps between different occurrences fail the recognition.
+   `(tool, kind, fieldId)`. Astral characters, combining sequences, and ordinary BMP text
+   prove that a declared value survives extraction and JSON transport whole.
    Every returned metadata tuple `(tool, kind, fieldId)` and relationship tuple
    `(tool, kind, relationship kind)` must appear in the maintained presentation allowlist,
    and the exact authored occurrence must be supported by the extractor for the recognition's
@@ -1073,22 +1090,21 @@ the post-acceptance failure's ordinary error. Disable itself never returns
    treat an empty qualifier array as no lifecycle claim, and require one sorted
    `EvidenceAssessment` for the rule and every referenced behavior/strategy. They reject a
    lossy scalar assessment and keep runtime `documentation-conflict` distinct.
-   Encoding fixtures prove NUL is binary/diagnostic-only/`partial`, valid text is
+   Encoding fixtures prove an admitted candidate's NUL is binary/diagnostic-only/`partial`
+   and a companion's is the plain binary fact, valid text is
    `utf-8`, and invalid non-NUL input is readable `utf-8-replaced` with every
    `U+FFFD` preserved through parsing, detail, and comparison without making the generation
    partial by itself. No alternate decoder is invoked.
    A fixed Codex default-hook fixture instead returns `targetOrigin: documented-default`,
    null `authoredTarget`, and an explicit documented-default label; an explicit manifest
    hook returns `targetOrigin: authored` with its exact occurrence. Sentinel process values
-   prove that environment references are never resolved or substituted. The SPA shows
-   and receives the in-memory sensitive-content acknowledgement before requesting any
-   `FileDetail` or constructing comparison, and tests assert that no protected authored-value
-   request or derived DOM/editor state exists earlier, while no reveal function exists in
-   the RPC catalog. Direct RPC
-   tests prove that no acknowledgement parameter or function exists and that the
-   acknowledgement is presentation-only: the channel serves detail without it, and loopback
-   binding, not a claimed server-side presentation gate, is the complete host-side
-   protection.
+   prove that environment references are never resolved or substituted. Tests assert that no notice about authored content
+   appears on a detail surface, that no
+   confirmation step stands in front of a `FileDetail` request or a comparison, that no
+   inventory or session response carries authored content, and that no reveal function
+   exists in the RPC catalog. Direct RPC tests prove that no acknowledgement parameter or
+   function exists: loopback binding, not a claimed server-side presentation gate, is the
+   complete host-side protection.
    Cross-surface negative fixtures prove that Inventory, Detail, Comparison, Global
    controls, Diagnostics, Source Condition Facts, API DTOs, CLI output, and documentation expose only
    the documented structural projections: no natural-language meaning/intent
@@ -1105,11 +1121,11 @@ the post-acceptance failure's ordinary error. Disable itself never returns
    result, incomplete
    generation, or validity/correctness/compliance/lint verdict; the session stays usable
    and the prior snapshot stays readable afterward. Escaping and key-order
-   fixtures prove that one complete strict-JSON-serializable result value crosses the
+   fixtures prove that one complete JSON-serializable result value crosses the
    channel unchanged and round-trips at the client.
 5. Static traversal and encoded traversal attempts never escape the packaged `dist/public`
    output; every served byte comes from that packaged Nuxt output, no inspected file is
-   ever served, and the root, `/compare`, `/global-consent`, and `/files/<fileId>` client
+   ever served, and the root, `/compare`, `/global-consent`, and `/skills/<fileId>` client
    routes all boot the same packaged SPA shell, which embeds no session data.
 6. Queue ordering across Repository and each tool-specific Global rescan, duplicate
    rejection, aborts, partial outcomes, fatal failures, and polling expose only
@@ -1171,8 +1187,7 @@ the post-acceptance failure's ordinary error. Disable itself never returns
    loss, port reuse with a different
    `sessionId`, older/equal/greater epochs, null/draining/committing/failed projections, and a late in-flight
    result after the client epoch changed; none may leave or automatically restore pre-purge inventory,
-   detail, comparison, editor, or authored-content DTO/DOM state or the warning
-   acknowledgement. With active consent, recovery after a greater epoch, non-null fence, or
+   detail, comparison, editor, or authored-content DTO/DOM state. With active consent, recovery after a greater epoch, non-null fence, or
    explicit Resume reconnects over the loopback channel, adopts the returned `sessionId`
    without retaining/comparing the purged ID, and constructs only the closed recovery
    projections. Disable is available from
@@ -1181,8 +1196,8 @@ the post-acceptance failure's ordinary error. Disable itself never returns
    retry controls. The explicit Resume inspection action is absent while the fence is
    non-null. With a null fence the page re-fetches a matching full session and constructs a
    fresh inventory summary with default state, but restores no
-   pre-purge authored content, selection, filter, detail, comparison, editor, or
-   acknowledgement. A later detail/comparison request requires a new acknowledgement.
+   pre-purge authored content, selection, filter, detail, comparison, or editor state. A
+   later detail/comparison request fetches it again from the fresh session.
    Pre-acceptance disable failure and true no-op both leave a null fresh-session fence so a
    purged client can resume immediately.
 8. A Global consent preview touches no proposed path, confirmation names the one

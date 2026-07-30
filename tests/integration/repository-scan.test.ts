@@ -8,7 +8,7 @@
 // root it reads is the retained raw selection — never the escaped display
 // boundary, which grants no read authority.
 import { chmodSync, linkSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import * as fsIo from '../../src/server/inspection/fs-io';
@@ -19,7 +19,7 @@ import {
 } from '../fixtures/repositories/build-fixtures';
 import { CODEX_REPOSITORY_RULES } from '../../src/server/inspection/rules/codex';
 import { REPOSITORY_INSPECTION_RULES, runSourceScan } from '../../src/server/inspection/scan';
-import { SessionCoordinator, createInspectionSession } from '../../src/server/session/session';
+import { InspectionSession, SessionCoordinator } from '../../src/server/session/session';
 
 // Pass-through spies over the closed fs surface, so the suite can prove which
 // root was actually read (contracts/inspection-path-allowlist.md § Symlink and read invariants).
@@ -43,10 +43,9 @@ afterEach(() => {
 });
 
 function bootstrap(root: string) {
-  const session = createInspectionSession({
+  const session = new InspectionSession({
     invocationCwd: root,
     rootOptionValue: null,
-    selectedRepositoryRoot: root,
   });
   return { session, coordinator: new SessionCoordinator(session) };
 }
@@ -56,7 +55,7 @@ async function scanOnce(
   context: ReturnType<typeof bootstrap>,
   trigger: 'startup' | 'request' = 'startup',
 ) {
-  const sourceId = context.session.internal.repositorySourceId;
+  const sourceId = context.session.repositorySourceId;
   const admitted = context.coordinator.admitScan(
     sourceId,
     trigger === 'startup'
@@ -68,7 +67,7 @@ async function scanOnce(
   }
   const publication = await runSourceScan({
     sourceId,
-    root: context.session.internal.selectedRepositoryRoot,
+    root: context.session.selectedRepositoryRoot,
     rootFailureOwner: trigger === 'startup' ? 'repository' : `published-source:${sourceId}`,
   });
   if (publication.kind === 'publishable') {
@@ -116,10 +115,7 @@ describe('generation 0 exists before any filesystem operation (FR-002)', () => {
     // The public boundary is an escaped label plus its origin, and nothing
     // else: the retained raw root stays internal and is the only read operand.
     expect(snapshot.sources[0]!.boundary.origin).toBe('process-cwd');
-    expect(Object.keys(snapshot.sources[0]!.boundary).sort()).toEqual([
-      'displayRoot',
-      'origin',
-    ]);
+    expect(Object.keys(snapshot.sources[0]!.boundary).sort()).toEqual(['displayRoot', 'origin']);
     for (const name of ['lstat', 'readFile', 'readdir', 'realpath', 'stat'] as const) {
       expect(vi.mocked(fsIo[name])).not.toHaveBeenCalled();
     }
@@ -175,9 +171,11 @@ describe('the scan reads the retained raw selected root', () => {
     for (const call of vi.mocked(fsIo.readdir).mock.calls) {
       expect(String(call[0]).startsWith(fixture.root)).toBe(true);
     }
-    expect(snapshot.files.map((file) => file.sourceRelativePath)).toEqual([
-      ...fixture.expectedSkillPaths,
-    ]);
+    // The published set is the admitted skills plus the files their censuses
+    // bound: a skill is its `SKILL.md` and what ships beside it.
+    expect(snapshot.files.map((file) => file.sourceRelativePath)).toEqual(
+      [...fixture.expectedSkillPaths, ...fixture.expectedCompanionPaths].sort(),
+    );
   });
 
   it('publishes rows in the contracted order: source kind, path, then file ID', async () => {
@@ -187,6 +185,135 @@ describe('the scan reads the retained raw selected root', () => {
     await scanOnce(context);
     const paths = context.session.snapshot().files.map((file) => file.sourceRelativePath);
     expect(paths).toEqual([...paths].sort());
+  });
+});
+
+describe("a skill's own directory is published with it", () => {
+  it('publishes each companion as a readable file that nothing recognized', async () => {
+    const fixture = buildCodexSkillFixture('inspector-scan-companions');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+
+    for (const path of fixture.expectedCompanionPaths) {
+      const file = snapshot.files.find((one) => one.sourceRelativePath === path);
+      expect(file, `companion not published: ${path}`).toBeDefined();
+      if (file?.encoding !== 'utf-8') {
+        throw new Error(`expected a readable companion at ${path}`);
+      }
+      // Read like any other file, and classified as nothing: no rule admitted
+      // it, so it has no recognition, no kind, and no extractor applied to it.
+      expect(file.diagnosticIds).toEqual([]);
+      const detail = context.session.fileDetail(file.fileId);
+      expect(detail?.recognitions).toEqual([]);
+    }
+  });
+
+  it('carries replacement-decoded text through extraction and the detail route', async () => {
+    // Invalid non-NUL UTF-8 decodes once with replacement semantics and the
+    // garbled result proceeds as ordinary readable text (FR-025): the
+    // extractor parses it, the declared name carries the inserted U+FFFD
+    // exactly, and the detail route serves the same garbled `sourceText` —
+    // nothing re-decodes, cleans, or drops it on the way to the reader.
+    const root = createRepositoryFixtureRoot('inspector-scan-replaced');
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    mkdirSync(join(root, '.agents/skills/garbled'), { recursive: true });
+    writeFileSync(
+      join(root, '.agents/skills/garbled/SKILL.md'),
+      Buffer.concat([
+        Buffer.from('---\nname: gar', 'utf8'),
+        Buffer.from([0xff]),
+        Buffer.from('bled\n---\n', 'utf8'),
+      ]),
+    );
+    const context = bootstrap(root);
+    const { publication } = await scanOnce(context);
+    const snapshot = context.session.snapshot();
+
+    const file = snapshot.files.find(
+      (candidate) => candidate.sourceRelativePath === '.agents/skills/garbled/SKILL.md',
+    );
+    expect(file?.encoding).toBe('utf-8-replaced');
+    // A replacement decode is complete, not partial (FR-025).
+    expect(publication.kind === 'publishable' && publication.outcome).toBe('complete');
+    const row = snapshot.skills.find((entry) => entry.declaredName === 'gar\uFFFDbled');
+    expect(row).toBeDefined();
+    const detail = context.session.fileDetail(file!.fileId);
+    if (detail?.file.encoding !== 'utf-8-replaced') {
+      throw new Error('expected the replacement-decoded variant');
+    }
+    expect(detail.file.sourceText).toContain('gar\uFFFDbled');
+  });
+
+  it('publishes a binary companion as an ordinary fact of the skill', async () => {
+    // A skill shipping an image or a compiled asset is ordinary: the census
+    // lists it, the read classifies its bytes, and binary is the answer —
+    // not a failure. Nothing expected an asset to be text, so there is no
+    // Diagnostic and the generation commits complete. This is the property
+    // the fixture is minimal for: with only this skill in it, `complete` can
+    // only come from the asset being an ordinary fact.
+    const root = createRepositoryFixtureRoot('inspector-scan-binary-companion');
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    mkdirSync(join(root, '.agents/skills/greet'), { recursive: true });
+    writeFileSync(join(root, '.agents/skills/greet/SKILL.md'), '---\nname: greet\n---\n', 'utf8');
+    const assetPath = '.agents/skills/greet/logo.png';
+    writeFileSync(join(root, ...assetPath.split('/')), 'PNG\u0000\u0001bytes\n', 'utf8');
+    const context = bootstrap(root);
+    const { publication } = await scanOnce(context);
+    const snapshot = context.session.snapshot();
+
+    const asset = snapshot.files.find((file) => file.sourceRelativePath === assetPath);
+    expect(asset?.encoding).toBe('binary');
+    expect(asset && 'sourceText' in asset).toBe(false);
+    expect(asset?.diagnosticIds).toEqual([]);
+    expect(snapshot.diagnostics).toEqual([]);
+    expect(publication.kind === 'publishable' && publication.outcome).toBe('complete');
+    expect(snapshot.sources[0]!.status).toBe('ready');
+    // And the skill still ships it: the asset is part of the customization,
+    // listed with its other files.
+    const greet = snapshot.skills.find((entry) => entry.declaredName === 'greet');
+    expect(greet?.definitions[0]?.companionFiles).toContain(assetPath);
+  });
+
+  it('serves a companion\u2019s complete authored source through the detail route', async () => {
+    const fixture = buildCodexSkillFixture('inspector-scan-companion-detail');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    await scanOnce(context);
+
+    const readme = context.session
+      .snapshot()
+      .files.find((file) => file.sourceRelativePath === '.agents/skills/greet/README.md');
+    const detail = context.session.fileDetail(readme!.fileId);
+    if (detail?.file.encoding !== 'utf-8') {
+      throw new Error('expected a readable companion detail');
+    }
+    // The fixture authored exactly this beside the skill.
+    expect(detail.file.sourceText).toBe('sibling\n');
+  });
+
+  it('keeps a companion out of the skill inventory it belongs to', async () => {
+    const fixture = buildCodexSkillFixture('inspector-scan-companion-rows');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+
+    // A companion is part of the customization the row already names; it never
+    // becomes a definition of its own.
+    const definitionPaths = snapshot.skills
+      .flatMap((entry) => entry.definitions.map((definition) => definition.fileId))
+      .map(
+        (fileId) => snapshot.files.find((file) => file.fileId === fileId)?.sourceRelativePath ?? '',
+      );
+    for (const path of fixture.expectedCompanionPaths) {
+      expect(definitionPaths).not.toContain(path);
+    }
+    // It is named by the skill that ships it, which is how the detail view
+    // resolves the directory.
+    const greet = snapshot.skills.find((entry) => entry.declaredName === 'greet');
+    expect(greet?.definitions[0]?.companionFiles).toEqual([...fixture.expectedCompanionPaths]);
   });
 });
 
@@ -219,7 +346,6 @@ describe('recognition is atomic per admitted candidate (FR-005)', () => {
             '.agents/skills/greet/README.md',
             '.agents/skills/greet/nested/SKILL.md',
           ],
-          diagnosticIds: [],
         },
       ],
       // One definition resolves nothing, so the row states no rule.
@@ -231,7 +357,10 @@ describe('recognition is atomic per admitted candidate (FR-005)', () => {
       throw new Error('expected the readable variant');
     }
     expect('recognitions' in file).toBe(false);
-    expect(file.parseSummary).toBe('not-applicable');
+    // The Codex `skill` row has an extractor, and it ran: the frontmatter
+    // block parsed and produced this file's `codex.skill.name` entry, so the
+    // rollup is `all-parsed` rather than the `not-applicable` a kind with no
+    // extractor would show.
   });
 
   it('never puts authored source or a validity verdict in a session summary', async () => {
@@ -243,7 +372,7 @@ describe('recognition is atomic per admitted candidate (FR-005)', () => {
     const serialized = JSON.stringify(context.session.snapshot());
     // The secret is in the fixture's authored source and in the committed
     // generation, but the snapshot's inventory rows must not carry it: source
-    // text is served only through the acknowledgement-gated detail route.
+    // text is served only through the detail route.
     expect(serialized).not.toContain(FIXTURE_SECRET_LITERAL);
     expect(serialized).not.toMatch(/"valid"|"invalid"|"compliant"|"effective"/u);
   });
@@ -259,7 +388,10 @@ describe('physical identity and mid-scan change (T055)', () => {
     mkdirSync(join(root, '.agents/skills/first'), { recursive: true });
     mkdirSync(join(root, '.agents/skills/second'), { recursive: true });
     writeFileSync(join(root, '.agents/skills/first/SKILL.md'), '---\nname: shared\n---\n', 'utf8');
-    linkSync(join(root, '.agents/skills/first/SKILL.md'), join(root, '.agents/skills/second/SKILL.md'));
+    linkSync(
+      join(root, '.agents/skills/first/SKILL.md'),
+      join(root, '.agents/skills/second/SKILL.md'),
+    );
 
     const context = bootstrap(root);
     await scanOnce(context);
@@ -317,7 +449,7 @@ describe('progress moves while the scan is running', () => {
     const fixture = buildCodexSkillFixture('inspector-scan-live-progress');
     cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
     const context = bootstrap(fixture.root);
-    const sourceId = context.session.internal.repositorySourceId;
+    const sourceId = context.session.repositorySourceId;
     const admitted = context.coordinator.admitScan(sourceId, {
       kind: 'startup',
       operationId: null,
@@ -343,7 +475,36 @@ describe('progress moves while the scan is running', () => {
     // The counter only ever grows, and the last report is past enumeration.
     expect(seen.at(-1)!.visitedEntries).toBeGreaterThan(0);
     expect(seen.map((entry) => entry.phase)).toContain('recognizing');
-    expect(seen.every((entry, index) => index === 0 || entry.visitedEntries >= seen[index - 1]!.visitedEntries)).toBe(true);
+    expect(
+      seen.every(
+        (entry, index) => index === 0 || entry.visitedEntries >= seen[index - 1]!.visitedEntries,
+      ),
+    ).toBe(true);
+  });
+
+  it('advances readBytes as census-listed companions are read', async () => {
+    // Companions are read during assembly, after the walk's own reads. Their
+    // bytes are part of "completed reads so far" (data-model.md § ScanProgress
+    // `readBytes`), so progress must move through that stretch rather than
+    // stall at the traversal's figure until the commit.
+    const fixture = buildCodexSkillFixture('inspector-scan-companion-progress');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const recognizingBytes: number[] = [];
+    await runSourceScan({
+      sourceId: 'companion-progress-source',
+      root: fixture.root,
+      rootFailureOwner: 'repository',
+      onProgress: (update) => {
+        if (update.phase === 'recognizing') {
+          recognizingBytes.push(update.readBytes);
+        }
+      },
+    });
+    // Candidate outcomes report too, so the phase carries more observations
+    // than the companion reads alone; what matters is that the companion
+    // stretch moves the byte figure past the walk's.
+    expect(recognizingBytes.length).toBeGreaterThan(fixture.expectedCompanionPaths.length);
+    expect(recognizingBytes.at(-1)!).toBeGreaterThan(recognizingBytes[0]!);
   });
 });
 
@@ -358,7 +519,12 @@ describe('completed progress reports the attempt, not its starting zeros', () =>
     expect(source.progress?.phase).toBe('complete');
     // Every counter has to reflect the work. They are admitted at zero, and
     // leaving them there would report "0 files" beside a published inventory.
-    expect(source.progress?.candidateFiles).toBe(context.session.snapshot().files.length);
+    //
+    // `candidateFiles` counts what the walk admitted, which is fewer than what
+    // the generation publishes: a companion is read and published without any
+    // rule admitting it, so it is not a candidate and is not counted as one.
+    const published = context.session.snapshot().files.length;
+    expect(source.progress?.candidateFiles).toBe(published - fixture.expectedCompanionPaths.length);
     expect(source.progress?.visitedEntries).toBeGreaterThan(source.progress!.candidateFiles);
     expect(source.progress?.readBytes).toBeGreaterThan(0);
     expect(source.progress?.diagnosticCount).toBe(
@@ -447,14 +613,9 @@ describe('the inventory unit is the kind, not the file (T1078)', () => {
     const snapshot = context.session.snapshot();
     const [definition] = snapshot.skills[0]!.definitions;
     // A definition names its file and nothing more: the path, size, encoding,
-    // and file diagnostics all live on the file itself, so the two can never
-    // disagree.
-    expect(Object.keys(definition!).sort()).toEqual([
-      'companionFiles',
-      'diagnosticIds',
-      'fileId',
-      'tools',
-    ]);
+    // and every diagnostic live on the file itself, so the two can never
+    // disagree (T1074: a definition repeats no fact the file publishes).
+    expect(Object.keys(definition!).sort()).toEqual(['companionFiles', 'fileId', 'tools']);
     expect(snapshot.files.filter((file) => file.fileId === definition!.fileId)).toHaveLength(1);
   });
 });
@@ -579,7 +740,7 @@ describe('a failure not confined to one file aborts the attempt (FR-030)', () =>
     // A deep enumeration failure is not confined to one file: it is never
     // converted into a Diagnostic, and no partial result is invented from the
     // candidates already discovered.
-    const sourceId = context.session.internal.repositorySourceId;
+    const sourceId = context.session.repositorySourceId;
     const admitted = context.coordinator.admitScan(sourceId, {
       kind: 'request',
       operationId: 'op-fatal',
@@ -621,7 +782,7 @@ describe('publication authority and relationship targets', () => {
     const fixture = buildCodexSkillFixture('inspector-scan-revoked');
     cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
     const context = bootstrap(fixture.root);
-    const sourceId = context.session.internal.repositorySourceId;
+    const sourceId = context.session.repositorySourceId;
     const admitted = context.coordinator.admitScan(sourceId, {
       kind: 'startup',
       operationId: null,
@@ -664,11 +825,20 @@ describe('publication authority and relationship targets', () => {
     expect(REPOSITORY_INSPECTION_RULES.map((compiled) => compiled.rule.ruleId)).toEqual(
       CODEX_REPOSITORY_RULES.map((compiled) => compiled.rule.ruleId),
     );
-    const opened = vi
-      .mocked(fsIo.readFile)
-      .mock.calls.map((call) => String(call[0]).slice(fixture.root.length + 1));
+    // Every opened path is either a file a shipped plan admitted or a file an
+    // admitted skill's census bound. A path merely mentioned inside an authored
+    // file is neither, and is never opened.
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) =>
+      String(call[0])
+        .slice(fixture.root.length + 1)
+        .split(sep)
+        .join('/'),
+    );
+    const bounded = new Set([...fixture.expectedSkillPaths, ...fixture.expectedCompanionPaths]);
     for (const path of opened) {
-      expect(path.endsWith('/SKILL.md')).toBe(true);
+      expect(bounded.has(path), `opened outside the shipped plans and censuses: ${path}`).toBe(
+        true,
+      );
     }
   });
 });

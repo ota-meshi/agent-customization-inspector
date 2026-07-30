@@ -206,7 +206,10 @@ export function createBootstrapGeneration(now: string): RepositoryScanGeneration
  * `createOpaqueId`, which draws 16 crypto-random bytes, so the provisional IDs
  * of one commit are distinct and the map is total over them.
  */
-function rekeyMap(provisional: readonly string[], assigned: readonly string[]): Map<string, string> {
+function rekeyMap(
+  provisional: readonly string[],
+  assigned: readonly string[],
+): Map<string, string> {
   return new Map(provisional.map((id, index) => [id, assigned[index]!]));
 }
 

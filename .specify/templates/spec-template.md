@@ -124,7 +124,8 @@
 ### Security and Privacy
 
 - **QR-003**: [Define trust boundaries, permissions, product-issued mutation semantics,
-  intentional sensitive-content access and acknowledgement, environment-derived resource
+  intentional sensitive-content access with direct presentation and no acknowledgement
+  step or standing notice, inert and session-only handling, environment-derived resource
   behavior without product-defined numeric validation limits, authority revocation or
   cancellation, cleanup of late work, residual risks, and safe failure behavior]
 

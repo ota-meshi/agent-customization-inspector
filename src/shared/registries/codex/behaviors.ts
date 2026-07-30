@@ -136,9 +136,8 @@ export const CODEX_USER_SKILLS_BEHAVIOR = {
  * both; shipping one alone would leave the dangling edge the contract gate
  * rejects.
  */
-export const CODEX_BEHAVIOR_STATEMENTS: Readonly<
-  Record<CodexBehaviorId, VendorBehaviorStatement>
-> = {
-  [CODEX_REPO_SKILLS_BEHAVIOR.behaviorId]: CODEX_REPO_SKILLS_BEHAVIOR,
-  [CODEX_USER_SKILLS_BEHAVIOR.behaviorId]: CODEX_USER_SKILLS_BEHAVIOR,
-};
+export const CODEX_BEHAVIOR_STATEMENTS: Readonly<Record<CodexBehaviorId, VendorBehaviorStatement>> =
+  {
+    [CODEX_REPO_SKILLS_BEHAVIOR.behaviorId]: CODEX_REPO_SKILLS_BEHAVIOR,
+    [CODEX_USER_SKILLS_BEHAVIOR.behaviorId]: CODEX_USER_SKILLS_BEHAVIOR,
+  };

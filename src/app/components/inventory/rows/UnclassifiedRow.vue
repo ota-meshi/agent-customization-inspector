@@ -9,8 +9,11 @@
 // listed the file if one had recognized it.
 import { computed } from 'vue';
 import RowDiagnostics from './RowDiagnostics.vue';
-import { FILE_ENCODING_TEXT } from '../../../../shared/entities';
-import type { CustomizationFileSummaryDto, SerializedDiagnostic } from '../../../../shared/api-types';
+import { FILE_ENCODING_TEXT, escapeControlCharacters } from '../../../../shared/entities';
+import type {
+  CustomizationFileSummaryDto,
+  SerializedDiagnostic,
+} from '../../../../shared/api-types';
 
 const props = defineProps<{
   /** The committed inventory row to render. */
@@ -21,11 +24,18 @@ const props = defineProps<{
 
 /** Always shown here: this row exists because of how it read, or how it did not. */
 const readOutcome = computed(() => FILE_ENCODING_TEXT[props.file.encoding]);
+
+/**
+ * The path as presentation text: control characters escaped (data-model.md
+ * § SourceRelativePath), so an authored name spanning lines cannot read as
+ * two rows. A computed keeps the pre-wrap paragraph's binding on one line.
+ */
+const pathText = computed(() => escapeControlCharacters(props.file.sourceRelativePath));
 </script>
 
 <template>
   <li class="aci-item">
-    <p class="aci-path">{{ file.sourceRelativePath }}</p>
+    <p class="aci-path aci-authored-text">{{ pathText }}</p>
     <p class="aci-note">{{ readOutcome }}</p>
     <RowDiagnostics :diagnostic-ids="file.diagnosticIds" :diagnostics="diagnostics" />
   </li>

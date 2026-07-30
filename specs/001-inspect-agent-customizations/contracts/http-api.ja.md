@@ -22,7 +22,9 @@ FR-022は、発行済みの`localhost` authorityにおけるexactな2つのclose
    そのclient-route fallback、devframe自身のconnection-discovery metadataを含む。Serveされる
    static contentはsession dataを含まない。
 2. **Local session RPC channel** — 以下に宣言するfunctionを運ぶdevframe RPC channel（同じ
-   loopback authorityでのWebSocket upgradeとstrict-JSON message）。
+   loopback authorityでのWebSocket upgradeとdevframe自身のmessage frame）。Frame encodingは
+   devframeが所有する: このadapterは全messageをstructured-clone textとして運び、product側は
+   functionごとのwire formatを宣言しない。
 
 どちらもoutbound requestでもMCP connectionでもない。Non-loopbackまたはremote authority、
 customization-selected destination、別machineへの調査content送信は禁止対象のままとする。
@@ -37,12 +39,15 @@ customization-selected destination、別machineへの調査content送信は禁�
    `engines.node`で1回だけ宣言してpackage managerがenforceし、package/asset integrityはpackage
    testとrelease gateがenforceする。Hostは自身のpackaged artifactをruntimeで再検証しない
    （Constitution Principle I）。
-2. Session hostはloopback bindingの内側でunauthenticatedに動作する。Per-session token/capability、
-   bearer header、origin/fetch-metadata classification、CORS出力は存在せず、config-inspectorと
+2. Session hostはloopback bindingの内側でunauthenticatedに動作する。Productはper-session
+   token/capability、bearer header、独自のorigin/fetch-metadata classification、CORS出力を
+   追加せず、config-inspectorと
    同じくdevframe authenticationをdisable（`auth: false`）する。Loopback bindingがhost-side
-   protectionの全てである（QR-003、Constitution v3.0.0）。残余limitationを文書化する。すなわち
+   protectionの全てである（QR-003、Constitution § Quality and Safety Standards）。残余limitationを文書化する。すなわち
    inspector実行中は、他のlocal processと、DNS rebindingを介したmalicious web pageがsessionへ
-   到達し得る。Serveされるcontentはuser自身のsecretを含み得るため、hostを起動machineの外へ
+   到達し得る。devframeはWebSocket upgradeへ自身のorigin gateを適用しており、それが
+   product所有のcheckを置かない理由である。ただしそのgateはloopback判定に一致する
+   hostnameをすべて許可するため、このlimitationを狭めない（research.md § 8）。Serveされるcontentはuser自身のsecretを含み得るため、hostを起動machineの外へ
    決して公開しない。
 3. Static servingはdevframe-ownedである。ServeされるSPA shellとassetはNuxt buildがpackaged
    `dist/public`へ出力したものそのままであり、productはstatic-assets manifest、per-asset
@@ -65,7 +70,7 @@ customization-selected destination、別machineへの調査content送信は禁�
    Extra key、path-shaped value、malformed argumentは文書化済みsafe rejectionで拒否する。`Parameters: none`と
    宣言したfunctionはinputを一切readしないため、boundaryで検証するものがない。functionがreadしないargumentの拒否は、
 保護すべきfailure modeを持たないruntime guardだからである。宣言する
-   全resultとrejectionは1つのcompleteなstrict-JSON-serializable valueとする。Transport容量は
+   全resultとrejectionは1つのcompleteなJSON-serializable value — plain object、array、string、number、booleanのみで、`Map`、`Set`、`Date`、class instanceを含まない — とする。Transport容量は
    製品定義のrequest-size上限ではなくNode.js、devframe、実行環境から継承する。
 
 ## RPC function一覧
@@ -84,6 +89,13 @@ customization-selected destination、別machineへの調査content送信は禁�
 Comparison viewは2件の`get-file-detail` resultからclient側で構築し、独立したcomparison
 functionは存在しない。Catalogのどこにもmasking、redaction、reveal、environment-resolution
 functionは存在せず、hostはdevframeのoptional MCP routeをenableしない。
+
+同じchannelには、このcatalogではなくframeworkが無条件に登録するdevframe自身のbuilt-inも載る:
+`devframe:agent:list-tools` / `invoke-tool` / `list-resources` / `read-resource`（空 —
+productはagent toolもresourceも登録しない）、`devframe:rpc:server-state:subscribe` / `get` /
+`set` / `patch`（未使用 — productはserver stateを共有しない）、`devframe:streaming:*`（未使用 —
+productはstreaming channelを宣言しない）。Editor/finder helper（`devframe:open-in-editor`、
+`devframe:open-in-finder`）はこのproductがimportしないopt-in recipeであり、登録されない。
 
 ## 共通resultとerror
 
@@ -196,12 +208,12 @@ InspectionSession
 │                         diagnosticCount, queuedAt, startedAt }
 ├── files[]
 │   └── fileId, sourceId, sourceRelativePath, diagnostic IDs, and encoding as the variant
-│       discriminator — readable text adds parseSummary, sizeBytes, and hadLeadingBom;
+│       discriminator — readable text adds sizeBytes and hadLeadingBom;
 │       binary adds only sizeBytes; unknown adds nothing. A file publishes its own facts
 │       only; what it was recognized as belongs to a per-kind inventory below
 ├── skills[]
 │   └── declaredName null | string,
-│       definitions[] { fileId, tools[], companionFiles[], diagnostic IDs },
+│       definitions[] { fileId, tools[], companionFiles[] },
 │       sameNameResolutions[] { tool, resolution } — empty unless several definitions
 └── diagnostics[] { diagnosticId, code, sourceId?, fileId?, sourceRelativePath? }
     （active-generation recordとsession-owned lifecycle record）
@@ -215,6 +227,13 @@ identifierであり、それを収めるdirectory名と一致する必要はな�
 vendor contractから決める。したがって物理fileは
 `files[]`に自身の事実 — path、read結果、size、diagnostic — とともに1度だけ現れ、各kindの一覧は
 `fileId`で参照してそれらを繰り返さない。
+
+`files[]`は、directory形式のcustomizationに付随するfileも運ぶ。Skillは全体として読むため、その
+directory内のscript、reference、assetは他のfileと同様に公開される
+（contracts/inspection-path-allowlist.md § Bounded companion census）。Ruleがadmitしておらず何も
+認識していないため、どのkindの一覧にも属さない。それらを名指すのは所属するskillの
+`definitions[].companionFiles`であり、clientは`files[]`を通じて各pathを`fileId`へ解決し、
+そのcustomizationのdirectoryを提示する。
 
 `sameNameResolutions`は、複数の定義が宣言する名前を各認識productがどう解決するかを述べる。これにより
 groupingがInspectorの記録していない優劣を暗示することはない。定義が1つのentryはこれを持たない。解決
@@ -280,19 +299,16 @@ failureはそのrequestのordinary errorとして表面化する。初回Global-
 そこから派生するsnapshot stateをすべて保持する。
 各`sourceRelativePath`はowning Sourceのsingle rootを基準とし、APIはabsolute/canonical filesystem
 pathへ置き換えない。
-Public Source-relative PathはNFC display segmentでserializeし、filesystem operationはraw entry
-nameをinternalに使う（FR-024）。Hard linkは通常のfileであり、physical-identity grouping、
+Public Source-relative Pathは、filesystem operationがinternalに使うのと同じexactなraw entry
+nameを`/`でjoinしてserializeする（FR-024）。Hard linkは通常のfileであり、physical-identity grouping、
 primary-path selection、alias path listは存在しない。
 Inventory summaryはsource textを含まない。Sort orderはsource kind、Global tool（存在する場合）、
-normalized source-relative path、file IDの決定的順序。
-`parseSummary`はfile-levelのclosed projection
-`not-applicable | all-parsed | mixed | all-failed`とする。全recognitionが`not-attempted`なら
-`not-applicable`、1件以上が`parsed`で`failed`がなければ`all-parsed`、1件以上が`failed`で`parsed`が
-なければ`all-failed`、`parsed`と`failed`が共存すれば`mixed`とする。`not-attempted` recordは後3
-projectionを変えない。Fileはrecognition summaryを持たない: 何として認識されたかはkindごとの一覧に属し、
+source-relative path、file IDの決定的順序。
+Fileはrecognition summaryもparse rollupも持たない — recognition自身の`parseStatus`がparseの
+事実であり、file-levelのaggregateには読み手がいなかった。何として認識されたかはkindごとの一覧に属し、
 各rowはそのkindを識別するものだけを運ぶ。Aggregateなdocumentation/applicability status、parse result、
 winnerを発明することはない。Record-by-recordのevidence/applicabilityは後述するdetail
-provenance/relationshipだけに保持する。
+provenanceだけに保持する。
 
 1 generation内で各`(fileId, tool, kind)`に対する`ToolRecognition`は正確に1つとする。Compatible
 provenanceはそのrecognitionへmergeする。Provenance間でparsed meaningがinconsistentなら、その1
@@ -318,10 +334,10 @@ Retainする全failed-request error messageはexact 1つの`staleFailures` entry
 Diagnostic
 listには一切入れない。
 `scope`はdiagnostic lifetimeと独立した必須attachment discriminatorである。Location fieldは
-常に3つとも存在し、そのscopeが使わないものはnullとする。Legalな組み合わせは3つだけで、`file`は
+常に3つとも存在し、そのscopeが使わないものはnullとする。Legalな組み合わせは2つだけで、`file`は
 `sourceId`、`fileId`、当該fileのSource-relative Pathがすべてnon-null、`source`は`sourceId`が
-non-nullで他の2つがnull、`session`は3つともnullとする。Source/session scopeの
-recordはfile IDやpathを捏造しない。それ以外の組合せはserialization前に拒否する。
+non-nullで他の2つがnullとする。Path-lessなscopeは存在せず（すべてのdiagnosticはSourceに属する）、
+source scopeのrecordはfile IDやpathを捏造しない。それ以外の組合せはserialization前に拒否する。
 Progressは`idle`、`failed`でnull、active workおよびdata modelで定義したfinal `ready`/`partial`
 counterではpresentとする。最初のlegal snapshotは、capture済み`process.cwd()`または単一の`--root`
 からlexicalに選択したexact 1つのidle Repository Sourceを持ち、file/diagnosticなしのbootstrap
@@ -331,22 +347,23 @@ sessionをusableに保ったままsource-scopedな`root-unreadable` Diagnostic�
 （FR-002）。Startup throw/rejectionはprocessを終了させ得るため、後続のreadable snapshotを保証
 しない。
 
-Sensitive-content warningはclient所有とする。detail/comparison surfaceを開くとcredentialを含む
-可能性があるcompleteなauthored valueを表示することは、それをrenderするcomponentの固定English textが説明し、
-APIはwarning fieldを送らない。
-Protected valueには完全なsource text、declared authored metadata、authored relationship target、
-comparisonの両sideを含む。SPAは
-任意の`FileDetail`を要求する前またはcomparisonを構築する前に、current browser session用の
-in-memory acknowledgementを要求する。Acknowledgementはclient-onlyで、このAPIへ送らず、どちらの
-sideも永続化しない。Acknowledgementはpresentation-onlyであってaccess-control factorではない
-（FR-027）。Loopback bindingがhost-side protectionの全てであり（QR-003）、APIはpresentation
-acknowledgementを受け付けず、enforceするとも主張しない。それでもshipped SPAはdetail requestまたは
-comparison構築前にそのacknowledgementを取得しなければならない。新しくloadしたbrowser documentと
-中央full-session client-data purgeはacknowledgementをresetする。Route close、selection
-replacement、file/Source removal、どちらかのsequenceのgeneration replacementはその中央purgeでは
-なくscope限定cleanupであり、generation replacementはそのsequenceのscoped modelだけをdisposeし、
-読み込み済みdocumentのacknowledgementを維持してよい。Global disableは中央purgeを使うため
-resetする。Filesystem authorityを付与せず、返すcontentも変更しない。
+authored contentに何が含まれ得るかについての注意書きは、どのsurfaceも掲げない。APIもそのためのwarning
+fieldを送らない。閲覧者自身のfileをloopback束縛のsession上で表示するviewerには警告すべきものが無く、
+常設の注意書きは読み手自身のrepositoryについて読み手に説明するために画面を費やす。contentの前に立つものも
+無い。Acknowledgement stepもacknowledgement stateも存在しない（FR-027）。Loopback bindingがhost-side protectionの全てで
+あり（QR-003）、確認は何も守らない一方ですべてのfileを読むのに2回の操作を要求することになる。
+APIはacknowledgementを受け付けず、enforceするとも主張しない。
+Authored value（完全なsource text、declared authored metadata、authored relationship target、
+comparisonの両side）へは、`FileDetail`を1つずつrequestするかcomparisonを1つずつ構築することで
+のみ到達でき、inventoryやsessionのresponseはそれを運ばない。例外はskillの`declaredName`
+1つだけであり、inventory entryはrowが列挙される識別子としてこれを運ぶ: vendor自身のselectorや
+menuがskillをその名前で指し、Source相対Pathからは復元できず、自らが列挙するものを名指せない
+一覧はinventoryではない（FR-007、data-model.md § ToolRecognition）。それ以外の宣言済みの値は
+明示的なdetail requestの背後にとどまる。中央full-session client-data purgeは
+clientが保持するものを破棄する。Route close、selection replacement、file/Source removal、
+どちらかのsequenceのgeneration replacementはその中央purgeではなくscope限定cleanupであり、
+generation replacementはそのsequenceのscoped modelだけをdisposeする。Global disableは中央purgeを
+使う。いずれもfilesystem authorityを付与せず、返すcontentも変更しない。
 
 `globalControl`はGlobal consent/control stateがinactiveな場合だけnullとなる。それ以外では`state`が
 `active`または`disabling`となり、`previewId`がfrozen active previewを識別する。`confirmedTools`は
@@ -395,54 +412,54 @@ Outcomes: fullまたはfenced DTO。
 
 ### `agent-customization-inspector:get-file-detail`
 
-Parameters:
+Parameters: opaque file IDを1つ、functionの単一positional argumentとして渡す。
 
 ```json
-{ "fileId": "opaque-file-id" }
+"opaque-file-id"
 ```
 
 Active-generation file detailを1件返す。
 
 ```text
 FileDetail
-├── parseSummaryを含むfile summary fields
-├── sourceText（readable textのみ。binary/unknownでは存在しない）
+├── file — encodingで判別されるCustomizationFile 1件:
+│   ├── fileId, sourceId, sourceRelativePath, encoding, diagnosticIds[]
+│   ├── readable textはさらにhadLeadingBom, sourceText, sizeBytes,
+│   │   recognitionIds[], relationshipIds[]（本releaseでは空。下記参照）を持つ
+│   └── binaryはさらにsizeBytesを持ち、unknownはこれ以上何も持たない
 ├── recognitions[]
-│   ├── recognitionId, fileId, tool, kind, parseStatus, diagnosticIds[]
-│   ├── declaredMetadata[] { closed fieldId, zero-based occurrence, exact authoredLiteral }
-│   └── provenances[] { provenanceId, ruleId, discoveryClass, matchedPath,
-│                       seedFileId, seedProvenanceId, seedRuleId,
-│                       declarationKey, scope, evidenceAssessments[], order,
-│                       behaviorRefs, strategyRefs, sourceRefs,
-│                       applicability { summary, strategyRefs, evaluatedFromGeneration,
-│                                       condition facts[] } }
-├── relationships[] { relationshipId, fromFileId, fromRecognitionId, fromProvenanceId,
-│                     ruleId, kind, targetOrigin, authoredTarget（exact sliceまたはnull）、
-│                     normalizedTarget, boundary status, resolution status,
-│                     evidenceAssessments[], behaviorRefs, strategyRefs, sourceRefs,
-│                     applicability { summary, strategyRefs, evaluatedFromGeneration,
-│                                     condition facts[] } }
+│   ├── recognitionId, fileId, tool, parseStatus, diagnosticIds[]
+│   ├── details { kind。skillのdetailsはさらにdeclaredName — recognizerが
+│   │             何もextractしなかったときは不在 — とcompanionFiles[]を運ぶ }
+│   ├── declaredMetadata[] { closed fieldId, 解決済みvalue }
+│   └── provenances[] { ruleId, discoveryClass, matchedPath, scope,
+│                       evidenceAssessments[],
+│                       applicability { summary, conditions[] } }
 └── diagnostics[]
 ```
 
-各derived provenanceは`seedFileId`、`seedProvenanceId`、`seedRuleId`の3つすべてにより、独立して
-admit済みのexact static seed 1件を識別する。Static provenanceは3つすべてをnullとしてserialize
-する。`scope`はclosed `ScopeDescriptor` union（`source-root`、`directory-subtree`、
-`matching-path`、`declared`）、`order`はnullまたは`path-depth`、`registry-rank`、
-`source-occurrence` componentを1から4件持つclosed `OrderDescriptor`とする。Exact fieldとstable
-comparison keyは[data-model contract](../data-model.ja.md#scopedescriptororderdescriptor)が定義し、
-APIはimplementation固有のscope/order objectを受理・返却しない。
+この木がresponseの形そのものである: clientは正確にこのfieldだけに依存できる。
+Edge recordの`relationships` arrayは存在しない — shipped recognitionはedgeを1つも生成できないため、
+すべてのresponseで空になる。これはそれを埋めるrelationship phaseとともに到着する。上記のreadable
+fileの`relationshipIds`は同じ事実のID list形であり、存在して空である。
+provenanceも同様に、`provenanceId`（relationshipが来るまでadmissionを指し返すものが無い）、
+`order`とderived-seedの3つ組`seedFileId`/`seedProvenanceId`/`seedRuleId`（shipped ruleに
+derivedは無く、shipped strategyはorderを文書化していない。derivation/ordering phaseとともに
+到着する）、`declarationKey`（shippedな唯一のkindはfile全体）、
+`behaviorRefs`/`strategyRefs`/`sourceRefs`（参照されるsubjectは既にそれぞれ
+`evidenceAssessments`のrecordであり、citationはpackaged CLIが持たないmaintenance data）の
+いずれも持たない。`scope`はclosed `ScopeDescriptor` union（`source-root`、
+`directory-subtree`、`matching-path`、`declared`）とする。Exact fieldとstable comparison key
+は[data-model contract](../data-model.ja.md#scopedescriptororderdescriptor)が定義し、
+APIはimplementation固有のscope objectを受理・返却しない。
 
-Readable fileでは`sourceText`、全`declaredMetadata[].authoredLiteral`、`targetOrigin: authored`の
-全relationshipが、credential detection、masking、redaction、reveal stepなしでdecoded sourceの
-structural delimiter内かつround-trip可能なexact sliceを保持する。
-Metadata arrayはsource occurrence順と受理したduplicateを保つ。`occurrence`はowning recognition内の
-scopeとし、完全なcomparison identityは`(tool, kind, fieldId, occurrence)`とする。
-Authored quote、escape、block/collection punctuation、number/date spelling、environment-reference
-syntaxをparser-normalized valueの代わりに返す。別のinternal typed semantic valueをclassification、
-target normalization、plan定義derivationに使ってよいが、serialize/displayしない。JSON transport
-escapeはclient上で同じ`authoredLiteral` stringへround-tripしなければならない。
-Environment-variable referenceはliteral stringのままとし、hostは参照されたprocess-environment
+Readable fileでは`sourceText`は完全なdecoded sourceとし、全`declaredMetadata[].value`は
+そのfieldについてparserが解決した値 — quoteとescapeは解決され、`007`は`7`として読まれ、
+2回宣言されたkeyは後の宣言として読まれる — を、credential detection、masking、redaction、
+reveal stepなしで保持する。Entryはallowlist rowの順でfieldごとに1件とし、comparison identityは
+`(tool, kind, fieldId)`とする。scalar以外へ解決するfieldはentryを持たない。rowが名指すのは
+scalar fieldだからである。JSON transport escapeはclient上で同じstringへround-tripしなければならない。
+Environment-variable referenceは書かれたままの文字とし、hostは参照されたprocess-environment
 valueをread、resolve、substituteしない。Inspectionが使うenvironment valueは、Global rootを
 consent flowで導出するための明示的に文書化されたtool-home variableだけとする。
 Registry定義の`targetOrigin: documented-default` relationshipは`authoredTarget: null`とし、SPAは
@@ -450,8 +467,8 @@ Registry定義の`targetOrigin: documented-default` relationshipは`authoredTarg
 示さない。
 
 Inventory、Detail、Comparison、Global control、Diagnostics、Source Condition Facts、全API result、
-CLI output、documentationを通じて、productが行うのは構文だけのparsing、exact authored-literal
-extraction、機械的なtyped decoding、frozen-catalog classification、文書化済みstructural
+CLI output、documentationを通じて、productが行うのは構文だけのparsing、allowlist fieldについてparserが解決した値の読み取り、
+frozen-catalog classification、文書化済みstructural
 scope/order/condition/selection/reference projectionだけである。Natural-languageのmeaningまたは
 intentをinterpret/rankせず、customizationのcorrectness、validity、compliance、effectiveness、
 qualityを判定せず、policy/remediation advice、validation、lint、synchronization、conversion、
@@ -461,8 +478,9 @@ content verdictを含まない。1 fileに限定されたfailureはFR-028に従�
 それ以外のunexpectedなRPC所有failureはrequestのordinary errorとしてpropagateしてDiagnosticには
 ならない。
 
-File encoding stateは、完了した通常readのbyteから割り当てる。NUL byteが1つでもあれば`binary`とし、`sourceText`もBOM recordもなく、comparison不適格で、その他の条件を満たせば`partial` generationとしてpublish
-可能とする。それ以外のbyte sequenceはUTF-8 replacement semanticsで正確に1回decodeする。先頭BOM
+File encoding stateは、完了した通常readのbyteから割り当てる。NUL byteが1つでもあれば`binary`とし、`sourceText`もBOM recordもなく、comparison不適格とする。admit済みcandidateではそれはdiagnostic-onlyであり、
+その他の条件を満たせばgenerationを`partial`にする。censusが列挙したcompanionのbinary bytesはassetの通常の
+事実である（FR-025）。それ以外のbyte sequenceはUTF-8 replacement semanticsで正確に1回decodeする。先頭BOM
 1つは`hadLeadingBom: true`として除去する。Replacementなしでdecodeできたtextは`utf-8`、`U+FFFD`が1つでも
 insertされた場合は`utf-8-replaced`とする。その文字化けしたexactで完全な`sourceText`をparsing、
 extraction、detail、comparisonへ渡し、それ自体を理由にgenerationをpartialにしない。Alternate
@@ -477,21 +495,20 @@ recognitionに限定されたparser/extractor failureは、完全なreadable sou
 eligibilityを保ったまま（FR-028）、`partial` generation内でこのfailed-recognition stateと
 file-scopedな`recognition-parse-failed` Diagnosticを作成する。1 fileに限定されないfailureは
 attemptをfailさせ、RPC所有の場合はrequestのordinary errorとして公開する。
-Structural metadata comparisonは`(tool, kind, fieldId, occurrence)`を使うため、field/occurrenceが
-同じでも別tool/kindは衝突しない。
+Structural metadata comparisonは`(tool, kind, fieldId)`を使うため、fieldが同じでも
+別tool/kindは衝突しない。
 
-Metadata、authored relationship target、derivationを生成する全internal `SourceTextRange`は、
-ECMAScript UTF-16 code unitで測るhalf-open `{ start, end }`とする。`sourceText.slice(start, end)`が
-返すauthored literalと正確に一致しなければならない。UTF-8 byte measurementは別に保持しoffsetと
-して再利用しない。Unicode normalization、code-point count、grapheme countでrangeを変更しない。
-同じlogical source occurrenceのmetadata/relationship/derivation outputは正確に同一のrangeをreuse
-してよい。別logical occurrenceのpartial overlap、nest、crossは禁止し、そのようなoverlap、曖昧
-boundary、non-round-trip rangeはaffected recognitionをall-or-nothingでfailさせる。
+Declared valueは文字を丸ごと運ぶ。astral characterはUTF-16 code unit 2つ、combining markは
+code point 2つだからである。よってextractionとJSON transportを変化なく通過し、Unicode normalizationも
+適用しない。Responseはsource座標を持たない。Documentを指すものが存在せず、取得元の値の隣に置かれた
+rangeはその値が既に述べていること以上を主張しないからである。Parseできなかったdocumentは
+affected recognitionをall-or-nothingでfailさせる。一方でその完全な`sourceText`は利用可能なまま残る。
+値がもはや運ばない綴りをreaderが求める先はそこである。
 
 Resultはinert JSON stringを使う。SPAは`sourceText`とmetadataをVue text bindingでrenderし、
 `v-html`、Markdown rendering、clickable link、URI handler、image loadを使わない。Resultはmemory内
-だけに保持し、durableにcacheせず、logに残さない。SPAは上記client-only sensitive-content
-acknowledgementを表示して取得した後だけrequestする。
+だけに保持し、durableにcacheせず、logに残さない。SPAはfileを1つずつrequestし、その隣に
+注意書きを置かずに表示する。
 
 Detail request tokenは正確な`(clientDataEpoch, owning sequenceのcurrent generation, fileId)`を
 captureする。Captureした3値がlive epoch、owning sequenceのgeneration、selected fileと全て一致
@@ -850,8 +867,8 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
   projectionではcontrol-only recoveryへ入る前に中央purgeを実行し、network/runtime failure、
   channel loss、session mismatchではended view表示前にpurgeする。Page-lifecycle eventはpurge triggerではない: FR-027はdocument-liveness failureまたは同等のterminal reset後にpurgeするものであり、tab切り替えもページからの離脱もそのどちらでもない。破棄されたdocumentは自分のmemoryを解放し、bfcacheに入ったdocumentが保持するのは同じユーザーが自分のマシンで自分のファイルを見た状態であって、trusted-workspace modelはこれをexposureとして扱わない。clientはvisibility/unload listenerを設置しない。
   Purgeはclient epochをincrementしてlate in-flight resultによるDTO/editor stateの復活を防ぎ、
-  Monaco model/editor/worker/subscriptionをdisposeし、DOM/store contentとwarning
-  acknowledgementをclearしてpending requestをabortする。Node process終了時はserver側session
+  Monaco model/editor/worker/subscriptionをdisposeし、DOM/store contentをclearして
+  pending requestをabortする。Node process終了時はserver側session
   state、complete source content、source root、generation、diagnosticを破棄する。
 - Session-channel invocationはMCP serverを起動せず、importを追わず、inspected URLを開かず、
   customization commandをinvokeせず、inspected sourceへwriteしない。Hostはdevframeのoptional
@@ -867,8 +884,9 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
   見るものを表示するからである。Targetがmissingまたはunreadableなlinkはそのfileの
   `file-unreadable` Diagnosticになり、recursiveなtraversalはreal pathで訪問済みdirectoryを追跡
   してlink cycleがscanの終了を妨げないようにする（FR-024）。Hard linkはphysical-identity
-  groupingを持たない通常のfileである。Readに失敗したfileは`file-unreadable`、NULを含むcontentは
-  `file-content-binary`となる。これらのoutcomeはfileに閉じ、影響を受けない全fileをcompleteに
+  groupingを持たない通常のfileである。Readに失敗したfileは`file-unreadable`、admit済みcandidateのNULを含むcontentは
+  `file-content-binary`となる — censusが列挙したcompanionのbinary bytesは何も生まない。これらの
+  Diagnosticを伴うoutcomeはfileに閉じ、影響を受けない全fileをcompleteに
   保ち、その他の条件を満たせばpublish可能なgenerationを`partial`とする（FR-028）。Selected
   rootが存在しないかdirectoryとしてreadできない場合は、Source attemptを`root-unreadable`で
   failさせ、そのattemptのgenerationをpublishしない（FR-002）。Operation間の反復identity再検証、
@@ -891,8 +909,9 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
 
 1. Startup fixtureは、standalone hostのlistening socketが全supported OSでloopback address（platformの`localhost`解決に応じてIPv4 `127.0.0.1`またはIPv6 `::1`）へbindされ、
    どのconfiguration/flagも`0.0.0.0`、LAN address、Unix socketへbindしないこと、表示済みlaunch
-   lineが`localhost` authorityを持つことをassertする。Channel fixtureは、session channelにtoken、
-   session capability、bearer header、origin classificationが存在しないこと、shipped
+   lineが`localhost` authorityを持つことをassertする。Channel fixtureは、productがsession channelへtoken、
+   session capability、bearer header、origin classificationを追加しないこと — そこにある
+   WebSocket origin gateはdevframe自身のものである — と、shipped
    documentationが残余unauthenticated-loopback limitation（他local process、DNS rebinding）を
    記載することを証明する。Presentation-output testはhelp/version text、1件の
    launch-URL line、固定startup warningをcoverし、unexpectedなstartup failureはそのordinary
@@ -921,20 +940,15 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
    channelが直後にretained prior snapshotをserveする。Request-owned rejectionはprocessをexit
    せず実際のerrorでrejectする。自動startup read rejectionはprocess top levelへ到達し、productは
    process livenessを保証しない。
-3. Readable file detailはcompleteなauthored source、exact metadata/authored-relationship source
-   slice、credential、environment-reference textをmask/reveal controlなしで返す。JSONC escape
-   spelling、YAML quote/block spelling、TOML quote/date spelling、collection punctuation、source
-   order、受理したduplicate occurrenceをtransportとstructural comparison後も保持し、normalized
-   semantic valueを表示へ置換しない。File summaryには
-   `not-applicable | all-parsed | mixed | all-failed`だけを公開し、`(fileId, tool, kind)`ごとに
-   正確に1つのrecognitionは`not-attempted | parsed | failed`とown diagnostic IDを公開する。
+3. Readable file detailはcompleteなauthored sourceと、各allowlist fieldについてparserが解決した
+   値を、credentialとenvironment-reference textを含めてmask/reveal controlなしで返す。値はfieldごとに
+   1件であり、2回宣言されたkeyは後の宣言へ解決される。File summaryはparse rollupを一切公開せず、`(fileId, tool, kind)`ごとに
+   正確に1つのrecognitionが`not-attempted | parsed | failed`とown diagnostic IDを公開する。
+   Parseが何をしたかを読み手が知るのはそこである。
    Compatible provenanceを1回mergeし、inconsistent meaningはそのrecognitionをall-or-nothingで
    failさせ、arrayはclosed tool-then-kind orderを使う。Comparison keyは
-   `(tool, kind, fieldId, occurrence)`とする。Astral character、unpaired surrogate、combining
-   sequence、通常BMP textにより、`SourceTextRange`がUTF-16 `String.prototype.slice` offsetを
-   使い、UTF-8計測とは分離することを証明する。同じlogical occurrenceは
-   metadata/relationship/derivation間でidentical spanをreuseできるが、別occurrenceの
-   partial/nested/crossing overlapはrecognitionをfailさせる。返却する全metadata tuple
+   `(tool, kind, fieldId)`とする。Astral character、combining sequence、通常BMP textにより、
+   declared valueがextractionとJSON transportを丸ごと通過することを証明する。返却する全metadata tuple
    `(tool, kind, fieldId)`とrelationship tuple `(tool, kind, relationship kind)`は、維持管理する
    presentation allowlistに含まれ、かつexactなauthored occurrenceがrecognitionのactualな
    admission済みsource form用extractorでsupportされなければならない。Tuple membershipによって
@@ -944,19 +958,19 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
    fixed-orderの`preview | experimental | deprecated` qualifierを別に維持し、empty qualifier
    arrayをlifecycle claimなしとして扱う。Ruleと参照する全behavior/strategyについてsort済み
    `EvidenceAssessment`を1件ずつ要求し、lossy scalar assessmentを拒否してruntime
-   `documentation-conflict`と区別する。Encoding fixtureはNULがbinary/diagnostic-only/`partial`、
+   `documentation-conflict`と区別する。Encoding fixtureは、admit済みcandidateのNULがbinary/diagnostic-only/`partial`であり、companionのNULは
+   単なるbinaryの事実であること、
    valid textが`utf-8`、invalid non-NUL inputがreadableな`utf-8-replaced`で
    あり、全`U+FFFD`をparsing、detail、comparisonまで保持し、それ自体を理由にgenerationを
    partialにしないことを証明する。Alternate decoderを一切invokeしない。固定Codex default-hook
    fixtureは`targetOrigin: documented-default`、null `authoredTarget`、明示的な
    documented-default labelを返し、explicit manifest hookは`targetOrigin: authored`とexact
    occurrenceを返す。Sentinel process valueによりenvironment referenceをresolve/substitute
-   しないことを証明する。SPAはdetail requestまたはcomparison構築前にin-memory
-   sensitive-content acknowledgementを表示して取得し、それ以前はprotectedなauthored-value
-   requestもderived DOM/editor stateも存在しないことをassertする。Reveal functionはRPC
-   catalogに存在しない。直接のRPC testはacknowledgementのparameterもfunctionも存在せず、
-   acknowledgementがpresentation-onlyであること、すなわちchannelはacknowledgementなしで
-   detailをserveし、server-side presentation gateという主張ではなくloopback bindingが
+   しないことを証明する。testはdetail surfaceにauthored contentについての注意書きが
+   現れないこと、`FileDetail` requestやcomparisonの前に確認stepが立たないこと、inventoryや
+   sessionのresponseがauthored contentを運ばないこと、Reveal functionがRPC catalogに存在しない
+   ことをassertする。直接のRPC testはacknowledgementのparameterもfunctionも存在せず、
+   server-side presentation gateという主張ではなくloopback bindingが
    host-side protectionの全てであることを証明する。Cross-surface negative fixtureは
    Inventory、Detail、Comparison、Global control、Diagnostics、Source Condition Facts、API
    DTO、CLI output、documentationが文書化済みstructural projectionだけを公開することを証明
@@ -972,11 +986,11 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
    boundaryで実際のmessageを運ぶordinary errorとしてrejectする。Partial result、incomplete
    generation、validity/correctness/compliance/lint verdictを返さず、その後もsessionはusable
    でprior snapshotはreadableのままとする。Escape/key-order fixtureは1つの
-   completeなstrict-JSON-serializable result valueがchannelを変更なしに通過し、clientで
+   completeなJSON-serializable result valueがchannelを変更なしに通過し、clientで
    round-tripすることを証明する。
 5. Static traversal/encoded traversal attemptがpackaged `dist/public` outputの外へ出ない。Serve
    される全byteがそのpackaged Nuxt outputに由来し、inspected fileを一切serveせず、root、
-   `/compare`、`/global-consent`、`/files/<fileId>`のclient routeがすべて同じpackaged SPA shell
+   `/compare`、`/global-consent`、`/skills/<fileId>`のclient routeがすべて同じpackaged SPA shell
    をbootし、そのshellはsession dataをembedしない。
 6. Repositoryと各tool-specific Global rescanのqueue order、duplicate rejection、abort、partial
    outcome、fatal failure、pollingがwhole generationだけを公開する。別のSourceの後でqueueした
@@ -1025,16 +1039,16 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
    せず、新しくloadしたSPAはloopback RPC channelだけを通じてstateをadoptする。Session response/recovery testは
    browser/network/runtime rejection、channel loss、異なる`sessionId`でのport再利用、older/equal/greater epoch、
    null/draining/committing/failed projection、client epoch変更後のlate in-flight resultを扱い、
-   pre-purge inventory/detail/comparison/editor/authored-content DTO/DOM stateまたはwarning
-   acknowledgementが残留・復活しないことを証明する。Active consentがあるgreater epoch、non-null fence、または
+   pre-purge inventory/detail/comparison/editor/authored-content DTO/DOM stateが
+   残留・復活しないことを証明する。Active consentがあるgreater epoch、non-null fence、または
    明示Resume後のrecoveryではloopback channel経由で再接続し、purge済みIDを保持・比較せず返された`sessionId`を
    採用してclosed recovery projectionだけを構築する。Active control/enable stateからdisableを
    直ちに利用でき、draining/committingではjoin/wait、failedではretry-disableを提示し、同じ
    frozen previewを取得・検証した後はeligible retry controlだけを再構築する。Fenceがnon-nullの
    間は明示Resume inspection actionを表示しない。Null fenceではpageがmatching full sessionを再取得
    してdefault stateのfresh inventory summaryを構築するが、pre-purge authored content、
-   selection、filter、detail、comparison、editor、acknowledgementを復元しない。後の
-   detail/comparison requestにはnew acknowledgementを要求する。Accept前disable failureとtrue
+   selection、filter、detail、comparison、editor stateを復元しない。後の
+   detail/comparison requestはfresh sessionから改めて取得する。Accept前disable failureとtrue
    no-opはいずれもfresh-session fenceをnullのままにするため、purged clientは直ちにresume
    できる。
 8. Global consent previewは候補pathに触れず、confirmationはserverが保持する唯一のpreviewを

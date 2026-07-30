@@ -36,10 +36,7 @@ const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url));
 
 describe('verifyPackageFiles', () => {
   it('requires exactly the two package entry points', () => {
-    expect([...REQUIRED_PACKAGE_ENTRIES].sort()).toEqual([
-      'cli.mjs',
-      'public/index.html',
-    ]);
+    expect([...REQUIRED_PACKAGE_ENTRIES].sort()).toEqual(['cli.mjs', 'public/index.html']);
   });
 
   it('accepts a built dist and ignores tool-owned siblings', async () => {

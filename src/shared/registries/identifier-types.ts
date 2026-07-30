@@ -82,3 +82,23 @@ export type CodexRuleId =
  * rules that can authorize a read.
  */
 export type RuleId = CodexRuleId;
+
+/**
+ * The closed declared-metadata field identifiers OpenAI Codex recognitions may
+ * publish (contracts/vendors/openai-codex.md § Normative initial-release
+ * presentation allowlist). A field ID names one field of the recognized kind,
+ * fixed by that table, never an arbitrary key an inspected file supplies.
+ * Fields arrive with the recognizer phase that extracts them.
+ */
+export type CodexMetadataFieldId =
+  /** The `name` scalar of a `SKILL.md` YAML frontmatter block. */
+  | 'codex.skill.name'
+  /** The `description` scalar of a `SKILL.md` YAML frontmatter block. */
+  | 'codex.skill.description';
+
+/**
+ * Every declared-metadata field a recognition may publish. Each vendor's
+ * sub-union joins here, so an extractor cannot emit a field the presentation
+ * allowlist does not name (data-model.md § DeclaredMetadataEntry).
+ */
+export type MetadataFieldId = CodexMetadataFieldId;

@@ -10,11 +10,11 @@
 // the Node environment its contract and integration members need.
 import { describe, expect, it, vi } from 'vitest';
 
-import { createClientDataPurge } from '../../../src/app/session/client-data';
+import { ClientDataPurge } from '../../../src/app/session/client-data';
 
 describe('shared client-data purge', () => {
   it('runs every registered disposer synchronously, then increments the epoch', () => {
-    const clientData = createClientDataPurge();
+    const clientData = new ClientDataPurge();
     const order: string[] = [];
     clientData.register((reason) => order.push(`first@${clientData.epoch()}:${reason}`));
     clientData.register((reason) => order.push(`second@${clientData.epoch()}:${reason}`));
@@ -31,7 +31,7 @@ describe('shared client-data purge', () => {
   });
 
   it('stops calling a disposer once it unregisters', () => {
-    const clientData = createClientDataPurge();
+    const clientData = new ClientDataPurge();
     const disposer = vi.fn();
     const unregister = clientData.register(disposer);
     unregister();

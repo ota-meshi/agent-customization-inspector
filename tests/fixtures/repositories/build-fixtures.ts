@@ -37,8 +37,19 @@ export interface CodexSkillFixture {
    * Paths that sit one segment away from an admitted skill and must never be
    * admitted. Listing them explicitly is what makes an over-broad selector a
    * test failure rather than a silent inventory expansion.
+   *
+   * Not admitted is not the same as not published: a near miss that happens to
+   * sit inside an admitted skill's own directory is also that skill's companion
+   * and is published as an ordinary file (see {@link expectedCompanionPaths}).
+   * What "near miss" states is that no rule admitted it.
    */
   readonly nearMissPaths: readonly string[];
+  /**
+   * The files an admitted skill's census lists, sorted. They are read and
+   * published as ordinary files that no rule admitted and nothing recognized
+   * (contracts/inspection-path-allowlist.md § Bounded companion census).
+   */
+  readonly expectedCompanionPaths: readonly string[];
 }
 
 /** The literal credential-shaped value the secret-bearing skill declares. */
@@ -148,10 +159,7 @@ export function buildCodexSkillFixture(prefix = 'inspector-codex-skills'): Codex
     // because an agent loading the same path would resolve it too (FR-024).
     write(root, 'linked-target/SKILL.md', '# linked skill\n');
     mkdirSync(join(root, '.agents/skills/linked'), { recursive: true });
-    symlinkSync(
-      join(root, 'linked-target/SKILL.md'),
-      join(root, '.agents/skills/linked/SKILL.md'),
-    );
+    symlinkSync(join(root, 'linked-target/SKILL.md'), join(root, '.agents/skills/linked/SKILL.md'));
     // A link whose target is missing is that candidate's `file-unreadable`
     // Diagnostic, not an absent file.
     mkdirSync(join(root, '.agents/skills/broken'), { recursive: true });
@@ -166,6 +174,12 @@ export function buildCodexSkillFixture(prefix = 'inspector-codex-skills'): Codex
   return {
     root,
     capabilities: { symlinks },
+    // Only `greet/` holds anything besides its own `SKILL.md`; every other
+    // admitted skill directory has exactly one file.
+    expectedCompanionPaths: [
+      '.agents/skills/greet/README.md',
+      '.agents/skills/greet/nested/SKILL.md',
+    ],
     expectedSkillPaths,
     nearMissPaths: [
       '.agent/skills/solo/SKILL.md',

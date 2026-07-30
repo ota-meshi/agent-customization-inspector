@@ -160,9 +160,9 @@ unionへ平坦化しない。
 ## Initial releaseの規範的presentation allowlist
 
 次の表を、OpenAI Codexに対するclosedなFR-007 presentation allowlistとする。Kindの表記は正確な
-`ToolRecognition.kind` valueである。Field IDは、調査対象fileが与える任意のkeyではなく、authored source occurrenceの
-一つのclassを表す。Arrayの反復itemまたはdynamic map entryは、同じfield IDのもとでsource順の別occurrenceを生成する。
-Server、Hook event、environment、header、tool、named componentの`*.name` IDでは、authored map key自体をoccurrenceとする。
+`ToolRecognition.kind` valueである。Field IDは、調査対象fileが与える任意のkeyではなく、認識したkindの
+fieldを1つ表し、そのfieldについてparserが解決した値を持つentryを1件生成する。Server、Hook event、environment、
+header、tool、named componentの`*.name` IDでは、その値はauthored map keyである。
 `marketplace.plugin.source`は唯一のcross-vendor derivation fieldであり、plain stringのsource、またはobject sourceの
 `path` leafを表す。
 

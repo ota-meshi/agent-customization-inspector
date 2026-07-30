@@ -38,10 +38,7 @@ interface LaunchedCli {
  * one launch line has been printed. The launch line is the contract's manual
  * fallback, so waiting for it is also the readiness signal.
  */
-async function launchCli(
-  workingDirectory: string,
-  args: readonly string[],
-): Promise<LaunchedCli> {
+async function launchCli(workingDirectory: string, args: readonly string[]): Promise<LaunchedCli> {
   const child = spawn(process.execPath, [CLI_ENTRY, ...args], {
     cwd: workingDirectory,
     stdio: ['ignore', 'pipe', 'pipe'],

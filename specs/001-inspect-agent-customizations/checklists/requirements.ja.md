@@ -36,12 +36,12 @@
 - [x] Customization File entityが、`utf-8`と`utf-8-replaced`のreadには完全なsource textを公開し、binary outcomeには禁止し、readできないfileは他fileへ影響しないdiagnostic-only itemとして表す
 - [x] US3がGlobal workより前に読み取り可能な2つのdistinctなRepository fileだけで独立test可能で、同じfileを両inputへ受け付けず、US4がSource-relative namespaceをmergeしないRepository対Global comparisonを別途カバーする
 - [x] SC-003、SC-004、SC-005、SC-007、SC-009が、stable case ID、fixtureごとのdigest、0件ではないrequired class、実行した正確なcase record、denominator semantics変更時のpaired automated manifest-version transition test、独立したT1062 human-review record、fixture-byteのみ変更時のfixture/canonical digest両方の更新、欠落・省略・重複・不一致evidenceの必須failureを持つversion付きrelease-evidence fixture manifestを使用する
-- [x] Bundled-browserの全`FileDetail` requestとcomparison構築が、source text、declared metadata、authored relationship target、comparisonの両sideを扱う1つのacknowledgement gateを共有する。通常のroute、Source、generation cleanupはscope限定のままとし、Global disableはrequest前とgreater-epoch/non-null-fence観測時にfull-session purgeを行う明示的な例外とする
+- [x] Authored value（source text、declared metadata、authored relationship target、comparisonの両side）へは、bundled-browserの明示的な`FileDetail` requestまたはcomparison構築を通じて1つずつしか到達できず、そのどちらの前にも確認stepは立たず、acknowledgement stateもどこにも存在しない。通常のroute、Source、generation cleanupはscope限定のままとし、Global disableはrequest前とgreater-epoch/non-null-fence観測時にfull-session purgeを行う明示的な例外とする
 - [x] ClosedなGlobal-root tableがabsent/default、empty、invalid、relative、通常のhome外を含むeligible rootを区別し、missingまたはreadableではないconsent済みrootを他toolをblockせずにabsent/failedとして記録し、readableなrootを1つのatomic batch commitへadmitする
 - [x] Repository-root selectionを取得済み`process.cwd()`またはresolveした1つの`--root`値へ限定し、`chdir`を行わず、invalidなoption shapeをsession作成前にrejectし、bootstrap時にgeneration-0 Repository Sourceを正確に1つ作成する
 - [x] Selectorを持たない1回のsession-wide Global actionを固定Copilot/Claude/Codex previewへbindし、3 entryすべてを評価し、missingまたはunreadableなrootを他toolをblockせずに除外して、admit済みSourceを1 batchかつ1 atomic generationで公開する。予期しないfailureはtransaction全体をabortする
 - [x] Active-consent Global retryはfrozen preview/fixed tupleを再利用し、pending workがemptyになった後だけcompleteなretryable target setをserver側でderiveし、既存Source/prior snapshotを保持し、全件rejectならrequest/job/generationを作らず、それ以外はrequest-correlatedな1 atomic batchをpublishする
-- [x] Filesystem operationはraw entry nameを使用し、publicなSource-relative PathはNFCのdisplay segmentを使用する。Hard linkは通常のfileであり、symbolic linkはtargetを透過的にreadし、壊れたlinkはper-file diagnosticになる
+- [x] Filesystem operationはraw entry nameを使用し、publicなSource-relative Pathはその名前を`/`でjoinしたものである。Hard linkは通常のfileであり、symbolic linkはtargetを透過的にreadし、壊れたlinkはper-file diagnosticになる *(2026-07-29修正: 導出されるNFC display綴りとそのcollision rejectionは削除 — raw綴りが公開identityである)*
 - [x] Traversalは通常方式で、調査対象パス一覧のpathだけをreadする。1つのfileに限定される問題はそのfileのdiagnosticになり他fileへ影響せず、specificationは敵対的入力向けの機構を追加しない（FR-019）
 - [x] Codex Global override fallbackのemptyを、任意の先頭BOM 1つを除去した後の`String.prototype.trim()`で定義し、保持した`U+FFFD`をnon-whitespaceとして扱い、安全にreadしたempty contentまたはabsentなinitial targetの場合だけfallbackを許可する
 - [x] Presentation Allowlist freezeをverification-onlyとし、意味上のmembership、source form、extractor applicability、relationship kindの変更が必要ならdependent implementationを停止し、設計同期とplan/tasks再生成を必須とする
@@ -113,10 +113,10 @@
 - 2026-07-19の検証iteration 16では、US3をRepository scopeだけで独立test可能にしてcross-Source comparisonをUS4へ移し、
   abort-attempt wordingから決定的かつentry-localでthrowしないfailureを除外し、source textを検証済みnon-binary UTF-8
   replacement decode成功時だけに限定した。さらにSC-003/004/005/007/009のdenominatorをversion付きでdigest-boundなrelease-evidence manifestに
-  freezeし、authored-value acknowledgementとclient-data-purgeのscopeをclosedにした後、すべての項目に合格した。
+  freezeし、authored-value exposureとclient-data-purgeのscopeをclosedにした後、すべての項目に合格した。
 - 2026-07-20の検証iteration 17では、selected rootと`--root` behavior、authorityを持たないgeneration-0 Repository Source作成、
   selectorなしのfixed 3-tool Global batch、structural `lstat`の正確な`ENOENT`処理、REST対startupのOperation Error ownership、
-  文字化けを維持するUTF-8 replacement、raw/NFCとhard-link identity rule、Codexの正確なempty判定、verification-onlyな
+  文字化けを維持するUTF-8 replacement、raw-pathとhard-link identity rule、Codexの正確なempty判定、verification-onlyな
   Presentation Allowlist gateをclosedにした後、すべての項目に合格した。
 - 2026-07-20の検証iteration 18では、documentation completenessをlifecycle qualifierから分離し、
   `documentation-conflict`をruntime condition projection専用にし、provenanceとrelationshipへ決定的なsubject単位の

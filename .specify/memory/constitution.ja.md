@@ -1,56 +1,20 @@
 <!--
 同期影響レポート
-- バージョン変更: 4.3.0 → 4.4.0
-- 変更した原則: 読みやすく、保守しやすく、意図が伝わるコード — classの義務を全memberへ
-  一般化した。フィールドとメソッド（constructorとprivate memberを含む）にJSDoc docコメントを
-  付ける。メソッドは呼び出しが何をするかを、フィールドは何を保持しどのinvariantを維持するかを
-  述べる。
-- 以前のレポート (4.2.0 → 4.3.0):
-- バージョン変更: 4.2.0 → 4.3.0
-- 変更した原則: 読みやすく、保守しやすく、意図が伝わるコード — 文書化義務をclassのpublic
-  memberへも拡張した。Publicメソッド（constructorを含む）には、その呼び出しが何をするか、
-  どのcontract挙動を実装するかを述べるJSDoc docコメントを付ける。
-- 以前のレポート (4.1.0 → 4.2.0):
-- バージョン変更: 4.1.0 → 4.2.0
-- 変更した原則: 読みやすく、保守しやすく、意図が伝わるコード — 型の文書化義務を宣言自体へも
-  拡張した。Exportされた型、interface、定数には、それが何を表すかを述べるJSDoc docコメントを
-  付ける。4.1.0で追加したmemberごとの文書化に加えての義務である。
-- 以前のレポート (4.0.0 → 4.1.0):
-- バージョン変更: 4.0.0 → 4.1.0
-- 変更した原則: 読みやすく、保守しやすく、意図が伝わるコード — 文書化義務を型のmemberへ
-  拡張した。閉じたunionの各memberとexportされたinterfaceの各フィールドには、その意味と、
-  存在する場合は統治するcontractを述べるJSDoc docコメントを付けなければならない。具体的な
-  形式と例はAGENTS.mdのコードコメントの方針が持つ。
-- 以前のレポート (3.0.0 → 4.0.0):
-- バージョン変更: 3.0.0 → 4.0.0
-- 変更した原則: 品質と安全性の基準 — operational log/telemetryの内容規制の項目を削除し、
-  generic error化のdoctrineを廃止した。オーナーの2026-07-22決定によるFR-040/FR-041の削除で
-  ある: productにtelemetryは存在せず（outbound通信は禁止済み）、terminalとUIの出力を読むのは
-  調査対象fileを所有する本人であり、認証なしのsession APIは既にfileの完全な内容を返すため、
-  errorの原因を隠しても何も守られず、failureをdebug不能にするだけだった。Errorは通常どおり
-  報告し、closedなOperationError entityは削除した。（3.0.0はsession保護をloopback bindingへ
-  縮小した版。）
-- 更新したテンプレートとガイダンス (4.0.0):
-  - ✅ spec.md/spec.ja.md — FR-040/FR-041とOperation Error entityを削除。Failureのsemanticsは
-    FR-028/FR-030とscan-publication表が引き続き所有する
-  - ⚠ research/plan/data-model/contracts/tasksペア — 通常error化の整合を実施中
-- 以前のレポート (2.0.0 → 3.0.0):
-- 変更した原則: 品質と安全性の基準 — session保護義務を「loopback sessionを他originから
-  保護する」（sessionごとのtoken、Originチェック）から、loopback bindingのみへ縮小した。
-  オーナーの2026-07-22決定により、devframe local-tool frameworkを認証無効
-  （config-inspectorと同等）で採用したためである。配信contentにはユーザー自身のsecretが
-  含まれ得るため、hostは127.0.0.1だけにbindし、起動元machineの外へ決して公開しない。
-  認証なしloopback hostに残る他local processおよびDNS rebinding経由の露出は文書化した
-  limitationとする。「capability認証済み」API accessと「認証済み」diagnosticの表現も
-  併せて削除した。（2.0.0は敵対的file modelをtrusted-workspace前提へ置換した版。）
-- 追加したセクション: なし
-- 削除したセクション: なし
+- バージョン変更: 4.4.0 → 5.0.0
+- 変更した原則: 品質と安全性の基準 — 2つの変更を同時に導入する。
+  Loopback-localなinspection UIで完全なauthored contentを意図的に表示する場合は直接提示する:
+  確認stepまたは機密内容に関する常設の注意書きを、contentの前にも隣にも置いてはならない。
+  それらは追加の境界を何も守らず、操作数と視覚的noiseを増やすためである。Inertなrender、
+  session内だけのlifetime、永続化・remote egressの禁止、偶発的露出の禁止は引き続き必須とする。
+  Code formattingはPrettierが所有し、必須ゲートとして検査する（ローカルとCIの`format:check`）。
+  Byte-levelの衛生（`.gitattributes`、`.editorconfig`）は引き続き宣言的に所有し、手作業の
+  format修正は誤りやすい雑務であり、書き換えるformatterが根本解決である。
 - 更新したテンプレートとガイダンス:
-  - ✅ spec.md/spec.ja.md — FR-022/FR-027/QR-002/QR-003/SC-004/SC-007のtransport/認証
-    表現をloopback-onlyなdevframe hostへ整合
-  - ⚠ research/plan/data-model/contracts/tasksペア — REST/token transport sectionを
-    superseded化、devframe整合を実施中
-- フォローアップTODO: spec suite全体のdevframe transport整合を完了する
+  - ✅ plan/spec/tasksテンプレート — 憲章checkと生成要件を、保持する取扱い上の防護と
+    noticeなしの直接表示へ更新
+  - ✅ 現行feature文書（両言語） — spec ClarificationsとQR-004、accessibility acceptance
+    matrix、該当task、plan § Formatting/Linting、research § 3、T003、quickstartのゲート一覧、
+    AGENTS.md/AGENTS.ja.mdのFormatting方針、CIの`format` job
 -->
 # Agent Customization Inspector 憲章
 
@@ -121,9 +85,11 @@ Setup、開発、テスト、Contributionの期待事項は、見つけやすく
 
 ## 品質と安全性の基準
 
-- Lint、該当する場合のtype check、自動テスト、ドキュメント検証は、ローカル検証とCIの
-  必須品質ゲートとして実行しなければならない（MUST）。Byte-levelのformattingはchecking gateではなく、
-  repository設定（`.gitattributes`、`.editorconfig`）が宣言的に所有する。
+- Formatting、lint、該当する場合のtype check、自動テスト、ドキュメント検証は、ローカル検証とCIの
+  必須品質ゲートとして実行しなければならない（MUST）。Code formattingはrepositoryのformatter
+  （Prettier）が所有する: `format`が書き換え、`format:check`がゲートするため、formattingを手で
+  直すことはない。Byte-levelの衛生は引き続きrepository設定（`.gitattributes`、`.editorconfig`）が
+  宣言的に所有する。
 - この製品はユーザーが既に信頼しているworkspaceで実行される。存在意義は「AIエージェントが読み込む
   もの」を見せることであり、調査対象customization fileを敵としてモデル化しない。その信頼と無関係に
   3つの義務は残る: 調査対象contentを実行してはならない（表示にはparseで足りる）（MUST NOT）、
@@ -145,8 +111,9 @@ Setup、開発、テスト、Contributionの期待事項は、見つけやすく
   ばならない（MUST）。
 - Credentialその他のsecretを含む記述内容全体は、製品仕様がその内容の調査を明示的に要求する場合に
   限り、意図的にsession APIから返す、または表示してよい（MAY）。API accessはloopback-localかつ
-  session内に限定しなければならない（MUST）。ユーザー向け表示の前には機密内容について明確
-  な確認を求め、内容を不活性にrenderしなければならない（MUST）。内容を永続化し、またはremote serviceへ
+  session内に限定しなければならない（MUST）。ユーザー向け表示は内容を不活性にrenderしなければならない（MUST）。
+  その前に確認stepを置いてはならず、内容に何が含まれ得るかについての注意書きを添えてもならない
+  （MUST NOT）。閲覧者自身のfileをloopback-localなsession上で表示する場合、どちらも何も守らないためである。内容を永続化し、またはremote serviceへ
   送信してはならない（MUST NOT）。意図した調査を
   認めるこの限定的な例外は、他のsurfaceからの偶発的な露出を許可しない。
 - Dependency、公開contract、data formatは明示し、実用上可能な限り小さく保たなければならない
@@ -192,4 +159,4 @@ last-amended dateを更新する。
 は承認前に解消しなければならない（MUST）。緊急性、生成code、自動検査の成功は免除理由にならない。
 Reviewerは変更全体を調べ、追加調査が必要な不確実性を記録する責任を負う。
 
-**Version**: 4.4.0 | **Ratified**: 2026-07-15 | **Last Amended**: 2026-07-22
+**Version**: 5.0.0 | **Ratified**: 2026-07-15 | **Last Amended**: 2026-07-29

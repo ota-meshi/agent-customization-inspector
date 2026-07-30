@@ -62,7 +62,6 @@ describe('prepareNextRepositoryGeneration', () => {
       fileId,
       sourceId: 'src-1',
       sourceRelativePath: 'AGENTS.md',
-      parseSummary: 'not-applicable' as const,
       sizeBytes: 3,
       encoding: 'utf-8' as const,
       hadLeadingBom: false,

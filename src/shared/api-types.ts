@@ -1,7 +1,7 @@
 // Public session API DTO contracts shared by the host and the client
 // (contracts/http-api.md, data-model.md). Type declarations only — this
 // module deliberately ships zero runtime code (the `-types` name records
-// that): every type here is a closed, strict-JSON-serializable wire shape,
+// that): every type here is a closed, JSON-serializable wire shape,
 // and internal authority state (raw or canonical roots, coordinator locks,
 // lifecycle owner keys) is absent by construction rather than filtered or
 // re-verified at serialization time (FR-002, T028). Platform-neutral by
@@ -16,30 +16,9 @@ import type {
   SourceStatus,
   SupportedTool,
 } from './entities';
+import type { MetadataFieldId, RuleId } from './registries/identifier-types';
+import type { RuleDiscoveryClass } from './registries/rule-types';
 import type { RejectionCode } from './rejection-codes';
-
-/**
- * Per-file rollup of recognition parsing for inventory display
- * (data-model.md § CustomizationFile) — a denormalized projection of the
- * file's recognitions:
- *  - 'not-applicable'  every recognition is `not-attempted` (nothing to
- *                      extract, so no parse was attempted)
- *  - 'all-parsed'      at least one recognition parsed and none failed
- *  - 'mixed'           parsed and failed recognitions coexist
- *  - 'all-failed'      at least one recognition failed and none parsed;
- *                      the source text stays displayed and
- *                      comparison-eligible while only derived
- *                      metadata/relationships are omitted (FR-028)
- */
-export type ParseSummary =
-  /** No recognition attempted extraction, so no parse result applies. */
-  | 'not-applicable'
-  /** At least one recognition parsed and none failed. */
-  | 'all-parsed'
-  /** Parsed and failed recognitions coexist on the file. */
-  | 'mixed'
-  /** At least one recognition failed and none parsed; authored source remains available. */
-  | 'all-failed';
 
 /**
  * One recognition's closed extraction state (data-model.md
@@ -64,11 +43,23 @@ export type RecognitionParseStatus =
  * separately rather than collapsed into a recognition-level winner, because
  * scope, order, applicability, and evidence differ per admission even when
  * two rules admit the same physical file.
+ *
+ * The six fields here are the response shape the detail contract promises
+ * (contracts/http-api.md § FileDetail), which also records why the fields of
+ * later phases — relationships, derivation seeds, ordering, declaration keys,
+ * and reference lists — are absent rather than empty.
  */
 export interface CandidateProvenanceDto {
-  /** The inspection rule that admitted the candidate. */
-  readonly ruleId: string;
-  /** The admitted Source-relative Path, as displayed (NFC). */
+  /**
+   * The inspection rule that admitted the candidate, from the closed catalog
+   * rather than an arbitrary string: the rule is never rendered as its ID, and
+   * a `Record<RuleId, string>` is what stops a newly catalogued rule from
+   * reaching a screen without a sentence to show (`registries/identifier-text.ts`).
+   */
+  readonly ruleId: RuleId;
+  /** How that rule creates candidates; see {@link RuleDiscoveryClass}. */
+  readonly discoveryClass: RuleDiscoveryClass;
+  /** The admitted Source-relative Path, spelled with the exact entry names. */
   readonly matchedPath: string;
   /** Where the admitted customization applies; see {@link ScopeDescriptor}. */
   readonly scope: ScopeDescriptor;
@@ -77,6 +68,81 @@ export interface CandidateProvenanceDto {
    * strategy it references, sorted and never reduced to a scalar (QR-005).
    */
   readonly evidenceAssessments: readonly EvidenceAssessment[];
+  /** What is known about whether the product applies this admission (FR-009). */
+  readonly applicability: ApplicabilityAssessmentDto;
+}
+
+/**
+ * The convenience projection of an {@link ApplicabilityAssessmentDto}
+ * (data-model.md § ApplicabilityAssessment). It is deliberately never called
+ * `effective`: each member states what the retained documentation proves, and
+ * none of them claims the product loaded anything.
+ */
+export type ApplicabilitySummary =
+  /** A documented control is known to prohibit use. */
+  | 'disabled'
+  /** A complete precedence chain proves another candidate wins. */
+  | 'shadowed'
+  /** A complete surface/target/selection/budget rule proves exclusion. */
+  | 'omitted'
+  /** A documented selection rule proves inclusion and nothing can prevent it. */
+  | 'selected'
+  /** Documentation is absent or conflicting for a required rule. */
+  | 'unknown'
+  /** A documented path exists but a required runtime input is unknown. */
+  | 'conditional'
+  /** Every documented availability requirement is satisfied; no selection is claimed. */
+  | 'available'
+  /** Only the accepted authored declaration is proven. */
+  | 'authored';
+
+/**
+ * What is known about whether a product applies one admission or edge
+ * (data-model.md § ApplicabilityAssessment). Every field is projected from the
+ * retained conditions through the shipped decision table; an emitter never
+ * chooses {@link summary} directly, and there is no aggregate that collapses
+ * the conditions away.
+ *
+ * There is deliberately no `evaluatedFromGeneration` field. It would state the
+ * generation the assessment was computed from, which is the generation the
+ * response carrying it was bound under — already on the envelope as
+ * {@link InspectionDataResult.repositoryGeneration}, and already what the
+ * client's request token captures. A per-assessment copy could only repeat it,
+ * and two copies of one number can disagree.
+ *
+ * There is deliberately no `strategyRefs` field either, for the same reason at
+ * the other end: it would name the strategies behind the admission, and the
+ * provenance carrying this assessment already publishes one
+ * {@link EvidenceAssessment} per strategy — with each one's documentation
+ * status, which a bare list of IDs cannot carry.
+ */
+export interface ApplicabilityAssessmentDto {
+  /** The projected convenience summary; see {@link ApplicabilitySummary}. */
+  readonly summary: ApplicabilitySummary;
+  /** The retained closed condition records, sorted and deduplicated. */
+  readonly conditions: readonly ConditionFact[];
+}
+
+/**
+ * One allowlisted field a recognition's extractor read
+ * (data-model.md § DeclaredMetadataEntry).
+ *
+ * One entry per field, not per authored occurrence: a key declared twice
+ * resolves to one value for the product reading the file, and that resolution
+ * is what this reports.
+ */
+export interface DeclaredMetadataEntryDto {
+  /** The allowlisted field this value belongs to; never an authored key. */
+  readonly fieldId: MetadataFieldId;
+  /**
+   * The value the parser resolved, as the text a product loading this file
+   * would have: quoting and escapes resolved, `007` read as `7`. Never masked
+   * or redacted — the host resolves no environment reference and offers no
+   * reveal step, so a `$VARIABLE` in the value stays the characters that were
+   * written. The complete authored bytes are served by the same detail
+   * response's `sourceText` (FR-027).
+   */
+  readonly value: string;
 }
 
 /**
@@ -99,11 +165,13 @@ export type RecognitionDetails =
       /** The recognized customization kind. */
       readonly kind: 'skill';
       /**
-       * The skill's own declared name, exactly as authored, or absent when the
-       * recognizer extracted none (FR-007).
+       * The skill's own declared name as its parser resolved it, or absent when
+       * the recognizer extracted none (FR-007). Resolved, not sliced: an
+       * authored `name: 007` is the string `7`, because that is the name the
+       * product loading this file has.
        *
-       * This is the one authored value outside the FR-027 acknowledgement gate.
-       * It is presentation identity rather than content: it is the identifier
+       * This is the one authored value an inventory row carries (FR-027). It
+       * is presentation identity rather than content: it is the identifier
        * the vendor's own selectors and menus use, it is not recoverable from
        * the Source-relative Path — a skill's `name` need not match its
        * directory — and a list that cannot name what it lists is not an
@@ -119,11 +187,15 @@ export type RecognitionDetails =
        * make a skill more than a paragraph
        * (contracts/inspection-path-allowlist.md § Bounded companion census).
        *
-       * Listed, never read and never admitted: the list says what is beside the
-       * file, not that the vendor loads any of it. The inventory row shows how
-       * many there are and the detail view shows which; the count is `length`
-       * rather than a second field, because two states can disagree and one
-       * cannot.
+       * Read and published, never admitted: each listed path is also a file of
+       * this generation, because a directory-shaped customization is read whole
+       * and a tool that showed the entry point while withholding what ships
+       * with it would not be showing the customization. What listing does not
+       * do is make a file a candidate — it acquires no rule, recognition, kind,
+       * or inventory row of its own, and it is still not evidence that the
+       * vendor loads it. The inventory row shows how many there are and the
+       * detail view shows which; the count is `length` rather than a second
+       * field, because two states can disagree and one cannot.
        *
        * Always present, empty when the `SKILL.md` sits alone: being a directory
        * is what a skill is, so every recognized skill has been enumerated and
@@ -159,16 +231,15 @@ export interface SkillDefinitionDto {
    * skill more than a paragraph
    * (contracts/inspection-path-allowlist.md § Bounded companion census).
    *
-   * Listed, never read and never admitted: the list says what is beside the
-   * file, not that the vendor loads any of it. The row shows how many there are
+   * Read and published, never admitted: each listed path is also a file of this
+   * generation (see {@link RecognitionDetails}), and it is how a detail surface
+   * offers the customization's own directory. The row shows how many there are
    * and the detail view shows which; the count is `length` rather than a second
    * field, because two states can disagree and one cannot. Empty when the
    * `SKILL.md` sits alone — being a directory is what a skill is, so every
    * recognized skill has been enumerated.
    */
   readonly companionFiles: readonly string[];
-  /** Recognition-scoped extraction-failure diagnostics (FR-028). */
-  readonly diagnosticIds: readonly string[];
 }
 
 /**
@@ -226,10 +297,45 @@ export interface ToolRecognitionDto {
   readonly details: RecognitionDetails;
   /** Closed extraction state; see {@link RecognitionParseStatus}. */
   readonly parseStatus: RecognitionParseStatus;
+  /**
+   * The allowlisted fields this recognition's extractor read, one entry per
+   * field in the allowlist row's order. Empty for `not-attempted` and for
+   * `failed`, which is all-or-nothing: a failed recognition publishes no
+   * metadata at all while its file's complete source stays displayed (FR-028).
+   */
+  readonly declaredMetadata: readonly DeclaredMetadataEntryDto[];
   /** Sorted non-empty rule/path admissions behind this recognition. */
   readonly provenances: readonly CandidateProvenanceDto[];
   /** Recognition-scoped extraction-failure diagnostics (FR-028). */
   readonly diagnosticIds: readonly string[];
+}
+
+/**
+ * One file's complete detail result
+ * (contracts/http-api.md § get-file-detail): the committed file with its
+ * complete authored source, the recognitions attached to it, and the
+ * diagnostics that explain them. It is the one result that carries authored
+ * content, which is why FR-027 keeps it behind an explicit request for one
+ * file: no inventory or session response may carry it.
+ *
+ * There is deliberately no `relationships` array yet. A relationship may be
+ * emitted only when its kind is listed for the recognized kind *and* its origin
+ * is covered by a relationship-only rule in the central registry
+ * (contracts/vendors/openai-codex.md § Normative initial-release presentation
+ * allowlist). The Codex `skill` row does list two eligible kinds, but no
+ * relationship-only rule ships — `registries/codex/rules.ts` says why a skill's
+ * resources get no rule of their own — so no shipped recognition can produce an
+ * edge, and the array would be empty in every response this release returns. A skill's resources are
+ * published as `RecognitionDetails.companionFiles`, which the census
+ * enumerates and never admits.
+ */
+export interface FileDetailDto {
+  /** The committed file, including its complete authored source when readable. */
+  readonly file: CustomizationFileDto;
+  /** Every recognition attached to the file, in the contracted tool/kind order. */
+  readonly recognitions: readonly ToolRecognitionDto[];
+  /** The file-scoped and recognition-scoped Diagnostic records (FR-028). */
+  readonly diagnostics: readonly SerializedDiagnostic[];
 }
 
 /** Fields every discovered file carries regardless of its read outcome. */
@@ -238,7 +344,7 @@ interface CustomizationFileBase {
   readonly fileId: string;
   /** The Source this file was discovered in. */
   readonly sourceId: string;
-  /** NFC display path relative to the owning Source's single root (FR-024). */
+  /** The exact raw entry names joined with `/`, relative to the owning Source's single root (FR-024). */
   readonly sourceRelativePath: string;
   /** File-scoped diagnostics for this file (FR-028); present on every variant. */
   readonly diagnosticIds: readonly string[];
@@ -249,7 +355,7 @@ interface CustomizationFileBase {
  * snapshot — the transport shape of spec.md § Key Entities · Customization
  * File, discriminated by `encoding` so an impossible combination is
  * unrepresentable. The read state is derived from the discriminator:
- * readable text (`utf-8` | `utf-8-replaced`), diagnostic-only `binary`,
+ * readable text (`utf-8` | `utf-8-replaced`), textless `binary`,
  * and `unknown` for a read that failed before the bytes could be
  * classified (FR-024/FR-028).
  */
@@ -264,17 +370,15 @@ export type CustomizationFileDto =
       readonly sourceText: string;
       /** Exact byte count of the one completed read. */
       readonly sizeBytes: number;
-      /** Per-file parse rollup for inventory display; see {@link ParseSummary}. */
-      readonly parseSummary: ParseSummary;
       /** Tool recognitions attached to this file (FR-005, data-model.md § CustomizationFile). */
       readonly recognitionIds: readonly string[];
       /** Authored references from this file, never expanded (FR-010). */
       readonly relationshipIds: readonly string[];
     })
-  /** A NUL-containing diagnostic-only file with no source text. */
+  /** A NUL-containing file with no source text; see FR-025 for when it also carries a Diagnostic. */
   | (CustomizationFileBase & {
-      /** At least one NUL byte: diagnostic-only, nothing to parse, and no
-       * BOM concept — the NUL check precedes BOM handling (FR-028). */
+      /** At least one NUL byte: nothing to parse, and no BOM concept — the
+       * NUL check precedes BOM handling (FR-028). */
       readonly encoding: 'binary';
       /** Exact byte count of the one completed read. */
       readonly sizeBytes: number;
@@ -291,9 +395,8 @@ export type CustomizationFileDto =
  * (contracts/http-api.md § get-session `files[]`): the identity, path,
  * diagnostics, and per-variant summary fields of a committed
  * {@link CustomizationFileDto} — never its `sourceText`. Complete authored
- * content is served only through the detail routes after the in-memory
- * sensitive-value acknowledgement (FR-027), so the snapshot must not carry
- * it.
+ * content is served only through the detail routes, one file at a time
+ * (FR-027), so the snapshot must not carry it.
  */
 export type CustomizationFileSummaryDto =
   /** Inventory projection of a readable file, excluding complete source text. */
@@ -304,10 +407,8 @@ export type CustomizationFileSummaryDto =
       readonly hadLeadingBom: boolean;
       /** Exact byte count of the one completed read. */
       readonly sizeBytes: number;
-      /** Per-file parse rollup for inventory display; see {@link ParseSummary}. */
-      readonly parseSummary: ParseSummary;
     })
-  /** Inventory projection of a NUL-containing diagnostic-only file. */
+  /** Inventory projection of a NUL-containing file with no source text. */
   | (CustomizationFileBase & {
       /** At least one NUL byte (FR-028); the summary adds only the size. */
       readonly encoding: 'binary';
@@ -542,7 +643,13 @@ export type ScopeDescriptor =
       readonly kind: 'declared';
       /** The closed declared-metadata field the scope comes from. */
       readonly fieldId: string;
-      /** Which authored occurrence of that field is referenced. */
+      /**
+       * Which authored occurrence of that field in the source is referenced.
+       * Not an index into `declaredMetadata`, which publishes one entry per
+       * field: a key declared twice resolves to the one value a product
+       * loading the file has, and this names which declaration the scope was
+       * taken from.
+       */
       readonly occurrence: number;
     };
 
@@ -586,7 +693,12 @@ export type OrderComponent =
       readonly kind: 'source-occurrence';
       /** The closed declared-metadata field the order comes from. */
       readonly fieldId: string;
-      /** Which authored occurrence of that field is referenced. */
+      /**
+       * Which authored occurrence of that field in the source is referenced;
+       * see the identically named field of {@link ScopeDescriptor}'s `declared`
+       * variant. Ordering is what makes it a component: the entry list holds
+       * one resolved value per field and states no order among declarations.
+       */
       readonly occurrence: number;
     };
 
@@ -704,7 +816,7 @@ export interface SessionSnapshot {
    * facts only — path, read outcome, size, diagnostics (contracts/http-api.md
    * § get-session `files[]`). What a file was recognized as belongs to the
    * per-kind inventories, which refer to it by `fileId`. `sourceText` is served
-   * only by the acknowledgement-gated detail routes (FR-027).
+   * only by the detail routes, one file at a time (FR-027).
    */
   readonly files: readonly CustomizationFileSummaryDto[];
   /**

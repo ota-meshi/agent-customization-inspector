@@ -14,10 +14,7 @@
 //
 // Ordering is by identifier within each array, so two builds of the same
 // contract agree and the materialized fixture is byte-stable.
-import {
-  CODEX_REPO_SKILLS_BEHAVIOR,
-  CODEX_USER_SKILLS_BEHAVIOR,
-} from './behaviors';
+import { CODEX_REPO_SKILLS_BEHAVIOR, CODEX_USER_SKILLS_BEHAVIOR } from './behaviors';
 import { CODEX_REPO_SKILL_RULE } from './rules';
 import { CODEX_SKILLS_DISCOVERY_STRATEGY } from './strategies';
 import type { RuleRelations, StrategyRelations } from '../relation-types';

@@ -3,11 +3,13 @@
 // any recognition the shipped registry does not authorize (FR-004, FR-005,
 // QR-005).
 //
-// The recognizer reads exactly one thing out of the bytes: the declared name
-// a skill authors in its own frontmatter (T1066, FR-007). The "no source
-// exposure" assertions below are what keep that narrow: everything else an
-// authored file contains stays out of a recognition and is reached only
-// through the FR-027 acknowledgement gate.
+// What the recognizer reads out of the bytes is fixed by the presentation
+// allowlist, and the "no source exposure" assertions below are what keep it
+// there: an authored value outside the allowlisted fields stays in the complete
+// `sourceText`, which only the detail route serves. The Codex `skill` extraction
+// itself is covered by `codex-metadata.test.ts`; these cases are about
+// recognition from the admitting rule alone, so most of them pass no source at
+// all.
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -15,7 +17,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { recognizeCodexCandidate } from '../../../src/server/inspection/recognizers/codex';
 import { CODEX_REPOSITORY_RULES } from '../../../src/server/inspection/rules/codex';
-import type { CompiledInspectionRule } from '../../../src/server/inspection/rules/registry';
+import { CompiledInspectionRule } from '../../../src/server/inspection/rules/registry';
 
 const codexSkillRule = CODEX_REPOSITORY_RULES[0]!;
 
@@ -44,13 +46,16 @@ afterAll(() => {
 async function recognize(
   matchedPath: string,
   rules: readonly CompiledInspectionRule[] = [codexSkillRule],
-  sourceText: string | null = null,
+  sourceText = '',
 ) {
   // The census enumerates the candidate's own directory and propagates a
   // failure rather than reporting an empty one, so every path a case names has
   // to exist — as it does in a real scan, where the traversal found it.
   mkdirSync(dirname(join(root, matchedPath)), { recursive: true });
-  return recognizeCodexCandidate({
+  // These cases are about the recognitions; the census the recognizer also
+  // returns has its own suite (`companion-census.test.ts`) and its own
+  // publication path (`repository-scan.test.ts`).
+  const { recognitions } = await recognizeCodexCandidate({
     fileId: 'file-1',
     matchedPath,
     absolutePath: join(root, matchedPath),
@@ -61,6 +66,7 @@ async function recognize(
       origin: { planIndex: index, selectorIndex: 0 },
     })),
   });
+  return recognitions;
 }
 
 describe('Codex skill recognition', () => {
@@ -71,10 +77,11 @@ describe('Codex skill recognition', () => {
       fileId: 'file-1',
       tool: 'codex',
       details: { kind: 'skill' },
-      // No allowlisted extractor applies yet, so nothing was attempted. This
-      // is not a claim that parsing succeeded, and it keeps the file's
-      // parse summary at `not-applicable`.
-      parseStatus: 'not-attempted',
+      // An empty file parses: the extractor runs and finds no frontmatter, so
+      // the recognition is `parsed` with nothing declared. `not-attempted`
+      // would be a different claim — that no allowlisted extractor applies to
+      // this kind at all.
+      parseStatus: 'parsed',
       diagnosticIds: [],
     });
     expect(recognitions[0]!.recognitionId).toMatch(/^[A-Za-z0-9_-]{22}$/u);
@@ -127,33 +134,56 @@ describe('Codex skill recognition', () => {
   it('merges two admissions of the same kind into one recognition', async () => {
     // One physical file may be admitted by several rules within one Source
     // and retains each provenance; compatible admissions never split into
-    // competing recognitions (data-model.md § ToolRecognition).
-    const second: CompiledInspectionRule = { ...codexSkillRule };
-    const recognitions = await recognize('.agents/skills/greet/SKILL.md', [codexSkillRule, second]);
+    // competing recognitions (data-model.md § ToolRecognition). The same
+    // compiled rule stands in for both admissions: what the case exercises is
+    // two admission entries, not two distinct records.
+    const recognitions = await recognize('.agents/skills/greet/SKILL.md', [
+      codexSkillRule,
+      codexSkillRule,
+    ]);
     expect(recognitions).toHaveLength(1);
     expect(recognitions[0]!.provenances).toHaveLength(2);
   });
 
   it('produces nothing for an admission owned by another tool', async () => {
-    // The branch under test is decided by `tool` alone, and `RuleId` is the
-    // closed catalog of shipped rules — no Claude rule exists yet — so the
-    // stand-in keeps a real rule ID and changes only the owning product.
-    const claudeOwnedAdmission: CompiledInspectionRule = { ...codexSkillRule, tool: 'claude' };
+    // The branch under test is decided by `tool` alone, and no Claude vendor
+    // class exists yet, so the stand-in models one exactly as a vendor would:
+    // a subclass of the shared base fixing its own tool literal. Its relations
+    // reuse the Codex rule's — the filter never reads them.
+    class ClaudeStandInRule extends CompiledInspectionRule {
+      /** The stand-in vendor's own literal, which the filter rejects. */
+      public override readonly tool = 'claude';
+
+      /** Reused edges; the branch under test never reads them. */
+      public override readonly relations = codexSkillRule.relations;
+
+      /** Compiles the real record under the stand-in vendor. */
+      public constructor() {
+        super({ ...codexSkillRule.rule, tool: 'claude' });
+      }
+    }
+    const claudeOwnedAdmission = new ClaudeStandInRule();
     expect(await recognize('.claude/skills/greet/SKILL.md', [claudeOwnedAdmission])).toEqual([]);
   });
 
-  it('lifts only the declared name out of the authored source', async () => {
+  it('lifts the declared name and only allowlisted frontmatter fields', async () => {
     const [recognition] = await recognize(
       '.agents/skills/secretive/SKILL.md',
       [codexSkillRule],
-      '---\nname: secretive\n---\n\ntoken: ghp_EXAMPLE000000000000000000000000000000\n',
+      '---\nname: secretive\napi_key: ghp_EXAMPLE000000000000000000000000000000\n---\n\nBody.\n',
     );
-    expect(recognition!.details.kind === 'skill' && recognition!.details.declaredName).toBe('secretive');
-    // Everything else the file contains stays out: the body, the credential in
-    // it, and any other frontmatter value.
+    expect(recognition!.details.kind === 'skill' && recognition!.details.declaredName).toBe(
+      'secretive',
+    );
+    // The presentation allowlist names two Codex skill fields, so an authored
+    // key outside it produces no entry however credential-shaped it is: it
+    // stays visible only in the complete `sourceText` the detail route serves.
+    expect(recognition!.declaredMetadata).toEqual([
+      { fieldId: 'codex.skill.name', value: 'secretive' },
+    ]);
     const serialized = JSON.stringify(recognition);
-    expect(serialized).not.toMatch(/sourceText|authoredLiteral/u);
     expect(serialized).not.toContain('ghp_');
+    expect(serialized).not.toContain('sourceText');
   });
 
   it('takes the declared name from the file, not from the directory', async () => {
@@ -165,14 +195,20 @@ describe('Codex skill recognition', () => {
       [codexSkillRule],
       '---\nname: say-hello\n---\n\nSay hello.\n',
     );
-    expect(recognition!.details.kind === 'skill' && recognition!.details.declaredName).toBe('say-hello');
+    expect(recognition!.details.kind === 'skill' && recognition!.details.declaredName).toBe(
+      'say-hello',
+    );
   });
 
   it('leaves the declared name absent rather than guessing one', async () => {
     // Absent, not empty, and never the directory segment: "this file declares
     // no name" is a different fact from "it declares an empty one".
-    for (const source of [null, '# no frontmatter\n', '---\ndescription: x\n---\n']) {
-      const [recognition] = await recognize('.agents/skills/greet/SKILL.md', [codexSkillRule], source);
+    for (const source of ['', '# no frontmatter\n', '---\ndescription: x\n---\n']) {
+      const [recognition] = await recognize(
+        '.agents/skills/greet/SKILL.md',
+        [codexSkillRule],
+        source,
+      );
       expect('declaredName' in recognition!.details).toBe(false);
     }
   });

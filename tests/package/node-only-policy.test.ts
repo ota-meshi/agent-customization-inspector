@@ -73,7 +73,15 @@ describe('production closure policy', () => {
 
   it('resolves the closure from the seven approved roots', () => {
     const names = new Set(closure.map((key) => splitClosureKey(key).name));
-    for (const root of ['devframe', 'gunshi', 'jsonc-parser', 'smol-toml', 'vfile', 'vfile-matter', 'yaml']) {
+    for (const root of [
+      'devframe',
+      'gunshi',
+      'jsonc-parser',
+      'smol-toml',
+      'vfile',
+      'vfile-matter',
+      'yaml',
+    ]) {
       expect(names.has(root)).toBe(true);
     }
     expect(names.has('open')).toBe(false);

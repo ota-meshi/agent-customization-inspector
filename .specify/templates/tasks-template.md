@@ -14,8 +14,9 @@ end-to-end, regression, boundary, error, and security-sensitive test tasks for e
 behavioral change, based on its risk and interfaces.
 
 **Constitution-driven safety tests**: When applicable, add preceding negative tests that
-prove intentional sensitive-content access is acknowledged before display, inert,
-session-only, and free of persistence or egress; product-defined numeric resource validation limits are absent; recoverable
+prove intentional sensitive-content access is presented directly without an
+acknowledgement step or standing notice, remains inert and session-only, and is free of
+persistence or egress; product-defined numeric resource validation limits are absent; recoverable
 environment or runtime resource failures are safe; and revoked or late work is discarded
 and cleaned up.
 

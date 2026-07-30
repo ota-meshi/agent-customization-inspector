@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // CLI entry (FR-001, T038/T047): captures the invocation working directory
-// exactly once, resolves the optional `--root` lexically, bootstraps the
-// session synchronously with zero filesystem I/O, completes the Phase 3
+// exactly once, validates the optional `--root`, bootstraps the session
+// synchronously with zero filesystem I/O — the session's own constructor
+// resolves the root lexically from those two facts — completes the Phase 3
 // automatic Repository scan, and starts the loopback devframe host. This file
 // is the direct `package.json.bin` target: tsdown preserves the shebang in
 // the bundled `dist/cli.mjs`. A repeated `--root` follows Gunshi's
@@ -14,10 +15,11 @@
 // Repository matcher a plainly anchored program instead of an ancestor
 // search.
 //
-// Root selection is purely lexical and therefore performs no filesystem or
-// network I/O of its own and never calls `process.chdir()`: an absolute
-// `--root` is kept exactly as given and a relative one is resolved against
-// the one captured invocation directory. Whether the resulting root exists
+// Root selection (in the session constructor) is purely lexical and
+// therefore performs no filesystem or network I/O and never calls
+// `process.chdir()`: an absolute `--root` is kept exactly as given and a
+// relative one is resolved against the one captured invocation directory.
+// Whether the resulting root exists
 // is not selection's question — the first scan answers it, and a missing or
 // unreadable root becomes that scan's source-scoped `root-unreadable`
 // Diagnostic while the session stays usable (FR-002).
@@ -26,11 +28,10 @@
 // `import.meta.main`, the same idiom `scripts/verify-package-files.mjs`
 // uses: running `dist/cli.mjs` executes the CLI, while a test importing
 // this module can exercise the same runner without launching it at import.
-import { isAbsolute, resolve } from 'node:path';
 import { cli, define } from 'gunshi';
 import packageJson from '../../package.json' with { type: 'json' };
 import { executeRepositoryScan, startInspectorHost } from './host/devframe-app';
-import { SessionCoordinator, createInspectionSession } from './session/session';
+import { InspectionSession, SessionCoordinator } from './session/session';
 
 // The one capture of the invocation working directory (FR-001), taken at
 // module load before any argument validation. Selection never calls
@@ -54,26 +55,6 @@ const ROOT_VALUE_REQUIRED = '--root requires a non-empty path value.';
  */
 const NO_OPERANDS_ACCEPTED =
   'This command accepts options only. Pass the inspected repository root with --root <path>.';
-
-/**
- * Resolves the selected Repository root lexically (FR-001): the captured
- * invocation directory when `--root` was omitted, the option value unchanged
- * when it is absolute, and the option resolved against the captured
- * directory when it is relative. Uses `node:path` operations only — it
- * never touches the filesystem, so it makes no claim about whether the root
- * exists, and it never probes for a repository marker to find one.
- */
-function selectRepositoryRoot(
-  capturedInvocationCwd: string,
-  rootOptionValue: string | null,
-): string {
-  if (rootOptionValue === null) {
-    return capturedInvocationCwd;
-  }
-  return isAbsolute(rootOptionValue)
-    ? rootOptionValue
-    : resolve(capturedInvocationCwd, rootOptionValue);
-}
 
 /**
  * The root Gunshi command (FR-001): a negatable default-true `open` flag
@@ -116,19 +97,14 @@ const command = define({
       process.exitCode = 1;
       return;
     }
-    const selectedRepositoryRoot = selectRepositoryRoot(invocationCwd, rootOptionValue);
-    const session = createInspectionSession({
-      invocationCwd,
-      rootOptionValue,
-      selectedRepositoryRoot,
-    });
+    const session = new InspectionSession({ invocationCwd, rootOptionValue });
     const coordinator = new SessionCoordinator(session);
     const context = { session, coordinator };
     // Automatic first Repository scan (FR-002), owned by the ownerless
     // startup trigger. Completing it before host startup is both
     // deterministic and the simplest way to ensure the SPA's one initial
     // fetch cannot become stranded on generation 0.
-    const repositorySourceId = session.internal.repositorySourceId;
+    const repositorySourceId = session.repositorySourceId;
     const admission = coordinator.admitScan(repositorySourceId, {
       kind: 'startup',
       operationId: null,
@@ -143,12 +119,7 @@ const command = define({
     // Any unexpected rejection is deliberately not caught, so it reaches
     // the process top level before a loopback listener is created
     // (spec.md Clarifications § Session 2026-07-22).
-    await executeRepositoryScan(
-      context,
-      admission.scanRequestId,
-      repositorySourceId,
-      'repository',
-    );
+    await executeRepositoryScan(context, admission.scanRequestId, repositorySourceId, 'repository');
     // Install shutdown handling before the launch line becomes observable.
     // devframe calls `onReady` before its browser helper and returns the
     // server handle afterwards, so an interrupt in that small interval is

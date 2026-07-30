@@ -87,7 +87,11 @@ function toSelectValue(value: string | null): string {
           @change="sourceId = ($event.target as HTMLSelectElement).value || null"
         >
           <option value="">All sources</option>
-          <option v-for="source in availableSources" :key="source.sourceId" :value="source.sourceId">
+          <option
+            v-for="source in availableSources"
+            :key="source.sourceId"
+            :value="source.sourceId"
+          >
             {{ sourceLabel(source) }}
           </option>
         </select>
@@ -97,7 +101,9 @@ function toSelectValue(value: string | null): string {
         <select
           id="aci-filter-tool"
           :value="toSelectValue(tool)"
-          @change="tool = (($event.target as HTMLSelectElement).value || null) as SupportedTool | null"
+          @change="
+            tool = (($event.target as HTMLSelectElement).value || null) as SupportedTool | null
+          "
         >
           <option value="">All tools</option>
           <option v-for="candidate in availableTools" :key="candidate" :value="candidate">
@@ -107,7 +113,7 @@ function toSelectValue(value: string | null): string {
       </p>
       <p>
         <label for="aci-filter-path">Path contains</label>
-        <input id="aci-filter-path" v-model="pathQuery" type="search">
+        <input id="aci-filter-path" v-model="pathQuery" type="search" />
       </p>
     </div>
     <p ref="matchSummary" class="aci-note" role="status" aria-live="polite" tabindex="-1">

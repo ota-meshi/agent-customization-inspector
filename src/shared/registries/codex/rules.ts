@@ -1,10 +1,11 @@
 // OpenAI Codex inspection rules — the implementation counterpart of
 // contracts/vendors/openai-codex.md § Inspector Repository rules.
 //
-// These are read-authorizing records: a `static-candidate` here is the sole
-// way a Codex path becomes readable
-// (contracts/inspection-path-allowlist.md § "Read authorization and
-// applicability"). Vendor behaviors, strategies, evidence, relationships, and
+// These are read-authorizing records: a `static-candidate` here is the only way
+// a Codex file becomes a candidate, and a candidate is the only thing a rule
+// makes readable (contracts/inspection-path-allowlist.md § "Read authorization
+// and applicability"). The one read no rule authorizes is a companion's, which
+// a recognized kind's census bounds to an admitted candidate's own directory. Vendor behaviors, strategies, evidence, relationships, and
 // authored file content never grant that authority. Rules arrive with the
 // inventory phase that needs them, so the remaining rows of the vendor
 // contract are deliberately absent until their phase ships.
@@ -64,6 +65,14 @@ const CODEX_REPO_SKILL_MATCHER: StructuredInspectorMatcher = {
  * it: the User, admin, and system scopes the same discovery strategy spans lie
  * outside this Source, so whether a discovered skill actually wins remains
  * conditional on every key in {@link CODEX_SKILL_CONDITION_KEYS}.
+ *
+ * A skill's resources and assets get no rule of their own. A rule that could
+ * not authorize a read would state a policy nothing enforces — read
+ * authorization comes from the matcher alone, and a `static-candidate` record
+ * carrying none is rejected when the registry compiles rather than shipping as
+ * an inert row — and the files beside a `SKILL.md` are found by enumerating its
+ * directory rather than by reading a declaration, so they are published as
+ * `companionFiles` and are never candidates or edges.
  */
 export const CODEX_REPO_SKILL_RULE = {
   ruleId: 'codex.repo.skill',

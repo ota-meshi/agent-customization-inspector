@@ -4,9 +4,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   DIAGNOSTIC_REGISTRY,
-  createDiagnostic,
+  DiagnosticRecord,
   sortDiagnostics,
-  serializeDiagnostic,
 } from '../../../src/shared/diagnostics';
 import type { DiagnosticCode } from '../../../src/shared/diagnostics';
 
@@ -17,19 +16,20 @@ describe('closed diagnostic registry', () => {
       'file-unreadable',
       'file-content-binary',
       'recognition-parse-failed',
-      'path-normalization-collision',
     ]);
   });
 
   it('fixes the scope and ownership of every code', () => {
     expect(DIAGNOSTIC_REGISTRY['root-unreadable'].scope).toBe('source');
     expect(DIAGNOSTIC_REGISTRY['root-unreadable'].ownerKind).toBe('lifecycle');
-    for (const code of ['file-unreadable', 'file-content-binary', 'recognition-parse-failed'] as const) {
+    for (const code of [
+      'file-unreadable',
+      'file-content-binary',
+      'recognition-parse-failed',
+    ] as const) {
       expect(DIAGNOSTIC_REGISTRY[code].scope).toBe('file');
       expect(DIAGNOSTIC_REGISTRY[code].ownerKind).toBe('candidate-file');
     }
-    expect(DIAGNOSTIC_REGISTRY['path-normalization-collision'].scope).toBe('session');
-    expect(DIAGNOSTIC_REGISTRY['path-normalization-collision'].ownerKind).toBe('candidate-file');
   });
 
   it('gives every code a fixed problem statement and practical next step', () => {
@@ -40,10 +40,12 @@ describe('closed diagnostic registry', () => {
         'This file could not be read. It may have been removed or its permissions may deny reading; other files were unaffected. Check that the file exists and is readable, then rescan.',
       'file-content-binary':
         'This file contains NUL bytes, so it is recorded without source text and nothing was parsed from it. Use a binary-capable viewer if you need to inspect its contents.',
+      // The next step names what the reader can do, not what is wrong with
+      // their file: a parse failure is classified where it happened without
+      // inspecting its cause, so calling the file incorrect would be a verdict
+      // the scan did not reach (FR-032).
       'recognition-parse-failed':
-        'One recognition could not be parsed, so its derived metadata and relationships are omitted. Review the complete source text that remains available, then rescan after correcting the file if you need the derived metadata.',
-      'path-normalization-collision':
-        'Two entries normalize to the same display path, so they could not be listed unambiguously and were rejected. Rename one entry so the normalized paths differ, then rescan.',
+        'One recognition could not be parsed, so its derived metadata and relationships are omitted. The complete source text remains available to read; a rescan reports the current state of the file.',
     };
     for (const [code, message] of Object.entries(messages) as [DiagnosticCode, string][]) {
       expect(DIAGNOSTIC_REGISTRY[code].message).toBe(message);
@@ -53,10 +55,11 @@ describe('closed diagnostic registry', () => {
 
 describe('attachment shapes', () => {
   it('requires the coherent file tuple for a file-scoped code', () => {
-    expect(() =>
-      createDiagnostic({ code: 'file-unreadable', lifecycleOwnerKey: null, sourceId: 's-1' }),
+    expect(
+      () =>
+        new DiagnosticRecord({ code: 'file-unreadable', lifecycleOwnerKey: null, sourceId: 's-1' }),
     ).toThrow(/file-scoped/u);
-    const record = createDiagnostic({
+    const record = new DiagnosticRecord({
       code: 'file-unreadable',
       lifecycleOwnerKey: null,
       sourceId: 's-1',
@@ -67,16 +70,17 @@ describe('attachment shapes', () => {
   });
 
   it('requires only sourceId for the source-scoped root failure', () => {
-    expect(() =>
-      createDiagnostic({
-        code: 'root-unreadable',
-        lifecycleOwnerKey: 'repository',
-        sourceId: 's-1',
-        fileId: 'f-1',
-        sourceRelativePath: 'AGENTS.md',
-      }),
+    expect(
+      () =>
+        new DiagnosticRecord({
+          code: 'root-unreadable',
+          lifecycleOwnerKey: 'repository',
+          sourceId: 's-1',
+          fileId: 'f-1',
+          sourceRelativePath: 'AGENTS.md',
+        }),
     ).toThrow(/source-scoped/u);
-    const record = createDiagnostic({
+    const record = new DiagnosticRecord({
       code: 'root-unreadable',
       lifecycleOwnerKey: 'repository',
       sourceId: 's-1',
@@ -86,63 +90,40 @@ describe('attachment shapes', () => {
   });
 
   it('forbids a lifecycle owner on a generation-owned candidate', () => {
-    expect(() =>
-      createDiagnostic({
-        code: 'file-content-binary',
-        lifecycleOwnerKey: 'repository',
-        sourceId: 's-1',
-        fileId: 'f-1',
-        sourceRelativePath: 'CLAUDE.md',
-      }),
+    expect(
+      () =>
+        new DiagnosticRecord({
+          code: 'file-content-binary',
+          lifecycleOwnerKey: 'repository',
+          sourceId: 's-1',
+          fileId: 'f-1',
+          sourceRelativePath: 'CLAUDE.md',
+        }),
     ).toThrow(/forbids a lifecycle owner/u);
   });
 
   it('requires an owner key on a lifecycle diagnostic', () => {
-    expect(() =>
-      createDiagnostic({ code: 'root-unreadable', lifecycleOwnerKey: null, sourceId: 's-1' }),
+    expect(
+      () =>
+        new DiagnosticRecord({ code: 'root-unreadable', lifecycleOwnerKey: null, sourceId: 's-1' }),
     ).toThrow(/owner key/u);
-    const record = createDiagnostic({
+    const record = new DiagnosticRecord({
       code: 'root-unreadable',
       lifecycleOwnerKey: 'global:codex',
       sourceId: 's-1',
     });
     expect(record.lifecycleOwnerKey).toBe('global:codex');
   });
-
-  it('enforces the pathless session scope for a normalization collision', () => {
-    // No unambiguous public path exists for a colliding group, so every
-    // location field is rejected (spec.md Clarifications § Session 2026-07-20).
-    for (const location of [
-      { sourceId: 's-1' },
-      { sourceId: 's-1', fileId: 'f-1', sourceRelativePath: 'AGENTS.md' },
-      { sourceRelativePath: 'AGENTS.md' },
-    ]) {
-      expect(() =>
-        createDiagnostic({
-          code: 'path-normalization-collision',
-          lifecycleOwnerKey: null,
-          ...location,
-        }),
-      ).toThrow(/session-scoped/u);
-    }
-    const record = createDiagnostic({
-      code: 'path-normalization-collision',
-      lifecycleOwnerKey: null,
-    });
-    expect(record.sourceId).toBeNull();
-    expect(record.fileId).toBeNull();
-    expect(record.sourceRelativePath).toBeNull();
-  });
 });
 
 describe('serialization', () => {
   it('serializes only code and the attachment fields', () => {
-    const record = createDiagnostic({
+    const record = new DiagnosticRecord({
       code: 'root-unreadable',
       lifecycleOwnerKey: 'repository',
       sourceId: 's-1',
     });
-    const serialized = serializeDiagnostic(record);
+    const serialized = record.serialize();
     expect(Object.keys(serialized).sort()).toEqual([
       'code',
       'diagnosticId',
@@ -156,7 +137,7 @@ describe('serialization', () => {
 
 describe('deterministic aggregation', () => {
   function candidate(sourceRelativePath: string, code: 'file-unreadable' | 'file-content-binary') {
-    return createDiagnostic({
+    return new DiagnosticRecord({
       code,
       lifecycleOwnerKey: null,
       sourceId: 's-1',
@@ -166,12 +147,12 @@ describe('deterministic aggregation', () => {
   }
 
   it('orders lifecycle owners semantically before generation-owned candidates', () => {
-    const repositoryFailure = createDiagnostic({
+    const repositoryFailure = new DiagnosticRecord({
       code: 'root-unreadable',
       lifecycleOwnerKey: 'repository',
       sourceId: 's-1',
     });
-    const codexFailure = createDiagnostic({
+    const codexFailure = new DiagnosticRecord({
       code: 'root-unreadable',
       lifecycleOwnerKey: 'global:codex',
       sourceId: 's-2',
@@ -198,22 +179,23 @@ describe('deterministic aggregation', () => {
   });
 
   it('keeps legitimately repeated same-field observations as separate records', () => {
-    // Two rejected collision groups share every public field (pathless,
-    // session-scoped) and still publish one record each (spec.md
-    // Clarifications § Session 2026-07-20); ordering never merges records.
-    const groupA = createDiagnostic({
-      code: 'path-normalization-collision',
+    // Two failed recognitions on one file share every public field except the
+    // opaque ID and still publish one record each; ordering never merges
+    // records.
+    const shared = {
+      code: 'recognition-parse-failed',
       lifecycleOwnerKey: null,
-    });
-    const groupB = createDiagnostic({
-      code: 'path-normalization-collision',
-      lifecycleOwnerKey: null,
-    });
-    const sorted = sortDiagnostics([groupA, groupB]);
+      sourceId: 's-1',
+      fileId: 'f-1',
+      sourceRelativePath: 'a/skill.md',
+    } as const;
+    const first = new DiagnosticRecord(shared);
+    const second = new DiagnosticRecord(shared);
+    const sorted = sortDiagnostics([first, second]);
     expect(sorted).toHaveLength(2);
     expect(sorted.map((record) => record.diagnosticId)).toEqual([
-      groupA.diagnosticId,
-      groupB.diagnosticId,
+      first.diagnosticId,
+      second.diagnosticId,
     ]);
   });
 });
@@ -221,22 +203,28 @@ describe('deterministic aggregation', () => {
 describe('successful complete atomic publication', () => {
   it('publishes one complete deterministic batch regardless of emitter order', () => {
     const records = [
-      createDiagnostic({
+      new DiagnosticRecord({
         code: 'root-unreadable',
         lifecycleOwnerKey: 'repository',
         sourceId: 's-1',
       }),
-      createDiagnostic({
+      new DiagnosticRecord({
         code: 'file-unreadable',
         lifecycleOwnerKey: null,
         sourceId: 's-1',
         fileId: 'f-1',
         sourceRelativePath: 'AGENTS.md',
       }),
-      createDiagnostic({ code: 'path-normalization-collision', lifecycleOwnerKey: null }),
+      new DiagnosticRecord({
+        code: 'recognition-parse-failed',
+        lifecycleOwnerKey: null,
+        sourceId: 's-1',
+        fileId: 'f-2',
+        sourceRelativePath: 'CLAUDE.md',
+      }),
     ];
-    const forward = sortDiagnostics(records).map(serializeDiagnostic);
-    const reversed = sortDiagnostics([...records].reverse()).map(serializeDiagnostic);
+    const forward = sortDiagnostics(records).map((record) => record.serialize());
+    const reversed = sortDiagnostics([...records].reverse()).map((record) => record.serialize());
     // The whole batch publishes together: every unique record appears exactly
     // once and the emitted order is a function of the records, not of the
     // emitter interleaving of the producing attempt.
@@ -246,13 +234,19 @@ describe('successful complete atomic publication', () => {
 
   it('keeps internal routing state out of every published record', () => {
     const published = sortDiagnostics([
-      createDiagnostic({
+      new DiagnosticRecord({
         code: 'root-unreadable',
         lifecycleOwnerKey: 'repository',
         sourceId: 's-1',
       }),
-      createDiagnostic({ code: 'path-normalization-collision', lifecycleOwnerKey: null }),
-    ]).map(serializeDiagnostic);
+      new DiagnosticRecord({
+        code: 'file-content-binary',
+        lifecycleOwnerKey: null,
+        sourceId: 's-1',
+        fileId: 'f-3',
+        sourceRelativePath: 'BIN.md',
+      }),
+    ]).map((record) => record.serialize());
     expect(JSON.stringify(published)).not.toContain('lifecycleOwnerKey');
   });
 });

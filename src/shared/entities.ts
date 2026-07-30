@@ -3,6 +3,7 @@
 // encoding, evidence-assessment vocabulary, and opaque ID generation.
 // Platform-neutral by design — only Web APIs, no node: imports — so the
 // client build can import it.
+import type { BehaviorId, RuleId, StrategyId } from './registries/identifier-types';
 
 /**
  * The closed set of supported AI agents (spec.md FR-004,
@@ -187,7 +188,7 @@ export type ReadableFileEncoding =
 export type FileEncoding =
   /** Readable text, with or without replacement; see {@link ReadableFileEncoding}. */
   | ReadableFileEncoding
-  /** At least one NUL byte made the file diagnostic-only with no source text. */
+  /** At least one NUL byte: no source text; see FR-025 for when it is also a Diagnostic. */
   | 'binary'
   /** The read failed before any bytes could be classified. */
   | 'unknown';
@@ -198,7 +199,7 @@ export const FILE_ENCODING_TEXT: Readonly<Record<FileEncoding, string>> = {
   'utf-8': 'Readable text',
   /** Decoded once with replacement; the complete text is still available. */
   'utf-8-replaced': 'Readable text (decoded with replacement characters)',
-  /** A NUL byte made the file diagnostic-only. */
+  /** A NUL byte left the file with no source text. */
   binary: 'Binary — recorded without source text',
   /** The read failed before the bytes could be classified. */
   unknown: 'Could not be read',
@@ -223,22 +224,24 @@ export type DecodedSourceBytes =
     }
   /** A NUL-containing binary result with no readable text or BOM concept. */
   | {
-      /** At least one NUL byte: diagnostic-only, no text, no BOM concept. */
+      /** At least one NUL byte: no text, no BOM concept. */
       readonly encoding: 'binary';
     };
 
 const UTF8_BOM = [0xef, 0xbb, 0xbf];
 
 /**
- * Decodes verified source bytes exactly once. Any NUL byte is binary and
- * diagnostic-only. Otherwise the bytes decode with UTF-8 replacement
+ * Decodes verified source bytes exactly once. Any NUL byte is binary — what
+ * that classification means for the file is the publisher's split between an
+ * admitted candidate and a census-listed companion (FR-025), not this
+ * decoder's. Otherwise the bytes decode with UTF-8 replacement
  * semantics: one leading BOM is recorded and removed, any inserted U+FFFD
  * yields `utf-8-replaced`, and the complete (possibly garbled) text stays
  * readable. Literal authored U+FFFD characters do not reclassify the file.
  */
 export function decodeSourceBytes(bytes: Uint8Array): DecodedSourceBytes {
   // The NUL check runs first (data-model.md § CustomizationFile): any NUL
-  // byte makes the file binary and diagnostic-only, so no decoding, BOM
+  // byte makes the file binary, so no decoding, BOM
   // handling, or replacement is attempted on binary input.
   if (bytes.includes(0x00)) {
     return { encoding: 'binary' };
@@ -255,7 +258,7 @@ export function decodeSourceBytes(bytes: Uint8Array): DecodedSourceBytes {
   // is the one semantic decode pass the spec fixes — no charset guessing,
   // alternate encoding, sampling, or truncation. Detecting replacement
   // without the probe would mean hand-rolling a UTF-8 validator
-  // (Buffer.isUtf8 is Node-only and this module is platform-neutral).
+  // (`isUtf8` from `node:buffer` is Node-only and this module is platform-neutral).
   let replaced = false;
   let sourceText: string;
   try {
@@ -376,6 +379,53 @@ export function encodeRootPresentation(value: string): string {
   return encoded;
 }
 
+/**
+ * Control-character presentation escaping for authored path text
+ * (data-model.md § SourceRelativePath: "Presentation escapes control and
+ * bidirectional formatting characters without changing the stored value").
+ * Escaped, as uppercase `\uXXXX`:
+ *
+ * - Unicode `Cc` code points — C0, DEL, C1 — which have no glyph of their own.
+ * - The bidirectional formatting characters U+061C, U+200E, U+200F,
+ *   U+202A–U+202E, and U+2066–U+2069. These reorder the characters around
+ *   them, so a path containing one renders as a *different* path: an entry
+ *   named `report\u202Egnp.md` reads as `report<RLO>gnp.md` reversed into
+ *   `reportdm.gnp`. A path that is the lookup and selection identity must read
+ *   as what it is, and a reader comparing it against their own directory has
+ *   no way to see the character that moved it.
+ * - A backslash, as `\u005C`, so the mapping is injective: without it, a name
+ *   containing a real U+000A and a different name containing the six literal
+ *   characters `\u000A` would render identically, and both can exist in one
+ *   directory.
+ *
+ * Every other character, spaces included, renders as itself, because the
+ * authored spelling is the path's presentation identity. Distinct from
+ * {@link encodeRootPresentation}, which escapes everything outside a small
+ * ASCII set: a root label must be unambiguous on its own, while a path stays
+ * readable and only its ambiguous characters need a visible spelling.
+ */
+export function escapeControlCharacters(value: string): string {
+  return value.replaceAll(
+    // eslint-disable-next-line no-control-regex -- matching the Cc range is this function's purpose
+    /[\u0000-\u001F\u007F-\u009F\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069\\]/gu,
+    (character) => `\\u${character.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')}`,
+  );
+}
+
+/**
+ * Whether a label would render as nothing: it has no character that draws.
+ *
+ * Whitespace is the obvious case, but not the only one — U+200B, U+FEFF, and
+ * U+00AD are default-ignorable rather than whitespace, so `String.trim` keeps
+ * them and a name made of them is a name the reader cannot see. Callers use
+ * this as a renderability test, never to change what is stored or displayed: a
+ * heading falls back to another true label, and a path label is spelled out in
+ * full, but the authored value itself stays exactly as authored (FR-025).
+ */
+export function rendersNothingVisible(value: string): boolean {
+  return value.replaceAll(/[\s\p{Default_Ignorable_Code_Point}]/gu, '') === '';
+}
+
 /** Closed evidence-completeness enum (spec.md QR-005). */
 export type DocumentationStatus =
   /** The cited official sections fully establish the maintained assertion. */
@@ -388,6 +438,27 @@ export type DocumentationStatus =
   | 'conflict';
 
 /**
+ * The predicate shown for each documentation status, read after the subject's
+ * own sentence: "OpenAI Codex keeps every skill that shares a name — partly
+ * established; the rest is not documented"
+ * (see {@link SOURCE_BOUNDARY_ORIGIN_TEXT}).
+ *
+ * Each grades the official documentation behind a maintained assertion, never
+ * the state of anything on the reader's machine, so none of them can be read as
+ * a claim about whether the product would load a file.
+ */
+export const DOCUMENTATION_STATUS_TEXT: Readonly<Record<DocumentationStatus, string>> = {
+  /** Label for cited sections that establish the whole assertion. */
+  documented: 'fully established by the official documentation',
+  /** Label for cited sections that establish part of the assertion. */
+  'partially-documented': 'partly established; the rest is not documented',
+  /** Label for cited sections that establish no determination. */
+  unknown: 'not established by any official documentation',
+  /** Label for incompatible retained official assertions. */
+  conflict: 'the official documentation conflicts with itself',
+};
+
+/**
  * Upstream lifecycle claims for an assertion (spec.md QR-005). An empty
  * qualifier list means only that no claim is made — never 'stable'.
  */
@@ -398,6 +469,26 @@ export type LifecycleQualifier =
   | 'experimental'
   /** Upstream documents the subject as deprecated. */
   | 'deprecated';
+
+/**
+ * What each lifecycle qualifier says, read inside the parentheses that follow a
+ * subject's documentation status: "OpenAI Codex keeps every skill that shares a
+ * name — partly established; the rest is not documented (upstream documents it
+ * as a preview)".
+ *
+ * Each states what upstream says about its own feature's lifecycle, never
+ * anything about the reader's machine or about whether the product would load a
+ * file. There is no entry for the absence of qualifiers, because absence makes
+ * no claim: see {@link LIFECYCLE_QUALIFIER_ORDER}.
+ */
+export const LIFECYCLE_QUALIFIER_TEXT: Readonly<Record<LifecycleQualifier, string>> = {
+  /** Label for a subject upstream documents as a preview. */
+  preview: 'upstream documents it as a preview',
+  /** Label for a subject upstream documents as experimental. */
+  experimental: 'upstream documents it as experimental',
+  /** Label for a subject upstream documents as deprecated. */
+  deprecated: 'upstream documents it as deprecated',
+};
 
 /**
  * Fixed presentation order for lifecycle qualifiers. The order is part of
@@ -448,8 +539,15 @@ export type EvidenceSubjectKind =
 export interface EvidenceAssessment {
   /** What kind of subject is assessed; see {@link EvidenceSubjectKind}. */
   readonly subjectKind: EvidenceSubjectKind;
-  /** The exact assessed behavior/rule/strategy ID (QR-005). */
-  readonly subjectId: string;
+  /**
+   * The exact assessed behavior/rule/strategy ID (QR-005), from the closed
+   * catalogs rather than an arbitrary string — it "resolves the corresponding
+   * immutable registry record" (data-model.md § EvidenceAssessment), and the
+   * type is what makes that resolvable. It is also what keeps
+   * `REGISTRY_SUBJECT_TEXT` complete, since a subject is rendered as its
+   * sentence and never as this ID.
+   */
+  readonly subjectId: BehaviorId | RuleId | StrategyId;
   /** How completely official sources establish the assertion (QR-005). */
   readonly documentationStatus: DocumentationStatus;
   /** Duplicate-free upstream lifecycle claims in the fixed order. */
@@ -471,7 +569,9 @@ export function buildEvidenceAssessments(
   const built = assessments.map((assessment) => {
     const key = `${assessment.subjectKind}\u0000${assessment.subjectId}`;
     if (seen.has(key)) {
-      throw new TypeError(`duplicate evidence subject: ${assessment.subjectKind} ${assessment.subjectId}`);
+      throw new TypeError(
+        `duplicate evidence subject: ${assessment.subjectKind} ${assessment.subjectId}`,
+      );
     }
     seen.add(key);
     return {

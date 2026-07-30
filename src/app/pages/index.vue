@@ -15,7 +15,7 @@
 // The session view state is injected rather than created: the shell owns the
 // one RPC connection and the one adopted snapshot, and a second view state
 // would race the first for the same request tokens.
-import { computed, inject, ref } from 'vue';
+import { computed, inject, nextTick, ref, watch } from 'vue';
 import DiagnosticList from '../components/diagnostics/DiagnosticList.vue';
 import InventoryFilters from '../components/inventory/InventoryFilters.vue';
 import InventoryKindTabs from '../components/inventory/InventoryKindTabs.vue';
@@ -47,6 +47,41 @@ const tool = ref<SupportedTool | null>(null);
 const kind = ref<CustomizationKind | null>(null);
 const pathQuery = ref('');
 const filters = useInventoryFilters(snapshot, { sourceId, tool, kind, pathQuery });
+
+// What the two selects display is the selection actually applied, while what
+// they write is the raw choice. A generation that no longer publishes the
+// selected Source or tool renders no `<option>` for it, so a control bound to
+// the raw choice would sit blank while the rows were unfiltered and the "clear
+// filters" affordance stayed away — three surfaces disagreeing about one state.
+// The write still goes to the raw ref, so the choice comes back on its own when
+// a later generation offers that option again, exactly as the kind tab does.
+const selectedSourceId = computed({
+  get: () => filters.effectiveSourceId.value,
+  set: (value: string | null) => {
+    sourceId.value = value;
+  },
+});
+const selectedTool = computed({
+  get: () => filters.effectiveTool.value,
+  set: (value: SupportedTool | null) => {
+    tool.value = value;
+  },
+});
+
+/** The page's own heading, the landmark focus recovery returns to. */
+const inventoryHeading = ref<HTMLHeadingElement | null>(null);
+
+// A snapshot swap can unmount the very element that held keyboard focus — a
+// row the new generation no longer publishes, or the last kind's tab — and
+// focus then falls to the document body (WCAG 2.4.3). Whether a given element
+// survives cannot be known before the patch, so recovery is checked after it:
+// if the swap left focus on the body, it moves to this page's heading.
+watch(snapshot, async () => {
+  await nextTick();
+  if (document.activeElement === document.body) {
+    inventoryHeading.value?.focus();
+  }
+});
 
 /**
  * How many rows the filters admit in the kind currently in view. It is the
@@ -87,9 +122,7 @@ const repositorySource = computed(
 
 const staleFailure = computed(() => {
   const sourceId = repositorySource.value?.sourceId;
-  return (
-    snapshot.value?.staleFailures.find((entry) => entry.sourceId === sourceId) ?? null
-  );
+  return snapshot.value?.staleFailures.find((entry) => entry.sourceId === sourceId) ?? null;
 });
 
 // A stale overlay explains itself with either the failed request's real error
@@ -102,7 +135,7 @@ const staleFailureMessage = computed(() =>
 
 <template>
   <div v-if="snapshot">
-    <h2>Repository</h2>
+    <h2 ref="inventoryHeading" tabindex="-1">Repository</h2>
     <template v-if="repositorySource">
       <dl class="aci-source-summary">
         <dt>Selected root</dt>
@@ -130,8 +163,8 @@ const staleFailureMessage = computed(() =>
 
     <h2>Customization files</h2>
     <InventoryFilters
-      v-model:source-id="sourceId"
-      v-model:tool="tool"
+      v-model:source-id="selectedSourceId"
+      v-model:tool="selectedTool"
       v-model:path-query="pathQuery"
       :available-sources="filters.availableSources.value"
       :available-tools="filters.availableTools.value"
@@ -150,6 +183,7 @@ const staleFailureMessage = computed(() =>
       :kind="filters.activeKind.value"
       :skill-rows="filters.skillRows.value"
       :files-by-id="filters.filesById.value"
+      :files-by-path="filters.filesByPath.value"
       :total-count="totalRowCount"
       :diagnostics="snapshot.diagnostics"
     />
@@ -157,9 +191,11 @@ const staleFailureMessage = computed(() =>
     <template v-if="filters.unrecognizedRows.value.length > 0">
       <h3>Files in no kind</h3>
       <p class="aci-note">
-        These were admitted by an inspection rule, but nothing recognized them as a
-        customization, so no kind tab can list them. Each row states why — a read that failed
-        outright, or bytes that were read and turned out to be binary.
+        Files an inspection rule admitted whose bytes this scan could not use, so no kind tab can
+        list them. Each row states what happened — a read that failed outright, or bytes that were
+        read and turned out to be binary. A file that only ships inside a customization's own
+        directory is not here: it belongs to that customization's row, and its own row above says
+        what happened to it.
       </p>
       <!-- Outside every kind tab: these files are in no kind's inventory, so
            no kind presentation applies to them. -->

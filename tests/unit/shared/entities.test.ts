@@ -1,5 +1,5 @@
 // T017: public entity shapes — readable encodings with preserved U+FFFD,
-// diagnostic-only binary, the non-authorizing SourceBoundary, root
+// textless binary, the non-authorizing SourceBoundary, root
 // presentation encoding, evidence vocabulary, and opaque IDs.
 import { describe, expect, it } from 'vitest';
 
@@ -10,6 +10,8 @@ import {
   createSourceBoundaryDto,
   decodeSourceBytes,
   encodeRootPresentation,
+  escapeControlCharacters,
+  rendersNothingVisible,
   normalizeLifecycleQualifiers,
 } from '../../../src/shared/entities';
 
@@ -24,10 +26,7 @@ describe('decodeSourceBytes', () => {
   });
 
   it('records and strips exactly one leading BOM without changing the encoding', () => {
-    const bytes = Buffer.concat([
-      Buffer.from([0xef, 0xbb, 0xbf]),
-      Buffer.from('hello\n', 'utf8'),
-    ]);
+    const bytes = Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from('hello\n', 'utf8')]);
     expect(decodeSourceBytes(bytes)).toEqual({
       encoding: 'utf-8',
       hadLeadingBom: true,
@@ -56,10 +55,7 @@ describe('decodeSourceBytes', () => {
   });
 
   it('uses utf-8-replaced when replacement occurs after a removed BOM', () => {
-    const bytes = Buffer.concat([
-      Buffer.from([0xef, 0xbb, 0xbf]),
-      Buffer.from([0xff]),
-    ]);
+    const bytes = Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from([0xff])]);
     expect(decodeSourceBytes(bytes)).toMatchObject({
       encoding: 'utf-8-replaced',
       hadLeadingBom: true,
@@ -74,7 +70,7 @@ describe('decodeSourceBytes', () => {
     });
   });
 
-  it('classifies any NUL byte as diagnostic-only binary with no text and no BOM record', () => {
+  it('classifies any NUL byte as textless binary with no BOM record', () => {
     const outcome = decodeSourceBytes(Buffer.from([0x68, 0x00, 0x69]));
     expect(outcome).toEqual({ encoding: 'binary' });
   });
@@ -107,9 +103,7 @@ describe('SourceBoundary DTO', () => {
 
 describe('encodeRootPresentation', () => {
   it('copies ASCII letters, digits, and the five safe punctuation code units', () => {
-    expect(encodeRootPresentation('/home/user_1/repo-2.x:tag')).toBe(
-      '/home/user_1/repo-2.x:tag',
-    );
+    expect(encodeRootPresentation('/home/user_1/repo-2.x:tag')).toBe('/home/user_1/repo-2.x:tag');
   });
 
   it('escapes every other code unit as uppercase \\uXXXX', () => {
@@ -125,6 +119,62 @@ describe('encodeRootPresentation', () => {
   it('is injective on backslash-bearing input and empty only for empty input', () => {
     expect(encodeRootPresentation('\\u0020')).toBe('\\u005Cu0020');
     expect(encodeRootPresentation('')).toBe('');
+  });
+});
+
+describe('rendersNothingVisible', () => {
+  it('reports a label that draws nothing, whitespace or not', () => {
+    // A zero-width space is not whitespace, so `String.trim` keeps it: a name
+    // made of one would pass a trim test and still render as an empty link
+    // (data-model.md § SourceRelativePath).
+    expect(rendersNothingVisible('\u200B')).toBe(true);
+    expect(rendersNothingVisible('   ')).toBe(true);
+    expect(rendersNothingVisible('\uFEFF\u00AD')).toBe(true);
+    expect(rendersNothingVisible('')).toBe(true);
+  });
+
+  it('reports a label with anything that draws', () => {
+    expect(rendersNothingVisible('SKILL.md')).toBe(false);
+    // A zero-width space beside a real character still leaves the character.
+    expect(rendersNothingVisible('\u200Ba')).toBe(false);
+  });
+});
+
+describe('escapeControlCharacters', () => {
+  it('gives every Cc code point a visible uppercase \\uXXXX spelling', () => {
+    // A newline in an authored file name would otherwise split a rendered
+    // path across lines (data-model.md § SourceRelativePath: presentation
+    // escapes control characters without changing the stored value).
+    expect(escapeControlCharacters('a\nb')).toBe('a\\u000Ab');
+    expect(escapeControlCharacters('tab\tseparated')).toBe('tab\\u0009separated');
+    expect(escapeControlCharacters('\u0000\u007F\u0085')).toBe('\\u0000\\u007F\\u0085');
+  });
+
+  it('escapes the backslash so the mapping is injective', () => {
+    // `a` + U+000A + `b` and the eight literal characters `a\u000Ab` are two
+    // different names one directory can hold; without the backslash escape
+    // both would render as `a\u000Ab`.
+    expect(escapeControlCharacters('a\\u000Ab')).toBe('a\\u005Cu000Ab');
+    expect(escapeControlCharacters('a\nb')).not.toBe(escapeControlCharacters('a\\u000Ab'));
+  });
+
+  it('spells out the bidirectional formatting characters', () => {
+    // A right-to-left override reorders what follows it, so the path would
+    // render as a different path than the one it identifies (data-model.md
+    // § SourceRelativePath).
+    expect(escapeControlCharacters('report\u202Egnp.md')).toBe('report\\u202Egnp.md');
+    expect(escapeControlCharacters('\u061C\u200E\u200F\u202A\u2066\u2069')).toBe(
+      '\\u061C\\u200E\\u200F\\u202A\\u2066\\u2069',
+    );
+  });
+
+  it('leaves everything outside those sets as itself, spaces and non-ASCII included', () => {
+    // The authored spelling is the path's presentation identity, so unlike the
+    // root label encoding this stays readable: only the characters that render
+    // as nothing, break a line, or move their neighbours need a spelling.
+    expect(escapeControlCharacters('.agents/skills/café name/SKILL.md')).toBe(
+      '.agents/skills/café name/SKILL.md',
+    );
   });
 });
 
@@ -148,16 +198,13 @@ describe('evidence vocabulary', () => {
       },
       {
         subjectKind: 'behavior',
-        subjectId: 'codex.skill.lookup',
+        subjectId: 'codex.behavior.repo.skills',
         documentationStatus: 'conflict',
         lifecycleQualifiers: ['preview'],
       },
     ]);
     expect(Array.isArray(assessments)).toBe(true);
-    expect(assessments.map((assessment) => assessment.subjectKind)).toEqual([
-      'behavior',
-      'rule',
-    ]);
+    expect(assessments.map((assessment) => assessment.subjectKind)).toEqual(['behavior', 'rule']);
     for (const assessment of assessments) {
       expect(Object.keys(assessment).sort()).toEqual([
         'documentationStatus',
@@ -173,13 +220,13 @@ describe('evidence vocabulary', () => {
       buildEvidenceAssessments([
         {
           subjectKind: 'rule',
-          subjectId: 'dup',
+          subjectId: 'codex.repo.skill',
           documentationStatus: 'documented',
           lifecycleQualifiers: [],
         },
         {
           subjectKind: 'rule',
-          subjectId: 'dup',
+          subjectId: 'codex.repo.skill',
           documentationStatus: 'unknown',
           lifecycleQualifiers: [],
         },

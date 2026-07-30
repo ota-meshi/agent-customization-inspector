@@ -109,8 +109,8 @@ directoryは、仕様が変更されるまでexcludedのままとする。
   Allowlistは選択されたrootにanchorされ、そのrootのcustomizationを報告するからである（FR-003）。
 
 Static fixed prefix、exact target、fixed derived suffixも同じclosed ASCII literal typeを使う。Registry validationは全non-ASCII
-path literalをrejectするため、fixed prefixとexact targetについてはexact raw-byte/code-unit relevanceと後続NFC
-classificationは矛盾しない。一方`regex` patternはraw entry name（diskの上ではNFD綴りであり得る）を
+path literalをrejectするため、fixed prefixとexact targetについてはexact raw-byte/code-unit比較が
+relevance判定のすべてである。一方`regex` patternはraw entry name（diskの上ではNFD綴りであり得る）を
 testする。Final tokenは
 `literal`または`regex`で、regular fileを表す。Programはこのclosed typed grammarだけを使う。
 Token、depthのcapacityおよびcompletion behaviorはNode.jsと実行環境から継承する。Registryはこのtyped
@@ -168,14 +168,32 @@ Censusが適用されるかどうかは、ruleの個別宣言ではなく認識�
 あることはkindの正体の一部であり、そのkindをadmitするruleはすべてcensusを求める。Rule単位の
 flagは、片方が既に決めていることを二重に述べるだけである。
 
-Censusの結果は件数ではなく、sortされたSource相対Pathのlistである。Inventory rowはその件数を述べ、
+Censusの結果は件数ではなく、sortされたSource相対Pathのlistである。各pathは公開される他のすべての
+pathと同じく、exactなraw entry nameを`/`でjoinしたものである: filesystemは1つの名前につき1つの
+entryしか保持しないため、列挙されるpathはすべて曖昧さを持たず、見た目が同じにrenderされ得る2つの
+raw綴りは、別々に列挙される2つの実在fileである。Inventory rowはfile件数を述べ、
 file detail viewは各fileを名指す。件数をlistから導けば事実は1つで済み、両方を公開すれば食い違いうる
 2つの状態になる。
 
-Censusは列挙であってadmitではない。Byteを読まず、candidateをadmitせず、自身のdiagnosticを生成せず、
-列挙した対象に読み取り権限を与えない。列挙されたfileは元のままである — relationship targetであり、
-そのedge経由で読まれることはない — ため、列挙がcandidateへの昇格になってはならず、censusに現れることは
-それらがvendorにloadされる証拠でもない。
+Censusは列挙したfileを読む。Directory形式のcustomizationとは、entry pointとその傍らのfileの総体で
+あり、entry pointだけを表示してそれが同梱するfileを伏せるtoolは、そのcustomizationを表示していない。
+付随するfileも`SKILL.md`と同じくproductに与えられるものの一部である。各fileはscan試行ごとに正確に
+1回、admit済みcandidateと同じ読み取り経路・同じ閉じたper-file分類で読み、generationの通常のfileとして
+公開する。分類が何を意味するかは、そのfileに何が期待されていたかで異なる。Binaryのbytesはassetの通常の
+事実である。画像やcompile済みfileはskillが同梱するものの一部であり、rowはDiagnosticなしで`binary`を記録し、
+generationはcompleteのままとなる。同じbytesがadmit済みcandidateにあれば、ruleがtext customizationとして
+admitしたfileについてのfindingである。読み取りの失敗は両者にとってfailureである。censusがそのfileをlist
+した以上、skillはそれを同梱しており、読み手はそれを見られない。link先が失われているentryもこれに含まれる。
+他と同じくlistして読むため、読み取りは`file-unreadable`を返し、rowがそう述べる。落としてしまうと、自身の
+directoryにあるfileを欠いたskillを見せることになる。
+
+それでもcensusは列挙であってadmitではない。列挙されたfileはrule、recognition、kind、自身のinventory row
+のいずれも獲得しない。そのdirectoryを持つcustomizationの一部であり、そのcustomizationには既にrowが
+ある。Censusはwalkを広げない。降りるのはadmit済みcandidate自身のdirectoryの内側だけであり、その外のpathを
+列挙することはない。列挙したentryは他のfileと同じく、platformが透過的に解決するsymbolic linkを通して
+読む。そのdirectoryを読むagentが得るものがそれだからである。Censusに現れることは
+それらがvendorにloadされる証拠ではなく、relationship targetがそのedge経由で読まれることも依然としてない。
+Targetが読めるようになるのは、独立にadmitされるか、既にそれを内包するcensusの内側にある場合だけである。
 
 Censusはallowlist walkの一部ではない。Traversalはshipped selector programを実行し、どのfileを
 読んでよいかに答える。Censusはcustomization自身のdirectoryに他に何があるかに答えるもので、どの
@@ -187,11 +205,7 @@ pathから実行する。どちらもrecognitionが既に保持しているた�
 
 したがってcensus結果は、censusを持つkindのrecognitionには必ずlistとして存在し、admitされたfileが
 単独で置かれている場合はemptyになる。「censusが実行されなかった」状態は存在せず、「何も付随しない」
-と区別する必要もない。PathはNFCの表示spellingであるため、1つのpathへ正規化される複数のraw entry名は
-1件として数える。Censusが列挙するのはcandidateに付随するpathの集合であり、directory entryの集合ではない。
-通常のwalkはそうしたgroupを、いずれかを選ぶのではなく拒否する。Censusはdiagnosticを公開しないため、
-同じpathを2行出しても読み手には区別できない。
-Seed自身とVCS internalsを除外し、通常のtraversalと同じreal-path cycle規則でsymbolic linkを辿るため、
+と区別する必要もない。Seed自身とVCS internalsを除外し、通常のtraversalと同じreal-path cycle規則でsymbolic linkを辿るため、
 subtreeへ戻るlinkは無限に辿られず終了する。
 
 下降は二重に封じ込められている。Censusはdirectoryのreal pathがcensus root内にある場合にだけそこへ入り、
@@ -249,9 +263,9 @@ Enable operationはdisplay textから再compileせず、accepted previewが表�
 ### 通常のtraversalとfileごとのoutcome
 
 Runtime scanはcompile済みplanを`node:fs/promises`上の通常のrecursive walkとして実行する（FR-019）。
-Enumerateしたraw entry nameをfilesystem operandとし、public Source-relative PathはそのNFC display
-segmentを使う（FR-024）。NFC segment、`/`でjoinした`SourceRelativePath`、display stringから
-filesystem pathを再構築しない。Selector relevanceはenumerateしたentry nameに対するexactな
+Enumerateしたraw entry nameをfilesystem operandとし、public Source-relative Pathはその名前を`/`で
+joinしたものである（FR-024）。`/`でjoinした`SourceRelativePath`とdisplay stringから
+filesystem pathを再構築しない — operationは保持したraw segmentを使う。Selector relevanceはenumerateしたentry nameに対するexactな
 literal比較と、各`regex` patternの標準regular-expression testで判定する — これは
 product内で唯一のpattern評価であり、一度に1つのentry nameへ適用される。Symbolic linkは透過的にfollowする。Inspectorは同じpathを
 readするagentが見るものを表示するからである。Targetがmissingまたはunreadableなlinkはそのfileの
@@ -264,10 +278,11 @@ entryも除外される一方、Source root自身のpathにそのsegmentが含�
 traversal対象外とする。
 
 1 fileに限定された問題はそのfileに閉じる（FR-028）。Unreadable fileはfile-scopedな
-`file-unreadable` Diagnostic、NULを含むcontentは`file-content-binary`、parser/extractor failureは
-`recognition-parse-failed`となり、完全なreadable sourceは表示とcomparison eligibilityを保つ。これらの
-outcomeは、その他の条件を満たせばpublish可能なgenerationを、影響を受けない全fileをcompleteに保ったまま
-`partial`とする。Invalid non-NULなfile-content UTF-8は代わりにreplacement semanticsで1回decodeし、
+`file-unreadable` Diagnostic、admit済みcandidateのNULを含むcontentは`file-content-binary`となる —
+censusが列挙したcompanionのbinary bytesはassetの通常の事実であり、Diagnosticを生まない（§ Bounded
+companion census）。parser/extractor failureは`recognition-parse-failed`となり、完全なreadable sourceは
+表示とcomparison eligibilityを保つ。これらのDiagnosticを伴うoutcomeは、その他の条件を満たせばpublish
+可能なgenerationを、影響を受けない全fileをcompleteに保ったまま`partial`とする。Invalid non-NULなfile-content UTF-8は代わりにreplacement semanticsで1回decodeし、
 readableな`utf-8-replaced` textとして変更せず処理する。Selected rootが存在しないかdirectoryとして
 readできない場合、Source attemptはsource-scopedな`root-unreadable` Diagnosticでfailし、generationを
 publishしない。その他のunexpected failureはattemptを通常のerrorとしてfailさせる。失敗したsession-API requestは
@@ -301,15 +316,17 @@ vendor locator、`behaviorId`、`strategyId`はread authorityを与えない。
 各`ruleId`、matched selector、
 evidence、record-by-record documentation/lifecycle assessment、order fact、applicabilityを含む全accepted provenanceを保持する。
 `DocumentationStatus`は正確に`documented | partially-documented | unknown | conflict`とする。Separateなunique fixed-order lifecycle
-qualifier arrayは`preview`、`experimental`、`deprecated`で、emptyかstableを意味しない。Admissionを
+qualifier arrayは`preview`、`experimental`、`deprecated`とし、emptyであることが`stable`を意味することは
+決してない。Admissionを
 recognition-level winnerへcollapseしてはならない。Cross-Source/attempt/generation readは独立する。
 
 ## Read認可とapplicability
 
-Shippedかつcontract-versionedなregistry内の`static-candidate`または`bounded-derived-candidate`だけがreadを
-requestできる。Candidateは有効なboundaryに属し、上記の通常traversalが生成したentryにmatchしなければ
-ならない。Inspection moduleはAPI request、relationship、source fileが与えた任意のabsolute pathを
-受け付けない。
+Shippedかつcontract-versionedなregistry内の`static-candidate`または`bounded-derived-candidate`だけが
+candidateを作り、そのreadをrequestできる。Candidateは有効なboundaryに属し、上記の通常traversalが生成した
+entryにmatchしなければならない。Inspection moduleはAPI request、relationship、source fileが与えた任意の
+absolute pathを受け付けない。これが覆わない唯一のreadはcompanionのそれであり、admissionが認可するもの
+ではなく、admit済みcandidate自身のdirectoryの外のpathには届かない（§ Bounded companion census）。
 
 `bounded-derived-candidate`は独立して受理したstatic seedからのtyped edgeを使い、再帰しない。Derived candidateは別の
 derivationをseedできない。Relationship-onlyおよびexcluded rule、vendor locator、runtime strategy、import、
@@ -331,7 +348,7 @@ interpreterはplanをwidenできない。
 
 Authored local pathはdata-model contractのexact pure tokenizerを使う。Prefix policyが扱うのはliteral `./` 1個だけで、U+002Fだけをseparatorと
 する。Empty input/segment、leading/trailing/repeated separator、`.`/`..`、backslash、colon、first-segment home marker、control、unpaired
-surrogate、non-NFC segmentはcomplete derivationをzero target I/Oでrejectする。Percent/URL/URI decode、environment expansion、home resolve、
+surrogateはcomplete derivationをzero target I/Oでrejectする。Percent/URL/URI decode、environment expansion、home resolve、
 platform path parseはない。Interpreterはpath stringでなくtyped regex tokenを生成する。Fixed suffix alternativeはliteral
 `first-present-exact`を使い、exact classification欠落だけがregistry orderの次alternativeへ進む。最初にpresentとなったpathは後続の
 read/parse resultが不成功でもlater alternativeを停止する。Ancestor-chain placementではfixed root-to-narrow placementごとに独立適用する。
@@ -372,8 +389,9 @@ applicability condition—surface、各root、`target-match`、関連fact—が�
   （FR-024）。
 - Readはread-only、non-create、non-truncateなoperationだけを使い、inspected sourceに対して
   mutation-capable primitiveを一切callしない（FR-023）。
-- Relationship target、canonical path string、source textだけではfilesystem openを認可しない。Shipped
-  registry内のstaticまたはbounded-derived admissionだけが認可する。
+- Relationship target、canonical path string、source textだけではfilesystem openを認可しない。Pathが
+  readableになる経路は2つだけである: shipped registry内のstaticまたはbounded-derived admissionと、
+  そのadmission自身のdirectoryに限定されたcompanion censusである。
 - 1 fileに限定されたfailureはそのfileのDiagnosticとなり、その他の条件を満たせばpublish可能なgenerationを、
   影響を受けない全fileをcompleteに保ったまま`partial`とする（FR-028）。Unreadable rootはSource attemptを
   `root-unreadable`でfailさせ、generationをpublishしない（FR-002）。その他のunexpected failureはattemptをfailさせ、実際の
@@ -434,9 +452,9 @@ Contractとfixtureのvalidationは、次をすべて証明しなければなら�
    assertionの対象外とする。このassertionはexactな2つのauthorized internal loopback classを別々に観測し、
    そのclass外のrequestをすべてrejectする。これにはcustomization-selected、remote-reference、MCP
    requestを含む。
-9. Path-spelling fixtureには、exact raw segmentでreadしてNFCでdisplayするnon-NFC entry nameと、invalid
-   non-NULなfile-content UTF-8をreadableな`utf-8-replaced` textとして別途replacement処理するcaseを
-   含める。NFC segment、`SourceRelativePath`、display stringからfilesystem pathを再構築しない。
+9. Path-spelling fixtureには、exact raw segmentでreadしそのraw綴りのまま公開されるNFD entry nameと、
+   invalid non-NULなfile-content UTF-8をreadableな`utf-8-replaced` textとして別途replacement処理する
+   caseを含める。`SourceRelativePath`とdisplay stringからfilesystem pathを再構築しない。
 10. Official-source fixtureは公式HTTPS host、列挙済みanchor、review date、semantic fingerprint、影響contractへの
    backlink、human-only updateを検証する。Drift resultがbehavior、rule、strategyを自動変更してはならない。
 11. Unknown matcher、traversal、derivation kind、不正なtoken列または位置、programとcontract tableの

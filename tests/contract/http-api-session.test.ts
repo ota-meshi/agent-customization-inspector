@@ -16,7 +16,7 @@ import {
   executeRepositoryScan,
   type InspectorHostContext,
 } from '../../src/server/host/devframe-app';
-import { SessionCoordinator, createInspectionSession } from '../../src/server/session/session';
+import { InspectionSession, SessionCoordinator } from '../../src/server/session/session';
 import { runSourceScan } from '../../src/server/inspection/scan';
 import type {
   CommandResult,
@@ -38,10 +38,9 @@ interface CapturedRpcFunction {
 }
 
 function hostContext(rootOptionValue: string | null = null): InspectorHostContext {
-  const session = createInspectionSession({
+  const session = new InspectionSession({
     invocationCwd: '/repo',
     rootOptionValue,
-    selectedRepositoryRoot: rootOptionValue ?? '/repo',
   });
   return { session, coordinator: new SessionCoordinator(session) };
 }
@@ -205,12 +204,12 @@ describe('the ordinary request-owned failure lifecycle (FR-030)', () => {
     const context = hostContext();
     // Bootstrap always creates the Repository Source; removing it models the
     // unexpected state whose failure happens before any job exists.
-    context.session.internal.sourceStates.clear();
+    context.session.sourceStates.clear();
     const fn = registerFunctions(context).get('agent-customization-inspector:rescan-repository')!;
 
     await expect(fn.handler()).rejects.toThrow('the repository source state is missing');
     // No job, no request ID, and nothing retained in the session.
-    expect(context.session.internal.staleFailures).toEqual([]);
+    expect(context.session.staleFailures).toEqual([]);
   });
 
   it('retains an accepted job’s failure as the Source’s stale overlay', async () => {
@@ -252,7 +251,7 @@ describe('the ordinary request-owned failure lifecycle (FR-030)', () => {
       },
     });
     const context = hostContext();
-    const sourceId = context.session.internal.repositorySourceId;
+    const sourceId = context.session.repositorySourceId;
     const admitted = context.coordinator.admitScan(sourceId, {
       kind: 'startup',
       operationId: null,

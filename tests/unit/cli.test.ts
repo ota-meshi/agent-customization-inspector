@@ -21,9 +21,8 @@ vi.mock('../../src/server/host/devframe-app', () => ({
   executeRepositoryScan: vi.fn(),
 }));
 
-const { executeRepositoryScan, startInspectorHost } = await import(
-  '../../src/server/host/devframe-app'
-);
+const { executeRepositoryScan, startInspectorHost } =
+  await import('../../src/server/host/devframe-app');
 const { runInspectorCli } = await import('../../src/server/cli');
 
 /** The exact source-value-free CLI rejection for an empty `--root`. */
@@ -41,7 +40,7 @@ function selectedRoot(): string {
   if (options === undefined) {
     throw new Error('the host was never started');
   }
-  return options.context.session.internal.selectedRepositoryRoot;
+  return options.context.session.selectedRepositoryRoot;
 }
 
 let chdirSpy: ReturnType<typeof vi.spyOn>;
@@ -112,7 +111,7 @@ describe('root selection', () => {
   it('uses the exact captured invocation directory when --root is omitted', async () => {
     await runInspectorCli([]);
     expect(selectedRoot()).toBe(CAPTURED_CWD);
-    expect(startHost.mock.calls[0]?.[0].context.session.internal.rootOptionValue).toBeNull();
+    expect(startHost.mock.calls[0]?.[0].context.session.rootOptionValue).toBeNull();
   });
 
   it('keeps an absolute --root exactly as given', async () => {
@@ -253,12 +252,7 @@ describe('automatic first scan', () => {
 
     await runInspectorCli([]);
 
-    expect(order).toEqual([
-      'scan-committed',
-      'host-listening',
-      'launch-line',
-      'browser-open',
-    ]);
+    expect(order).toEqual(['scan-committed', 'host-listening', 'launch-line', 'browser-open']);
   });
 
   it('propagates an automatic-scan rejection before URL publication or browser opening', async () => {

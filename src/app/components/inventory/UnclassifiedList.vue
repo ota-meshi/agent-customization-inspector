@@ -1,9 +1,13 @@
 <script setup lang="ts">
-// The files that appear in no kind's inventory (T1077). They are listed apart
-// from every kind tab rather than dropped: a file whose bytes were never
-// accepted has no kind to be listed under, and these are exactly the rows
-// carrying a file-confined diagnostic, so a generation that says `partial` has
-// to be able to say which file made it partial (FR-028).
+// The admitted candidates that appear in no kind's inventory (T1077). They are
+// listed apart from every kind tab rather than dropped: a candidate whose bytes
+// were never accepted gains no recognition and so has no kind to be listed
+// under, and a generation that says `partial` has to be able to say which file
+// made it partial (FR-028).
+//
+// A file that is only a companion never reaches this list, whatever it carries:
+// FR-003 gives an accompanying file no inventory row of its own, so its
+// diagnostic is stated inside the row of the skill whose directory holds it.
 //
 // It carries no empty state of its own. The caller renders this section only
 // when there is something to list, because a heading that says nothing could

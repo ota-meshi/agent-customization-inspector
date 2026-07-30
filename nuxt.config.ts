@@ -1,9 +1,10 @@
 // Nuxt client SPA configuration. The browser application is a static,
 // same-origin bundle served by the local Node host: no SSR, no CDN, and
 // root-absolute assets so the one shell also boots nested routes such as
-// /files/<fileId>. Auto-imports and implicit components are disabled so every
+// /skills/<fileId>. Auto-imports and implicit components are disabled so every
 // dependency of the security-reviewed client code is an explicit import.
 import { defineNuxtConfig } from 'nuxt/config';
+import { thirdPartyNoticesPlugin } from './scripts/third-party-notices-plugin.mjs';
 
 export default defineNuxtConfig({
   ssr: false,
@@ -26,6 +27,14 @@ export default defineNuxtConfig({
       dir: '.output',
       publicDir: 'dist/public',
     },
+  },
+  vite: {
+    // The client bundle inlines third-party code — Monaco, Vue, the Nuxt
+    // runtime, the devframe client — so their license notices have to ship
+    // with it. The plugin derives the list from the finished module graph, so
+    // no hand-maintained list can fall behind a dependency change
+    // (FR-043).
+    plugins: [thirdPartyNoticesPlugin()],
   },
   imports: {
     autoImport: false,

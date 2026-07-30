@@ -19,12 +19,5 @@
     "vitest.config.ts",
     "eslint.config.js"
   ],
-  "exclude": [
-    "node_modules",
-    ".output",
-    "dist",
-    "coverage",
-    "playwright-report",
-    "test-results"
-  ]
+  "exclude": ["node_modules", ".output", "dist", "coverage", "playwright-report", "test-results"]
 }

@@ -16,7 +16,7 @@ import {
   type InspectorHostContext,
 } from '../../src/server/host/devframe-app';
 import { createDevServer } from 'devframe/adapters/dev';
-import { SessionCoordinator, createInspectionSession } from '../../src/server/session/session';
+import { InspectionSession, SessionCoordinator } from '../../src/server/session/session';
 import { runTraversalScan } from '../../src/server/inspection/traversal';
 import type { InspectionDataResult, SessionSnapshot } from '../../src/shared/api-types';
 
@@ -60,16 +60,14 @@ describe('host startup', () => {
 interface CapturedRpcFunction {
   readonly name: string;
   readonly type: string;
-  readonly jsonSerializable?: boolean;
   readonly handler: (...args: never[]) => unknown;
 }
 
 /** Builds a bootstrap session/coordinator pair for the host definition. */
 function hostContext(): InspectorHostContext {
-  const session = createInspectionSession({
+  const session = new InspectionSession({
     invocationCwd: '/repo',
     rootOptionValue: null,
-    selectedRepositoryRoot: '/repo',
   });
   return { session, coordinator: new SessionCoordinator(session) };
 }
@@ -125,11 +123,9 @@ describe('devframe host definition', () => {
     const { functions } = registerFunctions(hostContext());
     expect(functions.map((fn) => fn.name)).toEqual([
       'agent-customization-inspector:get-session',
+      'agent-customization-inspector:get-file-detail',
       'agent-customization-inspector:rescan-repository',
     ]);
-    for (const fn of functions) {
-      expect(fn.jsonSerializable).toBe(true);
-    }
   });
 
   it('does not enable the optional devframe MCP route', () => {
@@ -180,7 +176,7 @@ describe('packed package fields', () => {
 describe('ownerless automatic startup failure', () => {
   it('propagates the rejection instead of fabricating a Diagnostic or result', async () => {
     const context = hostContext();
-    const sourceId = context.session.internal.repositorySourceId;
+    const sourceId = context.session.repositorySourceId;
     const admission = context.coordinator.admitScan(sourceId, {
       kind: 'startup',
       operationId: null,

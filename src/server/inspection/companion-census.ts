@@ -5,23 +5,70 @@
 // It lives apart from `traversal.ts` because it is not part of the allowlist
 // walk. The walk executes the shipped selector programs and answers "which
 // files may be read"; this answers "what else is in this customization's
-// directory", which only a rule that declares the census wants and which no
-// selector expresses. Keeping it here leaves the walk generic and makes the
-// census something a scan opts into per candidate.
+// directory", which no selector expresses and which only a directory-shaped
+// recognized kind wants — the recognizer decides from the kind it recognized,
+// and no rule declares a census (contracts/inspection-path-allowlist.md
+// § Bounded companion census). Keeping it here leaves the walk generic.
 //
-// Enumeration only: nothing here reads a byte, admits a candidate, or produces
-// a diagnostic, and appearing in the list grants no read authority. The files
-// listed stay what they were — relationship targets that are never read through
-// those edges — so the list is not evidence that the vendor loads any of them.
+// The census enumerates; it does not admit. A file it lists becomes readable
+// because it is part of the customization the census bounds — a skill is its
+// `SKILL.md` plus the scripts, references, and assets beside it, and a tool that
+// showed the entry point but not the files it ships would not be showing the
+// customization. What listing still does not do is make a file a *candidate*:
+// it acquires no rule, no recognition, no kind, and no place in an inventory of
+// its own, and nothing outside this bounded directory becomes readable through
+// it (contracts/inspection-path-allowlist.md § Bounded companion census).
+//
+// Nothing here reads a byte either: this module answers which files accompany
+// the candidate and where they are, and the scan does the reading through the
+// one read path every other file goes through.
 import { dirname, isAbsolute, join, relative, sep } from 'node:path';
 import { readdir, realpath } from './fs-io';
-import { VCS_INTERNALS, isVcsInternalPath, statThroughLink, toPublicPath } from './traversal';
+import {
+  VCS_INTERNALS,
+  isVcsInternalPath,
+  rethrowIfResourceExhaustion,
+  statThroughLink,
+  toPublicPath,
+} from './traversal';
+
+/**
+ * One file accompanying an admitted candidate in its own directory.
+ *
+ * The raw absolute path is the one kept fact — it is the filesystem operand
+ * and is never published — and the display path is derived from it on read,
+ * because the two address one entry and holding both would be two states
+ * that can disagree (FR-024).
+ */
+export class CompanionFile {
+  /** The census root the display path is relative to. */
+  readonly #censusRoot: string;
+
+  /** The raw absolute path the scan reads from; never published. */
+  public readonly absolutePath: string;
+
+  /** Records one enumerated entry against the directory it was found under. */
+  public constructor(censusRoot: string, absolutePath: string) {
+    this.#censusRoot = censusRoot;
+    this.absolutePath = absolutePath;
+  }
+
+  /**
+   * Display path relative to the census root — the exact entry names joined
+   * with `/`, derived from the entry's own absolute path exactly as the
+   * traversal derives every published path (FR-024).
+   */
+  public get censusRelativePath(): string {
+    return toPublicPath(relative(this.#censusRoot, this.absolutePath).split(sep));
+  }
+}
 
 /**
  * Lists the regular files accompanying `seedPath` in its own directory,
- * recursively, excluding the seed itself and VCS internals. Paths are relative
- * to that directory, NFC-normalized like every other published path (FR-024),
- * and sorted, so two scans of one tree publish the same list.
+ * recursively, excluding the seed itself and VCS internals. Display paths are
+ * relative to that directory, spelled with the exact entry names like every
+ * other published path (FR-024), and sorted, so two scans of one tree publish
+ * the same list.
  *
  * The result is relative to the census root rather than to the Source: the
  * caller holds the candidate's own Source-relative Path and prefixes it, so no
@@ -60,7 +107,7 @@ import { VCS_INTERNALS, isVcsInternalPath, statThroughLink, toPublicPath } from 
 export async function listCompanionFiles(
   sourceRoot: string,
   seedPath: string,
-): Promise<readonly string[]> {
+): Promise<readonly CompanionFile[]> {
   const seedDirectory = dirname(seedPath);
   const rootReal = await realpath(sourceRoot);
   const seedReal = await realpath(seedDirectory);
@@ -69,16 +116,9 @@ export async function listCompanionFiles(
   }
   const found: string[] = [];
   await collectWithin(seedDirectory, seedPath, seedReal, rootReal, new Set([seedReal]), found);
-  // Two raw names can normalize to one published path. The walk rejects such a
-  // group rather than choosing between them (spec.md Clarifications § Session
-  // 2026-07-20); a census has no diagnostic to publish, so it lists the
-  // ambiguous path once instead of twice — two identical rows would be two the
-  // reader cannot tell apart. What the list states is therefore the set of
-  // paths accompanying the candidate, not the number of directory entries
-  // (contracts/inspection-path-allowlist.md § Bounded companion census).
-  return [
-    ...new Set(found.map((absolute) => toPublicPath(relative(seedDirectory, absolute).split(sep)))),
-  ].sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
+  return found
+    .map((absolute) => new CompanionFile(seedDirectory, absolute))
+    .toSorted((left, right) => (left.censusRelativePath < right.censusRelativePath ? -1 : 1));
 }
 
 /**
@@ -131,18 +171,25 @@ async function collectWithin(
         isFile = target.isFile;
         isDirectory = target.isDirectory;
       } catch (error) {
-        // A dangling link accompanies nothing that can be listed. Any other
-        // failure is an enumeration failure and propagates, exactly as the
-        // walk's does: reporting a shorter list would state something about the
-        // directory on the strength of not having read it.
-        const code = (error as { code?: string }).code;
-        if (code === 'ENOENT' || code === 'ENOTDIR') {
-          continue;
-        }
-        throw error;
+        // Resource exhaustion is a fact about the machine rather than about
+        // this entry, so it aborts the attempt (FR-029). Everything else is
+        // this entry's own outcome: a link whose target is gone, and one whose
+        // target the process may not stat, are both entries a reader can see
+        // and an agent would try to open, so they are listed as files rather
+        // than dropped. Listing sends them down the one read path every
+        // published file takes, which answers `file-unreadable` and says so
+        // (FR-024, FR-028). Dropping them would show a skill missing a file its
+        // own directory has, and failing the scan would let one entry's
+        // permissions decide that the repository has no inventory at all.
+        rethrowIfResourceExhaustion(error);
+        isFile = true;
+        isDirectory = false;
       }
     }
     if (isFile) {
+      // The seed is what the caller's row already names; every path is the
+      // exact entry spelling, and a filesystem holds one entry per name, so
+      // the raw comparison is the whole exclusion.
       if (entryPath !== seedPath) {
         found.push(entryPath);
       }

@@ -16,6 +16,7 @@
 // § 2.2.2).
 import { computed } from 'vue';
 import { SOURCE_STATUS_TEXT } from '../../../shared/entities';
+import { SCAN_PROGRESS_PHASE_TEXT } from '../../../shared/api-text';
 import type { RejectionCode } from '../../../shared/rejection-codes';
 import type { SourceDto, StaleSourceFailure } from '../../../shared/api-types';
 
@@ -40,6 +41,19 @@ const emit = defineEmits<{
   /** The user asked to refetch the current status and inventory. */
   refresh: [];
 }>();
+
+/**
+ * Dispatches the rescan unless one is already in flight. The guard is here
+ * rather than in a `disabled` attribute because disabling a focused button
+ * drops keyboard focus to the document body (WCAG 2.4.3,
+ * contracts/accessibility-acceptance.md § 2.4.3); `aria-disabled` below keeps
+ * the button focusable while this guard keeps the duplicate dispatch out.
+ */
+function requestRescan(): void {
+  if (!props.requesting) {
+    emit('rescan');
+  }
+}
 
 // Progress belongs to this page's command only. A progress record for another
 // request — an automatic startup scan, or a command from an earlier client
@@ -79,8 +93,9 @@ const rejectionText = computed(() =>
         <template v-if="correlatedProgress">
           <dt>This scan</dt>
           <dd>
-            {{ correlatedProgress.phase }} — {{ correlatedProgress.candidateFiles }} candidate
-            file(s), {{ correlatedProgress.diagnosticCount }} diagnostic(s)
+            {{ SCAN_PROGRESS_PHASE_TEXT[correlatedProgress.phase] }} —
+            {{ correlatedProgress.candidateFiles }} candidate file(s),
+            {{ correlatedProgress.diagnosticCount }} diagnostic(s)
           </dd>
         </template>
       </dl>
@@ -93,14 +108,14 @@ const rejectionText = computed(() =>
     </div>
 
     <p class="aci-actions">
-      <button type="button" :disabled="requesting" @click="emit('rescan')">
+      <button type="button" :aria-disabled="requesting || undefined" @click="requestRescan">
         {{ staleFailure ? 'Retry scan' : 'Rescan repository' }}
       </button>
       <button type="button" @click="emit('refresh')">Refresh status</button>
     </p>
     <p class="aci-note">
-      Nothing on this page updates by itself. Use “Refresh status” to see the result of a scan
-      that is still running.
+      Nothing on this page updates by itself. Use “Refresh status” to see the result of a scan that
+      is still running.
     </p>
   </section>
 </template>

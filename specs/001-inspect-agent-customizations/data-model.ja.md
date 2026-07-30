@@ -7,7 +7,8 @@ Modelには2つの表現がある。
 - **Internal session record**はabsolute path、raw byte、atomic snapshot
   構築中のdecoded authored contentを含み得る。Public DTOやDiagnosticには入れない。
 - **Public DTO**はinventory済みfileと安全にnormalize済みのin-Source target用Source-relative locator field、readable fileの
-  完全なauthored source text、返却するexactな宣言済みmetadata/relationship source slice、escape済みで非認可のroot
+  完全なauthored source text、allowlist済み宣言metadata fieldごとにparserが解決した値、authored relationship
+  targetのexactなdecoded source slice、escape済みで非認可のroot
   presentation label、recognition、relationship、diagnostic、generation scopeのopaque IDを含む。Authored content内の
   環境変数参照はliteral textのままとし、process environment値をreadする権限を与えない。
 
@@ -39,8 +40,8 @@ InspectionSession
 ├── ScanAttempt（queuedを0以上、runningを最大1つ。commit前は非公開）
 ├── RepositoryScanGeneration（最後にcommit済みのものを正確に1つ。Repository sequenceはbootstrapから存在）
 │   └── CustomizationFile
-│       ├── ToolRecognition（1つ以上）
-│       │   ├── DeclaredMetadataEntry（0以上。authored occurrence順）
+│       ├── ToolRecognition（0以上; 空になるのはcensusで列挙されたcompanionに限る）
+│       │   ├── DeclaredMetadataEntry（0以上。allowlist fieldごとに1件）
 │       │   └── ApplicabilityAssessment（rule/path admission recordごとに1つ）
 │       ├── Relationship（0以上）
 │       │   └── ApplicabilityAssessment
@@ -61,7 +62,6 @@ BrowserState
 ├── FilterState
 ├── ComparisonSelection（0またはreadable fileを正確に2つ）
 ├── EditorModelState（0以上。active route/generationのみ）
-├── SensitiveContentNoticeState（session内だけのpresentation state）
 ├── RecoveryViewState（control-onlyなpurge後recoveryと明示resume）
 └── SessionViewState（booting/inspection/recovery/ended viewとtransport-loss adoption）
 ```
@@ -119,7 +119,7 @@ Repository Sourceをpublishする。Global Sourceはまだ作らず、最初のR
 Repository picker、ancestor search、profile、cache、resume identifierは持たない。
 
 Local hostはauthenticationをdisableしたdevframe local-tool frameworkである
-（spec Clarifications § Session 2026-07-22、Constitution v3.0.0）。devframeはpackaged
+（spec Clarifications § Session 2026-07-22、Constitution § Quality and Safety Standards）。devframeはpackaged
 `dist/public` treeからbuilt SPAを直接serveし、全session API operationを同じloopback channel上の
 devframe RPC function（`defineRpcFunction`）として公開し、port選択、host binding、startup時の
 browser openを所有する。Session保護はloopback限定の`localhost` bindのみであり、このmodelはper-session
@@ -166,7 +166,7 @@ Global disableだけは、asynchronous drain完了前にbarrier acceptanceがpub
 | `kind` | `repository \| global` | Repository Sourceを正確に1つ、Global Sourceを0から3つ |
 | `tool` | `copilot \| claude \| codex \| null` | Repositoryはnullと組み合わせる。各Global Sourceはsupport対象toolを正確に1つ持ち、2つのGlobal Sourceが同じtoolを共有しない |
 | `enabled` | boolean | Repositoryとpublishedな全Global Sourceはtrue。AbsenceはそのtoolにSource未公開であることだけを表し、disabled/pending/retryable control stateは`globalControl`で区別する。Disabling sourceはatomic removalまでtrue |
-| `status` | `idle \| scanning \| disabling \| ready \| partial \| failed` | 後述transitionに従う。Publicな`partial`は、traversal完了後に1つ以上のfileがfile-confined outcome（unreadable、binary、parse failure）だけを持ち、影響のない全fileがcompleteであるgenerationのcommitだけを示す。`failed`は最新attemptが失敗し、最後のcommit済みsnapshotが利用可能であることを示す。Fatalな明示rescanだけがsnapshotをstaleにする |
+| `status` | `idle \| scanning \| disabling \| ready \| partial \| failed` | 後述transitionに従う。Publicな`partial`は、traversal完了後に1つ以上のfileがfile-confined outcome（unreadable、admit済みcandidateのbinary content、parse failure — censusが列挙したcompanionのbinary bytesはその通常の事実であり、何もconfineしない。FR-025）だけを持ち、影響のない全fileがcompleteであるgenerationのcommitだけを示す。`failed`は最新attemptが失敗し、最後のcommit済みsnapshotが利用可能であることを示す。Fatalな明示rescanだけがsnapshotをstaleにする |
 | `boundary` | `SourceBoundary` | 選択済みrootを正確に1つ持つ。Repositoryはcapture済み`process.cwd()`またはresolve済み`--root`、GlobalはそのSourceのtoolについてconsent済みの1つのhome root |
 | `generation` | `GenerationNumber` | 所属sequenceの最後にcommit済みgenerationと一致する。Repository Sourceは`repositoryGeneration`、公開済み各Global Sourceは`globalGeneration` |
 | `scanRequestId` | opaque ASCII stringまたはnull | このSourceで最後にadmitしたscan。Admission直後に設定し、waiting/scanning/ready/partial/failedを通して保持して古いrequestのstatusとの混同を防ぐ。Scan admission前、またはこのSourceでadmitした全attemptのpublication authorityがrevokeされた後だけnull。Revokeされたattemptのoverlayはadmission前の状態へ正確に戻るため、Sourceは結果を破棄されたrequestではなく「requestなし」を述べる |
@@ -229,13 +229,16 @@ value objectである。
 | Field | Type | Rule |
 |---|---|---|
 | `sourceId` | opaque ID | Pathを1つの所有Sourceへbindする。単独でread authorityとして受理しない |
-| `value` | NFC POSIX-style string | Display segmentを`/`でjoinしたそのSource rootからの相対path。Leading slash、URI scheme、NUL、empty/dot segment、`..`、home shorthand、environment expansionなし |
+| `value` | POSIX-style string | Exactなraw entry nameを`/`でjoinしたそのSource rootからの相対path。Leading slash、URI scheme、NUL、empty/dot segment、`..`、home shorthand、environment expansionなし |
 
 Repository Sourceでは`value`を選択済みRepository rootからの相対pathとする。Global Sourceではそのtoolについてadmit済みの
-home rootからの相対pathとする。Public Source-relative PathはNFC display segmentを使い、filesystem operationはtraversalが
-返したraw entry nameを使う（FR-024）。NFC valueはpresentation、filter、lookup、selectionのidentityであり、I/O operandでは
-ない。Presentationはstored valueを変えずcontrol characterをescapeする。
-Wire上では`sourceRelativePath`はnormalized `value` stringだけをserializeし、
+home rootからの相対pathとする。Valueはpresentation、filter、lookup、selectionのidentityであり、traversalが返した
+raw entry nameそのままの綴りである（FR-024）。Filesystem operationはこれを再parseせず、保持したraw segmentを使う。
+Raw nameはNode.jsがそのentryに対して返したstringである — `fs`は文書化された既定としてnameをUTF-8で
+decodeするため、valid UTF-8でないplatform上の名前はreplacement-decodeされて届き、そのstringを通じて
+platformが再解決できない名前は、影響を受けるoperationの通常のfailureとして表面化する。
+Presentationはstored valueを変えず、control characterと双方向書式characters（U+061C、U+200E、U+200F、U+202A–U+202E、U+2066–U+2069）をescapeする。これらは周囲の文字順を反転させるため、いずれかを含むpathは自身が識別するpathとは別のpathとして表示されてしまう。描画される文字を持たないpath label — 空白のみ、またはU+200Bのようなdefault-ignorable code pointのみで構成されたもの — は代わりに全体を綴って表示する。何も描画しないlabelは、そのcontrolに可視textもaccessible nameも残さないからである。
+Wire上では`sourceRelativePath`は`value` stringだけをserializeし、
 containing file DTOの`sourceId`がpublic ownership linkを提供する。
 
 ### Packaged dist内容
@@ -648,7 +651,7 @@ relationship targetのopen、InspectorのRepository/Global sourceのmergeはで�
 
 `NonEmptyMatcherLiteralSegment`はnon-empty printable ASCII stringで、code unitはU+0021–U+007Eのうち`/`、`\\`、`:`, `*`、`?`、`\"`、`<`、
 `>`、`|`を除き、`.`と`..`も禁止する。同じclosed typeをstatic fixed prefix、exact target、fixed derived suffixで使う。
-Compilerはnon-ASCII registry path literalをrejectするため、fixed prefixとexact targetについてraw byte/code-unit relevanceと後続NFC classificationは不一致にならない。
+Compilerはnon-ASCII registry path literalをrejectするため、fixed prefixとexact targetについてはexactなraw byte/code-unit比較がrelevance判定のすべてである。
 `literal`はcase-sensitiveなexact ASCII segmentを1つmatchする。`regex`は1つのJavaScript正規表現を持ち、
 `pattern.test`がraw entry nameにmatchするとき、そのentry nameを正確に1つmatchする — 標準の`RegExp`
 セマンティクスであり、anchoringとescapeはpattern作者の明示的な記述で、その正しさはshipped rule fixtureが
@@ -677,7 +680,7 @@ subtreeのcompositeを、曖昧な単一expansion enumを発明せず表現で�
 | `selectors` | non-emptyなordered `TraversalSelectorPlan[]` | Authorしたtyped selector programの決定的な1対1 compile結果 |
 | `selectionPolicy` | `all-matches \| codex-global-first-non-empty` | Closed scheduler policy。後者はexact ordered selectorが`AGENTS.override.md`、`AGENTS.md`の`codex.global.instructions`だけで有効 |
 | `TraversalSelectorPlan.mode` | `repository-program \| global-exact \| global-fixed-subtree` | Closed operation class。Generic ambient-root walkerなし |
-| `TraversalSelectorPlan.fixedPrefix` | NFC literal segment array | Repositoryではempty。Globalではexact targetまたはfixed-subtree rootまでのcomplete pathを、そのterminal target/subtree segmentを含めて持つ |
+| `TraversalSelectorPlan.fixedPrefix` | ASCII literal segment array | Repositoryではempty。Globalではexact targetまたはfixed-subtree rootまでのcomplete pathを、そのterminal target/subtree segmentを含めて持つ |
 | `TraversalSelectorPlan.remainder` | `MatcherSegment[]` | Repositoryのcomplete selector program、Global exact targetではempty、またはGlobal fixed-subtree root直下だけのcomplete dynamic program |
 
 Compilationはclosedなmappingとする。`repository-program`はemptyな`fixedPrefix`と、完全なselector programに等しい`remainder`を持つ。`global-exact`はall-literal selectorを、target fileで終わる
@@ -775,8 +778,8 @@ viewだけをrekey/invalidateし、他sequenceのstateを決して変更しな�
 | `baseGeneration` | `GenerationNumber` | Serialized transaction開始時の同一sequenceの最後にcommit済みgeneration。Bootstrapとsequenceを作るGlobal enable commitでは`0` |
 | `scannedSourceIds` | sort済みopaque source ID[] | Repository/per-Source Global rescanでは1件、initial/retry Global batchでは1〜3件、bootstrapではempty |
 | `startedAt` / `finishedAt` | `UtcTimestamp` | Commit済みgenerationでは両方必須。In-flight timingは`ScanAttempt`/`ScanProgress`に属する |
-| `outcome` | `complete \| partial` | `partial`はClosed Scan Publication Outcomes tableのfile-confined outcomeだけを意味する。すなわちtraversalが完了し、1つ以上のfileがfile-confined outcome（unreadable、binary、parse failure）だけを持ち、影響のない全fileがcompleteである。`utf-8-replaced`はcompleteで、throw/rejectされたattemptはgenerationにしない |
-| `files` | `CustomizationFile[]` | 所属sequenceの全enabled Sourceを含み、Source、Source-relative Path、IDの順で決定的sort |
+| `outcome` | `complete \| partial` | `partial`はClosed Scan Publication Outcomes tableのfile-confined outcomeだけを意味する。すなわちtraversalが完了し、1つ以上のfileがfile-confined outcome（unreadable、admit済みcandidateのbinary content、parse failure — censusが列挙したcompanionのbinary bytesはその通常の事実であり、何もconfineしない。FR-025）だけを持ち、影響のない全fileがcompleteである。`utf-8-replaced`はcompleteで、throw/rejectされたattemptはgenerationにしない |
+| `files` | `CustomizationFile[]` | 所属sequenceの全enabled Sourceを含む。Source、Source相対Path、IDの決定的順序は、読み手がこのlistを受け取る唯一の場所である公開snapshot projectionが確立し、保持されるassembly順はそれ自体の契約を持たない |
 | `diagnostics` | `Diagnostic[]` | Customization sourceまたは宣言済みmetadata値を複製しない |
 
 `RepositoryScanGeneration`は`transactionKind: bootstrap | repository-scan`と、bootstrap generation 0でだけnullとなり
@@ -935,12 +938,11 @@ requeue boundaryを跨がない。全valueはJavaScript safe integerでなけれ
 | `fileId` | 128-bit、22-character base64url opaque string | DTO | Generationごとに新規。APIはpathを受け付けない |
 | `sourceId` | opaque string | DTO | 1つのenabled Sourceを識別 |
 | `sourceRelativePath` | `SourceRelativePath` | DTO | Source内でのfileのidentity。所有Source rootからの表示・filter・lookup・selection path |
-| `encoding` | `utf-8 \| utf-8-replaced \| binary \| unknown` | DTO | Closedなvariant discriminator。Read stateはここから導出する（readable text、diagnostic-only `binary`、failed-read `unknown`）。NULを含まないinvalid sequenceはreplacement decode済みtextとしてreadableのまま保持 |
-| `parseSummary` | `not-applicable \| all-parsed \| mixed \| all-failed` | DTO | Readable textのみ。Recognition-level extraction stateのprojection。Vendor validation resultではない |
+| `encoding` | `utf-8 \| utf-8-replaced \| binary \| unknown` | DTO | Closedなvariant discriminator。Read stateはここから導出する（readable text、textを持たない`binary`、failed-read `unknown`）。NULを含まないinvalid sequenceはreplacement decode済みtextとしてreadableのまま保持 |
 | `sizeBytes` | non-negative integer | DTO | Accept済みbyteを持つoutcomeであるreadable textと`binary`だけに存在する |
 | `hadLeadingBom` | boolean | DTO | Readable textのみ。他variantにBOMの概念は存在しない。`sourceText` publish前に先頭UTF-8 BOMを正確に1つ記録・除去した場合だけtrue。Replacementの有無とは独立 |
 | `sourceText` | string | DTO | Readable textのみで、nullにならない。完全なdecoded authored source。Literal valueと環境変数参照syntaxを正確に保持し、HTMLではない |
-| `recognitionIds` | opaque string[] | DTO | Readable textのみ。Accepted customization fileは1つ以上 |
+| `recognitionIds` | opaque string[] | DTO | Readable textのみ。Admit済みcandidateは1つ以上、censusが列挙したcompanionはempty（認識されずに公開されるため） |
 | `relationshipIds` | opaque string[] | DTO | Readable textのみ。同じgenerationを参照 |
 | `diagnosticIds` | opaque string[] | DTO | 全variantに存在し、同じgenerationを参照 |
 
@@ -950,22 +952,23 @@ readable時の完全なsource text、recognition、relationship、diagnosticを�
 record-by-record evidence assessmentはlossyなfile-level aggregateではなくそのadmission recordへattachされたままになる。
 
 `encoding`が3つのclosed per-file outcome（FR-024/FR-028）を判別する: readable text（`utf-8`または`utf-8-replaced`）、
-diagnostic-only `binary`、failed readの`unknown`である。独立したread-state fieldはこのdiscriminatorの繰り返しに
+textを持たない`binary`、failed readの`unknown`である。独立したread-state fieldはこのdiscriminatorの繰り返しに
 しかならないため存在しない。Accept済みbyteを持ち`sizeBytes`を運ぶのはreadable textと`binary`だけである。`unknown`は、
 discoveryとreadの間に消えたfile、read errorで失敗したfile、およびtargetがmissing/unreadableなsymbolic linkを記録し
-（FR-024）、size、text、BOM record、parse summary、recognition、relationshipを一切運ばない。各non-readable outcomeは
-そのfile-scoped diagnosticを持ち、comparison対象にしない。
+（FR-024）、size、text、BOM record、parse summary、recognition、relationshipを一切運ばない。non-readable outcomeはcomparison対象にしない。
+file-scoped diagnosticを持つかどうかは、そのfileに何が期待されていたかで決まる: `unknown`は常に持ち、`binary`は
+admit済みcandidateでは持つが、censusが列挙したcompanionではassetの通常の事実として持たない（FR-025）。
 Encodingは1回の完了したreadのbyteから割り当てる。NUL byteが1つでも
 あれば`encoding: binary`とし、textもBOM recordも持たない — NUL checkはBOM処理より先に走るため、
 binary byteにBOMの概念は存在しない。それ以外はbyte sequence全体をUTF-8 replacement
 semanticsで正確に1回decodeする。先頭BOMが1つあれば`hadLeadingBom: true`として`sourceText`から除去する。replacementなしで
 decodeできたinputは`utf-8`、`U+FFFD`が1つでもinsertされた場合は`utf-8-replaced`とし、
 どちらも先頭BOM除去の有無とは直交する。Replacement decodeされたtextはreadableのままで、その文字化けしたexact `sourceText`をparsing、
-display、extraction、comparisonへ渡し、それ自体を理由にgenerationをpartialにしない。Binaryだけをdiagnostic-onlyかつ
-comparison不適格とする。Charset guessing、別decode、sampling、truncationは表現不能とし、このstate machineに製品固有の
-byte、line、item上限を適用しない。`parseSummary`は全recognitionが`not-attempted`なら
-`not-applicable`、1つ以上がparsedでfailedがなければ`all-parsed`、1つ以上がfailedでparsedがなければ
-`all-failed`、parsed/failedが共存すれば`mixed`とする。`not-attempted` recordは後3 projectionを変えない。
+display、extraction、comparisonへ渡し、それ自体を理由にgenerationをpartialにしない。Binary inputはtextを持たず
+comparison不適格とする。Diagnosticにもなるかどうかは、admit済みcandidateとcensus掲載companionを分ける
+FR-025の区別による。Charset guessing、別decode、sampling、truncationは表現不能とし、このstate machineに製品固有の
+byte、line、item上限を適用しない。Fileはparse rollupを持たない: recognition自身の`parseStatus`がparseの事実であり、file-levelの
+aggregateには読み手がいなかった。
 Failed recognitionがあってもreadable textなら完全なsourceを表示でき、そのdiagnosticはInspector extraction
 だけを説明しvendorに対するvalidity判断ではない。
 Inspectorは`$TOKEN`、`${TOKEN}`、platform上の同等なenvironment referenceのようなstringをauthored textとして
@@ -983,7 +986,10 @@ substituteしない。
 | `instructions`、`settings/config` | File自身 |
 
 したがってCustomizationFileは自身の事実 — Source相対Path、read結果、size、diagnostic — を1度だけ
-公開し、各kindの一覧はそれを繰り返さず`fileId`で参照する。共有された1つのrow形では最初の2つの単位を
+公開し、各kindの一覧はそれを繰り返さず`fileId`で参照する。Companionは何を持っていても自身のrowに
+ならない（FR-003）ため、rowはそれを所有する定義の隣で、自身のcensusに属するfileのdiagnosticを
+pathで名指して述べる: customizationのdirectory内で失敗したreadはgenerationをpartialにしたfileの
+1つであり、一覧の中でそれを言えるのはそのcustomizationのrowだけである（FR-028）。共有された1つのrow形では最初の2つの単位を
 表現できない: 名前でgroupingするとToolRecognitionが依拠する`(fileId, tool, kind)`ごとに1 recognitionと
 いう規定を壊し、file形のrowは1 carrierの宣言が必要とするN行になりようがない。
 
@@ -1001,8 +1007,8 @@ skill ruleを出荷する作業が、そのstrategyと記述を一緒に出荷�
 
 Recognition recordのdetailsは`kind`で判別する。Recognitionを識別する情報はkindごとに異なり、1つの共有
 optional fieldには収まらないからである: skillは単一の`name`を宣言するが、MCP carrierはserverごとに1つ
-宣言する。Skillのdetailsはその宣言済み名を運ぶ。これはFR-027のacknowledgement gateの外にある唯一の
-authored値であり、contentではなくpresentation identityだからである（FR-007）。Fileが宣言していない場合、
+宣言する。Skillのdetailsはその宣言済み名を運ぶ。これは一覧rowが運ぶ唯一のauthored値であり、
+contentではなくpresentation identityだからである（FR-007、FR-027）。Fileが宣言していない場合、
 名前はemptyではなくabsentとする。
 
 Recognitionは一覧rowではない。Rowの単位はkind自身のものであり（§ 一覧の単位）、各kindの一覧はfileごとの
@@ -1016,6 +1022,12 @@ listはabsentではなくemptyとする。Directoryであることこそがskill
 列挙済みだからである。公開される件数はその`length`だけである
 （contracts/inspection-path-allowlist.md § Bounded companion census）。
 
+列挙された各pathは同じgenerationの`CustomizationFile`でもある。Directory形式のcustomizationは全体として
+読むため、付随fileは各1回読まれ、他のfileと同様に — 自身のidentity、path、read outcome、完全なauthored
+sourceを持って — 公開される。Ruleがadmitしておらず何も分類していないため、recognitionは持たず、どのkindの
+inventoryにも現れない。ここでのlistがそれらを所属先のcustomizationに結び付けるものであり、detail surfaceは
+これをもとにそのcustomizationのdirectoryを構成する。
+
 | Field | Type | Rule |
 |---|---|---|
 | `recognitionId` | opaque string | Generation内unique |
@@ -1024,7 +1036,7 @@ listはabsentではなくemptyとする。Directoryであることこそがskill
 | `tool` | `copilot \| claude \| codex` | 必須 |
 | `details` | kind判別payload | 認識されたkindと、そのkindのrecognitionを識別するもの — skillなら宣言名とcompanion file list。1 fieldであるため、射影はkindごとの再構成ではなくcopyで済む |
 | `parseStatus` | `not-attempted \| parsed \| failed` | `not-attempted`はallowlist extractorが非該当。`failed`はこのrecognitionだけall-or-nothing |
-| `declaredMetadata` | ordered `DeclaredMetadataEntry[]` | Allowlist対象のclosed field IDだけ。Source occurrence順と受理したduplicateを保持 |
+| `declaredMetadata` | ordered `DeclaredMetadataEntry[]` | Allowlist対象のclosed field IDだけ。fieldごとに1 entryをallowlist rowの順で持つ |
 | `diagnosticIds` | opaque string[] | Owning fileのrecognition-scoped extraction failure |
 
 維持管理するsupported-customization文書を規範的なpresentation allowlistとする。Supportedな各`(tool, kind)`について、
@@ -1062,48 +1074,56 @@ classify、retry、recoverしない。Triggerを所有するboundaryへpropagate
 generation resultを作らず、session API boundaryがtriggerを所有する場合はfailed requestのerrorとして通常どおり報告する。
 
 Recognitionはclosed tool順`copilot`、`claude`、`codex`、次に表記載のkind順でsortし、opaque IDを使わない。
-File間metadata comparisonは`(tool, kind, fieldId, occurrence)`を使い、field ID一致だけで無関係recognitionを比較しない。
+File間metadata comparisonは`(tool, kind, fieldId)`を使い、field ID一致だけで無関係recognitionを比較しない。
 
-### SourceTextRange、ExtractedSourceOccurrence
+### Field reading
 
-全authored projectionは最初にinternalな`ExtractedSourceOccurrence` 1件として表す。そのkeyはowning recognition、
-closed `fieldId`、zero-based occurrenceからなり、exact authored literal、利用可能ならtyped semantic value、
-`SourceTextRange` 1件を持つ。RangeはECMAScript UTF-16 code unitで測るhalf-open `{ start, end }`で、
-`sourceText.slice(start, end) === authoredLiteral`の場合だけvalidとする。
+Extractorは、fileのallowlist fieldをparserが解決した結果を報告する。それはそのfileを読み込む製品が得る値である:
+quoteとescapeは解決され、`007`は`7`として読まれ、2回宣言されたkeyは後の宣言に解決され、aliasは指す先の値に解決され、
+schema外のtagはそれが担っていたscalarを残す。いずれも拒否しない。Inspectorは製品がカスタマイズから何を読み取るかを
+記述するのであって、その間に立つvalidatorではない。綴りが必要なreaderのために、完全なauthored byteは同じdetail
+responseの`sourceText`として同席している。
 
-Metadata、authored relationship、derivationは同じoccurrenceを参照し、そのexact rangeを再利用できる。
-Exact range再利用は同じoccurrence keyかつidentical literalの場合だけlegalとする。Distinct emitted occurrenceのrangeは
-disjointでなければならず、別origin key間のpartial、crossing、containment、identical overlapはambiguousとして
-recognitionのcomplete extractionをfailureにする。Child value occurrenceをemitするextractorはenclosing collectionを
-別metadata occurrenceとして同時にemitしない。JSONC、YAML、TOML、Markdown/frontmatter/import、astral character、
-isolated surrogate、combining character fixtureで`String.prototype.slice` round-tripを検証する。
+唯一の拒否はまったくparseできないdocumentであり、この場合報告すべき値が存在しない。これはrecognition単位でatomicと
+する。parseできたfieldではなく、そのrecognitionについて何もpublishしない。部分的なextractionは、どのauthored値を
+飛ばしたかを述べられないからである。そのfileはadmit済み・readable・comparison eligibleのまま残る。
+
+Fieldはsource座標を持たない。Documentを指すものが存在せず — detail surfaceはfileを丸ごと表示し、inventory rowは
+declared nameを表示する — rangeはreaderのいないfieldを全entryに載せることになり、しかも誰もcheckできない。
+Extractorは測定するのと同じtextから値を取るため、両者の一致を要求してもその値を言い換えるだけであり、測定自体が
+誤っていても成立してしまう。Sourceを指す必要のあるprojectionは、座標をそれが意味を持つcheckと共に導入する。
+
+値は文字単位で読む。astral characterはUTF-16 code unit 2つ、combining markはcode point 2つだからである。よって
+JSONC、YAML、TOML、Markdown/frontmatter/import、astral character、combining character fixtureは
+extractionとJSON transportを変化なく通過しなければならない。
 
 ### DeclaredMetadataEntry
 
 | Field | Type | 公開範囲 | Rule |
 |---|---|---|---|
 | `fieldId` | closed metadata-field identifier | DTO | Allowlist field/path用のregistry所有identity。任意のauthored keyにはしない |
-| `occurrence` | zero-based integer | DTO | この`fieldId`のsource順occurrenceを数え、`fieldId`と組み合わせてstable metadata-comparison identityにする |
-| `authoredLiteral` | string | DTO | Authored quote、escape、block/collection punctuation、environment-reference syntaxを含むvalue token/spanの正確なdecoded-`sourceText` slice。Decoded valueに置換しない |
-| `sourceOccurrenceKey` | closed field/occurrence origin key | internal | Shared `ExtractedSourceOccurrence` 1件を参照。Relationship/derivation projectionはspanをcopyせずこのkeyを再利用 |
-| `sourceRange` | `SourceTextRange` | internal | UTF-16 half-open range。`String.prototype.slice`が`authoredLiteral`と一致 |
-| `semanticValue` | `SemanticMetadataValue`またはnull | internal | Typed classification、relationship normalization、derivation専用の別decode value。Serialize/displayしない。Literal表示は可能だがtyped valueがambiguousならnull |
+| `value` | string | DTO | そのfieldについてparserが解決した値を、fileを読み込む製品が得るテキストとして表す。Mask、redact、短縮はせず、hostが解決した環境変数参照にもしない |
 
-`SemanticMetadataValue`はnull、boolean、string、integer、float、date/time、array、object用のclosedかつJSON-safeな
-discriminated unionとする。Integer、float、date/time payloadは明示type tagとcanonical stringを使い、
-JavaScript number precisionやparser固有date objectにsemantic valueを変化させない。Array/objectは既存の
-parser/runtimeがsupportする範囲で同じunionをrecursiveに含み、objectはJavaScript object mapではなくordered key/value
-entryを使う。
-Field名にかかわらず、このunionはauthored literalのmechanical typed decodeである。Natural-languageの意味/意図、
+Entryはauthored occurrenceごとではなくfieldごとに1件とする。2回宣言されたkeyは、そのfileを読む製品にとって1つの値に
+解決され、報告するのはその解決結果である。したがってこれらのentryのcomparison identityは`(tool, kind, fieldId)`とする。
+
+Entryとなるのはsyntaxがstring、number、またはbooleanのscalarへ解決するfieldである。Null scalarは値の不在を
+宣言するものであり、それはentryの不在が既に記録している。`null`と読めるentryは、productがそれで選択することの
+ない綴りを提示することになる。構造のテキスト形式はentryにしない。それはfileが含まない値になるからである。
+
+Presentation allowlistは、list値・map値のkeyのitem/map-entry occurrenceも名指す（`copilot.skill.allowed-tool`、
+`copilot.mcp.server.arg`、`marketplace.plugin.keyword`など。contracts/vendors/*.md § Presentation Allowlist）。
+出荷済みextractorはそのいずれも読まないため、このmodelはそれらの形を持たない: それを読むextractorが、itemに
+必要な形とitemを区別するcomparison identityを同じ変更で持ち込む。それまではlist値のkeyは、構造を平坦化した
+綴りではなくentryを生まない。
+
+値を読むことはmechanicalである。Natural-languageの意味/意図、
 semantic rank、validity/correctness/effectiveness/compliance/quality、policy/remediation advice、fix actionは表現できない。
 Inspector所有schema/registryの検査は、これをcustomization-file verdictへ変換しない。
 
-Arrayは正確なsource occurrence順でserializeする。受理したduplicate field occurrenceをmapでcollapseしない。JSON
-transport escapeはJSON decode後のDTO stringを変更しない。JSONC syntax-tree range、YAML CST/source-token range、
-semantic parseとcross-checkしたTOML lexical span、Markdown/frontmatter/import spanは正確なsubstringを
-再現しなければならない。Missing、ambiguous、illegal overlap、non-round-tripping spanはrecognitionのmetadata/relationship/
-derivation extraction全体を破棄する。Structural comparisonは`(tool, kind, fieldId, occurrence)`で対応付けて`authoredLiteral`を
-比較するため、semanticに同値でもlexicalに異なるvalueを見えるまま保つ。
+Arrayはallowlist rowの順でserializeする。JSON transport escapeはJSON decode後のDTO stringを変更しない。
+Parseできなかったdocumentは、そのrecognitionのmetadata/relationship/derivation extraction全体を破棄する。
+一方で完全なauthored byteは`sourceText`として利用可能なまま残る。値がもはや運ばない綴りをreaderが求める先はそこである。
 
 ### ScopeDescriptor、OrderDescriptor
 
@@ -1116,7 +1136,7 @@ Public scope/order shapeはclosed DTO unionとし、rendering/comparisonをimple
 | `source-root` | なし | Owning Repositoryまたはtool固有Global Source root |
 | `directory-subtree` | `path: SourceRelativePath` | 1 Source-relative directoryとそのdescendant |
 | `matching-path` | `path: SourceRelativePath`, `selectorIndex: non-negative integer` | Exact admitted pathとimmutable matcher-selector alternative |
-| `declared` | `fieldId`, `occurrence` | Authored valueを複製せず1 `DeclaredMetadataEntry`を参照 |
+| `declared` | `fieldId`, `occurrence` | そのfieldのauthored宣言を1件、値を複製せず参照する。Entry listへのindexではない。Entry listはfieldごとに解決済みentryを1件だけ持つ |
 
 Path fieldは所有admission recordと同じSourceに属する。Stable scope keyは上記variant順、次に該当するSource-relative
 path、selector index、field ID、occurrenceとする。
@@ -1139,8 +1159,11 @@ nullとapplicability/documentation factで表す。
 |---|---|---|
 | `summary` | `authored \| available \| selected \| omitted \| shadowed \| disabled \| conditional \| unknown` | 便宜的projectionにすぎず、`effective`と呼ばない |
 | `conditions` | `ConditionFact[]` | key・reason code・basis・status順でsort/deduplicateし、欠けたinputをtrueにしない |
-| `strategyRefs` | sort済みstrategy ID[] | Projectionに使ったstrategy。Authorshipしか判明しない場合はempty |
-| `evaluatedFromGeneration` | integer | このassessmentを計算した所属sequenceのgeneration。Rescanを越えてfactを残さない |
+
+Assessmentは`strategyRefs`も`evaluatedFromGeneration`も持たない。Assessmentを運ぶrecordは、
+IDの列では運べないdocumentation status付きでstrategyごとに`EvidenceAssessment`を既に公開しており、
+assessmentを計算したgenerationは、それを運ぶresponseがbindされたgenerationである。どちらのfieldも
+既にある値の2つ目のcopyであり、2つのcopyは食い違い得る。
 
 各`ConditionFact`は`key`（`surface`、`engine-version`、`runtime-cwd`、`workspace-root`、
 `repository-root`、`project-root`、`worked-path`、`target-match`、`scope-availability`、`feature-state`、
@@ -1153,8 +1176,9 @@ Applicableなofficial ruleと結論に必要な全inputが判明した場合だ�
 `shadowed`、`disabled`にする。それ以外は`conditional`または`unknown`のままとする。
 
 同梱condition-reason registryは各`reasonCode`を、許可するkey/basis/status shape、結論にrequiredかどうか、
-1つのprojection role（`authorship`、`availability`、`selection`、`omission`、`shadowing`、`disablement`、
-`documentation-uncertainty`）へmapする。Emitterはsummaryを直接選べない。各generationで次のdecision tableを
+1つのprojection role（`availability`、`selection`、`omission`、`shadowing`、`disablement`、
+`documentation-uncertainty`）へmapする。`authorship` roleは存在しない。下記row 8へはfactではなく
+recordのoriginから到達するため、それを名指すroleはどのrowも問い合わせない値になる。Emitterはsummaryを直接選べない。各generationで次のdecision tableを
 使って再計算し、最初にproofが完成したrowを採用する。
 
 | Priority | Summary | 必要なcomplete proof |
@@ -1164,7 +1188,7 @@ Applicableなofficial ruleと結論に必要な全inputが判明した場合だ�
 | 3 | `omitted` | Completeなsurface/target/selection/budget ruleで除外を証明し、higher-priority proofなし |
 | 4 | `selected` | Documented selection ruleでinclusionを証明し、selectionを妨げ得る全conditionがsatisfied |
 | 5 | `unknown` | Required composition/applicability ruleのdocumentationがabsent/conflictingで、十分なnegative proofなし |
-| 6 | `conditional` | Documented applicability pathはあるがrequired runtime/excluded inputがunknown/conflictingで、十分なnegative proofなし |
+| 6 | `conditional` | Documented applicability pathはあるがrequired runtime/excluded inputが未観測で、十分なnegative proofなし。自身のdocumentationがconflictするrequired inputはrow 5である: 不一致はdocumentation自体であり、欠けているruntime観測ではない |
 | 7 | `available` | 全documented availability requirementがsatisfiedで、availabilityを妨げる未解決factがなく、selection resultは主張しない |
 | 8 | `authored` | Accepted authored declarationだけを証明し、installation/availabilityを意図的に主張しない |
 
@@ -1186,8 +1210,6 @@ customizationのvalidity/correctness/effectiveness/compliance/qualityを判定�
 | `kind` | `import \| declared-component \| skill-resource \| plugin-source \| agent-reference \| context-inheritance \| runtime-reference \| order \| fallback` | Descriptiveのみ |
 | `targetOrigin` | `authored \| documented-default` | `authored`はexact source occurrenceを1つ要求し、`documented-default`は省略Codex plugin hookのようなregistry固定defaultだけに許可 |
 | `authoredTarget` | stringまたはnull | `authored`ではauthored quote/escapeを含むtarget token/spanの正確なdecoded-source slice。`documented-default`ではnullとし、synthetic pathをauthoredとして表示しない |
-| `sourceOccurrenceKey` | internal occurrence referenceまたはnull | `authored`では該当時にmetadata/derivationと同じ`ExtractedSourceOccurrence`を参照。`documented-default`ではnull |
-| `targetSourceRange` | `SourceTextRange`またはnull | Internal。`authored`では必須でUTF-16 offsetを使い`authoredTarget`を再現。`documented-default`ではnull |
 | `semanticTarget` | string | Internal。Path normalization/applicability専用の別decode済みauthored targetまたはregistry固定default。Authored display valueへ置換しない |
 | `normalizedTarget` | `SourceRelativePath`またはnull | Lexical normalizationが安全で、targetが所有Source内に残る場合だけ設定 |
 | `boundaryStatus` | `inside \| outside \| invalid \| unknown` | Readを許可しない |
@@ -1218,8 +1240,6 @@ relationship `ruleId`/kind、declaration-field identifier、source occurrenceの
 使わない。Semantic targetが同じでも別authored source occurrenceは別edgeのまま保つ。Documented defaultは
 `authoredTarget: null`とし、UIはdocumented defaultとlabelして`normalizedTarget`を表示してよいが、
 source-authored textとは表示しない。
-1つのdeclared fieldがmetadata、relationship、derivationを駆動する場合、3 projectionはその1 occurrence/rangeを
-参照し、distinct origin occurrence間のoverlapだけがextraction failureになる。
 Opaque IDはorderに使わない。Relationshipの構築または保持中にtargetを開かず、独立したcandidate admissionだけがreadを認可できる。
 
 ### Diagnostic
@@ -1229,16 +1249,18 @@ Opaque IDはorderに使わない。Relationshipの構築または保持中にtar
 | `diagnosticId` | opaque ASCII string | Server生成でgeneration/session内unique |
 | `code` | stable closed code | Objective testとdocumentation linkに利用可能。Shared registryが各codeのscope、severity、実行可能な英語message/next-step textを固定するため、いずれもserializeしない |
 | `severity` | `info \| warning \| error` | `code`によりregistry固定でserializeしない。Vendor validationを意味しない |
-| `scope` | `file \| source \| session` | `code`によりregistry固定でserializeしない。必須attachment discriminator。Generation scopeかsession-lifecycleかというlifetimeとは独立 |
-| `sourceId` | optional opaque ASCII ID | `file`と`source`で必須、`session`で禁止 |
-| `fileId` | optional opaque ASCII ID | `file`だけで必須、`source`と`session`で禁止 |
-| `sourceRelativePath` | optionalなSource-relative Path | `file`だけで必須で、`sourceId`内の当該file pathと一致し、`source`と`session`で禁止 |
+| `scope` | `file \| source` | `code`によりregistry固定でserializeしない。必須attachment discriminator。Generation scopeかsession-lifecycleかというlifetimeとは独立 |
+| `sourceId` | opaque ASCII ID | どちらのscopeでも必須。この製品が生成するdiagnosticはすべてSourceに属するため、path-lessなものは存在しない |
+| `fileId` | optional opaque ASCII ID | `file`だけで必須、`source`で禁止 |
+| `sourceRelativePath` | optionalなSource-relative Path | `file`だけで必須で、`sourceId`内の当該file pathと一致し、`source`で禁止 |
 | `lifecycleOwnerKey` | `repository \| global:<tool> \| published-source:<sourceId> \| null` | Internalでserializeしない。全out-of-generation lifecycle Diagnosticでは必須non-null、generation-owned candidateではnullで、1つのpublic owner referenceと照合する |
 
-Legalなattachment shapeは正確に次の3つだけである。`file`はnon-nullの`sourceId`、`fileId`、
-`sourceRelativePath`を持つ。`source`はnon-nullの`sourceId`とnullのfile/path fieldを持つ。`session`は3つの
-location fieldがすべてnullとなる。それ以外の組合せを持つDTOはinvalidである。Scopeはlifetimeと直交し、例えば
-generation-wide deterministic assembly-outcome Diagnosticをsession scopeに、fatal rescan lifecycle recordをsource scopeにできる。
+Legalなattachment shapeは正確に次の2つだけである。`file`はnon-nullの`sourceId`、`fileId`、
+`sourceRelativePath`を持つ。`source`はnon-nullの`sourceId`とnullのfile/path fieldを持つ。それ以外の
+組合せを持つDTOはinvalidである。Path-lessなscopeは存在しない: diagnosticは何かを読む際に起きたことを述べる
+ものであり、それを読んだSourceは解決可能にする最小の文脈である — どちらも名指さないrecordは、どこかで何かが
+失敗したと伝えるだけになる。Scopeはlifetimeと直交する: fatal rescan lifecycle recordもfile単位のread failureも
+source scopeまたはfile scopeであり、そのどちらであるかはcommit済みgeneration内に存在するかどうかを何も語らない。
 
 Closed diagnostic-code registryはshared moduleでclosed code unionのそばに置き、各codeのseverity、
 attachment scope、問題と実用的な次stepを示す1つの実行可能な英語messageを固定する。Serverとbrowserは
@@ -1247,7 +1269,7 @@ attachment scope、問題と実用的な次stepを示す1つの実行可能な�
 Candidateは
 固定phase、lifecycle-owner semantic order（Repository、固定Global tool順、既存public Source順）、scope、Source-relative Path、rule/code、
 emitter occurrence順でemitする。Opaque Source ID自体をsort orderに使わない。Aggregationはorder-onlyとする。
-各emitterは各observationを正確に1回作成し、正当に繰り返されるrecord（failed recognitionごとに1件、rejected collision groupごとに1件）が
+各emitterは各observationを正確に1回作成し、正当に繰り返されるrecord（failed recognitionごとに1件）が
 存在するため、dedup passはなく、二重emitはtests/reviewが受け持つ通常の実装バグでありruntime filterではない。
 
 Scan candidateは1つのcommit済みgenerationに属する。Commit不能なfatal scan attemptを含むout-of-generation lifecycle
@@ -1274,24 +1296,19 @@ Inspection-traversal subsetは正確に次のとおりとする。
 | `file-unreadable` | `file` | `error` |
 | `file-content-binary` | `file` | `warning` |
 | `recognition-parse-failed` | `file` | `warning` |
-| `path-normalization-collision` | `session` | `error` |
 
-このsubsetでその他のcodeはinvalidとする。`root-unreadable`はscopeが文脈依存の唯一のcodeである。registryのdefault
-`source` scopeはpublished Source（初期リリースが生成する唯一のケース＝Repository Source）に適用され、未公開Global toolは
-attach先のSourceを持たないため、Global tasksがpathlessなsession scopeとしてrecordを構築する（下記）。他のcodeはすべて
-単一の固定scopeを持つ。`root-unreadable`は、存在しないかdirectoryとしてreadできないSource rootを
-記録する。Published Source（Repository Source、またはrescan時のpublished Global Source）ではその`sourceId`を持つsource
-scopeとし、unpublished Global toolではout-of-generationでpathlessなsession-scoped lifecycle recordとして
-`lifecycleOwnerKey`を`global:<tool>`、唯一のpublic ownerを`GlobalControlView.toolFailures`とする。Diagnostic自体は
-Source/pathを捏造しない。`file-unreadable`は、discoveryとreadの間に消えたfileやtargetがmissing/unreadableな
-symbolic linkを含むper-file read failureを記録する（FR-024）。`file-content-binary`はNUL byteによるdiagnostic-only
-outcomeを記録する（FR-025）。`recognition-parse-failed`は、完全なreadable sourceを表示・comparison可能なまま保ち、
+このsubsetでその他のcodeはinvalidとし、各codeは単一の固定scopeを持つ。`root-unreadable`は、存在しないか
+directoryとしてreadできないSource rootを、そのSourceの`sourceId`を持つsource scopeで記録する（Repository Source、
+またはrescan時のpublished Global Source）。未公開Global toolはrecordをattachするSourceを持たず、このmodelには
+退避先となるpath-less scopeも存在しない: そのfailureをどう運ぶかは、それを生むGlobal phaseが、公開するowner
+（`GlobalControlView.toolFailures`）とrouteに使う`lifecycleOwnerKey` `global:<tool>`とともに持ち込む。
+Diagnosticがその隙間を埋めるためにSourceやpathを捏造することはない。`file-unreadable`は、discoveryとreadの間に消えたfileやtargetがmissing/unreadableな
+symbolic linkを含むper-file read failureを記録する（FR-024）。`file-content-binary`はadmit済みcandidateのNUL byteによる
+diagnostic-only outcomeを記録する（FR-025）。censusが列挙したcompanionのbinary bytesはassetの通常の事実であり、
+Diagnosticなしで公開される。`recognition-parse-failed`は、完全なreadable sourceを表示・comparison可能なまま保ち、
 影響を受けたrecognitionの派生metadata/relationshipだけを省くFR-028のparser/extractor failureを記録する。これら3つの
-file-confined outcomeのそれぞれが、それ以外はpublish可能なgenerationを`partial`にする。`path-normalization-collision`は、
-rejectされたnormalization-collision group 1件をpathlessなsession-scoped recordとして記録する（spec.md Clarifications
-§ Session 2026-07-20）。曖昧さのないpublic pathが存在しないためfile-confined outcomeではなく、それ自体ではgenerationを
-partialにしない。File rowは
-coherentなalready admitted candidate tupleを必須とする。どのrowもOS error text、outside path、filesystem handle/descriptor、source byteを
+file-confined outcomeのそれぞれが、それ以外はpublish可能なgenerationを`partial`にする。File rowは、generationが既に公開したfile — admit済みcandidate、またはcompanion censusが
+その隣に列挙しscanが同じ経路で読んだfile — のcoherentなtupleを必須とする。どのrowもOS error text、outside path、filesystem handle/descriptor、source byteを
 持てない。
 
 ### RootPresentationEncodingとGlobal lexical state
@@ -1342,16 +1359,16 @@ readable-directory admissionだけが判定し、後のNode.js/OS rejectionは�
 - `EditorModelState`: Opaqueなin-memory URIと完全なauthored `sourceText`を持つgeneration-scoped Monaco model。
   所有editor、subscription、全modelはroute close、selection replacement、file removal、source disable、
   所属sequenceのgeneration変更時に個別にdisposeする。
-- `SensitiveContentNoticeState`: 固定warning objectとcurrent authorized browser-session memory lifetime用の
-  `acknowledged` boolean。完全なsource text、declared authored metadata、authored relationship target、comparisonの両sideは
-  機密値を含み得るため、UIは最初の`FileDetail` requestまたはcomparison構築前にacknowledgementを要求する。一度acknowledge
-  すれば、そのSPA documentの全authored-value surfaceを対象とし、document reloadまたはbrowser-document closeで失う。
-  このclient-only stateはAPIへ送信せずread authorityを与えず、中央full-session purge pathで破棄する。Route close、selection
-  replacement、file/Source removal、generation changeは対象scopeのmodelを個別にdisposeする。これらは中央
-  client-data purgeではなく、読み込み済みdocumentのacknowledgementを維持してよい。
+- Sensitive-contentに関するstateは一切存在しない。acknowledged flagも、注意書きも、`FileDetail` requestや
+  comparisonの前に立つ確認stepも持たない（FR-027）。sessionはloopback-boundでfileはユーザー自身のものであり、
+  確認は何も守らない一方ですべてのfileを読むのに2回の操作を要求し、常設の注意書きは読み手自身のrepositoryに
+  ついて読み手に説明するために画面を費やす。代わりにauthored contentを縛るのは、到達できる場所（fileまたはcomparisonを
+  1つずつ。inventoryやsessionのresponseからは到達できない）と保持の長さであり、後者は下記の中央
+  full-session purgeが終わらせる。Route close、selection replacement、file/Source removal、generation changeは
+  対象scopeのmodelを個別にdisposeし、中央client-data purgeではない。
 - Global disableは代わりに下記central full-session purgeを使う。Global-disable actionはrequest送信前に全inspection contentをlocal purgeする。Ordinary responseでより大きい`globalContentEpoch`または
   non-null `globalDisableInProgress`を観測した場合もrender前にidempotent purgeを繰り返す。Clientは`clientDataEpoch`をincrementし、inspection dataを
-  返し得る全requestをabortし、全editor/model/comparisonをdisposeし、warning/filter stateをclearして、全Source/generation/file/detail/authored
+  返し得る全requestをabortし、全editor/model/comparisonをdisposeし、filter stateをclearして、全Source/generation/file/detail/authored
   metadata/relationship/Diagnostic DTO/DOM textをremoveする。Disableへのjoin/retryに必要なcontrol/error projectionだけを保持できる。
   Accepted barrier failureではpurge済みcontentをrestoreせず、terminal disable successまたはprocess restart後のnew full snapshotだけからcontentを取得する。
   Barrier acceptance前にrequestがfailした場合、またはtrue no-opの場合、fresh session snapshotのfenceはnullであり、purge済みclientはnew full snapshotを直ちにfetchできる。
@@ -1368,8 +1385,8 @@ readable-directory admissionだけが判定し、後のNode.js/OS rejectionは�
   retryはpreview検証済み、`globalEnableInProgress` null、`pendingTools` empty、`retryableTools`
   non-emptyの場合だけ提示する。Resumeはsessionを再取得して返された`sessionId`がadopt済みrecovery
   baselineと一致することを要求し、default filterのfresh inventory-summary viewをatomicに構築する。
-  以前のdetail、comparison、editor、warning acknowledgement、authored sourceは復元せず、後で
-  detail/comparisonを開く場合はnew acknowledgementを要求する。そのfetchがfailするか返された
+  以前のdetail、comparison、editor state、authored sourceは復元せず、後でdetail/comparisonを開く場合は
+  fresh sessionから改めて取得する。そのfetchがfailするか返された
   `sessionId`が一致しない場合は、表示済みprocess-lifetime URLを開き直すsession-lost next stepだけを残す。
 - `SessionViewState`: Currentなbooting/inspection/recovery/ended viewを保持し、devframeのconnection-status
   signalを直接adoptする。独立したliveness RPC、probe、DTOは存在しない。Initial adoption、source-state
@@ -1380,7 +1397,7 @@ readable-directory admissionだけが判定し、後のNode.js/OS rejectionは�
   見た自身のfileであり、trusted-workspace modelはこれをexposureとして扱わない。Currentな
   network/runtime RPC rejection、transportが報告するchannel loss、session-ID mismatchでは、
   session-ended viewをrenderする前に中央purgeを同期実行する。全Monaco
-  editor/model/worker/subscriptionをdisposeし、comparison/notice/filter stateをclearし、全
+  editor/model/worker/subscriptionをdisposeし、comparisonとfilterのstateをclearし、全
   source/detail/metadata/diagnostic DTOとDOM textを除去してpending requestをabortし、epochを
   incrementして旧epochで開始したresponseを無視する。Ordinary responseがcurrent baselineをconfirm
   またはrenderする前に、そのrequest token、`clientDataEpoch`、session identity、Global content epoch、
@@ -2715,16 +2732,14 @@ candidate -> readable + not-applicable/all-parsed/mixed/all-failed parse summary
 4. Accepted file pathは、そのSource root配下で同梱したstaticまたはtyped derived ruleによりadmitされる。
    Parsed valueがcandidateをadmitできるのはその正確なderivation ruleを満たす場合だけで、
    relationship/excluded ruleは決してadmitしない。Client供給のpath stringはreadを認可しない。
-   Filesystem operationはraw entry-name segmentを使い、NFC segmentはdisplay専用とする。Global traversalはconsent-bound
+   Filesystem operationはraw entry-name segmentを使い、それを`/`でjoinしたものが公開されるdisplay pathである。Global traversalはconsent-bound
    `TraversalPlan`に表されたexact operationだけを行う。
 5. Discovered fileはSource/generationごとに、Source-relative Pathで識別する1つの`CustomizationFile`と、
    tool/kind pairごとに最大1 recognitionを持つ。Distinctなpathはdistinctなinventory itemであり、
    physical-identity groupingは存在しない（FR-024、FR-019）。異なるSource、attempt、generationは独立してreadする。
-6. 全readable file DTOは完全なauthored `sourceText`を返し、返却する宣言済みmetadata値とauthored relationship targetは
-   validated済みの正確なUTF-16-indexed `String.prototype.slice`とする。Documented defaultはauthored textをnull、
-   originを明示する。Metadata/relationship/derivationは1 exact occurrence rangeを再利用できるが、distinct originは
-   overlapできない。Comparisonはauthored sliceと`(tool, kind, fieldId, occurrence)`を使い、semantic decode後もauthored literalの差を
-   保持する。Environment referenceはliteralのままでprocess environmentのlookup/substitutionを
+6. 全readable file DTOは完全なauthored `sourceText`を返し、返却する宣言済みmetadata値は
+   そのfieldについてparserが解決した値とする。Documented defaultはauthored textをnull、
+   originを明示する。Comparisonは各fieldの解決済み値と`(tool, kind, fieldId)`を使う。Environment referenceはliteralのままでprocess environmentのlookup/substitutionを
    起こさない。Session Diagnosticはactionable location fieldだけを持てる。
 7. Documentation status、authored/installed state、selection、trust、enablement、その他condition factを
    provenance固有かつ直交したまま保ち、「effective configuration」やlossyなrecognition-level winnerへ
@@ -2737,10 +2752,9 @@ candidate -> readable + not-applicable/all-parsed/mixed/all-failed parse summary
 10. Resource capacityはNode.js、parser library、browser、OS、filesystem、実行環境から継承する。Inspector固有の
     byte/count/depth/queue/deadline上限を定義せず、environment capacity failureをcustomization validity verdictへ変えない。
 11. Browser editor modelはopaqueなin-memory identityを使い、filesystem/remote URLを使わず、active routeと
-   generationを越えてsourceを保持しない。Source/comparison surfaceはauthored content表示前にsessionの
-   sensitive-content noticeを提示してin-memory acknowledgementを受け取ってから、同梱SPAがdetail contentをrequestまたは
-   comparisonを構築する。Acknowledgementはpresentation専用でaccess-control factorではなく（FR-027）、session APIは
-   loopback-bound local host経由でだけ到達可能で、acknowledgementを受信も永続化もしない。Currentな
+   generationを越えてsourceを保持しない。Source/comparison surfaceは注意書きを掲げず、detail requestや
+   comparisonの前に確認stepも立てない（FR-027）。
+   session APIはloopback-bound local host経由でだけ到達可能であり、その境界がすべてだからである。Currentな
    browser/network/runtime RPC rejection、transportが報告するchannel loss、session mismatch、
    Global-disableのpre-send action、responseで観測したgreater Global epoch/non-null fenceでは中央purgeを
    実行してapplication保持session contentをすべて除去する。全ordinary responseはrequest-token、
@@ -2767,7 +2781,7 @@ candidate -> readable + not-applicable/all-parsed/mixed/all-failed parse summary
     だけに保持し、保存済みraw valueをadmissionに使う。Escaped `displayRoot`はpresentationだけで、enableはenvironment inputを再読込しない。
 17. Product発行のmutation-capable filesystem operation/open flagは存在しない。Testはcontent、length、identity/link state、
     mode、mtime、ctime、observable xattr/ACLを比較する。OS-only atime changeは別に記録し、mutationもsafetyも証明しない。
-18. Syntax parsing、exact authored-literal extraction、mechanical typed decoding、frozen-catalog classification、
+18. Syntax parsing、allowlist fieldについてparserが解決した値の読み取り、frozen-catalog classification、
     documented structural projectionだけを解釈operationとして許可する。DTO/internal projectionはnatural-languageの
     interpretation/ranking、customization validity/correctness/effectiveness/compliance/quality、policy/remediation advice、
     lint/sync/convert/format/fix behavior、size-based valid/invalid verdictを表現できない。

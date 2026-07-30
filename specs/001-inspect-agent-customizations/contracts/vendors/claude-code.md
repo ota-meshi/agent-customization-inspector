@@ -173,11 +173,10 @@ This index grants no read authority and does not duplicate those definitions.
 ## Normative initial-release presentation allowlist
 
 This table is the closed FR-007 presentation allowlist for Claude Code. The kind
-spellings are the exact `ToolRecognition.kind` values. A field ID names one authored
-source occurrence class, not an arbitrary key supplied by the inspected file. A repeated
-array item or dynamic map entry produces another source-ordered occurrence under the same
-field ID; for `*.name` IDs on MCP servers and Hook events, the authored map key is the
-occurrence. `marketplace.plugin.source` is the single cross-vendor field ID used by the
+spellings are the exact `ToolRecognition.kind` values. A field ID names one field of the recognized
+kind, not an arbitrary key supplied by the inspected file, and produces one entry holding
+the value its parser resolved for that field; for `*.name` IDs on MCP servers and Hook
+events, that value is the authored map key. `marketplace.plugin.source` is the single cross-vendor field ID used by the
 closed marketplace derivation: it denotes either a plain-string source or the `path`
 leaf of an object source.
 

@@ -1,6 +1,7 @@
 # Editor-level byte hygiene (https://editorconfig.org). Enforcement beyond
-# this is deliberately not implemented: line endings are owned by
-# .gitattributes, and code style is owned by ESLint.
+# this is deliberately not implemented here: line endings are owned by
+# .gitattributes, code formatting by Prettier (`format` rewrites,
+# `format:check` gates locally and in CI), and non-formatting style by ESLint.
 root = true
 
 [*]

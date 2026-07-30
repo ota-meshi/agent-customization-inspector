@@ -1,10 +1,10 @@
 // T017: public API DTO shapes — closed file variants, one-root Sources,
 // closed descriptors, Source Condition Facts, evidence vocabulary limits,
-// pathless normalization-collision records, and internal state excluded from
+// source-scoped diagnostic records, and internal state excluded from
 // DTOs by construction (data-model.md, contracts/http-api.md).
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
-import { createDiagnostic, serializeDiagnostic } from '../../../src/shared/diagnostics';
+import { DiagnosticRecord } from '../../../src/shared/diagnostics';
 import type {
   ConditionFactStatus,
   CustomizationFileDto,
@@ -18,7 +18,7 @@ import type { DocumentationStatus, LifecycleQualifier } from '../../../src/share
 
 describe('customization file DTO variants', () => {
   it('makes readable text the only variant carrying sourceText', () => {
-    // Binary input is diagnostic-only and a failed read accepted nothing, so
+    // Binary input has no text and a failed read accepted nothing, so
     // neither variant can even represent text or parse fields (FR-024/FR-028).
     expectTypeOf<Extract<CustomizationFileDto, { encoding: 'binary' }>>().not.toHaveProperty(
       'sourceText',
@@ -44,7 +44,6 @@ describe('customization file DTO variants', () => {
       hadLeadingBom: true,
       sourceText: 'a�b',
       sizeBytes: 6,
-      parseSummary: 'not-applicable',
       recognitionIds: [],
       relationshipIds: [],
     };
@@ -137,15 +136,17 @@ describe('evidence vocabulary limits', () => {
   });
 });
 
-describe('pathless normalization-collision publication', () => {
-  it('serializes with every location field null', () => {
-    const serialized = serializeDiagnostic(
-      createDiagnostic({ code: 'path-normalization-collision', lifecycleOwnerKey: null }),
-    );
+describe('source-scoped diagnostic publication', () => {
+  it('serializes with the file fields null', () => {
+    const serialized = new DiagnosticRecord({
+      code: 'root-unreadable',
+      lifecycleOwnerKey: 'repository',
+      sourceId: 's-1',
+    }).serialize();
     expect(serialized).toEqual({
       diagnosticId: serialized.diagnosticId,
-      code: 'path-normalization-collision',
-      sourceId: null,
+      code: 'root-unreadable',
+      sourceId: 's-1',
       fileId: null,
       sourceRelativePath: null,
     });

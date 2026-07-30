@@ -17,6 +17,7 @@
 // calls nothing outside the closed function catalog below.
 import type {
   CommandResult,
+  FileDetailDto,
   InspectionDataResult,
   ScanAdmission,
   SessionSnapshot,
@@ -36,6 +37,8 @@ import type { ClientDataPurge, PurgeReason } from './client-data';
 export const SESSION_RPC_FUNCTIONS = {
   /** Full `InspectionSession` snapshot, or the fenced control DTO. */
   getSession: 'agent-customization-inspector:get-session',
+  /** One committed file's complete authored source and recognitions. */
+  getFileDetail: 'agent-customization-inspector:get-file-detail',
   /** Accept one explicit Repository scan command. */
   rescanRepository: 'agent-customization-inspector:rescan-repository',
 } as const;
@@ -52,8 +55,13 @@ export type SessionRpcFunctionName =
  * defines no server-initiated push of inspection data).
  */
 export interface SessionRpcChannel {
-  /** Invokes one registered server function by its exact catalog name. */
-  call: (method: SessionRpcFunctionName) => Promise<unknown>;
+  /**
+   * Invokes one registered server function by its exact catalog name. The
+   * variadic tail is the function's own parameters — only `get-file-detail`
+   * takes one — kept untyped here because the channel is a transport and the
+   * per-function shapes are checked where each call is issued.
+   */
+  call: (method: SessionRpcFunctionName, ...args: readonly unknown[]) => Promise<unknown>;
 }
 
 /**
@@ -138,6 +146,53 @@ export type SessionFetchOutcome =
     };
 
 /**
+ * The outcome of one guarded `get-file-detail` request — the only response
+ * that carries authored content, and therefore the only one FR-027 is about.
+ *
+ * The contract's detail request token is
+ * `(clientDataEpoch, owning-sequence generation, fileId)`. Two of the three are
+ * enforced without a field of their own: the epoch is the shared guard every
+ * response passes, and a commit rekeys every generation-owned ID, so a file ID
+ * captured under an older generation resolves to nothing and comes back as
+ * `stale-resource` rather than as another generation's content. The third,
+ * `fileId`, is the request-token family below — a newer selection supersedes
+ * the older request before it can render.
+ */
+export type FileDetailOutcome =
+  | {
+      /** Every guard passed; the file's complete detail may be rendered. */
+      readonly kind: 'adopted';
+      /** The committed file with its authored source and recognitions. */
+      readonly detail: FileDetailDto;
+    }
+  | {
+      /** The file belongs to no current generation; see `stale-resource`. */
+      readonly kind: 'rejected';
+      /** The fixed contract code; see {@link RejectionCode}. */
+      readonly code: RejectionCode;
+    }
+  | {
+      /** An ordinary staleness outcome; nothing rendered, nothing purged. */
+      readonly kind: 'discarded';
+      /** Which guard dropped the response; see {@link DiscardReason}. */
+      readonly reason: DiscardReason;
+    }
+  | {
+      /** The shared purge already ran; the page has no data to render. */
+      readonly kind: 'purged';
+      /** Which documented trigger ran the purge; see {@link PurgeReason}. */
+      readonly reason: PurgeReason;
+    }
+  | {
+      /** The call failed; see {@link fatal} for whether the session survived. */
+      readonly kind: 'failed';
+      /** The real transport error, or the fixed unsupported-protocol error. */
+      readonly error: Error;
+      /** True when the channel is gone or the protocol was unsupported. */
+      readonly fatal: boolean;
+    };
+
+/**
  * The outcome of one guarded `rescan-repository` command. A rescan is a
  * command, not an inspection-data read: its success carries the admitted
  * request ID and the updated Source summary, and never a generation snapshot
@@ -179,28 +234,12 @@ export type RescanOutcome =
       readonly fatal: boolean;
     };
 
-/** Construction inputs for {@link createSessionApiClient}. */
+/** Construction inputs for {@link SessionApiClient}. */
 export interface SessionApiClientOptions {
   /** The devframe RPC channel the client issues its calls on. */
   readonly channel: SessionRpcChannel;
   /** The `clientDataEpoch` source and the shared central purge. */
   readonly clientData: ClientDataGuard;
-}
-
-/** The guarded session API surface consumed by the session shell. */
-export interface SessionApiClient {
-  /** Issues one guarded `get-session` request. */
-  readonly fetchSession: () => Promise<SessionFetchOutcome>;
-  /** Issues one guarded `rescan-repository` command. */
-  readonly rescanRepository: () => Promise<RescanOutcome>;
-  /**
-   * Aborts every outstanding request and supersedes every issued token, so
-   * a settlement that arrives afterwards is discarded instead of rendered.
-   * Invoked by the shared purge and before adopting a newer generation.
-   */
-  readonly abortOutstandingRequests: () => void;
-  /** Forgets the adopted baseline so the next response establishes a fresh one. */
-  readonly resetBaseline: () => void;
 }
 
 /**
@@ -230,29 +269,41 @@ function hasErrorEnvelope(value: unknown): value is { readonly error: unknown } 
 }
 
 /**
- * Creates the guarded session API client (T048). All request state is
- * closure-local: nothing is written to browser storage, and no response is
+ * The guarded session API client (T048). All request state is
+ * instance-local: nothing is written to browser storage, and no response is
  * cached for reuse — a later render always comes from a freshly adopted
  * response.
  */
-export function createSessionApiClient(options: SessionApiClientOptions): SessionApiClient {
-  const { channel, clientData } = options;
+export class SessionApiClient {
+  /** The devframe RPC channel every call is issued on. */
+  readonly #channel: SessionRpcChannel;
+
+  /** The `clientDataEpoch` source and the shared central purge. */
+  readonly #clientData: ClientDataGuard;
 
   // The adopted baseline. `null` means "not adopted yet", which is what
   // makes the very first response establish the baseline rather than fail
   // an identity or epoch comparison against a fabricated zero.
-  let sessionId: string | null = null;
-  let globalContentEpoch: number | null = null;
-  let repositoryGeneration: number | null = null;
-  let globalGeneration: number | null = null;
+  /** The adopted host session identity; the outermost adoption boundary. */
+  #sessionId: string | null = null;
+  /** The adopted server-owned Global content epoch (FR-042). */
+  #globalContentEpoch: number | null = null;
+  /** The adopted Repository sequence generation (FR-030). */
+  #repositoryGeneration: number | null = null;
+  /** The adopted Global sequence generation; null while disabled. */
+  #globalGeneration: number | null = null;
 
   // The latest issued token per response family. A settlement whose token is
   // no longer the latest is a late response and is discarded (FR-029 has the
   // server-side counterpart; this is the client half). The rescan command has
   // its own family: a superseded snapshot fetch must not silently invalidate
   // an in-flight command, and vice versa.
-  let latestSessionToken: symbol | null = null;
-  let latestRescanToken: symbol | null = null;
+  /** The latest `get-session` token. */
+  #latestSessionToken: symbol | null = null;
+  /** The latest `get-file-detail` token. */
+  #latestDetailToken: symbol | null = null;
+  /** The latest `rescan-repository` token. */
+  #latestRescanToken: symbol | null = null;
 
   // Outstanding controllers, split by what a generation adoption may abort. A
   // newer generation invalidates that sequence's *data* — the snapshot a fetch
@@ -261,25 +312,52 @@ export function createSessionApiClient(options: SessionApiClientOptions): Sessio
   // for (contracts/http-api.md § Concurrency and lifecycle). A purge abandons
   // both. The product defines no request timeout, retry timer, or memory lease:
   // the browser/network/runtime owns settlement.
-  const outstandingData = new Set<AbortController>();
-  const outstandingCommands = new Set<AbortController>();
+  /** Outstanding inspection-data requests, abortable by a generation adoption. */
+  readonly #outstandingData = new Set<AbortController>();
+  /** Outstanding commands; only a purge abandons these. */
+  readonly #outstandingCommands = new Set<AbortController>();
 
-  /** Abandons the inspection-data requests a newer generation supersedes. */
-  function abortDataRequests(): void {
-    latestSessionToken = null;
-    for (const controller of outstandingData) {
-      controller.abort();
-    }
-    outstandingData.clear();
+  /** Binds the client to its channel and the shared purge. */
+  public constructor(options: SessionApiClientOptions) {
+    this.#channel = options.channel;
+    this.#clientData = options.clientData;
   }
 
-  function abortOutstandingRequests(): void {
-    abortDataRequests();
-    latestRescanToken = null;
-    for (const controller of outstandingCommands) {
+  /** Forgets the adopted baseline so the next response establishes a fresh one. */
+  public resetBaseline(): void {
+    this.#sessionId = null;
+    this.#globalContentEpoch = null;
+    this.#repositoryGeneration = null;
+    this.#globalGeneration = null;
+  }
+
+  /**
+   * Abandons the inspection-data requests a newer generation supersedes. A
+   * detail request belongs to this family: its file ID was issued by the
+   * generation that just moved on, so its result names a file the page can no
+   * longer show.
+   */
+  #abortDataRequests(): void {
+    this.#latestSessionToken = null;
+    this.#latestDetailToken = null;
+    for (const controller of this.#outstandingData) {
       controller.abort();
     }
-    outstandingCommands.clear();
+    this.#outstandingData.clear();
+  }
+
+  /**
+   * Aborts every outstanding request and supersedes every issued token, so a
+   * settlement that arrives afterwards is discarded instead of rendered.
+   * Invoked by the shared purge and before adopting a newer generation.
+   */
+  public abortOutstandingRequests(): void {
+    this.#abortDataRequests();
+    this.#latestRescanToken = null;
+    for (const controller of this.#outstandingCommands) {
+      controller.abort();
+    }
+    this.#outstandingCommands.clear();
   }
 
   /**
@@ -290,11 +368,11 @@ export function createSessionApiClient(options: SessionApiClientOptions): Sessio
    * (contracts/http-api.md § Concurrency and lifecycle). Purging for it would
    * discard a snapshot the user is still reading over a single failed call.
    */
-  function failureOutcome(cause: unknown): { kind: 'failed'; error: Error; fatal: boolean } {
+  #failureOutcome(cause: unknown): { kind: 'failed'; error: Error; fatal: boolean } {
     const error = cause instanceof Error ? cause : new Error(String(cause));
     const fatal = error instanceof DevframeConnectionError;
     if (fatal) {
-      clientData.purge('channel-failure');
+      this.#clientData.purge('channel-failure');
     }
     return { kind: 'failed', error, fatal };
   }
@@ -304,7 +382,7 @@ export function createSessionApiClient(options: SessionApiClientOptions): Sessio
    * be the latest of its family, its controller must not have been aborted,
    * and no purge may have advanced `clientDataEpoch` since capture.
    */
-  function guardSettlement(
+  #guardSettlement(
     token: symbol,
     latest: symbol | null,
     controller: AbortController,
@@ -316,39 +394,48 @@ export function createSessionApiClient(options: SessionApiClientOptions): Sessio
     if (token !== latest) {
       return 'superseded-request';
     }
-    if (clientData.epoch() !== capturedClientDataEpoch) {
+    if (this.#clientData.epoch() !== capturedClientDataEpoch) {
       return 'client-data-epoch-advanced';
     }
     return null;
   }
 
-  async function fetchSession(): Promise<SessionFetchOutcome> {
+  /**
+   * Issues one guarded `get-session` request and adopts what it returns:
+   * baseline identity, epoch, and generations advance only here.
+   */
+  public async fetchSession(): Promise<SessionFetchOutcome> {
     const token = Symbol('get-session');
     const controller = new AbortController();
-    latestSessionToken = token;
-    outstandingData.add(controller);
-    const capturedClientDataEpoch = clientData.epoch();
+    this.#latestSessionToken = token;
+    this.#outstandingData.add(controller);
+    const capturedClientDataEpoch = this.#clientData.epoch();
     let settled: unknown;
     try {
-      settled = await channel.call(SESSION_RPC_FUNCTIONS.getSession);
+      settled = await this.#channel.call(SESSION_RPC_FUNCTIONS.getSession);
     } catch (cause: unknown) {
-      outstandingData.delete(controller);
+      this.#outstandingData.delete(controller);
       // A rejected call is still a settlement: if its request was already
       // superseded, aborted, or captured before a purge, it has no authority
       // to purge the newer client state (T042/T049).
-      const discarded = guardSettlement(
+      const discarded = this.#guardSettlement(
         token,
-        latestSessionToken,
+        this.#latestSessionToken,
         controller,
         capturedClientDataEpoch,
       );
       if (discarded !== null) {
         return { kind: 'discarded', reason: discarded };
       }
-      return failureOutcome(cause);
+      return this.#failureOutcome(cause);
     }
-    outstandingData.delete(controller);
-    const discarded = guardSettlement(token, latestSessionToken, controller, capturedClientDataEpoch);
+    this.#outstandingData.delete(controller);
+    const discarded = this.#guardSettlement(
+      token,
+      this.#latestSessionToken,
+      controller,
+      capturedClientDataEpoch,
+    );
     if (discarded !== null) {
       return { kind: 'discarded', reason: discarded };
     }
@@ -363,7 +450,7 @@ export function createSessionApiClient(options: SessionApiClientOptions): Sessio
       const error = new Error(
         'The local session returned an unsupported rejection. Restart the inspector and reload this page.',
       );
-      clientData.purge('channel-failure');
+      this.#clientData.purge('channel-failure');
       return { kind: 'failed', error, fatal: true };
     }
     const result = settled as InspectionDataResult<SessionSnapshot>;
@@ -371,8 +458,8 @@ export function createSessionApiClient(options: SessionApiClientOptions): Sessio
     // either epoch ordering or the fence: epochs are meaningful only within
     // one host session, so a restarted host's lower epoch must purge the old
     // session rather than look like an ordinary stale response.
-    if (sessionId !== null && result.data.sessionId !== sessionId) {
-      clientData.purge('session-identity-lost');
+    if (this.#sessionId !== null && result.data.sessionId !== this.#sessionId) {
+      this.#clientData.purge('session-identity-lost');
       return { kind: 'purged', reason: 'session-identity-lost' };
     }
     // The final response gate: an inspection-data success renders only while
@@ -380,37 +467,43 @@ export function createSessionApiClient(options: SessionApiClientOptions): Sessio
     // null. A result bound before disable acceptance is a bounded
     // pre-fence-authorized response the client must purge, never render.
     if (result.data.globalDisableInProgress !== null) {
-      clientData.purge('global-disable-fence');
+      this.#clientData.purge('global-disable-fence');
       return { kind: 'purged', reason: 'global-disable-fence' };
     }
-    if (globalContentEpoch !== null && result.globalContentEpoch > globalContentEpoch) {
-      clientData.purge('global-content-epoch-advanced');
+    if (this.#globalContentEpoch !== null && result.globalContentEpoch > this.#globalContentEpoch) {
+      this.#clientData.purge('global-content-epoch-advanced');
       return { kind: 'purged', reason: 'global-content-epoch-advanced' };
     }
-    if (globalContentEpoch !== null && result.globalContentEpoch < globalContentEpoch) {
+    if (this.#globalContentEpoch !== null && result.globalContentEpoch < this.#globalContentEpoch) {
       return { kind: 'discarded', reason: 'older-global-content-epoch' };
     }
     // Generation guards, applied per sequence because the two sequences are
     // independent (FR-030). An older generation for an already-adopted
     // sequence is ignored outright; a newer one aborts that sequence's
     // outstanding data requests before the new snapshot is adopted.
-    if (repositoryGeneration !== null && result.repositoryGeneration < repositoryGeneration) {
+    if (
+      this.#repositoryGeneration !== null &&
+      result.repositoryGeneration < this.#repositoryGeneration
+    ) {
       return { kind: 'discarded', reason: 'older-generation' };
     }
     if (
-      globalGeneration !== null &&
+      this.#globalGeneration !== null &&
       result.globalGeneration !== null &&
-      result.globalGeneration < globalGeneration
+      result.globalGeneration < this.#globalGeneration
     ) {
       return { kind: 'discarded', reason: 'older-generation' };
     }
     const advancedSequences: ScanSequence[] = [];
-    if (repositoryGeneration === null || result.repositoryGeneration > repositoryGeneration) {
+    if (
+      this.#repositoryGeneration === null ||
+      result.repositoryGeneration > this.#repositoryGeneration
+    ) {
       advancedSequences.push('repository');
     }
     if (
       result.globalGeneration !== null &&
-      (globalGeneration === null || result.globalGeneration > globalGeneration)
+      (this.#globalGeneration === null || result.globalGeneration > this.#globalGeneration)
     ) {
       advancedSequences.push('global');
     }
@@ -419,12 +512,12 @@ export function createSessionApiClient(options: SessionApiClientOptions): Sessio
       // other sequence's committed views stay valid and are not refetched, and
       // a command awaiting its admission response is untouched. Phase 3 has
       // exactly one inspection-data request family, so that is all of them.
-      abortDataRequests();
+      this.#abortDataRequests();
     }
-    sessionId = result.data.sessionId;
-    globalContentEpoch = result.globalContentEpoch;
-    repositoryGeneration = result.repositoryGeneration;
-    globalGeneration = result.globalGeneration;
+    this.#sessionId = result.data.sessionId;
+    this.#globalContentEpoch = result.globalContentEpoch;
+    this.#repositoryGeneration = result.repositoryGeneration;
+    this.#globalGeneration = result.globalGeneration;
     return { kind: 'adopted', snapshot: result.data, advancedSequences };
   }
 
@@ -436,32 +529,32 @@ export function createSessionApiClient(options: SessionApiClientOptions): Sessio
    * a newer command was issued is discarded rather than shown as the active
    * request.
    */
-  async function rescanRepository(): Promise<RescanOutcome> {
+  public async rescanRepository(): Promise<RescanOutcome> {
     const token = Symbol('rescan-repository');
     const controller = new AbortController();
-    latestRescanToken = token;
-    outstandingCommands.add(controller);
-    const capturedClientDataEpoch = clientData.epoch();
+    this.#latestRescanToken = token;
+    this.#outstandingCommands.add(controller);
+    const capturedClientDataEpoch = this.#clientData.epoch();
     let settled: unknown;
     try {
-      settled = await channel.call(SESSION_RPC_FUNCTIONS.rescanRepository);
+      settled = await this.#channel.call(SESSION_RPC_FUNCTIONS.rescanRepository);
     } catch (cause: unknown) {
-      outstandingCommands.delete(controller);
-      const discarded = guardSettlement(
+      this.#outstandingCommands.delete(controller);
+      const discarded = this.#guardSettlement(
         token,
-        latestRescanToken,
+        this.#latestRescanToken,
         controller,
         capturedClientDataEpoch,
       );
       if (discarded !== null) {
         return { kind: 'discarded', reason: discarded };
       }
-      return failureOutcome(cause);
+      return this.#failureOutcome(cause);
     }
-    outstandingCommands.delete(controller);
-    const discarded = guardSettlement(
+    this.#outstandingCommands.delete(controller);
+    const discarded = this.#guardSettlement(
       token,
-      latestRescanToken,
+      this.#latestRescanToken,
       controller,
       capturedClientDataEpoch,
     );
@@ -476,7 +569,7 @@ export function createSessionApiClient(options: SessionApiClientOptions): Sessio
       const error = new Error(
         'The local session returned an unsupported rejection. Restart the inspector and reload this page.',
       );
-      clientData.purge('channel-failure');
+      this.#clientData.purge('channel-failure');
       return { kind: 'failed', error, fatal: true };
     }
     const result = settled as CommandResult<ScanAdmission>;
@@ -484,11 +577,11 @@ export function createSessionApiClient(options: SessionApiClientOptions): Sessio
     // applies: a greater epoch means a Global purge happened while the
     // command was in flight and the admitted request belongs to state this
     // page must drop before rendering anything again.
-    if (globalContentEpoch !== null && result.globalContentEpoch > globalContentEpoch) {
-      clientData.purge('global-content-epoch-advanced');
+    if (this.#globalContentEpoch !== null && result.globalContentEpoch > this.#globalContentEpoch) {
+      this.#clientData.purge('global-content-epoch-advanced');
       return { kind: 'purged', reason: 'global-content-epoch-advanced' };
     }
-    if (globalContentEpoch !== null && result.globalContentEpoch < globalContentEpoch) {
+    if (this.#globalContentEpoch !== null && result.globalContentEpoch < this.#globalContentEpoch) {
       return { kind: 'discarded', reason: 'older-global-content-epoch' };
     }
     return {
@@ -498,15 +591,68 @@ export function createSessionApiClient(options: SessionApiClientOptions): Sessio
     };
   }
 
-  return {
-    fetchSession,
-    rescanRepository,
-    abortOutstandingRequests,
-    resetBaseline: () => {
-      sessionId = null;
-      globalContentEpoch = null;
-      repositoryGeneration = null;
-      globalGeneration = null;
-    },
-  };
+  /**
+   * Issues one guarded file-detail request. It never adopts a snapshot and
+   * never advances the adopted baseline: a detail is a read of the generation
+   * already adopted, so the epoch guard applies and the generation guards do
+   * not — a mismatch there cannot produce content, only the `stale-resource`
+   * rejection.
+   */
+  public async fetchFileDetail(fileId: string): Promise<FileDetailOutcome> {
+    const token = Symbol('get-file-detail');
+    const controller = new AbortController();
+    this.#latestDetailToken = token;
+    this.#outstandingData.add(controller);
+    const capturedClientDataEpoch = this.#clientData.epoch();
+    let settled: unknown;
+    try {
+      settled = await this.#channel.call(SESSION_RPC_FUNCTIONS.getFileDetail, fileId);
+    } catch (cause: unknown) {
+      this.#outstandingData.delete(controller);
+      const discarded = this.#guardSettlement(
+        token,
+        this.#latestDetailToken,
+        controller,
+        capturedClientDataEpoch,
+      );
+      if (discarded !== null) {
+        return { kind: 'discarded', reason: discarded };
+      }
+      return this.#failureOutcome(cause);
+    }
+    this.#outstandingData.delete(controller);
+    const discarded = this.#guardSettlement(
+      token,
+      this.#latestDetailToken,
+      controller,
+      capturedClientDataEpoch,
+    );
+    if (discarded !== null) {
+      return { kind: 'discarded', reason: discarded };
+    }
+    const rejection = asRejectionCode(settled);
+    if (rejection !== null) {
+      return { kind: 'rejected', code: rejection };
+    }
+    if (hasErrorEnvelope(settled)) {
+      const error = new Error(
+        'The local session returned an unsupported rejection. Restart the inspector and reload this page.',
+      );
+      this.#clientData.purge('channel-failure');
+      return { kind: 'failed', error, fatal: true };
+    }
+    const result = settled as InspectionDataResult<FileDetailDto>;
+    // The same epoch ordering every inspection-data success passes. A greater
+    // epoch means a Global purge landed while this request was in flight, and
+    // the content it carries belongs to state this page must drop before
+    // rendering anything again (FR-042).
+    if (this.#globalContentEpoch !== null && result.globalContentEpoch > this.#globalContentEpoch) {
+      this.#clientData.purge('global-content-epoch-advanced');
+      return { kind: 'purged', reason: 'global-content-epoch-advanced' };
+    }
+    if (this.#globalContentEpoch !== null && result.globalContentEpoch < this.#globalContentEpoch) {
+      return { kind: 'discarded', reason: 'older-global-content-epoch' };
+    }
+    return { kind: 'adopted', detail: result.data };
+  }
 }

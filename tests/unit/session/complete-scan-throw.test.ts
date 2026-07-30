@@ -5,7 +5,7 @@
 // stuck 'scanning' with no failed/stale record (FR-030).
 import { describe, expect, it, vi } from 'vitest';
 
-import { SessionCoordinator, createInspectionSession } from '../../../src/server/session/session';
+import { InspectionSession, SessionCoordinator } from '../../../src/server/session/session';
 
 // Force the rekeying generation preparation to throw so completeScan rejects
 // after admission; createBootstrapGeneration stays real so the session still
@@ -22,10 +22,9 @@ vi.mock('../../../src/server/session/scan-generation', async (importOriginal) =>
 });
 
 function bootstrapSession() {
-  return createInspectionSession({
+  return new InspectionSession({
     invocationCwd: '/repo',
     rootOptionValue: null,
-    selectedRepositoryRoot: '/repo',
   });
 }
 
@@ -47,7 +46,7 @@ describe('completeScan preparation failure (T026 regression)', () => {
         outcome: 'complete',
         visitedEntries: 0,
         candidateFiles: 0,
-      readBytes: 0,
+        readBytes: 0,
       }),
     ).rejects.toThrow('EIO: generation rekey failed');
 

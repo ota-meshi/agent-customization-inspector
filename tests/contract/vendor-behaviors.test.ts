@@ -68,11 +68,15 @@ describe('evidence citations', () => {
    * not follow.
    */
   function parseSourceRows(path: string) {
-    const rows = new Map<string, { url: string; host: string; sections: string[]; reviewedOn: string }>();
+    const rows = new Map<
+      string,
+      { url: string; host: string; sections: string[]; reviewedOn: string }
+    >();
     for (const line of readFileSync(path, 'utf8').split('\n')) {
-      const match = /^\| `([a-z0-9.-]+)` \| <(https:\/\/[^>]+)> \| `([^`]+)` \| (.+?) \| `(\d{4}-\d{2}-\d{2})` \|$/u.exec(
-        line,
-      );
+      const match =
+        /^\| `([a-z0-9.-]+)` \| <(https:\/\/[^>]+)> \| `([^`]+)` \| (.+?) \| `(\d{4}-\d{2}-\d{2})` \|$/u.exec(
+          line,
+        );
       if (match === null) {
         continue;
       }
@@ -119,7 +123,9 @@ describe('evidence citations', () => {
   }
 
   it('resolves every citation to its normative official-sources row', () => {
-    const rows = parseSourceRows('specs/001-inspect-agent-customizations/contracts/official-sources.md');
+    const rows = parseSourceRows(
+      'specs/001-inspect-agent-customizations/contracts/official-sources.md',
+    );
     expect(rows.size).toBeGreaterThan(0);
     for (const citation of citations) {
       const row = rows.get(citation.sourceId);
@@ -149,7 +155,9 @@ describe('evidence citations', () => {
       'specs/001-inspect-agent-customizations/contracts/official-sources.md',
     );
     expect(byVendor.size).toBeGreaterThan(0);
-    const rows = parseSourceRows('specs/001-inspect-agent-customizations/contracts/official-sources.md');
+    const rows = parseSourceRows(
+      'specs/001-inspect-agent-customizations/contracts/official-sources.md',
+    );
     const vendorByPrefix = new Map<string, string>();
     for (const [sourceId, row] of rows) {
       const owners = [...byVendor].filter(([, hosts]) => hosts.has(row.host)).map(([name]) => name);
@@ -186,7 +194,9 @@ describe('evidence citations', () => {
   it('states each cited row identically in both languages', () => {
     // The Japanese contract is a translation, not a second source of truth, so
     // a cited row must be byte-identical in the operational columns.
-    const english = parseSourceRows('specs/001-inspect-agent-customizations/contracts/official-sources.md');
+    const english = parseSourceRows(
+      'specs/001-inspect-agent-customizations/contracts/official-sources.md',
+    );
     const japanese = parseSourceRows(
       'specs/001-inspect-agent-customizations/contracts/official-sources.ja.md',
     );
@@ -377,31 +387,34 @@ describe('registry composition', () => {
     }
   });
 
-  it.each(CATALOG_FILES)('publishes every vendor $file through its aggregate', ({ file, aggregate, idField }) => {
-    let published = 0;
-    for (const vendor of vendorDirectories) {
-      const specifier = `../../src/shared/registries/${vendor}/${file}`;
-      const catalogModule = CATALOG_MODULES[specifier];
-      expect(catalogModule, `${vendor}/${file} was not loaded`).toBeDefined();
-      const catalogs = Object.values(catalogModule!).filter(
-        (value): value is Record<string, Record<string, unknown>> =>
-          typeof value === 'object' &&
-          value !== null &&
-          Object.keys(value).length > 0 &&
-          Object.values(value).every(
-            (record) => typeof record === 'object' && record !== null && idField in record,
-          ),
-      );
-      expect(catalogs.length, `${vendor}/${file} exports no record catalog`).toBe(1);
-      for (const [id, record] of Object.entries(catalogs[0]!)) {
-        expect(aggregate[id], `${vendor}/${file} record ${id} is not published`).toBe(record);
-        published += 1;
+  it.each(CATALOG_FILES)(
+    'publishes every vendor $file through its aggregate',
+    ({ file, aggregate, idField }) => {
+      let published = 0;
+      for (const vendor of vendorDirectories) {
+        const specifier = `../../src/shared/registries/${vendor}/${file}`;
+        const catalogModule = CATALOG_MODULES[specifier];
+        expect(catalogModule, `${vendor}/${file} was not loaded`).toBeDefined();
+        const catalogs = Object.values(catalogModule!).filter(
+          (value): value is Record<string, Record<string, unknown>> =>
+            typeof value === 'object' &&
+            value !== null &&
+            Object.keys(value).length > 0 &&
+            Object.values(value).every(
+              (record) => typeof record === 'object' && record !== null && idField in record,
+            ),
+        );
+        expect(catalogs.length, `${vendor}/${file} exports no record catalog`).toBe(1);
+        for (const [id, record] of Object.entries(catalogs[0]!)) {
+          expect(aggregate[id], `${vendor}/${file} record ${id} is not published`).toBe(record);
+          published += 1;
+        }
       }
-    }
-    // Every aggregate entry comes from a vendor catalog and vice versa, so a
-    // record cannot be added straight to the aggregate either.
-    expect(published).toBe(Object.keys(aggregate).length);
-  });
+      // Every aggregate entry comes from a vendor catalog and vice versa, so a
+      // record cannot be added straight to the aggregate either.
+      expect(published).toBe(Object.keys(aggregate).length);
+    },
+  );
 
   it.each(['relations.ts'])('publishes every vendor %s through its aggregates', (file) => {
     let published = 0;
@@ -476,9 +489,6 @@ describe('conformance fixtures materialize the shipped registries', () => {
     expect(readFixture('runtime-composition.json')).toEqual(
       JSON.parse(JSON.stringify(serializeRuntimeComposition())),
     );
-    expect(readFixture('relations.json')).toEqual(
-      JSON.parse(JSON.stringify(serializeRelations())),
-    );
+    expect(readFixture('relations.json')).toEqual(JSON.parse(JSON.stringify(serializeRelations())));
   });
-
 });

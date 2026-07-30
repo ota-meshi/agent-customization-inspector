@@ -208,7 +208,7 @@ connectionをseedしない。
 
 Authored relationshipはmasking、redaction、reveal state、環境変数置換を行わず、validated済みexact source sliceを
 表示する。Relationship status判定用に別のvalidated semantic/structural path formを使用してよいが、表示literalを
-置換しない。Conditional Codex `hooks/hooks.json` relationのようなregistry定義documented defaultにはauthored sliceが
+置換しない。Conditional Codex `hooks/hooks.json` relationのようなregistry定義documented defaultにはauthored targetが
 ないため、DTOを`targetOrigin: documented-default`、`authoredTarget: null`とし、UIはregistry定義pathをdocumented defaultと
 labelする。Deduplicationはclosed origin identityとtarget identityを使用し、distinct authored occurrence/candidate
 provenanceを破棄しない。

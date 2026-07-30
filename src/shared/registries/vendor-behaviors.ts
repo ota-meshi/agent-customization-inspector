@@ -41,8 +41,6 @@ export type {
  * catalog and complete over it. Vendor catalogs are spread in the closed tool
  * order; each arrives with the inventory phase that needs it.
  */
-export const VENDOR_BEHAVIOR_STATEMENTS: Readonly<
-  Record<BehaviorId, VendorBehaviorStatement>
-> = {
+export const VENDOR_BEHAVIOR_STATEMENTS: Readonly<Record<BehaviorId, VendorBehaviorStatement>> = {
   ...CODEX_BEHAVIOR_STATEMENTS,
 };

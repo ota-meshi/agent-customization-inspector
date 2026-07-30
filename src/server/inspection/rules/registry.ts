@@ -69,7 +69,7 @@ export type MatcherSegment =
  * applies its pattern with standard `RegExp.prototype.test` semantics
  * (anchoring is the pattern's own spelling, exactly as authored in the rule
  * catalog), and `recursive-directories` never matches a name itself — the
- * walk consumes directories for it through {@link createProgramLevel}.
+ * walk consumes directories for it through {@link ProgramLevel}.
  */
 function segmentMatchesName(segment: MatcherSegment, name: string): boolean {
   switch (segment.kind) {
@@ -109,9 +109,7 @@ function sameOrigin(left: SelectorOrigin, right: SelectorOrigin): boolean {
  * can legitimately admit the same physical file
  * (contracts/inspection-path-allowlist.md § Rule classes).
  */
-export function normalizeSelectorOrigins(
-  origins: readonly SelectorOrigin[],
-): SelectorOrigin[] {
+export function normalizeSelectorOrigins(origins: readonly SelectorOrigin[]): SelectorOrigin[] {
   const unique: SelectorOrigin[] = [];
   for (const origin of origins) {
     if (!unique.some((existing) => sameOrigin(existing, origin))) {
@@ -140,99 +138,98 @@ export interface ProgramState {
   readonly origin: SelectorOrigin;
 }
 
-// `**` matches zero or more directories, so a state whose next token is
-// recursive also activates the state after it at the same level.
-//
-// The identity of a state includes the selector it came from. Two selectors can
-// share one program — a rule spread over another, or two rules authored from
-// one exported matcher — and each is a separate admission the candidate
-// retains, so collapsing them by program and position alone would silently drop
-// one provenance (data-model.md § ToolRecognition).
-function closeOverRecursion(states: readonly ProgramState[]): ProgramState[] {
-  const closed: ProgramState[] = [];
-  const queue = [...states];
-  while (queue.length > 0) {
-    const state = queue.pop()!;
-    if (
-      closed.some(
-        (existing) =>
-          existing.program === state.program &&
-          existing.position === state.position &&
-          existing.origin.planIndex === state.origin.planIndex &&
-          existing.origin.selectorIndex === state.origin.selectorIndex,
-      )
-    ) {
-      continue;
-    }
-    closed.push(state);
-    if (state.program[state.position]?.kind === 'recursive-directories') {
-      queue.push({ program: state.program, position: state.position + 1, origin: state.origin });
-    }
-  }
-  return closed;
-}
+/**
+ * The grammar queries one directory level answers — the grammar's stepping
+ * semantics, owned here beside the segment union so the walk in
+ * `traversal.ts` needs no knowledge of segment kinds at all. The walk
+ * constructs one per directory and asks the two closed questions per entry.
+ */
+export class ProgramLevel {
+  /** The active states at this level, closed over `**` recursion. */
+  readonly #active: readonly ProgramState[];
 
-/** The grammar queries one directory level answers; see {@link createProgramLevel}. */
-export interface ProgramLevel {
+  /** Closes the incoming states over recursion once, for both queries below. */
+  public constructor(states: readonly ProgramState[]) {
+    this.#active = ProgramLevel.#closeOverRecursion(states);
+  }
+
+  /**
+   * `**` matches zero or more directories, so a state whose next token is
+   * recursive also activates the state after it at the same level.
+   *
+   * The identity of a state includes the selector it came from. Two selectors
+   * can share one program — a rule spread over another, or two rules authored
+   * from one exported matcher — and each is a separate admission the candidate
+   * retains, so collapsing them by program and position alone would silently
+   * drop one provenance (data-model.md § ToolRecognition).
+   */
+  static #closeOverRecursion(states: readonly ProgramState[]): ProgramState[] {
+    const closed: ProgramState[] = [];
+    const queue = [...states];
+    while (queue.length > 0) {
+      const state = queue.pop()!;
+      if (
+        closed.some(
+          (existing) =>
+            existing.program === state.program &&
+            existing.position === state.position &&
+            existing.origin.planIndex === state.origin.planIndex &&
+            existing.origin.selectorIndex === state.origin.selectorIndex,
+        )
+      ) {
+        continue;
+      }
+      closed.push(state);
+      if (state.program[state.position]?.kind === 'recursive-directories') {
+        queue.push({ program: state.program, position: state.position + 1, origin: state.origin });
+      }
+    }
+    return closed;
+  }
+
   /**
    * The authored selectors that accept `name` as their terminal regular file,
    * deduplicated and ordered. Empty means no program admits the entry. The
    * walk needs the origins rather than a boolean because each admission is a
    * separate rule provenance the candidate retains.
    */
-  admissionsForFile(name: string): SelectorOrigin[];
+  public admissionsForFile(name: string): SelectorOrigin[] {
+    return normalizeSelectorOrigins(
+      this.#active
+        .filter((state) => {
+          const segment = state.program[state.position];
+          return (
+            segment !== undefined &&
+            state.position === state.program.length - 1 &&
+            segmentMatchesName(segment, name)
+          );
+        })
+        .map((state) => state.origin),
+    );
+  }
+
   /**
    * The program states that continue matching below directory `name`: the
    * `**` step consumes the directory and keeps matching, and a non-terminal
    * literal or regex step that matches the name advances one position. An
    * empty result means the walk has no reason to enter the directory.
    */
-  statesForDirectory(name: string): ProgramState[];
-}
-
-/**
- * Interprets the active selector programs at one directory level — the
- * grammar's stepping semantics, owned here beside the union so the walk in
- * `traversal.ts` needs no knowledge of segment kinds at all. The walk calls
- * this once per directory and asks the two closed questions per entry.
- */
-export function createProgramLevel(states: readonly ProgramState[]): ProgramLevel {
-  const active = closeOverRecursion(states);
-  return {
-    admissionsForFile(name) {
-      return normalizeSelectorOrigins(
-        active
-          .filter((state) => {
-            const segment = state.program[state.position];
-            return (
-              segment !== undefined &&
-              state.position === state.program.length - 1 &&
-              segmentMatchesName(segment, name)
-            );
-          })
-          .map((state) => state.origin),
-      );
-    },
-    statesForDirectory(name) {
-      const next: ProgramState[] = [];
-      for (const state of active) {
-        const segment = state.program[state.position];
-        if (segment === undefined) {
-          continue;
-        }
-        if (segment.kind === 'recursive-directories') {
-          // The recursive step consumes this directory and keeps matching.
-          next.push(state);
-        } else if (
-          state.position < state.program.length - 1 &&
-          segmentMatchesName(segment, name)
-        ) {
-          next.push({ program: state.program, position: state.position + 1, origin: state.origin });
-        }
+  public statesForDirectory(name: string): ProgramState[] {
+    const next: ProgramState[] = [];
+    for (const state of this.#active) {
+      const segment = state.program[state.position];
+      if (segment === undefined) {
+        continue;
       }
-      return next;
-    },
-  };
+      if (segment.kind === 'recursive-directories') {
+        // The recursive step consumes this directory and keeps matching.
+        next.push(state);
+      } else if (state.position < state.program.length - 1 && segmentMatchesName(segment, name)) {
+        next.push({ program: state.program, position: state.position + 1, origin: state.origin });
+      }
+    }
+    return next;
+  }
 }
 
 /**
@@ -317,21 +314,65 @@ export type TraversalSelectorMode =
  * One compiled selector of a TraversalPlan: the closed lossless mapping of
  * one selector program (data-model.md § TraversalPlan).
  */
-export interface TraversalSelectorPlan {
+export class TraversalSelectorPlan {
   /** The closed operation class; see {@link TraversalSelectorMode}. */
-  readonly mode: TraversalSelectorMode;
+  public readonly mode: TraversalSelectorMode;
+
   /**
-   * NFC literal segment array: empty for Repository; for Global the complete
+   * Exact literal segment array: empty for Repository; for Global the complete
    * path through the exact target or fixed-subtree root, including that
    * terminal target/subtree segment.
    */
-  readonly fixedPrefix: readonly string[];
+  public readonly fixedPrefix: readonly string[];
+
   /**
    * Repository's complete selector program, empty for a Global exact target,
    * or the complete dynamic program strictly below a Global fixed-subtree
    * root.
    */
-  readonly remainder: readonly MatcherSegment[];
+  public readonly remainder: readonly MatcherSegment[];
+
+  /**
+   * Compiles one selector program into its closed lossless plan
+   * (data-model.md § TraversalPlan): the Repository program keeps its
+   * complete segments; an all-literal Global program becomes an exact
+   * target; otherwise the maximal leading literal directory chain becomes
+   * the fixed prefix and the dynamic program below it stays as the
+   * remainder.
+   */
+  public constructor(base: MatcherBase, segments: readonly MatcherSegment[]) {
+    if (base.kind === 'repository') {
+      this.mode = 'repository-program';
+      this.fixedPrefix = [];
+      this.remainder = segments;
+      return;
+    }
+    // One pass finds the boundary and collects the prefix: every segment
+    // before the first dynamic one is literal by that very definition, so a
+    // separate validating map over the slice would guard a case no caller
+    // can produce.
+    const fixedPrefix: string[] = [];
+    let firstDynamic = -1;
+    for (const [index, segment] of segments.entries()) {
+      if (segment.kind !== 'literal') {
+        firstDynamic = index;
+        break;
+      }
+      fixedPrefix.push(segment.value);
+    }
+    if (firstDynamic === -1) {
+      this.mode = 'global-exact';
+      this.fixedPrefix = fixedPrefix;
+      this.remainder = [];
+      return;
+    }
+    if (firstDynamic === 0) {
+      throw new TypeError('a Global selector must fix its subtree root with leading literals');
+    }
+    this.mode = 'global-fixed-subtree';
+    this.fixedPrefix = fixedPrefix;
+    this.remainder = segments.slice(firstDynamic);
+  }
 }
 
 /** The one schema version the runtime loader accepts (data-model.md § TraversalPlan). */
@@ -342,15 +383,70 @@ export const TRAVERSAL_PLAN_SCHEMA_VERSION = 1;
  * per-tool inspection-path allowlist the inspection module traverses
  * (FR-003, FR-015 through FR-017).
  */
-export interface TraversalPlan {
+export class TraversalPlan {
   /** Literal schema version; an unknown version fails registry loading. */
-  readonly schemaVersion: typeof TRAVERSAL_PLAN_SCHEMA_VERSION;
+  public readonly schemaVersion: typeof TRAVERSAL_PLAN_SCHEMA_VERSION =
+    TRAVERSAL_PLAN_SCHEMA_VERSION;
+
   /** Copied from the matcher and never inferred from request/display text. */
-  readonly boundary: MatcherBase;
+  public readonly boundary: MatcherBase;
+
   /** One-to-one canonical compilation of the matcher selectors; non-empty. */
-  readonly selectors: readonly TraversalSelectorPlan[];
+  public readonly selectors: readonly TraversalSelectorPlan[];
+
   /** The closed scheduler policy; see {@link SelectionPolicy}. */
-  readonly selectionPolicy: SelectionPolicy;
+  public readonly selectionPolicy: SelectionPolicy;
+
+  /**
+   * Compiles a matcher into the immutable versioned plan the traversal module
+   * interprets (data-model.md § TraversalPlan). This is a pure structure
+   * transform: grammar, alphabet, uniqueness, and selection-policy validity
+   * are registry contract-gate obligations and are not re-checked here.
+   */
+  public constructor(
+    matcher: StructuredInspectorMatcher,
+    selectionPolicy: SelectionPolicy = 'all-matches',
+  ) {
+    this.boundary = matcher.base;
+    this.selectors = matcher.selectors.map(
+      (segments) => new TraversalSelectorPlan(matcher.base, segments),
+    );
+    this.selectionPolicy = selectionPolicy;
+  }
+
+  /**
+   * Maps one authored segment onto the closed union; grammar and alphabet
+   * conformance of the shipped catalogs is owned by the registry contract
+   * gate, not re-checked here.
+   */
+  static #toSegment(input: SelectorSegmentInput): MatcherSegment {
+    if (typeof input === 'string') {
+      return { kind: 'literal', value: input };
+    }
+    if (input instanceof RegExp) {
+      return { kind: 'regex', pattern: input };
+    }
+    return input;
+  }
+
+  /**
+   * Compiles authored typed programs — for example
+   * `TraversalPlan.fromPrograms(base, [['.claude', 'skills', ANY_NAME, 'SKILL.md']])`.
+   * Today only the traversal suites author plans this way: the shipped
+   * catalogs author `StructuredInspectorMatcher` records that compile through
+   * `CompiledInspectionRule`, so this entry point is test-facing until a
+   * catalog adopts it.
+   */
+  public static fromPrograms(
+    base: MatcherBase,
+    programs: readonly (readonly SelectorSegmentInput[])[],
+    selectionPolicy: SelectionPolicy = 'all-matches',
+  ): TraversalPlan {
+    return new TraversalPlan(
+      { base, selectors: programs.map((program) => program.map(TraversalPlan.#toSegment)) },
+      selectionPolicy,
+    );
+  }
 }
 
 /**
@@ -383,72 +479,6 @@ export type SelectorSegmentInput =
   /** A precompiled matcher segment such as {@link ANY_DIRECTORIES}. */
   | MatcherSegment;
 
-// Maps one authored segment onto the closed union; grammar and alphabet
-// conformance of the shipped catalogs is owned by the registry contract
-// gate, not re-checked here.
-function toSegment(input: SelectorSegmentInput): MatcherSegment {
-  if (typeof input === 'string') {
-    return { kind: 'literal', value: input };
-  }
-  if (input instanceof RegExp) {
-    return { kind: 'regex', pattern: input };
-  }
-  return input;
-}
-
-// Compiles one selector program into its closed lossless plan
-// (data-model.md § TraversalPlan): the Repository program keeps its
-// complete segments; an all-literal Global program becomes an exact
-// target; otherwise the maximal leading literal directory chain becomes
-// the fixed prefix and the dynamic program below it stays as the
-// remainder.
-function compileSelector(
-  base: MatcherBase,
-  segments: readonly MatcherSegment[],
-): TraversalSelectorPlan {
-  if (base.kind === 'repository') {
-    return { mode: 'repository-program', fixedPrefix: [], remainder: segments };
-  }
-  const firstDynamic = segments.findIndex((segment) => segment.kind !== 'literal');
-  const literalValues = (prefix: readonly MatcherSegment[]): string[] =>
-    prefix.map((segment) => {
-      if (segment.kind !== 'literal') {
-        throw new TypeError('a fixed prefix accepts literal segments only');
-      }
-      return segment.value;
-    });
-  if (firstDynamic === -1) {
-    return { mode: 'global-exact', fixedPrefix: literalValues(segments), remainder: [] };
-  }
-  if (firstDynamic === 0) {
-    throw new TypeError('a Global selector must fix its subtree root with leading literals');
-  }
-  return {
-    mode: 'global-fixed-subtree',
-    fixedPrefix: literalValues(segments.slice(0, firstDynamic)),
-    remainder: segments.slice(firstDynamic),
-  };
-}
-
-/**
- * Compiles a matcher into the immutable versioned TraversalPlan the
- * traversal module interprets (data-model.md § TraversalPlan). This is a
- * pure structure transform: grammar, alphabet, uniqueness, and
- * selection-policy validity are registry contract-gate obligations and are
- * not re-checked here.
- */
-export function compileTraversalPlan(
-  matcher: StructuredInspectorMatcher,
-  selectionPolicy: SelectionPolicy = 'all-matches',
-): TraversalPlan {
-  return {
-    schemaVersion: TRAVERSAL_PLAN_SCHEMA_VERSION,
-    boundary: matcher.base,
-    selectors: matcher.selectors.map((segments) => compileSelector(matcher.base, segments)),
-    selectionPolicy,
-  };
-}
-
 /**
  * Runtime loader gate mandated by data-model.md § TraversalPlan: the
  * traversal module interprets only plans of the one known schema version —
@@ -459,52 +489,84 @@ export function assertLoadableTraversalPlan(plan: TraversalPlan): void {
     throw new TypeError(`unknown traversal-plan schema version: ${String(plan.schemaVersion)}`);
   }
 }
-
 /**
- * Convenience compiler from authored typed programs, the form the
- * per-vendor rule catalogs use. Example:
- * `compileSelectorPrograms(base, [['.claude', 'skills', ANY_NAME, 'SKILL.md']])`.
- */
-export function compileSelectorPrograms(
-  base: MatcherBase,
-  programs: readonly (readonly SelectorSegmentInput[])[],
-  selectionPolicy: SelectionPolicy = 'all-matches',
-): TraversalPlan {
-  return compileTraversalPlan(
-    { base, selectors: programs.map((program) => program.map(toSegment)) },
-    selectionPolicy,
-  );
-}
-
-/**
- * One shipped rule paired with its compiled plan — the unit a scan submits to
- * the traversal module. The pairing is what lets a discovered candidate carry
+ * One shipped rule compiled into the unit a scan submits to the traversal
+ * module: the record itself, its graph edges, and the traversal plan its
+ * matcher compiles to. The pairing is what lets a discovered candidate carry
  * its admitting rule identity: the traversal reports the plan index that
  * admitted each file, and the caller resolves it here rather than re-matching
  * the public path (FR-019).
+ *
+ * Abstract on purpose: what every vendor shares is the compilation — the
+ * guards below and the plan — while the recognizing product and the vendor's
+ * relations catalog belong to a per-vendor subclass such as
+ * `CodexCompiledRule`, which fixes `tool` to its own literal and resolves
+ * `relations` from its own vendor table. A scan therefore works over this
+ * base, and a vendor's recognizer over its own subclass.
+ *
+ * The constructor is the read-authorizing gate: read authority is assigned by
+ * discovery class, and only a candidate class carries it
+ * (contracts/inspection-path-allowlist.md § Read authorization and
+ * applicability, "Only a `static-candidate` or `bounded-derived-candidate` …
+ * may request a read"). A relationship-only or excluded record may still carry
+ * a matcher — `InspectionRule` keeps the two fields independent — so without
+ * this gate a registry could widen the read allowlist by adding a row that the
+ * contract says authorizes nothing. `static-candidate` and not the derived
+ * class as well: a derived candidate is seeded from an already-read file
+ * rather than walked, so it has no place in a traversal plan. Each guard
+ * throws at module load, because a silently absent plan would read as "this
+ * repository has no customizations of this rule's kind".
  */
-export interface CompiledInspectionRule {
+export abstract class CompiledInspectionRule {
   /**
    * The shipped rule record itself, so a consumer never looks one up by ID:
    * everything a recognition needs about the admitting rule — its identity,
    * its documentation state — is reachable from here.
    */
-  readonly rule: InspectionRule;
-  /** The rule's graph edges, resolved once here rather than per candidate. */
-  readonly relations: RuleRelations;
+  public readonly rule: InspectionRule;
+
   /**
-   * The recognizing product, proven non-`shared` when the plan was compiled.
-   * Kept beside the record because `InspectionRule.tool` still admits
-   * `shared`, which a candidate-admitting rule never is.
+   * The rule's graph edges, resolved by the vendor subclass from its own
+   * catalog — never supplied by a caller, so no rule can be compiled with
+   * another rule's edges.
    */
-  readonly tool: SupportedTool;
+  public abstract readonly relations: RuleRelations;
+
   /**
-   * The recognized kind, proven non-null when the plan was compiled — the
-   * same reason `tool` is repeated.
+   * The recognizing product. Each vendor subclass declares its own narrower
+   * literal, so a mixed list of compiled rules discriminates on this field
+   * and a subclass cannot exist for a `shared` record.
    */
-  readonly kind: CustomizationKind;
+  public abstract readonly tool: SupportedTool;
+
+  /**
+   * The recognized kind — the rule's own `kind`, assigned below where the
+   * guard has already narrowed it; re-deriving the narrow type at every
+   * consumer would re-prove what one constructor proved.
+   */
+  public readonly kind: CustomizationKind;
+
   /** The immutable plan compiled from the rule's structured matcher. */
-  readonly plan: TraversalPlan;
+  public readonly plan: TraversalPlan;
+
+  /** Compiles one shipped record, rejecting any that cannot authorize a traversal. */
+  protected constructor(rule: InspectionRule) {
+    if (rule.discoveryClass !== 'static-candidate') {
+      throw new TypeError(
+        `rule ${rule.ruleId} is not a static candidate and authorizes no traversal`,
+      );
+    }
+    if (rule.matcher === null) {
+      throw new TypeError(`rule ${rule.ruleId} admits candidates but carries no matcher`);
+    }
+    if (rule.kind === null) {
+      throw new TypeError(`rule ${rule.ruleId} admits candidates but names no recognition kind`);
+    }
+    this.rule = rule;
+    // Assigned after the guard, where the control flow has narrowed it.
+    this.kind = rule.kind;
+    this.plan = new TraversalPlan(rule.matcher);
+  }
 }
 
 /**
@@ -541,15 +603,19 @@ export interface EvidenceBearingSubject {
 }
 
 /**
- * Input of {@link assembleRuleEvidenceAssessments}: the compiled rule, whole.
+ * A rule record travelling with its own resolved relations — the pairing a
+ * {@link CompiledInspectionRule} carries, named so a consumer that needs only
+ * the pairing does not demand a compiled plan it never reads.
  *
- * Not the rule beside separately supplied subject arrays. The compiled record
- * already carries both its `rule` and the `relations` naming every behavior and
- * strategy that rule references, so taking it leaves the caller nothing to get
- * wrong — no ID paired with another rule's evidence state, and no array that is
- * empty, extra, or from a different rule than the one being assembled.
+ * Deliberately not the rule beside separately supplied subject arrays: the
+ * pairing leaves the caller nothing to get wrong — no ID paired with another
+ * rule's evidence state, and no array that is empty, extra, or from a
+ * different rule than the one being consumed.
  */
-export type RuleEvidenceAssemblyInput = CompiledInspectionRule;
+export type RuleWithRelations = Pick<CompiledInspectionRule, 'rule' | 'relations'>;
+
+/** Input of {@link assembleRuleEvidenceAssessments}; see {@link RuleWithRelations}. */
+export type RuleEvidenceAssemblyInput = RuleWithRelations;
 
 /**
  * The sole `EvidenceAssessment[]` assembler (QR-005, T060/T061): resolves the

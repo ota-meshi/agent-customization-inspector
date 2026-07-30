@@ -9,10 +9,7 @@ import { lstat, readFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const REQUIRED_PACKAGE_ENTRIES = Object.freeze([
-  'public/index.html',
-  'cli.mjs',
-]);
+export const REQUIRED_PACKAGE_ENTRIES = Object.freeze(['public/index.html', 'cli.mjs']);
 
 /**
  * @param {{ distDir: string }} options

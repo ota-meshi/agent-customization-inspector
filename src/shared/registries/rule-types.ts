@@ -84,7 +84,7 @@ export interface InspectionRule {
    * data (`SHIPS_MAINTENANCE_DATA`, src/shared/registries/maintenance-data.ts).
    */
   readonly policyRefs: readonly string[];
-   /** Runtime facts needed before applicability can be assessed. */
+  /** Runtime facts needed before applicability can be assessed. */
   readonly conditionKeys: readonly ConditionFactKey[];
   /** Links rules with documented selection/order semantics; null when none. */
   readonly precedenceGroup: string | null;

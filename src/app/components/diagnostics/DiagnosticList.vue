@@ -32,9 +32,7 @@ const unattached = computed(() =>
   <!-- Scoped to what this list owns. File-scoped records are shown on their
        own rows, so "no diagnostics" would deny records visible on the same
        screen. -->
-  <p v-if="unattached.length === 0" class="aci-empty">
-    No session- or source-level diagnostics.
-  </p>
+  <p v-if="unattached.length === 0" class="aci-empty">No session- or source-level diagnostics.</p>
   <ul v-else class="aci-list" role="list">
     <li
       v-for="diagnostic in unattached"

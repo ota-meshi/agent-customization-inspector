@@ -28,10 +28,7 @@ import type { StrategyId } from './identifier-types';
 import type { RuntimeCompositionStrategy } from './strategy-types';
 
 export type { CodexStrategyId, StrategyId } from './identifier-types';
-export type {
-  CompositionOperation,
-  RuntimeCompositionStrategy,
-} from './strategy-types';
+export type { CompositionOperation, RuntimeCompositionStrategy } from './strategy-types';
 
 /**
  * The shipped strategy registry, keyed by the closed {@link StrategyId}

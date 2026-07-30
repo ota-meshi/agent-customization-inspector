@@ -25,8 +25,8 @@ as an adversary, and all inspected-source filesystem I/O lives only under
 the fixed inspection-path allowlist with per-file diagnostics for entries it cannot use.
 The browser presents complete authored
 source in a read-only Monaco editor and uses Monaco's diff editor for source comparison;
-recognition metadata is matched by tool/kind/field/occurrence and compares exact authored literals in
-ordinary Vue components, never parser-normalized display values.
+recognition metadata is matched by tool/kind/field and compares the values the parsers
+resolved, in ordinary Vue components.
 
 Root selection is simple and lexical: the CLI captures `process.cwd()` exactly once and
 accepts `--root <path>`, resolving a repeated option to the parser's last value. An absolute option is kept as given, a relative option
@@ -44,14 +44,15 @@ devframe local-tool framework — the same foundation eslint/config-inspector us
 authentication disabled: it serves the built SPA from `cli.distDir` (`dist/public`) and
 sends inert DTOs through devframe's RPC session API channel, and devframe owns port
 selection, host binding, and startup browser opening. Protection is the loopback-only
-`localhost` bind — there is no per-session token, Origin check, or hand-written router —
-and the residual exposure of an unauthenticated loopback host (other local processes and,
-via DNS rebinding, a malicious web page) is a documented limitation per Constitution
-v4.0.0. The session API returns a `FileDetail`, including complete authored source and
-declared authored values, only to an explicit detail request; the bundled browser makes no
-such request and constructs no comparison until after its client-memory sensitive-content
-acknowledgement. That acknowledgement is a presentation
-invariant, not an access-control factor. Environment-variable references remain literal text and
+`localhost` bind — there is no per-session token, product-owned Origin check, or
+hand-written router — and the residual exposure of an unauthenticated loopback host
+(other local processes and, via DNS rebinding, a malicious web page) is a
+documented limitation per the
+Constitution § Quality and Safety Standards. The session API returns a `FileDetail`, including complete authored source and
+declared authored values, only to an explicit detail request; the bundled browser asks for
+one file or comparison at a time. Neither a notice nor a confirmation step stands beside or
+in front of the content: loopback binding is the whole boundary, so neither guards
+anything. Environment-variable references remain literal text and
 never authorize process-environment lookup or substitution. Explicit scans use the frozen
 inspection path allowlist, read symbolic links transparently the way an agent loading the
 same path would (a link whose target is missing or unreadable yields that file's per-file
@@ -146,10 +147,11 @@ English/Japanese research, plan, quickstart, and task artifact is synchronized, 
 CI, release, and package-policy
 instructions MUST use only that one synchronized baseline.
 
-**Formatting/Linting**: Byte hygiene is owned declaratively — `.gitattributes`
-(`* text=auto eol=lf`) makes git normalize line endings and `.editorconfig` declares
-charset/final-newline/trailing-whitespace conventions to editors; no repository-wide
-formatting checker or formatting CI job exists (research § 3). ESLint 10.7.0 with
+**Formatting/Linting**: Code formatting is owned by Prettier — `pnpm run format`
+rewrites and `pnpm run format:check` gates locally and in CI — while byte hygiene stays
+declarative: `.gitattributes` (`* text=auto eol=lf`) makes git normalize line endings and
+`.editorconfig` declares charset/final-newline/trailing-whitespace conventions to editors
+(research § 3). ESLint 10.7.0 with
 `@nuxt/eslint` 1.16.0 is the lint
 gate, and the strict TypeScript type check over the application, shared, source, script, and
 test code configured in `tsconfig.json` runs as the equally independent `typecheck` gate.
@@ -192,12 +194,10 @@ startup browser-open attempt, and the CLI prints the loopback origin once for th
 manual fallback.
 
 **Storage**: No durable application storage. Session state, inspected file bytes, complete
-authored-source DTOs, diagnostics, the sensitive-content warning acknowledgement, and
-comparison selection exist only in process/browser memory.
+authored-source DTOs, diagnostics, and comparison selection exist only in process/browser
+memory.
 
-**Testing**: The formatting checker bootstrap uses only Node.js `node:test` so its failing
-behavioral matrix can exist and run before the checker and dependency-backed test configuration.
-All other automated suites use Vitest 4.1.10 with `@vitest/coverage-v8` 4.1.10, Nuxt Test Utils 4.0.3,
+**Testing**: Automated suites use Vitest 4.1.10 with `@vitest/coverage-v8` 4.1.10, Nuxt Test Utils 4.0.3,
 Vue Test Utils 2.4.11, happy-dom 20.10.6, Playwright 1.61.1, and
 `@axe-core/playwright` 4.12.1; fixture-driven unit, contract, integration, packaging,
 performance, security, browser, and manual accessibility checks. `vitest.config.ts`
@@ -1023,16 +1023,16 @@ No boundary-external bytes are accepted or published;
 symbolic links are read transparently, and a link whose target is missing or unreadable
 yields that file's per-file diagnostic;
 explicit opt-in before Global reads; the loopback session API returns
-complete authored source only for explicit detail requests, while the bundled browser does
-not issue those requests or construct a comparison before its in-memory sensitive-content
-acknowledgement; environment-variable references are never resolved or substituted; inert
-text rendering only. The acknowledgement resets on reload or client purge and never travels
-to the session API. Displayed metadata fields and relationship kinds
+complete authored source only for explicit detail requests, one file or comparison at a
+time, with no confirmation step in front of the content and no notice in front of or
+beside it;
+environment-variable references are never resolved or substituted; inert text
+rendering only. Displayed metadata fields and relationship kinds
 must both belong to the maintained closed presentation-allowlist row for the supported
 `(tool, kind)` and be recognized by the exact extractor for the actual admitted source form;
 entries failing either gate remain available only in complete source text and are never
 inferred as metadata or relationships. Product surfaces are limited to syntactic
-parsing, exact authored-literal extraction, mechanical typed decoding, frozen-catalog
+parsing, reading the value a parser resolves for an allowlisted field, frozen-catalog
 classification, and projection of documented order, scope, condition, selection, and
 reference facts. Inventory, Detail, Comparison, Global controls, Diagnostics, Source
 Condition Facts, APIs, CLI output, and documentation never interpret or rank natural-
@@ -1102,7 +1102,7 @@ the devframe host serves that tree as-is from `cli.distDir`, and exact-value ass
 about the packaged file set live only in the `verify:package` CI/release gate and the
 package tests (Constitution Principle I).
 
-Failures are reported as ordinary errors: per Constitution v4.0.0 the product defines no
+Failures are reported as ordinary errors: per the Constitution § Quality and Safety Standards the product defines no
 log-content rules and no sanitized error envelope, because it has no telemetry and its
 terminal and UI output are read by the same user who owns the inspected files. A session-only
 file-scoped `Diagnostic` DTO retains its minimum Source-relative Path as its actionable
@@ -1169,7 +1169,7 @@ execution environment rather than a product-defined item ceiling.
       a semantically equivalent `*.ja.md` companion. Implementation must update both user
       and contributor guides, all vendor/Repository/User/Global/surface tables, official
       evidence, security boundaries, and diagnostics.
-- [x] **Safe boundaries**: Per the Constitution's trusted-workspace clause (v4.0.0), the product
+- [x] **Safe boundaries**: Per the Constitution's trusted-workspace clause, the product
       runs in a workspace the user already trusts and inspected customization files are not
       modeled as an adversary; the three retained obligations — inspected content is never
       executed, the session host binds to loopback only and is never exposed beyond the
@@ -1177,10 +1177,9 @@ execution environment rather than a product-defined item ceiling.
       displayed content is rendered inert — anchor this design. The session host runs
       unauthenticated behind that loopback binding; the documented residual limitation is
       that other local processes and, via DNS rebinding, a malicious web page can reach the
-      session while the inspector runs. The design freezes read candidates and keeps the
-      bundled browser's in-memory sensitive-content acknowledgement a presentation
-      invariant separate from the session API. That gate covers every authored-value
-      field in `FileDetail` and comparison-derived state. The central full-session purge is
+      session while the inspector runs. The design freezes read candidates and keeps
+      authored values reachable only through an explicit `FileDetail` request or comparison
+      construction — never through an inventory or session response. The central full-session purge is
       distinct from ordinary scoped route/Source/generation cleanup, and Global disable is
       the explicit exception that invokes the full purge before its request. Deliberately inspected complete content
       remains inert, local, session-only, and absent from persistence and egress.
@@ -1192,7 +1191,7 @@ execution environment rather than a product-defined item ceiling.
       canonical safe `correlationId`, retained in the canonical payload and digest chain; captured
       wire/browser/Inspector bytes are never hash preimages.
       Session diagnostics may carry only actionable location fields. Failures are reported
-      as ordinary errors: per the Constitution v4.0.0 clause, the product defines no
+      as ordinary errors: per the Constitution § Quality and Safety Standards, the product defines no
       log-content rules and no sanitized error envelope, because it has no telemetry and
       its output is read by the same user who owns the inspected files.
       Resource capacity is inherited from Node.js, parser
@@ -1219,9 +1218,9 @@ The data model distinguishes physical files, candidate provenances, documentatio
 and runtime applicability facts. The session API contract returns complete authored source and
 declared authored values only to an explicit detail request over the loopback devframe
 channel; the
-bundled SPA makes no `FileDetail` request and constructs no comparison content before its
-client-memory warning gate. The session API neither
-receives nor persists acknowledgement. It provides no masking or reveal workflow, never
+bundled SPA requests one file or constructs one comparison at a time and shows the result
+with no notice in front of or beside it. The session API neither
+receives nor persists any acknowledgement or notice state, because neither exists. It provides no masking or reveal workflow, never
 resolves environment-variable references, and emits only metadata
 fields and relationship kinds that belong to the maintained closed presentation-allowlist
 row and are recognized by the exact extractor for the actual admitted source form. The matcher contract
@@ -1230,7 +1229,7 @@ derived candidates; relationships, components, vendor locators, and excluded inp
 expand the read boundary. Relationship projection is limited to direct edges one hop from
 each origin, is non-recursive, has zero read authority, and reports any attempted nested/transitive
 projection with an actionable diagnostic before target access. Failure reporting matches
-the Constitution v4.0.0 ordinary-error clause: a file-confined failure becomes that file's
+the Constitution's ordinary-error clause (§ Quality and Safety Standards): a file-confined failure becomes that file's
 diagnostic, any other failure fails its attempt with the failed request's real error —
 RPC-handler failures cross the devframe channel as devframe serializes them — and no
 sanitized envelope, generic error entity, or log-content rule remains in the design. The quickstart covers every stable behavior, rule, strategy, and
@@ -1302,6 +1301,7 @@ specs/001-inspect-agent-customizations/
 src/
 ├── app/
 │   ├── App.vue
+│   ├── worker-modules.d.ts
 │   ├── components/
 │   │   ├── inventory/
 │   │   ├── inspection/
@@ -1311,7 +1311,8 @@ src/
 │   ├── composables/
 │   │   ├── comparison.ts
 │   │   ├── filters.ts
-│   │   └── monaco.ts
+│   │   ├── monaco.ts
+│   │   └── monaco-languages.ts
 │   ├── session/
 │   │   ├── api-client.ts
 │   │   ├── client-data.ts
@@ -1320,7 +1321,7 @@ src/
 │   │   ├── index.vue
 │   │   ├── compare.vue
 │   │   ├── global-consent.vue
-│   │   └── files/[id].vue
+│   │   └── skills/[fileId].vue
 │   └── styles/
 ├── server/
 │   ├── cli.ts
@@ -1343,22 +1344,23 @@ src/
 │   │   │   ├── codex.ts
 │   │   │   └── copilot.ts
 │   │   └── parsers/
+│   │       ├── extraction.ts
 │   │       ├── json.ts
 │   │       ├── markdown.ts
-│   │       ├── source-ranges.ts
-│   │       ├── toml.ts
-│   │       └── yaml.ts
+│   │       └── toml.ts
 │   └── session/
 │       ├── scan-generation.ts
 │       ├── stale-failures.ts
 │       └── session.ts
 └── shared/
     ├── api-types.ts
+    ├── api-text.ts               # what api-types' closed unions read as on screen
     ├── diagnostics.ts
     ├── entities.ts
     ├── rejection-codes.ts
     └── registries/
         ├── identifier-types.ts       # closed BehaviorId/StrategyId/RuleId unions
+        ├── identifier-text.ts        # what those identifiers read as on screen
         ├── behavior-types.ts         # record shapes, one per registry
         ├── strategy-types.ts
         ├── rule-types.ts
@@ -1474,10 +1476,9 @@ listener.
 view state observe the same `clientDataEpoch` without a module cycle. There is no liveness
 module: a probe of its own would duplicate the transport's connection-status signal, which
 covers host loss, and the response-path epoch/fence checks, which cover the rest. They live
-outside
-`src/app/composables/` because none of them is a Vue composable: each is a plain factory
-that owns closure-local state and is constructed once, so filing them under a directory
-whose name promises `use*` reactivity would misdescribe them.
+outside `src/app/composables/` because none of them is a Vue composable: each is a class
+that owns instance-local state (`#`-private) and is constructed once, so filing them under
+a directory whose name promises `use*` reactivity would misdescribe them.
 
 User-visible UI copy is written in the component that renders it; there is no message
 catalog. The UI ships one language, so QR-004's bilingual obligation
@@ -1488,7 +1489,14 @@ therefore only add a lookup between a key and its one string. The exception is t
 closed union fixes — a Source status, a boundary origin, a Diagnostic code — which is
 declared beside that union in `src/shared/entities.ts` and `src/shared/diagnostics.ts` so a
 new member cannot compile without its text, and so the server and the browser read the same
-vocabulary from one place. `validation.md` and `validation.ja.md` record final SC evidence and
+vocabulary from one place. Where the union is declared in a `-types` module that ships no
+runtime code, its table is the `*-text.ts` companion beside it: `src/shared/api-text.ts`
+and `src/shared/registries/identifier-text.ts`. This is also what keeps a contract
+identifier off the screen. A rule ID, a metadata field ID, and a condition key are tokens a
+registry record is keyed by and a gate is checked against, so every surface renders the
+statement the token names, and the DTO field carrying it is typed as its closed union rather
+than as `string` so the table cannot fall behind the catalog.
+`validation.md` and `validation.ja.md` record final SC evidence and
 remain semantically equivalent. CI and release ownership is explicit under
 `.github/workflows/`, including documentation parity, package exact-set, and release gates.
 
@@ -1567,13 +1575,12 @@ CI job, and release. `study:evidence:inputs` invokes only
 `node scripts/build-usability-study-inputs.mjs`, `study:evidence:capture` invokes only
 `node scripts/run-usability-study-capture.mjs`, and `study:evidence:verify` invokes only
 `node scripts/verify-usability-study-evidence.mjs`; none belongs to a default build/start/test
-chain, and only the explicit initial-release study protocol may invoke them. CI gives the test
-and checker independent ordered jobs, `test:unit` includes the bootstrap test, and release
-reruns the test followed by the checker after final edits. `check:official-sources` is the only
+chain, and only the explicit initial-release study protocol may invoke them. CI runs `format:check`
+as its own job, and release reruns it with the other gates after final edits. `check:official-sources` is the only
 documented network-enabled evidence-drift command. The `src/server/cli.ts` entry,
 `tsdown.config.ts`, assembly scripts, and these package scripts are foundation prerequisites:
 no build or package quality gate may be scheduled before they exist.
-Setup therefore implements the formatting checker and scaffolds the CLI entry plus every referenced assembly
+Setup therefore configures the formatter and scaffolds the CLI entry plus every referenced assembly
 script before it configures or executes package commands, tsdown entries, or CI quality
 gates. The Setup stage is not considered runnable until those paths exist.
 Production `dependencies` is the exact-version direct set `devframe`, `gunshi`, `yaml`,
@@ -1641,13 +1648,13 @@ configuration.
   traversal tracks visited directories by real path so a link cycle cannot prevent a scan
   from terminating, and a link whose target is missing or unreadable yields the
   file-scoped `file-unreadable` diagnostic. Hard links are
-  ordinary files. Raw entry names are the only filesystem operands, while public
-  Source-relative Paths use NFC display segments. Client-supplied paths never authorize
+  ordinary files. Raw entry names are the only filesystem operands, and joined with `/`
+  they are the published Source-relative Path. Client-supplied paths never authorize
   I/O; reads are driven by the compiled allowlist plans and server-owned identifiers only.
 - Per-file problems use the closed Diagnostic registry: `root-unreadable` (source scope for
   a published Source, session scope for an unpublished Global tool; error), `file-unreadable` (file scope, error),
-  `file-content-binary` (file scope, warning), `recognition-parse-failed` (file scope,
-  warning), and `path-normalization-collision` (session scope, error). A selected Repository root that does not exist or cannot be read as a
+  `file-content-binary` (file scope, warning), and `recognition-parse-failed` (file scope,
+  warning). A selected Repository root that does not exist or cannot be read as a
   directory fails that scan with the source-scoped `root-unreadable` diagnostic while the
   session stays usable, and the attempt publishes no partial inventory (FR-002). A
   consented Global root that is missing or unreadable records that tool as absent or
@@ -1700,7 +1707,7 @@ configuration.
   union are the only read authorities. The derivation schema pins a static seed
   provenance/rule/kind, closed declaration field/syntax, seed-relative or source-root base,
   fixed placement/suffix, and deterministic target construction; callback, arbitrary path join, free-form expression,
-  glob, and recursive derivation are unrepresentable. Derived segments pass the host-independent NFC/Windows-special grammar
+  glob, and recursive derivation are unrepresentable. Derived segments pass the host-independent closed spelling grammar
   and must resolve to exactly one enumerated allowlisted entry before read,
   so ADS, device, and trailing-dot/space spellings
   are rejected before the file is opened. FR-015 through
@@ -1749,9 +1756,11 @@ configuration.
   only the explicit maintainer drift command may fetch those pages. Startup and scans do
   not access documentation or copy remote page text into the package.
 - Decoding begins after the file's bytes are read.
-  Any `0x00` byte produces `encoding: binary`, no `sourceText`, the file-scoped
-  `file-content-binary` diagnostic, comparison ineligibility, and makes an otherwise
-  publishable generation `partial`. All other bytes are decoded exactly once as UTF-8 with replacement
+  Any `0x00` byte produces `encoding: binary` with no `sourceText` and no comparison
+  eligibility; for an admitted candidate it also produces the file-scoped
+  `file-content-binary` diagnostic and makes an otherwise publishable generation
+  `partial`, while a census-listed companion's binary bytes are the ordinary fact of an
+  asset (FR-025). All other bytes are decoded exactly once as UTF-8 with replacement
   semantics. Exactly one leading UTF-8 BOM is recorded as `hadLeadingBom` and removed
   from `sourceText`; the encoding is orthogonal to that record — input decoded without
   replacement uses `utf-8`, and any replaced invalid sequence uses `utf-8-replaced`.
@@ -1759,24 +1768,18 @@ configuration.
   extraction, and comparison. No charset detection, alternate decode, sampling, or
   truncation occurs, and the `utf-8-replaced` outcome alone does not make a generation
   partial.
-- Parsers use safe modes only: YAML core schema without custom tags and with aliases
-  disabled, JSONC tree extraction of known fields, TOML lexical-span extraction
+- Parsers use safe modes only: YAML 1.2 core schema, which resolves an alias to the value it
+  points at and leaves the scalar an unresolved tag carried — what a product loading the file
+  reads, and not something this tool refuses; JSONC tree extraction of known fields, TOML lexical-span extraction
   paired with semantic normalization without executing values, and Markdown/frontmatter
-  extraction without HTML rendering. JSONC tree ranges, YAML CST/source-token ranges, TOML
-  lexical spans, and Markdown/import spans must round-trip to the decoded source. Each
-  allowlisted field occurrence emits an ordered exact `authoredLiteral` source slice plus a
-  separate internal typed semantic value; accepted duplicate occurrences remain separate.
-  `SourceTextRange` offsets are ECMAScript UTF-16 code units and must reproduce the literal
-  with `String.prototype.slice`.
-  The semantic value is a JSON-safe discriminated union; integer, float, and
-  date/time payloads use typed canonical strings so JavaScript precision or parser-specific
-  objects cannot change them.
-  Metadata and authored-relationship display/comparison use only exact slices, while typed
-  classification, target normalization, and derivation use only semantic values. A fixed
+  extraction without HTML rendering. Each allowlisted field carries one entry holding
+  the value its parser resolved, in the allowlist row's order; a key declared twice
+  resolves to one value, so there is no occurrence index. Only fields resolving to a scalar
+  are entries, because a row names scalar fields and a text form of a structure would be a
+  value the file does not contain. No entry carries source coordinates: nothing points into
+  a document, and a range beside the value taken with it asserts nothing further. A fixed
   registry-defined relationship default has null authored text and an explicit
-  `documented-default` origin. Metadata, relationship, and derivation projections may share
-  one exact occurrence/range; only partial/nested/crossing or identical overlap between
-  distinct origin occurrences is invalid. All parser work runs in-process on the scan
+  `documented-default` origin. All parser work runs in-process on the scan
   path with the bundled parser libraries. Parsing capacity
   follows the supported Node.js runtime, parser libraries, browser, operating system, and
   execution environment, and the Inspector sets no product-defined V8
@@ -1790,10 +1793,9 @@ configuration.
   usable in a `partial` generation. A failure outside any single file instead fails the
   affected attempt and is reported as an ordinary error at its request-owning
   boundary. No parser or
-  presentation step replaces an authored slice with its decoded value, resolves environment-variable
-  references or performs credential detection, masking, or redaction. The internal
-  `semanticValue` name denotes only mechanical typed decoding of an authored literal; it
-  never carries a natural-language interpretation, rank, validity/correctness/effectiveness/
+  presentation step resolves environment-variable
+  references or performs credential detection, masking, or redaction. Decoding an authored
+  literal is mechanical; a decoded value never carries a natural-language interpretation, rank, validity/correctness/effectiveness/
   compliance/quality verdict, or remediation advice. The same prohibition applies to every
   inventory, detail, comparison, Global-control, Diagnostic, Source Condition Fact, API,
   CLI, and documentation projection.
@@ -1803,11 +1805,19 @@ configuration.
   the built SPA from `cli.distDir` (`dist/public`) and owns port selection, host binding,
   and startup browser opening; the session API is the set of devframe RPC functions
   declared with `defineRpcFunction` in the app definition's `setup`
-  (`src/server/host/devframe-app.ts`). There is no per-session token, Origin/Host check,
+  (`src/server/host/devframe-app.ts`); the same channel also carries devframe's own
+  built-ins (`devframe:agent:*`, `devframe:rpc:server-state:*`, `devframe:streaming:*`),
+  which the framework registers unconditionally and this product leaves empty and
+  unused, while the editor/finder helpers (`devframe:open-in-editor`,
+  `devframe:open-in-finder`) live in opt-in recipes this product does not import. The
+  product adds no per-session token, Origin/Host check,
   hand-written router, or product-owned static-file layer; protection is the loopback
-  bind, and the residual exposure of an unauthenticated loopback host — other local
+  bind, and the residual exposure of an
+  unauthenticated loopback host — other local
   processes and, via DNS rebinding, a malicious web page — is the documented limitation
-  recorded by Constitution v4.0.0. `package.json.bin`
+  recorded by the Constitution § Quality and Safety Standards. devframe applies an origin
+  gate of its own to the WebSocket upgrade, which is why no product-owned check stands
+  beside it; it is not what bounds that limitation (research.md § 8). `package.json.bin`
   maps directly to `dist/cli.mjs`. Node.js
   compatibility is declared only through the packed `engines.node` range
   `^24.11.0 || ^26.0.0` and enforced by the package manager's engines mechanism; the
@@ -1849,18 +1859,19 @@ configuration.
   instead of re-implementing a product-owned platform map beside devframe. The one
   terminal launch line is presentation output.
 - The session API returns inert DTOs and complete authored values only for
-  an explicit detail request. The bundled browser holds acknowledgement only in memory,
-  resets it on reload or central full-session purge, and issues no `FileDetail` request or
-  comparison construction before the sensitive-content warning is acknowledged; this gate
-  therefore covers complete source text, declared authored metadata, authored relationship
-  targets, and either comparison side. A route close, ordinary file or Source removal,
-  selection replacement, or generation replacement disposes only its scoped models and is
-  not itself the central purge, so acknowledgement may remain for the loaded document.
+  an explicit detail request. The bundled browser requests one file or constructs one
+  comparison at a time and shows the result with no notice and no
+  confirmation step in front of it, because the session is loopback-bound and the files are
+  the viewer's own. Complete source text, declared authored metadata, authored relationship
+  targets, and either comparison side are therefore reachable only through those explicit
+  requests, never through an inventory or session response. A route close, ordinary file or
+  Source removal, selection replacement, or generation replacement disposes only its scoped
+  models and is not itself the central purge.
   Global disable is different: the action invokes the central purge before sending its
   request, and observing a greater `globalContentEpoch` or non-null disable fence repeats
   that purge before rendering.
-  Acknowledgement is
-  never sent to or persisted by the API. It renders source through Vue
+  No acknowledgement is
+  sent to or persisted by the API, because none exists. It renders source through Vue
   components and the ESM build of `monaco-editor`, never `v-html`. Single-file source
   models and both sides of a source comparison are read-only, use opaque in-memory URIs,
   set `readOnly`, `domReadOnly`, `originalEditable: false`, `links: false`, and
@@ -1868,8 +1879,8 @@ configuration.
   environment-variable references. `accessibilitySupport`
   stays `auto`, `accessibilityVerbose` is enabled, and each view has an `ariaLabel`.
   Monaco's diff editor owns literal source comparison; recognition metadata is
-  matched by `(tool, kind, fieldId, occurrence)` and compares/renders exact `authoredLiteral` values in
-  Vue rather than substituting typed values or serializing them into an editor.
+  matched by `(tool, kind, fieldId)` and compares/renders each field's resolved value in
+  Vue rather than serializing it into an editor.
   Repository comparison acceptance first uses two distinct readable current-generation customization files from the
   same Repository Source; only after a successful Global commit does US4 verify a readable
   Repository file against a readable Global file while retaining each owning Source and
@@ -1879,8 +1890,9 @@ configuration.
   freezes the presented/live-region status at its last value without stopping the underlying
   scan; resuming or explicit refresh presents the current state.
   The editor is client-only and lazy-loaded on file/compare routes. Nuxt/Vite emits the
-  explicitly imported editor worker as a same-origin static asset; unused language-service
-  workers, CDN assets, external workers, and blob workers are not allowed. Editor/model
+  explicitly imported editor worker as a same-origin static asset, plus one lazily fetched
+  grammar chunk per basic language; language-service workers, CDN assets, external workers,
+  and blob workers are not allowed. Editor/model
   instances and subscriptions are disposed independently on route close, selection
   replacement, source disable, and generation replacement. The accessible diff viewer,
   meaningful ARIA labels, keyboard navigation, and inline narrow-screen view remain
@@ -1897,7 +1909,7 @@ configuration.
   another refresh can still succeed (FR-030). A lost channel, an unsupported session
   protocol, a session mismatch, or an equivalent terminal full-session reset
   disposes editor models/workers/subscriptions, clears all session DTO/DOM/detail/
-  comparison/warning state, aborts requests, and increments `clientDataEpoch` so a late
+  comparison state, aborts requests, and increments `clientDataEpoch` so a late
   response cannot restore content. Every SessionSnapshot/FileDetail request captures that
   epoch, the owning sequence's current generation — the session snapshot exposes
   `repositoryGeneration` and a nullable `globalGeneration` — plus a file ID where
@@ -1929,8 +1941,8 @@ configuration.
   The recovery view offers an explicit Resume inspection action only when the disable fence
   is null and a normal full snapshot can be fetched. It then re-fetches a matching session
   and constructs a fresh inventory summary with default state while
-  restoring no old detail, comparison, editor, selection, filter, authored source, or
-  acknowledgement. A later detail/comparison open requires a new acknowledgement. A
+  restoring no old detail, comparison, editor, selection, filter, or authored source. A
+  later detail/comparison open fetches it again from the fresh session. A
   session that cannot be re-adopted — the host process is gone or replaced — stays ended
   with the next step to reopen the printed URL.
 - One coordinator serializes cancellable `GlobalEnableOperation` admission and its single
@@ -2106,7 +2118,7 @@ configuration.
 
 | Byte condition | `encoding` | Source and recognition state |
 |---|---|---|
-| Any `0x00` byte | `binary` | Diagnostic-only item with the file-scoped `file-content-binary` diagnostic; no `sourceText`, parser dispatch, recognition extraction, or comparison eligibility; makes an otherwise publishable generation `partial` |
+| Any `0x00` byte | `binary` | No `sourceText`, parser dispatch, recognition extraction, or comparison eligibility. An admitted candidate is diagnostic-only with the file-scoped `file-content-binary` diagnostic and makes an otherwise publishable generation `partial`; a census-listed companion is the ordinary fact of an asset, with no diagnostic |
 | No NUL and all bytes decode without replacement | `utf-8` | Record and remove one leading BOM when present; preserve complete `sourceText`; parse it in-process |
 | No NUL and one or more invalid UTF-8 sequences, with or without one leading BOM | `utf-8-replaced` | Decode exactly once with replacement semantics, record/remove the leading BOM when present, preserve every resulting `U+FFFD`, and use that complete garbled text for parsing, extraction, display, and comparison; this condition alone remains complete |
 
@@ -2115,7 +2127,7 @@ configuration.
 | Terminal condition | Internal outcome and owner | Atomic public result |
 |---|---|---|
 | Complete traversal; every file complete, including readable `utf-8-replaced` results; assembly/serialization succeed; authority current | `committable-complete`, coordinator | Commit one `complete` generation of the owning sequence and a complete response; an initial/retry Global batch publishes every admitted tool-specific Source together in this one Global-sequence commit, touching no Repository state |
-| Complete traversal; one or more files have only file-confined outcomes (unreadable, binary, parse failure) while every unaffected file is complete | `committable-partial`, scan assembler then coordinator | Commit one `partial` generation of the owning sequence with affected-file diagnostics and complete unaffected results; an initial/retry Global batch still publishes its whole committable admitted subset in this one Global-sequence commit |
+| Complete traversal; one or more files have only file-confined outcomes (unreadable, an admitted candidate's binary content, parse failure — a census-listed companion's binary bytes are its ordinary fact and confine nothing, FR-025) while every unaffected file is complete | `committable-partial`, scan assembler then coordinator | Commit one `partial` generation of the owning sequence with affected-file diagnostics and complete unaffected results; an initial/retry Global batch still publishes its whole committable admitted subset in this one Global-sequence commit |
 | Fixed-three Global admission deterministically rejects every root | `active-no-job`, Global coordinator | Retain active consent/controls, create no `scanRequestId`, batch, Source, or generation, and preserve every existing committed ID exactly |
 | The selected Repository root does not exist or cannot be read as a directory | Deterministic fatal outcome, coordinator | Fail the attempt with the source-scoped `root-unreadable` diagnostic while the session stays usable; commit nothing, publish no partial inventory, and retain the prior snapshot; if and only if the attempt is an explicit rescan, mark the retained snapshot stale for that Source |
 | The attempt fails before commit for any other reason not confined to one file | `failed` for that `scanRequestId`, owning session-API request boundary | Commit nothing from the attempt, including every tentative Global batch sibling; report the failed request's error ordinarily (`scanRequestId` is null before job acceptance); retain any prior committed snapshot; if and only if the accepted job is an explicit rescan, create or replace that Source's stale overlay storing that error's message; keep the process/session available |
@@ -2127,16 +2139,16 @@ configuration.
 
 The trusted-workspace clarification (spec Clarifications § Session 2026-07-22) leaves no
 adversarial-file inspection machinery to justify, so the table carries no row for it.
-Devframe adoption (spec Clarifications § Session 2026-07-22, Constitution v3.0.0) leaves
-none for a per-session capability token, Origin checks, a hand-written HTTP router, or a
-static-manifest/CSP pipeline. Without FR-040/FR-041 (spec Clarifications § Session
-2026-07-22, Constitution v4.0.0) there is no generic error-envelope and no
+Devframe adoption (spec Clarifications § Session 2026-07-22, Constitution § Quality and Safety Standards) leaves
+none for a per-session capability token, product-owned Origin checks, a hand-written
+HTTP router, or a static-manifest/CSP pipeline. With no log-content rule and no sanitized error envelope (spec Clarifications § Session
+2026-07-22, Constitution § Quality and Safety Standards) there is no generic error-envelope and no
 operational-log/telemetry machinery, so the table carries no row for those either.
 The remaining unavoidable implementation costs are tracked explicitly:
 
 | Complexity | Why it is required | Simpler option rejected |
 |---|---|---|
-| Lockfile-pinned pre-1.0 devframe 0.7.5 host with lockfile-owned transitives (including the h3 2.0.1-rc.22 release candidate) | Reuse the config-inspector-proven local-tool host for static serving, the RPC session API, and browser opening instead of maintaining a hand-written router, token authentication, and static-manifest pipeline; the exact pin holds pre-1.0 API churn and the RC transitive at one reviewed baseline | A floating version range would adopt breaking pre-1.0 changes without review; re-implementing the host in-repo re-creates the complexity devframe already owns |
+| Lockfile-pinned pre-1.0 devframe 0.7.5 host with lockfile-owned transitives (including the h3 2.0.1-rc.22 release candidate) | Reuse the config-inspector-proven local-tool host for static serving, the RPC session API, and browser opening instead of maintaining a hand-written router, token authentication, and static-manifest pipeline; within this repository's own development and CI, the committed lockfile — which the published package does not carry — holds pre-1.0 API churn and the RC transitive at one reviewed baseline for every build and test run, and the manifest's `^0.7.5` only declares the range a deliberate update may move within here (a pre-1.0 caret stays below 0.8.0). A published-package consumer's package manager resolves that same `^0.7.5` fresh against the registry at install time, exactly as it does for any other pre-1.0 dependency; nothing in the package pins a runtime baseline for them | An exact manifest pin would duplicate, for this repository's own builds, the resolution the committed lockfile already owns there — every version move is a reviewed lockfile change either way — without changing what a package consumer resolves, since the published tarball carries no lockfile either way; re-implementing the host in-repo re-creates the complexity devframe already owns |
 | Publication-authority revocation with cleanup-only late continuations | Prevent work completed after disable, shutdown, or cancellation from mutating a newer session state | Treating cancellation as physical kernel-I/O termination would make an unsupported guarantee |
 | Four fixed external terminal-equipment descriptors and supervisor-owned participant launch | Give participant, moderator, and two isolated reviewer slots deterministic nonrecording/no-echo ingress and give the sole product-exit source a real child handle | Implicit shared stdin cannot isolate votes or contexts; a harness without the product process handle cannot attest exit |
 | Adapter-owned pinned Chromium plus anonymous DevTools equipment pipe | Configure attempt-local proxy/auth without env/argv/profile persistence and ground browser/context exit in a direct OS observer | Browser authority in argv, environment, or a persistent profile violates the privacy boundary; an unowned browser has no trustworthy equipment observer |

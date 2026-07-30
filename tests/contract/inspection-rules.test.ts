@@ -24,7 +24,7 @@ import {
   TRAVERSAL_PLAN_SCHEMA_VERSION,
   assembleRuleEvidenceAssessments,
   assertLoadableTraversalPlan,
-  compileTraversalPlan,
+  TraversalPlan,
   type MatcherSegment,
 } from '../../src/server/inspection/rules/registry';
 import { CODEX_REPOSITORY_RULES } from '../../src/server/inspection/rules/codex';
@@ -128,9 +128,9 @@ describe('inspection rule records', () => {
   });
 
   it('matches the checked-in conformance fixture', () => {
-    expect(JSON.parse(readFileSync('tests/fixtures/conformance/inspection-rules.json', 'utf8'))).toEqual(
-      JSON.parse(JSON.stringify(serializeInspectionRules())),
-    );
+    expect(
+      JSON.parse(readFileSync('tests/fixtures/conformance/inspection-rules.json', 'utf8')),
+    ).toEqual(JSON.parse(JSON.stringify(serializeInspectionRules())));
   });
 });
 
@@ -222,8 +222,8 @@ describe('traversal-plan compilation', () => {
       if (rule.matcher === null) {
         continue;
       }
-      const first = compileTraversalPlan(rule.matcher);
-      const second = compileTraversalPlan(rule.matcher);
+      const first = new TraversalPlan(rule.matcher);
+      const second = new TraversalPlan(rule.matcher);
       expect(first).toEqual(second);
       expect(first.schemaVersion).toBe(TRAVERSAL_PLAN_SCHEMA_VERSION);
       expect(first.boundary).toEqual(rule.matcher.base);
@@ -233,7 +233,7 @@ describe('traversal-plan compilation', () => {
   });
 
   it('refuses to interpret a plan of an unknown schema version', () => {
-    const plan = compileTraversalPlan(INSPECTION_RULES['codex.repo.skill']!.matcher!);
+    const plan = new TraversalPlan(INSPECTION_RULES['codex.repo.skill']!.matcher!);
     expect(() =>
       assertLoadableTraversalPlan({ ...plan, schemaVersion: 2 as typeof plan.schemaVersion }),
     ).toThrow(/unknown traversal-plan schema version/u);
@@ -241,7 +241,7 @@ describe('traversal-plan compilation', () => {
 
   it('compiles a Repository program to the unchanged anchored walk', () => {
     const matcher = INSPECTION_RULES['codex.repo.skill']!.matcher!;
-    const selector = compileTraversalPlan(matcher).selectors[0]!;
+    const selector = new TraversalPlan(matcher).selectors[0]!;
     expect(selector.mode).toBe('repository-program');
     expect(selector.fixedPrefix).toEqual([]);
     expect(selector.remainder).toEqual(matcher.selectors[0]!);
@@ -255,7 +255,7 @@ describe('traversal-plan compilation', () => {
       expect(RULE_RELATIONS[compiled.rule.ruleId]).toBe(compiled.relations);
       expect(compiled.tool).toBe(compiled.rule.tool);
       expect(compiled.kind).toBe(compiled.rule.kind);
-      expect(compiled.plan).toEqual(compileTraversalPlan(compiled.rule.matcher!));
+      expect(compiled.plan).toEqual(new TraversalPlan(compiled.rule.matcher!));
     }
   });
 });
@@ -384,9 +384,9 @@ describe('the sole EvidenceAssessment[] assembler (QR-005)', () => {
       })),
     ];
     expect(
-      assessments.map((entry) => ({ subjectKind: entry.subjectKind, subjectId: entry.subjectId })).sort(
-        (left, right) => (left.subjectId < right.subjectId ? -1 : 1),
-      ),
+      assessments
+        .map((entry) => ({ subjectKind: entry.subjectKind, subjectId: entry.subjectId }))
+        .sort((left, right) => (left.subjectId < right.subjectId ? -1 : 1)),
     ).toEqual(expected.sort((left, right) => (left.subjectId < right.subjectId ? -1 : 1)));
   });
 
@@ -402,17 +402,23 @@ describe('the sole EvidenceAssessment[] assembler (QR-005)', () => {
     // assembler takes the record: its ID and its evidence state cannot be
     // supplied separately, so they cannot disagree.
     const assessments = assemble({
-      rule: { ...rule, documentationStatus: 'partially-documented', lifecycleQualifiers: ['experimental'] },
+      rule: {
+        ...rule,
+        documentationStatus: 'partially-documented',
+        lifecycleQualifiers: ['experimental'],
+      },
     });
     // The weaker rule status stays on the rule record only; the behavior and
     // strategy records keep their own values, which is the whole point of a
     // record-by-record array (QR-005).
-    expect(
-      assessments.find((entry) => entry.subjectKind === 'rule'),
-    ).toMatchObject({ documentationStatus: 'partially-documented', lifecycleQualifiers: ['experimental'] });
-    expect(
-      assessments.find((entry) => entry.subjectKind === 'behavior'),
-    ).toMatchObject({ documentationStatus: 'documented', lifecycleQualifiers: [] });
+    expect(assessments.find((entry) => entry.subjectKind === 'rule')).toMatchObject({
+      documentationStatus: 'partially-documented',
+      lifecycleQualifiers: ['experimental'],
+    });
+    expect(assessments.find((entry) => entry.subjectKind === 'behavior')).toMatchObject({
+      documentationStatus: 'documented',
+      lifecycleQualifiers: [],
+    });
     expect(assessments).not.toHaveProperty('documentationStatus');
   });
 });

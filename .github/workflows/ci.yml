@@ -1,7 +1,8 @@
 # Continuous integration. Every gate is an independent job.
 #
 # Byte hygiene has no CI job: line endings are owned by .gitattributes and
-# editor conventions by .editorconfig, while code style is the lint job.
+# editor conventions by .editorconfig. Code formatting is Prettier's — the
+# format job gates it — and code style beyond formatting is the lint job.
 #
 # The six lower-bound certification jobs sample Node.js 24.11.0 and 26.0.0
 # on the three fixed OS/architecture targets. They certify the two declared
@@ -24,6 +25,19 @@ env:
   NODE_DEV_BASELINE: 24.18.0
 
 jobs:
+  format:
+    name: Format check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_DEV_BASELINE }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run format:check
+
   lint:
     name: Lint
     runs-on: ubuntu-24.04

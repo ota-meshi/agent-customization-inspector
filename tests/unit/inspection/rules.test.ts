@@ -21,7 +21,7 @@ import { CODEX_REPOSITORY_RULES } from '../../../src/server/inspection/rules/cod
 import { INSPECTION_RULES } from '../../../src/shared/registries/inspection-rules';
 import { RULE_RELATIONS } from '../../../src/shared/registries/relations';
 import {
-  compileTraversalPlan,
+  TraversalPlan,
   resolveAdmittingRules,
 } from '../../../src/server/inspection/rules/registry';
 import { runTraversalScan } from '../../../src/server/inspection/traversal';
@@ -72,7 +72,7 @@ describe('the shipped codex.repo.skill plan', () => {
     // The compiled plan is exactly what compiling the shipped matcher yields:
     // there is no second, vendor-owned interpretation of the selector.
     expect(compiled.plan).toEqual(
-      compileTraversalPlan(INSPECTION_RULES['codex.repo.skill']!.matcher!),
+      new TraversalPlan(INSPECTION_RULES['codex.repo.skill']!.matcher!),
     );
     // Anchored at the Repository root, with no leading recursive step: the
     // allowlist reports the selected root's customizations (FR-003), so a
@@ -105,11 +105,13 @@ describe('the bounded companion census', () => {
     return recognition?.details;
   }
 
-  it('lists what accompanies a skill without admitting or reading any of it', async () => {
+  it('lists what accompanies a skill without admitting any of it', async () => {
     // `greet/` holds the admitted `SKILL.md`, a sibling `README.md`, and a
     // `nested/SKILL.md` one level too deep to be admitted. The census is
-    // recursive and excludes the seed, so it lists the other two — and
-    // neither of them became a row.
+    // recursive and excludes the seed, so it lists the other two — and neither
+    // was admitted as a candidate. Being listed is not being unread: the census
+    // reads what it lists and the generation publishes it, which the case below
+    // asserts. What must not happen is a companion entering through a rule.
     const details = await skillDetails('.agents/skills/greet/SKILL.md');
     expect(details?.kind === 'skill' && details.companionFiles).toEqual([
       '.agents/skills/greet/README.md',
@@ -126,10 +128,11 @@ describe('the bounded companion census', () => {
     expect(details?.kind === 'skill' && details.companionFiles).toEqual([]);
   });
 
-  it('reads exactly the admitted candidates and nothing the census listed', async () => {
-    // "The census reads no bytes" has to be the exact read set, not merely the
-    // absence of an extra row: a companion opened for any reason would be
-    // content the user never asked to expose (FR-027).
+  it('reads exactly the admitted candidates and the files the census listed', async () => {
+    // The read set is the assertion, not merely the presence of an extra row: a
+    // file opened for any other reason would be content nothing in the shipped
+    // contract accounts for. A companion is read because the census bounds it as
+    // part of the customization — never because a rule admitted it.
     vi.clearAllMocks();
     const publication = await runSourceScan({
       sourceId: 'src-1',
@@ -142,22 +145,34 @@ describe('the bounded companion census', () => {
     const opened = vi
       .mocked(fsIo.readFile)
       .mock.calls.map((call) =>
-        String(call[0]).slice(fixture.root.length + 1).split(sep).join('/'),
+        String(call[0])
+          .slice(fixture.root.length + 1)
+          .split(sep)
+          .join('/'),
       )
       .sort();
-    const admitted = publication.files
+    const published = publication.files
       .filter((file) => file.encoding !== 'unknown')
       .map((file) => file.sourceRelativePath)
       .sort();
-    expect(opened).toEqual(admitted);
-    // The census did list companions for `greet`, and none of them was opened.
-    const companions = publication.recognitions
-      .flatMap((recognition) =>
-        recognition.details.kind === 'skill' ? recognition.details.companionFiles : [],
-      );
+    // Every published file was opened exactly once, and nothing else was.
+    expect(opened).toEqual(published);
+    expect(new Set(opened).size).toBe(opened.length);
+    // The census did list companions for `greet`, and each was read and
+    // published as an ordinary file that no rule admitted.
+    const companions = publication.recognitions.flatMap((recognition) =>
+      recognition.details.kind === 'skill' ? recognition.details.companionFiles : [],
+    );
     expect(companions.length).toBeGreaterThan(0);
     for (const companion of companions) {
-      expect(opened).not.toContain(companion);
+      const file = publication.files.find((one) => one.sourceRelativePath === companion);
+      expect(file, `companion not published: ${companion}`).toBeDefined();
+      // Published, but not recognized: it has no kind and no inventory of its
+      // own, which is what "the census admits nothing" now means. A binary
+      // companion carries no `recognitionIds` field at all — its published
+      // shape has no source text to recognize — so the assertion is that it
+      // holds no recognition either way rather than that the field is empty.
+      expect(file && 'recognitionIds' in file ? file.recognitionIds : []).toEqual([]);
     }
   });
 });
@@ -189,11 +204,12 @@ describe('anchored inventory and near misses', () => {
 
   it('opens only the admitted candidates, never a near-miss sibling', async () => {
     const result = await scanFixture();
-    const opened = vi
-      .mocked(fsIo.readFile)
-      .mock.calls.map((call) =>
-        String(call[0]).slice(fixture.root.length + 1).split(sep).join('/'),
-      );
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) =>
+      String(call[0])
+        .slice(fixture.root.length + 1)
+        .split(sep)
+        .join('/'),
+    );
     // A broken link is discovered as unreadable without a read attempt, so
     // the opened set is the admitted set minus those.
     const expectedOpened = result.files
@@ -215,11 +231,16 @@ describe('an entry whose type the filesystem does not report', () => {
     // type is unknown, so every `Dirent` predicate answers false. Dropping
     // those would lose a candidate with no diagnostic to show for it.
     vi.clearAllMocks();
-    const realReaddir = (await vi.importActual<typeof import('../../../src/server/inspection/fs-io')>(
-      '../../../src/server/inspection/fs-io',
-    )).readdir;
+    const realReaddir = (
+      await vi.importActual<typeof import('../../../src/server/inspection/fs-io')>(
+        '../../../src/server/inspection/fs-io',
+      )
+    ).readdir;
     vi.mocked(fsIo.readdir).mockImplementation(async (directory, options) => {
-      const entries = (await realReaddir(directory, options)) as unknown as import('node:fs').Dirent[];
+      const entries = (await realReaddir(
+        directory,
+        options,
+      )) as unknown as import('node:fs').Dirent[];
       return entries.map((entry) =>
         Object.assign(Object.create(Object.getPrototypeOf(entry)), entry, {
           isFile: () => false,

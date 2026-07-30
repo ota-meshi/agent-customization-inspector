@@ -130,10 +130,10 @@ Each selector program has a non-empty ordered sequence of segment tokens from th
   that root's customizations (FR-003).
 
 Static fixed prefixes, exact targets, and fixed derived suffixes use that same closed ASCII
-literal type. Registry validation rejects every non-ASCII path literal; consequently exact
-raw-byte/code-unit relevance cannot disagree with later NFC classification for fixed
-prefixes and exact targets, while a `regex` pattern tests the raw entry name (which
-may be an NFD spelling on disk). The final token
+literal type. Registry validation rejects every non-ASCII path literal, so exact
+raw-byte/code-unit comparison is the whole relevance test for fixed prefixes and exact
+targets, while a `regex` pattern tests the raw entry name (which may be an NFD spelling
+on disk). The final token
 must be `literal` or `regex` and denotes a regular file. A program
 uses only this closed typed grammar; token and depth capacity and completion
 behavior come from Node.js and the execution environment. The registry is authored
@@ -198,21 +198,38 @@ Whether a census applies follows from the recognized kind, not from a separate d
 on a rule. Being a directory is part of what a kind *is*, so every rule that admits that kind
 wants the census and a per-rule flag would state twice what one of them already decides.
 
-The census result is the list of Source-relative Paths, sorted, not a count of them. The
-paths are NFC display spellings, so raw entry names that normalize to one path contribute
-one entry: what the census lists is the set of paths accompanying the candidate, not the
-set of directory entries. The ordinary walk rejects such a group rather than choosing
-between its members, and the census publishes no diagnostic, so listing one path twice
-would show two rows a reader cannot tell apart. The
-inventory row states how many there are and the file detail view names each one; deriving
-the number from the list keeps a single fact, where publishing both would be two states that
-can disagree.
+The census result is the list of Source-relative Paths, sorted, not a count of them. Each
+path is the exact raw entry names joined with `/`, like every published path: the
+filesystem holds one entry per name, so every listed path is unambiguous, and two raw
+spellings that would render alike are two real files listed apart. The
+inventory row states how many files there are and the file detail view names each one;
+deriving the number from the list keeps a single fact, where publishing both would be two
+states that can disagree.
 
-A census is enumeration, never admission. It reads no bytes, admits no candidate, produces
-no diagnostic of its own, and grants no read authority to anything it lists. The files it
-lists remain exactly what they were — relationship targets that are never read through
-those edges — so listing them must not promote them to candidates, and appearing in a census
-is not evidence that the vendor loads any of them.
+The census reads what it lists. A directory-shaped customization is its entry point plus the
+files beside it, and a tool that showed the entry point while withholding the files it ships
+would not be showing the customization — the accompanying files are as much of what a
+product is given as the `SKILL.md` is. Each is read exactly once per scan attempt, through
+the same read path and the same closed per-file classification as an admitted candidate, and
+is published as an ordinary file of the generation. What a classification means differs with
+what was expected of the file. Binary bytes are the ordinary fact of an asset — an image or
+a compiled file is part of what a skill ships, so the row records `binary` with no
+Diagnostic and the generation stays complete, where the same bytes in an admitted candidate
+are a finding about a file a rule admitted as a text customization. A failed read is a
+failure for both: the census listed the file, so the skill has it and the reader cannot see
+it — that includes an entry whose link target is gone, which is listed and read like any
+other so the read answers `file-unreadable` and the row says so, where dropping it would
+show a skill missing a file its own directory has.
+
+A census is still enumeration, never admission. A file it lists acquires no rule, no
+recognition, no kind, and no inventory row of its own: it is part of the customization whose
+directory holds it, and that customization already has a row. A census widens no walk: it descends only inside the
+admitted candidate's own directory, so no path outside it is ever enumerated, and an entry
+it does list is read the way every other file is — through the platform's transparent
+symbolic-link resolution, because that is what an agent reading that directory would get.
+Appearing in a census is not evidence that the vendor loads the file, and a relationship target is still never read through its edge —
+a target becomes readable only by being independently admitted or by lying inside a census
+that already bounds it.
 
 A census is not part of the allowlist walk. The traversal executes the shipped selector
 programs and answers which files may be read; a census answers what else sits in a
@@ -299,9 +316,9 @@ recompiling it from display text.
 
 Runtime scanning executes the compiled plan as an ordinary recursive walk built on
 `node:fs/promises` (FR-019). Enumerated raw entry names are the filesystem operands, and
-public Source-relative Paths use their NFC display segments (FR-024); NFC segments,
-`/`-joined `SourceRelativePath` values, and display strings never reconstruct a
-filesystem path. Selector relevance is decided on the enumerated entry name with exact
+a public Source-relative Path is those names joined with `/` (FR-024); `/`-joined
+`SourceRelativePath` values and display strings never reconstruct a filesystem
+path — operations use the retained raw segments. Selector relevance is decided on the enumerated entry name with exact
 literal comparisons and each `regex` pattern's standard regular-expression test —
 the only pattern evaluation in the product, applied to one entry name at a
 time. Symbolic links are followed transparently,
@@ -317,11 +334,12 @@ those internals under another name is excluded too, while a Source root whose ow
 contains such a segment is an ordinary root that is scanned normally.
 
 A problem confined to one file stays confined (FR-028): an unreadable file yields
-the file-scoped `file-unreadable` Diagnostic, NUL-containing content yields
-`file-content-binary`, and a parser or extractor failure yields
-`recognition-parse-failed` while the complete readable source stays displayed and
-comparison-eligible. Each such outcome makes an otherwise publishable generation
-`partial` with every unaffected file complete. Invalid non-NUL file-content UTF-8 is
+the file-scoped `file-unreadable` Diagnostic, an admitted candidate's NUL-containing
+content yields `file-content-binary` — a census-listed companion's binary bytes are the
+ordinary fact of an asset and yield none (§ Bounded companion census) — and a parser or
+extractor failure yields `recognition-parse-failed` while the complete readable source
+stays displayed and comparison-eligible. Each such Diagnostic-bearing outcome makes an
+otherwise publishable generation `partial` with every unaffected file complete. Invalid non-NUL file-content UTF-8 is
 instead decoded once with replacement semantics and processed unchanged as readable
 `utf-8-replaced` text. A selected root that does not exist or cannot be read as a
 directory fails the Source attempt with the source-scoped `root-unreadable` Diagnostic
@@ -368,9 +386,12 @@ independent.
 ## Read authorization and applicability
 
 Only a `static-candidate` or `bounded-derived-candidate` in the shipped, contract-versioned
-registry may request a read. The candidate must belong to an enabled boundary and match
-an entry produced by the ordinary traversal above; the inspection module accepts no
-arbitrary absolute path from an API request, relationship, or source file.
+registry may create a candidate and request its read. The candidate must belong to an
+enabled boundary and match an entry produced by the ordinary traversal above; the
+inspection module accepts no arbitrary absolute path from an API request, relationship, or
+source file. The one read this does not cover is a companion's, which no admission
+authorizes and no path outside an admitted candidate's own directory can reach
+(§ Bounded companion census).
 
 A `bounded-derived-candidate` uses a typed edge from an independently admitted static seed
 and is nonrecursive: a derived candidate cannot seed another derivation. Relationship-only
@@ -395,7 +416,7 @@ only through the preceding selected directory, so the interpreter cannot widen t
 Authored local paths use the exact pure tokenizer in the data-model contract. Prefix policy
 handles only one literal `./`; U+002F is the sole separator. Empty input/segments, leading,
 trailing, or repeated separators, `.`/`..`, backslash, colon, a first-segment home marker,
-controls, unpaired surrogates, and non-NFC segments reject the whole derivation with zero
+controls, and unpaired surrogates reject the whole derivation with zero
 target I/O. There is no percent/URL/URI decoding, environment expansion, home resolution, or
 platform path parsing. The interpreter produces typed regex tokens, never a path
 string. Fixed suffix alternatives use literal `first-present-exact`: only a missing exact
@@ -446,7 +467,9 @@ projection conditional or `unknown`.
 - Reads use only read-only, non-create, non-truncate operations; no mutation-capable
   primitive is ever called against an inspected source (FR-023).
 - A relationship target, canonical path string, or source text alone never authorizes a
-  filesystem open; only a static or bounded-derived admission in the shipped registry does.
+  filesystem open. A path becomes readable in exactly two ways: a static or bounded-derived
+  admission in the shipped registry, or a companion census bounded by such an admission's
+  own directory.
 - A failure confined to one file becomes that file's Diagnostic and makes an otherwise
   publishable generation `partial` with every unaffected file complete (FR-028). An
   unreadable root fails the Source attempt with `root-unreadable` and no generation
@@ -523,10 +546,10 @@ Contract and fixture validation must prove all of the following:
    assertion. That assertion must separately observe both exact authorized internal loopback
    classes and reject every request outside them, including customization-selected,
    remote-reference, or MCP requests.
-9. Path-spelling fixtures include a non-NFC entry name read through its exact raw segments
-   and displayed as NFC, and separate replacement processing for
-   invalid non-NUL file-content UTF-8 as readable `utf-8-replaced` text. NFC segments,
-   `SourceRelativePath` values, and display strings never reconstruct a filesystem path.
+9. Path-spelling fixtures include an NFD entry name read through and published as its
+   exact raw segments, and separate replacement processing for
+   invalid non-NUL file-content UTF-8 as readable `utf-8-replaced` text.
+   `SourceRelativePath` values and display strings never reconstruct a filesystem path.
 10. Official-source fixtures validate official HTTPS hosts, enumerated anchors, review dates,
    semantic fingerprints, affected-contract backlinks, and human-only updates. A drift
    result never changes a behavior, rule, or strategy automatically.

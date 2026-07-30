@@ -109,9 +109,7 @@ test('ends the session as soon as the host goes away', async ({ page }) => {
   host = await launchHost(fixture);
 });
 
-test('surfaces connection construction failures instead of remaining in boot', async ({
-  page,
-}) => {
+test('surfaces connection construction failures instead of remaining in boot', async ({ page }) => {
   await page.route('**/__connection.json', (route) => route.abort('failed'));
   await page.goto(host.origin);
   await expect(page.getByRole('heading', { name: 'Session ended' })).toBeVisible();

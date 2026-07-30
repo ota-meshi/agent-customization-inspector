@@ -43,7 +43,7 @@ export interface FixtureCapabilities {
   /** A FIFO (non-regular entry) was created. */
   readonly nonRegularEntries: boolean;
   /** NFC and NFD sibling spellings coexist (normalization-preserving FS). */
-  readonly normalizationCollisions: boolean;
+  readonly normalizationSiblings: boolean;
 }
 
 /** One built fixture tree plus the capabilities it materialized. */
@@ -135,7 +135,7 @@ export function tryMakeFifo(absolutePath: string): boolean {
 const NFD_NAME = 'José.md';
 const NFC_NAME = 'José.md'.normalize('NFC');
 
-function tryMakeNormalizationCollision(directory: string): boolean {
+function tryMakeNormalizationSiblings(directory: string): boolean {
   mkdirSync(directory, { recursive: true });
   writeFileSync(join(directory, NFD_NAME), 'nfd spelling\n');
   writeFileSync(join(directory, NFC_NAME), 'nfc spelling\n');
@@ -186,11 +186,11 @@ export function buildTraversalFixtureTree(prefix = 'inspector-traversal'): Trave
     mkdirSync(join(root, 'fifo-dir'), { recursive: true });
   }
 
-  const normalizationCollisions = tryMakeNormalizationCollision(join(root, 'collision'));
+  const normalizationSiblings = tryMakeNormalizationSiblings(join(root, 'siblings'));
 
   return {
     root,
-    capabilities: { symlinks, unreadableEntries, nonRegularEntries, normalizationCollisions },
+    capabilities: { symlinks, unreadableEntries, nonRegularEntries, normalizationSiblings },
     restore: () => {
       if (unreadableEntries) {
         chmodSync(lockedPath, 0o644);
@@ -236,15 +236,15 @@ export type CodexTargetCase =
   | 'broken-link';
 
 const CODEX_CASE_BYTES: Record<Exclude<CodexTargetCase, 'absent' | 'broken-link'>, Uint8Array> = {
-  'empty': Buffer.alloc(0),
+  empty: Buffer.alloc(0),
   'whitespace-only': Buffer.from(' \n\t\n', 'utf8'),
   'bom-only': Buffer.from([0xef, 0xbb, 0xbf]),
   'non-empty': Buffer.from('codex instructions\n', 'utf8'),
   // 0xFF decodes to U+FFFD, which is non-whitespace, so the file is
   // non-empty under the FR-035 emptiness rule.
   'replacement-decoded': Buffer.from([0xff]),
-  'binary': Buffer.from([0x00]),
-  'unreadable': Buffer.from('unreachable\n', 'utf8'),
+  binary: Buffer.from([0x00]),
+  unreadable: Buffer.from('unreachable\n', 'utf8'),
 };
 
 /**

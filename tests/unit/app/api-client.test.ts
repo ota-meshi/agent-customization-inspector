@@ -14,11 +14,15 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   SESSION_RPC_FUNCTIONS,
-  createSessionApiClient,
+  SessionApiClient,
   type ClientDataGuard,
   type SessionRpcFunctionName,
 } from '../../../src/app/session/api-client';
-import type { InspectionDataResult, SessionSnapshot, SourceDto } from '../../../src/shared/api-types';
+import type {
+  InspectionDataResult,
+  SessionSnapshot,
+  SourceDto,
+} from '../../../src/shared/api-types';
 
 /** A snapshot skeleton; each test overrides only the fields it asserts on. */
 function snapshot(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot {
@@ -68,9 +72,7 @@ function scriptedChannel(responses: readonly unknown[]) {
         calls.push(method);
         const response = responses[index] ?? responses.at(-1);
         index += 1;
-        return response instanceof Error
-          ? Promise.reject(response)
-          : Promise.resolve(response);
+        return response instanceof Error ? Promise.reject(response) : Promise.resolve(response);
       },
     },
   };
@@ -123,7 +125,7 @@ describe('a newer generation abandons data, not commands', () => {
             })
           : Promise.resolve(sessionResult(snapshot(), { repositoryGeneration: 2 })),
     };
-    const client = createSessionApiClient({ channel, clientData: guard() });
+    const client = new SessionApiClient({ channel, clientData: guard() });
     const rescan = client.rescanRepository();
     // A snapshot at a newer generation arrives while the command is pending.
     const adopted = await client.fetchSession();
@@ -142,7 +144,7 @@ describe('a newer generation abandons data, not commands', () => {
 describe('session API client — invoked functions', () => {
   it('calls nothing outside the closed session function catalog', async () => {
     const scripted = scriptedChannel([sessionResult(snapshot())]);
-    const client = createSessionApiClient({ channel: scripted.channel, clientData: guard() });
+    const client = new SessionApiClient({ channel: scripted.channel, clientData: guard() });
     await client.fetchSession();
     const catalog = Object.values(SESSION_RPC_FUNCTIONS);
     expect(scripted.calls).toHaveLength(1);
@@ -154,7 +156,7 @@ describe('session API client — invoked functions', () => {
   it('persists nothing to browser storage', async () => {
     const setItem = vi.spyOn(Storage.prototype, 'setItem');
     const scripted = scriptedChannel([sessionResult(snapshot())]);
-    const client = createSessionApiClient({ channel: scripted.channel, clientData: guard() });
+    const client = new SessionApiClient({ channel: scripted.channel, clientData: guard() });
     await client.fetchSession();
     expect(setItem).not.toHaveBeenCalled();
     setItem.mockRestore();
@@ -164,7 +166,7 @@ describe('session API client — invoked functions', () => {
 describe('session API client — inspection-data guards', () => {
   it('adopts a snapshot that passes every guard', async () => {
     const scripted = scriptedChannel([sessionResult(snapshot())]);
-    const client = createSessionApiClient({ channel: scripted.channel, clientData: guard() });
+    const client = new SessionApiClient({ channel: scripted.channel, clientData: guard() });
     const outcome = await client.fetchSession();
     expect(outcome).toEqual({
       kind: 'adopted',
@@ -178,7 +180,7 @@ describe('session API client — inspection-data guards', () => {
       sessionResult(snapshot()),
       sessionResult(snapshot({ repositoryGeneration: 1 })),
     ]);
-    const client = createSessionApiClient({ channel: scripted.channel, clientData: guard() });
+    const client = new SessionApiClient({ channel: scripted.channel, clientData: guard() });
     await client.fetchSession();
     const outcome = await client.fetchSession();
     expect(outcome).toMatchObject({ kind: 'adopted', advancedSequences: ['repository'] });
@@ -190,7 +192,7 @@ describe('session API client — inspection-data guards', () => {
       sessionResult(snapshot({ repositoryGeneration: 1 })),
       sessionResult(snapshot({ repositoryGeneration: 2 })),
     ]);
-    const client = createSessionApiClient({ channel: scripted.channel, clientData: guard() });
+    const client = new SessionApiClient({ channel: scripted.channel, clientData: guard() });
     await client.fetchSession();
     const outcome = await client.fetchSession();
     expect(outcome).toEqual({ kind: 'discarded', reason: 'older-generation' });
@@ -206,7 +208,7 @@ describe('session API client — inspection-data guards', () => {
       sessionResult(snapshot({ repositoryGeneration: 4, globalGeneration: 1 })),
       sessionResult(snapshot({ repositoryGeneration: 4, globalGeneration: 3 })),
     ]);
-    const client = createSessionApiClient({ channel: scripted.channel, clientData: guard() });
+    const client = new SessionApiClient({ channel: scripted.channel, clientData: guard() });
     await client.fetchSession();
 
     await expect(client.fetchSession()).resolves.toEqual({
@@ -241,7 +243,7 @@ describe('session API client — inspection-data guards', () => {
         return response as Promise<unknown>;
       },
     };
-    const client = createSessionApiClient({ channel, clientData: guard() });
+    const client = new SessionApiClient({ channel, clientData: guard() });
     await client.fetchSession();
     const stale = client.fetchSession();
     const fresh = await client.fetchSession();
@@ -261,7 +263,7 @@ describe('session API client — inspection-data guards', () => {
         return Promise.resolve(sessionResult(snapshot()));
       },
     };
-    const client = createSessionApiClient({ channel, clientData });
+    const client = new SessionApiClient({ channel, clientData });
     await expect(client.fetchSession()).resolves.toEqual({
       kind: 'discarded',
       reason: 'client-data-epoch-advanced',
@@ -274,7 +276,7 @@ describe('session API client — inspection-data guards', () => {
       globalDisableInProgress: { operationId: 'op', state: 'draining' },
     } as unknown as Partial<SessionSnapshot>);
     const scripted = scriptedChannel([sessionResult(fenced)]);
-    const client = createSessionApiClient({ channel: scripted.channel, clientData });
+    const client = new SessionApiClient({ channel: scripted.channel, clientData });
     const outcome = await client.fetchSession();
     expect(outcome).toEqual({ kind: 'purged', reason: 'global-disable-fence' });
     expect(clientData.purges).toEqual(['global-disable-fence']);
@@ -286,7 +288,7 @@ describe('session API client — inspection-data guards', () => {
       sessionResult(snapshot()),
       sessionResult(snapshot({ globalContentEpoch: 1 })),
     ]);
-    const client = createSessionApiClient({ channel: scripted.channel, clientData });
+    const client = new SessionApiClient({ channel: scripted.channel, clientData });
     await client.fetchSession();
     const outcome = await client.fetchSession();
     expect(outcome).toEqual({ kind: 'purged', reason: 'global-content-epoch-advanced' });
@@ -299,7 +301,7 @@ describe('session API client — inspection-data guards', () => {
       sessionResult(snapshot()),
       sessionResult(snapshot({ sessionId: 'session-b' })),
     ]);
-    const client = createSessionApiClient({ channel: scripted.channel, clientData });
+    const client = new SessionApiClient({ channel: scripted.channel, clientData });
     await client.fetchSession();
     await expect(client.fetchSession()).resolves.toEqual({
       kind: 'purged',
@@ -313,7 +315,7 @@ describe('session API client — inspection-data guards', () => {
       sessionResult(snapshot({ globalContentEpoch: 5 })),
       sessionResult(snapshot({ sessionId: 'session-b', globalContentEpoch: 0 })),
     ]);
-    const client = createSessionApiClient({ channel: scripted.channel, clientData });
+    const client = new SessionApiClient({ channel: scripted.channel, clientData });
     await client.fetchSession();
     await expect(client.fetchSession()).resolves.toEqual({
       kind: 'purged',
@@ -324,7 +326,7 @@ describe('session API client — inspection-data guards', () => {
 
   it('surfaces a deterministic rejection as its closed code', async () => {
     const scripted = scriptedChannel([{ error: { code: 'global-disable-pending' } }]);
-    const client = createSessionApiClient({ channel: scripted.channel, clientData: guard() });
+    const client = new SessionApiClient({ channel: scripted.channel, clientData: guard() });
     await expect(client.fetchSession()).resolves.toEqual({
       kind: 'rejected',
       code: 'global-disable-pending',
@@ -334,7 +336,7 @@ describe('session API client — inspection-data guards', () => {
   it('purges and fails closed for a rejection code outside the catalog', async () => {
     const clientData = guard();
     const scripted = scriptedChannel([{ error: { code: 'invented-rejection' } }]);
-    const client = createSessionApiClient({ channel: scripted.channel, clientData });
+    const client = new SessionApiClient({ channel: scripted.channel, clientData });
     await expect(client.fetchSession()).resolves.toMatchObject({
       kind: 'failed',
       error: {
@@ -348,7 +350,7 @@ describe('session API client — inspection-data guards', () => {
   it('purges and ends the session when the channel itself is gone', async () => {
     const clientData = guard();
     const scripted = scriptedChannel([new DevframeConnectionError('connection', 'socket closed')]);
-    const client = createSessionApiClient({ channel: scripted.channel, clientData });
+    const client = new SessionApiClient({ channel: scripted.channel, clientData });
     const outcome = await client.fetchSession();
     expect(outcome).toMatchObject({ kind: 'failed', fatal: true });
     expect(clientData.purges).toEqual(['channel-failure']);
@@ -361,7 +363,7 @@ describe('session API client — inspection-data guards', () => {
     // still reading over one failed call.
     const clientData = guard();
     const scripted = scriptedChannel([new Error('handler blew up')]);
-    const client = createSessionApiClient({ channel: scripted.channel, clientData });
+    const client = new SessionApiClient({ channel: scripted.channel, clientData });
     const outcome = await client.fetchSession();
     expect(outcome).toMatchObject({ kind: 'failed', fatal: false });
     expect(clientData.purges).toEqual([]);
@@ -385,7 +387,7 @@ describe('session API client — inspection-data guards', () => {
       },
     };
     const clientData = guard();
-    const client = createSessionApiClient({ channel, clientData });
+    const client = new SessionApiClient({ channel, clientData });
     await client.fetchSession();
     const stale = client.fetchSession();
     const fresh = await client.fetchSession();
@@ -403,7 +405,7 @@ describe('session API client — inspection-data guards', () => {
           release = resolve;
         }),
     };
-    const client = createSessionApiClient({ channel, clientData: guard() });
+    const client = new SessionApiClient({ channel, clientData: guard() });
     const pending = client.fetchSession();
     client.abortOutstandingRequests();
     release(sessionResult(snapshot()));

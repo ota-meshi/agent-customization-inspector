@@ -1,60 +1,23 @@
 <!--
 Sync Impact Report
-- Version change: 4.3.0 → 4.4.0
-- Modified principles: Readable, Maintainable, Intention-Revealing Code — the class
-  obligation is generalized to every class member: fields and methods, including the
-  constructor and private members, carry JSDoc doc comments (a method states what the
-  call does; a field states what it holds and which invariant it maintains).
-- Previous report (4.2.0 → 4.3.0):
-- Modified principles: Readable, Maintainable, Intention-Revealing Code — the
-  documentation obligation now also covers public class members: every public method,
-  including the constructor, carries a JSDoc doc comment stating what the call does and
-  which contract behavior it implements.
-- Previous report (4.1.0 → 4.2.0):
-- Modified principles: Readable, Maintainable, Intention-Revealing Code — the
-  type-documentation obligation now also covers the declarations themselves: every
-  exported type, interface, and constant carries a JSDoc doc comment stating what it
-  represents, in addition to the per-member documentation added in 4.1.0.
-- Previous report (4.0.0 → 4.1.0):
-- Modified principles: Readable, Maintainable, Intention-Revealing Code — expanded the
-  documentation obligation to type members: every closed-union member and every exported
-  interface field carries a JSDoc doc comment stating its meaning and, where one exists,
-  its governing contract. Concrete form and examples live in AGENTS.md's Code commenting
-  policy.
-- Previous report (3.0.0 → 4.0.0):
-- Version change: 3.0.0 → 4.0.0
-- Modified principles: Quality and Safety Standards — the operational-log/telemetry
-  content bullet is removed and the generic-error doctrine is dropped, following the
-  owner's 2026-07-22 decision to remove FR-040/FR-041: the product has no telemetry
-  (outbound traffic is forbidden), terminal and UI output are read by the same user who
-  owns the inspected files, and the unauthenticated session API already serves complete
-  file content, so hiding error causes protected nothing while making failures
-  undebuggable. Errors are reported ordinarily; the closed OperationError entity is
-  deleted. (3.0.0 had narrowed session protection to the loopback binding.)
-- Templates and guidance updated (4.0.0):
-  - ✅ spec.md/spec.ja.md — FR-040/FR-041 and the Operation Error entity removed;
-    failure semantics remain owned by FR-028/FR-030 and the scan-publication table
-  - ⚠ research/plan/data-model/contracts/tasks pairs — ordinary-error alignment in
-    progress
-- Previous report (2.0.0 → 3.0.0):
-- Modified principles: Quality and Safety Standards — the session-protection obligation
-  is narrowed from "the loopback session MUST be protected from other origins"
-  (per-session token, Origin checks) to loopback binding only, following the owner's
-  2026-07-22 decision to adopt the devframe local-tool framework with authentication
-  disabled (config-inspector parity). Served content may include the user's own
-  secrets, so the host binds 127.0.0.1 only and is never exposed beyond the initiating
-  machine; the residual local-process and DNS-rebinding exposure of an unauthenticated
-  loopback host is a documented limitation. "Capability-authenticated" API access and
-  "authenticated" diagnostics language is removed accordingly. (2.0.0 had replaced the
-  adversarial-file model with the trusted-workspace framing.)
-- Added sections: none
-- Removed sections: none
+- Version change: 4.4.0 → 5.0.0
+- Modified principles: Quality and Safety Standards — two changes land together.
+  Intentional display of complete authored content in the loopback-local inspection UI
+  is direct: no acknowledgement step or standing sensitive-content notice may precede
+  or accompany it, because those controls protect no additional boundary while adding
+  interaction cost and visual noise; inert rendering, session-only lifetime, no
+  persistence or remote egress, and the prohibition on incidental exposure remain
+  mandatory. Code formatting is owned by Prettier and checked as a required gate
+  (`format:check` locally and in CI); byte-level hygiene (`.gitattributes`,
+  `.editorconfig`) remains declarative, and hand-fixing formatting was error-prone
+  busywork a rewriting formatter solves at the root.
 - Templates and guidance updated:
-  - ✅ spec.md/spec.ja.md — FR-022/FR-027/QR-002/QR-003/SC-004/SC-007 transport and
-    authentication language aligned to the loopback-only devframe host
-  - ⚠ research/plan/data-model/contracts/tasks pairs — REST/token transport sections
-    superseded; devframe alignment in progress
-- Follow-up TODOs: complete the devframe transport alignment across the spec suite
+  - ✅ plan/spec/tasks templates — constitution checks and generated requirements
+    require direct, notice-free presentation with the retained handling safeguards
+  - ✅ active feature documents in both languages — spec Clarifications and QR-004,
+    the accessibility acceptance matrix, affected tasks, plan § Formatting/Linting,
+    research § 3, T003, quickstart gates, AGENTS.md/AGENTS.ja.md Formatting policy,
+    and the CI `format` job
 -->
 # Agent Customization Inspector Constitution
 
@@ -134,10 +97,12 @@ migration or support path.
 
 ## Quality and Safety Standards
 
-- Linting, type checking where applicable, automated tests, and documentation
-  validation MUST run as required quality gates in local verification and CI. Byte-level
-  formatting is owned declaratively by repository configuration (`.gitattributes`,
-  `.editorconfig`) rather than by a checking gate.
+- Formatting, linting, type checking where applicable, automated tests, and
+  documentation validation MUST run as required quality gates in local verification and
+  CI. Code formatting is owned by the repository formatter (Prettier): `format` rewrites
+  and `format:check` gates, so formatting is never fixed by hand. Byte-level hygiene
+  remains owned declaratively by repository configuration (`.gitattributes`,
+  `.editorconfig`).
 - The product runs in a workspace the user already trusts: it exists to show what AI
   agents will read, and inspected customization files are not modeled as an adversary.
   Three obligations remain regardless of that trust: inspected content MUST NOT be
@@ -165,8 +130,10 @@ migration or support path.
 - Complete authored content, including credentials and other secrets, MAY be intentionally
   returned by a session API or displayed only when a product specification explicitly
   requires inspection of that content. API access MUST be loopback-local and
-  session-scoped. User-facing display MUST be preceded by clear sensitive-content
-  acknowledgement and MUST render the content inert. The content MUST NOT be persisted or
+  session-scoped. User-facing display MUST render the content inert. It MUST NOT be preceded by
+  an acknowledgement step or accompanied by a notice about what the content may
+  contain: over a loopback-local session showing a viewer their own files,
+  neither guards anything. The content MUST NOT be persisted or
   sent to a remote service. This narrow
   allowance for intentional inspection does not permit incidental exposure
   through any other surface.
@@ -220,4 +187,4 @@ Known violations MUST be resolved before approval; urgency, generated code, and 
 automation do not waive compliance. Reviewers are responsible for examining the complete
 change and recording any residual uncertainty that requires further investigation.
 
-**Version**: 4.4.0 | **Ratified**: 2026-07-15 | **Last Amended**: 2026-07-22
+**Version**: 5.0.0 | **Ratified**: 2026-07-15 | **Last Amended**: 2026-07-29

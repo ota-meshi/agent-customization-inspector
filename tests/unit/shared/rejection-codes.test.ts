@@ -3,10 +3,7 @@
 // results and errors).
 import { describe, expect, it } from 'vitest';
 
-import {
-  REJECTION_CODES,
-  isRejectionCode,
-} from '../../../src/shared/rejection-codes';
+import { REJECTION_CODES, isRejectionCode } from '../../../src/shared/rejection-codes';
 
 describe('closed rejection codes', () => {
   it('validates only members of the runtime catalog', () => {

@@ -75,10 +75,10 @@ does not establish a Not-applicable row.
 | 2.3.1 Three Flashes or Below Threshold | A | Not applicable | `REVIEW-2.3.1` | No shipped animation or state transition flashes; inspected content never renders active media or animation. |
 | 2.4.1 Bypass Blocks | A | Applicable | `AUTO-2.4.1`; `MANUAL-2.4.1` | Keyboard and assistive-technology users can bypass repeated navigation and reach the main workflow content. |
 | 2.4.2 Page Titled | A | Applicable | `AUTO-2.4.2`; `MANUAL-2.4.2` | Every client route exposes a descriptive, state-appropriate document title. |
-| 2.4.3 Focus Order | A | Applicable | `AUTO-2.4.3`; `MANUAL-2.4.3` | Focus order remains logical through route changes, warning gates, rescans, Global commits, disable, errors, and generation replacement. |
+| 2.4.3 Focus Order | A | Applicable | `AUTO-2.4.3`; `MANUAL-2.4.3` | Focus order remains logical through route changes, rescans, Global commits, disable, errors, and generation replacement. |
 | 2.4.4 Link Purpose (In Context) | A | Applicable | `AUTO-2.4.4`; `MANUAL-2.4.4` | Every link or link-like navigation exposes its purpose from accessible text and context. Inspected links remain inert text. |
 | 2.4.5 Multiple Ways | AA | Not applicable | `REVIEW-2.4.5` | The root inventory is the only standalone page; file, comparison, and consent routes are results of or steps in the single local inspection process. If a new standalone page appears, this row becomes Applicable. |
-| 2.4.6 Headings and Labels | AA | Applicable | `AUTO-2.4.6`; `MANUAL-2.4.6` | Headings and labels describe topic or purpose, including filters, source facts, diagnostics, warning, comparison, and Global controls. |
+| 2.4.6 Headings and Labels | AA | Applicable | `AUTO-2.4.6`; `MANUAL-2.4.6` | Headings and labels describe topic or purpose, including filters, source facts, diagnostics, comparison, and Global controls. |
 | 2.4.7 Focus Visible | AA | Applicable | `AUTO-2.4.7`; `MANUAL-2.4.7` | Every keyboard-operable element has a visible focus indicator in all supported visual modes. |
 | 2.4.11 Focus Not Obscured (Minimum) | AA | Applicable | `AUTO-2.4.11`; `MANUAL-2.4.11` | Sticky regions, dialogs, Monaco surfaces, progress, and responsive layouts never entirely obscure the focused component. |
 | 2.5.1 Pointer Gestures | A | Not applicable | `REVIEW-2.5.1` | No function requires a multipoint or path-based pointer gesture. |
@@ -138,8 +138,7 @@ Every `MANUAL-*` ID is executed over the Cartesian product of the following clos
 - **Workflow/state scenario**: `S1` Repository discovery with populated inventory, filter,
   and tool/source/kind facts; `S2` Repository empty state, a deterministic returned source
   Diagnostic, explicit rescan, and a separate thrown/rejected rescan shown as the failed
-  request's error while the prior snapshot remains stale; `S3` file inspection before and after sensitive-content acknowledgement,
-  including Monaco source access; `S4` file diagnostic and actionable next step; `S5`
+  request's error while the prior snapshot remains stale; `S3` file inspection, including Monaco source access; `S4` file diagnostic and actionable next step; `S5`
   two-file comparison, Monaco accessible diff, and narrow inline alternative; `S6` stale or
   removed comparison after a compared file's owning sequence commits its replacement
   generation, plus a comparison that stays valid when a sequence owning neither compared

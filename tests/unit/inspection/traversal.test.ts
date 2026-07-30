@@ -1,10 +1,18 @@
 // T019/T020: ordinary recursive traversal of the compiled inspection
 // allowlist over fs/promises — enumeration, transparent symlinks with
-// cycle-safe real-path tracking, VCS exclusion, raw operands with NFC
-// public paths and collision rejection, one flag-free read per discovered
+// cycle-safe real-path tracking, VCS exclusion, raw operands as public
+// paths, one flag-free read per discovered
 // file per attempt, the Codex override-empty ordered fallback (FR-035),
 // and root-unreadable classification (FR-002, FR-019, FR-024, FR-028).
-import { chmodSync, linkSync, mkdirSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  linkSync,
+  mkdirSync,
+  readdirSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -19,10 +27,7 @@ import {
   type CodexTargetCase,
   type TraversalFixtureTree,
 } from '../../fixtures/filesystem/build-filesystem-fixtures';
-import {
-  ANY_DIRECTORIES,
-  compileSelectorPrograms,
-} from '../../../src/server/inspection/rules/registry';
+import { ANY_DIRECTORIES, TraversalPlan } from '../../../src/server/inspection/rules/registry';
 import { runTraversalScan } from '../../../src/server/inspection/traversal';
 
 // Wrap the inspection module's closed fs surface in pass-through spies:
@@ -41,7 +46,9 @@ vi.mock('../../../src/server/inspection/fs-io', async (importOriginal) => {
   );
 });
 
-const REPOSITORY_AGENTS_PLAN = compileSelectorPrograms({ kind: 'repository' }, [[ANY_DIRECTORIES, 'AGENTS.md']]);
+const REPOSITORY_AGENTS_PLAN = TraversalPlan.fromPrograms({ kind: 'repository' }, [
+  [ANY_DIRECTORIES, 'AGENTS.md'],
+]);
 
 let tree: TraversalFixtureTree;
 
@@ -63,9 +70,7 @@ async function scanTree(root: string) {
 }
 
 function readFileCallsFor(absolutePath: string): number {
-  return vi
-    .mocked(fsIo.readFile)
-    .mock.calls.filter((call) => call[0] === absolutePath).length;
+  return vi.mocked(fsIo.readFile).mock.calls.filter((call) => call[0] === absolutePath).length;
 }
 
 describe('ordinary recursive walk (T019)', () => {
@@ -149,26 +154,26 @@ describe('ordinary recursive walk (T019)', () => {
     }
   });
 
-  it('keeps raw entry names as operands and NFC segments as public paths', async () => {
+  it('publishes the raw entry name as the public path', async () => {
     const root = createFixtureRoot('inspector-nfd');
     try {
-      const nfdName = 'José.md';
+      const nfdName = 'Jose\u0301.md';
       mkdirSync(join(root, 'nfd'));
       writeFileSync(join(root, 'nfd', nfdName), 'nfd file\n');
-      const plans = [compileSelectorPrograms({ kind: 'repository' }, [['nfd', /\.md$/u]])];
+      const plans = [TraversalPlan.fromPrograms({ kind: 'repository' }, [['nfd', /\.md$/u]])];
       const result = await runTraversalScan({ root, plans });
       if (result.kind !== 'scanned') {
         throw new Error('expected scanned');
       }
       expect(result.files).toHaveLength(1);
       const file = result.files[0]!;
-      // The NFC display path never reconstructs the filesystem operand.
-      expect(file.publicPath).toBe(`nfd/${nfdName.normalize('NFC')}`);
-      // On a normalization-preserving filesystem the raw NFD spelling is
-      // retained as the operand; a normalizing filesystem may return the
-      // NFC form from enumeration, which is then both operand and display.
-      // The filename is the last segment (rawSegments[0] is the fixed 'nfd'
-      // directory); assert against it so the operand-retention check is real.
+      // The public path is the raw spelling itself, joined — the path an
+      // agent reading the same tree operates on. Nothing is normalized away,
+      // so the operand and the display never disagree (FR-024). A
+      // normalization-preserving filesystem keeps the NFD spelling written
+      // above; a normalizing one returns NFC from enumeration, and then that
+      // is the raw name.
+      expect(file.publicPath).toBe(`nfd/${file.rawSegments[1]!}`);
       expect([nfdName, nfdName.normalize('NFC')]).toContainEqual(file.rawSegments[1]);
       expect(file.outcome).toMatchObject({ kind: 'readable', sourceText: 'nfd file\n' });
     } finally {
@@ -176,23 +181,26 @@ describe('ordinary recursive walk (T019)', () => {
     }
   });
 
-  it('rejects a whole normalization-collision group before any member read', async () => {
-    if (!tree.capabilities.normalizationCollisions) {
+  it('publishes two spellings of one display name as two ordinary files', async () => {
+    if (!tree.capabilities.normalizationSiblings) {
       return;
     }
-    const plans = [compileSelectorPrograms({ kind: 'repository' }, [['collision', /\.md$/u]])];
-    vi.mocked(fsIo.readFile).mockClear();
+    // Distinct raw entries that would render alike are still two real files
+    // the agent's own filesystem holds apart, so both publish at their own
+    // raw paths — there is no normalization step to make them ambiguous, and
+    // nothing is rejected (FR-024).
+    const plans = [TraversalPlan.fromPrograms({ kind: 'repository' }, [['siblings', /\.md$/u]])];
     const result = await runTraversalScan({ root: tree.root, plans });
     if (result.kind !== 'scanned') {
       throw new Error('expected scanned');
     }
-    expect(result.files).toEqual([]);
-    expect(result.collisions).toHaveLength(1);
-    expect(result.collisions[0]!.rawMembers).toHaveLength(2);
-    const collisionReads = vi
-      .mocked(fsIo.readFile)
-      .mock.calls.filter((call) => String(call[0]).includes('collision'));
-    expect(collisionReads).toEqual([]);
+    const spellings = result.files.filter((file) => file.publicPath.startsWith('siblings/'));
+    expect(spellings).toHaveLength(2);
+    expect(new Set(spellings.map((file) => file.publicPath)).size).toBe(2);
+    for (const file of spellings) {
+      expect(file.publicPath).toBe(`siblings/${file.rawSegments[1]!}`);
+      expect(file.outcome.kind).toBe('readable');
+    }
   });
 
   it('skips a dangling link at a directory step silently', async () => {
@@ -278,7 +286,7 @@ describe('ordinary recursive walk (T019)', () => {
     const asFile = await runTraversalScan({ root: join(tree.root, 'AGENTS.md'), plans: [] });
     expect(asFile.kind).toBe('root-unreadable');
     const empty = await runTraversalScan({ root: tree.root, plans: [] });
-    expect(empty).toMatchObject({ kind: 'scanned', files: [], collisions: [] });
+    expect(empty).toMatchObject({ kind: 'scanned', files: [] });
   });
 
   it('fails an existing but unreadable root even when the compiled catalog is empty', async () => {
@@ -353,15 +361,13 @@ describe('per-file reading (T020)', () => {
     vi.mocked(fsIo.readFile).mockClear();
     const overlapping = [
       REPOSITORY_AGENTS_PLAN,
-      compileSelectorPrograms({ kind: 'repository' }, [['docs', 'AGENTS.md']]),
+      TraversalPlan.fromPrograms({ kind: 'repository' }, [['docs', 'AGENTS.md']]),
     ];
     const result = await runTraversalScan({ root: tree.root, plans: overlapping });
     if (result.kind !== 'scanned') {
       throw new Error('expected scanned');
     }
-    expect(
-      result.files.filter((file) => file.publicPath === 'docs/AGENTS.md'),
-    ).toHaveLength(1);
+    expect(result.files.filter((file) => file.publicPath === 'docs/AGENTS.md')).toHaveLength(1);
     expect(readFileCallsFor(join(tree.root, 'docs', 'AGENTS.md'))).toBe(1);
   });
 
@@ -372,8 +378,7 @@ describe('per-file reading (T020)', () => {
       writeFileSync(join(root, 'vanish', 'AGENTS.md'), 'about to vanish\n');
       writeFileSync(join(root, 'AGENTS.md'), 'stays\n');
       const vanishing = join(root, 'vanish', 'AGENTS.md');
-      const actual =
-        await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises');
+      const actual = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises');
       // Enumeration has already discovered the file; deleting it on the way
       // into its one read models the discovery/read race deterministically.
       vi.mocked(fsIo.readFile).mockImplementation(async (path, options) => {
@@ -414,7 +419,7 @@ describe('per-file reading (T020)', () => {
 });
 
 describe('global fixed-subtree walks (T019, FR-018)', () => {
-  const COPILOT_PLAN = compileSelectorPrograms({ kind: 'global', tool: 'copilot' }, [
+  const COPILOT_PLAN = TraversalPlan.fromPrograms({ kind: 'global', tool: 'copilot' }, [
     ['copilot-instructions.md'],
     ['instructions', ANY_DIRECTORIES, /\.instructions\.md$/u],
   ]);
@@ -520,7 +525,7 @@ describe('global fixed-subtree walks (T019, FR-018)', () => {
       // A denied parent is not a missing subtree: the failure is not
       // confined to one file and must fail the attempt as an ordinary
       // error instead of silently publishing nothing (FR-030).
-      const plan = compileSelectorPrograms({ kind: 'global', tool: 'copilot' }, [
+      const plan = TraversalPlan.fromPrograms({ kind: 'global', tool: 'copilot' }, [
         ['locked', 'instructions', ANY_DIRECTORIES, /\.instructions\.md$/u],
       ]);
       await expect(runTraversalScan({ root, plans: [plan] })).rejects.toThrow();
@@ -536,7 +541,7 @@ describe('global fixed-subtree walks (T019, FR-018)', () => {
 });
 
 describe('Codex override-empty ordered fallback (T020, FR-035)', () => {
-  const CODEX_PLAN = compileSelectorPrograms(
+  const CODEX_PLAN = TraversalPlan.fromPrograms(
     { kind: 'global', tool: 'codex' },
     [['AGENTS.override.md'], ['AGENTS.md']],
     'codex-global-first-non-empty',

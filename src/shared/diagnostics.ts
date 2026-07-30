@@ -20,9 +20,7 @@ export type DiagnosticCode =
   /** The file contains a NUL byte and is diagnostic-only (FR-025). */
   | 'file-content-binary'
   /** A parser/extractor failed while complete source text remains available (FR-028). */
-  | 'recognition-parse-failed'
-  /** Distinct raw paths normalize to one ambiguous NFC display path. */
-  | 'path-normalization-collision';
+  | 'recognition-parse-failed';
 
 /**
  * How the UI ranks a diagnostic without asserting vendor validity.
@@ -38,24 +36,21 @@ export type DiagnosticSeverity =
 /**
  * Where a diagnostic attaches (spec.md § Key Entities · Diagnostic): 'file'
  * requires the coherent sourceId/fileId/path tuple, 'source' carries only
- * sourceId, 'session' carries no location field at all. createDiagnostic
- * enforces the shapes.
+ * sourceId. The {@link DiagnosticRecord} constructor enforces the shapes.
  */
 export type DiagnosticScope =
   /** Attached to one coherent source/file/path tuple. */
   | 'file'
   /** Attached to one Source and no file/path. */
-  | 'source'
-  /** Attached to the session with no location fields. */
-  | 'session';
+  | 'source';
 
 /**
  * `lifecycle` diagnostics live outside a committed generation and are routed
  * to exactly one lifecycle owner (the Repository Source, a Global tool, or a
  * published Source). `candidate-file` diagnostics are generation-owned scan
- * outcomes: per-file candidate outcomes plus the generation-wide pathless
- * normalization-collision rejection, which belongs to the generation whose
- * traversal observed the colliding raw entries.
+ * outcomes: a published file's failed outcome — an admitted candidate's, or a
+ * census-listed companion's failed read; a companion is never a candidate but
+ * is read the same way.
  */
 export type DiagnosticOwnerKind =
   /** Retained outside a generation and routed through one lifecycle owner. */
@@ -90,63 +85,55 @@ export interface DiagnosticRegistryEntry {
  * The closed registry from data-model.md § Diagnostic, keyed by code: the
  * `Record` type makes an unknown or duplicate code unrepresentable and each
  * entry decides the required attachment shape. Ordinary traversal produces
- * only file-confined outcomes (FR-024/FR-028), the source-scoped
- * unreadable-root failure (FR-002), and the pathless session-scoped
- * normalization-collision rejection; an unexpected failure surfaces as an
+ * only file-confined outcomes (FR-024/FR-028) and the source-scoped
+ * unreadable-root failure (FR-002); an unexpected failure surfaces as an
  * ordinary error, never as a Diagnostic.
  * Symbolic links are followed transparently, so a broken link surfaces as
  * `file-unreadable` rather than a link-specific code.
  */
-export const DIAGNOSTIC_REGISTRY: Readonly<Record<DiagnosticCode, DiagnosticRegistryEntry>> =
-  {
-    /**
-     * A published Source root is unreadable. An unpublished Global tool has
-     * no Source to attach to, so later Global tasks construct its equivalent
-     * as a pathless session-scoped lifecycle record (data-model.md).
-     */
-    'root-unreadable': {
-      ownerKind: 'lifecycle',
-      scope: 'source',
-      severity: 'error',
-      message:
-        'The selected root does not exist or cannot be read as a directory. Check the path and run the inspector again from a readable directory.',
-    },
-    /** One admitted candidate file disappeared or could not be read. */
-    'file-unreadable': {
-      ownerKind: 'candidate-file',
-      scope: 'file',
-      severity: 'error',
-      message:
-        'This file could not be read. It may have been removed or its permissions may deny reading; other files were unaffected. Check that the file exists and is readable, then rescan.',
-    },
-    /** One candidate contains NUL bytes and therefore has no source text. */
-    'file-content-binary': {
-      ownerKind: 'candidate-file',
-      scope: 'file',
-      severity: 'warning',
-      message:
-        'This file contains NUL bytes, so it is recorded without source text and nothing was parsed from it. Use a binary-capable viewer if you need to inspect its contents.',
-    },
-    /** One recognition parser failed while the authored source remains available. */
-    'recognition-parse-failed': {
-      ownerKind: 'candidate-file',
-      scope: 'file',
-      severity: 'warning',
-      message:
-        'One recognition could not be parsed, so its derived metadata and relationships are omitted. Review the complete source text that remains available, then rescan after correcting the file if you need the derived metadata.',
-    },
-    /**
-     * A colliding path group has no unambiguous public location, so this code
-     * is session-scoped and rejects every location field (T028).
-     */
-    'path-normalization-collision': {
-      ownerKind: 'candidate-file',
-      scope: 'session',
-      severity: 'error',
-      message:
-        'Two entries normalize to the same display path, so they could not be listed unambiguously and were rejected. Rename one entry so the normalized paths differ, then rescan.',
-    },
-  };
+export const DIAGNOSTIC_REGISTRY: Readonly<Record<DiagnosticCode, DiagnosticRegistryEntry>> = {
+  /**
+   * A published Source root is unreadable. An unpublished Global tool has
+   * no Source to attach to; the shape its equivalent record takes arrives
+   * with the Global tasks that construct it (data-model.md).
+   */
+  'root-unreadable': {
+    ownerKind: 'lifecycle',
+    scope: 'source',
+    severity: 'error',
+    message:
+      'The selected root does not exist or cannot be read as a directory. Check the path and run the inspector again from a readable directory.',
+  },
+  /** One published file disappeared or could not be read; {@link DiagnosticOwnerKind} says which files those are. */
+  'file-unreadable': {
+    ownerKind: 'candidate-file',
+    scope: 'file',
+    severity: 'error',
+    message:
+      'This file could not be read. It may have been removed or its permissions may deny reading; other files were unaffected. Check that the file exists and is readable, then rescan.',
+  },
+  /**
+   * One admitted candidate contains NUL bytes and therefore has no source
+   * text. Only a candidate: a rule admitted it as a text customization, so
+   * binary content is a finding about it, where a census-listed companion's
+   * binary bytes are the ordinary fact of an asset and carry no Diagnostic.
+   */
+  'file-content-binary': {
+    ownerKind: 'candidate-file',
+    scope: 'file',
+    severity: 'warning',
+    message:
+      'This file contains NUL bytes, so it is recorded without source text and nothing was parsed from it. Use a binary-capable viewer if you need to inspect its contents.',
+  },
+  /** One recognition parser failed while the authored source remains available. */
+  'recognition-parse-failed': {
+    ownerKind: 'candidate-file',
+    scope: 'file',
+    severity: 'warning',
+    message:
+      'One recognition could not be parsed, so its derived metadata and relationships are omitted. The complete source text remains available to read; a rescan reports the current state of the file.',
+  },
+};
 
 /**
  * Closed grammar naming the lifecycle owner of an out-of-generation
@@ -175,23 +162,95 @@ export type LifecycleOwnerKey =
  * values, and the internal lifecycle owner key. Scope, severity, ownership,
  * and message text are registry-derived from `code`, never stored.
  */
-export interface DiagnosticRecord {
+export class DiagnosticRecord {
   /** Opaque per-instance identity. */
-  readonly diagnosticId: string;
+  public readonly diagnosticId: string;
+
   /** The registry code this record instantiates. */
-  readonly code: DiagnosticCode;
-  /** Owning Source; required for file/source scope, null for session scope. */
-  readonly sourceId: string | null;
+  public readonly code: DiagnosticCode;
+
+  /** Owning Source; required by both scopes' shapes. */
+  public readonly sourceId: string | null;
+
   /** Affected file; set exactly for file scope. */
-  readonly fileId: string | null;
+  public readonly fileId: string | null;
+
   /** The file's Source-relative Path; set exactly for file scope. */
-  readonly sourceRelativePath: string | null;
+  public readonly sourceRelativePath: string | null;
+
   /** Internal lifecycle instance key; never serialized. */
-  readonly lifecycleOwnerKey: LifecycleOwnerKey | null;
+  public readonly lifecycleOwnerKey: LifecycleOwnerKey | null;
+
+  /**
+   * Instantiates one registry code, enforcing the location shape the code's
+   * scope requires and the lifecycle-owner rule its owner kind requires
+   * (data-model.md § Diagnostic). The guards are what keep a record from
+   * claiming a scope its fields cannot support — a file diagnostic with no
+   * file, or a lifecycle record claiming another Source's owner.
+   */
+  public constructor(input: DiagnosticInput) {
+    const registryEntry = DIAGNOSTIC_REGISTRY[input.code];
+    const sourceId = input.sourceId ?? null;
+    const fileId = input.fileId ?? null;
+    const sourceRelativePath = input.sourceRelativePath ?? null;
+    switch (registryEntry.scope) {
+      case 'file':
+        if (sourceId === null || fileId === null || sourceRelativePath === null) {
+          throw new TypeError(
+            'a file-scoped diagnostic requires sourceId, fileId, and sourceRelativePath',
+          );
+        }
+        break;
+      case 'source':
+        if (sourceId === null || fileId !== null || sourceRelativePath !== null) {
+          throw new TypeError('a source-scoped diagnostic requires only sourceId');
+        }
+        break;
+    }
+    if (registryEntry.ownerKind === 'candidate-file') {
+      if (input.lifecycleOwnerKey !== null) {
+        throw new TypeError('a generation-owned candidate diagnostic forbids a lifecycle owner');
+      }
+    } else {
+      if (input.lifecycleOwnerKey === null) {
+        throw new TypeError('an out-of-generation lifecycle diagnostic requires an owner key');
+      }
+      // A `published-source:<id>` owner names the Source the record is attached
+      // to, so the two must be the same Source. Left unchecked, a record could
+      // claim one Source's lifecycle while pointing at another
+      // (data-model.md § Diagnostic lifecycle owners).
+      const published = /^published-source:(.+)$/u.exec(input.lifecycleOwnerKey);
+      if (published !== null && published[1] !== sourceId) {
+        throw new TypeError(
+          "a published-source lifecycle owner must name the diagnostic's own sourceId",
+        );
+      }
+    }
+    this.diagnosticId = createOpaqueId();
+    this.code = input.code;
+    this.sourceId = sourceId;
+    this.fileId = fileId;
+    this.sourceRelativePath = sourceRelativePath;
+    this.lifecycleOwnerKey = input.lifecycleOwnerKey;
+  }
+
+  /**
+   * The public wire projection: every field but the internal lifecycle owner
+   * key, which never serializes (data-model.md § Diagnostic).
+   */
+  public serialize(): SerializedDiagnostic {
+    return {
+      diagnosticId: this.diagnosticId,
+      code: this.code,
+      sourceId: this.sourceId,
+      fileId: this.fileId,
+      sourceRelativePath: this.sourceRelativePath,
+    };
+  }
 }
 
 /**
- * Arguments to {@link createDiagnostic}; which fields are required is
+ * Arguments to the {@link DiagnosticRecord} constructor; which fields are required is
  * decided by the code's registry row.
  */
 export interface DiagnosticInput {
@@ -199,7 +258,7 @@ export interface DiagnosticInput {
   readonly code: DiagnosticCode;
   /** Required valid owner for lifecycle codes; must be null for candidates. */
   readonly lifecycleOwnerKey: LifecycleOwnerKey | null;
-  /** Owning Source; required for file/source scope, forbidden for session. */
+  /** Owning Source; required by both scopes' shapes. */
   readonly sourceId?: string | null;
   /** Affected file; required exactly for file scope. */
   readonly fileId?: string | null;
@@ -208,91 +267,23 @@ export interface DiagnosticInput {
 }
 
 /**
- * Constructs one validated Diagnostic. The three legal attachment shapes are
- * exactly: `file` with the coherent sourceId/fileId/path tuple, `source`
- * with only sourceId, and `session` with all three location fields null —
- * any other combination could fabricate a Source or path the API never
- * admitted.
- */
-export function createDiagnostic(input: DiagnosticInput): DiagnosticRecord {
-  const registryEntry = DIAGNOSTIC_REGISTRY[input.code];
-  const sourceId = input.sourceId ?? null;
-  const fileId = input.fileId ?? null;
-  const sourceRelativePath = input.sourceRelativePath ?? null;
-  switch (registryEntry.scope) {
-    case 'file':
-      if (sourceId === null || fileId === null || sourceRelativePath === null) {
-        throw new TypeError('a file-scoped diagnostic requires sourceId, fileId, and sourceRelativePath');
-      }
-      break;
-    case 'source':
-      if (sourceId === null || fileId !== null || sourceRelativePath !== null) {
-        throw new TypeError('a source-scoped diagnostic requires only sourceId');
-      }
-      break;
-    case 'session':
-      if (sourceId !== null || fileId !== null || sourceRelativePath !== null) {
-        throw new TypeError('a session-scoped diagnostic forbids location fields');
-      }
-      break;
-  }
-  if (registryEntry.ownerKind === 'candidate-file') {
-    if (input.lifecycleOwnerKey !== null) {
-      throw new TypeError('a generation-owned candidate diagnostic forbids a lifecycle owner');
-    }
-  } else {
-    if (input.lifecycleOwnerKey === null) {
-      throw new TypeError('an out-of-generation lifecycle diagnostic requires an owner key');
-    }
-    // A `published-source:<id>` owner names the Source the record is attached
-    // to, so the two must be the same Source. Left unchecked, a record could
-    // claim one Source's lifecycle while pointing at another
-    // (data-model.md § Diagnostic lifecycle owners).
-    const published = /^published-source:(.+)$/u.exec(input.lifecycleOwnerKey);
-    if (published !== null && published[1] !== sourceId) {
-      throw new TypeError(
-        'a published-source lifecycle owner must name the diagnostic\'s own sourceId',
-      );
-    }
-  }
-  return {
-    diagnosticId: createOpaqueId(),
-    code: input.code,
-    sourceId,
-    fileId,
-    sourceRelativePath,
-    lifecycleOwnerKey: input.lifecycleOwnerKey,
-  };
-}
-
-/**
  * Public projection of {@link DiagnosticRecord} without the internal
  * lifecycle owner key. Clients derive scope, severity, and the actionable
  * message text from `code` through {@link DIAGNOSTIC_REGISTRY}; none of them
- * is sent per instance.
+ * is sent per instance. A wire DTO stays an interface: strict JSON carries no
+ * prototypes, so a serialized shape must be a plain object.
  */
 export interface SerializedDiagnostic {
   /** Opaque per-instance identity. */
   readonly diagnosticId: string;
   /** The registry code; every fixed attribute is derived from it. */
   readonly code: DiagnosticCode;
-  /** Owning Source; null for session scope. */
+  /** Owning Source, as the scope shape requires. */
   readonly sourceId: string | null;
   /** Affected file; set exactly for file scope. */
   readonly fileId: string | null;
   /** The file's Source-relative Path; set exactly for file scope. */
   readonly sourceRelativePath: string | null;
-}
-
-/** Serializes the public DTO, dropping the internal lifecycle owner key. */
-export function serializeDiagnostic(record: DiagnosticRecord): SerializedDiagnostic {
-  return {
-    diagnosticId: record.diagnosticId,
-    code: record.code,
-    sourceId: record.sourceId,
-    fileId: record.fileId,
-    sourceRelativePath: record.sourceRelativePath,
-  };
 }
 
 // Emission order is semantic — Repository, fixed Global tool order, then
@@ -319,11 +310,10 @@ function lifecycleOwnerRank(key: LifecycleOwnerKey | null): number {
   return 5;
 }
 
-/** Within one owner rank, wider scopes emit first: session, source, then per-file. */
+/** Within one owner rank, wider scopes emit first: source, then per-file. */
 const SCOPE_RANK: Readonly<Record<DiagnosticScope, number>> = {
-  session: 0,
-  source: 1,
-  file: 2,
+  source: 0,
+  file: 1,
 };
 
 /**
@@ -331,8 +321,8 @@ const SCOPE_RANK: Readonly<Record<DiagnosticScope, number>> = {
  * order, scope, Source-relative Path, code, then emitter-occurrence order.
  * Opaque IDs never supply the sort order. There is deliberately no
  * dedupe pass: every emitter creates each observation exactly once —
- * legitimately repeated records exist (one per failed recognition, one per
- * rejected collision group) and a double emission would be an ordinary
+ * legitimately repeated records exist (one per failed recognition) and a
+ * double emission would be an ordinary
  * implementation bug owned by tests and review, not a runtime filter.
  */
 export function sortDiagnostics(candidates: readonly DiagnosticRecord[]): DiagnosticRecord[] {

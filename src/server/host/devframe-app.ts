@@ -3,7 +3,12 @@
 // local port on the loopback interface only — via the fixed host name
 // `localhost` (spec.md Clarifications § Session 2026-07-23) — and runs
 // unauthenticated (`auth: false`): loopback binding is the complete
-// host-side protection (QR-003, Constitution v3.0.0). Threat-model boundary and residual limitation:
+// host-side protection (QR-003, Constitution § Quality and Safety Standards). devframe applies an origin
+// gate of its own to the WebSocket upgrade, which is why no product-owned
+// check stands beside it — but it is not part of that boundary: its loopback
+// test passes any hostname beginning with `127.` or ending in `.localhost`,
+// so a page whose author chose such a hostname is admitted (research.md
+// § 8). Threat-model boundary and residual limitation:
 // other local processes and, via DNS rebinding, a malicious web page can
 // reach the session while the inspector runs, and served content may
 // include the user's own secrets — so the host is never exposed beyond the
@@ -29,16 +34,17 @@ import { runSourceScan } from '../inspection/scan';
 import type {
   CommandResult,
   DeterministicRejection,
+  FileDetailDto,
   InspectionDataResult,
   ScanAdmission,
   SessionSnapshot,
 } from '../../shared/api-types';
-import type { InspectionSessionState, SessionCoordinator } from '../session/session';
+import type { InspectionSession, SessionCoordinator } from '../session/session';
 
 /** The one session and its coordinator the RPC functions operate on. */
 export interface InspectorHostContext {
   /** The process's single inspection session. */
-  readonly session: InspectionSessionState;
+  readonly session: InspectionSession;
   /** The serialized scan coordinator owning admission and commits. */
   readonly coordinator: SessionCoordinator;
 }
@@ -83,7 +89,7 @@ export async function executeRepositoryScan(
     // The retained raw selected root, never the escaped display boundary: the
     // boundary is a one-way presentation label and grants no read authority
     // (FR-001/FR-002).
-    root: context.session.internal.selectedRepositoryRoot,
+    root: context.session.selectedRepositoryRoot,
     rootFailureOwner,
     // A refresh during a long scan shows where the attempt is rather than the
     // zeros it was admitted with. The coordinator ignores a report for a
@@ -119,8 +125,16 @@ export async function executeRepositoryScan(
  * unauthenticated loopback CLI host serving the packaged SPA, and the
  * session RPC functions registered under the
  * `agent-customization-inspector:` prefix (contracts/http-api.md § RPC
- * function catalog). Only the catalog functions exist; there is no masking,
- * redaction, environment-resolution, or MCP route.
+ * function catalog).
+ *
+ * Only the catalog functions exist. There is deliberately no reveal, masking,
+ * redaction, or environment-resolution function, and adding one is the only
+ * way an invocation of it could ever succeed: devframe resolves a call by
+ * exact registered name, so an unregistered operation fails with its strict
+ * unknown-function rejection and retains no client or server state (T098).
+ * Their absence is the product's position, not an oversight — an authored
+ * value is published exactly as written or not at all, and a process
+ * environment is never read on an inspected file's behalf.
  */
 export function createInspectorDevframe(context: InspectorHostContext): DevframeDefinition {
   // devframe 0.7.5 declares `defineDevframe` in its types but does not
@@ -146,14 +160,21 @@ export function createInspectorDevframe(context: InspectorHostContext): Devframe
     cli: {
       distDir: packagedPublicDir(),
       // Unauthenticated by decision: loopback binding is the complete
-      // host-side protection (QR-003, Constitution v3.0.0).
+      // host-side protection (QR-003, Constitution § Quality and Safety Standards).
       auth: false,
     },
     setup(ctx) {
+      // None of these declare devframe's `jsonSerializable: true`, although
+      // every DTO is JSON-plain by design (src/shared/api-types.ts). In
+      // devframe 0.7.5 the flag changes nothing on this adapter's wire: the
+      // dev adapter passes no definitions to the WS transport and publishes
+      // no `jsonSerializableMethods` in `__connection.json`, so both
+      // directions use structured-clone frames regardless, and the flag's
+      // strict-JSON dev validation never runs. A flag with no observable
+      // effect is not declared.
       ctx.rpc.register({
         name: 'agent-customization-inspector:get-session',
         type: 'query',
-        jsonSerializable: true,
         // The snapshot is rebuilt synchronously under the single-threaded
         // coordinator turn, so the epoch/fence revalidation the contract
         // requires is the same turn that binds the payload; the disable
@@ -169,12 +190,40 @@ export function createInspectorDevframe(context: InspectorHostContext): Devframe
         },
       });
       ctx.rpc.register({
+        name: 'agent-customization-inspector:get-file-detail',
+        type: 'query',
+        // The one function that returns authored content. It carries no
+        // acknowledgement parameter and enforces no gate, because FR-027 admits
+        // neither: over a loopback-bound session showing a viewer their own
+        // files, a gate guards nothing. What the host does own is that the
+        // snapshot never carries source text, so content is reachable only by
+        // asking for one file at
+        // a time.
+        handler: (fileId: string): InspectionDataResult<FileDetailDto> | DeterministicRejection => {
+          const detail = context.session.fileDetail(fileId);
+          if (detail === null) {
+            // Unknown, superseded, or removed — one rejection, because a
+            // commit rekeys every generation-owned ID and the three are
+            // indistinguishable afterwards (contracts/http-api.md
+            // § get-file-detail).
+            return { error: { code: 'stale-resource' } };
+          }
+          // Bound in the same synchronous turn as the payload, so the client's
+          // epoch and generation guards compare against the state the detail
+          // was actually read from.
+          const snapshot = context.session.snapshot();
+          return {
+            globalContentEpoch: snapshot.globalContentEpoch,
+            repositoryGeneration: snapshot.repositoryGeneration,
+            globalGeneration: snapshot.globalGeneration,
+            data: detail,
+          };
+        },
+      });
+      ctx.rpc.register({
         name: 'agent-customization-inspector:rescan-repository',
         type: 'action',
-        jsonSerializable: true,
-        handler: async (): Promise<
-          CommandResult<ScanAdmission> | DeterministicRejection
-        > => {
+        handler: async (): Promise<CommandResult<ScanAdmission> | DeterministicRejection> => {
           const snapshot = context.session.snapshot();
           const repository = snapshot.sources.find((source) => source.kind === 'repository');
           if (repository === undefined) {
@@ -204,14 +253,12 @@ export function createInspectorDevframe(context: InspectorHostContext): Devframe
             // overlay, not the automatic-scan repository owner
             // (data-model.md § Diagnostic).
             `published-source:${repository.sourceId}`,
-          ).catch(
-            (error: unknown) => {
-              context.coordinator.failScan(admission.scanRequestId, {
-                kind: 'error',
-                message: error instanceof Error ? error.message : String(error),
-              });
-            },
-          );
+          ).catch((error: unknown) => {
+            context.coordinator.failScan(admission.scanRequestId, {
+              kind: 'error',
+              message: error instanceof Error ? error.message : String(error),
+            });
+          });
           const updated = context.session
             .snapshot()
             .sources.find((source) => source.sourceId === repository.sourceId);

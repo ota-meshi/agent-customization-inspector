@@ -18,7 +18,15 @@
   --aci-surface: Canvas;
   --aci-text: CanvasText;
   --aci-muted: color-mix(in srgb, CanvasText 62%, Canvas);
-  --aci-border: color-mix(in srgb, CanvasText 22%, Canvas);
+  /* 45% rather than a lighter hairline: this one token draws every boundary the
+     shell has, including the ones that identify a component or its state — the
+     selected kind tab, the source viewer, the plain-text box — and those need
+     3:1 against the surface (WCAG 1.4.11). At 45% the mix is 3.36:1 on a white
+     canvas and 4.50:1 on a dark one; the 22% hairline it replaces was 1.69:1
+     and 2.04:1. One token rather than a decorative and a functional pair,
+     because a second token is a second rule to keep true and every boundary
+     here reads fine at the stronger value. */
+  --aci-border: color-mix(in srgb, CanvasText 45%, Canvas);
   --aci-accent: AccentColor;
 }
 
@@ -30,11 +38,23 @@ body {
   line-height: 1.6;
 }
 
+/* A viewport-tall column that scrolls inside itself, so a route can take the
+   height its own layout needs. `height` rather than `min-height`: a flex
+   container whose height is only floored stays content-sized, `flex-grow` finds
+   no free space to hand out, and a route that asked to fit grows the page
+   instead. Scrolling here rather than on the document is what lets a long
+   inventory scroll while a fitted route does not. `dvh` follows a mobile
+   browser's retracting toolbar, with `vh` for anything that does not know it. */
 .aci-shell {
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
   margin: 0 auto;
-  max-width: 60rem;
-  padding: 2rem 1.25rem 4rem;
+  max-width: 72rem;
+  overflow-y: auto;
+  padding: 1.5rem 1.25rem 2rem;
 }
 
 .aci-shell h1 {
@@ -102,11 +122,29 @@ body {
   overflow-wrap: anywhere;
 }
 
+/* Authored text renders its own whitespace: two authored values differing only
+ * in consecutive or edge spaces are different identities, and normal collapsing
+ * would draw them identically. Applied only to elements whose text content is
+ * exactly the bound value — around any other markup it would also render the
+ * template's own indentation. */
+.aci-authored-text {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
 /* Keyboard operability is an acceptance criterion, so the focus ring is
  * strengthened rather than removed. */
 :focus-visible {
   outline: 2px solid var(--aci-accent);
   outline-offset: 2px;
+}
+
+/* A control that is momentarily inert uses `aria-disabled` with a click guard
+ * rather than `disabled`: disabling a focused button drops keyboard focus to
+ * the document body (WCAG 2.4.3). This carries the same visual signal. */
+button[aria-disabled='true'] {
+  cursor: default;
+  opacity: 0.6;
 }
 
 /* Stable live regions announce asynchronous state without duplicating the
@@ -274,8 +312,196 @@ body {
 }
 
 /* The declared name sits above the path as a secondary label: the path stays
-   the row's identity, because two skills may declare the same name. */
+   the row's identity, because two skills may declare the same name. Authored
+   names have no break opportunities of their own, so a long one wraps rather
+   than scrolling the page sideways (WCAG 1.4.10). */
 .aci-declared-name {
   font-weight: 600;
   margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* File-detail surface (T099–T102). Layout only, as above. */
+
+/* Monaco lays out inside a sized box and collapses to nothing without a
+   definite height, so the editor takes what its column has left — the skill
+   above it and the file inside it share one screen — with `min-block-size` as
+   the floor that keeps it usable when a narrow viewport stacks the tree above
+   it. `automaticLayout` keeps the editor in step with the box on resize. */
+.aci-source-viewer {
+  border: 1px solid var(--aci-border);
+  border-radius: 4px;
+  flex: 1;
+  inline-size: 100%;
+  min-block-size: 12rem;
+}
+
+/* The editor-failure fallback: the same authored text as an inert text node.
+   `pre` keeps the authored line structure; long lines scroll inside the block
+   rather than widening the page. */
+/* The detail route's bypass mechanism (WCAG 2.4.1): out of the way until it is
+   focused, then a normal visible link. Not `display: none`, which would take it
+   out of the tab order and leave nothing to bypass with. */
+.aci-skip-link {
+  margin: 0;
+}
+
+.aci-skip-link a {
+  block-size: 1px;
+  clip-path: inset(50%);
+  inline-size: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+}
+
+.aci-skip-link a:focus-visible {
+  block-size: auto;
+  clip-path: none;
+  inline-size: auto;
+  overflow: visible;
+  position: static;
+}
+
+.aci-source-fallback {
+  border: 1px solid var(--aci-border);
+  border-radius: 4px;
+  flex: 1;
+  margin: 0;
+  min-block-size: 0;
+  overflow: auto;
+  padding: 0.5rem;
+}
+
+.aci-recognition {
+  border-top: 1px solid var(--aci-border);
+  margin-block-start: 1rem;
+  padding-block-start: 0.5rem;
+}
+
+/* The declared-value list, shared by the summary and the disclosure below it:
+   a scoped style would apply to only one of the two components that render
+   this markup. */
+.aci-metadata {
+  display: grid;
+  gap: 0 0.75rem;
+  grid-template-columns: max-content minmax(0, 1fr);
+  margin: 0.35rem 0;
+}
+
+.aci-metadata dt {
+  color: var(--aci-muted);
+}
+
+/* The disclosed copy of a declared value: whole, wrapped, and never reflowed
+   into something the file does not contain. */
+.aci-declared-value-full {
+  font-family: ui-monospace, monospace;
+  margin: 0 0 0.35rem;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+/* The skill detail is a viewport-height column: a summary that does not move,
+   then the files taking everything below it. Fitting is the point — when the
+   files scroll the page instead, every selection sends the reader back to the
+   top of it. */
+.aci-skill-detail {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* The heading block is chrome, and every line of it is a line the files do not
+   get, so it is tighter here than the shell's default heading spacing. */
+.aci-skill-detail > p:first-child {
+  margin: 0;
+}
+
+.aci-shell .aci-skill-detail h2 {
+  margin: 0.25rem 0 0.5rem;
+}
+
+/* Kept short on purpose: it is what a reader needs before choosing a file, and
+   every line of it is a line the files do not get. */
+.aci-skill-overview {
+  border-bottom: 1px solid var(--aci-border);
+  padding-bottom: 0.5rem;
+}
+
+.aci-skill-overview > * {
+  margin-block: 0.15rem;
+}
+
+/* The skill's directory beside its open file. It collapses to one column on a
+   narrow viewport, where the tree reads as a list above the content rather than
+   as a squeezed sidebar. A detail screen for a kind with no directory has no
+   use for this shape, so the class is scoped to the one that does. */
+.aci-skill-detail-layout {
+  display: grid;
+  flex: 1;
+  gap: 0.75rem 1.5rem;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 0;
+  padding-block-start: 0.75rem;
+}
+
+@media (min-width: 52rem) {
+  .aci-skill-detail-layout {
+    grid-template-columns: minmax(9rem, 14rem) minmax(0, 1fr);
+  }
+}
+
+/* Each column scrolls inside itself rather than scrolling the page, which is
+   what keeps a file selection from moving everything else. `min-height: 0` on
+   both: a grid item's default `auto` minimum is its content, which would let a
+   long file list or a tall editor push the row past the viewport. */
+.aci-file-tree {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.aci-skill-detail-main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+.aci-skill-detail-main > h3 {
+  border: 0;
+  font-size: 1rem;
+  margin: 0;
+  padding: 0;
+}
+
+/* The heading carries an authored name, which has no break opportunities of
+   its own; without this a long one forces the page to scroll sideways at
+   narrow widths and 200% zoom (WCAG 1.4.10). */
+.aci-skill-detail h2 {
+  overflow-wrap: anywhere;
+}
+
+/* Fitting assumes a viewport tall enough to fit into. At 200% zoom, or in a
+   short window, the fitted column would squeeze the tree and the source below
+   operability (WCAG 1.4.4, 1.4.10), so a short effective viewport falls back
+   to the document's own scroll: the shell grows with its content and each
+   region takes its natural height, with the editor keeping a workable fixed
+   height inside the scrolling page. */
+@media (max-height: 32rem) {
+  .aci-shell {
+    height: auto;
+    overflow-y: visible;
+  }
+
+  .aci-skill-detail,
+  .aci-skill-detail-layout {
+    flex: none;
+  }
+
+  .aci-source-viewer {
+    block-size: 20rem;
+    flex: none;
+  }
 }

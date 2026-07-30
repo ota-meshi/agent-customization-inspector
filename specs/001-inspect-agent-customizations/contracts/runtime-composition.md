@@ -218,7 +218,7 @@ An authored relationship displays its exact validated source slice without maski
 redaction, reveal state, or environment-variable substitution. A separate validated semantic/
 structural path form may determine relationship status, but never replaces that displayed
 literal. A registry-defined documented default such as the conditional Codex
-`hooks/hooks.json` relation has no authored slice: its DTO uses
+`hooks/hooks.json` relation has no authored target at all: its DTO uses
 `targetOrigin: documented-default` and `authoredTarget: null`, and the UI labels its registry-defined
 path as a documented default. Deduplication uses the closed origin identity plus target
 identity; it never discards distinct authored occurrences or candidate provenance.

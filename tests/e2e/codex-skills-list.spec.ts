@@ -64,9 +64,7 @@ test.afterEach(async () => {
   await rm(fixture, { recursive: true, force: true });
 });
 
-test('lists exactly the allowlisted Codex skills with their source and path', async ({
-  page,
-}) => {
+test('lists exactly the allowlisted Codex skills with their source and path', async ({ page }) => {
   await page.goto(host.origin);
   const items = page.locator('.aci-item');
   await expect(items).toHaveCount(2);
@@ -74,10 +72,7 @@ test('lists exactly the allowlisted Codex skills with their source and path', as
   // Rows are ordered by their own unit — the declared name — so `greet`
   // precedes `ship-it` even though its path sorts the other way.
   const paths = await page.locator('.aci-item .aci-path').allInnerTexts();
-  expect(paths).toEqual([
-    '.agents/skills/greet/SKILL.md',
-    '.agents/skills/deploy/SKILL.md',
-  ]);
+  expect(paths).toEqual(['.agents/skills/greet/SKILL.md', '.agents/skills/deploy/SKILL.md']);
 
   // Every row states which product recognized it — one file can be recognized
   // by several, and that is visible nowhere else. The kind is not repeated per
@@ -255,9 +250,7 @@ test('shows the filtered empty state without claiming the repository is empty', 
   // and the "nothing was recognized" finding is about the repository, which is
   // a different statement the user can act on differently.
   await expect(page.getByText('No skill matches the current filters.')).toBeVisible();
-  await expect(
-    page.getByText('No skill was recognized in this repository.'),
-  ).toHaveCount(0);
+  await expect(page.getByText('No skill was recognized in this repository.')).toHaveCount(0);
 });
 
 test('rescans on demand and keeps the status tied to that request', async ({ page }) => {
@@ -277,11 +270,22 @@ test('rescans on demand and keeps the status tied to that request', async ({ pag
   await expect(page.locator('.aci-scan-status')).toContainText('Committed generation');
 });
 
-test('offers no file-detail affordance yet', async ({ page }) => {
+test('opens a definition by its file identity, not by its path', async ({ page }) => {
   await page.goto(host.origin);
-  // The visible checkpoint of this milestone: the list is visible and there
-  // is nothing to open from it.
-  await expect(page.locator('.aci-item a')).toHaveCount(0);
+  const links = page.locator('.aci-item .aci-path a');
+  await expect(links).toHaveCount(2);
+
+  // The link carries the opaque file ID rather than the Source-relative Path.
+  // A commit rekeys every generation-owned ID, so a link from an earlier
+  // generation resolves to nothing instead of to whatever now sits at that
+  // path (FR-030).
+  for (const href of await links.evaluateAll((elements) =>
+    elements.map((element) => element.getAttribute('href') ?? ''),
+  )) {
+    expect(href).toMatch(/^\/skills\/[A-Za-z0-9_-]{22}$/u);
+  }
+  // The row itself still offers nothing else to act on: opening the file is
+  // the one thing a row leads to.
   await expect(page.locator('.aci-item button')).toHaveCount(0);
 });
 
@@ -310,7 +314,9 @@ test('operates every inventory control from the keyboard', async ({ page }) => {
         if (active === null) {
           return '';
         }
-        return active.id !== '' ? `#${active.id}` : `${active.getAttribute('role') ?? active.tagName.toLowerCase()}:${active.textContent?.trim().slice(0, 24) ?? ''}`;
+        return active.id !== ''
+          ? `#${active.id}`
+          : `${active.getAttribute('role') ?? active.tagName.toLowerCase()}:${active.textContent?.trim().slice(0, 24) ?? ''}`;
       }),
     );
   }
