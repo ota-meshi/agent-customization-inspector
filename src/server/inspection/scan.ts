@@ -353,6 +353,18 @@ export async function assembleScanPublication(
     });
   }
 
+  // An admitted candidate is never read and published a second time as a
+  // companion. Each census already excludes its own seed, but two candidates in
+  // one directory list each other, and the second copy would put one file in the
+  // inventory twice under two identities — with its bytes read and counted
+  // twice. The shipped Codex matcher admits one `SKILL.md` per skill directory,
+  // so no shipped rule reaches this today; it is enforced rather than assumed
+  // because the next rule that admits two files in one directory would
+  // otherwise duplicate them with nothing to show it.
+  for (const candidate of input.result.files) {
+    companions.delete(candidate.publicPath);
+  }
+
   // A companion is read after its candidate, because which files accompany a
   // candidate is only known once that candidate has been recognized. It is
   // published as an ordinary file with no recognitions: it belongs to the
@@ -360,9 +372,7 @@ export async function assembleScanPublication(
   // no kind and appears in no kind's inventory.
   //
   // The map is keyed by display path, so two candidates listing one file read it
-  // once. Nothing else can collide: a companion's path lies inside its
-  // candidate's own directory, and the shipped matcher admits `SKILL.md` only as
-  // that directory's own child, so no candidate is another's companion.
+  // once.
   //
   // The traversal counted the bytes it read; a companion is read here, by the
   // same path, so its bytes belong to the same figure. Reporting only the

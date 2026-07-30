@@ -161,6 +161,52 @@ describe('file-confined outcomes publish a partial generation (FR-028)', () => {
     }
   });
 
+  it("publishes a candidate that is another candidate's census entry exactly once", async () => {
+    // Two candidates in one directory list each other: every census covers its
+    // candidate's own directory and excludes only its own seed. Publishing the
+    // second copy would put one file in the inventory twice, under two
+    // identities, with its bytes read and counted twice.
+    //
+    // The shipped Codex matcher admits one `SKILL.md` per skill directory, so no
+    // shipped rule reaches this — which is why the case is built here from a
+    // plan that does, rather than left to whichever rule ships next. It needs no
+    // filesystem capability, so it runs everywhere the suite does.
+    const root = createFixtureRoot('inspector-census-overlap');
+    try {
+      mkdirSync(join(root, 'siblings'), { recursive: true });
+      writeFileSync(join(root, 'siblings', 'first.md'), 'first\n');
+      writeFileSync(join(root, 'siblings', 'second.md'), 'second\n');
+      const rules = [
+        codexSkillRule(
+          TraversalPlan.fromPrograms({ kind: 'repository' }, [['siblings', /\.md$/u]]),
+        ),
+      ];
+      const result = await runTraversalScan({
+        root,
+        plans: rules.map((rule) => rule.plan),
+      });
+      const publication = await assembleScanPublication({
+        sourceId: 'src-1',
+        root,
+        rootFailureOwner: 'repository',
+        rules,
+        result,
+      });
+      if (publication.kind !== 'publishable') {
+        throw new Error('expected a publishable outcome');
+      }
+      expect(publication.files.map((file) => file.sourceRelativePath)).toEqual([
+        'siblings/first.md',
+        'siblings/second.md',
+      ]);
+      expect(publication.candidateFiles).toBe(2);
+      expect(publication.diagnostics).toEqual([]);
+      expect(publication.outcome).toBe('complete');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('publishes two spellings of one display name as two ordinary files', async () => {
     const tree = buildTraversalFixtureTree('inspector-siblings');
     try {
