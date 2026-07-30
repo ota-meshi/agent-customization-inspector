@@ -14,8 +14,10 @@
 name: CI
 
 on:
+  # Pull-request heads are validated by pull_request; push validates the
+  # resulting main-branch state without running the same commit twice.
   push:
-    branches: [main, dev]
+    branches: [main]
   pull_request:
 
 permissions:
