@@ -1212,8 +1212,6 @@ owning runtime/session API error rule rather than saturating or wrapping.
 | `sizeBytes` | non-negative integer | DTO | Present exactly for readable text and `binary` — the outcomes with accepted bytes |
 | `hadLeadingBom` | boolean | DTO | Readable text only — a BOM concept does not exist for the other variants; true exactly when one leading UTF-8 BOM was recorded and removed before publishing `sourceText`; independent of whether replacement occurred |
 | `sourceText` | string | DTO | Readable text only, never null; complete decoded authored source; literal values and environment-variable reference syntax are preserved exactly; never HTML |
-| `recognitionIds` | opaque string[] | DTO | Readable text only; at least one for an admitted candidate, and empty for a census-listed companion, which is published without being recognized |
-| `relationshipIds` | opaque string[] | DTO | Readable text only; refer to the same generation |
 | `diagnosticIds` | opaque string[] | DTO | Present on every variant; refer to the same generation |
 
 A Customization File is one discovered file within a Source, identified by its

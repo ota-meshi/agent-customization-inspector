@@ -17,6 +17,52 @@ const NOTICES_PATH = fileURLToPath(
   new URL('../../dist/public/_nuxt/THIRD-PARTY-NOTICES.txt', import.meta.url),
 );
 
+/** One package's section of the notice document: what it names, and its terms. */
+interface NoticeSection {
+  /** The heading the section is titled by: a package name, with its version when the manifest declares one. */
+  readonly title: string;
+  /** Every notice text the section carries, trimmed. */
+  readonly body: string;
+}
+
+/**
+ * The document's sections. A section is a `===` rule, a title line, a second
+ * rule, and the terms until the next one. Reading that structure once here is
+ * what frees every assertion below from the renderer's own block order.
+ *
+ * Every block is consumed, and the count has to be even. The renderer always
+ * writes a body block, empty or not, so an odd count means the document is
+ * truncated or its rules have moved — and a loop that stopped one block short
+ * would pass by the remainder without ever looking at it.
+ */
+function noticeSections(): NoticeSection[] {
+  const blocks = noticeText().split(/^={72}$/mu);
+  // The text before the first rule is the document's own header; what follows is
+  // one title block and one body block per package, so an odd count means the
+  // document is truncated mid-section rather than merely missing a licence.
+  const [, ...sectionBlocks] = blocks;
+  if (sectionBlocks.length === 0 || sectionBlocks.length % 2 !== 0) {
+    throw new Error(
+      `the notice document has ${sectionBlocks.length} block(s) after its header, which is not a whole number of title/body pairs`,
+    );
+  }
+  const sections: NoticeSection[] = [];
+  for (let index = 0; index + 1 < sectionBlocks.length; index += 2) {
+    const title = (sectionBlocks[index] ?? '').trim();
+    // The title block is one line naming one package. A blank one names
+    // nothing, and a multi-line one means the rules moved and the split is
+    // reading body text as a heading — either way the parse below would be
+    // checking terms against a package it cannot name.
+    if (title === '' || title.includes('\n')) {
+      throw new Error(
+        `the notice document has a section whose title is not a single package name: ${JSON.stringify(title)}`,
+      );
+    }
+    sections.push({ title, body: (sectionBlocks[index + 1] ?? '').trim() });
+  }
+  return sections;
+}
+
 /**
  * The notice document's text. The build is a prerequisite of the package
  * suite's job, so a missing file is a broken run rather than a case to
@@ -77,13 +123,20 @@ describe('the packaged third-party notices', () => {
     // A section naming a package while carrying no license text would ship that
     // package's code with nothing that satisfies its license. The build fails
     // when it cannot find the text, so this is the packaged-side proof of that.
-    const sections = noticeText()
-      .split(/^={72}$/mu)
-      .slice(1);
-    expect(sections.length).toBeGreaterThan(20);
-    for (let index = 1; index < sections.length; index += 2) {
-      expect(sections[index]?.trim()).not.toBe('');
-      expect(sections[index]).not.toContain('Declared license:');
+    //
+    // Read as title/body pairs the parser has already checked, so this loop
+    // states what a section must carry rather than which split index holds it.
+    // `title` is what the assertion names when one fails.
+    //
+    // No floor on how many sections there are: how many packages the bundle
+    // inlines is whatever the dependency graph currently yields, and a number
+    // here would fail a legitimate build for going under it. What keeps this
+    // loop from passing over an empty document is the parser, which rejects a
+    // document with no title/body pair at all, and the assertion above that
+    // names the packages the bundle is known to carry.
+    for (const { title, body } of noticeSections()) {
+      expect(body, `${title} has no license text`).not.toBe('');
+      expect(body, `${title} carries only a license identifier`).not.toContain('Declared license:');
     }
   });
 });

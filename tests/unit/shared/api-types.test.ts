@@ -34,6 +34,24 @@ describe('customization file DTO variants', () => {
     >().toHaveProperty('sourceText');
   });
 
+  it('carries no back-reference to the recognitions or relationships of a file', () => {
+    // A recognition names the file it belongs to, so a file listing its own
+    // recognition IDs would publish the same edge twice and let the two
+    // disagree (data-model.md § Inventory unit). Asserted against the keys of
+    // every variant at once: a check on the union alone would pass while one
+    // member quietly carried the field back.
+    // Distributive by construction: a naked type parameter in a conditional is
+    // what makes the union split into its members. `keyof CustomizationFileDto`
+    // would be the keys they all share, which is where a field carried by one
+    // variant hides.
+    type KeysOfEach<Variants> = Variants extends unknown ? keyof Variants : never;
+    expectTypeOf<'recognitionIds'>().not.toExtend<KeysOfEach<CustomizationFileDto>>();
+    expectTypeOf<'relationshipIds'>().not.toExtend<KeysOfEach<CustomizationFileDto>>();
+    // The formulation is only worth having if it sees a member's own key, so it
+    // is checked against one that exists on the readable variant alone.
+    expectTypeOf<'sourceText'>().toExtend<KeysOfEach<CustomizationFileDto>>();
+  });
+
   it('accepts both readable encodings and keeps BOM presence orthogonal', () => {
     const readable: CustomizationFileDto = {
       fileId: 'f-1',
@@ -44,8 +62,6 @@ describe('customization file DTO variants', () => {
       hadLeadingBom: true,
       sourceText: 'a�b',
       sizeBytes: 6,
-      recognitionIds: [],
-      relationshipIds: [],
     };
     expect(readable.encoding).toBe('utf-8-replaced');
     expect(readable.sourceText).toContain('�');

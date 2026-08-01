@@ -293,8 +293,6 @@ export async function assembleScanPublication(
           hadLeadingBom: candidate.outcome.hadLeadingBom,
           sourceText: candidate.outcome.sourceText,
           sizeBytes: candidate.outcome.sizeBytes,
-          recognitionIds: published.map((recognition) => recognition.recognitionId),
-          relationshipIds: [],
           diagnosticIds: fileDiagnosticIds,
         });
         break;
@@ -394,8 +392,6 @@ export async function assembleScanPublication(
           hadLeadingBom: outcome.hadLeadingBom,
           sourceText: outcome.sourceText,
           sizeBytes: outcome.sizeBytes,
-          recognitionIds: [],
-          relationshipIds: [],
           diagnosticIds: [],
         });
         break;

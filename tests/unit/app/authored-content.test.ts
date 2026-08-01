@@ -66,8 +66,6 @@ function fileDetail(fileId = 'file-1'): FileDetailDto {
       hadLeadingBom: false,
       sourceText: '---\nname: secretive\n---\n\nghp_FIXTURE000\n',
       sizeBytes: 40,
-      recognitionIds: [],
-      relationshipIds: [],
       diagnosticIds: [],
     },
     recognitions: [],
@@ -145,7 +143,6 @@ describe('authored file content in the browser', () => {
       'activeScanRequestId',
       'closeSkill',
       'dispose',
-      'errorMessage',
       'openCompanion',
       'openSkill',
       // The active route's title subject — a display name the page already
@@ -159,8 +156,10 @@ describe('authored file content in the browser', () => {
       'requestRescan',
       'rescanRejection',
       'rescanState',
+      'sessionErrorMessage',
       'skillDetail',
       'skillDetailState',
+      'skillErrorMessage',
       'snapshot',
       'start',
       'view',
@@ -218,7 +217,7 @@ describe('authored file content in the browser', () => {
     state.closeSkill();
     settleDetail(new Error('the host failed while the reader was leaving'));
     await opening;
-    expect(state.errorMessage.value).toBeNull();
+    expect(state.skillErrorMessage.value).toBeNull();
     expect(state.skillDetailState.value).toBe('idle');
     expect(state.skillDetail.value).toBeNull();
     state.dispose();
@@ -263,7 +262,7 @@ describe('authored file content in the browser', () => {
     await state.start();
     await state.openSkill('from-an-older-generation', 'from-an-older-generation');
     expect(state.skillDetailState.value).toBe('stale');
-    expect(state.errorMessage.value).toBeNull();
+    expect(state.skillErrorMessage.value).toBeNull();
     state.dispose();
   });
 });

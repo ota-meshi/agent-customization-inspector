@@ -393,7 +393,7 @@ describe('the request-correlated rescan lifecycle', () => {
     // A conflict is a functional outcome: the view keeps its snapshot and the
     // session is not ended.
     expect(state.view.value).toBe('inspection');
-    expect(state.errorMessage.value).toBeNull();
+    expect(state.sessionErrorMessage.value).toBeNull();
   });
 
   it('clears the previous rejection when the retry is dispatched', async () => {

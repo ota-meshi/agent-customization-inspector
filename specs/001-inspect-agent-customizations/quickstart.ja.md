@@ -203,12 +203,9 @@ pnpm run typecheck
 pnpm run test:unit
 pnpm run test:contract
 pnpm run test:integration
-pnpm run test:security
 pnpm run test:package
-pnpm run test:performance
 pnpm run test:coverage
 pnpm run test:e2e
-pnpm run test:docs
 ```
 
 期待結果:
@@ -248,23 +245,15 @@ pnpm run test:docs
   `devframe`、`gunshi`、`jsonc-parser`、`smol-toml`、`vfile`、`vfile-matter`、`yaml`を正確にassertし（resolved versionとintegrity hashは
   commit済み`pnpm-lock.yaml`が所有し続ける）、negative packaging fixtureは、
   missingまたはnon-regularなrequired entry pointがpublish前に`verify:package`をfailさせることを証明する。
-- 内容を変更しない100,000 entry/500 customization fileのdeterministic performance fixtureを、同じversion付き
-  checked-in profile上の正確に10個のfresh Inspector processで測定する。同じ9件以上の各runが、後述timer/cache protocolの
-  もと1秒以内に現在のrequestに対するqualifying statusを表示し、10秒以内に完了し、標準化されたfilterとitem-selectionの
-  両方についてinput dispatchからvisibleかつoperableな結果までの測定を100ミリ秒未満にしなければならない。
 - Browser、contract、manual evidenceが4 user storyすべてを扱い、
   [SC-008の55行matrix](contracts/accessibility-acceptance.ja.md)のApplicableな全行とNot-applicable再確認を満たす。
   Axeのseverity結果だけではpassにならない。
-- Documentation testがlink、command、allowlist version、diagnostic code、registry間の相互参照、
-  各英語・日本語pairのsemantic parityを検証し、official source snapshot変更時に
-  behavior/rule/strategy reviewを要求する。
 
 ## Contract registry検証
 
 ```bash
-pnpm exec vitest run tests/contract/vendor-behaviors
-pnpm exec vitest run tests/contract/inspection-rules
-pnpm exec vitest run tests/contract/runtime-composition
+pnpm exec vitest run --project contract tests/contract/vendor-behaviors
+pnpm exec vitest run --project contract tests/contract/inspection-rules
 ```
 
 上記testはofflineである。Maintainerはupstream drift review時だけ`pnpm run check:official-sources`を明示実行し、
@@ -370,10 +359,6 @@ source checkでnetworkを使えるのはこのcommandだけとする。
 
 ### 1. Repository customizationの発見
 
-```bash
-pnpm exec playwright test tests/e2e/discovery.spec.ts
-```
-
 確認項目:
 
 1. OptionなしではRepository Sourceがcapture済みchild-process `process.cwd()`のexact valueと等しい。Relative/absolute
@@ -400,13 +385,11 @@ pnpm exec playwright test tests/e2e/discovery.spec.ts
 ### 2. Activationなしのinspection
 
 ```bash
-pnpm exec playwright test tests/e2e/inspection-safety.spec.ts
 pnpm exec playwright test tests/e2e/boot.spec.ts
 pnpm exec vitest run --project unit \
   tests/unit/app/api-client.test.ts \
   tests/unit/app/session-view-state.test.ts \
   tests/unit/app/client-data.test.ts
-pnpm run test:security
 ```
 
 確認項目:
@@ -467,10 +450,6 @@ pnpm run test:security
 
 ### 3. 2 fileの比較
 
-```bash
-pnpm exec playwright test tests/e2e/comparison.spec.ts
-```
-
 確認項目:
 
 1. Repository comparison flowでは、同じRepository Sourceからactive-generationのreadableなdistinct fileを正確に2つ選べ、
@@ -521,10 +500,6 @@ pnpm exec playwright test tests/e2e/comparison.spec.ts
     filterのfresh inventory summaryをatomicに構築する。後のdetail/comparison requestはfresh sessionから改めて取得する。
 
 ### 4. Global inspectionへのopt-in
-
-```bash
-pnpm exec playwright test tests/e2e/global-consent.spec.ts
-```
 
 Test harnessはisolated fake tool homeを渡し、developerのreal homeを絶対にinspectしない。確認項目:
 
@@ -990,8 +965,7 @@ Caseのremove/reclassify、required-class定義の変更、expected outcomeの�
 ## Boundaryと実行環境capacityの検証
 
 ```bash
-pnpm exec vitest run tests/integration/boundaries
-pnpm exec vitest run tests/performance
+pnpm exec vitest run --project integration tests/integration/boundaries
 ```
 
 Inspectorはfile単体または合計byte、file/record数、path/parser structure、
@@ -1111,7 +1085,6 @@ SC-008を立証できない。Contractはsamplingしない完全なexecution mat
 pnpm outdated
 pnpm run format:check
 pnpm run test:package
-pnpm run test:docs
 git diff --check
 ```
 
@@ -1165,7 +1138,7 @@ validation failure、await済みcompletionに加え、defaultでcaptureしたexa
 Gunshiのtyped argument validationでrejectすることも扱う。
 Testはさらに、automatic openingがOS default handlerへ委譲するだけでversionを
 certifyできないことも証明する。Release recordはpin済みPlaywright revisionを使用し、`--no-open`と表示URLをmanual certified-browser
-fallbackとする。`pnpm run test:docs`はplanning setを公開せず、repository内の全英日document
+fallbackとする。Documentation gateはplanning setを公開せず、repository内の全英日document
 pairを別に検証する。同じtarballを[research.ja.md](research.ja.md)で定義した正確な6つのlower-bound OS/architecture
 certification jobでinstall/launchし、Node.js filesystem suiteに合格させる。Node.js 24.18.0はdevelopment/build
 baselineである。これら有限sampleは、宣言済みNode.js 24/26 compatibility range内の全patch releaseをCIで網羅的に
@@ -1174,7 +1147,7 @@ accidental source mutation、unrelated changeがないことを確認する。�
 lint、typecheck、unit、contract、integration、security、package、performance、browser、coverage、documentation、lower-bound candidate
 checkからなるcomplete applicable automated matrixを再実行し、影響するcandidate/profile/fixture/human/manual evidence setを再生成し、
 concernが0件になるまでcomplete-diff/tarball reviewを反復する。次にbilingual Constitution Checkをsole planned validation-only editとして
-記録しtreeをfreezeする。そのfrozen tree/candidateへ全applicable automated gateを再実行し、`pnpm run test:docs`、`git diff --check`で終えてからreleaseをapproveする。Final outcomeはrepository evidence
+記録しtreeをfreezeする。そのfrozen tree/candidateへ全applicable automated gateを再実行し、documentation gateと`git diff --check`で終えてからreleaseをapproveする。Final outcomeはrepository evidence
 fileをeditせずexternal release/pull-request check logへcaptureする。その後repositoryをeditした場合は全outcome/approvalを無効にし、
 Constitution/final-gate sequence前にremediation、candidate/study/evidence digest再validation、applicable gate再実行、complete-diff reviewへ戻る。
 

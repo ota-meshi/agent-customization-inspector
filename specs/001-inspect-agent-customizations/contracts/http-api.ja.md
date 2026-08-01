@@ -424,8 +424,7 @@ Active-generation file detailを1件返す。
 FileDetail
 ├── file — encodingで判別されるCustomizationFile 1件:
 │   ├── fileId, sourceId, sourceRelativePath, encoding, diagnosticIds[]
-│   ├── readable textはさらにhadLeadingBom, sourceText, sizeBytes,
-│   │   recognitionIds[], relationshipIds[]（本releaseでは空。下記参照）を持つ
+│   ├── readable textはさらにhadLeadingBom, sourceText, sizeBytesを持つ
 │   └── binaryはさらにsizeBytesを持ち、unknownはこれ以上何も持たない
 ├── recognitions[]
 │   ├── recognitionId, fileId, tool, parseStatus, diagnosticIds[]
@@ -439,9 +438,10 @@ FileDetail
 ```
 
 この木がresponseの形そのものである: clientは正確にこのfieldだけに依存できる。
-Edge recordの`relationships` arrayは存在しない — shipped recognitionはedgeを1つも生成できないため、
-すべてのresponseで空になる。これはそれを埋めるrelationship phaseとともに到着する。上記のreadable
-fileの`relationshipIds`は同じ事実のID list形であり、存在して空である。
+Fileは自身に紐づくrecognitionの一覧を持たない: 同じresponse内の各recognitionが自身の`fileId`を
+名指しており、1つの事実の2つ目の綴りはそれと食い違い得るstateになる。Edge recordの
+`relationships` arrayも存在しない — shipped recognitionはedgeを1つも生成できないため、
+すべてのresponseで空になる。これはそれを埋めるrelationship phaseとともに到着する。
 provenanceも同様に、`provenanceId`（relationshipが来るまでadmissionを指し返すものが無い）、
 `order`とderived-seedの3つ組`seedFileId`/`seedProvenanceId`/`seedRuleId`（shipped ruleに
 derivedは無く、shipped strategyはorderを文書化していない。derivation/ordering phaseとともに

@@ -238,12 +238,9 @@ pnpm run typecheck
 pnpm run test:unit
 pnpm run test:contract
 pnpm run test:integration
-pnpm run test:security
 pnpm run test:package
-pnpm run test:performance
 pnpm run test:coverage
 pnpm run test:e2e
-pnpm run test:docs
 ```
 
 Expected:
@@ -295,26 +292,16 @@ Expected:
   and integrity hashes stay owned by the committed
   `pnpm-lock.yaml` — and negative packaging fixtures prove that a missing or non-regular
   required entry point fails `verify:package` before publish.
-- The unchanged deterministic performance fixture with 100,000 entries and 500
-  customization files is measured in exactly 10 fresh Inspector processes on the same
-  versioned checked-in profile. The same at least 9 individual runs must each show a
-  qualifying current-request status within 1 second, complete within 10 seconds, and keep
-  both the standardized filter and item-selection dispatch-to-visible-operable-result
-  measurements below 100 ms under the timer/cache protocol below.
 - Browser, contract, and manual evidence cover all four user stories and satisfy every
   Applicable row and Not-applicable recheck in the
   [55-row SC-008 matrix](contracts/accessibility-acceptance.md); an axe severity result alone
   is not a pass.
-- Documentation tests verify links, commands, the allowlist version, diagnostic codes,
-  reciprocal cross-registry references, and semantic parity between each English/Japanese
-  pair, and flag a changed official source snapshot for behavior/rule/strategy review.
 
 ## Contract-registry validation
 
 ```bash
-pnpm exec vitest run tests/contract/vendor-behaviors
-pnpm exec vitest run tests/contract/inspection-rules
-pnpm exec vitest run tests/contract/runtime-composition
+pnpm exec vitest run --project contract tests/contract/vendor-behaviors
+pnpm exec vitest run --project contract tests/contract/inspection-rules
 ```
 
 The tests above are offline. A maintainer runs `pnpm run check:official-sources` explicitly
@@ -451,10 +438,6 @@ Verify:
 
 ### 1. Discover Repository customizations
 
-```bash
-pnpm exec playwright test tests/e2e/discovery.spec.ts
-```
-
 Verify:
 
 1. With no option, Repository Source equals the exact captured child-process
@@ -489,13 +472,11 @@ Verify:
 ### 2. Inspect without activation
 
 ```bash
-pnpm exec playwright test tests/e2e/inspection-safety.spec.ts
 pnpm exec playwright test tests/e2e/boot.spec.ts
 pnpm exec vitest run --project unit \
   tests/unit/app/api-client.test.ts \
   tests/unit/app/session-view-state.test.ts \
   tests/unit/app/client-data.test.ts
-pnpm run test:security
 ```
 
 Verify:
@@ -572,10 +553,6 @@ Verify:
 
 ### 3. Compare two files
 
-```bash
-pnpm exec playwright test tests/e2e/comparison.spec.ts
-```
-
 Verify:
 
 1. In the Repository comparison flow, exactly two distinct readable active-generation files
@@ -647,10 +624,6 @@ Verify:
     session.
 
 ### 4. Opt in to Global inspection
-
-```bash
-pnpm exec playwright test tests/e2e/global-consent.spec.ts
-```
 
 The test harness supplies isolated fake tool homes; it must never inspect the developer's
 real home directory. Verify:
@@ -1517,8 +1490,7 @@ review reference in `validation.md` and `validation.ja.md`.
 ## Boundary and environment-capacity validation
 
 ```bash
-pnpm exec vitest run tests/integration/boundaries
-pnpm exec vitest run tests/performance
+pnpm exec vitest run --project integration tests/integration/boundaries
 ```
 
 Inspector defines no numeric ceiling for file or aggregate bytes, file or record counts,
@@ -1670,7 +1642,6 @@ none of these commands may rewrite the tree.
 pnpm outdated
 pnpm run format:check
 pnpm run test:package
-pnpm run test:docs
 git diff --check
 ```
 
@@ -1738,8 +1709,7 @@ validation failures and awaited
 completion. Tests also prove that automatic opening merely delegates to the operating
 system's default handler and cannot certify its version; the release
 record uses the pinned Playwright revisions, and `--no-open` plus the printed URL is the
-manual certified-browser fallback. `pnpm run test:docs` separately
-validates all
+manual certified-browser fallback. The documentation gate separately validates all
 repository English/Japanese document pairs without publishing the planning set. The same
 tarball must install, launch, and pass the Node.js filesystem suite in the six exact
 lower-bound OS/architecture certification jobs defined in [research.md](research.md).
@@ -1754,8 +1724,8 @@ coverage, documentation, and lower-bound candidate checks—regenerate every aff
 candidate/profile/fixture/human or manual evidence set, and repeat complete-diff/tarball review
 until it reports no concern. Then record the bilingual Constitution Check as the sole planned
 validation-only edit and freeze the tree. Against that frozen tree and candidate, rerun all
-applicable automated gates, ending with `pnpm run test:docs`,
-and `git diff --check` before approval. Capture final outcomes in the
+applicable automated gates, ending with the documentation gate and
+`git diff --check` before approval. Capture final outcomes in the
 external release or pull-request check log rather than by editing a repository evidence file.
 Any later repository edit invalidates every outcome and approval and returns to remediation,
 candidate/study/evidence digest revalidation, applicable gate reruns, and complete-diff review

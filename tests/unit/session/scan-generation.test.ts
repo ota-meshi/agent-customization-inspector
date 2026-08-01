@@ -66,8 +66,6 @@ describe('prepareNextRepositoryGeneration', () => {
       encoding: 'utf-8' as const,
       hadLeadingBom: false,
       sourceText: 'ok\n',
-      recognitionIds: [],
-      relationshipIds: [],
       diagnosticIds: [],
     });
     const next = prepareNextRepositoryGeneration(
@@ -80,6 +78,30 @@ describe('prepareNextRepositoryGeneration', () => {
     expect(ids[0]).not.toBe(ids[1]);
     expect(ids[0]).toMatch(/^[A-Za-z0-9_-]{22}$/u);
   });
+  it('refuses a commit that reused one provisional file ID for two files', () => {
+    // The rekey map is what answers "which committed record does this
+    // reference name", and a repeated key makes that unanswerable. Without the
+    // guard the map would keep the last pair, so a diagnostic attached to the
+    // first file would commit against the second's identity while its own path
+    // still named the first — a misattribution nothing downstream could see.
+    const makeFile = (sourceRelativePath: string) => ({
+      fileId: 'reused-id',
+      sourceId: 'src-1',
+      sourceRelativePath,
+      sizeBytes: 3,
+      encoding: 'utf-8' as const,
+      hadLeadingBom: false,
+      sourceText: 'ok\n',
+      diagnosticIds: [],
+    });
+    expect(() =>
+      prepareNextRepositoryGeneration(
+        base,
+        commitInput('scan-3', [makeFile('AGENTS.md'), makeFile('docs/AGENTS.md')]),
+      ),
+    ).toThrow(/reused a provisional generation-owned ID/u);
+  });
+
   it('rewrites file-scoped diagnostic references through the same rekey map', () => {
     const file = {
       fileId: 'stale-id',

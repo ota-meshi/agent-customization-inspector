@@ -113,7 +113,18 @@ export type TraversalScanResult =
        * (contracts/http-api.md § get-session `progress`).
        */
       readonly visitedEntries: number;
-      /** Allowlisted candidate files this walk discovered (data-model.md § ScanProgress). */
+      /**
+       * Allowlisted candidate files this attempt has identified (data-model.md
+       * § ScanProgress), from each of the three ways a plan reaches one: a
+       * recursive walk of a directory plan, one exact target a plan names
+       * directly, and the ordered targets a first-non-empty plan probes until
+       * one of them decides. The first two are recorded as discoveries; only the
+       * last is counted where it is probed, because a decided-against target is
+       * never recorded. Identified rather than read: an entry whose unreadable
+       * outcome the walk or the probe already established is counted with the
+       * rest and never opened, and the figure keeps growing across the phase
+       * boundary instead of restarting from what has been read so far.
+       */
       readonly candidateFiles: number;
       /**
        * Bytes this attempt accepted. Counted as they are read, because the
@@ -191,10 +202,14 @@ const RESOURCE_EXHAUSTION_CODES = new Set(['EMFILE', 'ENFILE', 'ENOMEM']);
 /**
  * Rethrows a resource-exhaustion failure so the attempt aborts, and returns
  * otherwise so the caller can classify what is genuinely a fact about the path
- * it was reading. Every filesystem call in this module and in the companion
- * census goes through it: a rule that held only for `readFile` would report the
- * machine running out of descriptors as an unreadable file at one call site and
- * as an unreadable root at another.
+ * it was reading. A rule that held only for `readFile` would report the machine
+ * running out of descriptors as an unreadable file at one call site and as an
+ * unreadable root at another, so no `catch` here or in the companion census
+ * turns a filesystem failure into an outcome for a path without first ruling
+ * these errnos out. Most call this. The root and fixed-subtree catches rule them
+ * out by construction instead: each converts only its own closed errno set —
+ * missing, not a directory, unreadable, a link cycle — which these codes are not
+ * in, and rethrows everything else.
  */
 export function rethrowIfResourceExhaustion(error: unknown): void {
   if (RESOURCE_EXHAUSTION_CODES.has((error as { code?: string }).code ?? '')) {
@@ -472,6 +487,10 @@ async function runCodexFirstNonEmpty(
   root: string,
   planIndex: number,
   targets: readonly (readonly string[])[],
+  classifyOnce: (
+    rawSegments: readonly string[],
+    knownUnreadable: boolean,
+  ) => Promise<CandidateOutcome>,
 ): Promise<TraversalCandidate[]> {
   const [overridePrefix, fallbackPrefix] = targets;
   if (overridePrefix === undefined || fallbackPrefix === undefined) {
@@ -489,9 +508,7 @@ async function runCodexFirstNonEmpty(
   });
   const override = await probeExactTarget(root, overridePrefix, { planIndex, selectorIndex: 0 });
   if (override !== null) {
-    const outcome = override.knownUnreadable
-      ? ({ kind: 'unreadable' } as const)
-      : await readCandidate(join(root, ...overridePrefix));
+    const outcome = await classifyOnce(overridePrefix, override.knownUnreadable);
     if (outcome.kind !== 'readable') {
       // An unreadable or binary override ends the branch with its file
       // Diagnostic and no fallback (FR-035).
@@ -508,9 +525,7 @@ async function runCodexFirstNonEmpty(
   if (fallback === null) {
     return [];
   }
-  const outcome = fallback.knownUnreadable
-    ? ({ kind: 'unreadable' } as const)
-    : await readCandidate(join(root, ...fallbackPrefix));
+  const outcome = await classifyOnce(fallbackPrefix, fallback.knownUnreadable);
   if (outcome.kind === 'readable' && outcome.sourceText.trim().length === 0) {
     // Only a readable non-empty regular file is published at the fallback
     // position; a readable empty one publishes no Codex instruction file.
@@ -550,11 +565,14 @@ export interface TraversalScanInput {
 }
 
 /**
- * Runs one Source scan attempt: enumerates the compiled allowlist with an
- * ordinary recursive walk, then reads every discovered file exactly once
- * (FR-019, FR-024, FR-028). A missing or unreadable root returns the
- * `root-unreadable` result that fails the Source attempt (FR-002); a failure
- * not confined to one file propagates to the caller unchanged.
+ * Runs one Source scan attempt: enumerates the compiled allowlist — walking a
+ * directory plan, probing the exact target of a plan that names one, and
+ * probing a selection-policy plan's targets in order — then classifies every
+ * candidate it identified exactly once: one read each, except where a walk or a
+ * probe already established the file is unreadable (FR-019, FR-024, FR-028). A
+ * missing or unreadable root returns the `root-unreadable` result that fails the
+ * Source attempt (FR-002); a failure not confined to one file propagates to the
+ * caller unchanged.
  */
 export async function runTraversalScan(input: TraversalScanInput): Promise<TraversalScanResult> {
   for (const plan of input.plans) {
@@ -592,10 +610,10 @@ export async function runTraversalScan(input: TraversalScanInput): Promise<Trave
     origin: SelectorOrigin;
   }[] = [];
   const exactTargets: { fixedPrefix: readonly string[]; origin: SelectorOrigin }[] = [];
-  const fallbackRuns: { planIndex: number; targets: readonly (readonly string[])[] }[] = [];
+  const firstNonEmptyRuns: { planIndex: number; targets: readonly (readonly string[])[] }[] = [];
   for (const [planIndex, plan] of input.plans.entries()) {
     if (plan.selectionPolicy === 'codex-global-first-non-empty') {
-      fallbackRuns.push({
+      firstNonEmptyRuns.push({
         planIndex,
         targets: plan.selectors.map((selector) => selector.fixedPrefix),
       });
@@ -655,7 +673,7 @@ export async function runTraversalScan(input: TraversalScanInput): Promise<Trave
     repositoryPrograms.length === 0 &&
     exactTargets.length === 0 &&
     subtreeWalks.length === 0 &&
-    fallbackRuns.length === 0
+    firstNonEmptyRuns.length === 0
   ) {
     try {
       await readdir(input.root);
@@ -750,18 +768,57 @@ export async function runTraversalScan(input: TraversalScanInput): Promise<Trave
   // Bytes this attempt accepted, counted as they are read. The publication
   // cannot supply it: an empty override is read but not published.
   let readBytes = 0;
-  for (const candidate of discovered.values()) {
-    const outcome = candidate.knownUnreadable
+  // Candidates a first-non-empty plan classified without recording them as
+  // discoveries: it probes its targets in order and publishes only the one that
+  // decides. Counted here so the published figure covers them, while a walk's
+  // discoveries and a directly named exact target — both recorded — are counted
+  // from `discovered`. The two sets are disjoint by construction:
+  // this counts a key the walk never recorded, which is what keeps
+  // `candidateFiles` one growing quantity across both phases rather than two
+  // different ones (data-model.md § ScanProgress: the counters are
+  // monotonically non-decreasing within an attempt).
+  let firstNonEmptyCandidates = 0;
+  const candidateCount = (): number => discovered.size + firstNonEmptyCandidates;
+  // Every candidate this attempt classified, by raw key — one read each, except
+  // where a walk or a probe already established the file is unreadable, which
+  // reaches no filesystem call. The recorded candidates below and
+  // a first-non-empty selection both go through it, so a file two selectors
+  // reach is classified once: a second read would count its bytes twice, and —
+  // because a first-non-empty plan publishes the target it decided on from what
+  // it read — could decide on bytes that differ from the ones published.
+  // Reporting lives here too, so classifying one candidate is what produces a
+  // progress update whichever selector asked for it: an attempt whose only work
+  // is a first-non-empty target would otherwise report nothing at all.
+  const outcomes = new Map<string, CandidateOutcome>();
+  const classifyOnce = async (
+    rawSegments: readonly string[],
+    knownUnreadable: boolean,
+  ): Promise<CandidateOutcome> => {
+    const key = rawKey(rawSegments);
+    const cached = outcomes.get(key);
+    if (cached !== undefined) {
+      // No read, no new work, nothing to report.
+      return cached;
+    }
+    if (!discovered.has(key)) {
+      firstNonEmptyCandidates += 1;
+    }
+    const outcome = knownUnreadable
       ? ({ kind: 'unreadable' } as const)
-      : await readCandidate(join(input.root, ...candidate.rawSegments));
+      : await readCandidate(join(input.root, ...rawSegments));
+    outcomes.set(key, outcome);
     readBytes += 'sizeBytes' in outcome ? outcome.sizeBytes : 0;
     input.onProgress?.({
       phase: 'reading',
       visitedEntries: counters.visitedEntries,
-      candidateFiles: discovered.size,
+      candidateFiles: candidateCount(),
       readBytes,
       diagnosticCount: 0,
     });
+    return outcome;
+  };
+  for (const candidate of discovered.values()) {
+    const outcome = await classifyOnce(candidate.rawSegments, candidate.knownUnreadable);
     files.push({
       rawSegments: candidate.rawSegments,
       publicPath: toPublicPath(candidate.rawSegments),
@@ -770,26 +827,37 @@ export async function runTraversalScan(input: TraversalScanInput): Promise<Trave
     });
   }
 
-  // The fallback selection reads its own targets, so its results arrive already
-  // decided rather than through `discovered`. They still join one published
-  // set: a target a walked selector also admitted is one file with two
-  // admissions, and pushing it twice would read it twice and publish it twice
+  // A first-non-empty selection classifies its own targets and publishes only
+  // the one that decided, so its results arrive already decided rather than as
+  // entries in `discovered`. They still join one published set: a target
+  // another selector also admitted is one file with two admissions, and pushing
+  // it twice would publish that file twice, each copy carrying half of where it
+  // came from
   // (contracts/inspection-path-allowlist.md § Common conformance requirements).
+  // Only the publication needs merging — both paths classify through
+  // `classifyOnce`, so the second one is answered from its cache and reads
+  // nothing.
   // Indexed by published path, so a merge can replace the entry in place and a
   // third overlapping admission still finds it. Holding the record alone would
   // leave a stale object behind after the first merge, and looking that object
   // up again would find nothing.
   const publishedAt = new Map(files.map((file, index) => [file.publicPath, index]));
-  for (const run of fallbackRuns) {
-    for (const selected of await runCodexFirstNonEmpty(input.root, run.planIndex, run.targets)) {
+  for (const run of firstNonEmptyRuns) {
+    for (const selected of await runCodexFirstNonEmpty(
+      input.root,
+      run.planIndex,
+      run.targets,
+      classifyOnce,
+    )) {
       const index = publishedAt.get(selected.publicPath);
       if (index === undefined) {
         publishedAt.set(selected.publicPath, files.length);
         files.push(selected);
         continue;
       }
-      // One file, both admissions: the walk already read it, so its outcome
-      // stands and only the provenance is merged.
+      // One file, both admissions: `classifyOnce` answered both with the same
+      // outcome, so there is nothing to reconcile and only the provenance is
+      // merged.
       const existing = files[index]!;
       files[index] = {
         ...existing,
@@ -806,7 +874,11 @@ export async function runTraversalScan(input: TraversalScanInput): Promise<Trave
     kind: 'scanned',
     files,
     visitedEntries: counters.visitedEntries,
-    candidateFiles: discovered.size,
+    // The same growing quantity the reports carried: everything recorded as a
+    // discovery plus what a first-non-empty plan classified without recording.
+    // `discovered.size` alone would leave that plan's targets out of the count
+    // while their bytes were in `readBytes`.
+    candidateFiles: candidateCount(),
     readBytes,
   };
 }

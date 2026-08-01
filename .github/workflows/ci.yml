@@ -115,19 +115,6 @@ jobs:
       - run: pnpm run dev:prepare
       - run: pnpm run test:integration
 
-  security:
-    name: Security tests
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_DEV_BASELINE }}
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm run test:security
-
   package:
     # Includes the Node.js-only package-policy suite
     # (tests/package/node-only-policy.test.ts) through the package project
@@ -145,32 +132,6 @@ jobs:
       - run: pnpm run build
       - run: pnpm run verify:package
       - run: pnpm run test:package
-
-  performance:
-    name: Performance tests
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_DEV_BASELINE }}
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm run test:performance
-
-  documentation:
-    name: Documentation tests
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_DEV_BASELINE }}
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm run test:docs
 
   coverage:
     name: Coverage
@@ -202,7 +163,6 @@ jobs:
       # dist/public), so the build is a prerequisite of this job.
       - run: pnpm run build
       - name: Run primary-workflow and accessibility suite
-        if: ${{ hashFiles('tests/e2e/**') != '' }}
         run: pnpm run test:e2e
 
   build:

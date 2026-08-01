@@ -12,7 +12,7 @@
 // selection can change while it is still arriving. The generation counter
 // below is what keeps that from showing the wrong file: only the newest
 // request may write to the editor.
-import { inject, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
+import { inject, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { SourceViewerHandle } from '../../composables/monaco';
 import { SESSION_VIEW_STATE } from '../../session/view-state';
 
@@ -172,10 +172,22 @@ async function togglePlainText(): Promise<void> {
  * drop to the document body (WCAG 2.4.3); the editor the reader was trying to
  * reach continues the interaction. A retry that fails again leaves the button
  * mounted and focused, so nothing moves.
+ *
+ * The patch is awaited before the state is read, not after. Clearing the
+ * failure only queues the update, so until the flush the editor's host is still
+ * `display: none` and focusing inside a hidden subtree does nothing. Reading
+ * the state first would decide from what was true before that flush and act on
+ * what is true after it, which are two different moments.
+ *
+ * The move is also conditional on focus having been lost. A retry takes time,
+ * and a reader who tabbed somewhere else during it is reading something else:
+ * moving them into the editor then would take a position they chose. Focus on
+ * the document body is the signal that the removed button was still holding it.
  */
 async function retryMount(): Promise<void> {
   await showCurrentSource();
-  if (!mountError.value) {
+  await nextTick();
+  if (!mountError.value && document.activeElement === document.body) {
     viewer.value?.focus();
   }
 }

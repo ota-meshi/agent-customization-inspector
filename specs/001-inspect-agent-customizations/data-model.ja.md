@@ -942,8 +942,6 @@ requeue boundaryを跨がない。全valueはJavaScript safe integerでなけれ
 | `sizeBytes` | non-negative integer | DTO | Accept済みbyteを持つoutcomeであるreadable textと`binary`だけに存在する |
 | `hadLeadingBom` | boolean | DTO | Readable textのみ。他variantにBOMの概念は存在しない。`sourceText` publish前に先頭UTF-8 BOMを正確に1つ記録・除去した場合だけtrue。Replacementの有無とは独立 |
 | `sourceText` | string | DTO | Readable textのみで、nullにならない。完全なdecoded authored source。Literal valueと環境変数参照syntaxを正確に保持し、HTMLではない |
-| `recognitionIds` | opaque string[] | DTO | Readable textのみ。Admit済みcandidateは1つ以上、censusが列挙したcompanionはempty（認識されずに公開されるため） |
-| `relationshipIds` | opaque string[] | DTO | Readable textのみ。同じgenerationを参照 |
 | `diagnosticIds` | opaque string[] | DTO | 全variantに存在し、同じgenerationを参照 |
 
 Customization Fileは、Source-relative Pathで識別する、Source内で発見した1つのfileであり、そのencoding、

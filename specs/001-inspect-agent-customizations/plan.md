@@ -201,11 +201,17 @@ memory.
 Vue Test Utils 2.4.11, happy-dom 20.10.6, Playwright 1.61.1, and
 `@axe-core/playwright` 4.12.1; fixture-driven unit, contract, integration, packaging,
 performance, security, browser, and manual accessibility checks. `vitest.config.ts`
-defines named unit, contract, integration, security, package, performance, and coverage
-projects. The security project includes exactly `tests/security/**/*.test.ts`, including
-the T996 Global zero-activation test, and every other project excludes that root so each
-root security test runs exactly once; security tests under `tests/integration/security/`
-remain owned by the integration project. The browser release gate
+defines a named project per suite, each including exactly the directory it owns, so which
+suite a test belongs to is decided by where it lives. `coverage` is the one project that
+does not own a directory: it re-runs the unit, contract, and integration roots together
+because a coverage figure is taken across them. A suite's project, its `package.json` command, its CI
+job, and its quickstart entry all arrive with that suite's first test, in one change:
+T996 brings `tests/security/`, T183 `tests/performance/`, and T1041
+`tests/documentation/`. `passWithNoTests` is not set, so a project that matches none of
+its own files fails instead of reporting a run that executed nothing — which is why a
+suite is declared nowhere until it has a test. Security
+tests under `tests/integration/security/` are owned by the integration project, like every
+other directory under it. The browser release gate
 runs the complete primary-workflow and accessibility suite against the exact Chromium,
 Firefox, and WebKit revisions installed by the pinned Playwright version as a reproducible
 automated certification baseline, not as an assertion that the startup helper selects one of

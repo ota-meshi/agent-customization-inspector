@@ -562,8 +562,6 @@ describe('scan lifecycle', () => {
           hadLeadingBom: false,
           sourceText: 'TOP-SECRET-AUTHORED-VALUE',
           sizeBytes: 25,
-          recognitionIds: [],
-          relationshipIds: [],
           diagnosticIds: [],
         },
       ],

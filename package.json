@@ -40,12 +40,9 @@
     "test:unit": "vitest run --project unit",
     "test:contract": "vitest run --project contract",
     "test:integration": "vitest run --project integration",
-    "test:security": "vitest run --project security",
     "test:package": "vitest run --project package",
-    "test:performance": "vitest run --project performance",
     "test:coverage": "vitest run --project coverage --coverage",
-    "test:e2e": "playwright test",
-    "test:docs": "vitest run --project contract tests/contract/documentation.test.ts"
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "devframe": "^0.7.5",

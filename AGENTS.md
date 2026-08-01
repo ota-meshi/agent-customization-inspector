@@ -9,6 +9,29 @@ This file is where a working policy lives. When a decision settles how work is t
 not what a single change does — write it here in the same change, in both languages. A
 policy agreed in conversation and left there is a policy the next session does not have.
 
+## Evidence before conclusions
+
+- No model generation, capability tier, or reasoning setting is evidence that a conclusion is
+  reliable. Even a top-tier GPT-family model at its maximum reasoning setting can reach a
+  plausible conclusion too early. Treat premature judgment as a standing risk and counter it
+  through verification; never assume confidence in the model removes it.
+- Before reporting a defect, trace the candidate finding through all of the following: the
+  behavior reproduced from the current code; the governing specification and contracts; the
+  completed, current, and future task that owns it; any explicit deferral or accepted limitation;
+  and the production caller and user-visible surface that can actually exhibit it. “Not present
+  now” is not the same as “required now and missing.”
+- Try to disprove a candidate finding before accepting it. State the strongest repository-backed
+  explanation under which the current code would be correct, search the codebase and artifacts
+  for that explanation, and resolve conflicting evidence. If the evidence remains incomplete,
+  report the uncertainty instead of presenting the inference as fact.
+- A review does not stop at the changed line or at a passing test. Read the surrounding data flow,
+  comments, tests, English/Japanese documents, task ownership, and later planned work. Conversely,
+  do not demand a test or mechanism merely because it is absent: first establish that the current
+  scope requires it and that another layer or future task does not own it.
+- When a user corrects a factual mistake, audit the reasoning pattern that produced it and recheck
+  the other findings that used the same shortcut before continuing. Correcting only the reported
+  instance leaves the same failure ready to recur.
+
 ## Documentation content policy
 
 - Write the final state. A specification, contract, or comment describes what is true now,

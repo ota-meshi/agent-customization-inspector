@@ -105,8 +105,11 @@ let unbindConnection: (() => void) | null = null;
 const view = computed<SessionView>(() =>
   startupErrorMessage.value === null ? sessionViewState.view.value : 'ended',
 );
+// The shell reports the session's own failures. A detail request's failure
+// belongs to the route that made it, which shows it beside the retry that
+// answers it — so neither can hide the other and neither is said twice.
 const errorMessage = computed(
-  () => startupErrorMessage.value ?? sessionViewState.errorMessage.value,
+  () => startupErrorMessage.value ?? sessionViewState.sessionErrorMessage.value,
 );
 // These two regions stay mounted from the first render, so asynchronous
 // session and error transitions are announced without moving keyboard focus

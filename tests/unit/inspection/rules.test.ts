@@ -168,11 +168,10 @@ describe('the bounded companion census', () => {
       const file = publication.files.find((one) => one.sourceRelativePath === companion);
       expect(file, `companion not published: ${companion}`).toBeDefined();
       // Published, but not recognized: it has no kind and no inventory of its
-      // own, which is what "the census admits nothing" now means. A binary
-      // companion carries no `recognitionIds` field at all — its published
-      // shape has no source text to recognize — so the assertion is that it
-      // holds no recognition either way rather than that the field is empty.
-      expect(file && 'recognitionIds' in file ? file.recognitionIds : []).toEqual([]);
+      // own, which is what "the census admits nothing" now means. A file does
+      // not list its recognitions, so what proves it holds none is that no
+      // published recognition names it.
+      expect(publication.recognitions.filter((one) => one.fileId === file?.fileId)).toEqual([]);
     }
   });
 });

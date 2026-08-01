@@ -1,14 +1,17 @@
-// Vitest configuration with distinct named projects. The dedicated security
-// project owns exactly `tests/security/**/*.test.ts` and every other project
-// excludes that root so each root security test runs exactly once;
-// `tests/integration/security/` stays owned by the integration project.
+// Vitest configuration with distinct named projects. `tests/integration/security/`
+// is owned by the integration project, like every other directory under it: the
+// suites are separated by what they test, not by the word in a path.
+//
+// Every project here has tests. `passWithNoTests` is not set, so a suite that
+// stops matching its own files fails instead of reporting a green run that
+// executed nothing — and a project whose tests are not written yet is absent
+// rather than present and empty: it arrives with the task that writes its first
+// ones (T996 for security, T183 for performance, T1041 for the documentation
+// gate).
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    // Suites arrive family-by-family; an empty project must not fail its
-    // already-configured CI job before its first test lands.
-    passWithNoTests: true,
     coverage: {
       provider: 'v8',
       reportsDirectory: 'coverage',
@@ -17,9 +20,12 @@ export default defineConfig({
       {
         test: {
           name: 'unit',
-          environment: 'happy-dom',
+          // Node, so a server, CLI, or shared module that reaches for `window`
+          // or `document` fails here instead of passing on a DOM it will not
+          // have in production. The browser tests under `tests/unit/app/`
+          // each declare `@vitest-environment happy-dom` for themselves.
+          environment: 'node',
           include: ['tests/unit/**/*.test.ts'],
-          exclude: ['tests/security/**'],
         },
       },
       {
@@ -27,7 +33,6 @@ export default defineConfig({
           name: 'contract',
           environment: 'node',
           include: ['tests/contract/**/*.test.ts'],
-          exclude: ['tests/security/**'],
         },
       },
       {
@@ -35,14 +40,6 @@ export default defineConfig({
           name: 'integration',
           environment: 'node',
           include: ['tests/integration/**/*.test.ts'],
-          exclude: ['tests/security/**'],
-        },
-      },
-      {
-        test: {
-          name: 'security',
-          environment: 'node',
-          include: ['tests/security/**/*.test.ts'],
         },
       },
       {
@@ -50,15 +47,6 @@ export default defineConfig({
           name: 'package',
           environment: 'node',
           include: ['tests/package/**/*.test.ts'],
-          exclude: ['tests/security/**'],
-        },
-      },
-      {
-        test: {
-          name: 'performance',
-          environment: 'node',
-          include: ['tests/performance/**/*.test.ts'],
-          exclude: ['tests/security/**'],
         },
       },
       {
@@ -70,7 +58,6 @@ export default defineConfig({
             'tests/contract/**/*.test.ts',
             'tests/integration/**/*.test.ts',
           ],
-          exclude: ['tests/security/**'],
         },
       },
     ],

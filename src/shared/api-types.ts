@@ -360,7 +360,7 @@ interface CustomizationFileBase {
  * classified (FR-024/FR-028).
  */
 export type CustomizationFileDto =
-  /** A readable file with complete authored source and derived graph references. */
+  /** A readable file with complete authored source. */
   | (CustomizationFileBase & {
       /** Readable decode classification; BOM presence is recorded separately. */
       readonly encoding: ReadableFileEncoding;
@@ -370,10 +370,6 @@ export type CustomizationFileDto =
       readonly sourceText: string;
       /** Exact byte count of the one completed read. */
       readonly sizeBytes: number;
-      /** Tool recognitions attached to this file (FR-005, data-model.md § CustomizationFile). */
-      readonly recognitionIds: readonly string[];
-      /** Authored references from this file, never expanded (FR-010). */
-      readonly relationshipIds: readonly string[];
     })
   /** A NUL-containing file with no source text; see FR-025 for when it also carries a Diagnostic. */
   | (CustomizationFileBase & {

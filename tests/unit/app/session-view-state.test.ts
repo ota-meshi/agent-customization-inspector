@@ -162,7 +162,7 @@ describe('session view state — session loss', () => {
     // request needed to fail first.
     state.reportChannelLost(new Error('socket closed'));
     expect(state.view.value).toBe('ended');
-    expect(state.errorMessage.value).toBe('socket closed');
+    expect(state.sessionErrorMessage.value).toBe('socket closed');
     expect(state.snapshot.value).toBeNull();
     state.dispose();
   });
@@ -172,7 +172,7 @@ describe('session view state — session loss', () => {
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
     expect(state.view.value).toBe('ended');
-    expect(state.errorMessage.value).toBe('connection refused');
+    expect(state.sessionErrorMessage.value).toBe('connection refused');
     state.dispose();
   });
 
@@ -231,7 +231,7 @@ describe('session view state — session loss', () => {
     expect(state.view.value).toBe('inspection');
     await state.refresh();
     expect(state.view.value).toBe('inspection');
-    expect(state.errorMessage.value).toBe('handler blew up');
+    expect(state.sessionErrorMessage.value).toBe('handler blew up');
     expect(state.snapshot.value).not.toBeNull();
     state.dispose();
   });
@@ -241,7 +241,7 @@ describe('session view state — session loss', () => {
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
     expect(state.view.value).toBe('ended');
-    expect(state.errorMessage.value).toBe(
+    expect(state.sessionErrorMessage.value).toBe(
       'The local session returned an unsupported rejection. Restart the inspector and reload this page.',
     );
     expect(state.snapshot.value).toBeNull();
@@ -335,8 +335,6 @@ function detailFor(fileId: string): InspectionDataResult<FileDetailDto> {
         hadLeadingBom: false,
         sourceText: `# ${fileId}\n`,
         sizeBytes: 8,
-        recognitionIds: [],
-        relationshipIds: [],
         diagnosticIds: [],
       },
       recognitions: [],
@@ -363,7 +361,7 @@ describe('session view state — companion failures stay confined to the pane', 
     expect(state.skillDetail.value?.file.fileId).toBe('entry-1');
     expect(state.openCompanion.value).toBeNull();
     expect(state.skillDetailState.value).toBe('companion-failed');
-    expect(state.errorMessage.value).toBe('companion chunk lost');
+    expect(state.skillErrorMessage.value).toBe('companion chunk lost');
   });
 
   it('returns the pane to its in-flight state the moment a retry dispatches', async () => {
@@ -387,7 +385,7 @@ describe('session view state — companion failures stay confined to the pane', 
     expect(state.skillDetailState.value).toBe('ready');
     expect(state.openCompanion.value?.file.fileId).toBe('companion-1');
     // A detail success clears the skill-owned error it answers.
-    expect(state.errorMessage.value).toBeNull();
+    expect(state.skillErrorMessage.value).toBeNull();
   });
 
   it('reuses a held companion instead of refetching it', async () => {
@@ -410,6 +408,65 @@ describe('session view state — companion failures stay confined to the pane', 
     expect(state.skillDetailState.value).toBe('ready');
   });
 
+  it('keeps a session failure and a detail failure as separate facts', async () => {
+    // Two different things can be true at once. One retained message could only
+    // hold the newer of them: the detail failure would erase the refresh
+    // failure, and leaving the route would take both — so nothing would be
+    // reporting a session error nobody has resolved.
+    const scripted = channelFrom([
+      sessionResult(bootstrapSnapshot()),
+      new Error('refresh lost the host briefly'),
+      detailFor('entry-1'),
+      new Error('companion chunk lost'),
+      sessionResult(bootstrapSnapshot()),
+    ]);
+    const state = new SessionViewState({ channel: scripted.channel });
+    await state.start();
+
+    await state.refresh();
+    expect(state.sessionErrorMessage.value).toBe('refresh lost the host briefly');
+    expect(state.skillErrorMessage.value).toBeNull();
+
+    // The detail failure arrives while the session failure is unresolved. Each
+    // reaches its own surface: the shell keeps reporting the session's, and the
+    // route now has one of its own to report.
+    await state.openSkill('entry-1', 'entry-1');
+    await state.openSkill('entry-1', 'companion-1');
+    expect(state.sessionErrorMessage.value).toBe('refresh lost the host briefly');
+    expect(state.skillErrorMessage.value).toBe('companion chunk lost');
+
+    // Answering one leaves the other exactly as it was — the assertion that
+    // separates two owned facts from one message with a priority between them.
+    await state.refresh();
+    expect(state.sessionErrorMessage.value).toBeNull();
+    expect(state.skillErrorMessage.value).toBe('companion chunk lost');
+
+    // Leaving the route drops the detail failure, and nothing else changes.
+    state.closeSkill();
+    expect(state.skillErrorMessage.value).toBeNull();
+    expect(state.sessionErrorMessage.value).toBeNull();
+  });
+
+  it('never routes a detail failure into the message the shell reports', async () => {
+    // The shell renders `sessionErrorMessage` in its assertive alert. A detail
+    // request's failure reaching that value would be announced twice — once
+    // there and once by the route that owns it — so it must stay null through a
+    // failure the route is reporting itself.
+    const scripted = channelFrom([
+      sessionResult(bootstrapSnapshot()),
+      detailFor('entry-1'),
+      new Error('companion chunk lost'),
+    ]);
+    const state = new SessionViewState({ channel: scripted.channel });
+    await state.start();
+    await state.openSkill('entry-1', 'entry-1');
+    await state.openSkill('entry-1', 'companion-1');
+
+    expect(state.skillErrorMessage.value).toBe('companion chunk lost');
+    expect(state.sessionErrorMessage.value).toBeNull();
+    expect(state.view.value).toBe('inspection');
+  });
+
   it('drops a skill-owned error with the route and keeps it through a refresh success', async () => {
     const scripted = channelFrom([
       sessionResult(bootstrapSnapshot()),
@@ -421,15 +478,15 @@ describe('session view state — companion failures stay confined to the pane', 
     await state.start();
     await state.openSkill('entry-1', 'entry-1');
     await state.openSkill('entry-1', 'companion-1');
-    expect(state.errorMessage.value).toBe('companion chunk lost');
+    expect(state.skillErrorMessage.value).toBe('companion chunk lost');
 
     // A refresh success answers session-level failures only; the retained
     // message still describes the open detail's own failed request.
     await state.refresh();
-    expect(state.errorMessage.value).toBe('companion chunk lost');
+    expect(state.skillErrorMessage.value).toBe('companion chunk lost');
 
     // Leaving the route takes the detail failure with it.
     state.closeSkill();
-    expect(state.errorMessage.value).toBeNull();
+    expect(state.skillErrorMessage.value).toBeNull();
   });
 });

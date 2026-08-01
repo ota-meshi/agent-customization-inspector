@@ -471,8 +471,7 @@ Returns one active-generation file detail:
 FileDetail
 ├── file — one CustomizationFile, discriminated by encoding:
 │   ├── fileId, sourceId, sourceRelativePath, encoding, diagnosticIds[]
-│   ├── readable text adds hadLeadingBom, sourceText, sizeBytes,
-│   │   recognitionIds[], relationshipIds[] (empty this release; see below)
+│   ├── readable text adds hadLeadingBom, sourceText, sizeBytes
 │   └── binary adds sizeBytes; unknown adds nothing further
 ├── recognitions[]
 │   ├── recognitionId, fileId, tool, parseStatus, diagnosticIds[]
@@ -486,10 +485,11 @@ FileDetail
 ```
 
 This tree is the response shape: a client can rely on exactly these fields and no
-others. There is no `relationships` array of edge records — no shipped recognition can
-produce an edge, so the array would be empty in every response, and it arrives with the
-relationship phases that populate it; the readable file's `relationshipIds` above is the
-same fact as an ID list, present and empty. A provenance likewise carries neither `provenanceId` (nothing
+others. A file carries no list of the recognitions attached to it: each recognition in the
+same response names its own `fileId`, and a second spelling of one fact is a state that can
+disagree with it. There is no `relationships` array of edge records either — no shipped
+recognition can produce an edge, so the array would be empty in every response, and it
+arrives with the relationship phases that populate it. A provenance likewise carries neither `provenanceId` (nothing
 points back at an admission until relationships do), `order` and the derived-seed
 triple `seedFileId`/`seedProvenanceId`/`seedRuleId` (no shipped rule is derived and no
 shipped strategy documents an order; they arrive with the derivation and ordering

@@ -39,7 +39,7 @@
 // boundary, and the files being shown are the viewer's own. What the gate did
 // do was make every file take two interactions to read. The detail route says
 // what it is showing instead.
-import { shallowRef, type InjectionKey } from 'vue';
+import { computed, shallowRef, type InjectionKey } from 'vue';
 import { SessionApiClient, type SessionRpcChannel } from './api-client';
 import { ClientDataPurge } from './client-data';
 import type { FileDetailDto, RejectionCode, SessionSnapshot } from '../../shared/api-types';
@@ -132,8 +132,40 @@ export class SessionViewState {
   /** The adopted snapshot; null in every non-'inspection' view. */
   public readonly snapshot = shallowRef<SessionSnapshot | null>(null);
 
-  /** The real error message of a failed request; null while none is retained. */
-  public readonly errorMessage = shallowRef<string | null>(null);
+  /**
+   * The real error message of a failed session-level request — a refresh, a
+   * rescan command, a lost channel — or null while none is retained. Held
+   * apart from {@link #skillError} because the two describe different things
+   * and can be true at once: one slot would let a companion's failure erase a
+   * refresh failure nobody has resolved, and clearing it with the route would
+   * take both.
+   */
+  readonly #sessionError = shallowRef<string | null>(null);
+
+  /**
+   * The real error message of the open skill's own failed detail request, or
+   * null while none is retained. Cleared with the route that owns it: left
+   * behind it would sit on the inventory with no file context and no retry
+   * control.
+   */
+  readonly #skillError = shallowRef<string | null>(null);
+
+  /**
+   * The session's own failure, shown and announced by the shell.
+   *
+   * One surface owns each kind of error, so no precedence rule is needed and no
+   * failure can be hidden behind another: the shell reports what happened to the
+   * session, and the route that made a detail request reports what happened to
+   * it. A single message with a priority between them meant a detail failure
+   * arriving while a session error stood changed nothing on screen.
+   */
+  public readonly sessionErrorMessage = computed<string | null>(() => this.#sessionError.value);
+
+  /**
+   * The open skill's own failed detail request, shown and announced by the
+   * detail route beside its retry; see {@link sessionErrorMessage}.
+   */
+  public readonly skillErrorMessage = computed<string | null>(() => this.#skillError.value);
 
   /** Where the one explicit rescan command stands; see {@link RescanState}. */
   public readonly rescanState = shallowRef<RescanState>('idle');
@@ -150,8 +182,15 @@ export class SessionViewState {
 
   /**
    * The open skill's entry point — the `SKILL.md` whose recognitions say what
-   * the skill is. Non-null exactly in 'ready' and 'companion-failed', where
-   * the entry is what keeps the page standing.
+   * the skill is.
+   *
+   * Set as soon as {@link openSkill} owns it, which is before the page is
+   * 'ready': a direct link to a companion fetches the entry first, and holding
+   * it from that moment is what leaves 'companion-failed' a skill to keep
+   * showing instead of an empty page. The detail route renders its loading state
+   * until 'ready' or 'companion-failed', so an entry set during 'loading' is
+   * state no surface has shown yet. Null in 'idle', in 'stale', and until the
+   * entry answers.
    */
   public readonly skillDetail = shallowRef<FileDetailDto | null>(null);
 
@@ -183,16 +222,6 @@ export class SessionViewState {
    * covers the route.
    */
   #skillRequestVersion = 0;
-
-  /**
-   * Which surface set the retained {@link SessionViewState.errorMessage}:
-   * a session-level operation, or the open skill's detail requests. Kept so
-   * {@link SessionViewState.closeSkill} can drop a detail failure with the
-   * route that owned it — left behind, the message would sit on the inventory
-   * with no file context and no retry control — without erasing an error a
-   * session operation is still reporting.
-   */
-  #errorOwner: 'session' | 'skill' = 'session';
 
   /**
    * Disposers of component-owned holders of the open detail's content — the
@@ -248,7 +277,7 @@ export class SessionViewState {
       // (comparison, editor models, filters) with this same purge rather than
       // extending this callback.
       this.snapshot.value = null;
-      this.errorMessage.value = null;
+      this.#sessionError.value = null;
       this.closeSkill();
       // The rescan command belongs to the purged session too: its request ID
       // is meaningless against a different host session, and leaving it set
@@ -318,11 +347,9 @@ export class SessionViewState {
         }
         this.snapshot.value = outcome.snapshot;
         // A refresh success answers session-level failures only: a retained
-        // skill-owned error still describes the open detail's own failed
-        // request, which this success says nothing about.
-        if (this.#errorOwner === 'session') {
-          this.errorMessage.value = null;
-        }
+        // detail error still describes the open detail's own failed request,
+        // which this success says nothing about.
+        this.#sessionError.value = null;
         this.view.value = 'inspection';
         // A rejection describes a command that is now history. The snapshot
         // just adopted is the state the user asked about, so a stale
@@ -345,8 +372,7 @@ export class SessionViewState {
         if (purged && !outcome.fatal) {
           return;
         }
-        this.#errorOwner = 'session';
-        this.errorMessage.value = outcome.error.message;
+        this.#sessionError.value = outcome.error.message;
         // Only a lost channel or an unsupported protocol ends the session. A
         // handler or delivery failure is this request's error alone, so the
         // committed snapshot the user is reading stays on screen and another
@@ -451,16 +477,14 @@ export class SessionViewState {
         }
         this.rescanState.value = 'idle';
         if (outcome.fatal) {
-          this.#errorOwner = 'session';
-          this.errorMessage.value = outcome.error.message;
+          this.#sessionError.value = outcome.error.message;
           this.view.value = 'ended';
           return;
         }
         // The failure is published immediately — a recovery fetch takes time
         // and a known error must not wait for it (the fetch's own success
         // clears session errors, so it is restated below).
-        this.#errorOwner = 'session';
-        this.errorMessage.value = outcome.error.message;
+        this.#sessionError.value = outcome.error.message;
         // A delivery failure can hide a command the host accepted: the scan
         // may be running or already committed, and a transport failure after
         // an atomic commit leaves it committed — the client refetches through
@@ -477,8 +501,7 @@ export class SessionViewState {
         ) {
           return;
         }
-        this.#errorOwner = 'session';
-        this.errorMessage.value = outcome.error.message;
+        this.#sessionError.value = outcome.error.message;
         return;
       case 'purged':
         // The disposer already cleared the command state along with the view.
@@ -516,12 +539,9 @@ export class SessionViewState {
     this.skillDetail.value = null;
     this.openCompanion.value = null;
     this.skillDetailState.value = 'idle';
-    // A detail failure belongs to the route that requested it. Session-owned
-    // errors survive: they describe the session, not the file the reader just
-    // left.
-    if (this.#errorOwner === 'skill') {
-      this.errorMessage.value = null;
-    }
+    // A detail failure belongs to the route that requested it. A session error
+    // survives: it describes the session, not the file the reader just left.
+    this.#skillError.value = null;
   }
 
   /**
@@ -544,9 +564,7 @@ export class SessionViewState {
     // The new selection owns the page now: a previous file's retained detail
     // error would otherwise sit beside this selection's loading and stale
     // states, describing a file the page no longer shows.
-    if (this.#errorOwner === 'skill') {
-      this.errorMessage.value = null;
-    }
+    this.#skillError.value = null;
     // Same boundary as `refresh`: the client guards its own settlement against
     // a purge, but that guard and the writes below are different microtasks,
     // so the epoch is re-read at each write to make the check and the commit
@@ -615,8 +633,7 @@ export class SessionViewState {
           // is true of the session rather than of this request, so it is the
           // one outcome a no-longer-owning request still reports.
           if (outcome.fatal) {
-            this.#errorOwner = 'session';
-            this.errorMessage.value = outcome.error.message;
+            this.#sessionError.value = outcome.error.message;
             this.view.value = 'ended';
           } else if (owns()) {
             // A companion's own failure fails only the pane: the held entry
@@ -630,8 +647,7 @@ export class SessionViewState {
               this.openCompanion.value = null;
               this.skillDetailState.value = 'idle';
             }
-            this.#errorOwner = 'skill';
-            this.errorMessage.value = outcome.error.message;
+            this.#skillError.value = outcome.error.message;
           }
           return null;
         case 'purged':
@@ -665,11 +681,9 @@ export class SessionViewState {
     }
     this.openCompanion.value = companion;
     this.skillDetailState.value = 'ready';
-    // A detail success answers detail failures only; a session-owned error —
-    // a failed refresh, say — is still true of the session and stays.
-    if (this.#errorOwner === 'skill') {
-      this.errorMessage.value = null;
-    }
+    // A detail success answers detail failures only; a session error — a failed
+    // refresh, say — is still true of the session and stays.
+    this.#skillError.value = null;
   }
 
   /** Adopts the initial snapshot; the same fetch-and-adopt as {@link refresh}. */
@@ -689,8 +703,7 @@ export class SessionViewState {
     // would be wiped by its own purge.
     this.#clientData.purge('channel-failure');
     this.view.value = 'ended';
-    this.#errorOwner = 'session';
-    this.errorMessage.value = error === null ? null : error.message;
+    this.#sessionError.value = error === null ? null : error.message;
   }
 
   /** Abandons every outstanding request. */

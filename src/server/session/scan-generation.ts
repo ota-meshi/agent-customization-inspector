@@ -73,9 +73,9 @@ interface ScanGenerationBase {
   /** The sequence's complete committed inventory. */
   readonly files: readonly CustomizationFileDto[];
   /**
-   * Every recognition attached to a file of this generation. Recognitions are
-   * generation-scoped entities the files reference by ID, so a commit rekeys
-   * them together with the files they belong to.
+   * Every recognition attached to a file of this generation. A recognition names
+   * the file it belongs to; the file carries no list of its recognitions, so the
+   * commit rekeys both sets of identities and rewrites that one direction.
    */
   readonly recognitions: readonly ToolRecognitionDto[];
   /** Diagnostics committed with this generation. */
@@ -130,55 +130,59 @@ export interface ScanCommitInput {
 // Every generation-owned ID — file and recognition alike, including IDs for
 // an unchanged file — is regenerated on commit so no stale client reference
 // can survive: a client holding generation-N IDs must refetch rather than
-// silently read N+1 data through an old handle. File-scoped diagnostics,
-// recognition back-references, and each file's `recognitionIds` are rewritten
-// through the same old-to-new maps so every coherent tuple keeps pointing at
-// the records this commit publishes.
+// silently read N+1 data through an old handle. File-scoped diagnostics and
+// each recognition's `fileId` are rewritten through the one old-to-new file map,
+// so every coherent tuple keeps pointing at the records this commit publishes. A
+// file carries no list of its recognitions: which recognitions are attached to
+// it is what their own `fileId` says, so there is no second spelling to rewrite
+// and none to disagree with.
 function rekeyCommit(input: ScanCommitInput): {
   files: readonly CustomizationFileDto[];
   recognitions: readonly ToolRecognitionDto[];
   diagnostics: readonly SerializedDiagnostic[];
 } {
-  // Assigned per record rather than per distinct incoming ID, so every
-  // committed record has its own fresh identity even if a producer reused a
-  // provisional ID; the lookup maps below are what references resolve through.
-  const assignedFileIds = input.files.map(() => createOpaqueId());
-  const rekeyedFileIds = rekeyMap(
-    input.files.map((file) => file.fileId),
-    assignedFileIds,
-  );
-  const assignedRecognitionIds = input.recognitions.map(() => createOpaqueId());
-  const rekeyedRecognitionIds = rekeyMap(
-    input.recognitions.map((recognition) => recognition.recognitionId),
-    assignedRecognitionIds,
-  );
+  // Each file's committed identity and the pairing that resolves references to
+  // it are produced together, in one pass, because they are one fact: the
+  // identity drawn for this record.
+  //
+  // A repeated provisional ID is rejected rather than resolved. This map is the
+  // only thing that answers "which committed record does this reference name",
+  // and a duplicate key makes that question unanswerable: keeping the last pair
+  // would commit a diagnostic attached to the first file against the second
+  // file's new identity while its own path still named the first. Producers draw
+  // these from `createOpaqueId`, whose 16 crypto-random bytes make a collision an
+  // authoring bug — so it fails here, beside the dangling-reference check below,
+  // instead of being carried into a committed generation.
+  const rekeyedFileIds = new Map<string, string>();
+  const files = input.files.map((file) => {
+    if (rekeyedFileIds.has(file.fileId)) {
+      throw new TypeError(`a commit reused a provisional generation-owned ID: ${file.fileId}`);
+    }
+    const fileId = createOpaqueId();
+    rekeyedFileIds.set(file.fileId, fileId);
+    return { ...file, fileId };
+  });
   // A missing entry means the producer emitted a reference to a record it
   // never published, which is an authoring bug rather than a runtime state:
-  // failing here is better than committing a generation whose IDs dangle.
-  const remap = (map: Map<string, string>, id: string): string => {
-    const next = map.get(id);
+  // failing here is better than committing a generation whose IDs dangle. Only
+  // file IDs are referenced, so this is the only direction needed.
+  const remapFileId = (id: string): string => {
+    const next = rekeyedFileIds.get(id);
     if (next === undefined) {
       throw new TypeError(`a commit referenced an unpublished generation-owned ID: ${id}`);
     }
     return next;
   };
-  const files = input.files.map((file, index) => {
-    const fileId = assignedFileIds[index]!;
-    return 'recognitionIds' in file
-      ? {
-          ...file,
-          fileId,
-          recognitionIds: file.recognitionIds.map((id) => remap(rekeyedRecognitionIds, id)),
-        }
-      : { ...file, fileId };
-  });
-  const recognitions = input.recognitions.map((recognition, index) => ({
+  // A recognition's own identity is assigned where it is written: nothing else
+  // resolves a recognition by its provisional ID, so the assignment needs no
+  // list of its own.
+  const recognitions = input.recognitions.map((recognition) => ({
     ...recognition,
-    recognitionId: assignedRecognitionIds[index]!,
-    fileId: remap(rekeyedFileIds, recognition.fileId),
+    recognitionId: createOpaqueId(),
+    fileId: remapFileId(recognition.fileId),
   }));
   const diagnostics = input.diagnostics.map((diagnostic) => {
-    const fileId = diagnostic.fileId === null ? null : remap(rekeyedFileIds, diagnostic.fileId);
+    const fileId = diagnostic.fileId === null ? null : remapFileId(diagnostic.fileId);
     return fileId === diagnostic.fileId ? diagnostic : { ...diagnostic, fileId };
   });
   return { files, recognitions, diagnostics };
@@ -199,18 +203,6 @@ export function createBootstrapGeneration(now: string): RepositoryScanGeneration
     recognitions: [],
     diagnostics: [],
   };
-}
-
-/**
- * Pairs each provisional ID with the one assigned to it. Both come from
- * `createOpaqueId`, which draws 16 crypto-random bytes, so the provisional IDs
- * of one commit are distinct and the map is total over them.
- */
-function rekeyMap(
-  provisional: readonly string[],
-  assigned: readonly string[],
-): Map<string, string> {
-  return new Map(provisional.map((id, index) => [id, assigned[index]!]));
 }
 
 /** Builds the exact N+1 Repository replacement generation (FR-030). */

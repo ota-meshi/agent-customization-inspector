@@ -88,6 +88,8 @@ const openFileId = computed((): string => {
 const skillDetail = sessionViewState.skillDetail;
 const openCompanion = sessionViewState.openCompanion;
 const detailState = sessionViewState.skillDetailState;
+/** This route's own failed request, which this page reports and announces. */
+const skillError = sessionViewState.skillErrorMessage;
 const snapshot = sessionViewState.snapshot;
 
 /**
@@ -221,21 +223,45 @@ const openFileDiagnostics = computed(() => {
 });
 
 /**
+ * What this route says when its own request failed, or null when none has: the
+ * failing state's statement, then the failure's own message.
+ *
+ * One value, read by both the visible paragraph and the live region, so what a
+ * reader hears is the sentence that is on the screen. Two expressions building
+ * it separately could differ by one edit.
+ */
+const detailFailure = computed<string | null>(() => {
+  const statement =
+    detailState.value === 'companion-failed'
+      ? 'This file could not be loaded.'
+      : skillDetail.value === null && detailState.value === 'idle' && skillError.value !== null
+        ? 'This skill could not be loaded.'
+        : null;
+  if (statement === null) {
+    return null;
+  }
+  return skillError.value === null ? statement : `${statement} ${skillError.value}`;
+});
+
+/**
  * What this page's polite live region announces — the states that change the
  * page without moving keyboard focus, so a reader who cannot see the swap
  * needs them said (WCAG 4.1.3, contracts/accessibility-acceptance.md
  * § 4.1.3): the stale state, a file selection loading while focus stays in
- * the tree, and a companion that failed to load. Each phrase matches the
- * visible copy. An entry failure is announced by the shell's alert region
- * through the retained error message, and ready content is read as focus
- * moves through it, so neither is repeated here.
+ * the tree, a companion that failed to load, and an entry that failed to load.
+ * Each phrase matches the visible copy. Ready content is read as focus moves
+ * through it, so it is not repeated here.
+ *
+ * A detail request's failure is announced here because this route owns it: the
+ * shell reports what happened to the session, and neither surface repeats the
+ * other.
  */
 const detailAnnouncement = computed(() => {
   if (detailState.value === 'stale' || owner.value === null) {
     return 'This link does not name a file in the current scan.';
   }
-  if (detailState.value === 'companion-failed') {
-    return 'This file could not be loaded.';
+  if (detailFailure.value !== null) {
+    return detailFailure.value;
   }
   if (detailState.value === 'loading') {
     return 'Loading this skill…';
@@ -408,10 +434,13 @@ onBeforeUnmount(() => {
     </template>
 
     <!-- A failed detail request: the state fell back to idle with nothing
-         held, and the error itself is reported by the shell. What this page
-         owes the reader is the way to try again without re-finding the link. -->
+         held. This route reports it, because this route made the request — the
+         shell reports what happened to the session, so neither hides or repeats
+         the other. The real message is shown rather than a phrase standing in
+         for it, and the retry beside it is the way back without re-finding the
+         link. -->
     <template v-else-if="skillDetail === null">
-      <p class="aci-error">This skill could not be loaded.</p>
+      <p class="aci-error">{{ detailFailure }}</p>
       <p>
         <button type="button" @click="retryOpen">Try again</button>
       </p>
@@ -474,7 +503,7 @@ onBeforeUnmount(() => {
                describe the skill, and the reader keeps them while retrying the
                one file that did not load. -->
           <template v-if="detailState === 'companion-failed'">
-            <p class="aci-error">This file could not be loaded.</p>
+            <p class="aci-error">{{ detailFailure }}</p>
             <p>
               <button type="button" @click="retryOpen">Try again</button>
             </p>

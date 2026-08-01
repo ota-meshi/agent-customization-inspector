@@ -162,11 +162,14 @@ source DTO、diagnostic、comparison selectionはprocess/browser memoryだけに
 `@vitest/coverage-v8` 4.1.10、Nuxt Test Utils 4.0.3、
 Vue Test Utils 2.4.11、happy-dom 20.10.6、Playwright 1.61.1、
 `@axe-core/playwright` 4.12.1。Fixture駆動のunit、contract、integration、packaging、
-performance、security、browser testとmanual accessibility checkを使用する。`vitest.config.ts`にはunit、contract、
-integration、security、package、performance、coverageのnamed projectを定義する。Security projectはT996のGlobal
-zero-activation testを含む`tests/security/**/*.test.ts`だけをincludeし、その他のprojectはこのrootをexcludeして、
-root security testを正確に1回ずつ実行する。`tests/integration/security/`配下のsecurity testはintegration projectが
-引き続き所有する。Browser release gateは、pinした
+performance、security、browser testとmanual accessibility checkを使用する。`vitest.config.ts`にはsuiteごとのnamed projectを定義し、各projectは自身が所有するdirectoryだけをincludeする。
+どのsuiteに属するかはtestが置かれる場所で決まる。Directoryを所有しない唯一のprojectが`coverage`であり、
+coverage値はunit/contract/integrationのrootをまたいで取るため、それらをまとめて再実行する。Suiteのproject、`package.json`のcommand、CI job、quickstart entryは、そのsuiteの最初のtestと同じ変更で
+まとめて追加する: T996が`tests/security/`を、T183が`tests/performance/`を、T1041が
+`tests/documentation/`を持ち込む。`passWithNoTests`は設定しないため、自身のfileに1つもmatchしない
+projectは、何も実行していないのにgreenを報告せずfailする。だからsuiteはtestを持つまでどこにも
+宣言しない。`tests/integration/security/`配下のsecurity testは、その下の
+他の全directoryと同様にintegration projectが所有する。Browser release gateは、pinした
 Playwright versionがinstallする正確なChromium、Firefox、WebKit revisionでprimary-workflowとaccessibilityの
 完全なsuiteを、startup helperがそのrevisionを選ぶという主張ではなく再現可能なautomated certification baselineとして実行する。
 日英の`contracts/accessibility-acceptance.md`と`contracts/accessibility-acceptance.ja.md`のmatrixはWCAG 2.2 Level A/AAの全55 criterionをinventoryし、各rowについて

@@ -292,7 +292,12 @@ describe('recognition parse failure keeps the source displayed (FR-028)', () => 
       // The complete source stays displayed and comparison-eligible; only
       // the failed recognition's derived data is omitted.
       expect(affected.sourceText).toBe('root agents\n');
-      expect(affected.recognitionIds).toEqual(['rec-failed', 'rec-parsed']);
+      // Which recognitions belong to the file is what their own `fileId` says.
+      expect(
+        publication.recognitions
+          .filter((recognition) => recognition.fileId === affected.fileId)
+          .map((recognition) => recognition.recognitionId),
+      ).toEqual(['rec-failed', 'rec-parsed']);
       expect(affected.diagnosticIds).toHaveLength(1);
       const diagnostic = publication.diagnostics.find(
         (entry) => entry.diagnosticId === affected.diagnosticIds[0],
@@ -392,8 +397,6 @@ describe('recognition parse failure keeps the source displayed (FR-028)', () => 
           hadLeadingBom: false,
           sourceText: '# complete authored source\n',
           sizeBytes: 27,
-          recognitionIds: [],
-          relationshipIds: [],
           diagnosticIds: [parseDiagnostic.diagnosticId],
         },
       ],
@@ -534,19 +537,53 @@ describe('external mutation during a scan is not a product mutation', () => {
       rmSync(root, { recursive: true, force: true });
     }
   });
+});
 
-  it('aborts the attempt when a read exhausts descriptors instead of blaming the file', async () => {
-    // The Constitution requires a recoverable environment or resource failure
-    // to abort the publication attempt and publish nothing. Folding `EMFILE`
-    // into that file's outcome would report the machine running out of
-    // descriptors as the user's file being unreadable.
-    const root = mkdtempSync(join(tmpdir(), 'inspector-emfile-'));
+describe('a resource failure aborts the attempt rather than blaming a file', () => {
+  // The Constitution requires a recoverable environment or resource failure to
+  // abort the publication attempt and publish nothing, and the rule holds at
+  // every call site rather than only at the one that reads bytes. Folding
+  // `EMFILE` into a file's own outcome would report the machine running out of
+  // descriptors as the user's file being unreadable, and classifying it as
+  // `root-unreadable` would send them to fix a root that is fine.
+  it('aborts the attempt at the enumerate, resolve, and read calls a walk makes', async () => {
+    // The three calls below are the ones a repository-program walk makes:
+    // enumerate a directory, resolve the root, read a candidate.
+    const root = mkdtempSync(join(tmpdir(), 'inspector-resource-'));
+    try {
+      writeFileSync(join(root, 'AGENTS.md'), 'x\n');
+      // The calls this plan actually makes: enumerate, resolve the root, read
+      // a candidate. `lstat` belongs to the exact-target probe, which a
+      // repository-program walk never reaches.
+      for (const call of ['readdir', 'realpath', 'readFile'] as const) {
+        const failure = Object.assign(new Error('out of descriptors'), { code: 'EMFILE' });
+        vi.mocked(fsIo[call]).mockRejectedValueOnce(failure as never);
+        try {
+          await expect(runTraversalScan({ root, plans: [AGENTS_PLAN] })).rejects.toThrow(failure);
+        } finally {
+          vi.mocked(fsIo[call]).mockReset();
+        }
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('a permission failure is confined to the file it names', () => {
+  it("keeps a permission failure as that file's own outcome", async () => {
+    const root = mkdtempSync(join(tmpdir(), 'inspector-eacces-'));
     try {
       writeFileSync(join(root, 'AGENTS.md'), 'root\n');
-      const failure = Object.assign(new Error('too many open files'), { code: 'EMFILE' });
-      vi.mocked(fsIo.readFile).mockRejectedValueOnce(failure);
+      vi.mocked(fsIo.readFile).mockRejectedValueOnce(
+        Object.assign(new Error('permission denied'), { code: 'EACCES' }),
+      );
       try {
-        await expect(runTraversalScan({ root, plans: [AGENTS_PLAN] })).rejects.toThrow(failure);
+        const result = await runTraversalScan({ root, plans: [AGENTS_PLAN] });
+        if (result.kind !== 'scanned') {
+          throw new Error('expected a scanned outcome');
+        }
+        expect(result.files[0]?.outcome.kind).toBe('unreadable');
       } finally {
         vi.mocked(fsIo.readFile).mockReset();
       }
@@ -554,7 +591,9 @@ describe('external mutation during a scan is not a product mutation', () => {
       rmSync(root, { recursive: true, force: true });
     }
   });
+});
 
+describe('scan progress counters', () => {
   it('reports discovered candidates while it is still enumerating', async () => {
     // `candidateFiles` is "discovered so far" (data-model.md § ScanProgress).
     // Reporting a constant here would publish a counter that never moves until
@@ -582,6 +621,98 @@ describe('external mutation during a scan is not a product mutation', () => {
     }
   });
 
+  it('never publishes a counter lower than the one before it', async () => {
+    // The counters are monotonically non-decreasing within one attempt
+    // (data-model.md § ScanProgress). Reading starts after enumeration
+    // finished, so a reading-phase figure counted from what has been read so
+    // far would step back from what enumeration had already published — a
+    // progress line going 3 → 1 in front of the reader.
+    const root = mkdtempSync(join(tmpdir(), 'inspector-monotonic-'));
+    try {
+      mkdirSync(join(root, 'a', 'b'), { recursive: true });
+      for (const path of ['AGENTS.md', 'a/AGENTS.md', 'a/b/AGENTS.md']) {
+        writeFileSync(join(root, path), 'x\n');
+      }
+      const updates: { phase: string; candidateFiles: number; readBytes: number }[] = [];
+      await runTraversalScan({
+        root,
+        plans: [AGENTS_PLAN],
+        onProgress: (update) => {
+          updates.push({
+            phase: update.phase,
+            candidateFiles: update.candidateFiles,
+            readBytes: update.readBytes,
+          });
+        },
+      });
+      // Both phases reported, so the boundary this guards is actually crossed.
+      expect(updates.some((update) => update.phase === 'enumerating')).toBe(true);
+      expect(updates.some((update) => update.phase === 'reading')).toBe(true);
+      for (let index = 1; index < updates.length; index += 1) {
+        const previous = updates[index - 1]!;
+        const current = updates[index]!;
+        expect(
+          current.candidateFiles,
+          `candidateFiles fell at update ${index} (${previous.phase} → ${current.phase})`,
+        ).toBeGreaterThanOrEqual(previous.candidateFiles);
+        expect(current.readBytes).toBeGreaterThanOrEqual(previous.readBytes);
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('counts and reports a target only the selection strategy reached', async () => {
+    // An exact-selection plan never walks: the candidate is reached by naming
+    // it, so nothing adds it to the walk's discoveries. Counting only those
+    // would publish `candidateFiles: 0` for an attempt that read a file, and
+    // reporting only from the walk's loop would publish no reading update at
+    // all — the progress line would stay empty while work happened.
+    const root = mkdtempSync(join(tmpdir(), 'inspector-selection-'));
+    try {
+      writeFileSync(join(root, 'AGENTS.override.md'), 'override\n');
+      writeFileSync(join(root, 'AGENTS.md'), 'fallback\n');
+      const updates: { phase: string; candidateFiles: number; readBytes: number }[] = [];
+      const result = await runTraversalScan({
+        root,
+        plans: [
+          TraversalPlan.fromPrograms(
+            { kind: 'global', tool: 'codex' },
+            [['AGENTS.override.md'], ['AGENTS.md']],
+            'codex-global-first-non-empty',
+          ),
+        ],
+        onProgress: (update) => {
+          updates.push({
+            phase: update.phase,
+            candidateFiles: update.candidateFiles,
+            readBytes: update.readBytes,
+          });
+        },
+      });
+      if (result.kind !== 'scanned') {
+        throw new Error('expected a scanned result');
+      }
+      // The non-empty override wins, and it is the one file the attempt read.
+      expect(result.files.map((file) => file.publicPath)).toEqual(['AGENTS.override.md']);
+      expect(result.candidateFiles).toBe(1);
+
+      const reading = updates.filter((update) => update.phase === 'reading');
+      expect(reading.length).toBeGreaterThan(0);
+      expect(Math.max(...reading.map((update) => update.candidateFiles))).toBe(1);
+      expect(Math.max(...reading.map((update) => update.readBytes))).toBeGreaterThan(0);
+      for (let index = 1; index < updates.length; index += 1) {
+        expect(updates[index]!.candidateFiles).toBeGreaterThanOrEqual(
+          updates[index - 1]!.candidateFiles,
+        );
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('root handling', () => {
   it('fails the Source when the selected root is a symbolic-link cycle', async () => {
     // A root that cannot be enumerated as a directory is the FR-002
     // `root-unreadable` outcome, whatever errno says so. `ELOOP` reaching the
@@ -626,52 +757,6 @@ describe('external mutation during a scan is not a product mutation', () => {
       ]);
     } finally {
       rmSync(parent, { recursive: true, force: true });
-    }
-  });
-
-  it('aborts the attempt when any filesystem call exhausts a resource', async () => {
-    // The rule is the same at every call site, not only at the one that reads
-    // bytes: `readdir` running out of descriptors is the machine, not the
-    // repository, and classifying it as `root-unreadable` would send the user
-    // to fix a root that is fine.
-    const root = mkdtempSync(join(tmpdir(), 'inspector-resource-'));
-    try {
-      writeFileSync(join(root, 'AGENTS.md'), 'x\n');
-      // The calls this plan actually makes: enumerate, resolve the root, read
-      // a candidate. `lstat` belongs to the exact-target probe, which a
-      // repository-program walk never reaches.
-      for (const call of ['readdir', 'realpath', 'readFile'] as const) {
-        const failure = Object.assign(new Error('out of descriptors'), { code: 'EMFILE' });
-        vi.mocked(fsIo[call]).mockRejectedValueOnce(failure as never);
-        try {
-          await expect(runTraversalScan({ root, plans: [AGENTS_PLAN] })).rejects.toThrow(failure);
-        } finally {
-          vi.mocked(fsIo[call]).mockReset();
-        }
-      }
-    } finally {
-      rmSync(root, { recursive: true, force: true });
-    }
-  });
-
-  it("keeps a permission failure as that file's own outcome", async () => {
-    const root = mkdtempSync(join(tmpdir(), 'inspector-eacces-'));
-    try {
-      writeFileSync(join(root, 'AGENTS.md'), 'root\n');
-      vi.mocked(fsIo.readFile).mockRejectedValueOnce(
-        Object.assign(new Error('permission denied'), { code: 'EACCES' }),
-      );
-      try {
-        const result = await runTraversalScan({ root, plans: [AGENTS_PLAN] });
-        if (result.kind !== 'scanned') {
-          throw new Error('expected a scanned outcome');
-        }
-        expect(result.files[0]?.outcome.kind).toBe('unreadable');
-      } finally {
-        vi.mocked(fsIo.readFile).mockReset();
-      }
-    } finally {
-      rmSync(root, { recursive: true, force: true });
     }
   });
 });

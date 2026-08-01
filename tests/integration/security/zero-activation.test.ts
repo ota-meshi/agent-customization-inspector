@@ -415,10 +415,12 @@ describe('parsing, extraction, and detail activate nothing (T085)', () => {
         join(root, '.agents/skills/greet/scripts/run.sh'),
       ].toSorted(),
     );
-    // Published as ordinary files that no rule admitted and nothing recognized.
+    // Published as ordinary files that no rule admitted and nothing recognized:
+    // no published recognition names them.
     for (const companion of details.companionFiles) {
       const file = publication.files.find((one) => one.sourceRelativePath === companion);
-      expect(file && 'recognitionIds' in file && file.recognitionIds).toEqual([]);
+      expect(file).toBeDefined();
+      expect(publication.recognitions.filter((one) => one.fileId === file?.fileId)).toEqual([]);
     }
   });
 
