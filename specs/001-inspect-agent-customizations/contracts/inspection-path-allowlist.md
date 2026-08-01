@@ -400,8 +400,8 @@ remote sources, and MCP-server-provided instructions never authorize a read.
 
 Read authority for a bounded-derived candidate exists only through a closed, versioned
 `DerivationProgram` interpreted by the inspection module. Each program pins the exact
-static seed rule, declaration field (including a closed matched-path sentinel where
-applicable), and seed kind; chooses its base only from `seed-matched-path-parent` or
+static seed rule, declaration field, and seed kind; chooses its base only from
+`seed-matched-path-parent` or
 `source-root`; names one closed extraction variant; uses only fixed literal segment tokens
 and typed authored-segment tokens from a closed union, with each authored token producing
 exactly one validated segment rather than injecting an unparsed path; declares a fixed
@@ -429,10 +429,13 @@ static selector scope is never widened to cover a derived target, and a derived 
 never becomes the seed of another derivation.
 
 The registry contains data only: it cannot supply a callback, function pointer, arbitrary
-`path.join` recipe, free-form path expression, glob, or regular expression. The exact
-closed schema and the initial derived-rule mappings are enumerated by the
-[data-model contract](../data-model.md); adding a variant or mapping is a contract-versioned
-change, not an extension point at runtime.
+`path.join` recipe, free-form path expression, glob, or regular expression. The closed
+schema is the one this section states, with its record field defined by the
+[data-model contract](../data-model.md)'s `InspectionRule.derivation` row, and the initial
+derived-rule mappings are enumerated by the vendor contracts' derived-rule tables
+([GitHub Copilot](vendors/github-copilot.md), [Claude Code](vendors/claude-code.md),
+[OpenAI Codex](vendors/openai-codex.md)); adding a variant or mapping is a
+contract-versioned change, not an extension point at runtime.
 
 A match proves only that an authored artifact is inside Inspector inventory scope. It does
 not prove that a vendor installs, enables, trusts, selects, loads, merges, or follows it.

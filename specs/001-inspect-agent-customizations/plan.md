@@ -1709,8 +1709,12 @@ configuration.
   `utf-8-replaced` string participates unchanged, so any `U+FFFD` makes it non-empty unless
   other non-whitespace text already does. A binary or unreadable override ends the branch
   with its file-scoped diagnostic and no fallback (FR-035).
-- Static matchers and the exact five initial mappings of the closed `DerivationProgram`
-  union are the only read authorities. The derivation schema pins a static seed
+- Static matchers and the exact four initial mappings of the closed `DerivationProgram`
+  union are the only candidate read authorities. The one read they do not cover is a
+  census-listed companion's, which no admission authorizes and no path outside an admitted
+  candidate's own directory can reach (contracts/inspection-path-allowlist.md § Bounded
+  companion census) — which is how a skill's sibling `agents/openai.yaml` is published
+  (contracts/vendors/openai-codex.md § Derived Repository rules). The derivation schema pins a static seed
   provenance/rule/kind, closed declaration field/syntax, seed-relative or source-root base,
   fixed placement/suffix, and deterministic target construction; callback, arbitrary path join, free-form expression,
   glob, and recursive derivation are unrepresentable. Derived segments pass the host-independent closed spelling grammar

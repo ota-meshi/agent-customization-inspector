@@ -68,12 +68,16 @@ export interface InspectionRule {
   readonly matcher: StructuredInspectorMatcher | null;
   /**
    * The closed derived-target mapping of a `bounded-derived-candidate`.
-   * Always null in this release: the first derived rule
-   * (`codex.derived.skill-metadata`) ships with the Codex skill-metadata
-   * phase, and its closed `DerivationProgram` type is authored there rather
-   * than declared speculatively here — an unpopulated shape could not be
-   * validated against a real mapping (AGENTS.md Implementation simplicity
-   * policy).
+   * Always null in this release: the contract enumerates four
+   * `DerivationProgram` mappings — the three vendor local-plugin-manifest
+   * rules and the Codex fallback basename — and each arrives with the
+   * inventory phase that needs it, with the closed `DerivationProgram` type
+   * authored alongside the first of them rather than declared speculatively
+   * here, because an unpopulated shape could not be validated against a real
+   * mapping (AGENTS.md Implementation simplicity policy). A skill's sibling
+   * `agents/openai.yaml` is deliberately not among the mappings: the owning
+   * skill's bounded companion census already publishes it
+   * (contracts/vendors/openai-codex.md § Derived Repository rules).
    */
   readonly derivation: null;
   /**

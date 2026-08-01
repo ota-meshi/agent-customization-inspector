@@ -750,7 +750,7 @@ release dataである。
 | `kind` | customization-kind enumまたはnull | Kind横断relationship/exclusionはnull |
 | `sourceKinds` | source-kind enum[] | Contractに明示されたRepository、Global、または両方 |
 | `matcher` | `StructuredInspectorMatcher`またはnull | Static ruleだけ。Vendor locator、ambient path、executable glob、untyped selector stringではない |
-| `derivation` | closed derived-target mappingまたはnull | `bounded-derived-candidate` ruleだけに存在する。独立してadmit済みのseed fileのallowlist済み宣言occurrence（またはseedのmatched path）と固定literal registry suffixから、derived target pathを1つresolveする固定registry mapping。Callback、自由形式path expression、glob、正規表現、再帰derivationは持たない |
+| `derivation` | closed derived-target mappingまたはnull | `bounded-derived-candidate` ruleだけに存在する。独立してadmit済みのseed fileのallowlist済み宣言occurrenceと固定literal registry suffixから、derived target pathを1つresolveする固定registry mapping。Callback、自由形式path expression、glob、正規表現、再帰derivationは持たない |
 | `policyRefs` | sort済みspecification ID[] | Surfaceを許可または意図的に除外するFR/QR clause。保守buildではnon-emptyで、packaged CLIではempty。どのDTOも運ばないreviewer向けtraceabilityだからである |
 | `conditionKeys` | condition-key enum[] | 適用可能性判定前に必要なruntime fact |
 | `precedenceGroup` | stable stringまたはnull | 文書化されたselection/order semanticsを持つruleだけを結ぶ |

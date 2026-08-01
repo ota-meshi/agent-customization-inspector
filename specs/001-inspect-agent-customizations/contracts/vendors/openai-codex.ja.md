@@ -88,7 +88,10 @@ indexが所有する。`documented` assessmentであっても、Inspectorのclos
 |---|---|---|---|---|---|---|---|---|
 | `codex.derived.local-plugin-manifest` | `bounded-derived-candidate` | Static受理済みCodex marketplace local entry | `<catalog-root>/<validated-local-source>/.codex-plugin/plugin.json`。Sourceは文書化済みlocal formを使い`./`で始まりcatalog root内に留まり、そのexact manifest pathを導出 | `codex.behavior.plugin.manifest`, `codex.behavior.repo.marketplace` | FR-003、FR-004、FR-005、FR-024、QR-001、QR-004、QR-005 | `codex.plugins.activation` | `documented` | `openai.codex.plugins` |
 | `codex.derived.fallback-basename` | `bounded-derived-candidate` | Static受理済みproject `.codex/config.toml` | Ancestry-comparable directory内の設定済みliteral instruction fallback basename。Excluded higher layerがoverrideし得るためruntime selectionはconditionalで、利用可能なcapacityはNode.jsと実行環境から継承する | `codex.behavior.repo.config`, `codex.behavior.repo.instructions` | FR-003、FR-004、FR-005、FR-024、QR-001、QR-004、QR-005 | `codex.config.precedence`, `codex.instructions.layering` | `documented` | `openai.codex.agents-md`, `openai.codex.config-basic` |
-| `codex.derived.skill-metadata` | `bounded-derived-candidate` | Static受理済みskill `SKILL.md` | Sibling `agents/openai.yaml`。そのnamed skill-local metadata pathだけを導出し、orphan fileは受理しない | `codex.behavior.repo.skills` | FR-003、FR-004、FR-005、FR-024、QR-001、QR-004、QR-005 | `codex.skills.discovery` | `documented` | `openai.codex.skills` |
+Skillのsibling `agents/openai.yaml`は意図的にderived candidateではない。所有元skillのbounded
+companion censusが、skillのdirectoryが持つfileの一つとして既に読み取り・公開しており、detail
+surfaceがそこでそれを列挙して開くため、derivationはinventoryが既に持つfileを再admissionする
+ことになる。
 
 Plugin skill、MCP file、app mapping、hook file、asset、script、remote sourceはこのreleaseではrelationship-onlyである。
 Local marketplace entryからこれらcomponentへ再帰展開してはならない。
@@ -196,7 +199,12 @@ connection、execution、import、installation、activationのauthorityを一切
 | `marketplace` | `marketplace.name`<br>`marketplace.interface.display-name`<br>`marketplace.plugin.name`<br>`marketplace.plugin.source`<br>`marketplace.plugin.source.type`<br>`marketplace.plugin.source.url`<br>`marketplace.plugin.source.ref`<br>`marketplace.plugin.source.sha`<br>`marketplace.plugin.source.package`<br>`marketplace.plugin.source.version`<br>`marketplace.plugin.source.registry`<br>`marketplace.plugin.policy.installation`<br>`marketplace.plugin.policy.authentication`<br>`marketplace.plugin.category` | `plugin-source`<br>`runtime-reference` | 受理済みRepository-root marketplace fileの正確なcatalog/plugin-entry leaf/item occurrence。`marketplace.plugin.source`だけがclosedなlocal-manifest derivationをseedできる |
 | `skill metadata` | `codex.skill-metadata.interface.display-name`<br>`codex.skill-metadata.interface.short-description`<br>`codex.skill-metadata.interface.icon-small`<br>`codex.skill-metadata.interface.icon-large`<br>`codex.skill-metadata.interface.brand-color`<br>`codex.skill-metadata.interface.default-prompt`<br>`codex.skill-metadata.policy.allow-implicit-invocation`<br>`codex.skill-metadata.dependency.tool.type`<br>`codex.skill-metadata.dependency.tool.value`<br>`codex.skill-metadata.dependency.tool.description`<br>`codex.skill-metadata.dependency.tool.transport`<br>`codex.skill-metadata.dependency.tool.url` | `skill-resource`<br>`runtime-reference` | Derived `agents/openai.yaml`の正確なsupported YAML leaf/item occurrence。Seed provenanceはtyped stateであり、このfileはowner `SKILL.md`のmetadata identityを継承しない |
 
-Initial releaseのCodex recognitionは、sharedな`prompt/command`または`output style` kindを使用しない。Typed layer、
+Initial releaseのCodex recognitionは、sharedな`prompt/command`または`output style` kindを使用しない。
+Initial releaseのrecognitionは`skill metadata` kindも使用しない: sibling `agents/openai.yaml`は
+candidateとしてadmissionされず、所有元skillのcensus companionとして公開されるため
+（§ Derived Repository rule）、上の`skill metadata` rowは消費者を持たないfrozen・digest記録済みの
+design inputである。そのrowの消費または削除は、official-source contractの
+stop-and-regenerate ruleに従うdigest記録済みの変更である。Typed layer、
 path-derived scope、selection、precedence、trust、default、applicability factはauthored metadataではないため、追加field IDにはしない。
 
 ## 既知の不確実性と必須condition fact

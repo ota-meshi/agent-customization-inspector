@@ -1151,7 +1151,12 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   `utf-8-replaced` stringはそのまま参加するため、別のnon-whitespace textによってすでにnon-emptyである場合を除けば、
   `U+FFFD`が1つでもあればnon-emptyになる。Binaryまたはunreadableなoverrideは、そのfile別diagnosticとともに
   branchを終了し、fallbackしない（FR-035）。
-- Static matcherとclosed `DerivationProgram` unionのexact initial 5 mappingだけをread authorityとする。Derivation schemaは
+- Static matcherとclosed `DerivationProgram` unionのexact initial 4 mappingだけをcandidate read authorityとする。
+  これらがカバーしない唯一のreadはcensus-listed companionのreadであり、それはどのadmissionも認可せず、
+  admit済みcandidate自身のdirectory外のpathからは到達できない
+  （contracts/inspection-path-allowlist.ja.md § Bounded companion census）— skillのsibling
+  `agents/openai.yaml`はこの経路で公開される
+  （contracts/vendors/openai-codex.ja.md § Derived Repository rule）。Derivation schemaは
   static seed provenance/rule/kind、closed declaration field/syntax、seed-relativeまたはsource-root base、固定placement/
   suffix、deterministic target constructionをpinし、callback、arbitrary path join、free-form expression、glob、recursive derivationを表現不能にする。
   Derived segmentは

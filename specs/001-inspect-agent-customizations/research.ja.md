@@ -356,11 +356,13 @@ file-scoped diagnostic、cross-source comparisonではSource-relative Pathを使
 Preview labelはowning Sourceが存在する前にoriginを持ち、absoluteまたはinvalidなlexical rootを表し得る。
 
 Bounded derivationは任意のreference追跡ではなく、closedかつdeterministicなtarget constructionを持つtyped single-edge provenance graphの
-ままとする。Closed `DerivationProgram` unionのinitial mappingは、3 vendorのlocal-marketplace manifest rule、Codex
-fallback basename placement、Codex skill metadataのexact 5件とする。各mappingはexact static seed provenance/rule/kind、
+ままとする。Closed `DerivationProgram` unionのinitial mappingは、3 vendorのlocal-marketplace manifest ruleと、Codex
+fallback basename placementのexact 4件とする。Skillのsibling `agents/openai.yaml`はこれに含まれない:
+それはderivationではなく、所有元skillのbounded companion censusを通じて公開される
+（contracts/vendors/openai-codex.ja.md § Derived Repository rule）。各mappingはexact static seed provenance/rule/kind、
 declaration field/syntax、base/placement、fixed suffix alternativeをpinし、callback、arbitrary path join、free-form
 expression、glob、recursive derivationを表現不能にする。Derived provenanceは別edgeをseedできず、同じfileの独立static provenanceはeligibleな
-ままとする。安全なCodex fallback basename、Codex skill UI metadata、検証済みlocal marketplace root配下の
+ままとする。安全なCodex fallback basenameと、検証済みlocal marketplace root配下の
 vendor-specific plugin manifestだけを受理する。Agent memory、任意role-config target、plugin component、
 import、その他任意component/config path、skill resource、script、asset、remote source、MCP server提供instructionは
 relationshipまたはexcludedのままとする。

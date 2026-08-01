@@ -301,9 +301,12 @@ source checkでnetworkを使えるのはこのcommandだけとする。
 5. Repository、文書化済みUser、consent済みGlobalの表を独立して検証する。FR-015からFR-018が明示しない限り、
    文書化済みUser locationはGlobal read authorityにならず、runtime compositionはInspectorのRepository/Global
    source graphをmergeしない。
-6. Closed `DerivationProgram`のinitial mappingは正確に5件でruntime extension pointを持たない。
+6. Closed `DerivationProgram`のinitial mappingは正確に4件でruntime extension pointを持たない。
    `copilot.derived.local-plugin-manifest`、`claude.derived.local-plugin-manifest`、
-   `codex.derived.local-plugin-manifest`、`codex.derived.fallback-basename`、`codex.derived.skill-metadata`とする。
+   `codex.derived.local-plugin-manifest`、`codex.derived.fallback-basename`とする。
+   Skillのsibling `agents/openai.yaml`はこれに含まれない: それはderivationではなく、所有元skillの
+   bounded companion censusを通じて公開される（contracts/vendors/openai-codex.ja.md § Derived
+   Repository rule）。
    各mappingはexact static seed rule/kind、closed declaration syntax、fixed base/placement/suffixを持つtyped
    edge 1本で、callback、arbitrary join、expression、glob、recursive derivationを表現不能にする。Programはtarget、
    declaration、name、ancestryの数値上限を定義せず、利用可能なcapacityはNode.jsと実行環境から継承する。Bounded-derived

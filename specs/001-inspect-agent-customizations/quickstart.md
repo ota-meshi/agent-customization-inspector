@@ -364,10 +364,12 @@ Verify:
    A documented User location never becomes Global read authority unless FR-015 through
    FR-018 name it, and runtime composition never merges the Inspector's Repository and
    Global source graphs.
-6. The closed `DerivationProgram` has exactly five initial mappings and no runtime
+6. The closed `DerivationProgram` has exactly four initial mappings and no runtime
    extension point: `copilot.derived.local-plugin-manifest`,
-   `claude.derived.local-plugin-manifest`, `codex.derived.local-plugin-manifest`,
-   `codex.derived.fallback-basename`, and `codex.derived.skill-metadata`. Each is one typed
+   `claude.derived.local-plugin-manifest`, `codex.derived.local-plugin-manifest`, and
+   `codex.derived.fallback-basename`. A skill's sibling `agents/openai.yaml` is not among
+   them: it is published through the owning skill's bounded companion census, not through a
+   derivation (contracts/vendors/openai-codex.md § Derived Repository rules). Each is one typed
    edge with an exact static seed rule/kind, closed declaration syntax, and fixed base/
    placement/suffix; callbacks, arbitrary joins, expressions, globs,
    and recursive derivation are unrepresentable. The program defines no numeric target,

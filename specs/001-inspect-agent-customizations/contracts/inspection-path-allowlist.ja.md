@@ -333,8 +333,8 @@ derivationをseedできない。Relationship-onlyおよびexcluded rule、vendor
 component reference、remote source、MCP-server-provided instructionはreadを認可しない。
 
 Bounded-derived candidateのread authorityは、inspection moduleがinterpretするclosedかつversionedな
-`DerivationProgram`だけから生じる。各programは正確なstatic seed rule、declaration field（該当する場合はclosedな
-matched-path sentinelを含む）、seed kindを固定する。Baseは`seed-matched-path-parent`または`source-root`だけから選び、
+`DerivationProgram`だけから生じる。各programは正確なstatic seed rule、declaration field、
+seed kindを固定する。Baseは`seed-matched-path-parent`または`source-root`だけから選び、
 1つのclosed extraction variantを指定する。Segment constructionにはfixed literal segment tokenと、そのvariantが
 許可するclosed unionのtyped authored-segment tokenだけを使う。各authored tokenはunparsed pathを注入せず、
 validated済みsegmentを正確に1つ生成する。Programはfixed suffixを持ち、許可する全output formを列挙する。
@@ -357,8 +357,11 @@ Static traversalから独立してadmit済みのpathはderived provenanceを追�
 scopeをderived targetへwidenせず、derived resultが別のderivationのseedになることもない。
 
 Registryはdataだけを持つ。Callback、function pointer、任意の`path.join` recipe、free-form path expression、glob、
-regular expressionを供給できない。正確なclosed schemaと初期derived-rule mappingは
-[data-model contract](../data-model.ja.md)で列挙する。
+regular expressionを供給できない。Closed schemaは本sectionが述べるものであり、そのrecord fieldは
+[data-model contract](../data-model.ja.md)の`InspectionRule.derivation` rowが定義する。初期derived-rule mappingは
+vendor contractのderived-rule table
+（[GitHub Copilot](vendors/github-copilot.ja.md)、[Claude Code](vendors/claude-code.ja.md)、
+[OpenAI Codex](vendors/openai-codex.ja.md)）が列挙する。
 Variantまたはmappingの追加はcontract-versionedな変更であり、
 runtime extension pointではない。
 

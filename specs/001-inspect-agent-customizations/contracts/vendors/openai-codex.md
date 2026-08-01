@@ -98,7 +98,11 @@ Inspector's closed derivation into Codex product behavior.
 |---|---|---|---|---|---|---|---|---|
 | `codex.derived.local-plugin-manifest` | `bounded-derived-candidate` | A static accepted Codex marketplace local entry | `<catalog-root>/<validated-local-source>/.codex-plugin/plugin.json`; the source must use a documented local form, begin with `./`, remain inside the catalog root, and derive that exact manifest path | `codex.behavior.plugin.manifest`, `codex.behavior.repo.marketplace` | FR-003, FR-004, FR-005, FR-024, QR-001, QR-004, QR-005 | `codex.plugins.activation` | `documented` | `openai.codex.plugins` |
 | `codex.derived.fallback-basename` | `bounded-derived-candidate` | A static accepted project `.codex/config.toml` | A configured literal instruction fallback basename in an ancestry-comparable directory; runtime selection remains conditional because excluded higher layers may override it, and available capacity comes from Node.js and the execution environment | `codex.behavior.repo.config`, `codex.behavior.repo.instructions` | FR-003, FR-004, FR-005, FR-024, QR-001, QR-004, QR-005 | `codex.config.precedence`, `codex.instructions.layering` | `documented` | `openai.codex.agents-md`, `openai.codex.config-basic` |
-| `codex.derived.skill-metadata` | `bounded-derived-candidate` | A static accepted skill `SKILL.md` | Its sibling `agents/openai.yaml`; only that named skill-local metadata path is derived, and an orphan file is never admitted | `codex.behavior.repo.skills` | FR-003, FR-004, FR-005, FR-024, QR-001, QR-004, QR-005 | `codex.skills.discovery` | `documented` | `openai.codex.skills` |
+
+A skill's sibling `agents/openai.yaml` is deliberately not a derived candidate. The owning
+skill's bounded companion census already reads and publishes it as one of the files the
+skill's directory ships, and the detail surface lists and opens it there, so a derivation
+would re-admit a file the inventory already carries.
 
 Plugin skills, MCP files, app mappings, hook files, assets, scripts, and remote sources are
 relationships only in this release. A local marketplace entry cannot recursively expand
@@ -226,9 +230,14 @@ authority.
 | `skill metadata` | `codex.skill-metadata.interface.display-name`<br>`codex.skill-metadata.interface.short-description`<br>`codex.skill-metadata.interface.icon-small`<br>`codex.skill-metadata.interface.icon-large`<br>`codex.skill-metadata.interface.brand-color`<br>`codex.skill-metadata.interface.default-prompt`<br>`codex.skill-metadata.policy.allow-implicit-invocation`<br>`codex.skill-metadata.dependency.tool.type`<br>`codex.skill-metadata.dependency.tool.value`<br>`codex.skill-metadata.dependency.tool.description`<br>`codex.skill-metadata.dependency.tool.transport`<br>`codex.skill-metadata.dependency.tool.url` | `skill-resource`<br>`runtime-reference` | Exact supported YAML leaf/item occurrences in a derived `agents/openai.yaml`; seed provenance is typed state and the file never inherits the owning `SKILL.md` metadata identity |
 
 No Codex recognition uses the shared `prompt/command` or `output style` kind in the
-initial release. Typed layer, path-derived scope, selection, precedence, trust, default,
-and applicability facts are not authored metadata and therefore are not additional field
-IDs.
+initial release. No initial-release recognition uses the `skill metadata` kind either:
+the sibling `agents/openai.yaml` is published as its owning skill's census companion
+rather than admitted as a candidate (§ Derived Repository rules), so the `skill metadata`
+row above is frozen, digest-recorded design input with no consumer. Consuming or removing
+that row is a digest-recorded change under the official-source contract's
+stop-and-regenerate rule. Typed layer, path-derived scope, selection, precedence, trust,
+default, and applicability facts are not authored metadata and therefore are not
+additional field IDs.
 
 ## Known uncertainties and required condition facts
 

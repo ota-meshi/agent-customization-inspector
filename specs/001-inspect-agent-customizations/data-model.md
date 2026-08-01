@@ -966,7 +966,7 @@ the bilingual inspection-rule contract. It is not read from the inspected reposi
 | `kind` | customization-kind enum or null | Null for a cross-kind relationship/exclusion |
 | `sourceKinds` | source-kind enum[] | Repository, Global, or both as explicitly contracted |
 | `matcher` | `StructuredInspectorMatcher` or null | Static rules only; never a vendor locator, ambient path, executable glob, or untyped selector string |
-| `derivation` | closed derived-target mapping or null | Present only for `bounded-derived-candidate` rules: a fixed registry mapping that resolves one derived target path from an allowlisted declared occurrence of an independently admitted seed file (or from the seed's matched path) plus fixed literal registry suffixes; no callback, free-form path expression, glob, regular expression, or recursive derivation |
+| `derivation` | closed derived-target mapping or null | Present only for `bounded-derived-candidate` rules: a fixed registry mapping that resolves one derived target path from an allowlisted declared occurrence of an independently admitted seed file plus fixed literal registry suffixes; no callback, free-form path expression, glob, regular expression, or recursive derivation |
 | `policyRefs` | sorted specification ID[] | FR/QR clauses that authorize or intentionally exclude the surface; non-empty in a maintained build and empty in a packaged CLI, because they are reviewer traceability that no DTO carries |
 | `conditionKeys` | condition-key enum[] | Runtime facts needed before applicability can be assessed |
 | `precedenceGroup` | stable string or null | Links only rules with documented selection/order semantics |

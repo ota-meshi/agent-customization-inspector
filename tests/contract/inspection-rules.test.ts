@@ -110,8 +110,10 @@ describe('inspection rule records', () => {
       } else {
         expect(rule.matcher).toBeNull();
       }
-      // The first bounded-derived rule ships with the skill-metadata phase;
-      // until then no rule may carry a derivation mapping.
+      // The first bounded-derived rule arrives with the first phase that
+      // needs one of the contract's four derivation mappings — a vendor's
+      // local plugin manifest or the Codex fallback basename; until then no
+      // rule may carry a derivation mapping.
       expect(rule.derivation).toBeNull();
     }
   });
