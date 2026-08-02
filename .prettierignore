@@ -20,6 +20,7 @@ test-results/
 # formatted like any other source. Taking a new vendored skill includes adding
 # its line here.
 .agents/skills/plugin-creator/
+.agents/skills/skill-creator/
 .claude/skills/skill-creator/
 
 # Markdown is authored prose in two languages with deliberate wrapping, and

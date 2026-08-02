@@ -327,24 +327,24 @@ dispositionである。
 
 ### fixture とテストを先行
 
-- [ ] T124 [US1] root/nested Claude skill、near miss、重複名、Codex保全case、targetを通して読まれるsymlinked candidate、`file-unreadable` outcomeになるbroken linkでRepository fixtureを`tests/fixtures/repositories/build-fixtures.ts`に拡張する
-- [ ] T125 [US1] 後のskills-directory factを追加せずに、base `claude.behavior.repo.skills`とそのrule/strategy/evidence行を`tests/fixtures/conformance/vendor-behaviors.json`、`tests/fixtures/conformance/inspection-rules.json`、`tests/fixtures/conformance/runtime-composition.json`にmaterializeする
-- [ ] T126 [P] [US1] `claude.repo.skill`、1つの直接skill-name child、descendant inventory、ancestor/lazy不確実性、cycle-safe traversalで解決済みtargetを通して行うsymlinked candidateの透過的inspectionのfailing contract/matcher testを`tests/contract/inspection-rules.test.ts`と`tests/unit/inspection/rules.test.ts`に追加する
-- [ ] T127 [P] [US1] tool、kind、path provenance、rule 外で filename-only recognition を行わないことに関する Claude recognition の失敗テストを `tests/unit/inspection/recognizers.test.ts` に追加する
-- [ ] T128 [P] [US1] 既存の Codex result を変更せず、safe-filesystem boundary も弱めずに Claude skill が追加されることを証明する scan の失敗テストを `tests/integration/repository-scan.test.ts` に追加する
-- [ ] T129 [US1] Codex と Claude の SKILL 一覧を含む incremental session のブラウザー受け入れ失敗テストを `tests/e2e/claude-skills-list.spec.ts` に追加する
-- [ ] T130 [US1] reciprocal behavior、rule、evidence、affected-contract reference に関する Claude skill registry-graph coverage の失敗テストを `tests/contract/vendor-behaviors.test.ts` と `tests/contract/inspection-rules.test.ts` に追加する
+- [X] T124 [US1] root/nested Claude skill、near miss、重複名、Codex保全case、targetを通して読まれるsymlinked candidate、`file-unreadable` outcomeになるbroken linkでRepository fixtureを`tests/fixtures/repositories/build-fixtures.ts`に拡張する
+- [X] T125 [US1] 後のskills-directory factを追加せずに、base `claude.behavior.repo.skills`と`claude.behavior.user.skills`、それらのrule/strategy/evidence/relation行を`tests/fixtures/conformance/vendor-behaviors.json`、`tests/fixtures/conformance/inspection-rules.json`、`tests/fixtures/conformance/runtime-composition.json`、`tests/fixtures/conformance/relations.json`にmaterializeする
+- [X] T126 [P] [US1] `claude.repo.skill`、1つの直接skill-name child、descendant inventory、ancestor/lazy不確実性、cycle-safe traversalで解決済みtargetを通して行うsymlinked candidateの透過的inspectionのfailing contract/matcher testを`tests/contract/inspection-rules.test.ts`と`tests/unit/inspection/rules.test.ts`に追加する
+- [X] T127 [P] [US1] tool、kind、path provenance、rule 外で filename-only recognition を行わないことに関する Claude recognition の失敗テストを `tests/unit/inspection/recognizers.test.ts` に追加する
+- [X] T128 [P] [US1] 既存の Codex result を変更せず、safe-filesystem boundary も弱めずに Claude skill が追加されることを証明する scan の失敗テストを `tests/integration/repository-scan.test.ts` に追加する
+- [X] T129 [US1] Codex と Claude の SKILL 一覧を含む incremental session のブラウザー受け入れ失敗テストを `tests/e2e/claude-skills-list.spec.ts` に追加する
+- [X] T130 [US1] reciprocal behavior、rule、evidence、affected-contract reference に関する Claude skill registry-graph coverage の失敗テストを `tests/contract/vendor-behaviors.test.ts` と `tests/contract/inspection-rules.test.ts` に追加する
 
 ### 実装
 
-- [ ] T131 [US1] 読み取り権限を付与しない `claude.behavior.repo.skills`/`claude.behavior.user.skills` statement を完全な base lookup strategy とともに `src/shared/registries/vendor-behaviors.ts` と `src/shared/registries/runtime-composition.ts` に追加し、この milestone で production registry を閉じたままにする
-- [ ] T132 [US1] 読み取りを認可する `claude.repo.skill` record を `src/shared/registries/inspection-rules.ts` に追加する
-- [ ] T133 [US1] Claude skill追加が読み取りを認可する`claude.repo.skill` record を正確に一つだけ登録し、non-read exclusion集合を空のまま保つこと—symlinked candidateはtargetを通して読まれるためsymlink exclusion ruleは存在しない (FR-024)—を検証し、registryが文書化された47-ID catalogの範囲内に留まることを`src/shared/registries/inspection-rules.ts`で確認する。完全なgateはT913が所有する *(2026-08-01 修正: フェーズ 6 が skill-metadata derivation を削除したため 47。このphase-local checkはこのフェーズの追加分を検証するもので、最終的な総数ではありません)*
-- [ ] T134 [US1] Claude skill evidence record と reciprocal affected-contract reference を 対象registry recordの`evidence` citation に追加する
-- [ ] T135 [US1] `claude.repo.skill` matching を `src/server/inspection/rules/claude.ts` に実装する
-- [ ] T136 [US1] path-derived Claude skill recognition を `src/server/inspection/recognizers/claude.ts` に実装する
-- [ ] T137 [US1] 決定論的な Codex result を維持しながら Claude skill classification を `src/server/inspection/scan.ts` に統合する
-- [ ] T138 [US1] Claude に対する filter、badge、英語の一覧 message を `src/app/composables/filters.ts`、そのkindのrow component（`src/app/components/inventory/rows/`） において拡張する
+- [X] T131 [US1] 読み取り権限を付与しない `claude.behavior.repo.skills`/`claude.behavior.user.skills` statement を完全な base lookup strategy とともに `src/shared/registries/vendor-behaviors.ts` と `src/shared/registries/runtime-composition.ts` に追加し、この milestone で production registry を閉じたままにする
+- [X] T132 [US1] 読み取りを認可する `claude.repo.skill` record を `src/shared/registries/inspection-rules.ts` に追加する
+- [X] T133 [US1] Claude skill追加が読み取りを認可する`claude.repo.skill` record を正確に一つだけ登録し、non-read exclusion集合を空のまま保つこと—symlinked candidateはtargetを通して読まれるためsymlink exclusion ruleは存在しない (FR-024)—を検証し、registryが文書化された47-ID catalogの範囲内に留まることを`src/shared/registries/inspection-rules.ts`で確認する。完全なgateはT913が所有する *(2026-08-01 修正: フェーズ 6 が skill-metadata derivation を削除したため 47。このphase-local checkはこのフェーズの追加分を検証するもので、最終的な総数ではありません)*
+- [X] T134 [US1] Claude skill evidence record と reciprocal affected-contract reference を 対象registry recordの`evidence` citation に追加する
+- [X] T135 [US1] `claude.repo.skill` matching を `src/server/inspection/rules/claude.ts` に実装する
+- [X] T136 [US1] path-derived Claude skill recognition を `src/server/inspection/recognizers/claude.ts` に実装する
+- [X] T137 [US1] 決定論的な Codex result を維持しながら Claude skill classification を `src/server/inspection/scan.ts` に統合する
+- [X] T138 [US1] vendor固有のapp分岐を追加せず、genericなtool filter、badge、strategy由来の英語の同名一覧messageをClaudeでも再利用する。`src/app/composables/filters.ts`と`src/app/components/inventory/rows/`の既存surfaceを確認し、新しいstrategy resultを`tests/unit/inspection/codex-composition.test.ts`でcoverする
 
 ---
 

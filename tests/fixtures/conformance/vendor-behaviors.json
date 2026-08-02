@@ -1,5 +1,85 @@
 [
   {
+    "behaviorId": "claude.behavior.repo.skills",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "runtime-cwd",
+      "relativeSelector": ".claude/skills/<skill-name>/SKILL.md",
+      "traversal": "ancestor-chain-to-repository-root"
+    },
+    "activationConditions": [
+      "surface",
+      "engine-version",
+      "runtime-cwd",
+      "repository-root",
+      "worked-path",
+      "scope-availability",
+      "feature-state",
+      "enablement",
+      "selection",
+      "plugin-state",
+      "managed-policy"
+    ],
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.skills.locations-discovery",
+        "url": "https://code.claude.com/docs/en/skills",
+        "officialHost": "code.claude.com",
+        "sections": ["Where skills live"],
+        "reviewedOn": "2026-07-25",
+        "establishes": "Claude Code discovers repository skills at .claude/skills/<skill-name>/SKILL.md, with ancestor skill layers discovered at startup and nested descendant skill directories discovered on demand."
+      },
+      {
+        "sourceId": "anthropic.claude-code.large-codebases.start-directory",
+        "url": "https://code.claude.com/docs/en/large-codebases",
+        "officialHost": "code.claude.com",
+        "sections": ["Choose where to start Claude", "Add per-directory skills"],
+        "reviewedOn": "2026-07-25",
+        "establishes": "The launch directory decides which skill layers load at startup, and nested directories can carry their own .claude/skills directories that join the session as files under them are accessed."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.user.skills",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "skills/<skill-name>/SKILL.md",
+      "traversal": "exact"
+    },
+    "activationConditions": [
+      "surface",
+      "engine-version",
+      "runtime-cwd",
+      "repository-root",
+      "worked-path",
+      "scope-availability",
+      "feature-state",
+      "enablement",
+      "selection",
+      "plugin-state",
+      "managed-policy"
+    ],
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.skills.locations-discovery",
+        "url": "https://code.claude.com/docs/en/skills",
+        "officialHost": "code.claude.com",
+        "sections": ["Where skills live"],
+        "reviewedOn": "2026-07-25",
+        "establishes": "Claude Code additionally discovers user skills at <claude-config-dir>/skills/<skill-name>/SKILL.md, one of the scopes its same-name selection resolves across."
+      }
+    ]
+  },
+  {
     "behaviorId": "codex.behavior.repo.skills",
     "tool": "codex",
     "surfaces": ["codex-local-clients"],

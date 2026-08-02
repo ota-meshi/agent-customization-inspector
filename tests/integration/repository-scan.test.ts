@@ -1,5 +1,5 @@
-// T055: the Repository scan end to end — from the synchronous zero-I/O
-// generation 0 through the committed Codex SKILL inventory, the file-confined
+// T055/T128: the Repository scan end to end — from the synchronous zero-I/O
+// generation 0 through the committed Codex and Claude SKILL inventories, the file-confined
 // diagnostic matrix, the source-scoped root failure, and the failures that are
 // not confined to one file (FR-001, FR-002, FR-024, FR-028, FR-030).
 //
@@ -14,9 +14,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as fsIo from '../../src/server/inspection/fs-io';
 import {
   FIXTURE_SECRET_LITERAL,
+  buildClaudeSkillFixture,
   buildCodexSkillFixture,
   createRepositoryFixtureRoot,
 } from '../fixtures/repositories/build-fixtures';
+import { CLAUDE_REPOSITORY_RULES } from '../../src/server/inspection/rules/claude';
 import { CODEX_REPOSITORY_RULES } from '../../src/server/inspection/rules/codex';
 import { REPOSITORY_INSPECTION_RULES, runSourceScan } from '../../src/server/inspection/scan';
 import { InspectionSession, SessionCoordinator } from '../../src/server/session/session';
@@ -777,6 +779,96 @@ describe('a failure not confined to one file aborts the attempt (FR-030)', () =>
   });
 });
 
+describe('Claude skills join the inventory without changing Codex results (T128)', () => {
+  it('publishes both vendors’ skills from one scan of one tree', async () => {
+    const fixture = buildClaudeSkillFixture('inspector-scan-claude');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+
+    // The published set is both vendors' admitted skills plus the files their
+    // censuses bound — and nothing else: every near miss, the nested Codex
+    // spelling included, stays out.
+    expect(snapshot.files.map((file) => file.sourceRelativePath)).toEqual(
+      [
+        ...fixture.expectedClaudeSkillPaths,
+        ...fixture.expectedCodexSkillPaths,
+        ...fixture.expectedCompanionPaths,
+      ].sort(),
+    );
+
+    // Each candidate is recognized by exactly the vendor whose rule admitted
+    // it; the Codex half is what the phase must not have changed.
+    const byPath = new Map(snapshot.files.map((file) => [file.sourceRelativePath, file.fileId]));
+    const skillEntries = snapshot.skills.flatMap((entry) => entry.definitions);
+    for (const path of fixture.expectedClaudeSkillPaths.filter(
+      (one) => !one.includes('/broken/'),
+    )) {
+      const definition = skillEntries.find((one) => one.fileId === byPath.get(path));
+      expect(definition?.tools, path).toEqual(['claude']);
+    }
+    for (const path of fixture.expectedCodexSkillPaths) {
+      const definition = skillEntries.find((one) => one.fileId === byPath.get(path));
+      expect(definition?.tools, path).toEqual(['codex']);
+    }
+  });
+
+  it('scans a Codex-only tree exactly as the Codex phase committed it', async () => {
+    // The preservation half stated directly: the shipped catalog now carries
+    // both vendors, and a tree with no `.claude` directory still publishes
+    // exactly the Codex phase's set.
+    const fixture = buildCodexSkillFixture('inspector-scan-preserved');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+    expect(snapshot.files.map((file) => file.sourceRelativePath)).toEqual(
+      [...fixture.expectedSkillPaths, ...fixture.expectedCompanionPaths].sort(),
+    );
+    const recognizedTools = new Set(
+      snapshot.skills.flatMap((entry) =>
+        entry.definitions.flatMap((definition) => definition.tools),
+      ),
+    );
+    expect([...recognizedTools]).toEqual(['codex']);
+  });
+
+  it('keeps the safe-filesystem boundary: reads only admitted candidates and their censuses', async () => {
+    const fixture = buildClaudeSkillFixture('inspector-scan-claude-reads');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    vi.clearAllMocks();
+    await scanOnce(context);
+
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) =>
+      String(call[0])
+        .slice(fixture.root.length + 1)
+        .split(sep)
+        .join('/'),
+    );
+    // Descendant expansion widens where the walk *looks*, never what it may
+    // *open*: every read is an admitted candidate or a census-bound companion,
+    // each opened exactly once, and VCS internals are never touched.
+    const bounded = new Set([
+      ...fixture.expectedClaudeSkillPaths,
+      ...fixture.expectedCodexSkillPaths,
+      ...fixture.expectedCompanionPaths,
+    ]);
+    for (const path of opened) {
+      expect(bounded.has(path), `opened outside the shipped plans and censuses: ${path}`).toBe(
+        true,
+      );
+    }
+    expect(new Set(opened).size).toBe(opened.length);
+    const touched = [
+      ...vi.mocked(fsIo.readdir).mock.calls,
+      ...vi.mocked(fsIo.readFile).mock.calls,
+    ].map((call) => String(call[0]));
+    expect(touched.some((path) => path.includes(`${sep}.git`))).toBe(false);
+  });
+});
+
 describe('publication authority and relationship targets', () => {
   it('discards a late result after revocation without touching the commit', async () => {
     const fixture = buildCodexSkillFixture('inspector-scan-revoked');
@@ -820,11 +912,12 @@ describe('publication authority and relationship targets', () => {
     vi.clearAllMocks();
     await scanOnce(context);
 
-    // The one shipped rule is the only source of read authority; a path
+    // The shipped rules are the only source of read authority; a path
     // mentioned inside an authored file never becomes a candidate.
-    expect(REPOSITORY_INSPECTION_RULES.map((compiled) => compiled.rule.ruleId)).toEqual(
-      CODEX_REPOSITORY_RULES.map((compiled) => compiled.rule.ruleId),
-    );
+    expect(REPOSITORY_INSPECTION_RULES.map((compiled) => compiled.rule.ruleId)).toEqual([
+      ...CLAUDE_REPOSITORY_RULES.map((compiled) => compiled.rule.ruleId),
+      ...CODEX_REPOSITORY_RULES.map((compiled) => compiled.rule.ruleId),
+    ]);
     // Every opened path is either a file a shipped plan admitted or a file an
     // admitted skill's census bound. A path merely mentioned inside an authored
     // file is neither, and is never opened.

@@ -1,4 +1,4 @@
-// T052/T060: the inspection-rule half of the registry contract gate — the
+// T052/T060/T126/T130/T133: the inspection-rule half of the registry contract gate — the
 // closed matcher grammar, deterministic compilation into the immutable
 // versioned `TraversalPlan`, reciprocal references, and the sole
 // `EvidenceAssessment[]` assembler.
@@ -27,6 +27,7 @@ import {
   TraversalPlan,
   type MatcherSegment,
 } from '../../src/server/inspection/rules/registry';
+import { CLAUDE_REPOSITORY_RULES } from '../../src/server/inspection/rules/claude';
 import { CODEX_REPOSITORY_RULES } from '../../src/server/inspection/rules/codex';
 import { sameNameSkillResolutionFor } from '../../src/shared/registries/skill-resolution';
 import { SUPPORTED_TOOL_ORDER } from '../../src/shared/entities';
@@ -178,6 +179,24 @@ describe('closed selector grammar', () => {
     }
   });
 
+  it('expands the Claude skill program to descendants with one direct name child (T126)', () => {
+    // The opposite decision from Codex, and deliberately so: Claude discovers
+    // ancestor skill layers at startup and nested descendant layers lazily, so
+    // a nested `.claude/skills` is a layer Claude can genuinely load and the
+    // program leads with `ANY_DIRECTORIES`. The skill name stays exactly one
+    // dynamic direct child and the terminal literal stays exact
+    // (contracts/vendors/claude-code.md § Repository Inspector matchers).
+    const matcher = INSPECTION_RULES['claude.repo.skill']!.matcher!;
+    expect(matcher.selectors).toHaveLength(1);
+    expect(matcher.selectors[0]!.map((segment) => segment.kind)).toEqual([
+      'recursive-directories',
+      'literal',
+      'literal',
+      'regex',
+      'literal',
+    ]);
+  });
+
   it('rejects a terminal or adjacent recursive step', () => {
     for (const selector of selectors) {
       selector.forEach((segment: MatcherSegment, index: number) => {
@@ -259,6 +278,71 @@ describe('traversal-plan compilation', () => {
       expect(compiled.kind).toBe(compiled.rule.kind);
       expect(compiled.plan).toEqual(new TraversalPlan(compiled.rule.matcher!));
     }
+  });
+
+  it('pairs each shipped Claude rule with the plan compiled from its own matcher (T130)', () => {
+    for (const compiled of CLAUDE_REPOSITORY_RULES) {
+      expect(INSPECTION_RULES[compiled.rule.ruleId]).toBe(compiled.rule);
+      expect(RULE_RELATIONS[compiled.rule.ruleId]).toBe(compiled.relations);
+      expect(compiled.tool).toBe(compiled.rule.tool);
+      expect(compiled.kind).toBe(compiled.rule.kind);
+      expect(compiled.plan).toEqual(new TraversalPlan(compiled.rule.matcher!));
+    }
+  });
+});
+
+describe('the Claude skill slice of the reference graph (T130, T133)', () => {
+  it('ships exactly one read-authorizing Claude record and no exclusion', () => {
+    // The phase-local half of the registry catalog check: this milestone adds
+    // `claude.repo.skill` alone. No `excluded` or `relationship-only` Claude
+    // row ships yet — a symlinked skill needs none because links are read
+    // through their targets (FR-024) — and the eventual complete catalog gate
+    // is T913's, not this suite's.
+    const claudeRules = rules.filter((rule) => rule.tool === 'claude');
+    expect(claudeRules.map((rule) => rule.ruleId)).toEqual(['claude.repo.skill']);
+    expect(claudeRules[0]!.discoveryClass).toBe('static-candidate');
+  });
+
+  it('bases the rule on the Repository behavior and explains it by the selection strategy', () => {
+    // The reciprocal edges the phase adds, asserted by identity: the edge must
+    // hold the record the registry publishes, not an equal-looking copy.
+    const relations = RULE_RELATIONS['claude.repo.skill'];
+    expect(relations.basedOnBehaviors).toEqual([
+      VENDOR_BEHAVIOR_STATEMENTS['claude.behavior.repo.skills'],
+    ]);
+    expect(relations.basedOnBehaviors[0]).toBe(
+      VENDOR_BEHAVIOR_STATEMENTS['claude.behavior.repo.skills'],
+    );
+    expect(relations.explainedByStrategies).toEqual([
+      RUNTIME_COMPOSITION_STRATEGIES['claude.skills.selection'],
+    ]);
+    expect(relations.explainedByStrategies[0]).toBe(
+      RUNTIME_COMPOSITION_STRATEGIES['claude.skills.selection'],
+    );
+  });
+
+  it('assembles one unreduced evidence record per referenced Claude subject', () => {
+    const compiled = CLAUDE_REPOSITORY_RULES[0]!;
+    expect(assembleRuleEvidenceAssessments(compiled)).toEqual([
+      {
+        subjectKind: 'behavior',
+        subjectId: 'claude.behavior.repo.skills',
+        documentationStatus: 'documented',
+        lifecycleQualifiers: [],
+      },
+      {
+        subjectKind: 'rule',
+        subjectId: 'claude.repo.skill',
+        documentationStatus: 'documented',
+        lifecycleQualifiers: [],
+      },
+      {
+        subjectKind: 'strategy',
+        subjectId: 'claude.skills.selection',
+        documentationStatus: 'documented',
+        lifecycleQualifiers: [],
+      },
+    ]);
   });
 });
 

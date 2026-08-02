@@ -1,5 +1,76 @@
 [
   {
+    "ruleId": "claude.repo.skill",
+    "tool": "claude",
+    "discoveryClass": "static-candidate",
+    "kind": "skill",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "recursive-directories"
+          },
+          {
+            "kind": "literal",
+            "value": ".claude"
+          },
+          {
+            "kind": "literal",
+            "value": "skills"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/(?:)/u"
+          },
+          {
+            "kind": "literal",
+            "value": "SKILL.md"
+          }
+        ]
+      ]
+    },
+    "derivation": null,
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "conditionKeys": [
+      "surface",
+      "engine-version",
+      "runtime-cwd",
+      "repository-root",
+      "worked-path",
+      "scope-availability",
+      "feature-state",
+      "enablement",
+      "selection",
+      "plugin-state",
+      "managed-policy"
+    ],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.skills.locations-discovery",
+        "url": "https://code.claude.com/docs/en/skills",
+        "officialHost": "code.claude.com",
+        "sections": ["Where skills live"],
+        "reviewedOn": "2026-07-25",
+        "establishes": "Repository skills live at .claude/skills/<skill-name>/SKILL.md on each layer from the working directory through the repository root, which is why this rule admits that shape at the selected root and every descendant directory."
+      },
+      {
+        "sourceId": "anthropic.claude-code.plugins.components-scopes",
+        "url": "https://code.claude.com/docs/en/plugins-reference",
+        "officialHost": "code.claude.com",
+        "sections": ["Skills-directory plugins"],
+        "reviewedOn": "2026-07-25",
+        "establishes": "A skills directory at the exact launch working directory can also be interpreted as a plugin, a separate documented behavior that differs from plain-skill ancestor and lazy-descendant discovery and grants this rule no manifest authority."
+      }
+    ]
+  },
+  {
     "ruleId": "codex.repo.skill",
     "tool": "codex",
     "discoveryClass": "static-candidate",

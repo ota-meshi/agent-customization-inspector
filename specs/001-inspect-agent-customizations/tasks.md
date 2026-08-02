@@ -330,24 +330,24 @@ the task would have built.
 
 ### Fixtures and tests first
 
-- [ ] T124 [US1] Extend Repository fixtures with root/nested Claude skills, near misses, duplicate names, Codex-preservation cases, and symlinked candidates that are read through their targets plus a broken link that yields its `file-unreadable` outcome in `tests/fixtures/repositories/build-fixtures.ts`
-- [ ] T125 [US1] Materialize base `claude.behavior.repo.skills`, its rule, strategy, and evidence rows, without adding the later skills-directory fact, in `tests/fixtures/conformance/vendor-behaviors.json`, `tests/fixtures/conformance/inspection-rules.json`, and `tests/fixtures/conformance/runtime-composition.json`
-- [ ] T126 [P] [US1] Add failing contracts and matcher tests for `claude.repo.skill`, one direct skill-name child, descendant inventory, ancestor/lazy uncertainty, and transparent inspection of a symlinked candidate through its resolved target with cycle-safe traversal in `tests/contract/inspection-rules.test.ts` and `tests/unit/inspection/rules.test.ts`
-- [ ] T127 [P] [US1] Add failing Claude recognition tests for tool, kind, path provenance, and no filename-only recognition outside the rule in `tests/unit/inspection/recognizers.test.ts`
-- [ ] T128 [P] [US1] Add failing scan tests proving Claude skills are added without changing existing Codex results or weakening the safe-filesystem boundary in `tests/integration/repository-scan.test.ts`
-- [ ] T129 [US1] Add failing browser acceptance for an incremental session containing Codex and Claude SKILL lists in `tests/e2e/claude-skills-list.spec.ts`
-- [ ] T130 [US1] Add failing Claude skill registry-graph coverage for reciprocal behavior, rule, evidence, and affected-contract references in `tests/contract/vendor-behaviors.test.ts` and `tests/contract/inspection-rules.test.ts`
+- [X] T124 [US1] Extend Repository fixtures with root/nested Claude skills, near misses, duplicate names, Codex-preservation cases, and symlinked candidates that are read through their targets plus a broken link that yields its `file-unreadable` outcome in `tests/fixtures/repositories/build-fixtures.ts`
+- [X] T125 [US1] Materialize base `claude.behavior.repo.skills` and `claude.behavior.user.skills`, their rule, strategy, evidence, and relation rows, without adding the later skills-directory fact, in `tests/fixtures/conformance/vendor-behaviors.json`, `tests/fixtures/conformance/inspection-rules.json`, `tests/fixtures/conformance/runtime-composition.json`, and `tests/fixtures/conformance/relations.json`
+- [X] T126 [P] [US1] Add failing contracts and matcher tests for `claude.repo.skill`, one direct skill-name child, descendant inventory, ancestor/lazy uncertainty, and transparent inspection of a symlinked candidate through its resolved target with cycle-safe traversal in `tests/contract/inspection-rules.test.ts` and `tests/unit/inspection/rules.test.ts`
+- [X] T127 [P] [US1] Add failing Claude recognition tests for tool, kind, path provenance, and no filename-only recognition outside the rule in `tests/unit/inspection/recognizers.test.ts`
+- [X] T128 [P] [US1] Add failing scan tests proving Claude skills are added without changing existing Codex results or weakening the safe-filesystem boundary in `tests/integration/repository-scan.test.ts`
+- [X] T129 [US1] Add failing browser acceptance for an incremental session containing Codex and Claude SKILL lists in `tests/e2e/claude-skills-list.spec.ts`
+- [X] T130 [US1] Add failing Claude skill registry-graph coverage for reciprocal behavior, rule, evidence, and affected-contract references in `tests/contract/vendor-behaviors.test.ts` and `tests/contract/inspection-rules.test.ts`
 
 ### Implementation
 
-- [ ] T131 [US1] Add non-authorizing `claude.behavior.repo.skills`/`claude.behavior.user.skills` statements and their complete base lookup strategy together so the production registry remains closed at this milestone in `src/shared/registries/vendor-behaviors.ts` and `src/shared/registries/runtime-composition.ts`
-- [ ] T132 [US1] Add the read-authorizing `claude.repo.skill` record in `src/shared/registries/inspection-rules.ts`
-- [ ] T133 [US1] Verify that the Claude skill additions register exactly the one read-authorizing `claude.repo.skill` record and leave the non-read exclusion set empty—no symlink exclusion rule exists because symlinked candidates are read through their targets (FR-024)—so the registry stays within the documented 47-ID catalog whose complete gate T913 owns, in `src/shared/registries/inspection-rules.ts` *(amended 2026-08-01: 47 after Phase 6 removed the skill-metadata derivation; the phase-local check verifies this phase's additions, not the eventual total)*
-- [ ] T134 [US1] Add Claude skill evidence records and reciprocal affected-contract references in the owning registry record's `evidence` citations
-- [ ] T135 [US1] Implement `claude.repo.skill` matching in `src/server/inspection/rules/claude.ts`
-- [ ] T136 [US1] Implement path-derived Claude skill recognition in `src/server/inspection/recognizers/claude.ts`
-- [ ] T137 [US1] Integrate Claude skill classification while preserving deterministic Codex results in `src/server/inspection/scan.ts`
-- [ ] T138 [US1] Extend filters, badges, and English list messages for Claude in `src/app/composables/filters.ts`, that kind's row component under `src/app/components/inventory/rows/`
+- [X] T131 [US1] Add non-authorizing `claude.behavior.repo.skills`/`claude.behavior.user.skills` statements and their complete base lookup strategy together so the production registry remains closed at this milestone in `src/shared/registries/vendor-behaviors.ts` and `src/shared/registries/runtime-composition.ts`
+- [X] T132 [US1] Add the read-authorizing `claude.repo.skill` record in `src/shared/registries/inspection-rules.ts`
+- [X] T133 [US1] Verify that the Claude skill additions register exactly the one read-authorizing `claude.repo.skill` record and leave the non-read exclusion set empty—no symlink exclusion rule exists because symlinked candidates are read through their targets (FR-024)—so the registry stays within the documented 47-ID catalog whose complete gate T913 owns, in `src/shared/registries/inspection-rules.ts` *(amended 2026-08-01: 47 after Phase 6 removed the skill-metadata derivation; the phase-local check verifies this phase's additions, not the eventual total)*
+- [X] T134 [US1] Add Claude skill evidence records and reciprocal affected-contract references in the owning registry record's `evidence` citations
+- [X] T135 [US1] Implement `claude.repo.skill` matching in `src/server/inspection/rules/claude.ts`
+- [X] T136 [US1] Implement path-derived Claude skill recognition in `src/server/inspection/recognizers/claude.ts`
+- [X] T137 [US1] Integrate Claude skill classification while preserving deterministic Codex results in `src/server/inspection/scan.ts`
+- [X] T138 [US1] Reuse the generic tool filters, badges, and strategy-derived English same-name message for Claude without a vendor-specific app branch; verify the existing surfaces in `src/app/composables/filters.ts` and `src/app/components/inventory/rows/`, and cover the new strategy result in `tests/unit/inspection/codex-composition.test.ts`
 
 ---
 

@@ -1,4 +1,4 @@
-// T052/T060: the vendor-behavior and runtime-composition half of the registry
+// T052/T060/T130: the vendor-behavior and runtime-composition half of the registry
 // contract gate — stable reciprocal IDs, the evidence grammar, and the
 // structure-only projection vocabulary. This gate is what the runtime relies
 // on instead of re-validating the registries at scan time
@@ -490,5 +490,57 @@ describe('conformance fixtures materialize the shipped registries', () => {
       JSON.parse(JSON.stringify(serializeRuntimeComposition())),
     );
     expect(readFixture('relations.json')).toEqual(JSON.parse(JSON.stringify(serializeRelations())));
+  });
+});
+
+describe('the Claude skill behaviors and strategy (T130)', () => {
+  it('ships both skill scopes and the selection strategy that composes them', () => {
+    // The two behaviors and the strategy arrive together because the strategy
+    // consumes both; the edges must hold the published records themselves.
+    const repo = VENDOR_BEHAVIOR_STATEMENTS['claude.behavior.repo.skills'];
+    const user = VENDOR_BEHAVIOR_STATEMENTS['claude.behavior.user.skills'];
+    expect(repo.tool).toBe('claude');
+    expect(user.tool).toBe('claude');
+    const strategy = RUNTIME_COMPOSITION_STRATEGIES['claude.skills.selection'];
+    expect(strategy.tool).toBe('claude');
+    // `select-first` is what the same-name row derivation reads; the strategy
+    // states the documented enterprise/User/project/bundled selection and
+    // never a winner (contracts/runtime-composition.md § claude.skills.selection).
+    expect(strategy.operations).toEqual(['select-first']);
+    const consumed = STRATEGY_RELATIONS['claude.skills.selection'].consumesBehaviors;
+    expect(consumed).toHaveLength(2);
+    expect(consumed[0]).toBe(repo);
+    expect(consumed[1]).toBe(user);
+  });
+
+  it('shares one condition-key list across both behaviors and the strategy', () => {
+    // One definition, so the strategy and its inputs cannot disagree about
+    // what must be known; `worked-path` is present because lazy descendant
+    // discovery depends on which files the session touched.
+    const repo = VENDOR_BEHAVIOR_STATEMENTS['claude.behavior.repo.skills'];
+    const user = VENDOR_BEHAVIOR_STATEMENTS['claude.behavior.user.skills'];
+    const strategy = RUNTIME_COMPOSITION_STRATEGIES['claude.skills.selection'];
+    expect(repo.activationConditions).toBe(strategy.requiredConditionKeys);
+    expect(user.activationConditions).toBe(strategy.requiredConditionKeys);
+    expect(strategy.requiredConditionKeys).toContain('worked-path');
+    expect(strategy.requiredConditionKeys).toContain('runtime-cwd');
+  });
+
+  it('cites Anthropic official pages that resolve through the sources contract', () => {
+    // The Claude-specific slice of the generic citation gates above: each
+    // record names at least the skills page, and every cited ID is an
+    // `anthropic.*` row (the generic suites prove the row itself resolves).
+    for (const record of [
+      VENDOR_BEHAVIOR_STATEMENTS['claude.behavior.repo.skills'],
+      VENDOR_BEHAVIOR_STATEMENTS['claude.behavior.user.skills'],
+      RUNTIME_COMPOSITION_STRATEGIES['claude.skills.selection'],
+      INSPECTION_RULES['claude.repo.skill'],
+    ]) {
+      const ids = record.evidence.map((citation) => citation.sourceId);
+      expect(ids).toContain('anthropic.claude-code.skills.locations-discovery');
+      for (const id of ids) {
+        expect(id).toMatch(/^anthropic\./u);
+      }
+    }
   });
 });

@@ -21,6 +21,17 @@
 // Ships zero runtime code — the `-types` name records that.
 
 /**
+ * Anthropic Claude Code behavior statements
+ * (contracts/vendors/claude-code.md). Statements arrive with the inventory
+ * phase that needs them.
+ */
+export type ClaudeBehaviorId =
+  /** Claude Repository skill discovery under `.claude/skills/<skill-name>/SKILL.md`. */
+  | 'claude.behavior.repo.skills'
+  /** Claude User skill discovery under `<claude-config-dir>/skills/<skill-name>/SKILL.md`. */
+  | 'claude.behavior.user.skills';
+
+/**
  * OpenAI Codex behavior statements
  * (contracts/vendors/openai-codex.md). Statements arrive with the inventory
  * phase that needs them.
@@ -35,7 +46,22 @@ export type CodexBehaviorId =
  * Every documented vendor-behavior statement the product maintains. Each
  * vendor's sub-union joins here, and the behavior registry is keyed by it.
  */
-export type BehaviorId = CodexBehaviorId;
+export type BehaviorId = ClaudeBehaviorId | CodexBehaviorId;
+
+/**
+ * Anthropic official documentation pages cited by the shipped records
+ * (contracts/official-sources.md). Pages arrive with the records that cite
+ * them.
+ */
+export type AnthropicSourceId =
+  /** The Claude Code skills page: where skills live and how they are named. */
+  | 'anthropic.claude-code.skills.locations-discovery'
+  /** The large-codebases page: the start directory and per-directory skills. */
+  | 'anthropic.claude-code.large-codebases.start-directory'
+  /** The IDE-integrations page: shared configuration and per-surface differences. */
+  | 'anthropic.claude-code.ide.shared-differences'
+  /** The plugins reference: component scopes and skills-directory plugins. */
+  | 'anthropic.claude-code.plugins.components-scopes';
 
 /**
  * OpenAI official documentation pages cited by the shipped records
@@ -51,7 +77,15 @@ export type OpenAiSourceId =
  * when a vendor moves a page — which has already happened once — and it is what
  * the official-sources contract row is keyed by (QR-005).
  */
-export type SourceId = OpenAiSourceId;
+export type SourceId = AnthropicSourceId | OpenAiSourceId;
+
+/**
+ * Anthropic Claude Code composition strategies
+ * (contracts/runtime-composition.md).
+ */
+export type ClaudeStrategyId =
+  /** Claude skill selection across enterprise, User, project, and bundled scopes. */
+  'claude.skills.selection';
 
 /**
  * OpenAI Codex composition strategies
@@ -65,7 +99,16 @@ export type CodexStrategyId =
  * Every documented runtime composition or projection strategy. Each vendor's
  * sub-union joins here, and the strategy registry is keyed by it.
  */
-export type StrategyId = CodexStrategyId;
+export type StrategyId = ClaudeStrategyId | CodexStrategyId;
+
+/**
+ * Anthropic Claude Code inspection rules
+ * (contracts/vendors/claude-code.md § Repository Inspector matchers). Rules
+ * arrive with the inventory phase that needs them.
+ */
+export type ClaudeRuleId =
+  /** Repository Claude skills; read-authorizing `static-candidate`. */
+  'claude.repo.skill';
 
 /**
  * OpenAI Codex inspection rules
@@ -81,7 +124,20 @@ export type CodexRuleId =
  * rule registry is keyed by it. This union is therefore the complete list of
  * rules that can authorize a read.
  */
-export type RuleId = CodexRuleId;
+export type RuleId = ClaudeRuleId | CodexRuleId;
+
+/**
+ * The closed declared-metadata field identifiers Anthropic Claude Code
+ * recognitions may publish (contracts/vendors/claude-code.md § Normative
+ * initial-release presentation allowlist). A field ID names one field of the
+ * recognized kind, fixed by that table, never an arbitrary key an inspected
+ * file supplies. Fields arrive with the recognizer phase that extracts them:
+ * the name ships with the skill list, whose grouped rows need it, and the
+ * rest of the allowlist's `skill` row with the detail phase (T148).
+ */
+export type ClaudeMetadataFieldId =
+  /** The `name` scalar of a `SKILL.md` YAML frontmatter block. */
+  'claude.skill.name';
 
 /**
  * The closed declared-metadata field identifiers OpenAI Codex recognitions may
@@ -101,4 +157,4 @@ export type CodexMetadataFieldId =
  * sub-union joins here, so an extractor cannot emit a field the presentation
  * allowlist does not name (data-model.md § DeclaredMetadataEntry).
  */
-export type MetadataFieldId = CodexMetadataFieldId;
+export type MetadataFieldId = ClaudeMetadataFieldId | CodexMetadataFieldId;

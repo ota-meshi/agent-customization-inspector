@@ -1,5 +1,5 @@
-// T050: deterministic Codex SKILL fixture repositories for the Phase 4
-// inventory suites (FR-003, FR-004, FR-005, FR-024).
+// T050/T124: deterministic SKILL fixture repositories for the Phase 4 and
+// Phase 8 inventory suites (FR-003, FR-004, FR-005, FR-024).
 //
 // The tree is built to make the allowlist's edges observable rather than
 // assumed: every positive case has a near miss one segment away from it, so a
@@ -194,5 +194,162 @@ export function buildCodexSkillFixture(prefix = 'inspector-codex-skills'): Codex
       'linked-target/SKILL.md',
       'packages/api/.agents/skills/deploy/SKILL.md',
     ],
+  };
+}
+
+/** One built mixed Claude-and-Codex SKILL fixture repository (T124). */
+export interface ClaudeSkillFixture {
+  /** The absolute fixture root to scan. */
+  readonly root: string;
+  /** Which capability-gated cases exist; see {@link RepositoryFixtureCapabilities}. */
+  readonly capabilities: RepositoryFixtureCapabilities;
+  /**
+   * Every Source-relative Path the `claude.repo.skill` allowlist must admit,
+   * sorted exactly as the scan publishes them. Capability-gated members are
+   * present only when the corresponding capability is.
+   */
+  readonly expectedClaudeSkillPaths: readonly string[];
+  /**
+   * Every Source-relative Path the `codex.repo.skill` allowlist must admit in
+   * the same tree, sorted. The Codex-preservation half of the phase: the same
+   * scan that adds Claude rows must keep admitting exactly these.
+   */
+  readonly expectedCodexSkillPaths: readonly string[];
+  /**
+   * Paths one segment away from an admitted skill that no rule may admit; see
+   * {@link CodexSkillFixture.nearMissPaths}. The nested `.agents/skills` entry
+   * matters most here: it is admitted for *Claude's* spelling and refused for
+   * Codex's, so a scan that blurred the two vendors' expansions would fail on
+   * it.
+   */
+  readonly nearMissPaths: readonly string[];
+  /**
+   * The files the admitted skills' censuses list, sorted. They are read and
+   * published as ordinary files that no rule admitted and nothing recognized
+   * (contracts/inspection-path-allowlist.md § Bounded companion census).
+   */
+  readonly expectedCompanionPaths: readonly string[];
+}
+
+/**
+ * Builds the canonical mixed Claude-and-Codex SKILL fixture repository (T124).
+ *
+ * Positive Claude cases: a root-level skill, a *nested* skill in a package
+ * directory — admitted for Claude because its documented discovery reaches
+ * ancestor and lazy-descendant layers, where the same nesting is a Codex near
+ * miss — and two skills whose directories share one name at different depths,
+ * which must coexist as two rows rather than resolve to a winner.
+ *
+ * Codex-preservation cases: one admitted Codex skill and the nested Codex
+ * near miss, so the suites can prove the Claude phase changed neither side of
+ * the Codex allowlist.
+ *
+ * Symlink cases (capability-gated): a skill file that is a link and is read
+ * transparently through its target, a broken link that yields that file's
+ * `file-unreadable` outcome, and a directory link pointing back at the fixture
+ * root, which the walk's real-path tracking must terminate rather than
+ * recurse through (FR-024).
+ */
+export function buildClaudeSkillFixture(prefix = 'inspector-claude-skills'): ClaudeSkillFixture {
+  const root = createRepositoryFixtureRoot(prefix);
+
+  // Positive: the plainest possible case at the selected root.
+  write(root, '.claude/skills/greet/SKILL.md', '---\nname: claude-greet\n---\n\nSay hello.\n');
+  // Positive: a nested skill directory. Claude discovers descendant skill
+  // layers lazily as files under them are accessed, so this is a real Claude
+  // layer — and the exact shape that stays a near miss for Codex.
+  write(root, 'packages/api/.claude/skills/deploy/SKILL.md', '# Nested deploy\n');
+  // Positive: one directory name declared at two depths. Both are admitted and
+  // both must remain visible; which one Claude would select stays conditional.
+  write(root, '.claude/skills/dup/SKILL.md', '# root dup\n');
+  write(root, 'packages/api/.claude/skills/dup/SKILL.md', '# nested dup\n');
+
+  // Codex preservation: an admitted Codex skill beside the Claude ones, and
+  // the nested Codex near miss the Claude expansion must not start admitting.
+  write(root, '.agents/skills/codex-greet/SKILL.md', '---\nname: codex-greet\n---\n');
+  write(root, 'packages/api/.agents/skills/deploy/SKILL.md', '# Codex near miss\n');
+
+  // Near miss: no skill-name segment between `skills` and the file.
+  write(root, '.claude/skills/SKILL.md', 'no name segment\n');
+  // Near miss: one level deeper than the single direct-child name step. It
+  // sits inside `greet/`, so it is also that skill's companion.
+  write(root, '.claude/skills/greet/nested/SKILL.md', 'too deep\n');
+  // Near miss: singular directory name.
+  write(root, '.claude/skill/solo/SKILL.md', 'singular skills dir\n');
+  // Near miss: the dotless spelling.
+  write(root, 'claude/skills/solo/SKILL.md', 'no leading dot\n');
+  // Near miss: the terminal literal is case-sensitive, in its own directory so
+  // a case-insensitive filesystem cannot collide it with an admitted file.
+  write(root, '.claude/skills/uppercase/SKILL.MD', 'wrong case\n');
+  // Near miss: a sibling file inside an admitted skill directory.
+  write(root, '.claude/skills/greet/README.md', 'sibling\n');
+  // Near miss: VCS internals are excluded from traversal entirely — for
+  // Claude's descendant expansion too, which would otherwise reach them.
+  write(root, '.git/.claude/skills/hidden/SKILL.md', 'vcs internal\n');
+  // Unrelated file that shares no segment with either selector.
+  write(root, 'README.md', 'unrelated\n');
+
+  const expectedClaudeSkillPaths = [
+    '.claude/skills/dup/SKILL.md',
+    '.claude/skills/greet/SKILL.md',
+    'packages/api/.claude/skills/deploy/SKILL.md',
+    'packages/api/.claude/skills/dup/SKILL.md',
+  ];
+  const nearMissPaths = [
+    '.claude/skill/solo/SKILL.md',
+    '.claude/skills/SKILL.md',
+    '.claude/skills/greet/README.md',
+    '.claude/skills/greet/nested/SKILL.md',
+    '.claude/skills/uppercase/SKILL.MD',
+    '.git/.claude/skills/hidden/SKILL.md',
+    'README.md',
+    'claude-linked-target/SKILL.md',
+    'claude/skills/solo/SKILL.md',
+    'packages/api/.agents/skills/deploy/SKILL.md',
+  ];
+
+  // Linked cases are capability-gated; see {@link buildCodexSkillFixture}.
+  let symlinks = true;
+  try {
+    // A symlinked skill file is read transparently through its target, because
+    // Claude loading the same path would resolve it too (FR-024;
+    // contracts/vendors/claude-code.md § Known ambiguities item 9).
+    write(root, 'claude-linked-target/SKILL.md', '# linked claude skill\n');
+    mkdirSync(join(root, '.claude/skills/linked'), { recursive: true });
+    symlinkSync(
+      join(root, 'claude-linked-target/SKILL.md'),
+      join(root, '.claude/skills/linked/SKILL.md'),
+    );
+    // A link whose target is missing is that candidate's `file-unreadable`
+    // Diagnostic, not an absent file.
+    mkdirSync(join(root, '.claude/skills/broken'), { recursive: true });
+    symlinkSync(join(root, 'no-such-target.md'), join(root, '.claude/skills/broken/SKILL.md'));
+    // A directory link back to the fixture root. The Claude program's leading
+    // recursive step would walk it forever if the traversal did not track
+    // visited real paths; terminating on it is the cycle-safety the phase must
+    // prove. It admits nothing: the root's own real path is already visited.
+    symlinkSync(root, join(root, '.claude/skills/cycle'));
+    expectedClaudeSkillPaths.push(
+      '.claude/skills/broken/SKILL.md',
+      '.claude/skills/linked/SKILL.md',
+    );
+  } catch {
+    symlinks = false;
+  }
+
+  expectedClaudeSkillPaths.sort();
+
+  return {
+    root,
+    capabilities: { symlinks },
+    expectedClaudeSkillPaths,
+    expectedCodexSkillPaths: ['.agents/skills/codex-greet/SKILL.md'],
+    // Only `greet/` holds anything besides its own `SKILL.md`; every other
+    // admitted skill directory has exactly one file.
+    expectedCompanionPaths: [
+      '.claude/skills/greet/README.md',
+      '.claude/skills/greet/nested/SKILL.md',
+    ],
+    nearMissPaths,
   };
 }

@@ -37,23 +37,24 @@ import type {
   ToolRecognitionDto,
 } from '../../shared/api-types';
 import type { GenerationOutcome } from '../session/scan-generation';
+import { CLAUDE_REPOSITORY_RULES } from './rules/claude';
 import { CODEX_REPOSITORY_RULES } from './rules/codex';
 import { resolveAdmittingRules, type CompiledInspectionRule } from './rules/registry';
-import {
-  recognizeCodexCandidate,
-  type CandidateRecognition,
-  type RecognitionInput,
-} from './recognizers/codex';
+import type { CandidateRecognition, RecognitionInput } from './recognizers/candidate';
+import { recognizeClaudeCandidate } from './recognizers/claude';
+import { recognizeCodexCandidate } from './recognizers/codex';
 import { join } from 'node:path';
 import { readCandidate, runTraversalScan, type TraversalScanResult } from './traversal';
 
 /**
  * The shipped Repository rule catalog a Repository scan executes (FR-003),
- * in fixed vendor order. Each inventory phase contributes its vendor module
- * here; while only Codex skills ship, a repository with no `SKILL.md`
- * legitimately publishes an empty inventory rather than an error.
+ * in the closed tool order (`SUPPORTED_TOOL_ORDER`). Each inventory phase
+ * contributes its vendor module here; while only Claude and Codex skills
+ * ship, a repository with no `SKILL.md` legitimately publishes an empty
+ * inventory rather than an error.
  */
 export const REPOSITORY_INSPECTION_RULES: readonly CompiledInspectionRule[] = [
+  ...CLAUDE_REPOSITORY_RULES,
   ...CODEX_REPOSITORY_RULES,
 ];
 
@@ -174,9 +175,17 @@ export interface ScanPublicationInput {
 // recognizers. Only tools with a shipped recognizer contribute; an admission
 // whose tool has no recognizer yet simply produces no recognition, which is
 // what "the rule is not shipped for this milestone" must look like — never a
-// fabricated recognition of an unknown kind.
-function recognizeCandidate(input: RecognitionInput): Promise<CandidateRecognition> {
-  return recognizeCodexCandidate(input);
+// fabricated recognition of an unknown kind. Vendors run in the closed tool
+// order so a candidate two products recognize publishes its recognitions
+// deterministically. The shipped Codex and Claude skill matchers are disjoint,
+// so at most one vendor enumerates a given candidate's directory and the
+// merged companion lists cannot conflict.
+async function recognizeCandidate(input: RecognitionInput): Promise<CandidateRecognition> {
+  const results = [await recognizeClaudeCandidate(input), await recognizeCodexCandidate(input)];
+  return {
+    recognitions: results.flatMap((result) => result.recognitions),
+    companions: results.flatMap((result) => result.companions),
+  };
 }
 
 /**

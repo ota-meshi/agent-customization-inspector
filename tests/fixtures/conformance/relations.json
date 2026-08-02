@@ -1,10 +1,17 @@
 {
   "strategies": {
+    "claude.skills.selection": {
+      "consumesBehaviors": ["claude.behavior.repo.skills", "claude.behavior.user.skills"]
+    },
     "codex.skills.discovery": {
       "consumesBehaviors": ["codex.behavior.repo.skills", "codex.behavior.user.skills"]
     }
   },
   "rules": {
+    "claude.repo.skill": {
+      "basedOnBehaviors": ["claude.behavior.repo.skills"],
+      "explainedByStrategies": ["claude.skills.selection"]
+    },
     "codex.repo.skill": {
       "basedOnBehaviors": ["codex.behavior.repo.skills"],
       "explainedByStrategies": ["codex.skills.discovery"]

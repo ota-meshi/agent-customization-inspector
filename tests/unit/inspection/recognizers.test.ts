@@ -1,9 +1,9 @@
-// T054: Codex recognition from the admitting rule alone — tool, the `skill`
-// kind, path provenance with its record-by-record evidence, and the absence of
-// any recognition the shipped registry does not authorize (FR-004, FR-005,
-// QR-005).
+// T054/T127: Codex and Claude recognition from the admitting rule alone —
+// tool, the `skill` kind, path provenance with its record-by-record evidence,
+// and the absence of any recognition the shipped registry does not authorize
+// (FR-004, FR-005, QR-005).
 //
-// What the recognizer reads out of the bytes is fixed by the presentation
+// What a recognizer reads out of the bytes is fixed by its presentation
 // allowlist, and the "no source exposure" assertions below are what keep it
 // there: an authored value outside the allowlisted fields stays in the complete
 // `sourceText`, which only the detail route serves. The Codex `skill` extraction
@@ -15,11 +15,14 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { recognizeClaudeCandidate } from '../../../src/server/inspection/recognizers/claude';
 import { recognizeCodexCandidate } from '../../../src/server/inspection/recognizers/codex';
+import { CLAUDE_REPOSITORY_RULES } from '../../../src/server/inspection/rules/claude';
 import { CODEX_REPOSITORY_RULES } from '../../../src/server/inspection/rules/codex';
-import { CompiledInspectionRule } from '../../../src/server/inspection/rules/registry';
+import type { CompiledInspectionRule } from '../../../src/server/inspection/rules/registry';
 
 const codexSkillRule = CODEX_REPOSITORY_RULES[0]!;
+const claudeSkillRule = CLAUDE_REPOSITORY_RULES[0]!;
 
 /**
  * A skill directory these cases can enumerate. The recognizer runs the census
@@ -43,9 +46,10 @@ afterAll(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
-async function recognize(
+async function recognizeWith(
+  recognizer: typeof recognizeCodexCandidate,
   matchedPath: string,
-  rules: readonly CompiledInspectionRule[] = [codexSkillRule],
+  rules: readonly CompiledInspectionRule[],
   sourceText = '',
 ) {
   // The census enumerates the candidate's own directory and propagates a
@@ -55,7 +59,7 @@ async function recognize(
   // These cases are about the recognitions; the census the recognizer also
   // returns has its own suite (`companion-census.test.ts`) and its own
   // publication path (`repository-scan.test.ts`).
-  const { recognitions } = await recognizeCodexCandidate({
+  const { recognitions } = await recognizer({
     fileId: 'file-1',
     matchedPath,
     absolutePath: join(root, matchedPath),
@@ -67,6 +71,14 @@ async function recognize(
     })),
   });
   return recognitions;
+}
+
+async function recognize(
+  matchedPath: string,
+  rules: readonly CompiledInspectionRule[] = [codexSkillRule],
+  sourceText = '',
+) {
+  return recognizeWith(recognizeCodexCandidate, matchedPath, rules, sourceText);
 }
 
 describe('Codex skill recognition', () => {
@@ -146,24 +158,16 @@ describe('Codex skill recognition', () => {
   });
 
   it('produces nothing for an admission owned by another tool', async () => {
-    // The branch under test is decided by `tool` alone, and no Claude vendor
-    // class exists yet, so the stand-in models one exactly as a vendor would:
-    // a subclass of the shared base fixing its own tool literal. Its relations
-    // reuse the Codex rule's — the filter never reads them.
-    class ClaudeStandInRule extends CompiledInspectionRule {
-      /** The stand-in vendor's own literal, which the filter rejects. */
-      public override readonly tool = 'claude';
-
-      /** Reused edges; the branch under test never reads them. */
-      public override readonly relations = codexSkillRule.relations;
-
-      /** Compiles the real record under the stand-in vendor. */
-      public constructor() {
-        super({ ...codexSkillRule.rule, tool: 'claude' });
-      }
-    }
-    const claudeOwnedAdmission = new ClaudeStandInRule();
-    expect(await recognize('.claude/skills/greet/SKILL.md', [claudeOwnedAdmission])).toEqual([]);
+    // The branch under test is decided by `tool` alone: the Codex recognizer
+    // ignores a Claude-owned admission, and the Claude recognizer ignores a
+    // Codex-owned one, so neither can fabricate the other product's
+    // recognition from a shared candidate.
+    expect(await recognize('.claude/skills/greet/SKILL.md', [claudeSkillRule])).toEqual([]);
+    expect(
+      await recognizeWith(recognizeClaudeCandidate, '.agents/skills/greet/SKILL.md', [
+        codexSkillRule,
+      ]),
+    ).toEqual([]);
   });
 
   it('lifts the declared name and only allowlisted frontmatter fields', async () => {
@@ -244,5 +248,136 @@ describe('Codex skill recognition', () => {
     );
     expect(recognition!.details.kind).toBe('skill');
     expect('declaredName' in recognition!.details).toBe(false);
+  });
+});
+
+describe('Claude skill recognition (T127)', () => {
+  async function recognizeClaude(
+    matchedPath: string,
+    rules: readonly CompiledInspectionRule[] = [claudeSkillRule],
+    sourceText = '',
+  ) {
+    return recognizeWith(recognizeClaudeCandidate, matchedPath, rules, sourceText);
+  }
+
+  it('attaches exactly one claude/skill recognition carrying the authored name', async () => {
+    const recognitions = await recognizeClaude(
+      '.claude/skills/greet/SKILL.md',
+      [claudeSkillRule],
+      '---\nname: authored-name\n---\n\nBody.\n',
+    );
+    expect(recognitions).toHaveLength(1);
+    expect(recognitions[0]).toMatchObject({
+      fileId: 'file-1',
+      tool: 'claude',
+      // The name is the value the grouped inventory row is keyed by (FR-007),
+      // so the list milestone extracts exactly it — from the file, never from
+      // the directory segment.
+      details: { kind: 'skill', declaredName: 'authored-name' },
+      parseStatus: 'parsed',
+      declaredMetadata: [{ fieldId: 'claude.skill.name', value: 'authored-name' }],
+      diagnosticIds: [],
+    });
+  });
+
+  it('lifts only the name until the detail phase widens the allowlist slice', async () => {
+    // `description` is an allowlist member the detail phase (T148) owns, and
+    // a credential-shaped key is no member at all: neither produces an entry
+    // here, and both stay visible only in the `sourceText` the detail route
+    // serves.
+    const [recognition] = await recognizeClaude(
+      '.claude/skills/greet/SKILL.md',
+      [claudeSkillRule],
+      '---\nname: greet\ndescription: says hello\napi_key: ghp_EXAMPLE000000000000000000000000000000\n---\n',
+    );
+    expect(recognition!.declaredMetadata).toEqual([
+      { fieldId: 'claude.skill.name', value: 'greet' },
+    ]);
+    const serialized = JSON.stringify(recognition);
+    expect(serialized).not.toContain('ghp_');
+    expect(serialized).not.toContain('says hello');
+  });
+
+  it('leaves the declared name absent rather than guessing one', async () => {
+    // Absent, not empty, and never the directory segment: "this file declares
+    // no name" is a different fact from "it declares an empty one".
+    for (const source of ['', '# no frontmatter\n', '---\ndescription: x\n---\n']) {
+      const [recognition] = await recognizeClaude(
+        '.claude/skills/greet/SKILL.md',
+        [claudeSkillRule],
+        source,
+      );
+      expect('declaredName' in recognition!.details).toBe(false);
+    }
+  });
+
+  it('derives its provenance from the admitted path and the admitting rule', async () => {
+    const [recognition] = await recognizeClaude('packages/api/.claude/skills/deploy/SKILL.md');
+    expect(recognition!.provenances).toHaveLength(1);
+    expect(recognition!.provenances[0]).toMatchObject({
+      ruleId: 'claude.repo.skill',
+      matchedPath: 'packages/api/.claude/skills/deploy/SKILL.md',
+      scope: {
+        kind: 'matching-path',
+        path: 'packages/api/.claude/skills/deploy/SKILL.md',
+        selectorIndex: 0,
+      },
+    });
+  });
+
+  it('carries one sorted evidence record per referenced Claude subject, unreduced', async () => {
+    const [recognition] = await recognizeClaude('.claude/skills/greet/SKILL.md');
+    expect(recognition!.provenances[0]!.evidenceAssessments).toEqual([
+      {
+        subjectKind: 'behavior',
+        subjectId: 'claude.behavior.repo.skills',
+        documentationStatus: 'documented',
+        lifecycleQualifiers: [],
+      },
+      {
+        subjectKind: 'rule',
+        subjectId: 'claude.repo.skill',
+        documentationStatus: 'documented',
+        lifecycleQualifiers: [],
+      },
+      {
+        subjectKind: 'strategy',
+        subjectId: 'claude.skills.selection',
+        documentationStatus: 'documented',
+        lifecycleQualifiers: [],
+      },
+    ]);
+  });
+
+  it('keeps ancestor and lazy-discovery uncertainty conditional in the provenance', async () => {
+    // The admission never upgrades `present` to `effective`: every runtime
+    // input of the documented chain — the launch directory and the lazily
+    // worked paths included — is recorded as an unknown condition.
+    const [recognition] = await recognizeClaude('.claude/skills/greet/SKILL.md');
+    const applicability = recognition!.provenances[0]!.applicability;
+    const keys = applicability.conditions.map((condition) => condition.key);
+    expect(keys).toContain('runtime-cwd');
+    expect(keys).toContain('worked-path');
+    expect(applicability.summary).toBe('conditional');
+  });
+
+  it('recognizes nothing from a filename alone, outside the rule', async () => {
+    // A `SKILL.md` the traversal never admitted reaches the recognizer with no
+    // admissions, and path shape alone creates no recognition (FR-004).
+    expect(await recognizeClaude('docs/SKILL.md', [])).toEqual([]);
+  });
+
+  it('lists what accompanies the skill as Source-relative Paths', async () => {
+    // The census is the shared engine's: a Claude skill is a directory exactly
+    // as a Codex one is, so its companions are enumerated the same way.
+    mkdirSync(join(root, '.claude/skills/stocked/scripts'), { recursive: true });
+    writeFileSync(join(root, '.claude/skills/stocked/SKILL.md'), '# stocked\n', 'utf8');
+    writeFileSync(join(root, '.claude/skills/stocked/reference.md'), 'reference\n', 'utf8');
+    writeFileSync(join(root, '.claude/skills/stocked/scripts/run.sh'), 'echo hi\n', 'utf8');
+    const [recognition] = await recognizeClaude('.claude/skills/stocked/SKILL.md');
+    expect(recognition!.details.kind === 'skill' && recognition!.details.companionFiles).toEqual([
+      '.claude/skills/stocked/reference.md',
+      '.claude/skills/stocked/scripts/run.sh',
+    ]);
   });
 });

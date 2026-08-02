@@ -23,11 +23,12 @@
 // Every `strategyId` is defined normatively in the bilingual
 // runtime-composition contract; these modules are its implementation
 // counterpart.
+import { CLAUDE_COMPOSITION_STRATEGIES } from './claude/strategies';
 import { CODEX_COMPOSITION_STRATEGIES } from './codex/strategies';
 import type { StrategyId } from './identifier-types';
 import type { RuntimeCompositionStrategy } from './strategy-types';
 
-export type { CodexStrategyId, StrategyId } from './identifier-types';
+export type { ClaudeStrategyId, CodexStrategyId, StrategyId } from './identifier-types';
 export type { CompositionOperation, RuntimeCompositionStrategy } from './strategy-types';
 
 /**
@@ -38,5 +39,6 @@ export type { CompositionOperation, RuntimeCompositionStrategy } from './strateg
 export const RUNTIME_COMPOSITION_STRATEGIES: Readonly<
   Record<StrategyId, RuntimeCompositionStrategy>
 > = {
+  ...CLAUDE_COMPOSITION_STRATEGIES,
   ...CODEX_COMPOSITION_STRATEGIES,
 };

@@ -1,8 +1,7 @@
-// T053: the Codex SKILL rule as executed — the authored program
-// `['.agents', 'skills', ANY_NAME, 'SKILL.md']` compiles once into the typed
-// plan, the safe filesystem executes only that plan, and vendor code
-// classifies matches without owning a walker or reinterpreting selectors
-// (FR-003, FR-019, FR-024).
+// T053/T126: the Codex and Claude SKILL rules as executed — each authored
+// program compiles once into the typed plan, the safe filesystem executes only
+// that plan, and vendor code classifies matches without owning a walker or
+// reinterpreting selectors (FR-003, FR-019, FR-024).
 //
 // The near-miss assertions carry the weight here. A selector that is one
 // segment too loose still passes every positive case, so the only way an
@@ -14,9 +13,12 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import * as fsIo from '../../../src/server/inspection/fs-io';
 import {
+  buildClaudeSkillFixture,
   buildCodexSkillFixture,
+  type ClaudeSkillFixture,
   type CodexSkillFixture,
 } from '../../fixtures/repositories/build-fixtures';
+import { CLAUDE_REPOSITORY_RULES } from '../../../src/server/inspection/rules/claude';
 import { CODEX_REPOSITORY_RULES } from '../../../src/server/inspection/rules/codex';
 import { INSPECTION_RULES } from '../../../src/shared/registries/inspection-rules';
 import { RULE_RELATIONS } from '../../../src/shared/registries/relations';
@@ -312,5 +314,146 @@ describe('runtime-chain facts stay conditional', () => {
     expect(
       RULE_RELATIONS[rule.ruleId].explainedByStrategies.map((strategy) => strategy.strategyId),
     ).toEqual(['codex.skills.discovery']);
+  });
+});
+
+describe('the shipped claude.repo.skill plan (T126)', () => {
+  it('compiles the authored descendant program once into the immutable typed plan', () => {
+    expect(CLAUDE_REPOSITORY_RULES).toHaveLength(1);
+    const compiled = CLAUDE_REPOSITORY_RULES[0]!;
+    expect(compiled.rule.ruleId).toBe('claude.repo.skill');
+    expect(compiled.tool).toBe('claude');
+    expect(compiled.kind).toBe('skill');
+    // The compiled plan is exactly what compiling the shipped matcher yields:
+    // there is no second, vendor-owned interpretation of the selector.
+    expect(compiled.plan).toEqual(
+      new TraversalPlan(INSPECTION_RULES['claude.repo.skill']!.matcher!),
+    );
+    // Descendant inventory with exactly one direct skill-name child: the
+    // leading recursive step covers the root and every descendant layer —
+    // Claude discovers ancestor layers at startup and nested layers lazily —
+    // and the single dynamic name step keeps the admitted file exactly one
+    // directory below `skills` (contracts/vendors/claude-code.md § Repository
+    // Inspector matchers).
+    expect(compiled.plan.selectors[0]!.remainder.map((segment) => segment.kind)).toEqual([
+      'recursive-directories',
+      'literal',
+      'literal',
+      'regex',
+      'literal',
+    ]);
+  });
+
+  it('records ancestor and lazy-discovery uncertainty as condition keys, not admissions', () => {
+    // Which layer actually participates in a session depends on where Claude
+    // was launched and which files were worked on; the rule records both as
+    // unknowable inputs rather than narrowing or widening what it admits.
+    const rule = INSPECTION_RULES['claude.repo.skill']!;
+    expect(rule.conditionKeys).toContain('runtime-cwd');
+    expect(rule.conditionKeys).toContain('worked-path');
+    expect(rule.conditionKeys).toContain('selection');
+    expect(
+      RULE_RELATIONS[rule.ruleId].explainedByStrategies.map((strategy) => strategy.strategyId),
+    ).toEqual(['claude.skills.selection']);
+  });
+});
+
+describe('the Claude descendant inventory beside the anchored Codex one (T126)', () => {
+  let mixed: ClaudeSkillFixture;
+
+  beforeAll(() => {
+    mixed = buildClaudeSkillFixture('inspector-claude-rules');
+  });
+
+  afterAll(() => {
+    rmSync(mixed.root, { recursive: true, force: true });
+  });
+
+  async function scanMixed() {
+    vi.clearAllMocks();
+    const result = await runTraversalScan({
+      root: mixed.root,
+      plans: [...CLAUDE_REPOSITORY_RULES, ...CODEX_REPOSITORY_RULES].map((rule) => rule.plan),
+    });
+    if (result.kind !== 'scanned') {
+      throw new Error(`expected a scanned result, got ${result.kind}`);
+    }
+    return result;
+  }
+
+  it('admits the Claude skills at the root and in nested directories, and the Codex ones unchanged', async () => {
+    const result = await scanMixed();
+    expect(result.files.map((file) => file.publicPath)).toEqual(
+      [...mixed.expectedClaudeSkillPaths, ...mixed.expectedCodexSkillPaths].sort(),
+    );
+  });
+
+  it('keeps both same-name skill directories as two admitted candidates', async () => {
+    // Two layers declare `dup`; both stay visible, and which one Claude would
+    // select remains conditional rather than resolved by the inventory.
+    const result = await scanMixed();
+    const paths = result.files.map((file) => file.publicPath);
+    expect(paths).toContain('.claude/skills/dup/SKILL.md');
+    expect(paths).toContain('packages/api/.claude/skills/dup/SKILL.md');
+  });
+
+  it('admits no near miss, including the nested Codex spelling', async () => {
+    // The nested `.agents/skills` file is the discriminating case: Claude's
+    // descendant expansion must not leak into Codex's anchored program.
+    const result = await scanMixed();
+    const paths = new Set(result.files.map((file) => file.publicPath));
+    for (const nearMiss of mixed.nearMissPaths) {
+      expect(paths.has(nearMiss), nearMiss).toBe(false);
+    }
+  });
+
+  it('resolves each admission back to the vendor rule whose plan admitted it', async () => {
+    const result = await scanMixed();
+    const rules = [...CLAUDE_REPOSITORY_RULES, ...CODEX_REPOSITORY_RULES];
+    for (const candidate of result.files) {
+      const admitting = resolveAdmittingRules(rules, candidate.admissions);
+      const expected = candidate.publicPath.includes('.claude/')
+        ? ['claude.repo.skill']
+        : ['codex.repo.skill'];
+      expect(
+        admitting.map((compiled) => compiled.rule.ruleId),
+        candidate.publicPath,
+      ).toEqual(expected);
+    }
+  });
+
+  it('reads a symlinked skill transparently through its target', async () => {
+    if (!mixed.capabilities.symlinks) {
+      return;
+    }
+    const result = await scanMixed();
+    const linked = result.files.find(
+      (file) => file.publicPath === '.claude/skills/linked/SKILL.md',
+    );
+    // The candidate is the link's path; the content is the target's, exactly
+    // as Claude would load it (FR-024; contracts/vendors/claude-code.md
+    // § Known ambiguities item 9).
+    expect(linked?.outcome.kind).toBe('readable');
+    expect(linked?.outcome.kind === 'readable' && linked.outcome.sourceText).toBe(
+      '# linked claude skill\n',
+    );
+    const broken = result.files.find(
+      (file) => file.publicPath === '.claude/skills/broken/SKILL.md',
+    );
+    expect(broken?.outcome.kind).toBe('unreadable');
+  });
+
+  it('terminates the walk on a directory link cycle instead of recursing', async () => {
+    // `.claude/skills/cycle` points back at the fixture root. The leading
+    // recursive step would re-enter the whole tree through it forever; the
+    // walk's real-path tracking terminates it, the scan completes, and the
+    // cycle contributes no candidate.
+    if (!mixed.capabilities.symlinks) {
+      return;
+    }
+    const result = await scanMixed();
+    expect(
+      result.files.filter((file) => file.publicPath.startsWith('.claude/skills/cycle/')),
+    ).toEqual([]);
   });
 });

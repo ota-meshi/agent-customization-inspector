@@ -1,6 +1,5 @@
-// T080: what the Codex skill-discovery strategy establishes, and what it
-// deliberately does not (contracts/runtime-composition.md
-// § `codex.skills.discovery`, FR-007).
+// T080/T138: what the shipped skill-discovery strategies establish, and what
+// they deliberately do not (contracts/runtime-composition.md, FR-007).
 //
 // The strategy is the product's account of Codex's runtime, and the whole point
 // of maintaining it is that the Inspector says what the vendor documents and no
@@ -8,6 +7,8 @@
 // order among the repository, user, admin, and system scopes. So the row for a
 // duplicated name says "keeps all of them, in no documented order" and never
 // picks one — and the projections that depend on selection stay unknown.
+// Claude instead documents a first definition, and T138 verifies the generic
+// resolution helper derives that result without a vendor-specific UI branch.
 import { describe, expect, it } from 'vitest';
 import { CODEX_SKILLS_DISCOVERY_STRATEGY } from '../../../src/shared/registries/codex/strategies';
 import {
@@ -55,10 +56,15 @@ describe('same-name skill resolution', () => {
     expect(sameNameSkillResolutionFor('codex')).toBe('all-remain');
   });
 
+  it('states that Claude selects the first definition in its documented order', () => {
+    // Derived from `claude.skills.selection`'s `select-first` pipeline
+    // (contracts/runtime-composition.md § `claude.skills.selection`).
+    expect(sameNameSkillResolutionFor('claude')).toBe('select-first');
+  });
+
   it('states nothing for a product with no shipped skill strategy', () => {
     // A product that recognizes no skill can reach no row, so silence is the
     // honest answer rather than a guessed rule.
-    expect(sameNameSkillResolutionFor('claude')).toBeNull();
     expect(sameNameSkillResolutionFor('copilot')).toBeNull();
   });
 

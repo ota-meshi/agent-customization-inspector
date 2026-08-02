@@ -1,5 +1,44 @@
 [
   {
+    "strategyId": "claude.skills.selection",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "operations": ["select-first"],
+    "requiredConditionKeys": [
+      "surface",
+      "engine-version",
+      "runtime-cwd",
+      "repository-root",
+      "worked-path",
+      "scope-availability",
+      "feature-state",
+      "enablement",
+      "selection",
+      "plugin-state",
+      "managed-policy"
+    ],
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.skills.locations-discovery",
+        "url": "https://code.claude.com/docs/en/skills",
+        "officialHost": "code.claude.com",
+        "sections": ["Where skills live", "How a skill gets its command name"],
+        "reviewedOn": "2026-07-25",
+        "establishes": "Same-name skills resolve in enterprise, user, project, then bundled order; plugin skills stay namespaced by their plugin, and a skill wins over a legacy command with the same name."
+      },
+      {
+        "sourceId": "anthropic.claude-code.ide.shared-differences",
+        "url": "https://code.claude.com/docs/en/ide-integrations",
+        "officialHost": "code.claude.com",
+        "sections": ["VS Code extension vs. Claude Code CLI"],
+        "reviewedOn": "2026-07-25",
+        "establishes": "The CLI and the IDE integrations share the same configuration while feature availability differs by surface, so which surface is running remains a condition of any selection outcome."
+      }
+    ]
+  },
+  {
     "strategyId": "codex.skills.discovery",
     "tool": "codex",
     "surfaces": ["codex-local-clients"],

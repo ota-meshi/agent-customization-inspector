@@ -19,12 +19,21 @@ import type { EvidenceCitation } from './evidence-types';
  */
 export type VendorSurface =
   /**
+   * The Claude Code CLI plus the VS Code and JetBrains IDE integrations, which
+   * consume the same skill locations — the CLI with the full feature set and
+   * the IDEs with a documented subset (contracts/vendors/claude-code.md
+   * § Repository vendor behavior, "CLI full; IDE subset"). Which surface is
+   * running stays a `surface` condition; this member never claims feature
+   * parity across the clients it names.
+   */
+  | 'claude-cli-and-ide-clients'
+  /**
    * The ChatGPT desktop app, Codex CLI, and Codex IDE extension, which share
    * one local Codex host configuration
    * (contracts/vendors/openai-codex.md § Surface boundary). Hosted ChatGPT
    * Work is deliberately not part of this surface: it reads no local file.
    */
-  'codex-local-clients';
+  | 'codex-local-clients';
 
 /**
  * Which documented ownership scope a behavior belongs to

@@ -29,6 +29,8 @@ import type { BehaviorId, MetadataFieldId, RuleId, StrategyId } from './identifi
  * belongs to the field the allowlist fixed rather than to any file's spelling.
  */
 export const METADATA_FIELD_TEXT: Readonly<Record<MetadataFieldId, string>> = {
+  /** Caption for the name a Claude skill declares. */
+  'claude.skill.name': 'Skill name',
   /** Caption for the name a Codex skill declares. */
   'codex.skill.name': 'Skill name',
   /** Caption for the description a Codex skill declares. */
@@ -50,6 +52,18 @@ export const METADATA_FIELD_TEXT: Readonly<Record<MetadataFieldId, string>> = {
  * rule covering one location would render as the same sentence twice.
  */
 export const REGISTRY_SUBJECT_TEXT: Readonly<Record<BehaviorId | RuleId | StrategyId, string>> = {
+  /** What Anthropic documents about repository skills. */
+  'claude.behavior.repo.skills':
+    'Claude Code loads a repository skill from .claude/skills/<skill-name>/SKILL.md on each directory layer',
+  /** What Anthropic documents about skills in the Claude configuration directory. */
+  'claude.behavior.user.skills':
+    'Claude Code also loads skills from skills/<skill-name>/SKILL.md in your Claude configuration directory',
+  /** What this product does about Claude repository skills. */
+  'claude.repo.skill':
+    'This tool reads repository skill files at .claude/skills/<skill-name>/SKILL.md in any directory',
+  /** What Anthropic documents about skills that share a name. */
+  'claude.skills.selection':
+    'Claude Code uses the first skill of a shared name in its documented scope order',
   /** What OpenAI documents about repository skills. */
   'codex.behavior.repo.skills':
     'OpenAI Codex loads a repository skill from .agents/skills/<name>/SKILL.md',

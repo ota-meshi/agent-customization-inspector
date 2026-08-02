@@ -23,11 +23,12 @@
 //
 // Each record is the implementation counterpart of one row in a bilingual
 // vendor contract, and rules arrive with the inventory phase that needs them.
+import { CLAUDE_INSPECTION_RULES } from './claude/rules';
 import { CODEX_INSPECTION_RULES } from './codex/rules';
 import type { RuleId } from './identifier-types';
 import type { InspectionRule } from './rule-types';
 
-export type { CodexRuleId, RuleId } from './identifier-types';
+export type { ClaudeRuleId, CodexRuleId, RuleId } from './identifier-types';
 export type { InspectionRule, RuleDiscoveryClass } from './rule-types';
 
 /**
@@ -37,5 +38,6 @@ export type { InspectionRule, RuleDiscoveryClass } from './rule-types';
  * arrive with their inventory phase.
  */
 export const INSPECTION_RULES: Readonly<Record<RuleId, InspectionRule>> = {
+  ...CLAUDE_INSPECTION_RULES,
   ...CODEX_INSPECTION_RULES,
 };
