@@ -446,8 +446,12 @@ export class SessionViewState {
             ),
           };
         }
-        // The committed generation arrives on this refresh.
-        await this.refresh();
+        // The committed generation arrives on this refresh — one that starts
+        // after the acceptance. An in-flight fetch may predate it: a "Refresh
+        // status" pressed just before acceptance returns a snapshot with no
+        // accepted scan, and adopting it would overwrite the scanning Source
+        // patched above with a Ready row beside a live `activeScanRequestId`.
+        await this.#refreshFreshly();
         return;
       case 'rejected':
         // The rejection belongs to the purged session's command; writing it
@@ -529,16 +533,24 @@ export class SessionViewState {
    */
   public closeSkill(): void {
     this.#skillRequestVersion += 1;
-    // Component-owned content first, synchronously: the callers of this
-    // method — a purge, a route close, and the adoption of a greater
-    // generation — all require the editor objects gone before what follows,
-    // not one render flush later (data-model.md § BrowserState).
-    for (const disposer of this.#openContentOwners) {
-      disposer();
-    }
+    // The reactive state goes first and the component-owned content second.
+    // Both happen in this one synchronous block, so what the contract orders
+    // still holds: the editor objects are gone before the caller replaces the
+    // sequence's inventory entries, not one render flush later
+    // (data-model.md § BrowserState).
+    //
+    // Within the block the order matters for focus. The detail page guards
+    // focus with synchronous watchers on this state, and they can only move
+    // focus off an element that is still there. Disposing first detaches the
+    // editor the reader was in, so by the time the watchers run the focused
+    // element is already the document body and there is nothing left to
+    // rescue (WCAG 2.4.3).
     this.skillDetail.value = null;
     this.openCompanion.value = null;
     this.skillDetailState.value = 'idle';
+    for (const disposer of this.#openContentOwners) {
+      disposer();
+    }
     // A detail failure belongs to the route that requested it. A session error
     // survives: it describes the session, not the file the reader just left.
     this.#skillError.value = null;

@@ -5,10 +5,9 @@
 // cannot enumerate a directory, open a relationship target, or merge the
 // Inspector's Repository and Global Sources
 // (contracts/runtime-composition.md § "Runtime composition is not Inspector
-// source merging"). Its `requiredConditionKeys` are the inputs that must all
-// be known before a projection may state a terminal applicability result — an
-// unavailable input keeps the projection non-terminal (`conditional`, per the
-// decision table's row 6) and never defaults to satisfied.
+// source merging"). It records what a vendor documents about combining its own
+// inputs; it states nothing about what a concrete session selected, because
+// that depends on runtime this tool never observes.
 //
 // Each strategy is its own `export const` so a relation can name it directly.
 // Each record is declared with `satisfies` rather than a type annotation, and
@@ -17,31 +16,32 @@
 // resolving to a property, and the map's completeness check would break;
 // `satisfies` keeps the literal, so a key cannot disagree with the record it
 // points at.
-import { CLAUDE_SKILL_CONDITION_KEYS } from './behaviors';
 import { SHIPS_MAINTENANCE_DATA } from '../maintenance-data';
 import type { ClaudeStrategyId } from '../identifier-types';
 import type { RuntimeCompositionStrategy } from '../strategy-types';
 
 /**
- * Claude skill selection across enterprise, User, project, and bundled scopes.
+ * Claude skill selection for same-name skills within one root.
  *
- * The documented outcome for a name collision is a winner: same-name skills
- * resolve in enterprise, User, project, then bundled order, which is
- * `select-first`. Plugin skills stay namespaced by their plugin and a skill
- * wins over a legacy command of the same name — refinements of the same
- * documented selection, not further operations. Whether a concrete skill is
- * offered stays conditional on every key below; the Inspector records the
- * documented edge, never a winner.
+ * The documented outcome for a name clash inside one repository is that every
+ * definition stays available — a nested one under a directory-qualified
+ * command — and Claude picks the variant matching the files it is working on:
+ * `retain-all`, then `select-closest`. The enterprise-over-personal-over-
+ * project precedence the same page documents is a rule between levels, which
+ * this product lists as separate Sources, so it is not the statement a
+ * repository row's collision gets. The Inspector records the documented edge,
+ * never a winner.
  */
 export const CLAUDE_SKILLS_SELECTION_STRATEGY = {
   strategyId: 'claude.skills.selection',
   tool: 'claude',
   surfaces: ['claude-cli-and-ide-clients'],
-  operations: ['select-first'],
-  // The same list the two skill behaviors declare: one definition, so the
-  // strategy and its inputs cannot disagree about what must be known.
-  requiredConditionKeys: CLAUDE_SKILL_CONDITION_KEYS,
-  documentationStatus: 'documented',
+  operations: ['retain-all', 'select-closest'],
+  // Both operations are version-anchored: nested-clash retention at 2.1.178+
+  // (changelog § 2.1.178), and automatic working-context invocation from an
+  // unqualified name at 2.1.203+ (skills page § Where skills live). The record
+  // stays partial because exact IDE surface availability remains conditional.
+  documentationStatus: 'partially-documented',
   lifecycleQualifiers: [],
   evidence: SHIPS_MAINTENANCE_DATA
     ? [
@@ -50,9 +50,18 @@ export const CLAUDE_SKILLS_SELECTION_STRATEGY = {
           url: 'https://code.claude.com/docs/en/skills',
           officialHost: 'code.claude.com',
           sections: ['Where skills live', 'How a skill gets its command name'],
-          reviewedOn: '2026-07-25',
+          reviewedOn: '2026-08-08',
           establishes:
-            'Same-name skills resolve in enterprise, user, project, then bundled order; plugin skills stay namespaced by their plugin, and a skill wins over a legacy command with the same name.',
+            'Within one root, a nested skill sharing a name with another stays available under a directory-qualified command; when the unqualified name is used, Claude Code 2.1.203+ can invoke the variant matching the files being worked on. The name field of a personal or project skill sets only the display label, and the enterprise-over-personal-over-project precedence is a rule between levels, not within one.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.changelog.nested-skill-discovery',
+          url: 'https://code.claude.com/docs/en/changelog',
+          officialHost: 'code.claude.com',
+          sections: ['2.1.178'],
+          reviewedOn: '2026-08-06',
+          establishes:
+            'Release 2.1.178 introduces the nested-clash retention this strategy records — on a name clash the nested skill appears as <dir>:<name> so both stay available — and anchors the retention half of this pipeline at 2.1.178+.',
         },
         {
           sourceId: 'anthropic.claude-code.ide.shared-differences',

@@ -15,7 +15,7 @@
 // one stop in the page tab order, arrows to move between tabs, Home/End to the
 // ends.
 import { CUSTOMIZATION_KIND_TEXT, type CustomizationKind } from '../../../shared/entities';
-import { nextKindForKey } from './kind-tab-navigation';
+import { nextTabForKey } from '../tab-navigation';
 import { inventoryPanelId, inventoryTabId } from './panel-ids';
 
 const props = defineProps<{
@@ -45,7 +45,7 @@ const panelIdFor = inventoryPanelId;
 // issues no request and cannot lose the user's work, so the extra Enter the
 // manual-activation variant requires would be friction with nothing behind it.
 function onKeydown(event: KeyboardEvent, index: number): void {
-  const next = nextKindForKey(event.key, props.kinds, index);
+  const next = nextTabForKey(event.key, props.kinds, index);
   if (next === null) {
     // A key the pattern does not handle keeps its default behavior: swallowing
     // it here would break Tab out of the strip.

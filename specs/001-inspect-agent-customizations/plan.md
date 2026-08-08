@@ -111,9 +111,8 @@ derivations, relationship-only references, and exclusions remain distinct. File 
 is kept separate from product surface, runtime root/`cwd`, target matching, trust,
 enablement, selection, installation, managed policy, and external runtime facts, so the
 inventory never masquerades as an effective agent configuration. Origin-file-less hosted or
-runtime inputs are evidence-linked `SourceConditionFact` records attached to the
-relevant Source; they authorize no I/O and create no synthetic file, path, source text,
-relationship origin, or comparison target. Closed context
+runtime inputs are out of scope: the product reports the customization files it found and
+says nothing about behavior no file originates. Closed context
 relationships show which independently inventoried instructions, rules, skills, MCP
 declarations, or memory scopes an agent may reference without following a path; Codex
 instruction-byte limits and excluded non-file inputs stay explicit condition facts.
@@ -228,7 +227,7 @@ observation. The closed manual matrix uses the packed tarball, all three
 supported OS/browser/assistive-technology cells, exact responsive/zoom/spacing profiles,
 visual modes, workflow states, and input profiles. Actual version/revision values are frozen
 before execution; any release or matrix change reruns every manual check, and no applicable
-cell may be sampled or silently omitted. SC-003, SC-004, SC-005, SC-007, and SC-009 use
+cell may be sampled or silently omitted. SC-003, SC-004, SC-005, and SC-007 use
 the checked-in `tests/fixtures/outcomes/manifest.json` and canonical
 `tests/fixtures/outcomes/manifest.sha256` as one versioned, closed release-evidence
 denominator. Each manifest case has a unique stable ID, criterion and required-class
@@ -252,14 +251,13 @@ rejected selector families, and shared-file combinations for SC-003; prohibited 
 and Repository/Global boundary rejection for SC-004;
 exact tool/kind/source rows, source/comparison surfaces, literal-credential/environment-
 reference classes, and set/unset referenced-variable states for SC-005; every file-confined
-outcome class and failure class for SC-007; and every maintained Source Condition
-Fact row, tool, product surface, and documented/unavailable state for SC-009. Release records
+outcome class and failure class for SC-007. Release records
 name the manifest version and digest plus every executed case ID; missing, omitted,
 unexecuted, or mismatched evidence fails the affected criterion. The maintained usability
 study kit uses one 20-person first-time cohort for SC-001 then SC-006, fixed prompts
 and moderator limits, no replacement, unsuccessful scoring for failures that prevent or
 interrupt completion, the handled SC-001 automatic-open distinction, the defined timer
-boundaries, and a four-field SC-006 response form scored against fixed ground truth.
+boundaries, and a three-field SC-006 response form scored against fixed ground truth.
 After that timed response, the same participants attempt standardized comparison and Global-
 consent tasks. Moderators record objective workflow outcomes and predefined safety events.
 Study equipment uses the one prepared profile
@@ -1033,15 +1031,16 @@ complete authored source only for explicit detail requests, one file or comparis
 time, with no confirmation step in front of the content and no notice in front of or
 beside it;
 environment-variable references are never resolved or substituted; inert text
-rendering only. Displayed metadata fields and relationship kinds
-must both belong to the maintained closed presentation-allowlist row for the supported
+rendering only. A displayed relationship kind
+must belong to the maintained closed presentation-allowlist row for the supported
 `(tool, kind)` and be recognized by the exact extractor for the actual admitted source form;
-entries failing either gate remain available only in complete source text and are never
-inferred as metadata or relationships. Product surfaces are limited to syntactic
-parsing, reading the value a parser resolves for an allowlisted field, frozen-catalog
+a reference failing either gate remains available only in complete source text and is never
+inferred as a relationship. No allowlist stands between a declaration and its publication:
+a skill's are the keys its file wrote, and an authored key set is not closed. Product surfaces are limited to syntactic
+parsing, reading the value a parser resolves for a declaration the recognized kind publishes, frozen-catalog
 classification, and projection of documented order, scope, condition, selection, and
-reference facts. Inventory, Detail, Comparison, Global controls, Diagnostics, Source
-Condition Facts, APIs, CLI output, and documentation never interpret or rank natural-
+reference relationships. Inventory, Detail, Comparison, Global controls, Diagnostics,
+APIs, CLI output, and documentation never interpret or rank natural-
 language meaning, decide validity/correctness/effectiveness/compliance/quality, advise
 remediation, or lint, synchronize, convert, format, or fix customization content. Internal
 validation of Inspector-owned manifests, registries, DTOs, and invariants is not a judgment
@@ -1071,9 +1070,9 @@ transitive relationship, the Inspector omits that projection before target acces
 the eligible direct relationships and complete authored source, and emits an actionable,
 source-value-free relationship diagnostic.
 The authorized browser defines no heartbeat interval, request timeout, retry delay, or
-memory lease, and no liveness probe. It purges on browser/network/
-runtime rejection, a transport-reported channel loss, session mismatch, a greater content
-epoch, or a non-null disable fence. A lost host closes the loopback socket, which devframe
+memory lease, and no liveness probe. It purges on a
+transport-reported channel loss or unsupported protocol, a session mismatch, a greater
+content epoch, or a non-null disable fence — never on an ordinary request rejection. A lost host closes the loopback socket, which devframe
 reports to the page without being asked, so process loss is detected without polling for
 it. A page-lifecycle event is not among the triggers: FR-027 purges after a failure or an
 equivalent terminal reset, and neither switching tabs nor navigating away is either, so the
@@ -1165,8 +1164,8 @@ execution environment rather than a product-defined item ceiling.
       request's error per FR-030),
       product-issued mutation and OS-atime separation,
       the product-wide FR-032 negative boundary, the complete bilingual 55-row WCAG Level
-      A/AA acceptance matrix, FR-039/SC-009 origin-file-less Source Condition Facts, the
-      versioned digest-bound nonzero release-evidence denominators for SC-003/004/005/007/009,
+      A/AA acceptance matrix, the
+      versioned digest-bound nonzero release-evidence denominators for SC-003/004/005/007,
       and the repository-owned usability-evidence bundle/capture/verifier protocol. Its
       deterministic contract tests, fake-clock heartbeat boundaries, real child-process/IPC
       integration tests, privacy-negative security tests, and independent final-seal
@@ -1220,16 +1219,17 @@ execution environment rather than a product-defined item ceiling.
 
 ### Post-design re-check
 
-The data model distinguishes physical files, candidate provenances, documentation status,
-and runtime applicability facts. The session API contract returns complete authored source and
+The data model distinguishes physical files and candidate provenances; documentation
+status is a maintenance record on a registry, and what a product would do at runtime is
+projected nowhere. The session API contract returns complete authored source and
 declared authored values only to an explicit detail request over the loopback devframe
 channel; the
 bundled SPA requests one file or constructs one comparison at a time and shows the result
 with no notice in front of or beside it. The session API neither
 receives nor persists any acknowledgement or notice state, because neither exists. It provides no masking or reveal workflow, never
-resolves environment-variable references, and emits only metadata
-fields and relationship kinds that belong to the maintained closed presentation-allowlist
-row and are recognized by the exact extractor for the actual admitted source form. The matcher contract
+resolves environment-variable references, and emits only relationship kinds that belong to
+the maintained closed presentation-allowlist row and are recognized by the exact extractor
+for the actual admitted source form. The matcher contract
 permits only explicit static or vendor-specific one-edge
 derived candidates; relationships, components, vendor locators, and excluded inputs cannot
 expand the read boundary. Relationship projection is limited to direct edges one hop from
@@ -1258,7 +1258,7 @@ stalled kernel filesystem operation: disable, shutdown, or cancellation revokes 
 authority and discards late results, but physical completion awaits the operation. It is not
 treated as passing-test proof or an implicit waiver. No unresolved
 clarification or known constitutional violation remains. The frozen outcome-fixture
-manifest and digest close the SC-003/004/005/007/009 release denominators and fail any
+manifest and digest close the SC-003/004/005/007 release denominators and fail any
 missing class, case, fixture, execution record, or digest match.
 
 ## Project Structure
@@ -1341,14 +1341,8 @@ src/
 │   │   │   ├── copilot.ts
 │   │   │   ├── claude.ts
 │   │   │   └── codex.ts
-│   │   ├── applicability/
-│   │   │   ├── conditions.ts
-│   │   │   ├── context.ts
-│   │   │   └── precedence.ts
 │   │   ├── recognizers/
-│   │   │   ├── claude.ts
-│   │   │   ├── codex.ts
-│   │   │   └── copilot.ts
+│   │   │   └── candidate.ts
 │   │   └── parsers/
 │   │       ├── extraction.ts
 │   │       ├── json.ts
@@ -1366,7 +1360,6 @@ src/
     ├── rejection-codes.ts
     └── registries/
         ├── identifier-types.ts       # closed BehaviorId/StrategyId/RuleId unions
-        ├── identifier-text.ts        # what those identifiers read as on screen
         ├── behavior-types.ts         # record shapes, one per registry
         ├── strategy-types.ts
         ├── rule-types.ts
@@ -1463,7 +1456,12 @@ for isomorphic contracts — because the UI
 and CLI are released and versioned together. Nuxt is configured as an SPA (`ssr: false`)
 with the static Nitro preset, `app.baseURL: '/'`, `app.buildAssetsDir: '/_nuxt/'`, no CDN
 URL, explicit imports, and component auto-discovery disabled. Every nested client route
-therefore resolves the same root-absolute, same-origin asset URLs. The `src/server/cli.ts` entry
+therefore resolves the same root-absolute, same-origin asset URLs. A detail route belongs
+to the recognized kind whose surface it is, which is why `/skills/<fileId>` names `skills`
+rather than the file: what a detail shows is a skill's declarations, its instructions, and
+its directory, and another kind's detail answers different questions with a different
+layout. Every shipped inspection rule recognizes `skill`, so that is the one detail route;
+the phase that recognizes a second kind brings that kind's route and page with it. The `src/server/cli.ts` entry
 starts with the exact BOM-free, LF-terminated first line `#!/usr/bin/env node`, tsdown
 preserves that shebang in the packaged `dist/cli.mjs`, and `package.json.bin` maps to it
 directly with no separate bootstrap wrapper: same-tarball artifacts are never re-verified
@@ -1496,9 +1494,9 @@ closed union fixes — a Source status, a boundary origin, a Diagnostic code —
 declared beside that union in `src/shared/entities.ts` and `src/shared/diagnostics.ts` so a
 new member cannot compile without its text, and so the server and the browser read the same
 vocabulary from one place. Where the union is declared in a `-types` module that ships no
-runtime code, its table is the `*-text.ts` companion beside it: `src/shared/api-text.ts`
-and `src/shared/registries/identifier-text.ts`. This is also what keeps a contract
-identifier off the screen. A rule ID, a metadata field ID, and a condition key are tokens a
+runtime code, its table is the `*-text.ts` companion beside it: `src/shared/api-text.ts`.
+This is also what keeps a contract
+identifier off the screen. A rule ID, a behavior or strategy ID, and a matcher lookup base are tokens a
 registry record is keyed by and a gate is checked against, so every surface renders the
 statement the token names, and the DTO field carrying it is typed as its closed union rather
 than as `string` so the table cannot fall behind the catalog.
@@ -1528,20 +1526,20 @@ and fail the build on duplicates, orphan references, unanchored evidence, or an 
 Repository matcher whose authored segment program violates the closed token grammar (for
 example adjacent recursive-directory segments).
 
-`src/shared/entities.ts` owns the closed `EvidenceAssessment` DTO shape, each registry module
-owns the exact `documentationStatus` and `lifecycleQualifiers` on its own subject records,
-and `src/server/inspection/rules/registry.ts` is the sole assessment assembler. It resolves the
-owning rule plus every referenced behavior and strategy, copies one exact subject record per
-`(subjectKind, subjectId)`, rejects missing or duplicate subjects, and sorts by the fixed
-subject-kind/ID order. Recognizers and relationship/fact projection consume that assembled
-array without recomputing, unioning qualifiers, or reducing status to a scalar.
+Each registry module owns the exact `documentationStatus` and `lifecycleQualifiers` on its
+own subject records. They are maintenance records: no response carries one, and nothing in
+the product assembles or reads them. The contract gate reads them from the records
+themselves, rejects missing or duplicate subjects, and sorts by the fixed subject-kind/ID
+order.
 
 The Presentation Allowlist sections in the three maintained vendor contracts are a separate
 normative design input. Before the first parser, recognizer, API, or UI detail task, those
 sections enumerate every supported `(tool, kind)`, the admitted source forms covered by its
-row, and its exact metadata `fieldId` and relationship-kind set in both languages. Effective
+row, and its relationship-kind set in both languages. A row lists no metadata field
+catalog: a skill's declarations are published by the keys the file wrote, so there is no
+closed set of them to enumerate. Effective
 eligibility is a two-gate decision: tuple membership plus the exact source-form extractor
-described by that row. A field listed for one source form is never transplanted into another
+described by that row. A kind listed for one source form is never transplanted into another
 form by tuple membership alone. Registry and conformance work consumes and tests both gates;
 implementation must not define the contract it is meant to satisfy. The later official
 evidence phase may review and reconcile drift, but it does not create the initial allowlist.
@@ -1657,8 +1655,8 @@ configuration.
   ordinary files. Raw entry names are the only filesystem operands, and joined with `/`
   they are the published Source-relative Path. Client-supplied paths never authorize
   I/O; reads are driven by the compiled allowlist plans and server-owned identifiers only.
-- Per-file problems use the closed Diagnostic registry: `root-unreadable` (source scope for
-  a published Source, session scope for an unpublished Global tool; error), `file-unreadable` (file scope, error),
+- Per-file problems use the closed Diagnostic registry: `root-unreadable` (source scope;
+  error), `file-unreadable` (file scope, error),
   `file-content-binary` (file scope, warning), and `recognition-parse-failed` (file scope,
   warning). A selected Repository root that does not exist or cannot be read as a
   directory fails that scan with the source-scoped `root-unreadable` diagnostic while the
@@ -1741,25 +1739,25 @@ configuration.
   Any attempted nested/transitive projection is rejected before target access, leaves the
   eligible direct edges and complete authored source available, and emits the
   actionable, source-value-free relationship-depth diagnostic. A fixed default is never labeled or
-  serialized as an authored target. Public provenance scope and order use closed
-  `ScopeDescriptor`/`OrderDescriptor` unions with Source-relative paths and stable
-  comparison keys; unknown order remains null plus condition facts. A derived provenance
-  names the exact `seedProvenanceId`.
+  serialized as an authored target. A public provenance names the rule that authorized
+  the read and the Source-relative path it matched, and nothing further: where a
+  customization would apply and in what order are projections no surface makes. A derived
+  provenance names the exact `seedProvenanceId`.
   In particular, Repository-root `.mcp.json` merges the Copilot CLI provenance and the
   exact VS Code 1.118+ path-only provenance without another file/read. CLI `mcpServers`
   extraction remains provenance-specific; the VS Code provenance adds no schema fields or
   inferred winner while the registered release-note/current-guide conflict remains open.
-- `src/server/inspection/applicability` evaluates only closed composition strategies and their
-  cited vendor behavior/rules against available facts. Documentation status, product
-  surface, runtime `cwd`/target, trust, approval, enablement,
-  selection, agent context, tool availability, installation, instruction-byte budget,
-  managed policy, and external state remain separate. An absent or excluded input stays
-  unknown, including Codex user/profile fallback names, `project_doc_max_bytes`, and
-  project roots outside Global instructions-only consent. Source-level facts retain the
-  tool, explaining rule, and affected candidate/relationship-rule IDs instead of fabricating a source
-  file relationship. Copilot surface differences, Claude's exact-launch-directory project
-  settings, direct-child-only Codex rule files, and authored-but-not-activated plugin
-  manifests remain explicit strategy/condition inputs rather than matcher side effects.
+- No module projects whether a product would use an admitted file. Documentation status,
+  product surface, runtime `cwd`/target, trust, approval, enablement, selection, agent
+  context, tool availability, installation, instruction-byte budget, managed policy, and
+  external state are runtime inputs this tool never observes, and a recognition says
+  nothing about any of them. Codex user/profile fallback names, `project_doc_max_bytes`,
+  project roots outside Global instructions-only consent, Copilot surface differences,
+  Claude's exact-launch-directory project settings, direct-child-only Codex rule files,
+  and authored-but-not-activated plugin manifests are all cases of the same rule: what a
+  vendor does with a file is that vendor's documentation, not a fact this product derives.
+  Source-level facts retain the tool, explaining rule, and affected
+  candidate/relationship-rule IDs instead of fabricating a source file relationship.
 - The official-source registry gives each behavior, rule, and strategy reciprocal stable
   evidence IDs, canonical official HTTPS URLs, exact section anchors, review dates,
   and semantic fingerprints. Offline contract/build validation loads checked-in records;
@@ -1782,11 +1780,10 @@ configuration.
   points at and leaves the scalar an unresolved tag carried — what a product loading the file
   reads, and not something this tool refuses; JSONC tree extraction of known fields, TOML lexical-span extraction
   paired with semantic normalization without executing values, and Markdown/frontmatter
-  extraction without HTML rendering. Each allowlisted field carries one entry holding
-  the value its parser resolved, in the allowlist row's order; a key declared twice
-  resolves to one value, so there is no occurrence index. Only fields resolving to a scalar
-  are entries, because a row names scalar fields and a text form of a structure would be a
-  value the file does not contain. No entry carries source coordinates: nothing points into
+  extraction without HTML rendering. Each declaration the recognized kind publishes carries
+  one entry holding the value its parser resolved, in the order that kind publishes — a
+  skill's is the order its file wrote; a key declared twice resolves to one value, so there
+  is no occurrence index. No entry carries source coordinates: nothing points into
   a document, and a range beside the value taken with it asserts nothing further. A fixed
   registry-defined relationship default has null authored text and an explicit
   `documented-default` origin. All parser work runs in-process on the scan
@@ -1807,7 +1804,7 @@ configuration.
   references or performs credential detection, masking, or redaction. Decoding an authored
   literal is mechanical; a decoded value never carries a natural-language interpretation, rank, validity/correctness/effectiveness/
   compliance/quality verdict, or remediation advice. The same prohibition applies to every
-  inventory, detail, comparison, Global-control, Diagnostic, Source Condition Fact, API,
+  inventory, detail, comparison, Global-control, Diagnostic, API,
   CLI, and documentation projection.
 - The Node host is devframe 0.7.5: the CLI starts the app definition through
   `createDevServer` from
@@ -1889,7 +1886,7 @@ configuration.
   environment-variable references. `accessibilitySupport`
   stays `auto`, `accessibilityVerbose` is enabled, and each view has an `ariaLabel`.
   Monaco's diff editor owns literal source comparison; recognition metadata is
-  matched by `(tool, kind, fieldId)` and compares/renders each field's resolved value in
+  matched by `(tool, kind, declared key)` and compares/renders each field's resolved value in
   Vue rather than serializing it into an editor.
   Repository comparison acceptance first uses two distinct readable current-generation customization files from the
   same Repository Source; only after a successful Global commit does US4 verify a readable
@@ -1942,7 +1939,7 @@ configuration.
   retains no session data from before the purge. The
   SPA adopts its returned `sessionId` as the new baseline without retaining or
   comparing the purged ID, and constructs the minimal client-side `RecoveryViewState` from
-  epoch, Global control/progress, pathless tool-failure Diagnostics, and the failed
+  epoch, Global control/progress, each failed tool's control `failureCode`, and the failed
   requests' errors only. When the disable fence is non-null, the session route supplies the exact
   control-only `GlobalFenceRecoverySnapshot`; when the fence is null, it supplies a normal
   full `InspectionSession`, but the recovering client adopts only those control/error fields
@@ -2094,9 +2091,10 @@ configuration.
   frozen preview.
   Each retained Diagnostic uses exactly one attachment scope, independently of its generation
   or session-lifecycle lifetime. File scope requires a matching `sourceId`, `fileId`, and
-  Source-relative Path; source scope requires only `sourceId`; session scope permits none of
-  those location fields. Invalid combinations are rejected, and source/session records never
-  fabricate a file ID or path.
+  Source-relative Path; source scope requires only `sourceId`. There is no pathless scope:
+  invalid combinations are rejected, and a source-scoped record never fabricates a file ID
+  or path. An unadmitted Global tool's failure is its control's `failureCode`, not a
+  Diagnostic.
   Generation 0 is a committed zero-I/O bootstrap snapshot with exactly one idle Repository
   Source selected lexically from the captured invocation working directory and optional
   `--root`, and with no files or diagnostics, so a fatal first attempt has a legal retained

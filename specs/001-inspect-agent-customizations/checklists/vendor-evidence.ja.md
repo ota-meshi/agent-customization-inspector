@@ -37,7 +37,7 @@
 
 - [x] CHK015 未解決のidentifier referenceが0件、orphan sourceが0件、すべての保守対象behavior、rule、およびstrategyに根拠があることを含む、evidence coverageの客観的な完全性基準があるか？ [Measurability, Spec §QR-005]
 - [x] CHK016 Repository selectorのacceptance criteriaは、`Repository` Base、authorしたtyped segment program、expansion class、およびclosed token grammar（隣接recursive segmentなし）を明示しているか？ [Measurability, Spec §QR-005]
-- [x] CHK017 Closedな`documentationStatus`である`documented`、`partially-documented`、`unknown`、`conflict`を客観的な根拠基準で割り当て、`documentation-conflict`をaliasとして受理せず`ConditionFact.status`専用にできるか？ [Acceptance Criteria, Spec §QR-005]
+- [x] CHK017 Closedな`documentationStatus`である`documented`、`partially-documented`、`unknown`、`conflict`を客観的な根拠基準で割り当て、`documentation-conflict`を`conflict`のaliasとして受理せず拒否できるか？ [Acceptance Criteria, Spec §QR-005]
 - [x] CHK018 変更なしのcontent、変更されたassertion、欠落または重複したanchor、redirect、および人によるsemantic updateについて、drift reviewの結果を測定できるか？ [Acceptance Criteria, Contract: Official Sources §Offline validation and explicit drift review]
 
 ## Scenario coverage
@@ -62,7 +62,7 @@
 - [x] CHK030 registry validationとdrift validationは、source integrityを確立できない場合にdeterministic、complete-or-explicitly-failed、かつactionableであり、product固有のnumerical resource ceilingを定義しないことを要求されているか？ [Non-Functional, Contract: Inspection Path Allowlist §Common conformance requirements]
 - [x] CHK031 credential、cookie、repository data、response body、および保持されるremote contentについて、official-source reviewのprivacy要件が明示されているか？ [Security, Data Model §EvidenceCitation]
 - [x] CHK032 一つのvendor surfaceを更新するときに、無関係なvendor、surface、Inspector policy、またはcomposition strategyを変更せずに済むownership modelになっているか？ [Maintainability, Spec §QR-001]
-- [x] CHK033 各behavior、rule、strategyがsubject-keyedな`EvidenceAssessment`を正確に1件所有し、provenanceとrelationship DTOがsort/deduplicate済みrecord単位の`EvidenceAssessment[]`をscalar、best/worst value、qualifier unionへ縮約せず保持するか？ [Acceptance Criteria, Spec §QR-005]
+- [x] CHK033 各behavior、rule、strategyが自身のrecord上に`documentationStatus`と`lifecycleQualifiers`を述べ、どのresponseもそれらを運ばないか？ [Acceptance Criteria, Spec §QR-005]
 - [x] CHK034 Lifecycle qualifierを重複なしの固定順`preview`、`experimental`、`deprecated`に限定し、empty arrayを`stable`でなくlifecycle claimなしと明示しているか？ [Acceptance Criteria, Spec §QR-005]
 
 ## Dependencyと前提

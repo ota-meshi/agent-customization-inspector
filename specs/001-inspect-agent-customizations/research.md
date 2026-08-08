@@ -410,14 +410,13 @@ mixed path matrix:
    parallel registry, so the basis sits beside the claim it supports.
 
 **Evidence-status decision:** documentation completeness and upstream lifecycle are
-orthogonal. Every atomic behavior, rule, and strategy owns one `EvidenceAssessment` keyed
-by `(subjectKind, subjectId)`. Its `documentationStatus` is exactly `documented`,
+orthogonal. Every atomic behavior, rule, and strategy owns its own `documentationStatus`
+and `lifecycleQualifiers` on the record itself. `documentationStatus` is exactly `documented`,
 `partially-documented`, `unknown`, or `conflict`; its duplicate-free
 `lifecycleQualifiers` use fixed `preview`, `experimental`, `deprecated` order. An empty
-qualifier array asserts no lifecycle state and is never rendered as `stable`.
-`documentation-conflict` remains only the `ConditionFact.status` produced when a conflict
-affects runtime projection. Candidate provenance and relationships retain the sorted,
-deduplicated assessment for every directly referenced behavior/rule/strategy record. We
+qualifier array asserts no lifecycle state and is never rendered as `stable`. These are
+maintenance records: no response and no surface carries one, so a candidate provenance
+publishes which rule admitted a file and not how well that rule is documented. We
 rejected a single scalar status, a worst/best-status reduction, and a qualifier union
 because each loses which official assertion applies to which subject.
 
@@ -638,10 +637,10 @@ other byte sequence exactly once as UTF-8 with replacement semantics. Record and
 leading BOM; use `utf-8-replaced` when decoding inserts any `U+FFFD`, preserve those
 characters in the complete garbled source, and continue parsing, extraction, display, and
 comparison. Replacement alone is a complete outcome. Never guess or retry another charset.
-Return readable source text and comparison content exactly as authored, and each displayed
-declared-metadata value as the value its parser resolved — the text a product loading the
-file has, which for a quoted or escaped literal is what the syntax means rather than the
-characters around it. None of them is subject to credential detection, content-based
+Return readable source text and comparison content exactly as authored, which is how every
+authored value reaches the reader, and the displayed declared name as the value its parser
+resolved — the text a product loading the file has, which for a quoted or escaped literal is
+what the syntax means rather than the characters around it. None of them is subject to credential detection, content-based
 masking, redaction, or a reveal workflow. Environment-variable references inside inspected content remain literal
 text and never cause the Inspector to read, resolve, or substitute the referenced process
 value. The documented `CODEX_HOME`, `CLAUDE_CONFIG_DIR`, and `COPILOT_HOME` inputs are used
@@ -656,10 +655,10 @@ crosses the devframe channel as devframe serializes it, with no sanitizer wrappe
 startup-owned failure reaches the process top level. Recovery from process-level OOM or
 kernel termination is not promised.
 
-Perform best-effort metadata extraction after decoding. Every accepted allowlisted field
-carries one entry holding the value its parser resolved. The public metadata
-list is in the allowlist row's order, one entry per field, and its cross-file identity is
-tool, kind, and closed field ID. A key declared twice resolves to its later declaration,
+Perform best-effort metadata extraction after decoding. Every declaration the recognized
+kind publishes carries one entry holding the value its parser resolved. The public metadata
+list is in the order the kind publishes, one entry per declaration, and its cross-file
+identity is tool, kind, and the declared key. A key declared twice resolves to its later declaration,
 which is what the product loading the file has.
 JSON/YAML/TOML quoting, escapes, block indicators, numeric/date spelling, and collection
 punctuation therefore remain visible. That one resolved value is also what drives typed
@@ -774,8 +773,8 @@ disabled links, and the client still loads no external worker, blob worker, or e
 string. Diff
 highlighting uses Monaco and browser capacity without a product-defined line or computation-
 time cutoff. If Monaco or the browser reports a recoverable failure, retain the complete
-read-only side-by-side source and a diagnostic. Recognition metadata is matched by tool, kind, and closed field ID,
-then compares and renders each field's resolved value in Vue rows/badges rather than
+read-only side-by-side source and a diagnostic. Recognition metadata is matched by tool, kind, and declared key,
+then compares and renders each declaration's resolved value in Vue rows rather than
 serializing it into Monaco. Preserve Monaco's
 accessible diff viewer, ARIA labels, keyboard navigation, and narrow-screen inline mode
 for explicit accessibility testing.
@@ -856,9 +855,10 @@ record identified by its opaque `previewId`, and enable names that ID. Define no
 through its own connection-status signal without being queried. The SPA installs no
 visibility, focus, or unload listener, and a page-lifecycle event triggers neither a purge
 nor a refetch. Define no polling interval, request timeout, retry timer, or memory lease.
-A current network/runtime RPC rejection, a transport-reported channel loss, or a session
-mismatch invokes the shared `clientDataEpoch`-guarded purge before the ended view is
-rendered. A Global-disable click invokes the same purge before request dispatch, and
+A transport-reported channel loss or unsupported protocol on the current RPC, or a session
+mismatch, invokes the shared `clientDataEpoch`-guarded purge before the ended view is
+rendered; an ordinary handler, serialization, or delivery failure is that request's error
+alone. A Global-disable click invokes the same purge before request dispatch, and
 observing a greater Global content epoch or non-null disable fence in an ordinary response
 repeats it before rendering and enters client-side `RecoveryViewState`. The purge removes
 all DOM/DTO/editor state and prevents late responses from restoring content; a
@@ -1112,7 +1112,7 @@ supported OS/browser/assistive-technology cells, responsive/visual profiles, wor
 states, and input profiles; every applicable cell is recorded, and a frozen-value change
 reruns all manual checks. An axe severity result alone is
 not acceptance evidence and cannot turn a failed Applicable row into a pass.
-SC-003, SC-004, SC-005, SC-007, and SC-009 share a versioned, checked-in release-evidence
+SC-003, SC-004, SC-005, and SC-007 share a versioned, checked-in release-evidence
 fixture manifest whose stable case IDs, required-class membership, objective expected
 outcomes, fixture/builder references, and per-fixture digests freeze each release candidate's
 exact nonzero denominators. The canonical manifest digest and executed case IDs enter the
@@ -1145,8 +1145,8 @@ one per tool, exactly one root and Source-relative Path namespace per Source, ex
 credential display, no reveal controls, and no environment-variable substitution.
 Lifecycle fixtures cover concurrent unresolved failures for all four Sources, per-Source
 clear/replace/removal, and automatic-first-failure current state. Browser fixtures cover
-current browser/network/runtime RPC rejection, transport-reported channel loss, port reuse
-with a mismatched session, the absence of any page-lifecycle listener, purge, or refetch,
+an ordinary request rejection staying request-local, transport-reported channel loss, port
+reuse with a mismatched session, the absence of any page-lifecycle listener, purge, or refetch,
 the absence of a wall-clock guarantee for process loss on a continuously idle visible page,
 and paused snapshot/detail delivery across scan commits and disable barriers with
 request-token, `clientDataEpoch`, session, Global-epoch/fence, owning-sequence generation,
@@ -1175,7 +1175,7 @@ changes are recorded separately and count as neither failure nor proof. Failure-
 tests confirm that a failed request leaves the session usable and shows its error
 ordinarily, while session
 Diagnostic DTO tests retain only their allowed fields. Cross-surface negative tests
-cover Inventory, Detail, Comparison, Global controls, Diagnostics, Source Condition Facts,
+cover Inventory, Detail, Comparison, Global controls, Diagnostics,
 API/CLI output, and documentation to prove that no customization validation, natural-
 language interpretation/ranking, verdict, policy/remediation advice, conversion,
 synchronization, formatting, or fixing is exposed.
@@ -1192,12 +1192,11 @@ disable priority, `202`/`409` race disposition, cancellation, and late-result re
 without slot-capacity fixtures. Injected recoverable Node.js, parser, editor, and transport
 failures prove safe failure, atomic publication, and no response truncation; fixtures also
 confirm that file size and collection cardinality are not product validation rules. Process-
-level OOM and kernel termination remain outside in-process recovery tests. Diagnostic fixtures enforce the closed `file | source | session`
+level OOM and kernel termination remain outside in-process recovery tests. Diagnostic fixtures enforce the closed `file | source`
 scope union. A file-scoped Diagnostic has its owning `sourceId`, `fileId`, and
 `sourceRelativePath`; a source-scoped Diagnostic has its owning `sourceId` but no `fileId`
-or `sourceRelativePath`; and a session-scoped Diagnostic has none of those three fields.
-Source- and session-scoped Diagnostics never fabricate a path to satisfy a display or
-ordering field.
+or `sourceRelativePath`. There is no pathless scope, and
+a source-scoped Diagnostic never fabricates a path to satisfy a display or ordering field.
 
 The 2026-07-17 measurable-outcome revalidation fixes the following objective protocols:
 
@@ -1247,8 +1246,8 @@ The 2026-07-17 measurable-outcome revalidation fixes the following objective pro
 - **SC-006** uses the same 20 participants after SC-001, regardless of their earlier result,
   starting from the same prepared Inspector state with the same designated file open. Its
   timer starts when that state is ready and the standardized prompt is presented. A
-  standardized response form requires source, recognizing tools, file type, and
-  certain-versus-conditional effective behavior; success requires all four fields within
+  standardized response form requires source, recognizing tools, and file type; success
+  requires all three fields within
   2 minutes and an exact match to predefined ground truth. At least 18 must succeed using
   only the provided product guidance under the SC-001 moderator policy. Moderators record
   objective workflow outcomes and predefined safety events. Study equipment runs the SC-004
@@ -1931,12 +1930,13 @@ read-only, local, non-executing boundary.
    provenance and grants no authority. Discovery, reading, parsing, display,
    comparison, and relationship processing initiate no child process, and `--no-open` plus
    unsupported/failure paths leave a usable manual URL.
-2. Each supported `(tool, kind)` owns closed declared-metadata field IDs, relationship kinds,
-   and admitted source-form applicability. An entry may be serialized or shown only when it
-   belongs to the maintained presentation-allowlist row and the exact extractor for the
-   actual admitted source form recognizes that authored occurrence. An entry failing either
-   gate remains visible only in complete source text and is never inferred or promoted across
-   source forms as metadata or a relationship.
+2. Each supported `(tool, kind)` owns closed relationship kinds and admitted source-form
+   applicability. A relationship may be serialized or shown only when its kind belongs to the
+   maintained presentation-allowlist row and the exact extractor for the actual admitted
+   source form recognizes that authored occurrence. One failing either gate remains visible
+   only in complete source text and is never inferred or promoted across source forms. A
+   kind's declarations pass no such gate: a skill's are the keys its file wrote, and an
+   authored key set is not closed.
 3. SC-002 includes the standardized filter and item-selection measurements defined in
    Section 10; the same at least 9 individual runs must each pass both scan thresholds and
    both interaction thresholds.
@@ -1946,10 +1946,9 @@ read-only, local, non-executing boundary.
 5. The SC-002 environment is a checked-in versioned published profile with an objective
    current-request status stop condition; private local-machine identity is not part of the
    contract.
-6. Origin-file-less hosted/runtime inputs are evidence-linked Source Condition Facts
-   attached to the relevant Source. They create no file/path/source text/comparison target,
-   grant no read authority, perform no local or hosted I/O, and retain unobserved current state
-   as conditional or unavailable.
+6. Origin-file-less hosted/runtime inputs are out of scope. The product reports the
+   customization files it found; behavior no file originates belongs to the vendor's own
+   documentation, and no surface explains it.
 7. The maintainer team owns the initial-release participant study, funding, support, privacy,
    accessibility, and defined review protocol. Ordinary contributors do not carry those
    obligations.
@@ -1968,9 +1967,9 @@ read-only, local, non-executing boundary.
     required responsive variation must pass; `validation.md` and `validation.ja.md`
     record the nonzero Applicable-row denominator, zero failed Applicable rows, and complete
     evidence. There is no axe-only or severity-based escape.
-11. Diagnostic scope is a closed `file | source | session` union. Only file scope carries
-    `sourceRelativePath`; source scope carries `sourceId` without a path, and session scope
-    carries neither source nor path identity. There is no separate outer-boundary error
+11. Diagnostic scope is a closed `file | source` union. Only file scope carries
+    `sourceRelativePath`; source scope carries `sourceId` without a path, and no pathless
+    scope exists. There is no separate outer-boundary error
     entity: an unexpected failure is reported ordinarily and never becomes a Diagnostic.
 
 **Rationale**: These rules make the child-process boundary, presentation scope, performance
@@ -2044,8 +2043,9 @@ tasks:
 5. Disable, shutdown, or generation replacement revokes publication authority independent of
    elapsed time. Late results are discarded and cleanup follows the underlying Node.js/OS
    operation; no hard kernel-I/O cancellation or OOM recovery is claimed.
-6. Allowed interpretation is limited to closed syntax, the value a parser resolves for an
-   allowlisted field, frozen-catalog classification, and documented structural projection.
+6. Allowed interpretation is limited to closed syntax, the value a parser resolves for a
+   declaration the recognized kind publishes, frozen-catalog classification, and documented
+   structural projection.
    Every product/documentation surface forbids natural-language interpretation/ranking,
    customization verdicts, policy/remediation advice, linting, synchronization, conversion,
    formatting, and fixing.

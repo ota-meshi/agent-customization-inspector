@@ -155,12 +155,13 @@
 - 閉じた union が定める text は例外です。ラベル表はコンポーネントではなくその union の隣に置いて
   ください。そうすればラベルなしに新しいメンバーを追加してもコンパイルが通らなくなります。
   `entities.ts` が `CUSTOMIZATION_KIND_TEXT`・`SUPPORTED_TOOL_TEXT`・`FILE_ENCODING_TEXT`・
-  `SOURCE_BOUNDARY_ORIGIN_TEXT`・`SOURCE_STATUS_TEXT`・`SAME_NAME_SKILL_RESOLUTION_TEXT`・
-  `DOCUMENTATION_STATUS_TEXT`・`LIFECYCLE_QUALIFIER_TEXT` を持ち、diagnostic の text は
-  `DIAGNOSTIC_REGISTRY` にあります。
+  `SOURCE_BOUNDARY_ORIGIN_TEXT`・`SOURCE_STATUS_TEXT`・`SAME_NAME_SKILL_RESOLUTION_TEXT` を
+  持ち、diagnostic の text は `DIAGNOSTIC_REGISTRY` にあります。どの surface も描画しない
+  閉じた union には表が要りません。`DocumentationStatus` と `LifecycleQualifier` は registry 上の
+  maintenance record であり、ラベルを付ける場所がありません。
 - `-types` module は runtime code を一切出荷せず、表は runtime data です。したがってそれらの
   module が宣言する union の表は、隣に置く `*-text.ts` の companion に置きます。`api-types.ts`
-  には `api-text.ts`、`registries/identifier-types.ts` には `registries/identifier-text.ts` です。
+  には `api-text.ts` です。
   この方針が求めるコンパイラによる検査は、表がどの module にあっても働きます。
 - 判定基準は再利用ではなく網羅性です。`Readonly<Record<ClosedUnion, string>>` は、今日たまたま 1 つの
   コンポーネントしか読まなくても union の隣に置きます。表の完全性を保つのはコンパイラだからです。
@@ -171,6 +172,56 @@
   なく閉じた union として型付けするのはそのためで、それが表の完全性を保ちます。たまたま
   メンバーと同じ綴りの通常の語はそのままにしてください。`environment` のラベルは
   "environment variable"、`MCP` のラベルは "MCP" です。
+
+## Stylesheetのscopeの方針
+
+配置:
+
+- componentが自分のために持つstyleは、そのcomponentの `<style scoped>` に書きます。global
+  stylesheetには書きません。ruleとそれが選択するmarkupが一緒に移動し、一緒に読まれ、一緒に
+  削除されるようになり、class名がそれを使う唯一のtemplateより長生きすることがなくなります。
+- `src/app/styles/main.css` が持つのは、本当に共有されるものだけです。design token、要素level
+  の基準値、複数のcomponentが適用するutility classです。ちょうど1つのcomponentしか描画しない
+  classを名指しするruleは、そのfileの現在の中身がどうであれ、そこには属しません。
+- Class名の持ち主はちょうど1つです。global sheetとcomponentが同じclassを宣言してはいけません。
+  持ち主が2つあると、片方でruleを移動・改名・削除しても、もう片方はそのclassを選び続けます。
+  どちらのruleが要素に効くかは、所有関係ではなく読み込み順の問題になります。
+
+命名:
+
+- ComponentのclassはBEMとし、blockはそのcomponent自身の名前にします。名前がruleの在処を示す
+  ようにするためです。`FrontmatterBlock.vue` なら `aci-frontmatter-block`・
+  `aci-frontmatter-block__key`・`aci-frontmatter-block__nested--list-item`、
+  `SkillFileTreeBranch.vue` なら `aci-skill-file-tree-branch__file`、`ScanProgress.vue` なら
+  `aci-scan-progress__actions` です。blockをcomponent名にすることで、global sheetとの衝突は
+  「避けるもの」ではなく「起こり得ないもの」になり、browserのinspectorで見たclassから、それを
+  styleしているfileへ辿れます。
+- Global側のclass名は素のままにします。どのcomponentにも属さないからです。複数のcomponentが
+  適用するutility (`.aci-note`・`.aci-muted`・`.aci-authored-text`・`.aci-panel`・
+  `.aci-definition-grid`) と、共有widgetのclassがこれにあたります。global ruleがcomponentの
+  classを名指すことはないので、utilityではなくmarkupへ届く必要があるときは要素を選びます。
+  見出しの基準値はshellのclassを通した書き方ではなく `h2` です。
+
+移動時に確認すること:
+
+- そもそもruleを移動できるかを決めるのは、selectorのsubject — `scoped` がcomponentのdata属性を
+  付ける、最も右のcompound — です。そのsubjectを1つ以外のcomponentも描画しているときに限り、
+  ruleはglobal sheetに属します。scopedにすると一致しなくなり、その失敗は例外ではなく沈黙として
+  現れるからです。`h2` の基準値がその例で、3つのcomponentが `h2` を描画するため、どれか1つの
+  中では `h2[data-v-…]` となって残り2つに届かなくなります。
+- `:deep()` を使えばcomponentの中からでもそうしたselectorは再び一致しますが、この用途の答えでは
+  ありません。すべてのpageが依存する基準値を、escape hatchの裏で1つのcomponentへ移すことになり、
+  それはこの方針が防ごうとしている配置そのものです。componentが子へ渡すmarkupを本当にstyleする
+  場面で使ってください。
+- 2つのcomponentのclassにまたがるgrouped selectorは、移すのではなく判断が要ります。分割すれば
+  宣言が重複するので、その見た目を両方が適用するutility classにするか、それが書かれるまでruleを
+  そこに残すかのどちらかです。
+- Scopeは入れ子や再帰で破られません。`.parent > .child` のようなselectorは、両方の要素をその
+  styleを所有するcomponentが描画している限り一致し、自分自身を描画するcomponentでも同じです。
+  scopeを回避するためにglobal sheetへ手を伸ばしたくなったら、誤った場所にあるのはstylesheetでは
+  なくmarkupです。
+- Global sheetからruleを移すのも、他と同じrefactorです。コメントも一緒に移し、先に他のtemplate
+  がそのclassを選択していないことを確認してください。
 
 ## 命名方針
 

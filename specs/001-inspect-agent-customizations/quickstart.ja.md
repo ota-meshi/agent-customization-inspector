@@ -218,10 +218,11 @@ pnpm run test:e2e
   diagnostic、state transition、deterministic projectionを扱う。
 - Contract testが全session-API status ruleと全stable behavior、inspection-rule、composition-strategy、
   official-source IDを扱い、positive、1-rule near-miss、derived、relationship-only、excluded、
-  multi-provenance、multi-tool、Global caseを含む。返却する全metadata field/relationship kindがsupportedな
+  multi-provenance、multi-tool、Global caseを含む。返却する全relationship kindがsupportedな
   `(tool, kind)`の維持管理するclosed presentation allowlistに含まれ、そのadmissionのsource-form extractorが認識する
-  exact occurrenceであること、tuple membershipだけで1つのsource formのfieldを別formへeligibleにしないことも証明する。
-  Unknownなauthored key/referenceは完全なsource textからだけ利用可能とする。これらのtestまたはimplementationを開始する
+  exact occurrenceであること、tuple membershipだけで1つのsource formのkindを別formへeligibleにしないことも証明する。
+  Skillの宣言はこのgateを通らない。fileが書いたkeyだからである。Allowlistが記載していないreferenceは完全な
+  source textからだけ利用可能とする。これらのtestまたはimplementationを開始する
   前に、3つすべてのvendor-contract language pairのPresentation Allowlist sectionがsupportedな全`(tool, kind)`とadmit済み
   source formを列挙済みでなければならない。このgateは承認済みrowとbilingual digestを検証するだけで、rowを作成したり
   semanticに編集したりしてはならない。Membership/source-form/extractor/relationshipに変更が必要なら作業を停止し、
@@ -287,10 +288,9 @@ source checkでnetworkを使えるのはこのcommandだけとする。
    これらのfixtureでcontent rule、short-circuit、および非選択targetへのoperation 0件を固定する。
 3. Static ruleはtyped literal/regex/recursive-directory programとtraversal boundaryだけを許可し、runtimeで
    text globを評価しない。Staticとderivedの両ruleが
-   受理したfileは両provenanceを保持する1つのinventory fileのままとする。各provenanceは自身のmatched path、
-   behavior/strategy/source evidence、scope/order、applicabilityを持つ。Public provenance DTOはSource-relative pathとstable
-   comparison keyを持つclosed `ScopeDescriptor`/`OrderDescriptor` unionを使い、unknown orderはlossyなrecognition-level
-   aggregateにせずnullとcondition factで表す。
+   受理したfileは両provenanceを保持する1つのinventory fileのままとする。各provenanceは自身のmatched pathを持つ。
+   Provenanceが述べるのはどのruleが読み取りを認可しどこで一致したかであり、カスタマイズがどこに適用されるか、
+   どの順序か、どの条件下かはどのsurfaceも行わないprojectionなので、どのDTOも運ばない。
 4. Surface fixtureはGitHub Copilot VS Code、CLI、cloud lookup behaviorを分離する。VS Codeのworkspace-root
    instructionがexactである一方、CLIのstandard-location/target-path traversalはInspector globではなくvendor
    behaviorとして表現されることを証明する。Root-only/nested near missが差を示す。MCPではさらに、`.vscode/mcp.json`
@@ -319,19 +319,13 @@ source checkでnetworkを使えるのはこのcommandだけとする。
    製品定義の保持件数なしのstable deduplicationを証明する。Pure path fixtureは全OSで
    ADS colon、Windows-special character/device name、trailing dot/space、
    8.3 aliasを検証し、それぞれをreference diagnosticとともにlexicalにrejectして決してreadしない。
-7. Applicabilityはevidence assessment、product surface、root/runtime `cwd`、target match、trust/approval、
-   enablement、selection、agent context、tool availability、installation、managed policy、external runtimeを
-   別factとして保持する。直接参照するbehavior、rule、strategyはそれぞれrecord-keyedな`EvidenceAssessment`を1件
-   提供する。`documentationStatus`は`documented`、`partially-documented`、`unknown`、`conflict`だけを受理し、
+7. 直接参照するbehavior、rule、strategyはそれぞれ自身のmaintenance recordを
+   持つ。`documentationStatus`は`documented`、`partially-documented`、`unknown`、`conflict`だけを受理し、
    重複のない`lifecycleQualifiers`は固定順`preview`、`experimental`、`deprecated`を使う。Empty qualifierは
    lifecycle claimを行わず、`stable`を意味しない。Fixtureはこのenum内の`documentation-conflict`、重複または
-   順序違反のqualifier、subjectの欠落/重複、provenanceまたはrelationshipのsort済みsubject単位
-   `EvidenceAssessment[]`をlossyな単一scalar/unionへ置換する実装をrejectする。Codex instruction byte
-   budgetも別factとし、runtime chainとeffective capが判明した場合だけ`omitted`を
-   生成できる。Missing/excluded inputはunknownのままとする。Projection fixtureは全summaryとcollision
-   priorityを扱う。Disabledはshadowedより、shadowedはomittedより、omittedはselectedより優先し、
-   documentation-unknownはruntime-conditionalより優先する。Selected、available、authored、conditional-only
-   caseも扱う。
+   順序違反のqualifier、subjectの欠落/重複をrejectする。どのresponseもこれらをserializeしない。
+   Fixtureが扱うべきapplicability/condition projectionは存在しない: 製品がfileをどう扱うかはhostが観測しない
+   runtimeである（FR-009）。
 8. Fixtureは既知order/override rule、documented conflict、settings disablement、Claude
    skills-directory plugin matrixを検証する。Matrixはlaunch-`cwd`対ancestor placement、workspace trust、
    implicit root skill、明示`skills: ["./"]`、`skills/`、別declared skills pathを含む。
@@ -349,14 +343,11 @@ source checkでnetworkを使えるのはこのcommandだけとする。
    default `hooks/hooks.json`対manifest overrideでdocumented-default/null-authored-targetとexact authored occurrenceを
    区別する。Upstream設定のinstruction-budget behaviorはvendor applicability factのままとし、Inspector validation capとして
    再定義しない。
-12. Source-level incompletenessのfixtureで、全source-level factがtool、
-   説明するnon-candidate rule、影響を受けるcandidate/relationship rule、固定reason codeを識別し、matching
-   provenance/edge conditionへcanonical source factを失わず投影することを検証する。Symlinked-skill fixtureは、
+12. Symlinked-skill fixtureは、
    InspectorがClaude Codeとまったく同じようにskill symlinkをfollowしてlinked target contentをinspectionし、
-   製品・インスペクター間のdivergence factが存在しないことを証明する。Origin-file-less Source Condition Factは
-   正しいSource、tool、product surface、conditionまたはunavailable state、scope、不確実性、evidenceも保持し、physical/
-   synthetic file、file ID、Source-relative Path、authored text、comparison target、relationship origin、local/hosted read、
-   network requestを作成しない。
+   製品・インスペクター間のdivergence factが存在しないことを証明する。Fixtureが扱うべきsource-level
+   condition projectionは存在しない: vendorが自身のconditionについて文書化していることはそのvendorの
+   維持管理contractに残り、recognition・provenance・detailへprojectするものは無い（FR-009）。
 
 ## User story検証
 
@@ -400,14 +391,15 @@ pnpm exec vitest run --project unit \
 1. Hook command、script、plugin component、URI、markup、MCP declarationをinert text/dataとして表示し、
    execute/connect/load/navigateしない。
 2. Detailまたはcomparisonのsurfaceは、fileを記述されたとおりそのまま表示する。何が含まれ得るかについての
-   注意書きも、その前に立つ確認stepも持たない。inventoryからfileを開くのは1回の操作であり、どちらも
-   閲覧者自身のfileに対するloopback束縛のsessionが既に守っていないものは何も守らない。
+   注意書きも、その前に立つ確認stepも持たない。読み手とcontentの間には何も立たない — acknowledgementもgateも常設の注意書きも無い。
+   どちらも閲覧者自身のfileに対するloopback束縛のsessionが既に守っていないものは何も守らない。
+   Skill自身のtab間の移動はnavigationであってgateではない。
    maintained fixtureの全literal credentialをsource/comparison viewへ記述されたまま表示し、表示metadata値は
    そのfieldについてparserが解決した値とする。mask/reveal controlは設けない。2回宣言されたkeyは後の宣言へ
-   解決されるため値はfieldごとに1件であり、structural metadata comparisonは`(tool, kind, fieldId)`で対応付ける。Boundary-sizeのTOML integer、float、date/time valueはJavaScript precision lossなく
+   解決されるため値はfieldごとに1件であり、structural metadata comparisonは`(tool, kind, 宣言key)`で対応付ける。Boundary-sizeのTOML integer、float、date/time valueはJavaScript precision lossなく
    typed canonical semantic payloadを保ち、authored spellingも変更しない。Acknowledgement API、field、
    client stateはいずれも存在せず、必要でもない。Session APIはloopback-boundなlocal hostを通じてだけ
-   到達でき、その境界がすべてだからである。Authored contentへはfileまたはcomparisonを1つずつ開くことでのみ
+   到達でき、その境界がすべてだからである。Authored contentへは1つのfileまたは1つのcomparisonに対する明示的なrequestでのみ
    到達でき、中央full-session client-data purgeが破棄する。scope限定のroute、selection、file/Source、Global、
    generation cleanupは自分のmodelだけをdisposeする。
 3. Sentinel process valueを設定しても環境変数参照をリテラルtextのまま保ち、参照先process environment値を
@@ -438,14 +430,13 @@ pnpm exec vitest run --project unit \
    sliceを使い、`normalizedTarget`とderivationには別のdecoded valueだけを使ってnormalized valueをauthored表示へ
    置換しない。Conditional Codex default `hooks/hooks.json` relationは`targetOrigin: documented-default`かつnull
    `authoredTarget`とし、explicit hook fieldは`authored`としてdefaultを置換する。
-7. Evidence assessmentとapplicability factを分離する。Provenanceとedgeはsort済みrecord単位の
-   `EvidenceAssessment[]`を保持する。Documentation completenessは`documented`、`partially-documented`、
-   `unknown`、`conflict`だけを使い、upstream lifecycleは別のordered qualifier array
-   `preview`、`experimental`、`deprecated`を使う。Empty qualifier arrayは`stable`でなくlifecycle claimなしと
-   表示する。Runtimeの`ConditionFact.status: documentation-conflict`、conditionality、disablement、omission、
-   shadowing、unknown inputはassessmentを変更せず、発明した“effective”結果にもならない。
-8. Inventory、Detail、Comparison、Global control、Diagnostic、Source Condition Fact、API response、CLI text、
-   documentationは、syntactic parsing、allowlist fieldについてparserが解決した値の読み取り、
+7. Documentation completenessはregistry上のmaintenance recordのままとし、`documented`、
+   `partially-documented`、`unknown`、`conflict`だけを使う。Upstream lifecycleは別のordered qualifier
+   array `preview`、`experimental`、`deprecated`を使う。Empty qualifier arrayは`stable`でなくlifecycle
+   claimなしを意味する。どのresponseもどのsurfaceもこれらを運ばないため、conditionality、disablement、
+   omission、shadowing、unknown inputが発明した“effective”結果になることはない。
+8. Inventory、Detail、Comparison、Global control、Diagnostic、API response、CLI text、
+   documentationは、syntactic parsing、認識したkindが公開する宣言についてparserが解決した値の読み取り、
    frozen-catalog classification、documented structural scope/order/condition/selection/reference projectionの範囲に
    留まる。Natural-languageの意味やintentをinterpret/rankせず、correctness、validity、compliance、effectiveness、
    qualityを判定せず、policy/remediation advice、validation、lint、synchronization、conversion、formatting、fixingを
@@ -461,7 +452,7 @@ pnpm exec vitest run --project unit \
    filesystem pathではなくopaqueなin-memory URIを使う。
 3. Monacoがsemantic ranking、merge、lint、validation、format、convert、fix suggestionなしでliteral
    source差を表示する。Recognition metadataは区別可能なまま、JSONへserializeせずVueでtyped fieldを
-   比較し、provenance path/status/scope/order/applicabilityとrelationship-edge applicabilityを別rowに保つ。
+   比較し、provenance pathとrelationship edgeを別rowに保つ。
 4. Monacoとbrowserのcapacityはbrowser engineと実行環境から継承する。Recoverableなeditor computation failureは
    記述された完全なread-only side-by-side sourceを削除せず、actionable diagnosticを示す。
 5. Rescan、removal、Global disable、route closeがstale selectionと表示済みdetail stateをclearし、関連する
@@ -474,8 +465,9 @@ pnpm exec vitest run --project unit \
    root-absolute assetからbootする。
 9. Session-loss/response-guard testは、devframe transportが報告するchannel loss、currentかつnon-supersededなRPCの
    現在の非supersededなRPCでのchannel lossまたは解釈できないprotocol、session-ID mismatch、greater Global content epochまたはnon-null disable fence、
-   client epoch変更後のlate in-flight responseを扱う。Channel lossまたはcurrent RPC rejectionはshared full
-   client-data purgeを実行してsession-ended viewへ入り、pre-purge inventory/detail/comparison/editor/authored-content
+   client epoch変更後のlate in-flight responseを扱う。CurrentなRPCでのtransport報告channel lossまたは解釈できないprotocolはshared full
+   client-data purgeを実行してsession-ended viewへ入り — ordinaryなrequest rejectionはそのrequestの
+   errorに留まり — pre-purge inventory/detail/comparison/editor/authored-content
    DTO/DOM stateが残留・自動復活しないことを証明する。SPAはliveness functionを呼ばず、
    visibility、unload、その他のpage-lifecycle listenerを設置せず、経過時間、pageのhidden化、visibilityへの復帰を
    理由にrequestを発行しない。Event-drivenなhost-loss signalはdevframeが所有し、productはcontinuously idleなpageに
@@ -496,7 +488,7 @@ pnpm exec vitest run --project unit \
     recoveryはloopback session API経由でfresh sessionを取得する。Purge済みIDを保持・比較せず返された`sessionId`を採用し、client-side
     `RecoveryViewState`だけを構築する。Disable fenceがnon-nullならsession routeはexactでcontrol-onlyな
     `GlobalFenceRecoverySnapshot`を返す。Fenceがnullならnormal full `InspectionSession`を返すが、recoveryは`globalContentEpoch`、Global controlと
-    enable/disable projection、それらが参照するpathless session Diagnosticとretain済みfailure error、任意のnewly verified
+    enable/disable projection、失敗した各toolの自身のcontrol上の`failureCode`、retain済みfailure error、任意のnewly verified
     frozen previewだけを採用し、inspection graphを破棄する。Inventory、Source、file、generation、detail、comparison、editor、authored source、selection、
     filterは復元しない。状態に応じてdisable/join/wait、retry-disable、またはeligibleなGlobal retryを利用できる。
     明示Resume inspection actionは`globalDisableInProgress`がnullの場合だけ表示し、matching sessionを再取得してdefault
@@ -613,7 +605,7 @@ Test harnessはisolated fake tool homeを渡し、developerのreal homeを絶対
 ### SC-001とSC-006のparticipant study
 
 Product guidance、標準化したSC-001/SC-006 task prompt、対象fixture repository、SC-006の指定customization file、
-4項目response form、事前定義したground truthを含む英日study kitを1つ用意する。通常の開発作業でGitと
+3項目response form、事前定義したground truthを含む英日study kitを1つ用意する。通常の開発作業でGitと
 command-line interfaceを使用するが、Inspectorの利用・開発経験がない人を正確に20人登録する。同じcohortを
 1つのsessionでSC-001、SC-006の順に使用する。
 
@@ -735,9 +727,8 @@ distribution、digestの変更は両resultを無効にし、final pairがvalid e
   participant操作ではなく、それらのproduct capabilityはautomatedなUser Story 1テストで検証する。20人中19人以上が
   2分以内に成功しなければならない。
 - SC-006はSC-001結果にかかわらず、全参加者を同じ指定fileが開いた同一の準備済みInspector stateへ置く。そのstateの
-  準備完了後に標準化したpromptを提示した時点で開始する。Source、認識tool、file type、実効動作がcertainか
-  conditionalかを2分以内に提出し、4項目すべてが事前定義したground truthと一致しなければならない。未回答・誤答が
-  1項目でもあれば不成功とし、20人中18人以上の成功を必要とする。
+  準備完了後に標準化したpromptを提示した時点で開始する。Source、認識tool、file typeを2分以内に提出し、3項目すべてが事前定義したground truthと一致しなければ
+  ならない。未回答・誤答が1項目でもあれば不成功とし、20人中18人以上の成功を必要とする。
 - Capture startでsupervisorがfresh、unique、cryptographically random、run-local、unlinkableなparticipant tokenを正確に20件生成し、各tokenをexact
   32 random byte（256 bit）からunpadded base64url正確に43文字でencodeする。Participant固有`subjectId`だけにtokenを使い、その他は
   literal `not-applicable`とする。`subjectId`はsole pseudonymous human evidenceとし、identity/distribution/response mappingをretainせず、
@@ -933,7 +924,7 @@ profile ID、fixture digest、scan request ID、committedなRepository generatio
 絶対user pathだけを省略する。Profile fieldを
 変更すると新しい直接比較不能なmeasurement setを開始し、結果はportable performance guaranteeではなくprofile固有とする。
 
-### SC-003/004/005/007/009 release-evidence fixture
+### SC-003/004/005/007 release-evidence fixture
 
 Release candidateの測定前に`tests/fixtures/outcomes/manifest.json`とcanonicalな
 `tests/fixtures/outcomes/manifest.sha256`をfreezeする。Manifest schema/version、一意でstableなcase ID、criterionと
@@ -1054,9 +1045,9 @@ failしたrequestのmessageを持つordinary errorとして報告する。
 Multi-Source caseではA/Bのentry-failure pairが共存し、B successがAを保持し、A successだけがAのpairをclearし、
 A再failureがAのpairだけを置換し、Global disableがGlobal pairだけを除去することを証明する。Client起因API errorを反復してもretained
 diagnostic countを増やさない。
-同じfixtureでclosedな`file | source | session` scope unionも検証する。File scopeは`sourceId`、`fileId`、
-`sourceRelativePath`を必須とし、source scopeは`sourceId`を必須にして`fileId`/`sourceRelativePath`を禁止し、session scopeは
-3 fieldすべてを禁止する。Source/session scopeのdiagnosticが表示、orderingのためにpathを捏造してはならない。
+同じfixtureでclosedな`file | source` scope unionも検証する。File scopeは`sourceId`、`fileId`、
+`sourceRelativePath`を必須とし、source scopeは`sourceId`を必須にして`fileId`/`sourceRelativePath`を禁止する。
+Pathlessなscopeは存在せず、source scopeのdiagnosticが表示、orderingのためにpathを捏造してはならない。
 
 ## Manual accessibility review
 

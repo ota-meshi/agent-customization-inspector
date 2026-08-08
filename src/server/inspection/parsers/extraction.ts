@@ -26,84 +26,68 @@
 // or the process top level for the ownerless startup scan — because converting
 // one into a Diagnostic would fabricate a partial result out of an attempt that
 // never completed.
-import type { DeclaredMetadataEntryDto, RecognitionParseStatus } from '../../../shared/api-types';
+import type { RecognitionParseStatus } from '../../../shared/api-types';
 
 /**
  * The outcome of one recognition's extraction
- * (data-model.md § ToolRecognition `parseStatus`). Extraction is
- * all-or-nothing per recognition: a failure publishes no metadata at all
- * rather than the part that happened to succeed, because a partially applied
- * extractor cannot say which authored values it skipped.
+ * (data-model.md § ToolRecognition `parseStatus`), carrying whatever that
+ * recognition's kind reads out of the authored text — for a skill, the
+ * presentation its detail surface is built from.
  *
- * A class with a private constructor, so "empty unless `parsed`" is a fact of
- * construction rather than a sentence: the two non-`parsed` outcomes exist
- * only as the fixed metadata-less instances below.
+ * A class with a private constructor, so "nothing extracted unless `parsed`"
+ * is a fact of construction rather than a sentence: {@link run} is the only
+ * caller, and it passes `undefined` for every outcome that is not `parsed`.
  */
-export class RecognitionExtraction {
+export class RecognitionExtraction<Extracted> {
   /** The closed extraction state; see {@link RecognitionParseStatus}. */
   public readonly status: RecognitionParseStatus;
 
   /**
-   * The allowlisted fields the extractor read, in the order it emits them —
-   * for the shipped extractor, its allowlist row's. Empty unless `parsed`.
-   *
-   * A recognizer that needs one of these values — the declared name a skill
-   * row groups by, for instance — reads it from here rather than parsing the
-   * file a second time, so the identity a row uses and the value a detail
-   * view shows always come from one parse.
+   * What the extractor read, or undefined when none ran or the run failed.
+   * Only ever set on a `parsed` outcome, which is what keeps a failed
+   * recognition from publishing the part that happened to parse (FR-028).
    */
-  public readonly declaredMetadata: readonly DeclaredMetadataEntryDto[];
+  public readonly extracted: Extracted | undefined;
 
   /**
-   * Reached only through the factories below, which is what fixes the two
-   * non-`parsed` outcomes to their metadata-less instances.
+   * Reached only through {@link run}, which is what keeps the two non-`parsed`
+   * outcomes empty.
    */
-  private constructor(
-    status: RecognitionParseStatus,
-    declaredMetadata: readonly DeclaredMetadataEntryDto[],
-  ) {
+  private constructor(status: RecognitionParseStatus, extracted: Extracted | undefined) {
     this.status = status;
-    this.declaredMetadata = declaredMetadata;
+    this.extracted = extracted;
   }
-
-  /** The fixed `not-attempted` outcome, for a recognition no extractor applies to. */
-  static readonly #NOT_ATTEMPTED = new RecognitionExtraction('not-attempted', []);
-
-  /** The fixed `failed` outcome; the caller attaches the Diagnostic (FR-028). */
-  static readonly #FAILED = new RecognitionExtraction('failed', []);
 
   /**
    * Runs one recognition's extractor, confining any failure to that
    * recognition (FR-028).
    *
-   * `extract` is called with the file's complete decoded text and returns the
-   * fields its allowlist row defines. Returning null means no allowlisted
-   * extractor applies, which is `not-attempted` — the honest state for a
-   * recognition with nothing to extract, and not a claim that parsing
-   * succeeded.
+   * `extract` is called with the file's complete decoded text. A null
+   * extractor means none applies to the recognized kind, which is
+   * `not-attempted` — the honest state for a recognition with nothing to
+   * extract, and not a claim that parsing succeeded.
    *
    * The text is always present: only a readable candidate is recognized at
    * all (`scan.ts`, the `readable` arm of the per-file publication matrix),
    * so a binary or unreadable file reaches no recognizer and needs no
    * absent-source case here.
    */
-  public static run(
+  public static run<Extracted>(
     sourceText: string,
-    extract: (sourceText: string) => readonly DeclaredMetadataEntryDto[] | null,
-  ): RecognitionExtraction {
+    extract: ((sourceText: string) => Extracted) | null,
+  ): RecognitionExtraction<Extracted> {
+    if (extract === null) {
+      return new RecognitionExtraction<Extracted>('not-attempted', undefined);
+    }
     try {
-      const declaredMetadata = extract(sourceText);
-      if (declaredMetadata === null) {
-        return RecognitionExtraction.#NOT_ATTEMPTED;
-      }
-      return new RecognitionExtraction('parsed', declaredMetadata);
+      return new RecognitionExtraction<Extracted>('parsed', extract(sourceText));
     } catch {
       // Deliberately no cause inspection, classification, or retry. Every
       // throw reaching this line came from an extractor reading one in-memory
       // string, so it is about this file's content and nothing else; the
       // Diagnostic the caller attaches already tells the user which file and
       // what remains available.
-      return RecognitionExtraction.#FAILED;
+      return new RecognitionExtraction<Extracted>('failed', undefined);
     }
   }
 }

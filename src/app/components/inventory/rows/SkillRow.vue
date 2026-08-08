@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // A skill row (T071/T1077). The row's unit is one declared name, not one file
-// (data-model.md § Inventory unit): the name is what the products' own
-// selectors use, it need not match the directory holding the `SKILL.md`, and
+// (data-model.md § Inventory unit): the name is what the products' own skill
+// listings show, it need not match the directory holding the `SKILL.md`, and
 // two files may declare it. Each `SKILL.md` declaring the name is listed as a
 // definition beneath it.
 //
@@ -103,7 +103,7 @@ function affectedCompanions(
     <!-- The declared name is authored text: inert, never a locator, and never
          a path. A file that declares none is its own row rather than being
          folded into a name it does not have. -->
-    <p v-if="entry.declaredName !== null" class="aci-declared-name">
+    <p v-if="entry.declaredName !== null" class="aci-skill-row__declared-name">
       <!-- An authored empty name is a different fact from no name, and an empty
            element would render as neither. A name that draws nothing renders as
            nothing too — whitespace, or code points such as U+200B that are not
@@ -113,15 +113,19 @@ function affectedCompanions(
       <template v-if="entry.declaredName === ''">
         <span class="aci-muted">(empty name)</span>
       </template>
-      <template v-else-if="rendersNothingVisible(entry.declaredName)">
-        <span class="aci-muted">(name with no visible characters)</span>
-      </template>
+      <!-- Rendered as authored with the note beside it: two skills whose names
+           differ only in whitespace are two rows, and one phrase for both would
+           show them as the same row twice (FR-025). -->
+      <template v-else-if="rendersNothingVisible(entry.declaredName)"
+        ><span class="aci-authored-text aci-authored-atomic">{{ entry.declaredName }}</span>
+        <span class="aci-muted">(name with no visible characters)</span></template
+      >
       <template v-else
         ><span class="aci-authored-text">{{ entry.declaredName }}</span></template
       >
     </p>
 
-    <ul class="aci-definitions" role="list">
+    <ul class="aci-skill-row__definitions" role="list">
       <li v-for="definition in entry.definitions" :key="definition.fileId">
         <!-- The Source-relative Path is the locator into the skill detail
              route, which is the one surface that shows file contents. The link
@@ -133,7 +137,7 @@ function affectedCompanions(
             pathOf(definition.fileId)
           }}</NuxtLink>
         </p>
-        <ul class="aci-badges" role="list">
+        <ul class="aci-skill-row__badges" role="list">
           <!-- The kind is the tab the row is listed under, so repeating it on
                every definition says nothing. The tools stay: one file can be
                recognized by several products — `.agents/skills/` is both a
@@ -156,7 +160,7 @@ function affectedCompanions(
              tree, and the path is the only thing that says so. -->
         <ul
           v-if="affectedCompanions(definition).length > 0"
-          class="aci-companion-diagnostics"
+          class="aci-skill-row__companion-diagnostics"
           role="list"
         >
           <li v-for="companion in affectedCompanions(definition)" :key="companion.path">
@@ -169,7 +173,7 @@ function affectedCompanions(
 
     <!-- Present only when several definitions share the name; one definition
          resolves nothing. -->
-    <ul v-if="entry.sameNameResolutions.length > 0" class="aci-resolutions" role="list">
+    <ul v-if="entry.sameNameResolutions.length > 0" class="aci-skill-row__resolutions" role="list">
       <li v-for="statement in entry.sameNameResolutions" :key="statement.tool">
         {{ SUPPORTED_TOOL_TEXT[statement.tool] }}
         {{ SAME_NAME_SKILL_RESOLUTION_TEXT[statement.resolution] }}
@@ -179,22 +183,39 @@ function affectedCompanions(
 </template>
 
 <style scoped>
-.aci-definitions,
-.aci-resolutions {
+.aci-skill-row__definitions,
+.aci-skill-row__resolutions {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.aci-definitions > li + li {
+.aci-skill-row__definitions > li + li {
   margin-block-start: 0.5rem;
 }
 
 /* The statements describe the row as a whole, so they sit apart from the
    definitions they are about rather than inside any one of them. */
-.aci-resolutions {
+.aci-skill-row__resolutions {
   margin-block-start: 0.5rem;
   font-size: 0.875rem;
   opacity: 0.8;
+}
+/* The declared name sits above the path as a secondary label: the path stays
+   the row's identity, because two skills may declare the same name. Authored
+   names have no break opportunities of their own, so a long one wraps rather
+   than scrolling the page sideways (WCAG 1.4.10). */
+.aci-skill-row__declared-name {
+  font-weight: 600;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.aci-skill-row__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  list-style: none;
+  margin: 0.25rem 0;
+  padding: 0;
 }
 </style>

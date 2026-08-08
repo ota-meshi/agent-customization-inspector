@@ -267,8 +267,9 @@ describe('evidence grammar', () => {
   it('uses only the closed documentation-status values', () => {
     for (const subject of [...behaviors, ...strategies, ...Object.values(INSPECTION_RULES)]) {
       expect(DOCUMENTATION_STATUSES).toContain(subject.documentationStatus);
-      // `documentation-conflict` is a runtime ConditionFact status, never a
-      // DocumentationStatus alias (data-model.md § DocumentationStatus).
+      // `documentation-conflict` is the vendor-contract term for two official
+      // pages disagreeing, never a `DocumentationStatus` member: a record whose
+      // sources conflict is `conflict` (data-model.md § DocumentationStatus).
       expect(subject.documentationStatus).not.toBe('documentation-conflict');
     }
   });
@@ -503,27 +504,18 @@ describe('the Claude skill behaviors and strategy (T130)', () => {
     expect(user.tool).toBe('claude');
     const strategy = RUNTIME_COMPOSITION_STRATEGIES['claude.skills.selection'];
     expect(strategy.tool).toBe('claude');
-    // `select-first` is what the same-name row derivation reads; the strategy
-    // states the documented enterprise/User/project/bundled selection and
-    // never a winner (contracts/runtime-composition.md § claude.skills.selection).
-    expect(strategy.operations).toEqual(['select-first']);
+    // `retain-all` then `select-closest` is the documented rule for a clash
+    // within one root — every definition stays available, a nested one under a
+    // directory-qualified command, and Claude picks the variant matching the
+    // files it is working on. The enterprise-over-personal-over-project
+    // precedence is a rule between levels, which the Inspector lists as
+    // separate Sources, so it is not this pipeline
+    // (contracts/runtime-composition.md § claude.skills.selection).
+    expect(strategy.operations).toEqual(['retain-all', 'select-closest']);
     const consumed = STRATEGY_RELATIONS['claude.skills.selection'].consumesBehaviors;
     expect(consumed).toHaveLength(2);
     expect(consumed[0]).toBe(repo);
     expect(consumed[1]).toBe(user);
-  });
-
-  it('shares one condition-key list across both behaviors and the strategy', () => {
-    // One definition, so the strategy and its inputs cannot disagree about
-    // what must be known; `worked-path` is present because lazy descendant
-    // discovery depends on which files the session touched.
-    const repo = VENDOR_BEHAVIOR_STATEMENTS['claude.behavior.repo.skills'];
-    const user = VENDOR_BEHAVIOR_STATEMENTS['claude.behavior.user.skills'];
-    const strategy = RUNTIME_COMPOSITION_STRATEGIES['claude.skills.selection'];
-    expect(repo.activationConditions).toBe(strategy.requiredConditionKeys);
-    expect(user.activationConditions).toBe(strategy.requiredConditionKeys);
-    expect(strategy.requiredConditionKeys).toContain('worked-path');
-    expect(strategy.requiredConditionKeys).toContain('runtime-cwd');
   });
 
   it('cites Anthropic official pages that resolve through the sources contract', () => {

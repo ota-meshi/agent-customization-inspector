@@ -76,13 +76,13 @@ function toSelectValue(value: string | null): string {
 </script>
 
 <template>
-  <section class="aci-filters" aria-labelledby="aci-filters-heading">
-    <h3 id="aci-filters-heading">Filters</h3>
-    <div class="aci-filter-grid">
+  <section class="aci-inventory-filters aci-panel" aria-labelledby="aci-inventory-filters-heading">
+    <h3 id="aci-inventory-filters-heading">Filters</h3>
+    <div class="aci-inventory-filters__grid">
       <p>
-        <label for="aci-filter-source">Source</label>
+        <label for="aci-inventory-filters-source">Source</label>
         <select
-          id="aci-filter-source"
+          id="aci-inventory-filters-source"
           :value="toSelectValue(sourceId)"
           @change="sourceId = ($event.target as HTMLSelectElement).value || null"
         >
@@ -97,9 +97,9 @@ function toSelectValue(value: string | null): string {
         </select>
       </p>
       <p>
-        <label for="aci-filter-tool">Tool</label>
+        <label for="aci-inventory-filters-tool">Tool</label>
         <select
-          id="aci-filter-tool"
+          id="aci-inventory-filters-tool"
           :value="toSelectValue(tool)"
           @change="
             tool = (($event.target as HTMLSelectElement).value || null) as SupportedTool | null
@@ -112,8 +112,8 @@ function toSelectValue(value: string | null): string {
         </select>
       </p>
       <p>
-        <label for="aci-filter-path">Path contains</label>
-        <input id="aci-filter-path" v-model="pathQuery" type="search" />
+        <label for="aci-inventory-filters-path">Path contains</label>
+        <input id="aci-inventory-filters-path" v-model="pathQuery" type="search" />
       </p>
     </div>
     <p ref="matchSummary" class="aci-note" role="status" aria-live="polite" tabindex="-1">
@@ -129,3 +129,25 @@ function toSelectValue(value: string | null): string {
     </p>
   </section>
 </template>
+
+<style scoped>
+/* The filter controls wrap instead of scrolling sideways, so a narrow viewport
+   or a large text size never hides one (WCAG 1.4.10). */
+.aci-inventory-filters__grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1rem;
+}
+
+.aci-inventory-filters__grid p {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  margin: 0.25rem 0;
+}
+
+.aci-inventory-filters__grid label {
+  color: var(--aci-muted);
+  font-size: 0.875rem;
+}
+</style>

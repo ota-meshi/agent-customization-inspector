@@ -122,6 +122,7 @@ describe('scan lifecycle', () => {
     await coordinator.completeScan(admitted.scanRequestId, {
       files: [],
       recognitions: [],
+      skillCompanionsByPath: new Map(),
       diagnostics: [],
       outcome: 'complete',
       visitedEntries: 0,
@@ -158,6 +159,7 @@ describe('scan lifecycle', () => {
     await coordinator.completeScan(admitted.scanRequestId, {
       files: [],
       recognitions: [],
+      skillCompanionsByPath: new Map(),
       diagnostics: [],
       outcome: 'complete',
       visitedEntries: 0,
@@ -183,6 +185,7 @@ describe('scan lifecycle', () => {
     await coordinator.completeScan(first.scanRequestId, {
       files: [],
       recognitions: [],
+      skillCompanionsByPath: new Map(),
       diagnostics: [],
       outcome: 'complete',
       visitedEntries: 0,
@@ -218,6 +221,7 @@ describe('scan lifecycle', () => {
     await coordinator.completeScan(first.scanRequestId, {
       files: [],
       recognitions: [],
+      skillCompanionsByPath: new Map(),
       diagnostics: [],
       outcome: 'complete',
       visitedEntries: 0,
@@ -237,6 +241,7 @@ describe('scan lifecycle', () => {
     await coordinator.completeScan(retry.scanRequestId, {
       files: [],
       recognitions: [],
+      skillCompanionsByPath: new Map(),
       diagnostics: [],
       outcome: 'complete',
       visitedEntries: 0,
@@ -270,6 +275,7 @@ describe('scan lifecycle', () => {
     await coordinator.completeScan(first.scanRequestId, {
       files: [],
       recognitions: [],
+      skillCompanionsByPath: new Map(),
       diagnostics: [],
       outcome: 'complete',
       visitedEntries: 0,
@@ -284,6 +290,7 @@ describe('scan lifecycle', () => {
     await coordinator.completeScan(second.scanRequestId, {
       files: [],
       recognitions: [],
+      skillCompanionsByPath: new Map(),
       diagnostics: [],
       outcome: 'complete',
       visitedEntries: 0,
@@ -330,6 +337,7 @@ describe('scan lifecycle', () => {
     await coordinator.completeScan(first.scanRequestId, {
       files: [],
       recognitions: [],
+      skillCompanionsByPath: new Map(),
       diagnostics: [],
       outcome: 'complete',
       visitedEntries: 0,
@@ -368,6 +376,7 @@ describe('scan lifecycle', () => {
     await coordinator.completeScan(admitted.scanRequestId, {
       files: [],
       recognitions: [],
+      skillCompanionsByPath: new Map(),
       diagnostics: [],
       outcome: 'complete',
       visitedEntries: 0,
@@ -436,6 +445,7 @@ describe('scan lifecycle', () => {
     await coordinator.completeScan(first.scanRequestId, {
       files: [],
       recognitions: [],
+      skillCompanionsByPath: new Map(),
       diagnostics: [],
       outcome: 'complete',
       visitedEntries: 0,
@@ -468,6 +478,7 @@ describe('scan lifecycle', () => {
     await coordinator.completeScan(retry.scanRequestId, {
       files: [],
       recognitions: [],
+      skillCompanionsByPath: new Map(),
       diagnostics: [],
       outcome: 'complete',
       visitedEntries: 0,
@@ -542,6 +553,7 @@ describe('scan lifecycle', () => {
     }).serialize();
     await coordinator.completeScan(first.scanRequestId, {
       recognitions: [],
+      skillCompanionsByPath: new Map(),
       visitedEntries: 0,
       candidateFiles: 0,
       readBytes: 0,
@@ -619,6 +631,7 @@ describe('scan lifecycle', () => {
     await coordinator.completeScan(first.scanRequestId, {
       files: [],
       recognitions: [],
+      skillCompanionsByPath: new Map(),
       diagnostics: [],
       outcome: 'complete',
       visitedEntries: 0,
@@ -640,6 +653,7 @@ describe('scan lifecycle', () => {
     await coordinator.completeScan(retry.scanRequestId, {
       files: [],
       recognitions: [],
+      skillCompanionsByPath: new Map(),
       diagnostics: [],
       outcome: 'complete',
       visitedEntries: 0,

@@ -103,6 +103,7 @@ export async function executeRepositoryScan(
     await context.coordinator.completeScan(scanRequestId, {
       files: publication.files,
       recognitions: publication.recognitions,
+      skillCompanionsByPath: publication.skillCompanionsByPath,
       diagnostics: publication.diagnostics,
       outcome: publication.outcome,
       visitedEntries: publication.visitedEntries,

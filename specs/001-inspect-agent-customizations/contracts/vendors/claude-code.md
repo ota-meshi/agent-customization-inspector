@@ -37,7 +37,7 @@ does not duplicate those algorithms.
   documentation-status values, not runtime effectiveness. Trust, approval, enablement,
   target files, runtime `cwd`, CLI flags, embedded-engine version, and installed-plugin
   state remain separate conditions. Runtime `documentation-conflict` is a
-  `ConditionFact.status`, not a documentation-status alias.
+  not a documentation status: this vocabulary spells its incompatible case `conflict`.
 - **Shared core** means the CLI, VS Code extension, and JetBrains integration use the same
   settings scopes and precedence. It does not mean every feature is available on every
   surface. The VS Code extension bundles its own Claude Code engine, which can differ in
@@ -45,8 +45,8 @@ does not duplicate those algorithms.
 
 ## Canonical evidence-assessment index
 
-Every `behaviorId` and `ruleId` owned by this contract has exactly one
-`EvidenceAssessment`. Unless listed below, its canonical values are
+Every `behaviorId` and `ruleId` owned by this contract states its own
+`documentationStatus` and `lifecycleQualifiers`. Unless listed below, its canonical values are
 `documentationStatus: documented` and `lifecycleQualifiers: []`. This is a closed mapping
 for every unlisted subject, not an inference from evidence presence; empty qualifiers make
 no lifecycle claim and do not mean `stable`. Status/caveat columns elsewhere in this
@@ -64,9 +64,8 @@ document are rationale or Inspector state, not serialized scalar enums.
 | `claude.repo.command` | `partially-documented` | `[]` | Recursive namespaces are documented, but the complete runtime-layer traversal is not |
 
 The typed registry expands the default and exceptions into one record per subject.
-Candidate provenance and relationship DTOs retain every directly referenced rule,
-behavior, and strategy assessment, sorted and deduplicated by subject; they never replace
-that `EvidenceAssessment[]` with one scalar or qualifier union.
+These are maintenance records; no response carries one (QR-005). A candidate provenance
+publishes which rule admitted the file, never how completely that rule is documented.
 
 ## Repository vendor behavior
 
@@ -79,7 +78,7 @@ The composition column references only strategy IDs from
 | `claude.behavior.repo.instructions.ancestor` | Shared core | Each `<ancestor-dir>` above `<launch-cwd>` | `./CLAUDE.md`; `./CLAUDE.local.md` | Walk parents toward the filesystem root; the ancestor walk does not document `./.claude/CLAUDE.md` | `claude.instructions.layering` | documented, with the noted negative boundary | `anthropic.claude-code.memory.locations-load`; `anthropic.claude-code.sdk.setting-sources` |
 | `claude.behavior.repo.instructions.descendant` | Shared core | A `<descendant-dir>` below `<launch-cwd>` | `./CLAUDE.md`; `./CLAUDE.local.md` | Lazy: loaded after Claude reads a file in that descendant subtree; descendant `./.claude/CLAUDE.md` is not documented | `claude.instructions.layering` | documented, with the noted negative boundary | `anthropic.claude-code.memory.locations-load`; `anthropic.claude-code.sdk.setting-sources` |
 | `claude.behavior.repo.rules` | Shared core | Each documented rule layer from `<launch-cwd>` through its parents | `./.claude/rules/**/*.md` | Discover Markdown files recursively within each rule directory; a `paths` rule becomes applicable when a matching file is read | `claude.rules.layering` | partially documented: descendant rule-directory discovery and the base for ancestor-layer `paths` globs are not explicit | `anthropic.claude-code.memory.locations-load` |
-| `claude.behavior.repo.skills` | CLI full; IDE subset | Each `<skill-layer>` from `<launch-cwd>` through the Git repository root | `./.claude/skills/<skill-name>/SKILL.md` | Discover ancestor layers at startup and nested descendant skill directories on demand as files are accessed | `claude.skills.selection` | documented | `anthropic.claude-code.skills.locations-discovery`; `anthropic.claude-code.large-codebases.start-directory` |
+| `claude.behavior.repo.skills` | CLI full; IDE subset | Each `<skill-layer>` from `<launch-cwd>` through the Git repository root | `./.claude/skills/<skill-name>/SKILL.md` | Discover ancestor layers at startup and nested descendant skill directories on demand as files are accessed (nested discovery is Claude Code 2.1.6+, changelog § 2.1.6) | `claude.skills.selection` | documented | `anthropic.claude-code.skills.locations-discovery`; `anthropic.claude-code.changelog.nested-skill-discovery`; `anthropic.claude-code.large-codebases.start-directory` |
 | `claude.behavior.repo.skills-directory-plugin` | CLI; IDE availability conditional | `<launch-cwd>/.claude/skills/<plugin-name>` | `./.claude-plugin/plugin.json` | Exact launch-`cwd` skills directory only; unlike plain skills, do not walk ancestor skill directories for this plugin interpretation; workspace trust applies | `claude.plugins.activation` | documented | `anthropic.claude-code.plugins.components-scopes` |
 | `claude.behavior.repo.commands` | CLI full; IDE subset | The project command scope used by the session | `./.claude/commands/**/*.md` | Recursively discover command files inside the command directory; subdirectories form command namespaces | `claude.commands.selection` | partially documented: recursion is documented, but a complete skill-equivalent ancestor and lazy-descendant traversal is not stated independently | `anthropic.claude-code.skills.locations-discovery`; `anthropic.claude-code.changelog.legacy-command-nesting` |
 | `claude.behavior.repo.agents` | Claude Code runtime where subagents are available | Each `<agent-layer>` from `<launch-cwd>` through the Git repository root | `./.claude/agents/**/*.md` | Recursively discover each layer; additional directories supplied with `--add-dir` can also contribute agents | `claude.agents.selection`; `claude.agent-context.composition` | documented; duplicate names inside one directory tree have no documented stable winner | `anthropic.claude-code.subagents.scope-context` |
@@ -173,18 +172,21 @@ This index grants no read authority and does not duplicate those definitions.
 ## Normative initial-release presentation allowlist
 
 This table is the closed FR-007 presentation allowlist for Claude Code. The kind
-spellings are the exact `ToolRecognition.kind` values. A field ID names one field of the recognized
-kind, not an arbitrary key supplied by the inspected file, and produces one entry holding
-the value its parser resolved for that field; for `*.name` IDs on MCP servers and Hook
-events, that value is the authored map key. `marketplace.plugin.source` is the single cross-vendor field ID used by the
-closed marketplace derivation: it denotes either a plain-string source or the `path`
-leaf of an object source.
+spellings are the exact `ToolRecognition.kind` values.
+
+The release publishes no declared metadata beside the source it read: a detail surface
+serves the complete authored `sourceText`, so every authored value is already on the same
+screen in its own spelling, and a captioned copy would be one fact in two spellings. The
+values a recognition reads out are the file's own declarations, by the keys the file wrote
+(data-model.md § Skill presentation); the one an inventory row is grouped by is its kind's
+identity — for a `skill`, the name authored in its own file. The table therefore fixes
+eligible relationship kinds and admitted source forms only.
 
 The final column is normative source-form applicability, not commentary. Effective
-eligibility is the intersection of the row's closed field/relationship sets and the exact
+eligibility is the intersection of the row's closed relationship set and the exact
 extractor occurrences supported for the actual admitted source form identified by candidate
 provenance. Naming several forms in one row does not union their schemas or make one form's
-fields eligible in another; conformance fixtures and tests cover both gates.
+references eligible in another; conformance fixtures and tests cover both gates.
 
 Once implementation begins, this bilingual table and its two per-language SHA-256 digests
 recorded in the [official-source contract](../official-sources.md) are frozen, approved design
@@ -197,28 +199,28 @@ is consumed.
 The rows are exhaustive. `—` means the eligible set is empty. A contained MCP or Hook
 declaration uses the `MCP` or `hook` row on its already admitted owner file; it does not
 gain fields from the owner's other recognition and does not create a synthetic file.
-Unknown keys and references remain visible only in complete `sourceText`. A relationship
+A reference the allowlist does not name remains visible only in complete `sourceText`. No allowlist stands between a declaration and its publication: a skill's declarations are the keys its file wrote, and an authored key set is not closed (FR-007). A relationship
 can be emitted only when both its kind is listed here and its origin is covered by the
 appropriate relationship-only rule in the central registry. This allowlist never grants a
 read, connection, execution, import, installation, or activation authority.
 
-| `ToolRecognition.kind` | Eligible declared-metadata `fieldId` values | Eligible `Relationship.kind` values | Initial-release source forms |
-|---|---|---|---|
-| `instructions` | `claude.instructions.import-target` | `import` | An authored `@path` token outside Markdown code spans/fences in an accepted `CLAUDE.md` or `CLAUDE.local.md` |
-| `rule` | `claude.rule.paths` | — | Each authored `paths` frontmatter scalar in an accepted `.claude/rules/**/*.md`; omitted `paths` emits no metadata |
-| `skill` | `claude.skill.name`<br>`claude.skill.description`<br>`claude.skill.when-to-use`<br>`claude.skill.argument-hint`<br>`claude.skill.argument`<br>`claude.skill.disable-model-invocation`<br>`claude.skill.user-invocable`<br>`claude.skill.allowed-tool`<br>`claude.skill.disallowed-tool`<br>`claude.skill.model`<br>`claude.skill.effort`<br>`claude.skill.context`<br>`claude.skill.agent`<br>`claude.skill.paths`<br>`claude.skill.shell` | `skill-resource`<br>`agent-reference`<br>`context-inheritance` | Exact frontmatter value/item occurrences in an accepted `SKILL.md`; `hooks` and MCP declarations are owned by their separate contained recognitions |
-| `agent` | `claude.agent.name`<br>`claude.agent.description`<br>`claude.agent.tool`<br>`claude.agent.disallowed-tool`<br>`claude.agent.model`<br>`claude.agent.permission-mode`<br>`claude.agent.max-turns`<br>`claude.agent.skill`<br>`claude.agent.memory`<br>`claude.agent.background`<br>`claude.agent.effort`<br>`claude.agent.isolation`<br>`claude.agent.color`<br>`claude.agent.initial-prompt` | `agent-reference`<br>`context-inheritance`<br>`runtime-reference` | Exact frontmatter value/item occurrences in an accepted `.claude/agents/**/*.md`; `hooks` and `mcpServers` are owned by separate contained recognitions |
-| `prompt/command` | `claude.command.name`<br>`claude.command.description`<br>`claude.command.when-to-use`<br>`claude.command.argument-hint`<br>`claude.command.argument`<br>`claude.command.disable-model-invocation`<br>`claude.command.user-invocable`<br>`claude.command.allowed-tool`<br>`claude.command.disallowed-tool`<br>`claude.command.model`<br>`claude.command.effort`<br>`claude.command.context`<br>`claude.command.agent`<br>`claude.command.paths`<br>`claude.command.shell` | `agent-reference`<br>`context-inheritance` | Exact frontmatter value/item occurrences in an accepted legacy command Markdown file; namespace and invocation name derived from the matched path remain typed provenance, not declared metadata |
-| `hook` | `claude.hook.event`<br>`claude.hook.matcher`<br>`claude.hook.handler.type`<br>`claude.hook.handler.if`<br>`claude.hook.handler.timeout`<br>`claude.hook.handler.status-message`<br>`claude.hook.handler.once`<br>`claude.hook.handler.command`<br>`claude.hook.handler.arg`<br>`claude.hook.handler.async`<br>`claude.hook.handler.shell`<br>`claude.hook.handler.url`<br>`claude.hook.handler.header.name`<br>`claude.hook.handler.header.value`<br>`claude.hook.handler.allowed-env-var`<br>`claude.hook.handler.server`<br>`claude.hook.handler.tool`<br>`claude.hook.handler.input`<br>`claude.hook.handler.prompt`<br>`claude.hook.handler.model` | `runtime-reference` | Event map keys, matcher values, and handler leaf/item values in contained `hooks` declarations on accepted settings, skill, agent, plugin, or marketplace owners |
-| `MCP` | `claude.mcp.server.name`<br>`claude.mcp.server.type`<br>`claude.mcp.server.command`<br>`claude.mcp.server.arg`<br>`claude.mcp.server.env.name`<br>`claude.mcp.server.env.value`<br>`claude.mcp.server.url`<br>`claude.mcp.server.header.name`<br>`claude.mcp.server.header.value`<br>`claude.mcp.server.headers-helper`<br>`claude.mcp.server.timeout`<br>`claude.mcp.server.always-load`<br>`claude.mcp.server.oauth.client-id`<br>`claude.mcp.server.oauth.callback-port`<br>`claude.mcp.server.oauth.auth-server-metadata-url`<br>`claude.mcp.server.oauth.scopes` | `runtime-reference` | Server-name map keys and exact server leaf/item occurrences in root `.mcp.json` or a contained declaration on an already admitted owner |
-| `settings/config` | `claude.settings.model`<br>`claude.settings.effort-level`<br>`claude.settings.agent`<br>`claude.settings.output-style`<br>`claude.settings.permission.allow`<br>`claude.settings.permission.ask`<br>`claude.settings.permission.deny`<br>`claude.settings.permission.default-mode`<br>`claude.settings.env.name`<br>`claude.settings.env.value`<br>`claude.settings.enabled-plugin.name`<br>`claude.settings.enabled-plugin.value`<br>`claude.settings.extra-known-marketplace.name`<br>`claude.settings.extra-known-marketplace.source`<br>`claude.settings.extra-known-marketplace.auto-update`<br>`claude.settings.disable-all-hooks` | `agent-reference`<br>`declared-component`<br>`runtime-reference` | Exact supported leaf/item occurrences in root `.claude/settings.json` or `.claude/settings.local.json`; contained Hook and MCP values belong only to their own recognition rows |
-| `output style` | `claude.output-style.name`<br>`claude.output-style.description`<br>`claude.output-style.keep-coding-instructions`<br>`claude.output-style.force-for-plugin` | — | Exact frontmatter values in an accepted direct-child output-style Markdown file |
-| `plugin` | `claude.plugin.name`<br>`claude.plugin.display-name`<br>`claude.plugin.version`<br>`claude.plugin.description`<br>`claude.plugin.author.name`<br>`claude.plugin.author.email`<br>`claude.plugin.author.url`<br>`claude.plugin.homepage`<br>`claude.plugin.repository`<br>`claude.plugin.license`<br>`claude.plugin.keyword`<br>`claude.plugin.default-enabled`<br>`claude.plugin.skills`<br>`claude.plugin.commands`<br>`claude.plugin.agents`<br>`claude.plugin.hooks`<br>`claude.plugin.mcp-servers`<br>`claude.plugin.output-styles`<br>`claude.plugin.lsp-servers`<br>`claude.plugin.experimental.themes`<br>`claude.plugin.experimental.monitors`<br>`claude.plugin.dependency.name`<br>`claude.plugin.dependency.version` | `declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | Exact metadata and component/dependency leaf/item occurrences in an accepted `.claude-plugin/plugin.json`; inline Hook/MCP bodies are projected only by their separate contained recognitions |
-| `marketplace` | `marketplace.name`<br>`marketplace.owner.name`<br>`marketplace.owner.email`<br>`marketplace.description`<br>`marketplace.version`<br>`marketplace.metadata.plugin-root`<br>`marketplace.plugin.name`<br>`marketplace.plugin.source`<br>`marketplace.plugin.source.type`<br>`marketplace.plugin.source.url`<br>`marketplace.plugin.source.repo`<br>`marketplace.plugin.source.ref`<br>`marketplace.plugin.source.sha`<br>`marketplace.plugin.display-name`<br>`marketplace.plugin.description`<br>`marketplace.plugin.version`<br>`marketplace.plugin.author.name`<br>`marketplace.plugin.author.email`<br>`marketplace.plugin.homepage`<br>`marketplace.plugin.repository`<br>`marketplace.plugin.license`<br>`marketplace.plugin.keyword`<br>`marketplace.plugin.category`<br>`marketplace.plugin.tag`<br>`marketplace.plugin.strict`<br>`marketplace.plugin.default-enabled`<br>`marketplace.plugin.skills`<br>`marketplace.plugin.commands`<br>`marketplace.plugin.agents`<br>`marketplace.plugin.hooks`<br>`marketplace.plugin.mcp-servers`<br>`marketplace.plugin.lsp-servers` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | Exact catalog and plugin-entry leaf/item occurrences in an accepted `.claude-plugin/marketplace.json`; `marketplace.plugin.source` alone may seed the closed local-manifest derivation |
+| `ToolRecognition.kind` | Eligible `Relationship.kind` values | Initial-release source forms |
+|---|---|---|
+| `instructions` | `import` | An authored `@path` token outside Markdown code spans/fences in an accepted `CLAUDE.md` or `CLAUDE.local.md` |
+| `rule` | — | Each authored `paths` frontmatter scalar in an accepted `.claude/rules/**/*.md`; omitted `paths` emits no metadata |
+| `skill` | `skill-resource`<br>`agent-reference`<br>`context-inheritance` | Exact frontmatter value/item occurrences in an accepted `SKILL.md`; `hooks` and MCP declarations are owned by their separate contained recognitions |
+| `agent` | `agent-reference`<br>`context-inheritance`<br>`runtime-reference` | Exact frontmatter value/item occurrences in an accepted `.claude/agents/**/*.md`; `hooks` and `mcpServers` are owned by separate contained recognitions |
+| `prompt/command` | `agent-reference`<br>`context-inheritance` | Exact frontmatter value/item occurrences in an accepted legacy command Markdown file; namespace and invocation name derived from the matched path remain typed provenance, not declared metadata |
+| `hook` | `runtime-reference` | Event map keys, matcher values, and handler leaf/item values in contained `hooks` declarations on accepted settings, skill, agent, plugin, or marketplace owners |
+| `MCP` | `runtime-reference` | Server-name map keys and exact server leaf/item occurrences in root `.mcp.json` or a contained declaration on an already admitted owner |
+| `settings/config` | `agent-reference`<br>`declared-component`<br>`runtime-reference` | Exact supported leaf/item occurrences in root `.claude/settings.json` or `.claude/settings.local.json`; contained Hook and MCP values belong only to their own recognition rows |
+| `output style` | — | Exact frontmatter values in an accepted direct-child output-style Markdown file |
+| `plugin` | `declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | Exact metadata and component/dependency leaf/item occurrences in an accepted `.claude-plugin/plugin.json`; inline Hook/MCP bodies are projected only by their separate contained recognitions |
+| `marketplace` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | Exact catalog and plugin-entry leaf/item occurrences in an accepted `.claude-plugin/marketplace.json`; `marketplace.plugin.source` alone may seed the closed local-manifest derivation |
 
 No Claude recognition uses the shared `skill metadata` kind in the initial release. Typed
 layer, path-derived namespace, selection, precedence, trust, surface, default, and
-applicability facts are not authored metadata and therefore are not additional field IDs.
+applicability facts are not authored metadata and are published by no surface.
 
 ## Known ambiguities and version-sensitive facts
 

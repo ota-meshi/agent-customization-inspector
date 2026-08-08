@@ -17,14 +17,31 @@ import { SourceViewerHandle } from '../../composables/monaco';
 import { SESSION_VIEW_STATE } from '../../session/view-state';
 
 const props = defineProps<{
-  /** The file's complete decoded text, exactly as committed. */
+  /**
+   * The text to show, exactly as committed. Usually a file's complete decoded
+   * source; a caller showing part of one — a skill's instructions, with the
+   * frontmatter block removed — passes that part and names it in
+   * {@link contentLabel}, so nothing announces a slice as the whole file.
+   */
   readonly sourceText: string;
   /** The Source-relative Path, used for the language choice and the label. */
   readonly sourceRelativePath: string;
+  /**
+   * What the viewer is showing of that file, leading its accessible name. The
+   * default is the whole file; a caller passing part of one says which part,
+   * so assistive technology never announces a slice as the complete source.
+   */
+  readonly contentLabel?: string;
 }>();
 
 /** The element Monaco takes over; empty until the editor is mounted. */
 const host = ref<HTMLDivElement | null>(null);
+/**
+ * The plain-text toggle, read when a mount fails: the failure unmounts this
+ * button, so focus moves to the retry only when this button was holding it
+ * (WCAG 2.4.3).
+ */
+const toggleButton = ref<HTMLButtonElement | null>(null);
 /** The mounted editor, or null before the first mount and after teardown. */
 const viewer = shallowRef<SourceViewerHandle | null>(null);
 /**
@@ -33,6 +50,12 @@ const viewer = shallowRef<SourceViewerHandle | null>(null);
  * offers a retry instead of leaving an empty host.
  */
 const mountError = shallowRef<boolean>(false);
+/**
+ * The failure state's retry button. Held so the toggle that produced the
+ * failure can hand focus to it: the toggle's own button is removed with the
+ * controls, and focus would otherwise fall to the document body.
+ */
+const retryButton = ref<HTMLButtonElement | null>(null);
 
 /**
  * The failure copy, bound to the visible error and to the stable live region
@@ -75,7 +98,7 @@ let requestedSource = 0;
 /** True once teardown has run, so a late mount disposes instead of attaching. */
 let unmounted = false;
 
-// The model this component mounts holds complete authored source, so it is an
+// The model this component mounts holds authored source, so it is an
 // owner the view state must clear synchronously — on the central purge
 // (FR-027) and before a greater generation is adopted (data-model.md
 // § BrowserState): the reactive unmount that follows either is one render
@@ -112,7 +135,7 @@ function disposeViewer(): void {
 async function showCurrentSource(): Promise<void> {
   requestedSource += 1;
   const requested = requestedSource;
-  const { sourceText, sourceRelativePath: path } = props;
+  const { sourceText, sourceRelativePath: path, contentLabel } = props;
   if (viewer.value === null) {
     const element = host.value;
     if (element === null) {
@@ -123,8 +146,23 @@ async function showCurrentSource(): Promise<void> {
       // The editor chunk or its mount failed. The source is not lost — the
       // detail already holds it — so the honest state is a visible failure
       // with a retry, not an empty host and an unhandled rejection.
+      //
+      // The failure removes the toggle, so focus follows to the retry when the
+      // toggle was holding it. The test is on the toggle rather than on the
+      // caller: the mount is awaited, so a reader can reach the toggle while
+      // the first one is still loading, and that press is not what started it.
+      // Focus is read before the state changes because afterwards the button
+      // is on its way out, and moved after the patch because until then the
+      // retry does not exist yet.
       if (!unmounted && requested === requestedSource) {
+        const toggleHadFocus = document.activeElement === toggleButton.value;
         mountError.value = true;
+        if (toggleHadFocus) {
+          await nextTick();
+          if (document.activeElement === document.body) {
+            retryButton.value?.focus();
+          }
+        }
       }
       return;
     }
@@ -137,7 +175,7 @@ async function showCurrentSource(): Promise<void> {
     }
     viewer.value = mounted;
   }
-  viewer.value.showSource(sourceText, path);
+  viewer.value.showSource(sourceText, path, contentLabel);
   // Cleared only once the mount actually succeeded: clearing it up front
   // would unmount the failure state's retry button while the retry is still
   // in flight, and a retry that fails again would strand keyboard focus on
@@ -222,8 +260,8 @@ onBeforeUnmount(() => {
        rendering is already what is on screen then, so a button offering it would
        name something the click cannot do. The failure's own "Try again" is the
        way back to the editor. -->
-  <p v-if="!mountError" class="aci-source-controls">
-    <button type="button" @click="togglePlainText">
+  <p v-if="!mountError" class="aci-source-viewer__controls">
+    <button ref="toggleButton" type="button" @click="togglePlainText">
       {{ plainText ? 'Show in the source viewer' : 'Show as plain text' }}
     </button>
   </p>
@@ -235,7 +273,7 @@ onBeforeUnmount(() => {
   </p>
   <p v-if="mountError && !plainText" class="aci-error">
     {{ MOUNT_ERROR_MESSAGE }}
-    <button type="button" @click="retryMount">Try again</button>
+    <button ref="retryButton" type="button" @click="retryMount">Try again</button>
   </p>
   <!-- The same complete text as an inert text node — no markup, no links, no
        editor — shown when the reader asked for it and when the editor could not
@@ -248,7 +286,34 @@ onBeforeUnmount(() => {
   <pre
     v-if="mountError || plainText"
     ref="fallbackElement"
-    class="aci-source-fallback"
+    class="aci-source-viewer__fallback"
     tabindex="0"
     >{{ purged ? '' : sourceText }}</pre>
 </template>
+
+<style scoped>
+/* Monaco lays out inside a sized box and collapses to nothing without a
+   definite height, so the editor is given one. It is not told to fill a
+   remainder: the page around it scrolls, so there is no remainder to fill and
+   an editor asked for one would collapse. `automaticLayout` keeps it in step
+   with the box on resize. */
+.aci-source-viewer {
+  block-size: 24rem;
+  border: 1px solid var(--aci-border);
+  border-radius: 4px;
+  inline-size: 100%;
+}
+
+/* The editor-failure fallback: the same authored text as an inert text node.
+   `pre` keeps the authored line structure; long lines scroll inside the block
+   rather than widening the page. */
+.aci-source-viewer__fallback {
+  border: 1px solid var(--aci-border);
+  border-radius: 4px;
+  flex: 1;
+  margin: 0;
+  min-block-size: 0;
+  overflow: auto;
+  padding: 0.5rem;
+}
+</style>

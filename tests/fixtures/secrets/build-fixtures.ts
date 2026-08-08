@@ -15,15 +15,15 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
 /**
- * The credential-shaped literals the tree declares, one per authored position
- * the Codex `skill` allowlist can reach.
+ * The credential-shaped literals the tree declares, one per authored position a
+ * skill has.
  */
 export const SECRET_LITERALS = {
-  /** Declared in an allowlisted `description`, so it is published as metadata. */
-  inAllowlistedField: 'ghp_FIXTURE000000000000000000000000000000',
-  /** Declared in a frontmatter key the allowlist does not name. */
-  inUnlistedField: 'sk-FIXTURE0000000000000000000000000000000000000000',
-  /** Declared in the Markdown body, which no field ID covers. */
+  /** Declared in `description`, the key a reader looks for after the name. */
+  inDescription: 'ghp_FIXTURE000000000000000000000000000000',
+  /** Declared in a key of the file's own choosing, published like any other. */
+  inOtherKey: 'sk-FIXTURE0000000000000000000000000000000000000000',
+  /** Declared in the Markdown body, which carries no declarations at all. */
   inBody: 'AKIAFIXTURE000000000',
 } as const;
 
@@ -53,12 +53,13 @@ function write(root: string, relative: string, content: string): void {
 
 /**
  * Builds a repository whose one Codex skill declares a credential-shaped
- * literal in an allowlisted field, in an unlisted field, and in its body.
+ * literal in two frontmatter keys and in its body.
  *
- * The three positions are the point: the first must appear unmasked as that
- * field's recognized value, the second must appear only inside the complete
- * `sourceText`, and all three must stay out of the session snapshot, which
- * carries no source text at all.
+ * The three positions are the point: both keys must appear unmasked as the
+ * values they resolve to — a skill publishes the keys its file wrote, so
+ * neither is more or less published than the other — the body's must appear in
+ * the complete `sourceText`, and all three must stay out of the session
+ * snapshot, which carries no source text at all.
  */
 export function buildSecretFixture(prefix = 'inspector-secrets'): SecretFixture {
   const root = mkdtempSync(join(tmpdir(), `${prefix}-`));
@@ -66,8 +67,8 @@ export function buildSecretFixture(prefix = 'inspector-secrets'): SecretFixture 
   const sourceText = [
     '---',
     'name: secretive',
-    `description: "deploy token ${SECRET_LITERALS.inAllowlistedField}"`,
-    `api_key: ${SECRET_LITERALS.inUnlistedField}`,
+    `description: "deploy token ${SECRET_LITERALS.inDescription}"`,
+    `api_key: ${SECRET_LITERALS.inOtherKey}`,
     '---',
     '',
     `Run it with ${SECRET_LITERALS.inBody}.`,

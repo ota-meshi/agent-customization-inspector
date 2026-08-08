@@ -37,6 +37,7 @@ import { NuxtPage } from '#components';
 import { useRoute, useRouter, type RouteLocationNormalized } from 'vue-router';
 import { connectDevframe, isCallableStatus } from 'devframe/client';
 import { SESSION_VIEW_STATE, SessionViewState, type SessionView } from './session/view-state';
+import { escapeControlCharacters } from '../shared/entities';
 import './styles/main.css';
 
 /** The product name, used for both the page heading and the document title. */
@@ -141,13 +142,18 @@ const documentTitle = computed(() => {
       // The route is part of what the page is, and a title that never changed
       // would leave a screen-reader user on a detail page hearing the
       // inventory's (WCAG 2.4.2). A page that reports its subject — the skill
-      // detail's declared or directory name — titles the tab by it, so two
-      // tabs on two skills stay distinguishable.
+      // detail's declared name, or the state it is in when it is showing no
+      // skill — titles the tab by it, so two tabs stay distinguishable.
       if (route.path === '/') {
         return APP_NAME;
       }
       const subject = sessionViewState.pageSubject.value ?? routeTitle.value;
-      return `${subject} — ${APP_NAME}`;
+      // The subject can be an authored skill name, and a tab title has no CSS
+      // to isolate it with. The isolate pair alone would not be a boundary —
+      // an authored PDI closes it from inside — so the subject's own bidi and
+      // control characters are spelled out first, the way path labels spell
+      // them, and the isolate pair then scopes ordinary right-to-left text.
+      return `\u{2068}${escapeControlCharacters(subject)}\u{2069} — ${APP_NAME}`;
     }
     case 'ended':
       return `Session ended — ${APP_NAME}`;
@@ -251,14 +257,14 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="aci-shell">
+  <main class="aci-app">
     <h1 ref="heading" tabindex="-1">{{ APP_NAME }}</h1>
     <!-- The inventory's own introduction, so it is shown with the inventory. A
-         detail route does not repeat it: that screen's height belongs to the
-         file it was opened for, and what applies to one recognition is stated
-         per recognition inside its own disclosure rather than as a standing
-         caveat over the page. -->
-    <p v-if="route.path === '/'" class="aci-tagline">
+         detail route does not repeat it: that screen is devoted to the
+         recognized skill and its files, and its recognition summary states
+         only what the Inspector found rather than making an applicability
+         claim. -->
+    <p v-if="route.path === '/'" class="aci-app__tagline">
       Browse the customization files AI coding agents look for in this repository. Being listed is
       not being loaded: whether a product actually uses one depends on runtime conditions this tool
       does not evaluate. Nothing is executed, connected to, or modified.
@@ -308,3 +314,52 @@ onBeforeUnmount(() => {
     </template>
   </main>
 </template>
+
+<style scoped>
+/* The standing note under the title: muted, because it qualifies the page
+   rather than saying what is on it. */
+.aci-app__tagline {
+  color: var(--aci-muted);
+  margin: 0.25rem 0;
+}
+/* A viewport-tall column that scrolls inside itself, so a route can take the
+   height its own layout needs. `height` rather than `min-height`: a flex
+   container whose height is only floored stays content-sized, `flex-grow` finds
+   no free space to hand out, and a route that asked to fit grows the page
+   instead. Scrolling here rather than on the document is what lets a long
+   inventory scroll without the document scrolling under it. `dvh` follows a
+   mobile browser's retracting toolbar, with `vh` for anything that does not
+   know it. */
+.aci-app {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  margin: 0 auto;
+  max-width: 72rem;
+  overflow-y: auto;
+  padding: 1.5rem 1.25rem 2rem;
+}
+
+.aci-app h1 {
+  font-size: 1.5rem;
+  margin: 0 0 0.25rem;
+}
+
+/* The heading receives programmatic focus after mount, so its ring is
+ * explicit rather than dependent on a browser's :focus-visible heuristic. */
+.aci-app h1:focus {
+  outline: 2px solid var(--aci-accent);
+  outline-offset: 2px;
+}
+
+/* The shell grows with its content on a short viewport or at 200% zoom, where
+   a viewport-tall column would clip what it holds (WCAG 1.4.4, 1.4.10). */
+@media (max-height: 32rem) {
+  .aci-app {
+    height: auto;
+    overflow-y: visible;
+  }
+}
+</style>

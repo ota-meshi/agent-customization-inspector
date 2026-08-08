@@ -37,7 +37,7 @@
 
 - [x] CHK015 Are there objective completeness criteria for evidence coverage, including zero unresolved identifier references, zero orphan sources, and evidence for every maintained behavior, rule, and strategy? [Measurability, Spec §QR-005]
 - [x] CHK016 Are Repository selector acceptance criteria explicit about the `Repository` Base, authored typed segment programs, expansion class, and the closed token grammar (no adjacent recursive segments)? [Measurability, Spec §QR-005]
-- [x] CHK017 Can each closed `documentationStatus`—`documented`, `partially-documented`, `unknown`, and `conflict`—be assigned using objective evidence criteria, with `documentation-conflict` reserved for `ConditionFact.status` rather than accepted as an alias? [Acceptance Criteria, Spec §QR-005]
+- [x] CHK017 Can each closed `documentationStatus`—`documented`, `partially-documented`, `unknown`, and `conflict`—be assigned using objective evidence criteria, with `documentation-conflict` rejected rather than accepted as an alias for `conflict`? [Acceptance Criteria, Spec §QR-005]
 - [x] CHK018 Are drift-review outcomes measurable for unchanged content, changed assertions, missing or duplicate anchors, redirects, and human-reviewed semantic updates? [Acceptance Criteria, Contract: Official Sources §Offline validation and explicit drift review]
 
 ## Scenario Coverage
@@ -62,7 +62,7 @@
 - [x] CHK030 Are registry and drift validations required to be deterministic, complete-or-explicitly-failed, and actionable when they cannot establish source integrity, without defining a product-specific numeric resource ceiling? [Non-Functional, Contract: Inspection Path Allowlist §Common conformance requirements]
 - [x] CHK031 Are privacy requirements for official-source review explicit about credentials, cookies, repository data, response bodies, and retained remote content? [Security, Data Model §EvidenceCitation]
 - [x] CHK032 Does the ownership model allow one vendor surface to be updated without changing unrelated vendors, surfaces, Inspector policies, or composition strategies? [Maintainability, Spec §QR-001]
-- [x] CHK033 Does every behavior, rule, and strategy own exactly one subject-keyed `EvidenceAssessment`, and do provenance and relationship DTOs retain the sorted/deduplicated record-by-record `EvidenceAssessment[]` without reducing it to a scalar, best/worst value, or qualifier union? [Acceptance Criteria, Spec §QR-005]
+- [x] CHK033 Does every behavior, rule, and strategy state its own `documentationStatus` and `lifecycleQualifiers` on the record itself, and does no response carry any of them? [Acceptance Criteria, Spec §QR-005]
 - [x] CHK034 Are lifecycle qualifiers limited to duplicate-free `preview`, `experimental`, `deprecated` order, with an empty array explicitly meaning no lifecycle claim rather than `stable`? [Acceptance Criteria, Spec §QR-005]
 
 ## Dependencies and Assumptions

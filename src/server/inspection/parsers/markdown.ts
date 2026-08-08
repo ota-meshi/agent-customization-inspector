@@ -1,5 +1,5 @@
 // The YAML frontmatter of a Markdown document, read under this product's fixed
-// semantics (T087; data-model.md § DeclaredMetadataEntry).
+// semantics (T087; data-model.md § Field reading).
 //
 // Nothing here renders, links, fetches, or executes, and nothing here decides
 // anything about either format. `vfile-matter` finds the frontmatter block and
@@ -9,36 +9,49 @@
 // the same "looks like the format but isn't" trap the selector grammar refuses
 // — and a second opinion about a format is a second opinion that can disagree.
 //
-// What comes back is what a parser resolves, which is what the agent reading
-// the file gets: `007` is `7`, a key declared twice is its later declaration,
-// an alias is the value it points at, and a tag the core schema does not
-// resolve leaves the scalar it carried. None of those is rejected and none is
-// converted. This product says what a product would read out of a
-// customization; it is not a validator standing between the two, and the
-// complete authored bytes are on the same screen in the source viewer for
-// anyone who needs the spelling.
+// What comes back is the parser's resolution under those semantics — the
+// Inspector's one documented reading, not a reconstruction of any vendor's:
+// `007` is `7`, a key declared twice is its later declaration, an alias is the
+// value it points at, and a tag the core schema does not resolve leaves the
+// scalar it carried. None of those is rejected and none is converted, and no
+// per-field coercion a vendor documents is applied (data-model.md § Field
+// reading). This product is not a validator either, and the complete decoded
+// source is on the same screen in the source viewer for anyone who needs the
+// spelling.
 //
-// Authored import and reference targets are not extracted here. An extractor
-// may publish only fields the recognition's presentation-allowlist row names,
-// and the Codex `skill` row names two frontmatter scalars and no reference
-// field at all (contracts/vendors/openai-codex.md § Normative initial-release
-// presentation allowlist). Import extraction therefore arrives with the first
-// phase whose row has such a field.
+// Nothing is extracted here either: this module resolves the block and hands
+// back what it resolved to. Which values a recognition then reads, and how the
+// detail surface draws them, belongs to `recognizers/candidate.ts`.
 import { VFile } from 'vfile';
 import { matter } from 'vfile-matter';
-import type { DocumentOptions, ParseOptions, SchemaOptions } from 'yaml';
+import type { DocumentOptions, ParseOptions, SchemaOptions, ToJSOptions } from 'yaml';
 
 /**
  * The YAML semantics a frontmatter block is read under.
  *
  * Stated rather than left to the parser's defaults, because these are the
  * product's commitments and not incidental: YAML 1.1 would resolve `yes` to a
- * boolean and `12:30` to a sexagesimal number, and a customization's fields
- * would mean something other than what its author's tools read.
+ * boolean and `12:30` to a sexagesimal number. YAML 1.2 core is the one
+ * documented reading every published value is stated under — the Inspector's
+ * own, not a reconstruction of any vendor's: a vendor may coerce further per
+ * field, the way Claude Code reads `yes` as true for its boolean frontmatter
+ * fields (data-model.md § Field reading).
  */
-const YAML_PARSE_OPTIONS: ParseOptions & DocumentOptions & SchemaOptions = {
+const YAML_PARSE_OPTIONS: ParseOptions & DocumentOptions & SchemaOptions & ToJSOptions = {
   /** YAML 1.2, whose core schema also leaves merge keys out. */
   version: '1.2',
+  /**
+   * Mappings come back as `Map`s, not plain objects, because a plain object
+   * does not keep the order the keys were written in: JavaScript lists
+   * integer-like keys first, in ascending numeric order, before the rest. A
+   * file declaring `10:` then `2:` would be shown `2` first — an order its
+   * author never wrote — and the detail surface publishes declarations in
+   * authored order (data-model.md § Skill presentation).
+   *
+   * A `Map` also keeps a key's parsed type, so a numeric key stays distinct
+   * from the string that spells it.
+   */
+  mapAsMap: true,
   /**
    * The core schema alone: no YAML 1.1 timestamps, sexagesimals, or
    * language-specific types.
@@ -62,17 +75,45 @@ const YAML_PARSE_OPTIONS: ParseOptions & DocumentOptions & SchemaOptions = {
 };
 
 /**
- * The value a Markdown document's YAML frontmatter resolves to.
+ * One Markdown document read as its two authored parts.
  *
- * A document with no frontmatter block and one with an empty block both resolve
- * to an empty object: neither declares a field, and neither is a failure.
- *
- * Throws when a block is present but its YAML cannot be parsed. The caller is
- * `extraction.ts`, which confines the throw to the recognition that asked for
- * it and leaves the file's complete readable source displayed (FR-028).
+ * The split is the parser's, not this module's: `vfile-matter` removes the
+ * block it recognized, so the body is what it left behind. Measuring the
+ * fences here to cut the same seam would be a second opinion about the format,
+ * free to disagree with the one that actually parsed the values.
  */
-export function parseFrontmatter(sourceText: string): unknown {
-  const file = new VFile({ value: sourceText });
-  matter(file, { yaml: YAML_PARSE_OPTIONS });
-  return file.data.matter;
+export class ParsedMarkdownDocument {
+  /**
+   * What the frontmatter block resolved to. A mapping is a `Map` in authored
+   * key order; a block written as a list or a bare scalar is that array or
+   * scalar. A document with no block, and a block with nothing in it, both
+   * resolve to an empty plain object — the parser's own answer for "no
+   * mapping was read", which is why a caller tests for `Map` rather than for
+   * emptiness. None of them is a failure.
+   */
+  public readonly frontmatter: unknown;
+
+  /**
+   * The document with its frontmatter block removed — the instructions a
+   * product reads after the declarations. Equal to the complete source for a
+   * document that declares no frontmatter.
+   */
+  public readonly body: string;
+
+  /**
+   * Reads a Markdown document's frontmatter and body under this product's
+   * fixed YAML semantics.
+   *
+   * Throws when a block is present but its YAML cannot be parsed. The caller
+   * is `extraction.ts`, which confines the throw to the recognition that asked
+   * for it and leaves the file's complete readable source displayed (FR-028).
+   */
+  public constructor(sourceText: string) {
+    const file = new VFile({ value: sourceText });
+    // `strip` is what makes the body the parser's own answer: it removes
+    // exactly the block `vfile-matter` recognized, fences and all.
+    matter(file, { yaml: YAML_PARSE_OPTIONS, strip: true });
+    this.frontmatter = file.data.matter;
+    this.body = String(file.value);
+  }
 }

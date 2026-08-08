@@ -220,16 +220,11 @@ InspectionSession
 │   globalEnableInProgress null | { kind, operationId, previewId },
 │   globalDisableInProgress null | { operationId, state, message? },
 │   globalControl null | { state, previewId, confirmedTools[], pendingTools[], retryableTools[],
-│                         batchStatus null | { scanRequestId, tools[], phase, failureRef },
-│                         toolFailures[] { tool, diagnosticId } },
+│                         batchStatus null | { scanRequestId, tools[], phase, failureRef } },
 │   sessionDiagnosticIds, repositoryFailureDiagnosticId
 ├── sources[]
 │   ├── sourceId, kind, tool, enabled, status, generation, scanRequestId
 │   ├── boundary { displayRoot, origin }
-│   ├── conditionFacts[] { tool, surface, ruleId, affectedRuleIds, behaviorRefs, strategyRefs, sourceRefs,
-│   │                      evidenceAssessments[] { subjectKind, subjectId,
-│   │                                                documentationStatus, lifecycleQualifiers[] },
-│   │                      condition { key, status, reasonCode, basis } }
 │   └── progress null | { scanRequestId, phase, visitedEntries, candidateFiles, readBytes,
 │                         diagnosticCount, queuedAt, startedAt }
 ├── files[]
@@ -240,13 +235,13 @@ InspectionSession
 ├── skills[]
 │   └── declaredName null | string,
 │       definitions[] { fileId, tools[], companionFiles[] },
-│       sameNameResolutions[] { tool, resolution } — empty unless several definitions
+│       sameNameResolutions[] { tool, resolution } — one per tool facing a collision
 └── diagnostics[] { diagnosticId, code, sourceId?, fileId?, sourceRelativePath? }
     (active-generation records plus session-owned lifecycle records)
 ```
 
 An inventory row's unit is decided by the kind, not by the file. A skill is one declared
-name — the identifier the vendor's own selectors use, which need not match the directory
+name — the name the vendor's own skill listings show, which need not match the directory
 holding it — so several `SKILL.md` files declaring one name publish one entry with several
 definitions, and a definition that declares no name is never folded into another entry. An
 MCP server is one `[mcp_servers.*]` declaration inside its carrier, so one admitted
@@ -263,12 +258,17 @@ They belong to no kind's inventory, because no rule admitted them and nothing re
 them; the owning skill's `definitions[].companionFiles` is what names them, and a client
 resolves each to its `fileId` through `files[]` to offer the customization's directory.
 
-`sameNameResolutions` states how each recognizing product resolves a name that several
-definitions declare, so grouping never implies a winner the Inspector has not recorded. An
-entry with one definition carries none, because there is nothing to resolve, and a product
-whose skill strategy is not in the shipped registry contributes none either — it recognizes
-no skill, so no entry can reach it. The statements differ by product, and the vendor
-contracts record two of them as incomplete.
+`sameNameResolutions` states how a product resolves a name it recognizes on two or more of
+an entry's definitions, so grouping never implies a winner the Inspector has not recorded.
+A product contributes a statement only when it faces that collision: an entry with one
+definition has nothing to resolve, and a product that recognizes only one of several has
+nothing to choose between — the other definitions are not its files, and a rule quoted
+there would answer a question it is not being asked. The collision must also be one the
+quoted rule answers: Claude Code's command names come from the skill directories, so its
+statement appears only when two of its definitions share a directory name. A product whose skill strategy is not
+in the shipped registry contributes none either — it recognizes no skill, so no entry can
+reach it. The statements differ by product, and the vendor contracts record two of them as
+incomplete.
 
 This full DTO is returned only while `globalDisableInProgress` is null. After a non-no-op
 disable barrier is accepted, this function instead returns only this exact control DTO:
@@ -276,13 +276,12 @@ disable barrier is accepted, this function instead returns only this exact contr
 ```text
 GlobalFenceRecoverySnapshot
 ├── sessionId, globalContentEpoch
-├── globalControl, globalEnableInProgress, globalDisableInProgress (required and non-null)
-└── toolFailureDiagnostics[]
+└── globalControl, globalEnableInProgress, globalDisableInProgress (required and non-null)
 ```
 
-`toolFailureDiagnostics` contains exactly the session Diagnostics referenced by
-`globalControl.toolFailures`; the retained failed disable request's error message is
-carried only as the non-null projection's `globalDisableInProgress.message`, present
+A failed tool's reason is on the control that failed, as its `failureCode`, so recovery
+carries no Diagnostic array of its own; the retained failed disable request's error message
+is carried only as the non-null projection's `globalDisableInProgress.message`, present
 exactly while its `state` is `failed`. The DTO contains no generation, Source, Repository failure,
 stale failure, unrelated Diagnostic/error, file, path, authored value, relationship, or
 resource field. The fence remains in force when disable state is `failed`; only terminal
@@ -310,12 +309,6 @@ files, detail, comparison views, and IDs are untouched (FR-030).
 which may represent an absolute or invalid lexical root before any owning Source exists.
 The bootstrap Repository root has `origin: process-cwd` when `--root` was omitted and
 `origin: root-option` otherwise; the API never exposes the retained raw or canonical root.
-Every `conditionFacts` entry is an evidence-linked, origin-file-less Source Condition Fact:
-it stays distinct from `files` and recognitions and cannot create a physical or synthetic
-file, file ID/path/text, comparison target, relationship origin, local or hosted read, or
-network request. Its `evidenceAssessments` uses the exact record schema, closed enums, and
-ordering defined under File Detail; no scalar documentation status is serialized. An
-unobserved current state remains conditional or unavailable.
 Top-level `snapshotState` is `current` or `stale-after-fatal-rescan`; only a fatal explicit
 rescan adds or replaces one `staleFailures` entry and its failure reference for the affected
 Source. Its `failureRef` is `{ kind: 'diagnostic', diagnosticId }` for a deterministic
@@ -342,7 +335,8 @@ A file carries no recognition summary and no parse rollup — a recognition's ow
 was recognized as belongs to
 the per-kind inventories, and each of their rows carries only what identifies that kind —
 never an invented aggregate documentation or applicability status, parse result, or winner.
-Record-by-record evidence and applicability stay on the detail provenances below.
+No response states whether a product would use a discovered file: that depends on runtime
+the host never observes, so nothing is published about it (FR-009).
 
 Within one generation there is exactly one `ToolRecognition` for each
 `(fileId, tool, kind)`. Compatible provenances merge into that recognition. If those
@@ -397,7 +391,7 @@ Authored values — complete source text, declared authored metadata, authored r
 targets, and either comparison side — are reachable only by requesting one `FileDetail` or
 constructing one comparison at a time; no inventory or session response carries them. The one
 exception is a skill's `declaredName`, which an inventory entry carries as the identity a row
-is listed under: the vendors' own selectors and menus name a skill by it, it is not
+is listed under: it is the name the vendors' own skill listings show, it is not
 recoverable from the Source-relative Path, and a list that cannot name what it lists is not
 an inventory (FR-007, data-model.md § ToolRecognition). Every other declared value stays
 behind an explicit detail request. The
@@ -425,7 +419,8 @@ At a queued disposition, `pendingTools` is exactly the admitted non-empty batch 
 commits exactly one Global generation: generation 1 at initial enable, the Global
 sequence's N+1 for a retry batch. Terminal deterministic failure leaves empty `pendingTools` and
 `phase: failed` with `{ kind: 'tool-failures', failedTools }`, where `failedTools` is the
-non-empty fixed-order set with batch-owned `toolFailures` rows and repeats no Diagnostic ID;
+non-empty fixed-order set of the tools this batch failed, each with a non-null `failureCode`
+on its own control;
 a terminal throw/rejection uses
 `{ kind: 'error', message }` carrying the failed request's error
 message. A failed batch remains request-correlated until retry acceptance or
@@ -444,10 +439,12 @@ From disable-barrier acceptance through terminal success, `state: disabling` has
 pending/retry arrays and null `batchStatus`; `globalDisableInProgress` is non-null through
 `draining`, `committing`, and retained `failed`. The control becomes null only at successful
 `remove-active-state` completion. A `cleanup-only` barrier can have null `globalControl`.
-`toolFailures` is the fixed-tool-order unique mapping for every non-null control
-`diagnosticId`; each ID also occurs in `sessionDiagnosticIds` and resolves to a
-session-owned deterministic Diagnostic. It references only deterministic Diagnostics and
-remains until that control failure is cleared or disable commits removal.
+A control's `failureCode` is the closed reason its own tool failed, non-null exactly while
+that tool has failed and has no published Source; the client renders the sentence the code
+names, the way every closed union is rendered. It is not a Diagnostic: a Diagnostic states
+what happened while reading something in a Source, and a tool whose root was never admitted
+has no Source for one to belong to. It remains until that control failure is cleared or
+disable commits removal.
 The failed `batchStatus` error message is the one retained record of an accepted
 admitted-subset Global batch throw/rejection for the whole active consent. A
 pre-acceptance retry failure preserves it; deterministic `active-no-job` retry or
@@ -475,12 +472,15 @@ FileDetail
 │   └── binary adds sizeBytes; unknown adds nothing further
 ├── recognitions[]
 │   ├── recognitionId, fileId, tool, parseStatus, diagnosticIds[]
-│   ├── details { kind; a skill's also carries declaredName — absent when the
-│   │             recognizer extracted none — and companionFiles[] }
-│   ├── declaredMetadata[] { closed fieldId, resolved value }
-│   └── provenances[] { ruleId, discoveryClass, matchedPath, scope,
-│                       evidenceAssessments[],
-│                       applicability { summary, conditions[] } }
+│   ├── details { kind; a skill's also carries declaredName — absent
+│   │             when the file declares none —
+│   │             frontmatter[] { key, value }, and bodyText;
+│   │             a value is one of
+│   │             { kind: 'scalar', text }, { kind: 'absent' },
+│   │             { kind: 'sequence', items[] }, or
+│   │             { kind: 'mapping', entries[] { key, value } },
+│   │             recursively }
+│   └── provenances[] { ruleId, discoveryClass, matchedPath }
 └── diagnostics[]
 ```
 
@@ -494,20 +494,30 @@ points back at an admission until relationships do), `order` and the derived-see
 triple `seedFileId`/`seedProvenanceId`/`seedRuleId` (no shipped rule is derived and no
 shipped strategy documents an order; they arrive with the derivation and ordering
 phases), `declarationKey` (the one shipped kind is a whole file), nor
-`behaviorRefs`/`strategyRefs`/`sourceRefs` (the referenced subjects are already each an
-`evidenceAssessments` record, and citations are maintenance data a packaged CLI does
-not carry). `scope` is the closed `ScopeDescriptor` union (`source-root`,
-`directory-subtree`, `matching-path`, or `declared`); its exact fields and stable
-comparison keys are defined in the
-[data-model contract](../data-model.md#scopedescriptor-and-orderdescriptor), and the
-API does not accept or return implementation-specific scope objects.
+`evidenceAssessments`/`applicability`/`behaviorRefs`/`strategyRefs`/`sourceRefs` (an
+admission says which rule admitted the file and where it matched; how well that rule is
+documented is maintenance data no surface shows, and what a product would do with the
+file is runtime the host never observes). An admission carries no scope either: where the
+customization would apply is a projection no surface shows, and the path a rule matched is
+already on the record.
 
-For a readable file, `sourceText` is the complete decoded source and every
-`declaredMetadata[].value` is the value its parser resolved for that field — quoting and
-escapes resolved, `007` read as `7`, a key declared twice read as its later declaration —
-without credential detection, masking, redaction, or a reveal step. One entry per field in
-the allowlist row's order, so the comparison identity is `(tool, kind, fieldId)`; a field
-resolving to something other than a scalar has no entry, because a row names scalar fields.
+For a readable file, `sourceText` is the complete decoded source, exactly as authored.
+
+A skill is additionally returned as what it declares and what it instructs, because that
+is what its detail surface leads with. `frontmatter[]` lists every key the file declares,
+in authored order, by the key the file wrote — never a vendor catalog's — and `bodyText`
+is the same document with its frontmatter block removed, so the two never overlap. The
+split is the frontmatter parser's own: re-deciding where the block ends would be a second
+opinion about the format. Each entry's `value` mirrors what the parser resolved, in the shape the file wrote it: a
+`scalar` carries its resolved text — quoting and escapes resolved, `007` read as `7`, a
+key declared twice read as its later declaration — an `absent` is an authored null, a
+`sequence` carries its items, and a `mapping` carries entries of its own, recursively.
+Nothing is flattened into a spelling the file does not contain. A value that contains
+itself has no such shape and no JSON form, so it fails that recognition all-or-nothing
+(FR-028) rather than being summarized. `declaredName` is the `name` scalar, absent when the file declares none or declares
+something other than a scalar. The description is not published beside it: it is one of
+the declarations, and one fact in two places is two states that can disagree. No
+value is masked, redacted, or shortened at any point.
 JSON transport escaping must round-trip to the same string at the client. Environment-variable
 references remain the characters that were written: the host never reads,
 resolves, or substitutes the referenced process-environment value. The only environment
@@ -517,9 +527,10 @@ A registry-defined `targetOrigin: documented-default` relationship instead has
 `authoredTarget: null`; the SPA labels its validated `normalizedTarget` as a documented
 default and never implies that the synthetic path occurred in source.
 
-Across Inventory, Detail, Comparison, Global controls, Diagnostics, Source Condition Facts,
+Across Inventory, Detail, Comparison, Global controls, Diagnostics,
 every API result, CLI output, and documentation, the product is limited to syntax-only parsing, reading the
-value a parser resolves for an allowlisted field, frozen-catalog classification, and documented
+value a parser resolves for a declaration the recognized kind publishes, frozen-catalog
+classification, and documented
 structural scope/order/condition/selection/reference projection. It never interprets or
 ranks natural-language meaning or intent; decides customization correctness, validity,
 compliance, effectiveness, or quality; or provides policy/remediation advice, validation,
@@ -554,7 +565,7 @@ recognition produces this failed-recognition state and its file-scoped
 source stays displayed and comparison-eligible (FR-028). A failure that is not confined to
 one file fails the attempt and is exposed, when RPC-owned, as the request's ordinary
 error. Structural metadata comparison uses
-`(tool, kind, fieldId)`, so two tools or kinds never collide merely because their field
+`(tool, kind, declared key)`, so two tools or kinds never collide merely because their key
 matches.
 
 A declared value carries whole characters — an astral character is two UTF-16 code units
@@ -577,16 +588,9 @@ request token invalidates that capture.
 Any mismatch disposes the result without creating a model, DOM text, metadata row, or
 comparison input.
 
-Every `evidenceAssessments` member is exactly `{ subjectKind, subjectId,
-documentationStatus, lifecycleQualifiers }`. `subjectKind` is
-`behavior | rule | strategy`; `documentationStatus` is
-`documented | partially-documented | unknown | conflict`; and
-`lifecycleQualifiers` is a unique fixed-order subset of
-`preview | experimental | deprecated`. An empty qualifier array makes no stability claim.
-Each array contains one record for the owning rule and every referenced behavior/strategy,
-deduplicated and sorted by subject-kind order then `subjectId`; the API never collapses it
-to a scalar. The runtime `ConditionFact.status: documentation-conflict` remains a distinct
-condition value, not a `DocumentationStatus` alias.
+No response carries a documentation status, a lifecycle qualifier, or an evidence
+assessment. Those are maintenance records on the registry itself (QR-005); a candidate
+provenance publishes which rule admitted the file, not how well that rule is documented.
 
 Outcomes: the `FileDetail` result; the `stale-resource` rejection when the file ID is
 unknown, belongs to a superseded generation of its owning sequence or a removed file, or
@@ -1055,9 +1059,11 @@ the post-acceptance failure's ordinary error. Disable itself never returns
    from captured `process.cwd()`/`--root`. Multi-Source sequences prove that A and B entry-failure pairs
    coexist, B's success does not clear A, A's partial success clears only A's pair,
    a repeated A failure replaces only A's pair, and Global disable clears only pairs for
-   removed Global Sources. Diagnostic DTO fixtures accept exactly the three scoped shapes:
-   file with matching `sourceId`/`fileId`/`sourceRelativePath`, source with only `sourceId`,
-   and session with no location field. Every missing, extra, mismatched, or fabricated
+   removed Global Sources. Diagnostic DTO fixtures accept exactly the two scoped shapes:
+   file with matching `sourceId`/`fileId`/`sourceRelativePath`, and source with only
+   `sourceId`. There is no pathless shape — every diagnostic this product produces was
+   produced while reading something, and the Source it was read under is the least context
+   that makes it resolvable. Every missing, extra, mismatched, or fabricated
    source/file/path combination is rejected before serialization.
    Failure fixtures prove that a pre-acceptance throw/rejection rejects only its
    invocation and retains nothing, that an accepted scan-job failure is retained as the
@@ -1068,28 +1074,28 @@ the post-acceptance failure's ordinary error. Disable itself never returns
    retained prior snapshot afterward. Request-owned rejections reject with the real
    error without exiting the process; automatic startup read rejection reaches the process
    top level and makes no product process-liveness guarantee.
-3. Readable file detail returns complete authored source and, for every allowlisted field,
+3. Readable file detail returns complete authored source and, for every key the file wrote,
    the value its parser resolved — credentials and environment-reference text included,
-   without masks or reveal controls. There is one value per field: a key declared twice
+   without masks or reveal controls. There is one value per key: a key declared twice
    resolves to its later declaration.
    A file summary exposes no parse rollup at all; the exactly one recognition per
    `(fileId, tool, kind)` exposes `not-attempted | parsed | failed` and its own diagnostic
    IDs, which is where a reader learns what a parse did. Compatible provenance
    merges once, inconsistent meaning fails that recognition all-or-nothing, and arrays use
    closed tool-then-kind order. Comparison keys are
-   `(tool, kind, fieldId)`. Astral characters, combining sequences, and ordinary BMP text
+   `(tool, kind, declared key)`. Astral characters, combining sequences, and ordinary BMP text
    prove that a declared value survives extraction and JSON transport whole.
-   Every returned metadata tuple `(tool, kind, fieldId)` and relationship tuple
-   `(tool, kind, relationship kind)` must appear in the maintained presentation allowlist,
-   and the exact authored occurrence must be supported by the extractor for the recognition's
-   actual admitted source form. Tuple membership never transfers eligibility between source
-   forms. Unknown authored keys and references remain available only through complete
-   `sourceText` and never produce inferred metadata or relationships.
-   Evidence fixtures accept only `documented | partially-documented | unknown | conflict`,
-   keep unique fixed-order `preview | experimental | deprecated` qualifiers separately,
-   treat an empty qualifier array as no lifecycle claim, and require one sorted
-   `EvidenceAssessment` for the rule and every referenced behavior/strategy. They reject a
-   lossy scalar assessment and keep runtime `documentation-conflict` distinct.
+   Every returned relationship tuple `(tool, kind, relationship kind)` must appear in the
+   maintained presentation allowlist, and the exact authored occurrence must be supported by
+   the extractor for the recognition's actual admitted source form. Tuple membership never
+   transfers eligibility between source forms. No allowlist stands between an authored key
+   and its publication: a skill's declarations are the keys the file wrote, and an authored
+   key set is not closed. A reference the allowlist does not name remains available only
+   through complete `sourceText` and never produces an inferred relationship.
+   Evidence fixtures accept only `documented | partially-documented | unknown | conflict`
+   and keep unique fixed-order `preview | experimental | deprecated` qualifiers
+   separately, treating an empty qualifier array as no lifecycle claim. These are registry
+   records; no response serializes one.
    Encoding fixtures prove an admitted candidate's NUL is binary/diagnostic-only/`partial`
    and a companion's is the plain binary fact, valid text is
    `utf-8`, and invalid non-NUL input is readable `utf-8-replaced` with every
@@ -1106,7 +1112,7 @@ the post-acceptance failure's ordinary error. Disable itself never returns
    function exists: loopback binding, not a claimed server-side presentation gate, is the
    complete host-side protection.
    Cross-surface negative fixtures prove that Inventory, Detail, Comparison, Global
-   controls, Diagnostics, Source Condition Facts, API DTOs, CLI output, and documentation expose only
+   controls, Diagnostics, API DTOs, CLI output, and documentation expose only
    the documented structural projections: no natural-language meaning/intent
    interpretation or ranking, correctness/validity/compliance/effectiveness/quality verdict,
    policy/remediation advice, validation, lint, synchronization, conversion, formatting, or
@@ -1183,8 +1189,8 @@ the post-acceptance failure's ordinary error. Disable itself never returns
    operation or a product-defined completion deadline.
 7. Reloading every client route discloses no session data: the served shell embeds no
    snapshot, and the freshly loaded SPA adopts state only through the loopback RPC channel.
-   Session-response and recovery tests cover browser/network/runtime rejection, channel
-   loss, port reuse with a different
+   Session-response and recovery tests cover an ordinary request rejection staying
+   request-local, channel loss, port reuse with a different
    `sessionId`, older/equal/greater epochs, null/draining/committing/failed projections, and a late in-flight
    result after the client epoch changed; none may leave or automatically restore pre-purge inventory,
    detail, comparison, editor, or authored-content DTO/DOM state. With active consent, recovery after a greater epoch, non-null fence, or

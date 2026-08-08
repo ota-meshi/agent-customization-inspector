@@ -1,9 +1,9 @@
 // Public entity vocabulary shared by the host, CLI, and client: file
 // encodings, the non-authorizing SourceBoundary presentation, root label
-// encoding, evidence-assessment vocabulary, and opaque ID generation.
+// encoding, the maintained documentation-status vocabulary, and opaque ID
+// generation.
 // Platform-neutral by design — only Web APIs, no node: imports — so the
 // client build can import it.
-import type { BehaviorId, RuleId, StrategyId } from './registries/identifier-types';
 
 /**
  * The closed set of supported AI agents (spec.md FR-004,
@@ -152,6 +152,13 @@ export type SameNameSkillResolution =
   /** The first definition in the product's documented source order wins. */
   | 'select-first'
   /**
+   * Every same-name definition stays available — a nested one under a
+   * directory-qualified command — and the product picks the variant matching
+   * the files it is working on. Claude Code's documented rule for a clash
+   * within one root.
+   */
+  | 'all-remain-context-selected'
+  /**
    * The product's surfaces do not agree, so no single statement is true of it:
    * Copilot's CLI resolves the first in a documented order while VS Code and
    * Cloud document no duplicate precedence at all.
@@ -167,6 +174,9 @@ export const SAME_NAME_SKILL_RESOLUTION_TEXT: Readonly<Record<SameNameSkillResol
   'all-remain': 'keeps all of them, in no documented order',
   /** Label for a product with a documented source order. */
   'select-first': 'uses the first in its documented source order',
+  /** Label for a product that keeps all and picks by working context. */
+  'all-remain-context-selected':
+    'keeps all of them; a nested one is invoked by a directory-qualified name, and Claude picks the variant matching the files being worked on',
   /** Label for a product whose surfaces do not agree. */
   'surface-dependent': 'depends on the surface; no single documented rule',
 };
@@ -393,6 +403,10 @@ export function encodeRootPresentation(value: string): string {
  *   `reportdm.gnp`. A path that is the lookup and selection identity must read
  *   as what it is, and a reader comparing it against their own directory has
  *   no way to see the character that moved it.
+ * - The line and paragraph separators U+2028 and U+2029, which draw nothing
+ *   and split the text they sit in — U+2029 starts a new bidi paragraph, so a
+ *   caller wrapping this function's output in isolates would find the pair
+ *   split across two paragraphs and the second one free of the first's scope.
  * - A backslash, as `\u005C`, so the mapping is injective: without it, a name
  *   containing a real U+000A and a different name containing the six literal
  *   characters `\u000A` would render identically, and both can exist in one
@@ -407,9 +421,31 @@ export function encodeRootPresentation(value: string): string {
 export function escapeControlCharacters(value: string): string {
   return value.replaceAll(
     // eslint-disable-next-line no-control-regex -- matching the Cc range is this function's purpose
-    /[\u0000-\u001F\u007F-\u009F\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069\\]/gu,
+    /[\u0000-\u001F\u007F-\u009F\u061C\u200E\u200F\u2028\u2029\u202A-\u202E\u2066-\u2069\\]/gu,
     (character) => `\\u${character.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')}`,
   );
+}
+
+/**
+ * Whether two of these `SKILL.md` paths sit in same-named skill directories —
+ * the clash Claude Code's same-name rule is about, since for a repository
+ * skill the command name comes from the skill directory (FR-007). The server
+ * projection and the client's filtered view both gate Claude's statement on
+ * it, so one definition answers for both.
+ */
+export function skillDirectoriesClash(paths: readonly string[]): boolean {
+  const seen = new Set<string>();
+  for (const path of paths) {
+    // `<...>/<skill-directory>/SKILL.md`: the directory is the second-to-last
+    // segment of the entry point's path.
+    const segments = path.split('/');
+    const directory = segments.at(-2) ?? '';
+    if (seen.has(directory)) {
+      return true;
+    }
+    seen.add(directory);
+  }
+  return false;
 }
 
 /**
@@ -438,27 +474,6 @@ export type DocumentationStatus =
   | 'conflict';
 
 /**
- * The predicate shown for each documentation status, read after the subject's
- * own sentence: "OpenAI Codex keeps every skill that shares a name — partly
- * established; the rest is not documented"
- * (see {@link SOURCE_BOUNDARY_ORIGIN_TEXT}).
- *
- * Each grades the official documentation behind a maintained assertion, never
- * the state of anything on the reader's machine, so none of them can be read as
- * a claim about whether the product would load a file.
- */
-export const DOCUMENTATION_STATUS_TEXT: Readonly<Record<DocumentationStatus, string>> = {
-  /** Label for cited sections that establish the whole assertion. */
-  documented: 'fully established by the official documentation',
-  /** Label for cited sections that establish part of the assertion. */
-  'partially-documented': 'partly established; the rest is not documented',
-  /** Label for cited sections that establish no determination. */
-  unknown: 'not established by any official documentation',
-  /** Label for incompatible retained official assertions. */
-  conflict: 'the official documentation conflicts with itself',
-};
-
-/**
  * Upstream lifecycle claims for an assertion (spec.md QR-005). An empty
  * qualifier list means only that no claim is made — never 'stable'.
  */
@@ -469,26 +484,6 @@ export type LifecycleQualifier =
   | 'experimental'
   /** Upstream documents the subject as deprecated. */
   | 'deprecated';
-
-/**
- * What each lifecycle qualifier says, read inside the parentheses that follow a
- * subject's documentation status: "OpenAI Codex keeps every skill that shares a
- * name — partly established; the rest is not documented (upstream documents it
- * as a preview)".
- *
- * Each states what upstream says about its own feature's lifecycle, never
- * anything about the reader's machine or about whether the product would load a
- * file. There is no entry for the absence of qualifiers, because absence makes
- * no claim: see {@link LIFECYCLE_QUALIFIER_ORDER}.
- */
-export const LIFECYCLE_QUALIFIER_TEXT: Readonly<Record<LifecycleQualifier, string>> = {
-  /** Label for a subject upstream documents as a preview. */
-  preview: 'upstream documents it as a preview',
-  /** Label for a subject upstream documents as experimental. */
-  experimental: 'upstream documents it as experimental',
-  /** Label for a subject upstream documents as deprecated. */
-  deprecated: 'upstream documents it as deprecated',
-};
 
 /**
  * Fixed presentation order for lifecycle qualifiers. The order is part of
@@ -505,90 +500,6 @@ export const LIFECYCLE_QUALIFIER_ORDER: readonly LifecycleQualifier[] = [
   /** Deprecation claims render last. */
   'deprecated',
 ];
-
-/** Rejects duplicates and re-sorts qualifiers into the fixed contract order. */
-export function normalizeLifecycleQualifiers(
-  qualifiers: readonly LifecycleQualifier[],
-): LifecycleQualifier[] {
-  const seen = new Set<LifecycleQualifier>();
-  for (const qualifier of qualifiers) {
-    if (seen.has(qualifier)) {
-      throw new TypeError(`duplicate lifecycle qualifier: ${qualifier}`);
-    }
-    seen.add(qualifier);
-  }
-  return LIFECYCLE_QUALIFIER_ORDER.filter((qualifier) => seen.has(qualifier));
-}
-
-/**
- * What an EvidenceAssessment is about
- * (contracts/inspection-path-allowlist.md § identifier ownership).
- */
-export type EvidenceSubjectKind =
-  /** A documented vendor-behavior statement. */
-  | 'behavior'
-  /** An Inspector policy rule. */
-  | 'rule'
-  /** A runtime composition or projection strategy. */
-  | 'strategy';
-
-/**
- * The atomic evidence state for one behavior/rule/strategy subject
- * (spec.md QR-005).
- */
-export interface EvidenceAssessment {
-  /** What kind of subject is assessed; see {@link EvidenceSubjectKind}. */
-  readonly subjectKind: EvidenceSubjectKind;
-  /**
-   * The exact assessed behavior/rule/strategy ID (QR-005), from the closed
-   * catalogs rather than an arbitrary string — it "resolves the corresponding
-   * immutable registry record" (data-model.md § EvidenceAssessment), and the
-   * type is what makes that resolvable. It is also what keeps
-   * `REGISTRY_SUBJECT_TEXT` complete, since a subject is rendered as its
-   * sentence and never as this ID.
-   */
-  readonly subjectId: BehaviorId | RuleId | StrategyId;
-  /** How completely official sources establish the assertion (QR-005). */
-  readonly documentationStatus: DocumentationStatus;
-  /** Duplicate-free upstream lifecycle claims in the fixed order. */
-  readonly lifecycleQualifiers: readonly LifecycleQualifier[];
-}
-
-/**
- * Builds the record-specific assessment list: exactly one sorted entry per
- * referenced subject with no scalar, worst-status, or qualifier-union
- * reduction — a reduction would hide which specific behavior, rule, or
- * strategy carries the weaker documentation state. The closed
- * {@link DocumentationStatus} union keeps the legacy `documentation-conflict`
- * alias of `conflict` unrepresentable.
- */
-export function buildEvidenceAssessments(
-  assessments: readonly EvidenceAssessment[],
-): EvidenceAssessment[] {
-  const seen = new Set<string>();
-  const built = assessments.map((assessment) => {
-    const key = `${assessment.subjectKind}\u0000${assessment.subjectId}`;
-    if (seen.has(key)) {
-      throw new TypeError(
-        `duplicate evidence subject: ${assessment.subjectKind} ${assessment.subjectId}`,
-      );
-    }
-    seen.add(key);
-    return {
-      subjectKind: assessment.subjectKind,
-      subjectId: assessment.subjectId,
-      documentationStatus: assessment.documentationStatus,
-      lifecycleQualifiers: normalizeLifecycleQualifiers(assessment.lifecycleQualifiers),
-    };
-  });
-  built.sort((left, right) => {
-    if (left.subjectKind !== right.subjectKind) {
-      return left.subjectKind < right.subjectKind ? -1 : 1;
-    }
-    return left.subjectId < right.subjectId ? -1 : left.subjectId > right.subjectId ? 1 : 0;
-  });
-  return built;
-}
 
 /**
  * Server-generated opaque ID: URL-safe unpadded base64url randomness. The

@@ -5,14 +5,12 @@ import { describe, expect, it } from 'vitest';
 
 import {
   LIFECYCLE_QUALIFIER_ORDER,
-  buildEvidenceAssessments,
   createOpaqueId,
   createSourceBoundaryDto,
   decodeSourceBytes,
   encodeRootPresentation,
   escapeControlCharacters,
   rendersNothingVisible,
-  normalizeLifecycleQualifiers,
 } from '../../../src/shared/entities';
 
 describe('decodeSourceBytes', () => {
@@ -166,6 +164,11 @@ describe('escapeControlCharacters', () => {
     expect(escapeControlCharacters('\u061C\u200E\u200F\u202A\u2066\u2069')).toBe(
       '\\u061C\\u200E\\u200F\\u202A\\u2066\\u2069',
     );
+    // U+2028/U+2029 split the surrounding text into new lines or bidi
+    // paragraphs while drawing nothing, so they are spelled out too — a title
+    // isolating this function's output must not find its isolate pair split
+    // across two paragraphs.
+    expect(escapeControlCharacters('a\u2028b\u2029c')).toBe('a\\u2028b\\u2029c');
   });
 
   it('leaves everything outside those sets as itself, spaces and non-ASCII included', () => {
@@ -179,59 +182,12 @@ describe('escapeControlCharacters', () => {
 });
 
 describe('evidence vocabulary', () => {
-  it('fixes the lifecycle qualifier order and rejects duplicates', () => {
+  it('fixes the lifecycle qualifier order', () => {
+    // The order is contract data the registry gate checks each record's
+    // qualifiers against; there is deliberately no `stable` member, because
+    // the absence of a qualifier makes no claim (QR-005).
     expect(LIFECYCLE_QUALIFIER_ORDER).toEqual(['preview', 'experimental', 'deprecated']);
-    expect(normalizeLifecycleQualifiers(['deprecated', 'preview'])).toEqual([
-      'preview',
-      'deprecated',
-    ]);
-    expect(() => normalizeLifecycleQualifiers(['preview', 'preview'])).toThrow();
-  });
-
-  it('builds one sorted assessment per referenced subject with no reduction', () => {
-    const assessments = buildEvidenceAssessments([
-      {
-        subjectKind: 'rule',
-        subjectId: 'codex.repo.skill',
-        documentationStatus: 'documented',
-        lifecycleQualifiers: [],
-      },
-      {
-        subjectKind: 'behavior',
-        subjectId: 'codex.behavior.repo.skills',
-        documentationStatus: 'conflict',
-        lifecycleQualifiers: ['preview'],
-      },
-    ]);
-    expect(Array.isArray(assessments)).toBe(true);
-    expect(assessments.map((assessment) => assessment.subjectKind)).toEqual(['behavior', 'rule']);
-    for (const assessment of assessments) {
-      expect(Object.keys(assessment).sort()).toEqual([
-        'documentationStatus',
-        'lifecycleQualifiers',
-        'subjectId',
-        'subjectKind',
-      ]);
-    }
-  });
-
-  it('rejects duplicate subjects', () => {
-    expect(() =>
-      buildEvidenceAssessments([
-        {
-          subjectKind: 'rule',
-          subjectId: 'codex.repo.skill',
-          documentationStatus: 'documented',
-          lifecycleQualifiers: [],
-        },
-        {
-          subjectKind: 'rule',
-          subjectId: 'codex.repo.skill',
-          documentationStatus: 'unknown',
-          lifecycleQualifiers: [],
-        },
-      ]),
-    ).toThrow();
+    expect(LIFECYCLE_QUALIFIER_ORDER).not.toContain('stable');
   });
 });
 

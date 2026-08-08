@@ -85,7 +85,6 @@ function fakeRecognition(
     parseStatus,
     // A failed recognition publishes no metadata at all, and this stand-in
     // extracts nothing in the first place (FR-028).
-    declaredMetadata: [],
     provenances: [],
     diagnosticIds: [],
   };
@@ -388,6 +387,7 @@ describe('recognition parse failure keeps the source displayed (FR-028)', () => 
       finishedAt: '2026-07-22T00:00:01.000Z',
       outcome: 'partial',
       recognitions: [],
+      skillCompanionsByPath: new Map(),
       files: [
         {
           fileId: 'file-1',
@@ -789,6 +789,7 @@ describe('late results after revocation are discarded (FR-029)', () => {
       await coordinator.completeScan(admitted.scanRequestId, {
         files: publication.files,
         recognitions: publication.recognitions,
+        skillCompanionsByPath: publication.skillCompanionsByPath,
         diagnostics: publication.diagnostics,
         outcome: publication.outcome,
         visitedEntries: 0,

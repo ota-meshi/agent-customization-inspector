@@ -255,11 +255,12 @@ Expected:
 - Contract tests cover every session-API status rule and every stable behavior, inspection-
   rule, composition-strategy, and official-source ID, including positive, one-rule
   near-miss, derived, relationship-only, excluded, multi-provenance, multi-tool, and Global
-  cases. They also prove every returned metadata field and relationship kind is present in
+  cases. They also prove every returned relationship kind is present in
   the maintained closed presentation allowlist for its supported `(tool, kind)` and is an
   exact occurrence recognized by that admission's source-form extractor; one source form's
-  fields never become eligible in another by tuple membership alone. Unknown authored keys
-  and references remain available only in complete source text. Before these tests or their
+  kinds never become eligible in another by tuple membership alone. A skill's declarations
+  pass no such gate — they are the keys its file wrote — while a reference the allowlist
+  does not name remains available only in complete source text. Before these tests or their
    implementation begin, the Presentation Allowlist sections in all three vendor-contract
    language pairs must already enumerate every supported `(tool, kind)` and admitted source
    form. This gate verifies the approved rows and bilingual digest only; it must not author
@@ -344,12 +345,10 @@ Verify:
    pin the content rule, short-circuit behavior, and zero operations on an unselected target.
 3. Static rules authorize only their exact typed literal/regex/recursive-directory
    programs and traversal boundaries, never a text glob evaluated at runtime. A file
-   admitted by static and derived rules remains one inventory file retaining both provenances, each
-   with its own matched path, behavior/strategy/source evidence, scope/order, and
-   applicability. Public provenance DTOs use the closed `ScopeDescriptor` and
-   `OrderDescriptor` unions with Source-relative paths and stable comparison keys; unknown
-   order is represented by null plus its condition fact, never a lossy recognition-level
-   aggregate.
+   admitted by static and derived rules remains one inventory file retaining both
+   provenances, each with its own matched path. A provenance says which rule authorized the
+   read and where it matched; where the customization would apply, in what order, and under
+   which conditions are projections no surface makes, so no DTO carries one.
 4. Surface fixtures keep GitHub Copilot VS Code, CLI, and cloud lookup behavior distinct.
    They prove that the VS Code workspace-root instruction is exact, while CLI standard-
    location and target-path traversal is represented as vendor behavior rather than an
@@ -388,22 +387,15 @@ Verify:
    for ADS colons, Windows-special characters and device names, trailing dot/space,
    and 8.3 aliases; each is rejected lexically with its reference diagnostic and is never
    read.
-7. Applicability keeps evidence assessment, product surface, root/runtime `cwd`, target
-   match, trust/approval, enablement, selection, agent context, tool availability,
-   installation, managed policy, and external runtime as separate facts. Every directly
-   referenced behavior, rule, and strategy contributes one record-keyed
-   `EvidenceAssessment`; `documentationStatus` accepts only `documented`,
+7. Every directly referenced behavior, rule, and strategy carries its own maintenance
+   record; `documentationStatus` accepts only `documented`,
    `partially-documented`, `unknown`, or `conflict`, while duplicate-free
    `lifecycleQualifiers` use fixed `preview`, `experimental`, `deprecated` order. Empty
    qualifiers make no lifecycle claim and never mean `stable`. Fixtures reject
-   `documentation-conflict` in that enum, duplicate/out-of-order qualifiers, a missing or
-   duplicate subject, and any provenance or relationship that replaces its sorted
-   subject-by-subject `EvidenceAssessment[]` with one lossy scalar or union. Codex
-   instruction byte budget is a separate fact; it can produce `omitted` only when the runtime chain and
-   effective cap are known. Missing or excluded inputs remain unknown. Projection fixtures
-   cover every summary and collision priority: disabled over shadowed, shadowed over
-   omitted, omitted over selected, documentation-unknown over runtime-conditional, plus
-   selected, available, authored, and conditional-only cases.
+   `documentation-conflict` in that enum, duplicate/out-of-order qualifiers, and a missing
+   or duplicate subject. No response serializes any of them, and no applicability or
+   condition projection exists for a fixture to cover: what a product would do with a file
+   is runtime the host never observes (FR-009).
 8. Fixtures assert known order/override rules, documented conflicts, settings disablement,
    and the Claude skills-directory plugin matrix: launch-`cwd` versus ancestor placement,
    workspace trust, implicit root skill, explicit `skills: ["./"]`, `skills/`, and another
@@ -425,16 +417,12 @@ Verify:
    `hooks/hooks.json` versus manifest override, including documented-default/null-authored-
    target versus exact authored occurrence. Upstream-configured instruction-budget behavior
    remains a vendor applicability fact and is not redefined as an Inspector validation cap.
-12. Source-level incompleteness fixtures
-   identify the tool, explaining non-candidate rule, affected candidate/relationship rules,
-   and fixed reason code for every source-level fact; matching provenance/edge conditions
-   project it without losing the canonical source fact. Symlinked-skill fixtures prove the
+12. Symlinked-skill fixtures prove the
    Inspector follows skill symlinks exactly as Claude Code does and inspects the linked
-   target content, so no product-versus-inspector divergence fact exists. Origin-file-less Source Condition
-   Facts additionally retain the correct Source, tool, product surface, condition or
-   unavailable state, scope, uncertainty, and evidence, while creating no physical or
-   synthetic file, file ID, Source-relative Path, authored text, comparison target,
-   relationship origin, local or hosted read, or network request.
+   target content, so no product-versus-inspector divergence fact exists. There is no
+   source-level condition projection for a fixture to cover: what a vendor documents about
+   its own conditions stays in that vendor's maintained contract, and nothing projects it
+   onto a recognition, provenance, or detail (FR-009).
 
 ## User story validation
 
@@ -486,14 +474,15 @@ Verify:
 1. Hook commands, scripts, plugin components, URIs, markup, and MCP declarations appear as
    inert text/data and never execute, connect, load, or navigate.
 2. A detail or comparison surface shows the file exactly as written, with no notice about
-   what it may contain and no confirmation step in front of it: opening a file from the
-   inventory takes one interaction, and neither guards anything a loopback-bound session
-   over the viewer's own files does not already.
+   what it may contain and no confirmation step in front of it: nothing stands between the
+   reader and the content — no acknowledgement, no gate, no standing caveat — because
+   neither guards anything a loopback-bound session over the viewer's own files does not
+   already. Moving between a skill's own tabs is navigation, not a gate.
    Every maintained literal credential appears exactly as authored in source and comparison
    views, and every displayed metadata value is the one its parser resolved for that field;
    no mask or reveal control exists. A key declared twice resolves to its later declaration,
    so there is one value per field and structural metadata comparison matches
-   `(tool, kind, fieldId)`. Boundary-sized TOML integers,
+   `(tool, kind, declared key)`. Boundary-sized TOML integers,
    floats, and date/time values retain their typed canonical semantic payload without
    JavaScript precision loss while their authored spellings remain unchanged. No
    acknowledgement API, field, or client state exists, and none is needed: the session API is
@@ -537,17 +526,16 @@ Verify:
    conditional Codex default `hooks/hooks.json` relation instead has
    `targetOrigin: documented-default` and null `authoredTarget`, while an explicit hook
    field is `authored` and replaces the default.
-7. Evidence assessments and applicability facts remain separate. Provenances and edges
-   retain the sorted record-by-record `EvidenceAssessment[]`: documentation completeness
-   uses only `documented`, `partially-documented`, `unknown`, or `conflict`, while upstream
-   lifecycle uses the distinct ordered `preview`, `experimental`, `deprecated` qualifier
-   array. An empty qualifier array is displayed as no lifecycle claim, not as `stable`.
-   Runtime `ConditionFact.status: documentation-conflict`, conditionality, disablement,
-   omission, shadowing, and unknown inputs never alter those assessments or become an
-   invented “effective” result.
-8. Inventory, Detail, Comparison, Global controls, Diagnostics, Source Condition Facts, API
+7. Documentation completeness stays a maintenance record on the registry, using only
+   `documented`, `partially-documented`, `unknown`, or `conflict`, while upstream lifecycle
+   uses the distinct ordered `preview`, `experimental`, `deprecated` qualifier array. An
+   empty qualifier array means no lifecycle claim, never `stable`. No response or surface
+   carries either, so conditionality, disablement, omission, shadowing, and unknown inputs
+   can never become an invented “effective” result.
+8. Inventory, Detail, Comparison, Global controls, Diagnostics, API
    responses, CLI text, and documentation remain within syntactic parsing, reading the
-   value a parser resolves for an allowlisted field, frozen-catalog classification,
+   value a parser resolves for a declaration the recognized kind publishes, frozen-catalog
+   classification,
    and documented structural scope/order/condition/selection/reference projection. They do
    not interpret or rank natural-language meaning or intent, decide correctness, validity,
    compliance, effectiveness, or quality, or offer policy/remediation advice, validation,
@@ -567,8 +555,7 @@ Verify:
 3. Monaco shows literal source differences without semantic ranking, merge, lint,
    validation, formatting, conversion, or fix suggestions. Recognition metadata remains
    distinguishable and is compared by typed fields in Vue rather than serialized as JSON;
-   provenance paths/status/scope/order/applicability and relationship-edge applicability
-   remain separate rows.
+   provenance paths and relationship edges remain separate rows.
 4. Monaco and browser capacity comes from the browser engine and execution environment.
    A recoverable editor computation failure reports an actionable diagnostic without
    removing the complete read-only side-by-side authored source.
@@ -583,8 +570,9 @@ Verify:
 9. Session-loss and response-guard tests cover a devframe-transport-reported channel loss,
    channel loss or unsupported protocol on the current non-superseded RPC, session-ID mismatch,
    greater Global content epoch or non-null disable fence, and a late in-flight response after
-   the client epoch changes. A channel loss or current RPC rejection performs the shared full
-   client-data purge and enters the session-ended view; no pre-purge inventory, detail,
+   the client epoch changes. A transport-reported channel loss or unsupported protocol on the current RPC performs
+   the shared full client-data purge and enters the session-ended view, while an ordinary
+   request rejection stays that request's error; no pre-purge inventory, detail,
    comparison, editor, or authored-content DTO/DOM state remains or is automatically
    restored. The SPA calls no liveness function, installs no visibility,
    unload, or other page-lifecycle listener, and issues no request because time elapsed, the
@@ -615,9 +603,9 @@ Verify:
     purged ID and constructs only client-side `RecoveryViewState`. With a non-null disable
     fence, the session route returns the exact control-only `GlobalFenceRecoverySnapshot`;
     with a null fence it returns a normal full `InspectionSession`, but recovery adopts only
-    `globalContentEpoch`, Global control and enable/disable projections, their referenced
-    pathless session Diagnostics and retained failure errors, and any newly verified frozen
-    preview, and discards the inspection graph. It restores no inventory, Source, file, generation, detail, comparison, editor,
+    `globalContentEpoch`, Global control and enable/disable projections, each failed tool's
+    `failureCode` on its own control, the retained failure errors, and any newly verified
+    frozen preview, and discards the inspection graph. It restores no inventory, Source, file, generation, detail, comparison, editor,
     authored source, selection, or filter. Disable/join/wait, retry-disable,
     or an eligible Global retry is available from that state as applicable. The explicit
     Resume inspection action appears only when `globalDisableInProgress` is null; it
@@ -786,7 +774,7 @@ real home directory. Verify:
 
 Prepare one bilingual study kit containing the product guidance, standardized SC-001 and
 SC-006 task prompts, intended fixture repository, designated SC-006 customization file,
-four-field response form, and predefined ground truth. Enroll exactly 20 people who use Git
+three-field response form, and predefined ground truth. Enroll exactly 20 people who use Git
 and a command-line interface in normal development work but have never used the Inspector
 or contributed to it. Use the same cohort in one session, with SC-001 before SC-006.
 
@@ -1031,7 +1019,7 @@ unless the final pair exactly matches valid evidence.
 - For SC-006, place every participant—regardless of SC-001 result—in the same prepared
   Inspector state with the designated file open. Start when that state is ready and the
   standardized prompt is presented. The participant must submit source, recognizing tools,
-  file type, and certain/conditional effective behavior within two minutes; all four must
+  and file type within two minutes; all three must
   match the predefined ground truth. Any omitted or incorrect field is unsuccessful, and
   at least 18 of 20 participants must succeed.
 - At capture start, have the supervisor generate exactly twenty fresh, unique, cryptographically random, run-local
@@ -1436,7 +1424,7 @@ profile ID, fixture digest, scan request ID, committed Repository generation, an
 and absolute user paths. A profile-field change starts a new, non-comparable measurement set;
 the result is profile-specific rather than a portable performance guarantee.
 
-### SC-003/004/005/007/009 release-evidence fixtures
+### SC-003/004/005/007 release-evidence fixtures
 
 Freeze `tests/fixtures/outcomes/manifest.json` and its canonical
 `tests/fixtures/outcomes/manifest.sha256` before measuring a release candidate. Validate the
@@ -1604,10 +1592,10 @@ confined to one file: it fails the attempt, publishes no result/generation, and 
 as an ordinary error with the failed request's message. Multi-Source cases prove A/B entry-failure pairs coexist, B success preserves A,
 A success clears only A's pair, repeated A failure replaces only A's pair, and Global disable
 removes only Global pairs. Repeated client-caused API errors never increase a retained diagnostic count.
-The same fixtures validate the closed `file | source | session` scope union: file scope
-requires `sourceId`, `fileId`, and `sourceRelativePath`; source scope requires `sourceId` and
-forbids `fileId`/`sourceRelativePath`; session scope forbids all three. Source- and
-session-scoped diagnostics never invent a path for display or ordering.
+The same fixtures validate the closed `file | source` scope union: file scope requires
+`sourceId`, `fileId`, and `sourceRelativePath`; source scope requires `sourceId` and
+forbids `fileId`/`sourceRelativePath`. There is no pathless scope, and a source-scoped
+diagnostic never invents a path for display or ordering.
 
 ## Manual accessibility review
 

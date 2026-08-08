@@ -235,14 +235,15 @@ A census is not part of the allowlist walk. The traversal executes the shipped s
 programs and answers which files may be read; a census answers what else sits in a
 customization's own directory, which no selector expresses and only a kind that has one
 wants. It therefore runs over the candidates the traversal already admitted, rooted only at
-an admitted candidate's own directory: there is no arbitrary path. It runs where that
-customization's per-kind details are built, from the recognized kind and the candidate's own
-path — both of which recognition already holds — so no earlier phase has to know which kinds
-want a census.
+an admitted candidate's own directory: there is no arbitrary path. It runs in the recognizer,
+from the recognized kind and the candidate's own path — both of which recognition already
+holds — so no earlier phase has to know which kinds want a census.
 
-A census result is therefore a list on every recognition of a kind that has one, empty when
-the admitted file sits alone. There is no "no census ran" state to tell apart from "nothing
-accompanies it". It excludes the seed
+A census therefore runs for every recognition of a kind that has one, and its result is
+published once, on the inventory definition that recognition backs (contracts/http-api.md
+`skills[].definitions[].companionFiles`) — a second spelling on the recognition could
+disagree with it. The list is empty, never absent, when the admitted file sits alone: there
+is no "no census ran" state to tell apart from "nothing accompanies it". It excludes the seed
 itself and VCS internals, and it follows symbolic links under the same real-path cycle rules
 as the ordinary traversal, so a link back into the subtree terminates rather than being
 walked forever.
@@ -375,11 +376,11 @@ field, import, link, component path, command, directory, vendor locator, `behavi
 
 One physical file may be admitted by multiple rules within one Source, or independently by
 multiple tool Sources. It is read once per Source scan attempt and retains every accepted
-provenance, including its `ruleId`, matched selector, evidence,
-record-by-record documentation/lifecycle assessments, order facts, and applicability.
+provenance — which rule authorized the read and the path it matched, and nothing further.
 `DocumentationStatus` is exactly `documented | partially-documented | unknown | conflict`;
 the separate unique fixed-order lifecycle qualifier array is `preview`, `experimental`,
-`deprecated`, and empty never implies stable. Admissions are not collapsed into
+`deprecated`, and empty never implies stable. Both are maintenance records on the registry,
+never fields of a provenance. Admissions are not collapsed into
 a recognition-level winner. Cross-Source, cross-attempt, and cross-generation reads are
 independent.
 
@@ -528,10 +529,9 @@ Contract and fixture validation must prove all of the following:
    exists or matches a generic filename. User behavior recorded outside FR-015 through
    FR-018 never becomes a Global candidate.
 7. One physical file admitted by multiple rules within one Source is read once per Source
-   scan attempt and retains each independent provenance. Matcher, evidence,
-   record-by-record documentation/lifecycle assessments,
-   scope/order, and applicability are not
-   collapsed. Two allowlisted paths that are hard links to the same underlying file are two
+   scan attempt and retains each independent provenance — the rule that authorized the
+   read and the path it matched — with no admission collapsed into a recognition-level
+   winner. Two allowlisted paths that are hard links to the same underlying file are two
    ordinary independent files with no grouping, alias, or read-once behavior.
    Cross-Source/attempt/generation fixtures prove independent reads.
 8. Root-selection fixtures cover the captured one-time `process.cwd()`, an absolute

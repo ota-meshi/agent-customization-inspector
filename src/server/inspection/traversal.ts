@@ -21,7 +21,7 @@
 // not atomic snapshots, so concurrent external writes may interleave, which
 // the trusted-workspace model accepts.
 import { lstat, readFile, readdir, realpath, stat } from './fs-io';
-import { isAbsolute, join, relative, sep } from 'node:path';
+import { join, sep } from 'node:path';
 import { decodeSourceBytes, type ReadableFileEncoding } from '../../shared/entities';
 import {
   assertLoadableTraversalPlan,
@@ -148,25 +148,36 @@ export type TraversalScanResult =
 export const VCS_INTERNALS = new Set(['.git', '.hg', '.svn']);
 
 /**
- * Whether a resolved real path reaches VCS internals *below* `containerReal`.
- * The entry-name check alone is not enough: an entry named anything else can be
- * a symbolic link to `.git`, and following it would enumerate the repository's
- * object store as customization content. Descent is therefore decided on the
- * resolved path, which is the only spelling that cannot be renamed around
- * (contracts/inspection-path-allowlist.md § Traversal).
+ * Whether a resolved real path reaches VCS internals the container's own path
+ * does not already carry. The entry-name check alone is not enough: an entry
+ * named anything else can be a symbolic link to `.git`, and following it would
+ * enumerate the repository's object store as customization content. Descent is
+ * therefore decided on the resolved path, which is the only spelling that
+ * cannot be renamed around (contracts/inspection-path-allowlist.md
+ * § Traversal).
  *
- * Only the segments below the container are examined. The exclusion is about
- * what a scan descends into, not about where the user keeps the tree they
- * selected: a root whose own path happens to contain `.git` — a checkout at
- * `/srv/.git/worktree`, a temporary fixture — is an ordinary root, and testing
- * its whole absolute path would scan nothing at all.
+ * The container's shared prefix is exempt, segment for segment. The exclusion
+ * is about what a scan descends into, not about where the user keeps the tree
+ * they selected: a root whose own path happens to contain `.git` — a checkout
+ * at `/srv/.git/worktree`, a temporary fixture — is an ordinary root, and
+ * testing its whole absolute path would scan nothing at all. The comparison is
+ * by exact segments rather than `path.relative`, whose result for two Windows
+ * paths on different drives is an absolute path with no shared prefix at all —
+ * an alias resolving to another volume's `.git` must answer the same way the
+ * same alias on the container's own volume does.
  */
 export function isVcsInternalPath(containerReal: string, realPath: string): boolean {
-  const below = relative(containerReal, realPath);
-  if (below === '' || isAbsolute(below)) {
-    return false;
+  const containerSegments = containerReal.split(sep);
+  const realSegments = realPath.split(sep);
+  let shared = 0;
+  while (
+    shared < containerSegments.length &&
+    shared < realSegments.length &&
+    containerSegments[shared] === realSegments[shared]
+  ) {
+    shared += 1;
   }
-  return below.split(sep).some((segment) => VCS_INTERNALS.has(segment));
+  return realSegments.slice(shared).some((segment) => VCS_INTERNALS.has(segment));
 }
 
 // Raw path key for one-read-per-attempt deduplication across plans and

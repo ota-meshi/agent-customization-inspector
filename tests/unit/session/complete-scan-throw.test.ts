@@ -42,6 +42,7 @@ describe('completeScan preparation failure (T026 regression)', () => {
       coordinator.completeScan(admitted.scanRequestId, {
         files: [],
         recognitions: [],
+        skillCompanionsByPath: new Map(),
         diagnostics: [],
         outcome: 'complete',
         visitedEntries: 0,

@@ -240,14 +240,14 @@ Above Expediency) to day-to-day coding decisions:
   beside that union, not in the component, so a new member cannot compile
   without its label. `entities.ts` holds `CUSTOMIZATION_KIND_TEXT`,
   `SUPPORTED_TOOL_TEXT`, `FILE_ENCODING_TEXT`, `SOURCE_BOUNDARY_ORIGIN_TEXT`,
-  `SOURCE_STATUS_TEXT`, `SAME_NAME_SKILL_RESOLUTION_TEXT`,
-  `DOCUMENTATION_STATUS_TEXT`, and `LIFECYCLE_QUALIFIER_TEXT`; diagnostic text
-  lives in `DIAGNOSTIC_REGISTRY`.
+  `SOURCE_STATUS_TEXT`, and `SAME_NAME_SKILL_RESOLUTION_TEXT`; diagnostic text
+  lives in `DIAGNOSTIC_REGISTRY`. A closed union no surface renders needs no table:
+  `DocumentationStatus` and `LifecycleQualifier` are maintenance records on the
+  registry, so nothing labels them.
 - A `-types` module ships zero runtime code, and a table is runtime data, so
   the tables for the unions those modules declare live in a `*-text.ts`
-  companion beside them: `api-text.ts` for `api-types.ts`, and
-  `registries/identifier-text.ts` for `registries/identifier-types.ts`. The
-  compiler check the policy asks for works wherever the table lives.
+  companion beside them: `api-text.ts` for `api-types.ts`. The compiler check
+  the policy asks for works wherever the table lives.
 - The test is exhaustiveness, not reuse. A `Readonly<Record<ClosedUnion, string>>`
   belongs beside its union even when exactly one component reads it today,
   because the compiler is what keeps the table complete.
@@ -259,6 +259,62 @@ Above Expediency) to day-to-day coding decisions:
   than as `string` — that is what keeps the table complete. Ordinary words that
   happen to be members stay as they are: `environment` is captioned "environment
   variable" and `MCP` is captioned "MCP".
+
+## Stylesheet scope policy
+
+Placement:
+
+- A component's own styles are written in that component's `<style scoped>`, never in
+  the global stylesheet. The rules and the markup they select then move, get read, and
+  get deleted together, and a class name cannot outlive the only template that used it.
+- `src/app/styles/main.css` holds only what is genuinely shared: design tokens, the
+  element-level baseline, and utility classes several components apply. A rule that
+  names a class exactly one component renders does not belong there, whatever the
+  file's current contents suggest.
+- A class name has exactly one owner. The global sheet and a component never declare
+  the same class: with two owners a rule can be moved, renamed, or deleted on one side
+  while the other keeps selecting it, and which rule an element gets is then a question
+  of load order rather than of ownership.
+
+Naming:
+
+- A component's classes are BEM, and the block is the component's own name, so the name
+  says where the rule lives: `aci-frontmatter-block`, `aci-frontmatter-block__key`, and
+  `aci-frontmatter-block__nested--list-item` in `FrontmatterBlock.vue`;
+  `aci-skill-file-tree-branch__file` in `SkillFileTreeBranch.vue`;
+  `aci-scan-progress__actions` in
+  `ScanProgress.vue`. Naming the block after the component is what makes a collision
+  with the global sheet impossible rather than merely avoided, and it is what lets a
+  class seen in a browser inspector be traced to the file that styles it.
+- Global class names are plain, because they belong to no component: the utilities
+  several components apply (`.aci-note`, `.aci-muted`, `.aci-authored-text`,
+  `.aci-panel`, `.aci-definition-grid`) and the shared widget classes. A global rule
+  never names a component's class, so when it needs to reach markup rather than a
+  utility it selects the element: the section-heading baseline is `h2`, not a class
+  written through the shell.
+
+What a move has to check:
+
+- Whether a rule can move at all is decided by its selector's subject — the rightmost
+  compound, which is where `scoped` stamps the component's data attribute. A rule
+  belongs in the global sheet exactly when components other than one render that
+  subject, because scoping it would stop it matching, and the move then fails silently
+  rather than loudly. The `h2` baseline is the case: three components render an `h2`,
+  so inside any one of them the rule would become `h2[data-v-…]` and stop reaching the
+  other two.
+- `:deep()` makes such a selector match from inside a component again, and is not the
+  answer for one: it would move a baseline every page depends on into one component
+  behind an escape hatch, which is the arrangement this policy exists to prevent. Reach
+  for it where a component genuinely styles markup it passes to a child.
+- A grouped selector spanning two components' classes has to be decided rather than
+  moved: splitting it duplicates the declarations, so either the shared look becomes a
+  utility class both apply, or the rule stays until one is written.
+- Scoping is not defeated by nesting or recursion: a selector like `.parent > .child`
+  matches wherever both elements are rendered by the component that owns the style,
+  including a component that renders itself. Reaching for the global sheet to escape
+  scoping is a sign the markup, not the stylesheet, is in the wrong place.
+- Moving a rule out of the global sheet is a refactor like any other: move the comment
+  with it, and check no other template selects the class first.
 
 ## Naming policy
 

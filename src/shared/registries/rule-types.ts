@@ -17,7 +17,7 @@
 // platform-neutral (no `node:` imports), so referencing it does not pull
 // server-only code into a shared module.
 import type { StructuredInspectorMatcher } from '../../server/inspection/rules/registry';
-import type { ConditionFactKey, SourceKind } from '../api-types';
+import type { SourceKind } from '../api-types';
 import type { RuleId } from './identifier-types';
 import type { EvidenceCitation } from './evidence-types';
 import type {
@@ -88,8 +88,6 @@ export interface InspectionRule {
    * data (`SHIPS_MAINTENANCE_DATA`, src/shared/registries/maintenance-data.ts).
    */
   readonly policyRefs: readonly string[];
-  /** Runtime facts needed before applicability can be assessed. */
-  readonly conditionKeys: readonly ConditionFactKey[];
   /** Links rules with documented selection/order semantics; null when none. */
   readonly precedenceGroup: string | null;
   /** Upstream documentation completeness for this rule, not runtime state. */

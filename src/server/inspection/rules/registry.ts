@@ -14,14 +14,7 @@
 // are deliberately not re-checked at runtime (AGENTS.md Implementation
 // simplicity policy). Per-vendor rule catalogs arrive with their inventory
 // phases; this module owns only the shared closed grammar and compilation.
-import {
-  buildEvidenceAssessments,
-  type CustomizationKind,
-  type DocumentationStatus,
-  type EvidenceAssessment,
-  type LifecycleQualifier,
-  type SupportedTool,
-} from '../../../shared/entities';
+import type { CustomizationKind, SupportedTool } from '../../../shared/entities';
 import type { InspectionRule } from '../../../shared/registries/rule-types';
 import type { RuleRelations } from '../../../shared/registries/relation-types';
 
@@ -266,8 +259,8 @@ export type MatcherBase =
  * downward axis.
  *
  * What the *vendor* documents about its own lookup lives on its
- * `VendorBehaviorStatement`, and what stays unknowable at inspection time is a
- * `ConditionFactKey`; neither grants or removes read authority here
+ * `VendorBehaviorStatement`, and what stays unknowable at inspection time is
+ * simply not published; neither grants or removes read authority here
  * (contracts/inspection-path-allowlist.md § "Vendor locators are not
  * Inspector matchers").
  */
@@ -586,81 +579,4 @@ export function resolveAdmittingRules(
     }
     return rule;
   });
-}
-
-/**
- * The evidence-bearing fields shared by every registry subject a provenance
- * can cite. Declared structurally so this module — which owns the grammar and
- * the assembler — needs no runtime import of the registry data modules, which
- * author their matchers against the tokens declared above (importing them back
- * would be a module cycle).
- */
-export interface EvidenceBearingSubject {
-  /** How completely official sources establish this subject's assertion. */
-  readonly documentationStatus: DocumentationStatus;
-  /** The subject's upstream lifecycle claims; empty never means `stable`. */
-  readonly lifecycleQualifiers: readonly LifecycleQualifier[];
-}
-
-/**
- * A rule record travelling with its own resolved relations — the pairing a
- * {@link CompiledInspectionRule} carries, named so a consumer that needs only
- * the pairing does not demand a compiled plan it never reads.
- *
- * Deliberately not the rule beside separately supplied subject arrays: the
- * pairing leaves the caller nothing to get wrong — no ID paired with another
- * rule's evidence state, and no array that is empty, extra, or from a
- * different rule than the one being consumed.
- */
-export type RuleWithRelations = Pick<CompiledInspectionRule, 'rule' | 'relations'>;
-
-/** Input of {@link assembleRuleEvidenceAssessments}; see {@link RuleWithRelations}. */
-export type RuleEvidenceAssemblyInput = RuleWithRelations;
-
-/**
- * The sole `EvidenceAssessment[]` assembler (QR-005, T060/T061): resolves the
- * owning rule plus every referenced behavior and strategy and copies each
- * subject's exact record once.
- *
- * There is nothing to resolve: the caller hands over the subject records
- * themselves, because a relation holds the record rather than its identifier.
- * A reference that points at nothing is therefore unrepresentable, which is
- * why no lookup here tests for `undefined`.
- *
- * The result is deliberately never reduced to a scalar, a worst status, or a
- * qualifier union: a reduction would hide which specific behavior, rule, or
- * strategy carries the weaker documentation state, which is the one thing
- * QR-005 exists to keep visible. Duplicate rejection, the fixed qualifier
- * order, and the fixed subject sort all come from
- * {@link buildEvidenceAssessments}, so there is exactly one implementation of
- * those rules.
- */
-export function assembleRuleEvidenceAssessments(
-  input: RuleEvidenceAssemblyInput,
-): EvidenceAssessment[] {
-  const assessments: EvidenceAssessment[] = [
-    {
-      subjectKind: 'rule',
-      subjectId: input.rule.ruleId,
-      documentationStatus: input.rule.documentationStatus,
-      lifecycleQualifiers: input.rule.lifecycleQualifiers,
-    },
-  ];
-  for (const behavior of input.relations.basedOnBehaviors) {
-    assessments.push({
-      subjectKind: 'behavior',
-      subjectId: behavior.behaviorId,
-      documentationStatus: behavior.documentationStatus,
-      lifecycleQualifiers: behavior.lifecycleQualifiers,
-    });
-  }
-  for (const strategy of input.relations.explainedByStrategies) {
-    assessments.push({
-      subjectKind: 'strategy',
-      subjectId: strategy.strategyId,
-      documentationStatus: strategy.documentationStatus,
-      lifecycleQualifiers: strategy.lifecycleQualifiers,
-    });
-  }
-  return buildEvidenceAssessments(assessments);
 }

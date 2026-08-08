@@ -73,9 +73,11 @@ export interface RuleRelations {
    */
   readonly basedOnBehaviors: readonly VendorBehaviorStatement[];
   /**
-   * The composition strategies that explain this rule's order, selection, and
-   * applicability, sorted. Never used for path admission: a strategy cannot
-   * widen what the matcher admits.
+   * The composition strategies that explain this rule's documented order and
+   * selection, sorted. Never used for path admission: a strategy cannot widen
+   * what the matcher admits, and it states nothing about a concrete session —
+   * what one documents for a name several files declare is the one statement
+   * a surface reads from here (`skill-resolution.ts`).
    */
   readonly explainedByStrategies: readonly RuntimeCompositionStrategy[];
 }

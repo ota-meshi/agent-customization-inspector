@@ -40,6 +40,17 @@ test.beforeEach(async () => {
       'name: greet',
       `description: "deploy with ${FIXTURE_SECRET} and ${FIXTURE_ENV_REFERENCE}"`,
       `api_key: ${FIXTURE_SECRET}`,
+      // Two keys whose values draw nothing, and differ only in how much
+      // whitespace they hold. The detail has to keep them distinguishable.
+      "one_space: ' '",
+      "two_spaces: '  '",
+      // Two keys that draw nothing, differing only in how much whitespace they
+      // hold — the key column has to keep them apart the same way.
+      "' ': first",
+      "'  ': second",
+      // A sequence nested past the indent cap, so the capped marker layout is
+      // reachable from the browser.
+      'deep: [[[[[[[[bottom]]]]]]]]',
       '---',
       '',
       '# Greet',
@@ -53,8 +64,9 @@ test.beforeEach(async () => {
   // A binary asset the skill ships. Ordinary — its bytes are a fact, not a
   // failure — and the case below is what proves the page treats it that way.
   await writeFile(join(fixture, '.agents/skills/greet/logo.png'), 'PNG\u0000\u0001bytes\n', 'utf8');
-  // A second skill whose frontmatter cannot be parsed. Its source must stay
-  // readable while only its derived metadata is missing (FR-028).
+  // A second skill whose frontmatter cannot be parsed. Extraction is
+  // all-or-nothing, so its name, description, declarations, and instructions
+  // are all absent while its complete source stays readable (FR-028).
   await mkdir(join(fixture, '.agents/skills/broken'), { recursive: true });
   await writeFile(
     join(fixture, '.agents/skills/broken/SKILL.md'),
@@ -75,11 +87,20 @@ async function openSkill(page: import('@playwright/test').Page, path: string): P
   await page.getByRole('link', { name: path }).click();
 }
 
+/**
+ * Opens the skill and switches to its files. A skill opens on itself, so every
+ * case about a file starts with the tab the reader would click.
+ */
+async function openSkillFiles(page: import('@playwright/test').Page, path: string): Promise<void> {
+  await openSkill(page, path);
+  await page.getByRole('tab', { name: /^files/iu }).click();
+}
+
 test('opens the file directly, with nothing standing in front of it', async ({ page }) => {
-  await openSkill(page, '.agents/skills/greet/SKILL.md');
-  // One interaction from the inventory to the content. Nothing stands in front
+  await openSkillFiles(page, '.agents/skills/greet/SKILL.md');
+  // Nothing stands between the reader and the content. Nothing stands in front
   // of it: the session is loopback-only and these are the viewer's own files.
-  await expect(page.locator('.aci-source-viewer')).toBeVisible();
+  await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toBeVisible();
   await expect(page.getByRole('button', { name: /show file contents/iu })).toHaveCount(0);
   // Nor beside it. A viewer that announced what a file might contain, or where
   // its own page keeps it, would be narrating the reader's repository back at
@@ -96,12 +117,14 @@ test('titles the tab by the skill the page shows', async ({ page }) => {
   // Two tabs on two skills must be distinguishable by title alone
   // (WCAG 2.4.2): the subject the heading shows is the subject the tab
   // names, where the surface name alone would title every skill the same.
-  await expect(page).toHaveTitle('greet — Agent Customization Inspector');
+  // The subject rides between first-strong isolates so an authored
+  // directional control cannot reorder the title around it.
+  await expect(page).toHaveTitle('\u2068greet\u2069 — Agent Customization Inspector');
 });
 
 test('shows the complete authored source', async ({ page }) => {
-  await openSkill(page, '.agents/skills/greet/SKILL.md');
-  const viewer = page.locator('.aci-source-viewer');
+  await openSkillFiles(page, '.agents/skills/greet/SKILL.md');
+  const viewer = page.locator('.aci-skill-detail__main .aci-source-viewer');
   await expect(viewer).toBeVisible();
   // The body text appears only in the file itself, so finding it inside the
   // editor is what proves the editor is showing the source rather than the
@@ -112,8 +135,13 @@ test('shows the complete authored source', async ({ page }) => {
 });
 
 test('offers no control that masks a value or reveals a masked one', async ({ page }) => {
-  await openSkill(page, '.agents/skills/greet/SKILL.md');
-  await expect(page.locator('.aci-source-viewer')).toBeVisible();
+  await openSkillFiles(page, '.agents/skills/greet/SKILL.md');
+  // Wait for the rendered source itself, not just its container: the editor
+  // paints its lines after the viewer mounts, and reading the page before the
+  // credential is on screen would make the absence checks below vacuous.
+  await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toContainText(
+    FIXTURE_SECRET,
+  );
   // A value is published as authored or not at all, so there is nothing for a
   // reveal control to uncover — and no such control exists to suggest there is.
   for (const label of [/reveal/iu, /unmask/iu, /show secret/iu, /hide value/iu]) {
@@ -127,66 +155,105 @@ test('offers no control that masks a value or reveals a masked one', async ({ pa
   expect(text).not.toContain('ghp_****');
 });
 
-test('shows the recognized value of each allowlisted field and nothing else', async ({ page }) => {
+test('leads with the skill itself before any file contents', async ({ page }) => {
   await openSkill(page, '.agents/skills/greet/SKILL.md');
-  const values = page.locator('.aci-declared-value');
-  // Two allowlisted fields are declared; `api_key` is not one of them, so it
-  // stays visible only in the source above.
-  await expect(values).toHaveCount(2);
-  await expect(values.nth(0)).toHaveText('greet');
-  // The value a product loading this file would have: the quoting is resolved,
-  // and the credential inside it is not.
-  await expect(values.nth(1)).toHaveText(
-    `deploy with ${FIXTURE_SECRET} and ${FIXTURE_ENV_REFERENCE}`,
+  // The skill is what the page is about: its name, what it is for, the rest of
+  // what it declares, and then the instructions it carries.
+  await expect(page.locator('.aci-skill-detail h2')).toHaveText('greet');
+  // Every key the file declares, led by the two a reader looks for first.
+  await expect(page.locator('.aci-frontmatter-block dt')).toHaveText([
+    'name',
+    'description',
+    'api_key',
+    'one_space',
+    'two_spaces',
+    ' (key with no visible characters)',
+    '  (key with no visible characters)',
+    'deep',
+  ]);
+  await expect(page.locator('.aci-frontmatter-block dd').nth(1)).toContainText(
+    `deploy with ${FIXTURE_SECRET}`,
   );
+  await expect(page.locator('.aci-skill-detail__instructions .aci-source-viewer')).toContainText(
+    'Run `scripts/run.sh` first.',
+  );
+});
+
+test('keeps two values that both draw nothing distinguishable', async ({ page }) => {
+  await openSkill(page, '.agents/skills/greet/SKILL.md');
+  // A value made only of characters that draw nothing is still published as
+  // written; the note is added beside it, never in its place. Replacing both
+  // with one phrase would report a value the surface publishes as something
+  // shorter than it is (FR-025).
+  const values = page.locator('.aci-frontmatter-block dd');
+  // `textContent`, not `toHaveText`: the matcher normalizes whitespace, which
+  // is exactly the difference under test.
+  expect(await values.nth(3).locator('.aci-authored-text').textContent()).toBe(' ');
+  expect(await values.nth(4).locator('.aci-authored-text').textContent()).toBe('  ');
+  await expect(values.nth(3)).toContainText('(no visible characters)');
+  await expect(values.nth(4)).toContainText('(no visible characters)');
+
+  const keys = page.locator('.aci-frontmatter-block dt');
+  expect(await keys.nth(5).textContent()).toBe(' (key with no visible characters)');
+  expect(await keys.nth(6).textContent()).toBe('  (key with no visible characters)');
+});
+
+test('stops indenting past the depth cap without overlapping list markers', async ({ page }) => {
+  // Past MAX_INDENTED_DEPTH a nested list adds no padding — kept, the gutter
+  // would keep marching a deep block off a narrow viewport (WCAG 1.4.10) — and
+  // its marker flows inline instead of being drawn back into a gutter that is
+  // no longer there, where it would overlap the first value.
+  await openSkill(page, '.agents/skills/greet/SKILL.md');
+  const capped = page.locator('.aci-frontmatter-block__nested--capped').first();
+  await expect(capped).toBeVisible();
+  const styles = await capped.evaluate((element) => {
+    const block = element.querySelector(':scope > .aci-frontmatter-block');
+    const first = block?.firstElementChild;
+    if (!(block instanceof Element) || !(first instanceof Element)) {
+      throw new Error('capped nested block not rendered');
+    }
+    return {
+      padding: getComputedStyle(block).paddingInlineStart,
+      markerPosition: getComputedStyle(first, '::before').position,
+    };
+  });
+  expect(styles.padding).toBe('0px');
+  expect(styles.markerPosition).toBe('static');
 });
 
 test('leaves an environment reference as the characters that were written', async ({ page }) => {
-  await openSkill(page, '.agents/skills/greet/SKILL.md');
+  await openSkillFiles(page, '.agents/skills/greet/SKILL.md');
   // The host reads no process environment on an inspected file's behalf, so
   // the reference is text and stays text.
-  await expect(page.locator('.aci-declared-value').nth(1)).toContainText(FIXTURE_ENV_REFERENCE);
+  await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toContainText(
+    FIXTURE_ENV_REFERENCE,
+  );
 });
 
-test('states what is not known about whether the product loads the file', async ({ page }) => {
+test('shows what was recognized and nothing about a runtime it cannot see', async ({ page }) => {
   await openSkill(page, '.agents/skills/greet/SKILL.md');
+  // The recognition says what the file is. It says nothing about whether the
+  // product would load it, because that depends on a runtime this tool never
+  // observes — and a sentence about it would take the room the files below
+  // need.
   await expect(page.locator('.aci-recognition-summary')).toContainText('OpenAI Codex');
-
-  // Discovery is not loading, and where that is said is behind a disclosure:
-  // every shipped rule projects the same sentence, so on the summary it would
-  // be one constant line on every skill, and the inventory states it once for
-  // the whole product.
-  await expect(page.locator('.aci-recognition')).toBeHidden();
-  // Named by the product it belongs to, so several recognitions of one file are
-  // told apart by more than their order.
-  await page.locator('summary', { hasText: 'How OpenAI Codex recognized this' }).click();
-  const recognition = page.locator('.aci-recognition');
-  await expect(recognition).toContainText(
-    'Depends on runtime conditions this tool does not evaluate',
-  );
-  // The admitting rule is stated as what it is for, which is the answer to
-  // "why was this file inspected".
-  await expect(recognition).toContainText(
-    'This tool reads repository skill files at .agents/skills/<name>/SKILL.md',
-  );
+  const detail = (await page.locator('.aci-skill-detail').textContent()) ?? '';
+  for (const claim of ['Depends on runtime conditions', 'Selected by a documented rule']) {
+    expect(detail).not.toContain(claim);
+  }
 });
 
 test('says what it recognized in words, never as a contract identifier', async ({ page }) => {
   await openSkill(page, '.agents/skills/greet/SKILL.md');
-  const summary = page.locator('.aci-recognition-summary');
-  // The two allowlisted fields are captioned by what they are. `Skill name` is
-  // an answer; `codex.skill.name` is the token that keys the registry record
-  // behind it, and someone looking at their own file never asked for it.
-  await expect(summary).toContainText('Skill name');
-  await expect(summary).toContainText('Skill description');
+  // The recognition is captioned by the products' names, not their tokens.
+  await expect(page.locator('.aci-recognition-summary')).toContainText('OpenAI Codex');
 
-  // `textContent` rather than `innerText`: the conditions and the evidence
-  // grades are inside collapsed `<details>`, and an identifier behind a
-  // disclosure triangle is still an identifier on the page.
+  // `textContent` rather than `innerText`, so anything rendered but visually
+  // hidden is checked too.
   const rendered = (await page.locator('.aci-skill-detail').textContent()) ?? '';
-  // Every contract identifier this page can reach is a dotted lower-case token
-  // — `codex.skill.name`, `codex.repo.skill`, `codex.behavior.repo.skills`.
-  // The fixture's own source contains none, so a match came from the product.
+  // Every contract identifier this page could reach is a dotted lower-case
+  // token — `codex.repo.skill`, `codex.behavior.repo.skills`. The fixture's
+  // own source contains none, so a match came from the product.
   expect(rendered).not.toMatch(/codex\.[a-z]/u);
   // The condition, status, and evidence vocabularies are hyphenated rather than
   // dotted, so they need their own check.
@@ -195,15 +262,25 @@ test('says what it recognized in words, never as a contract identifier', async (
   }
 });
 
-test('shows the skill first and its files below', async ({ page }) => {
-  await openSkill(page, '.agents/skills/greet/SKILL.md');
+test('lists the skill’s own directory in the files tab', async ({ page }) => {
+  await openSkillFiles(page, '.agents/skills/greet/SKILL.md');
   // The heading is the skill's declared name, not a path: what the reader
   // asked about is a customization, and the files are how it is made.
   await expect(page.locator('.aci-skill-detail h2')).toHaveText('greet');
   const tree = page.getByRole('navigation', { name: 'Files in this skill' });
   // A skill is a directory: the entry point and what ships beside it, the
-  // binary asset included.
+  // binary asset included. Only files are links; `scripts/` is the directory
+  // that holds one, not something to open.
   await expect(tree.getByRole('link')).toHaveText(['SKILL.md', 'logo.png', 'run.sh']);
+  await expect(tree.locator('.aci-skill-file-tree-branch__directory')).toHaveText(['scripts/']);
+  // The nesting is markup, not indentation: the file under `scripts/` is inside
+  // that directory's own list item, which is what assistive technology reads as
+  // containment.
+  await expect(
+    tree
+      .locator('li', { has: page.locator('.aci-skill-file-tree-branch__directory') })
+      .locator('ul'),
+  ).toHaveCount(1);
   // Which file is open is stated, not merely styled.
   await expect(tree.getByRole('link', { name: 'SKILL.md' })).toHaveAttribute(
     'aria-current',
@@ -214,8 +291,26 @@ test('shows the skill first and its files below', async ({ page }) => {
   expect(await page.locator('main').innerText()).not.toContain('echo hi');
 });
 
+test('keeps the file tree in the first view, under the skill itself', async ({ page }) => {
+  await openSkillFiles(page, '.agents/skills/greet/SKILL.md');
+  // The regression this guards: the skill's own sections grew until the
+  // directory they introduce was pushed off the screen. Asserting the tree's
+  // text alone passed while it sat below the fold, so the assertion is that it
+  // is actually in the viewport — which is also what the tabs now keep true,
+  // since the two subjects no longer stack.
+  const tree = page.getByRole('navigation', { name: 'Files in this skill' });
+  await expect(tree).toBeInViewport();
+  await expect(tree.getByRole('link')).toHaveText(['SKILL.md', 'logo.png', 'run.sh']);
+  // And the source below it is a real editor rather than a collapsed box: it
+  // takes a definite height now that the page around it scrolls.
+  const viewerHeight = await page
+    .locator('.aci-skill-detail__main .aci-source-viewer')
+    .evaluate((element) => element.getBoundingClientRect().height);
+  expect(viewerHeight).toBeGreaterThan(200);
+});
+
 test('opens a supporting file from the tree and keeps the skill on screen', async ({ page }) => {
-  await openSkill(page, '.agents/skills/greet/SKILL.md');
+  await openSkillFiles(page, '.agents/skills/greet/SKILL.md');
   await page
     .getByRole('navigation', { name: 'Files in this skill' })
     .getByRole('link', { name: 'run.sh' })
@@ -228,13 +323,11 @@ test('opens a supporting file from the tree and keeps the skill on screen', asyn
   // its own, and a screen that reported that would be describing the file
   // instead of the skill the reader is looking at.
   await expect(page.locator('.aci-skill-detail h2')).toHaveText('greet');
-  const summary = page.locator('.aci-recognition-summary');
-  await expect(summary).toContainText('OpenAI Codex');
-  await expect(summary).toContainText('Skill name');
-  await expect(page.locator('.aci-skill-detail-main h3')).toHaveText(
+  await expect(page.locator('.aci-recognition-summary')).toContainText('OpenAI Codex');
+  await expect(page.locator('.aci-skill-detail__main h3')).toHaveText(
     '.agents/skills/greet/scripts/run.sh',
   );
-  await expect(page.locator('.aci-source-viewer')).toContainText('echo hi');
+  await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toContainText('echo hi');
 
   // The tree stays, now marking the file that is open, so the reader can move
   // back through the skill without returning to the inventory.
@@ -243,7 +336,7 @@ test('opens a supporting file from the tree and keeps the skill on screen', asyn
 });
 
 test('shows a binary asset as the fact it is, with nothing wrong', async ({ page }) => {
-  await openSkill(page, '.agents/skills/greet/SKILL.md');
+  await openSkillFiles(page, '.agents/skills/greet/SKILL.md');
   await page
     .getByRole('navigation', { name: 'Files in this skill' })
     .getByRole('link', { name: 'logo.png' })
@@ -252,11 +345,11 @@ test('shows a binary asset as the fact it is, with nothing wrong', async ({ page
   // An image is part of what the skill ships. The page states what the read
   // found — binary, so no text — and reports no problem, because there is
   // none: nothing expected an asset to be text.
-  const main = page.locator('.aci-skill-detail-main');
+  const main = page.locator('.aci-skill-detail__main');
   await expect(main.locator('h3')).toHaveText('.agents/skills/greet/logo.png');
   await expect(main).toContainText('Binary');
   await expect(main).toContainText('no source text');
-  await expect(page.locator('.aci-source-viewer')).toHaveCount(0);
+  await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toHaveCount(0);
   const text = await main.innerText();
   // Neither diagnostic message: not `file-unreadable`'s, and not
   // `file-content-binary`'s, which a regression to candidate handling would
@@ -269,7 +362,7 @@ test('shows a binary asset as the fact it is, with nothing wrong', async ({ page
 });
 
 test('leaves the reader in the tree when they select another file', async ({ page }) => {
-  await openSkill(page, '.agents/skills/greet/SKILL.md');
+  await openSkillFiles(page, '.agents/skills/greet/SKILL.md');
   const tree = page.getByRole('navigation', { name: 'Files in this skill' });
   const link = tree.getByRole('link', { name: 'run.sh' });
   await link.focus();
@@ -279,7 +372,7 @@ test('leaves the reader in the tree when they select another file', async ({ pag
   // its loading state here would unmount the tree — and the link the reader is
   // standing on with it, dropping focus to the document and sending the next
   // Tab back to the top.
-  await expect(page.locator('.aci-source-viewer')).toContainText('echo hi');
+  await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toContainText('echo hi');
   await expect(link).toBeFocused();
   await expect(tree.getByRole('link')).toHaveCount(3);
   await expect(page.locator('.aci-empty')).toHaveCount(0);
@@ -288,7 +381,7 @@ test('leaves the reader in the tree when they select another file', async ({ pag
 test('opens the skill from any of its files, not only its entry point', async ({ page }) => {
   // A link a reader kept points at one file; the skill it belongs to is what
   // the page is about, so the same skill opens with that file showing.
-  await openSkill(page, '.agents/skills/greet/SKILL.md');
+  await openSkillFiles(page, '.agents/skills/greet/SKILL.md');
   await page
     .getByRole('navigation', { name: 'Files in this skill' })
     .getByRole('link', { name: 'run.sh' })
@@ -296,13 +389,13 @@ test('opens the skill from any of its files, not only its entry point', async ({
   // Read the URL only once the router has arrived: `click` resolves before the
   // SPA navigation settles, so reading it straight away captures the URL the
   // reader was on rather than the one they moved to.
-  await expect(page.locator('.aci-source-viewer')).toContainText('echo hi');
+  await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toContainText('echo hi');
   const companionUrl = page.url();
 
   await page.goto(companionUrl);
   await expect(page.locator('.aci-skill-detail h2')).toHaveText('greet');
   await expect(page.locator('.aci-recognition-summary')).toContainText('OpenAI Codex');
-  await expect(page.locator('.aci-source-viewer')).toContainText('echo hi');
+  await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toContainText('echo hi');
 });
 
 test('colours each file by the language its own path claims', async ({ page }) => {
@@ -318,14 +411,14 @@ test('colours each file by the language its own path claims', async ({ page }) =
   const expectSeveralTokenClasses = async (): Promise<void> => {
     await expect(async () => {
       const classes = await page
-        .locator('.aci-source-viewer .view-line span span')
+        .locator('.aci-skill-detail__main .aci-source-viewer .view-line span span')
         .evaluateAll((spans) => [...new Set(spans.map((span) => span.className))]);
       expect(classes.length).toBeGreaterThan(1);
     }).toPass();
   };
 
-  await openSkill(page, '.agents/skills/greet/SKILL.md');
-  await expect(page.locator('.aci-source-viewer')).toContainText('# Greet');
+  await openSkillFiles(page, '.agents/skills/greet/SKILL.md');
+  await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toContainText('# Greet');
   // Markdown: the heading and the frontmatter fences are not the body text.
   await expectSeveralTokenClasses();
 
@@ -335,7 +428,7 @@ test('colours each file by the language its own path claims', async ({ page }) =
     .getByRole('navigation', { name: 'Files in this skill' })
     .getByRole('link', { name: 'run.sh' })
     .click();
-  await expect(page.locator('.aci-source-viewer')).toContainText('echo hi');
+  await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toContainText('echo hi');
   await expectSeveralTokenClasses();
 });
 
@@ -350,16 +443,17 @@ test('lists supporting files nowhere in the inventory', async ({ page }) => {
   expect(text).toContain('2 supporting file(s) in this skill');
 });
 
-test('keeps a malformed file readable while its metadata is missing', async ({ page }) => {
-  await openSkill(page, '.agents/skills/broken/SKILL.md');
-  await expect(page.locator('.aci-source-viewer')).toContainText('# Broken');
-  // A failed extraction is an at-a-glance fact, so it is in the summary rather
-  // than behind the disclosure: the values are missing and the file is fine,
-  // and nothing else on the screen would say so.
-  await expect(page.locator('.aci-recognition-summary')).toContainText(
-    'Metadata could not be extracted',
+test('keeps a malformed file readable while its declared name is missing', async ({ page }) => {
+  await openSkillFiles(page, '.agents/skills/broken/SKILL.md');
+  await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toContainText(
+    '# Broken',
   );
-  await expect(page.locator('.aci-declared-value')).toHaveCount(0);
+  // A failed extraction is an at-a-glance fact, surfaced through its own
+  // Diagnostic in the summary: the name is missing and the file is fine, and
+  // nothing else on the screen would say so (FR-028).
+  await expect(page.locator('.aci-recognition-summary')).toContainText(
+    'One recognition could not be parsed',
+  );
 });
 
 test('is operable from the keyboard alone', async ({ page }) => {
@@ -368,21 +462,31 @@ test('is operable from the keyboard alone', async ({ page }) => {
   // path to the content now.
   await page.getByRole('link', { name: '.agents/skills/greet/SKILL.md' }).focus();
   await page.keyboard.press('Enter');
-  await expect(page.locator('.aci-source-viewer')).toBeVisible();
   await expect(page.locator('.aci-skill-detail h2')).toBeFocused();
+
+  // The tab strip is one stop in the page tab order and arrows move between
+  // its tabs, so the files are reachable without a pointer (QR-004).
+  const skillTab = page.getByRole('tab', { name: /^skill/iu });
+  await skillTab.focus();
+  await expect(skillTab).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  const filesTab = page.getByRole('tab', { name: /^files/iu });
+  await expect(filesTab).toBeFocused();
+  await expect(filesTab).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toBeVisible();
 });
 
 test('drops the content when the route leaves the file', async ({ page }) => {
-  await openSkill(page, '.agents/skills/greet/SKILL.md');
-  await expect(page.locator('.aci-source-viewer')).toBeVisible();
+  await openSkillFiles(page, '.agents/skills/greet/SKILL.md');
+  await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toBeVisible();
   await page.getByRole('link', { name: 'Back to the inventory' }).click();
-  await expect(page.locator('.aci-source-viewer')).toHaveCount(0);
+  await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toHaveCount(0);
   expect(await page.locator('main').innerText()).not.toContain(FIXTURE_SECRET);
 });
 
 test('replaces a link a rescan invalidated with a recoverable state', async ({ page }) => {
-  await openSkill(page, '.agents/skills/greet/SKILL.md');
-  await expect(page.locator('.aci-source-viewer')).toBeVisible();
+  await openSkillFiles(page, '.agents/skills/greet/SKILL.md');
+  await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toBeVisible();
   const staleUrl = page.url();
 
   await page.getByRole('link', { name: 'Back to the inventory' }).click();
@@ -390,7 +494,7 @@ test('replaces a link a rescan invalidated with a recoverable state', async ({ p
   // Nothing polls, so the committed result arrives on an explicit refresh.
   await expect(async () => {
     await page.getByRole('button', { name: 'Refresh status' }).click();
-    await expect(page.locator('.aci-scan-status')).toContainText('Committed generation', {
+    await expect(page.locator('.aci-scan-progress')).toContainText('Committed generation', {
       timeout: 1_000,
     });
   }).toPass();
@@ -405,6 +509,12 @@ test('replaces a link a rescan invalidated with a recoverable state', async ({ p
   // change is announced without moving keyboard focus (WCAG 4.1.3).
   await expect(page.locator('.aci-skill-detail .aci-live-region[role="status"]')).toHaveText(
     /does not name a file in the current scan/u,
+  );
+  // A title has to be state-appropriate, not only route-appropriate
+  // (WCAG 2.4.2): a tab still named after a skill would send a reader back to
+  // a page that no longer shows one.
+  await expect(page).toHaveTitle(
+    '\u2068Link not in this scan\u2069 — Agent Customization Inspector',
   );
   expect(await page.locator('main').innerText()).not.toContain(FIXTURE_SECRET);
 });

@@ -76,6 +76,7 @@ async function scanOnce(
     await context.coordinator.completeScan(admitted.scanRequestId, {
       files: publication.files,
       recognitions: publication.recognitions,
+      skillCompanionsByPath: publication.skillCompanionsByPath,
       diagnostics: publication.diagnostics,
       outcome: publication.outcome,
       visitedEntries: publication.visitedEntries,
@@ -572,6 +573,30 @@ describe('the inventory unit is the kind, not the file (T1078)', () => {
     expect(row!.sameNameResolutions).toEqual([{ tool: 'codex', resolution: 'all-remain' }]);
   });
 
+  it('states a resolution only for a tool that recognizes the name twice', async () => {
+    // One name, two files, but each product recognizes one of them: Claude
+    // reads `.claude/skills`, Codex reads `.agents/skills`. Neither has two
+    // files to resolve between, so neither has a rule that applies. Counting
+    // the row's definitions instead of each tool's would state both.
+    const root = skillsDeclaring('inspector-scan-split-tools', {
+      ship: '---\nname: release\n---\n',
+    });
+    mkdirSync(join(root, '.claude/skills/deploy'), { recursive: true });
+    writeFileSync(
+      join(root, '.claude/skills/deploy/SKILL.md'),
+      '---\nname: release\n---\n',
+      'utf8',
+    );
+    const context = bootstrap(root);
+    await scanOnce(context);
+
+    const snapshot = context.session.snapshot();
+    const [row] = snapshot.skills;
+    expect(row!.declaredName).toBe('release');
+    expect(row!.definitions).toHaveLength(2);
+    expect(row!.sameNameResolutions).toEqual([]);
+  });
+
   it('publishes two rows for two names, each stating no resolution', async () => {
     const root = skillsDeclaring('inspector-scan-two-names', {
       deploy: '---\nname: release\n---\n',
@@ -894,6 +919,7 @@ describe('publication authority and relationship targets', () => {
     await context.coordinator.completeScan(admitted.scanRequestId, {
       files: publication.files,
       recognitions: publication.recognitions,
+      skillCompanionsByPath: publication.skillCompanionsByPath,
       diagnostics: publication.diagnostics,
       outcome: publication.outcome,
       visitedEntries: publication.visitedEntries,

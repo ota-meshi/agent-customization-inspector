@@ -24,9 +24,8 @@
 - [x] Edge cases are identified
 - [x] Scope is clearly bounded
 - [x] Dependencies and assumptions identified
-- [x] Origin-file-less Source Condition Facts are defined and covered by user scenarios, requirements, entities, edge cases, and a measurable outcome without granting file or read authority
 - [x] US4 requires every successful initial or retry Global Source commit to preserve `Source.sourceId` and semantic Repository inventory/source content while advancing the generation, rekeying generation-owned IDs, and invalidating prior-generation detail, comparison, and editor state; all-rejected attempts create no commit
-- [x] The closed Diagnostic union defines exact location invariants: file scope requires a coherent `sourceId`/`fileId`/`sourceRelativePath` tuple, source scope requires only `sourceId` and forbids file/path, session scope forbids all three, and scope is orthogonal to generation-versus-lifecycle ownership
+- [x] The closed Diagnostic union defines exact location invariants: file scope requires a coherent `sourceId`/`fileId`/`sourceRelativePath` tuple, source scope requires only `sourceId` and forbids file/path, no pathless scope exists, and scope is orthogonal to generation-versus-lifecycle ownership *(amended 2026-08-04: the pathless session scope left with the decision that an unadmitted Global tool's failure is its control's `failureCode`.)*
 - [x] Product-issued mutation is defined by prohibited mutation-capable requests and observable source properties, with operating-system-only access-time changes recorded separately as neither failure nor proof
 - [x] FR-032 defines the allowed structural-projection boundary and prohibits validation, semantic interpretation/ranking, verdicts, and remediation advice across every product and documentation surface
 - [x] FR-029 and FR-042 prohibit product-defined numeric resource-validation limits, revoke and discard late work, and close the Global-disable purge/epoch/fence/recovery lifecycle; failures are reported as ordinary errors (FR-040/FR-041 were removed 2026-07-22) while per-file isolation and stale-snapshot semantics stay in FR-028/FR-030
@@ -35,7 +34,7 @@
 - [x] The byte-decoding table covers NUL/binary, valid UTF-8, one recorded and removed leading BOM, and one-pass replacement decoding of invalid non-NUL UTF-8 as complete `utf-8-replaced` garbled text, without alternate decoding or a product-defined byte, line, or item ceiling
 - [x] The Customization File entity exposes complete source text for `utf-8` and `utf-8-replaced` reads, forbids it for binary outcomes, and represents an unreadable file as a diagnostic-only item that does not affect other files
 - [x] US3 is independently testable with two distinct readable Repository files before Global work and rejects the same file in both inputs, while US4 separately covers a Repository-to-Global comparison without merging Source-relative namespaces
-- [x] SC-003, SC-004, SC-005, SC-007, and SC-009 use a frozen versioned release-evidence fixture manifest with stable case IDs, per-fixture digests, nonzero required classes, exact executed-case records, paired automated manifest-version transition tests for denominator-semantic changes, a separate T1062 human-review record, both fixture and canonical digest updates for fixture-byte-only changes, and mandatory failure for missing, omitted, duplicate, or mismatched evidence
+- [x] SC-003, SC-004, SC-005, and SC-007 use a frozen versioned release-evidence fixture manifest with stable case IDs, per-fixture digests, nonzero required classes, exact executed-case records, paired automated manifest-version transition tests for denominator-semantic changes, a separate T1062 human-review record, both fixture and canonical digest updates for fixture-byte-only changes, and mandatory failure for missing, omitted, duplicate, or mismatched evidence
 - [x] Authored values — source text, declared metadata, authored relationship targets, and both comparison sides — are reachable only through an explicit bundled-browser `FileDetail` request or comparison construction, one at a time, with no confirmation step in front of either and no acknowledgement state anywhere; ordinary route, Source, and generation cleanup remains scoped, while Global disable is the explicit full-session-purge exception before request and again on greater-epoch or non-null-fence observation
 - [x] The closed Global-root table distinguishes absent/default, empty, invalid, relative, and eligible roots including those outside the ordinary home, records a missing or unreadable consented root as absent or failed without blocking the others, and admits readable roots into one atomic batch commit
 - [x] Repository-root selection is closed to captured `process.cwd()` or one resolved `--root` value, performs no `chdir`, rejects invalid option shapes before session creation, and creates exactly one generation-0 Repository Source at bootstrap
@@ -45,7 +44,7 @@
 - [x] Traversal is ordinary and reads only allowlisted paths: a problem confined to one file yields that file's diagnostic without affecting other files, and the specification adds no adversarial-input machinery (FR-019)
 - [x] The Codex Global override fallback defines emptiness by one optional leading-BOM removal followed by `String.prototype.trim()`, treats retained `U+FFFD` as non-whitespace, and permits fallback only for safely read empty content or an absent initial target
 - [x] Presentation Allowlist freeze is verification-only; any semantic membership, source-form, extractor-applicability, or relationship-kind change stops dependent implementation and requires synchronized design plus regenerated plan/tasks
-- [x] QR-005 closes `documentationStatus` to `documented | partially-documented | unknown | conflict`, keeps duplicate-free lifecycle qualifiers in `preview`, `experimental`, `deprecated` order, defines empty qualifiers as no lifecycle claim rather than `stable`, reserves `documentation-conflict` for `ConditionFact.status`, and requires provenance/relationship `EvidenceAssessment[]` to preserve every subject record without lossy aggregation
+- [x] QR-005 closes `documentationStatus` to `documented | partially-documented | unknown | conflict`, keeps duplicate-free lifecycle qualifiers in `preview`, `experimental`, `deprecated` order, defines empty qualifiers as no lifecycle claim rather than `stable`, and keeps every one of them a maintenance record that no response carries
 - [x] The fixed browser helper receives no inspection-derived path or content; only a closed ambient platform-key set may be copied directly, and lexical equality with a Source root neither changes provenance nor grants authority or selects a handler
 - [x] SC-008 defines a bilingual all-Level-A-and-AA applicability matrix, criterion-specific non-applicability rationale, automated/manual check mappings, a nonzero applicable-criterion denominator, and a zero-failure pass rule
 - [x] Every applicable SC-008 row has stable criterion-specific check IDs and an expected observation, and the closed manual matrix fixes release/environment versions, responsive and visual profiles, workflow states, and input profiles with no unrecorded sampling
@@ -84,10 +83,9 @@
   treated as fully specified at that iteration, and no clarification marker remained.
 - Validation iteration 7 passed all items on 2026-07-19 after replacing the mutable,
   unpublished SC-002 environment with a versioned published profile and objective status
-  stop condition; assigning the 20-person release study, funding, support, privacy, and
-  accessibility obligations to the maintainer team while bounding critical-issue review;
-  and specifying origin-file-less Source Condition Facts across scenarios, requirements,
-  entities, edge cases, verification, and SC-009.
+  stop condition, and after assigning the 20-person release study, funding, support,
+  privacy, and accessibility obligations to the maintainer team while bounding
+  critical-issue review.
 - Validation iteration 8 passed all items on 2026-07-19 after limiting comparison eligibility
   to readable discovered customization files, keeping binary and other diagnostic-only items
   available only for diagnostic review, and making that selection boundary explicit before
@@ -104,7 +102,7 @@
 - Validation iteration 11 passed all items on 2026-07-19 after defining US4's Repository
   result stability semantically while requiring successful Global Source commits to advance
   the generation, rekey generation-owned IDs, and invalidate prior-generation state; defining exclusive
-  file, source, and session Diagnostic location invariants; and replacing SC-008's undefined
+  per-scope Diagnostic location invariants; and replacing SC-008's undefined
   critical-defect threshold with a bilingual all-Level-A-and-AA matrix and a nonzero-denominator,
   zero-failed-applicable-criteria gate.
 - Validation iteration 12 passed all items on 2026-07-19 after assigning stable check IDs
@@ -129,7 +127,7 @@
 - Validation iteration 16 passed all items on 2026-07-19 after making US3 independently
   Repository-scoped and moving cross-Source comparison coverage to US4; excluding deterministic
   entry-local non-throwing failures from abort-attempt wording; making source text conditional on
-  a verified non-binary UTF-8 replacement decode; freezing SC-003/004/005/007/009 denominators with a versioned,
+  a verified non-binary UTF-8 replacement decode; freezing the release-evidence denominators (today SC-003/004/005/007) with a versioned,
   digest-bound release-evidence manifest; and closing the authored-value exposure and
   client-data-purge scope.
 - Validation iteration 17 passed all items on 2026-07-20 after closing selected-root and

@@ -134,12 +134,12 @@ const staleFailureMessage = computed(() =>
 </script>
 
 <template>
-  <div v-if="snapshot">
+  <div v-if="snapshot" class="aci-inventory-page">
     <h2 ref="inventoryHeading" tabindex="-1">Repository</h2>
     <template v-if="repositorySource">
-      <dl class="aci-source-summary">
+      <dl class="aci-definition-grid">
         <dt>Selected root</dt>
-        <dd class="aci-display-root">
+        <dd class="aci-inventory-page__display-root">
           {{ repositorySource.boundary.displayRoot }}
           ({{ SOURCE_BOUNDARY_ORIGIN_TEXT[repositorySource.boundary.origin] }})
         </dd>
@@ -209,3 +209,13 @@ const staleFailureMessage = computed(() =>
     <DiagnosticList :diagnostics="snapshot.diagnostics" />
   </div>
 </template>
+
+<style scoped>
+/* An escaped root label has no break opportunities of its own; without this the
+   shell scrolls sideways. It is not a `.aci-path`: the label is a presentation
+   of a root, not a path anything can open. */
+.aci-inventory-page__display-root {
+  font-family: ui-monospace, monospace;
+  overflow-wrap: anywhere;
+}
+</style>

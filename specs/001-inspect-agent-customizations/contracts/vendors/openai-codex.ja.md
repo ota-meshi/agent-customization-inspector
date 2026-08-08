@@ -21,10 +21,10 @@ discoveryとplugin installationにもdesktop/CLI固有の管理behaviorがあり
 
 ## Canonical evidence-assessment index
 
-このcontractが所有する全`behaviorId`と`ruleId`は正確に1件の`EvidenceAssessment`を持つ。下記にないsubjectの
+このcontractが所有する全`behaviorId`と`ruleId`は、自身の`documentationStatus`と`lifecycleQualifiers`を述べる。下記にないsubjectの
 canonical valueは`documentationStatus: documented`、`lifecycleQualifiers: []`とする。これはEvidence cellからの
 推論ではなく、未列挙subjectごとのclosed mappingである。Empty qualifierはlifecycle claimを行わず、`stable`を
-意味しない。`documentation-conflict`はruntimeの`ConditionFact.status`だけに残す。既存のStatus、Documentation
+意味しない。`documentation-conflict`はdocumentation statusではない。この語彙で互換性のない場合の綴りは`conflict`である。既存のStatus、Documentation
 status、Inspector status列はrationaleまたはInspector scope stateであり、serializeするstatus scalarではない。
 
 | Subject ID | `documentationStatus` | `lifecycleQualifiers` | Assessment basis |
@@ -37,9 +37,9 @@ status、Inspector status列はrationaleまたはInspector scope stateであり�
 | `codex.repo.rules` | `documented` | `[experimental]` | Inspector ruleは文書化済みdirect childだけをadmitし、未確立のnestingを除外する |
 
 固定qualifier順は`preview`、`experimental`、`deprecated`とする。ここでは複数qualifierを持つrowはないが、一般の
-orderingは必須のままである。Typed registryはdefaultとexceptionをsubjectごとに1 recordへ展開する。Candidate
-provenanceとrelationship DTOは、直接参照するrule/behavior/strategyのassessmentをsort/deduplicate済み
-`EvidenceAssessment[]`へすべて保持し、scalarまたはqualifier unionへ平坦化しない。
+orderingは必須のままである。Typed registryはdefaultとexceptionをsubjectごとに1 recordへ展開する。これらは
+maintenance recordであり、どのresponseも運ばない（QR-005）。Candidate provenanceが公開するのはどのruleが
+fileをadmitしたかであって、そのruleがどれだけ文書化されているかではない。
 
 ## 文書化済みRepository behavior
 
@@ -80,7 +80,7 @@ Standalone `.mcp.json`はCodex Repository candidateではない。Inspectorは�
 
 ## Derived Repository rule
 
-`Status`はupstream evidenceに関するhuman-readable rationaleであり、ruleの正確な`EvidenceAssessment`は上記canonical
+`Status`はupstream evidenceに関するhuman-readable rationaleであり、ruleの正確なdocumentation statusは上記canonical
 indexが所有する。`documented` assessmentであっても、Inspectorのclosed derivationがCodex product behaviorに
 なるわけではない。
 
@@ -151,9 +151,9 @@ Relationship-only `ruleId`は[Runtime Composition](../runtime-composition.ja.md)
 non-normative indexにすぎない。Codexではこれらのruleがarbitrary config path、plugin component declaration、hook
 command、server-provided MCP instruction、parent/child custom-agent contextを扱い、target readを認可しない。
 
-Grouped User exclusionは自身のassessmentとしてlifecycle claimなしの`documented`を持つ。Record単位のassessment
-arrayは参照先のexperimental ruleとdeprecated promptを別々に保持し、それらbehavior qualifierをexclusion ruleまたは
-unionへ平坦化しない。
+Grouped User exclusionは自身のassessmentとしてlifecycle claimなしの`documented`を持つ。参照先の
+experimental ruleとdeprecated promptはそれぞれ自身のmaintenance recordと自身のqualifierを保持する。それらを
+exclusion ruleやunionへ平坦化するものは無く、まとめて運ぶassessment arrayも存在しない。
 
 | Rule ID | Class | Excluded group | Behavior refs | Policy refs | Strategy refs | Status | Evidence |
 |---|---|---|---|---|---|---|---|
@@ -163,16 +163,19 @@ unionへ平坦化しない。
 ## Initial releaseの規範的presentation allowlist
 
 次の表を、OpenAI Codexに対するclosedなFR-007 presentation allowlistとする。Kindの表記は正確な
-`ToolRecognition.kind` valueである。Field IDは、調査対象fileが与える任意のkeyではなく、認識したkindの
-fieldを1つ表し、そのfieldについてparserが解決した値を持つentryを1件生成する。Server、Hook event、environment、
-header、tool、named componentの`*.name` IDでは、その値はauthored map keyである。
-`marketplace.plugin.source`は唯一のcross-vendor derivation fieldであり、plain stringのsource、またはobject sourceの
-`path` leafを表す。
+`ToolRecognition.kind`値とする。
 
-最終列はcommentaryではなく、規範的なsource-form applicabilityである。Effective eligibilityは、rowのclosedな
-field/relationship setと、candidate provenanceが示す実際のadmission済みsource formについてexact extractorがsupportする
-occurrenceのintersectionとする。1つのrowに複数formを記載しても、それらのschemaをunionしたり、1つのformのfieldを
-別formでeligibleにしたりしない。Conformance fixture/testは両gateをcoverする。
+本releaseは読み取ったsourceの傍らに宣言済みmetadataを公開しない: detail surfaceは完全な
+authored `sourceText`を提供するため、すべてのauthored valueは既に同じ画面に自身の綴りで存在しており、
+caption付きの複製は1つの事実の2つ目の綴りになる。Recognitionが読み出すのはfile自身の宣言であり、fileが書いたkeyで公開する
+（data-model.ja.md § Skillの表示）。そのうちinventory rowがgroupingに使うのは、そのkindのidentity
+— `skill`ならそのfile自身に記述された名前 — である。したがって本表が固定するのは、eligibleな
+relationship kindとadmit済みsource formだけである。
+
+最終列は規範的なsource-form applicabilityであり、注釈ではない。実効的なeligibilityは、rowのclosedな
+relationship setと、candidate provenanceが特定する実際のadmit済みsource formについてsupportされる
+exactなextractor occurrenceとの積集合とする。1つのrowに複数formを挙げても、それらのschemaをunionしたり、
+一方のformのreferenceを他方でeligibleにしたりしない。Conformance fixtureとtestが両方のgateをcoverする。
 
 Implementation開始時点で、この英日tableと[official-source contract](../official-sources.ja.md)に記録した言語別SHA-256
 digest 2件をfreeze済みの承認済みdesign inputとする。Implementation gateはそれらを再計算してverifyするだけで、
@@ -182,22 +185,22 @@ eligible set、source form、extractor applicability、relationship kindをautho
 
 各rowは網羅的であり、`—`はeligible setが空であることを意味する。単一のadmission済み`.codex/config.toml` carrierは、
 別々の`MCP`、`settings/config`、contained `hook` recognitionを所有できる。各occurrenceはそのdeclaration familyを所有する
-rowだけに属する。未列挙のkeyとreferenceは、完全な`sourceText`だけに残す。Relationshipは、そのkindがこの表にあり、
+rowだけに属する。Allowlistが記載しないreferenceは、完全な`sourceText`だけに残す。宣言とその公開の間にallowlistは立たない: skillの宣言はfileが書いたkeyであり、authored keyの集合は閉じていない（FR-007）。Relationshipは、そのkindがこの表にあり、
 かつoriginが中央registryの適切なrelationship-only ruleでcoverされる場合だけemitできる。このallowlistはread、
 connection、execution、import、installation、activationのauthorityを一切与えない。
 
-| `ToolRecognition.kind` | Eligibleなdeclared-metadata `fieldId` value | Eligibleな`Relationship.kind` value | Initial-release source form |
-|---|---|---|---|
-| `instructions` | `codex.instructions.reference-target` | `runtime-reference` | 受理済みstatic、configured-fallback、またはGlobal instruction file内の正確なauthored import/reference target token。Path-derived scope/orderとbyte-budget factはtyped stateでありmetadataではない |
-| `rule` | `codex.rule.pattern`<br>`codex.rule.decision`<br>`codex.rule.justification`<br>`codex.rule.match`<br>`codex.rule.not-match` | `runtime-reference` | 受理済みdirect-child `.rules` fileの正確なargument/value/item occurrence。Commentと未列挙Starlark expressionはsource textだけに残す |
-| `skill` | `codex.skill.name`<br>`codex.skill.description` | `skill-resource`<br>`runtime-reference` | 受理済み`SKILL.md`の正確な`name`と`description` frontmatter value。Resource/script/reference targetはrelationshipになり得るが、そのedgeを通じてreadしない |
-| `agent` | `codex.agent.name`<br>`codex.agent.description`<br>`codex.agent.developer-instructions`<br>`codex.agent.nickname-candidate`<br>`codex.agent.model`<br>`codex.agent.model-reasoning-effort`<br>`codex.agent.sandbox-mode`<br>`codex.agent.mcp-server.name`<br>`codex.agent.skill.path`<br>`codex.agent.skill.enabled` | `agent-reference`<br>`skill-resource`<br>`context-inheritance`<br>`runtime-reference` | 受理済み`.codex/agents/*.toml`の正確なsupported TOML value/item/map-key occurrence。MCPはinherited/carrier relationshipのままで、agent所有のMCP recognitionにはならない |
-| `hook` | `codex.hook.description`<br>`codex.hook.event`<br>`codex.hook.matcher`<br>`codex.hook.handler.type`<br>`codex.hook.handler.command`<br>`codex.hook.handler.command-windows`<br>`codex.hook.handler.timeout`<br>`codex.hook.handler.status-message`<br>`codex.hook.handler.async` | `runtime-reference` | 受理済みstandalone `hooks.json`またはinline `[hooks]`のevent map key、matcher value、handler leaf。同じlayerのstandalone occurrenceとinline occurrenceは別provenanceのままとする |
-| `MCP` | `codex.mcp.server.name`<br>`codex.mcp.server.command`<br>`codex.mcp.server.arg`<br>`codex.mcp.server.env.name`<br>`codex.mcp.server.env.value`<br>`codex.mcp.server.env-var`<br>`codex.mcp.server.cwd`<br>`codex.mcp.server.experimental-environment`<br>`codex.mcp.server.url`<br>`codex.mcp.server.auth`<br>`codex.mcp.server.bearer-token-env-var`<br>`codex.mcp.server.http-header.name`<br>`codex.mcp.server.http-header.value`<br>`codex.mcp.server.env-http-header.name`<br>`codex.mcp.server.env-http-header.value`<br>`codex.mcp.server.startup-timeout-sec`<br>`codex.mcp.server.tool-timeout-sec`<br>`codex.mcp.server.enabled`<br>`codex.mcp.server.required`<br>`codex.mcp.server.enabled-tool`<br>`codex.mcp.server.disabled-tool`<br>`codex.mcp.server.default-tools-approval-mode`<br>`codex.mcp.server.tool.name`<br>`codex.mcp.server.tool.approval-mode` | `runtime-reference` | Admission済みconfig carrierの`[mcp_servers.*]`配下にあるserver/table nameと正確なsupported leaf/item occurrence。Process environment valueは置換しない |
-| `settings/config` | `codex.config.model`<br>`codex.config.model-provider`<br>`codex.config.model-reasoning-effort`<br>`codex.config.approval-policy`<br>`codex.config.sandbox-mode`<br>`codex.config.web-search`<br>`codex.config.personality`<br>`codex.config.service-tier`<br>`codex.config.project-doc-max-bytes`<br>`codex.config.project-doc-fallback-filename`<br>`codex.config.model-instructions-file`<br>`codex.config.experimental-compact-prompt-file`<br>`codex.config.agent.name`<br>`codex.config.agent.config-file`<br>`codex.config.skill.path`<br>`codex.config.skill.enabled` | `agent-reference`<br>`skill-resource`<br>`runtime-reference`<br>`fallback` | Admission済みconfig carrierの正確なsupported TOML value/item/map-key occurrence。MCP/Hook declarationは別のrecognition rowだけに属し、configured target pathはread authorityを得ない |
-| `plugin` | `codex.plugin.name`<br>`codex.plugin.version`<br>`codex.plugin.description`<br>`codex.plugin.author.name`<br>`codex.plugin.author.email`<br>`codex.plugin.author.url`<br>`codex.plugin.homepage`<br>`codex.plugin.repository`<br>`codex.plugin.license`<br>`codex.plugin.keyword`<br>`codex.plugin.skills`<br>`codex.plugin.mcp-servers`<br>`codex.plugin.apps`<br>`codex.plugin.hooks`<br>`codex.plugin.interface.display-name`<br>`codex.plugin.interface.short-description`<br>`codex.plugin.interface.long-description`<br>`codex.plugin.interface.developer-name`<br>`codex.plugin.interface.category`<br>`codex.plugin.interface.capability`<br>`codex.plugin.interface.website-url`<br>`codex.plugin.interface.privacy-policy-url`<br>`codex.plugin.interface.terms-of-service-url`<br>`codex.plugin.interface.default-prompt`<br>`codex.plugin.interface.brand-color`<br>`codex.plugin.interface.composer-icon`<br>`codex.plugin.interface.logo`<br>`codex.plugin.interface.screenshot` | `declared-component`<br>`skill-resource`<br>`runtime-reference` | 受理済み`.codex-plugin/plugin.json`の正確なmetadata/component/presentation leaf/item occurrence。`hooks` field omitted時はregistry定義済みdocumented-default component relationshipだけをemitできる |
-| `marketplace` | `marketplace.name`<br>`marketplace.interface.display-name`<br>`marketplace.plugin.name`<br>`marketplace.plugin.source`<br>`marketplace.plugin.source.type`<br>`marketplace.plugin.source.url`<br>`marketplace.plugin.source.ref`<br>`marketplace.plugin.source.sha`<br>`marketplace.plugin.source.package`<br>`marketplace.plugin.source.version`<br>`marketplace.plugin.source.registry`<br>`marketplace.plugin.policy.installation`<br>`marketplace.plugin.policy.authentication`<br>`marketplace.plugin.category` | `plugin-source`<br>`runtime-reference` | 受理済みRepository-root marketplace fileの正確なcatalog/plugin-entry leaf/item occurrence。`marketplace.plugin.source`だけがclosedなlocal-manifest derivationをseedできる |
-| `skill metadata` | `codex.skill-metadata.interface.display-name`<br>`codex.skill-metadata.interface.short-description`<br>`codex.skill-metadata.interface.icon-small`<br>`codex.skill-metadata.interface.icon-large`<br>`codex.skill-metadata.interface.brand-color`<br>`codex.skill-metadata.interface.default-prompt`<br>`codex.skill-metadata.policy.allow-implicit-invocation`<br>`codex.skill-metadata.dependency.tool.type`<br>`codex.skill-metadata.dependency.tool.value`<br>`codex.skill-metadata.dependency.tool.description`<br>`codex.skill-metadata.dependency.tool.transport`<br>`codex.skill-metadata.dependency.tool.url` | `skill-resource`<br>`runtime-reference` | Derived `agents/openai.yaml`の正確なsupported YAML leaf/item occurrence。Seed provenanceはtyped stateであり、このfileはowner `SKILL.md`のmetadata identityを継承しない |
+| `ToolRecognition.kind` | Eligibleな`Relationship.kind` value | Initial-release source form |
+|---|---|---|
+| `instructions` | `runtime-reference` | 受理済みstatic、configured-fallback、またはGlobal instruction file内の正確なauthored import/reference target token。Path-derived scope/orderとbyte-budget factはtyped stateでありmetadataではない |
+| `rule` | `runtime-reference` | 受理済みdirect-child `.rules` fileの正確なargument/value/item occurrence。Commentと未列挙Starlark expressionはsource textだけに残す |
+| `skill` | `skill-resource`<br>`runtime-reference` | 受理済み`SKILL.md`の正確な`name`と`description` frontmatter value。Resource/script/reference targetはrelationshipになり得るが、そのedgeを通じてreadしない |
+| `agent` | `agent-reference`<br>`skill-resource`<br>`context-inheritance`<br>`runtime-reference` | 受理済み`.codex/agents/*.toml`の正確なsupported TOML value/item/map-key occurrence。MCPはinherited/carrier relationshipのままで、agent所有のMCP recognitionにはならない |
+| `hook` | `runtime-reference` | 受理済みstandalone `hooks.json`またはinline `[hooks]`のevent map key、matcher value、handler leaf。同じlayerのstandalone occurrenceとinline occurrenceは別provenanceのままとする |
+| `MCP` | `runtime-reference` | Admission済みconfig carrierの`[mcp_servers.*]`配下にあるserver/table nameと正確なsupported leaf/item occurrence。Process environment valueは置換しない |
+| `settings/config` | `agent-reference`<br>`skill-resource`<br>`runtime-reference`<br>`fallback` | Admission済みconfig carrierの正確なsupported TOML value/item/map-key occurrence。MCP/Hook declarationは別のrecognition rowだけに属し、configured target pathはread authorityを得ない |
+| `plugin` | `declared-component`<br>`skill-resource`<br>`runtime-reference` | 受理済み`.codex-plugin/plugin.json`の正確なmetadata/component/presentation leaf/item occurrence。`hooks` field omitted時はregistry定義済みdocumented-default component relationshipだけをemitできる |
+| `marketplace` | `plugin-source`<br>`runtime-reference` | 受理済みRepository-root marketplace fileの正確なcatalog/plugin-entry leaf/item occurrence。`marketplace.plugin.source`だけがclosedなlocal-manifest derivationをseedできる |
+| `skill metadata` | `skill-resource`<br>`runtime-reference` | Derived `agents/openai.yaml`の正確なsupported YAML leaf/item occurrence。Seed provenanceはtyped stateであり、このfileはowner `SKILL.md`のmetadata identityを継承しない |
 
 Initial releaseのCodex recognitionは、sharedな`prompt/command`または`output style` kindを使用しない。
 Initial releaseのrecognitionは`skill metadata` kindも使用しない: sibling `agents/openai.yaml`は
@@ -205,7 +208,7 @@ candidateとしてadmissionされず、所有元skillのcensus companionとし�
 （§ Derived Repository rule）、上の`skill metadata` rowは消費者を持たないfrozen・digest記録済みの
 design inputである。そのrowの消費または削除は、official-source contractの
 stop-and-regenerate ruleに従うdigest記録済みの変更である。Typed layer、
-path-derived scope、selection、precedence、trust、default、applicability factはauthored metadataではないため、追加field IDにはしない。
+path-derived scope、selection、precedence、trust、default、applicability factはauthored metadataではなく、どのsurfaceも公開しない。
 
 ## 既知の不確実性と必須condition fact
 

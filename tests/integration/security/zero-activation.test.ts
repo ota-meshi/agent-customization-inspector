@@ -397,11 +397,9 @@ describe('parsing, extraction, and detail activate nothing (T085)', () => {
     if (publication.kind !== 'publishable') {
       throw new Error('expected a publishable scan');
     }
-    const details = publication.recognitions[0]?.details;
-    if (details?.kind !== 'skill') {
-      throw new Error('expected a skill recognition');
-    }
-    expect(details.companionFiles).toEqual([
+    const companionFiles =
+      publication.skillCompanionsByPath.get('.agents/skills/greet/SKILL.md') ?? [];
+    expect(companionFiles).toEqual([
       '.agents/skills/greet/reference.md',
       '.agents/skills/greet/scripts/run.sh',
     ]);
@@ -417,7 +415,7 @@ describe('parsing, extraction, and detail activate nothing (T085)', () => {
     );
     // Published as ordinary files that no rule admitted and nothing recognized:
     // no published recognition names them.
-    for (const companion of details.companionFiles) {
+    for (const companion of companionFiles) {
       const file = publication.files.find((one) => one.sourceRelativePath === companion);
       expect(file).toBeDefined();
       expect(publication.recognitions.filter((one) => one.fileId === file?.fileId)).toEqual([]);

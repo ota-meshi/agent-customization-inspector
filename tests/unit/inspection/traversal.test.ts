@@ -13,7 +13,7 @@ import {
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import * as fsIo from '../../../src/server/inspection/fs-io';
@@ -28,7 +28,7 @@ import {
   type TraversalFixtureTree,
 } from '../../fixtures/filesystem/build-filesystem-fixtures';
 import { ANY_DIRECTORIES, TraversalPlan } from '../../../src/server/inspection/rules/registry';
-import { runTraversalScan } from '../../../src/server/inspection/traversal';
+import { isVcsInternalPath, runTraversalScan } from '../../../src/server/inspection/traversal';
 
 // Wrap the inspection module's closed fs surface in pass-through spies:
 // the product's calls stay real (fixtures are actually read) while the
@@ -316,6 +316,49 @@ describe('ordinary recursive walk (T019)', () => {
       }
       rmSync(root, { recursive: true, force: true });
     }
+  });
+});
+
+describe('VCS-internal exclusion by resolved path', () => {
+  // The predicate is pure over two realpath results, so the platform-specific
+  // shapes — including the Windows cross-drive alias, which this suite cannot
+  // create on a POSIX runner — are exercised directly.
+  const asPath = (...segments: string[]) => segments.join(sep);
+
+  it('excludes a resolved target under VCS internals below the container', () => {
+    expect(isVcsInternalPath(asPath('', 'repo'), asPath('', 'repo', '.git', 'objects'))).toBe(true);
+  });
+
+  it('exempts the container itself and ordinary descendants', () => {
+    expect(isVcsInternalPath(asPath('', 'repo'), asPath('', 'repo'))).toBe(false);
+    expect(isVcsInternalPath(asPath('', 'repo'), asPath('', 'repo', 'src'))).toBe(false);
+  });
+
+  it('exempts VCS names the container carries in its own ancestry', () => {
+    // A checkout at /srv/.git/worktree is an ordinary root: the shared prefix
+    // is not evidence the scan descended into an object store.
+    expect(
+      isVcsInternalPath(
+        asPath('', 'srv', '.git', 'worktree'),
+        asPath('', 'srv', '.git', 'worktree', 'file'),
+      ),
+    ).toBe(false);
+  });
+
+  it('excludes an alias target under VCS internals outside the container', () => {
+    expect(
+      isVcsInternalPath(asPath('', 'container'), asPath('', 'elsewhere', '.git', 'hooks')),
+    ).toBe(true);
+  });
+
+  it('excludes an alias target sharing no prefix with the container', () => {
+    // The POSIX stand-in for a Windows cross-drive alias: `path.relative`
+    // between two drives yields an absolute path, so a relative()-based check
+    // would wave the target through while the same target on the container's
+    // volume is excluded. Segment comparison answers both alike.
+    expect(
+      isVcsInternalPath(asPath('C:', 'container'), asPath('D:', 'checkout', '.git', 'objects')),
+    ).toBe(true);
   });
 });
 

@@ -106,7 +106,7 @@ test('shows no near-miss path and no authored source text', async ({ page }) => 
 
 test('presents the escaped root label distinctly from every item path', async ({ page }) => {
   await page.goto(host.origin);
-  const rootLabel = page.locator('.aci-display-root');
+  const rootLabel = page.locator('.aci-inventory-page__display-root');
   await expect(rootLabel).toHaveCount(1);
 
   // The root label lives in its own labelled field, above the list; no
@@ -122,7 +122,7 @@ test('presents the escaped root label distinctly from every item path', async ({
 
 test('never offers the root label as something to open or navigate to', async ({ page }) => {
   await page.goto(host.origin);
-  const label = page.locator('.aci-display-root');
+  const label = page.locator('.aci-inventory-page__display-root');
   // Inert by construction: not a link, not a control, not focusable.
   await expect(label.locator('a, button, input')).toHaveCount(0);
   expect(await label.evaluate((element) => element.closest('a, button') !== null)).toBe(false);
@@ -146,7 +146,7 @@ test('shows each skill by the name authored in its own file', async ({ page }) =
   await page.goto(host.origin);
   // `ship-it` lives in `.agents/skills/deploy/`, so a row showing it proves the
   // name came from the frontmatter rather than the directory segment (FR-007).
-  await expect(page.locator('.aci-declared-name')).toHaveText(['greet', 'ship-it']);
+  await expect(page.locator('.aci-skill-row__declared-name')).toHaveText(['greet', 'ship-it']);
   // Each row names the files declaring it; the name is the row's unit, and the
   // path says which file authored it.
   await expect(page.locator('.aci-item .aci-path')).toHaveText([
@@ -181,7 +181,7 @@ test('shows one row for a name two files declare, with each product\u2019s rule'
       { timeout: 1_000 },
     );
   }).toPass();
-  await expect(page.locator('.aci-scan-status')).toContainText('Committed generation');
+  await expect(page.locator('.aci-scan-progress')).toContainText('Committed generation');
   // The row states what each product documents and never orders the two:
   // Codex keeps both and documents no precedence among the scopes.
   await expect(grouped).toContainText('OpenAI Codex keeps all of them, in no documented order');
@@ -205,9 +205,40 @@ test('renders the path alone for a skill that declares no name', async ({ page }
       timeout: 1_000,
     });
   }).toPass();
-  await expect(page.locator('.aci-scan-status')).toContainText('Committed generation');
+  await expect(page.locator('.aci-scan-progress')).toContainText('Committed generation');
   // No name element at all: not the directory segment, and not a placeholder.
-  await expect(row.locator('.aci-declared-name')).toHaveCount(0);
+  await expect(row.locator('.aci-skill-row__declared-name')).toHaveCount(0);
+});
+
+test('keeps two names that both draw nothing apart', async ({ page }) => {
+  // A declared name of nothing but whitespace is a name, and two skills whose
+  // names differ only in how much of it they hold are two rows. Rendering the
+  // note in place of the name would show them as one row twice (FR-025).
+  await mkdir(join(fixture, '.agents/skills/blank-one'), { recursive: true });
+  await mkdir(join(fixture, '.agents/skills/blank-two'), { recursive: true });
+  await writeFile(
+    join(fixture, '.agents/skills/blank-one/SKILL.md'),
+    "---\nname: ' '\n---\n",
+    'utf8',
+  );
+  await writeFile(
+    join(fixture, '.agents/skills/blank-two/SKILL.md'),
+    "---\nname: '  '\n---\n",
+    'utf8',
+  );
+  await page.goto(host.origin);
+  await page.getByRole('button', { name: 'Rescan repository' }).click();
+  const rows = page.locator('.aci-item').filter({ hasText: '.agents/skills/blank-' });
+  await expect(async () => {
+    await page.getByRole('button', { name: 'Refresh status' }).click();
+    await expect(rows).toHaveCount(2, { timeout: 1_000 });
+  }).toPass();
+  // `textContent`, not `toHaveText`: the matcher normalizes whitespace, which
+  // is exactly the difference under test.
+  const names = rows.locator('.aci-skill-row__declared-name .aci-authored-text');
+  expect(await names.nth(0).textContent()).toBe(' ');
+  expect(await names.nth(1).textContent()).toBe('  ');
+  await expect(rows.first()).toContainText('(name with no visible characters)');
 });
 
 test('filters the list by tool and Source-relative path', async ({ page }) => {
@@ -216,7 +247,7 @@ test('filters the list by tool and Source-relative path', async ({ page }) => {
 
   await page.getByLabel('Path contains').fill('greet');
   await expect(page.locator('.aci-item')).toHaveCount(1);
-  await expect(page.locator('.aci-filters')).toContainText('Showing 1 of 2');
+  await expect(page.locator('.aci-inventory-filters')).toContainText('Showing 1 of 2');
 
   await page.getByRole('button', { name: 'Clear filters' }).click();
   await expect(page.locator('.aci-item')).toHaveCount(2);
@@ -255,7 +286,7 @@ test('shows the filtered empty state without claiming the repository is empty', 
 
 test('rescans on demand and keeps the status tied to that request', async ({ page }) => {
   await page.goto(host.origin);
-  await expect(page.locator('.aci-scan-status')).toContainText('Ready');
+  await expect(page.locator('.aci-scan-progress')).toContainText('Ready');
 
   await page.getByRole('button', { name: 'Rescan repository' }).click();
   // The command's own status is adopted immediately; the committed result
@@ -264,10 +295,10 @@ test('rescans on demand and keeps the status tied to that request', async ({ pag
   // still running shows `scanning`, and nothing would ever fetch again.
   await expect(async () => {
     await page.getByRole('button', { name: 'Refresh status' }).click();
-    await expect(page.locator('.aci-scan-status')).toContainText('Ready', { timeout: 1_000 });
+    await expect(page.locator('.aci-scan-progress')).toContainText('Ready', { timeout: 1_000 });
   }).toPass();
   await expect(page.locator('.aci-item')).toHaveCount(2);
-  await expect(page.locator('.aci-scan-status')).toContainText('Committed generation');
+  await expect(page.locator('.aci-scan-progress')).toContainText('Committed generation');
 });
 
 test('opens a definition by its file identity, not by its path', async ({ page }) => {
@@ -295,7 +326,11 @@ test('operates every inventory control from the keyboard', async ({ page }) => {
 
   // Every control is a native form element, so it is reachable by Tab and
   // has a programmatic name (contracts/accessibility-acceptance.md).
-  for (const id of ['aci-filter-source', 'aci-filter-tool', 'aci-filter-path']) {
+  for (const id of [
+    'aci-inventory-filters-source',
+    'aci-inventory-filters-tool',
+    'aci-inventory-filters-path',
+  ]) {
     await expect(page.locator(`label[for="${id}"]`)).toHaveCount(1);
   }
   // Kind moved out of the filter form into a tab strip, which carries its own
@@ -320,9 +355,9 @@ test('operates every inventory control from the keyboard', async ({ page }) => {
       }),
     );
   }
-  expect(reached).toContain('#aci-filter-source');
-  expect(reached).toContain('#aci-filter-tool');
-  expect(reached).toContain('#aci-filter-path');
+  expect(reached).toContain('#aci-inventory-filters-source');
+  expect(reached).toContain('#aci-inventory-filters-tool');
+  expect(reached).toContain('#aci-inventory-filters-path');
   // The rescan control too: `.focus()` below proves Enter activates it, which
   // says nothing about a keyboard user ever arriving there.
   expect(reached.some((stop) => stop.includes('Rescan repository'))).toBe(true);
@@ -339,7 +374,7 @@ test('operates every inventory control from the keyboard', async ({ page }) => {
   // Focusing a tab leaves it selected — selection follows focus for this strip.
   // The arrow and Home/End mapping is not asserted here and cannot be: one kind
   // ships an inventory, so the rendered strip has a single tab and every arrow
-  // press is a no-op. `tests/unit/app/kind-tab-navigation.test.ts` drives that
+  // press is a no-op. `tests/unit/app/tab-navigation.test.ts` drives that
   // mapping directly against a multi-kind strip.
   const tabs = page.getByRole('tab');
   await tabs.first().focus();

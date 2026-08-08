@@ -1,19 +1,19 @@
-// T078: Codex `skill` metadata recognition against its presentation allowlist
-// (contracts/vendors/openai-codex.md § Normative initial-release presentation
-// allowlist, FR-007, FR-028).
+// T078: the Codex skill's declared-name reading (data-model.md § Field
+// reading, FR-007, FR-028).
 //
-// The allowlist is a closed membership test, not a starting point. The Codex
-// `skill` row names exactly `codex.skill.name` and `codex.skill.description`,
-// so an authored key outside it produces no entry however meaningful it looks —
-// and no field is inferred from a key's shape or name. These tests are what
-// keeps that from drifting into "extract whatever the frontmatter has".
+// The name is the one authored value recognition uses as identity: the key of
+// a grouped inventory row and the heading a detail page shows. These cases pin
+// its resolution semantics — the value a product loading the file has — while
+// the detail-specific case proves every authored frontmatter entry,
+// credential-shaped keys included, reaches the recognition in authored order.
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { recognizeCodexCandidate } from '../../../src/server/inspection/recognizers/codex';
+import { recognizeCandidateForVendor } from '../../../src/server/inspection/recognizers/candidate';
 import { CODEX_REPOSITORY_RULES } from '../../../src/server/inspection/rules/codex';
 import {
+  CONTENT_FIXTURE_SECRET,
   MALFORMED_SKILL_CONTENT_CASES,
   SKILL_CONTENT_CASES,
 } from '../../fixtures/content/build-fixtures';
@@ -42,14 +42,17 @@ afterAll(() => {
 /** Recognizes one authored `SKILL.md` at the fixture path. */
 async function recognize(sourceText: string): Promise<ToolRecognitionDto> {
   const matchedPath = '.agents/skills/greet/SKILL.md';
-  const { recognitions } = await recognizeCodexCandidate({
-    fileId: 'file-1',
-    matchedPath,
-    absolutePath: join(root, matchedPath),
-    sourceRoot: root,
-    admissions: [{ compiled: codexSkillRule!, origin: { planIndex: 0, selectorIndex: 0 } }],
-    sourceText,
-  });
+  const { recognitions } = await recognizeCandidateForVendor(
+    {
+      fileId: 'file-1',
+      matchedPath,
+      absolutePath: join(root, matchedPath),
+      sourceRoot: root,
+      admissions: [{ compiled: codexSkillRule!, origin: { planIndex: 0, selectorIndex: 0 } }],
+      sourceText,
+    },
+    'codex',
+  );
   const [recognition] = recognitions;
   if (recognition === undefined) {
     throw new Error('expected one Codex recognition');
@@ -57,98 +60,71 @@ async function recognize(sourceText: string): Promise<ToolRecognitionDto> {
   return recognition;
 }
 
-describe('Codex skill metadata', () => {
+describe('Codex skill declared name', () => {
   it.each(SKILL_CONTENT_CASES.map((testCase) => [testCase.id, testCase] as const))(
-    'publishes exactly the allowlisted fields: %s',
+    'publishes the name the parser resolved: %s',
     async (_id, testCase) => {
       const recognition = await recognize(testCase.sourceText);
       expect(recognition.parseStatus).toBe('parsed');
-      const byField = new Map(
-        recognition.declaredMetadata.map((entry) => [entry.fieldId, entry.value]),
-      );
-      expect(byField.get('codex.skill.name') ?? null).toBe(testCase.name);
-      expect(byField.get('codex.skill.description') ?? null).toBe(testCase.description);
-      // Nothing outside the two allowlisted field IDs is ever published, and one
-      // entry per field: the map above would have collapsed a repeat.
-      expect(byField.size).toBe(recognition.declaredMetadata.length);
-      expect(
-        recognition.declaredMetadata.every(
-          (entry) =>
-            entry.fieldId === 'codex.skill.name' || entry.fieldId === 'codex.skill.description',
-        ),
-      ).toBe(true);
-    },
-  );
-
-  it.each(SKILL_CONTENT_CASES.map((testCase) => [testCase.id, testCase] as const))(
-    'declares the identity its name field resolved to: %s',
-    async (_id, testCase) => {
-      const recognition = await recognize(testCase.sourceText);
       const declaredName =
         recognition.details.kind === 'skill' ? (recognition.details.declaredName ?? null) : null;
-      // The same value the field publishes, because there is one: a row and a
-      // detail view that disagreed about a skill's name would be two readings
-      // of one file.
       expect(declaredName).toBe(testCase.name);
     },
   );
 
-  it('publishes the fields in the allowlist row\u2019s order, not the file\u2019s', async () => {
-    // The row is the presentation order, so two skills read the same way
-    // whichever order their authors happened to write the keys in.
-    const recognition = await recognize('---\ndescription: d\nname: n\n---\n');
-    expect(recognition.declaredMetadata).toEqual([
-      { fieldId: 'codex.skill.name', value: 'n' },
-      { fieldId: 'codex.skill.description', value: 'd' },
+  it('publishes the declarations and the instructions apart', async () => {
+    // The detail surface is built from this: the keys the file declares, in
+    // authored order, and the body with its frontmatter block removed. The
+    // split is the parser's, so the two never overlap and nothing is invented.
+    const recognition = await recognize(
+      `---\nname: greet\ndescription: says hello\napi_key: ${CONTENT_FIXTURE_SECRET}\n---\n\n# Greet\n`,
+    );
+    if (recognition.details.kind !== 'skill') {
+      throw new Error('expected a skill recognition');
+    }
+    expect(recognition.details.frontmatter).toEqual([
+      { key: 'name', value: { kind: 'scalar', text: 'greet' } },
+      { key: 'description', value: { kind: 'scalar', text: 'says hello' } },
+      { key: 'api_key', value: { kind: 'scalar', text: CONTENT_FIXTURE_SECRET } },
     ]);
+    expect(recognition.details.bodyText).toBe('\n# Greet\n');
+    // Nothing the file did not write: the recognition carries no copy of the
+    // complete source, which the detail response serves once as `sourceText`.
+    expect(JSON.stringify(recognition)).not.toContain('sourceText');
   });
 
   it.each(MALFORMED_SKILL_CONTENT_CASES.map((testCase) => [testCase.id, testCase] as const))(
-    'fails the whole recognition without publishing partial metadata: %s',
+    'fails the whole recognition without guessing a name: %s',
     async (_id, testCase) => {
       const recognition = await recognize(testCase.sourceText);
       expect(recognition.parseStatus).toBe('failed');
-      expect(recognition.declaredMetadata).toEqual([]);
       // The file itself is unaffected: it stays an admitted, readable
       // candidate whose complete source the detail route serves (FR-028).
       expect(recognition.details.kind).toBe('skill');
+      expect(recognition.details.kind === 'skill' && 'declaredName' in recognition.details).toBe(
+        false,
+      );
     },
   );
 
-  it('records the admitting rule and its documentation state on every provenance', async () => {
+  it('records the admitting rule and the path it matched on every provenance', async () => {
     const recognition = await recognize('---\nname: greet\n---\n');
-    const [provenance] = recognition.provenances;
-    expect(provenance?.ruleId).toBe('codex.repo.skill');
-    expect(provenance?.discoveryClass).toBe('static-candidate');
-    // Record by record, never a scalar: a reduction would hide that the
-    // strategy is only partially documented while the rule is documented.
-    expect(provenance?.evidenceAssessments).toEqual([
+    expect(recognition.provenances).toEqual([
       {
-        subjectKind: 'behavior',
-        subjectId: 'codex.behavior.repo.skills',
-        documentationStatus: 'documented',
-        lifecycleQualifiers: [],
-      },
-      {
-        subjectKind: 'rule',
-        subjectId: 'codex.repo.skill',
-        documentationStatus: 'documented',
-        lifecycleQualifiers: [],
-      },
-      {
-        subjectKind: 'strategy',
-        subjectId: 'codex.skills.discovery',
-        documentationStatus: 'partially-documented',
-        lifecycleQualifiers: [],
+        ruleId: 'codex.repo.skill',
+        discoveryClass: 'static-candidate',
+        matchedPath: '.agents/skills/greet/SKILL.md',
       },
     ]);
   });
 
-  it('resolves no environment reference an authored value contains', async () => {
+  it('resolves no environment reference the declared name contains', async () => {
     // The literal is published as written; nothing looks up `HOME` or `TOKEN`,
-    // so no process value can reach a response.
-    const recognition = await recognize('---\ndescription: "$HOME/${TOKEN}"\n---\n');
-    expect(recognition.declaredMetadata[0]?.value).toBe('$HOME/${TOKEN}');
+    // so no process value can reach a response (FR-026).
+    const recognition = await recognize('---\nname: "$HOME/${TOKEN}"\n---\n');
+    expect(recognition.details.kind === 'skill' && recognition.details.declaredName).toBe(
+      '$HOME/${TOKEN}',
+    );
     expect(JSON.stringify(recognition)).not.toContain(process.env['HOME'] ?? '\0unset');
   });
 });

@@ -14,10 +14,10 @@
 // these citations are its implementation counterpart rather than a second
 // registry.
 //
-// Nothing in the product reads a citation. `EvidenceAssessment` records how
-// completely a subject is documented, never where, so the shipped CLI has no
-// use for URLs, review dates, or paraphrases, so a packaged build drops them
-// (src/shared/registries/maintenance-data.ts).
+// Nothing in the product reads a citation. A record's own
+// `documentationStatus` says how completely it is documented, never where, so
+// the shipped CLI has no use for URLs, review dates, or paraphrases, and a
+// packaged build drops them (src/shared/registries/maintenance-data.ts).
 
 import type { SourceId } from './identifier-types';
 

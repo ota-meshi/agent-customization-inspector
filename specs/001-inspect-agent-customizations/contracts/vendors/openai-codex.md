@@ -25,12 +25,12 @@ hosted tasks.
 
 ## Canonical evidence-assessment index
 
-Every `behaviorId` and `ruleId` owned by this contract has exactly one
-`EvidenceAssessment`. Unless listed below, its canonical values are
+Every `behaviorId` and `ruleId` owned by this contract states its own
+`documentationStatus` and `lifecycleQualifiers`. Unless listed below, its canonical values are
 `documentationStatus: documented` and `lifecycleQualifiers: []`. This is a closed mapping
 for every unlisted subject, not an inference from an Evidence cell. Empty qualifiers make
 no lifecycle claim and never mean `stable`; `documentation-conflict` remains solely a
-runtime `ConditionFact.status`. Existing Status, Documentation status, and Inspector status
+not a documentation status. Existing Status, Documentation status, and Inspector status
 columns are rationale or Inspector-scope state, not serialized status scalars.
 
 | Subject ID | `documentationStatus` | `lifecycleQualifiers` | Assessment basis |
@@ -44,9 +44,9 @@ columns are rationale or Inspector-scope state, not serialized status scalars.
 
 The fixed qualifier order is `preview`, `experimental`, `deprecated`; no row here has more
 than one, but the general ordering remains mandatory. The typed registry expands the
-default and exceptions to one record per subject. Candidate provenance and relationship
-DTOs keep every directly referenced rule/behavior/strategy assessment in a sorted,
-deduplicated `EvidenceAssessment[]`; they never flatten it to a scalar or qualifier union.
+default and exceptions to one record per subject. These are maintenance records; no response
+carries one (QR-005). A candidate provenance publishes which rule admitted the file, never
+how completely that rule is documented.
 
 ## Documented Repository behavior
 
@@ -91,7 +91,7 @@ local-marketplace derivation below.
 ## Derived Repository rules
 
 `Status` is human-readable rationale for the upstream evidence; the canonical index above
-owns the rule's exact `EvidenceAssessment`. A `documented` assessment does not turn the
+owns the rule's exact documentation status. A `documented` assessment does not turn the
 Inspector's closed derivation into Codex product behavior.
 
 | Rule ID | Class | Accepted seed | Closed derived target | Behavior refs | Policy refs | Strategy refs | Status | Evidence |
@@ -174,9 +174,9 @@ component declarations, hook commands, server-provided MCP instructions, and par
 custom-agent context. They never authorize a target read.
 
 For the grouped User exclusion, the rule's own assessment is `documented` with no
-lifecycle claim. The record-by-record assessment array separately retains the referenced
-experimental rules and deprecated prompts; it never flattens those behavior qualifiers
-into the exclusion rule or a union.
+lifecycle claim. Each referenced experimental rule and deprecated prompt keeps its own
+maintenance record with its own qualifiers; nothing flattens them into the exclusion rule
+or a union, and no assessment array exists to carry them together.
 
 | Rule ID | Class | Excluded group | Behavior refs | Policy refs | Strategy refs | Status | Evidence |
 |---|---|---|---|---|---|---|---|
@@ -186,18 +186,21 @@ into the exclusion rule or a union.
 ## Normative initial-release presentation allowlist
 
 This table is the closed FR-007 presentation allowlist for OpenAI Codex. The kind
-spellings are the exact `ToolRecognition.kind` values. A field ID names one field of the recognized
-kind, not an arbitrary key supplied by the inspected file, and produces one entry holding
-the value its parser resolved for that field; for server, Hook-event, environment, header,
-tool, and named-component `*.name` IDs, that value is the authored map key. `marketplace.plugin.source` is the one
-cross-vendor derivation field: it denotes either a plain-string source or the `path` leaf
-of an object source.
+spellings are the exact `ToolRecognition.kind` values.
+
+The release publishes no declared metadata beside the source it read: a detail surface
+serves the complete authored `sourceText`, so every authored value is already on the same
+screen in its own spelling, and a captioned copy would be one fact in two spellings. The
+values a recognition reads out are the file's own declarations, by the keys the file wrote
+(data-model.md § Skill presentation); the one an inventory row is grouped by is its kind's
+identity — for a `skill`, the name authored in its own file. The table therefore fixes
+eligible relationship kinds and admitted source forms only.
 
 The final column is normative source-form applicability, not commentary. Effective
-eligibility is the intersection of the row's closed field/relationship sets and the exact
+eligibility is the intersection of the row's closed relationship set and the exact
 extractor occurrences supported for the actual admitted source form identified by candidate
 provenance. Naming several forms in one row does not union their schemas or make one form's
-fields eligible in another; conformance fixtures and tests cover both gates.
+references eligible in another; conformance fixtures and tests cover both gates.
 
 Once implementation begins, this bilingual table and its two per-language SHA-256 digests
 recorded in the [official-source contract](../official-sources.md) are frozen, approved design
@@ -210,24 +213,24 @@ is consumed.
 The rows are exhaustive. `—` means the eligible set is empty. The single admitted
 `.codex/config.toml` carrier can own separate `MCP`, `settings/config`, and contained
 `hook` recognitions; each occurrence belongs only to the row that owns its declaration
-family. Unknown keys and references remain visible only in complete `sourceText`. A
+family. A reference the allowlist does not name remains visible only in complete `sourceText`. No allowlist stands between a declaration and its publication: a skill's declarations are the keys its file wrote, and an authored key set is not closed (FR-007). A
 relationship can be emitted only when both its kind is listed here and its origin is
 covered by the appropriate relationship-only rule in the central registry. This
 allowlist never grants a read, connection, execution, import, installation, or activation
 authority.
 
-| `ToolRecognition.kind` | Eligible declared-metadata `fieldId` values | Eligible `Relationship.kind` values | Initial-release source forms |
-|---|---|---|---|
-| `instructions` | `codex.instructions.reference-target` | `runtime-reference` | Exact authored import/reference target tokens in an accepted static, configured-fallback, or Global instruction file; path-derived scope/order and byte-budget facts are typed state, not metadata |
-| `rule` | `codex.rule.pattern`<br>`codex.rule.decision`<br>`codex.rule.justification`<br>`codex.rule.match`<br>`codex.rule.not-match` | `runtime-reference` | Exact argument/value/item occurrences in accepted direct-child `.rules` files; comments and unlisted Starlark expressions remain source text only |
-| `skill` | `codex.skill.name`<br>`codex.skill.description` | `skill-resource`<br>`runtime-reference` | Exact `name` and `description` frontmatter values in an accepted `SKILL.md`; resource/script/reference targets can be relationships but are never read through those edges |
-| `agent` | `codex.agent.name`<br>`codex.agent.description`<br>`codex.agent.developer-instructions`<br>`codex.agent.nickname-candidate`<br>`codex.agent.model`<br>`codex.agent.model-reasoning-effort`<br>`codex.agent.sandbox-mode`<br>`codex.agent.mcp-server.name`<br>`codex.agent.skill.path`<br>`codex.agent.skill.enabled` | `agent-reference`<br>`skill-resource`<br>`context-inheritance`<br>`runtime-reference` | Exact supported TOML value/item/map-key occurrences in an accepted `.codex/agents/*.toml`; MCP remains an inherited/carrier relationship and never becomes an agent-owned MCP recognition |
-| `hook` | `codex.hook.description`<br>`codex.hook.event`<br>`codex.hook.matcher`<br>`codex.hook.handler.type`<br>`codex.hook.handler.command`<br>`codex.hook.handler.command-windows`<br>`codex.hook.handler.timeout`<br>`codex.hook.handler.status-message`<br>`codex.hook.handler.async` | `runtime-reference` | Event map keys, matcher values, and handler leaves in accepted standalone `hooks.json` or inline `[hooks]`; same-layer standalone and inline occurrences remain distinct provenances |
-| `MCP` | `codex.mcp.server.name`<br>`codex.mcp.server.command`<br>`codex.mcp.server.arg`<br>`codex.mcp.server.env.name`<br>`codex.mcp.server.env.value`<br>`codex.mcp.server.env-var`<br>`codex.mcp.server.cwd`<br>`codex.mcp.server.experimental-environment`<br>`codex.mcp.server.url`<br>`codex.mcp.server.auth`<br>`codex.mcp.server.bearer-token-env-var`<br>`codex.mcp.server.http-header.name`<br>`codex.mcp.server.http-header.value`<br>`codex.mcp.server.env-http-header.name`<br>`codex.mcp.server.env-http-header.value`<br>`codex.mcp.server.startup-timeout-sec`<br>`codex.mcp.server.tool-timeout-sec`<br>`codex.mcp.server.enabled`<br>`codex.mcp.server.required`<br>`codex.mcp.server.enabled-tool`<br>`codex.mcp.server.disabled-tool`<br>`codex.mcp.server.default-tools-approval-mode`<br>`codex.mcp.server.tool.name`<br>`codex.mcp.server.tool.approval-mode` | `runtime-reference` | Server/table names and exact supported leaf/item occurrences under `[mcp_servers.*]` on an admitted config carrier; no process environment value is substituted |
-| `settings/config` | `codex.config.model`<br>`codex.config.model-provider`<br>`codex.config.model-reasoning-effort`<br>`codex.config.approval-policy`<br>`codex.config.sandbox-mode`<br>`codex.config.web-search`<br>`codex.config.personality`<br>`codex.config.service-tier`<br>`codex.config.project-doc-max-bytes`<br>`codex.config.project-doc-fallback-filename`<br>`codex.config.model-instructions-file`<br>`codex.config.experimental-compact-prompt-file`<br>`codex.config.agent.name`<br>`codex.config.agent.config-file`<br>`codex.config.skill.path`<br>`codex.config.skill.enabled` | `agent-reference`<br>`skill-resource`<br>`runtime-reference`<br>`fallback` | Exact supported TOML value/item/map-key occurrences on the admitted config carrier; MCP and Hook declarations belong only to their separate recognition rows, and configured target paths never gain read authority |
-| `plugin` | `codex.plugin.name`<br>`codex.plugin.version`<br>`codex.plugin.description`<br>`codex.plugin.author.name`<br>`codex.plugin.author.email`<br>`codex.plugin.author.url`<br>`codex.plugin.homepage`<br>`codex.plugin.repository`<br>`codex.plugin.license`<br>`codex.plugin.keyword`<br>`codex.plugin.skills`<br>`codex.plugin.mcp-servers`<br>`codex.plugin.apps`<br>`codex.plugin.hooks`<br>`codex.plugin.interface.display-name`<br>`codex.plugin.interface.short-description`<br>`codex.plugin.interface.long-description`<br>`codex.plugin.interface.developer-name`<br>`codex.plugin.interface.category`<br>`codex.plugin.interface.capability`<br>`codex.plugin.interface.website-url`<br>`codex.plugin.interface.privacy-policy-url`<br>`codex.plugin.interface.terms-of-service-url`<br>`codex.plugin.interface.default-prompt`<br>`codex.plugin.interface.brand-color`<br>`codex.plugin.interface.composer-icon`<br>`codex.plugin.interface.logo`<br>`codex.plugin.interface.screenshot` | `declared-component`<br>`skill-resource`<br>`runtime-reference` | Exact metadata and component/presentation leaf/item occurrences in an accepted `.codex-plugin/plugin.json`; an omitted `hooks` field may emit only the registry-defined documented-default component relationship |
-| `marketplace` | `marketplace.name`<br>`marketplace.interface.display-name`<br>`marketplace.plugin.name`<br>`marketplace.plugin.source`<br>`marketplace.plugin.source.type`<br>`marketplace.plugin.source.url`<br>`marketplace.plugin.source.ref`<br>`marketplace.plugin.source.sha`<br>`marketplace.plugin.source.package`<br>`marketplace.plugin.source.version`<br>`marketplace.plugin.source.registry`<br>`marketplace.plugin.policy.installation`<br>`marketplace.plugin.policy.authentication`<br>`marketplace.plugin.category` | `plugin-source`<br>`runtime-reference` | Exact catalog/plugin-entry leaf/item occurrences in an accepted Repository-root marketplace file; `marketplace.plugin.source` alone may seed the closed local-manifest derivation |
-| `skill metadata` | `codex.skill-metadata.interface.display-name`<br>`codex.skill-metadata.interface.short-description`<br>`codex.skill-metadata.interface.icon-small`<br>`codex.skill-metadata.interface.icon-large`<br>`codex.skill-metadata.interface.brand-color`<br>`codex.skill-metadata.interface.default-prompt`<br>`codex.skill-metadata.policy.allow-implicit-invocation`<br>`codex.skill-metadata.dependency.tool.type`<br>`codex.skill-metadata.dependency.tool.value`<br>`codex.skill-metadata.dependency.tool.description`<br>`codex.skill-metadata.dependency.tool.transport`<br>`codex.skill-metadata.dependency.tool.url` | `skill-resource`<br>`runtime-reference` | Exact supported YAML leaf/item occurrences in a derived `agents/openai.yaml`; seed provenance is typed state and the file never inherits the owning `SKILL.md` metadata identity |
+| `ToolRecognition.kind` | Eligible `Relationship.kind` values | Initial-release source forms |
+|---|---|---|
+| `instructions` | `runtime-reference` | Exact authored import/reference target tokens in an accepted static, configured-fallback, or Global instruction file; path-derived scope/order and byte-budget facts are typed state, not metadata |
+| `rule` | `runtime-reference` | Exact argument/value/item occurrences in accepted direct-child `.rules` files; comments and unlisted Starlark expressions remain source text only |
+| `skill` | `skill-resource`<br>`runtime-reference` | Exact `name` and `description` frontmatter values in an accepted `SKILL.md`; resource/script/reference targets can be relationships but are never read through those edges |
+| `agent` | `agent-reference`<br>`skill-resource`<br>`context-inheritance`<br>`runtime-reference` | Exact supported TOML value/item/map-key occurrences in an accepted `.codex/agents/*.toml`; MCP remains an inherited/carrier relationship and never becomes an agent-owned MCP recognition |
+| `hook` | `runtime-reference` | Event map keys, matcher values, and handler leaves in accepted standalone `hooks.json` or inline `[hooks]`; same-layer standalone and inline occurrences remain distinct provenances |
+| `MCP` | `runtime-reference` | Server/table names and exact supported leaf/item occurrences under `[mcp_servers.*]` on an admitted config carrier; no process environment value is substituted |
+| `settings/config` | `agent-reference`<br>`skill-resource`<br>`runtime-reference`<br>`fallback` | Exact supported TOML value/item/map-key occurrences on the admitted config carrier; MCP and Hook declarations belong only to their separate recognition rows, and configured target paths never gain read authority |
+| `plugin` | `declared-component`<br>`skill-resource`<br>`runtime-reference` | Exact metadata and component/presentation leaf/item occurrences in an accepted `.codex-plugin/plugin.json`; an omitted `hooks` field may emit only the registry-defined documented-default component relationship |
+| `marketplace` | `plugin-source`<br>`runtime-reference` | Exact catalog/plugin-entry leaf/item occurrences in an accepted Repository-root marketplace file; `marketplace.plugin.source` alone may seed the closed local-manifest derivation |
+| `skill metadata` | `skill-resource`<br>`runtime-reference` | Exact supported YAML leaf/item occurrences in a derived `agents/openai.yaml`; seed provenance is typed state and the file never inherits the owning `SKILL.md` metadata identity |
 
 No Codex recognition uses the shared `prompt/command` or `output style` kind in the
 initial release. No initial-release recognition uses the `skill metadata` kind either:
@@ -236,8 +239,8 @@ rather than admitted as a candidate (§ Derived Repository rules), so the `skill
 row above is frozen, digest-recorded design input with no consumer. Consuming or removing
 that row is a digest-recorded change under the official-source contract's
 stop-and-regenerate rule. Typed layer, path-derived scope, selection, precedence, trust,
-default, and applicability facts are not authored metadata and therefore are not
-additional field IDs.
+default, and applicability facts are not authored metadata and are published by no
+surface.
 
 ## Known uncertainties and required condition facts
 

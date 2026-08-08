@@ -3,21 +3,8 @@
     "strategyId": "claude.skills.selection",
     "tool": "claude",
     "surfaces": ["claude-cli-and-ide-clients"],
-    "operations": ["select-first"],
-    "requiredConditionKeys": [
-      "surface",
-      "engine-version",
-      "runtime-cwd",
-      "repository-root",
-      "worked-path",
-      "scope-availability",
-      "feature-state",
-      "enablement",
-      "selection",
-      "plugin-state",
-      "managed-policy"
-    ],
-    "documentationStatus": "documented",
+    "operations": ["retain-all", "select-closest"],
+    "documentationStatus": "partially-documented",
     "lifecycleQualifiers": [],
     "evidence": [
       {
@@ -25,8 +12,16 @@
         "url": "https://code.claude.com/docs/en/skills",
         "officialHost": "code.claude.com",
         "sections": ["Where skills live", "How a skill gets its command name"],
-        "reviewedOn": "2026-07-25",
-        "establishes": "Same-name skills resolve in enterprise, user, project, then bundled order; plugin skills stay namespaced by their plugin, and a skill wins over a legacy command with the same name."
+        "reviewedOn": "2026-08-08",
+        "establishes": "Within one root, a nested skill sharing a name with another stays available under a directory-qualified command; when the unqualified name is used, Claude Code 2.1.203+ can invoke the variant matching the files being worked on. The name field of a personal or project skill sets only the display label, and the enterprise-over-personal-over-project precedence is a rule between levels, not within one."
+      },
+      {
+        "sourceId": "anthropic.claude-code.changelog.nested-skill-discovery",
+        "url": "https://code.claude.com/docs/en/changelog",
+        "officialHost": "code.claude.com",
+        "sections": ["2.1.178"],
+        "reviewedOn": "2026-08-06",
+        "establishes": "Release 2.1.178 introduces the nested-clash retention this strategy records — on a name clash the nested skill appears as <dir>:<name> so both stay available — and anchors the retention half of this pipeline at 2.1.178+."
       },
       {
         "sourceId": "anthropic.claude-code.ide.shared-differences",
@@ -43,17 +38,6 @@
     "tool": "codex",
     "surfaces": ["codex-local-clients"],
     "operations": ["retain-all", "unknown-order"],
-    "requiredConditionKeys": [
-      "surface",
-      "engine-version",
-      "runtime-cwd",
-      "repository-root",
-      "scope-availability",
-      "feature-state",
-      "enablement",
-      "selection",
-      "managed-policy"
-    ],
     "documentationStatus": "partially-documented",
     "lifecycleQualifiers": [],
     "evidence": [

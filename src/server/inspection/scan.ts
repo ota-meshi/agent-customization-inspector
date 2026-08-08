@@ -40,9 +40,11 @@ import type { GenerationOutcome } from '../session/scan-generation';
 import { CLAUDE_REPOSITORY_RULES } from './rules/claude';
 import { CODEX_REPOSITORY_RULES } from './rules/codex';
 import { resolveAdmittingRules, type CompiledInspectionRule } from './rules/registry';
-import type { CandidateRecognition, RecognitionInput } from './recognizers/candidate';
-import { recognizeClaudeCandidate } from './recognizers/claude';
-import { recognizeCodexCandidate } from './recognizers/codex';
+import {
+  recognizeCandidateForVendor,
+  type CandidateRecognition,
+  type RecognitionInput,
+} from './recognizers/candidate';
 import { join } from 'node:path';
 import { readCandidate, runTraversalScan, type TraversalScanResult } from './traversal';
 
@@ -80,6 +82,13 @@ export type ScanPublication =
       readonly files: readonly CustomizationFileDto[];
       /** Every recognition attached to a published readable file. */
       readonly recognitions: readonly ToolRecognitionDto[];
+      /**
+       * Each recognized skill entry point's census, keyed by its public path.
+       * Kept beside the recognitions rather than on one: the list's one
+       * publication is the inventory's `SkillDefinitionDto.companionFiles`
+       * (contracts/inspection-path-allowlist.md § Bounded companion census).
+       */
+      readonly skillCompanionsByPath: ReadonlyMap<string, readonly string[]>;
       /** The attempt's serialized diagnostics. */
       readonly diagnostics: readonly SerializedDiagnostic[];
       /**
@@ -171,17 +180,19 @@ export interface ScanPublicationInput {
   readonly onProgress?: (update: ScanProgressUpdate) => void;
 }
 
-// Dispatches one readable candidate's admissions to the owning vendor
-// recognizers. Only tools with a shipped recognizer contribute; an admission
-// whose tool has no recognizer yet simply produces no recognition, which is
-// what "the rule is not shipped for this milestone" must look like — never a
-// fabricated recognition of an unknown kind. Vendors run in the closed tool
-// order so a candidate two products recognize publishes its recognitions
-// deterministically. The shipped Codex and Claude skill matchers are disjoint,
-// so at most one vendor enumerates a given candidate's directory and the
-// merged companion lists cannot conflict.
+// Dispatches one readable candidate's admissions to the shared engine, once
+// per tool with a shipped rule catalog. An admission whose tool is not listed
+// yet simply produces no recognition, which is what "the rule is not shipped
+// for this milestone" must look like — never a fabricated recognition of an
+// unknown kind. Tools run in the closed tool order so a candidate two products
+// recognize publishes its recognitions deterministically. The shipped Codex
+// and Claude skill matchers are disjoint, so at most one tool enumerates a
+// given candidate's directory and the merged companion lists cannot conflict.
 async function recognizeCandidate(input: RecognitionInput): Promise<CandidateRecognition> {
-  const results = [await recognizeClaudeCandidate(input), await recognizeCodexCandidate(input)];
+  const results = [
+    await recognizeCandidateForVendor(input, 'claude'),
+    await recognizeCandidateForVendor(input, 'codex'),
+  ];
   return {
     recognitions: results.flatMap((result) => result.recognitions),
     companions: results.flatMap((result) => result.companions),
@@ -203,8 +214,7 @@ async function recognizeCandidate(input: RecognitionInput): Promise<CandidateRec
  *    `unknown` item the same way;
  *  - a `failed` recognition on a readable file publishes its
  *    `recognition-parse-failed` diagnostic on that file while the complete
- *    source stays displayed and comparison-eligible, and the closed
- *    parse-summary projection reflects the recognition states.
+ *    source stays displayed and comparison-eligible.
  * Diagnostic construction happens here so a caller cannot fabricate a
  * Source or path the traversal never admitted.
  *
@@ -242,6 +252,11 @@ export async function assembleScanPublication(
   // identity the scan publishes them under, and what the read loop below
   // iterates.
   const companions = new Map<string, string>();
+  // Each recognized skill entry point's census, keyed by the entry point's
+  // public path. The inventory's `SkillDefinitionDto.companionFiles` is the
+  // list's one publication (§ Bounded companion census); the recognition
+  // carries none.
+  const skillCompanionsByPath = new Map<string, readonly string[]>();
 
   for (const candidate of input.result.files) {
     const fileId = createOpaqueId();
@@ -261,6 +276,12 @@ export async function assembleScanPublication(
         const fileRecognitions = recognized.recognitions;
         for (const companion of recognized.companions) {
           companions.set(companion.sourceRelativePath, companion.absolutePath);
+        }
+        if (fileRecognitions.some((recognition) => recognition.details.kind === 'skill')) {
+          skillCompanionsByPath.set(
+            candidate.publicPath,
+            recognized.companions.map((companion) => companion.sourceRelativePath),
+          );
         }
         const fileDiagnosticIds: string[] = [];
         // A failed recognition keeps the complete readable source displayed and
@@ -463,6 +484,7 @@ export async function assembleScanPublication(
     outcome: hasFileConfinedOutcome ? 'partial' : 'complete',
     files,
     recognitions,
+    skillCompanionsByPath,
     visitedEntries: input.result.visitedEntries,
     candidateFiles: input.result.candidateFiles,
     readBytes: input.result.readBytes + companionReadBytes,

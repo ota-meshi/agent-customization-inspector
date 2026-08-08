@@ -15,12 +15,12 @@ Vendor contractは`behaviorId` recordを定義し、inspection allowlistはread�
 
 ## Canonical evidence-assessment index
 
-このcontractが所有する全`strategyId`とrelationship-only/shared non-read `ruleId`は、正確に1件の
-`EvidenceAssessment`を持つ。下記にないsubjectのcanonical valueは`documentationStatus: documented`、
-`lifecycleQualifiers: []`とする。これはevidenceの存在からの推論ではなく、subjectごとのclosed mappingである。
+このcontractが所有する全`strategyId`とrelationship-only/shared non-read `ruleId`は、自身の
+`documentationStatus`と`lifecycleQualifiers`を持つ。下記にないsubjectのcanonical valueは`documented`と
+`[]`とする。これはevidenceの存在からの推論ではなく、subjectごとのclosed mappingである。
 Empty qualifierはlifecycle claimなしを表し、`stable`を意味しない。Documentation-status valueは
-`documented`、`partially-documented`、`unknown`、`conflict`だけにclosedとし、別tokenの
-`documentation-conflict`はruntimeの`ConditionFact.status`だけに残す。
+`documented`、`partially-documented`、`unknown`、`conflict`だけにclosedとする。これらはmaintenance
+recordであり、どのresponseも運ばない（QR-005）。
 
 | Subject ID | `documentationStatus` | `lifecycleQualifiers` | Assessment basis |
 |---|---|---|---|
@@ -44,9 +44,8 @@ Empty qualifierはlifecycle claimなしを表し、`stable`を意味しない。
 
 固定qualifier順は`preview`、`experimental`、`deprecated`で、arrayは重複を持たない。Typed registryはdefaultと
 exception tableをsubjectごとに1 recordへ展開する。以下のDocumentation status列とRequired conditions/status列は
-human rationaleまたはruntime condition textであり、serializeするscalar enumではない。Provenanceまたはrelationshipは、
-参照するexact rule、behavior、strategyごとのassessmentを`(subjectKind, subjectId)`でsort/deduplicateして保持し、
-best/worst scalarまたはqualifier unionで`EvidenceAssessment[]`を置換しない。
+human rationaleであり、serializeするscalar enumではない。Provenanceが公開するのはどのruleがfileを
+admitしたかであって、そのruleがどれだけ文書化されているかではない。
 
 ## Runtime compositionはInspector sourceのmergeではない
 
@@ -62,15 +61,17 @@ shadowing、combination、またはunresolved-condition metadataを生成する�
 | Hosted、organization、enterprise、managed | Hosted surfaceはservice-side inputをrepository checkoutとcombineできる | これらは`shared.relationship.runtime`または`shared.excluded.managed-remote-state`で表し、local scan rootにしない |
 | Plugin、hook、MCP、import、arbitrary path | Vendorはruntime check後にactivate、execute、connect、followし得る | Authored declarationとrelationshipはinert。独立したstaticまたはbounded-derived ruleが同じtargetを受理した場合だけreadできる |
 
-Required condition factが利用不能ならprojectionは`unknown`である。公式sourceが矛盾する場合は
-`documentation-conflict`である。いずれもwinnerを推測しない。Repository resultとtool固有Global resultを
-“effective configuration”へmergeしてはならない。UIは所有する全Source boundaryと全unavailable inputを
-保持したまま、vendorの文書化されたruntime edgeを表示できる。
+Required condition factが利用不能なら、本contractはそのcompositionを`unknown`として記録する。公式source
+が矛盾する場合は`documentation-conflict`として記録する。いずれもwinnerを推測しない。
 
-Originating customization fileを持たない文書化済みhosted/runtime inputは、関連するSource、tool、surfaceに紐づく
-evidence-linkedな`SourceConditionFact`とする。File、recognition、relationship originではなく、synthetic
-file、file identity/path/text、comparison target、local/hosted read、network requestを作成しない。未調査の現在stateは
-conditionalまたはunavailableのままにする。
+これらはvendorについての維持管理recordであり、製品が行うprojectionではない。Condition keyはregistry record
+もresponseも運ばず、製品がそのfileをどう扱うかを述べるsurfaceも無い。Inspectorが報告するのは見つけた
+カスタマイズファイルとその場所であり、そのruntimeについては何も述べない（FR-009）。したがってRepository
+resultとtool固有Global resultを“effective configuration”へmergeすることも無い。mergeすべきconfiguration
+は存在せず、boundaryが別々のままのSourceがあるだけである。
+
+Originating customization fileを持たない文書化済みhosted/runtime inputはスコープ外とする。製品が報告するのは
+見つけたカスタマイズファイルであり、どのfileも起点にしないbehaviorはvendor自身の文書に属する。
 
 ## Required condition fact
 
@@ -154,7 +155,7 @@ Strategy rowは次のfact名を使用する。各factは、該当する場合に
 |---|---|---|---|---|---|---|---|
 | `claude.instructions.layering` | Claude Code / shared CLI、VS Code、JetBrains core | `append` | User、ancestor、launch-directory、lazy discovered descendant instructionをbroad-to-narrowでcomposeする。同一directoryではregularをlocalより前に置く。Semantic conflictはhard setting-style winnerを宣言せずmodel-interpretedとして保持 | `claude.behavior.repo.instructions.ancestor`、`claude.behavior.repo.instructions.descendant`、`claude.behavior.repo.instructions.launch`、`claude.behavior.user.instructions` | `surface`、`engine-version`、`runtime-cwd`、`worked-path`、`scope-availability`、`feature-state`、`settings-inputs`、`managed-policy` | documented。Conflicting natural-language instructionにdeterministic semantic winnerはない | `anthropic.claude-code.memory.locations-load`、`anthropic.claude-code.sdk.setting-sources` |
 | `claude.rules.layering` | Claude Code / shared core | `filter`、`append` | ApplicableなUser/project rule layerをaddする。Unconditional ruleをproject instructionと適用し、matching file read時に`paths` ruleをactivateする | `claude.behavior.repo.rules`、`claude.behavior.user.rules` | `surface`、`engine-version`、`runtime-cwd`、`worked-path`、`target-match`、`scope-availability`、`settings-inputs`、`documentation-variant`、`managed-policy` | partially documented。Ancestor `paths` baseとdescendant rule discoveryが不明確 | `anthropic.claude-code.memory.locations-load` |
-| `claude.skills.selection` | Claude Code / CLI full、IDE subset | `select-first` | Same-name skillをenterprise、User、project、bundled順で解決する。Plugin skillはnamespaceを保持し、nested duplicateはqualified、same-name skillはlegacy commandより上 | `claude.behavior.repo.skills`、`claude.behavior.user.skills` | `surface`、`engine-version`、`runtime-cwd`、`repository-root`、`worked-path`、`scope-availability`、`feature-state`、`enablement`、`selection`、`plugin-state`、`managed-policy` | documented。Surface availabilityはconditional | `anthropic.claude-code.ide.shared-differences`、`anthropic.claude-code.skills.locations-discovery` |
+| `claude.skills.selection` | Claude Code / CLI full、IDE subset | `retain-all`、`select-closest` | 1つのroot内ではsame-name skillをすべて残し — nestedなものはdirectory-qualified commandで（Claude Code 2.1.178+、changelog § 2.1.178）— unqualified nameを使ったときはClaude Code 2.1.203+で作業中のfileに合うvariantをinvokeする。enterprise > User > projectのprecedenceはlevel間の規則であり、plugin skillはnamespaceを保持し、same-name skillはlegacy commandより上 | `claude.behavior.repo.skills`、`claude.behavior.user.skills` | `surface`、`engine-version`、`runtime-cwd`、`repository-root`、`worked-path`、`scope-availability`、`feature-state`、`enablement`、`selection`、`plugin-state`、`managed-policy` | partially documented: nested-clash保持は2.1.178+（changelog § 2.1.178）、automatic working-context invocationは2.1.203+（skills page § Where skills live）でversion-anchored。Exact IDE surface availabilityはconditional | `anthropic.claude-code.changelog.nested-skill-discovery`、`anthropic.claude-code.ide.shared-differences`、`anthropic.claude-code.skills.locations-discovery` |
 | `claude.commands.selection` | Claude Code / CLI full、IDE subset | `select-first` | Recursive legacy commandをskill command namespaceへ統合する。同名skillが優先し、subdirectoryはnamespaceを構成 | `claude.behavior.repo.commands`、`claude.behavior.user.commands` | `surface`、`engine-version`、`runtime-cwd`、`scope-availability`、`feature-state`、`selection`、`documentation-variant` | partially documented。完全なancestor/lazy traversalは独立に記載されていない | `anthropic.claude-code.changelog.legacy-command-nesting`、`anthropic.claude-code.skills.locations-discovery` |
 | `claude.agents.selection` | Claude Code / subagent-capable runtime | `select-first`、`select-closest`、`unknown-order` | Same-name agentをmanaged、session `--agents`、closest project layer、User、plugin順で解決する。同一tree内duplicateはunknownのまま | `claude.behavior.repo.agents`、`claude.behavior.user.agents` | `surface`、`engine-version`、`runtime-cwd`、`repository-root`、`scope-availability`、`feature-state`、`enablement`、`selection`、`settings-inputs`、`plugin-state`、`documentation-variant`、`managed-policy` | Scope間はdocumented。同一tree duplicate orderはunknown | `anthropic.claude-code.subagents.scope-context` |
 | `claude.agent-context.composition` | Claude Code / main、custom、built-in agent context | `concatenate`、`filter`、`replace` | 通常custom agentにはdocumented instruction、rule、memory、git、preloaded-skill inputを持つfresh conversation contextを作り、`context: fork`ではparent conversationをinheritする。Built-in omission、skill/tool condition、selected memory scope、現在のnested-spawn depth limitを適用 | `claude.behavior.repo.agent-memory.local`、`claude.behavior.repo.agent-memory.project`、`claude.behavior.repo.agents`、`claude.behavior.repo.instructions.ancestor`、`claude.behavior.repo.instructions.descendant`、`claude.behavior.repo.instructions.launch`、`claude.behavior.repo.rules`、`claude.behavior.repo.skills`、`claude.behavior.user.agent-memory`、`claude.behavior.user.agents`、`claude.behavior.user.auto-memory` | `surface`、`engine-version`、`runtime-cwd`、`scope-availability`、`feature-state`、`enablement`、`selection`、`agent-context`、`content-limits`、`tool-availability`、`external-runtime` | documented。利用不能なGlobal/runtime inputは明示的unknownのまま | `anthropic.claude-code.memory.locations-load`、`anthropic.claude-code.subagents.scope-context` |
@@ -204,7 +205,7 @@ connectionをseedしない。
 | `codex.relationship.config-path` | 受理済みCodex config | `codex.behavior.repo.agents`、`codex.behavior.repo.config`、`codex.behavior.repo.skills` | `agents.<name>.config_file`、`model_instructions_file`、`experimental_compact_prompt_file`、`skills.config[].path` | Recordだけ。これらarbitrary targetはinitial releaseでunread | FR-005、FR-007、FR-009、FR-019、FR-020、FR-022、FR-024、FR-029、QR-001、QR-005 | `openai.codex.config-basic`、`openai.codex.skills`、`openai.codex.subagents` |
 | `codex.relationship.component` | 受理済みskill、hook、plugin、marketplace declaration | `codex.behavior.plugin.manifest`、`codex.behavior.repo.hooks`、`codex.behavior.repo.marketplace`、`codex.behavior.repo.skills` | Plugin skill/MCP/app/hook path、skill resource/asset、hook command、remote source、conditional default `hooks/hooks.json` | Recordだけ。Manifestにexplicit `hooks` fieldがない場合だけdefault hook relationをsynthesizeし、explicit fieldはdefaultを置換する | FR-005、FR-007、FR-019、FR-020、FR-021、FR-022、FR-024、FR-029、QR-001、QR-005 | `openai.codex.config-basic`、`openai.codex.hooks`、`openai.codex.plugins`、`openai.codex.skills` |
 | `codex.relationship.agent-context` | 受理済みcustom-agent TOML | `codex.behavior.repo.agents`、`codex.behavior.repo.config`、`codex.behavior.repo.mcp`、`codex.behavior.repo.skills`、`codex.behavior.user.config`、`codex.behavior.user.skills` | Omitted fieldのparent config/skill/MCP inheritance edge、sandbox/approval reapplication、local対hosted fact、unknown child `AGENTS.md` inheritance | Recordだけ。独立受理済みparent declarationだけresolve | FR-005、FR-007、FR-008、FR-009、FR-019、FR-020、FR-021、FR-022、FR-024、FR-029、FR-035、QR-001、QR-005 | `openai.codex.config-basic`、`openai.codex.mcp`、`openai.codex.skills`、`openai.codex.subagents` |
-| `shared.relationship.runtime` | 利用不能runtime dataが必要な任意の受理済みrecognition | `claude.behavior.repo.mcp`、`claude.behavior.user.mcp-state`、`claude.behavior.user.plugins`、`claude.behavior.user.settings`、`codex.behavior.repo.mcp`、`codex.behavior.user.config`、`codex.behavior.user.plugins`、`copilot.behavior.cloud.mcp`、`copilot.behavior.cloud.organization-agents`、`copilot.behavior.cloud.organization-instructions`、`copilot.behavior.cloud.plugins`、`copilot.behavior.cloud.remote-skills` | MCP-server-provided instruction、hosted settings、organization policy、installed-service state、その他runtime-only input | Source factだけ。Connect、fetch、authenticate、local candidate作成をしない | FR-005、FR-007、FR-009、FR-014、FR-018、FR-019、FR-021、FR-022、FR-031、FR-039、QR-001、QR-005 | `anthropic.claude-code.directory.file-reference`、`anthropic.claude-code.ide.shared-differences`、`anthropic.claude-code.mcp.scopes-precedence`、`anthropic.claude-code.plugins.components-scopes`、`anthropic.claude-code.settings.scopes-precedence`、`github.copilot.cli.reference`、`github.copilot.cloud.instructions`、`github.copilot.custom-agents`、`github.copilot.instructions.support`、`github.copilot.plugins`、`github.copilot.skills`、`openai.codex.config-basic`、`openai.codex.mcp`、`openai.codex.plugins`、`vscode.copilot.plugins` |
+| `shared.relationship.runtime` | 利用不能runtime dataが必要な任意の受理済みrecognition | `claude.behavior.repo.mcp`、`claude.behavior.user.mcp-state`、`claude.behavior.user.plugins`、`claude.behavior.user.settings`、`codex.behavior.repo.mcp`、`codex.behavior.user.config`、`codex.behavior.user.plugins`、`copilot.behavior.cloud.mcp`、`copilot.behavior.cloud.organization-agents`、`copilot.behavior.cloud.organization-instructions`、`copilot.behavior.cloud.plugins`、`copilot.behavior.cloud.remote-skills` | MCP-server-provided instruction、hosted settings、organization policy、installed-service state、その他runtime-only input | Source factだけ。Connect、fetch、authenticate、local candidate作成をしない | FR-005、FR-007、FR-009、FR-014、FR-018、FR-019、FR-021、FR-022、FR-031、QR-001、QR-005 | `anthropic.claude-code.directory.file-reference`、`anthropic.claude-code.ide.shared-differences`、`anthropic.claude-code.mcp.scopes-precedence`、`anthropic.claude-code.plugins.components-scopes`、`anthropic.claude-code.settings.scopes-precedence`、`github.copilot.cli.reference`、`github.copilot.cloud.instructions`、`github.copilot.custom-agents`、`github.copilot.instructions.support`、`github.copilot.plugins`、`github.copilot.skills`、`openai.codex.config-basic`、`openai.codex.mcp`、`openai.codex.plugins`、`vscode.copilot.plugins` |
 
 Authored relationshipはmasking、redaction、reveal state、環境変数置換を行わず、validated済みexact source sliceを
 表示する。Relationship status判定用に別のvalidated semantic/structural path formを使用してよいが、表示literalを
@@ -220,7 +221,7 @@ Vendor固有excluded ruleは各vendor contractで規範定義し、ここでは�
 
 | Rule ID | Excluded input | Behavior refs | Required retained fact | Policy refs | Evidence |
 |---|---|---|---|---|---|
-| `shared.excluded.managed-remote-state` | Managed、organization、hosted、remote、credential、log、cache、session、runtime-state、plugin-installation、service-side file/value | `claude.behavior.user.mcp-state`、`claude.behavior.user.plugins`、`claude.behavior.user.settings`、`codex.behavior.user.config`、`codex.behavior.user.plugins`、`copilot.behavior.cloud.mcp`、`copilot.behavior.cloud.organization-agents`、`copilot.behavior.cloud.organization-instructions`、`copilot.behavior.cloud.plugins`、`copilot.behavior.cloud.remote-skills` | Source categoryとstrategyへのpossible effectだけ記録し、local pathを作らない | FR-009、FR-013、FR-014、FR-018、FR-019、FR-021、FR-022、FR-031、FR-039、QR-001、QR-003、QR-005 | `anthropic.claude-code.directory.file-reference`、`anthropic.claude-code.mcp.scopes-precedence`、`anthropic.claude-code.plugins.components-scopes`、`anthropic.claude-code.settings.scopes-precedence`、`github.copilot.cli.reference`、`github.copilot.cloud.instructions`、`github.copilot.custom-agents`、`github.copilot.instructions.support`、`github.copilot.plugins`、`github.copilot.skills`、`openai.codex.config-basic`、`openai.codex.mcp`、`openai.codex.plugins`、`vscode.copilot.plugins` |
+| `shared.excluded.managed-remote-state` | Managed、organization、hosted、remote、credential、log、cache、session、runtime-state、plugin-installation、service-side file/value | `claude.behavior.user.mcp-state`、`claude.behavior.user.plugins`、`claude.behavior.user.settings`、`codex.behavior.user.config`、`codex.behavior.user.plugins`、`copilot.behavior.cloud.mcp`、`copilot.behavior.cloud.organization-agents`、`copilot.behavior.cloud.organization-instructions`、`copilot.behavior.cloud.plugins`、`copilot.behavior.cloud.remote-skills` | Source categoryとstrategyへのpossible effectだけ記録し、local pathを作らない | FR-009、FR-013、FR-014、FR-018、FR-019、FR-021、FR-022、FR-031、QR-001、QR-003、QR-005 | `anthropic.claude-code.directory.file-reference`、`anthropic.claude-code.mcp.scopes-precedence`、`anthropic.claude-code.plugins.components-scopes`、`anthropic.claude-code.settings.scopes-precedence`、`github.copilot.cli.reference`、`github.copilot.cloud.instructions`、`github.copilot.custom-agents`、`github.copilot.instructions.support`、`github.copilot.plugins`、`github.copilot.skills`、`openai.codex.config-basic`、`openai.codex.mcp`、`openai.codex.plugins`、`vscode.copilot.plugins` |
 
 ## Registry completeness
 

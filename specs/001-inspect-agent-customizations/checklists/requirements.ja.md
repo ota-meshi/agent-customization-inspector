@@ -24,9 +24,8 @@
 - [x] 境界事例が特定されている
 - [x] Scopeが明確に限定されている
 - [x] Dependencyと前提が特定されている
-- [x] Origin-file-less Source Condition Factが定義され、file authorityまたはread authorityを付与せずにuser scenario、要件、entity、edge case、測定可能な成果で扱われている
 - [x] US4が、initialまたはretryのGlobal Source正常commitすべてについて、`Source.sourceId`とsemantic上変化しないRepository inventory/source contentを維持しながら、generation advance、generation-owned IDの再key、以前のgenerationに属するdetail/comparison/editor stateの無効化を必須とし、all-rejected attemptがcommitを生成しないことを定義している
-- [x] ClosedなDiagnostic unionが正確なlocation invariantを定義している。File scopeはcoherentな`sourceId`/`fileId`/`sourceRelativePath` tupleを必須とし、source scopeは`sourceId`だけを必須としてfile/pathを禁止し、session scopeは3つすべてを禁止し、scopeはgeneration ownershipとlifecycle ownershipの違いに直交する
+- [x] ClosedなDiagnostic unionが正確なlocation invariantを定義している。File scopeはcoherentな`sourceId`/`fileId`/`sourceRelativePath` tupleを必須とし、source scopeは`sourceId`だけを必須としてfile/pathを禁止し、pathlessなscopeは存在せず、scopeはgeneration ownershipとlifecycle ownershipの違いに直交する *(2026-08-04 修正: 未admitのGlobal tool failureはcontrolの`failureCode`とする決定とともに、pathless session scopeは無くなった。)*
 - [x] Product起因mutationを禁止済みmutation-capable requestと観測可能なsource propertyで定義し、OSだけによるaccess-time変更をfailureにもproofにもせず別に記録する
 - [x] FR-032が許可するstructural-projection boundaryを定義し、全product/documentation surfaceでvalidation、semantic interpretation/ranking、verdict、remediation adviceを禁止する
 - [x] FR-029とFR-042が製品定義の数値resource-validation limitを禁止し、late workのauthorityを取り消して破棄し、Global-disableのpurge/epoch/fence/recovery lifecycleをcloseする。Failureは通常のerrorとして報告し（FR-040/FR-041は2026-07-22に削除）、per-file分離とstale snapshotのsemanticsはFR-028/FR-030に残る
@@ -35,7 +34,7 @@
 - [x] Byte decoding tableが、NUL/binary、valid UTF-8、先頭BOM 1つの記録と除去、invalidなnon-NUL UTF-8の完全な`utf-8-replaced`文字化けtextへの1-pass replacement decodingを、別decodingやproduct定義のbyte/行/item上限なしで扱う
 - [x] Customization File entityが、`utf-8`と`utf-8-replaced`のreadには完全なsource textを公開し、binary outcomeには禁止し、readできないfileは他fileへ影響しないdiagnostic-only itemとして表す
 - [x] US3がGlobal workより前に読み取り可能な2つのdistinctなRepository fileだけで独立test可能で、同じfileを両inputへ受け付けず、US4がSource-relative namespaceをmergeしないRepository対Global comparisonを別途カバーする
-- [x] SC-003、SC-004、SC-005、SC-007、SC-009が、stable case ID、fixtureごとのdigest、0件ではないrequired class、実行した正確なcase record、denominator semantics変更時のpaired automated manifest-version transition test、独立したT1062 human-review record、fixture-byteのみ変更時のfixture/canonical digest両方の更新、欠落・省略・重複・不一致evidenceの必須failureを持つversion付きrelease-evidence fixture manifestを使用する
+- [x] SC-003、SC-004、SC-005、SC-007が、stable case ID、fixtureごとのdigest、0件ではないrequired class、実行した正確なcase record、denominator semantics変更時のpaired automated manifest-version transition test、独立したT1062 human-review record、fixture-byteのみ変更時のfixture/canonical digest両方の更新、欠落・省略・重複・不一致evidenceの必須failureを持つversion付きrelease-evidence fixture manifestを使用する
 - [x] Authored value（source text、declared metadata、authored relationship target、comparisonの両side）へは、bundled-browserの明示的な`FileDetail` requestまたはcomparison構築を通じて1つずつしか到達できず、そのどちらの前にも確認stepは立たず、acknowledgement stateもどこにも存在しない。通常のroute、Source、generation cleanupはscope限定のままとし、Global disableはrequest前とgreater-epoch/non-null-fence観測時にfull-session purgeを行う明示的な例外とする
 - [x] ClosedなGlobal-root tableがabsent/default、empty、invalid、relative、通常のhome外を含むeligible rootを区別し、missingまたはreadableではないconsent済みrootを他toolをblockせずにabsent/failedとして記録し、readableなrootを1つのatomic batch commitへadmitする
 - [x] Repository-root selectionを取得済み`process.cwd()`またはresolveした1つの`--root`値へ限定し、`chdir`を行わず、invalidなoption shapeをsession作成前にrejectし、bootstrap時にgeneration-0 Repository Sourceを正確に1つ作成する
@@ -45,7 +44,7 @@
 - [x] Traversalは通常方式で、調査対象パス一覧のpathだけをreadする。1つのfileに限定される問題はそのfileのdiagnosticになり他fileへ影響せず、specificationは敵対的入力向けの機構を追加しない（FR-019）
 - [x] Codex Global override fallbackのemptyを、任意の先頭BOM 1つを除去した後の`String.prototype.trim()`で定義し、保持した`U+FFFD`をnon-whitespaceとして扱い、安全にreadしたempty contentまたはabsentなinitial targetの場合だけfallbackを許可する
 - [x] Presentation Allowlist freezeをverification-onlyとし、意味上のmembership、source form、extractor applicability、relationship kindの変更が必要ならdependent implementationを停止し、設計同期とplan/tasks再生成を必須とする
-- [x] QR-005が`documentationStatus`を`documented | partially-documented | unknown | conflict`へclosedにし、重複のないlifecycle qualifierを`preview`、`experimental`、`deprecated`順で保持し、empty qualifierを`stable`でなくlifecycle claimなしと定義し、`documentation-conflict`を`ConditionFact.status`専用にし、provenance/relationshipの`EvidenceAssessment[]`へ全subject recordをlossyな縮約なしで保持することを要求している
+- [x] QR-005が`documentationStatus`を`documented | partially-documented | unknown | conflict`へclosedにし、重複のないlifecycle qualifierを`preview`、`experimental`、`deprecated`順で保持し、empty qualifierを`stable`でなくlifecycle claimなしと定義し、それらのすべてをどのresponseも運ばないmaintenance recordとして保っている
 - [x] 固定browser helperがinspection由来のpath/contentを受け取らず、closedなambient platform key setだけを直接copyでき、Source rootとのlexical一致がprovenanceを変えずauthorityを与えずhandlerを選択しない
 - [x] SC-008が、Level A/AA全基準のbilingual applicability matrix、criterion固有の非適用理由、automated/manual check mapping、0件ではないapplicable-criterion denominator、failure 0件の合格ruleを定義している
 - [x] ApplicableなSC-008 rowがcriterion固有のstable check IDとexpected observationを持ち、closed manual matrixがrelease/environment version、responsive/visual profile、workflow state、input profileを固定して、未記録のsamplingを許さない
@@ -79,8 +78,7 @@
   protocolはこのiterationでは仕様化済みと扱われ、clarification markerは残っていなかった。
 - 2026-07-19の検証iteration 7では、可変かつ非公開だったSC-002環境をversion付き公開profileと
   客観的status停止条件へ置き換え、20人release studyのfunding、support、privacy、accessibilityを
-  maintainer teamへ割り当ててcritical-issue reviewを限定し、origin-file-less Source Condition Factを
-  scenario、要件、entity、edge case、verification、SC-009にわたって仕様化した後、すべての項目に合格した。
+  maintainer teamへ割り当ててcritical-issue reviewを限定した後、すべての項目に合格した。
 - 2026-07-19の検証iteration 8では、comparisonの対象を発見済みで読み取り可能な
   カスタマイズファイルに限定し、binaryその他のdiagnostic-only itemをdiagnostic reviewのみに
   利用可能とし、そのselection boundaryをtask再生成前に明示した後、すべての項目に合格した。
@@ -93,7 +91,7 @@
   順序を維持し、Global inspectionはRepository acceptanceの後に置く。
 - 2026-07-19の検証iteration 11では、US4のRepository resultの安定性をsemantic上の安定性として定義しながら、
   Global Source正常commitにgeneration advance、generation-owned IDの再key、以前のgenerationに属するstateの無効化を
-  必須とし、file/source/sessionの排他的なDiagnostic location invariantを定義し、SC-008の未定義だった
+  必須とし、scopeごとの排他的なDiagnostic location invariantを定義し、SC-008の未定義だった
   critical-defect thresholdを、Level A/AA全基準のbilingual matrixと0件ではないdenominatorに対するapplicable criterionの
   failure 0件gateへ置き換えた後、すべての項目に合格した。
 - 2026-07-19の検証iteration 12では、全WCAG rowへstable check IDとexpected observationを割り当て、完全なmanual execution
@@ -112,7 +110,7 @@
   domain resultなしでowner outer boundaryへ伝播するようにした。
 - 2026-07-19の検証iteration 16では、US3をRepository scopeだけで独立test可能にしてcross-Source comparisonをUS4へ移し、
   abort-attempt wordingから決定的かつentry-localでthrowしないfailureを除外し、source textを検証済みnon-binary UTF-8
-  replacement decode成功時だけに限定した。さらにSC-003/004/005/007/009のdenominatorをversion付きでdigest-boundなrelease-evidence manifestに
+  replacement decode成功時だけに限定した。さらにrelease-evidenceのdenominator（現在はSC-003/004/005/007）をversion付きでdigest-boundなmanifestに
   freezeし、authored-value exposureとclient-data-purgeのscopeをclosedにした後、すべての項目に合格した。
 - 2026-07-20の検証iteration 17では、selected rootと`--root` behavior、authorityを持たないgeneration-0 Repository Source作成、
   selectorなしのfixed 3-tool Global batch、structural `lstat`の正確な`ENOENT`処理、REST対startupのOperation Error ownership、

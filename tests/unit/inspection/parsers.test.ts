@@ -1,5 +1,5 @@
 // T075: byte decoding and inert frontmatter reading (FR-025, FR-028,
-// spec.md § Byte Decode Outcomes, data-model.md § DeclaredMetadataEntry).
+// spec.md § Byte Decode Outcomes, data-model.md § Field reading).
 //
 // Two contracts meet here. Decoding decides whether a file has readable text at
 // all and does it exactly once; reading decides what that text resolves to.
@@ -13,7 +13,7 @@
 // rather than as files that quietly start or stop declaring fields.
 import { describe, expect, it } from 'vitest';
 import { decodeSourceBytes } from '../../../src/shared/entities';
-import { parseFrontmatter } from '../../../src/server/inspection/parsers/markdown';
+import { ParsedMarkdownDocument } from '../../../src/server/inspection/parsers/markdown';
 import {
   MALFORMED_SKILL_CONTENT_CASES,
   SKILL_CONTENT_CASES,
@@ -68,21 +68,31 @@ describe('byte decoding', () => {
   });
 });
 
+/**
+ * The declarations of one document, as the parser answers them: a `Map` in the
+ * order the file wrote its keys, empty when the document declares no block.
+ * Asserting against entry arrays is what makes that order part of the claim —
+ * an object comparison would pass whatever order the keys came back in.
+ */
+function declarationsOf(sourceText: string): ReadonlyMap<unknown, unknown> {
+  const { frontmatter } = new ParsedMarkdownDocument(sourceText);
+  return frontmatter instanceof Map ? frontmatter : new Map();
+}
+
 describe('frontmatter reading', () => {
   it.each(SKILL_CONTENT_CASES.map((testCase) => [testCase.id, testCase] as const))(
     'resolves to the value a product loading the file would have: %s',
     (_id, testCase) => {
-      const frontmatter = parseFrontmatter(testCase.sourceText) as Record<string, unknown>;
+      const declared = declarationsOf(testCase.sourceText).get('name');
       // Compared as text, because that is the form the recognizer publishes;
       // `007` resolves to the number 7 and reads as `7`.
-      const read = (key: string): string | null =>
-        typeof frontmatter[key] === 'string' ||
-        typeof frontmatter[key] === 'number' ||
-        typeof frontmatter[key] === 'boolean'
-          ? String(frontmatter[key])
+      const read =
+        typeof declared === 'string' ||
+        typeof declared === 'number' ||
+        typeof declared === 'boolean'
+          ? String(declared)
           : null;
-      expect(read('name')).toBe(testCase.name);
-      expect(read('description')).toBe(testCase.description);
+      expect(read).toBe(testCase.name);
     },
   );
 
@@ -92,28 +102,28 @@ describe('frontmatter reading', () => {
       // The one refusal, and not an opinion about the content: there is no
       // value to report. It reaches `extraction.ts`, which turns it into that
       // recognition's `failed` state with the source still readable.
-      expect(() => parseFrontmatter(testCase.sourceText)).toThrow();
+      expect(() => new ParsedMarkdownDocument(testCase.sourceText)).toThrow();
     },
   );
 
   it('resolves a document with no frontmatter block to no fields', () => {
     // Not a failure: a `SKILL.md` that declares nothing is an ordinary file,
     // and failing it would turn "declares no metadata" into a diagnostic.
-    expect(parseFrontmatter('---\nno closing fence\n')).toEqual({});
-    expect(parseFrontmatter('# Just a heading\n')).toEqual({});
-    expect(parseFrontmatter('---\n---\n')).toEqual({});
+    expect([...declarationsOf('---\nno closing fence\n')]).toEqual([]);
+    expect([...declarationsOf('# Just a heading\n')]).toEqual([]);
+    expect([...declarationsOf('---\n---\n')]).toEqual([]);
   });
 
   it('reads a block whose closing fence is at end of file', () => {
-    expect(parseFrontmatter('---\nname: g\n---')).toEqual({ name: 'g' });
+    expect([...declarationsOf('---\nname: g\n---')]).toEqual([['name', 'g']]);
   });
 
   it('reads a block that uses CRLF line endings', () => {
-    expect(parseFrontmatter('---\r\nname: g\r\n---\r\nBody\r\n')).toEqual({ name: 'g' });
+    expect([...declarationsOf('---\r\nname: g\r\n---\r\nBody\r\n')]).toEqual([['name', 'g']]);
   });
 
   it('does not mistake a dashed value for the closing fence', () => {
-    expect(parseFrontmatter('---\nname: ---\n---\nBody\n')).toEqual({ name: '---' });
+    expect([...declarationsOf('---\nname: ---\n---\nBody\n')]).toEqual([['name', '---']]);
   });
 
   it.each([
@@ -124,29 +134,50 @@ describe('frontmatter reading', () => {
     ['an info string on the opening fence', '---yaml\nname: g\n---\n'],
     ['a leading blank line', '\n---\nname: g\n---\n'],
   ])('recognizes no block in %s', (_shape, source) => {
-    expect(parseFrontmatter(source)).toEqual({});
+    expect([...declarationsOf(source)]).toEqual([]);
   });
 
   it('reads YAML 1.2 core semantics rather than 1.1', () => {
     // Left to a default, `yes` would be a boolean and `12:30` a sexagesimal
     // number, and a customization's fields would mean something other than what
     // its author's own tools read.
-    expect(parseFrontmatter('---\nname: yes\nother: 12:30\n---\n')).toEqual({
-      name: 'yes',
-      other: '12:30',
-    });
+    expect([...declarationsOf('---\nname: yes\nother: 12:30\n---\n')]).toEqual([
+      ['name', 'yes'],
+      ['other', '12:30'],
+    ]);
   });
 
   it('resolves a key declared twice to its later declaration', () => {
     // Refusing the document instead would be this tool deciding a customization
     // is invalid, which is not its job.
-    expect(parseFrontmatter('---\nname: first\nname: second\n---\n')).toEqual({
-      name: 'second',
-    });
+    expect([...declarationsOf('---\nname: first\nname: second\n---\n')]).toEqual([
+      ['name', 'second'],
+    ]);
+  });
+
+  it('keeps the keys in the order the file wrote them', () => {
+    // A plain object would not: JavaScript lists integer-like keys first, in
+    // ascending numeric order, so a file declaring `10` then `2` would be
+    // shown `2` first — an order no one wrote.
+    expect([...declarationsOf('---\n"10": ten\n"2": two\na: letter\n---\n').keys()]).toEqual([
+      '10',
+      '2',
+      'a',
+    ]);
+    // Unquoted, the same keys resolve to the integers a product loading the
+    // file gets, and stay in the order they were declared.
+    expect([...declarationsOf('---\n10: ten\n2: two\na: letter\n---\n').keys()]).toEqual([
+      10,
+      2,
+      'a',
+    ]);
   });
 
   it('resolves an alias and keeps the scalar an unknown tag carried', () => {
-    expect(parseFrontmatter('---\na: &x g\nname: *x\n---\n')).toEqual({ a: 'g', name: 'g' });
-    expect(parseFrontmatter('---\nname: !!weird greet\n---\n')).toEqual({ name: 'greet' });
+    expect([...declarationsOf('---\na: &x g\nname: *x\n---\n')]).toEqual([
+      ['a', 'g'],
+      ['name', 'g'],
+    ]);
+    expect([...declarationsOf('---\nname: !!weird greet\n---\n')]).toEqual([['name', 'greet']]);
   });
 });

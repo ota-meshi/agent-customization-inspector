@@ -106,7 +106,6 @@ const REPOSITORY_SOURCE: SourceDto = {
   generation: 2,
   scanRequestId: 'req-1',
   progress: null,
-  conditionFacts: [],
   diagnosticIds: [],
 };
 

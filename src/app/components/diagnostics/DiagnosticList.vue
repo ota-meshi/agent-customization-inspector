@@ -12,8 +12,10 @@
 // claim that the file is invalid, unsupported, or wrong for its vendor.
 //
 // File-scoped records are rendered on their own row by each kind's row
-// component, so this list shows the session- and source-scoped records that
-// have no row to attach to — otherwise the same record would appear twice.
+// component, so this list shows the source-scoped records that have no row to
+// attach to — otherwise the same record would appear twice. Source is the
+// widest scope there is: every diagnostic belongs to a Source, however long
+// it lives (data-model.md § Diagnostic).
 import { computed } from 'vue';
 import { DIAGNOSTIC_REGISTRY } from '../../../shared/diagnostics';
 import type { SerializedDiagnostic } from '../../../shared/api-types';
@@ -32,7 +34,7 @@ const unattached = computed(() =>
   <!-- Scoped to what this list owns. File-scoped records are shown on their
        own rows, so "no diagnostics" would deny records visible on the same
        screen. -->
-  <p v-if="unattached.length === 0" class="aci-empty">No session- or source-level diagnostics.</p>
+  <p v-if="unattached.length === 0" class="aci-empty">No source-level diagnostics.</p>
   <ul v-else class="aci-list" role="list">
     <li
       v-for="diagnostic in unattached"

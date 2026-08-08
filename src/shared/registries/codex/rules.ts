@@ -21,7 +21,6 @@ import {
   ANY_NAME,
   type StructuredInspectorMatcher,
 } from '../../../server/inspection/rules/registry';
-import { CODEX_SKILL_CONDITION_KEYS } from './behaviors';
 import { SHIPS_MAINTENANCE_DATA } from '../maintenance-data';
 import type { CodexRuleId } from '../identifier-types';
 import type { InspectionRule } from '../rule-types';
@@ -64,7 +63,7 @@ const CODEX_REPO_SKILL_MATCHER: StructuredInspectorMatcher = {
  * `codex.behavior.repo.skills`. Admitting a file is not asserting Codex loads
  * it: the User, admin, and system scopes the same discovery strategy spans lie
  * outside this Source, so whether a discovered skill actually wins remains
- * conditional on every key in {@link CODEX_SKILL_CONDITION_KEYS}.
+ * conditional on the runtime inputs this tool never observes.
  *
  * A skill's resources and assets get no rule of their own. A rule that could
  * not authorize a read would state a policy nothing enforces — read
@@ -85,7 +84,6 @@ export const CODEX_REPO_SKILL_RULE = {
   policyRefs: SHIPS_MAINTENANCE_DATA
     ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
     : [],
-  conditionKeys: CODEX_SKILL_CONDITION_KEYS,
   precedenceGroup: null,
   documentationStatus: 'documented',
   lifecycleQualifiers: [],

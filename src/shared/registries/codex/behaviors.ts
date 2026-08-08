@@ -19,27 +19,8 @@
 // `satisfies` keeps the literal, so the key cannot disagree with the record it
 // points at.
 import { SHIPS_MAINTENANCE_DATA } from '../maintenance-data';
-import type { ConditionFactKey } from '../../api-types';
 import type { CodexBehaviorId } from '../identifier-types';
 import type { VendorBehaviorStatement } from '../behavior-types';
-
-/**
- * Runtime inputs the documented Codex skill chain depends on before any
- * projection may claim a skill is selected. Shared by the two skill behaviors
- * and their strategy so the three records cannot drift
- * (contracts/runtime-composition.md § `codex.skills.discovery`).
- */
-export const CODEX_SKILL_CONDITION_KEYS: readonly ConditionFactKey[] = [
-  'surface',
-  'engine-version',
-  'runtime-cwd',
-  'repository-root',
-  'scope-availability',
-  'feature-state',
-  'enablement',
-  'selection',
-  'managed-policy',
-];
 
 /**
  * Codex Repository skill discovery: local clients scan each directory on the
@@ -71,7 +52,6 @@ export const CODEX_REPO_SKILLS_BEHAVIOR = {
         traversal: 'ancestor-chain-to-repository-root',
       }
     : null,
-  activationConditions: CODEX_SKILL_CONDITION_KEYS,
   documentationStatus: 'documented',
   lifecycleQualifiers: [],
   evidence: SHIPS_MAINTENANCE_DATA
@@ -112,7 +92,6 @@ export const CODEX_USER_SKILLS_BEHAVIOR = {
         traversal: 'exact',
       }
     : null,
-  activationConditions: CODEX_SKILL_CONDITION_KEYS,
   documentationStatus: 'documented',
   lifecycleQualifiers: [],
   evidence: SHIPS_MAINTENANCE_DATA

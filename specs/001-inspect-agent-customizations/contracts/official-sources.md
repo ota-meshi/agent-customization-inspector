@@ -33,8 +33,8 @@ Each table row is one official source, identified by a stable key, and owns the 
   records not re-reviewed during the 2026-07-20 reconciliation retain `2026-07-15`.
 - Every row uses `normalizationVersion: 1`.
 
-Every maintained behavior, rule, and strategy that cites this registry also owns exactly
-one atomic evidence assessment with this closed shape:
+Every maintained behavior, rule, and strategy that cites this registry also states, on the
+record itself, how completely its cited sections establish it:
 
 ```ts
 type DocumentationStatus =
@@ -43,12 +43,6 @@ type DocumentationStatus =
   | 'unknown'
   | 'conflict';
 type LifecycleQualifier = 'preview' | 'experimental' | 'deprecated';
-type EvidenceAssessment = {
-  subjectKind: 'behavior' | 'rule' | 'strategy';
-  subjectId: string;
-  documentationStatus: DocumentationStatus;
-  lifecycleQualifiers: LifecycleQualifier[];
-};
 ```
 
 The qualifier array contains no duplicates and is always serialized in `preview`,
@@ -56,16 +50,13 @@ The qualifier array contains no duplicates and is always serialized in `preview`
 lifecycle claim; it does not mean or imply `stable`. `documented` means the exact reviewed
 sections completely establish the maintained atomic assertion, `partially-documented`
 means they establish only part of it, `unknown` means they establish no determination for
-it, and `conflict` retains incompatible official assertions. The separate
-`documentation-conflict` token is a runtime `ConditionFact.status`, never a spelling or
-alias of `DocumentationStatus`.
+it, and `conflict` retains incompatible official assertions. `documentation-conflict` is
+not one of them: this vocabulary spells its incompatible case `conflict`.
 
-Each assessment identifies its own subject; it is not a status attached to a source ID or
-to a whole vendor. A provenance or relationship that cites several behavior/rule/strategy
-subjects carries the deterministic subject-by-subject `EvidenceAssessment[]`. It never
-reduces those records to one scalar, a most/least certain value, or a qualifier union.
-Sort by `subjectKind` in fixed `behavior`, `rule`, `strategy` order and then by `subjectId`,
-and reject duplicate `(subjectKind, subjectId)` records. The assessment is backed by that
+Each status belongs to its own subject; it is not a status attached to a source ID or to a
+whole vendor. These are maintenance records and no response carries one (QR-005): a
+provenance publishes which rule admitted a file, never how completely that rule is
+documented. The assessment is backed by that
 subject's complete `sourceRefs` set and does not change the reverse-index ownership below.
 
 The `evidence` array on each maintained behavior, rule, and strategy record is the
@@ -167,7 +158,8 @@ The normative bilingual Presentation Allowlist rows in the three vendor contract
 already approved design input. The implementation gate verifies only the frozen English
 and Japanese rows and their recorded digest; it must not author or semantically edit the
 allowlist set, identifiers, admitted source forms, exact source-form extractor
-applicability, eligible metadata fields, or relationship kinds.
+applicability, or relationship kinds. No row enumerates metadata fields: a skill's
+declarations are the keys its file wrote, and an authored key set is not closed (FR-007).
 
 The following lowercase SHA-256 values are the recorded freeze. For each named UTF-8,
 BOM-free, LF-only contract, the digest input is constructed by locating the unique level-2
@@ -178,9 +170,9 @@ No heading, prose, blank line, or line after that contiguous table is hashed.
 
 | Vendor | English table SHA-256 | Japanese table SHA-256 |
 |---|---|---|
-| GitHub Copilot | `712877da354e87bcb98da9827e35d7088e190b393a02096e7b202535a0069daa` | `c1b1232657dfe403c364bc8d25702a21a74120b90209dcfa27aaafaef77cca86` |
-| Claude Code | `c41502612324aef171de5ead0ba73dcc9234e378f630e31ff04aa8a4b6f66f9f` | `75f6689a1c04551e3991f27bdf8637516c3959970336d75009eb417ca21dc66b` |
-| OpenAI Codex | `c1de96a1764c6ba7355e1784d6bbabb3262ebc7e51ef7cbaa6b64f621aa38b1b` | `d06588c649e9fbd969bc89816d8be3ced41b9b02601a2a6b0fc0e6c08636c248` |
+| GitHub Copilot | `b737dd07f7560dca05b7602fc255576e429cca944e23f381d84eb833331dc082` | `ef1f80872752e331012918c7f55bb255d13c93e640a739ef2f3eec8732bb4b82` |
+| Claude Code | `bc44f85bc148ed6b9455476deb5c54ab86d76f1d0f82b69897bc79659a2e1586` | `d473fa6e584433d0811415ac0ec570fabc86dae11c3fe2d5a9fc1e99121499f4` |
+| OpenAI Codex | `ec9b60738328ad26c8b6f7ff3998e72da6fe9f8a3dbc43b71f2ef71b668ca1db` | `a324d475de5d92650b5b760c764829f4ac187c05d8efcda803455e800b0205ab` |
 
 The implementation freeze test must recompute all six inputs exactly, require one and only
 one matching heading and contiguous table per file, compare every digest in constant time,
@@ -249,7 +241,7 @@ and does not admit an unregistered source repository or issue as substitute evid
 | `anthropic.claude-code.large-codebases.start-directory` | <https://code.claude.com/docs/en/large-codebases> | `code.claude.com` | `Choose where to start Claude`; `Layer CLAUDE.md files by directory`; `Add per-directory skills` | `2026-07-25` |
 | `anthropic.claude-code.sdk.setting-sources` | <https://code.claude.com/docs/en/agent-sdk/claude-code-features> | `code.claude.com` | `Control filesystem settings with settingSources`; `CLAUDE.md load locations` | `2026-07-15` |
 | `anthropic.claude-code.settings.scopes-precedence` | <https://code.claude.com/docs/en/settings> | `code.claude.com` | `Configuration scopes`; `Settings precedence`; `Plugin configuration` | `2026-07-25` |
-| `anthropic.claude-code.skills.locations-discovery` | <https://code.claude.com/docs/en/skills> | `code.claude.com` | `Where skills live`; `How a skill gets its command name` | `2026-07-25` |
+| `anthropic.claude-code.skills.locations-discovery` | <https://code.claude.com/docs/en/skills> | `code.claude.com` | `Where skills live`; `How a skill gets its command name` | `2026-08-08` |
 | `anthropic.claude-code.subagents.scope-context` | <https://code.claude.com/docs/en/sub-agents> | `code.claude.com` | `Choose the subagent scope`; `Scope MCP servers to a subagent`; `Preload skills into subagents`; `Enable persistent memory`; `What loads at startup`; `Let subagents spawn their own subagents` | `2026-07-25` |
 | `anthropic.claude-code.hooks.locations-resolution` | <https://code.claude.com/docs/en/hooks> | `code.claude.com` | `Hook locations`; `The /hooks menu` | `2026-07-25` |
 | `anthropic.claude-code.mcp.scopes-precedence` | <https://code.claude.com/docs/en/mcp> | `code.claude.com` | `MCP installation scopes`; `Plugin-provided MCP servers` | `2026-07-25` |
@@ -258,6 +250,7 @@ and does not admit an unregistered source repository or issue as substitute evid
 | `anthropic.claude-code.marketplaces.catalog-sources` | <https://code.claude.com/docs/en/plugin-marketplaces> | `code.claude.com` | `Create the marketplace file`; `Plugin sources` | `2026-07-25` |
 | `anthropic.claude-code.ide.shared-differences` | <https://code.claude.com/docs/en/ide-integrations> | `code.claude.com` | `Configure settings`; `VS Code extension vs. Claude Code CLI`; `Manage marketplaces` | `2026-07-25` |
 | `anthropic.claude-code.changelog.legacy-command-nesting` | <https://code.claude.com/docs/en/changelog> | `code.claude.com` | `1.0.45`; `1.0.51` | `2026-07-15` |
+| `anthropic.claude-code.changelog.nested-skill-discovery` | <https://code.claude.com/docs/en/changelog> | `code.claude.com` | `2.1.6`; `2.1.178` | `2026-08-06` |
 
 ## OpenAI official sources
 

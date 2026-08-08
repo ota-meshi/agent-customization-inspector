@@ -5,10 +5,9 @@
 // cannot enumerate a directory, open a relationship target, or merge the
 // Inspector's Repository and Global Sources
 // (contracts/runtime-composition.md § "Runtime composition is not Inspector
-// source merging"). Its `requiredConditionKeys` are the inputs that must all
-// be known before a projection may state a terminal applicability result — an
-// unavailable input keeps the projection non-terminal (`conditional`, per the
-// decision table's row 6) and never defaults to satisfied.
+// source merging"). It records what a vendor documents about combining its own
+// inputs; it states nothing about what a concrete session selected, because
+// that depends on runtime this tool never observes.
 //
 // Each strategy is its own `export const` so a relation can name it directly.
 // Each record is declared with `satisfies` rather than a type annotation, and
@@ -17,7 +16,6 @@
 // resolving to a property, and the map's completeness check would break;
 // `satisfies` keeps the literal, so a key cannot disagree with the record it
 // points at.
-import { CODEX_SKILL_CONDITION_KEYS } from './behaviors';
 import { SHIPS_MAINTENANCE_DATA } from '../maintenance-data';
 import type { CodexStrategyId } from '../identifier-types';
 import type { RuntimeCompositionStrategy } from '../strategy-types';
@@ -38,9 +36,6 @@ export const CODEX_SKILLS_DISCOVERY_STRATEGY = {
   tool: 'codex',
   surfaces: ['codex-local-clients'],
   operations: ['retain-all', 'unknown-order'],
-  // The same list the two skill behaviors declare: one definition, so the
-  // strategy and its inputs cannot disagree about what must be known.
-  requiredConditionKeys: CODEX_SKILL_CONDITION_KEYS,
   documentationStatus: 'partially-documented',
   lifecycleQualifiers: [],
   evidence: SHIPS_MAINTENANCE_DATA

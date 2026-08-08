@@ -101,7 +101,6 @@ describe('get-session returns the inspection-data success envelope', () => {
       generation: 0,
       scanRequestId: null,
       progress: null,
-      conditionFacts: [],
     });
     expect(data.files).toEqual([]);
     expect(data.diagnostics).toEqual([]);
@@ -147,6 +146,7 @@ describe('rescan-repository admission', () => {
       readBytes: 0,
       files: [],
       recognitions: [],
+      skillCompanionsByPath: new Map(),
       diagnostics: [],
     });
     const context = hostContext();
@@ -184,6 +184,7 @@ describe('rescan-repository admission', () => {
       readBytes: 0,
       files: [],
       recognitions: [],
+      skillCompanionsByPath: new Map(),
       diagnostics: [],
     });
     const context = hostContext();

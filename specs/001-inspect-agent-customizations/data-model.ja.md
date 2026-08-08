@@ -7,13 +7,13 @@ Modelには2つの表現がある。
 - **Internal session record**はabsolute path、raw byte、atomic snapshot
   構築中のdecoded authored contentを含み得る。Public DTOやDiagnosticには入れない。
 - **Public DTO**はinventory済みfileと安全にnormalize済みのin-Source target用Source-relative locator field、readable fileの
-  完全なauthored source text、allowlist済み宣言metadata fieldごとにparserが解決した値、authored relationship
+  完全なauthored source text、認識したkindが公開する宣言ごとにparserが解決した値、authored relationship
   targetのexactなdecoded source slice、escape済みで非認可のroot
   presentation label、recognition、relationship、diagnostic、generation scopeのopaque IDを含む。Authored content内の
   環境変数参照はliteral textのままとし、process environment値をreadする権限を与えない。
 
 Check-in済みrelease-evidence fixture manifestはtest-only dataでありproduct DTOではない。Closedでversion付きのschemaは、
-一意でstableなcase ID、SC-003/004/005/007/009のcriterionとrequired-class membership、fixtureまたは決定的builderへのreference、
+一意でstableなcase ID、SC-003/004/005/007のcriterionとrequired-class membership、fixtureまたは決定的builderへのreference、
 客観的expected outcome、参照する各fixture digest、declaredした非ゼロclass minimumを持つ。`manifestVersion`は初期値1のpositive safe integerとする。別のcanonical digest fileがmanifest
 byteを対象とする。Release evidenceはそのversion/digestと実行した全case IDを示し、schema error、caseのduplicate/missing、
 classの空集合、fixture/digest drift、未実行case、declared minimum未満のdenominator countはinvalidなrelease recordとする。Caseのremove/reclassify、required-class定義またはexpected outcomeの変更ではmanifest versionをincrementして明示的なreviewを受け、fixture byteだけの変更では代わりに影響するfixture digestとcanonical manifest digestを更新する。Revision-policy validatorはtest-onlyな2つのmanifest object `previous`と`current`を受け取り、denominator-semantics変更では`current.manifestVersion > previous.manifestVersion`を要求する。これらtable-driven comparison objectとchange classificationはcontract-test inputであり、release DTOまたはreview recordではない。Digest driftだけでdenominator semanticsの変更を認可しない。Human reviewは、初回作成またはprior/current-version context、変更したdenominator member/definition/outcome、reviewer decision/referenceとともにbilingual release validationへ別に記録する。
@@ -33,18 +33,13 @@ ContractRegistry（immutable、contract-versioned）
 InspectionSession
 ├── Source（Repositoryを正確に1つ）
 │   ├── SourceBoundary（正確に1つ）
-│   └── SourceConditionFact（0以上。起点fileなし）
 ├── Source（Globalを0から3つ。support対象toolごとに最大1つ）
 │   ├── SourceBoundary（admit済みtool homeを正確に1つ） → owning GlobalToolControl
-│   └── SourceConditionFact（0以上。起点fileなし）
 ├── ScanAttempt（queuedを0以上、runningを最大1つ。commit前は非公開）
 ├── RepositoryScanGeneration（最後にcommit済みのものを正確に1つ。Repository sequenceはbootstrapから存在）
 │   └── CustomizationFile
 │       ├── ToolRecognition（0以上; 空になるのはcensusで列挙されたcompanionに限る）
-│       │   ├── DeclaredMetadataEntry（0以上。allowlist fieldごとに1件）
-│       │   └── ApplicabilityAssessment（rule/path admission recordごとに1つ）
 │       ├── Relationship（0以上）
-│       │   └── ApplicabilityAssessment
 │       └── Diagnostic（0以上）
 ├── GlobalScanGeneration（最後にcommit済みのものを0または1つ。Global sequenceはenableとdisableの
 │   間だけ存在し、CustomizationFile substructureは同じ）
@@ -55,7 +50,7 @@ InspectionSession
 │   └── GlobalControlView（recover可能なpublic control DTOをnullまたは1つ）
 ├── GlobalEnableOperation（running/queued cancellable commandを0または1つ。internal）
 ├── GlobalDisableOperation（joined priority-barrier commandを0または1つ。internal）
-└── Diagnostic（session/source level failure）
+└── Diagnostic（fileまたはsource scopeのfailure）
 
 BrowserState
 ├── ClientDataState（request/epoch/session/fence guardと中央purge）
@@ -103,10 +98,10 @@ Unrecoverable cleanupではprocess restartをfallbackとする。
 ### GlobalFenceRecoverySnapshot
 
 `globalDisableInProgress`がnon-nullの間、session responseはこのexact DTOだけとする。正確に`{ sessionId,
-globalContentEpoch, globalControl, globalEnableInProgress, globalDisableInProgress, toolFailureDiagnostics }`を含み、
-disable projectionはrequired/non-nullで、`failed`中はfailed requestのerror messageを持つ。`toolFailureDiagnostics`は`globalControl.toolFailures`参照先の
-pathless session Diagnosticだけを含む。Generation、Source、Repository failure、
-stale failure、unrelated Diagnostic/error、file、path、authored value、resource fieldを一切持たない。
+globalContentEpoch, globalControl, globalEnableInProgress, globalDisableInProgress }`を含み、
+disable projectionはrequired/non-nullで、`failed`中はfailed requestのerror messageを持つ。失敗したtoolの理由は
+そのcontrol自身の`failureCode`に載るため、recoveryは専用のDiagnostic arrayを持たない。Generation、Source、
+Repository failure、stale failure、Diagnostic/error、file、path、authored value、resource fieldを一切持たない。
 
 CLIは`process.cwd()`を正確に1回captureし、`--root <path>`を受理する（反復`--root`は引数parserのlast valueへ解決）。明示的な
 empty valueはsession作成とbrowser openの前にfixedでactionableかつsource-value-freeなstartup errorとし、
@@ -171,35 +166,11 @@ Global disableだけは、asynchronous drain完了前にbarrier acceptanceがpub
 | `generation` | `GenerationNumber` | 所属sequenceの最後にcommit済みgenerationと一致する。Repository Sourceは`repositoryGeneration`、公開済み各Global Sourceは`globalGeneration` |
 | `scanRequestId` | opaque ASCII stringまたはnull | このSourceで最後にadmitしたscan。Admission直後に設定し、waiting/scanning/ready/partial/failedを通して保持して古いrequestのstatusとの混同を防ぐ。Scan admission前、またはこのSourceでadmitした全attemptのpublication authorityがrevokeされた後だけnull。Revokeされたattemptのoverlayはadmission前の状態へ正確に戻るため、Sourceは結果を破棄されたrequestではなく「requestなし」を述べる |
 | `progress` | `ScanProgress`またはnull | `scanning`/`disabling`中および`ready`/`partial`後だけnon-null。`idle`、`failed`ではnull |
-| `conditionFacts` | `SourceConditionFact[]` | 起点fileを持たないdocumented non-file behaviorまたはexcluded/runtime inputについてのsource-level fact |
 | `diagnosticIds` | opaque string[] | 最後のcommit済みgenerationのsource-scoped diagnostic |
 
 `status`、`scanRequestId`、`progress`はsession所有のoperational overlayであり、fatal attemptはcommit済みSource graphや
 generation所有IDを変更せず更新できる。Boundary、condition、file、recognition、relationship、generation-scoped
 diagnostic contentはatomic generation commitでだけ変更する。
-
-Source-level condition factはpath readを許可せず、`Relationship.fromFileId`を捏造しない。
-`affectedRuleIds`にruleがあるcandidate provenanceまたはrelationshipは、関連conditionをapplicability
-assessmentへ投影できるが、documented product behavior、検査しないenvironment/user setting、managed
-policy、その他起点fileを持たないexcluded/runtime inputの正準な説明はsource factに残す。
-
-### SourceConditionFact
-
-| Field | Type | Rule |
-|---|---|---|
-| `tool` | tool enum | Documented non-file behaviorまたは検査しないinputを持つproduct |
-| `surface` | product-surface enum | 正確なCLI、IDE、Cloud、その他保守対象surface。Owning Source kindから推論しない |
-| `ruleId` | stable excludedまたはrelationship-only rule ID | Non-file factを定義し、file candidateを許可できない |
-| `affectedRuleIds` | non-emptyなsort済みinspection-rule ID[] | 同梱registryのcandidate/relationship-only subsetで、factを投影できるprovenance/edgeを制御 |
-| `behaviorRefs` | sort済み`VendorBehaviorStatement.behaviorId`[] | Factを説明する正確なsurface/scope lookup statement。Readを許可しない |
-| `strategyRefs` | sort済み`RuntimeCompositionStrategy.strategyId`[] | Projectionに使った正確なcomposition/selection statement |
-| `sourceRefs` | non-emptyなsort済みsource ID[] | Factの根拠となるofficial-sources row。相互validationする。Citation自体はregistry record上に残る。Readを許可しない |
-| `evidenceAssessments` | `EvidenceAssessment[]` | `ruleId`と全`behaviorRefs`/`strategyRefs` memberごとに正確に1 assessment。Aggregate statusなし |
-| `condition` | `ConditionFact` | 固定reason codeと任意のdocumented status。`satisfied`はnon-file runtime factを記録するだけでread authorityを与えず、authored source valueを複製しない |
-
-固定registryのentryはtool、surface、説明rule、affected-rule set、evidence set、
-condition key、reason codeでdeduplicateする。Factはfile ID、path、authored source、relationship origin、comparison
-targetを持たず、local/hosted I/Oを開始しない。
 
 ### SourceBoundary
 
@@ -369,9 +340,8 @@ all-rejected retryではgenerationをcommitせず、既存SourceとそのIDを�
 | `previewId` | opaque string | Active frozen previewを参照し、in-place変更不可 |
 | `state` | `unvalidated \| rejected \| admitted \| published` | Operation-localなprovisional control 3件はすべて`unvalidated`から始まるが、そのstateをactiveな`GlobalControlView`へserializeしない。Lexical-ineligible entryはfilesystem I/Oなしでrejected、`admitted`はreadable-directory admissionに合格したがSource未公開、`published`はSourceを正確に1つ持つ |
 | `sourceId` | opaque IDまたはnull | Root admission成功後だけallocateし、Source commitまではinternal。Admissionをやり直す場合は破棄 |
-| `rejectionCode` | closed reason codeまたはnull | `rejected`の場合だけnon-null。Lexical reasonは正確に`present-empty \| relative \| invalid`、missingまたはreadable directoryでないrootは正確に`root-unreadable`で、path/environment valueを含まない |
+| `failureCode` | closed reason codeまたはnull | そのtoolが失敗しpublished Sourceを持たない間だけnon-null。Lexicalなrejection reasonは正確に`present-empty \| relative \| invalid`、missingまたはreadable directoryでないrootは正確に`root-unreadable`、consent後の決定的scan failureは自身のreasonを持ち、いずれもpath/environment valueを含まない。これがfailure自体である — clientはそのcodeが名指す文を描画し、Diagnosticが言い直すことはない |
 | `retryDisposition` | `same-preview \| new-preview-required \| null` | `rejected`以外はnull。Lexical reasonは正確に`new-preview-required`、決定的なconsent後admission/initial-scan reasonはすべて`same-preview` |
-| `diagnosticId` | session diagnostic IDまたはnull | Lexical `new-preview-required` rejectionだけはnull。それ以外では、そのtoolにpublished Sourceがない間のcurrentな決定的admission/initial-scan Diagnosticを参照する。Published-Source rescan failureは`StaleSourceFailure`だけに属し、throw/rejectionは参照しない |
 
 `GlobalToolControl`はsession control stateでありscan working setに入らない。正常admissionは単一provisional subset scanを
 queueする前に未公開Source IDを事前割当する。決定的にfatalな初回scanはbatch working set全体を
@@ -381,7 +351,7 @@ pre-operation controlをmutateしない。予期しないthrow/rejectionではop
 discardし、pre-operation fieldをすべて維持する。Consent後admission failureはそのdisposition時だけ
 `rejected` controlをcommitし、同じpreviewでrevalidationできる。Source commit成功時は事前割当IDをpublishし、`SourceBoundary`を
 admit済みrootへbindする。決定的なadmission rejectionまたはfatal returned scan outcomeはそのcontrolのcurrent tool Diagnosticを作成/置換する。
-Lexical `present-empty`、`relative`、`invalid` rejectionは`diagnosticId: null`を維持し、fixed rejection codeとfrozen previewだけで説明する。
+Lexical `present-empty`、`relative`、`invalid` rejectionは、その`failureCode`とfrozen previewだけで説明し、それ以上を要さない。
 予期しないthrow/rejectionはtool別failureを作らず、accept済みadmitted-subset Global batchではconsent全体について、
 failed `batchStatus`へfailed requestのerrorを1回だけ記録する。Source commit成功は
 該当する決定的failure recordをclearし、
@@ -398,7 +368,6 @@ failed `batchStatus`へfailed requestのerrorを1回だけ記録する。Source 
 | `pendingTools` | sort済みtool enum[] | Atomicなbatch acceptance後だけ、1 accepted subset scanが所有するadmitted tool。Initial/retry validation/admissionはoperation-localかつunobservable。Cancellation開始後の`disabling`中はnull `batchStatus`とempty |
 | `batchStatus` | `GlobalBatchStatus \| null` | Accepted admitted-subset queueingからterminal success/failureまでnon-null。Fresh snapshot/lost-acceptance-response recovery用にpromote済み`scanRequestId`を保持 |
 | `retryableTools` | sort済みtool enum[] | `active`中、non-pending unpublished `admitted` controlと`retryDisposition: same-preview`の`rejected` controlを正確に含む。Operation-local retry validation中はexact pre-operation projectionを維持し、lexical `new-preview-required` controlを除外する。`unvalidated`はnon-serializedなoperation-local workだけに存在し、`disabling`中はempty |
-| `toolFailures` | fixed-tool-order `{ tool, diagnosticId }[]` | Non-nullな全`GlobalToolControl.diagnosticId`のexact public ownership map。Tool/diagnostic IDはuniqueで、throw/rejectされたbatch failureを含まない |
 
 `GlobalControlView`はactive consent、その`GlobalToolControl` record、coordinator、published Sourceから派生する。
 Consentまたはretained control stateがactiveな間、Global Sourceが0個のinitial all-failed/`active-no-job` outcomeと、
@@ -406,13 +375,14 @@ Consentまたはretained control stateがactiveな間、Global Sourceが0個のi
 session snapshotごとに返す。Client purge後、SPAはfresh sessionを取得し、
 `previewId`でpreview routeからexact stored previewを要求して全path/state/exclusionを再表示してからretryを提示する。
 Disableは直ちに利用できる。Published toolは`sources[].tool`から派生しretryableと重複できない。このDTOはadmitted rootもsource contentも含まず、別取得するfrozen previewがunchanged enable request用のexact表示stateを提供する。
-`toolFailures`によりfresh clientはsession-ownedな決定的admission/scan Diagnosticをexact toolへattachでき、そのIDは
-`sessionDiagnosticIds`にも存在する。Null `diagnosticId`のcontrolにはrowを作らず、dangling、duplicate、cross-tool、
-non-session Diagnostic referenceはserializationでrejectする。Owning control failureのclearまたはdisable commitまでrowを保持する。
+失敗したtoolの理由はそのtool自身のcontrolに載るため、fresh clientがownership mapでattachする必要はない。読んでいる
+controlが、失敗したtoolそのものだからである。DiagnosticはSource内で何かを読んでいる最中に起きたことを述べるもので、
+rootを一度もadmitされなかったtoolには、それが属するSourceが無い。だからこれはDiagnosticではなく、location欄を
+空けたDiagnosticでもない。Owning control failureのclearまたはdisable commitまでcodeを保持する。
 `GlobalBatchStatus`は正確に`{ scanRequestId, tools, phase, failureRef }`とする。`tools`はnon-empty fixed-tool-order admitted subset、
 `phase`は`waiting \| enumerating \| reading \| deriving \| recognizing \| failed`、`failureRef`は`failed`以外nullとする。決定的terminal
-failureは`{ kind: 'tool-failures', failedTools }`を使い、non-empty fixed-tool-order toolは、そのbatchが生じさせたsole current Diagnostic
-ownerの`toolFailures` rowと正確に一致する。Diagnostic IDを繰り返さず別owner referenceも作らない。予期しないthrow/reject terminal failureは
+failureは`{ kind: 'tool-failures', failedTools }`を使い、non-empty fixed-tool-order toolはそのbatchが失敗させたtoolと
+正確に一致する。各toolは自身のcontrolの`failureCode`として理由を持ち、この一覧はそれを繰り返さない。予期しないthrow/reject terminal failureは
 `{ kind: 'error', message }`を使い、failed requestのerror messageを持つ。Tool非依存のdeterministic Global batch failureは存在せず、全returned deterministic failureを1つ以上の
 exact toolへ帰属させる。Cross-tool assembly/invariant/retention failureはthrow/rejectし、failed requestのerrorとして記録する。
 Successでは全new Sourceが同じ`Source.scanRequestId`でpublishされるcommitだけが`batchStatus`をremoveし、`active-no-job`はstatusを作らない。
@@ -466,8 +436,8 @@ pre-acceptance response transactionを行う。最初にcurrent operation ID/com
 またはretry partition、candidate batch/`scanRequestId`と`queued`、あるいはjobなし/null IDと`active-no-job`をprepareする。
 続いて同じlock内で同じ
 operation ID/command epoch/preview object/preview epoch/signal/barrier stateを再検証し、その後だけcontrolをatomic activate/applyする。
-Accepted batchへadmitされた各toolのprior `diagnosticId`をclearし、candidate batch/IDをpromote/enqueueして`batchStatus`を作り
-`pendingTools`を設定するか、null `batchStatus`でrejected-tool diagnosticだけをretain/replaceしてactive-no-jobをcommitし、disposition選択、
+Accepted batchへadmitされた各toolのprior `failureCode`をclearし、candidate batch/IDをpromote/enqueueして`batchStatus`を作り
+`pendingTools`を設定するか、null `batchStatus`でrejected-toolのfailure codeだけをretain/replaceしてactive-no-jobをcommitし、disposition選択、
 `complete`化、unregisterをatomicに行い、宣言済みresult valueをdevframe channelのserialize対象として返す。
 Per-tool Source commitはobserverに一切見えない。Disable barrierがそのcommit前に先にlinearizeした場合、prepared stateをdiscardし、
 同じcheckは`global-disable-pending`を選んでcancellationを
@@ -560,8 +530,8 @@ Reviewしたpageごとの規範的な1 rowは引き続き[Official Sources](cont
 URLとreview日を繰り返すが、これは主張の隣に根拠を書くこととの引き換えとして意図的に受け入れる。
 
 Citationはpackaged CLIからcompileで除去される。同じbuild flagを共有するvendor locatorも一緒に除去される。
-製品はどちらも読まない — `EvidenceAssessment`はsubjectがどれだけ文書化されているかを記録するのであって
-どこにあるかではなく、locatorを運ぶDTO fieldも存在しない — ため、buildは`__ACI_SHIP_MAINTENANCE_DATA__`を
+製品はどちらも読まない — citationは主張がどこで確立されたかを記録するもので、
+locatorもcitationも運ぶDTO fieldは存在しない — ため、buildは`__ACI_SHIP_MAINTENANCE_DATA__`を
 `false`に置換し、citation配列はすべて空に、`locator`はすべてnullに畳まれる。この置換は綴りを誤るか定義を失うと黙って
 失敗するので、package suiteがbuild済みartifactにURL、host、review日、paraphrase、locator値が含まれない
 ことを検査する。
@@ -578,17 +548,16 @@ nodeを除去し、proseとcode textを保持し、entityをdecodeし、Unicode 
 strategyを自動変更することはない。Maintainerはciteしている全recordと両言語のcontract/researchをreviewした
 後、heading、paraphrase、`reviewedOn`を明示的に更新する。Remote pageのtextやresponse bodyはcheck inしない。
 
-### DocumentationStatus、LifecycleQualifier、EvidenceAssessment
+### DocumentationStatusとLifecycleQualifier
 
 `DocumentationStatus`はcompleteness/consistencyを表すclosed enum `documented | partially-documented | unknown | conflict`とする。
 `LifecycleQualifier`は別のclosed enum `preview | experimental | deprecated`とする。`LifecycleQualifier[]`はuniqueで、
 `preview`、`experimental`、`deprecated`のfixed orderに並べる。Empty arrayはmaintain済みlifecycle claimなしだけを意味し、
 `stable`と表示または推論しない。
 
-`EvidenceAssessment`はexact DTO record `{ subjectKind, subjectId, documentationStatus, lifecycleQualifiers }`とする。
-`subjectKind`は`behavior | rule | strategy`、`subjectId`は対応するimmutable registry recordをresolveする。Arrayはcompleteかつdeduplicate済みで、
-subject-kind順`behavior`、`rule`、`strategy`、次に`subjectId`でsortする。Valueはrecordごとにcopyし、worst/best scalarへcollapseしない。
-`ConditionFact.status`の`documentation-conflict`は別のruntime condition resultのままで、`DocumentationStatus`のaliasではない。
+どちらもbehavior・rule・strategy record自身の上にあるmaintenance recordである。どのresponseも
+どのsurfaceも、これらを運ばない（QR-005）。製品が報告するのは見つけたカスタマイズファイルであって、
+そのfileをadmitしたruleをvendorがどれだけ文書化しているかではない。
 
 ### VendorBehaviorStatement
 
@@ -596,11 +565,10 @@ subject-kind順`behavior`、`rule`、`strategy`、次に`subjectId`でsortする
 Productのlookup場所を説明するものでfilesystem matcherではなく、readを許可できない。
 
 Locatorの4要素を1 fieldにするのは、それらがvendor自身のlocatorという1つの記述だからであり、また
-packaged CLIがまとめて落とすからである。どのDTO fieldもこれらを運ばず、publishされる
-`SourceConditionFactDto`はfactを説明するbehaviorを値ではなくIDで名指す。4つを独立にnull許容にすると、
-どのbuildも生成しない「半分だけ記述されたrecord」を型が許してしまう。`activationConditions`は意図的に
-locatorに含めず全buildで保持する。`ConditionFact.key`はwire typeであり、FR-039がproductにその
-publishを要求しているからである。
+packaged CLIがまとめて落とすからである。どのDTO fieldもこれらを運ばない。4つを独立にnull許容にすると、
+どのbuildも生成しない「半分だけ記述されたrecord」を型が許してしまう。Statementはcondition keyの一覧を
+記録しない: それを消費していたprojectionは、それを表示していたsurfaceとともに無くなっており、
+どの消費者も読まないfieldはdriftするfieldである（FR-009）。
 
 上向きtraversal descriptorは停止条件を名前に含める。walkがどのdirectoryへ到達するかを決めるのがそれだから
 である。`ancestor-chain-to-repository-root`はrepository rootで終わり、`ancestor-chain-to-filesystem-root`
@@ -613,7 +581,6 @@ publishを要求しているからである。
 | `tool` | tool enum | 所有product |
 | `surfaces` | non-empty surface enum[] | VS Code、CLI、cloud、shared local Codex clientなど。暗黙の“all”なし |
 | `locator` | `VendorLocator`またはnull | Vendorがどこを見てどう辿るかを1 fieldにまとめる。`vendorScope`（repository/workspace、User、hosted/managed、plugin、runtime-only）、`lookupBase`（workspace root、Git/repository root、runtime `cwd`、target-path chain、tool home、profile data、active config layer、registered catalog、hosted state）、`relativeSelector`（path textだけ。Inspector glob semanticsを含まずauthorityを与えない）、`traversal`（exact、ancestor-chain-to-repository-root、ancestor-chain-to-filesystem-root、standard-location chain、recursive-under-base、lazy descendant、explicit registration、none）。Packaged CLIではnull |
-| `activationConditions` | condition-key enum[] | Trust、feature flag、target match、installation、enablement、runtime version、その他必須input |
 | `documentationStatus` | `DocumentationStatus` | `conflict`は競合する全source assertionを保持 |
 | `lifecycleQualifiers` | `LifecycleQualifier[]` | Unique fixed order。Emptyはstability claimをしない |
 | `evidence` | non-emptyな`EvidenceCitation[]` | このrecordを確立するreview済みdocumentation（§ EvidenceCitation）。Packaged CLIでは空 |
@@ -633,7 +600,6 @@ authorityへ変えずに記録する。
 | `strategyId` | stable dotted string | Uniqueで、bilingual runtime-composition contractで定義 |
 | `tool` / `surfaces` | tool enum / non-empty surface enum[] | 正確なproduct/surface boundary |
 | `operations` | non-emptyなordered closed enum[] | 各entryは`append \| concatenate \| select-first \| select-closest \| replace \| merge-map \| deduplicate \| filter \| retain-all \| unknown-order`。Array orderは文書化済みpipeline order。`retain-all`は、文書化された全inputが利用可能なまま残りどれもmerge されないことを述べる。Collapsing entryが無いことはそれを述べない。Arrayは、あるsourceが文書化しているstepを記録するのであって、そのsourceが排除しているstepを記録するのではないからである |
-| `requiredConditionKeys` | condition-key enum[] | Terminal applicability resultを許す前に必要な全input |
 | `documentationStatus` | `DocumentationStatus` | Partial/unknown/conflicting orderからwinnerを捏造しない |
 | `lifecycleQualifiers` | `LifecycleQualifier[]` | Unique fixed order。Documentation completenessと分離 |
 | `evidence` | non-emptyな`EvidenceCitation[]` | このrecordを確立するreview済みdocumentation（§ EvidenceCitation）。Packaged CLIでは空 |
@@ -726,8 +692,7 @@ contract gateの義務である。型だけでは両者を区別できないた�
 
 どのreview済みdocumentationがrecordを確立するかはrelationではない: 全behavior・rule・strategyが
 自身のcitationをrecord上のnon-emptyな順序付き`evidence`配列に書くため（§ EvidenceCitation）、根拠は
-支える主張の隣に置かれる。Citationは製品が一切読まないmaintenance evidenceであり — `EvidenceAssessment`は
-subjectがどれだけ文書化されているかを記録するのであって、どこにあるかではない — `tsdown.config.ts`が
+支える主張の隣に置かれる。Citationは製品が一切読まないmaintenance evidenceであり、`tsdown.config.ts`が
 `__ACI_SHIP_MAINTENANCE_DATA__` defineでpackaged CLIからcompile除去する。この除外がなければ、
 review済みURL・review日・paraphrase済みassertionがすべて出荷CLIに入る。
 
@@ -752,7 +717,6 @@ release dataである。
 | `matcher` | `StructuredInspectorMatcher`またはnull | Static ruleだけ。Vendor locator、ambient path、executable glob、untyped selector stringではない |
 | `derivation` | closed derived-target mappingまたはnull | `bounded-derived-candidate` ruleだけに存在する。独立してadmit済みのseed fileのallowlist済み宣言occurrenceと固定literal registry suffixから、derived target pathを1つresolveする固定registry mapping。Callback、自由形式path expression、glob、正規表現、再帰derivationは持たない |
 | `policyRefs` | sort済みspecification ID[] | Surfaceを許可または意図的に除外するFR/QR clause。保守buildではnon-emptyで、packaged CLIではempty。どのDTOも運ばないreviewer向けtraceabilityだからである |
-| `conditionKeys` | condition-key enum[] | 適用可能性判定前に必要なruntime fact |
 | `precedenceGroup` | stable stringまたはnull | 文書化されたselection/order semanticsを持つruleだけを結ぶ |
 | `documentationStatus` | `DocumentationStatus` | Runtime stateではなくupstream documentationのcompleteness/consistencyを表す |
 | `lifecycleQualifiers` | `LifecycleQualifier[]` | Separate upstream lifecycle claimをunique fixed orderで保持 |
@@ -876,12 +840,12 @@ commandをreleaseする。
 置換し、別Sourceのfailureを保持する。Automatic failure後の最初のexplicit Repository rescanなら、terminal transitionは
 `repositoryFailureDiagnosticId`とold `repository`-owned Diagnosticもremoveし、new stale entryが参照するdeterministic
 `published-source:<sourceId>` Diagnosticを作るか、failed requestのerror messageを記録することを、同じatomic overlay updateで行う。自動の初回Repository scanのfatal failureではbootstrap generation 0をcurrentのままにする。
-初回Global enableのfatal failureではmissing tool用の`StaleSourceFailure` entryを追加せず、そのtoolのkey別
-failure diagnosticを作成/置換して既存entryとそこから派生するsnapshot stateをすべて保持する。自動初回Repository failureも
+初回Global enableのfatal failureではmissing tool用の`StaleSourceFailure` entryを追加せず、そのtoolの
+controlの`failureCode`を設定/置換して既存entryとそこから派生するsnapshot stateをすべて保持する。自動初回Repository failureも
 Repository failure recordを使い、どちらもnew inventoryをcommitしなかったことを報告する。Global-disable barrierに
 よるexpected cancellationはfailure diagnosticをemitしない。それ以外の決定的にreturnされたsafe failureはout-of-generation
 session-lifecycle Diagnosticとする。そのattachment scopeは後述の`Diagnostic` ruleに従い、file scopeでは
-`sourceId`、`fileId`、Source-relative Pathを一緒に持つが、source/session scopeではfile IDやpathを捏造しない。
+`sourceId`、`fileId`、Source-relative Pathを一緒に持ち、source scopeではfile IDやpathを捏造しない。
 Customization source valueを含めず、`Source.diagnosticIds`へ入れない。Coordinatorは次のqueued transactionを
 still-current Nから開始する。後続のaffected Sourceに対するcompleteまたはpartial正常scanがNをN+1へ
 置換してそのentryとfailure referenceだけをclearし、別Sourceのcommitでは両方を未解決のまま保つ。予期しないthrow/rejectionはこの
@@ -946,8 +910,8 @@ requeue boundaryを跨がない。全valueはJavaScript safe integerでなけれ
 
 Customization Fileは、Source-relative Pathで識別する、Source内で発見した1つのfileであり、そのencoding、
 readable時の完全なsource text、recognition、relationship、diagnosticを持つ。各recognitionはさらに、
-自身をadmitしたinspection ruleとmatched path（そのprovenance）を記録するため、scope、order、applicability、
-record-by-record evidence assessmentはlossyなfile-level aggregateではなくそのadmission recordへattachされたままになる。
+自身をadmitしたinspection ruleとmatched path（そのprovenance）を記録するため、どのruleが読み取りを認可したかは
+lossyなfile-level aggregateではなくそのadmission recordへattachされたままになる。
 
 `encoding`が3つのclosed per-file outcome（FR-024/FR-028）を判別する: readable text（`utf-8`または`utf-8-replaced`）、
 textを持たない`binary`、failed readの`unknown`である。独立したread-state fieldはこのdiscriminatorの繰り返しに
@@ -979,7 +943,7 @@ substituteしない。
 
 | Kind | 1 rowが示す単位 |
 |---|---|
-| `skill` | 宣言名1つ。Vendor自身のselectorがそれを使い、`SKILL.md`を収めるdirectory名と一致する必要もないため、複数fileが1つの名前を宣言することがあり、1 entryがそれぞれを定義として列挙する |
+| `skill` | 宣言名1つ。Vendor自身のskill一覧がそれを表示し、`SKILL.md`を収めるdirectory名と一致する必要もないため、複数fileが1つの名前を宣言することがあり、1 entryがそれぞれを定義として列挙する |
 | `MCP` | Admit済みcarrier内の`[mcp_servers.*]`宣言1つ。したがって1つの`.codex/config.toml`は宣言したserverの数だけrowを公開する |
 | `instructions`、`settings/config` | File自身 |
 
@@ -991,15 +955,20 @@ pathで名指して述べる: customizationのdirectory内で失敗したreadは
 表現できない: 名前でgroupingするとToolRecognitionが依拠する`(fileId, tool, kind)`ごとに1 recognitionと
 いう規定を壊し、file形のrowは1 carrierの宣言が必要とするN行になりようがない。
 
-GroupingされたentryがInspectorの記録していない優劣を暗示することはない。各entryは、複数の定義が宣言する
-名前を各認識productがどう解決するかを述べる。記録された記述が異なるためである: Codexは同名skillをmergeせず
-両方が有効なまま残り文書化された順序は無い。CopilotのCLIは文書化されたsource orderの最初を解決する。
-VS CodeのCopilotは重複時の優先順位を一切文書化していない（contracts/runtime-composition.md）。
+GroupingされたentryがInspectorの記録していない優劣を暗示することはない。各entryは、そのentryの定義の
+うち2つ以上をproductが認識する名前について、そのproductがどう解決するかを述べる。記録された記述が異なる
+ためである: Codexは同名skillをmergeせず両方が有効なまま残り文書化された順序は無い。Claude Codeは
+1つのroot内ですべてを有効なまま残し — nestedなものはdirectory-qualified commandで — 作業中のfileに
+合うvariantを選ぶ。CopilotのCLIは文書化されたsource orderの最初を解決する。VS CodeのCopilotは
+重複時の優先順位を一切文書化していない（contracts/runtime-composition.md）。定義の1つしか認識しないproductは何も述べない。衝突に直面して
+いないため、その解決ruleはこのentryが問うていない問いに答えることになる。衝突は引用するruleが答える
+ものでもなければならない: Claude Codeのcommand名はskill directoryに由来するため、その記述は2つの定義が
+directory名を共有する場合だけ現れる（FR-007）。
 
 記述を公開するのは、composition strategyが出荷レジストリにあるproductだけとする。これはrowの欠落では
 ない: skill ruleを持たないproductはskillを認識しないため、どのentryもそこへ到達せず、strategy recordが
 存在しないうちにcontract表をproductへ書き写すことは、照合対象の無い主張を置くことになる。Productの
-skill ruleを出荷する作業が、そのstrategyと記述を一緒に出荷する。定義が1つのentryは解決規則を述べない。
+skill ruleを出荷する作業が、そのstrategyと記述を一緒に出荷する。
 
 ### ToolRecognition
 
@@ -1012,37 +981,39 @@ contentではなくpresentation identityだからである（FR-007、FR-027）�
 Recognitionは一覧rowではない。Rowの単位はkind自身のものであり（§ 一覧の単位）、各kindの一覧はfileごとの
 summaryとして公開されるのではなく、これらのrecordから組み立てられる: skillのrowはrecordを宣言名でgrouping
 し、MCP carrierのrowは1 recordの宣言をrowごとに分割することになる。Fileは自身のrecognition summaryを
-公開しないため、1 recordを裏づけるadmission数を述べる必要もない — detail viewが各provenanceをそれ自身の
-scopeとevidenceとともに示す。
+公開しないため、1 recordを裏づけるadmission数を述べる必要もない。Admissionはどのruleが読み取りを認可し
+どこで一致したかを述べる。カスタマイズがどこに適用されるか、そのruleがどこまで文書化されているかは
+admissionに載せない。どちらもsurfaceが示さないからである。
 
-Skillのdetailsは、censusが得たsort済みcompanion file listも運ぶ。`SKILL.md`が単独で置かれている場合、
-listはabsentではなくemptyとする。Directoryであることこそがskillの正体であり、認識されたskillは必ず
+Skillのcensusが得たsort済みcompanion file listはdetailsには載せない。これはそのrecognitionが裏づける
+inventory定義の上で1回だけ公開される（contracts/http-api.md `skills[].definitions[].companionFiles`）。
+recognition上の2つ目の綴りは、1つ目と食い違い得る状態になるからである。`SKILL.md`が単独で置かれている
+場合、listはabsentではなくemptyとする。Directoryであることこそがskillの正体であり、認識されたskillは必ず
 列挙済みだからである。公開される件数はその`length`だけである
 （contracts/inspection-path-allowlist.md § Bounded companion census）。
 
 列挙された各pathは同じgenerationの`CustomizationFile`でもある。Directory形式のcustomizationは全体として
 読むため、付随fileは各1回読まれ、他のfileと同様に — 自身のidentity、path、read outcome、完全なauthored
 sourceを持って — 公開される。Ruleがadmitしておらず何も分類していないため、recognitionは持たず、どのkindの
-inventoryにも現れない。ここでのlistがそれらを所属先のcustomizationに結び付けるものであり、detail surfaceは
+inventoryにも現れない。定義のlistがそれらを所属先のcustomizationに結び付けるものであり、detail surfaceは
 これをもとにそのcustomizationのdirectoryを構成する。
 
 | Field | Type | Rule |
 |---|---|---|
 | `recognitionId` | opaque string | Generation内unique |
 | `fileId` | opaque string | 複数recognitionが1 physical fileを参照可能 |
-| `provenances` | ordered admission record[] | 共有tool/kind解釈についてのrule/path admissionのsort済み非空set。各recordは`ruleId`、matched `SourceRelativePath`、derived candidateではseed fileと宣言occurrence、`ScopeDescriptor`、任意の`OrderDescriptor`、`ApplicabilityAssessment`、record-by-record `EvidenceAssessment[]`（ruleと参照behavior/strategyごとに正確に1件。Lossy aggregateなし）を持つ |
+| `provenances` | ordered admission record[] | 共有tool/kind解釈についてのrule/path admissionのsort済み非空set。各recordは`ruleId`、`RuleDiscoveryClass`、matched `SourceRelativePath`を持つ。どのruleが読み取りを認可しどこで一致したかであり、それ以上は持たない |
 | `tool` | `copilot \| claude \| codex` | 必須 |
-| `details` | kind判別payload | 認識されたkindと、そのkindのrecognitionを識別するもの — skillなら宣言名とcompanion file list。1 fieldであるため、射影はkindごとの再構成ではなくcopyで済む |
+| `details` | kind判別payload | 認識されたkindと、そのkindのrecognitionを識別するもの — skillなら宣言名。1 fieldであるため、射影はkindごとの再構成ではなくcopyで済む |
 | `parseStatus` | `not-attempted \| parsed \| failed` | `not-attempted`はallowlist extractorが非該当。`failed`はこのrecognitionだけall-or-nothing |
-| `declaredMetadata` | ordered `DeclaredMetadataEntry[]` | Allowlist対象のclosed field IDだけ。fieldごとに1 entryをallowlist rowの順で持つ |
 | `diagnosticIds` | opaque string[] | Owning fileのrecognition-scoped extraction failure |
 
 維持管理するsupported-customization文書を規範的なpresentation allowlistとする。Supportedな各`(tool, kind)`について、
-表示対象となるexactでclosedなmetadata `fieldId`、relationship kind、そのrowがcoverするadmit済みsource formを
-列挙する。Entryはtuple allowlistに含まれ、かつrecognitionのadmit済みsource formに対するexact extractorがそのauthored
+relationship kindと、そのrowがcoverするadmit済みsource formを列挙する。Metadata fieldのcatalogは列挙しない。
+Skillの宣言はfileが書いたkeyで公開され、authored keyの集合は閉じていないからである。Entryはtuple allowlistに含まれ、かつrecognitionのadmit済みsource formに対するexact extractorがそのauthored
 occurrenceを定義する場合だけeligibleとする。1つのrowに複数source formがあっても、それらのschema fieldをunionしたり
 別formへ移したりしない。どちらかのgateを満たさないauthored field/referenceは完全な`sourceText`内でだけ表示し、
-`DeclaredMetadataEntry`または`Relationship`を作らない。Parserはshape/nameから同等entryを推論しない。
+公開値または`Relationship`を作らない。Parserはshape/nameから同等のものを推論しない。
 
 規範的な列挙は、[GitHub Copilot](contracts/vendors/github-copilot.ja.md)、[Claude Code](contracts/vendors/claude-code.ja.md)、
 [OpenAI Codex](contracts/vendors/openai-codex.ja.md) contractのPresentation Allowlist sectionとし、決定的な6件のtable digestと
@@ -1057,8 +1028,9 @@ Customization-kind enumは共有するが、各recognizerがpath/interpretation 
 `CLAUDE.md`、`.mcp.json`、skill、marketplaceは1 fileのまま複数recognitionを持つ。`(fileId, tool, kind)` pairごとに
 recognitionは正確に1つとする。Compatible admissionはその1 recordへprovenanceをmergeする。同じpairのextractorが
 incompatibleなparsed meaningを返した場合、そのrecognitionを`failed`とし、完全なsourceとcompatible provenance
-admissionを保持するがmetadata/relationship/derivation resultはpublishしない。Path固有scope、order、record-by-record
-evidence assessment、applicabilityをlossyなrecognition-level aggregateにしない。
+admissionを保持するがmetadata/relationship/derivation resultはpublishしない。Admissionをlossyな
+recognition-level aggregateへcollapseすることはなく、各admissionは自身の読み取りを認可したruleと一致した
+pathを保持する。
 したがってRepository root `.mcp.json`のCopilot/MCP recognitionは、2つ目のfile/readを作らずCLI
 descendant-inventory provenanceとexactなVS Code 1.118以降provenanceの両方を保持できる。CLI `mcpServers`
 extractionはCLI provenanceに結び付けたままにする。VS Code provenanceはpath/surface-onlyで
@@ -1072,17 +1044,24 @@ classify、retry、recoverしない。Triggerを所有するboundaryへpropagate
 generation resultを作らず、session API boundaryがtriggerを所有する場合はfailed requestのerrorとして通常どおり報告する。
 
 Recognitionはclosed tool順`copilot`、`claude`、`codex`、次に表記載のkind順でsortし、opaque IDを使わない。
-File間metadata comparisonは`(tool, kind, fieldId)`を使い、field ID一致だけで無関係recognitionを比較しない。
+File間metadata comparisonは`(tool, kind, 宣言key)`を使い、宣言keyが一致するだけで別toolや別kindが衝突することはない。
 
 ### Field reading
 
-Extractorは、fileのallowlist fieldをparserが解決した結果を報告する。それはそのfileを読み込む製品が得る値である:
-quoteとescapeは解決され、`007`は`7`として読まれ、2回宣言されたkeyは後の宣言に解決され、aliasは指す先の値に解決され、
-schema外のtagはそれが担っていたscalarを残す。いずれも拒否しない。Inspectorは製品がカスタマイズから何を読み取るかを
-記述するのであって、その間に立つvalidatorではない。綴りが必要なreaderのために、完全なauthored byteは同じdetail
+Extractorは、認識したkindが公開する宣言を、parserがYAML 1.2 core schemaの下で解決した結果 — 文書化された
+決定的なreading 1つ — として報告する: quoteとescapeは解決され、`007`は`7`として読まれ、2回宣言されたkeyは
+後の宣言に解決され、aliasは指す先の値に解決され、schema外のtagはそれが担っていたscalarを残す。いずれも
+拒否しない。これはInspector自身のreadingとして述べるのであって、vendorのruntimeが持つ値の主張ではない:
+vendorはfieldごとにさらにcoerceし得る — Claude Codeはbooleanなfrontmatter fieldで`yes`をtrueと読むが、
+core schemaは文字列`yes`を残す — し、製品が値をどう扱うかはこのtoolが観測しないruntimeである（FR-009）。
+Inspectorはその間に立つvalidatorでもない。綴りが必要なreaderのために、完全なdecoded sourceは同じdetail
 responseの`sourceText`として同席している。
 
-唯一の拒否はまったくparseできないdocumentであり、この場合報告すべき値が存在しない。これはrecognition単位でatomicと
+Fileがfileの書いたとおりに見せられるものを何も提供しないとき、recognitionを拒否する。Frontmatterが
+まったくparseできないdocument、scalarでないkey — 発明せずに行を名指すtextが存在しない — 、明示的な
+YAML 1.1 tagがhost objectへ解決した値 — 綴りはlocale依存の日付か`[object Set]`しかない — 、そして
+自分自身を含む値 — publishする形もsendするJSON形式も持たない — である。いずれも、この製品が作った
+値ではなく「報告すべき値なし」を返す。これはrecognition単位でatomicと
 する。parseできたfieldではなく、そのrecognitionについて何もpublishしない。部分的なextractionは、どのauthored値を
 飛ばしたかを述べられないからである。そのfileはadmit済み・readable・comparison eligibleのまま残る。
 
@@ -1095,106 +1074,39 @@ Extractorは測定するのと同じtextから値を取るため、両者の一�
 JSONC、YAML、TOML、Markdown/frontmatter/import、astral character、combining character fixtureは
 extractionとJSON transportを変化なく通過しなければならない。
 
-### DeclaredMetadataEntry
+### Skillの表示
 
-| Field | Type | 公開範囲 | Rule |
-|---|---|---|---|
-| `fieldId` | closed metadata-field identifier | DTO | Allowlist field/path用のregistry所有identity。任意のauthored keyにはしない |
-| `value` | string | DTO | そのfieldについてparserが解決した値を、fileを読み込む製品が得るテキストとして表す。Mask、redact、短縮はせず、hostが解決した環境変数参照にもしない |
+Skillのdetail surfaceは、それを運ぶfileではなくskill自身から始める: 宣言名を見出しとし、その下に
+2つのtab — skill自身と、そのfile — を置く。Skill tabはfrontmatterが宣言する全keyを、fileの記述順に
+かかわらず`name`と`description`を先頭にして列挙し、続いてそのblockを取り除いた指示を置く。File tabは
+directoryと、開いているfileの完全なauthored `sourceText`を持ち、そこがすべてのauthored spellingの
+読める場所である。1列ではなく2 tabとするのは、これらが2つの主題だからであり、積み重ねるとdirectoryが
+skillの宣言と指示のすべての下に沈むからである。
 
-Entryはauthored occurrenceごとではなくfieldごとに1件とする。2回宣言されたkeyは、そのfileを読む製品にとって1つの値に
-解決され、報告するのはその解決結果である。したがってこれらのentryのcomparison identityは`(tool, kind, fieldId)`とする。
-
-Entryとなるのはsyntaxがstring、number、またはbooleanのscalarへ解決するfieldである。Null scalarは値の不在を
-宣言するものであり、それはentryの不在が既に記録している。`null`と読めるentryは、productがそれで選択することの
-ない綴りを提示することになる。構造のテキスト形式はentryにしない。それはfileが含まない値になるからである。
-
-Presentation allowlistは、list値・map値のkeyのitem/map-entry occurrenceも名指す（`copilot.skill.allowed-tool`、
-`copilot.mcp.server.arg`、`marketplace.plugin.keyword`など。contracts/vendors/*.md § Presentation Allowlist）。
-出荷済みextractorはそのいずれも読まないため、このmodelはそれらの形を持たない: それを読むextractorが、itemに
-必要な形とitemを区別するcomparison identityを同じ変更で持ち込む。それまではlist値のkeyは、構造を平坦化した
-綴りではなくentryを生まない。
-
-値を読むことはmechanicalである。Natural-languageの意味/意図、
-semantic rank、validity/correctness/effectiveness/compliance/quality、policy/remediation advice、fix actionは表現できない。
-Inspector所有schema/registryの検査は、これをcustomization-file verdictへ変換しない。
-
-Arrayはallowlist rowの順でserializeする。JSON transport escapeはJSON decode後のDTO stringを変更しない。
-Parseできなかったdocumentは、そのrecognitionのmetadata/relationship/derivation extraction全体を破棄する。
-一方で完全なauthored byteは`sourceText`として利用可能なまま残る。値がもはや運ばない綴りをreaderが求める先はそこである。
-
-### ScopeDescriptor、OrderDescriptor
-
-Public scope/order shapeはclosed DTO unionとし、rendering/comparisonをimplementation固有objectへ依存させない。
-
-`ScopeDescriptor`は`kind`とvariantごとに次のfieldだけを持つ。
-
-| `kind` | 追加field | 意味 |
-|---|---|---|
-| `source-root` | なし | Owning Repositoryまたはtool固有Global Source root |
-| `directory-subtree` | `path: SourceRelativePath` | 1 Source-relative directoryとそのdescendant |
-| `matching-path` | `path: SourceRelativePath`, `selectorIndex: non-negative integer` | Exact admitted pathとimmutable matcher-selector alternative |
-| `declared` | `fieldId`, `occurrence` | そのfieldのauthored宣言を1件、値を複製せず参照する。Entry listへのindexではない。Entry listはfieldごとに解決済みentryを1件だけ持つ |
-
-Path fieldは所有admission recordと同じSourceに属する。Stable scope keyは上記variant順、次に該当するSource-relative
-path、selector index、field ID、occurrenceとする。
-
-`OrderDescriptor`は次のclosed unionからなるnon-emptyなordered `components` arrayを持つ。
-
-| Component `kind` | Field | 意味 |
-|---|---|---|
-| `path-depth` | `direction: broad-to-narrow \| narrow-to-broad`, `depth: non-negative integer`, `path: SourceRelativePath` | Documented path-layer orderだけ |
-| `registry-rank` | `strategyId`, `rank: non-negative integer` | 1 strategy内の固定documented fallback/precedence rank |
-| `source-occurrence` | `fieldId`, `occurrence` | Valueをcopyしないauthored declaration order |
-
-Componentはdocumented pipeline順で保持する。Stable comparison keyはcomponent position、上記component-kind順、次に
-direction/depth/path、strategy/rank、またはfield/occurrenceとする。Unknown/conflicting orderはfabricated rankではなく
-nullとapplicability/documentation factで表す。
-
-### ApplicabilityAssessment
+したがって`ToolRecognition.details`は`skill` kindについて次を運ぶ。
 
 | Field | Type | Rule |
 |---|---|---|
-| `summary` | `authored \| available \| selected \| omitted \| shadowed \| disabled \| conditional \| unknown` | 便宜的projectionにすぎず、`effective`と呼ばない |
-| `conditions` | `ConditionFact[]` | key・reason code・basis・status順でsort/deduplicateし、欠けたinputをtrueにしない |
+| `declaredName` | string、無ければ不在 | Parserが解決した`name` scalar（§ Field reading）。空ではなく不在とする: authoredな空の名前は「名前が無い」とは別の事実である。`name`がscalar以外へ解決するときも不在とする — fileが名前として書いていないlistの先頭itemでskillを名指すのは、fileが宣言していないidentityになる。これはinventory rowがgroupingに使うidentityである（FR-007） |
+| `frontmatter` | ordered entry[] | Fileが宣言するすべてのkeyを、fileが書いたkey — 維持管理上のcatalogのものではない — でauthored順に持つ。Frontmatter blockの無いdocument、mappingではなくlistや裸のscalarとして書かれたblock — そうしたblockはkeyを宣言せず、listを読めば得られるindex位置はfileが書いたkeyではない — 、`failed` extractionでは空 |
+| `bodyText` | string | 同じdocumentからfrontmatter blockを取り除いたもの。`failed` extractionでは空 |
 
-Assessmentは`strategyRefs`も`evaluatedFromGeneration`も持たない。Assessmentを運ぶrecordは、
-IDの列では運べないdocumentation status付きでstrategyごとに`EvidenceAssessment`を既に公開しており、
-assessmentを計算したgenerationは、それを運ぶresponseがbindされたgenerationである。どちらのfieldも
-既にある値の2つ目のcopyであり、2つのcopyは食い違い得る。
+各frontmatter entryは`key`と`value`とし、`value`はparserが解決した内容をfileが書いた形のまま
+写す: scalarは解決済みのtextを持ち、authored nullは独自のvariantとし、sequenceはitemを、
+mappingは自身のentryを再帰的に持つ。これによりnestしたblockはblockとして読める。構造を平坦化した
+綴りはvalueにしない: それはfileが含まないtextだからである。YAML anchorが宣言し得る「自身を含む値」は
+公開する形もJSON形式も持たないため、要約せずそのrecognitionをall-or-nothingで失敗させる（FR-028）。
 
-各`ConditionFact`は`key`（`surface`、`engine-version`、`runtime-cwd`、`workspace-root`、
-`repository-root`、`project-root`、`worked-path`、`target-match`、`scope-availability`、`feature-state`、
-`trust`、`approval`、`enablement`、`selection`、`settings-inputs`、`plugin-state`、`agent-context`、`event`、
-`documentation-variant`、`tool-availability`、`installation`、`managed-policy`、
-`instruction-byte-budget`、`content-limits`、`external-runtime`）、
-`status`（`satisfied`、`unsatisfied`、`unknown`、`documentation-conflict`）、固定`reasonCode`、
-`basis`（`inspected-data`、`official-rule`、`excluded-input`、`runtime-input`）を持つ。
-Applicableなofficial ruleと結論に必要な全inputが判明した場合だけsummaryを`selected`、`omitted`、
-`shadowed`、`disabled`にする。それ以外は`conditional`または`unknown`のままとする。
+宣言部と本文の分割はfrontmatter parser自身のものとする。Blockの終端を決めることは、行終端子、
+閉じfenceの形、そして何をfenceと数えるかを決めることであり、それはparserが既に実装しているgrammarで、
+それについての2つ目の意見は、parserが生成した値と食い違い得る意見である。
 
-同梱condition-reason registryは各`reasonCode`を、許可するkey/basis/status shape、結論にrequiredかどうか、
-1つのprojection role（`availability`、`selection`、`omission`、`shadowing`、`disablement`、
-`documentation-uncertainty`）へmapする。`authorship` roleは存在しない。下記row 8へはfactではなく
-recordのoriginから到達するため、それを名指すroleはどのrowも問い合わせない値になる。Emitterはsummaryを直接選べない。各generationで次のdecision tableを
-使って再計算し、最初にproofが完成したrowを採用する。
-
-| Priority | Summary | 必要なcomplete proof |
-|---:|---|---|
-| 1 | `disabled` | Documented enablement、managed-policy、tool-availability controlがuseを禁止すると判明。このproofは後続selection factにかかわらず十分 |
-| 2 | `shadowed` | Completeなapplicable precedence chainで別candidateが勝つと証明し、disable proofなし |
-| 3 | `omitted` | Completeなsurface/target/selection/budget ruleで除外を証明し、higher-priority proofなし |
-| 4 | `selected` | Documented selection ruleでinclusionを証明し、selectionを妨げ得る全conditionがsatisfied |
-| 5 | `unknown` | Required composition/applicability ruleのdocumentationがabsent/conflictingで、十分なnegative proofなし |
-| 6 | `conditional` | Documented applicability pathはあるがrequired runtime/excluded inputが未観測で、十分なnegative proofなし。自身のdocumentationがconflictするrequired inputはrow 5である: 不一致はdocumentation自体であり、欠けているruntime観測ではない |
-| 7 | `available` | 全documented availability requirementがsatisfiedで、availabilityを妨げる未解決factがなく、selection resultは主張しない |
-| 8 | `authored` | Accepted authored declarationだけを証明し、installation/availabilityを意図的に主張しない |
-
-`authored`をprojectできるのはfile起点candidate declarationだけで、より強いproofがないrelationshipは
-`conditional`または`unknown`とする。Unrelated informational factはterminal resultを妨げず、reason registryで
-requiredとしたfactだけが妨げる。Higher-priority sufficient outcomeが勝ってもconditionは正本として全て表示する。
-これらsummaryはdocumented explicit factをmechanicalにprojectするだけで、natural-language contentを解釈せず、
-customizationのvalidity/correctness/effectiveness/compliance/qualityを判定せず、remediationを助言しない。
+他のauthored valueは再公開しない: detail surfaceはこれらの傍らに完全な`sourceText`を提供するため、
+同じ画面に既にある値のcaption付きの複製は1つの事実の2つの綴りになり、2つの綴りは食い違い得る。
+値を読むことはmechanicalである: natural-languageの意味/意図、semantic rank、
+validity/correctness/effectiveness/compliance/quality、policy/remediation advice、fix actionは表現できない。
+JSON transport escapeはJSON decode後のstringを変更せず、extractorがparseできなかったdocumentは
+recognitionのextraction全体を破棄する一方、完全なdecoded sourceは`sourceText`として利用可能なまま残る。
 
 ### Relationship
 
@@ -1212,11 +1124,9 @@ customizationのvalidity/correctness/effectiveness/compliance/qualityを判定�
 | `normalizedTarget` | `SourceRelativePath`またはnull | Lexical normalizationが安全で、targetが所有Source内に残る場合だけ設定 |
 | `boundaryStatus` | `inside \| outside \| invalid \| unknown` | Readを許可しない |
 | `resolutionStatus` | `not-followed \| independently-admitted \| missing \| rejected` | Relationship自体はcontentを展開しない |
-| `evidenceAssessments` | `EvidenceAssessment[]` | この`ruleId`と全`behaviorRefs`/`strategyRefs` memberごとに正確に1件。Partial、unknown、conflict、lifecycle qualifierをrecord別に維持 |
 | `behaviorRefs` | sort済みbehavior ID[] | Edgeの説明を許すsurface-specific upstream statement |
 | `strategyRefs` | sort済みstrategy ID[] | Edgeについて考慮したcomposition/selection strategy |
 | `sourceRefs` | sort済みsource ID[] | Relationship rule、behavior、strategy recordからの正確なevidence union |
-| `applicability` | `ApplicabilityAssessment` | Edge固有context/tool/trust/selection fact。Targetのread authorityにはしない |
 
 `Relationship.kind`は全体としてclosedだが、extractorがemitできるのは、owning `(tool, kind)`について維持管理する
 presentation allowlistに記載したsubsetだけとする。未記載のrelationship kindを持つreferenceはauthored source text内にだけ
@@ -1277,8 +1187,8 @@ API errorはresponseで返すがdiagnosticとして保持しない。
 Sessionはlifecycle owner keyごとにcurrentなactionable failureを最大1件保持する。Automatic Repository admission/initial-scanの
 deterministic failureは`repositoryFailureDiagnosticId`から参照する。最初のexplicit rescanはrunning中そのreferenceを保持し、terminal
 successならclear、deterministicまたはthrow/reject terminal failureならatomicにremoveして上記`published-source:<sourceId>` stale ownerを
-作る。後続explicit outcomeは`StaleSourceFailure`だけを使う。Unpublished Global toolは`global:<tool>` control recordと`toolFailures`を使い、Source publication
-成功またはGlobal disableでclearする。Published Sourceのexplicit-rescan failureは`published-source:<sourceId>`を使い、そのSourceの
+作る。後続explicit outcomeは`StaleSourceFailure`だけを使う。Unpublished Global toolはlifecycle Diagnosticを一切持たない。そのfailureはcontrolの`failureCode`であり、Source
+publication成功またはGlobal disableでclearする。Published Sourceのexplicit-rescan failureは`published-source:<sourceId>`を使い、そのSourceの
 `StaleSourceFailure`だけから参照する。後続terminal failureは置換し、refresh成功またはSource removalでclearする。無関係なowner
 commitは保持する。全non-null public referenceは`sessionDiagnosticIds`のunique member 1件へresolveし、各lifecycle Diagnosticには
 public owner referenceが正確に1つある。Diagnosticを意図的にtruncateしたりaggregate suppression recordへ
@@ -1298,9 +1208,8 @@ Inspection-traversal subsetは正確に次のとおりとする。
 このsubsetでその他のcodeはinvalidとし、各codeは単一の固定scopeを持つ。`root-unreadable`は、存在しないか
 directoryとしてreadできないSource rootを、そのSourceの`sourceId`を持つsource scopeで記録する（Repository Source、
 またはrescan時のpublished Global Source）。未公開Global toolはrecordをattachするSourceを持たず、このmodelには
-退避先となるpath-less scopeも存在しない: そのfailureをどう運ぶかは、それを生むGlobal phaseが、公開するowner
-（`GlobalControlView.toolFailures`）とrouteに使う`lifecycleOwnerKey` `global:<tool>`とともに持ち込む。
-Diagnosticがその隙間を埋めるためにSourceやpathを捏造することはない。`file-unreadable`は、discoveryとreadの間に消えたfileやtargetがmissing/unreadableな
+退避先となるpath-less scopeも存在しないため、そのfailureはDiagnosticではない: それが属する`GlobalToolControl`の
+`failureCode`である。Diagnosticがその隙間を埋めるためにSourceやpathを捏造することはない。`file-unreadable`は、discoveryとreadの間に消えたfileやtargetがmissing/unreadableな
 symbolic linkを含むper-file read failureを記録する（FR-024）。`file-content-binary`はadmit済みcandidateのNUL byteによる
 diagnostic-only outcomeを記録する（FR-025）。censusが列挙したcompanionのbinary bytesはassetの通常の事実であり、
 Diagnosticなしで公開される。`recognition-parse-failed`は、完全なreadable sourceを表示・comparison可能なまま保ち、
@@ -1352,8 +1261,7 @@ readable-directory admissionだけが判定し、後のNode.js/OS rejectionは�
   response deliveryが既にqueue済みでもlate callbackはno-opになる。
 - `ComparisonSelection`: Readableな`fileId`を0または正確に2つ持ち、それぞれ所属sequenceのcurrentなcommit済み
   generationに属する。Cross-source comparisonは常に各sourceの最後にcommit済みstateを比較する。Literal comparisonは
-  Monacoで両方の完全な`sourceText`を比較し、Vueで返却済みの完全な`declaredMetadata`値をsource textへ
-  serializeせず比較する。Credential-like stringやenvironment referenceを含むliteralな差を表示する。
+  Monacoで両方の完全な`sourceText`を比較する。Credential-like stringやenvironment referenceを含むliteralな差を表示する。
 - `EditorModelState`: Opaqueなin-memory URIと完全なauthored `sourceText`を持つgeneration-scoped Monaco model。
   所有editor、subscription、全modelはroute close、selection replacement、file removal、source disable、
   所属sequenceのgeneration変更時に個別にdisposeする。
@@ -1372,10 +1280,10 @@ readable-directory admissionだけが判定し、後のNode.js/OS rejectionは�
   Barrier acceptance前にrequestがfailした場合、またはtrue no-opの場合、fresh session snapshotのfenceはnullであり、purge済みclientはnew full snapshotを直ちにfetchできる。
 - `RecoveryViewState`: Global-disableのpre-send purge、またはordinary responseがgreater epochか
   non-null fenceを公開した後にfresh session snapshotをfetchした場合に作る。Page visibilityまたは
-  navigationでは作らない。Network/runtime RPC rejection、transportが報告するchannel loss、session
-  mismatchでは、中央purge後にsession-ended viewを維持する。Recoveryはadoptした`sessionId`、fresh
+  navigationでは作らない。Transportが報告するchannel lossまたは解釈できないprotocol、session
+  mismatchでは、中央purge後にsession-ended viewを維持する。Ordinaryなrequest rejectionは何もpurgeしない。Recoveryはadoptした`sessionId`、fresh
   `globalContentEpoch`/`globalControl`/`globalEnableInProgress`/`globalDisableInProgress` projection、
-  `globalControl.toolFailures`が参照するexact pathless session Diagnostic、presentなfailed
+  失敗した各toolの自身のcontrol上の`failureCode`、presentなfailed
   `globalControl.batchStatus`またはdisable projectionが保持するfailed requestのerror、任意のnewly
   verified frozen previewだけを保持する。`globalDisableInProgress`がnullでnormal full snapshotを
   fetch可能な場合だけ**Resume inspection** actionを提示する。Controlまたは任意enableがactiveなら
@@ -1392,12 +1300,15 @@ readable-directory admissionだけが判定し、後のNode.js/OS rejectionは�
   eventからrequestを発行しない。Clientはvisibility、focus、unload listenerを設置せず、
   `visibilitychange`、`pagehide`、`beforeunload`はpurgeもrefetchもtriggerしない。Discardされた
   documentは自身のreferenceをreleaseし、bfcache documentが保持するのは同じuserが自身のmachine上で
-  見た自身のfileであり、trusted-workspace modelはこれをexposureとして扱わない。Currentな
-  network/runtime RPC rejection、transportが報告するchannel loss、session-ID mismatchでは、
-  session-ended viewをrenderする前に中央purgeを同期実行する。全Monaco
+  見た自身のfileであり、trusted-workspace modelはこれをexposureとして扱わない。CurrentなRPCでtransportが
+  報告するchannel lossまたは解釈できないprotocol、session-ID mismatchでは、
+  session-ended viewをrenderする前に中央purgeを同期実行する。Ordinaryなhandler/serialization/delivery
+  failureはそのrequestだけのerrorであり、何もpurgeしない。全Monaco
   editor/model/worker/subscriptionをdisposeし、comparisonとfilterのstateをclearし、全
-  source/detail/metadata/diagnostic DTOとDOM textを除去してpending requestをabortし、epochを
-  incrementして旧epochで開始したresponseを無視する。Ordinary responseがcurrent baselineをconfirm
+  source/detail/metadata/diagnostic DTOをdropしてpending requestをabortし、epochを
+  incrementして旧epochで開始したresponseを無視する。それらのDTOが描画していたDOMはframework自身の
+  flushが除去する。これはmicrotaskであり次のpaintより前に完了するため、dropしたstateからframeが
+  描かれることはない。Editor modelはDOM除去では解放されないresourceなので、明示的にdisposeする。Ordinary responseがcurrent baselineをconfirm
   またはrenderする前に、そのrequest token、`clientDataEpoch`、session identity、Global content epoch、
   fenceがすべてguardを通過しなければならない。Older epochはrejectし、equal epochかつnull fenceは
   baselineをconfirmし、greater epochまたはnon-null fenceでは同じpurgeを実行してcontrol-only
@@ -2736,8 +2647,8 @@ candidate -> readable + not-applicable/all-parsed/mixed/all-failed parse summary
    tool/kind pairごとに最大1 recognitionを持つ。Distinctなpathはdistinctなinventory itemであり、
    physical-identity groupingは存在しない（FR-024、FR-019）。異なるSource、attempt、generationは独立してreadする。
 6. 全readable file DTOは完全なauthored `sourceText`を返し、返却する宣言済みmetadata値は
-   そのfieldについてparserが解決した値とする。Documented defaultはauthored textをnull、
-   originを明示する。Comparisonは各fieldの解決済み値と`(tool, kind, fieldId)`を使う。Environment referenceはliteralのままでprocess environmentのlookup/substitutionを
+   その宣言についてparserが解決した値とする。Documented defaultはauthored textをnull、
+   originを明示する。Comparisonは各fieldの解決済み値と`(tool, kind, 宣言key)`を使う。Environment referenceはliteralのままでprocess environmentのlookup/substitutionを
    起こさない。Session Diagnosticはactionable location fieldだけを持てる。
 7. Documentation status、authored/installed state、selection、trust、enablement、その他condition factを
    provenance固有かつ直交したまま保ち、「effective configuration」やlossyなrecognition-level winnerへ
@@ -2752,8 +2663,7 @@ candidate -> readable + not-applicable/all-parsed/mixed/all-failed parse summary
 11. Browser editor modelはopaqueなin-memory identityを使い、filesystem/remote URLを使わず、active routeと
    generationを越えてsourceを保持しない。Source/comparison surfaceは注意書きを掲げず、detail requestや
    comparisonの前に確認stepも立てない（FR-027）。
-   session APIはloopback-bound local host経由でだけ到達可能であり、その境界がすべてだからである。Currentな
-   browser/network/runtime RPC rejection、transportが報告するchannel loss、session mismatch、
+   session APIはloopback-bound local host経由でだけ到達可能であり、その境界がすべてだからである。CurrentなRPCでtransportが報告するchannel lossまたは解釈できないprotocol、session mismatch、
    Global-disableのpre-send action、responseで観測したgreater Global epoch/non-null fenceでは中央purgeを
    実行してapplication保持session contentをすべて除去する。全ordinary responseはrequest-token、
    `clientDataEpoch`、session、Global-epoch、fence guardを適用するため、responseから旧generationまたは
@@ -2762,9 +2672,8 @@ candidate -> readable + not-applicable/all-parsed/mixed/all-failed parse summary
    host lossを報告するが、continuously idleでvisibleなpageにproduct固有のwall-clock保証を設けない。
 12. 全behavior、rule、strategy、source IDは、所有するbilingual contractとexecutable registryで正確に1回だけ
     定義する。Record自身の`evidence` citationは所有rowのdirect Evidence cellと一致し、official-source逆引きindexと
-    相互一致する。Runtime provenance/relationship DTOは表示用にこれらdirect recordのdeterministic unionを公開してよいが、
-    そのderived unionはregistry backlinkを変更しない。`evidenceAssessments`はowning ruleと全referenced behavior/strategyごとに正確に1 recordを持ち、
-    各recordのdocumentation status/lifecycle qualifierを上記fixed orderで保持する。Missing、duplicate、orphan、language-divergentなrecordは
+    相互一致する。citation、documentation status、lifecycle qualifierはどのDTOも運ばない。
+    製品が読まないmaintenance recordだからである。Missing、duplicate、orphan、language-divergentなrecordは
     buildをfailさせる。
 13. Vendor lookup base/traversalとInspector matcherは別record typeである。全Repository matcherはselected
     Repository rootを基点にauthorしたtyped segment programである。`ANY_DIRECTORIES` segmentは明示的な下向きInspector inventoryだけを意味し、vendor traversalや
@@ -2779,7 +2688,7 @@ candidate -> readable + not-applicable/all-parsed/mixed/all-failed parse summary
     だけに保持し、保存済みraw valueをadmissionに使う。Escaped `displayRoot`はpresentationだけで、enableはenvironment inputを再読込しない。
 17. Product発行のmutation-capable filesystem operation/open flagは存在しない。Testはcontent、length、identity/link state、
     mode、mtime、ctime、observable xattr/ACLを比較する。OS-only atime changeは別に記録し、mutationもsafetyも証明しない。
-18. Syntax parsing、allowlist fieldについてparserが解決した値の読み取り、frozen-catalog classification、
+18. Syntax parsing、認識したkindが公開する宣言についてparserが解決した値の読み取り、frozen-catalog classification、
     documented structural projectionだけを解釈operationとして許可する。DTO/internal projectionはnatural-languageの
     interpretation/ranking、customization validity/correctness/effectiveness/compliance/quality、policy/remediation advice、
     lint/sync/convert/format/fix behavior、size-based valid/invalid verdictを表現できない。

@@ -76,8 +76,8 @@ const rejectionText = computed(() =>
 </script>
 
 <template>
-  <section class="aci-scan-status" aria-labelledby="aci-scan-status-heading">
-    <h3 id="aci-scan-status-heading">Scan status</h3>
+  <section class="aci-scan-progress aci-panel" aria-labelledby="aci-scan-progress-heading">
+    <h3 id="aci-scan-progress-heading">Scan status</h3>
     <!-- Status changes are announced, not just repainted (WCAG 4.1.3). It is
          polite rather than assertive: a scan result is not an alert, and every
          change here follows an action the user just took, so interrupting them
@@ -85,7 +85,7 @@ const rejectionText = computed(() =>
          the whole block one announcement — "Ready, generation 2" is the state;
          the two halves separately are not. -->
     <div aria-live="polite" aria-atomic="true">
-      <dl>
+      <dl class="aci-definition-grid">
         <dt>Source status</dt>
         <dd>{{ SOURCE_STATUS_TEXT[source.status] }}</dd>
         <dt>Committed generation</dt>
@@ -107,7 +107,7 @@ const rejectionText = computed(() =>
       <p v-if="rejectionText" class="aci-error">{{ rejectionText }}</p>
     </div>
 
-    <p class="aci-actions">
+    <p class="aci-scan-progress__actions">
       <button type="button" :aria-disabled="requesting || undefined" @click="requestRescan">
         {{ staleFailure ? 'Retry scan' : 'Rescan repository' }}
       </button>
@@ -119,3 +119,14 @@ const rejectionText = computed(() =>
     </p>
   </section>
 </template>
+
+<style scoped>
+/* The controls wrap rather than scrolling sideways, so a narrow viewport or a
+   large text size never hides one (WCAG 1.4.10). */
+.aci-scan-progress__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0.25rem;
+}
+</style>

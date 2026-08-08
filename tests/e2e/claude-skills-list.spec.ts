@@ -70,7 +70,10 @@ test('lists Claude and Codex skills together, grouped by declared name', async (
 
   // Two named rows in name order, then the nameless nested Claude skill by
   // path: one grouping for both vendors, not one list per product.
-  await expect(page.locator('.aci-declared-name')).toHaveText(['claude-greet', 'codex-greet']);
+  await expect(page.locator('.aci-skill-row__declared-name')).toHaveText([
+    'claude-greet',
+    'codex-greet',
+  ]);
   await expect(page.locator('.aci-item .aci-path')).toHaveText([
     '.claude/skills/greet/SKILL.md',
     '.agents/skills/codex-greet/SKILL.md',
@@ -97,13 +100,13 @@ test('shows a Claude skill by its authored name, and a nameless one by its path'
   // proves the name came from the frontmatter rather than the directory
   // segment (FR-007).
   const named = page.locator('.aci-item', { hasText: '.claude/skills/greet/SKILL.md' });
-  await expect(named.locator('.aci-declared-name')).toHaveText('claude-greet');
+  await expect(named.locator('.aci-skill-row__declared-name')).toHaveText('claude-greet');
   // The nested skill authors no name: the path is the row, with no name
   // element at all — not the directory segment, and not a placeholder.
   const nameless = page.locator('.aci-item', {
     hasText: 'packages/api/.claude/skills/deploy/SKILL.md',
   });
-  await expect(nameless.locator('.aci-declared-name')).toHaveCount(0);
+  await expect(nameless.locator('.aci-skill-row__declared-name')).toHaveCount(0);
 });
 
 test('groups a name both vendors declare into one row listing both products', async ({ page }) => {
@@ -134,9 +137,85 @@ test('groups a name both vendors declare into one row listing both products', as
   // Each definition keeps its own product badge inside the shared row.
   await expect(grouped).toContainText('Claude Code');
   await expect(grouped).toContainText('OpenAI Codex');
-  // The row states what each product documents and never orders the two.
-  await expect(grouped).toContainText('Claude Code uses the first in its documented source order');
-  await expect(grouped).toContainText('OpenAI Codex keeps all of them, in no documented order');
+  // Neither product has a collision here: Claude reads `.claude/skills` and
+  // Codex reads `.agents/skills`, so each recognizes one of the two files. A
+  // resolution answers what one product does when *it* finds the name twice,
+  // and stating either rule would describe a conflict that product never has.
+  await expect(grouped).not.toContainText('keeps all of them');
+});
+
+test('quotes no Claude rule for two commands that only share a label', async ({ page }) => {
+  // Two Claude skills in differently named directories declaring one display
+  // label. The commands come from the directories, so nothing clashes and the
+  // vendor documents no resolution — the row lists both and quotes no rule
+  // (FR-007).
+  await mkdir(join(fixture, '.claude/skills/foo'), { recursive: true });
+  await mkdir(join(fixture, '.claude/skills/bar'), { recursive: true });
+  for (const directory of ['foo', 'bar']) {
+    await writeFile(
+      join(fixture, `.claude/skills/${directory}/SKILL.md`),
+      '---\nname: same-label\n---\n\n# Same label\n',
+      'utf8',
+    );
+  }
+  await page.goto(host.origin);
+  await page.getByRole('button', { name: 'Rescan repository' }).click();
+  const grouped = page.locator('.aci-item').filter({ hasText: 'same-label' }).first();
+  await expect(async () => {
+    await page.getByRole('button', { name: 'Refresh status' }).click();
+    await expect(grouped.locator('.aci-path')).toHaveCount(2, { timeout: 1_000 });
+  }).toPass();
+  await expect(grouped).not.toContainText('keeps all of them');
+  await expect(grouped).not.toContainText('uses the first in its documented source order');
+});
+
+test('states the Claude rule when Claude recognizes the name twice', async ({ page }) => {
+  // Two Claude skills declaring one name inside this repository. The official
+  // rule for a clash within one root is that every definition stays available
+  // and Claude picks the variant matching the files being worked on — never a
+  // first-in-order winner, which is the rule between levels this product
+  // lists as separate Sources.
+  await mkdir(join(fixture, '.claude/skills/wave'), { recursive: true });
+  await mkdir(join(fixture, 'apps/web/.claude/skills/wave'), { recursive: true });
+  for (const directory of ['.claude/skills/wave', 'apps/web/.claude/skills/wave']) {
+    await writeFile(
+      join(fixture, `${directory}/SKILL.md`),
+      '---\nname: claude-twice\n---\n\n# Twice\n',
+      'utf8',
+    );
+  }
+  await page.goto(host.origin);
+  await page.getByRole('button', { name: 'Rescan repository' }).click();
+  const grouped = page.locator('.aci-item').filter({ hasText: 'claude-twice' }).first();
+  await expect(async () => {
+    await page.getByRole('button', { name: 'Refresh status' }).click();
+    await expect(grouped.locator('.aci-path')).toHaveCount(2, { timeout: 1_000 });
+  }).toPass();
+  await expect(grouped).toContainText('keeps all of them; a nested one is invoked');
+  await expect(grouped).not.toContainText('uses the first in its documented source order');
+});
+
+test('states a resolution when one product recognizes the name twice', async ({ page }) => {
+  // Two Codex skills declaring one name: Codex now has two files to choose
+  // between, so the row carries its documented rule — and only its own.
+  await mkdir(join(fixture, '.agents/skills/salute'), { recursive: true });
+  await mkdir(join(fixture, '.agents/skills/hail'), { recursive: true });
+  for (const directory of ['salute', 'hail']) {
+    await writeFile(
+      join(fixture, `.agents/skills/${directory}/SKILL.md`),
+      '---\nname: codex-twice\n---\n\n# Twice\n',
+      'utf8',
+    );
+  }
+  await page.goto(host.origin);
+  await page.getByRole('button', { name: 'Rescan repository' }).click();
+  const grouped = page.locator('.aci-item').filter({ hasText: 'codex-twice' }).first();
+  await expect(async () => {
+    await page.getByRole('button', { name: 'Refresh status' }).click();
+    await expect(grouped.locator('.aci-path')).toHaveCount(2, { timeout: 1_000 });
+  }).toPass();
+  await expect(grouped).toContainText('keeps all of them, in no documented order');
+  await expect(grouped).not.toContainText('uses the first in its documented source order');
 });
 
 test('shows no near-miss path from either vendor', async ({ page }) => {
@@ -156,7 +235,7 @@ test('filters the two vendors apart with the tool filter', async ({ page }) => {
 
   await page.getByLabel('Tool').selectOption('claude');
   await expect(page.locator('.aci-item')).toHaveCount(2);
-  await expect(page.locator('.aci-filters')).toContainText('Showing 2 of 3');
+  await expect(page.locator('.aci-inventory-filters')).toContainText('Showing 2 of 3');
   for (const item of await page.locator('.aci-item').all()) {
     await expect(item).toContainText('Claude Code');
   }

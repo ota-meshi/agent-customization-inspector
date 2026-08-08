@@ -9,21 +9,20 @@
 import type { SerializedDiagnostic } from './diagnostics';
 import type {
   CustomizationKind,
-  EvidenceAssessment,
   ReadableFileEncoding,
   SameNameSkillResolution,
   SourceBoundaryDto,
   SourceStatus,
   SupportedTool,
 } from './entities';
-import type { MetadataFieldId, RuleId } from './registries/identifier-types';
+import type { RuleId } from './registries/identifier-types';
 import type { RuleDiscoveryClass } from './registries/rule-types';
 import type { RejectionCode } from './rejection-codes';
 
 /**
  * One recognition's closed extraction state (data-model.md
  * § ToolRecognition):
- *  - 'not-attempted'  no allowlisted extractor applies to this recognition
+ *  - 'not-attempted'  no extractor applies to this recognition's kind
  *  - 'parsed'         extraction completed for this recognition
  *  - 'failed'         extraction failed all-or-nothing for this recognition
  *                     only (FR-028); the file's complete source stays
@@ -41,108 +40,89 @@ export type RecognitionParseStatus =
  * One rule/path admission behind a recognition
  * (data-model.md § ToolRecognition `provenances`). Admissions are retained
  * separately rather than collapsed into a recognition-level winner, because
- * scope, order, applicability, and evidence differ per admission even when
- * two rules admit the same physical file.
+ * two rules admitting the same physical file are two authorizations, and a
+ * winner would say one of them did not happen.
  *
- * The six fields here are the response shape the detail contract promises
+ * The three fields here are the response shape the detail contract promises
  * (contracts/http-api.md § FileDetail), which also records why the fields of
  * later phases — relationships, derivation seeds, ordering, declaration keys,
- * and reference lists — are absent rather than empty.
+ * and reference lists — are absent rather than empty. Where the customization
+ * would apply is not among them: that was the vocabulary of a projection no
+ * surface makes, and a `matching-path` scope also restated `matchedPath`.
  */
 export interface CandidateProvenanceDto {
   /**
    * The inspection rule that admitted the candidate, from the closed catalog
-   * rather than an arbitrary string: the rule is never rendered as its ID, and
-   * a `Record<RuleId, string>` is what stops a newly catalogued rule from
-   * reaching a screen without a sentence to show (`registries/identifier-text.ts`).
+   * rather than an arbitrary string, so the ID resolves the immutable registry
+   * record that authorized the read (contracts/inspection-path-allowlist.md
+   * § Read authorization).
    */
   readonly ruleId: RuleId;
   /** How that rule creates candidates; see {@link RuleDiscoveryClass}. */
   readonly discoveryClass: RuleDiscoveryClass;
   /** The admitted Source-relative Path, spelled with the exact entry names. */
   readonly matchedPath: string;
-  /** Where the admitted customization applies; see {@link ScopeDescriptor}. */
-  readonly scope: ScopeDescriptor;
-  /**
-   * Exactly one assessment for the admitting rule and for every behavior and
-   * strategy it references, sorted and never reduced to a scalar (QR-005).
-   */
-  readonly evidenceAssessments: readonly EvidenceAssessment[];
-  /** What is known about whether the product applies this admission (FR-009). */
-  readonly applicability: ApplicabilityAssessmentDto;
 }
 
 /**
- * The convenience projection of an {@link ApplicabilityAssessmentDto}
- * (data-model.md § ApplicabilityAssessment). It is deliberately never called
- * `effective`: each member states what the retained documentation proves, and
- * none of them claims the product loaded anything.
+ * One authored frontmatter value, as the skill detail surface shows it
+ * (data-model.md § Skill presentation). The shape mirrors what the parser
+ * resolved, so a mapping is shown as a mapping and a list as a list rather
+ * than as a summary of one.
  */
-export type ApplicabilitySummary =
-  /** A documented control is known to prohibit use. */
-  | 'disabled'
-  /** A complete precedence chain proves another candidate wins. */
-  | 'shadowed'
-  /** A complete surface/target/selection/budget rule proves exclusion. */
-  | 'omitted'
-  /** A documented selection rule proves inclusion and nothing can prevent it. */
-  | 'selected'
-  /** Documentation is absent or conflicting for a required rule. */
-  | 'unknown'
-  /** A documented path exists but a required runtime input is unknown. */
-  | 'conditional'
-  /** Every documented availability requirement is satisfied; no selection is claimed. */
-  | 'available'
-  /** Only the accepted authored declaration is proven. */
-  | 'authored';
+export type FrontmatterValueDto =
+  /** A string, number, or boolean the syntax resolved to one value. */
+  | {
+      /** Selects the scalar variant. */
+      readonly kind: 'scalar';
+      /**
+       * The value the parser resolved under YAML 1.2's core schema: quoting
+       * and escapes resolved, `007` read as `7`. It is the Inspector's one
+       * documented reading, not a claim about a vendor's own per-field
+       * coercions (data-model.md § Field reading). Never masked or shortened;
+       * the authored spelling stays in the complete `sourceText`.
+       */
+      readonly text: string;
+    }
+  /** An authored null: the key is declared, and declares no value. */
+  | {
+      /** Selects the absent variant. */
+      readonly kind: 'absent';
+    }
+  /** An ordered list, each item a value of its own. */
+  | {
+      /** Selects the sequence variant. */
+      readonly kind: 'sequence';
+      /** The items in authored order; empty for an authored empty list. */
+      readonly items: readonly FrontmatterValueDto[];
+    }
+  /** A nested mapping, each entry a key of its own. */
+  | {
+      /** Selects the mapping variant. */
+      readonly kind: 'mapping';
+      /** The entries in authored order; empty for an authored empty mapping. */
+      readonly entries: readonly FrontmatterEntryDto[];
+    };
 
 /**
- * What is known about whether a product applies one admission or edge
- * (data-model.md § ApplicabilityAssessment). Every field is projected from the
- * retained conditions through the shipped decision table; an emitter never
- * chooses {@link summary} directly, and there is no aggregate that collapses
- * the conditions away.
+ * One authored frontmatter declaration, as the skill detail surface shows it
+ * (data-model.md § Skill presentation).
  *
- * There is deliberately no `evaluatedFromGeneration` field. It would state the
- * generation the assessment was computed from, which is the generation the
- * response carrying it was bound under — already on the envelope as
- * {@link InspectionDataResult.repositoryGeneration}, and already what the
- * client's request token captures. A per-assessment copy could only repeat it,
- * and two copies of one number can disagree.
- *
- * There is deliberately no `strategyRefs` field either, for the same reason at
- * the other end: it would name the strategies behind the admission, and the
- * provenance carrying this assessment already publishes one
- * {@link EvidenceAssessment} per strategy — with each one's documentation
- * status, which a bare list of IDs cannot carry.
+ * The key is the file's own, never a vendor catalog's: this is the reader's
+ * frontmatter shown back to them, so a key the product has no opinion about is
+ * listed exactly like one it does.
  */
-export interface ApplicabilityAssessmentDto {
-  /** The projected convenience summary; see {@link ApplicabilitySummary}. */
-  readonly summary: ApplicabilitySummary;
-  /** The retained closed condition records, sorted and deduplicated. */
-  readonly conditions: readonly ConditionFact[];
-}
-
-/**
- * One allowlisted field a recognition's extractor read
- * (data-model.md § DeclaredMetadataEntry).
- *
- * One entry per field, not per authored occurrence: a key declared twice
- * resolves to one value for the product reading the file, and that resolution
- * is what this reports.
- */
-export interface DeclaredMetadataEntryDto {
-  /** The allowlisted field this value belongs to; never an authored key. */
-  readonly fieldId: MetadataFieldId;
+export interface FrontmatterEntryDto {
   /**
-   * The value the parser resolved, as the text a product loading this file
-   * would have: quoting and escapes resolved, `007` read as `7`. Never masked
-   * or redacted — the host resolves no environment reference and offers no
-   * reveal step, so a `$VARIABLE` in the value stays the characters that were
-   * written. The complete authored bytes are served by the same detail
-   * response's `sourceText` (FR-027).
+   * The declared key as the parser resolved it under YAML 1.2's core schema
+   * (data-model.md § Field reading). An unquoted `007` is therefore `7`, the
+   * same rule the value on the other side of the colon follows; the authored
+   * spelling stays in the complete `sourceText` the detail surface serves
+   * beside these.
    */
-  readonly value: string;
+  readonly key: string;
+  /** What the key declares; see {@link FrontmatterValueDto}. */
+  readonly value: FrontmatterValueDto;
 }
 
 /**
@@ -165,43 +145,41 @@ export type RecognitionDetails =
       /** The recognized customization kind. */
       readonly kind: 'skill';
       /**
-       * The skill's own declared name as its parser resolved it, or absent when
-       * the recognizer extracted none (FR-007). Resolved, not sliced: an
-       * authored `name: 007` is the string `7`, because that is the name the
-       * product loading this file has.
+       * The skill's own declared name as the parser resolved it under YAML
+       * 1.2's core schema, or absent when the recognizer extracted none
+       * (FR-007). Resolved, not sliced: an authored `name: 007` is the string
+       * `7`, not the authored spelling (data-model.md § Field reading).
        *
        * This is the one authored value an inventory row carries (FR-027). It
-       * is presentation identity rather than content: it is the identifier
-       * the vendor's own selectors and menus use, it is not recoverable from
-       * the Source-relative Path — a skill's `name` need not match its
-       * directory — and a list that cannot name what it lists is not an
-       * inventory.
+       * is presentation identity rather than content: it is the name the
+       * vendors' own skill listings show — for a Claude repository skill only
+       * the display label, with the command coming from the directory — it is
+       * not recoverable from the Source-relative Path, since a skill's `name`
+       * need not match its directory, and a list that cannot name what it
+       * lists is not an inventory.
        *
        * Absent, never empty: an authored empty string is a different fact from
        * no name at all, and collapsing them would report one as the other.
        */
       readonly declaredName?: string;
       /**
-       * The Source-relative Paths of the files accompanying the `SKILL.md` in
-       * its own directory, sorted — the scripts, references, and assets that
-       * make a skill more than a paragraph
-       * (contracts/inspection-path-allowlist.md § Bounded companion census).
-       *
-       * Read and published, never admitted: each listed path is also a file of
-       * this generation, because a directory-shaped customization is read whole
-       * and a tool that showed the entry point while withholding what ships
-       * with it would not be showing the customization. What listing does not
-       * do is make a file a candidate — it acquires no rule, recognition, kind,
-       * or inventory row of its own, and it is still not evidence that the
-       * vendor loads it. The inventory row shows how many there are and the
-       * detail view shows which; the count is `length` rather than a second
-       * field, because two states can disagree and one cannot.
-       *
-       * Always present, empty when the `SKILL.md` sits alone: being a directory
-       * is what a skill is, so every recognized skill has been enumerated and
-       * there is no "nobody looked" state to distinguish.
+       * Every key the `SKILL.md` frontmatter declares, in authored order —
+       * the file's own declarations, shown as declarations rather than buried
+       * in the source (FR-007). Empty when the file declares no frontmatter,
+       * and empty for a `failed` extraction, which publishes nothing while the
+       * complete source stays displayed (FR-028).
        */
-      readonly companionFiles: readonly string[];
+      readonly frontmatter: readonly FrontmatterEntryDto[];
+      /**
+       * The `SKILL.md` with its frontmatter block removed: the instructions
+       * the product would read. Separated from the declarations above because
+       * they answer different questions, and the split is the parser's own —
+       * see `parsers/markdown.ts`. Empty for a `failed` extraction: extraction
+       * is all-or-nothing, so a document whose block cannot be parsed, a key
+       * that is not a scalar, a tagged value with no authored rendering, and a
+       * value containing itself all publish nothing.
+       */
+      readonly bodyText: string;
     }
   /** Every other kind, until its recognizer phase gives it its own identity. */
   | {
@@ -248,8 +226,8 @@ export interface SkillDefinitionDto {
  * `SKILL.md` that declares it.
  *
  * The name is the unit rather than the file because that is what the vendors'
- * own selectors use, and it need not match the directory holding the file. A
- * file-shaped row could not express it: two files may declare one name.
+ * own skill listings show, and it need not match the directory holding the
+ * file. A file-shaped row could not express it: two files may declare one name.
  */
 export interface SkillInventoryEntryDto {
   /**
@@ -262,12 +240,17 @@ export interface SkillInventoryEntryDto {
   /** The `SKILL.md` files declaring this name, in Source-relative Path order. */
   readonly definitions: readonly SkillDefinitionDto[];
   /**
-   * How each recognizing tool resolves this name, sorted by tool. Empty for a
-   * single definition, because there is nothing to resolve.
+   * How each tool facing a collision here resolves this name, sorted by tool.
+   * A tool contributes a statement only when it recognizes two or more of these
+   * definitions — one definition is not a collision, and a tool that recognizes
+   * only one of several has nothing to choose between — and only when the
+   * collision is one its quoted rule answers: Claude Code's command names come
+   * from the skill directories, so its statement needs two of its definitions
+   * sharing a directory name (FR-007).
    *
-   * A grouped row publishes this instead of ordering its definitions: the
-   * shipped statements differ per tool and two of the three are incomplete, so
-   * an order would be a winner the Inspector has not recorded (FR-007).
+   * A row publishes this instead of ordering its definitions: the shipped
+   * statements differ per tool and two of the three are incomplete, so an order
+   * would be a winner the Inspector has not recorded (FR-007).
    */
   readonly sameNameResolutions: readonly SameNameSkillResolutionDto[];
 }
@@ -295,15 +278,12 @@ export interface ToolRecognitionDto {
   readonly tool: SupportedTool;
   /** The kind and its per-kind identity; see {@link RecognitionDetails}. */
   readonly details: RecognitionDetails;
-  /** Closed extraction state; see {@link RecognitionParseStatus}. */
-  readonly parseStatus: RecognitionParseStatus;
   /**
-   * The allowlisted fields this recognition's extractor read, one entry per
-   * field in the allowlist row's order. Empty for `not-attempted` and for
-   * `failed`, which is all-or-nothing: a failed recognition publishes no
-   * metadata at all while its file's complete source stays displayed (FR-028).
+   * Closed extraction state; see {@link RecognitionParseStatus}. `failed` is
+   * all-or-nothing: a failed recognition publishes no declared name while its
+   * file's complete source stays displayed (FR-028).
    */
-  readonly declaredMetadata: readonly DeclaredMetadataEntryDto[];
+  readonly parseStatus: RecognitionParseStatus;
   /** Sorted non-empty rule/path admissions behind this recognition. */
   readonly provenances: readonly CandidateProvenanceDto[];
   /** Recognition-scoped extraction-failure diagnostics (FR-028). */
@@ -321,13 +301,16 @@ export interface ToolRecognitionDto {
  * There is deliberately no `relationships` array yet. A relationship may be
  * emitted only when its kind is listed for the recognized kind *and* its origin
  * is covered by a relationship-only rule in the central registry
- * (contracts/vendors/openai-codex.md § Normative initial-release presentation
- * allowlist). The Codex `skill` row does list two eligible kinds, but no
- * relationship-only rule ships — `registries/codex/rules.ts` says why a skill's
- * resources get no rule of their own — so no shipped recognition can produce an
- * edge, and the array would be empty in every response this release returns. A skill's resources are
- * published as `RecognitionDetails.companionFiles`, which the census
- * enumerates and never admits.
+ * (contracts/runtime-composition.md § Normative relationship-only registry).
+ * Both shipped skill rows list eligible kinds, but no relationship-only rule
+ * ships: each such record is based on behavior statements — hooks, plugins,
+ * marketplaces, agents, settings — that arrive with their own inventory
+ * phases, and shipping one without them would break the reciprocal-evidence
+ * invariant (data-model.md § Cross-entity invariants). No shipped recognition
+ * can therefore produce an edge, and the array would be empty in every
+ * response this release returns. A skill's resources are published as
+ * `SkillDefinitionDto.companionFiles`, which the census enumerates and never
+ * admits; the vendor rule modules say why they get no rule of their own.
  */
 export interface FileDetailDto {
   /** The committed file, including its complete authored source when readable. */
@@ -462,251 +445,6 @@ export interface ScanProgressDto {
   readonly diagnosticCount: number;
 }
 
-/**
- * The closed condition-fact key vocabulary
- * (data-model.md § ApplicabilityAssessment): each key names one documented
- * runtime, environment, or policy input a projection may depend on. A key is
- * never inferred from file existence.
- */
-export type ConditionFactKey =
-  /** Which documented product or agent surface applies. */
-  | 'surface'
-  /** Which documented engine version applies. */
-  | 'engine-version'
-  /** The runtime working-directory input, without treating it as a Source. */
-  | 'runtime-cwd'
-  /** A documented workspace-root condition. */
-  | 'workspace-root'
-  /** A documented repository-root condition. */
-  | 'repository-root'
-  /** A documented project-root condition. */
-  | 'project-root'
-  /** A documented worked-path condition. */
-  | 'worked-path'
-  /** Whether a documented target matcher applies. */
-  | 'target-match'
-  /** Whether a documented scope is available. */
-  | 'scope-availability'
-  /** A documented feature-state condition. */
-  | 'feature-state'
-  /** A documented workspace or runtime trust condition. */
-  | 'trust'
-  /** A documented approval condition. */
-  | 'approval'
-  /** A documented enablement condition. */
-  | 'enablement'
-  /** A documented selection condition. */
-  | 'selection'
-  /** The documented settings inputs relevant to the subject. */
-  | 'settings-inputs'
-  /** A documented plugin-state condition. */
-  | 'plugin-state'
-  /** A documented agent-context condition. */
-  | 'agent-context'
-  /** A documented event condition. */
-  | 'event'
-  /** Which documented behavior variant applies. */
-  | 'documentation-variant'
-  /** Whether the relevant tool is available. */
-  | 'tool-availability'
-  /** A documented installation condition. */
-  | 'installation'
-  /** A documented managed-policy condition. */
-  | 'managed-policy'
-  /** A documented instruction-byte-budget condition. */
-  | 'instruction-byte-budget'
-  /** A documented content-limit condition. */
-  | 'content-limits'
-  /** A required external runtime input that the Inspector does not infer. */
-  | 'external-runtime';
-
-/**
- * The closed condition status vocabulary
- * (data-model.md § ApplicabilityAssessment): 'satisfied'/'unsatisfied'
- * record a documented determination, 'unknown' records a missing input that
- * never defaults to satisfied, and 'documentation-conflict' records
- * incompatible retained official assertions. This is deliberately distinct
- * from `DocumentationStatus`, which grades evidence completeness.
- */
-export type ConditionFactStatus =
-  /** The retained evidence establishes that the condition holds. */
-  | 'satisfied'
-  /** The retained evidence establishes that the condition does not hold. */
-  | 'unsatisfied'
-  /** A required input is absent, so no determination is made. */
-  | 'unknown'
-  /** Retained official assertions about the condition are incompatible. */
-  | 'documentation-conflict';
-
-/**
- * Where a condition determination comes from
- * (data-model.md § ApplicabilityAssessment): inspected repository data, an
- * official documented rule, an intentionally excluded input, or a runtime
- * input the Inspector does not read.
- */
-export type ConditionFactBasis =
-  /** The determination comes from inspected repository data. */
-  | 'inspected-data'
-  /** The determination comes from a retained official rule. */
-  | 'official-rule'
-  /** The required input is intentionally outside the Inspector's read boundary. */
-  | 'excluded-input'
-  /** The required runtime input is not read by the Inspector. */
-  | 'runtime-input';
-
-/**
- * One closed condition record (data-model.md § ApplicabilityAssessment,
- * § SourceConditionFact). A `satisfied` fact records a documented non-file
- * runtime fact but still grants no read authority and never duplicates an
- * authored source value.
- */
-export interface ConditionFact {
-  /** Which documented input this fact describes; see {@link ConditionFactKey}. */
-  readonly key: ConditionFactKey;
-  /** The recorded determination; see {@link ConditionFactStatus}. */
-  readonly status: ConditionFactStatus;
-  /** Fixed registry reason code explaining the determination. */
-  readonly reasonCode: string;
-  /** Where the determination comes from; see {@link ConditionFactBasis}. */
-  readonly basis: ConditionFactBasis;
-}
-
-/**
- * Source-level fact for documented non-file behavior or excluded/runtime
- * inputs that have no originating file (data-model.md § SourceConditionFact,
- * FR-039). It has no file ID, path, authored source, relationship origin, or
- * comparison target, and it never initiates local or hosted I/O.
- */
-export interface SourceConditionFactDto {
-  /** Product whose documented non-file behavior is described. */
-  readonly tool: SupportedTool;
-  /** Exact maintained product surface; never inferred from the Source kind. */
-  readonly surface: string;
-  /** The excluded or relationship-only rule that defines this non-file fact. */
-  readonly ruleId: string;
-  /** Candidate/relationship rules that may project this fact; sorted, non-empty. */
-  readonly affectedRuleIds: readonly string[];
-  /** Sorted behavior statements that explain the fact; never grants a read. */
-  readonly behaviorRefs: readonly string[];
-  /** Sorted composition/selection strategies used by the projection. */
-  readonly strategyRefs: readonly string[];
-  /**
-   * Sorted non-empty keys of the official-sources contract rows behind the
-   * fact (contracts/official-sources.md); never grants a read. Evidence lives
-   * on the registry records themselves, so these name the cited rows rather
-   * than entries in a registry of their own.
-   */
-  readonly sourceRefs: readonly string[];
-  /**
-   * Exactly one assessment for `ruleId` and every referenced behavior and
-   * strategy; record-by-record with no aggregate status (QR-005).
-   */
-  readonly evidenceAssessments: readonly EvidenceAssessment[];
-  /** The closed condition record; see {@link ConditionFact}. */
-  readonly condition: ConditionFact;
-}
-
-/**
- * Closed public scope union (data-model.md § ScopeDescriptor): where an
- * admitted customization applies, rendered without implementation-specific
- * objects. Each variant carries only the fields listed for it.
- */
-export type ScopeDescriptor =
-  /** Scope covering the owning Source's single root. */
-  | {
-      /** The owning Repository or tool-specific Global Source root. */
-      readonly kind: 'source-root';
-    }
-  /** Scope covering one Source-relative directory subtree. */
-  | {
-      /** One Source-relative directory and its descendants. */
-      readonly kind: 'directory-subtree';
-      /** The subtree root, relative to the owning admission's Source. */
-      readonly path: string;
-    }
-  /** Scope covering one exact matcher-selected path. */
-  | {
-      /** The exact admitted path and immutable matcher-selector alternative. */
-      readonly kind: 'matching-path';
-      /** The admitted Source-relative path. */
-      readonly path: string;
-      /** Index of the immutable matcher selector that admitted the path. */
-      readonly selectorIndex: number;
-    }
-  /** Scope derived from one authored metadata occurrence. */
-  | {
-      /** References one DeclaredMetadataEntry without duplicating its value. */
-      readonly kind: 'declared';
-      /** The closed declared-metadata field the scope comes from. */
-      readonly fieldId: string;
-      /**
-       * Which authored occurrence of that field in the source is referenced.
-       * Not an index into `declaredMetadata`, which publishes one entry per
-       * field: a key declared twice resolves to the one value a product
-       * loading the file has, and this names which declaration the scope was
-       * taken from.
-       */
-      readonly occurrence: number;
-    };
-
-/** Which end of a documented path-layer chain takes precedence. */
-export type OrderDirection =
-  /** Broader path layers precede narrower descendants. */
-  | 'broad-to-narrow'
-  /** Narrower path layers precede broader ancestors. */
-  | 'narrow-to-broad';
-
-/**
- * One component of a documented order (data-model.md § OrderDescriptor).
- * Components are already in documented pipeline order; unknown or
- * conflicting order is represented by a null descriptor plus
- * applicability/documentation facts, never a fabricated rank.
- */
-export type OrderComponent =
-  /** One documented path-depth ordering component. */
-  | {
-      /** Documented path-layer order only. */
-      readonly kind: 'path-depth';
-      /** Which end of the layer chain wins. */
-      readonly direction: OrderDirection;
-      /** This component's non-negative layer depth. */
-      readonly depth: number;
-      /** The Source-relative path of this layer. */
-      readonly path: string;
-    }
-  /** One fixed registry-rank ordering component. */
-  | {
-      /** Fixed documented fallback/precedence rank within one strategy. */
-      readonly kind: 'registry-rank';
-      /** The strategy that documents the rank. */
-      readonly strategyId: string;
-      /** The non-negative documented rank. */
-      readonly rank: number;
-    }
-  /** One authored source-occurrence ordering component. */
-  | {
-      /** Authored declaration order without copying its value. */
-      readonly kind: 'source-occurrence';
-      /** The closed declared-metadata field the order comes from. */
-      readonly fieldId: string;
-      /**
-       * Which authored occurrence of that field in the source is referenced;
-       * see the identically named field of {@link ScopeDescriptor}'s `declared`
-       * variant. Ordering is what makes it a component: the entry list holds
-       * one resolved value per field and states no order among declarations.
-       */
-      readonly occurrence: number;
-    };
-
-/**
- * Closed public order shape (data-model.md § OrderDescriptor): a non-empty
- * ordered list of documented order components.
- */
-export interface OrderDescriptor {
-  /** Documented order components in pipeline order; non-empty. */
-  readonly components: readonly OrderComponent[];
-}
-
 /** Which independent Source family a public Source belongs to. */
 export type SourceKind =
   /** The one Source selected from the invocation Repository boundary. */
@@ -746,8 +484,6 @@ export interface SourceDto {
    * failed, both state no progress (data-model.md § Source `progress`).
    */
   readonly progress: ScanProgressDto | null;
-  /** Origin-file-less Source Condition Facts (FR-039). */
-  readonly conditionFacts: readonly SourceConditionFactDto[];
   /** Source-scoped diagnostics, e.g. `root-unreadable` (FR-002). */
   readonly diagnosticIds: readonly string[];
 }
@@ -843,7 +579,8 @@ export interface SessionSnapshot {
   readonly globalDisableInProgress: null;
   /** Increments on the disable purge so clients purge before rendering (FR-042). */
   readonly globalContentEpoch: number;
-  /** Session-scoped diagnostics. */
+  /** Session-lifecycle diagnostics — out-of-generation records; each is still
+   * file- or source-scoped (data-model.md § Diagnostic). */
   readonly sessionDiagnosticIds: readonly string[];
   /** The current Repository `root-unreadable` diagnostic, if any (FR-002). */
   readonly repositoryFailureDiagnosticId: string | null;

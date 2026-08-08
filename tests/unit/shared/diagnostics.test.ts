@@ -45,7 +45,7 @@ describe('closed diagnostic registry', () => {
       // inspecting its cause, so calling the file incorrect would be a verdict
       // the scan did not reach (FR-032).
       'recognition-parse-failed':
-        'One recognition could not be parsed, so its derived metadata and relationships are omitted. The complete source text remains available to read; a rescan reports the current state of the file.',
+        'One recognition could not be parsed, so none of its declarations or instructions could be read out of it. The complete source text remains available to read; a rescan reports the current state of the file.',
     };
     for (const [code, message] of Object.entries(messages) as [DiagnosticCode, string][]) {
       expect(DIAGNOSTIC_REGISTRY[code].message).toBe(message);

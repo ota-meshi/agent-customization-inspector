@@ -1,17 +1,14 @@
 // T017: public API DTO shapes — closed file variants, one-root Sources,
-// closed descriptors, Source Condition Facts, evidence vocabulary limits,
-// source-scoped diagnostic records, and internal state excluded from
-// DTOs by construction (data-model.md, contracts/http-api.md).
+// candidate provenance, evidence vocabulary limits, source-scoped diagnostic
+// records, and internal state excluded from DTOs by construction
+// (data-model.md, contracts/http-api.md).
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
 import { DiagnosticRecord } from '../../../src/shared/diagnostics';
 import type {
-  ConditionFactStatus,
+  CandidateProvenanceDto,
   CustomizationFileDto,
-  OrderComponent,
-  ScopeDescriptor,
   SessionSnapshot,
-  SourceConditionFactDto,
   SourceDto,
 } from '../../../src/shared/api-types';
 import type { DocumentationStatus, LifecycleQualifier } from '../../../src/shared/entities';
@@ -107,48 +104,41 @@ describe('session snapshot DTO', () => {
   });
 });
 
-describe('closed descriptors', () => {
-  it('covers exactly the four scope variants', () => {
-    expectTypeOf<ScopeDescriptor['kind']>().toEqualTypeOf<
-      'source-root' | 'directory-subtree' | 'matching-path' | 'declared'
+describe('candidate provenance', () => {
+  it('says which rule admitted the file and where, and nothing further', () => {
+    // An admission is a read-authorization record
+    // (contracts/inspection-path-allowlist.md § Read authorization): which
+    // shipped rule authorized the read, how that rule creates candidates, and
+    // the path it matched. Where the customization would apply was the
+    // vocabulary of a projection no surface shows, so no DTO carries one.
+    expectTypeOf<keyof CandidateProvenanceDto>().toEqualTypeOf<
+      'ruleId' | 'discoveryClass' | 'matchedPath'
     >();
-  });
-
-  it('covers exactly the three order component variants', () => {
-    expectTypeOf<OrderComponent['kind']>().toEqualTypeOf<
-      'path-depth' | 'registry-rank' | 'source-occurrence'
-    >();
-  });
-
-  it('gives each scope variant only its documented fields', () => {
-    expectTypeOf<Extract<ScopeDescriptor, { kind: 'source-root' }>>().not.toHaveProperty('path');
-    expectTypeOf<Extract<ScopeDescriptor, { kind: 'matching-path' }>>().toHaveProperty(
-      'selectorIndex',
-    );
-    expectTypeOf<Extract<ScopeDescriptor, { kind: 'declared' }>>().toHaveProperty('occurrence');
   });
 });
 
 describe('evidence vocabulary limits', () => {
   it('rejects documentation-conflict as a documentation status', () => {
-    // `documentation-conflict` is a ConditionFact status; the documentation
-    // status vocabulary uses `conflict` (QR-005).
+    // The documentation-status vocabulary grades how completely official
+    // sources establish an assertion, and spells its incompatible case
+    // `conflict` (QR-005). `documentation-conflict` belongs to no vocabulary
+    // this product still declares.
     expectTypeOf<'documentation-conflict'>().not.toExtend<DocumentationStatus>();
-    expectTypeOf<'documentation-conflict'>().toExtend<ConditionFactStatus>();
+    expectTypeOf<'conflict'>().toExtend<DocumentationStatus>();
   });
 
   it('cannot fabricate a stable lifecycle qualifier', () => {
     expectTypeOf<'stable'>().not.toExtend<LifecycleQualifier>();
   });
 
-  it('keeps Source Condition Facts record-by-record with no scalar aggregate', () => {
-    expectTypeOf<SourceConditionFactDto>().toHaveProperty('evidenceAssessments');
-    expectTypeOf<SourceConditionFactDto>().not.toHaveProperty('documentationStatus');
-    expectTypeOf<SourceConditionFactDto>().not.toHaveProperty('lifecycleQualifiers');
-    // A fact has no originating file: no file ID, path, or authored source.
-    expectTypeOf<SourceConditionFactDto>().not.toHaveProperty('fileId');
-    expectTypeOf<SourceConditionFactDto>().not.toHaveProperty('sourceRelativePath');
-    expectTypeOf<SourceConditionFactDto>().not.toHaveProperty('sourceText');
+  it('publishes no maintenance record on a Source', () => {
+    // QR-005: evidence, documentation status, and lifecycle claims are the
+    // recorded basis for the read allowlist, and the product reports what it
+    // found rather than the documentation behind it. A Source therefore
+    // carries no condition facts and no assessments to render.
+    expectTypeOf<SourceDto>().not.toHaveProperty('conditionFacts');
+    expectTypeOf<SourceDto>().not.toHaveProperty('evidenceAssessments');
+    expectTypeOf<SourceDto>().not.toHaveProperty('documentationStatus');
   });
 });
 

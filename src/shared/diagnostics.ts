@@ -125,13 +125,21 @@ export const DIAGNOSTIC_REGISTRY: Readonly<Record<DiagnosticCode, DiagnosticRegi
     message:
       'This file contains NUL bytes, so it is recorded without source text and nothing was parsed from it. Use a binary-capable viewer if you need to inspect its contents.',
   },
-  /** One recognition parser failed while the authored source remains available. */
+  /**
+   * One recognition parser failed while the authored source remains available.
+   *
+   * Extraction is all-or-nothing (FR-028), so the message names the whole of
+   * what is missing rather than one field of it: nothing the parser would have
+   * read out — the declared name and description, the declarations, and the
+   * instructions the block was removed from — reaches the screen, and the
+   * detail surface omits both of its sections.
+   */
   'recognition-parse-failed': {
     ownerKind: 'candidate-file',
     scope: 'file',
     severity: 'warning',
     message:
-      'One recognition could not be parsed, so its derived metadata and relationships are omitted. The complete source text remains available to read; a rescan reports the current state of the file.',
+      'One recognition could not be parsed, so none of its declarations or instructions could be read out of it. The complete source text remains available to read; a rescan reports the current state of the file.',
   },
 };
 
@@ -140,8 +148,13 @@ export const DIAGNOSTIC_REGISTRY: Readonly<Record<DiagnosticCode, DiagnosticRegi
  * diagnostic (data-model.md § Diagnostic):
  *  - 'repository'              the Repository Source's root failure, routed
  *                              through `repositoryFailureDiagnosticId`
- *  - `global:<tool>`           an unpublished Global tool's root failure,
- *                              routed through `GlobalControlView.toolFailures`
+ *  - `global:<tool>`           an admitted-but-unpublished Global tool's fatal
+ *                              initial scan, which has that tool's preallocated
+ *                              Source ID to be source-scoped by. A tool whose
+ *                              root was never admitted has no Source at all, so
+ *                              its failure is its control's `failureCode` and
+ *                              never a Diagnostic (data-model.md
+ *                              § GlobalToolControl)
  *  - `published-source:<id>`   a published Source's fatal explicit rescan,
  *                              routed through its `StaleSourceFailure`
  * The session keeps at most one current actionable failure per owner.

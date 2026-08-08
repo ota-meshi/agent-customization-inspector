@@ -199,13 +199,14 @@ Censusはallowlist walkの一部ではない。Traversalはshipped selector prog
 読んでよいかに答える。Censusはcustomization自身のdirectoryに他に何があるかに答えるもので、どの
 selectorもそれを表現せず、censusを持つkindだけがそれを求める。したがってtraversalが既にadmitした
 candidateに対して実行し、起点はadmit済みcandidate自身のdirectoryだけである。任意のpathは存在しない。
-Censusは、そのcustomizationのkindごとのdetailsを組み立てる場所で、認識されたkindとcandidate自身の
-pathから実行する。どちらもrecognitionが既に保持しているため、どのkindがcensusを求めるかを
-先行するphaseが知る必要はない。
+Censusはrecognizerの中で、認識されたkindとcandidate自身のpathから実行する。どちらも
+recognitionが既に保持しているため、どのkindがcensusを求めるかを先行するphaseが知る必要はない。
 
-したがってcensus結果は、censusを持つkindのrecognitionには必ずlistとして存在し、admitされたfileが
-単独で置かれている場合はemptyになる。「censusが実行されなかった」状態は存在せず、「何も付随しない」
-と区別する必要もない。Seed自身とVCS internalsを除外し、通常のtraversalと同じreal-path cycle規則でsymbolic linkを辿るため、
+したがってcensusは、censusを持つkindのrecognitionごとに必ず実行され、その結果はそのrecognitionが
+裏づけるinventory定義の上で1回だけ公開される（contracts/http-api.md
+`skills[].definitions[].companionFiles`）。recognition上の2つ目の綴りは1つ目と食い違い得るからである。
+admitされたfileが単独で置かれている場合、listはabsentではなくemptyになる。「censusが実行されなかった」
+状態は存在せず、「何も付随しない」と区別する必要もない。Seed自身とVCS internalsを除外し、通常のtraversalと同じreal-path cycle規則でsymbolic linkを辿るため、
 subtreeへ戻るlinkは無限に辿られず終了する。
 
 下降は二重に封じ込められている。Censusはdirectoryのreal pathがcensus root内にある場合にだけそこへ入り、
@@ -313,11 +314,10 @@ fileのrecognition metadataである。Listedされていないfield、import、
 vendor locator、`behaviorId`、`strategyId`はread authorityを与えない。
 
 1つのphysical fileを1 Source内の複数ruleが受理するか、複数tool Sourceが独立して受理できる。そのfileはSource scan attemptごとに1回だけreadし、
-各`ruleId`、matched selector、
-evidence、record-by-record documentation/lifecycle assessment、order fact、applicabilityを含む全accepted provenanceを保持する。
+全accepted provenance — 読み取りを認可したruleと一致したpathであり、それ以上ではない — を保持する。
 `DocumentationStatus`は正確に`documented | partially-documented | unknown | conflict`とする。Separateなunique fixed-order lifecycle
 qualifier arrayは`preview`、`experimental`、`deprecated`とし、emptyであることが`stable`を意味することは
-決してない。Admissionを
+決してない。どちらもregistry上のmaintenance recordであり、provenanceのfieldには決してならない。Admissionを
 recognition-level winnerへcollapseしてはならない。Cross-Source/attempt/generation readは独立する。
 
 ## Read認可とapplicability
@@ -438,8 +438,8 @@ Contractとfixtureのvalidationは、次をすべて証明しなければなら�
 6. Relationship-onlyとexcluded fixtureは、targetが存在する場合やgeneric filenameにmatchする場合もread authorityが
    0であることを証明する。FR-015からFR-018の外側で記録したUser behaviorはGlobal candidateにならない。
 7. 1 Source内の複数ruleが受理した1つのphysical fileはSource scan attemptごとに1回readし、独立した各
-   provenanceを保持する。Matcher、evidence、record-by-record documentation/lifecycle assessment、
-   scope/order、applicabilityをcollapseしない。同じunderlying fileへのhard linkである2つのallowlisted
+   provenance — 読み取りを認可したruleと一致したpath — を保持し、admissionをrecognition-level winnerへ
+   collapseしない。同じunderlying fileへのhard linkである2つのallowlisted
    pathは、grouping、alias、read-once behaviorを持たない2つの通常の独立fileである。
    Cross-Source/attempt/generation fixtureは独立readを証明する。
 8. Root-selection fixtureは、1回だけcaptureした`process.cwd()`、そのまま保持するabsolute `--root`、

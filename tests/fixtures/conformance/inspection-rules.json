@@ -35,19 +35,6 @@
     },
     "derivation": null,
     "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
-    "conditionKeys": [
-      "surface",
-      "engine-version",
-      "runtime-cwd",
-      "repository-root",
-      "worked-path",
-      "scope-availability",
-      "feature-state",
-      "enablement",
-      "selection",
-      "plugin-state",
-      "managed-policy"
-    ],
     "precedenceGroup": null,
     "documentationStatus": "documented",
     "lifecycleQualifiers": [],
@@ -57,7 +44,7 @@
         "url": "https://code.claude.com/docs/en/skills",
         "officialHost": "code.claude.com",
         "sections": ["Where skills live"],
-        "reviewedOn": "2026-07-25",
+        "reviewedOn": "2026-08-08",
         "establishes": "Repository skills live at .claude/skills/<skill-name>/SKILL.md on each layer from the working directory through the repository root, which is why this rule admits that shape at the selected root and every descendant directory."
       },
       {
@@ -103,17 +90,6 @@
     },
     "derivation": null,
     "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
-    "conditionKeys": [
-      "surface",
-      "engine-version",
-      "runtime-cwd",
-      "repository-root",
-      "scope-availability",
-      "feature-state",
-      "enablement",
-      "selection",
-      "managed-policy"
-    ],
     "precedenceGroup": null,
     "documentationStatus": "documented",
     "lifecycleQualifiers": [],

@@ -1,7 +1,8 @@
 // T052/T060/T126/T130/T133: the inspection-rule half of the registry contract gate — the
 // closed matcher grammar, deterministic compilation into the immutable
-// versioned `TraversalPlan`, reciprocal references, and the sole
-// `EvidenceAssessment[]` assembler.
+// versioned `TraversalPlan`, reciprocal references, the same-name skill
+// statement each rule derives, and the closed structure-only projection
+// vocabulary.
 //
 // Production exclusion of maintenance-only data is not here. A citation lives
 // on the record that carries it, so no import graph separates them; the built
@@ -16,13 +17,11 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import { INSPECTION_RULES } from '../../src/shared/registries/inspection-rules';
-import type { VendorBehaviorStatement } from '../../src/shared/registries/behavior-types';
 import { RULE_RELATIONS } from '../../src/shared/registries/relations';
 import { RUNTIME_COMPOSITION_STRATEGIES } from '../../src/shared/registries/runtime-composition';
 import { VENDOR_BEHAVIOR_STATEMENTS } from '../../src/shared/registries/vendor-behaviors';
 import {
   TRAVERSAL_PLAN_SCHEMA_VERSION,
-  assembleRuleEvidenceAssessments,
   assertLoadableTraversalPlan,
   TraversalPlan,
   type MatcherSegment,
@@ -320,30 +319,6 @@ describe('the Claude skill slice of the reference graph (T130, T133)', () => {
       RUNTIME_COMPOSITION_STRATEGIES['claude.skills.selection'],
     );
   });
-
-  it('assembles one unreduced evidence record per referenced Claude subject', () => {
-    const compiled = CLAUDE_REPOSITORY_RULES[0]!;
-    expect(assembleRuleEvidenceAssessments(compiled)).toEqual([
-      {
-        subjectKind: 'behavior',
-        subjectId: 'claude.behavior.repo.skills',
-        documentationStatus: 'documented',
-        lifecycleQualifiers: [],
-      },
-      {
-        subjectKind: 'rule',
-        subjectId: 'claude.repo.skill',
-        documentationStatus: 'documented',
-        lifecycleQualifiers: [],
-      },
-      {
-        subjectKind: 'strategy',
-        subjectId: 'claude.skills.selection',
-        documentationStatus: 'documented',
-        lifecycleQualifiers: [],
-      },
-    ]);
-  });
 });
 
 describe('structure-only projection vocabulary', () => {
@@ -379,132 +354,5 @@ describe('structure-only projection vocabulary', () => {
     for (const word of FORBIDDEN) {
       expect(serialized).not.toContain(word);
     }
-  });
-});
-
-describe('the sole EvidenceAssessment[] assembler (QR-005)', () => {
-  const rule = INSPECTION_RULES['codex.repo.skill']!;
-  const compiled = CODEX_REPOSITORY_RULES.find((entry) => entry.rule.ruleId === rule.ruleId)!;
-
-  /**
-   * The assembler takes the compiled rule whole, so a case that varies a
-   * subject varies the relations the rule actually declares. Supplying an
-   * unrelated array is no longer expressible, which is the point.
-   */
-  function assemble(overrides: Partial<typeof compiled> = {}) {
-    return assembleRuleEvidenceAssessments({ ...compiled, ...overrides });
-  }
-
-  it('copies exactly one exact record per referenced subject', () => {
-    const assessments = assemble();
-    expect(assessments).toHaveLength(
-      1 +
-        RULE_RELATIONS[rule.ruleId].basedOnBehaviors.length +
-        RULE_RELATIONS[rule.ruleId].explainedByStrategies.length,
-    );
-    expect(assessments).toContainEqual({
-      subjectKind: 'rule',
-      subjectId: 'codex.repo.skill',
-      documentationStatus: rule.documentationStatus,
-      lifecycleQualifiers: [],
-    });
-    expect(assessments).toContainEqual({
-      subjectKind: 'behavior',
-      subjectId: 'codex.behavior.repo.skills',
-      documentationStatus:
-        VENDOR_BEHAVIOR_STATEMENTS['codex.behavior.repo.skills']!.documentationStatus,
-      lifecycleQualifiers: [],
-    });
-    expect(assessments).toContainEqual({
-      subjectKind: 'strategy',
-      subjectId: 'codex.skills.discovery',
-      documentationStatus:
-        RUNTIME_COMPOSITION_STRATEGIES['codex.skills.discovery']!.documentationStatus,
-      lifecycleQualifiers: [],
-    });
-  });
-
-  it('sorts by the fixed subject-kind order and then by subject ID', () => {
-    const assessments = assemble({
-      relations: {
-        ...compiled.relations,
-        basedOnBehaviors: [
-          VENDOR_BEHAVIOR_STATEMENTS['codex.behavior.user.skills'],
-          VENDOR_BEHAVIOR_STATEMENTS['codex.behavior.repo.skills'],
-        ],
-      },
-    });
-    expect(assessments.map((entry) => `${entry.subjectKind}:${entry.subjectId}`)).toEqual([
-      'behavior:codex.behavior.repo.skills',
-      'behavior:codex.behavior.user.skills',
-      'rule:codex.repo.skill',
-      'strategy:codex.skills.discovery',
-    ]);
-  });
-
-  it('cannot reference a subject the registries do not publish', () => {
-    // A relation holds the record, so there is no identifier to mistype: the
-    // only way to name a behavior is to take one out of a catalog, and a
-    // catalog is keyed by the closed union. This `@ts-expect-error` fails the
-    // typecheck job if either half of that stops being true.
-    const unknown = 'codex.behavior.does-not-exist';
-    // @ts-expect-error - not a member of the closed BehaviorId catalog.
-    const missing = VENDOR_BEHAVIOR_STATEMENTS[unknown] as VendorBehaviorStatement | undefined;
-    expect(missing).toBeUndefined();
-  });
-
-  it('assembles one record for the rule and every subject its relations name', () => {
-    // The completeness invariant, checked against the relations themselves
-    // rather than a hard-coded count: an omitted behavior or strategy would
-    // otherwise produce a shorter array that still looks valid.
-    const assessments = assemble();
-    const expected = [
-      { subjectKind: 'rule', subjectId: compiled.rule.ruleId },
-      ...compiled.relations.basedOnBehaviors.map((behavior) => ({
-        subjectKind: 'behavior',
-        subjectId: behavior.behaviorId,
-      })),
-      ...compiled.relations.explainedByStrategies.map((strategy) => ({
-        subjectKind: 'strategy',
-        subjectId: strategy.strategyId,
-      })),
-    ];
-    expect(
-      assessments
-        .map((entry) => ({ subjectKind: entry.subjectKind, subjectId: entry.subjectId }))
-        .sort((left, right) => (left.subjectId < right.subjectId ? -1 : 1)),
-    ).toEqual(expected.sort((left, right) => (left.subjectId < right.subjectId ? -1 : 1)));
-  });
-
-  it('rejects a duplicate subject rather than emitting it twice', () => {
-    const behavior = VENDOR_BEHAVIOR_STATEMENTS['codex.behavior.repo.skills'];
-    expect(() =>
-      assemble({ relations: { ...compiled.relations, basedOnBehaviors: [behavior, behavior] } }),
-    ).toThrow(/duplicate evidence subject/u);
-  });
-
-  it('never reduces the records to a scalar, a worst status, or a qualifier union', () => {
-    // The rule's own state is weakened on the record itself, because the
-    // assembler takes the record: its ID and its evidence state cannot be
-    // supplied separately, so they cannot disagree.
-    const assessments = assemble({
-      rule: {
-        ...rule,
-        documentationStatus: 'partially-documented',
-        lifecycleQualifiers: ['experimental'],
-      },
-    });
-    // The weaker rule status stays on the rule record only; the behavior and
-    // strategy records keep their own values, which is the whole point of a
-    // record-by-record array (QR-005).
-    expect(assessments.find((entry) => entry.subjectKind === 'rule')).toMatchObject({
-      documentationStatus: 'partially-documented',
-      lifecycleQualifiers: ['experimental'],
-    });
-    expect(assessments.find((entry) => entry.subjectKind === 'behavior')).toMatchObject({
-      documentationStatus: 'documented',
-      lifecycleQualifiers: [],
-    });
-    expect(assessments).not.toHaveProperty('documentationStatus');
   });
 });

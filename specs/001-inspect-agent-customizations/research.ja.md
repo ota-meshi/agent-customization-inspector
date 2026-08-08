@@ -329,13 +329,12 @@ composability、Codex first-non-empty policyは維持する。
    Recordは並行registryを経由せず自身の`evidence`配列でそれらを引用するため、根拠は支える主張の隣に置かれる。
 
 **Evidence statusの決定:** Documentation completenessとupstream lifecycleは直交させる。Atomicなbehavior、
-rule、strategyはそれぞれ`(subjectKind, subjectId)`をkeyとする1件の`EvidenceAssessment`を所有する。
+rule、strategyはそれぞれ自身のrecord上に`documentationStatus`と`lifecycleQualifiers`を持つ。
 `documentationStatus`は正確に`documented`、`partially-documented`、`unknown`、`conflict`のいずれかとし、
 重複のない`lifecycleQualifiers`は固定順`preview`、`experimental`、`deprecated`を使う。Empty qualifier arrayは
-lifecycle stateを主張せず、`stable`として表示しない。`documentation-conflict`はconflictがruntime projectionへ
-影響するときに生成する`ConditionFact.status`だけに残す。Candidate provenanceとrelationshipは、直接参照する
-behavior/rule/strategy recordごとのassessmentをsort・deduplicateして保持する。単一scalar status、best/worst statusへの
-縮約、qualifier unionは、どのofficial assertionがどのsubjectへ適用されるかを失うため不採用とした。
+lifecycle stateを主張せず、`stable`として表示しない。これらはmaintenance recordであり、どのresponseも
+どのsurfaceも運ばない。したがってcandidate provenanceが公開するのはどのruleがfileをadmitしたかであって、
+そのruleがどれだけ文書化されているかではない。
 
 選択したRepository rootはimmutableなRepository inventory boundaryのままとする。CLIは`process.cwd()`を1回だけ
 captureし、defaultではその正確な文字列を使う。`--root`は受理し（反復指定はparserのlast valueへ解決）、absolute optionはそのまま保持し、
@@ -454,10 +453,10 @@ recoverableなtransport failure動作、anchored-section normalization、human u
 **決定**: このsectionの規範recordは`spec.md`のclarification session（Clarifications
 § Session 2026-07-22）とする。Inspectorはuserが既に信頼しているworkspace内で動作し、AI agentが
 読む内容をそのまま表示するproductであるため、調査対象customization fileをadversaryとして
-model化しない。このsectionが以前規定していたadversarial-file機構（operation間のcheckpoint
+model化しない。Adversarial-file機構（operation間のcheckpoint
 identity再検証、race-detection taxonomy、hard-linkのread-once grouping、read ticket/receipt、
-resource-registry close-state machine）は、ordinary traversalとper-file diagnosticにより
-置き換える。
+resource-registry close-state machine）は不採用とし、ordinary traversalとper-file diagnosticを
+採る。
 
 Traversalは、immutable versioned `TraversalPlan` data（§ 4）へcompileした固定inspection-path
 allowlist上の、Node `fs/promises`によるordinaryなrecursive directory walkとする。
@@ -511,8 +510,8 @@ assetの通常の事実である。それ以外のbyte sequenceは全て、UTF-8
 正確に1回だけdecodeする。先頭BOMを1つ記録して取り除く。Decodeが`U+FFFD`を挿入した場合は`utf-8-replaced`を使い、
 その文字をgarbled source全体に保持したままparse、extraction、display、comparisonを続ける。Replacementだけでcomplete
 outcomeとし、別charsetを推測したりretryしたりしない。読み取り可能なsource textとcomparison contentは
-記述されたまま返し、表示する宣言済みmetadata値はそのparserが解決した値 — fileを読み込む製品が得るtextであり、
-quoteやescapeを含むliteralではその周囲の文字ではなくsyntaxの意味 — として返す。いずれもcredential検出、
+記述されたまま返し、これがすべてのauthored valueが読み手に届く経路となる。表示する宣言名はそのparserが解決した値 —
+fileを読み込む製品が得るtextであり、quoteやescapeを含むliteralではその周囲の文字ではなくsyntaxの意味 — として返す。いずれもcredential検出、
 content-based masking、redaction、reveal workflowを使わない。
 調査対象content内の環境変数参照はliteral textのままとし、Inspectorが参照先のprocess値を読み取り、解決、置換する
 契機にしない。文書化済みの`CODEX_HOME`、`CLAUDE_CONFIG_DIR`、`COPILOT_HOME` inputは、hostがtool別Global Source
@@ -524,8 +523,8 @@ unexpected failureはattemptへresultを提供せず、実messageのままordina
 RPC handlerのerrorはdevframeがserializeする形のままdevframe channelを渡り、sanitizer wrapperを
 持たない。Startup所有failureはprocess top levelへ到達する。Process-level OOMやkernel terminationからのrecoverは保証しない。
 
-Decode後にbest-effort metadata extractionを行う。受理したallowlist fieldごとに、そのparserが解決した値を持つentryを
-1件持つ。Public metadata listはallowlist rowの順でfieldごとに1件とし、stable identityはclosed tool、kind、field IDとする。
+Decode後にbest-effort metadata extractionを行う。認識したkindが公開する宣言ごとに、そのparserが解決した値を持つentryを
+1件持つ。Public metadata listはそのkindが公開する順で宣言ごとに1件とし、stable identityはtool、kind、宣言keyとする。
 2回宣言されたkeyは後の宣言へ解決され、それがそのfileを読み込む製品の得る値である。
 JSON/YAML/TOMLのquote、escape、block indicator、number/date spelling、collection punctuationを表示に残す。Typed
 classification、relationship normalization、bounded derivationを駆動するのも、その解決済みの値である。
@@ -548,7 +547,7 @@ incompatible meaningはそのfileに限定される。Per-fileの`recognition-pa
 別recognitionは変更しない（FR-028）。
 Tool/kind pairごとにrecognitionは正確に1つで、compatible provenanceはそこへ
 mergeする。Rule、script、markup、URL、control sequenceは実行もrenderもしない。Literalのdecodeは機械的である。Inventory、Detail、Comparison、Global control、Diagnostic、
-Source Condition Fact、API、CLI output、documentationの全surfaceで、productはnatural-languageの意味をinterpret/
+API、CLI output、documentationの全surfaceで、productはnatural-languageの意味をinterpret/
 rankせず、validity/correctness/effectiveness/compliance/qualityを判定せず、remediationを助言せず、customization
 contentをlint、synchronize、convert、format、fixしない。Inspector所有のmanifest、DTO、registry、invariantを
 validateすることはinternal safety checkであり、customizationへのverdictではない。
@@ -616,7 +615,7 @@ devframe hostがNuxt outputを直接配信するため（§ 8）、product-assem
 表示のinert性はread-onlyなeditor設定、Vue text binding、無効なlinkによって成立し、clientは引き続き
 external worker、blob worker、evaluated stringをloadしない。Diff highlightはproduct独自のline数/computation-time cutoffを設けず、Monacoとbrowserの
 capacityに従う。Monacoまたはbrowserがrecoverable failureを報告した場合もcomplete read-only side-by-side sourceと
-diagnosticを残す。Recognition metadataはtool、kind、closed field IDで対応付け、各fieldの解決済み値をVueのrow/badgeで
+diagnosticを残す。Recognition metadataはtool、kind、宣言keyで対応付け、各宣言の解決済み値をVueのrowで
 比較・表示する。
 Monacoのaccessible diff viewer、ARIA label、keyboard navigation、narrow-screen inline modeを維持し、
 明示的なaccessibility test対象にする。
@@ -694,9 +693,10 @@ Preview parse/transportのcapacityはNode.js、browser、実行環境に従い�
 escaped displayへproduct独自のbyte上限を設けない。独立したliveness RPC/probeは定義しない。
 devframeは問い合わせなしに自身のconnection-status signalでhost lossを報告する。SPAはvisibility、
 focus、unload listenerを設置せず、page-lifecycle eventをpurgeまたはrefetchのtriggerにしない。
-Polling interval、request timeout、retry timer、memory leaseを定義しない。Currentなnetwork/runtime
-RPC rejection、transportが報告するchannel loss、session mismatchでは、ended viewをrenderする前に
-`clientDataEpoch` guard付きshared purgeを実行する。Global-disable clickではrequest dispatch前に同じ
+Polling interval、request timeout、retry timer、memory leaseを定義しない。CurrentなRPCでtransportが報告する
+channel lossまたは解釈できないprotocol、session mismatchでは、ended viewをrenderする前に
+`clientDataEpoch` guard付きshared purgeを実行する。Ordinaryなhandler/serialization/delivery failureは
+そのrequestだけのerrorである。Global-disable clickではrequest dispatch前に同じ
 purgeを実行し、ordinary responseでgreater Global content epochまたはnon-null disable fenceを観測した
 場合もrender前に繰り返してclient-side `RecoveryViewState`へ入る。Purgeは全DOM/DTO/editor
 stateを除去してlate responseによるcontent復活を防ぐ。Request tokenがcurrentでないsettlement、または
@@ -874,9 +874,9 @@ slot-capacity fixtureなしでFIFO serialization、disable priority、`202`/`409
 検証する。Injected recoverable Node.js/parser/editor/transport failureはsafe failure、atomic publication、responseをtruncateしない
 ことを証明し、file sizeとcollection cardinalityがproduct validation ruleではないことも確認する。Process-level OOMとkernel
 terminationはin-process recovery testのscope外とする。Diagnostic fixtureはclosedな
-`file | source | session` scope unionをenforceする。File scopeはowning `sourceId`、`fileId`、`sourceRelativePath`を持ち、
-source scopeはowning `sourceId`だけを持って`fileId`と`sourceRelativePath`を持たず、session scopeはこれら3 fieldを
-いずれも持たない。Source/session scopeのDiagnosticが表示またはordering fieldを満たすためにpathを捏造してはならない。
+`file | source` scope unionをenforceする。File scopeはowning `sourceId`、`fileId`、`sourceRelativePath`を持ち、
+source scopeはowning `sourceId`だけを持って`fileId`と`sourceRelativePath`を持たない。Pathlessなscopeは存在せず、
+source scopeのDiagnosticが表示またはordering fieldを満たすためにpathを捏造してはならない。
 
 **決定**: Vendor conformance fixtureとnegative near-missに加え、symlink-transparent read、encoding、recoverableな環境failure、literal
 credential、環境変数参照、import、executable declaration、malformed formatのfixtureを保守する。
@@ -887,7 +887,7 @@ Pure recognizer/parserとliteral-display DTO、session API contract、source bou
 Closed manual matrixはpacked candidate、3つのsupported OS/browser/assistive-technology cell、responsive/visual
 profile、workflow state、input profileをfreezeし、applicableな全cellを記録して、frozen value変更時は全manual checkを再実行する。
 Axeのseverity結果だけを
-受入evidenceとせず、Applicable行のfailureをpassへ変更できない。SC-003、SC-004、SC-005、SC-007、SC-009は、
+受入evidenceとせず、Applicable行のfailureをpassへ変更できない。SC-003、SC-004、SC-005、SC-007は、
 stable case ID、required-class membership、客観的expected outcome、fixture/builder reference、fixtureごとのdigestを持つ
 version付きでcheck-in済みのrelease-evidence fixture manifestを共有し、release candidateごとの正確で非ゼロなdenominatorを
 freezeする。Canonical manifest digestと実行済みcase IDをevidence recordへ入れる。Contractはmissing、duplicate、undeclared、
@@ -903,7 +903,7 @@ authored manifest inventory、FR-015からFR-018外へのGlobal read 0件を扱�
 さらに、tool別Global Sourceが0から3つで各tool最大1つ、各Sourceが正確に1つのrootとSource-relative Path
 namespaceを持つこと、literal credentialのexact表示、reveal controlがないこと、環境変数を置換しないことを
 検証する。Lifecycle fixtureは全4 Sourceの未解決failure共存、Source別clear/replace/removal、自動初回failureの
-current stateを扱う。Browser fixtureはcurrentなbrowser/network/runtime RPC rejection、transportが報告する
+current stateを扱う。Browser fixtureはordinaryなrequest rejectionがrequest-localに留まること、transportが報告する
 channel loss、session mismatchを伴うport再利用、page-lifecycle listener/purge/refetchが存在しないこと、
 continuously idleでvisibleなpage上のprocess lossにwall-clock保証がないこと、scan commit/disable barrierを
 またぐsnapshot/detail deliveryについてrequest token、`clientDataEpoch`、session、Global epoch/fence、owning
@@ -958,8 +958,8 @@ policy/remediation advice、conversion、synchronization、formatting、fixing�
   結果はportable guaranteeではなく公開profile固有とする。
 - **SC-006**はSC-001後に同じ20人を以前の結果にかかわらず使用し、同じ指定fileを開いた同一の準備済みInspector
   stateから開始する。Timerはstateの準備完了後に標準化されたpromptを提示した時点で開始する。Standardized
-  response formはsource、recognizing tool、file type、effective behaviorがcertainかconditionalかの4項目を必須と
-  し、2分以内に全項目がpredefined ground truthと一致した場合だけ成功とする。提供されたproduct guidanceと
+  response formはsource、recognizing tool、file typeの3項目を必須とし、2分以内に全項目が
+  predefined ground truthと一致した場合だけ成功とする。提供されたproduct guidanceと
   SC-001のmoderator policyだけを使って18人以上の成功を要求する。Moderatorは客観的workflow outcomeと事前定義済み
   safety eventを記録する。Study equipmentはSC-004のproduct network/URL/MCP instrumentation、exact-authorityの
   Inspector-server request ledger、study-browser request captureをSC-001前のInspector launchから4つのworkflow観察完了まで
@@ -1307,19 +1307,19 @@ manual accessibility check、documentation parity check、release tarball inspec
    authored value、user-supplied command、environmentで選択したhandlerを渡さない。Closedなambient platform key setだけを
    launch environmentから直接copyしてよいが、Source rootとのlexical一致はprovenanceを変えずauthorityを与えない。Discovery、read、parse、display、
    comparison、relationship処理はchild processを開始せず、`--no-open`、unsupported、failure pathでも利用可能なmanual URLを残す。
-2. 各supported `(tool, kind)`がclosedなdeclared-metadata field ID、relationship kind、admission済みsource-form
-   applicabilityを所有する。Entryは、維持管理するpresentation-allowlist rowに属し、かつactualなadmission済みsource formの
-   exact extractorがそのauthored occurrenceを認識する場合だけserialize/displayする。どちらかのgateを満たさないentryは
-   完全なsource text内だけで見えるままにし、metadata/relationshipとして推論したりsource form間でpromoteしたりしない。
+2. 各supported `(tool, kind)`がclosedなrelationship kindとadmission済みsource-form applicabilityを所有する。
+   Relationshipは、そのkindが維持管理するpresentation-allowlist rowに属し、かつactualなadmission済みsource formの
+   exact extractorがそのauthored occurrenceを認識する場合だけserialize/displayする。どちらかのgateを満たさないものは
+   完全なsource text内だけで見えるままにし、推論したりsource form間でpromoteしたりしない。Kindの宣言はこのgateを
+   通らない。Skillの宣言はfileが書いたkeyであり、authored keyの集合は閉じていないからである。
 3. SC-002はSection 10で定義した標準化filter/item-selection測定を含み、同じ9件以上の各runが両scan thresholdと
    両interaction thresholdのすべてに合格しなければならない。
 4. Dependency再確認はplanning gateとする。Packageまたはversion変更をacceptした場合、dependency baselineを記載する英日両方のdesign/task
    artifactをすべて同期し、implementation前にplanningとtask generationを再実行する。
 5. SC-002 environmentはchecked-in version付き公開profileとし、現在のrequestに対する客観的status停止条件を持つ。
    Private local-machine identityはcontractに含めない。
-6. Origin-file-less hosted/runtime inputは関連Sourceに紐づくevidence-linked Source Condition Factとする。
-   File/path/source text/comparison targetを作らず、read authorityを付与せず、local/hosted I/Oを実行せず、未観測のcurrent stateを
-   conditionalまたはunavailableのままにする。
+6. Origin-file-less hosted/runtime inputはスコープ外とする。製品は見つけたカスタマイズファイルを
+   報告する。どのfileも起点にしないbehaviorはvendor自身の文書に属し、それを説明するsurfaceは持たない。
 7. Maintainer teamがinitial-release participant study、funding、support、privacy、accessibility、定義済みreview protocolを担当し、
    通常のcontributorへ義務を負わせない。
 8. `engines.node`をNode 24/26 runtime compatibility range全体とし、正確な6つのfloor jobをlower-bound certification sample、
@@ -1334,8 +1334,8 @@ manual accessibility check、documentation parity check、release tarball inspec
     variationをすべて合格とし、`validation.md`と
     `validation.ja.md`へ0件ではないApplicable-row denominator、Applicable rowのfailure 0件、完全なevidenceを記録する。
     Axeだけまたはseverity基準による免除はない。
-11. Diagnostic scopeはclosedな`file | source | session` unionとする。`sourceRelativePath`を持つのはfile scopeだけで、
-    source scopeはpathなしの`sourceId`を持ち、session scopeはsource/path identityをどちらも持たない。別の
+11. Diagnostic scopeはclosedな`file | source` unionとする。`sourceRelativePath`を持つのはfile scopeだけで、
+    source scopeはpathなしの`sourceId`を持ち、pathlessなscopeは存在しない。別の
     outer-boundary error entityは存在しない。Unexpected failureはordinaryに報告され、Diagnosticには決してならない。
 
 **理由**: これらのruleにより、既存security/documentation parity requirementを弱めず、child-process boundary、
@@ -1392,7 +1392,7 @@ checkpointを遅らせるため不採用。Comparisonが自身のfamilyのdiscov
    request IDを持つstatusとcommitted inventory generationだけを受理する。
 5. Disable、shutdown、generation replacementはelapsed timeと無関係にpublication authorityをrevokeする。Late resultを
    破棄し、cleanupはunderlying Node.js/OS operationに従う。Hard kernel-I/O cancellationやOOM recoveryは主張しない。
-6. 許可するinterpretationはclosed syntax、allowlist fieldについてparserが解決した値の読み取り、frozen-catalog
+6. 許可するinterpretationはclosed syntax、認識したkindが公開する宣言についてparserが解決した値の読み取り、frozen-catalog
    classification、documented structural projectionだけとする。Product/documentationの全surfaceでnatural-language
    interpretation/ranking、customization verdict、policy/remediation advice、linting、synchronization、conversion、
    formatting、fixingを禁止する。

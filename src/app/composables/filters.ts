@@ -35,6 +35,7 @@ import {
   CUSTOMIZATION_KIND_ORDER,
   SUPPORTED_TOOL_ORDER,
   escapeControlCharacters,
+  skillDirectoriesClash,
   type CustomizationKind,
   type SupportedTool,
 } from '../../shared/entities';
@@ -244,13 +245,35 @@ export class InventoryFilterView {
         if (definitions.length === 0) {
           return [];
         }
-        // A narrowed row resolves nothing: the resolution statement describes the
-        // definitions actually shown, so one surviving definition states none.
+        // A resolution statement describes the definitions actually shown, and
+        // it answers what one tool does when *it* finds the name declared
+        // twice. A filter that leaves a tool one definition leaves that tool no
+        // collision, so its statement goes with the definitions it described —
+        // and Claude's goes with the directory-name clash it was quoted for,
+        // the same gate the projection applied (skillDirectoriesClash): a
+        // filter can remove one of the clashing pair while a third same-label
+        // definition keeps the count at two.
         return [
           {
             ...entry,
             definitions,
-            sameNameResolutions: definitions.length > 1 ? entry.sameNameResolutions : [],
+            sameNameResolutions: entry.sameNameResolutions.filter((resolution) => {
+              const recognized = definitions.filter((definition) =>
+                definition.tools.includes(resolution.tool),
+              );
+              if (recognized.length < 2) {
+                return false;
+              }
+              return (
+                resolution.tool !== 'claude' ||
+                skillDirectoriesClash(
+                  recognized.map(
+                    (definition) =>
+                      this.filesById.value.get(definition.fileId)?.sourceRelativePath ?? '',
+                  ),
+                )
+              );
+            }),
           },
         ];
       }),

@@ -4,7 +4,6 @@
 // Declared apart from the aggregate so each vendor catalog can author against
 // the shape without importing the module that collects those catalogs, which
 // would be a cycle. Ships zero runtime code — the `-types` name records that.
-import type { ConditionFactKey } from '../api-types';
 import type { DocumentationStatus, LifecycleQualifier, SupportedTool } from '../entities';
 import type { StrategyId } from './identifier-types';
 import type { EvidenceCitation } from './evidence-types';
@@ -59,8 +58,6 @@ export interface RuntimeCompositionStrategy {
   readonly surfaces: readonly VendorSurface[];
   /** Non-empty operations in documented pipeline order. */
   readonly operations: readonly CompositionOperation[];
-  /** Inputs required before a terminal applicability result is permitted. */
-  readonly requiredConditionKeys: readonly ConditionFactKey[];
   /** How completely official sources establish the operations (QR-005). */
   readonly documentationStatus: DocumentationStatus;
   /** Upstream lifecycle claims in the fixed order; empty is not `stable`. */

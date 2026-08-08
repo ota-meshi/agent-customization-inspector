@@ -19,32 +19,8 @@
 // `satisfies` keeps the literal, so the key cannot disagree with the record it
 // points at.
 import { SHIPS_MAINTENANCE_DATA } from '../maintenance-data';
-import type { ConditionFactKey } from '../../api-types';
 import type { ClaudeBehaviorId } from '../identifier-types';
 import type { VendorBehaviorStatement } from '../behavior-types';
-
-/**
- * Runtime inputs the documented Claude skill chain depends on before any
- * projection may claim a skill is selected. Shared by the two skill behaviors
- * and their strategy so the three records cannot drift
- * (contracts/runtime-composition.md § `claude.skills.selection`). `worked-path`
- * is here because nested descendant skill directories are discovered lazily as
- * files under them are accessed, so which paths the session worked on decides
- * which layers exist at all.
- */
-export const CLAUDE_SKILL_CONDITION_KEYS: readonly ConditionFactKey[] = [
-  'surface',
-  'engine-version',
-  'runtime-cwd',
-  'repository-root',
-  'worked-path',
-  'scope-availability',
-  'feature-state',
-  'enablement',
-  'selection',
-  'plugin-state',
-  'managed-policy',
-];
 
 /**
  * Claude Repository skill discovery: each `<skill-layer>` from the launch
@@ -56,8 +32,8 @@ export const CLAUDE_SKILL_CONDITION_KEYS: readonly ConditionFactKey[] = [
  * The locator's one closed traversal field records the startup walk — upward,
  * terminating at the Git repository root. The documented lazy descendant
  * discovery is not a second traversal value: it is why the Inspector's rule
- * expands to descendant inventory and why `worked-path` is one of the
- * conditions above, so neither half of the documented behavior is lost.
+ * expands to descendant inventory, so neither half of the documented behavior
+ * is lost.
  */
 export const CLAUDE_REPO_SKILLS_BEHAVIOR = {
   behaviorId: 'claude.behavior.repo.skills',
@@ -74,7 +50,6 @@ export const CLAUDE_REPO_SKILLS_BEHAVIOR = {
         traversal: 'ancestor-chain-to-repository-root',
       }
     : null,
-  activationConditions: CLAUDE_SKILL_CONDITION_KEYS,
   documentationStatus: 'documented',
   lifecycleQualifiers: [],
   evidence: SHIPS_MAINTENANCE_DATA
@@ -84,9 +59,18 @@ export const CLAUDE_REPO_SKILLS_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/skills',
           officialHost: 'code.claude.com',
           sections: ['Where skills live'],
-          reviewedOn: '2026-07-25',
+          reviewedOn: '2026-08-08',
           establishes:
             'Claude Code discovers repository skills at .claude/skills/<skill-name>/SKILL.md, with ancestor skill layers discovered at startup and nested descendant skill directories discovered on demand.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.changelog.nested-skill-discovery',
+          url: 'https://code.claude.com/docs/en/changelog',
+          officialHost: 'code.claude.com',
+          sections: ['2.1.6'],
+          reviewedOn: '2026-08-06',
+          establishes:
+            'Release 2.1.6 introduces automatic discovery of skills from nested .claude/skills directories, the version gate for the on-demand descendant half of this behavior (QR-005).',
         },
         {
           sourceId: 'anthropic.claude-code.large-codebases.start-directory',
@@ -124,7 +108,6 @@ export const CLAUDE_USER_SKILLS_BEHAVIOR = {
         traversal: 'exact',
       }
     : null,
-  activationConditions: CLAUDE_SKILL_CONDITION_KEYS,
   documentationStatus: 'documented',
   lifecycleQualifiers: [],
   evidence: SHIPS_MAINTENANCE_DATA
@@ -134,7 +117,7 @@ export const CLAUDE_USER_SKILLS_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/skills',
           officialHost: 'code.claude.com',
           sections: ['Where skills live'],
-          reviewedOn: '2026-07-25',
+          reviewedOn: '2026-08-08',
           establishes:
             'Claude Code additionally discovers user skills at <claude-config-dir>/skills/<skill-name>/SKILL.md, one of the scopes its same-name selection resolves across.',
         },

@@ -12,6 +12,7 @@ import {
   SUPPORTED_TOOL_ORDER,
   createOpaqueId,
   createSourceBoundaryDto,
+  skillDirectoriesClash,
 } from '../../shared/entities';
 import { sameNameSkillResolutionFor } from '../../shared/registries/skill-resolution';
 import {
@@ -29,6 +30,7 @@ import type {
   FileDetailDto,
   RecognitionDetails,
   SameNameSkillResolutionDto,
+  SkillDefinitionDto,
   ScanProgressPhase,
   ScanProgressDto,
   SessionSnapshot,
@@ -124,7 +126,7 @@ function summarizeFile(file: CustomizationFileDto): CustomizationFileSummaryDto 
  * declares it.
  *
  * The name is the grouping key because that is the unit the vendors' own
- * selectors use; the file is not, since two files may declare one name. A
+ * skill listings show; the file is not, since two files may declare one name. A
  * definition that declares none gets its own entry keyed by its file: a file
  * with no name has not joined a name, and grouping the nameless together would
  * assert an identity none of them has.
@@ -135,6 +137,7 @@ function summarizeFile(file: CustomizationFileDto): CustomizationFileSummaryDto 
 function projectSkillInventory(
   recognitions: readonly ToolRecognitionDto[],
   pathByFileId: ReadonlyMap<string, string>,
+  skillCompanionsByPath: ReadonlyMap<string, readonly string[]>,
 ): SkillInventoryEntryDto[] {
   // Keyed by declared name, or by file ID for the nameless — the `\u0000`
   // prefix cannot collide with an authored name, which is a YAML scalar.
@@ -154,7 +157,13 @@ function projectSkillInventory(
     // tools, never one definition per product: the file is what the row lists.
     const definition = entry.byFile.get(recognition.fileId);
     if (definition === undefined) {
-      entry.byFile.set(recognition.fileId, new MutableDefinition(recognition));
+      entry.byFile.set(
+        recognition.fileId,
+        new MutableDefinition(
+          recognition,
+          skillCompanionsByPath.get(pathByFileId.get(recognition.fileId) ?? '') ?? [],
+        ),
+      );
     } else {
       definition.tools.push(recognition.tool);
     }
@@ -174,10 +183,12 @@ function projectSkillInventory(
     return {
       declaredName: entry.name,
       definitions,
-      // Nothing to resolve with one definition, so the row states no rule
-      // rather than a rule that applies to nothing.
-      sameNameResolutions:
-        definitions.length > 1 ? resolutionsFor(definitions.flatMap((one) => one.tools)) : [],
+      // A resolution belongs to one tool, and it answers what that tool does
+      // when *it* finds the name declared twice. Counting the row's
+      // definitions instead would state Claude's rule and Codex's rule for a
+      // row holding one file each tool recognizes alone — a collision neither
+      // product has.
+      sameNameResolutions: resolutionsFor(definitions, pathByFileId),
     };
   });
   // Named entries in name order, then the nameless in path order: the row's own
@@ -208,14 +219,14 @@ class MutableDefinition {
   /** The tools recognizing it, unsorted until the entry is built. */
   public readonly tools: SupportedTool[];
 
-  /** The census result, identical across recognitions of one file. */
+  /** The census result, one per file however many products recognize it. */
   public readonly companionFiles: readonly string[];
 
   /** Starts the definition from the first skill recognition of its file. */
-  public constructor(recognition: SkillRecognitionDto) {
+  public constructor(recognition: SkillRecognitionDto, companionFiles: readonly string[]) {
     this.fileId = recognition.fileId;
     this.tools = [recognition.tool];
-    this.companionFiles = recognition.details.companionFiles;
+    this.companionFiles = companionFiles;
   }
 }
 
@@ -243,10 +254,33 @@ function isSkillRecognition(recognition: ToolRecognitionDto): recognition is Ski
  * statement rather than a guessed one; a product with no skill rule also
  * recognizes no skill, so it cannot reach this at all.
  */
-function resolutionsFor(tools: readonly SupportedTool[]): SameNameSkillResolutionDto[] {
-  return [...new Set(tools)]
+function resolutionsFor(
+  definitions: readonly SkillDefinitionDto[],
+  pathByFileId: ReadonlyMap<string, string>,
+): SameNameSkillResolutionDto[] {
+  return [...new Set(definitions.flatMap((definition) => definition.tools))]
     .sort((left, right) => SUPPORTED_TOOL_ORDER.indexOf(left) - SUPPORTED_TOOL_ORDER.indexOf(right))
     .flatMap((tool) => {
+      // Only a tool that recognizes the name twice has a collision to resolve.
+      const recognized = definitions.filter((definition) => definition.tools.includes(tool));
+      if (recognized.length < 2) {
+        return [];
+      }
+      // The collision must also be one the quoted rule answers. For Claude
+      // Code a repository skill's frontmatter `name` sets only the display
+      // label — the command comes from the skill directory — so two files
+      // sharing a label under different directory names are two commands with
+      // no clash, and quoting Claude's rule there would state a resolution
+      // for a conflict the vendor does not define (FR-007). Its statement is
+      // therefore gated on two of its definitions sharing a directory name.
+      if (
+        tool === 'claude' &&
+        !skillDirectoriesClash(
+          recognized.map((definition) => pathByFileId.get(definition.fileId) ?? ''),
+        )
+      ) {
+        return [];
+      }
       const resolution = sameNameSkillResolutionFor(tool);
       return resolution === null ? [] : [{ tool, resolution }];
     });
@@ -466,7 +500,6 @@ export class InspectionSession {
           generation: this.committedRepositoryGeneration.generation,
           scanRequestId: repository.scanRequestId,
           progress: repository.progress,
-          conditionFacts: [],
           diagnosticIds: [...repository.diagnosticIds],
         },
       ],
@@ -483,6 +516,12 @@ export class InspectionSession {
           ...(this.committedGlobalGeneration?.recognitions ?? []),
         ],
         pathByFileId,
+        // Paths are unique per Source, and the shipped milestone has one
+        // Source; the Global tasks merge per-Source maps here.
+        new Map([
+          ...this.committedRepositoryGeneration.skillCompanionsByPath,
+          ...(this.committedGlobalGeneration?.skillCompanionsByPath ?? new Map()),
+        ]),
       ),
       // Semantic emission order (data-model.md § Diagnostic): session-owned
       // lifecycle records (repository, Global tools, published Sources)
@@ -748,6 +787,8 @@ export class SessionCoordinator {
       readonly files: readonly CustomizationFileDto[];
       /** The attempt's recognitions; rekeyed with their files by the commit. */
       readonly recognitions: readonly ToolRecognitionDto[];
+      /** Each recognized skill entry point's census, keyed by its path. */
+      readonly skillCompanionsByPath: ReadonlyMap<string, readonly string[]>;
       readonly diagnostics: readonly SerializedDiagnostic[];
       /**
        * The attempt's closed publication outcome (FR-028): 'partial' exactly
@@ -805,6 +846,7 @@ export class SessionCoordinator {
       outcome: result.outcome,
       files: result.files,
       recognitions: result.recognitions,
+      skillCompanionsByPath: result.skillCompanionsByPath,
       diagnostics: result.diagnostics,
     });
     // Atomic replacement: commit the generation, then update overlays. The

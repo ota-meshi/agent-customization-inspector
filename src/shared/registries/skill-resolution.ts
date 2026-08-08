@@ -37,13 +37,20 @@ import type { RuntimeCompositionStrategy } from './strategy-types';
  *
  * `retain-all` is that statement for `all-remain`; `unknown-order` beside it
  * only says no order is documented, which is what keeps the row from claiming
- * one. A pipeline that states neither yields nothing, and so does one that
- * states both `retain-all` and a selection: what a vendor documents that way
- * is a question for evidence review, not for arithmetic over an enum.
+ * one. `retain-all` followed by `select-closest` is the exact pipeline Claude
+ * Code documents for a clash within one root — every definition stays
+ * available and the product picks the variant matching the files it is
+ * working on — and is `all-remain-context-selected`. A pipeline that states
+ * none of these yields nothing, and so does one that states both `retain-all`
+ * and `select-first`: what a vendor documents that way is a question for
+ * evidence review, not for arithmetic over an enum.
  */
 function resolutionOf(strategy: RuntimeCompositionStrategy): SameNameSkillResolution | null {
   const retains = strategy.operations.includes('retain-all');
   const selectsFirst = strategy.operations.includes('select-first');
+  if (retains && strategy.operations.includes('select-closest') && !selectsFirst) {
+    return 'all-remain-context-selected';
+  }
   if (retains === selectsFirst) {
     return null;
   }

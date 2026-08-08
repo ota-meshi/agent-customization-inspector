@@ -11,40 +11,37 @@
 // and the commit happens after.
 import { describe, expect, it } from 'vitest';
 import { RecognitionExtraction } from '../../../src/server/inspection/parsers/extraction';
-import type { DeclaredMetadataEntryDto } from '../../../src/shared/api-types';
-
-const NAME_FIELD: DeclaredMetadataEntryDto = { fieldId: 'codex.skill.name', value: 'greet' };
 
 describe('recognition extraction', () => {
-  it('publishes the fields of an extractor that succeeds', () => {
-    // The same list the recognizer reads its declared name from: one parse
-    // feeds both, so the identity a row uses and the value a detail view shows
-    // cannot come from two readings of the file.
-    const extraction = RecognitionExtraction.run('greet', () => [NAME_FIELD]);
+  it('publishes the declared name of an extractor that succeeds', () => {
+    // The same value the inventory row groups by and the detail heading
+    // shows: one parse feeds both, so the identity a row uses and the name a
+    // detail view shows cannot come from two readings of the file.
+    const extraction = RecognitionExtraction.run('greet', () => 'greet');
     expect(extraction.status).toBe('parsed');
-    expect(extraction.declaredMetadata).toEqual([NAME_FIELD]);
+    expect(extraction.extracted).toBe('greet');
   });
 
-  it('reports not-attempted when no allowlisted extractor applies', () => {
-    const extraction = RecognitionExtraction.run('anything', () => null);
-    expect(extraction).toEqual({ status: 'not-attempted', declaredMetadata: [] });
+  it('reports not-attempted when no extractor applies to the kind', () => {
+    const extraction = RecognitionExtraction.run('anything', null);
+    expect(extraction.status).toBe('not-attempted');
+    expect(extraction.extracted).toBeUndefined();
   });
 
   it('confines a thrown parser failure to the recognition', () => {
     const extraction = RecognitionExtraction.run('greet', () => {
       throw new SyntaxError('unterminated flow sequence');
     });
-    expect(extraction).toEqual({ status: 'failed', declaredMetadata: [] });
+    expect(extraction.status).toBe('failed');
+    expect(extraction.extracted).toBeUndefined();
   });
 
   it('imposes no Inspector limit on document size', () => {
     // Capacity is the environment's. A product-defined ceiling would fail a
     // large but perfectly ordinary customization file the vendor would load.
     const large = 'x'.repeat(2_000_000);
-    const extraction = RecognitionExtraction.run(large, (sourceText) => [
-      { fieldId: 'codex.skill.description', value: sourceText },
-    ]);
+    const extraction = RecognitionExtraction.run(large, (sourceText) => sourceText);
     expect(extraction.status).toBe('parsed');
-    expect(extraction.declaredMetadata[0]?.value).toHaveLength(large.length);
+    expect(extraction.extracted).toHaveLength(large.length);
   });
 });

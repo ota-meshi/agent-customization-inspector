@@ -78,6 +78,15 @@ interface ScanGenerationBase {
    * commit rekeys both sets of identities and rewrites that one direction.
    */
   readonly recognitions: readonly ToolRecognitionDto[];
+  /**
+   * Each recognized skill entry point's census result, keyed by the entry
+   * point's Source-relative Path — stable across the commit's ID rekeying,
+   * which is why the key is the path rather than the file ID. Internal: the
+   * inventory's `SkillDefinitionDto.companionFiles` is its one publication
+   * (contracts/inspection-path-allowlist.md § Bounded companion census), so no
+   * wire recognition repeats it.
+   */
+  readonly skillCompanionsByPath: ReadonlyMap<string, readonly string[]>;
   /** Diagnostics committed with this generation. */
   readonly diagnostics: readonly SerializedDiagnostic[];
 }
@@ -123,6 +132,8 @@ export interface ScanCommitInput {
   readonly files: readonly CustomizationFileDto[];
   /** Recognitions to publish; their IDs are rekeyed by the commit as well. */
   readonly recognitions: readonly ToolRecognitionDto[];
+  /** Each recognized skill entry point's census, keyed by its path (stable across rekeying). */
+  readonly skillCompanionsByPath: ReadonlyMap<string, readonly string[]>;
   /** The attempt's diagnostics, already serialized for the DTO. */
   readonly diagnostics: readonly SerializedDiagnostic[];
 }
@@ -201,6 +212,7 @@ export function createBootstrapGeneration(now: string): RepositoryScanGeneration
     outcome: 'complete',
     files: [],
     recognitions: [],
+    skillCompanionsByPath: new Map(),
     diagnostics: [],
   };
 }
@@ -222,6 +234,7 @@ export function prepareNextRepositoryGeneration(
     outcome: input.outcome,
     files,
     recognitions,
+    skillCompanionsByPath: input.skillCompanionsByPath,
     diagnostics,
   };
 }
@@ -245,6 +258,7 @@ export function createGlobalEnableGeneration(input: ScanCommitInput): GlobalScan
     outcome: input.outcome,
     files,
     recognitions,
+    skillCompanionsByPath: input.skillCompanionsByPath,
     diagnostics,
   };
 }
@@ -266,6 +280,7 @@ export function prepareNextGlobalGeneration(
     outcome: input.outcome,
     files,
     recognitions,
+    skillCompanionsByPath: input.skillCompanionsByPath,
     diagnostics,
   };
 }

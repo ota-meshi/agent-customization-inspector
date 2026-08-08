@@ -5,20 +5,17 @@
 // because each exists for the bilingual contracts rather than for a running
 // inspection:
 //
-//  - evidence citations (`EvidenceCitation`): `EvidenceAssessment` records how
-//    completely a subject is documented, never where, so no URL, heading,
-//    review date, or paraphrase is reachable from a DTO.
+//  - evidence citations (`EvidenceCitation`): a record's own
+//    `documentationStatus` says how completely it is documented, never where,
+//    so no URL, heading, review date, or paraphrase is reachable from a DTO.
 //  - vendor locators (`VendorLocator`): the DTO surface has no field for a
-//    lookup base, relative selector, traversal shape, or vendor scope, and a
-//    published `SourceConditionFactDto` names the behaviors that explain a
-//    fact by ID (`behaviorRefs: readonly string[]`), never by value.
+//    lookup base, relative selector, traversal shape, or vendor scope.
 //  - policy references (`InspectionRule.policyRefs`): they name FR/QR clauses
 //    in spec.md for a reviewer tracing a rule back to what authorized it. No
 //    DTO carries them and nothing in the product reads one.
 //
-// `ConditionFactKey` lists are deliberately *not* in this category and stay in
-// every build: `ConditionFact.key` is a wire type and FR-039 requires the
-// product to publish those facts, so the lists are a future product input.
+// No record carries a condition-key list: nothing projects one, and a field no
+// consumer reads is a field that drifts (FR-009).
 
 declare global {
   /**

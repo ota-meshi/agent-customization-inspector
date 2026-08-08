@@ -36,7 +36,6 @@ const REPOSITORY_SOURCE: SourceDto = {
   generation: 1,
   scanRequestId: null,
   progress: null,
-  conditionFacts: [],
   diagnosticIds: [],
 };
 
@@ -330,6 +329,58 @@ describe('inventory filters over the committed snapshot', () => {
   });
 });
 
+describe('same-name resolutions in the filtered view', () => {
+  it('drops a statement when the filter leaves a tool one definition', () => {
+    const snapshot = ref<SessionSnapshot | null>(
+      snapshotWith(
+        [file('a/SKILL.md'), file('b/SKILL.md')],
+        [skill('dup', 'a/SKILL.md', 'b/SKILL.md')],
+      ),
+    );
+    const { pathQuery, view } = withSelection(snapshot);
+    expect(view.skillRows.value[0]!.sameNameResolutions).toHaveLength(1);
+    pathQuery.value = 'a/SKILL.md';
+    expect(view.skillRows.value[0]!.sameNameResolutions).toHaveLength(0);
+  });
+
+  it("keeps Claude's statement only while the shown definitions still clash by directory", () => {
+    // Claude's rule answers a directory-name clash, not a shared label
+    // (FR-007): a filter can remove one of the clashing pair while a third
+    // same-label definition keeps the count at two, and the statement must
+    // leave with the clash it described. The gate is the same
+    // skillDirectoriesClash the projection applied.
+    const paths = [
+      'one/.claude/skills/wave/SKILL.md',
+      'two/.claude/skills/wave/SKILL.md',
+      'one/.claude/skills/tide/SKILL.md',
+    ];
+    const entry: SkillInventoryEntryDto = {
+      declaredName: 'wave',
+      definitions: paths.map((path) => ({
+        fileId: `file-${path}`,
+        tools: ['claude'],
+        companionFiles: [],
+        diagnosticIds: [],
+      })),
+      sameNameResolutions: [{ tool: 'claude', resolution: 'all-remain-context-selected' }],
+    };
+    const snapshot = ref<SessionSnapshot | null>(
+      snapshotWith(
+        paths.map((path) => file(path)),
+        [entry],
+      ),
+    );
+    const { pathQuery, view } = withSelection(snapshot);
+    expect(view.skillRows.value[0]!.sameNameResolutions).toHaveLength(1);
+    // Filter away one clash partner; `wave` and `tide` remain — still two
+    // definitions, but no directory clash, so no Claude statement.
+    pathQuery.value = 'one/';
+    const remaining = view.skillRows.value[0]!;
+    expect(remaining.definitions).toHaveLength(2);
+    expect(remaining.sameNameResolutions).toHaveLength(0);
+  });
+});
+
 describe('the request-correlated rescan lifecycle', () => {
   function harness(responses: Record<string, () => Promise<unknown>>) {
     const calls: string[] = [];
@@ -377,6 +428,59 @@ describe('the request-correlated rescan lifecycle', () => {
       'agent-customization-inspector:rescan-repository',
       'agent-customization-inspector:get-session',
     ]);
+  });
+
+  it('answers an acceptance with a fetch that starts after it', async () => {
+    // A "Refresh status" pressed just before the acceptance must not answer
+    // the rescan: its snapshot predates the accepted scan, and adopting it
+    // would overwrite the scanning Source with a Ready row beside a live
+    // `activeScanRequestId`. The acceptance therefore waits the stale fetch
+    // out and issues one that starts now.
+    let releaseStale: (() => void) | null = null;
+    let sessionCalls = 0;
+    const scanning = {
+      ...REPOSITORY_SOURCE,
+      status: 'scanning' as const,
+      scanRequestId: 'req-fresh',
+    };
+    const { calls, state } = harness({
+      'agent-customization-inspector:get-session': () => {
+        sessionCalls += 1;
+        if (sessionCalls === 1) {
+          return Promise.resolve(adoptedSession());
+        }
+        if (sessionCalls === 2) {
+          // The stale fetch: started before the acceptance, settles after it,
+          // and carries no accepted scan.
+          return new Promise((resolve) => {
+            releaseStale = () => resolve(adoptedSession());
+          });
+        }
+        return Promise.resolve(adoptedSession({ sources: [scanning] }));
+      },
+      'agent-customization-inspector:rescan-repository': () => {
+        // Release the stale fetch only after the acceptance settles, so it
+        // is in flight across the whole command.
+        queueMicrotask(() => releaseStale?.());
+        return Promise.resolve({
+          globalContentEpoch: 0,
+          data: { scanRequestId: 'req-fresh', source: scanning },
+        });
+      },
+    });
+    await state.start();
+    const stale = state.refresh();
+    await state.requestRescan();
+    await stale;
+
+    expect(state.activeScanRequestId.value).toBe('req-fresh');
+    // The adopted snapshot is the post-acceptance one: the Source still says
+    // scanning, not the Ready row the stale fetch carried.
+    expect(state.snapshot.value?.sources[0]?.status).toBe('scanning');
+    expect(state.snapshot.value?.sources[0]?.scanRequestId).toBe('req-fresh');
+    expect(
+      calls.filter((method) => method === 'agent-customization-inspector:get-session'),
+    ).toHaveLength(3);
   });
 
   it('surfaces the duplicate-command conflict as a declared outcome, not an error', async () => {

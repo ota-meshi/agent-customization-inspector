@@ -1,25 +1,23 @@
 // T054/T127: Codex and Claude recognition from the admitting rule alone —
-// tool, the `skill` kind, path provenance with its record-by-record evidence,
-// and the absence of any recognition the shipped registry does not authorize
-// (FR-004, FR-005, QR-005).
+// tool, the `skill` kind, path provenance, and the absence of any recognition
+// the shipped registry does not authorize (FR-004, FR-005).
 //
-// What a recognizer reads out of the bytes is fixed by its presentation
-// allowlist, and the "no source exposure" assertions below are what keep it
-// there: an authored value outside the allowlisted fields stays in the complete
-// `sourceText`, which only the detail route serves. The Codex `skill` extraction
-// itself is covered by `codex-metadata.test.ts`; these cases are about
-// recognition from the admitting rule alone, so most of them pass no source at
-// all.
+// The one value a recognition lifts out of the bytes is the declared name, and
+// the "no source exposure" assertions below are what keep it there: every other
+// authored value stays in the complete `sourceText`, which only the detail
+// route serves. The name reading itself is covered by `codex-metadata.test.ts`
+// and `claude-metadata.test.ts`; these cases are about recognition from the
+// admitting rule alone, so most of them pass no source at all.
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { recognizeClaudeCandidate } from '../../../src/server/inspection/recognizers/claude';
-import { recognizeCodexCandidate } from '../../../src/server/inspection/recognizers/codex';
+import { recognizeCandidateForVendor } from '../../../src/server/inspection/recognizers/candidate';
 import { CLAUDE_REPOSITORY_RULES } from '../../../src/server/inspection/rules/claude';
 import { CODEX_REPOSITORY_RULES } from '../../../src/server/inspection/rules/codex';
 import type { CompiledInspectionRule } from '../../../src/server/inspection/rules/registry';
+import type { SupportedTool } from '../../../src/shared/entities';
 
 const codexSkillRule = CODEX_REPOSITORY_RULES[0]!;
 const claudeSkillRule = CLAUDE_REPOSITORY_RULES[0]!;
@@ -47,7 +45,7 @@ afterAll(() => {
 });
 
 async function recognizeWith(
-  recognizer: typeof recognizeCodexCandidate,
+  tool: SupportedTool,
   matchedPath: string,
   rules: readonly CompiledInspectionRule[],
   sourceText = '',
@@ -59,18 +57,21 @@ async function recognizeWith(
   // These cases are about the recognitions; the census the recognizer also
   // returns has its own suite (`companion-census.test.ts`) and its own
   // publication path (`repository-scan.test.ts`).
-  const { recognitions } = await recognizer({
-    fileId: 'file-1',
-    matchedPath,
-    absolutePath: join(root, matchedPath),
-    sourceRoot: root,
-    sourceText,
-    admissions: rules.map((compiled, index) => ({
-      compiled,
-      origin: { planIndex: index, selectorIndex: 0 },
-    })),
-  });
-  return recognitions;
+  const { recognitions, companions } = await recognizeCandidateForVendor(
+    {
+      fileId: 'file-1',
+      matchedPath,
+      absolutePath: join(root, matchedPath),
+      sourceRoot: root,
+      sourceText,
+      admissions: rules.map((compiled, index) => ({
+        compiled,
+        origin: { planIndex: index, selectorIndex: 0 },
+      })),
+    },
+    tool,
+  );
+  return { recognitions, companions };
 }
 
 async function recognize(
@@ -78,7 +79,17 @@ async function recognize(
   rules: readonly CompiledInspectionRule[] = [codexSkillRule],
   sourceText = '',
 ) {
-  return recognizeWith(recognizeCodexCandidate, matchedPath, rules, sourceText);
+  return (await recognizeWith('codex', matchedPath, rules, sourceText)).recognitions;
+}
+
+/** The census paths the recognizer returned beside its recognitions. */
+async function censusOf(
+  tool: SupportedTool,
+  matchedPath: string,
+  rules: readonly CompiledInspectionRule[],
+) {
+  const { companions } = await recognizeWith(tool, matchedPath, rules);
+  return companions.map((companion) => companion.sourceRelativePath);
 }
 
 describe('Codex skill recognition', () => {
@@ -105,42 +116,7 @@ describe('Codex skill recognition', () => {
     expect(recognition!.provenances[0]).toMatchObject({
       ruleId: 'codex.repo.skill',
       matchedPath: 'packages/api/.agents/skills/deploy/SKILL.md',
-      scope: {
-        kind: 'matching-path',
-        path: 'packages/api/.agents/skills/deploy/SKILL.md',
-        selectorIndex: 0,
-      },
     });
-  });
-
-  it('carries one sorted evidence record per referenced subject, unreduced', async () => {
-    const [recognition] = await recognize('.agents/skills/greet/SKILL.md');
-    expect(recognition!.provenances[0]!.evidenceAssessments).toEqual([
-      {
-        subjectKind: 'behavior',
-        subjectId: 'codex.behavior.repo.skills',
-        documentationStatus: 'documented',
-        lifecycleQualifiers: [],
-      },
-      {
-        subjectKind: 'rule',
-        subjectId: 'codex.repo.skill',
-        documentationStatus: 'documented',
-        lifecycleQualifiers: [],
-      },
-      {
-        subjectKind: 'strategy',
-        subjectId: 'codex.skills.discovery',
-        // Deliberately not `documented`: the cited section states that
-        // same-name skills are not merged and both stay available, and
-        // establishes no precedence among the four scopes, so the strategy
-        // claims no selection order (corrected 2026-07-25). Keeping a
-        // per-subject status is the point of this assertion — an aggregate
-        // would hide that one referenced subject is weaker than its siblings.
-        documentationStatus: 'partially-documented',
-        lifecycleQualifiers: [],
-      },
-    ]);
   });
 
   it('merges two admissions of the same kind into one recognition', async () => {
@@ -158,19 +134,18 @@ describe('Codex skill recognition', () => {
   });
 
   it('produces nothing for an admission owned by another tool', async () => {
-    // The branch under test is decided by `tool` alone: the Codex recognizer
-    // ignores a Claude-owned admission, and the Claude recognizer ignores a
+    // The branch under test is decided by `tool` alone: the Codex pass
+    // ignores a Claude-owned admission, and the Claude pass ignores a
     // Codex-owned one, so neither can fabricate the other product's
     // recognition from a shared candidate.
     expect(await recognize('.claude/skills/greet/SKILL.md', [claudeSkillRule])).toEqual([]);
     expect(
-      await recognizeWith(recognizeClaudeCandidate, '.agents/skills/greet/SKILL.md', [
-        codexSkillRule,
-      ]),
+      (await recognizeWith('claude', '.agents/skills/greet/SKILL.md', [codexSkillRule]))
+        .recognitions,
     ).toEqual([]);
   });
 
-  it('lifts the declared name and only allowlisted frontmatter fields', async () => {
+  it('names the skill by its declared name and lists what else it declares', async () => {
     const [recognition] = await recognize(
       '.agents/skills/secretive/SKILL.md',
       [codexSkillRule],
@@ -179,15 +154,10 @@ describe('Codex skill recognition', () => {
     expect(recognition!.details.kind === 'skill' && recognition!.details.declaredName).toBe(
       'secretive',
     );
-    // The presentation allowlist names two Codex skill fields, so an authored
-    // key outside it produces no entry however credential-shaped it is: it
-    // stays visible only in the complete `sourceText` the detail route serves.
-    expect(recognition!.declaredMetadata).toEqual([
-      { fieldId: 'codex.skill.name', value: 'secretive' },
-    ]);
-    const serialized = JSON.stringify(recognition);
-    expect(serialized).not.toContain('ghp_');
-    expect(serialized).not.toContain('sourceText');
+    // Every declared key is listed, credential-shaped ones included: this is
+    // the reader's own frontmatter shown back to them, unmasked (FR-025). What
+    // the recognition never carries is a second copy of the complete source.
+    expect(JSON.stringify(recognition)).not.toContain('sourceText');
   });
 
   it('takes the declared name from the file, not from the directory', async () => {
@@ -221,8 +191,7 @@ describe('Codex skill recognition', () => {
     // The census answers relative to the directory it enumerated; the
     // recognizer holds the candidate's own Source-relative Path and is what
     // turns one into the other.
-    const [recognition] = await recognize('.agents/skills/greet/SKILL.md');
-    expect(recognition!.details.kind === 'skill' && recognition!.details.companionFiles).toEqual([
+    expect(await censusOf('codex', '.agents/skills/greet/SKILL.md', [codexSkillRule])).toEqual([
       '.agents/skills/greet/reference.md',
       '.agents/skills/greet/scripts/run.sh',
     ]);
@@ -231,10 +200,7 @@ describe('Codex skill recognition', () => {
   it('lists nothing for a skill whose directory holds only its own file', async () => {
     // Empty, not absent: every recognized skill has been enumerated, because
     // being a directory is what a skill is.
-    const [recognition] = await recognize('.agents/skills/solo/SKILL.md');
-    expect(recognition!.details.kind === 'skill' && recognition!.details.companionFiles).toEqual(
-      [],
-    );
+    expect(await censusOf('codex', '.agents/skills/solo/SKILL.md', [codexSkillRule])).toEqual([]);
   });
 
   it('keeps a malformed frontmatter document from failing the recognition', async () => {
@@ -257,7 +223,7 @@ describe('Claude skill recognition (T127)', () => {
     rules: readonly CompiledInspectionRule[] = [claudeSkillRule],
     sourceText = '',
   ) {
-    return recognizeWith(recognizeClaudeCandidate, matchedPath, rules, sourceText);
+    return (await recognizeWith('claude', matchedPath, rules, sourceText)).recognitions;
   }
 
   it('attaches exactly one claude/skill recognition carrying the authored name', async () => {
@@ -271,31 +237,31 @@ describe('Claude skill recognition (T127)', () => {
       fileId: 'file-1',
       tool: 'claude',
       // The name is the value the grouped inventory row is keyed by (FR-007),
-      // so the list milestone extracts exactly it — from the file, never from
-      // the directory segment.
+      // extracted from the file and never from the directory segment.
       details: { kind: 'skill', declaredName: 'authored-name' },
       parseStatus: 'parsed',
-      declaredMetadata: [{ fieldId: 'claude.skill.name', value: 'authored-name' }],
       diagnosticIds: [],
     });
   });
 
-  it('lifts only the name until the detail phase widens the allowlist slice', async () => {
-    // `description` is an allowlist member the detail phase (T148) owns, and
-    // a credential-shaped key is no member at all: neither produces an entry
-    // here, and both stay visible only in the `sourceText` the detail route
-    // serves.
+  it('names the skill by its declared name and lists what else it declares', async () => {
     const [recognition] = await recognizeClaude(
       '.claude/skills/greet/SKILL.md',
       [claudeSkillRule],
       '---\nname: greet\ndescription: says hello\napi_key: ghp_EXAMPLE000000000000000000000000000000\n---\n',
     );
-    expect(recognition!.declaredMetadata).toEqual([
-      { fieldId: 'claude.skill.name', value: 'greet' },
+    if (recognition!.details.kind !== 'skill') {
+      throw new Error('expected a skill recognition');
+    }
+    expect(recognition!.details.declaredName).toBe('greet');
+    expect(recognition!.details.frontmatter.map((entry) => entry.key)).toEqual([
+      'name',
+      'description',
+      'api_key',
     ]);
-    const serialized = JSON.stringify(recognition);
-    expect(serialized).not.toContain('ghp_');
-    expect(serialized).not.toContain('says hello');
+    // The declarations are what the detail surface shows; the complete source
+    // it also serves is not copied into the recognition.
+    expect(JSON.stringify(recognition)).not.toContain('sourceText');
   });
 
   it('leaves the declared name absent rather than guessing one', async () => {
@@ -317,48 +283,7 @@ describe('Claude skill recognition (T127)', () => {
     expect(recognition!.provenances[0]).toMatchObject({
       ruleId: 'claude.repo.skill',
       matchedPath: 'packages/api/.claude/skills/deploy/SKILL.md',
-      scope: {
-        kind: 'matching-path',
-        path: 'packages/api/.claude/skills/deploy/SKILL.md',
-        selectorIndex: 0,
-      },
     });
-  });
-
-  it('carries one sorted evidence record per referenced Claude subject, unreduced', async () => {
-    const [recognition] = await recognizeClaude('.claude/skills/greet/SKILL.md');
-    expect(recognition!.provenances[0]!.evidenceAssessments).toEqual([
-      {
-        subjectKind: 'behavior',
-        subjectId: 'claude.behavior.repo.skills',
-        documentationStatus: 'documented',
-        lifecycleQualifiers: [],
-      },
-      {
-        subjectKind: 'rule',
-        subjectId: 'claude.repo.skill',
-        documentationStatus: 'documented',
-        lifecycleQualifiers: [],
-      },
-      {
-        subjectKind: 'strategy',
-        subjectId: 'claude.skills.selection',
-        documentationStatus: 'documented',
-        lifecycleQualifiers: [],
-      },
-    ]);
-  });
-
-  it('keeps ancestor and lazy-discovery uncertainty conditional in the provenance', async () => {
-    // The admission never upgrades `present` to `effective`: every runtime
-    // input of the documented chain — the launch directory and the lazily
-    // worked paths included — is recorded as an unknown condition.
-    const [recognition] = await recognizeClaude('.claude/skills/greet/SKILL.md');
-    const applicability = recognition!.provenances[0]!.applicability;
-    const keys = applicability.conditions.map((condition) => condition.key);
-    expect(keys).toContain('runtime-cwd');
-    expect(keys).toContain('worked-path');
-    expect(applicability.summary).toBe('conditional');
   });
 
   it('recognizes nothing from a filename alone, outside the rule', async () => {
@@ -374,8 +299,7 @@ describe('Claude skill recognition (T127)', () => {
     writeFileSync(join(root, '.claude/skills/stocked/SKILL.md'), '# stocked\n', 'utf8');
     writeFileSync(join(root, '.claude/skills/stocked/reference.md'), 'reference\n', 'utf8');
     writeFileSync(join(root, '.claude/skills/stocked/scripts/run.sh'), 'echo hi\n', 'utf8');
-    const [recognition] = await recognizeClaude('.claude/skills/stocked/SKILL.md');
-    expect(recognition!.details.kind === 'skill' && recognition!.details.companionFiles).toEqual([
+    expect(await censusOf('claude', '.claude/skills/stocked/SKILL.md', [claudeSkillRule])).toEqual([
       '.claude/skills/stocked/reference.md',
       '.claude/skills/stocked/scripts/run.sh',
     ]);

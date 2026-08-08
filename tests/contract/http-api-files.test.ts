@@ -130,37 +130,38 @@ describe('get-file-detail', () => {
     // masked, truncated, or normalized on the way out.
     expect(file.sourceText).toBe(sourceText);
     expect(file.sourceText).toContain(SECRET_LITERALS.inBody);
-    expect(file.sourceText).toContain(SECRET_LITERALS.inUnlistedField);
+    expect(file.sourceText).toContain(SECRET_LITERALS.inOtherKey);
   });
 
-  it('returns the recognized value of each allowlisted field, unmasked', async () => {
+  it('returns the skill as its declarations and its instructions, unmasked', async () => {
     const { context, skillPath } = await scannedFixture();
     const result = await getFileDetail(context, skillFileId(context, skillPath));
     if (!('data' in result)) {
       throw new Error('expected a detail result');
     }
     expect(result.data.recognitions).toHaveLength(1);
-    expect(result.data.recognitions[0]!.declaredMetadata).toEqual([
-      { fieldId: 'codex.skill.name', value: 'secretive' },
-      {
-        fieldId: 'codex.skill.description',
-        value: `deploy token ${SECRET_LITERALS.inAllowlistedField}`,
-      },
-    ]);
-  });
-
-  it('publishes no entry for a frontmatter key outside the allowlist', async () => {
-    const { context, skillPath } = await scannedFixture();
-    const result = await getFileDetail(context, skillFileId(context, skillPath));
-    if (!('data' in result)) {
-      throw new Error('expected a detail result');
+    const details = result.data.recognitions[0]!.details;
+    if (details.kind !== 'skill') {
+      throw new Error('expected a skill recognition');
     }
-    const values = result.data.recognitions.flatMap((recognition) =>
-      recognition.declaredMetadata.map((entry) => entry.value),
-    );
-    // The value is in the source above and reachable there; what it is not is
-    // a recognized field the product names and compares.
-    expect(values.some((value) => value.includes(SECRET_LITERALS.inUnlistedField))).toBe(false);
+    // The two the detail surface leads with, then every key the file declares
+    // — credential-shaped ones included, because this is the reader's own
+    // frontmatter shown back to them without masking (FR-025).
+    expect(details.declaredName).toBe('secretive');
+    const declared = new Map(details.frontmatter.map((entry) => [entry.key, entry.value]));
+    const scalarOf = (key: string): string => {
+      const value = declared.get(key);
+      if (value?.kind !== 'scalar') {
+        throw new Error(`expected a scalar for ${key}`);
+      }
+      return value.text;
+    };
+    expect(scalarOf('description')).toContain(SECRET_LITERALS.inDescription);
+    expect(scalarOf('api_key')).toContain(SECRET_LITERALS.inOtherKey);
+    // The instructions are the body alone: the block the declarations came
+    // from is not in it, and the complete file is served once as `sourceText`.
+    expect(details.bodyText).not.toContain('api_key:');
+    expect(details.bodyText).toContain(SECRET_LITERALS.inBody);
   });
 
   it('withholds authored source from the session snapshot', async () => {
@@ -237,7 +238,6 @@ describe('get-file-detail', () => {
     expect(Object.keys(result.data).toSorted()).toEqual(['diagnostics', 'file', 'recognitions']);
     const [recognition] = result.data.recognitions;
     expect(Object.keys(recognition!).toSorted()).toEqual([
-      'declaredMetadata',
       'details',
       'diagnosticIds',
       'fileId',
@@ -246,27 +246,15 @@ describe('get-file-detail', () => {
       'recognitionId',
       'tool',
     ]);
+    // The admission says which rule admitted the file and where it matched —
+    // never whether the product would use it, which is a runtime the Inspector
+    // does not observe and therefore does not describe, and never where the
+    // customization would apply, which no surface shows.
     const [provenance] = recognition!.provenances;
     expect(Object.keys(provenance!).toSorted()).toEqual([
-      'applicability',
       'discoveryClass',
-      'evidenceAssessments',
       'matchedPath',
       'ruleId',
-      'scope',
     ]);
-  });
-
-  it('states what is not known about whether the product applies the file', async () => {
-    const { context, skillPath } = await scannedFixture();
-    const result = await getFileDetail(context, skillFileId(context, skillPath));
-    if (!('data' in result)) {
-      throw new Error('expected a detail result');
-    }
-    const { applicability } = result.data.recognitions[0]!.provenances[0]!;
-    expect(applicability.summary).toBe('conditional');
-    // The conditions stay beside the summary rather than being collapsed into
-    // it, so a reader can see which specific input is missing (QR-005).
-    expect(applicability.conditions.length).toBeGreaterThan(0);
   });
 });

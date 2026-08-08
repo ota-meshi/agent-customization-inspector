@@ -5,7 +5,6 @@
 // the shape without importing the module that collects those catalogs, which
 // would be a cycle. Ships zero runtime code — the `-types` name records that
 // (see `src/shared/api-types.ts`).
-import type { ConditionFactKey } from '../api-types';
 import type { DocumentationStatus, LifecycleQualifier, SupportedTool } from '../entities';
 import type { BehaviorId } from './identifier-types';
 import type { EvidenceCitation } from './evidence-types';
@@ -176,8 +175,6 @@ export interface VendorBehaviorStatement {
    * whole locator or drops it, and no record is ever half-described.
    */
   readonly locator: VendorLocator | null;
-  /** Runtime inputs that must be known before the behavior applies. */
-  readonly activationConditions: readonly ConditionFactKey[];
   /** How completely official sources establish this statement (QR-005). */
   readonly documentationStatus: DocumentationStatus;
   /** Upstream lifecycle claims in the fixed order; empty is not `stable`. */

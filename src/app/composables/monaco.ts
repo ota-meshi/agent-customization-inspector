@@ -69,7 +69,7 @@ const PLAIN_TEXT = 'plaintext';
  * something it is not. An exact file name wins over an extension, because a
  * name like `Dockerfile` is more specific than any suffix it happens to have.
  * A path nothing claims is plain text, which is the honest answer and still
- * shows every byte.
+ * shows every character.
  */
 export function resolveSourceLanguage(
   languages: readonly RegisteredLanguage[],
@@ -112,6 +112,28 @@ const DARK_SCHEME_QUERY = '(prefers-color-scheme: dark)';
  * there — its high-contrast themes are the ones built for it (WCAG 1.4.11).
  */
 const FORCED_COLORS_QUERY = '(forced-colors: active)';
+
+/**
+ * The one element every editor announces through.
+ *
+ * Shared rather than per-viewer because Monaco's aria module keeps a single
+ * module-level container: whichever editor mounted last owns it for all of
+ * them. A container owned by one viewer would therefore be removed while
+ * another viewer was still open, and that viewer's announcements would go to a
+ * node no longer in the document. Monaco's own default lives under
+ * `document.body` and outlives every editor, which is what this replaces: this
+ * one is emptied by whichever handle disposes, so no announced line of authored
+ * source survives a purge (FR-027).
+ */
+let sharedAriaContainer: HTMLElement | null = null;
+
+/** The shared container, created on the first mount. */
+function ariaContainer(): HTMLElement {
+  sharedAriaContainer ??= globalThis.document.body.appendChild(
+    globalThis.document.createElement('div'),
+  );
+  return sharedAriaContainer;
+}
 
 /**
  * Monaco's built-in theme name for the display the page is on: the
@@ -160,28 +182,21 @@ export class SourceViewerHandle {
    */
   readonly #followDisplay: () => void;
 
-  /**
-   * The element Monaco announces through, kept so {@link dispose} can empty
-   * the live regions Monaco builds inside it (FR-027).
-   */
-  readonly #ariaContainer: HTMLElement;
-
   /** Binds the handle to the editor it owns and starts following the scheme. */
   public constructor(
     monaco: MonacoApi,
     editor: import('monaco-editor/esm/vs/editor/editor.api.js').editor.IStandaloneCodeEditor,
     colorScheme: MediaQueryList,
     forcedColors: MediaQueryList,
-    ariaContainer: HTMLElement,
   ) {
     this.#monaco = monaco;
     this.#editor = editor;
     this.#colorScheme = colorScheme;
     this.#forcedColors = forcedColors;
-    this.#ariaContainer = ariaContainer;
-    // Monaco's theme is global rather than per-editor, so this sets it for
-    // the one editor the page has. Both queries call it, because the theme is
-    // one value derived from the pair.
+    // Monaco's theme is global rather than per-editor, so every handle setting
+    // it sets it for all of them — which is what the page wants, because the
+    // display scheme is one fact and not one per viewer. Both queries call it,
+    // because the theme is one value derived from the pair.
     this.#followDisplay = (): void => {
       this.#monaco.editor.setTheme(
         themeForDisplay(this.#colorScheme.matches, this.#forcedColors.matches),
@@ -192,11 +207,14 @@ export class SourceViewerHandle {
   }
 
   /**
-   * Shows one file's complete authored source, coloured by whichever language
-   * claims its path, and renames the surface after it. The previous model is
-   * disposed first: a model holds the whole text, and keeping the last file's
-   * alive would leave authored content in memory after the view moved on
-   * (FR-027).
+   * Shows authored text from one file, coloured by whichever language claims
+   * its path, and renames the surface after it. `contentLabel` says what of
+   * that file is on screen, because a caller may pass a part of it — the skill
+   * body is the file with its frontmatter block removed — and a surface that
+   * announced every slice as the file would misreport the shorter one as the
+   * whole (FR-025). The previous model is disposed first: a model holds the
+   * whole text, and keeping the last file's alive would leave authored content
+   * in memory after the view moved on (FR-027).
    *
    * A Monaco text model stores one end-of-line sequence per document, so a
    * file whose lines mix endings is rendered — and copied from the editor —
@@ -204,7 +222,11 @@ export class SourceViewerHandle {
    * are unchanged, and the exact `sourceText` is unaffected: it is what the
    * detail response carries and what comparison consumes.
    */
-  public showSource(sourceText: string, sourceRelativePath: string): void {
+  public showSource(
+    sourceText: string,
+    sourceRelativePath: string,
+    contentLabel = 'Source of',
+  ): void {
     const previous = this.#editor.getModel();
     // An opaque in-memory URI: a model URI is visible to the editor and to
     // anything inspecting it, and a Source-relative Path there would put an
@@ -217,10 +239,13 @@ export class SourceViewerHandle {
     this.#editor.setModel(model);
     // Renamed with the model, so assistive technology announces the file
     // that is showing rather than the one this editor was created for. The
-    // path is presentation text here, so its control characters are escaped
-    // (data-model.md § SourceRelativePath).
+    // label says which part of that file: an editor showing the instructions a
+    // frontmatter block was removed from is not showing the file's source, and
+    // announcing it as such would name content the reader is not being given.
+    // The path is presentation text here, so its control characters are
+    // escaped (data-model.md § SourceRelativePath).
     this.#editor.updateOptions({
-      ariaLabel: `Source of ${escapeControlCharacters(sourceRelativePath)}, read-only`,
+      ariaLabel: `${contentLabel} ${escapeControlCharacters(sourceRelativePath)}, read-only`,
     });
     previous?.dispose();
   }
@@ -249,17 +274,28 @@ export class SourceViewerHandle {
     // holds leaves that editor pointing at a disposed document.
     model?.dispose();
     // The last announcement is authored text — a line of the file, a search
-    // term — and Monaco's aria module holds its alert and status elements in
-    // module-level variables. Those elements are Monaco's own container's
-    // children rather than this one's, and clearing an ancestor only detaches
-    // them: the text stays reachable from those variables until another editor
-    // mounts. So every descendant is emptied in place (FR-027: the purge clears
-    // authored content, it does not merely unmount it), and then the element
-    // this handle added is removed, because the next mount adds its own.
-    for (const region of this.#ariaContainer.querySelectorAll('*')) {
-      region.textContent = '';
+    // term — so it is cleared here (FR-027: the purge clears authored content,
+    // it does not merely unmount it). Only the text is: Monaco's aria module
+    // holds its four live regions in module-level variables, and emptying the
+    // wrapper that holds them takes those elements out of the document while
+    // the variables still point at them. Every later announcement would then be
+    // written into a node no reader can hear. Walking the text nodes clears
+    // every message without moving a single element.
+    //
+    // The container itself stays. Monaco's aria module keeps *one*
+    // module-level container, so the last editor to mount owns it for every
+    // editor: removing this handle's element would leave a still-open viewer
+    // announcing into a detached node, and a reader on a screen reader would
+    // simply stop being told what the editor is doing. One shared element,
+    // emptied by whichever handle disposes, keeps both true — nothing authored
+    // survives, and whoever is still open can still speak.
+    const messages = globalThis.document.createTreeWalker(
+      ariaContainer(),
+      globalThis.NodeFilter.SHOW_TEXT,
+    );
+    for (let node = messages.nextNode(); node !== null; node = messages.nextNode()) {
+      node.nodeValue = '';
     }
-    this.#ariaContainer.remove();
   }
 
   /**
@@ -282,16 +318,14 @@ export class SourceViewerHandle {
     const monaco = await loadMonaco();
     const colorScheme = globalThis.matchMedia(DARK_SCHEME_QUERY);
     const forcedColors = globalThis.matchMedia(FORCED_COLORS_QUERY);
-    // ARIA messages go into an element this component owns instead of
-    // Monaco's default shared container under `document.body`: the shared
-    // one outlives every editor, so a line it announced — authored source —
-    // would survive route close and the central purge (FR-027). Inside
-    // `container` it is torn down with the component, synchronously.
-    const ariaContainerElement = container.ownerDocument.createElement('div');
-    container.appendChild(ariaContainerElement);
+    // ARIA messages go into this module's own element rather than Monaco's
+    // default: Monaco's is created once and never emptied, so a line it
+    // announced — authored source — would survive route close and the central
+    // purge (FR-027). This one is emptied by every dispose.
+    const announcements = ariaContainer();
     const editor = monaco.editor.create(container, {
       value: '',
-      ariaContainerElement,
+      ariaContainerElement: announcements,
       theme: themeForDisplay(colorScheme.matches, forcedColors.matches),
       // Monaco's own high-contrast detection is off because this handle owns
       // the theme: it derives one value from the colour-scheme and
@@ -333,7 +367,16 @@ export class SourceViewerHandle {
         ambiguousCharacters: false,
       },
     });
-    return new SourceViewerHandle(monaco, editor, colorScheme, forcedColors, ariaContainerElement);
+    // Monaco builds a fresh wrapper of live regions on every create when it is
+    // given a parent — the guard that would build one once is skipped in that
+    // case — and points its module-level variables at the newest. The wrappers
+    // before it are unreachable from those variables and would pile up one per
+    // mount: a tab switch, a plain-text toggle, a route revisited. Only the one
+    // Monaco is now announcing through stays.
+    for (const stale of [...announcements.children].slice(0, -1)) {
+      stale.remove();
+    }
+    return new SourceViewerHandle(monaco, editor, colorScheme, forcedColors);
   }
 }
 

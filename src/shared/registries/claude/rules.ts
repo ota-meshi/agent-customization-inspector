@@ -31,7 +31,6 @@ import {
   ANY_NAME,
   type StructuredInspectorMatcher,
 } from '../../../server/inspection/rules/registry';
-import { CLAUDE_SKILL_CONDITION_KEYS } from './behaviors';
 import { SHIPS_MAINTENANCE_DATA } from '../maintenance-data';
 import type { ClaudeRuleId } from '../identifier-types';
 import type { InspectionRule } from '../rule-types';
@@ -70,7 +69,7 @@ const CLAUDE_REPO_SKILL_MATCHER: StructuredInspectorMatcher = {
  * `claude.behavior.repo.skills`. Admitting a file is not asserting Claude
  * loads it: enterprise, User, and bundled scopes lie outside this Source, and
  * whether a discovered skill actually wins its name remains conditional on
- * every key in {@link CLAUDE_SKILL_CONDITION_KEYS}.
+ * the runtime inputs this tool never observes.
  *
  * A skill's resources and assets get no rule of their own: the files beside a
  * `SKILL.md` are found by enumerating its directory rather than by reading a
@@ -90,7 +89,6 @@ export const CLAUDE_REPO_SKILL_RULE = {
   policyRefs: SHIPS_MAINTENANCE_DATA
     ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
     : [],
-  conditionKeys: CLAUDE_SKILL_CONDITION_KEYS,
   precedenceGroup: null,
   documentationStatus: 'documented',
   lifecycleQualifiers: [],
@@ -101,7 +99,7 @@ export const CLAUDE_REPO_SKILL_RULE = {
           url: 'https://code.claude.com/docs/en/skills',
           officialHost: 'code.claude.com',
           sections: ['Where skills live'],
-          reviewedOn: '2026-07-25',
+          reviewedOn: '2026-08-08',
           establishes:
             'Repository skills live at .claude/skills/<skill-name>/SKILL.md on each layer from the working directory through the repository root, which is why this rule admits that shape at the selected root and every descendant directory.',
         },

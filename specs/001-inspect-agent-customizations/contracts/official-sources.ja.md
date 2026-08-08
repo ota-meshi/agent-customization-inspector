@@ -30,8 +30,8 @@ Source registryはevidence metadataであって、Inspectorのread authorityで�
   2026-07-20 reconciliationで再reviewしていないrecordは`2026-07-15`を保持する。
 - 全rowが`normalizationVersion: 1`を使用する。
 
-このregistryを参照する保守対象behavior、rule、strategyはそれぞれ、次のclosed shapeを持つatomicな
-evidence assessmentを正確に1件所有する。
+このregistryを参照する保守対象behavior、rule、strategyはそれぞれ、citeしたsectionがそれをどこまで
+確立しているかを、record自身の上に述べる。
 
 ```ts
 type DocumentationStatus =
@@ -40,26 +40,18 @@ type DocumentationStatus =
   | 'unknown'
   | 'conflict';
 type LifecycleQualifier = 'preview' | 'experimental' | 'deprecated';
-type EvidenceAssessment = {
-  subjectKind: 'behavior' | 'rule' | 'strategy';
-  subjectId: string;
-  documentationStatus: DocumentationStatus;
-  lifecycleQualifiers: LifecycleQualifier[];
-};
 ```
 
 Qualifier arrayは重複を持たず、常に`preview`、`experimental`、`deprecated`の順でserializeする。
 Emptyはreview済みsourceがlifecycle claimを行わないことを意味するだけで、`stable`を意味も暗示もしない。
 `documented`は正確なreview済みsectionが保守対象atomic assertionを完全に確立すること、
 `partially-documented`は一部だけを確立すること、`unknown`はそのassertionについて決定を確立しないこと、
-`conflict`は互換性のないofficial assertionを保持することを表す。別tokenの`documentation-conflict`はruntimeの
-`ConditionFact.status`であり、`DocumentationStatus`の表記またはaliasではない。
+`conflict`は互換性のないofficial assertionを保持することを表す。`documentation-conflict`はこの語彙に含まれない。
+互換性のない場合の綴りは`conflict`である。
 
-各assessmentは自身のsubjectを識別し、source IDやvendor全体へstatusを付けるものではない。複数のbehavior/rule/
-strategy subjectを参照するprovenanceまたはrelationshipは、subject単位の決定的な`EvidenceAssessment[]`を持つ。
-これらrecordを単一scalar、最も確実/不確実な値、またはqualifier unionへ縮約してはならない。
-`subjectKind`を固定順`behavior`、`rule`、`strategy`で、次に`subjectId`でsortし、重複する
-`(subjectKind, subjectId)` recordをrejectする。Assessmentは該当subjectのcompleteな`sourceRefs` setに
+各statusは自身のsubjectに属し、source IDやvendor全体へ付けるものではない。これらはmaintenance recordであり、
+どのresponseも運ばない（QR-005）。provenanceが公開するのはどのruleがfileをadmitしたかであって、そのruleが
+どれだけ文書化されているかではない。Assessmentは該当subjectのcompleteな`sourceRefs` setに
 裏付けられ、後述するreverse-index ownershipを変更しない。
 
 維持対象の各behavior・rule・strategy recordが持つ`evidence`配列が、これらrowのmachine-readableな
@@ -146,8 +138,9 @@ issue/discussion statementはすべてのdocumentation classより下位であ�
 
 3つのvendor contractにある規範的なbilingual Presentation Allowlist rowは、すでに承認済みのdesign inputで
 ある。Implementation gateは、凍結済みの英日rowと記録済みdigestだけをverifyし、allowlist set、identifier、
-admission済みsource form、正確なsource-form extractor applicability、eligible metadata field、relationship
-kindを新規作成または意味変更してはならない。
+admission済みsource form、正確なsource-form extractor applicability、relationship kindを新規作成または
+意味変更してはならない。Rowはmetadata fieldを列挙しない: skillの宣言はfileが書いたkeyであり、
+authored keyの集合は閉じていない（FR-007）。
 
 次のlowercase SHA-256値を記録済みfreezeとする。指定したUTF-8、BOMなし、LF-onlyの各contractについて、
 case-foldしたtextが`presentation allowlist`で終わる一意なlevel-2 headingを特定し、後続のtable以外のlineをskipし、
@@ -156,9 +149,9 @@ digest inputとする。Heading、prose、blank line、連続table後のlineはh
 
 | Vendor | 英語table SHA-256 | 日本語table SHA-256 |
 |---|---|---|
-| GitHub Copilot | `712877da354e87bcb98da9827e35d7088e190b393a02096e7b202535a0069daa` | `c1b1232657dfe403c364bc8d25702a21a74120b90209dcfa27aaafaef77cca86` |
-| Claude Code | `c41502612324aef171de5ead0ba73dcc9234e378f630e31ff04aa8a4b6f66f9f` | `75f6689a1c04551e3991f27bdf8637516c3959970336d75009eb417ca21dc66b` |
-| OpenAI Codex | `c1de96a1764c6ba7355e1784d6bbabb3262ebc7e51ef7cbaa6b64f621aa38b1b` | `d06588c649e9fbd969bc89816d8be3ced41b9b02601a2a6b0fc0e6c08636c248` |
+| GitHub Copilot | `b737dd07f7560dca05b7602fc255576e429cca944e23f381d84eb833331dc082` | `ef1f80872752e331012918c7f55bb255d13c93e640a739ef2f3eec8732bb4b82` |
+| Claude Code | `bc44f85bc148ed6b9455476deb5c54ab86d76f1d0f82b69897bc79659a2e1586` | `d473fa6e584433d0811415ac0ec570fabc86dae11c3fe2d5a9fc1e99121499f4` |
+| OpenAI Codex | `ec9b60738328ad26c8b6f7ff3998e72da6fe9f8a3dbc43b71f2ef71b668ca1db` | `a324d475de5d92650b5b760c764829f4ac187c05d8efcda803455e800b0205ab` |
 
 Implementation freeze testは6 inputすべてを正確に再計算し、fileごとにmatching headingと連続tableが正確に1つだけ
 存在することを要求し、全digestをconstant timeで比較し、row IDと英日semantic parityを別に検証しなければならない。
@@ -222,7 +215,7 @@ conflictとして保持し、未登録のsource repositoryやissueを代替evide
 | `anthropic.claude-code.large-codebases.start-directory` | <https://code.claude.com/docs/en/large-codebases> | `code.claude.com` | `Choose where to start Claude`; `Layer CLAUDE.md files by directory`; `Add per-directory skills` | `2026-07-25` |
 | `anthropic.claude-code.sdk.setting-sources` | <https://code.claude.com/docs/en/agent-sdk/claude-code-features> | `code.claude.com` | `Control filesystem settings with settingSources`; `CLAUDE.md load locations` | `2026-07-15` |
 | `anthropic.claude-code.settings.scopes-precedence` | <https://code.claude.com/docs/en/settings> | `code.claude.com` | `Configuration scopes`; `Settings precedence`; `Plugin configuration` | `2026-07-25` |
-| `anthropic.claude-code.skills.locations-discovery` | <https://code.claude.com/docs/en/skills> | `code.claude.com` | `Where skills live`; `How a skill gets its command name` | `2026-07-25` |
+| `anthropic.claude-code.skills.locations-discovery` | <https://code.claude.com/docs/en/skills> | `code.claude.com` | `Where skills live`; `How a skill gets its command name` | `2026-08-08` |
 | `anthropic.claude-code.subagents.scope-context` | <https://code.claude.com/docs/en/sub-agents> | `code.claude.com` | `Choose the subagent scope`; `Scope MCP servers to a subagent`; `Preload skills into subagents`; `Enable persistent memory`; `What loads at startup`; `Let subagents spawn their own subagents` | `2026-07-25` |
 | `anthropic.claude-code.hooks.locations-resolution` | <https://code.claude.com/docs/en/hooks> | `code.claude.com` | `Hook locations`; `The /hooks menu` | `2026-07-25` |
 | `anthropic.claude-code.mcp.scopes-precedence` | <https://code.claude.com/docs/en/mcp> | `code.claude.com` | `MCP installation scopes`; `Plugin-provided MCP servers` | `2026-07-25` |
@@ -231,6 +224,7 @@ conflictとして保持し、未登録のsource repositoryやissueを代替evide
 | `anthropic.claude-code.marketplaces.catalog-sources` | <https://code.claude.com/docs/en/plugin-marketplaces> | `code.claude.com` | `Create the marketplace file`; `Plugin sources` | `2026-07-25` |
 | `anthropic.claude-code.ide.shared-differences` | <https://code.claude.com/docs/en/ide-integrations> | `code.claude.com` | `Configure settings`; `VS Code extension vs. Claude Code CLI`; `Manage marketplaces` | `2026-07-25` |
 | `anthropic.claude-code.changelog.legacy-command-nesting` | <https://code.claude.com/docs/en/changelog> | `code.claude.com` | `1.0.45`; `1.0.51` | `2026-07-15` |
+| `anthropic.claude-code.changelog.nested-skill-discovery` | <https://code.claude.com/docs/en/changelog> | `code.claude.com` | `2.1.6`; `2.1.178` | `2026-08-06` |
 
 ## OpenAI公式ソース
 

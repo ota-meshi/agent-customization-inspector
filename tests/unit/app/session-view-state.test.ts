@@ -41,7 +41,6 @@ function bootstrapSnapshot(overrides: Partial<SessionSnapshot> = {}): SessionSna
         generation: 0,
         scanRequestId: null,
         progress: null,
-        conditionFacts: [],
         diagnosticIds: [],
       },
     ],
@@ -488,5 +487,30 @@ describe('session view state — companion failures stay confined to the pane', 
     // Leaving the route takes the detail failure with it.
     state.closeSkill();
     expect(state.skillErrorMessage.value).toBeNull();
+  });
+
+  it('drops the detail state before disposing the content that renders it', async () => {
+    // The detail page recovers keyboard focus with synchronous watchers on this
+    // state, and a watcher can only move focus off an element that is still
+    // there. Disposing first would detach the editor the reader is in before
+    // any watcher runs, leaving focus on the document body with nothing left to
+    // rescue (WCAG 2.4.3). Asserting on what the disposer observes is how that
+    // order stays fixed.
+    const scripted = channelFrom([sessionResult(bootstrapSnapshot()), detailFor('entry-1')]);
+    const state = new SessionViewState({ channel: scripted.channel });
+    await state.start();
+    await state.openSkill('entry-1', 'entry-1');
+    expect(state.skillDetail.value).not.toBeNull();
+
+    let stateWhenDisposed: unknown;
+    let detailWhenDisposed: unknown;
+    state.registerOpenContentOwner(() => {
+      stateWhenDisposed = state.skillDetailState.value;
+      detailWhenDisposed = state.skillDetail.value;
+    });
+
+    state.closeSkill();
+    expect(stateWhenDisposed).toBe('idle');
+    expect(detailWhenDisposed).toBeNull();
   });
 });

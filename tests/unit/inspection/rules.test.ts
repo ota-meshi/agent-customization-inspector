@@ -93,7 +93,7 @@ describe('the bounded companion census', () => {
   // The census is not part of the walk: `traversal.ts` executes the allowlist
   // and knows nothing about what sits beside a candidate. `runSourceScan` opts
   // in for the rules that declare it, so these assertions go through the scan.
-  async function skillDetails(publicPath: string) {
+  async function skillCompanions(publicPath: string) {
     const publication = await runSourceScan({
       sourceId: 'src-1',
       root: fixture.root,
@@ -102,9 +102,7 @@ describe('the bounded companion census', () => {
     if (publication.kind !== 'publishable') {
       throw new Error(`expected a publishable scan, got ${publication.kind}`);
     }
-    const file = publication.files.find((entry) => entry.sourceRelativePath === publicPath);
-    const recognition = publication.recognitions.find((entry) => entry.fileId === file?.fileId);
-    return recognition?.details;
+    return publication.skillCompanionsByPath.get(publicPath);
   }
 
   it('lists what accompanies a skill without admitting any of it', async () => {
@@ -114,8 +112,7 @@ describe('the bounded companion census', () => {
     // was admitted as a candidate. Being listed is not being unread: the census
     // reads what it lists and the generation publishes it, which the case below
     // asserts. What must not happen is a companion entering through a rule.
-    const details = await skillDetails('.agents/skills/greet/SKILL.md');
-    expect(details?.kind === 'skill' && details.companionFiles).toEqual([
+    expect(await skillCompanions('.agents/skills/greet/SKILL.md')).toEqual([
       '.agents/skills/greet/README.md',
       '.agents/skills/greet/nested/SKILL.md',
     ]);
@@ -126,8 +123,7 @@ describe('the bounded companion census', () => {
   });
 
   it('lists nothing beside a skill whose directory holds only its own file', async () => {
-    const details = await skillDetails('.agents/skills/empty/SKILL.md');
-    expect(details?.kind === 'skill' && details.companionFiles).toEqual([]);
+    expect(await skillCompanions('.agents/skills/empty/SKILL.md')).toEqual([]);
   });
 
   it('reads exactly the admitted candidates and the files the census listed', async () => {
@@ -162,9 +158,7 @@ describe('the bounded companion census', () => {
     expect(new Set(opened).size).toBe(opened.length);
     // The census did list companions for `greet`, and each was read and
     // published as an ordinary file that no rule admitted.
-    const companions = publication.recognitions.flatMap((recognition) =>
-      recognition.details.kind === 'skill' ? recognition.details.companionFiles : [],
-    );
+    const companions = [...publication.skillCompanionsByPath.values()].flat();
     expect(companions.length).toBeGreaterThan(0);
     for (const companion of companions) {
       const file = publication.files.find((one) => one.sourceRelativePath === companion);
@@ -301,19 +295,19 @@ describe('vendor code classifies matches without reinterpreting selectors', () =
   });
 });
 
-describe('runtime-chain facts stay conditional', () => {
-  it('keeps the shipped rule pointing at condition keys rather than a verdict', () => {
+describe('an admission is not an activation', () => {
+  it('records what the rule is explained by, and no verdict of its own', () => {
     const rule = INSPECTION_RULES['codex.repo.skill']!;
     // Admission proves only that an authored file exists at an allowlisted
-    // location. Whether Codex would select it depends on every key below, and
-    // the rule records them instead of resolving them
+    // location; whether Codex would select it is runtime this tool never
+    // observes, so no field of the rule states it
     // (contracts/inspection-path-allowlist.md § existence-versus-activation).
-    expect(rule.conditionKeys).toContain('runtime-cwd');
-    expect(rule.conditionKeys).toContain('selection');
-    expect(rule.conditionKeys).toContain('enablement');
     expect(
       RULE_RELATIONS[rule.ruleId].explainedByStrategies.map((strategy) => strategy.strategyId),
     ).toEqual(['codex.skills.discovery']);
+    for (const field of ['conditionKeys', 'applicability', 'effective']) {
+      expect(Object.keys(rule)).not.toContain(field);
+    }
   });
 });
 
@@ -344,17 +338,15 @@ describe('the shipped claude.repo.skill plan (T126)', () => {
     ]);
   });
 
-  it('records ancestor and lazy-discovery uncertainty as condition keys, not admissions', () => {
+  it('is explained by the selection strategy without claiming a selection', () => {
     // Which layer actually participates in a session depends on where Claude
-    // was launched and which files were worked on; the rule records both as
-    // unknowable inputs rather than narrowing or widening what it admits.
+    // was launched and which files were worked on. The rule neither narrows
+    // nor widens what it admits for that, and states nothing about it.
     const rule = INSPECTION_RULES['claude.repo.skill']!;
-    expect(rule.conditionKeys).toContain('runtime-cwd');
-    expect(rule.conditionKeys).toContain('worked-path');
-    expect(rule.conditionKeys).toContain('selection');
     expect(
       RULE_RELATIONS[rule.ruleId].explainedByStrategies.map((strategy) => strategy.strategyId),
     ).toEqual(['claude.skills.selection']);
+    expect(Object.keys(rule)).not.toContain('conditionKeys');
   });
 });
 

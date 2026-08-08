@@ -61,7 +61,13 @@ export type AnthropicSourceId =
   /** The IDE-integrations page: shared configuration and per-surface differences. */
   | 'anthropic.claude-code.ide.shared-differences'
   /** The plugins reference: component scopes and skills-directory plugins. */
-  | 'anthropic.claude-code.plugins.components-scopes';
+  | 'anthropic.claude-code.plugins.components-scopes'
+  /**
+   * The changelog releases that version-anchor nested skill behavior: 2.1.6
+   * introduced nested `.claude/skills` discovery, and 2.1.178 the
+   * directory-qualified retention of a nested name clash (QR-005).
+   */
+  | 'anthropic.claude-code.changelog.nested-skill-discovery';
 
 /**
  * OpenAI official documentation pages cited by the shipped records
@@ -125,36 +131,3 @@ export type CodexRuleId =
  * rules that can authorize a read.
  */
 export type RuleId = ClaudeRuleId | CodexRuleId;
-
-/**
- * The closed declared-metadata field identifiers Anthropic Claude Code
- * recognitions may publish (contracts/vendors/claude-code.md § Normative
- * initial-release presentation allowlist). A field ID names one field of the
- * recognized kind, fixed by that table, never an arbitrary key an inspected
- * file supplies. Fields arrive with the recognizer phase that extracts them:
- * the name ships with the skill list, whose grouped rows need it, and the
- * rest of the allowlist's `skill` row with the detail phase (T148).
- */
-export type ClaudeMetadataFieldId =
-  /** The `name` scalar of a `SKILL.md` YAML frontmatter block. */
-  'claude.skill.name';
-
-/**
- * The closed declared-metadata field identifiers OpenAI Codex recognitions may
- * publish (contracts/vendors/openai-codex.md § Normative initial-release
- * presentation allowlist). A field ID names one field of the recognized kind,
- * fixed by that table, never an arbitrary key an inspected file supplies.
- * Fields arrive with the recognizer phase that extracts them.
- */
-export type CodexMetadataFieldId =
-  /** The `name` scalar of a `SKILL.md` YAML frontmatter block. */
-  | 'codex.skill.name'
-  /** The `description` scalar of a `SKILL.md` YAML frontmatter block. */
-  | 'codex.skill.description';
-
-/**
- * Every declared-metadata field a recognition may publish. Each vendor's
- * sub-union joins here, so an extractor cannot emit a field the presentation
- * allowlist does not name (data-model.md § DeclaredMetadataEntry).
- */
-export type MetadataFieldId = ClaudeMetadataFieldId | CodexMetadataFieldId;

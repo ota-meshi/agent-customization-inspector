@@ -52,9 +52,22 @@ describe('sameNameSkillResolutionOf', () => {
     }
   });
 
-  it('states nothing when one pipeline both retains and selects', () => {
+  it('states nothing when one pipeline both retains and selects first', () => {
     // What a vendor documents that way is a question for evidence review.
     expect(sameNameSkillResolutionOf([withOperations('retain-all', 'select-first')])).toBeNull();
+  });
+
+  it('recognizes retain-all with select-closest as the context-selected statement', () => {
+    // The exact pipeline Claude Code documents for a clash within one root:
+    // every definition stays available and the product picks the variant
+    // matching the files it is working on. `select-first` beside them returns
+    // the pipeline to evidence review.
+    expect(sameNameSkillResolutionOf([withOperations('retain-all', 'select-closest')])).toBe(
+      'all-remain-context-selected',
+    );
+    expect(
+      sameNameSkillResolutionOf([withOperations('retain-all', 'select-closest', 'select-first')]),
+    ).toBeNull();
   });
 
   it('reports surfaces that disagree rather than picking one of them', () => {
