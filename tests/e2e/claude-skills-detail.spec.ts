@@ -137,9 +137,18 @@ async function openSkillFiles(page: import('@playwright/test').Page, path: strin
 test('shows the literal credential and environment reference with no mask or reveal', async ({
   page,
 }) => {
-  await openSkillFiles(page, '.claude/skills/greet/SKILL.md');
+  await openSkill(page, '.claude/skills/greet/SKILL.md');
+  // The Skill tab's declarations carry the credential too, and a hidden
+  // panel's controls are outside the accessibility tree the role query
+  // reads — so the no-reveal claim is asserted on each tab in turn, while
+  // that tab is the visible one (FR-026, FR-027).
+  await expect(page.locator('.aci-skill-detail__declarations')).toContainText(FIXTURE_SECRET);
+  for (const label of [/reveal/iu, /unmask/iu, /show secret/iu, /hide value/iu]) {
+    await expect(page.getByRole('button', { name: label })).toHaveCount(0);
+  }
+  await page.getByRole('tab', { name: /^files/iu }).click();
   // The complete authored source, credential and environment reference
-  // included, with nothing standing in front of it (FR-026, FR-027).
+  // included, with nothing standing in front of it.
   const viewer = page.locator('.aci-skill-detail__main .aci-source-viewer');
   await expect(viewer).toBeVisible();
   await expect(viewer).toContainText('# Greet');

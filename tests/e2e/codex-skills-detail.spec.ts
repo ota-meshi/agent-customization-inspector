@@ -137,7 +137,16 @@ test('shows the complete authored source', async ({ page }) => {
 });
 
 test('offers no control that masks a value or reveals a masked one', async ({ page }) => {
-  await openSkillFiles(page, '.agents/skills/greet/SKILL.md');
+  await openSkill(page, '.agents/skills/greet/SKILL.md');
+  // The Skill tab's declarations carry the credential too, and a hidden
+  // panel's controls are outside the accessibility tree the role query
+  // reads — so the no-reveal claim is asserted on each tab in turn, while
+  // that tab is the visible one.
+  await expect(page.locator('.aci-skill-detail__declarations')).toContainText(FIXTURE_SECRET);
+  for (const label of [/reveal/iu, /unmask/iu, /show secret/iu, /hide value/iu]) {
+    await expect(page.getByRole('button', { name: label })).toHaveCount(0);
+  }
+  await page.getByRole('tab', { name: /^files/iu }).click();
   // Wait for the rendered source itself, not just its container: the editor
   // paints its lines after the viewer mounts, and reading the page before the
   // credential is on screen would make the absence checks below vacuous.
