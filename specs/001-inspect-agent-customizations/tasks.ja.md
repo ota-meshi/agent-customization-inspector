@@ -413,23 +413,23 @@ dispositionである。
 
 **独立テスト**: 三つのすべての directory と共有物理 file から Copilot skill を開き、file が書いた宣言、winner の主張なし、完全な literal source、変更されない Codex/Claude detail を検証します。
 
-**目に見えるチェックポイント**: Copilot SKILL detail に、別個の VS Code、CLI、Cloud interpretation が表示されます。
+**目に見えるチェックポイント**: Copilot SKILL detail は完全で Codex・Claude detail と一貫しており、共有物理 file は各 product 自身の definition として開きます。 *(2026-08-10 修正: vendor の runtime を project する surface は無く（FR-009、T091）、互換性のない surface fact は別々の維持管理 record に留まり、読者が見るのはアドレスされた definition である。)*
 
 ### テスト先行
 
-- [ ] T168 [P] [US2] 解決済みの frontmatter の値、progressive loading、duplicate-name uncertainty、除外された custom directory、environment reference の非解決、正確な evidence に関する Copilot metadata の失敗テストを `tests/unit/inspection/copilot-metadata.test.ts` に追加する
-- [ ] T169 [P] [US2] 互換性のない behavior をまとめず、VS Code、CLI、Cloud の selection fact に関する composition の失敗テストを `tests/unit/inspection/copilot-composition.test.ts` に追加する
-- [ ] T170 [P] [US2] surface-specific recognition が分離されたままであることを証明する typed-detail の失敗テストを `tests/unit/app/recognition-details.test.ts` に追加する *(2026-08-05 修正: condition factはT091のprojectionとともに無くなった — 公開するものが無いため、testするものも無い。)*
-- [ ] T171 [US2] 正確な literal credential/environment-reference 表示、process-environment sentinel substitution なし、masking/reveal control なし、Codex と Claude の behavior を維持した Copilot-only および shared-recognition detail に関するブラウザー受け入れ失敗テストを `tests/e2e/copilot-skills-detail.spec.ts` に追加する
+- [X] T168 [P] [US2] 解決済みの frontmatter の値、閉じた recognition record 上で一括公開される完全な parse、独立した same-name recognition、Copilot 自身の rule が admit しなかった candidate への recognizer の沈黙、environment reference の非解決、正確な provenance evidence に関する Copilot metadata の失敗テストを `tests/unit/inspection/copilot-metadata.test.ts` に追加する *(2026-08-10 修正: configured な skills root の matcher レベルの拒否は T154 のもので、`rules.test.ts` が実際の traversal に対して証明する。progressive loading と duplicate-name uncertainty は維持管理 record と導出された registry 文が所有する vendor runtime の fact である（FR-009、`skill-resolution.ts`）— この suite が所有するのは公開される recognition record である。)*
+- [X] T169 [P] [US2] `tests/unit/inspection/copilot-composition.test.ts` は出荷しない: 3 つの per-surface selection strategy が満たすべきことは既に gate されている — `tests/contract/inspection-rules.test.ts` が 3 つの strategy edge と導出された surface-dependent 文を保持し、conformance fixture が各 pipeline の正確な operations を固定し、`tests/unit/shared/skill-resolution.test.ts` が順序未確立の選択から winner を読み出さないことを証明する *(2026-08-10 修正: そのような suite が検証したはずの detail-time projection は T091 とともに無くなり（T080・T143 と同じ理由）、registry fact の 3 つ目の複製は 2 つの状態の不一致だけを検出する gate になる。)*
+- [X] T170 [P] [US2] 共有 file の per-tool recognition が分離されたままであること — 認識 tool ごとに 1 definition で、それぞれが自身の invocation name と detail route を持ち、アドレスされた tool だけに絞り込まれ、1 つの file から same-name collision は読み出されない — を証明する typed-detail の失敗テストを `tests/unit/app/recognition-details.test.ts` に追加する *(2026-08-05 修正: condition factはT091のprojectionとともに無くなった — 公開するものが無いため、testするものも無い。)* *(2026-08-10 修正: recognition は 1 つの `(file, tool)` record であり、VS Code・CLI・Cloud はどの recognition も運ばない維持管理 record に留まる（FR-009）。)*
+- [X] T171 [US2] 正確な literal credential/environment-reference 表示、process-environment sentinel substitution なし、masking/reveal control なし、Codex と Claude の behavior を維持した Copilot-only および shared-recognition detail に関するブラウザー受け入れ失敗テストを `tests/e2e/copilot-skills-detail.spec.ts` に追加する
 
 ### 実装
 
-- [ ] T172 [US2] strategy ID を追加せず、inventory が所有する Copilot skill strategy を、この phase が記録する文書化済み selection operations で `src/shared/registries/runtime-composition.ts` において拡張する *(2026-08-06 修正: condition/applicability projectionはT091とともに無くなった — strategy recordは文書化されたoperationsを公開し、recognition・provenance・detailへconditionをprojectするものは無い。)*
-- [ ] T173 [US2] exact metadata、selection uncertainty、relationship、正確な evidence で Copilot recognition を `src/server/inspection/recognizers/candidate.ts` において拡張する
-- [ ] T174 [US2] Copilot の surface difference と文書間の conflict を、1 つに統合した文ではなく別々の維持管理 record として `src/shared/registries/copilot/behaviors.ts` に保つ。surface が適用されるかどうかは投影しない。それは Inspector が観測しない runtime に依存するからである(FR-009)
-- [ ] T175 [US2] atomic Copilot extraction と一度だけ読み取る shared-file detail assembly を `src/server/inspection/scan.ts` に統合する
-- [ ] T176 [US2] 別々の Copilot surface に対する typed recognition presentation をそのkind自身のdetail route（`src/app/pages/` 配下） において拡張する
-- [ ] T177 [US2] 英語の Copilot detail message をそれらを描画する Vue component に追加する *(2026-08-08修正: trust/precedence/order/uncertainty の projection は T091 とともに撤去済み — detail は file が書いた宣言を示し、vendor が文書化する内容はその maintained contract に留まる（FR-009）。)*
+- [X] T172 [US2] inventory が所有する Copilot skill strategy が、grouped row の same-name 導出が読む文書化済み selection operations を record・strategy ID の変更なしに公開していることを `src/shared/registries/runtime-composition.ts` において検証する *(2026-08-06 修正: condition/applicability projectionはT091とともに無くなった — strategy recordは文書化されたoperationsを公開し、recognition・provenance・detailへconditionをprojectするものは無い。)* *(2026-08-10 修正: T092 と同じ理由で検証のみに縮小 — 3 つの per-surface strategy は T159 で出荷済みで、その `operations` は inventory row の導出された same-name 文に供給され（`skill-resolution.ts`）、その rule が答える collision に対してのみ公開される。detail は surface fact を描画しない（FR-009）。)*
+- [X] T173 [US2] Copilot recognition が共有 engine を通じて exact metadata と正確な evidence を公開し、selection uncertainty は導出された registry 文だけが述べ、relationship は発行されないことを `src/server/inspection/recognizers/candidate.ts` において検証する *(2026-08-10 修正: 検証のみに縮小 — 共有 engine は Copilot skill を他 vendor と同一に読み（T148、T163）、`copilot-metadata.test.ts` がそれを証明し、relationship は発行されない（T141）。)*
+- [X] T174 [US2] Copilot の surface difference と文書間の conflict を、1 つに統合した文ではなく別々の維持管理 record として `src/shared/registries/copilot/behaviors.ts` に保つ。surface が適用されるかどうかは投影しない。それは Inspector が観測しない runtime に依存するからである(FR-009) *(2026-08-10 修正: 出荷済みの状態で既に満たされている — T159 の catalog は per-surface の文を各自の evidence を持つ別々の record として保ち、registry contract gate が相互 edge を保持する。)*
+- [X] T175 [US2] atomic Copilot extraction と、一度の読み取り・一度の parse による shared-file assembly を `src/server/inspection/scan.ts` において検証する *(2026-08-10 修正: 検証のみに縮小 — extraction は共有 engine を通じて既に atomic であり、共有物理 file はすべての認識 tool が 1 回の parse を再公開する 1 candidate である（T164）。`copilot-metadata.test.ts` が parse が 1 つの object であることを証明し、T171 の受け入れが開いた file とともに 1 件の失敗 record を示す。)*
+- [X] T176 [US2] skill detail route が vendor 固有の拡張なしに Copilot definition を描画することを、そのkind自身のdetail route（`src/app/pages/` 配下）において検証する *(2026-08-10 修正: T150 と同じ理由で検証のみに縮小 — URL の tool segment が 1 つの definition をアドレスし、1 つの surface が closed-union table を通じてすべての vendor の skill を同一に描画する。別々の surface fact はどの surface も描画しない維持管理 record に留まり（FR-009）、T171 の受け入れが描画された per-tool caption を証明する。)*
+- [X] T177 [US2] 英語の Copilot detail text が union の隣の closed-union table — `src/shared/entities.ts` の `SUPPORTED_TOOL_TEXT` と `CUSTOMIZATION_KIND_TEXT`、diagnostic text は `DIAGNOSTIC_REGISTRY` — を通じて出荷され、それらを読む Vue component が描画することを検証する *(2026-08-08修正: trust/precedence/order/uncertainty の projection は T091 とともに撤去済み — detail は file が書いた宣言を示し、vendor が文書化する内容はその maintained contract に留まる（FR-009）。)* *(2026-08-10 修正: 検証のみに縮小 — caption は出荷済みで、user-visible copy policy はそのような text を component ではなく union の隣に置く（T167）。)*
 
 ---
 
@@ -2816,7 +2816,7 @@ dispositionである。
 | 8 Claude SKILL 一覧 | US1 | Claude と Codex の SKILL 一覧が同じ inventory に共存します。 |
 | 9 Claude SKILL 詳細 | US2 | Claude SKILL detail が完成し、Codex detail と一貫します。 |
 | 10 Copilot SKILL 一覧 | US1 | Copilot skill row に正確な三つの recognition combination が表示され、extra depth、configured root、extra tool recognition は存在しません。 |
-| 11 Copilot SKILL 詳細 | US2 | Copilot SKILL detail に、別個の VS Code、CLI、Cloud interpretation が表示されます。 |
+| 11 Copilot SKILL 詳細 | US2 | Copilot SKILL detail は完全で Codex・Claude detail と一貫しており、共有物理 file は各 product 自身の definition として開きます *(2026-08-10 修正: フェーズ 11 参照)*。 |
 | 12 統合 SKILL inventory | US1 | 完全な skill-first inventory を filter して理解できます。 |
 | 13 SKILL 比較 | US3 | 読み取り可能な任意の2つのdistinct SKILL fileを、activationもmutationもせずに比較できます。 |
 | 14 SKILL metadata 比較 | US3 | census 公開された二つの `agents/openai.yaml` file を generic literal comparison で比較でき、authored sensitive value は変更なしで表示され、typed metadata row が捏造されることはありません *(2026-08-01 修正: フェーズ 14 参照)*。 |

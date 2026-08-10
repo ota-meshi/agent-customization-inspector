@@ -99,10 +99,14 @@ describe('Codex skill declared name', () => {
       expect(recognition.parseStatus).toBe('failed');
       // The file itself is unaffected: it stays an admitted, readable
       // candidate whose complete source the detail route serves (FR-028).
-      expect(recognition.details.kind).toBe('skill');
-      expect(recognition.details.kind === 'skill' && 'declaredName' in recognition.details).toBe(
-        false,
-      );
+      if (recognition.details.kind !== 'skill') {
+        throw new Error('expected a skill recognition');
+      }
+      expect('declaredName' in recognition.details).toBe(false);
+      // All-or-nothing: a failed extraction publishes no partial declarations
+      // and no instructions either — not just no name (FR-028).
+      expect(recognition.details.frontmatter).toEqual([]);
+      expect(recognition.details.bodyText).toBe('');
     },
   );
 
