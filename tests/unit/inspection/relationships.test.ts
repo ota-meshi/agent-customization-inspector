@@ -22,7 +22,7 @@ import { join } from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import * as fsIo from '../../../src/server/inspection/fs-io';
-import { recognizeCandidateForVendor } from '../../../src/server/inspection/recognizers/candidate';
+import { recognizeCandidateForVendors } from '../../../src/server/inspection/recognizers/candidate';
 import { CLAUDE_REPOSITORY_RULES } from '../../../src/server/inspection/rules/claude';
 import { INSPECTION_RULES } from '../../../src/shared/registries/inspection-rules';
 import { assembleScanPublication } from '../../../src/server/inspection/scan';
@@ -63,16 +63,15 @@ afterEach(() => {
 
 /** Recognizes one authored Claude `SKILL.md` at the given admitted path. */
 async function recognizeClaude(matchedPath: string, sourceText: string) {
-  const { recognitions } = await recognizeCandidateForVendor(
+  const { recognitions } = await recognizeCandidateForVendors(
     {
-      fileId: 'file-1',
       matchedPath,
       absolutePath: join(root, matchedPath),
       sourceRoot: root,
       admissions: [{ compiled: claudeSkillRule!, origin: { planIndex: 0, selectorIndex: 0 } }],
       sourceText,
     },
-    'claude',
+    ['claude'],
   );
   return recognitions;
 }

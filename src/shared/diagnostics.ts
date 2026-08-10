@@ -35,13 +35,13 @@ export type DiagnosticSeverity =
 
 /**
  * Where a diagnostic attaches (spec.md § Key Entities · Diagnostic): 'file'
- * requires the coherent sourceId/fileId/path tuple, 'source' carries only
- * sourceId. The {@link DiagnosticRecord} constructor enforces the shapes.
+ * requires the coherent sourceId/sourceRelativePath pair, 'source' carries
+ * only sourceId. The {@link DiagnosticRecord} constructor enforces the shapes.
  */
 export type DiagnosticScope =
-  /** Attached to one coherent source/file/path tuple. */
+  /** Attached to one coherent source/path pair. */
   | 'file'
-  /** Attached to one Source and no file/path. */
+  /** Attached to one Source and no path. */
   | 'source';
 
 /**
@@ -126,20 +126,22 @@ export const DIAGNOSTIC_REGISTRY: Readonly<Record<DiagnosticCode, DiagnosticRegi
       'This file contains NUL bytes, so it is recorded without source text and nothing was parsed from it. Use a binary-capable viewer if you need to inspect its contents.',
   },
   /**
-   * One recognition parser failed while the authored source remains available.
-   *
-   * Extraction is all-or-nothing (FR-028), so the message names the whole of
-   * what is missing rather than one field of it: nothing the parser would have
-   * read out — the declared name and description, the declarations, and the
-   * instructions the block was removed from — reaches the screen, and the
-   * detail surface omits both of its sections.
+   * One (file, kind) extraction failed while the authored source remains
+   * available — one record however many tools recognize the kind, because
+   * the parse ran once. Extraction is all-or-nothing (FR-028), so the
+   * message names the whole of what is missing rather than one field of it:
+   * nothing the parser would have read out — the declared name and
+   * description, the declarations, and the instructions the block was
+   * removed from — reaches the screen, and the detail surface omits both of
+   * its sections. Count-independent wording, because the one sentence covers
+   * every recognizing tool's definition.
    */
   'recognition-parse-failed': {
     ownerKind: 'candidate-file',
     scope: 'file',
     severity: 'warning',
     message:
-      'One recognition could not be parsed, so none of its declarations or instructions could be read out of it. The complete source text remains available to read; a rescan reports the current state of the file.',
+      'This file could not be parsed, so none of its declarations or instructions could be read out of it. The complete source text remains available to read; a rescan reports the current state of the file.',
   },
 };
 
@@ -182,13 +184,16 @@ export class DiagnosticRecord {
   /** The registry code this record instantiates. */
   public readonly code: DiagnosticCode;
 
-  /** Owning Source; required by both scopes' shapes. */
-  public readonly sourceId: string | null;
+  /**
+   * Owning Source. Both scope shapes require it, and the constructor throws
+   * without it, so the field is never null.
+   */
+  public readonly sourceId: string;
 
-  /** Affected file; set exactly for file scope. */
-  public readonly fileId: string | null;
-
-  /** The file's Source-relative Path; set exactly for file scope. */
+  /**
+   * The affected file's Source-relative Path — the file's identity within its
+   * Source (FR-030); set exactly for file scope.
+   */
   public readonly sourceRelativePath: string | null;
 
   /** Internal lifecycle instance key; never serialized. */
@@ -204,18 +209,20 @@ export class DiagnosticRecord {
   public constructor(input: DiagnosticInput) {
     const registryEntry = DIAGNOSTIC_REGISTRY[input.code];
     const sourceId = input.sourceId ?? null;
-    const fileId = input.fileId ?? null;
     const sourceRelativePath = input.sourceRelativePath ?? null;
+    // Both scope shapes carry the owning Source, so the guard is scope-free
+    // and is what proves the non-null field type below.
+    if (sourceId === null) {
+      throw new TypeError('a diagnostic requires its owning sourceId');
+    }
     switch (registryEntry.scope) {
       case 'file':
-        if (sourceId === null || fileId === null || sourceRelativePath === null) {
-          throw new TypeError(
-            'a file-scoped diagnostic requires sourceId, fileId, and sourceRelativePath',
-          );
+        if (sourceRelativePath === null) {
+          throw new TypeError('a file-scoped diagnostic requires its sourceRelativePath');
         }
         break;
       case 'source':
-        if (sourceId === null || fileId !== null || sourceRelativePath !== null) {
+        if (sourceRelativePath !== null) {
           throw new TypeError('a source-scoped diagnostic requires only sourceId');
         }
         break;
@@ -242,7 +249,6 @@ export class DiagnosticRecord {
     this.diagnosticId = createOpaqueId();
     this.code = input.code;
     this.sourceId = sourceId;
-    this.fileId = fileId;
     this.sourceRelativePath = sourceRelativePath;
     this.lifecycleOwnerKey = input.lifecycleOwnerKey;
   }
@@ -256,7 +262,6 @@ export class DiagnosticRecord {
       diagnosticId: this.diagnosticId,
       code: this.code,
       sourceId: this.sourceId,
-      fileId: this.fileId,
       sourceRelativePath: this.sourceRelativePath,
     };
   }
@@ -273,9 +278,7 @@ export interface DiagnosticInput {
   readonly lifecycleOwnerKey: LifecycleOwnerKey | null;
   /** Owning Source; required by both scopes' shapes. */
   readonly sourceId?: string | null;
-  /** Affected file; required exactly for file scope. */
-  readonly fileId?: string | null;
-  /** The file's Source-relative Path; required exactly for file scope. */
+  /** The affected file's Source-relative Path; required exactly for file scope. */
   readonly sourceRelativePath?: string | null;
 }
 
@@ -291,11 +294,9 @@ export interface SerializedDiagnostic {
   readonly diagnosticId: string;
   /** The registry code; every fixed attribute is derived from it. */
   readonly code: DiagnosticCode;
-  /** Owning Source, as the scope shape requires. */
-  readonly sourceId: string | null;
-  /** Affected file; set exactly for file scope. */
-  readonly fileId: string | null;
-  /** The file's Source-relative Path; set exactly for file scope. */
+  /** Owning Source; both scope shapes require it, so it is never null. */
+  readonly sourceId: string;
+  /** The affected file's Source-relative Path; set exactly for file scope. */
   readonly sourceRelativePath: string | null;
 }
 
@@ -334,8 +335,9 @@ const SCOPE_RANK: Readonly<Record<DiagnosticScope, number>> = {
  * order, scope, Source-relative Path, code, then emitter-occurrence order.
  * Opaque IDs never supply the sort order. There is deliberately no
  * dedupe pass: every emitter creates each observation exactly once —
- * legitimately repeated records exist (one per failed recognition) and a
- * double emission would be an ordinary
+ * legitimately repeated records exist, because an extraction failure is one
+ * record per `(file, kind)` (FR-028) and one file's two kinds can each fail,
+ * sharing every public field — and a double emission would be an ordinary
  * implementation bug owned by tests and review, not a runtime filter.
  */
 export function sortDiagnostics(candidates: readonly DiagnosticRecord[]): DiagnosticRecord[] {

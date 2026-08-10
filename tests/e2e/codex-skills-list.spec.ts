@@ -1,6 +1,9 @@
 // T059: browser acceptance for the Codex SKILL list (Phase 4 "Codex Skill
 // List"). Launches the packaged CLI against a Codex-only fixture, opens the
-// printed loopback URL, and verifies the rendered inventory.
+// printed loopback URL, and verifies the rendered inventory. Since the Copilot
+// phase, the root `.agents/skills/` is also a Copilot location, so every
+// Codex row carries both products' badges — while the nested spelling stays
+// out of the inventory for both vendors' root-anchored programs.
 //
 // Two claims here can only be made against a rendered page, which is why they
 // live in this suite rather than in the unit suites: that the escaped root
@@ -40,10 +43,10 @@ test.beforeEach(async () => {
     '---\nname: ship-it\n---\n\n# Deploy\n',
     'utf8',
   );
-  // Near miss: a well-formed skill one package directory below the root. Codex
-  // scans `.agents/skills` upward from its working directory to the repository
-  // root and never descends, and the selected root is that repository root, so
-  // this file is never loaded and must never be listed.
+  // Near miss for both vendors: Codex scans `.agents/skills` upward from its
+  // working directory and never descends, and no Copilot surface documents a
+  // downward skill lookup from a root context, so this file belongs to a
+  // runtime context this product does not select and is never listed.
   await mkdir(join(fixture, 'packages/api/.agents/skills/deploy'), { recursive: true });
   await writeFile(
     join(fixture, 'packages/api/.agents/skills/deploy/SKILL.md'),
@@ -64,21 +67,29 @@ test.afterEach(async () => {
   await rm(fixture, { recursive: true, force: true });
 });
 
-test('lists exactly the allowlisted Codex skills with their source and path', async ({ page }) => {
+test('lists exactly the allowlisted skills with their source and path', async ({ page }) => {
   await page.goto(host.origin);
   const items = page.locator('.aci-item');
   await expect(items).toHaveCount(2);
 
   // Rows are ordered by their own unit — the declared name — so `greet`
-  // precedes `ship-it` even though its path sorts the other way.
+  // precedes `ship-it` even though its path sorts the other way. One item per
+  // definition: both root skills are Codex+Copilot, so each path appears once
+  // under each product.
   const paths = await page.locator('.aci-item .aci-path').allInnerTexts();
-  expect(paths).toEqual(['.agents/skills/greet/SKILL.md', '.agents/skills/deploy/SKILL.md']);
+  expect(paths).toEqual([
+    '.agents/skills/greet/SKILL.md',
+    '.agents/skills/greet/SKILL.md',
+    '.agents/skills/deploy/SKILL.md',
+    '.agents/skills/deploy/SKILL.md',
+  ]);
 
-  // Every row states which product recognized it — one file can be recognized
+  // Every row states which products recognized it — one file can be recognized
   // by several, and that is visible nowhere else. The kind is not repeated per
   // row: it is the tab the rows are listed under.
   for (const item of await items.all()) {
     await expect(item).toContainText('OpenAI Codex');
+    await expect(item).toContainText('GitHub Copilot');
     // A readable row says nothing about its own readability; the label is kept
     // for outcomes that actually explain the row.
     await expect(item).not.toContainText('Readable text');
@@ -88,7 +99,9 @@ test('lists exactly the allowlisted Codex skills with their source and path', as
 
 test('shows no near-miss path and no authored source text', async ({ page }) => {
   await page.goto(host.origin);
+  await expect(page.locator('.aci-item')).toHaveCount(2);
   const text = await page.locator('main').innerText();
+  expect(text).not.toContain('packages/api/.agents/skills/deploy/SKILL.md');
   expect(text).not.toContain('agents/skills/solo/SKILL.md');
   expect(text).not.toContain('README.md');
   expect(text).not.toContain('AGENTS.md');
@@ -146,11 +159,13 @@ test('shows each skill by the name authored in its own file', async ({ page }) =
   await page.goto(host.origin);
   // `ship-it` lives in `.agents/skills/deploy/`, so a row showing it proves the
   // name came from the frontmatter rather than the directory segment (FR-007).
-  await expect(page.locator('.aci-skill-row__declared-name')).toHaveText(['greet', 'ship-it']);
+  await expect(page.locator('.aci-skill-row__name')).toHaveText(['greet', 'ship-it']);
   // Each row names the files declaring it; the name is the row's unit, and the
   // path says which file authored it.
   await expect(page.locator('.aci-item .aci-path')).toHaveText([
     '.agents/skills/greet/SKILL.md',
+    '.agents/skills/greet/SKILL.md',
+    '.agents/skills/deploy/SKILL.md',
     '.agents/skills/deploy/SKILL.md',
   ]);
 });
@@ -177,21 +192,31 @@ test('shows one row for a name two files declare, with each product\u2019s rule'
   await expect(async () => {
     await page.getByRole('button', { name: 'Refresh status' }).click();
     await expect(grouped.locator('.aci-path')).toHaveText(
-      ['.agents/skills/greet/SKILL.md', '.agents/skills/salute/SKILL.md'],
+      [
+        '.agents/skills/greet/SKILL.md',
+        '.agents/skills/greet/SKILL.md',
+        '.agents/skills/salute/SKILL.md',
+        '.agents/skills/salute/SKILL.md',
+      ],
       { timeout: 1_000 },
     );
   }).toPass();
   await expect(page.locator('.aci-scan-progress')).toContainText('Committed generation');
   // The row states what each product documents and never orders the two:
-  // Codex keeps both and documents no precedence among the scopes.
+  // Codex keeps both and documents no precedence among the scopes, while
+  // Copilot — which also recognizes both files — has no single documented
+  // rule across its surfaces (FR-007).
   await expect(grouped).toContainText('OpenAI Codex keeps all of them, in no documented order');
+  await expect(grouped).toContainText(
+    'GitHub Copilot depends on the surface; no single documented rule',
+  );
   await expect(page.locator('.aci-item')).toHaveCount(2);
 });
 
-test('renders the path alone for a skill that declares no name', async ({ page }) => {
-  // T1065: a row shows the declared name beside the path when there is one and
-  // the path alone when there is not — never a substituted directory segment
-  // and never a placeholder standing in for a name the file does not have.
+test('names a skill that declares no name by its skill directory', async ({ page }) => {
+  // T1065/T1081: a row shows the declared name beside the path when there is
+  // one, and the skill directory name when there is not (FR-007) — a named
+  // directory is what a skill is, so every row has a name to be listed under.
   await mkdir(join(fixture, '.agents/skills/nameless'), { recursive: true });
   await writeFile(join(fixture, '.agents/skills/nameless/SKILL.md'), '# no frontmatter\n', 'utf8');
   await page.goto(host.origin);
@@ -201,13 +226,13 @@ test('renders the path alone for a skill that declares no name', async ({ page }
   const row = page.locator('.aci-item').filter({ hasText: '.agents/skills/nameless/SKILL.md' });
   await expect(async () => {
     await page.getByRole('button', { name: 'Refresh status' }).click();
-    await expect(row.locator('.aci-path')).toHaveText(['.agents/skills/nameless/SKILL.md'], {
-      timeout: 1_000,
-    });
+    await expect(row.locator('.aci-path')).toHaveText(
+      ['.agents/skills/nameless/SKILL.md', '.agents/skills/nameless/SKILL.md'],
+      { timeout: 1_000 },
+    );
   }).toPass();
   await expect(page.locator('.aci-scan-progress')).toContainText('Committed generation');
-  // No name element at all: not the directory segment, and not a placeholder.
-  await expect(row.locator('.aci-skill-row__declared-name')).toHaveCount(0);
+  await expect(row.locator('.aci-skill-row__name')).toHaveText('nameless');
 });
 
 test('keeps two names that both draw nothing apart', async ({ page }) => {
@@ -235,7 +260,7 @@ test('keeps two names that both draw nothing apart', async ({ page }) => {
   }).toPass();
   // `textContent`, not `toHaveText`: the matcher normalizes whitespace, which
   // is exactly the difference under test.
-  const names = rows.locator('.aci-skill-row__declared-name .aci-authored-text');
+  const names = rows.locator('.aci-skill-row__name .aci-authored-text');
   expect(await names.nth(0).textContent()).toBe(' ');
   expect(await names.nth(1).textContent()).toBe('  ');
   await expect(rows.first()).toContainText('(name with no visible characters)');
@@ -252,7 +277,11 @@ test('filters the list by tool and Source-relative path', async ({ page }) => {
   await page.getByRole('button', { name: 'Clear filters' }).click();
   await expect(page.locator('.aci-item')).toHaveCount(2);
 
+  // Both products recognize both root skills, so either selection keeps the
+  // whole list.
   await page.getByLabel('Tool').selectOption('codex');
+  await expect(page.locator('.aci-item')).toHaveCount(2);
+  await page.getByLabel('Tool').selectOption('copilot');
   await expect(page.locator('.aci-item')).toHaveCount(2);
 });
 
@@ -301,20 +330,26 @@ test('rescans on demand and keeps the status tied to that request', async ({ pag
   await expect(page.locator('.aci-scan-progress')).toContainText('Committed generation');
 });
 
-test('opens a definition by its file identity, not by its path', async ({ page }) => {
+test('links each definition by its stable tool-and-path identity', async ({ page }) => {
   await page.goto(host.origin);
   const links = page.locator('.aci-item .aci-path a');
-  await expect(links).toHaveCount(2);
+  await expect(links).toHaveCount(4);
 
-  // The link carries the opaque file ID rather than the Source-relative Path.
-  // A commit rekeys every generation-owned ID, so a link from an earlier
-  // generation resolves to nothing instead of to whatever now sits at that
-  // path (FR-030).
-  for (const href of await links.evaluateAll((elements) =>
+  // The link carries the tool and the Source-relative path — the definition's
+  // own identity, stable across rescans and same-root server launches; the
+  // path is the file's identity on the wire, so no per-generation file ID
+  // exists to leak into a URL.
+  const hrefs = await links.evaluateAll((elements) =>
     elements.map((element) => element.getAttribute('href') ?? ''),
-  )) {
-    expect(href).toMatch(/^\/skills\/[A-Za-z0-9_-]{22}$/u);
-  }
+  );
+  expect(hrefs.toSorted()).toEqual(
+    [
+      '/skills/copilot/.agents/skills/greet/SKILL.md',
+      '/skills/codex/.agents/skills/greet/SKILL.md',
+      '/skills/copilot/.agents/skills/deploy/SKILL.md',
+      '/skills/codex/.agents/skills/deploy/SKILL.md',
+    ].toSorted(),
+  );
   // The row itself still offers nothing else to act on: opening the file is
   // the one thing a row leads to.
   await expect(page.locator('.aci-item button')).toHaveCount(0);

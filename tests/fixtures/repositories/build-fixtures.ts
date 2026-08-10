@@ -1,5 +1,5 @@
-// T050/T124: deterministic SKILL fixture repositories for the Phase 4 and
-// Phase 8 inventory suites (FR-003, FR-004, FR-005, FR-024).
+// T050/T124/T152: deterministic SKILL fixture repositories for the Phase 4,
+// Phase 8, and Phase 10 inventory suites (FR-003, FR-004, FR-005, FR-024).
 //
 // The tree is built to make the allowlist's edges observable rather than
 // assumed: every positive case has a near miss one segment away from it, so a
@@ -34,9 +34,10 @@ export interface CodexSkillFixture {
    */
   readonly expectedSkillPaths: readonly string[];
   /**
-   * Paths that sit one segment away from an admitted skill and must never be
-   * admitted. Listing them explicitly is what makes an over-broad selector a
-   * test failure rather than a silent inventory expansion.
+   * Paths that sit one segment away from an admitted skill and that no
+   * shipped rule may admit. Listing them explicitly is what makes an
+   * over-broad selector a test failure rather than a silent inventory
+   * expansion.
    *
    * Not admitted is not the same as not published: a near miss that happens to
    * sit inside an admitted skill's own directory is also that skill's companion
@@ -106,11 +107,11 @@ export function buildCodexSkillFixture(prefix = 'inspector-codex-skills'): Codex
   write(root, '.agents/skills/secretive/SKILL.md', `token: ${FIXTURE_SECRET_LITERAL}\n`);
 
   // Near miss: a perfectly well-formed skill, one package directory below the
-  // root. Codex scans `.agents/skills` from its working directory *upward* to
-  // the repository root and never descends, and the selected root is that
-  // repository root (FR-001), so this file is never loaded. Admitting it would
-  // report a skill the agent does not read — this is the one near miss that a
-  // leading `ANY_DIRECTORIES` would wrongly accept.
+  // root. Codex scans `.agents/skills` upward and never descends, and no
+  // Copilot surface documents a downward skill lookup from a root context, so
+  // the file belongs to a runtime context this product does not select
+  // (FR-003) — the one near miss a leading recursive step would wrongly
+  // accept for either vendor's spelling.
   write(root, 'packages/api/.agents/skills/deploy/SKILL.md', '# Deploy\n');
   // Near miss: no skill-name segment between `skills` and the file.
   write(root, '.agents/skills/SKILL.md', 'no name segment\n');
@@ -180,6 +181,8 @@ export function buildCodexSkillFixture(prefix = 'inspector-codex-skills'): Codex
       '.agents/skills/greet/README.md',
       '.agents/skills/greet/nested/SKILL.md',
     ],
+    // Copilot shares the root `.agents` spelling, so `copilot.repo.skill`
+    // admits exactly this same set; both vendors' recognitions attach to it.
     expectedSkillPaths,
     nearMissPaths: [
       '.agent/skills/solo/SKILL.md',
@@ -216,11 +219,15 @@ export interface ClaudeSkillFixture {
    */
   readonly expectedCodexSkillPaths: readonly string[];
   /**
-   * Paths one segment away from an admitted skill that no rule may admit; see
-   * {@link CodexSkillFixture.nearMissPaths}. The nested `.agents/skills` entry
-   * matters most here: it is admitted for *Claude's* spelling and refused for
-   * Codex's, so a scan that blurred the two vendors' expansions would fail on
-   * it.
+   * Every Source-relative Path the `copilot.repo.skill` allowlist must admit
+   * in the same tree, sorted: the root `.claude` and `.agents` skills, since
+   * both spellings are shared at the root while no Copilot surface documents
+   * a downward lookup — a nested `.claude` skill stays Claude's alone (T152).
+   */
+  readonly expectedCopilotSkillPaths: readonly string[];
+  /**
+   * Paths one segment away from an admitted skill that no shipped rule may
+   * admit; see {@link CodexSkillFixture.nearMissPaths}.
    */
   readonly nearMissPaths: readonly string[];
   /**
@@ -265,7 +272,9 @@ export function buildClaudeSkillFixture(prefix = 'inspector-claude-skills'): Cla
   write(root, 'packages/api/.claude/skills/dup/SKILL.md', '# nested dup\n');
 
   // Codex preservation: an admitted Codex skill beside the Claude ones, and
-  // the nested Codex near miss the Claude expansion must not start admitting.
+  // the nested `.agents` near miss no rule may admit — Codex's and Copilot's
+  // programs are both anchored at the root, so the same nesting that is a
+  // real Claude layer under `.claude` stays out under `.agents` (T152).
   write(root, '.agents/skills/codex-greet/SKILL.md', '---\nname: codex-greet\n---\n');
   write(root, 'packages/api/.agents/skills/deploy/SKILL.md', '# Codex near miss\n');
 
@@ -344,6 +353,12 @@ export function buildClaudeSkillFixture(prefix = 'inspector-claude-skills'): Cla
     capabilities: { symlinks },
     expectedClaudeSkillPaths,
     expectedCodexSkillPaths: ['.agents/skills/codex-greet/SKILL.md'],
+    // Copilot shares both other vendors' spellings at the root alone, so its
+    // admitted set is the root `.claude` skills plus the root Codex one.
+    expectedCopilotSkillPaths: [
+      ...expectedClaudeSkillPaths.filter((path) => !path.startsWith('packages/')),
+      '.agents/skills/codex-greet/SKILL.md',
+    ].sort(),
     // Only `greet/` holds anything besides its own `SKILL.md`; every other
     // admitted skill directory has exactly one file.
     expectedCompanionPaths: [
@@ -351,5 +366,134 @@ export function buildClaudeSkillFixture(prefix = 'inspector-claude-skills'): Cla
       '.claude/skills/greet/nested/SKILL.md',
     ],
     nearMissPaths,
+  };
+}
+
+/** One built three-vendor Copilot SKILL fixture repository (T152). */
+export interface CopilotSkillFixture {
+  /** The absolute fixture root to scan. */
+  readonly root: string;
+  /**
+   * Every Source-relative Path the `copilot.repo.skill` allowlist must admit,
+   * sorted: the root context of each of the three fixed directory spellings.
+   */
+  readonly expectedCopilotSkillPaths: readonly string[];
+  /** The subset `codex.repo.skill` must also admit: the root `.agents` skill alone. */
+  readonly expectedCodexSkillPaths: readonly string[];
+  /**
+   * The paths `claude.repo.skill` must admit: every `.claude` skill, root and
+   * nested — the nested one through Claude's own documented lazy descendant
+   * discovery, which no Copilot surface shares.
+   */
+  readonly expectedClaudeSkillPaths: readonly string[];
+  /**
+   * Paths `copilot.repo.skill` may not admit: nested contexts of its three
+   * spellings, the one-direct-child depth violations, per-segment near
+   * misses, VCS internals, and the configured-root shapes — a
+   * `COPILOT_SKILLS_DIRS`-style directory and a repository `.copilot`
+   * location — that stay condition facts rather than scan roots
+   * (contracts/vendors/github-copilot.md § `copilot.excluded.extra-directories`).
+   * The nested `.claude` entry is Claude's candidate and no one else's.
+   */
+  readonly copilotNearMissPaths: readonly string[];
+  /**
+   * The files the admitted skills' censuses list, sorted. They are read and
+   * published as ordinary files that no rule admitted and nothing recognized.
+   */
+  readonly expectedCompanionPaths: readonly string[];
+}
+
+/**
+ * Builds the canonical three-vendor Copilot SKILL fixture repository (T152).
+ *
+ * Positive cases exercise the exact recognition matrix at the root — a
+ * `.github` skill is Copilot-only, an `.agents` skill is Codex+Copilot, and a
+ * `.claude` skill is Claude+Copilot — with the root `.github` and `.claude`
+ * skills declaring one shared name, so one grouped row carries a
+ * Copilot-vs-Copilot collision whose only honest statement is
+ * surface-dependent.
+ *
+ * Negative cases pin the selector edges: the nested contexts of all three
+ * spellings — no Copilot surface documents a downward skill lookup from a
+ * root context, so a nested skills directory belongs to a runtime context
+ * this product does not select (FR-003); the nested `.claude` one stays a
+ * real Claude lazy-discovery layer — plus no skill-name segment, one level
+ * too deep, singular and dotless directory spellings, a case-varied terminal,
+ * VCS internals, and two configured-root shapes that must never become scan
+ * roots.
+ */
+export function buildCopilotSkillFixture(prefix = 'inspector-copilot-skills'): CopilotSkillFixture {
+  const root = createRepositoryFixtureRoot(prefix);
+
+  // Positive matrix, root: one skill per fixed directory spelling. `.github`
+  // and `.claude` share a declared name so a Copilot collision exists.
+  write(root, '.github/skills/ship/SKILL.md', '---\nname: voyage\n---\n\nGitHub ship.\n');
+  write(root, '.agents/skills/orbit/SKILL.md', '---\nname: orbit\n---\n\nShared orbit.\n');
+  write(root, '.claude/skills/lander/SKILL.md', '---\nname: voyage\n---\n\nClaude lander.\n');
+  // Nested contexts of the same three spellings, one package below the root.
+  // All three are Copilot near misses — no Copilot surface reads downward
+  // from a root context — and only the `.claude` one is admitted at all, as a
+  // Claude lazy-discovery layer.
+  write(root, 'packages/api/.github/skills/nested-ship/SKILL.md', '# Nested ship\n');
+  write(root, 'packages/api/.agents/skills/orbit-nested/SKILL.md', '# Nested near miss\n');
+  write(root, 'packages/api/.claude/skills/lander-nested/SKILL.md', '# Nested lander\n');
+
+  // Companions of the root `.github` skill: a sibling reference and a
+  // one-level-too-deep `SKILL.md` that is also a depth near miss.
+  write(root, '.github/skills/ship/reference.md', 'reference\n');
+  write(root, '.github/skills/ship/nested/SKILL.md', 'too deep\n');
+
+  // Near miss: no skill-name segment between `skills` and the file.
+  write(root, '.github/skills/SKILL.md', 'no name segment\n');
+  // Near miss: singular directory name.
+  write(root, '.github/skill/solo/SKILL.md', 'singular skill dir\n');
+  // Near miss: the dotless spelling.
+  write(root, 'github/skills/solo/SKILL.md', 'no leading dot\n');
+  // Near miss: the terminal literal is case-sensitive, in its own directory so
+  // a case-insensitive filesystem cannot collide it with an admitted file.
+  write(root, '.github/skills/uppercase/SKILL.MD', 'wrong case\n');
+  // Near miss: VCS internals are excluded from traversal entirely.
+  write(root, '.git/.github/skills/hidden/SKILL.md', 'vcs internal\n');
+  // Configured-root exclusions: a directory a `COPILOT_SKILLS_DIRS` value or
+  // a custom location setting could name, and a repository `.copilot`
+  // directory. Both are documented behavior and neither is a shipped selector
+  // spelling, so a scan admitting either has broadened the allowlist.
+  write(root, 'copilot-configured/skills/tool/SKILL.md', 'configured root\n');
+  write(root, '.copilot/skills/tool/SKILL.md', 'repository .copilot\n');
+  // Unrelated file that shares no segment with any selector.
+  write(root, 'README.md', 'unrelated\n');
+
+  return {
+    root,
+    expectedCopilotSkillPaths: [
+      '.agents/skills/orbit/SKILL.md',
+      '.claude/skills/lander/SKILL.md',
+      '.github/skills/ship/SKILL.md',
+    ],
+    expectedCodexSkillPaths: ['.agents/skills/orbit/SKILL.md'],
+    expectedClaudeSkillPaths: [
+      '.claude/skills/lander/SKILL.md',
+      'packages/api/.claude/skills/lander-nested/SKILL.md',
+    ],
+    // Only `ship/` holds anything besides its own `SKILL.md`.
+    expectedCompanionPaths: [
+      '.github/skills/ship/nested/SKILL.md',
+      '.github/skills/ship/reference.md',
+    ],
+    copilotNearMissPaths: [
+      '.copilot/skills/tool/SKILL.md',
+      '.git/.github/skills/hidden/SKILL.md',
+      '.github/skill/solo/SKILL.md',
+      '.github/skills/SKILL.md',
+      '.github/skills/ship/nested/SKILL.md',
+      '.github/skills/ship/reference.md',
+      '.github/skills/uppercase/SKILL.MD',
+      'README.md',
+      'copilot-configured/skills/tool/SKILL.md',
+      'github/skills/solo/SKILL.md',
+      'packages/api/.agents/skills/orbit-nested/SKILL.md',
+      'packages/api/.claude/skills/lander-nested/SKILL.md',
+      'packages/api/.github/skills/nested-ship/SKILL.md',
+    ],
   };
 }

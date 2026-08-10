@@ -14,13 +14,13 @@ import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { recognizeCandidateForVendor } from '../../../src/server/inspection/recognizers/candidate';
+import { recognizeCandidateForVendors } from '../../../src/server/inspection/recognizers/candidate';
 import { CLAUDE_REPOSITORY_RULES } from '../../../src/server/inspection/rules/claude';
 import {
   MALFORMED_SKILL_CONTENT_CASES,
   SKILL_CONTENT_CASES,
 } from '../../fixtures/content/build-fixtures';
-import type { ToolRecognitionDto } from '../../../src/shared/api-types';
+import type { ToolRecognition } from '../../../src/server/inspection/recognizers/candidate';
 
 const [claudeSkillRule] = CLAUDE_REPOSITORY_RULES;
 
@@ -47,17 +47,16 @@ afterAll(() => {
 async function recognize(
   sourceText: string,
   matchedPath = '.claude/skills/greet/SKILL.md',
-): Promise<ToolRecognitionDto> {
-  const { recognitions } = await recognizeCandidateForVendor(
+): Promise<ToolRecognition> {
+  const { recognitions } = await recognizeCandidateForVendors(
     {
-      fileId: 'file-1',
       matchedPath,
       absolutePath: join(root, matchedPath),
       sourceRoot: root,
       admissions: [{ compiled: claudeSkillRule!, origin: { planIndex: 0, selectorIndex: 0 } }],
       sourceText,
     },
-    'claude',
+    ['claude'],
   );
   const [recognition] = recognitions;
   if (recognition === undefined) {
@@ -312,13 +311,14 @@ describe('Claude skill declared name', () => {
       'packages/api/.claude/skills/deploy/SKILL.md',
     ]) {
       const recognition = await recognize('---\nname: layered\n---\n', matchedPath);
-      expect(recognition.provenances).toEqual([
-        {
-          ruleId: 'claude.repo.skill',
-          discoveryClass: 'static-candidate',
-          matchedPath,
-        },
-      ]);
+      // Field by field rather than a deep equality: a provenance derives its
+      // rule identifiers from the compiled rule it holds, and an equality
+      // matcher's clone has no class behind those getters.
+      expect(recognition.provenances).toHaveLength(1);
+      const [provenance] = recognition.provenances;
+      expect(provenance!.ruleId).toBe('claude.repo.skill');
+      expect(provenance!.discoveryClass).toBe('static-candidate');
+      expect(provenance!.matchedPath).toBe(matchedPath);
     }
   });
 });

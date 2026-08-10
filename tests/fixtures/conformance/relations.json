@@ -5,6 +5,19 @@
     },
     "codex.skills.discovery": {
       "consumesBehaviors": ["codex.behavior.repo.skills", "codex.behavior.user.skills"]
+    },
+    "copilot.cli.skills.selection": {
+      "consumesBehaviors": [
+        "copilot.behavior.cli.commands",
+        "copilot.behavior.cli.skills",
+        "copilot.behavior.cli.user.skills"
+      ]
+    },
+    "copilot.cloud.skills.selection": {
+      "consumesBehaviors": ["copilot.behavior.cloud.remote-skills", "copilot.behavior.cloud.skills"]
+    },
+    "copilot.vscode.skills.selection": {
+      "consumesBehaviors": ["copilot.behavior.vscode.skills", "copilot.behavior.vscode.user.skills"]
     }
   },
   "rules": {
@@ -15,6 +28,18 @@
     "codex.repo.skill": {
       "basedOnBehaviors": ["codex.behavior.repo.skills"],
       "explainedByStrategies": ["codex.skills.discovery"]
+    },
+    "copilot.repo.skill": {
+      "basedOnBehaviors": [
+        "copilot.behavior.cli.skills",
+        "copilot.behavior.cloud.skills",
+        "copilot.behavior.vscode.skills"
+      ],
+      "explainedByStrategies": [
+        "copilot.cli.skills.selection",
+        "copilot.cloud.skills.selection",
+        "copilot.vscode.skills.selection"
+      ]
     }
   }
 }

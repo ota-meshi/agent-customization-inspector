@@ -1,7 +1,7 @@
 // Nuxt client SPA configuration. The browser application is a static,
 // same-origin bundle served by the local Node host: no SSR, no CDN, and
 // root-absolute assets so the one shell also boots nested routes such as
-// /skills/<fileId>. Auto-imports and implicit components are disabled so every
+// /skills/<tool>/<source-relative path>. Auto-imports and implicit components are disabled so every
 // dependency of the security-reviewed client code is an explicit import.
 import { defineNuxtConfig } from 'nuxt/config';
 import { thirdPartyNoticesPlugin } from './scripts/third-party-notices-plugin.mjs';

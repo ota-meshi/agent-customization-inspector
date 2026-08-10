@@ -1,7 +1,7 @@
-// T053/T126: the Codex and Claude SKILL rules as executed — each authored
-// program compiles once into the typed plan, the safe filesystem executes only
-// that plan, and vendor code classifies matches without owning a walker or
-// reinterpreting selectors (FR-003, FR-019, FR-024).
+// T053/T126/T154: the Codex, Claude, and Copilot SKILL rules as executed —
+// each authored program compiles once into the typed plan, the safe filesystem
+// executes only that plan, and vendor code classifies matches without owning a
+// walker or reinterpreting selectors (FR-003, FR-019, FR-024).
 //
 // The near-miss assertions carry the weight here. A selector that is one
 // segment too loose still passes every positive case, so the only way an
@@ -15,16 +15,20 @@ import * as fsIo from '../../../src/server/inspection/fs-io';
 import {
   buildClaudeSkillFixture,
   buildCodexSkillFixture,
+  buildCopilotSkillFixture,
   type ClaudeSkillFixture,
   type CodexSkillFixture,
+  type CopilotSkillFixture,
 } from '../../fixtures/repositories/build-fixtures';
 import { CLAUDE_REPOSITORY_RULES } from '../../../src/server/inspection/rules/claude';
 import { CODEX_REPOSITORY_RULES } from '../../../src/server/inspection/rules/codex';
+import { COPILOT_REPOSITORY_RULES } from '../../../src/server/inspection/rules/copilot';
 import { INSPECTION_RULES } from '../../../src/shared/registries/inspection-rules';
 import { RULE_RELATIONS } from '../../../src/shared/registries/relations';
 import {
   TraversalPlan,
   resolveAdmittingRules,
+  type CompiledInspectionRule,
 } from '../../../src/server/inspection/rules/registry';
 import { runTraversalScan } from '../../../src/server/inspection/traversal';
 import { runSourceScan } from '../../../src/server/inspection/scan';
@@ -52,16 +56,18 @@ afterAll(() => {
   rmSync(fixture.root, { recursive: true, force: true });
 });
 
-async function scanFixture() {
+/** Runs one traversal over `root` with `rules`' plans, expecting a scan. */
+async function scanWith(root: string, rules: readonly CompiledInspectionRule[]) {
   vi.clearAllMocks();
-  const result = await runTraversalScan({
-    root: fixture.root,
-    plans: CODEX_REPOSITORY_RULES.map((rule) => rule.plan),
-  });
+  const result = await runTraversalScan({ root, plans: rules.map((rule) => rule.plan) });
   if (result.kind !== 'scanned') {
     throw new Error(`expected a scanned result, got ${result.kind}`);
   }
   return result;
+}
+
+async function scanFixture() {
+  return scanWith(fixture.root, CODEX_REPOSITORY_RULES);
 }
 
 describe('the shipped codex.repo.skill plan', () => {
@@ -167,7 +173,11 @@ describe('the bounded companion census', () => {
       // own, which is what "the census admits nothing" now means. A file does
       // not list its recognitions, so what proves it holds none is that no
       // published recognition names it.
-      expect(publication.recognitions.filter((one) => one.fileId === file?.fileId)).toEqual([]);
+      expect(
+        publication.recognitions.filter(
+          (one) => one.sourceRelativePath === file?.sourceRelativePath,
+        ),
+      ).toEqual([]);
     }
   });
 });
@@ -362,15 +372,7 @@ describe('the Claude descendant inventory beside the anchored Codex one (T126)',
   });
 
   async function scanMixed() {
-    vi.clearAllMocks();
-    const result = await runTraversalScan({
-      root: mixed.root,
-      plans: [...CLAUDE_REPOSITORY_RULES, ...CODEX_REPOSITORY_RULES].map((rule) => rule.plan),
-    });
-    if (result.kind !== 'scanned') {
-      throw new Error(`expected a scanned result, got ${result.kind}`);
-    }
-    return result;
+    return scanWith(mixed.root, [...CLAUDE_REPOSITORY_RULES, ...CODEX_REPOSITORY_RULES]);
   }
 
   it('admits the Claude skills at the root and in nested directories, and the Codex ones unchanged', async () => {
@@ -391,7 +393,9 @@ describe('the Claude descendant inventory beside the anchored Codex one (T126)',
 
   it('admits no near miss, including the nested Codex spelling', async () => {
     // The nested `.agents/skills` file is the discriminating case: Claude's
-    // descendant expansion must not leak into Codex's anchored program.
+    // descendant expansion must not leak into the anchored `.agents` programs
+    // — Codex's, and equally Copilot's, which shares the spelling at the root
+    // alone.
     const result = await scanMixed();
     const paths = new Set(result.files.map((file) => file.publicPath));
     for (const nearMiss of mixed.nearMissPaths) {
@@ -447,5 +451,123 @@ describe('the Claude descendant inventory beside the anchored Codex one (T126)',
     expect(
       result.files.filter((file) => file.publicPath.startsWith('.claude/skills/cycle/')),
     ).toEqual([]);
+  });
+});
+
+describe('the shipped copilot.repo.skill plan and its matrix (T154)', () => {
+  let copilot: CopilotSkillFixture;
+
+  beforeAll(() => {
+    copilot = buildCopilotSkillFixture('inspector-copilot-rules');
+  });
+
+  afterAll(() => {
+    rmSync(copilot.root, { recursive: true, force: true });
+  });
+
+  it('compiles the three authored programs once into the immutable typed plan', () => {
+    expect(COPILOT_REPOSITORY_RULES).toHaveLength(1);
+    const compiled = COPILOT_REPOSITORY_RULES[0]!;
+    expect(compiled.rule.ruleId).toBe('copilot.repo.skill');
+    expect(compiled.tool).toBe('copilot');
+    expect(compiled.kind).toBe('skill');
+    // The compiled plan is exactly what compiling the shipped matcher yields:
+    // there is no second, vendor-owned interpretation of the selectors.
+    expect(compiled.plan).toEqual(
+      new TraversalPlan(INSPECTION_RULES['copilot.repo.skill']!.matcher!),
+    );
+    // Three programs, one per fixed directory spelling, each anchored at the
+    // Repository root with exactly one dynamic skill-name child and the exact
+    // terminal literal: no Copilot surface documents a downward skill lookup
+    // from a root context, so a nested skills directory belongs to a runtime
+    // context this product does not select (FR-003;
+    // contracts/vendors/github-copilot.md § Inspector Repository matcher
+    // rules).
+    expect(
+      compiled.plan.selectors.map((selector) => selector.remainder.map((segment) => segment.kind)),
+    ).toEqual([
+      ['literal', 'literal', 'regex', 'literal'],
+      ['literal', 'literal', 'regex', 'literal'],
+      ['literal', 'literal', 'regex', 'literal'],
+    ]);
+  });
+
+  async function scanCopilot() {
+    return scanWith(copilot.root, COPILOT_REPOSITORY_RULES);
+  }
+
+  it('admits the root context of all three spellings, and nothing else', async () => {
+    const result = await scanCopilot();
+    expect(result.files.map((file) => file.publicPath)).toEqual([
+      ...copilot.expectedCopilotSkillPaths,
+    ]);
+  });
+
+  it('admits no nested context, near miss, extra depth, or configured root', async () => {
+    // The negative matrix: the nested contexts of all three spellings — a
+    // runtime project below the selected root is a context this product does
+    // not select (FR-003) — plus a `SKILL.md` without its name segment, one a
+    // level too deep, singular/dotless/case-varied spellings, VCS internals,
+    // and the two configured-root shapes. No selector broadening admits any
+    // of them — a `COPILOT_SKILLS_DIRS`-style directory stays a condition
+    // fact, never a scan root (contracts/vendors/github-copilot.md
+    // § `copilot.excluded.extra-directories`).
+    const result = await scanCopilot();
+    const paths = new Set(result.files.map((file) => file.publicPath));
+    for (const nearMiss of copilot.copilotNearMissPaths) {
+      expect(paths.has(nearMiss), nearMiss).toBe(false);
+    }
+  });
+
+  it('resolves each admission to copilot.repo.skill through its own spelling’s selector', async () => {
+    // Deterministic provenance: the admission names the authored selector by
+    // index — `.github` is the first program, `.agents` the second, `.claude`
+    // the third — so which spelling admitted a candidate is a fact of the
+    // walk, never re-derived from the public path.
+    const result = await scanCopilot();
+    const selectorByPrefix = (path: string): number =>
+      path.includes('.github/') ? 0 : path.includes('.agents/') ? 1 : 2;
+    for (const candidate of result.files) {
+      const admitting = resolveAdmittingRules(COPILOT_REPOSITORY_RULES, candidate.admissions);
+      expect(admitting.map((compiled) => compiled.rule.ruleId)).toEqual(['copilot.repo.skill']);
+      expect(candidate.admissions[0], candidate.publicPath).toEqual({
+        planIndex: 0,
+        selectorIndex: selectorByPrefix(candidate.publicPath),
+      });
+    }
+  });
+
+  it('keeps the exact recognition matrix when every vendor’s plans run together', async () => {
+    // The one-pass walk over all three vendors' plans admits each physical
+    // file once, with the admissions naming exactly the vendors whose
+    // documented locations it sits in — and the nested `.claude` skill is
+    // Claude's alone, through its own documented lazy descendant discovery.
+    vi.clearAllMocks();
+    const rules = [
+      ...COPILOT_REPOSITORY_RULES,
+      ...CLAUDE_REPOSITORY_RULES,
+      ...CODEX_REPOSITORY_RULES,
+    ];
+    const result = await runTraversalScan({
+      root: copilot.root,
+      plans: rules.map((rule) => rule.plan),
+    });
+    if (result.kind !== 'scanned') {
+      throw new Error(`expected a scanned result, got ${result.kind}`);
+    }
+    const expected = new Map<string, readonly string[]>([
+      ['.github/skills/ship/SKILL.md', ['copilot.repo.skill']],
+      ['.agents/skills/orbit/SKILL.md', ['copilot.repo.skill', 'codex.repo.skill']],
+      ['.claude/skills/lander/SKILL.md', ['copilot.repo.skill', 'claude.repo.skill']],
+      ['packages/api/.claude/skills/lander-nested/SKILL.md', ['claude.repo.skill']],
+    ]);
+    expect(result.files.map((file) => file.publicPath).sort()).toEqual([...expected.keys()].sort());
+    for (const candidate of result.files) {
+      const admitting = resolveAdmittingRules(rules, candidate.admissions);
+      expect(
+        admitting.map((compiled) => compiled.rule.ruleId),
+        candidate.publicPath,
+      ).toEqual(expected.get(candidate.publicPath));
+    }
   });
 });

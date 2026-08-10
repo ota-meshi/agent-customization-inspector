@@ -93,8 +93,8 @@ Expected:
   manager-generated `.bin` symlinks and `.cmd`/`.ps1` launch shims exist outside those
   payloads and are the only limited interoperability exception: each maps one exact
   declared `package.json.bin` target to audited Node JavaScript, forwards argv only, and
-  adds no input or application logic. The direct production dependencies are exactly the seven
-  packages `devframe`, `gunshi`, `jsonc-parser`, `smol-toml`, `vfile`, `vfile-matter`, and
+  adds no input or application logic. The direct production dependencies are exactly the eight
+  packages `devframe`, `gunshi`, `h3`, `jsonc-parser`, `smol-toml`, `vfile`, `vfile-matter`, and
   `yaml`; devframe's transitive tree is owned by devframe
   and the lockfile, and `open` is absent from every dependency section.
 - Build output contains no fixture, raw customization text, Global content, cache, or
@@ -288,8 +288,8 @@ Expected:
   the current gate neither installs a tarball nor invokes an installed package link. T917 owns
   the final-release test that packs and installs into an isolated fixture and launches
   `npx --no-install` without relying on the working tree or a runtime download.
-  The production-graph tests assert exactly the seven approved direct dependencies
-  `devframe`, `gunshi`, `jsonc-parser`, `smol-toml`, `vfile`, `vfile-matter`, and `yaml` — their resolved versions
+  The production-graph tests assert exactly the eight approved direct dependencies
+  `devframe`, `gunshi`, `h3`, `jsonc-parser`, `smol-toml`, `vfile`, `vfile-matter`, and `yaml` — their resolved versions
   and integrity hashes stay owned by the committed
   `pnpm-lock.yaml` — and negative packaging fixtures prove that a missing or non-regular
   required entry point fails `verify:package` before publish.
@@ -439,12 +439,12 @@ Verify:
    and consent-preview root labels remain presentation-only, are not Source-relative Paths,
    and grant no read authority.
 3. One physical `AGENTS.md`, `CLAUDE.md`, skill, `.mcp.json`, or marketplace remains one
-   file without duplicate content and has exactly one recognition for each
-   `(fileId, tool, kind)`; compatible admissions merge as provenances of that record. Each
-   recognition exposes only `not-attempted | parsed | failed`; a file carries no
-   parse rollup, because the recognition's own state is the parse fact and a
-   file-level aggregate had no reader. Recognition order is the closed tool order
-   followed by the closed kind order, never an opaque-ID tie-break.
+   file without duplicate content and has exactly one internal recognition for each
+   `(file, tool, kind)`; compatible admissions merge as provenances of that record, and no
+   session response carries the record itself. Each inventory definition exposes only
+   `not-attempted | parsed | failed`; a file carries no
+   parse rollup, because the definition's own state is the parse fact and a
+   file-level aggregate had no reader.
 4. Near-miss paths remain absent and an empty repository shows a successful supported-
    scope explanation.
 5. The first snapshot has bootstrap Repository generation 0 with exactly one stable-ID idle
@@ -565,7 +565,7 @@ Verify:
    labeled controls and the accessible diff viewer without a focus trap.
 7. The packed app loads its editor worker from a same-origin static asset with no
    external request or `blob:` worker.
-8. Direct loads of `/`, `/compare`, `/global-consent`, and `/skills/<fileId>` all boot from
+8. Direct loads of `/`, `/compare`, `/global-consent`, and `/skills/<tool>/<source-relative path>` all boot from
    the same root-absolute assets served by the devframe host.
 9. Session-loss and response-guard tests cover a devframe-transport-reported channel loss,
    channel loss or unsupported protocol on the current non-superseded RPC, session-ID mismatch,
@@ -593,8 +593,9 @@ Verify:
    advances the
    client epoch and aborts/disposes that sequence's old requests and generation-owned
    state while the other sequence's committed views stay valid. A file detail is
-   adopted only when its captured `(clientDataEpoch, owning-sequence generation, fileId)` still
-   matches all three live values.
+   adopted only when its captured `(clientDataEpoch, sourceRelativePath)` still matches
+   the live epoch and the selected file; the path is the file's stable identity, so the
+   host resolves it against whatever generation is current.
 10. Global disable retains its distinct recovery path: the SPA performs a central full
     client-data purge before sending the disable request, and a greater epoch or non-null
     fence observed in any response causes another purge before rendering. Recovery
@@ -673,9 +674,9 @@ real home directory. Verify:
    active consent is accepted only while that projection is nonempty; existing Sources remain
    semantically unchanged and a different preview/root requires disable first. Every
    successful initial or retry admitted-subset batch commit
-   commits exactly one Global generation, rekeys only Global generation-owned graphs and
-   IDs, and invalidates only old Global file/detail/comparison/selection/editor state;
-   Repository generation, IDs, and views are untouched, and a Repository rescan likewise
+   commits exactly one Global generation and invalidates only old Global
+   detail/comparison/selection/editor state;
+   Repository generation and views are untouched, and a Repository rescan likewise
    leaves committed Global detail and comparison views valid.
    The coordinator serializes correctness-sensitive admission and scan work without a
    product-defined slot or queue-capacity ceiling. An unexpected admission failure
@@ -715,7 +716,7 @@ real home directory. Verify:
    the already-purged client can immediately retrieve a fresh full snapshot.
 8. Explicit Global rescan is accepted only while enabled, follows the same FIFO and
    dequeue-time generation rules as Repository rescan, and on commit advances only the
-   Global sequence, rekeying only its generation-owned graphs and IDs while committed
+   Global sequence, invalidating only its own views while committed
    Repository views stay valid. Its admission response, Source/progress, and successful generation preserve the
    same opaque `scanRequestId`. An unknown/removed Source returns the fixed `stale-resource`
    rejection, a pending/active disable
@@ -1103,29 +1104,32 @@ unless the final pair exactly matches valid evidence.
   as prohibited; treat attributable but unclassifiable traffic as outside both classes. Record
   unrelated extension/host-process traffic without attributing it to the product, and record
   observable OS-mediated mounted/mapped-source traffic separately as the FR-022 limitation.
-  Use exact privacy-safe route/target classifier `targetClass` with closed literals
-  `static-manifested-asset | static-spa-shell | static-client-route-fallback | api-get-session |
-  api-get-file | api-post-repository-rescan |
-  api-get-global-consent-preview | api-post-global-consent-preview | api-post-global-enable |
-  api-post-global-rescan | api-post-global-disable | other-loopback | remote | mcp |
+  Use exact privacy-safe target classifier `targetClass` with closed literals
+  `static-manifested-asset | static-spa-shell | static-client-route-fallback |
+  connection-discovery-metadata | rpc-channel-upgrade | rpc-get-session | rpc-get-file-detail |
+  rpc-rescan-repository | rpc-get-global-consent-preview | rpc-create-global-consent-preview |
+  rpc-enable-global | rpc-rescan-global | rpc-disable-global | rpc-devframe-framework |
+  other-loopback | remote | mcp |
   unclassifiable | not-applicable`, and apply the contract's closed truth table across
-  authority, target, route, method, capability, origin, same-host, attribution, request class,
-  and prohibited status. Give every row `eventCode: observation`, not-applicable workflow class,
+  authority, target, method, origin, same-host, attribution, request class,
+  and prohibited status; classify the session channel's RPC invocations Inspector-side at the
+  dispatch boundary as the dispatched function's row, with not-applicable method and origin.
+  Give every row `eventCode: observation`, not-applicable workflow class,
   observed outcome class, correlation-context subject/process IDs, and fresh event/correlation IDs. Use effect
-  `none` and `prohibited: false` only for the exact authorized-static/API table rows. For a
+  `none` and `prohibited: false` only for the exact authorized-static/RPC table rows. For a
   product-attributable exact-issued request outside those tables, use a request observation,
   participant/bundled-SPA/Inspector actor as applicable, exact-issued authority, prohibited request class, observed closed
-  target/method/capability/origin, unauthorized-request effect, and true
+  target/method/origin, unauthorized-request effect, and true
   same-host/attribution/prohibited. For other-loopback, use other-loopback authority/target,
-  prohibited request class, observed closed method, not-applicable capability/origin,
+  prohibited request class, observed closed method, not-applicable origin,
   unauthorized-request, and the same three true booleans. For remote, use remote
   authority/target, prohibited request class, observed closed method, not-applicable
-  capability/origin, prohibited-outbound-request, false same-host, and true
+  origin, prohibited-outbound-request, false same-host, and true
   attribution/prohibited. For a fully unclassifiable product-correlated request, use unknown
-  actor and unclassifiable authority/request/target/method/capability/origin,
+  actor and unclassifiable authority/request/target/method/origin,
   unauthorized-request, false same-host, and true attribution/prohibited. For MCP, use an MCP
   observation, Inspector actor, target `mcp`, not-applicable
-  authority/request/method/capability/origin, effect `mcp-connection`, false same-host, and true
+  authority/request/method/origin, effect `mcp-connection`, false same-host, and true
   attribution/prohibited. At both proxy and server, independently classify exact Chromium-
   controlled `Sec-Fetch-Dest`, `Sec-Fetch-Mode`, `Sec-Fetch-Site`, `Sec-Fetch-User`, Origin,
   and Referer, then discard raw values and require identical projections. Treat Fetch Metadata
@@ -1144,7 +1148,7 @@ unless the final pair exactly matches valid evidence.
   grantless HTTP request is open-binding `unknown` with a fresh proxy ID, product-attributable/
   prohibited and blocked without consuming or invalidating the grant.
   Valid + not participant + missing user + exact-issued Origin or missing Origin plus
-  exact-issued Referer is `bundled-spa`; forward only exact authorized static/API and block all
+  exact-issued Referer is `bundled-spa`; forward only exact authorized static/RPC and block all
   else product-attributable/prohibited. Valid + extension Origin is `browser-extension`, N/A,
   unrelated, and blocked. Every remaining valid projection is `unknown`, uses open binding IDs,
   is product-attributable/prohibited, and is blocked. Missing-after-bootstrap is
@@ -1519,7 +1523,7 @@ Coordinator tests preserve deterministic serialization, per-sequence generation 
 cancellation,
 disable/shutdown/supersession revocation, and late-result discard without defining slots,
 queue capacity, or a scheduling deadline. Independent-sequence fixtures prove that a
-Repository rescan commit rekeys only Repository file IDs and leaves committed Global
+Repository rescan commit invalidates only Repository views and leaves committed Global
 detail and comparison views valid, that a Global rescan likewise leaves committed
 Repository views valid, and that Global disable discards the Global sequence without
 committing any generation. The session-loss and response-guard contracts and SC-002 timing
@@ -1586,15 +1590,16 @@ authored text exactly, introduce none of the sentinel values, expose no masking/
 control, and duplicate no customization source value in Diagnostics.
 
 Diagnostic-behavior tests cover the order-only aggregation — fixed phase/source/
-path/rule/code/occurrence order with no dedup pass, so legitimately repeated records (one
-per failed recognition) all publish. A failure while retaining or serializing a Diagnostic is not
+path/rule/code/occurrence order with no dedup pass, so legitimately repeated records —
+an extraction failure is one record per `(file, kind)`, and one file's two kinds can
+each fail — all publish. A failure while retaining or serializing a Diagnostic is not
 confined to one file: it fails the attempt, publishes no result/generation, and is reported
 as an ordinary error with the failed request's message. Multi-Source cases prove A/B entry-failure pairs coexist, B success preserves A,
 A success clears only A's pair, repeated A failure replaces only A's pair, and Global disable
 removes only Global pairs. Repeated client-caused API errors never increase a retained diagnostic count.
 The same fixtures validate the closed `file | source` scope union: file scope requires
-`sourceId`, `fileId`, and `sourceRelativePath`; source scope requires `sourceId` and
-forbids `fileId`/`sourceRelativePath`. There is no pathless scope, and a source-scoped
+`sourceId` and `sourceRelativePath`; source scope requires `sourceId` and
+forbids `sourceRelativePath`. There is no pathless scope, and a source-scoped
 diagnostic never invents a path for display or ordering.
 
 ## Manual accessibility review
@@ -1644,7 +1649,7 @@ the exact `package.json.files` entries `dist`, `README.md`, `README.ja.md`, and
 the remaining `dist` contents are Nuxt/tsdown build output and are not re-enumerated by a
 product manifest. Inspect the exact `bin` mapping and absence of `main`/`module`/`exports`,
 license notices, exact shebang/executable mode, and the published README pair. The direct
-production dependencies are exactly the seven packages `devframe`, `gunshi`, `jsonc-parser`,
+production dependencies are exactly the eight packages `devframe`, `gunshi`, `h3`, `jsonc-parser`,
 `smol-toml`, `vfile`, `vfile-matter`, and `yaml`; `open` must be absent from every dependency section, while devframe's transitive
 tree is owned by devframe and the lockfile.
 
@@ -1666,7 +1671,7 @@ window, and rollback/support path. Missing or one-language-only evidence fails t
 gate.
 
 Assert the approved production dependency set from `package.json` and the `pnpm-lock.yaml`
-closure: exactly the seven direct dependencies `devframe`, `gunshi`, `jsonc-parser`,
+closure: exactly the eight direct dependencies `devframe`, `gunshi`, `h3`, `jsonc-parser`,
 `smol-toml`, `vfile`, `vfile-matter`, and `yaml`, so a graph change fails the gate until the dependency decision is
 explicitly revisited. The committed lockfile owns each resolved version and its integrity
 hash, which is what pins every production package's payload bytes. Only generated

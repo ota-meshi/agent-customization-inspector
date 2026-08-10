@@ -44,15 +44,24 @@ describe('host startup', () => {
     // the RPC catalog.
     expect(definition.id).toBe(createInspectorDevframe(context).id);
     expect(typeof definition.setup).toBe('function');
-    expect(options).toEqual({ openBrowser: false, onReady });
+    // Besides the launch's own options, the host always hands devframe the H3
+    // app carrying the `/skills/**` shell fallback — the one route family
+    // devframe's extension-guarded SPA fallback cannot serve; the served
+    // behavior itself is proven in the browser suites' fresh deep-link loads.
+    const { app, ...forwarded } = options!;
+    expect(app).toBeDefined();
+    expect(forwarded).toEqual({ openBrowser: false, onReady });
   });
 
-  it('passes no server options when the launch names none', async () => {
+  it('passes no server options besides the host app when the launch names none', async () => {
     await startInspectorHost({ context: hostContext() });
     const [, options] = vi.mocked(createDevServer).mock.calls.at(-1)!;
     // An absent option must stay absent rather than becoming an explicit
-    // `undefined`, which devframe would read as a value the launch chose.
-    expect(options).toEqual({});
+    // `undefined`, which devframe would read as a value the launch chose; the
+    // host's own app is the one value every launch carries.
+    const { app, ...forwarded } = options!;
+    expect(app).toBeDefined();
+    expect(forwarded).toEqual({});
   });
 });
 

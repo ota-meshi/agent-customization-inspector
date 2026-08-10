@@ -20,10 +20,9 @@ export type SupportedTool =
 
 /**
  * The closed presentation order of {@link SupportedTool}
- * (contracts/http-api.md § get-session: "Recognition arrays use the shipped
- * closed tool order, then the shipped closed kind order, with no opaque ID
- * tie-break"). Opaque IDs are regenerated every generation, so they must
- * never supply a sort order.
+ * (data-model.md § ToolRecognition: recognitions are ordered by the closed
+ * tool order, then the closed kind order, never by opaque ID — an opaque ID
+ * carries no semantic display order).
  */
 export const SUPPORTED_TOOL_ORDER: readonly SupportedTool[] = [
   /** Copilot recognitions sort first. */
@@ -424,28 +423,6 @@ export function escapeControlCharacters(value: string): string {
     /[\u0000-\u001F\u007F-\u009F\u061C\u200E\u200F\u2028\u2029\u202A-\u202E\u2066-\u2069\\]/gu,
     (character) => `\\u${character.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')}`,
   );
-}
-
-/**
- * Whether two of these `SKILL.md` paths sit in same-named skill directories —
- * the clash Claude Code's same-name rule is about, since for a repository
- * skill the command name comes from the skill directory (FR-007). The server
- * projection and the client's filtered view both gate Claude's statement on
- * it, so one definition answers for both.
- */
-export function skillDirectoriesClash(paths: readonly string[]): boolean {
-  const seen = new Set<string>();
-  for (const path of paths) {
-    // `<...>/<skill-directory>/SKILL.md`: the directory is the second-to-last
-    // segment of the entry point's path.
-    const segments = path.split('/');
-    const directory = segments.at(-2) ?? '';
-    if (seen.has(directory)) {
-      return true;
-    }
-    seen.add(directory);
-  }
-  return false;
 }
 
 /**

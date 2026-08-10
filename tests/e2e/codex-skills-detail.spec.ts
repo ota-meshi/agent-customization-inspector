@@ -84,7 +84,9 @@ test.afterEach(async () => {
 /** Opens the named skill's detail route from the inventory. */
 async function openSkill(page: import('@playwright/test').Page, path: string): Promise<void> {
   await page.goto(host.origin);
-  await page.getByRole('link', { name: path }).click();
+  // A file two products recognize is two definitions sharing one link text;
+  // each addresses its own definition route and either opens the same file.
+  await page.getByRole('link', { name: path }).first().click();
 }
 
 /**
@@ -230,13 +232,20 @@ test('leaves an environment reference as the characters that were written', asyn
   );
 });
 
-test('shows what was recognized and nothing about a runtime it cannot see', async ({ page }) => {
+test('shows the addressed definition and nothing about a runtime it cannot see', async ({
+  page,
+}) => {
   await openSkill(page, '.agents/skills/greet/SKILL.md');
-  // The recognition says what the file is. It says nothing about whether the
-  // product would load it, because that depends on a runtime this tool never
-  // observes — and a sentence about it would take the room the files below
-  // need.
-  await expect(page.locator('.aci-recognition-summary')).toContainText('OpenAI Codex');
+  // One definition line — the route's own tool, captioned in words — because
+  // the URL addresses one definition; the first of the row's links is the
+  // Copilot one in the contracted tool order, and which other products
+  // recognize the file is the inventory's matrix. It says nothing about
+  // whether a product would load it, because that depends on a runtime this
+  // tool never observes — and a sentence about it would take the room the
+  // files below need.
+  const definition = page.locator('.aci-skill-detail__definition');
+  await expect(definition).toHaveCount(1);
+  await expect(definition).toHaveText('GitHub Copilot · Skill');
   const detail = (await page.locator('.aci-skill-detail').textContent()) ?? '';
   for (const claim of ['Depends on runtime conditions', 'Selected by a documented rule']) {
     expect(detail).not.toContain(claim);
@@ -245,8 +254,10 @@ test('shows what was recognized and nothing about a runtime it cannot see', asyn
 
 test('says what it recognized in words, never as a contract identifier', async ({ page }) => {
   await openSkill(page, '.agents/skills/greet/SKILL.md');
-  // The recognition is captioned by the products' names, not their tokens.
-  await expect(page.locator('.aci-recognition-summary')).toContainText('OpenAI Codex');
+  // The definition line is captioned by the product's name, not its token.
+  await expect(
+    page.locator('.aci-skill-detail__definition').filter({ hasText: 'GitHub Copilot' }),
+  ).toHaveCount(1);
 
   // `textContent` rather than `innerText`, so anything rendered but visually
   // hidden is checked too.
@@ -323,7 +334,7 @@ test('opens a supporting file from the tree and keeps the skill on screen', asyn
   // its own, and a screen that reported that would be describing the file
   // instead of the skill the reader is looking at.
   await expect(page.locator('.aci-skill-detail h2')).toHaveText('greet');
-  await expect(page.locator('.aci-recognition-summary')).toContainText('OpenAI Codex');
+  await expect(page.locator('.aci-skill-detail__definition')).toHaveCount(1);
   await expect(page.locator('.aci-skill-detail__main h3')).toHaveText(
     '.agents/skills/greet/scripts/run.sh',
   );
@@ -358,7 +369,7 @@ test('shows a binary asset as the fact it is, with nothing wrong', async ({ page
   expect(text).not.toContain('NUL');
   // And the skill above it is untouched: the asset changes what is shown, not
   // what was recognized.
-  await expect(page.locator('.aci-recognition-summary')).toContainText('OpenAI Codex');
+  await expect(page.locator('.aci-skill-detail__definition')).toHaveCount(1);
 });
 
 test('leaves the reader in the tree when they select another file', async ({ page }) => {
@@ -394,7 +405,7 @@ test('opens the skill from any of its files, not only its entry point', async ({
 
   await page.goto(companionUrl);
   await expect(page.locator('.aci-skill-detail h2')).toHaveText('greet');
-  await expect(page.locator('.aci-recognition-summary')).toContainText('OpenAI Codex');
+  await expect(page.locator('.aci-skill-detail__definition')).toHaveCount(1);
   await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toContainText('echo hi');
 });
 
@@ -449,18 +460,22 @@ test('keeps a malformed file readable while its declared name is missing', async
     '# Broken',
   );
   // A failed extraction is an at-a-glance fact, surfaced through its own
-  // Diagnostic in the summary: the name is missing and the file is fine, and
-  // nothing else on the screen would say so (FR-028).
-  await expect(page.locator('.aci-recognition-summary')).toContainText(
-    'One recognition could not be parsed',
-  );
+  // Diagnostic beside the open file: the name is missing and the file is
+  // fine, and nothing else on the screen would say so (FR-028). One
+  // extraction, one record — however many products read the same malformed
+  // text, the message renders once.
+  await expect(
+    page.locator('.aci-skill-detail__main li', {
+      hasText: 'This file could not be parsed',
+    }),
+  ).toHaveCount(1);
 });
 
 test('is operable from the keyboard alone', async ({ page }) => {
   await page.goto(host.origin);
   // Reaching the skill link and following it without a pointer is the whole
   // path to the content now.
-  await page.getByRole('link', { name: '.agents/skills/greet/SKILL.md' }).focus();
+  await page.getByRole('link', { name: '.agents/skills/greet/SKILL.md' }).first().focus();
   await page.keyboard.press('Enter');
   await expect(page.locator('.aci-skill-detail h2')).toBeFocused();
 
@@ -484,10 +499,10 @@ test('drops the content when the route leaves the file', async ({ page }) => {
   expect(await page.locator('main').innerText()).not.toContain(FIXTURE_SECRET);
 });
 
-test('replaces a link a rescan invalidated with a recoverable state', async ({ page }) => {
+test('keeps a link resolving across a rescan through its path identity', async ({ page }) => {
   await openSkillFiles(page, '.agents/skills/greet/SKILL.md');
   await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toBeVisible();
-  const staleUrl = page.url();
+  const bookmarkedUrl = page.url();
 
   await page.getByRole('link', { name: 'Back to the inventory' }).click();
   await page.getByRole('button', { name: 'Rescan repository' }).click();
@@ -499,16 +514,30 @@ test('replaces a link a rescan invalidated with a recoverable state', async ({ p
     });
   }).toPass();
 
-  // Every file gets a new identity when a scan commits, so the earlier URL
-  // names nothing — and says so instead of failing or showing stale content.
-  await page.goto(staleUrl);
+  // The URL names the definition's stable identity — the tool and the path —
+  // and the path is the file's identity on the wire (FR-030): the same URL
+  // resolves against the new generation and the skill opens again.
+  await page.goto(bookmarkedUrl);
+  await expect(page.locator('.aci-skill-detail h2')).toHaveText('greet');
+});
+
+test('reports a link whose path the current scan does not hold', async ({ page }) => {
+  await openSkill(page, '.agents/skills/greet/SKILL.md');
+  // The click routes client-side; the URL is captured only once the detail
+  // route owns the page, or a slow navigation would bookmark the inventory.
+  await page.waitForURL(/\/skills\//u);
+  const bookmarkedUrl = page.url();
+  // The same URL with the tool segment swapped names a definition this
+  // generation does not hold — Claude never recognizes an `.agents` skill —
+  // and the page says so instead of guessing at a nearby one.
+  await page.goto(bookmarkedUrl.replace(/\/skills\/[a-z]+\//u, '/skills/claude/'));
   await expect(page.locator('.aci-skill-detail')).toContainText(
-    'does not name a file in the current scan',
+    'Nothing in the current scan sits at this link',
   );
   // The page's stable live region carries the same statement, so the state
   // change is announced without moving keyboard focus (WCAG 4.1.3).
   await expect(page.locator('.aci-skill-detail .aci-live-region[role="status"]')).toHaveText(
-    /does not name a file in the current scan/u,
+    /Nothing in the current scan sits at this link/u,
   );
   // A title has to be state-appropriate, not only route-appropriate
   // (WCAG 2.4.2): a tab still named after a skill would send a reader back to

@@ -8,12 +8,15 @@
 // explicit-rescan stale state.
 import { isAbsolute, resolve } from 'node:path';
 import {
-  CUSTOMIZATION_KIND_ORDER,
   SUPPORTED_TOOL_ORDER,
   createOpaqueId,
   createSourceBoundaryDto,
-  skillDirectoriesClash,
 } from '../../shared/entities';
+import {
+  SKILL_NAMING,
+  facesSameNameCollision,
+  skillCollisionGates,
+} from '../../shared/skill-naming';
 import { sameNameSkillResolutionFor } from '../../shared/registries/skill-resolution';
 import {
   createBootstrapGeneration,
@@ -28,7 +31,7 @@ import type {
   CustomizationFileDto,
   CustomizationFileSummaryDto,
   FileDetailDto,
-  RecognitionDetails,
+  InspectionDataResult,
   SameNameSkillResolutionDto,
   SkillDefinitionDto,
   ScanProgressPhase,
@@ -37,8 +40,8 @@ import type {
   SkillInventoryEntryDto,
   SourceStatus,
   StaleSourceFailure,
-  ToolRecognitionDto,
 } from '../../shared/api-types';
+import type { RecognitionDetails, ToolRecognition } from '../inspection/recognizers/candidate';
 import type { SerializedDiagnostic } from '../../shared/diagnostics';
 
 /** The validated CLI selection handed to session bootstrap (FR-001). */
@@ -98,7 +101,6 @@ function nowIso(): string {
  */
 function summarizeFile(file: CustomizationFileDto): CustomizationFileSummaryDto {
   const base = {
-    fileId: file.fileId,
     sourceId: file.sourceId,
     sourceRelativePath: file.sourceRelativePath,
     diagnosticIds: file.diagnosticIds,
@@ -122,126 +124,108 @@ function summarizeFile(file: CustomizationFileDto): CustomizationFileSummaryDto 
 /**
  * Projects the skill inventory from a generation's recognitions
  * (contracts/http-api.md § get-session `skills[]`, data-model.md § Inventory
- * unit): one entry per declared name, each listing every `SKILL.md` that
- * declares it.
+ * unit): one entry per name as one tool resolves it, each listing every
+ * `SKILL.md` a recognizing tool resolves it for.
  *
- * The name is the grouping key because that is the unit the vendors' own
- * skill listings show; the file is not, since two files may declare one name. A
- * definition that declares none gets its own entry keyed by its file: a file
- * with no name has not joined a name, and grouping the nameless together would
- * assert an identity none of them has.
+ * Every tool resolves the authored name — or the skill directory name when
+ * the file declares none or declares it empty, so every row has a name to be
+ * listed under — and a Claude recognition of a nested skill prefixes it
+ * root-relative (FR-007), so one file's recognitions can land on two
+ * entries — each listing only the tools that resolve that entry's name.
  *
- * `pathByFileId` orders the definitions, so the projection needs no filesystem
- * access and two snapshots of one generation publish the same rows.
+ * A recognition names its file by Source-relative Path, so the projection
+ * needs no filesystem access and two snapshots of one generation publish the
+ * same rows.
  */
 function projectSkillInventory(
-  recognitions: readonly ToolRecognitionDto[],
-  pathByFileId: ReadonlyMap<string, string>,
+  recognitions: readonly ToolRecognition[],
   skillCompanionsByPath: ReadonlyMap<string, readonly string[]>,
 ): SkillInventoryEntryDto[] {
-  // Keyed by declared name, or by file ID for the nameless — the `\u0000`
-  // prefix cannot collide with an authored name, which is a YAML scalar.
-  const byName = new Map<string, { name: string | null; byFile: Map<string, MutableDefinition> }>();
+  const byName = new Map<string, { name: string; definitions: SkillDefinitionDto[] }>();
   for (const recognition of recognitions) {
     if (!isSkillRecognition(recognition)) {
       continue;
     }
-    const name = recognition.details.declaredName ?? null;
-    const key = name ?? `\u0000${recognition.fileId}`;
-    let entry = byName.get(key);
+    const naming = SKILL_NAMING[recognition.tool];
+    const path = recognition.sourceRelativePath;
+    const declared = recognition.details.declaredName;
+    const name = naming.rowName(path, declared);
+    let entry = byName.get(name);
     if (entry === undefined) {
-      entry = { name, byFile: new Map() };
-      byName.set(key, entry);
+      entry = { name, definitions: [] };
+      byName.set(name, entry);
     }
-    // One file recognized by several products is one definition with several
-    // tools, never one definition per product: the file is what the row lists.
-    const definition = entry.byFile.get(recognition.fileId);
-    if (definition === undefined) {
-      entry.byFile.set(
-        recognition.fileId,
-        new MutableDefinition(
-          recognition,
-          skillCompanionsByPath.get(pathByFileId.get(recognition.fileId) ?? '') ?? [],
-        ),
-      );
-    } else {
-      definition.tools.push(recognition.tool);
-    }
+    // A definition is one recognition — the ToolRecognition unit, one per
+    // `(file, tool)`, which is also the identity the detail route addresses
+    // as `/skills/<tool>/<source-relative path>` — so a file two products resolve to one
+    // name is two definitions of that entry, and a product resolving a
+    // different name — Claude prefixing a nested skill — defines on that
+    // name's entry instead. The census is the file's, so each of its
+    // definitions carries the same list; the parse state is the
+    // recognition's own, and the extraction-failure reference each failed
+    // definition republishes is the kind's one shared record — the parse ran
+    // once (FR-028). A failed extraction leaves
+    // the authored name unknown — not absent — so the row keeps only the
+    // directory-derived provisional identity, and the invocation name is
+    // published only where the tool's naming survives the failure
+    // (skill-naming.ts).
+    entry.definitions.push({
+      sourceRelativePath: path,
+      tool: recognition.tool,
+      parseStatus: recognition.parseStatus,
+      invocationName:
+        recognition.parseStatus === 'failed'
+          ? naming.invocationNameForFailedExtraction(path)
+          : naming.invocationName(path, declared),
+      diagnosticIds: recognition.diagnosticIds,
+      companionFiles: skillCompanionsByPath.get(path) ?? [],
+    });
   }
+  // One collision gate per recognizing tool over the whole generation's
+  // definitions — a gate can span rows, Claude's does — through the shared
+  // assembly the client's filtered view also uses (skill-naming.ts), so the
+  // two surfaces cannot drift.
+  const collisionGates = skillCollisionGates(
+    [...byName.values()].flatMap((entry) => entry.definitions),
+  );
 
   const entries = [...byName.values()].map((entry): SkillInventoryEntryDto => {
-    const definitions = [...entry.byFile.values()]
-      .map((definition) => ({
-        ...definition,
-        tools: definition.tools.toSorted(
-          (left, right) => SUPPORTED_TOOL_ORDER.indexOf(left) - SUPPORTED_TOOL_ORDER.indexOf(right),
-        ),
-      }))
-      .sort((left, right) =>
-        compareStrings(pathByFileId.get(left.fileId) ?? '', pathByFileId.get(right.fileId) ?? ''),
-      );
+    // Files in Source-relative Path order, then the contracted tool order
+    // within one file, so two snapshots of one generation publish the same
+    // rows and an opaque ID never decides a visible order.
+    const definitions = entry.definitions.toSorted((left, right) => {
+      const pathDelta = compareStrings(left.sourceRelativePath, right.sourceRelativePath);
+      return pathDelta !== 0
+        ? pathDelta
+        : SUPPORTED_TOOL_ORDER.indexOf(left.tool) - SUPPORTED_TOOL_ORDER.indexOf(right.tool);
+    });
     return {
-      declaredName: entry.name,
+      name: entry.name,
       definitions,
       // A resolution belongs to one tool, and it answers what that tool does
-      // when *it* finds the name declared twice. Counting the row's
-      // definitions instead would state Claude's rule and Codex's rule for a
-      // row holding one file each tool recognizes alone — a collision neither
-      // product has.
-      sameNameResolutions: resolutionsFor(definitions, pathByFileId),
+      // when *it* faces the collision its rule is about. Counting the row's
+      // definitions for every tool alike would state Claude's rule and
+      // Codex's rule for a row holding one file each tool recognizes alone —
+      // a collision neither product has.
+      sameNameResolutions: resolutionsFor(definitions, collisionGates),
     };
   });
-  // Named entries in name order, then the nameless in path order: the row's own
-  // key sorts it, and a file ID never decides a visible order.
-  return entries.sort((left, right) => {
-    if (left.declaredName !== null && right.declaredName !== null) {
-      return compareStrings(left.declaredName, right.declaredName);
-    }
-    if (left.declaredName === null && right.declaredName === null) {
-      return compareStrings(
-        pathByFileId.get(left.definitions[0]!.fileId) ?? '',
-        pathByFileId.get(right.definitions[0]!.fileId) ?? '',
-      );
-    }
-    return left.declaredName === null ? 1 : -1;
-  });
+  // Entries in name order: the row's own key sorts it, and an opaque ID never
+  // decides a visible order.
+  return entries.sort((left, right) => compareStrings(left.name, right.name));
 }
 
 /**
- * One file's definition of a grouped skill entry, accumulated across the
- * recognitions that share the file: constructed from the first recognition,
- * then widened as further products recognize the same file.
+ * A recognition narrowed to the skill kind, so {@link projectSkillInventory}
+ * reads `details.declaredName` where its guard has already proved the skill
+ * kind instead of re-narrowing per access.
  */
-class MutableDefinition {
-  /** The `SKILL.md` this definition is authored in. */
-  public readonly fileId: string;
-
-  /** The tools recognizing it, unsorted until the entry is built. */
-  public readonly tools: SupportedTool[];
-
-  /** The census result, one per file however many products recognize it. */
-  public readonly companionFiles: readonly string[];
-
-  /** Starts the definition from the first skill recognition of its file. */
-  public constructor(recognition: SkillRecognitionDto, companionFiles: readonly string[]) {
-    this.fileId = recognition.fileId;
-    this.tools = [recognition.tool];
-    this.companionFiles = companionFiles;
-  }
-}
-
-/**
- * A recognition narrowed to the skill kind. The alias and its guard exist so
- * {@link MutableDefinition}'s constructor states the input it accepts instead
- * of re-guarding what {@link projectSkillInventory} — its one caller — has
- * already proved.
- */
-type SkillRecognitionDto = ToolRecognitionDto & {
+type SkillRecognition = ToolRecognition & {
   readonly details: Extract<RecognitionDetails, { kind: 'skill' }>;
 };
 
 /** Whether one recognition is the skill kind, narrowing it for the grouping. */
-function isSkillRecognition(recognition: ToolRecognitionDto): recognition is SkillRecognitionDto {
+function isSkillRecognition(recognition: ToolRecognition): recognition is SkillRecognition {
   return recognition.details.kind === 'skill';
 }
 /**
@@ -256,29 +240,16 @@ function isSkillRecognition(recognition: ToolRecognitionDto): recognition is Ski
  */
 function resolutionsFor(
   definitions: readonly SkillDefinitionDto[],
-  pathByFileId: ReadonlyMap<string, string>,
+  collisionGates: ReadonlyMap<SupportedTool, (rowPaths: readonly string[]) => boolean>,
 ): SameNameSkillResolutionDto[] {
-  return [...new Set(definitions.flatMap((definition) => definition.tools))]
+  return [...new Set(definitions.map((definition) => definition.tool))]
     .sort((left, right) => SUPPORTED_TOOL_ORDER.indexOf(left) - SUPPORTED_TOOL_ORDER.indexOf(right))
     .flatMap((tool) => {
-      // Only a tool that recognizes the name twice has a collision to resolve.
-      const recognized = definitions.filter((definition) => definition.tools.includes(tool));
-      if (recognized.length < 2) {
-        return [];
-      }
-      // The collision must also be one the quoted rule answers. For Claude
-      // Code a repository skill's frontmatter `name` sets only the display
-      // label — the command comes from the skill directory — so two files
-      // sharing a label under different directory names are two commands with
-      // no clash, and quoting Claude's rule there would state a resolution
-      // for a conflict the vendor does not define (FR-007). Its statement is
-      // therefore gated on two of its definitions sharing a directory name.
-      if (
-        tool === 'claude' &&
-        !skillDirectoriesClash(
-          recognized.map((definition) => pathByFileId.get(definition.fileId) ?? ''),
-        )
-      ) {
+      // Which collision a tool's quoted rule answers is that tool's own
+      // naming policy, asked through the shared per-view machinery
+      // (skill-naming.ts): Codex's and Copilot's is the row-internal count,
+      // Claude's spans rows through the skill directory clash.
+      if (!facesSameNameCollision(collisionGates, tool, definitions)) {
         return [];
       }
       const resolution = sameNameSkillResolutionFor(tool);
@@ -292,29 +263,10 @@ function compareStrings(left: string, right: string): number {
 }
 
 /**
- * Orders one file's recognitions by the closed tool order, then the closed
- * kind order (data-model.md § ToolRecognition). An opaque ID never breaks the
- * tie: IDs are regenerated on every commit, so using one would make two
- * snapshots of the same generation disagree. Two recognitions of one file
- * cannot share a `(tool, kind)` pair, so no further key is needed.
- */
-function sortRecognitions(recognitions: readonly ToolRecognitionDto[]): ToolRecognitionDto[] {
-  return recognitions.toSorted((left, right) => {
-    const toolDelta =
-      SUPPORTED_TOOL_ORDER.indexOf(left.tool) - SUPPORTED_TOOL_ORDER.indexOf(right.tool);
-    return toolDelta !== 0
-      ? toolDelta
-      : CUSTOMIZATION_KIND_ORDER.indexOf(left.details.kind) -
-          CUSTOMIZATION_KIND_ORDER.indexOf(right.details.kind);
-  });
-}
-
-/**
  * Builds the snapshot's deterministic inventory order: Source kind, the
- * Global tool where present, the Source-relative path, then the
- * file ID (contracts/http-api.md § get-session). Only the last key uses an
- * opaque ID, and only as a total-order tie-break between two files that agree
- * on every meaningful key.
+ * Global tool where present, then the Source-relative path
+ * (contracts/http-api.md § get-session). The pair is a total order already:
+ * a path is unique within its Source, so no further key exists to need.
  */
 function sortInventory(
   rows: readonly CustomizationFileSummaryDto[],
@@ -326,10 +278,7 @@ function sortInventory(
     if (sourceDelta !== 0) {
       return sourceDelta;
     }
-    if (left.sourceRelativePath !== right.sourceRelativePath) {
-      return left.sourceRelativePath < right.sourceRelativePath ? -1 : 1;
-    }
-    return left.fileId < right.fileId ? -1 : left.fileId > right.fileId ? 1 : 0;
+    return compareStrings(left.sourceRelativePath, right.sourceRelativePath);
   });
 }
 
@@ -426,44 +375,75 @@ export class InspectionSession {
    * Resolves one committed file's complete detail, including the authored
    * source the snapshot deliberately withholds (FR-027).
    *
-   * The lookup spans both sequences' current generations, because a file ID
-   * names a file rather than a sequence, and the two are independent: a
-   * Repository rescan invalidates Repository IDs while a Global file keeps
-   * its own.
+   * The path is the file's identity (FR-030), resolved against the current
+   * committed generations only, so a request made after a commit answers with
+   * what the new generation holds at that path — or null when it holds
+   * nothing — never with a previous generation's record. The lookup spans
+   * both sequences because the two are independent; a path is unique per
+   * Source, and the shipped milestone has one Source — the Global tasks add
+   * the Source dimension when a second one can hold the same path.
    */
-  public fileDetail(fileId: string): FileDetailDto | null {
+  public fileDetail(sourceRelativePath: string): FileDetailDto | null {
     const generations = [
       this.committedRepositoryGeneration,
       ...(this.committedGlobalGeneration === null ? [] : [this.committedGlobalGeneration]),
     ];
     for (const generation of generations) {
-      const file = generation.files.find((candidate) => candidate.fileId === fileId);
+      const file = generation.files.find(
+        (candidate) => candidate.sourceRelativePath === sourceRelativePath,
+      );
       if (file === undefined) {
         continue;
       }
-      const recognitions = sortRecognitions(
-        generation.recognitions.filter((recognition) => recognition.fileId === fileId),
+      // The file's own diagnostic references are the response's whole set:
+      // the (file, kind) extraction-failure record is among them (FR-028).
+      // Filtered from the generation's own ordered records rather than built
+      // from the ID set, so the detail keeps the deterministic emission order
+      // the commit published (data-model.md § Diagnostic).
+      const diagnostics = generation.diagnostics.filter((diagnostic) =>
+        file.diagnosticIds.includes(diagnostic.diagnosticId),
       );
-      // One Diagnostic record can be referenced by both the file and the
-      // recognition it failed on, so the referenced IDs are collected into a
-      // set before they are resolved: the detail states each observation
-      // once, and two identical rows would be two a reader cannot tell apart.
-      const referenced = new Set([
-        ...file.diagnosticIds,
-        ...recognitions.flatMap((recognition) => recognition.diagnosticIds),
-      ]);
+      // The parse the detail shows is the file's, not a recognizing tool's:
+      // every skill recognition of the file shares the one extraction
+      // (candidate.ts), so any one of them carries it. A file with none is
+      // the plain variant — a census companion, or a diagnostic-only
+      // candidate (contracts/http-api.md § get-file-detail).
+      const skill = generation.recognitions.find(
+        (recognition): recognition is SkillRecognition =>
+          recognition.sourceRelativePath === sourceRelativePath && isSkillRecognition(recognition),
+      );
+      if (skill === undefined) {
+        return { kind: 'file', file, diagnostics };
+      }
       return {
+        kind: 'skill',
         file,
-        recognitions,
-        // Filtered from the generation's own ordered records rather than
-        // built from the ID set, so the detail keeps the deterministic
-        // emission order the commit published (data-model.md § Diagnostic).
-        diagnostics: generation.diagnostics.filter((diagnostic) =>
-          referenced.has(diagnostic.diagnosticId),
-        ),
+        // Null exactly for a failed extraction: nothing was parsed, and the
+        // diagnostic above is the failure's record (FR-028).
+        presentation:
+          skill.parseStatus === 'parsed'
+            ? { frontmatter: skill.details.frontmatter, bodyText: skill.details.bodyText }
+            : null,
+        diagnostics,
       };
     }
     return null;
+  }
+
+  /**
+   * The adoption-guard values every inspection-data success carries beside
+   * its payload (contracts/http-api.md § Common results and errors), read
+   * straight off the committed state: a detail request binds three scalars
+   * and must not pay for the full snapshot projection to get them. The
+   * Global content epoch is the Global scaffold's fixed 0 until the Global
+   * tasks arrive.
+   */
+  public dataEnvelope(): Omit<InspectionDataResult<never>, 'data'> {
+    return {
+      globalContentEpoch: 0,
+      repositoryGeneration: this.committedRepositoryGeneration.generation,
+      globalGeneration: this.committedGlobalGeneration?.generation ?? null,
+    };
   }
 
   /**
@@ -481,11 +461,6 @@ export class InspectionSession {
       ...this.committedRepositoryGeneration.files,
       ...(this.committedGlobalGeneration?.files ?? []),
     ];
-    // The path a definition sorts by is the file's own fact, so the skill
-    // projection reads it here instead of restating it per definition.
-    const pathByFileId = new Map(
-      committedFiles.map((file) => [file.fileId, file.sourceRelativePath]),
-    );
     return {
       sessionId: this.sessionId,
       createdAt: this.createdAt,
@@ -515,7 +490,6 @@ export class InspectionSession {
           ...this.committedRepositoryGeneration.recognitions,
           ...(this.committedGlobalGeneration?.recognitions ?? []),
         ],
-        pathByFileId,
         // Paths are unique per Source, and the shipped milestone has one
         // Source; the Global tasks merge per-Source maps here.
         new Map([
@@ -531,14 +505,12 @@ export class InspectionSession {
         ...this.committedRepositoryGeneration.diagnostics,
         ...(this.committedGlobalGeneration?.diagnostics ?? []),
       ],
-      repositoryGeneration: this.committedRepositoryGeneration.generation,
-      globalGeneration: this.committedGlobalGeneration?.generation ?? null,
+      ...this.dataEnvelope(),
       snapshotState: deriveSnapshotState(this.staleFailures),
       staleFailures: this.staleFailures,
       globalControl: null,
       globalEnableInProgress: null,
       globalDisableInProgress: null,
-      globalContentEpoch: 0,
       sessionDiagnosticIds: [...this.sessionDiagnostics.keys()],
       repositoryFailureDiagnosticId: this.repositoryFailureDiagnosticId,
     };
@@ -785,8 +757,8 @@ export class SessionCoordinator {
     scanRequestId: string,
     result: {
       readonly files: readonly CustomizationFileDto[];
-      /** The attempt's recognitions; rekeyed with their files by the commit. */
-      readonly recognitions: readonly ToolRecognitionDto[];
+      /** The attempt's recognitions; published as constructed by the commit. */
+      readonly recognitions: readonly ToolRecognition[];
       /** Each recognized skill entry point's census, keyed by its path. */
       readonly skillCompanionsByPath: ReadonlyMap<string, readonly string[]>;
       readonly diagnostics: readonly SerializedDiagnostic[];
@@ -832,7 +804,8 @@ export class SessionCoordinator {
       return;
     }
     // The entry is removed only after the fallible commit below succeeds.
-    // Generation preparation regenerates opaque IDs and can throw; removing it
+    // Generation preparation can throw — the regression suite drives a thrown
+    // failure through it — and removing the entry
     // first would leave the rejecting promise reaching the caller's catch while
     // `failScan` found no attempt and silently dropped it, leaving the Source
     // stuck 'scanning' with no stale/failed record. Keeping it lets that

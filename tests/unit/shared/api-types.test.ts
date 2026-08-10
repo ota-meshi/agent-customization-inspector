@@ -6,11 +6,11 @@ import { describe, expect, expectTypeOf, it } from 'vitest';
 
 import { DiagnosticRecord } from '../../../src/shared/diagnostics';
 import type {
-  CandidateProvenanceDto,
   CustomizationFileDto,
   SessionSnapshot,
   SourceDto,
 } from '../../../src/shared/api-types';
+import type { CandidateProvenance } from '../../../src/server/inspection/recognizers/candidate';
 import type { DocumentationStatus, LifecycleQualifier } from '../../../src/shared/entities';
 
 describe('customization file DTO variants', () => {
@@ -51,7 +51,6 @@ describe('customization file DTO variants', () => {
 
   it('accepts both readable encodings and keeps BOM presence orthogonal', () => {
     const readable: CustomizationFileDto = {
-      fileId: 'f-1',
       sourceId: 's-1',
       sourceRelativePath: 'AGENTS.md',
       diagnosticIds: [],
@@ -109,9 +108,11 @@ describe('candidate provenance', () => {
     // An admission is a read-authorization record
     // (contracts/inspection-path-allowlist.md § Read authorization): which
     // shipped rule authorized the read, how that rule creates candidates, and
-    // the path it matched. Where the customization would apply was the
-    // vocabulary of a projection no surface shows, so no DTO carries one.
-    expectTypeOf<keyof CandidateProvenanceDto>().toEqualTypeOf<
+    // the path it matched — an internal record of the committed generation,
+    // carried by no session response. Where the customization would apply was
+    // the vocabulary of a projection no surface shows, so no record carries
+    // one.
+    expectTypeOf<keyof CandidateProvenance>().toEqualTypeOf<
       'ruleId' | 'discoveryClass' | 'matchedPath'
     >();
   });
@@ -153,7 +154,6 @@ describe('source-scoped diagnostic publication', () => {
       diagnosticId: serialized.diagnosticId,
       code: 'root-unreadable',
       sourceId: 's-1',
-      fileId: null,
       sourceRelativePath: null,
     });
   });

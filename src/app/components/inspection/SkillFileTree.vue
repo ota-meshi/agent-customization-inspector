@@ -17,16 +17,23 @@
 // the branch below it, which is recursive because the structure is.
 import { computed } from 'vue';
 import SkillFileTreeBranch from './SkillFileTreeBranch.vue';
-import { buildSkillTree, type SkillTreeFile } from './skill-file-tree-nodes';
+import { buildSkillTree } from './skill-file-tree-nodes';
 
 const props = defineProps<{
   /**
-   * Every file of the customization's directory, in the order the tree should
-   * read them: the entry point first, then its census in path order.
+   * The Source-relative Path of every file of the customization's directory,
+   * in the order the tree should read them: the entry point first, then its
+   * census in path order.
    */
-  readonly files: readonly SkillTreeFile[];
-  /** The file currently open, so the tree can mark it. */
-  readonly selectedFileId: string;
+  readonly files: readonly string[];
+  /** The path of the file currently open, so the tree can mark it. */
+  readonly selectedPath: string;
+  /**
+   * The tool segment of the detail route this tree lives under. A link
+   * addresses a definition — `/skills/<tool>/<source-relative path>` — so opening a
+   * companion stays within the recognition the page is about.
+   */
+  readonly tool: string;
   /** The directory prefix the tree is rooted at, stripped from every label. */
   readonly directory: string;
 }>();
@@ -37,7 +44,7 @@ const nodes = computed(() => buildSkillTree(props.files, props.directory));
 
 <template>
   <nav class="aci-skill-file-tree" aria-label="Files in this skill">
-    <SkillFileTreeBranch :nodes="nodes" :selected-file-id="selectedFileId" />
+    <SkillFileTreeBranch :nodes="nodes" :selected-path="selectedPath" :tool="tool" />
   </nav>
 </template>
 

@@ -80,10 +80,10 @@ Lockfileはpublishされたpackageには同行しないため、consumerの`npx`
 registryに対して解決する。Auditが確立するのは、このprojectが出荷し検証するtreeであり、
 後続の任意のinstallが生成するtreeではない。tsdownはproject所有moduleとshared
 contractをbundleし、任意のtransitive packageはbundleしない。Directなproduction dependencyは
-`devframe`、`gunshi`、`jsonc-parser`、`smol-toml`、`vfile`、`vfile-matter`、`yaml`の正確に7つとし（§ 3）、`open`を全dependency
+`devframe`、`gunshi`、`h3`、`jsonc-parser`、`smol-toml`、`vfile`、`vfile-matter`、`yaml`の正確に8つとし（§ 3）、`open`を全dependency
 sectionとproduction lock closureから除外する。
 
-承認済みのdirect production dependency set — その7つのnameだけで他は含まない — を`package.json`と
+承認済みのdirect production dependency set — その8つのnameだけで他は含まない — を`package.json`と
 `pnpm-lock.yaml` closureからassertする。これによりnew production dependencyは§ 3の決定が明示的に
 見直されるまでfailする。payload content scan — `os`/`cpu`/`libc` selector、bundled/optional native package、
    native/binary/Wasm magicまたはELF/Mach-O/PE magic、`binding.gyp`、Rust/C/C++ source、`prebuilds`、
@@ -106,7 +106,7 @@ smoke testで証明する。Tarballをisolated fixtureへinstallしてexecutable
 commit済みlockfile — integrity hash付きの各resolved version — が、hashが既に固定したcontentを再scanせず、
 lockfile自身の値をtestで再記述もせずに、初期リリースのproduction closureをstableにし
 payloadをbyte-fixedにする。
-`/skills/<fileId>`のようなnested routeにも同じshellを返すためroot-absolute assetが必要で、
+`/skills/<tool>/<Source相対パス>`のようなnested routeにも同じshellを返すためroot-absolute assetが必要で、
 relativeな`./_nuxt/` URLはそのroute配下へ誤ってresolveされる。
 公式[Nuxt 4 configuration reference](https://nuxt.com/docs/4.x/api/nuxt-config#baseurl)は`baseURL`、
 `buildAssetsDir`、defaultが空の`cdnURL`を定義する。正確な
@@ -163,6 +163,7 @@ research、plan、quickstart、task artifactをすべて同期して`/speckit.pl
 | pnpm | 11.13.0 | 現行stable package manager |
 | Local host | `devframe` 0.7.5 | `@eslint/config-inspector`の基盤であるlocal-tool host framework。Packaged SPAを`cli.distDir`から配信し、session APIをRPC channelとして担い、認証は無効化する。Port/host解決とbrowser openingを所有する（§ 8）。Pre-1.0のため、commit済みlockfileがreview済みbaselineを固定し、manifestのcaret rangeは0.7.x内にとどまる |
 | CLI | `gunshi` 0.37.0 | 現行のruntime dependency 0件のESM CLI framework。Node.js `>=22` engine requirementは宣言済みrangeと互換。Browser openingはdevframe hostが所有し（§ 8）、追加packageを必要としない |
+| Host HTTP app | `h3` 2.0.1-rc.22 | Hostはdevframeがmountする先のH3 appを自ら構築し、devframeの拡張子guard付きSPA fallbackでは配信できない`/skills/**`のshell fallbackを載せる — skill detail URLは`SKILL.md`のようにfile自身の最終segmentで終わり、devframeは拡張子判定の前にdecodeするためpercent-encodeは代案にならないからである。他の直接依存と同じくcaret rangeで宣言し、lockfileがdevframe自身のh3へresolveするため、両者は1つのmodule instanceへ解決される。devframe自身が拡張子付きclient-route missをserveできるようになれば、この依存はhost shimとともに無くなる |
 | Parser | `yaml` 2.9.0、`jsonc-parser` 3.3.1、`smol-toml` 1.7.0 | 現行stable inert data parser |
 | Frontmatter | `vfile-matter` 5.0.1、`vfile` 6.0.3 | Frontmatterのdelimiter処理。Frontmatter blockの開始と終了を決めることはBOM処理、改行、閉じfenceの形を決め直すことであり、正規表現ではなくparserの仕事である。これは同表の`yaml` engineでblockをparseする。独自の`js-yaml`を持つpackageは1つのdocumentに2つの意味を与えてしまう。js-yaml 3はYAML 1.1、`yaml`はYAML 1.2だからである |
 | Source view/diff | `monaco-editor` 0.55.1 | 現行stable read-only source/diff editor。固有diff engineによりclient dependency重複を避ける |
@@ -226,7 +227,7 @@ lockfileが全memberをname/version/integrity hashでpinし（OS間で同一）�
 固定される。devframe自身のtarball payloadはJavaScript/TypeScript textだけであるためNode-only package gateは維持される。
 devframeはpre-1.0であり、0.x minorがAPIをmigrateし得るため、caret rangeがそれらを除外し、commit済み
 lockfileがresolved versionをpinし、あらゆる
-bumpを§ 3のplanning-gate changeとして扱う。`tests/package/production-graph.test.ts`は、承認済みの7つの
+bumpを§ 3のplanning-gate changeとして扱う。`tests/package/production-graph.test.ts`は、承認済みの8つの
 direct dependencyであることを正確にassertする。versionとintegrityはlockfileが所有し続ける。
 
 ### 有限なrelease-certification行列
@@ -271,8 +272,8 @@ Gunshi公式の[setup requirement](https://gunshi.dev/guide/introduction/setup)�
 Node/TypeScript互換性とclosedなunknown-option behaviorの根拠にする。
 Safe-filesystem layerはNode built-inの`node:fs/promises`、`node:fs`、`node:path` APIだけを使用するため、
 platform toolchainやruntime package dependencyを追加しない。
-Directなproduction `dependencies` setは`devframe`、`gunshi`、`jsonc-parser`、`smol-toml`、`vfile`、`vfile-matter`、`yaml`の
-正確に7つとする（caret rangeで宣言し、lockfileがexactなresolved versionへpinする）: CLIとparserのpackageはnpm graph上のleafであり、devframeは上記のtransitive host treeを
+Directなproduction `dependencies` setは`devframe`、`gunshi`、`h3`、`jsonc-parser`、`smol-toml`、`vfile`、`vfile-matter`、`yaml`の
+正確に8つとする（caret rangeで宣言し、lockfileがexactなresolved versionへpinする。`h3`のresolved versionはdevframe自身のh3と一致し、両者は1つのmodule instanceへ解決される）: CLIとparserのpackageはnpm graph上のleafであり、h3は下記のtransitive host treeに既に含まれ、devframeがそのtreeを
 持ち込む。
 Nuxt/Vue/Vite/tsdown、Monaco、test toolingは必要outputをclosed product assetへassembleするためbuild/development-onlyとする。
 Lockfileとisolated install済みproduction closureの両方をauditする。
@@ -320,7 +321,7 @@ plain JavaScriptであり、`open`はproduction closureに存在しないまま�
 canonical selector round-trip、rendering layerは持たない。Consent digestも持たず、previewはserverが保持し
 `previewId`で識別するrecordで、`allowlistVersion`/`traversalPlanVersion`で同梱planへbindする。Token語彙、
 composability、Codex first-non-empty policyは維持する。
-3. **Runtime composition registry**は、selection、precedence、layering、fallback、condition projection、
+3. **Runtime composition registry**は、selection、precedence、layering、fallback、
    relationship-only ruleを表すstable `strategyId`を
    [runtime composition](contracts/runtime-composition.ja.md)に記録する。Strategyはpathを再記述せずbehavior IDと
    rule IDを参照する。
@@ -541,7 +542,7 @@ YAML semantic parseはYAML 1.2 core schemaとする。aliasは指す先の値へ
 解決結果のtextとして保持し、collectionへ解決するkeyはentryが名づけられる何ものにも解決しない。
 Markdown/frontmatterとClaude importはtext scanとする。Parseはbundleされたparser libraryでscan path上のin-process実行とし、memory、syntax tree、scalarの
 capacityはNode.js、parser library、実行環境に従う。ProductはV8 memory ceilingやparser item/depth/time
-limitを設定しない。Parser/extractor failure、または同じ`(fileId, tool, kind)`への2 extractorの
+limitを設定しない。Parser/extractor failure、または同じ`(file, tool, kind)`への2 extractorの
 incompatible meaningはそのfileに限定される。Per-fileの`recognition-parse-failed` diagnosticの背後で
 そのrecognitionのextraction result全体を破棄して`partial` commitとするが、読み取り可能なsource textや
 別recognitionは変更しない（FR-028）。
@@ -578,7 +579,9 @@ security boundaryとして扱わない。
   全sensitive valueの検出を保証せずreveal stateだけを作るため不採用。
 - 調査対象content内の環境変数参照を解決する案は、記述済みtextをambient process stateで置換し、admitした
   Sourceから読んでいない値を露出し得るため不採用。
-- Zodは追加しない。Request commandは小さなclosed shapeでmanual guardが単純であり、Zodはfilesystem
+- Zodは追加しない。宣言済みsession-API parameterはserver-retained stateに対して解決される
+  referenceであり、resolution自体がvalidationである。Schema層はresolutionが既にfail closedにする
+  ものを再拒否するだけで、Zodはfilesystem
   inputを安全にしない。
 
 ## 7. Source/metadata比較UI
@@ -653,7 +656,9 @@ session APIを、`defineRpcFunction`で宣言してdefinitionの`setup`で登録
 state、streaming channelを一切登録せず、editor/finder helper（`devframe:open-in-editor`、
 `devframe:open-in-finder`）はこのproductがimportしないopt-in recipeである。Port/host解決、SPA
 fallback付きstatic配信、RPC channel、browser openingはproduct codeではなく
-devframeのpolicyである。Session保護はloopback bindingとする: productはper-session tokenも、独自のOrigin/Host分類も、
+devframeのpolicyである。ただしstatic配信の前段にclosedなproduct所有の要素が1つある:
+`/skills/**`の`GET`/`HEAD`を`/`へ書き換えるrewriteで、extension-guardedなfallbackがserveできない
+skill deep linkにdevframe自身のhandlerがshellをserveできるようにする(§ 3 h3行)。Session保護はloopback bindingとする: productはper-session tokenも、独自のOrigin/Host分類も、
 hand-written HTTP routerも追加しない。devframeはWebSocket upgradeへ自身のorigin gateを適用して
 おり、それがproduct所有のcheckを置かない理由である。ただしこのgateは以下のexposureを有界化する
 ものではなく、そう読んではならない。Gateは`Origin`を持たないrequest（非browser client）と、
@@ -664,7 +669,7 @@ loopback判定に一致するhostnameのoriginをすべて許可する。そし�
 devframeの`allowedOrigins`はallow-listを広げるだけで、`false`はgate自体を取り除く。残余
 limitationは防御ではなく文書化する: Inspectorの実行中、他の
 local processと、DNS rebinding経由のmalicious web pageが無認証sessionへ到達し得る（QR-003）。Session APIは
-引き続きfile IDとclosed commandだけを公開し、client pathを使わない。
+引き続きSource-relative pathとclosed commandだけを公開し、絶対filesystem pathを使わない。
 
 Global consent前に、lexical/no-I/O path previewをsession API上で、serverが保持しopaque `previewId`で識別する
 唯一のrecordとして公開し、confirmationがそのIDを指名する。このsectionの固定contractとして、new unconsented previewごとにoperation-local input captureを1つ作る。
@@ -678,7 +683,7 @@ recordであり、enableはそのIDを指名する。
 また、ordinary responseはbrowser stateを変更する前に、正確なrequest token、capture済み
 `clientDataEpoch`、adopt済み`sessionId`、`globalContentEpoch`、null disable fenceに対してcheckする。
 各SessionSnapshot/FileDetail requestはさらにowning sequenceのgeneration — session snapshotは
-`repositoryGeneration`とnullableな`globalGeneration`を公開する — と、該当時はfile IDをcaptureする。
+`repositoryGeneration`とnullableな`globalGeneration`を公開する — と、該当時はfileのSource-relative Pathをcaptureする。
 Old snapshotは無視し、いずれかのsequenceのnew generationをadoptする前にepochをincrementし、
 そのsequenceの置換されたgenerationが所有するdetail、comparison、editor objectをabort/disposeする。他方のsequenceの
 commit済みviewは有効なままとする。Equal-generation snapshotはcurrent tokenと一致する場合だけ、
@@ -804,9 +809,10 @@ operation-ID/epoch/state checkによりenableの`202`またはdisableへ負け�
 各scanはowning sequenceのcurrent generation — Repository scanはcommit済み`RepositoryScanGeneration`、Global scanは
 commit済み`GlobalScanGeneration` — から開始してreplacementを別に構築する。Complete result、または問題が
 file-confined diagnostic（FR-028）だけのpartial resultをそのsequenceの次generationとしてatomic commitする。Commitは
-そのsequenceが所有するfile IDを全てrekeyし、そのsequenceの旧file/detail/comparison/selection/editor referenceだけを
-staleにする。他方のsequenceのcommit済みstateとviewは有効なままとする（FR-030）。Carry-forward機構は持たない。
-Global commitがRepository inventoryを変更せず維持しながら全session IDをrekeyする必要は、そもそも生じない。明示rescanのfatal failureは全uncommitted
+そのsequenceの旧detail/comparison/selection/editor stateだけを
+staleにする — file identityはSource-relative Pathであり、commitを跨いで安定である。
+他方のsequenceのcommit済みstateとviewは有効なままとする（FR-030）。Carry-forward機構は持たない。
+Global commitがRepository inventoryをcopyして維持する必要は、そもそも生じない。明示rescanのfatal failureは全uncommitted
 outputを破棄する。最後のsuccessful snapshotはSource-keyed stale-failure entryとともに表示し続け、root自体を
 readできない場合はactionableな`root-unreadable` diagnosticを、unexpected failureでは失敗requestの
 error messageを参照する（FR-030）。Startupのfailureにはrequest ownerが
@@ -842,7 +848,7 @@ blocked/terminated processをsurviveするproduct probe/timerは存在せず、�
 
 **理由**: Serializationとatomicなper-sequence generationはlost updateとold/new result混在を防ぐ。Repositoryと
 Globalはlifecycleが独立している — Repository Sourceは常に存在し、Global sourceはenableからdisableの間だけ
-存在する — ため独立したsequenceを保持し、commitが他方のsequenceのstateをcarry、rekey、invalidateする必要は
+存在する — ため独立したsequenceを保持し、commitが他方のsequenceのstateをcarryやinvalidateする必要は
 なく、carry-forward機構自体が不要である。Capacityを実runtimeから
 導くことで、任意のproduct数値をportableなsafety guaranteeとして提示しない。Ordinaryに報告されるerrorはdomain causeを
 発明せずexecution lifecycleを維持し、application制御外のfailureは明示的なplatform limitationとして残す。
@@ -855,7 +861,7 @@ Globalはlifecycleが独立している — Repository Sourceは常に存在し�
   commit-time rebaseを必要とするため不採用。
 - RepositoryとGlobal inspectionが共有する1つのsession-wide generation sequenceは、2つのlifecycleが独立している
   ため2026-07-22に不採用となった。全Global commit — およびdisable — に、触れていないRepository inventoryを
-  carry forwardさせながら全session IDをrekeyさせ、data変更が正当化しないRepository viewのinvalidationを
+  carry forwardさせ、data変更が正当化しないRepository viewのinvalidationを
   強制していた。
 - Product独自のbyte、item-count、parser、queue、deadline capは、実効capacityがNode.jsと周辺実行環境に属するため不採用。
 
@@ -874,8 +880,8 @@ slot-capacity fixtureなしでFIFO serialization、disable priority、`202`/`409
 検証する。Injected recoverable Node.js/parser/editor/transport failureはsafe failure、atomic publication、responseをtruncateしない
 ことを証明し、file sizeとcollection cardinalityがproduct validation ruleではないことも確認する。Process-level OOMとkernel
 terminationはin-process recovery testのscope外とする。Diagnostic fixtureはclosedな
-`file | source` scope unionをenforceする。File scopeはowning `sourceId`、`fileId`、`sourceRelativePath`を持ち、
-source scopeはowning `sourceId`だけを持って`fileId`と`sourceRelativePath`を持たない。Pathlessなscopeは存在せず、
+`file | source` scope unionをenforceする。File scopeはowning `sourceId`と`sourceRelativePath`を持ち、
+source scopeはowning `sourceId`だけを持って`sourceRelativePath`を持たない。Pathlessなscopeは存在せず、
 source scopeのDiagnosticが表示またはordering fieldを満たすためにpathを捏造してはならない。
 
 **決定**: Vendor conformance fixtureとnegative near-missに加え、symlink-transparent read、encoding、recoverableな環境failure、literal
@@ -1119,20 +1125,22 @@ value、raw errorをhash/retainしない。Header由来の唯一の例外はstri
 canonical payload/digest chainへ入れる場合である。Captured wire/browser/Inspector byte自体をhash preimageにしない。IPC message 1件はsafe payload
 正確に1件を運ぶが、primary-workflow observation 1件からcount/chain対象のevent messageを任意件生成できる。Fixed code、
 protocol-owner-generated opaque ID、boolean/enum、safe integer、evidence digestだけがcanonical safe-payload byteへ入る。各requestはさらにprivacy-safeで
-exactなroute/target classifier `targetClass`を使う。Closed literalは
-`static-manifested-asset | static-spa-shell | static-client-route-fallback | api-get-session | api-get-file |
-api-post-repository-rescan | api-get-global-consent-preview | api-post-global-consent-preview | api-post-global-enable |
-api-post-global-rescan | api-post-global-disable | other-loopback | remote | mcp | unclassifiable | not-applicable`とする。Closed truth tableはauthority、target、route、method、capability、origin、same-host、attribution、request
-class、prohibited statusにまたがるauthorized-static/declared-API combinationだけを許可する。全rowは`eventCode: observation`、
-not-applicable workflow class、observed outcome class、correlation-context subject/process ID、fresh event/correlation IDを持つ。Exact authorized-static/API
+exactなtarget classifier `targetClass`を使う。Closed literalは
+`static-manifested-asset | static-spa-shell | static-client-route-fallback | connection-discovery-metadata |
+rpc-channel-upgrade | rpc-get-session | rpc-get-file-detail | rpc-rescan-repository |
+rpc-get-global-consent-preview | rpc-create-global-consent-preview | rpc-enable-global | rpc-rescan-global |
+rpc-disable-global | rpc-devframe-framework | other-loopback | remote | mcp | unclassifiable | not-applicable`とする。Closed truth tableはauthority、target、method、origin、same-host、attribution、request
+class、prohibited statusにまたがるauthorized-static/authorized-rpc combinationだけを許可する。Session channelのRPC invocationは
+Inspector-sideのdispatch境界でdispatchされた関数のrowとして分類し、method/originはnot-applicableとする。全rowは`eventCode: observation`、
+not-applicable workflow class、observed outcome class、correlation-context subject/process ID、fresh event/correlation IDを持つ。Exact authorized-static/RPC
 table rowだけがeffect `none`とprohibited falseを使う。Table外のproduct-attributable exact-issued requestはrequest observation、該当する
-`participant | bundled-spa | inspector` actor、exact-issued authority、prohibited request class、observed closed target/method/capability/origin、unauthorized-request、true
+`participant | bundled-spa | inspector` actor、exact-issued authority、prohibited request class、observed closed target/method/origin、unauthorized-request、true
 same-host/attribution/prohibitedを使う。Other-loopbackはother-loopback authority/target、prohibited request class、observed closed method、
-not-applicable capability/origin、unauthorized-request、同じ3件のtrue booleanを使う。Remoteはremote authority/target、prohibited request class、
-observed closed method、not-applicable capability/origin、prohibited-outbound-request、false same-host、true attribution/prohibitedを使う。
-Fully unclassifiableなproduct-correlated requestはunknown actor、unclassifiableなauthority/request/target/method/capability/origin、
+not-applicable origin、unauthorized-request、同じ3件のtrue booleanを使う。Remoteはremote authority/target、prohibited request class、
+observed closed method、not-applicable origin、prohibited-outbound-request、false same-host、true attribution/prohibitedを使う。
+Fully unclassifiableなproduct-correlated requestはunknown actor、unclassifiableなauthority/request/target/method/origin、
 unauthorized-request、false same-host、true attribution/prohibitedを使う。MCPはMCP observation、Inspector actor、target `mcp`、
-not-applicable authority/request/method/capability/origin、mcp-connection、false same-host、true attribution/prohibitedを使う。Browser trafficではproxy/serverが
+not-applicable authority/request/method/origin、mcp-connection、false same-host、true attribution/prohibitedを使う。Browser trafficではproxy/serverが
 exact Chromium-controlled `Sec-Fetch-Dest`、`Sec-Fetch-Mode`、`Sec-Fetch-Site`、`Sec-Fetch-User`とOrigin/Refererを独立project/discardするが、
 Fetch Metadataはhuman attestationではない。Product readiness後かつinitial navigation直前にsupervisorはrun/attempt/fresh correlation/stateを持つarmed
 `StudyParticipantNavigationGrant`をbrowser adapterへ送る。
@@ -1140,7 +1148,7 @@ Fetch Metadataはhuman attestationではない。Product readiness後かつiniti
 | Secret/projection | Actor/binding | Decision |
 |---|---|---|
 | Valid、navigate/document/`?1`、missing Origin、site none/same-origin、exact authorized-static、current armed grant | `participant`、open binding | Adapterはstateを変えずreserveし、supervisorはcanonical grantをarmedのままvalidate/pending storeする。Sole one-use `candidate-forward`がcandidateをacceptしてcanonical grantをatomic consumeし、adapterはmatching decisionをvalidateしてからcopy consume/forwardする。 |
-| Valid、participantではない、missing user、exact-issued Originまたはmissing Origin + exact-issued Referer | `bundled-spa`、open binding | Exact authorized static/APIだけforwardし、その他はproduct-attributable/prohibitedとしてblockする。 |
+| Valid、participantではない、missing user、exact-issued Originまたはmissing Origin + exact-issued Referer | `bundled-spa`、open binding | Exact authorized static/RPCだけforwardし、その他はproduct-attributable/prohibitedとしてblockする。 |
 | Valid、extension Origin | `browser-extension`、N/A ID | 常にunrelatedとしてblockする。 |
 | 残るvalid projection | `unknown`、open binding | Product-attributable/prohibitedとしてblockする。 |
 | Bootstrap後missing | `other-host-process`、N/A ID | Unrelatedとしてblockする。 |
@@ -1326,8 +1334,8 @@ manual accessibility check、documentation parity check、release tarball inspec
    Node 24.18.0をdevelopment/build baselineとする。Pinした3つのPlaywright revisionはautomated browser-certification baselineであり、
    startup helperは未検証のOS default handlerへ委譲して表示済み/manual-open fallbackを常に残す。
 9. RepositoryとGlobalは独立したgeneration sequenceを保持する。InitialまたはretryのGlobal admitted-subset
-   batch commitはGlobal sequenceだけを作成または前進させ、自身のgeneration所有IDだけをrekeyし、
-   Repositoryのstate/viewには決して触れない。
+   batch commitはGlobal sequenceだけを作成または前進させ、自sequenceのviewだけをinvalidateし、
+   Repositoryのstateには決して触れない。
 10. SC-008は維持管理する英日55行のWCAG 2.2 Level A/AA applicability matrixを使う。各criterionのexpected observationを
     stable check IDへbindし、closed manual matrixではapplicableなlocale/platform/viewport/mode/scenario/input cellの
     samplingを禁止する。Applicableな全行、全Not-applicable rationaleの再確認、4つのkeyboard workflow、必須responsive

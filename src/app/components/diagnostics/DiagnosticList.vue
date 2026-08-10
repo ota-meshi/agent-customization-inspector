@@ -26,7 +26,7 @@ const props = defineProps<{
 }>();
 
 const unattached = computed(() =>
-  props.diagnostics.filter((diagnostic) => diagnostic.fileId === null),
+  props.diagnostics.filter((diagnostic) => diagnostic.sourceRelativePath === null),
 );
 </script>
 

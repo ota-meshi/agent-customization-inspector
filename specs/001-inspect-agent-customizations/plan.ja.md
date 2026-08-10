@@ -67,7 +67,7 @@ root `./.mcp.json` Inspector ruleを追加する。Version付きrelease noteは�
 same-name ruleを確立する一方、current guideは`.vscode/mcp.json`とUser configurationを網羅的locationとして
 提示し続ける。そのためbehavior/strategyは`conflict`を保持し、root provenanceはpath/surface-onlyで
 VS Code所有extractor fieldを追加せず、schemaとtotal orderをunknownのままにする。CLI descendant ruleが
-同じphysical root fileをすでにadmitするため、両compatible provenanceは1つの`(fileId, copilot, MCP)`
+同じphysical root fileをすでにadmitするため、両compatible provenanceは1つの`(file, copilot, MCP)`
 recognitionとそのfileの1回のreadへmergeする。
 
 Userへ公開するinventory/API filesystem locatorのうち、inventory済みcustomization fileまたはowning Source内で
@@ -103,9 +103,11 @@ Vue 3.5.39とする。6つのNode/OS floor jobはcompatibleな全minor/patch rel
 **主要依存関係**: Nuxt 4.4.8、Vue Router 5.2.0、tsdown 0.22.8、Vite 7.3.6
 （Nuxtと互換性のある最新release）、`devframe` 0.7.5（pre-1.0 local-tool host framework）、
 `gunshi` 0.37.0、`yaml` 2.9.0、
-`jsonc-parser` 3.3.1、`smol-toml` 1.7.0、`monaco-editor` 0.55.1。いずれも`package.json`にはcaret rangeで
-宣言し、commit済みlockfileがこれらのexactなresolved versionとintegrityをpinする。devframeのtransitive tree
-（h3 2.0.1-rc.22、birpc、crossws、valibot、destr、mrmime、nostics、pathe、ufo）はdirect dependencyとして
+`jsonc-parser` 3.3.1、`smol-toml` 1.7.0、`h3` 2.0.1-rc.22、`monaco-editor` 0.55.1。いずれも`package.json`には
+caret rangeで宣言し、commit済みlockfileがこれらのexactなresolved versionとintegrityをpinする。
+`h3`のresolved versionはdevframe自身のh3と一致するため、hostの`/skills/**` shell fallbackと
+devframeは1つのH3 module instanceに解決される（research.md § 3）。devframeの残りのtransitive tree
+（birpc、crossws、valibot、destr、mrmime、nostics、pathe、ufo）はdirect dependencyとして
 宣言せず、devframeとlockfileが所有する。最初のlockfile作成時に
 これらの正確なstable resolved versionを再確認しなければならない（MUST）。Prereleaseや互換性のない
 新しいmajorは「最新」の対象にしないが、devframeの選定とそのlockfile所有h3 release candidateは、
@@ -337,7 +339,7 @@ Product-probe readiness後かつsole expected initial navigation直前に、supe
 | Marker/projection | Actor/binding | Decision |
 |---|---|---|
 | Valid secret、navigate/document/`?1`、missing Origin、site none/same-origin、exact authorized-static target、current armed grant | `participant`、open binding | Adapterはstateを変えずreserveし、supervisorはcanonical grantをarmedのままvalidate/pending storeする。Sole exact one-use `browser-broker-decision: candidate-forward`だけがcandidateをacceptしてcanonical grantをatomic consumeし、そのmatching decisionをadapterがvalidateしてからcopyをconsume/forwardする。 |
-| Valid secret、participantではない、missing user、exact-issued Originまたはmissing Origin + exact-issued Referer | `bundled-spa`、open binding | Exact authorized static/APIだけをforwardし、その他はproduct-attributable/prohibitedとしてblockする。 |
+| Valid secret、participantではない、missing user、exact-issued Originまたはmissing Origin + exact-issued Referer | `bundled-spa`、open binding | Exact authorized static/RPCだけをforwardし、その他はproduct-attributable/prohibitedとしてblockする。 |
 | Valid secret、extension Origin | `browser-extension`、N/A ID | 常にunrelatedとしてblockする。 |
 | 残るvalid-secret projection | `unknown`、open binding | Product-attributable/prohibitedとしてfail closedにしblockする。 |
 | Bootstrap後のmissing secret | `other-host-process`、N/A ID | Unrelatedとしてblockする。 |
@@ -821,7 +823,7 @@ src/
 │   │   ├── index.vue
 │   │   ├── compare.vue
 │   │   ├── global-consent.vue
-│   │   └── skills/[fileId].vue
+│   │   └── skills/[tool]/[...path].vue
 │   └── styles/
 ├── server/
 │   ├── cli.ts
@@ -949,7 +951,7 @@ LICENSE
 使用する。NuxtはSPA（`ssr: false`）とし、static Nitro preset、`app.baseURL: '/'`、
 `app.buildAssetsDir: '/_nuxt/'`、CDN URLなし、明示的importを使い、component auto-discoveryを無効にする。
 これにより全nested client routeが同じroot-absolute same-origin asset URLをresolveする。Detail routeは、それが表示する
-認識済みkindに属する。`/skills/<fileId>`がfileではなく`skills`を名乗るのはそのためである: detailが示すのはskillの宣言、
+認識済みkindに属する。`/skills/<tool>/<Source相対パス>`がfileではなく`skills`を名乗るのはそのためである: detailが示すのはskillの宣言、
 指示、directoryであり、別kindのdetailは別のlayoutで別の問いに答える。出荷中のinspection ruleはすべて`skill`を認識するため
 detail routeはこの1つであり、2つ目のkindを認識するphaseがそのkindのrouteとpageを併せて追加する。`src/server/cli.ts` entryは
 BOMなし、LF終端の正確な先頭行`#!/usr/bin/env node`で始まり、tsdownがpackaged `dist/cli.mjs`でそのshebangを
@@ -1081,7 +1083,7 @@ entry pointをadvertiseしない。Package testはbin targetの保持された�
 locationから解決されることを証明する。Pack済みtarballは証明しない: tarballをisolated fixtureへinstallし
 `npx --no-install`で起動するのはT917であり、release gateが所有する。
 
-Package gateは、承認済みのdirect production dependency set — その7つのnameだけで他は含まない — を
+Package gateは、承認済みのdirect production dependency set — その8つのnameだけで他は含まない — を
 `package.json`と`pnpm-lock.yaml` closureからassertする。これによりnew production dependencyは
 research.md § 3の決定が明示的に見直されるまでfailする。各resolved versionとそのintegrity hashは
 commit済みlockfileが所有し、production payload byteを固定し続けるのはこのlockfileである。payload content scan — native/binary/Wasm magic、shell helperとshebang audit、
@@ -1161,7 +1163,7 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   Vendor behavior registryがその他の
   supported User customizationを記録する場合も、FR-015からFR-018によりGlobal readは3 instruction setだけに
   制限し続ける。
-- Tool recognizerは`(fileId, tool, kind)`ごとにexact `ToolRecognition` 1件を付け、closed tool/kind順でsortする。
+- Tool recognizerは`(file, tool, kind)`ごとにexact `ToolRecognition` 1件を付け、closed tool/kind順でsortする。
   Compatible admissionはprovenanceをmergeし、incompatible parsed meaningはそのrecognitionのall-or-nothing extractionだけを
   failする。Recognitionは1つのunderlying fileについて、受理済みの独立candidate provenanceをすべて保持する。
   Parserまたはextractorのfailureはfile-confinedとする。そのfileの`recognition-parse-failed` diagnosticと
@@ -1304,7 +1306,7 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   未対応のsession protocol、session mismatch、または同等のterminal full-session resetではeditor model/worker/subscriptionをdisposeし、全session DTO/DOM/detail/comparison stateをclearして
   requestをabortし、`clientDataEpoch`をincrementしてlate responseによるcontent復活を防ぐ。全SessionSnapshot/FileDetail
   requestはepoch、owning sequenceのcurrent generation — session snapshotは`repositoryGeneration`とnullableな
-  `globalGeneration`を公開する — 該当時file ID、exact request tokenをcaptureする。Owning sequenceのolder generationは無視し、
+  `globalGeneration`を公開する — 該当時fileのSource-relative Path、exact request tokenをcaptureする。Owning sequenceのolder generationは無視し、
   admitted済みの自動または明示scanはそれぞれopaqueな`scanRequestId`を持ち、そのSource progressとcommitするgenerationは
   同じIDを保持する。Clientはcurrent explicit request IDを保存し、それ以前のstatusまたはinventory generationをそのrequestの
   completionとして扱わない。いずれかのsequenceのnewer generation採用前にepochをincrementし、そのsequenceの置換された
@@ -1396,10 +1398,11 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   Global batchはGlobal generation sequenceだけを所有し、全admitted replacementを別に構築する。正常なcompleteまたは
   partial batchは正確に1つのGlobal generationをcommitする — Global generationが存在しなければsequenceをgeneration 1で
   作成し、存在すればその最後のcommit済みsnapshotから前進させる。Assemble済みGlobal Sourceをすべてatomicにpublishし、
-  参加controlの該当failure stateだけをclearし、Globalのgeneration-owned graphとIDだけをrekeyし、oldなGlobalのfile ID、
-  detail DTO、comparison selection、editor stateを1回無効化する。Repository stateはcommitに含まれない: Repository
-  sequence、そのgeneration、そのID、そのviewには触れない。全件rejectのenable/retryはgenerationをcommitせず、commit済みの
-  IDを変更しない。同じcoordinator lockで全SessionSnapshot/FileDetail envelopeのsequence generation/payloadをlinearizeし、後のnetwork
+  参加controlの該当failure stateだけをclearし、oldなGlobalの
+  detail DTO、comparison selection、editor stateを1回無効化する — file identityはSource-relative Pathであり、
+  commitを跨いで安定である。Repository stateはcommitに含まれない: Repository
+  sequence、そのgeneration、そのviewには触れない。全件rejectのenable/retryはgenerationをcommitせず、commit済みの
+  stateを変更しない。同じcoordinator lockで全SessionSnapshot/FileDetail envelopeのsequence generation/payloadをlinearizeし、後のnetwork
   deliveryでmix/relabelさせない。
   後続の明示rescanは既存Source 1件に対するsingle jobのままとし、同じcomplete/partial ruleでowning sequenceのreplacement generationを
   1つcommitできる。成功時はそのSourceのstale-failure entryとlifecycle diagnosticだけをclearし、別Sourceのfailureを保持する。
@@ -1415,8 +1418,8 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   0をcurrentのままにする。Global disableはcontrol所有のlifecycle diagnosticを削除し、retained root contextをすべて
   close/removeして全control、consent record、frozen previewを削除する。
   保持する各Diagnosticはgeneration/session-lifecycleのlifetimeと独立して、正確に1つのattachment scopeを使う。File scopeは
-  matching `sourceId`、`fileId`、Source-relative Pathを必須とし、source scopeは`sourceId`だけを必須とする。Pathlessな
-  scopeは存在しない: invalidな組合せを拒否し、source-scoped recordはfile IDやpathを捏造しない。未admitのGlobal tool
+  matching `sourceId`とSource-relative Pathを必須とし、source scopeは`sourceId`だけを必須とする。Pathlessな
+  scopeは存在しない: invalidな組合せを拒否し、source-scoped recordはpathを捏造しない。未admitのGlobal tool
   のfailureはDiagnosticではなくcontrolの`failureCode`である。
   Generation 0は、capture済みの呼び出しworking directoryとoptionalな`--root`からlexicalに選択したexact 1つのidleな
   Repository Sourceを持ち、file/diagnosticを持たないcommit済みzero-I/O bootstrap snapshotとし、初回fatal attemptでもlegalな

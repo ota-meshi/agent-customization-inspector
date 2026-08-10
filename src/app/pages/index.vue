@@ -182,7 +182,6 @@ const staleFailureMessage = computed(() =>
     <InventoryList
       :kind="filters.activeKind.value"
       :skill-rows="filters.skillRows.value"
-      :files-by-id="filters.filesById.value"
       :files-by-path="filters.filesByPath.value"
       :total-count="totalRowCount"
       :diagnostics="snapshot.diagnostics"

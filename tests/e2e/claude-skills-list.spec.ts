@@ -4,14 +4,20 @@
 // two vendors' inventories coexist.
 //
 // The claims that need a rendered page: that the Claude and Codex rows share
-// one inventory grouped by declared name — a name both vendors declare is one
-// row listing both products' definitions — that a nested Claude skill (a
+// one inventory grouped by the name each tool resolves — a name two vendors
+// resolve for one file is one row listing both products' definitions, and a
+// nested Claude skill's name carries the root-relative prefix
+// (`apps/web:deploy`, FR-007) — that a nested Claude skill (a
 // directory the Codex allowlist must never admit for its own spelling) is
 // listed as an ordinary row, that a Claude skill without an authored name
 // renders by its path rather than by a guessed one, and that the tool filter
-// separates the vendors. Everything else — the exact admitted sets, near
-// misses, provenance — is proven closer to the code and is asserted here only
-// as far as a user can see it.
+// separates the vendors. Since the Copilot phase, `.agents` and `.claude` are
+// Copilot locations too at the repository root, so the root rows here also
+// carry a GitHub Copilot badge — while the nested rows stay single-vendor,
+// because no Copilot surface documents a downward lookup from a root context.
+// Everything else — the exact admitted sets, near misses, provenance — is
+// proven closer to the code and is asserted here only as far as a user can
+// see it.
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -47,8 +53,9 @@ test.beforeEach(async () => {
     '---\nname: codex-greet\n---\n\n# Codex\n',
     'utf8',
   );
-  // The nested Codex spelling stays out of the inventory even though the same
-  // directory shape is admitted for Claude.
+  // The nested Codex spelling stays out of the inventory entirely even though
+  // the same directory shape is admitted for Claude: Codex's and Copilot's
+  // `.agents` programs are both anchored at the root.
   await mkdir(join(fixture, 'packages/api/.agents/skills/deploy'), { recursive: true });
   await writeFile(
     join(fixture, 'packages/api/.agents/skills/deploy/SKILL.md'),
@@ -63,36 +70,51 @@ test.afterEach(async () => {
   await rm(fixture, { recursive: true, force: true });
 });
 
-test('lists Claude and Codex skills together, grouped by declared name', async ({ page }) => {
+test('lists every vendor\u2019s skills together, grouped by resolved name', async ({ page }) => {
   await page.goto(host.origin);
   const items = page.locator('.aci-item');
   await expect(items).toHaveCount(3);
 
-  // Two named rows in name order, then the nameless nested Claude skill by
-  // path: one grouping for both vendors, not one list per product.
-  await expect(page.locator('.aci-skill-row__declared-name')).toHaveText([
+  // Rows in name order — the nested Claude layer declares no name, so it is
+  // named by its prefixed skill directory: one grouping for every vendor, not
+  // one list per product.
+  await expect(page.locator('.aci-skill-row__name')).toHaveText([
     'claude-greet',
     'codex-greet',
+    'packages/api:deploy',
   ]);
+  // One item — and one path line — per definition, each linking to its own
+  // `/skills/<tool>/<source-relative path>` route: the shared root files appear once under
+  // each of their two products, the Claude-only nested layer once.
   await expect(page.locator('.aci-item .aci-path')).toHaveText([
     '.claude/skills/greet/SKILL.md',
+    '.claude/skills/greet/SKILL.md',
+    '.agents/skills/codex-greet/SKILL.md',
     '.agents/skills/codex-greet/SKILL.md',
     'packages/api/.claude/skills/deploy/SKILL.md',
   ]);
   await expect(page.getByRole('tab', { selected: true })).toContainText('Skill');
 });
 
-test('badges each row with the product that recognized it', async ({ page }) => {
+test('badges each row with the exact products that recognized it', async ({ page }) => {
   await page.goto(host.origin);
   const items = page.locator('.aci-item');
+  // The matrix as a user sees it: the root `.claude` row is Claude+Copilot,
+  // the root `.agents` row is Codex+Copilot, and the nested `.claude` layer
+  // is Claude's alone — no Copilot surface documents a downward lookup from
+  // a root context, so no Copilot badge reaches it.
   await expect(items.nth(0)).toContainText('Claude Code');
+  await expect(items.nth(0)).toContainText('GitHub Copilot');
   await expect(items.nth(0)).not.toContainText('OpenAI Codex');
   await expect(items.nth(1)).toContainText('OpenAI Codex');
+  await expect(items.nth(1)).toContainText('GitHub Copilot');
   await expect(items.nth(1)).not.toContainText('Claude Code');
   await expect(items.nth(2)).toContainText('Claude Code');
+  await expect(items.nth(2)).not.toContainText('GitHub Copilot');
+  await expect(items.nth(2)).not.toContainText('OpenAI Codex');
 });
 
-test('shows a Claude skill by its authored name, and a nameless one by its path', async ({
+test('shows a Claude skill by its authored name, and a nameless one by its prefixed directory', async ({
   page,
 }) => {
   await page.goto(host.origin);
@@ -100,20 +122,24 @@ test('shows a Claude skill by its authored name, and a nameless one by its path'
   // proves the name came from the frontmatter rather than the directory
   // segment (FR-007).
   const named = page.locator('.aci-item', { hasText: '.claude/skills/greet/SKILL.md' });
-  await expect(named.locator('.aci-skill-row__declared-name')).toHaveText('claude-greet');
-  // The nested skill authors no name: the path is the row, with no name
-  // element at all — not the directory segment, and not a placeholder.
-  const nameless = page.locator('.aci-item', {
+  await expect(named.locator('.aci-skill-row__name')).toHaveText('claude-greet');
+  // The nested skill authors no name, so its skill directory names it — with
+  // the root-relative Claude prefix, which is exactly the vendor's own
+  // command spelling for a nested skill (FR-007, T1081).
+  const fallback = page.locator('.aci-item', {
     hasText: 'packages/api/.claude/skills/deploy/SKILL.md',
   });
-  await expect(nameless.locator('.aci-skill-row__declared-name')).toHaveCount(0);
+  await expect(fallback.locator('.aci-skill-row__name')).toHaveText('packages/api:deploy');
 });
 
-test('groups a name both vendors declare into one row listing both products', async ({ page }) => {
+test('groups a name declared from two locations into one row listing every recognizing product', async ({
+  page,
+}) => {
   // A Codex skill declaring the same `claude-greet` name from its own
   // location: the name is the row's unit, so the inventory gains a definition
-  // rather than a row, and the one row now shows both vendors' data side by
-  // side with each product's documented same-name rule.
+  // rather than a row, and the one row now shows all three products' badges
+  // side by side — Claude and Copilot on the `.claude` file, Codex and
+  // Copilot on the `.agents` one — with the one applicable same-name rule.
   await mkdir(join(fixture, '.agents/skills/salute'), { recursive: true });
   await writeFile(
     join(fixture, '.agents/skills/salute/SKILL.md'),
@@ -129,7 +155,12 @@ test('groups a name both vendors declare into one row listing both products', as
   await expect(async () => {
     await page.getByRole('button', { name: 'Refresh status' }).click();
     await expect(grouped.locator('.aci-path')).toHaveText(
-      ['.agents/skills/salute/SKILL.md', '.claude/skills/greet/SKILL.md'],
+      [
+        '.agents/skills/salute/SKILL.md',
+        '.agents/skills/salute/SKILL.md',
+        '.claude/skills/greet/SKILL.md',
+        '.claude/skills/greet/SKILL.md',
+      ],
       { timeout: 1_000 },
     );
   }).toPass();
@@ -137,11 +168,13 @@ test('groups a name both vendors declare into one row listing both products', as
   // Each definition keeps its own product badge inside the shared row.
   await expect(grouped).toContainText('Claude Code');
   await expect(grouped).toContainText('OpenAI Codex');
-  // Neither product has a collision here: Claude reads `.claude/skills` and
-  // Codex reads `.agents/skills`, so each recognizes one of the two files. A
-  // resolution answers what one product does when *it* finds the name twice,
-  // and stating either rule would describe a conflict that product never has.
+  // Neither Claude nor Codex has a collision here: each recognizes one of the
+  // two files. Copilot recognizes both, so its statement — no single
+  // documented rule across its surfaces — is the one the row states.
   await expect(grouped).not.toContainText('keeps all of them');
+  await expect(grouped).toContainText(
+    'GitHub Copilot depends on the surface; no single documented rule',
+  );
 });
 
 test('quotes no Claude rule for two commands that only share a label', async ({ page }) => {
@@ -163,18 +196,23 @@ test('quotes no Claude rule for two commands that only share a label', async ({ 
   const grouped = page.locator('.aci-item').filter({ hasText: 'same-label' }).first();
   await expect(async () => {
     await page.getByRole('button', { name: 'Refresh status' }).click();
-    await expect(grouped.locator('.aci-path')).toHaveCount(2, { timeout: 1_000 });
+    await expect(grouped.locator('.aci-path')).toHaveCount(4, { timeout: 1_000 });
   }).toPass();
   await expect(grouped).not.toContainText('keeps all of them');
   await expect(grouped).not.toContainText('uses the first in its documented source order');
 });
 
-test('states the Claude rule when Claude recognizes the name twice', async ({ page }) => {
-  // Two Claude skills declaring one name inside this repository. The official
-  // rule for a clash within one root is that every definition stays available
-  // and Claude picks the variant matching the files being worked on — never a
-  // first-in-order winner, which is the rule between levels this product
-  // lists as separate Sources.
+test('names a nested skill with the root-relative prefix and states the Claude rule on both rows', async ({
+  page,
+}) => {
+  // Two Claude skills declaring one name in same-named directories at two
+  // depths. The nested one is its own row under the root-relative qualified
+  // name — `apps/web:claude-twice`, the prefix from the directory holding its
+  // `.claude` and the last segment from the authored name (FR-007) — and the
+  // official rule for a clash within one root, that every definition stays
+  // available and Claude picks the variant matching the files being worked
+  // on, is stated on both rows of the clash — never a first-in-order winner,
+  // which is the rule between levels this product lists as separate Sources.
   await mkdir(join(fixture, '.claude/skills/wave'), { recursive: true });
   await mkdir(join(fixture, 'apps/web/.claude/skills/wave'), { recursive: true });
   for (const directory of ['.claude/skills/wave', 'apps/web/.claude/skills/wave']) {
@@ -186,18 +224,32 @@ test('states the Claude rule when Claude recognizes the name twice', async ({ pa
   }
   await page.goto(host.origin);
   await page.getByRole('button', { name: 'Rescan repository' }).click();
-  const grouped = page.locator('.aci-item').filter({ hasText: 'claude-twice' }).first();
+  const nested = page.locator('.aci-item', {
+    has: page.locator('.aci-skill-row__name', { hasText: /^apps\/web:claude-twice$/u }),
+  });
   await expect(async () => {
     await page.getByRole('button', { name: 'Refresh status' }).click();
-    await expect(grouped.locator('.aci-path')).toHaveCount(2, { timeout: 1_000 });
+    await expect(nested).toHaveCount(1, { timeout: 1_000 });
   }).toPass();
-  await expect(grouped).toContainText('keeps all of them; a nested one is invoked');
-  await expect(grouped).not.toContainText('uses the first in its documented source order');
+  await expect(nested.locator('.aci-path')).toHaveText('apps/web/.claude/skills/wave/SKILL.md');
+  const root = page.locator('.aci-item', {
+    has: page.locator('.aci-skill-row__name', { hasText: /^claude-twice$/u }),
+  });
+  await expect(root.locator('.aci-path')).toHaveText([
+    '.claude/skills/wave/SKILL.md',
+    '.claude/skills/wave/SKILL.md',
+  ]);
+  for (const row of [root, nested]) {
+    await expect(row).toContainText('keeps all of them; a nested one is invoked');
+    await expect(row).not.toContainText('uses the first in its documented source order');
+  }
 });
 
-test('states a resolution when one product recognizes the name twice', async ({ page }) => {
-  // Two Codex skills declaring one name: Codex now has two files to choose
-  // between, so the row carries its documented rule — and only its own.
+test('states a resolution for each product that recognizes the name twice', async ({ page }) => {
+  // Two Codex skills declaring one name: Codex has two files to choose
+  // between, so the row carries its documented rule — and so does Copilot,
+  // which recognizes both files through the shared `.agents` spelling and has
+  // no single documented rule across its surfaces.
   await mkdir(join(fixture, '.agents/skills/salute'), { recursive: true });
   await mkdir(join(fixture, '.agents/skills/hail'), { recursive: true });
   for (const directory of ['salute', 'hail']) {
@@ -212,24 +264,30 @@ test('states a resolution when one product recognizes the name twice', async ({ 
   const grouped = page.locator('.aci-item').filter({ hasText: 'codex-twice' }).first();
   await expect(async () => {
     await page.getByRole('button', { name: 'Refresh status' }).click();
-    await expect(grouped.locator('.aci-path')).toHaveCount(2, { timeout: 1_000 });
+    await expect(grouped.locator('.aci-path')).toHaveCount(4, { timeout: 1_000 });
   }).toPass();
   await expect(grouped).toContainText('keeps all of them, in no documented order');
+  await expect(grouped).toContainText(
+    'GitHub Copilot depends on the surface; no single documented rule',
+  );
   await expect(grouped).not.toContainText('uses the first in its documented source order');
 });
 
-test('shows no near-miss path from either vendor', async ({ page }) => {
+test('lists each file once per recognition and no authored content', async ({ page }) => {
   await page.goto(host.origin);
+  await expect(page.locator('.aci-item')).toHaveCount(3);
   const text = await page.locator('main').innerText();
-  // Rendered exactly once, as the admitted Claude row — never a second time
-  // for Codex's spelling of the same package directory.
+  // The nested `.agents` file is no row at all — its spelling's programs are
+  // root-anchored for both vendors — and the nested `.claude` layer is one
+  // Claude recognition, so its path appears exactly once.
   expect(text).not.toContain('packages/api/.agents/skills/deploy/SKILL.md');
+  expect(text.split('packages/api/.claude/skills/deploy/SKILL.md')).toHaveLength(2);
   // Authored content stays out of the list (FR-027).
   expect(text).not.toContain('Say hello');
   expect(text).not.toContain('# Nested deploy');
 });
 
-test('filters the two vendors apart with the tool filter', async ({ page }) => {
+test('filters the vendors apart with the tool filter', async ({ page }) => {
   await page.goto(host.origin);
   await expect(page.locator('.aci-item')).toHaveCount(3);
 
@@ -244,17 +302,30 @@ test('filters the two vendors apart with the tool filter', async ({ page }) => {
   await expect(page.locator('.aci-item')).toHaveCount(1);
   await expect(page.locator('.aci-item')).toContainText('OpenAI Codex');
 
+  // Copilot shares both root spellings, so it keeps the two root rows and
+  // drops the nested Claude layer.
+  await page.getByLabel('Tool').selectOption('copilot');
+  await expect(page.locator('.aci-item')).toHaveCount(2);
+
   await page.getByRole('button', { name: 'Clear filters' }).click();
   await expect(page.locator('.aci-item')).toHaveCount(3);
 });
 
 test('opens a Claude definition by its file identity into the detail route', async ({ page }) => {
   await page.goto(host.origin);
+  // Two definitions share the file, so two links share its text; each
+  // addresses its own definition and either opens the same file.
   const link = page
     .locator('.aci-item', { hasText: '.claude/skills/greet/SKILL.md' })
-    .locator('.aci-path a');
+    .locator('.aci-path a')
+    .first();
   await link.click();
   // The detail route is the one surface that serves authored content; the
-  // list milestone only proves the row links to a per-file identity.
-  await expect(page).toHaveURL(/\/skills\/[A-Za-z0-9_-]{22}$/u);
+  // list milestone proves the row links to the definition's stable identity —
+  // the tool, then the Source-relative path — which survives rescans and
+  // same-root server launches. The first link is the Copilot definition's,
+  // in the contracted tool order.
+  await expect(page).toHaveURL(
+    new URL('/skills/copilot/.claude/skills/greet/SKILL.md', host.origin).href,
+  );
 });

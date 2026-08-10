@@ -50,5 +50,83 @@
         "establishes": "Skills that share a name across discovery scopes are not merged and both remain available in skill selectors; the section lists the repository, user, admin, and system locations without establishing any precedence or ordering among them."
       }
     ]
+  },
+  {
+    "strategyId": "copilot.cli.skills.selection",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "operations": ["select-first"],
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.reference",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Skill locations", "Commands (alternative skill format)"],
+        "reviewedOn": "2026-07-15",
+        "establishes": "The CLI resolves a duplicate skill name to the first found in its documented source order, and a same-name skill has higher priority than a legacy command."
+      }
+    ]
+  },
+  {
+    "strategyId": "copilot.cloud.skills.selection",
+    "tool": "copilot",
+    "surfaces": ["copilot-cloud"],
+    "operations": ["filter", "select-first", "unknown-order"],
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.reference",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Skill locations"],
+        "reviewedOn": "2026-07-15",
+        "establishes": "Remote skills are projected alongside local skills via the AHP relay and sit last in the documented source order; that order and its name-based priority are the CLI surface’s, so how the Cloud surface itself resolves a collision stays unestablished."
+      },
+      {
+        "sourceId": "github.copilot.skills",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/add-skills",
+        "officialHost": "docs.github.com",
+        "sections": ["How Copilot uses agent skills"],
+        "reviewedOn": "2026-07-15",
+        "establishes": "The cloud agent decides from the prompt and a skill’s description when to load a repository skill, the progressive-selection step this pipeline records; its reviewed sections say nothing about relayed remote skills."
+      }
+    ]
+  },
+  {
+    "strategyId": "copilot.vscode.skills.selection",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "operations": ["filter", "select-first", "unknown-order"],
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.skills",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/add-skills",
+        "officialHost": "docs.github.com",
+        "sections": ["How Copilot uses agent skills"],
+        "reviewedOn": "2026-07-15",
+        "establishes": "Copilot loads a skill progressively when it judges the skill relevant to the task, which is the selection step this pipeline records."
+      },
+      {
+        "sourceId": "vscode.copilot.settings",
+        "url": "https://code.visualstudio.com/docs/agents/reference/ai-settings",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Agent skills settings"],
+        "reviewedOn": "2026-07-15",
+        "establishes": "Which skill locations participate is setting-filtered before any selection happens."
+      },
+      {
+        "sourceId": "vscode.copilot.skills",
+        "url": "https://code.visualstudio.com/docs/agent-customization/agent-skills",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Create a skill", "How Copilot uses skills"],
+        "reviewedOn": "2026-07-15",
+        "establishes": "The Create-a-skill location table documents the workspace and personal skill locations this selection reads across, and Copilot loads a relevant skill progressively — without documenting a duplicate-name precedence among the locations."
+      }
+    ]
   }
 ]

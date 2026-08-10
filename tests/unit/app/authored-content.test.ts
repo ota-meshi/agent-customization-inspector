@@ -6,7 +6,8 @@
 // masks a value or reveals a masked one, because the product publishes a value
 // as authored or not at all. It is reached only by asking for one file at a
 // time; the inventory carries none. And it is held in memory only, so a purge,
-// a route change, or the commit that rekeys every file ID takes it away again.
+// a route change, or the commit that replaces the generation takes it away
+// again.
 //
 // There is deliberately nothing here about an acknowledgement gate. FR-027 has
 // none: one would stand in front of a loopback-only session showing the viewer
@@ -56,10 +57,10 @@ function bootstrapSnapshot(overrides: Partial<SessionSnapshot> = {}): SessionSna
 }
 
 /** One committed readable file's detail, with a credential-shaped literal. */
-function fileDetail(fileId = 'file-1'): FileDetailDto {
+function fileDetail(): FileDetailDto {
   return {
+    kind: 'skill',
     file: {
-      fileId,
       sourceId: 'source-repository',
       sourceRelativePath: '.agents/skills/secretive/SKILL.md',
       encoding: 'utf-8',
@@ -68,7 +69,10 @@ function fileDetail(fileId = 'file-1'): FileDetailDto {
       sizeBytes: 40,
       diagnosticIds: [],
     },
-    recognitions: [],
+    presentation: {
+      frontmatter: [{ key: 'name', value: { kind: 'scalar', text: 'secretive' } }],
+      bodyText: 'ghp_FIXTURE000\n',
+    },
     diagnostics: [],
   };
 }
@@ -223,7 +227,7 @@ describe('authored file content in the browser', () => {
     state.dispose();
   });
 
-  it('drops the open content when a commit rekeys every file ID', async () => {
+  it('drops the open content when a commit replaces the generation', async () => {
     // Two snapshots: the one the page adopted, then the one a completed rescan
     // published. Only the second advances the sequence.
     const sessions = [
@@ -263,6 +267,49 @@ describe('authored file content in the browser', () => {
     await state.openSkill('from-an-older-generation', 'from-an-older-generation');
     expect(state.skillDetailState.value).toBe('stale');
     expect(state.skillErrorMessage.value).toBeNull();
+    state.dispose();
+  });
+
+  it('withholds a detail read from a generation newer than the adopted snapshot', async () => {
+    // The path — the file's whole identity — can survive a commit, so the
+    // host answers a generation-1 page from its newer commit with no
+    // rejection at all. Adopting that content would put the newer
+    // generation's source under the name and census this page resolved from
+    // the older snapshot, so the client withholds it and refreshes instead;
+    // the route then re-requests the same path under the adopted snapshot.
+    let hostGeneration = 1;
+    const calls: SessionRpcFunctionName[] = [];
+    const channel = {
+      call: (method: SessionRpcFunctionName) => {
+        calls.push(method);
+        if (method === SESSION_RPC_FUNCTIONS.getSession) {
+          return Promise.resolve({
+            globalContentEpoch: 0,
+            repositoryGeneration: hostGeneration,
+            globalGeneration: null,
+            data: bootstrapSnapshot({ repositoryGeneration: hostGeneration }),
+          });
+        }
+        return Promise.resolve({
+          globalContentEpoch: 0,
+          // The host has committed past the adopted generation 1.
+          repositoryGeneration: 2,
+          globalGeneration: null,
+          data: fileDetail(),
+        });
+      },
+    };
+    const state = new SessionViewState({ channel });
+    await state.start();
+    hostGeneration = 2;
+    await state.openSkill('file-1', 'file-1');
+    // Nothing mixed rendered: the newer-generation response was withheld
+    // rather than adopted.
+    expect(state.skillDetail.value).toBeNull();
+    // The withholding triggered the refresh that adopts the newer snapshot.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(calls.filter((method) => method === SESSION_RPC_FUNCTIONS.getSession).length).toBe(2);
+    expect(state.snapshot.value?.repositoryGeneration).toBe(2);
     state.dispose();
   });
 });

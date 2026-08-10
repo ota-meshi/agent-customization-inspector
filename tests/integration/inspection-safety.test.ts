@@ -54,7 +54,8 @@ describe('symlinked Claude skills', () => {
     // And it is a recognized Claude skill like any other: reading through the
     // link changed nothing about recognition.
     const recognition = publication.recognitions.find(
-      (candidate) => candidate.fileId === linked?.fileId && candidate.tool === 'claude',
+      (candidate) =>
+        candidate.sourceRelativePath === linked?.sourceRelativePath && candidate.tool === 'claude',
     );
     expect(recognition?.details.kind).toBe('skill');
 
@@ -74,8 +75,10 @@ describe('symlinked Claude skills', () => {
     });
     expect(publication.outcome).toBe('partial');
     // No recognition attaches to a file whose bytes never arrived.
-    expect(publication.recognitions.some((candidate) => candidate.fileId === broken?.fileId)).toBe(
-      false,
-    );
+    expect(
+      publication.recognitions.some(
+        (candidate) => candidate.sourceRelativePath === broken?.sourceRelativePath,
+      ),
+    ).toBe(false);
   });
 });

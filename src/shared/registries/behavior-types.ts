@@ -32,7 +32,26 @@ export type VendorSurface =
    * (contracts/vendors/openai-codex.md § Surface boundary). Hosted ChatGPT
    * Work is deliberately not part of this surface: it reads no local file.
    */
-  | 'codex-local-clients';
+  | 'codex-local-clients'
+  /**
+   * Local Copilot Chat and local agent mode inside VS Code. A cloud-agent
+   * session started from VS Code is `copilot-cloud`, not this surface
+   * (contracts/vendors/github-copilot.md § Surface boundary). Separate from
+   * the CLI and Cloud surfaces because the three document different lookup
+   * bases and incompatible selection, and two surfaces with different bases
+   * are two behavior IDs even when the relative filename matches.
+   */
+  | 'copilot-vscode'
+  /** Local GitHub Copilot CLI (contracts/vendors/github-copilot.md § Surface boundary). */
+  | 'copilot-cli'
+  /**
+   * Copilot cloud agent and hosted Copilot services: the hosted surface that
+   * processes a repository on GitHub's side and relays organization or
+   * enterprise state. It must not inherit a local user-home locator merely
+   * because another surface supports a similarly named customization
+   * (contracts/vendors/github-copilot.md § Surface boundary).
+   */
+  | 'copilot-cloud';
 
 /**
  * Which documented ownership scope a behavior belongs to
@@ -73,7 +92,17 @@ export type LookupBase =
   /** A registered plugin or skill catalog. */
   | 'registered-catalog'
   /** Service-side state with no local path. */
-  | 'hosted-state';
+  | 'hosted-state'
+  /**
+   * The documentation names a relative location without anchoring its base.
+   * A specific member here would assert an anchor the vendor never wrote —
+   * exactly the guess this registry must not record — so the gap is stated as
+   * itself and the record's `documentationStatus` carries it. Copilot CLI's
+   * legacy `.claude/commands/` is the case: its reference implies a project
+   * location but establishes no anchor (contracts/vendors/github-copilot.md
+   * § Known conflicts and uncertainties item 3).
+   */
+  | 'undocumented';
 
 /**
  * The closed traversal shape of a documented lookup

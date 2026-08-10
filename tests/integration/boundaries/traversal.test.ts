@@ -27,7 +27,8 @@ import { runTraversalScan } from '../../../src/server/inspection/traversal';
 import { assembleScanPublication } from '../../../src/server/inspection/scan';
 import { CODEX_REPO_SKILL_RULE } from '../../../src/shared/registries/codex/rules';
 import { CODEX_RULE_RELATIONS } from '../../../src/shared/registries/codex/relations';
-import type { RecognitionParseStatus, ToolRecognitionDto } from '../../../src/shared/api-types';
+import type { RecognitionParseStatus } from '../../../src/shared/api-types';
+import { ToolRecognition } from '../../../src/server/inspection/recognizers/candidate';
 import { DiagnosticRecord } from '../../../src/shared/diagnostics';
 import { SessionCoordinator, InspectionSession } from '../../../src/server/session/session';
 import { prepareNextRepositoryGeneration } from '../../../src/server/session/scan-generation';
@@ -71,23 +72,16 @@ const AGENTS_RULES: readonly CompiledInspectionRule[] = [codexSkillRule(AGENTS_P
 // any one vendor's extractor — is driven through the same dispatch seam the
 // production recognizers are injected on.
 function fakeRecognition(
-  fileId: string,
-  recognitionId: string,
+  sourceRelativePath: string,
+  tool: ToolRecognition['tool'],
   parseStatus: RecognitionParseStatus,
-): ToolRecognitionDto {
-  return {
-    recognitionId,
-    fileId,
-    tool: 'codex',
-    // These cases assert the parse-summary projection, so the kind is the one
-    // the fixture's `AGENTS.md` actually is and carries no per-kind detail.
-    details: { kind: 'instructions' },
-    parseStatus,
-    // A failed recognition publishes no metadata at all, and this stand-in
-    // extracts nothing in the first place (FR-028).
-    provenances: [],
-    diagnosticIds: [],
-  };
+): ToolRecognition {
+  // A real record rather than a literal: the class owns construction, and the
+  // stand-in differs only in what it recognized. The kind is the one the
+  // fixture's `AGENTS.md` actually is, with no per-kind detail; a failed
+  // recognition publishes no metadata at all, and this stand-in extracts
+  // nothing in the first place (FR-028), so the admissions are empty.
+  return new ToolRecognition(sourceRelativePath, tool, { kind: 'instructions' }, parseStatus, []);
 }
 
 function bootstrapSession(root: string) {
@@ -126,7 +120,6 @@ describe('file-confined outcomes publish a partial generation (FR-028)', () => {
       expect(binaryDiagnostic).toMatchObject({
         code: 'file-content-binary',
         sourceId: 'src-1',
-        fileId: binary?.fileId,
         sourceRelativePath: 'binary-dir/AGENTS.md',
       });
 
@@ -264,12 +257,12 @@ describe('recognition parse failure keeps the source displayed (FR-028)', () => 
         rootFailureOwner: 'repository',
         rules: AGENTS_RULES,
         result,
-        recognize: async ({ fileId, matchedPath }) => ({
+        recognize: async ({ matchedPath }) => ({
           recognitions:
             matchedPath === 'AGENTS.md'
               ? [
-                  fakeRecognition(fileId, 'rec-failed', 'failed'),
-                  fakeRecognition(fileId, 'rec-parsed', 'parsed'),
+                  fakeRecognition(matchedPath, 'codex', 'failed'),
+                  fakeRecognition(matchedPath, 'copilot', 'parsed'),
                 ]
               : [],
           // This stand-in is an instructions recognizer, and an instructions
@@ -291,12 +284,12 @@ describe('recognition parse failure keeps the source displayed (FR-028)', () => 
       // The complete source stays displayed and comparison-eligible; only
       // the failed recognition's derived data is omitted.
       expect(affected.sourceText).toBe('root agents\n');
-      // Which recognitions belong to the file is what their own `fileId` says.
+      // Which recognitions belong to the file is what their own path says.
       expect(
         publication.recognitions
-          .filter((recognition) => recognition.fileId === affected.fileId)
-          .map((recognition) => recognition.recognitionId),
-      ).toEqual(['rec-failed', 'rec-parsed']);
+          .filter((recognition) => recognition.sourceRelativePath === affected.sourceRelativePath)
+          .map((recognition) => recognition.parseStatus),
+      ).toEqual(['failed', 'parsed']);
       expect(affected.diagnosticIds).toHaveLength(1);
       const diagnostic = publication.diagnostics.find(
         (entry) => entry.diagnosticId === affected.diagnosticIds[0],
@@ -304,19 +297,17 @@ describe('recognition parse failure keeps the source displayed (FR-028)', () => 
       expect(diagnostic).toMatchObject({
         code: 'recognition-parse-failed',
         sourceId: 'src-1',
-        fileId: affected.fileId,
         sourceRelativePath: 'AGENTS.md',
       });
-      // The failure is recognition-scoped (FR-028), so the recognition carries
-      // it too: a row built from recognitions has no other way to reach it, and
-      // a diagnostic nothing references is a diagnostic nobody sees. Both
-      // owners reference the one published record.
+      // The failure is the extraction's (FR-028), so the failed recognition
+      // carries the reference too — it is what an inventory definition
+      // republishes — while the parsed one carries none.
       const failed = publication.recognitions.find(
-        (recognition) => recognition.recognitionId === 'rec-failed',
+        (recognition) => recognition.parseStatus === 'failed',
       );
       expect(failed?.diagnosticIds).toEqual(affected.diagnosticIds);
       const parsed = publication.recognitions.find(
-        (recognition) => recognition.recognitionId === 'rec-parsed',
+        (recognition) => recognition.parseStatus === 'parsed',
       );
       expect(parsed?.diagnosticIds).toEqual([]);
       // A file with no recognitions stays complete and not-applicable.
@@ -329,7 +320,7 @@ describe('recognition parse failure keeps the source displayed (FR-028)', () => 
     }
   });
 
-  it('keeps one distinct diagnostic per failed recognition on the same file', async () => {
+  it("shares one extraction-failure record among a kind's failed recognitions", async () => {
     const root = createFixtureRoot('inspector-parsefail-multi');
     try {
       writeFileSync(join(root, 'AGENTS.md'), 'root agents\n');
@@ -340,10 +331,10 @@ describe('recognition parse failure keeps the source displayed (FR-028)', () => 
         rootFailureOwner: 'repository',
         rules: AGENTS_RULES,
         result,
-        recognize: async ({ fileId }) => ({
+        recognize: async ({ matchedPath }) => ({
           recognitions: [
-            fakeRecognition(fileId, 'rec-a', 'failed'),
-            fakeRecognition(fileId, 'rec-b', 'failed'),
+            fakeRecognition(matchedPath, 'codex', 'failed'),
+            fakeRecognition(matchedPath, 'copilot', 'failed'),
           ],
           companions: [],
           companionCollisions: 0,
@@ -352,32 +343,32 @@ describe('recognition parse failure keeps the source displayed (FR-028)', () => 
       if (publication.kind !== 'publishable') {
         throw new Error('expected a publishable outcome');
       }
-      // One record per failed recognition (FR-028): the two failures share
-      // every public field and still publish separately — and every file
-      // diagnostic ID must resolve to a published record.
+      // One extraction per kind means one record (FR-028): however many tools
+      // recognize the kind, the parse ran once, so both failed recognitions
+      // reference the same published diagnostic and the file lists it once.
       const parseFailures = publication.diagnostics.filter(
         (entry) => entry.code === 'recognition-parse-failed',
       );
-      expect(parseFailures).toHaveLength(2);
+      expect(parseFailures).toHaveLength(1);
       const affected = publication.files.find((file) => file.sourceRelativePath === 'AGENTS.md');
       if (affected?.encoding !== 'utf-8') {
         throw new Error('expected the readable variant');
       }
-      expect([...affected.diagnosticIds].sort()).toEqual(
-        parseFailures.map((entry) => entry.diagnosticId).sort(),
-      );
+      expect(affected.diagnosticIds).toEqual([parseFailures[0]!.diagnosticId]);
+      for (const recognition of publication.recognitions) {
+        expect(recognition.diagnosticIds).toEqual([parseFailures[0]!.diagnosticId]);
+      }
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
   });
 
-  it('commits the readable source with only derived data omitted, rekeying the tuple coherently', () => {
+  it('commits the readable source with only derived data omitted, the pair coherent', () => {
     const { session } = bootstrapSession('/fixture-root');
     const parseDiagnostic = new DiagnosticRecord({
       code: 'recognition-parse-failed',
       lifecycleOwnerKey: null,
       sourceId: 'src-1',
-      fileId: 'file-1',
       sourceRelativePath: 'AGENTS.md',
     }).serialize();
     const next = prepareNextRepositoryGeneration(session.committedRepositoryGeneration, {
@@ -390,7 +381,6 @@ describe('recognition parse failure keeps the source displayed (FR-028)', () => 
       skillCompanionsByPath: new Map(),
       files: [
         {
-          fileId: 'file-1',
           sourceId: 'src-1',
           sourceRelativePath: 'AGENTS.md',
           encoding: 'utf-8',
@@ -407,8 +397,8 @@ describe('recognition parse failure keeps the source displayed (FR-028)', () => 
       throw new Error('expected the readable variant');
     }
     expect(file.sourceText).toBe('# complete authored source\n');
-    // Rekeying keeps the diagnostic tuple pointing at the republished file.
-    expect(next.diagnostics[0]!.fileId).toBe(file.fileId);
+    // The published pair keeps the diagnostic pointing at the committed file.
+    expect(next.diagnostics[0]!.sourceRelativePath).toBe(file.sourceRelativePath);
     expect(next.outcome).toBe('partial');
   });
 });
@@ -430,7 +420,6 @@ describe('unreadable root fails the Source attempt (FR-002)', () => {
     expect(publication.diagnostic).toMatchObject({
       code: 'root-unreadable',
       sourceId: 'src-1',
-      fileId: null,
       sourceRelativePath: null,
     });
 

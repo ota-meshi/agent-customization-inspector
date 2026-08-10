@@ -25,10 +25,16 @@
 // a second source of truth.
 import { CLAUDE_BEHAVIOR_STATEMENTS } from './claude/behaviors';
 import { CODEX_BEHAVIOR_STATEMENTS } from './codex/behaviors';
+import { COPILOT_BEHAVIOR_STATEMENTS } from './copilot/behaviors';
 import type { BehaviorId } from './identifier-types';
 import type { VendorBehaviorStatement } from './behavior-types';
 
-export type { BehaviorId, ClaudeBehaviorId, CodexBehaviorId } from './identifier-types';
+export type {
+  BehaviorId,
+  ClaudeBehaviorId,
+  CodexBehaviorId,
+  CopilotBehaviorId,
+} from './identifier-types';
 export type {
   LookupBase,
   VendorBehaviorStatement,
@@ -43,6 +49,7 @@ export type {
  * order; each arrives with the inventory phase that needs it.
  */
 export const VENDOR_BEHAVIOR_STATEMENTS: Readonly<Record<BehaviorId, VendorBehaviorStatement>> = {
+  ...COPILOT_BEHAVIOR_STATEMENTS,
   ...CLAUDE_BEHAVIOR_STATEMENTS,
   ...CODEX_BEHAVIOR_STATEMENTS,
 };

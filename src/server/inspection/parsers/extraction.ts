@@ -29,9 +29,10 @@
 import type { RecognitionParseStatus } from '../../../shared/api-types';
 
 /**
- * The outcome of one recognition's extraction
- * (data-model.md § ToolRecognition `parseStatus`), carrying whatever that
- * recognition's kind reads out of the authored text — for a skill, the
+ * The outcome of one `(file, kind)` extraction
+ * (data-model.md § ToolRecognition `parseStatus`) — run once and shared by
+ * every recognition of the kind — carrying whatever that
+ * kind reads out of the authored text: for a skill, the
  * presentation its detail surface is built from.
  *
  * A class with a private constructor, so "nothing extracted unless `parsed`"

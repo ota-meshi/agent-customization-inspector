@@ -193,7 +193,8 @@ serves the complete authored `sourceText`, so every authored value is already on
 screen in its own spelling, and a captioned copy would be one fact in two spellings. The
 values a recognition reads out are the file's own declarations, by the keys the file wrote
 (data-model.md § Skill presentation); the one an inventory row is grouped by is its kind's
-identity — for a `skill`, the name authored in its own file. The table therefore fixes
+identity — for a `skill`, the name authored in its own file, or its skill directory name
+when the file authors none (data-model.md § Inventory unit). The table therefore fixes
 eligible relationship kinds and admitted source forms only.
 
 The final column is normative source-form applicability, not commentary. Effective

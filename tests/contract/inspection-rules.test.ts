@@ -1,4 +1,4 @@
-// T052/T060/T126/T130/T133: the inspection-rule half of the registry contract gate — the
+// T052/T060/T126/T130/T133/T154/T158: the inspection-rule half of the registry contract gate — the
 // closed matcher grammar, deterministic compilation into the immutable
 // versioned `TraversalPlan`, reciprocal references, the same-name skill
 // statement each rule derives, and the closed structure-only projection
@@ -28,6 +28,7 @@ import {
 } from '../../src/server/inspection/rules/registry';
 import { CLAUDE_REPOSITORY_RULES } from '../../src/server/inspection/rules/claude';
 import { CODEX_REPOSITORY_RULES } from '../../src/server/inspection/rules/codex';
+import { COPILOT_REPOSITORY_RULES } from '../../src/server/inspection/rules/copilot';
 import { sameNameSkillResolutionFor } from '../../src/shared/registries/skill-resolution';
 import { SUPPORTED_TOOL_ORDER } from '../../src/shared/entities';
 import { serializeInspectionRules } from '../fixtures/conformance/serialize';
@@ -288,6 +289,16 @@ describe('traversal-plan compilation', () => {
       expect(compiled.plan).toEqual(new TraversalPlan(compiled.rule.matcher!));
     }
   });
+
+  it('pairs each shipped Copilot rule with the plan compiled from its own matcher (T154)', () => {
+    for (const compiled of COPILOT_REPOSITORY_RULES) {
+      expect(INSPECTION_RULES[compiled.rule.ruleId]).toBe(compiled.rule);
+      expect(RULE_RELATIONS[compiled.rule.ruleId]).toBe(compiled.relations);
+      expect(compiled.tool).toBe(compiled.rule.tool);
+      expect(compiled.kind).toBe(compiled.rule.kind);
+      expect(compiled.plan).toEqual(new TraversalPlan(compiled.rule.matcher!));
+    }
+  });
 });
 
 describe('the Claude skill slice of the reference graph (T130, T133)', () => {
@@ -318,6 +329,84 @@ describe('the Claude skill slice of the reference graph (T130, T133)', () => {
     expect(relations.explainedByStrategies[0]).toBe(
       RUNTIME_COMPOSITION_STRATEGIES['claude.skills.selection'],
     );
+  });
+});
+
+describe('the Copilot skill slice of the reference graph (T154, T158)', () => {
+  it('ships exactly one read-authorizing Copilot record and no exclusion', () => {
+    // The phase-local half of the registry catalog check: this milestone adds
+    // `copilot.repo.skill` alone. Rejecting configured or environment-supplied
+    // skill roots needs no `excluded` record — no selector reaches outside the
+    // three fixed directory spellings — and the eventual complete catalog gate
+    // is T913's, not this suite's.
+    const copilotRules = rules.filter((rule) => rule.tool === 'copilot');
+    expect(copilotRules.map((rule) => rule.ruleId)).toEqual(['copilot.repo.skill']);
+    expect(copilotRules[0]!.discoveryClass).toBe('static-candidate');
+  });
+
+  it('authors the three exact root-anchored selector programs and no broadening (T154)', () => {
+    // One program per fixed directory, each `[<dir>, 'skills', ANY_NAME,
+    // 'SKILL.md']` anchored at the Repository root: no Copilot surface
+    // documents a downward skill lookup from a root context, so a leading
+    // recursive step would inventory nested contexts this product does not
+    // select (FR-003). Exactly one dynamic skill-name child and the exact
+    // terminal literal; asserting the literals is what makes a fourth
+    // directory — a configured root, a `COPILOT_SKILLS_DIRS` value —
+    // unrepresentable rather than merely absent
+    // (contracts/vendors/github-copilot.md § Inspector Repository matcher
+    // rules).
+    const matcher = INSPECTION_RULES['copilot.repo.skill']!.matcher!;
+    expect(matcher.selectors).toHaveLength(3);
+    for (const selector of matcher.selectors) {
+      expect(selector[0]!.kind).not.toBe('recursive-directories');
+    }
+    expect(matcher.selectors.map((selector) => selector.map((segment) => segment.kind))).toEqual([
+      ['literal', 'literal', 'regex', 'literal'],
+      ['literal', 'literal', 'regex', 'literal'],
+      ['literal', 'literal', 'regex', 'literal'],
+    ]);
+    expect(
+      matcher.selectors.map((selector) =>
+        selector.flatMap((segment) => (segment.kind === 'literal' ? [segment.value] : [])),
+      ),
+    ).toEqual([
+      ['.github', 'skills', 'SKILL.md'],
+      ['.agents', 'skills', 'SKILL.md'],
+      ['.claude', 'skills', 'SKILL.md'],
+    ]);
+  });
+
+  it('bases the rule on the three surface behaviors and explains it by their strategies', () => {
+    // The reciprocal edges the phase adds, asserted by identity: the edge must
+    // hold the record the registry publishes, not an equal-looking copy. The
+    // User, command, and hosted scopes are deliberately absent from
+    // `basedOnBehaviors` — they are Source boundaries this rule may not read.
+    const relations = RULE_RELATIONS['copilot.repo.skill'];
+    expect(relations.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'copilot.behavior.cli.skills',
+      'copilot.behavior.cloud.skills',
+      'copilot.behavior.vscode.skills',
+    ]);
+    for (const behavior of relations.basedOnBehaviors) {
+      expect(VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId]).toBe(behavior);
+    }
+    expect(relations.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual([
+      'copilot.cli.skills.selection',
+      'copilot.cloud.skills.selection',
+      'copilot.vscode.skills.selection',
+    ]);
+    for (const strategy of relations.explainedByStrategies) {
+      expect(RUNTIME_COMPOSITION_STRATEGIES[strategy.strategyId]).toBe(strategy);
+    }
+  });
+
+  it('derives the surface-dependent same-name statement from the three strategies', () => {
+    // The CLI documents a first-found winner; VS Code and Cloud record
+    // selection whose duplicate order is unresolved. No single statement is
+    // true of the product, so the grouped row states that the rule depends on
+    // the surface — never the CLI's winner as a product-wide claim
+    // (`skill-resolution.ts`; FR-007).
+    expect(sameNameSkillResolutionFor('copilot')).toBe('surface-dependent');
   });
 });
 

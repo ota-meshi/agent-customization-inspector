@@ -42,7 +42,6 @@ const REPOSITORY_SOURCE: SourceDto = {
 /** A published file: its own facts only, as the snapshot now carries them. */
 function file(path: string): CustomizationFileSummaryDto {
   return {
-    fileId: `file-${path}`,
     sourceId: 'src-repo',
     sourceRelativePath: path,
     diagnosticIds: [],
@@ -53,27 +52,29 @@ function file(path: string): CustomizationFileSummaryDto {
 }
 
 /**
- * One skill row: a declared name and the files declaring it. The row's unit is
- * the name, so a case that wants two rows gives two names and a case that wants
- * one row with two definitions gives one.
+ * One skill row: a resolved name and the files resolving to it. The row's unit
+ * is the name, so a case that wants two rows gives two names and a case that
+ * wants one row with two definitions gives one.
  */
-function skill(declaredName: string | null, ...paths: readonly string[]): SkillInventoryEntryDto {
-  return skillWithCompanions([], declaredName, ...paths);
+function skill(name: string, ...paths: readonly string[]): SkillInventoryEntryDto {
+  return skillWithCompanions([], name, ...paths);
 }
 
 /** A skill entry whose one definition ships the given companion files. */
 function skillWithCompanions(
   companionFiles: readonly string[],
-  declaredName: string | null,
+  name: string,
   ...paths: readonly string[]
 ): SkillInventoryEntryDto {
   return {
-    declaredName,
+    name,
     definitions: paths.map((path) => ({
-      fileId: `file-${path}`,
-      tools: ['codex'],
-      companionFiles,
+      sourceRelativePath: path,
+      tool: 'codex' as const,
+      parseStatus: 'parsed' as const,
+      invocationName: name,
       diagnosticIds: [],
+      companionFiles,
     })),
     sameNameResolutions:
       paths.length > 1 ? [{ tool: 'codex', resolution: 'all-remain' as const }] : [],
@@ -172,14 +173,12 @@ describe('inventory filters over the committed snapshot', () => {
     // files' diagnostics beside the definition, which is what keeps a `partial`
     // generation able to say which file (FR-028).
     const brokenLink: CustomizationFileSummaryDto = {
-      fileId: 'file-.agents/skills/greet/notes.md',
       sourceId: 'src-repo',
       sourceRelativePath: '.agents/skills/greet/notes.md',
       diagnosticIds: ['diag-unreadable'],
       encoding: 'unknown',
     };
     const binaryAsset: CustomizationFileSummaryDto = {
-      fileId: 'file-.agents/skills/greet/logo.png',
       sourceId: 'src-repo',
       sourceRelativePath: '.agents/skills/greet/logo.png',
       diagnosticIds: [],
@@ -242,7 +241,7 @@ describe('inventory filters over the committed snapshot', () => {
     filters.pathQuery.value = 'packages/';
     // The filter matches a definition's file, and the row it keeps is the name
     // that definition declares.
-    expect(filters.view.skillRows.value.map((row) => row.declaredName)).toEqual(['deploy']);
+    expect(filters.view.skillRows.value.map((row) => row.name)).toEqual(['deploy']);
 
     filters.pathQuery.value = '';
     filters.tool.value = 'codex';
@@ -344,23 +343,25 @@ describe('same-name resolutions in the filtered view', () => {
   });
 
   it("keeps Claude's statement only while the shown definitions still clash by directory", () => {
-    // Claude's rule answers a directory-name clash, not a shared label
+    // Claude's rule answers a directory-name clash, not a shared name
     // (FR-007): a filter can remove one of the clashing pair while a third
-    // same-label definition keeps the count at two, and the statement must
+    // same-name definition keeps the count at two, and the statement must
     // leave with the clash it described. The gate is the same
-    // skillDirectoriesClash the projection applied.
+    // clashingSkillDirectories the projection applied.
     const paths = [
       'one/.claude/skills/wave/SKILL.md',
       'two/.claude/skills/wave/SKILL.md',
       'one/.claude/skills/tide/SKILL.md',
     ];
     const entry: SkillInventoryEntryDto = {
-      declaredName: 'wave',
+      name: 'wave',
       definitions: paths.map((path) => ({
-        fileId: `file-${path}`,
-        tools: ['claude'],
-        companionFiles: [],
+        sourceRelativePath: path,
+        tool: 'claude' as const,
+        parseStatus: 'parsed' as const,
+        invocationName: 'wave',
         diagnosticIds: [],
+        companionFiles: [],
       })),
       sameNameResolutions: [{ tool: 'claude', resolution: 'all-remain-context-selected' }],
     };
@@ -378,6 +379,42 @@ describe('same-name resolutions in the filtered view', () => {
     const remaining = view.skillRows.value[0]!;
     expect(remaining.definitions).toHaveLength(2);
     expect(remaining.sameNameResolutions).toHaveLength(0);
+  });
+
+  it("carries Claude's statement across rows and drops it with the hidden side", () => {
+    // Nested prefixing puts a clash's sides on different rows (FR-007): the
+    // root `wave` and the nested `apps:wave` each hold one Claude definition,
+    // and the clash they share is the directory name. Both rows carry the
+    // statement while both sides are visible; hiding one side removes the
+    // clash the statement described, from the row still in view.
+    const rootPath = '.claude/skills/wave/SKILL.md';
+    const nestedPath = 'apps/.claude/skills/wave/SKILL.md';
+    const rowFor = (name: string, path: string): SkillInventoryEntryDto => ({
+      name,
+      definitions: [
+        {
+          sourceRelativePath: path,
+          tool: 'claude' as const,
+          parseStatus: 'parsed' as const,
+          invocationName: name,
+          diagnosticIds: [],
+          companionFiles: [],
+        },
+      ],
+      sameNameResolutions: [{ tool: 'claude', resolution: 'all-remain-context-selected' }],
+    });
+    const snapshot = ref<SessionSnapshot | null>(
+      snapshotWith(
+        [file(rootPath), file(nestedPath)],
+        [rowFor('apps:wave', nestedPath), rowFor('wave', rootPath)],
+      ),
+    );
+    const { pathQuery, view } = withSelection(snapshot);
+    expect(view.skillRows.value.map((row) => row.sameNameResolutions.length)).toEqual([1, 1]);
+    pathQuery.value = 'apps/';
+    expect(view.skillRows.value).toHaveLength(1);
+    expect(view.skillRows.value[0]!.name).toBe('apps:wave');
+    expect(view.skillRows.value[0]!.sameNameResolutions).toHaveLength(0);
   });
 });
 
@@ -587,7 +624,6 @@ describe('session summaries expose no authored content', () => {
     expect(Object.keys(published).sort()).toEqual([
       'diagnosticIds',
       'encoding',
-      'fileId',
       'hadLeadingBom',
       'sizeBytes',
       'sourceId',

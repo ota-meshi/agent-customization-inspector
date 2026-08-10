@@ -7,8 +7,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { InspectionSession, SessionCoordinator } from '../../../src/server/session/session';
 
-// Force the rekeying generation preparation to throw so completeScan rejects
-// after admission; createBootstrapGeneration stays real so the session still
+// Force the generation preparation to throw so completeScan rejects after
+// admission; createBootstrapGeneration stays real so the session still
 // bootstraps.
 vi.mock('../../../src/server/session/scan-generation', async (importOriginal) => {
   const actual =
@@ -16,7 +16,7 @@ vi.mock('../../../src/server/session/scan-generation', async (importOriginal) =>
   return {
     ...actual,
     prepareNextRepositoryGeneration: () => {
-      throw new Error('EIO: generation rekey failed');
+      throw new Error('EIO: generation preparation failed');
     },
   };
 });
@@ -49,7 +49,7 @@ describe('completeScan preparation failure (T026 regression)', () => {
         candidateFiles: 0,
         readBytes: 0,
       }),
-    ).rejects.toThrow('EIO: generation rekey failed');
+    ).rejects.toThrow('EIO: generation preparation failed');
 
     // The Source is still mid-attempt, not committed.
     expect(session.snapshot().sources[0]!.status).toBe('scanning');
@@ -60,7 +60,7 @@ describe('completeScan preparation failure (T026 regression)', () => {
     // instead of stuck 'scanning' forever.
     coordinator.failScan(admitted.scanRequestId, {
       kind: 'error',
-      message: 'EIO: generation rekey failed',
+      message: 'EIO: generation preparation failed',
     });
     const snapshot = session.snapshot();
     expect(snapshot.sources[0]!.status).toBe('failed');

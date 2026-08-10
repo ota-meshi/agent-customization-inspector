@@ -97,11 +97,11 @@ builds, tests, and audits against. It does not travel with the published package
 consumer's `npx` resolves those caret ranges against the registry at install time: the audit
 establishes the tree this project ships and verifies, not the tree a later install produces; tsdown bundles project-owned modules and
 shared contracts, not arbitrary transitive packages. The direct production dependencies are
-exactly the seven packages `devframe`, `gunshi`, `jsonc-parser`, `smol-toml`,
+exactly the eight packages `devframe`, `gunshi`, `h3`, `jsonc-parser`, `smol-toml`,
 `vfile`, `vfile-matter`, and `yaml` (§ 3); `open` is absent from every
 dependency section and the production lock closure.
 
-Assert the approved direct production dependency set — exactly those seven names and no
+Assert the approved direct production dependency set — exactly those eight names and no
 others — from `package.json` and the `pnpm-lock.yaml` closure, so any new production
 dependency fails until the § 3 decision is explicitly revisited. Payload content scans — `os`/`cpu`/`libc` selectors, bundled/optional native
    packages, native/binary/Wasm magic or ELF/Mach-O/PE magic, `binding.gyp`, Rust/C/C++
@@ -132,7 +132,7 @@ production closure stable and its payloads byte-fixed for the first release with
 re-scanning content the hashes already fix and without a test that restates the lockfile's
 own values.
 Root-absolute assets are necessary because the same shell is returned for nested routes
-such as `/skills/<fileId>`; a relative `./_nuxt/` URL would resolve beneath that route.
+such as `/skills/<tool>/<source-relative path>`; a relative `./_nuxt/` URL would resolve beneath that route.
 The official [Nuxt 4 configuration reference](https://nuxt.com/docs/4.x/api/nuxt-config#baseurl)
 defines `baseURL`, `buildAssetsDir`, and the empty-by-default `cdnURL`. The exact
 [Nuxt output-directory documentation](https://nuxt.com/docs/4.x/directory-structure/output)
@@ -199,6 +199,7 @@ create a second dependency baseline.
 | pnpm | 11.13.0 | Current stable package manager |
 | Local host | `devframe` 0.7.5 | Local-tool host framework behind `@eslint/config-inspector`; serves the packaged SPA from `cli.distDir` and carries the session API as its RPC channel with authentication disabled; owns port/host resolution and browser opening (§ 8); pre-1.0, so the committed lockfile pins the reviewed baseline and the manifest's caret range stays within 0.7.x |
 | CLI | `gunshi` 0.37.0 | Current zero-runtime-dependency ESM CLI framework; its Node.js `>=22` engine requirement fits the declared range; browser opening is owned by the devframe host (§ 8) and adds no further package |
+| Host HTTP app | `h3` 2.0.1-rc.22 | The host builds the H3 app devframe mounts onto, carrying the `/skills/**` shell fallback devframe's extension-guarded SPA fallback cannot serve — a skill detail URL ends with the file's own last segment, such as `SKILL.md`, and percent-encoding is no alternative because devframe decodes before its extension test. Declared as a caret range like every other direct dependency, with the lockfile resolving it to devframe's own h3 so both resolve one module instance; the dependency leaves with the host shim once devframe can serve extension-ful client-route misses itself |
 | Parsers | `yaml` 2.9.0, `jsonc-parser` 3.3.1, `smol-toml` 1.7.0 | Current stable inert data parsers |
 | Frontmatter | `vfile-matter` 5.0.1, `vfile` 6.0.3 | Frontmatter delimiter handling. Deciding where a frontmatter block begins and ends means re-deciding BOM handling, line endings, and the closing-fence forms, so it is a parser rather than a regular expression. This one parses the block with the `yaml` engine already listed here; a package carrying its own `js-yaml` would give one document two meanings, because js-yaml 3 is YAML 1.1 and `yaml` is YAML 1.2 |
 | Source view/diff | `monaco-editor` 0.55.1 | Current stable read-only source and diff editor; its own diff engine avoids a duplicate client dependency |
@@ -278,7 +279,7 @@ hash — identical across OSes — so the payload bytes are fixed at dependency 
 devframe's own tarball payload is JavaScript/TypeScript text only, so the Node-only package gate holds. devframe is
 pre-1.0: 0.x minors may migrate APIs, so the caret range excludes them, the committed
 lockfile pins the resolved version, and any bump is a § 3 planning-gate change.
-`tests/package/production-graph.test.ts` asserts exactly the seven approved direct
+`tests/package/production-graph.test.ts` asserts exactly the eight approved direct
 dependencies; their versions and integrity stay owned by the lockfile.
 
 ### Finite release-certification matrix
@@ -335,10 +336,12 @@ Gunshi's official [setup requirements](https://gunshi.dev/guide/introduction/set
 the Node/TypeScript compatibility and closed unknown-option behavior used here.
 The safe-filesystem layer uses only Node's built-in `node:fs/promises`, `node:fs`, and
 `node:path` APIs, so it adds no platform toolchain or runtime package dependency.
-The direct production `dependencies` set is exactly the seven packages `devframe`,
-`gunshi`, `jsonc-parser`, `smol-toml`, `vfile`, `vfile-matter`, and `yaml` (declared as caret ranges, pinned to
-exact resolved versions by the lockfile): the CLI and parser packages are
-npm-graph leaves, while devframe contributes the transitive host tree recorded above.
+The direct production `dependencies` set is exactly the eight packages `devframe`,
+`gunshi`, `h3`, `jsonc-parser`, `smol-toml`, `vfile`, `vfile-matter`, and `yaml` (declared as caret ranges,
+with the lockfile pinning every resolved version; `h3` resolves to devframe's own h3,
+so both resolve one module instance): the CLI and parser packages are
+npm-graph leaves, h3 is already in devframe's transitive host tree recorded above, and
+devframe contributes that tree.
 Nuxt/Vue/Vite/tsdown, Monaco, and test tooling are build-
 or development-only because their required output is assembled into the closed product
 assets. The lockfile and an isolated installed production closure are both audited.
@@ -400,7 +403,7 @@ mixed path matrix:
    `allowlistVersion`/`traversalPlanVersion`. The token vocabulary, composability, and
    the Codex first-non-empty policy stand.
 3. The **runtime composition registry** records stable `strategyId` values for selection,
-   precedence, layering, fallbacks, condition projection, and relationship-only rules in
+   precedence, layering, fallbacks, and relationship-only rules in
    [runtime composition](contracts/runtime-composition.md). A strategy refers to behavior
    and rule IDs instead of repeating paths.
 4. **Official sources** are recorded per page in
@@ -681,7 +684,7 @@ and Claude imports are scanned as text. Parsing runs in-process on the scan path
 parser libraries and inherits its memory, syntax-tree, and scalar capacity from
 Node.js, the parser libraries, and the execution environment; the product does not configure
 V8 memory ceilings or parser item/depth/time limits. A parser or extractor failure, or incompatible meaning from two extractors for the
-same `(fileId, tool, kind)`, is confined to that file: it discards that one recognition's
+same `(file, tool, kind)`, is confined to that file: it discards that one recognition's
 whole extraction result behind the per-file `recognition-parse-failed` diagnostic under a
 `partial` commit, without changing the readable source text or another recognition
 (FR-028). Exactly one recognition exists per tool/kind
@@ -729,8 +732,9 @@ boundary.
 - Resolving environment-variable references from inspected content was rejected because it
   would replace authored text with ambient process state and could expose values not read
   from an admitted Source.
-- Zod was not added: request commands are small closed shapes and strict manual guards are
-  simpler; it would not secure filesystem input.
+- Zod was not added: a declared session-API parameter is a reference resolved against
+  server-retained state, so resolution is the validation and a schema layer would only
+  re-reject what resolution already fails closed; it would not secure filesystem input.
 
 ## 7. Source and metadata comparison UI
 
@@ -815,7 +819,10 @@ Constitution § Quality and Safety Standards). The CLI starts the host with `cre
 from `cli.distDir` (`dist/public`), and carries the session API as devframe RPC functions
 declared with `defineRpcFunction` and registered in the definition's `setup`. Port and
 host resolution, static serving with the SPA fallback, the RPC channel, and browser
-opening are devframe policy rather than product code. The same channel carries devframe's own
+opening are devframe policy rather than product code, with one closed product-owned piece
+in front of static serving: the `/skills/**` `GET`/`HEAD` rewrite to `/`, which lets
+devframe's own handler serve the shell for skill deep links its extension-guarded
+fallback cannot (§ 3 h3 row). The same channel carries devframe's own
 built-ins — `devframe:agent:*`, `devframe:rpc:server-state:*`, and
 `devframe:streaming:*` — which the framework registers unconditionally; the product
 registers no agent tools, shared server state, or streaming channels on them, and the
@@ -835,7 +842,7 @@ allow-list, and `false` removes the gate altogether. The residual limitation is
 documented rather than defended:
 while the inspector runs, other local processes and — via DNS rebinding — a malicious web
 page can reach the unauthenticated session (QR-003). The session API still exposes only
-file IDs and closed commands, never client paths.
+Source-relative paths and closed commands, never absolute filesystem paths.
 
 Before Global consent, expose a
 lexical/no-I/O path preview over the session API as the one server-retained record
@@ -891,7 +898,7 @@ Every ordinary response is checked against its exact request token, captured
 `clientDataEpoch`, adopted `sessionId`, `globalContentEpoch`, and null disable fence before
 it can mutate browser state. Every SessionSnapshot/FileDetail request additionally captures
 the owning sequence's generation — the session snapshot exposes `repositoryGeneration` and
-a nullable `globalGeneration` — and a file ID where applicable. Older snapshots are
+a nullable `globalGeneration` — and the file's Source-relative Path where applicable. Older snapshots are
 ignored; before adopting a newer generation of either sequence the client increments the
 epoch and aborts/disposes the detail, comparison, and editor objects owned by that
 sequence's replaced generation, while the other sequence's committed views stay valid.
@@ -1020,11 +1027,12 @@ the committed `RepositoryScanGeneration`, a Global scan from the committed
 `GlobalScanGeneration` — and builds its replacement separately. A complete result, or a
 partial result whose only problems are file-confined
 diagnostics (FR-028), commits atomically as that sequence's next generation; the commit
-rekeys every file ID the sequence owns and makes only that sequence's old
-file/detail/comparison/selection/editor references stale, while the other sequence's
+makes only that sequence's old
+detail/comparison/selection/editor state stale — file identities are Source-relative
+Paths and stay stable across it — while the other sequence's
 committed state and views remain valid (FR-030). No carry-forward machinery exists — a
-Global commit does not preserve the Repository inventory unchanged while rekeying every
-session ID, because it has no reason to touch it. An
+Global commit does not preserve the Repository inventory unchanged by copying it, because
+it has no reason to touch it. An
 explicit rescan's fatal failure discards all uncommitted output. The last successful snapshot
 stays visible with a Source-keyed stale-failure entry referencing the actionable
 `root-unreadable` diagnostic when the root itself cannot be read, or the failed request's
@@ -1073,7 +1081,7 @@ process, and no such wall-clock guarantee is claimed.
 **Rationale**: Serialization plus atomic per-sequence generations prevent lost updates and
 mixed old/new results. Repository and Global keep independent sequences because their
 lifecycles are independent — the Repository Source always exists, while Global sources
-exist only between enable and disable — so a commit never has to carry, rekey, or
+exist only between enable and disable — so a commit never has to carry or
 invalidate the other sequence's state, and no carry-forward machinery is needed at
 all. Deriving capacity from the actual runtime avoids presenting arbitrary
 product numbers as portable safety guarantees. Ordinarily reported errors preserve the
@@ -1091,8 +1099,8 @@ remain explicit platform limitations.
   rebasing.
 - One session-wide generation sequence shared by Repository and Global inspection was
   rejected on 2026-07-22 because the two lifecycles are independent: it forced every
-  Global commit — and disable — to carry the untouched Repository inventory forward while
-  rekeying every session ID, invalidating Repository views that no data change justified.
+  Global commit — and disable — to carry the untouched Repository inventory forward,
+  invalidating Repository views that no data change justified.
 - Product-defined byte, item-count, parser, queue, and deadline caps were rejected
   because effective capacity belongs to Node.js and the surrounding execution environment.
 
@@ -1193,9 +1201,9 @@ without slot-capacity fixtures. Injected recoverable Node.js, parser, editor, an
 failures prove safe failure, atomic publication, and no response truncation; fixtures also
 confirm that file size and collection cardinality are not product validation rules. Process-
 level OOM and kernel termination remain outside in-process recovery tests. Diagnostic fixtures enforce the closed `file | source`
-scope union. A file-scoped Diagnostic has its owning `sourceId`, `fileId`, and
-`sourceRelativePath`; a source-scoped Diagnostic has its owning `sourceId` but no `fileId`
-or `sourceRelativePath`. There is no pathless scope, and
+scope union. A file-scoped Diagnostic has its owning `sourceId` and
+`sourceRelativePath`; a source-scoped Diagnostic has its owning `sourceId` but no
+`sourceRelativePath`. There is no pathless scope, and
 a source-scoped Diagnostic never fabricates a path to satisfy a display or ordering field.
 
 The 2026-07-17 measurable-outcome revalidation fixes the following objective protocols:
@@ -1595,28 +1603,31 @@ chain; captured wire/browser/Inspector bytes are not hash preimages. One IPC mes
 payload, but one primary-workflow observation may produce any number of counted/chained event
 messages. Only fixed codes, protocol-owner-generated opaque
 IDs, booleans/enums, safe integers, and evidence digests enter canonical safe-payload bytes.
-Each request additionally uses the exact privacy-safe route/target classifier `targetClass`:
-`static-manifested-asset | static-spa-shell | static-client-route-fallback | api-get-session |
-api-get-file | api-post-repository-rescan |
-api-get-global-consent-preview | api-post-global-consent-preview | api-post-global-enable |
-api-post-global-rescan | api-post-global-disable | other-loopback | remote | mcp |
-unclassifiable | not-applicable`. A closed truth table allows only the authorized-static and declared-API combinations across authority,
-target, route, method, capability, origin, same-host, attribution, request class, and prohibited
-status. Every row has `eventCode: observation`, not-applicable workflow class, observed outcome class,
+Each request additionally uses the exact privacy-safe target classifier `targetClass`:
+`static-manifested-asset | static-spa-shell | static-client-route-fallback |
+connection-discovery-metadata | rpc-channel-upgrade | rpc-get-session | rpc-get-file-detail |
+rpc-rescan-repository | rpc-get-global-consent-preview | rpc-create-global-consent-preview |
+rpc-enable-global | rpc-rescan-global | rpc-disable-global | rpc-devframe-framework |
+other-loopback | remote | mcp |
+unclassifiable | not-applicable`. A closed truth table allows only the authorized-static and authorized-rpc combinations across authority,
+target, method, origin, same-host, attribution, request class, and prohibited
+status; the session channel's RPC invocations are classified Inspector-side at the dispatch
+boundary as the dispatched function's row, with not-applicable method and origin. Every row has
+`eventCode: observation`, not-applicable workflow class, observed outcome class,
 correlation-context subject/process IDs, and fresh event/correlation IDs. The exact authorized
-static/API table rows alone use effect `none` and prohibited false. A product-attributable
+static/RPC table rows alone use effect `none` and prohibited false. A product-attributable
 exact-issued request outside the tables uses a request observation, participant/bundled-SPA/
 Inspector actor as applicable,
-exact-issued authority, prohibited request class, observed closed target/method/capability/origin,
+exact-issued authority, prohibited request class, observed closed target/method/origin,
 unauthorized-request, and true same-host/attribution/prohibited. Other-loopback uses
 other-loopback authority/target, prohibited request class, observed closed method,
-not-applicable capability/origin, unauthorized-request, and the same three true booleans. Remote
+not-applicable origin, unauthorized-request, and the same three true booleans. Remote
 uses remote authority/target, prohibited request class, observed closed method, not-applicable
-capability/origin, prohibited-outbound-request, false same-host, and true
+origin, prohibited-outbound-request, false same-host, and true
 attribution/prohibited. A fully unclassifiable product-correlated request uses unknown actor and
-unclassifiable authority/request/target/method/capability/origin, unauthorized-request, false
+unclassifiable authority/request/target/method/origin, unauthorized-request, false
 same-host, and true attribution/prohibited. MCP uses an MCP observation, Inspector actor, target
-`mcp`, not-applicable authority/request/method/capability/origin, mcp-connection, false same-host,
+`mcp`, not-applicable authority/request/method/origin, mcp-connection, false same-host,
 and true attribution/prohibited. For browser traffic, proxy and server independently project
 exact Chromium-controlled `Sec-Fetch-Dest`, `Sec-Fetch-Mode`, `Sec-Fetch-Site`, and
 `Sec-Fetch-User` plus Origin/Referer, discard the raw signals, and require the same projection.
@@ -1627,7 +1638,7 @@ with run, attempt, fresh correlation, and state:
 | Secret/projection | Actor/binding | Decision |
 |---|---|---|
 | Valid; navigate/document/`?1`; missing Origin; site none/same-origin; exact authorized-static; current armed grant | `participant`; open binding | Adapter reserves without state change; supervisor validates/stores pending while canonical grant stays armed; sole one-use `candidate-forward` accepts and atomically consumes canonical grant; adapter validates it before copy consume/forward. |
-| Valid; not participant; missing user; exact-issued Origin or missing Origin plus exact-issued Referer | `bundled-spa`; open binding | Forward only exact authorized static/API; all other requests are product-attributable/prohibited and blocked. |
+| Valid; not participant; missing user; exact-issued Origin or missing Origin plus exact-issued Referer | `bundled-spa`; open binding | Forward only exact authorized static/RPC; all other requests are product-attributable/prohibited and blocked. |
 | Valid; extension Origin | `browser-extension`; N/A IDs | Always unrelated and blocked. |
 | Remaining valid projection | `unknown`; open binding | Product-attributable/prohibited; blocked. |
 | Missing after bootstrap | `other-host-process`; N/A IDs | Unrelated; blocked. |
@@ -1959,7 +1970,7 @@ read-only, local, non-executing boundary.
    retains the printed/manual-open fallback.
 9. Repository and Global keep independent generation sequences. A successful initial or
    retry Global admitted-subset batch commit creates or advances only the Global sequence,
-   rekeys only its own generation-owned IDs, and never touches Repository state or views.
+   invalidates only its own sequence's views, and never touches Repository state.
 10. SC-008 uses the maintained bilingual 55-row WCAG 2.2 Level A/AA applicability matrix.
     Stable check IDs bind every expected observation, and the closed manual matrix forbids
     sampling applicable locale/platform/viewport/mode/scenario/input cells. Every Applicable

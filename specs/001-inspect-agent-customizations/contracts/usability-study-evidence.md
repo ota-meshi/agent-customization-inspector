@@ -919,7 +919,7 @@ it never enters environment, argv, application code, evidence, a digest, or outp
 `StudyPreReadinessProductObservationDraft` has the same complete root order as a canonical
 observation payload: `schemaVersion`, `eventCode`, `eventId`, `correlationId`, `subjectId`,
 `inspectorProcessId`, `observationClass`, `actorClass`, `authorityClass`, `requestClass`,
-`targetClass`, `methodClass`, `capabilityClass`, `originClass`, `effectClass`, `workflowClass`,
+`targetClass`, `methodClass`, `originClass`, `effectClass`, `workflowClass`,
 `outcomeClass`, `automaticIssueCorrelationId`, `reviewDisposition`,
 `reviewerOneClassification`, `reviewerTwoClassification`, `sameInspectorHost`,
 `productAttributable`, `prohibited`. Version/event are `1`/`observation`; event/correlation are
@@ -1105,7 +1105,7 @@ marker is `unknown`. Either is unrelated, has N/A binding IDs, and is blocked be
 The proxy consumes and strips the complete Basic field before forwarding. The secret is a proxy
 transport-authentication capability only: validity alone never establishes actor class, product
 attribution, application/control capability, or forwarding authorization, and never widens the
-closed target/method/capability/origin policy. The raw/encoded Basic value, raw secret, install
+closed target/method/origin policy. The raw/encoded Basic value, raw secret, install
 configuration, and marker binding never enter any other inherited or evidence IPC, hash,
 evidence, log, process output, file, environment, argv, persistent profile/history/cache/
 credential store/keychain, or application request. The control token, continuity key, an IPC
@@ -1187,7 +1187,7 @@ The classification and forwarding decision table is closed and ordered:
 |---|---|---|
 | Valid secret; `modeClass: navigate`, `destinationClass: document`, `userClass: present`, `originEvidenceClass: missing`, `siteClass: none \| same-origin`; exact authorized-static target; and the current armed grant | `participant`; open binding IDs and the grant correlation | Consume the grant once, then forward and join. |
 | Any participant-shaped valid-secret request that lacks any preceding participant condition, including nonexact target, no grant, replay, or a user-activated page-script navigation | `unknown`; open binding IDs | Browser-only fail-closed critical `unauthorized-request`, product-attributable/prohibited true; blocked. |
-| Valid secret; not participant; `userClass: missing`; and either `originEvidenceClass: exact-issued` or (`originEvidenceClass: missing` and `refererEvidenceClass: exact-issued`) | `bundled-spa`; open binding IDs | Only an exact authorized-static or authorized-api request may forward and join. Every nonexact or unauthorized request is browser-only product-attributable/prohibited with its applicable effect and is blocked. |
+| Valid secret; not participant; `userClass: missing`; and either `originEvidenceClass: exact-issued` or (`originEvidenceClass: missing` and `refererEvidenceClass: exact-issued`) | `bundled-spa`; open binding IDs | Only an exact authorized-static or authorized-rpc request may forward and join. Every nonexact or unauthorized request is browser-only product-attributable/prohibited with its applicable effect and is blocked. |
 | Valid secret and `originEvidenceClass: extension-scheme` | `browser-extension`; N/A subject/process IDs | Always browser-only `unrelated`, `effectClass: none`, `productAttributable: false`, `prohibited: false`, and blocked. |
 | Any remaining valid-secret projection | `unknown`; open binding IDs | Browser-only fail-closed critical request: `requestClass: unclassifiable \| prohibited` as applicable, `effectClass: unauthorized-request`, `productAttributable: true`, `prohibited: true`; blocked. |
 | Missing secret after the completed bootstrap on an otherwise syntactically valid request | `other-host-process`; N/A subject/process IDs | Browser-only unrelated/false tuple; blocked. |
@@ -1403,7 +1403,7 @@ field with that name and injects exactly one canonical field; a blocked request 
 forwarded header. The
 candidate's complete root order is `schemaVersion`, `studyRunId`,
 `browserAttemptId`, `correlationId`, `actorClass`, `authorityClass`, `requestClass`, `targetClass`,
-`methodClass`, `capabilityClass`, `originClass`, `effectClass`, `sameInspectorHost`,
+`methodClass`, `originClass`, `effectClass`, `sameInspectorHost`,
 `productAttributable`, `prohibited`. Version is literal `1`; `studyRunId` identifies the current
 run; `browserAttemptId` is the current valid binding ID or literal `not-applicable` for a missing/
 invalid marker; `correlationId` is the exact grant ID for participant or the adapter's fresh ID
@@ -1422,7 +1422,7 @@ header name/case/order/framing/wire bytes, whitespace, encoded representation, d
 invalid/noncanonical spelling, and every alternate derived value are discarded before IPC and
 never hashed or retained. The claim's complete root order is `schemaVersion`, `studyRunId`,
 `correlationId`, `subjectId`, `inspectorProcessId`, `actorClass`, `authorityClass`, `requestClass`,
-`targetClass`, `methodClass`, `capabilityClass`, `originClass`, `effectClass`,
+`targetClass`, `methodClass`, `originClass`, `effectClass`,
 `sameInspectorHost`, `productAttributable`, `prohibited`. It contains no browser-attempt ID and
 no raw value. The command's outer process ID continues to authenticate the registered probe but
 is not a claim/evidence field. Every claim copies the binding/registered subject and process IDs,
@@ -1431,6 +1431,15 @@ unknown claim branches are invalid. The probe independently derives
 `StudyBrowserInitiatorProjection` from the unchanged six controlled headers and requires exact
 agreement with the candidate tuple before submission. Direct Inspector-origin requests continue to use the probe-generated correlation
 path and do not use a browser-attempt binding.
+
+A logical request event is an HTTP request. The session channel's devframe frames are not
+HTTP requests and carry no header: after the one authorized upgrade's joined pair is
+released, that connection's frames cross the proxy as opaque bytes of the released
+connection, with no per-frame candidate, header injection, or proxy-side parsing or
+retention. Each RPC invocation the host dispatches on such a connection is instead observed
+Inspector-side by the registered probe, which submits one safe server observation on the
+probe-generated correlation path; the closed classification of those observations is fixed
+by the authorized-rpc rows below.
 
 The supervisor owns a content-free in-memory broker keyed only by `studyRunId + correlationId`.
 For every validated candidate it snapshots the current binding and open-context scope before
@@ -1573,7 +1582,7 @@ property order. `eventCode` is the literal named for its row.
 | `recordKind` | `eventCode` | Exact payload properties after canonical construction |
 |---|---|---|
 | `capture-start` | `capture-start` | `schemaVersion`, `eventCode`, `controlSessionId`, `studyRunId`, `workRootIdentityCommitment`, `candidateIdentityCommitment`, `candidateSha256`, `studyInputManifestSha256`, `captureProcessReady`, `watchdogReady` |
-| `payload` | `observation` | `schemaVersion`, `eventCode`, `eventId`, `correlationId`, `subjectId`, `inspectorProcessId`, `observationClass`, `actorClass`, `authorityClass`, `requestClass`, `targetClass`, `methodClass`, `capabilityClass`, `originClass`, `effectClass`, `workflowClass`, `outcomeClass`, `automaticIssueCorrelationId`, `reviewDisposition`, `reviewerOneClassification`, `reviewerTwoClassification`, `sameInspectorHost`, `productAttributable`, `prohibited` |
+| `payload` | `observation` | `schemaVersion`, `eventCode`, `eventId`, `correlationId`, `subjectId`, `inspectorProcessId`, `observationClass`, `actorClass`, `authorityClass`, `requestClass`, `targetClass`, `methodClass`, `originClass`, `effectClass`, `workflowClass`, `outcomeClass`, `automaticIssueCorrelationId`, `reviewDisposition`, `reviewerOneClassification`, `reviewerTwoClassification`, `sameInspectorHost`, `productAttributable`, `prohibited` |
 | `heartbeat` | `heartbeat` | `schemaVersion`, `eventCode`, `studyRunId`, `watchdogHealthy`, `captureProcessHealthy`, `acceptedPayloadCount` |
 | `handoff-anchor` | `handoff-anchor` | `schemaVersion`, `eventCode`, `studyRunId`, `checkpointRequestId`, `handoffSha256` |
 | `capture-stop` | `capture-stop` | `schemaVersion`, `eventCode`, `studyRunId`, `candidateSha256`, `studyInputManifestSha256`, `checkpointRequestId`, `handoffSha256`, `continuityPassed`, `finalSequence`, `envelopeCount`, `payloadRecordCount`, `heartbeatRecordCount`, `handoffAnchorRecordCount`, `priorEnvelopeSha256` |
@@ -1612,10 +1621,9 @@ Classification values are closed as follows:
 | `observationClass` | `request \| mcp \| execution \| inspected-source-mutation \| workflow` |
 | `actorClass` | `inspector \| bundled-spa \| browser-extension \| other-host-process \| operating-system \| participant \| unknown` |
 | `authorityClass` | `exact-issued \| other-loopback \| remote \| unclassifiable \| not-applicable` |
-| `requestClass` | `authorized-static \| authorized-api \| prohibited \| unrelated \| os-mediated \| unclassifiable \| not-applicable` |
-| `targetClass` | `static-manifested-asset \| static-spa-shell \| static-client-route-fallback \| api-get-session \| api-get-file \| api-post-repository-rescan \| api-get-global-consent-preview \| api-post-global-consent-preview \| api-post-global-enable \| api-post-global-rescan \| api-post-global-disable \| other-loopback \| remote \| mcp \| unclassifiable \| not-applicable` |
+| `requestClass` | `authorized-static \| authorized-rpc \| prohibited \| unrelated \| os-mediated \| unclassifiable \| not-applicable` |
+| `targetClass` | `static-manifested-asset \| static-spa-shell \| static-client-route-fallback \| connection-discovery-metadata \| rpc-channel-upgrade \| rpc-get-session \| rpc-get-file-detail \| rpc-rescan-repository \| rpc-get-global-consent-preview \| rpc-create-global-consent-preview \| rpc-enable-global \| rpc-rescan-global \| rpc-disable-global \| rpc-devframe-framework \| other-loopback \| remote \| mcp \| unclassifiable \| not-applicable` |
 | `methodClass` | `get \| head \| post \| other \| unclassifiable \| not-applicable` |
-| `capabilityClass` | `valid \| missing \| invalid \| unclassifiable \| not-applicable` |
 | `originClass` | `exact-same-origin \| missing \| mismatched \| unclassifiable \| not-applicable` |
 | `effectClass` | `none \| unauthorized-request \| command-or-code-execution \| child-process \| mcp-connection \| prohibited-outbound-request \| inspected-source-mutation \| cross-machine-content-exposure \| workflow-blocker` |
 | `workflowClass` | `discovery \| inspection \| comparison \| global-consent \| not-applicable` |
@@ -1631,7 +1639,7 @@ eligible open-context workflow, or literal `not-applicable` when no context is e
 serialized tag is immutable and sources cannot self-declare it. A terminal
 workflow row is exact: `eventCode: observation`,
 `observationClass: workflow`, `actorClass: participant`; `authorityClass`, `requestClass`,
-`targetClass`, `methodClass`, `capabilityClass`, and `originClass` all `not-applicable`; one of
+`targetClass`, `methodClass`, and `originClass` all `not-applicable`; one of
 the four non-N/A workflows; `outcomeClass: success | failure`; `sameInspectorHost: true` because
 the outcome is bound to the study Inspector host context even for a pre-readiness failure;
 `productAttributable: true`; and `prohibited: false`. Success requires `effectClass: none`;
@@ -1647,40 +1655,52 @@ contains no answer. Every other workflow tuple fails closed. Every nonworkflow p
 link case above. MCP uses `targetClass: mcp`.
 
 The authorized static row is closed to `authorityClass: exact-issued`, request class
-`authorized-static`, one of the three static target classes, `methodClass: get | head`,
-`capabilityClass: not-applicable`, `originClass: not-applicable`, `sameInspectorHost: true`,
+`authorized-static`, one of the four packaged-serving target classes, `methodClass: get | head`,
+`originClass: not-applicable`, `sameInspectorHost: true`,
 `productAttributable: true`, `effectClass: none`, `prohibited: false`, and actor
 `participant | bundled-spa`. `static-manifested-asset` is only a manifest-listed non-HTML asset;
-`static-spa-shell` is only the packaged `/` or `index.html` shell; and
-`static-client-route-fallback` is only one closed client-route fallback. The authorized API row
-is closed to actor `bundled-spa`, exact-issued authority, authorized-api
-request, `capabilityClass: valid`, same-host and attributable true, `effectClass: none`,
-prohibited false, and exactly one method/target mapping. GET permits only `originClass: missing |
-exact-same-origin`; POST requires `originClass: exact-same-origin`:
+`static-spa-shell` is only the packaged `/` or `index.html` shell;
+`static-client-route-fallback` is only one closed client-route fallback; and
+`connection-discovery-metadata` is only devframe's fixed connection-discovery document
+(`__connection.json`), which names the channel's own path and carries no session data. The
+authorized-rpc rows split at the transport boundary. The channel establishment is one HTTP
+request on the browser path, closed to actor `bundled-spa`, exact-issued authority,
+`requestClass: authorized-rpc`, `targetClass: rpc-channel-upgrade`, `methodClass: get`,
+`originClass: exact-same-origin` — the pinned browser always names the page origin on a
+WebSocket upgrade — same-host and attributable true, `effectClass: none`, and prohibited
+false. Every RPC invocation the host dispatches on a released upgraded connection is a
+server observation from the registered probe with the same actor, authority, request class,
+effect, and booleans, and with `methodClass: not-applicable` and
+`originClass: not-applicable`, because a frame is not an HTTP request and its connection's
+method and origin were classified at the upgrade. Its `targetClass` is exactly the
+dispatched function's row; the exact function names are classified only in probe memory:
 
-| Exact raw route classified only in adapter memory | `methodClass` | `targetClass` |
-|---|---|---|
-| `GET /api/v1/session` | `get` | `api-get-session` |
-| `GET /api/v1/files/{fileId}` | `get` | `api-get-file` |
-| `POST /api/v1/repository/rescan` | `post` | `api-post-repository-rescan` |
-| `GET /api/v1/global/consent-preview` | `get` | `api-get-global-consent-preview` |
-| `POST /api/v1/global/consent-preview` | `post` | `api-post-global-consent-preview` |
-| `POST /api/v1/global/enable` | `post` | `api-post-global-enable` |
-| `POST /api/v1/global/rescan` | `post` | `api-post-global-rescan` |
-| `POST /api/v1/global/disable` | `post` | `api-post-global-disable` |
+| RPC function (`http-api.md` § RPC function catalog) | `targetClass` |
+|---|---|
+| `agent-customization-inspector:get-session` | `rpc-get-session` |
+| `agent-customization-inspector:get-file-detail` | `rpc-get-file-detail` |
+| `agent-customization-inspector:rescan-repository` | `rpc-rescan-repository` |
+| `agent-customization-inspector:get-global-consent-preview` | `rpc-get-global-consent-preview` |
+| `agent-customization-inspector:create-global-consent-preview` | `rpc-create-global-consent-preview` |
+| `agent-customization-inspector:enable-global` | `rpc-enable-global` |
+| `agent-customization-inspector:rescan-global` | `rpc-rescan-global` |
+| `agent-customization-inspector:disable-global` | `rpc-disable-global` |
+| devframe's own framework-registered functions — the trust handshake every connection issues and the built-ins the transport contract enumerates | `rpc-devframe-framework` |
 
-No other cross-field combination is authorized. The remaining product-attributable request/MCP
+A dispatched invocation naming any other function matches no row and is an exact-issued
+request outside the authorized tables, with `targetClass: unclassifiable` and
+not-applicable method and origin. No other cross-field combination is authorized. The remaining product-attributable request/MCP
 effect table is exact; `workflowClass` is `not-applicable` except for the open-context automatic
 link case, `outcomeClass` is `observed`, and the automatic-link plus three review fields are
 `not-applicable` for every nonworkflow row:
 
 | Case | Exact classification and booleans |
 |---|---|
-| Exact-issued request outside the authorized tables | `observationClass: request`; observed product-attributable `participant \| bundled-spa \| inspector` actor; `authorityClass: exact-issued`; `requestClass: prohibited`; observed closed `targetClass`, `methodClass`, `capabilityClass`, and `originClass`; `effectClass: unauthorized-request`; `sameInspectorHost: true`; `productAttributable: true`; `prohibited: true` |
-| Other-loopback request | `observationClass: request`; observed product-attributable `participant \| bundled-spa \| inspector` actor; `authorityClass: other-loopback`; `requestClass: prohibited`; `targetClass: other-loopback`; observed closed non-N/A `methodClass`; `capabilityClass: not-applicable`; `originClass: not-applicable`; `effectClass: unauthorized-request`; `sameInspectorHost: true`; `productAttributable: true`; `prohibited: true` |
-| Remote request | `observationClass: request`; observed product-attributable `participant \| bundled-spa \| inspector` actor; `authorityClass: remote`; `requestClass: prohibited`; `targetClass: remote`; observed closed non-N/A `methodClass`; `capabilityClass: not-applicable`; `originClass: not-applicable`; `effectClass: prohibited-outbound-request`; `sameInspectorHost: false`; `productAttributable: true`; `prohibited: true` |
-| Fully unclassifiable product-correlated request | `observationClass: request`; `actorClass: unknown`; `authorityClass: unclassifiable`; `requestClass: unclassifiable`; `targetClass: unclassifiable`; `methodClass: unclassifiable`; `capabilityClass: unclassifiable`; `originClass: unclassifiable`; `effectClass: unauthorized-request`; `sameInspectorHost: false`; `productAttributable: true`; `prohibited: true` |
-| Product MCP observation | `observationClass: mcp`; `actorClass: inspector`; `authorityClass: not-applicable`; `requestClass: not-applicable`; `targetClass: mcp`; `methodClass: not-applicable`; `capabilityClass: not-applicable`; `originClass: not-applicable`; `effectClass: mcp-connection`; `sameInspectorHost: false`; `productAttributable: true`; `prohibited: true` |
+| Exact-issued request outside the authorized tables | `observationClass: request`; observed product-attributable `participant \| bundled-spa \| inspector` actor; `authorityClass: exact-issued`; `requestClass: prohibited`; observed closed `targetClass`, `methodClass`, and `originClass`; `effectClass: unauthorized-request`; `sameInspectorHost: true`; `productAttributable: true`; `prohibited: true` |
+| Other-loopback request | `observationClass: request`; observed product-attributable `participant \| bundled-spa \| inspector` actor; `authorityClass: other-loopback`; `requestClass: prohibited`; `targetClass: other-loopback`; observed closed non-N/A `methodClass`; `originClass: not-applicable`; `effectClass: unauthorized-request`; `sameInspectorHost: true`; `productAttributable: true`; `prohibited: true` |
+| Remote request | `observationClass: request`; observed product-attributable `participant \| bundled-spa \| inspector` actor; `authorityClass: remote`; `requestClass: prohibited`; `targetClass: remote`; observed closed non-N/A `methodClass`; `originClass: not-applicable`; `effectClass: prohibited-outbound-request`; `sameInspectorHost: false`; `productAttributable: true`; `prohibited: true` |
+| Fully unclassifiable product-correlated request | `observationClass: request`; `actorClass: unknown`; `authorityClass: unclassifiable`; `requestClass: unclassifiable`; `targetClass: unclassifiable`; `methodClass: unclassifiable`; `originClass: unclassifiable`; `effectClass: unauthorized-request`; `sameInspectorHost: false`; `productAttributable: true`; `prohibited: true` |
+| Product MCP observation | `observationClass: mcp`; `actorClass: inspector`; `authorityClass: not-applicable`; `requestClass: not-applicable`; `targetClass: mcp`; `methodClass: not-applicable`; `originClass: not-applicable`; `effectClass: mcp-connection`; `sameInspectorHost: false`; `productAttributable: true`; `prohibited: true` |
 
 The IDs are the applicable binding/probe subject and process IDs. On the browser-attempt path,
 the ordered initiator decision table is authoritative. A browser extension, a syntactically valid
@@ -1694,7 +1714,7 @@ request uses the binding IDs and the applicable product-attributable prohibited 
 Operating-system mediation without product correlation uses
 `observationClass: request`, `actorClass: operating-system`, `authorityClass: not-applicable`,
 `requestClass: os-mediated`, `targetClass: not-applicable`, `methodClass: not-applicable`,
-`capabilityClass: not-applicable`, `originClass: not-applicable`, `effectClass: none`,
+`originClass: not-applicable`, `effectClass: none`,
 `workflowClass: not-applicable`, `outcomeClass: observed`, `sameInspectorHost: true`,
 `productAttributable: false`, and `prohibited: false`, with both IDs `not-applicable`. Every unlisted field value or
 cross-field combination fails closed.

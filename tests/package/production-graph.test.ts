@@ -1,4 +1,4 @@
-// T025: production dependency graph — exactly the seven approved direct runtime
+// T025: production dependency graph — exactly the eight approved direct runtime
 // dependencies and the absence of `open`. Versions are not asserted here: the
 // committed lockfile already fixes every resolved version and its integrity, so
 // re-stating them in a test would duplicate the lockfile rather than protect a
@@ -17,6 +17,11 @@ const REPO_ROOT = join(__dirname, '..', '..');
 const APPROVED_PRODUCTION_DEPENDENCIES: readonly string[] = [
   'devframe',
   'gunshi',
+  // The host builds the H3 app devframe mounts onto, so its `/skills/**`
+  // shell fallback can serve the extension-ful detail URLs devframe's own
+  // SPA fallback skips. The lockfile resolves this caret range to devframe's
+  // own h3, so both resolve one module instance (research.md § 3).
+  'h3',
   'jsonc-parser',
   'smol-toml',
   // Frontmatter delimiter handling, parsed with the `yaml` engine below rather
@@ -34,7 +39,7 @@ describe('node-only production policy', () => {
     scripts?: Record<string, string>;
   };
 
-  it('declares exactly the seven approved direct production dependencies', () => {
+  it('declares exactly the eight approved direct production dependencies', () => {
     // A drive-by dependency addition must fail here until the production-graph
     // decision (research.md § 3) is explicitly revisited.
     expect(Object.keys(manifest.dependencies ?? {}).sort()).toEqual(

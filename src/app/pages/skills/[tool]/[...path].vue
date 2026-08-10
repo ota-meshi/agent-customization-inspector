@@ -2,10 +2,10 @@
 // The skill detail route (T102): what one skill is, and the files it is made of.
 //
 // The skill is the subject, not the file. A reader arriving here asked about a
-// customization, so the page opens with what was recognized — the declared
-// name, the product that recognizes it, every key its frontmatter declares,
-// and the instructions that frontmatter block was removed from — and the
-// directory's files come after, as the detail of that. A page that opened on
+// customization, so the page opens with what was recognized — the row's
+// resolved name, the product whose definition the route addresses, every key
+// its frontmatter declares, and the instructions that frontmatter block was
+// removed from — and the directory's files come after, as the detail of that. A page that opened on
 // a file made the reader assemble the skill from its parts.
 //
 // The skill and its files are two tabs, not one column. Stacked, the directory
@@ -22,12 +22,17 @@
 // looking at. Here the recognition on screen is always the skill's, and
 // selecting a file changes only which source is shown.
 //
-// The URL names a file rather than a skill because a skill has no identity of
-// its own to name: its entry point is a committed file and so is every
-// companion, and the file selected is exactly what the reader needs the URL to
-// remember. The skill is resolved from that file against the committed
-// inventory, so a link to any file of a skill opens the skill with that file
-// showing.
+// The URL names a definition — `/skills/<tool>/<source-relative path>` —
+// because that is the unit a link from the inventory addresses: the path is
+// the file's identity (FR-030), and the tool says which recognition of it the
+// page is about, so no preference has to pick one when a file sits on two
+// rows. The pair is stable across rescans and server launches — the host
+// resolves a detail request against whatever generation is current — so a
+// bookmarked link's path keeps naming the same file wherever a launch selects
+// the same root, the origin half being devframe's port selection
+// (data-model.md § Skill presentation), and a path the current scan does not
+// hold is reported rather than guessed at. Companions open under the same
+// tool segment.
 //
 // This is the only surface in the product that shows file contents, and it
 // shows them exactly as authored — credentials included, with nothing masked
@@ -39,9 +44,10 @@
 //
 // Three things cause the open skill to be dropped, and all three are the same
 // cleanup. Leaving the route disposes it. A client-data purge clears it. And a
-// commit rekeys every file ID, so a rescan invalidates the ID in this URL — the
-// inventory then holds no such file and the page says so, rather than showing
-// content from a generation that no longer exists.
+// commit purges the previous generation's client data — but not the URL: the
+// path names the same file in the new generation, and the page refetches it,
+// so the link survives the rescan, and only a path the new generation does
+// not hold is reported as dead.
 import {
   computed,
   inject,
@@ -54,18 +60,20 @@ import {
 } from 'vue';
 import { useRoute } from 'vue-router';
 import { NuxtLink } from '#components';
-import RecognitionSummary from '../../components/inspection/RecognitionSummary.vue';
-import SkillFileTree from '../../components/inspection/SkillFileTree.vue';
-import SourceViewer from '../../components/inspection/SourceViewer.vue';
-import FrontmatterBlock from '../../components/inspection/FrontmatterBlock.vue';
-import { nextTabForKey } from '../../components/tab-navigation';
-import { SESSION_VIEW_STATE } from '../../session/view-state';
-import { DIAGNOSTIC_REGISTRY } from '../../../shared/diagnostics';
+import SkillFileTree from '../../../components/inspection/SkillFileTree.vue';
+import SourceViewer from '../../../components/inspection/SourceViewer.vue';
+import FrontmatterBlock from '../../../components/inspection/FrontmatterBlock.vue';
+import { nextTabForKey } from '../../../components/tab-navigation';
+import { SESSION_VIEW_STATE } from '../../../session/view-state';
+import type { SkillDefinitionDto, SkillInventoryEntryDto } from '../../../../shared/api-types';
+import { DIAGNOSTIC_REGISTRY } from '../../../../shared/diagnostics';
 import {
+  CUSTOMIZATION_KIND_TEXT,
   FILE_ENCODING_TEXT,
+  SUPPORTED_TOOL_TEXT,
   escapeControlCharacters,
   rendersNothingVisible,
-} from '../../../shared/entities';
+} from '../../../../shared/entities';
 
 const sessionViewState = inject(SESSION_VIEW_STATE);
 if (sessionViewState === undefined) {
@@ -77,21 +85,38 @@ if (sessionViewState === undefined) {
 
 const route = useRoute();
 /**
- * The opaque file ID from the URL. A route parameter can be an array when a
- * path repeats it; this route's does not, so the array form is folded to its
- * first value rather than handled as a case.
+ * The tool segment from the URL: which recognition of the file the page is
+ * about (`/skills/<tool>/<source-relative path>`). Matched against the
+ * committed inventory — a spelling the generation's definitions do not use
+ * resolves to no owner, which the template reports as a dead link. A router
+ * hands a repeated parameter over as an array; this route's does not repeat,
+ * so the array form folds to its first value rather than being a case.
  */
-const openFileId = computed((): string => {
-  const parameter: unknown = route.params['fileId'];
-  if (typeof parameter === 'string') {
-    return parameter;
-  }
-  // A repeated parameter arrives as an array. This route declares one segment,
-  // so the array form is folded to its first value instead of being handled as
-  // a case; anything else is not a file ID and leaves the page requesting
-  // nothing.
-  return Array.isArray(parameter) && typeof parameter[0] === 'string' ? parameter[0] : '';
+const openTool = computed((): string => {
+  const parameter = route.params['tool'];
+  return typeof parameter === 'string' ? parameter : (parameter?.[0] ?? '');
 });
+
+/**
+ * The Source-relative path from the URL's catch-all segments — the stable
+ * half of the definition identity a reader bookmarks. The router hands the
+ * segments over individually and decoded, so joining them with `/` restores
+ * the published spelling exactly.
+ */
+const openPath = computed((): string => {
+  const parameter = route.params['path'];
+  return typeof parameter === 'string' ? parameter : (parameter?.join('/') ?? '');
+});
+
+/**
+ * The committed files' paths, as one membership index: the path is the
+ * file's identity (FR-030), so `has` is the whole resolution — for the URL's
+ * own path in {@link owner}, whose miss the template reports as a dead link,
+ * and for each census entry in {@link treeFiles}.
+ */
+const committedPaths = computed(
+  () => new Set((snapshot.value?.files ?? []).map((file) => file.sourceRelativePath)),
+);
 
 const skillDetail = sessionViewState.skillDetail;
 const openCompanion = sessionViewState.openCompanion;
@@ -111,119 +136,142 @@ const snapshot = sessionViewState.snapshot;
  * host would answer, so the page can say so without a doomed request.
  */
 const owner = computed(() => {
-  const path = (snapshot.value?.files ?? []).find(
-    (file) => file.fileId === openFileId.value,
-  )?.sourceRelativePath;
-  if (path === undefined) {
+  const path = openPath.value;
+  if (!committedPaths.value.has(path)) {
     return null;
   }
-  const pairs = (snapshot.value?.skills ?? []).flatMap((entry) =>
-    entry.definitions.map((definition) => ({ entry, definition })),
-  );
+  // One walk over the inventory, keeping only this route's tool's
+  // definitions: the URL addresses a definition —
+  // `/skills/<tool>/<source-relative path>` — so which recognition of a file
+  // the page is about is the link's own identity rather than a preference
+  // this page applies.
+  //
   // A file that is a skill's own entry point wins over every census that
   // happens to list it, and the two are not exclusive: a skill nested inside
   // another skill's directory is in that outer skill's census, so its
-  // `SKILL.md` is both an entry point and a companion.
-  const entryPoint = pairs.find(({ definition }) => definition.fileId === openFileId.value);
-  if (entryPoint !== undefined) {
-    return entryPoint;
-  }
-  // A companion can be listed by more than one census for the same reason —
-  // everything under the inner skill is also under the outer one — so the
-  // innermost skill containing the file wins. Answering with whichever census
+  // `SKILL.md` is both an entry point and a companion. Among censuses, the
+  // innermost skill containing the file wins — everything under the inner
+  // skill is also under the outer one, and answering with whichever census
   // the inventory happened to sort first would open the outer skill from the
   // inner skill's own tree, with no way back to the file the reader clicked.
-  return (
-    pairs
-      .filter(({ definition }) => definition.companionFiles.includes(path))
-      .reduce<(typeof pairs)[number] | null>(
-        (deepest, candidate) =>
-          deepest === null || directoryOf(candidate).length > directoryOf(deepest).length
-            ? candidate
-            : deepest,
-        null,
-      ) ?? null
-  );
+  let deepest: { entry: SkillInventoryEntryDto; definition: SkillDefinitionDto } | null = null;
+  for (const entry of snapshot.value?.skills ?? []) {
+    for (const definition of entry.definitions) {
+      if (definition.tool !== openTool.value) {
+        continue;
+      }
+      if (definition.sourceRelativePath === path) {
+        return { entry, definition };
+      }
+      if (
+        definition.companionFiles.includes(path) &&
+        (deepest === null ||
+          directoryOf(definition.sourceRelativePath).length >
+            directoryOf(deepest.definition.sourceRelativePath).length)
+      ) {
+        deepest = { entry, definition };
+      }
+    }
+  }
+  return deepest;
 });
 
 /**
- * The directory a definition's entry point sits in. Its length orders two
+ * The directory a path sits in, trailing slash kept. Its length orders two
  * skills that both list a file: the longer path is the one nested inside the
  * other, and it is the skill the file actually belongs to.
  */
-function directoryOf(pair: { readonly definition: { readonly fileId: string } }): string {
-  const path =
-    (snapshot.value?.files ?? []).find((file) => file.fileId === pair.definition.fileId)
-      ?.sourceRelativePath ?? '';
+function directoryOf(path: string): string {
   return path.slice(0, path.lastIndexOf('/') + 1);
 }
 
 /**
- * Every file of that skill, resolved to the committed identity that opens it:
- * the entry point first, then its census in the order the census published.
+ * The Source-relative Path of every file of that skill: the entry point
+ * first, then its census in the order the census published.
  *
  * A path with no committed file is dropped rather than shown as an entry that
  * cannot be opened. It is not a case the current generation can produce — the
- * scan reads and publishes what the census listed — but `Map.get` is typed for
- * absence and silently offering a dead link would be worse than showing one
- * fewer file.
+ * scan reads and publishes what the census listed — but silently offering a
+ * dead link would be worse than showing one fewer file.
  */
 const treeFiles = computed(() => {
   const definition = owner.value?.definition;
   if (definition === undefined) {
     return [];
   }
-  const files = snapshot.value?.files ?? [];
-  const byPath = new Map(files.map((file) => [file.sourceRelativePath, file.fileId]));
-  const entryPath = files.find((file) => file.fileId === definition.fileId)?.sourceRelativePath;
-  return [...(entryPath === undefined ? [] : [entryPath]), ...definition.companionFiles].flatMap(
-    (sourceRelativePath) => {
-      const fileId = byPath.get(sourceRelativePath);
-      return fileId === undefined ? [] : [{ fileId, sourceRelativePath }];
-    },
+  return [definition.sourceRelativePath, ...definition.companionFiles].filter((path) =>
+    committedPaths.value.has(path),
   );
 });
 
 /** The directory the tree is rooted at, so a row shows a name rather than a path. */
-const treeDirectory = computed(() => {
-  const path = treeFiles.value[0]?.sourceRelativePath ?? '';
-  return path.slice(0, path.lastIndexOf('/') + 1);
-});
+const treeDirectory = computed(() => directoryOf(treeFiles.value[0] ?? ''));
 
 /**
- * What the page is titled: the declared name exactly as authored, or nothing.
+ * What the page is titled: the owning row's name — this product's provisional
+ * identity, the same one the inventory lists, so the page and the list agree
+ * (FR-007, data-model.md § Skill presentation). The addressed definition's
+ * documented invocation name sits beside it. Nothing only when the name has
+ * no character that draws;
+ * the template titles the page by its kind then, and the path is on the line
+ * below either way.
  *
- * Nothing rather than the directory's own name. A skill that declares no name
- * has none, and a path segment put where a name goes reads as one the file
- * wrote (FR-007, T1066). The template titles the page by its kind instead, and
- * the path is on the line below either way.
- *
- * The renderability test below is only that: the displayed value is never
- * trimmed, because a shown declared value is the value the parser resolved
- * (FR-025). A whitespace-only or empty name stays readable as itself among the
- * declarations.
+ * Rendered with the same control-character escaping as a path, because a
+ * nested prefix and a fallback name are path segments (data-model.md
+ * § Inventory unit). The renderability test below is only that: the value is
+ * never trimmed, and a whitespace-only name stays readable as itself among
+ * the declarations (FR-025).
  */
-const headingName = computed(() => {
-  const declared = owner.value?.entry.declaredName;
-  return declared !== undefined && declared !== null && !rendersNothingVisible(declared)
-    ? declared
-    : '';
+/** The owning row's own name, raw — one lookup the three presentations below share. */
+const rowName = computed(() => owner.value?.entry.name ?? '');
+
+const inventoryName = computed(() => escapeControlCharacters(rowName.value));
+
+/**
+ * Whether the row's name draws nothing as authored — whitespace, or
+ * default-ignorable code points. The heading then renders the escaped
+ * spelling with the same note the inventory row shows, so the page and the
+ * list stay the same row name (FR-007); for a name of plain whitespace the
+ * escaped spelling still draws nothing, which is exactly what the note is
+ * for.
+ */
+const inventoryNameInvisible = computed(
+  () => rowName.value !== '' && rendersNothingVisible(rowName.value),
+);
+
+/**
+ * The skill's documented invocation name, from the definition this route
+ * addresses: the URL's tool segment decided which recognition the page is
+ * about, so the value is that definition's published one (data-model.md
+ * § Skill presentation). Empty when the definition publishes none — a failed
+ * extraction leaves an authored-name tool's invocation unknown (FR-028) —
+ * and the line below renders only when there is one. Escaped like every
+ * name.
+ */
+const invocationName = computed(() =>
+  escapeControlCharacters(owner.value?.definition.invocationName ?? ''),
+);
+
+/**
+ * Whether the published invocation name draws nothing as authored —
+ * whitespace, or default-ignorable code points — so the line can say so
+ * instead of showing an apparently empty value, the same note the inventory
+ * row gives the row name (FR-025).
+ */
+const invocationNameInvisible = computed(() => {
+  const published = owner.value?.definition.invocationName ?? '';
+  return published !== '' && rendersNothingVisible(published);
 });
 
 /**
- * The skill's own presentation, taken from any one of its recognitions: they
- * all recognized the same `SKILL.md`, so they read the same declarations and
- * the same body, and the first is as good as the last. Null when extraction
- * failed for every recognition, which is when there is nothing parsed to show
- * and the summary above says so (FR-028).
+ * The skill's own presentation — the one scan-time parse, published once on
+ * the skill variant of the detail (SkillFileDetailDto). Null when extraction
+ * failed all-or-nothing, which is when there is nothing parsed to show and
+ * the failure's diagnostic says so (FR-028).
  */
 const skillPresentation = computed(() => {
-  for (const recognition of skillDetail.value?.recognitions ?? []) {
-    if (recognition.details.kind === 'skill' && recognition.parseStatus === 'parsed') {
-      return recognition.details;
-    }
-  }
-  return null;
+  const detail = skillDetail.value;
+  return detail !== null && detail.kind === 'skill' ? detail.presentation : null;
 });
 
 /**
@@ -274,6 +322,14 @@ const SKILL_DETAIL_TAB_TEXT: Readonly<Record<SkillDetailTab, string>> = {
 const activeTab = ref<SkillDetailTab>('skill');
 /** The tab buttons, so a switch this page decides can carry focus with it. */
 const tabButtons = ref<HTMLButtonElement[]>([]);
+
+/**
+ * The page's root, for the stale guard and {@link selectTab}. Declared before
+ * the tab-selection watch below: that watch is immediate, so it calls
+ * `selectTab` synchronously during setup, and a `const` declared after it
+ * would still be in its temporal dead zone there.
+ */
+const pageRoot = ref<HTMLElement | null>(null);
 
 /**
  * Selects a tab on the reader's behalf, keeping focus reachable.
@@ -337,11 +393,11 @@ function onTabKeydown(event: KeyboardEvent, index: number): void {
  */
 watch(
   [
-    () => owner.value?.definition.fileId,
-    () => openFileId.value,
+    () => owner.value?.definition.sourceRelativePath,
+    () => openPath.value,
     () => skillPresentation.value !== null,
   ],
-  ([entryFileId, openId, hasPresentation], previous) => {
+  ([entryPathValue, openPathValue, hasPresentation], previous) => {
     // A companion is shown in the files panel, so that is where the reader has
     // to be to see it — however they arrived. Keying only on the skill left a
     // history step to another of its files changing the URL and the tree's
@@ -352,7 +408,7 @@ watch(
     // panel has nothing in it — no declarations and no instructions — while the
     // complete source is one tab away, and opening on an empty panel would read
     // as a file with nothing in it (FR-028).
-    if (!hasPresentation || (entryFileId !== undefined && entryFileId !== openId)) {
+    if (!hasPresentation || (entryPathValue !== undefined && entryPathValue !== openPathValue)) {
       selectTab('files');
       return;
     }
@@ -363,7 +419,7 @@ watch(
     // change leaves the tab alone: choosing `SKILL.md` from the file list is a
     // file selection, and answering it by leaving the list would undo the
     // reader's own click.
-    const skillChanged = previous === undefined || previous[0] !== entryFileId;
+    const skillChanged = previous === undefined || previous[0] !== entryPathValue;
     const declarationsArrived = previous !== undefined && !previous[2] && hasPresentation;
     if (skillChanged || declarationsArrived) {
       selectTab('skill');
@@ -382,7 +438,7 @@ const declarationBlock = computed(
  * so the body is highlighted as what the file is — the language comes from the
  * path, and the body is that file with its frontmatter block removed.
  */
-const entryPath = computed(() => treeFiles.value[0]?.sourceRelativePath ?? '');
+const entryPath = computed(() => treeFiles.value[0] ?? '');
 
 /**
  * Whether the file left no instructions at all. Only an empty string counts: a
@@ -394,7 +450,7 @@ const skillBodyIsEmpty = computed(() => (skillPresentation.value?.bodyText ?? ''
 
 const openFile = computed(() => {
   const file = openCompanion.value?.file ?? skillDetail.value?.file ?? null;
-  return file !== null && file.fileId === openFileId.value ? file : null;
+  return file !== null && file.sourceRelativePath === openPath.value ? file : null;
 });
 
 /**
@@ -408,19 +464,26 @@ const openFilePathText = computed(() =>
 );
 
 /**
- * The diagnostics of the file on screen that no recognition summary above has
- * already stated. A `recognition-parse-failed` record belongs to both its
- * recognition and its file, so showing the file's list unfiltered would print
- * it twice — two rows a reader cannot tell apart.
+ * The diagnostics of the file on screen. The detail response states each
+ * record once — a failed extraction is one (file, kind) record (FR-028) — so
+ * the list renders as published.
  */
 const openFileDiagnostics = computed(() => {
   const detail = openCompanion.value ?? skillDetail.value;
-  const shownAbove = new Set(
-    (skillDetail.value?.recognitions ?? []).flatMap((recognition) => recognition.diagnosticIds),
-  );
-  return (detail?.diagnostics ?? []).filter(
-    (diagnostic) => !shownAbove.has(diagnostic.diagnosticId),
-  );
+  return detail?.diagnostics ?? [];
+});
+
+/**
+ * The entry point's diagnostics when its extraction failed — what the Skill
+ * tab shows in place of the presentation it has none of, so the reason stays
+ * visible while a companion owns the files pane (FR-028). Empty whenever a
+ * presentation exists: the parsed panel needs no failure story.
+ */
+const entryDiagnostics = computed(() => {
+  const detail = skillDetail.value;
+  return detail !== null && detail.kind === 'skill' && detail.presentation === null
+    ? detail.diagnostics
+    : [];
 });
 
 /**
@@ -432,10 +495,15 @@ const openFileDiagnostics = computed(() => {
  * it separately could differ by one edit.
  */
 const detailFailure = computed<string | null>(() => {
+  // The idle branch needs no error to speak: an idle page holding nothing is
+  // this route's recoverable failure state however it was reached — a failed
+  // entry request carries its message in `skillError`, while a
+  // newer-generation refresh that could not adopt leaves the message to the
+  // shell (`SessionViewState.openSkill`) and this statement stands alone.
   const statement =
     detailState.value === 'companion-failed'
       ? 'This file could not be loaded.'
-      : skillDetail.value === null && detailState.value === 'idle' && skillError.value !== null
+      : skillDetail.value === null && detailState.value === 'idle'
         ? 'This skill could not be loaded.'
         : null;
   if (statement === null) {
@@ -459,7 +527,7 @@ const detailFailure = computed<string | null>(() => {
  */
 const detailAnnouncement = computed(() => {
   if (detailState.value === 'stale' || owner.value === null) {
-    return 'This link does not name a file in the current scan.';
+    return 'Nothing in the current scan sits at this link\u2019s path for this tool.';
   }
   if (detailFailure.value !== null) {
     return detailFailure.value;
@@ -479,9 +547,6 @@ const heading = ref<HTMLHeadingElement | null>(null);
 /** The pane holding the open file's source; read by the focus guard below. */
 const paneElement = ref<HTMLElement | null>(null);
 
-/** The page's root, so the stale guard can tell whether it held focus. */
-const pageRoot = ref<HTMLElement | null>(null);
-
 /** Set as the route is left, so the focus guard yields to the next route. */
 let leaving = false;
 
@@ -492,22 +557,34 @@ let leaving = false;
  */
 const requestOpen = (): void => {
   const resolved = owner.value;
-  if (openFileId.value === '' || resolved === null) {
+  if (resolved === null) {
     return;
   }
-  void sessionViewState.openSkill(resolved.definition.fileId, openFileId.value);
+  void sessionViewState.openSkill(resolved.definition.sourceRelativePath, openPath.value);
 };
 
 // One effect owns "which skill and file should be open", so entering the route
 // and moving between a skill's files take the same path. The owner is watched
-// by its definition's file ID rather than by the computed's object identity:
+// by its definition's path rather than by the computed's object identity:
 // every snapshot adoption rebuilds the object, and an identity watch would
 // re-request — and supersede — a detail already in flight for the same
 // selection on every refresh.
 watch(
-  [openFileId, (): string | null => owner.value?.definition.fileId ?? null],
-  ([id, definitionFileId]) => {
-    if (id === '' || definitionFileId === null) {
+  [
+    openPath,
+    (): string | null => owner.value?.definition.sourceRelativePath ?? null,
+    // The committed generations are part of what "which detail should be
+    // open" means: adopting a newer one closes the open detail
+    // (`SessionViewState.#refreshOnce`) while both paths above can stay
+    // identical — the path is the file's identity across commits — so their
+    // change is what re-requests the same path under the new snapshot
+    // instead of leaving the page on the closed state. A refresh that adopts
+    // the same generations changes neither key and re-requests nothing.
+    (): number => snapshot.value?.repositoryGeneration ?? 0,
+    (): number | null => snapshot.value?.globalGeneration ?? null,
+  ],
+  ([path, definitionPath]) => {
+    if (path === '' || definitionPath === null) {
       // The URL names nothing this generation holds — a link from an earlier
       // scan, or a file that is no longer committed. Dropping what is open is
       // the point: the page shows the recoverable state below, and holding the
@@ -556,7 +633,17 @@ const titleSubject = computed<string | null>(() => {
   if (detailFailure.value !== null && detailState.value !== 'companion-failed') {
     return 'Skill could not be loaded';
   }
-  return headingName.value === '' ? null : headingName.value;
+  // The raw name, not this page's escaped spelling: the shell escapes its
+  // subject exactly once at the rendering boundary (`App.vue`), so passing an
+  // escaped value would double-escape — a name containing a newline would
+  // head the page as `\u000A` but title the tab `\u005Cu000A`. Null when the
+  // escaped spelling still draws nothing — a plain-whitespace name — because
+  // a tab titled by it would read as having no subject at all.
+  const name = owner.value?.entry.name;
+  if (name === undefined || rendersNothingVisible(escapeControlCharacters(name))) {
+    return null;
+  }
+  return name;
 });
 watchEffect(() => {
   sessionViewState.pageSubject.value = titleSubject.value;
@@ -581,7 +668,7 @@ onMounted(focusHeading);
 // so it is announced, and the patch that puts the new skill's name there has
 // not run yet — focusing first announces the skill they just left.
 watch(
-  () => owner.value?.definition.fileId,
+  () => owner.value?.definition.sourceRelativePath,
   () => void nextTick(focusHeading),
 );
 
@@ -596,6 +683,32 @@ watch(
   openFile,
   (file) => {
     if (file === null && !leaving && paneElement.value?.contains(document.activeElement) === true) {
+      focusHeading();
+    }
+  },
+  { flush: 'sync' },
+);
+
+// A generation replacement drops the whole detail while the selection stays:
+// `SessionViewState.#refreshOnce` closes the open skill when it adopts a newer
+// commit, and the route re-requests the same path afterwards. The unmount that
+// follows takes the tree, the tab buttons, and the Skill tab with it — parts
+// the pane guard above does not cover — and neither of the other guards fires,
+// because the state is not `stale` and the skill's path has not changed. The
+// skill-change condition keeps this guard out of a navigation to a different
+// skill, whose own watcher focuses the heading after the flush so the new
+// name is what gets announced (WCAG 2.4.3).
+watch(
+  skillDetail,
+  (detail, previous) => {
+    if (
+      detail === null &&
+      previous !== null &&
+      !leaving &&
+      previous.file.sourceRelativePath === owner.value?.definition.sourceRelativePath &&
+      pageRoot.value?.contains(document.activeElement) === true &&
+      document.activeElement !== heading.value
+    ) {
       focusHeading();
     }
   },
@@ -634,16 +747,38 @@ onBeforeUnmount(() => {
     <p><NuxtLink to="/">Back to the inventory</NuxtLink></p>
 
     <h2 ref="heading" tabindex="-1">
-      <!-- The declared name is the skill's presentation identity — it is what
-           the product's own listings show. A file that declares none, or declares one of
-           nothing but whitespace, leaves the heading with nothing to render, so
-           the page is titled by its kind rather than by a path segment standing
-           where a name goes (FR-007, T1066); the authored value itself stays
-           readable in the declared-values list below. The span hugs its binding
+      <!-- The row's own name heads the page — this product's provisional
+           identity, the same one the inventory lists, in the same spelling:
+           escaped like a path, and a name that draws nothing as authored
+           gets the same note the inventory row shows rather than being
+           replaced by the page's kind (FR-007). The span hugs its binding
            because it renders authored whitespace. -->
-      <span v-if="headingName" class="aci-authored-text">{{ headingName }}</span>
+      <template v-if="inventoryName !== '' && inventoryNameInvisible"
+        ><span class="aci-authored-text aci-authored-atomic">{{ inventoryName }}</span>
+        <span class="aci-muted">(name with no visible characters)</span></template
+      >
+      <span v-else-if="inventoryName !== ''" class="aci-authored-text">{{ inventoryName }}</span>
       <template v-else>Skill</template>
     </h2>
+
+    <!-- The documented invocation name, beside the provisional name in the
+         heading: the two kinds of name a reader needs — what the vendors'
+         own documentation invokes, and what this inventory lists — shown
+         together so both can be checked (FR-007, data-model.md § Skill
+         presentation). Absent when the definition publishes none: a failed
+         extraction leaves an authored-name tool's invocation unknown, and
+         its diagnostic tells the failure (FR-028). A name that draws nothing
+         gets the same note the row shows, so the line never reads as an
+         empty value (FR-025). -->
+    <p v-if="invocationName !== ''" class="aci-note aci-skill-detail__invocation-name">
+      Invocation name:
+      <span class="aci-authored-text" :class="{ 'aci-authored-atomic': invocationNameInvisible }">{{
+        invocationName
+      }}</span>
+      <span v-if="invocationNameInvisible" class="aci-muted"
+        >(name with no visible characters)</span
+      >
+    </p>
 
     <!-- Stable rather than inserted with the state it reports, because a
          region that appears together with its message is not reliably read;
@@ -658,8 +793,9 @@ onBeforeUnmount(() => {
 
     <template v-else-if="detailState === 'stale' || owner === null">
       <p class="aci-error">
-        This link does not name a file in the current scan. Every file gets a new identity when a
-        scan commits, so a link made before the last rescan no longer resolves.
+        Nothing in the current scan sits at this link's path for this tool. The inventory may have
+        changed since the link was made; a rescan that brings the path back will make it resolve
+        again.
       </p>
       <p><NuxtLink to="/">Return to the inventory and open it again.</NuxtLink></p>
     </template>
@@ -684,16 +820,14 @@ onBeforeUnmount(() => {
              the tree below is unchanged. -->
         <p class="aci-path aci-authored-text">{{ escapeControlCharacters(treeDirectory) }}</p>
 
-        <!-- What was recognized, before any file contents: this is what the
-             reader came for, and the files below are its detail. Every
-             recognition here is the entry point's, so selecting a companion
-             never changes it. -->
-        <RecognitionSummary
-          v-for="recognition in skillDetail.recognitions"
-          :key="recognition.recognitionId"
-          :recognition="recognition"
-          :diagnostics="skillDetail.diagnostics"
-        />
+        <!-- Which definition this page is: the route's tool, rendered
+             through its closed-union caption (FR-007). The recognizing-tools
+             matrix of the file is the inventory's to show; this page is one
+             definition of it, and selecting a companion never changes it. -->
+        <p v-if="owner !== null" class="aci-skill-detail__definition">
+          {{ SUPPORTED_TOOL_TEXT[owner.definition.tool] }} ·
+          {{ CUSTOMIZATION_KIND_TEXT.skill }}
+        </p>
       </div>
 
       <!-- Two subjects, two tabs: the skill itself, and the files its
@@ -739,6 +873,23 @@ onBeforeUnmount(() => {
            leave the reader to find the seam — so the two are shown apart,
            exactly as the parser separated them. The complete file is one tab
            away, which is where its authored spelling stays readable. -->
+        <!-- A failed extraction leaves this panel with nothing parsed to
+             show; its Diagnostic is what says so, and it renders here so the
+             reason stays on screen even while a companion's source — with
+             that companion's own diagnostics — is open in the files tab
+             (FR-028). -->
+        <ul v-if="entryDiagnostics.length > 0" class="aci-list" role="list">
+          <li
+            v-for="diagnostic in entryDiagnostics"
+            :key="diagnostic.diagnosticId"
+            :class="
+              DIAGNOSTIC_REGISTRY[diagnostic.code].severity === 'error' ? 'aci-error' : 'aci-note'
+            "
+          >
+            {{ DIAGNOSTIC_REGISTRY[diagnostic.code].message }}
+          </li>
+        </ul>
+
         <div v-if="skillPresentation" class="aci-skill-detail__declarations">
           <h3>Frontmatter</h3>
           <p v-if="orderedDeclarations.length === 0" class="aci-note">This skill declares none.</p>
@@ -781,7 +932,8 @@ onBeforeUnmount(() => {
         <div class="aci-skill-detail__layout">
           <SkillFileTree
             :files="treeFiles"
-            :selected-file-id="openFileId"
+            :selected-path="openPath"
+            :tool="openTool"
             :directory="treeDirectory"
           />
 
@@ -900,6 +1052,13 @@ onBeforeUnmount(() => {
 /* The heading block is chrome, and every line of it is a line the files do not
    get, so it is tighter here than the shell's default heading spacing. */
 .aci-skill-detail > p:first-child {
+  margin: 0;
+}
+
+/* The definition's own caption line, weighted like a heading within the
+   overview: it says which tool's definition the page is. */
+.aci-skill-detail__definition {
+  font-weight: 600;
   margin: 0;
 }
 

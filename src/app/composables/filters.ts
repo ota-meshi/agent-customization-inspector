@@ -14,7 +14,7 @@
 // § Inventory unit), so each kind's rows are derived separately from that
 // kind's own inventory and no shared row type is imposed on all of them. A
 // filter is applied to whatever identifies that kind's row: for a skill, the
-// definitions behind one declared name.
+// definitions behind one resolved row name.
 //
 // A selection the current commit no longer offers is simply not applied, rather
 // than cleared. That keeps FR-030 exact — a failed rescan cannot discard the
@@ -35,10 +35,10 @@ import {
   CUSTOMIZATION_KIND_ORDER,
   SUPPORTED_TOOL_ORDER,
   escapeControlCharacters,
-  skillDirectoriesClash,
   type CustomizationKind,
   type SupportedTool,
 } from '../../shared/entities';
+import { facesSameNameCollision, skillCollisionGates } from '../../shared/skill-naming';
 
 /**
  * The filter fields the caller owns. They are passed in rather than returned so
@@ -70,13 +70,6 @@ export class InventoryFilterView {
   /** The Sources the current generation published, in snapshot order. */
   public readonly availableSources: ComputedRef<readonly SourceDto[]>;
 
-  /**
-   * Every published file by ID. A kind's row names its files by `fileId` and
-   * repeats none of their facts, so this is what resolves one back to its path.
-   * It is derived here because the rows derived here are what need it.
-   */
-  public readonly filesById: ComputedRef<ReadonlyMap<string, CustomizationFileSummaryDto>>;
-
   /** The tools the current inventory actually recognizes, in the closed tool order. */
   public readonly availableTools: ComputedRef<readonly SupportedTool[]>;
 
@@ -99,7 +92,7 @@ export class InventoryFilterView {
 
   /**
    * The skill rows that pass every active filter, in snapshot order. A row is
-   * one declared name; a filter keeps the definitions it matches and drops a
+   * one resolved name; a filter keeps the definitions it matches and drops a
    * row only when none is left, so a narrowed row states what still matches
    * rather than everything the name has.
    */
@@ -132,10 +125,10 @@ export class InventoryFilterView {
   public readonly effectiveTool: ComputedRef<SupportedTool | null>;
 
   /**
-   * Every published file by its Source-relative Path. A second index over the
-   * same list rather than a different fact: a definition's census publishes
-   * paths, so a row that has to reach the file behind a census entry — for the
-   * diagnostics it carries — needs this direction of the same lookup.
+   * Every published file by its Source-relative Path — the file's identity
+   * (FR-030). A kind's row names its files by path and repeats none of their
+   * facts, and a definition's census publishes paths, so this one lookup is
+   * how a row reaches the file behind either.
    */
   public readonly filesByPath: ComputedRef<ReadonlyMap<string, CustomizationFileSummaryDto>>;
 
@@ -151,9 +144,6 @@ export class InventoryFilterView {
     const { sourceId, tool, kind, pathQuery } = selection;
 
     this.availableSources = computed(() => snapshot.value?.sources ?? []);
-    this.filesById = computed(
-      () => new Map((snapshot.value?.files ?? []).map((file) => [file.fileId, file])),
-    );
     this.filesByPath = computed(
       () => new Map((snapshot.value?.files ?? []).map((file) => [file.sourceRelativePath, file])),
     );
@@ -161,7 +151,7 @@ export class InventoryFilterView {
     this.availableTools = computed(() => {
       const present = new Set(
         (snapshot.value?.skills ?? []).flatMap((entry) =>
-          entry.definitions.flatMap((definition) => definition.tools),
+          entry.definitions.map((definition) => definition.tool),
         ),
       );
       return SUPPORTED_TOOL_ORDER.filter((candidate) => present.has(candidate));
@@ -213,8 +203,8 @@ export class InventoryFilterView {
     const query = computed(() => pathQuery.value.trim().toLowerCase());
 
     /** Whether a published file passes the Source and path filters. */
-    const fileMatches = (fileId: string): boolean => {
-      const file = this.filesById.value.get(fileId);
+    const fileMatches = (sourceRelativePath: string): boolean => {
+      const file = this.filesByPath.value.get(sourceRelativePath);
       if (file === undefined) {
         return false;
       }
@@ -235,49 +225,35 @@ export class InventoryFilterView {
      * definitions that matched. A name with no matching definition is not a row:
      * showing it would claim a match the inventory does not have.
      */
-    this.skillRows = computed<readonly SkillInventoryEntryDto[]>(() =>
-      (snapshot.value?.skills ?? []).flatMap((entry) => {
+    this.skillRows = computed<readonly SkillInventoryEntryDto[]>(() => {
+      const filtered = (snapshot.value?.skills ?? []).flatMap((entry) => {
         const definitions = entry.definitions.filter(
           (definition) =>
-            fileMatches(definition.fileId) &&
-            (effectiveTool.value === null || definition.tools.includes(effectiveTool.value)),
+            fileMatches(definition.sourceRelativePath) &&
+            (effectiveTool.value === null || definition.tool === effectiveTool.value),
         );
-        if (definitions.length === 0) {
-          return [];
-        }
-        // A resolution statement describes the definitions actually shown, and
-        // it answers what one tool does when *it* finds the name declared
-        // twice. A filter that leaves a tool one definition leaves that tool no
-        // collision, so its statement goes with the definitions it described —
-        // and Claude's goes with the directory-name clash it was quoted for,
-        // the same gate the projection applied (skillDirectoriesClash): a
-        // filter can remove one of the clashing pair while a third same-label
-        // definition keeps the count at two.
-        return [
-          {
-            ...entry,
-            definitions,
-            sameNameResolutions: entry.sameNameResolutions.filter((resolution) => {
-              const recognized = definitions.filter((definition) =>
-                definition.tools.includes(resolution.tool),
-              );
-              if (recognized.length < 2) {
-                return false;
-              }
-              return (
-                resolution.tool !== 'claude' ||
-                skillDirectoriesClash(
-                  recognized.map(
-                    (definition) =>
-                      this.filesById.value.get(definition.fileId)?.sourceRelativePath ?? '',
-                  ),
-                )
-              );
-            }),
-          },
-        ];
-      }),
-    );
+        return definitions.length === 0 ? [] : [{ entry, definitions }];
+      });
+      // The same per-tool collision machinery the projection applied,
+      // through the shared assembly (skill-naming.ts) so the two surfaces
+      // cannot drift — rebuilt here because the population is this view's
+      // own: a gate can span rows — Claude's does — and a filter can hide
+      // one side of a clash, so the statement goes with the definitions it
+      // described.
+      const collisionGates = skillCollisionGates(
+        filtered.flatMap(({ definitions }) => definitions),
+      );
+      // A resolution statement describes the definitions actually shown, and
+      // it answers what one tool does when *it* faces the collision its own
+      // naming policy defines.
+      return filtered.map(({ entry, definitions }) => ({
+        ...entry,
+        definitions,
+        sameNameResolutions: entry.sameNameResolutions.filter((resolution) =>
+          facesSameNameCollision(collisionGates, resolution.tool, definitions),
+        ),
+      }));
+    });
 
     this.kindCounts = computed(() => {
       const counts = new Map<CustomizationKind, number>();
@@ -295,7 +271,7 @@ export class InventoryFilterView {
       // reported as unrecognized while its own tab lists them.
       const recognized = new Set(
         (snapshot.value?.skills ?? []).flatMap((entry) =>
-          entry.definitions.map((definition) => definition.fileId),
+          entry.definitions.map((definition) => definition.sourceRelativePath),
         ),
       );
       // A companion belongs to the customization whose directory holds it, and
@@ -312,9 +288,9 @@ export class InventoryFilterView {
       );
       return (snapshot.value?.files ?? []).filter(
         (file) =>
-          !recognized.has(file.fileId) &&
+          !recognized.has(file.sourceRelativePath) &&
           !companions.has(file.sourceRelativePath) &&
-          fileMatches(file.fileId) &&
+          fileMatches(file.sourceRelativePath) &&
           // A file in no kind's inventory was recognized by no product, so no
           // tool selection can match it. Showing it under one would contradict
           // the filter the user set.

@@ -1,12 +1,12 @@
-// T1076: deriving what a product documents for a same-name skill from its own
-// composition strategies, rather than restating it beside them.
+// T1076/T159: deriving what a product documents for a same-name skill from
+// its own composition strategies, rather than restating it beside them.
 //
-// The contract suite checks the shipped registry, where one product ships one
-// strategy. These cases drive the derivation over the shapes that registry
-// cannot produce yet — a multi-step pipeline, surfaces that disagree, a
-// surface that establishes nothing — because those are the branches that
-// decide whether the Inspector stays silent or states a winner it has not
-// recorded.
+// The contract suite checks the shipped registry — one strategy each for
+// Claude and Codex, and Copilot's three per-surface pipelines. These cases
+// also drive the derivation over shapes that registry cannot produce —
+// surfaces that disagree outright, a surface that establishes nothing —
+// because those are the branches that decide whether the Inspector stays
+// silent or states a winner it has not recorded.
 import { describe, expect, it } from 'vitest';
 
 import { sameNameSkillResolutionOf } from '../../../src/shared/registries/skill-resolution';
@@ -73,6 +73,31 @@ describe('sameNameSkillResolutionOf', () => {
   it('reports surfaces that disagree rather than picking one of them', () => {
     expect(
       sameNameSkillResolutionOf([withOperations('select-first'), withOperations('retain-all')]),
+    ).toBe('surface-dependent');
+  });
+
+  it('never turns unresolved-order selection into a first-wins statement', () => {
+    // `select-first` beside `unknown-order` is the pipeline whose duplicate
+    // order the vendor records as unresolved — Copilot's VS Code and Cloud
+    // skill selection ("do not invent a duplicate-name winner"). It is a
+    // recorded position, but not a publishable statement on its own, so a
+    // group establishing only it stays silent.
+    expect(
+      sameNameSkillResolutionOf([withOperations('filter', 'select-first', 'unknown-order')]),
+    ).toBeNull();
+  });
+
+  it('reports the Copilot shape — a documented winner beside unresolved order — as surface-dependent', () => {
+    // The CLI documents first-found selection while VS Code and Cloud record
+    // selection in an unresolved order: two established positions that cannot
+    // be one statement, so the product's row says the rule depends on the
+    // surface rather than quoting the CLI's winner product-wide (FR-007).
+    expect(
+      sameNameSkillResolutionOf([
+        withOperations('select-first'),
+        withOperations('filter', 'select-first', 'unknown-order'),
+        withOperations('filter', 'select-first', 'unknown-order'),
+      ]),
     ).toBe('surface-dependent');
   });
 

@@ -548,7 +548,6 @@ describe('scan lifecycle', () => {
       code: 'file-content-binary',
       lifecycleOwnerKey: null,
       sourceId,
-      fileId: 'seed-file',
       sourceRelativePath: 'AGENTS.md',
     }).serialize();
     await coordinator.completeScan(first.scanRequestId, {
@@ -559,7 +558,6 @@ describe('scan lifecycle', () => {
       readBytes: 0,
       files: [
         {
-          fileId: 'seed-file',
           sourceId,
           sourceRelativePath: 'AGENTS.md',
           encoding: 'binary',
@@ -567,7 +565,6 @@ describe('scan lifecycle', () => {
           diagnosticIds: [generationDiagnostic.diagnosticId],
         },
         {
-          fileId: 'seed-readable',
           sourceId,
           sourceRelativePath: 'CLAUDE.md',
           encoding: 'utf-8',
@@ -582,7 +579,7 @@ describe('scan lifecycle', () => {
     });
     // get-session serves the committed inventory and its generation records
     // at the top level (contracts/http-api.md § get-session `files[]` /
-    // `diagnostics[]`), with the commit-rekeyed IDs staying coherent
+    // `diagnostics[]`), with the published pair staying coherent
     // between a file row and its diagnostic.
     const committed = session.snapshot();
     expect(committed.files.map((file) => file.sourceRelativePath)).toEqual([
@@ -590,7 +587,9 @@ describe('scan lifecycle', () => {
       'CLAUDE.md',
     ]);
     expect(committed.diagnostics.map((entry) => entry.code)).toEqual(['file-content-binary']);
-    expect(committed.diagnostics[0]!.fileId).toBe(committed.files[0]!.fileId);
+    expect(committed.diagnostics[0]!.sourceRelativePath).toBe(
+      committed.files[0]!.sourceRelativePath,
+    );
     // The snapshot rows are content-free summaries: authored text is served
     // only by the detail routes, one file at a time (FR-027).
     expect(JSON.stringify(committed)).not.toContain('TOP-SECRET-AUTHORED-VALUE');

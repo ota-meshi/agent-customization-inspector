@@ -81,9 +81,9 @@ export type RescanState =
  *  - 'ready'            a detail passed every guard and may be rendered
  *  - 'companion-failed' the held entry stays shown; only the selected
  *                       companion's request failed
- *  - 'stale'            the host answered `stale-resource`: the file belongs
- *                       to no current generation, which is what a rescan
- *                       makes of every file ID a page was holding
+ *  - 'stale'            the host answered `stale-resource`: no current
+ *                       generation holds a file at the requested path — a
+ *                       link from a snapshot whose file a commit removed
  */
 export type FileDetailState =
   /** No file is open. */
@@ -337,10 +337,10 @@ export class SessionViewState {
         if (purged) {
           return;
         }
-        // A commit rekeys every generation-owned ID, so the open detail names
-        // a file that no longer exists. Dropping it here is the generation
-        // half of the FR-027 cleanup: the route notices and re-requests under
-        // the new generation, which is also how a removed file becomes the
+        // A commit replaced the generation the open detail was read from.
+        // Dropping it here is the generation half of the FR-027 cleanup: the
+        // route notices and re-requests the same path under the new
+        // generation, which is also how a removed file becomes the
         // `stale-resource` state instead of stale content on screen.
         if (outcome.advancedSequences.length > 0) {
           this.closeSkill();
@@ -561,16 +561,18 @@ export class SessionViewState {
    * adopts both, or records why the skill could not be shown.
    *
    * The entry point is fetched even when a companion is what the reader
-   * selected, because a companion carries no recognition of its own: what the
-   * skill is comes from the `SKILL.md`, and a page that showed only the
-   * companion's detail would say nothing was recognized here.
+   * selected, because the census alone admits nothing: what this page's skill
+   * is comes from its own entry point — a census-listed file may carry its
+   * own recognitions, a nested `SKILL.md`, but those belong to its own route —
+   * and a page that showed only the companion's detail would say nothing was
+   * recognized here.
    *
    * Every write to the skill state happens in this function, behind one
    * ownership check, so the three ways an invocation stops owning the page —
    * a purge cleared it, `closeSkill` left it, a newer `openSkill` superseded
    * it — cannot each grow their own handling.
    */
-  public async openSkill(entryFileId: string, openFileId: string): Promise<void> {
+  public async openSkill(entryPath: string, openPath: string): Promise<void> {
     this.#skillRequestVersion += 1;
     const requested = this.#skillRequestVersion;
     // The new selection owns the page now: a previous file's retained detail
@@ -594,7 +596,7 @@ export class SessionViewState {
     // unmounting the tree the reader is using — and the link they just
     // activated with it, dropping keyboard focus to the document.
     const held =
-      this.skillDetail.value?.file.fileId === entryFileId ? this.skillDetail.value : null;
+      this.skillDetail.value?.file.sourceRelativePath === entryPath ? this.skillDetail.value : null;
     if (held !== null && this.skillDetailState.value === 'companion-failed') {
       // A retry — or another file selected — from the failed pane: the entry
       // stays, and the pane returns to its in-flight state so the failed
@@ -619,24 +621,24 @@ export class SessionViewState {
      * showing it under the newer selection would claim a file the page does
      * not have.
      */
-    const fetchOwned = async (fileId: string): Promise<FileDetailDto | null> => {
-      const outcome = await this.#client.fetchFileDetail(fileId);
+    const fetchOwned = async (sourceRelativePath: string): Promise<FileDetailDto | null> => {
+      const outcome = await this.#client.fetchFileDetail(sourceRelativePath);
       switch (outcome.kind) {
         case 'adopted':
           return owns() ? outcome.detail : null;
         case 'rejected':
-          // The one rejection these requests can receive: the file belongs to
-          // no current generation. It is a declared functional outcome, shown
-          // as its own state rather than as an error.
+          // The one rejection these requests can receive: no current
+          // generation holds a file at the path. It is a declared functional
+          // outcome, shown as its own state rather than as an error.
           if (owns()) {
             this.skillDetail.value = null;
             this.openCompanion.value = null;
             this.skillDetailState.value = 'stale';
             // The rejection proves this client's snapshot is older than the
-            // host's committed generation, so the inventory's links carry
-            // IDs that would all answer the same way. Refetching now makes
-            // "return to the inventory and open it again" true instead of a
-            // loop through the same stale ID.
+            // host's committed generation — the path came from a snapshot
+            // whose file the commit since removed. Refetching now makes
+            // "return to the inventory and open it again" show what the
+            // current generation actually holds.
             void this.refresh();
           }
           return null;
@@ -651,7 +653,7 @@ export class SessionViewState {
             // A companion's own failure fails only the pane: the held entry
             // still describes the skill — its recognition and file tree are
             // not what failed — where an entry failure leaves nothing to show.
-            if (fileId !== entryFileId && this.skillDetail.value !== null) {
+            if (sourceRelativePath !== entryPath && this.skillDetail.value !== null) {
               this.openCompanion.value = null;
               this.skillDetailState.value = 'companion-failed';
             } else {
@@ -662,6 +664,35 @@ export class SessionViewState {
             this.#skillError.value = outcome.error.message;
           }
           return null;
+        case 'newer-generation':
+          // The host has committed past this page's adopted snapshot, and the
+          // path may well survive there — the response was withheld so one
+          // generation's labels never sit over another's content. Adopting
+          // the newer snapshot is the fix, and the route re-requests under
+          // it: its open effect watches the committed generations, so the
+          // refresh both closes this selection and reopens the same path
+          // against the new snapshot. Fresh rather than joined, for the same
+          // reason as the rescan recovery: an in-flight fetch may predate the
+          // commit this withholding proves, and adopting its older snapshot
+          // would re-request nothing.
+          if (owns()) {
+            await this.#refreshFreshly();
+            // Adopting the newer snapshot closes this selection and advances
+            // the version, so still owning here means no adoption happened:
+            // the refresh failed non-fatally — a fatal failure purges, which
+            // changes the epoch. Without this transition the page would sit
+            // on a loading or held state with no request in flight and no
+            // recovery control; the entry-failure state is the surface with
+            // the retry. The refresh's own error stays the shell's to report
+            // (`#sessionError`), so no message is copied here — the route
+            // states its own condition and neither surface repeats the other.
+            if (owns()) {
+              this.skillDetail.value = null;
+              this.openCompanion.value = null;
+              this.skillDetailState.value = 'idle';
+            }
+          }
+          return null;
         case 'purged':
           // The disposer already cleared the detail along with the view.
           return null;
@@ -670,7 +701,7 @@ export class SessionViewState {
           return null;
       }
     };
-    const entry = held ?? (await fetchOwned(entryFileId));
+    const entry = held ?? (await fetchOwned(entryPath));
     if (entry === null || !owns()) {
       return;
     }
@@ -685,10 +716,12 @@ export class SessionViewState {
     // returning to it is a change of selection, not of content, and the
     // refetch it would replace could fail and take good state with it.
     const heldCompanion =
-      this.openCompanion.value?.file.fileId === openFileId ? this.openCompanion.value : null;
+      this.openCompanion.value?.file.sourceRelativePath === openPath
+        ? this.openCompanion.value
+        : null;
     const companion =
-      openFileId === entryFileId ? null : (heldCompanion ?? (await fetchOwned(openFileId)));
-    if ((openFileId !== entryFileId && companion === null) || !owns()) {
+      openPath === entryPath ? null : (heldCompanion ?? (await fetchOwned(openPath)));
+    if ((openPath !== entryPath && companion === null) || !owns()) {
       return;
     }
     this.openCompanion.value = companion;

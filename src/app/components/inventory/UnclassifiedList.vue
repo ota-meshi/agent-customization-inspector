@@ -27,7 +27,7 @@ defineProps<{
   <ul class="aci-list aci-inventory" role="list">
     <UnclassifiedRow
       v-for="file in files"
-      :key="file.fileId"
+      :key="file.sourceRelativePath"
       :file="file"
       :diagnostics="diagnostics"
     />

@@ -1,18 +1,28 @@
-// Vendor-neutral candidate recognition (T066, generalized by T136). A
-// recognizer answers two questions about an already-admitted candidate: what
-// is this file, as far as the shipped contract records, and what name does it
-// declare for itself? The answers' shapes — and the one engine that assembles
-// them — are shared by every vendor, so they live here; what varies per vendor
-// is only which admissions it owns, selected by its tool literal. One engine
-// rather than one copy per vendor, because the merge, census, ordering, and
-// failure rules it encodes are contract behavior (data-model.md
-// § ToolRecognition) that must not drift between products.
+// Vendor-neutral candidate recognition (T066, generalized by T136, made
+// multi-vendor by T163). A recognizer answers two questions about an
+// already-admitted candidate: what is this file, as far as the shipped
+// contract records, and what name does it declare for itself? The answers'
+// shapes — and the one engine that assembles them — are shared by every
+// vendor, so they live here; what varies per vendor is only which admissions
+// it owns, selected by its tool literal. One engine rather than one copy per
+// vendor, because the merge, census, ordering, and failure rules it encodes
+// are contract behavior (data-model.md § ToolRecognition) that must not drift
+// between products.
+//
+// One call recognizes one candidate for every dispatched tool at once, which
+// is what keeps the census a per-candidate fact: `.agents/skills/` is both a
+// Codex and a Copilot location and `.claude/skills/` both a Claude and a
+// Copilot one, so one physical file routinely carries two vendors' admissions,
+// and a per-vendor entry point would enumerate the same directory once per
+// recognizing product.
 //
 // A skill's declarations are read out as the file wrote them (FR-007): every
 // declared key in authored order, plus the instructions left once the block is
-// removed. The declared name leads because it is the identity the grouped
-// inventory row is keyed by and the heading a detail page shows, and it is not
-// recoverable from the path — a skill's `name` need not match its directory.
+// removed. The declared name leads because it seeds the resolved name the
+// grouped inventory row is keyed by and the heading a detail page shows —
+// authored when declared, the skill directory otherwise — and the authored
+// value is not recoverable from the path: a skill's `name` need not match its
+// directory.
 // No value is captioned, classified, or explained: what a key means is the
 // vendor's documentation, not this product's.
 //
@@ -36,18 +46,197 @@ import type { CompiledInspectionRule, SelectorOrigin } from '../rules/registry';
 import { RecognitionExtraction } from '../parsers/extraction';
 import { ParsedMarkdownDocument } from '../parsers/markdown';
 import { listCompanionFiles, type CompanionFile } from '../companion-census';
-import {
-  createOpaqueId,
-  type CustomizationKind,
-  type SupportedTool,
-} from '../../../shared/entities';
+import type { CustomizationKind, SupportedTool } from '../../../shared/entities';
 import type {
-  CandidateProvenanceDto,
   FrontmatterEntryDto,
   FrontmatterValueDto,
-  RecognitionDetails,
-  ToolRecognitionDto,
+  RecognitionParseStatus,
 } from '../../../shared/api-types';
+import type { RuleId } from '../../../shared/registries/identifier-types';
+import type { RuleDiscoveryClass } from '../../../shared/registries/rule-types';
+
+/**
+ * One rule/path admission behind a recognition
+ * (data-model.md § ToolRecognition `provenances`). Admissions are retained
+ * separately rather than collapsed into a recognition-level winner, because
+ * two rules admitting the same physical file are two authorizations, and a
+ * winner would say one of them did not happen. Internal to the committed
+ * generation: no session response carries an admission, and the record exists
+ * for the relationship phases that will read it.
+ *
+ * A class holding the compiled rule rather than a transcription of its
+ * fields: which rule authorized the read is the rule's own fact, so the two
+ * published identifiers are derived where they are read instead of copied
+ * into a shape that could drift from it.
+ */
+export class CandidateProvenance {
+  /** The compiled rule whose plan admitted the candidate; the source of both getters. */
+  readonly #compiled: CompiledInspectionRule;
+
+  /** The admitted Source-relative Path, spelled with the exact entry names. */
+  public readonly matchedPath: string;
+
+  /** Binds one admission to the rule that authorized it and the path it matched. */
+  public constructor(compiled: CompiledInspectionRule, matchedPath: string) {
+    this.#compiled = compiled;
+    this.matchedPath = matchedPath;
+  }
+
+  /**
+   * The inspection rule that admitted the candidate, from the closed catalog
+   * rather than an arbitrary string, so the ID resolves the immutable registry
+   * record that authorized the read (contracts/inspection-path-allowlist.md
+   * § Read authorization).
+   */
+  public get ruleId(): RuleId {
+    return this.#compiled.rule.ruleId;
+  }
+
+  /** How that rule creates candidates; see {@link RuleDiscoveryClass}. */
+  public get discoveryClass(): RuleDiscoveryClass {
+    return this.#compiled.rule.discoveryClass;
+  }
+}
+
+/**
+ * The per-kind payload of a recognition: the kind itself plus whatever
+ * identifies a recognition of that kind (data-model.md § ToolRecognition).
+ *
+ * It is one field rather than fields spread across the record because what
+ * identifies a recognition differs by kind and does not fit a shared optional:
+ * a skill declares a single `name`, while an MCP carrier declares one per
+ * server. The kind lives here rather than beside this field so there is one
+ * discriminant and no second copy that could disagree with it.
+ */
+export type RecognitionDetails =
+  /** A skill, identified by the name authored in its own file. */
+  | {
+      /** The recognized customization kind. */
+      readonly kind: 'skill';
+      /**
+       * The skill's own declared name as the parser resolved it under YAML
+       * 1.2's core schema, or absent when the recognizer extracted none
+       * (FR-007). Resolved, not sliced: an authored `name: 007` is the string
+       * `7`, not the authored spelling (data-model.md § Field reading).
+       *
+       * It is the display label and the identity every inventory row's name
+       * is built from (data-model.md § Inventory unit): a nested Claude Code
+       * recognition's row prefixes it root-relative, and every other
+       * recognition's row is named by it exactly. A file that declares none —
+       * or declares it empty — is named by its skill directory instead.
+       *
+       * Absent, never empty: an authored empty string is a different fact from
+       * no name at all, and collapsing them would report one as the other.
+       */
+      readonly declaredName?: string;
+      /**
+       * Every key the `SKILL.md` frontmatter declares, in authored order; the
+       * source of the detail response's `presentation.frontmatter` (FR-007).
+       * Empty when the file declares no frontmatter, and empty for a `failed`
+       * extraction, which publishes nothing while the complete source stays
+       * displayed (FR-028).
+       */
+      readonly frontmatter: readonly FrontmatterEntryDto[];
+      /**
+       * The `SKILL.md` with its frontmatter block removed: the source of the
+       * detail response's `presentation.bodyText`. Empty for a `failed`
+       * extraction: extraction is all-or-nothing (FR-028).
+       */
+      readonly bodyText: string;
+    }
+  /** Every other kind, until its recognizer phase gives it its own identity. */
+  | {
+      /** The recognized customization kind. */
+      readonly kind: Exclude<CustomizationKind, 'skill'>;
+    };
+
+/**
+ * One recognition: what one tool recognized in one file as one kind, carrying
+ * the kind-discriminated {@link RecognitionDetails} that identify it. Exactly
+ * one exists per `(file, tool, kind)`, and every rule admission behind it is
+ * merged into `provenances` (data-model.md § ToolRecognition).
+ *
+ * Internal to the committed generation, never serialized to a client: the
+ * inventory rows and the detail response are both projected from these — a
+ * definition is one recognition's `(file, tool)` identity, and the detail's
+ * `presentation` is one skill recognition's parse — so the record itself
+ * carries no wire identity of its own. A class, because the recognizer below
+ * is the one production construction site; the one later change a record
+ * takes — the scan attaching its kind's extraction-failure reference — is a
+ * named derivation rather than a spread copy.
+ */
+export class ToolRecognition {
+  /**
+   * The Source-relative Path of the file this recognition is attached to —
+   * the file's identity (FR-030). Unique per Source; the shipped milestone
+   * has one Source, and the Global tasks add the Source dimension when a
+   * second one can hold the same path.
+   */
+  public readonly sourceRelativePath: string;
+
+  /** The recognizing tool. */
+  public readonly tool: SupportedTool;
+
+  /** The kind and its per-kind identity; see {@link RecognitionDetails}. */
+  public readonly details: RecognitionDetails;
+
+  /**
+   * Closed extraction state; see {@link RecognitionParseStatus}. `failed` is
+   * all-or-nothing: a failed recognition publishes no declared name while its
+   * file's complete source stays displayed (FR-028).
+   */
+  public readonly parseStatus: RecognitionParseStatus;
+
+  /** Sorted non-empty rule/path admissions behind this recognition. */
+  public readonly provenances: readonly CandidateProvenance[];
+
+  /**
+   * The extraction-failure Diagnostic of this recognition's kind (FR-028),
+   * attached through {@link withDiagnostic}: one extraction per kind means
+   * one record, shared by every recognition of that kind, and each inventory
+   * definition republishes its own recognition's reference. Empty as
+   * constructed — the recognizer never sees the ID the scan will mint.
+   */
+  public readonly diagnosticIds: readonly string[];
+
+  /**
+   * Builds one recognition as the recognizer produced it. `diagnosticIds`
+   * starts empty at the recognizer's construction site; only
+   * {@link withDiagnostic} passes a non-empty list.
+   */
+  public constructor(
+    sourceRelativePath: string,
+    tool: SupportedTool,
+    details: RecognitionDetails,
+    parseStatus: RecognitionParseStatus,
+    provenances: readonly CandidateProvenance[],
+    diagnosticIds: readonly string[] = [],
+  ) {
+    this.sourceRelativePath = sourceRelativePath;
+    this.tool = tool;
+    this.details = details;
+    this.parseStatus = parseStatus;
+    this.provenances = provenances;
+    this.diagnosticIds = diagnosticIds;
+  }
+
+  /**
+   * The same recognition with its kind's extraction-failure reference
+   * attached (FR-028). A named derivation for the scan — the one caller —
+   * so the record type owns how its data changes instead of a spread copy
+   * at the call site.
+   */
+  public withDiagnostic(diagnosticId: string): ToolRecognition {
+    return new ToolRecognition(
+      this.sourceRelativePath,
+      this.tool,
+      this.details,
+      this.parseStatus,
+      this.provenances,
+      [...this.diagnosticIds, diagnosticId],
+    );
+  }
+}
 
 /**
  * What recognizing one candidate produced: its recognitions, and the files its
@@ -60,7 +249,7 @@ import type {
  */
 export interface CandidateRecognition {
   /** The recognitions attached to the candidate; possibly empty. */
-  readonly recognitions: readonly ToolRecognitionDto[];
+  readonly recognitions: readonly ToolRecognition[];
   /** The accompanying files the candidate's census listed, for the scan to read and publish. */
   readonly companions: readonly CompanionSourceFile[];
 }
@@ -109,9 +298,10 @@ export class CompanionSourceFile {
 
 /** One admitted candidate a recognizer is asked to classify. */
 export interface RecognitionInput {
-  /** The committed file identity the recognitions attach to. */
-  readonly fileId: string;
-  /** The admitted Source-relative Path, spelled with the exact entry names. */
+  /**
+   * The admitted Source-relative Path, spelled with the exact entry names —
+   * the file identity the recognitions attach to (FR-030).
+   */
   readonly matchedPath: string;
   /**
    * Where the candidate actually is on disk. It is the filesystem operand a
@@ -167,8 +357,8 @@ class SkillPresentation {
   /**
    * Reads one `SKILL.md` under the product's fixed YAML semantics: quoting and
    * escapes resolved, `007` read as `7`, a key declared twice resolved to its
-   * later declaration (data-model.md § Field reading). Both shipped skill
-   * contracts read the same `name` and `description` scalars, so the reading
+   * later declaration (data-model.md § Field reading). Every shipped skill
+   * contract reads the same `name` and `description` scalars, so the reading
    * lives once here.
    *
    * Throws for a present-but-unparseable frontmatter block;
@@ -293,20 +483,6 @@ function renderDeclaredValue(value: unknown, ancestors: readonly object[]): Fron
   };
 }
 
-// Builds one admission's provenance: which shipped rule authorized this read,
-// how that rule creates candidates, and the path it matched
-// (contracts/inspection-path-allowlist.md § Read authorization). Which
-// alternative of a multi-selector rule matched is not published — no surface
-// asks it, and it stays on the admission, where the sort above reads it.
-function buildProvenance(
-  admission: RecognitionAdmission,
-  matchedPath: string,
-): CandidateProvenanceDto {
-  // No lookup: the compiled rule carries the shipped record and its edges.
-  const { rule } = admission.compiled;
-  return { ruleId: rule.ruleId, discoveryClass: rule.discoveryClass, matchedPath };
-}
-
 /**
  * Builds a recognition's per-kind payload. Only `skill` has one so far: the
  * name it declares in its own file. The census the recognizer runs is not part
@@ -337,23 +513,31 @@ function buildDetails(
 }
 
 /**
- * Produces one vendor's recognitions of one admitted candidate. Exactly one
- * record exists per `(fileId, tool, kind)`: admissions that agree on the tool
- * and kind merge their provenances into that single record rather than
- * splitting into competing recognitions (data-model.md § ToolRecognition).
+ * Produces the dispatched vendors' recognitions of one admitted candidate.
+ * Exactly one record exists per `(file, tool, kind)`: admissions that agree
+ * on the tool and kind merge their provenances into that single record rather
+ * than splitting into competing recognitions (data-model.md
+ * § ToolRecognition). Tools are processed in the order given, so a caller
+ * passing the closed tool order publishes a shared candidate's recognitions
+ * deterministically; an admission whose tool is not in `tools` produces
+ * nothing, which is what "the rule is not dispatched here" must look like —
+ * never a fabricated recognition of an unknown kind.
  *
  * Extraction is all-or-nothing per recognition. A `failed` recognition
  * publishes no declared name while the file's complete readable source stays
  * displayed and comparison-eligible, and the caller attaches its
  * `recognition-parse-failed` Diagnostic (FR-028).
  */
-export async function recognizeCandidateForVendor(
+export async function recognizeCandidateForVendors(
   input: RecognitionInput,
-  tool: SupportedTool,
+  tools: readonly SupportedTool[],
 ): Promise<CandidateRecognition> {
-  const byKind = new Map<CustomizationKind, RecognitionAdmission[]>();
+  const byTool = new Map<SupportedTool, Map<CustomizationKind, RecognitionAdmission[]>>(
+    tools.map((tool) => [tool, new Map()]),
+  );
   for (const admission of input.admissions) {
-    if (admission.compiled.tool !== tool) {
+    const byKind = byTool.get(admission.compiled.tool);
+    if (byKind === undefined) {
       continue;
     }
     const key = admission.compiled.kind;
@@ -364,44 +548,57 @@ export async function recognizeCandidateForVendor(
       group.push(admission);
     }
   }
-  // The census belongs to the candidate's directory, not to a kind: one
-  // directory has one set of accompanying files however many kinds recognize
-  // its entry point, so it is enumerated exactly once — and only when a
-  // recognized kind is directory-shaped, which today is `skill` alone
-  // (contracts/inspection-path-allowlist.md § Bounded companion census). The
-  // files it lists are read and published by the scan as ordinary files that
-  // no rule admitted.
-  const census = byKind.has('skill')
+  // The census belongs to the candidate's directory, not to a kind or a tool:
+  // one directory has one set of accompanying files however many products
+  // recognize its entry point, so it is enumerated exactly once per candidate
+  // — and only when a recognized kind is directory-shaped, which today is
+  // `skill` alone (contracts/inspection-path-allowlist.md § Bounded companion
+  // census). The files it lists are read and published by the scan as ordinary
+  // files that no rule admitted.
+  const census = [...byTool.values()].some((byKind) => byKind.has('skill'))
     ? await listCompanionFiles(input.sourceRoot, input.absolutePath)
     : [];
   const candidateDirectory = input.matchedPath.slice(0, input.matchedPath.lastIndexOf('/') + 1);
   const companions = census.map((listed) => new CompanionSourceFile(candidateDirectory, listed));
-  const recognitions = [...byKind.entries()].map(([kind, group]): ToolRecognitionDto => {
-    const extraction = RecognitionExtraction.run(
-      input.sourceText,
-      kind === 'skill' ? (text) => new SkillPresentation(text) : null,
-    );
-    return {
-      recognitionId: createOpaqueId(),
-      fileId: input.fileId,
-      tool,
-      details: buildDetails(kind, extraction.extracted),
-      parseStatus: extraction.status,
-      // Ordered by admitting rule so two scans of the same tree publish the
-      // same record; the selector index breaks the tie for a rule with several
-      // alternatives. Sorted before the DTOs are built, because the index is
-      // the admission's and no published field carries it.
-      provenances: group
-        .toSorted((left, right) =>
-          left.compiled.rule.ruleId !== right.compiled.rule.ruleId
-            ? left.compiled.rule.ruleId < right.compiled.rule.ruleId
-              ? -1
-              : 1
-            : left.origin.selectorIndex - right.origin.selectorIndex,
-        )
-        .map((admission) => buildProvenance(admission, input.matchedPath)),
-      diagnosticIds: [],
-    };
-  });
+  // One extraction per kind, shared by every tool recognizing it: what a
+  // `SKILL.md` declares does not depend on which product reads it — every
+  // shipped skill contract reads the same fixed YAML semantics — so parsing
+  // once is the same-fact-once rule, not an optimization with a semantic.
+  const extractions = new Map<CustomizationKind, RecognitionExtraction<SkillPresentation>>();
+  const extractionFor = (kind: CustomizationKind): RecognitionExtraction<SkillPresentation> => {
+    let extraction = extractions.get(kind);
+    if (extraction === undefined) {
+      extraction = RecognitionExtraction.run(
+        input.sourceText,
+        kind === 'skill' ? (text) => new SkillPresentation(text) : null,
+      );
+      extractions.set(kind, extraction);
+    }
+    return extraction;
+  };
+  const recognitions = [...byTool.entries()].flatMap(([tool, byKind]) =>
+    [...byKind.entries()].map(([kind, group]): ToolRecognition => {
+      const extraction = extractionFor(kind);
+      return new ToolRecognition(
+        input.matchedPath,
+        tool,
+        buildDetails(kind, extraction.extracted),
+        extraction.status,
+        // Ordered by admitting rule so two scans of the same tree publish the
+        // same record; the selector index breaks the tie for a rule with several
+        // alternatives. Sorted before the records are built, because the index
+        // is the admission's and no published field carries it.
+        group
+          .toSorted((left, right) =>
+            left.compiled.rule.ruleId !== right.compiled.rule.ruleId
+              ? left.compiled.rule.ruleId < right.compiled.rule.ruleId
+                ? -1
+                : 1
+              : left.origin.selectorIndex - right.origin.selectorIndex,
+          )
+          .map((admission) => new CandidateProvenance(admission.compiled, input.matchedPath)),
+      );
+    }),
+  );
   return { recognitions, companions };
 }

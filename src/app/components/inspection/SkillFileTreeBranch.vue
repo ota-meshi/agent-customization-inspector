@@ -8,13 +8,16 @@
 // reader who cannot see them is told two files with the same name are siblings.
 import { computed } from 'vue';
 import { NuxtLink } from '#components';
+import { skillDetailRoute } from '../skill-detail-route';
 import { SkillTreeFileNode, type SkillTreeNode } from './skill-file-tree-nodes';
 
 const props = defineProps<{
   /** The nodes at this level, in the order the tree should read them. */
   readonly nodes: readonly SkillTreeNode[];
-  /** The file currently open, so the branch can mark it. */
-  readonly selectedFileId: string;
+  /** The path of the file currently open, so the branch can mark it. */
+  readonly selectedPath: string;
+  /** The route's tool segment; see `SkillFileTree`'s prop of the same name. */
+  readonly tool: string;
   /** How many branches stand above this one; 0 at the tree's own root. */
   readonly depth?: number;
 }>();
@@ -44,8 +47,8 @@ const indentStep = computed(() => ((props.depth ?? 0) < MAX_INDENTED_DEPTH ? '0.
       <NuxtLink
         v-if="node instanceof SkillTreeFileNode"
         class="aci-skill-file-tree-branch__file"
-        :to="`/skills/${node.file.fileId}`"
-        :aria-current="node.file.fileId === selectedFileId ? 'page' : undefined"
+        :to="skillDetailRoute(tool, node.sourceRelativePath)"
+        :aria-current="node.sourceRelativePath === selectedPath ? 'page' : undefined"
         >{{ node.label }}</NuxtLink
       >
       <template v-else>
@@ -56,7 +59,8 @@ const indentStep = computed(() => ((props.depth ?? 0) < MAX_INDENTED_DEPTH ? '0.
         >
         <SkillFileTreeBranch
           :nodes="node.children"
-          :selected-file-id="selectedFileId"
+          :selected-path="selectedPath"
+          :tool="tool"
           :depth="(depth ?? 0) + 1"
           :style="{ paddingInlineStart: indentStep }"
         />

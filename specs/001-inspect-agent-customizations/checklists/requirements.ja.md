@@ -24,8 +24,8 @@
 - [x] 境界事例が特定されている
 - [x] Scopeが明確に限定されている
 - [x] Dependencyと前提が特定されている
-- [x] US4が、initialまたはretryのGlobal Source正常commitすべてについて、`Source.sourceId`とsemantic上変化しないRepository inventory/source contentを維持しながら、generation advance、generation-owned IDの再key、以前のgenerationに属するdetail/comparison/editor stateの無効化を必須とし、all-rejected attemptがcommitを生成しないことを定義している
-- [x] ClosedなDiagnostic unionが正確なlocation invariantを定義している。File scopeはcoherentな`sourceId`/`fileId`/`sourceRelativePath` tupleを必須とし、source scopeは`sourceId`だけを必須としてfile/pathを禁止し、pathlessなscopeは存在せず、scopeはgeneration ownershipとlifecycle ownershipの違いに直交する *(2026-08-04 修正: 未admitのGlobal tool failureはcontrolの`failureCode`とする決定とともに、pathless session scopeは無くなった。)*
+- [x] US4が、initialまたはretryのGlobal Source正常commitすべてについて、`Source.sourceId`とsemantic上変化しないRepository inventory/source contentを維持しながら、generation advanceと以前のgenerationに属するdetail/comparison/editor stateの無効化を必須とし、all-rejected attemptがcommitを生成しないことを定義している *(2026-08-08 修正: fileのidentityはSource-relative Pathであるという決定とともにrekey句は無くなった — commitにはrekeyすべきgeneration-owned file IDが存在しない。)*
+- [x] ClosedなDiagnostic unionが正確なlocation invariantを定義している。File scopeはcoherentな`sourceId`/`sourceRelativePath` pairを必須とし、source scopeは`sourceId`だけを必須としてpathを禁止し、pathlessなscopeは存在せず、scopeはgeneration ownershipとlifecycle ownershipの違いに直交する *(2026-08-04 修正: 未admitのGlobal tool failureはcontrolの`failureCode`とする決定とともに、pathless session scopeは無くなった。)* *(2026-08-08 修正: fileのidentityはSource-relative Pathであるという決定とともに、file IDはlocation shapeから無くなった。)*
 - [x] Product起因mutationを禁止済みmutation-capable requestと観測可能なsource propertyで定義し、OSだけによるaccess-time変更をfailureにもproofにもせず別に記録する
 - [x] FR-032が許可するstructural-projection boundaryを定義し、全product/documentation surfaceでvalidation、semantic interpretation/ranking、verdict、remediation adviceを禁止する
 - [x] FR-029とFR-042が製品定義の数値resource-validation limitを禁止し、late workのauthorityを取り消して破棄し、Global-disableのpurge/epoch/fence/recovery lifecycleをcloseする。Failureは通常のerrorとして報告し（FR-040/FR-041は2026-07-22に削除）、per-file分離とstale snapshotのsemanticsはFR-028/FR-030に残る

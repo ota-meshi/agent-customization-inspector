@@ -37,7 +37,7 @@ import type { ClientDataPurge, PurgeReason } from './client-data';
 export const SESSION_RPC_FUNCTIONS = {
   /** Full `InspectionSession` snapshot, or the fenced control DTO. */
   getSession: 'agent-customization-inspector:get-session',
-  /** One committed file's complete authored source and recognitions. */
+  /** One committed file's complete authored source and, for a skill, its parse. */
   getFileDetail: 'agent-customization-inspector:get-file-detail',
   /** Accept one explicit Repository scan command. */
   rescanRepository: 'agent-customization-inspector:rescan-repository',
@@ -73,8 +73,8 @@ export interface SessionRpcChannel {
 export type ClientDataGuard = Pick<ClientDataPurge, 'epoch' | 'purge'>;
 
 /**
- * The two independent generation sequences (FR-030): a commit in one rekeys
- * and invalidates only that sequence's generation-owned IDs and views.
+ * The two independent generation sequences (FR-030): a commit in one
+ * invalidates only that sequence's views.
  */
 export type ScanSequence =
   /** The Repository Source and its independently committed generations. */
@@ -150,26 +150,38 @@ export type SessionFetchOutcome =
  * that carries authored content, and therefore the only one FR-027 is about.
  *
  * The contract's detail request token is
- * `(clientDataEpoch, owning-sequence generation, fileId)`. Two of the three are
- * enforced without a field of their own: the epoch is the shared guard every
- * response passes, and a commit rekeys every generation-owned ID, so a file ID
- * captured under an older generation resolves to nothing and comes back as
- * `stale-resource` rather than as another generation's content. The third,
- * `fileId`, is the request-token family below — a newer selection supersedes
- * the older request before it can render.
+ * `(clientDataEpoch, sourceRelativePath)`. The epoch is the shared guard every
+ * response passes: a commit that purges client data advances it, so a
+ * response captured before the purge never repopulates state. The path is
+ * the file's stable identity (FR-030), resolved by the host against whatever
+ * generation is current — which is why a result bound under a generation
+ * newer than this client's adopted one is withheld as `newer-generation`
+ * instead of rendered under state resolved from the older snapshot. The path
+ * is the request-token family below — a newer selection supersedes the older
+ * request before it can render.
  */
 export type FileDetailOutcome =
   | {
       /** Every guard passed; the file's complete detail may be rendered. */
       readonly kind: 'adopted';
-      /** The committed file with its authored source and recognitions. */
+      /** The committed file with its authored source and, for a skill, its parse. */
       readonly detail: FileDetailDto;
     }
   | {
-      /** The file belongs to no current generation; see `stale-resource`. */
+      /** No current generation holds a file at the path; see `stale-resource`. */
       readonly kind: 'rejected';
       /** The fixed contract code; see {@link RejectionCode}. */
       readonly code: RejectionCode;
+    }
+  | {
+      /**
+       * The response was read from a generation newer than the adopted
+       * snapshot, which the path — the file's whole identity — can survive,
+       * so its content would render under labels resolved from the older
+       * one. Nothing is adopted; the caller refreshes and re-requests
+       * (`SessionViewState.openSkill`).
+       */
+      readonly kind: 'newer-generation';
     }
   | {
       /** An ordinary staleness outcome; nothing rendered, nothing purged. */
@@ -333,9 +345,9 @@ export class SessionApiClient {
 
   /**
    * Abandons the inspection-data requests a newer generation supersedes. A
-   * detail request belongs to this family: its file ID was issued by the
-   * generation that just moved on, so its result names a file the page can no
-   * longer show.
+   * detail request belongs to this family: it was read from the generation
+   * that just moved on, so its result carries content the page must re-request
+   * under the new generation rather than show.
    */
   #abortDataRequests(): void {
     this.#latestSessionToken = null;
@@ -593,12 +605,13 @@ export class SessionApiClient {
 
   /**
    * Issues one guarded file-detail request. It never adopts a snapshot and
-   * never advances the adopted baseline: a detail is a read of the generation
-   * already adopted, so the epoch guard applies and the generation guards do
-   * not — a mismatch there cannot produce content, only the `stale-resource`
-   * rejection.
+   * never advances the adopted baseline: a detail is a read of the
+   * generations already adopted, so the epoch guard applies, and a result
+   * bound under a newer generation than this client has adopted is withheld
+   * as `newer-generation` — the caller refreshes and re-requests the same
+   * path — rather than rendered under state resolved from the older one.
    */
-  public async fetchFileDetail(fileId: string): Promise<FileDetailOutcome> {
+  public async fetchFileDetail(sourceRelativePath: string): Promise<FileDetailOutcome> {
     const token = Symbol('get-file-detail');
     const controller = new AbortController();
     this.#latestDetailToken = token;
@@ -606,7 +619,7 @@ export class SessionApiClient {
     const capturedClientDataEpoch = this.#clientData.epoch();
     let settled: unknown;
     try {
-      settled = await this.#channel.call(SESSION_RPC_FUNCTIONS.getFileDetail, fileId);
+      settled = await this.#channel.call(SESSION_RPC_FUNCTIONS.getFileDetail, sourceRelativePath);
     } catch (cause: unknown) {
       this.#outstandingData.delete(controller);
       const discarded = this.#guardSettlement(
@@ -652,6 +665,24 @@ export class SessionApiClient {
     }
     if (this.#globalContentEpoch !== null && result.globalContentEpoch < this.#globalContentEpoch) {
       return { kind: 'discarded', reason: 'older-global-content-epoch' };
+    }
+    // A detail is a read of the adopted generations, and the path — the
+    // file's whole identity — can survive a commit, so the host can answer a
+    // generation-N page from its newer commit with no rejection at all.
+    // Such a response is not adopted: rendering it would put the newer
+    // generation's source and parse under the name and census this
+    // page resolved from the older one. The caller refreshes, adopts the
+    // newer snapshot, and re-requests (`SessionViewState.openSkill`). There
+    // is no older branch to guard: the host serves every detail from its
+    // current commit under one coordinator, so it cannot answer from a
+    // generation behind one this client has already adopted.
+    if (
+      (this.#repositoryGeneration !== null &&
+        result.repositoryGeneration > this.#repositoryGeneration) ||
+      (result.globalGeneration !== null &&
+        (this.#globalGeneration === null || result.globalGeneration > this.#globalGeneration))
+    ) {
+      return { kind: 'newer-generation' };
     }
     return { kind: 'adopted', detail: result.data };
   }

@@ -8,15 +8,12 @@
 // design — no node: imports — so the client build can import it.
 import type { SerializedDiagnostic } from './diagnostics';
 import type {
-  CustomizationKind,
   ReadableFileEncoding,
   SameNameSkillResolution,
   SourceBoundaryDto,
   SourceStatus,
   SupportedTool,
 } from './entities';
-import type { RuleId } from './registries/identifier-types';
-import type { RuleDiscoveryClass } from './registries/rule-types';
 import type { RejectionCode } from './rejection-codes';
 
 /**
@@ -35,34 +32,6 @@ export type RecognitionParseStatus =
   | 'parsed'
   /** Extraction failed for this recognition while authored source remains available. */
   | 'failed';
-
-/**
- * One rule/path admission behind a recognition
- * (data-model.md § ToolRecognition `provenances`). Admissions are retained
- * separately rather than collapsed into a recognition-level winner, because
- * two rules admitting the same physical file are two authorizations, and a
- * winner would say one of them did not happen.
- *
- * The three fields here are the response shape the detail contract promises
- * (contracts/http-api.md § FileDetail), which also records why the fields of
- * later phases — relationships, derivation seeds, ordering, declaration keys,
- * and reference lists — are absent rather than empty. Where the customization
- * would apply is not among them: that was the vocabulary of a projection no
- * surface makes, and a `matching-path` scope also restated `matchedPath`.
- */
-export interface CandidateProvenanceDto {
-  /**
-   * The inspection rule that admitted the candidate, from the closed catalog
-   * rather than an arbitrary string, so the ID resolves the immutable registry
-   * record that authorized the read (contracts/inspection-path-allowlist.md
-   * § Read authorization).
-   */
-  readonly ruleId: RuleId;
-  /** How that rule creates candidates; see {@link RuleDiscoveryClass}. */
-  readonly discoveryClass: RuleDiscoveryClass;
-  /** The admitted Source-relative Path, spelled with the exact entry names. */
-  readonly matchedPath: string;
-}
 
 /**
  * One authored frontmatter value, as the skill detail surface shows it
@@ -126,83 +95,60 @@ export interface FrontmatterEntryDto {
 }
 
 /**
- * The per-kind payload of a recognition: the kind itself plus whatever
- * identifies a recognition of that kind (data-model.md § ToolRecognition).
- *
- * It is one field rather than fields spread across the record because what
- * identifies a recognition differs by kind and does not fit a shared optional:
- * a skill declares a single `name`, while an MCP carrier declares one per
- * server. Keeping it in a single union also means a summary is a copy of the
- * record's payload rather than a per-kind reconstruction of it — no projection
- * has to branch just to move a value across.
- *
- * The kind lives here rather than beside this field so there is one discriminant
- * and no second copy that could disagree with it.
- */
-export type RecognitionDetails =
-  /** A skill, identified by the name authored in its own file. */
-  | {
-      /** The recognized customization kind. */
-      readonly kind: 'skill';
-      /**
-       * The skill's own declared name as the parser resolved it under YAML
-       * 1.2's core schema, or absent when the recognizer extracted none
-       * (FR-007). Resolved, not sliced: an authored `name: 007` is the string
-       * `7`, not the authored spelling (data-model.md § Field reading).
-       *
-       * This is the one authored value an inventory row carries (FR-027). It
-       * is presentation identity rather than content: it is the name the
-       * vendors' own skill listings show — for a Claude repository skill only
-       * the display label, with the command coming from the directory — it is
-       * not recoverable from the Source-relative Path, since a skill's `name`
-       * need not match its directory, and a list that cannot name what it
-       * lists is not an inventory.
-       *
-       * Absent, never empty: an authored empty string is a different fact from
-       * no name at all, and collapsing them would report one as the other.
-       */
-      readonly declaredName?: string;
-      /**
-       * Every key the `SKILL.md` frontmatter declares, in authored order —
-       * the file's own declarations, shown as declarations rather than buried
-       * in the source (FR-007). Empty when the file declares no frontmatter,
-       * and empty for a `failed` extraction, which publishes nothing while the
-       * complete source stays displayed (FR-028).
-       */
-      readonly frontmatter: readonly FrontmatterEntryDto[];
-      /**
-       * The `SKILL.md` with its frontmatter block removed: the instructions
-       * the product would read. Separated from the declarations above because
-       * they answer different questions, and the split is the parser's own —
-       * see `parsers/markdown.ts`. Empty for a `failed` extraction: extraction
-       * is all-or-nothing, so a document whose block cannot be parsed, a key
-       * that is not a scalar, a tagged value with no authored rendering, and a
-       * value containing itself all publish nothing.
-       */
-      readonly bodyText: string;
-    }
-  /** Every other kind, until its recognizer phase gives it its own identity. */
-  | {
-      /** The recognized customization kind. */
-      readonly kind: Exclude<CustomizationKind, 'skill'>;
-    };
-
-/**
  * One `SKILL.md` behind an inventory entry
  * (contracts/http-api.md § get-session `skills[]`). It names its file by
- * `fileId` and repeats nothing the file publishes for itself — path, size, read
- * outcome, and file-scoped diagnostics all stay on {@link
- * CustomizationFileSummaryDto}.
+ * `sourceRelativePath` and repeats nothing else the file publishes for
+ * itself — size, read outcome, and file-scoped diagnostics all stay on
+ * {@link CustomizationFileSummaryDto}.
  */
 export interface SkillDefinitionDto {
-  /** The `SKILL.md` this definition is authored in; joins to `files[]`. */
-  readonly fileId: string;
   /**
-   * The tools that recognized this file as a skill, in the contracted tool
-   * order. Several products read one location — `.agents/skills/<name>/` is
-   * both a Codex and a Copilot skill location — so one file may be several.
+   * The Source-relative Path of the `SKILL.md` this definition is authored
+   * in — the file's identity (FR-030), which joins to `files[]` and is the
+   * path half of the definition's own detail route,
+   * `/skills/<tool>/<source-relative path>`.
    */
-  readonly tools: readonly SupportedTool[];
+  readonly sourceRelativePath: string;
+  /**
+   * The tool whose recognition this definition is (FR-007). One definition
+   * per `(file, tool)` under the entry's name — the same unit as
+   * ToolRecognition — so a file two products resolve to one name is two
+   * definitions of that entry, and a tool that resolves a different name for
+   * the file — Claude Code prefixing a nested skill — defines on that name's
+   * entry instead.
+   */
+  readonly tool: SupportedTool;
+  /**
+   * This definition's extraction state — the owning recognition's own
+   * `parseStatus`, republished here because the definition is that
+   * recognition (FR-028). `failed` is what keeps a surface from reading the
+   * skill-directory row name as something the file declared: the authored
+   * name is unknown, not absent, so a failed definition claims no authored
+   * invocation name and evidences no authored-name collision — Claude Code's
+   * path-derived clash stands either way (skill-naming.ts
+   * `collisionEvidencePaths`).
+   */
+  readonly parseStatus: RecognitionParseStatus;
+  /**
+   * The invocation name this definition's tool documents for the file:
+   * Claude Code's command name is derived from the path — the skill directory,
+   * root-relative-prefixed when nested — whatever the frontmatter declares,
+   * while Codex and Copilot invoke the authored `name`, with the same skill
+   * directory fallback the rows use when the file declares none. Null exactly
+   * when the tool invokes the authored name and this definition's extraction
+   * failed: that name is unknown, and publishing the directory instead would
+   * read a value out of a failed parse (FR-028). The detail shows it beside
+   * the row's own name when present (data-model.md § Skill presentation);
+   * computed by the projection that keys the rows, so vendor naming cannot
+   * drift between server and client.
+   */
+  readonly invocationName: string | null;
+  /**
+   * The kind's extraction-failure reference (FR-028): one extraction per
+   * kind means one record, which every failed definition of the file names
+   * as its own parse fact and the file's `files[]` entry lists once.
+   */
+  readonly diagnosticIds: readonly string[];
   /**
    * The Source-relative Paths of the files accompanying this `SKILL.md` in its
    * own directory, sorted — the scripts, references, and assets that make a
@@ -210,47 +156,61 @@ export interface SkillDefinitionDto {
    * (contracts/inspection-path-allowlist.md § Bounded companion census).
    *
    * Read and published, never admitted: each listed path is also a file of this
-   * generation (see {@link RecognitionDetails}), and it is how a detail surface
+   * generation (a {@link CustomizationFileSummaryDto} row of `files[]`), and it is how a detail surface
    * offers the customization's own directory. The row shows how many there are
    * and the detail view shows which; the count is `length` rather than a second
    * field, because two states can disagree and one cannot. Empty when the
    * `SKILL.md` sits alone — being a directory is what a skill is, so every
-   * recognized skill has been enumerated.
+   * recognized skill has been enumerated. The census is the file's, so every
+   * definition of one file — across tools and across entries — carries the
+   * same list.
    */
   readonly companionFiles: readonly string[];
 }
 
 /**
  * One row of the skill inventory (contracts/http-api.md § get-session
- * `skills[]`, data-model.md § Inventory unit): one declared name and every
- * `SKILL.md` that declares it.
+ * `skills[]`, data-model.md § Inventory unit): one name as one tool resolves
+ * it, and every `SKILL.md` a recognizing tool resolves it for.
  *
- * The name is the unit rather than the file because that is what the vendors'
- * own skill listings show, and it need not match the directory holding the
- * file. A file-shaped row could not express it: two files may declare one name.
+ * The name is the unit rather than the file: two files may resolve to one
+ * name — by declaring it, or by sitting in same-named directories while
+ * declaring none — and one file's recognizing tools may resolve different
+ * names — Claude Code prefixes a nested skill's name root-relative — putting
+ * the file on each name's row with the tools that resolve it there (FR-007).
  */
 export interface SkillInventoryEntryDto {
   /**
-   * The declared name, or null for the definitions that declare none. Null is
-   * its own entry rather than a member of any named one: a file that declares
-   * no name has not joined a name, and folding it in would report a name it
-   * does not have.
+   * The name one tool resolves (FR-007): the authored frontmatter `name` — or
+   * the skill directory name when the file declares none or declares it
+   * empty — which a nested Claude Code recognition prefixes with the
+   * root-relative `/`-joined path of the directory holding its `.claude` and
+   * a `:` — `apps/web:deploy`. Never null or empty: being a named directory
+   * is what a skill is, so every row has a name to be listed under.
    */
-  readonly declaredName: string | null;
-  /** The `SKILL.md` files declaring this name, in Source-relative Path order. */
+  readonly name: string;
+  /**
+   * The recognitions resolving this name, one definition per `(file, tool)`,
+   * in Source-relative Path order and the contracted tool order within one
+   * file.
+   */
   readonly definitions: readonly SkillDefinitionDto[];
   /**
-   * How each tool facing a collision here resolves this name, sorted by tool.
+   * How each tool facing a collision on this name resolves it, sorted by tool.
    * A tool contributes a statement only when it recognizes two or more of these
    * definitions — one definition is not a collision, and a tool that recognizes
    * only one of several has nothing to choose between — and only when the
-   * collision is one its quoted rule answers: Claude Code's command names come
-   * from the skill directories, so its statement needs two of its definitions
-   * sharing a directory name (FR-007).
+   * collision is one its quoted rule answers. Claude Code's rule answers the
+   * clash of unqualified commands, which come from skill directories, and
+   * nested prefixing separates same-name rows, so its statement instead
+   * attaches to every entry holding a Claude definition whose skill directory
+   * name is shared with another Claude-recognized skill of the same
+   * generation (FR-007).
    *
-   * A row publishes this instead of ordering its definitions: the shipped
-   * statements differ per tool and two of the three are incomplete, so an order
-   * would be a winner the Inspector has not recorded (FR-007).
+   * A row publishes this instead of ordering its definitions: the three
+   * shipped products' statements differ — Copilot's is that no single rule is
+   * documented across its surfaces — and none is completely documented, so an
+   * order would be a winner the Inspector has not recorded (FR-007).
    */
   readonly sameNameResolutions: readonly SameNameSkillResolutionDto[];
 }
@@ -264,70 +224,99 @@ export interface SameNameSkillResolutionDto {
 }
 
 /**
- * One recognition entity: what one rule recognized in one file, carrying the
- * kind-discriminated {@link RecognitionDetails} that identify it. Each kind's
- * inventory row is projected from these, so a row copies the payload rather
- * than reconstructing it per kind.
+ * What the one scan-time parse resolved out of a skill entry point, as its
+ * detail surface shows it (data-model.md § Skill presentation): every
+ * declaration by the key the file wrote, and the instructions the frontmatter
+ * block was removed from. Published rather than re-parsed in the browser,
+ * because the inventory row's name comes from the same parse — a second
+ * parser would be a second opinion that could disagree with it (FR-007).
  */
-export interface ToolRecognitionDto {
-  /** Opaque identity, unique within the owning generation. */
-  readonly recognitionId: string;
-  /** The file this recognition is attached to. */
-  readonly fileId: string;
-  /** The recognizing tool. */
-  readonly tool: SupportedTool;
-  /** The kind and its per-kind identity; see {@link RecognitionDetails}. */
-  readonly details: RecognitionDetails;
+export interface SkillPresentationDto {
   /**
-   * Closed extraction state; see {@link RecognitionParseStatus}. `failed` is
-   * all-or-nothing: a failed recognition publishes no declared name while its
-   * file's complete source stays displayed (FR-028).
+   * Every key the `SKILL.md` frontmatter declares, in authored order — the
+   * file's own declarations, shown as declarations rather than buried in the
+   * source (FR-007). Empty when the file declares no frontmatter.
    */
-  readonly parseStatus: RecognitionParseStatus;
-  /** Sorted non-empty rule/path admissions behind this recognition. */
-  readonly provenances: readonly CandidateProvenanceDto[];
-  /** Recognition-scoped extraction-failure diagnostics (FR-028). */
-  readonly diagnosticIds: readonly string[];
+  readonly frontmatter: readonly FrontmatterEntryDto[];
+  /**
+   * The `SKILL.md` with its frontmatter block removed: the instructions the
+   * product would read. Separated from the declarations above because they
+   * answer different questions, and the split is the parser's own — see
+   * `parsers/markdown.ts`.
+   */
+  readonly bodyText: string;
+}
+
+/** Fields both detail variants carry; see {@link FileDetailDto}. */
+interface FileDetailBase {
+  /** The committed file, including its complete authored source when readable. */
+  readonly file: CustomizationFileDto;
+  /** The file-scoped Diagnostic records the file's own `diagnosticIds` name (FR-028). */
+  readonly diagnostics: readonly SerializedDiagnostic[];
+}
+
+/**
+ * Detail of a skill entry point: the file plus what the one scan-time parse
+ * resolved (contracts/http-api.md § get-file-detail). The parse is a fact of
+ * the file, not of a recognizing tool — every vendor reads the same fixed
+ * YAML semantics — so it is published once; which tools recognize the file,
+ * and each tool's invocation name, are the inventory's facts
+ * (`skills[].definitions[]`), and the route's tool segment says which
+ * definition a page is about.
+ */
+export interface SkillFileDetailDto extends FileDetailBase {
+  /** Discriminant: the file is a recognized skill entry point. */
+  readonly kind: 'skill';
+  /**
+   * The parsed declarations and instructions, or null exactly when extraction
+   * failed all-or-nothing (FR-028): nothing was parsed, the failure's
+   * Diagnostic is in `diagnostics`, and the complete source stays readable.
+   */
+  readonly presentation: SkillPresentationDto | null;
+}
+
+/**
+ * Detail of a file no recognition owns: a census-listed companion, or a
+ * diagnostic-only candidate whose bytes never parsed. At this level nothing
+ * says the file is Markdown, so no parsed structure exists to publish — what
+ * there is to show is the file itself: its complete source when its read
+ * yielded text, its read outcome alone otherwise (FR-025).
+ */
+export interface UnrecognizedFileDetailDto extends FileDetailBase {
+  /** Discriminant: no recognition is attached to the file. */
+  readonly kind: 'file';
 }
 
 /**
  * One file's complete detail result
- * (contracts/http-api.md § get-file-detail): the committed file with its
- * complete authored source, the recognitions attached to it, and the
- * diagnostics that explain them. It is the one result that carries authored
+ * (contracts/http-api.md § get-file-detail), discriminated by whether a
+ * recognition owns the file. It is the one result that carries authored
  * content, which is why FR-027 keeps it behind an explicit request for one
  * file: no inventory or session response may carry it.
  *
  * There is deliberately no `relationships` array yet. A relationship may be
  * emitted only when its kind is listed for the recognized kind *and* its origin
  * is covered by a relationship-only rule in the central registry
- * (contracts/runtime-composition.md § Normative relationship-only registry).
- * Both shipped skill rows list eligible kinds, but no relationship-only rule
- * ships: each such record is based on behavior statements — hooks, plugins,
- * marketplaces, agents, settings — that arrive with their own inventory
- * phases, and shipping one without them would break the reciprocal-evidence
- * invariant (data-model.md § Cross-entity invariants). No shipped recognition
- * can therefore produce an edge, and the array would be empty in every
- * response this release returns. A skill's resources are published as
+ * (contracts/runtime-composition.md § Normative relationship-only registry);
+ * no shipped recognition can produce an edge, so the array would be empty in
+ * every response this release returns. There is no per-tool recognition list
+ * either: the parse the detail shows is the file's, and the recognizing tools
+ * with their invocation names are published by the inventory the page already
+ * holds. A skill's resources are published as
  * `SkillDefinitionDto.companionFiles`, which the census enumerates and never
  * admits; the vendor rule modules say why they get no rule of their own.
  */
-export interface FileDetailDto {
-  /** The committed file, including its complete authored source when readable. */
-  readonly file: CustomizationFileDto;
-  /** Every recognition attached to the file, in the contracted tool/kind order. */
-  readonly recognitions: readonly ToolRecognitionDto[];
-  /** The file-scoped and recognition-scoped Diagnostic records (FR-028). */
-  readonly diagnostics: readonly SerializedDiagnostic[];
-}
+export type FileDetailDto = SkillFileDetailDto | UnrecognizedFileDetailDto;
 
 /** Fields every discovered file carries regardless of its read outcome. */
 interface CustomizationFileBase {
-  /** Opaque file identity, regenerated on every commit of the owning sequence. */
-  readonly fileId: string;
   /** The Source this file was discovered in. */
   readonly sourceId: string;
-  /** The exact raw entry names joined with `/`, relative to the owning Source's single root (FR-024). */
+  /**
+   * The exact raw entry names joined with `/`, relative to the owning Source's
+   * single root (FR-024). With `sourceId` it is the file's identity — stable
+   * across generations, so no per-generation file ID exists (FR-030).
+   */
   readonly sourceRelativePath: string;
   /** File-scoped diagnostics for this file (FR-028); present on every variant. */
   readonly diagnosticIds: readonly string[];
@@ -547,12 +536,13 @@ export interface SessionSnapshot {
    * Every discovered file of both sequences' current generations, with its own
    * facts only — path, read outcome, size, diagnostics (contracts/http-api.md
    * § get-session `files[]`). What a file was recognized as belongs to the
-   * per-kind inventories, which refer to it by `fileId`. `sourceText` is served
-   * only by the detail routes, one file at a time (FR-027).
+   * per-kind inventories, which refer to it by `sourceRelativePath`.
+   * `sourceText` is served only by the detail routes, one file at a time
+   * (FR-027).
    */
   readonly files: readonly CustomizationFileSummaryDto[];
   /**
-   * The skill inventory: one entry per declared name
+   * The skill inventory: one entry per name as one tool resolves it
    * (data-model.md § Inventory unit). A row's unit is decided by the kind, not
    * by the file, so each kind publishes its own inventory as its recognizer
    * phase ships rather than widening one shared row shape.

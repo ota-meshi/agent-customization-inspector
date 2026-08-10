@@ -46,6 +46,7 @@
   },
   "dependencies": {
     "devframe": "^0.7.5",
+    "h3": "^2.0.1-rc.22",
     "gunshi": "^0.37.0",
     "jsonc-parser": "^3.3.1",
     "smol-toml": "^1.7.0",

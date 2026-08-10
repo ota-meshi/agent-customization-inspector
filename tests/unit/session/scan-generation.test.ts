@@ -1,6 +1,7 @@
 // T026: deterministic generation construction — independent Repository and
 // Global sequences, bootstrap Repository generation 0, and atomic N+1
-// replacement with ID rekeying.
+// replacement publishing the attempt's records as constructed (FR-030:
+// a file's identity is its Source-relative Path, stable across generations).
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -58,54 +59,12 @@ describe('prepareNextRepositoryGeneration', () => {
     expect(next.scanRequestId).toBe('scan-1');
   });
 
-  it('regenerates every file ID on commit (rekeying)', () => {
-    const makeFile = (fileId: string) => ({
-      fileId,
-      sourceId: 'src-1',
-      sourceRelativePath: 'AGENTS.md',
-      sizeBytes: 3,
-      encoding: 'utf-8' as const,
-      hadLeadingBom: false,
-      sourceText: 'ok\n',
-      diagnosticIds: [],
-    });
-    const next = prepareNextRepositoryGeneration(
-      base,
-      commitInput('scan-2', [makeFile('stale-a'), makeFile('stale-b')]),
-    );
-    const ids = next.files.map((file) => file.fileId);
-    expect(ids[0]).not.toBe('stale-a');
-    expect(ids[1]).not.toBe('stale-b');
-    expect(ids[0]).not.toBe(ids[1]);
-    expect(ids[0]).toMatch(/^[A-Za-z0-9_-]{22}$/u);
-  });
-  it('refuses a commit that reused one provisional file ID for two files', () => {
-    // The rekey map is what answers "which committed record does this
-    // reference name", and a repeated key makes that unanswerable. Without the
-    // guard the map would keep the last pair, so a diagnostic attached to the
-    // first file would commit against the second's identity while its own path
-    // still named the first — a misattribution nothing downstream could see.
-    const makeFile = (sourceRelativePath: string) => ({
-      fileId: 'reused-id',
-      sourceId: 'src-1',
-      sourceRelativePath,
-      sizeBytes: 3,
-      encoding: 'utf-8' as const,
-      hadLeadingBom: false,
-      sourceText: 'ok\n',
-      diagnosticIds: [],
-    });
-    expect(() =>
-      prepareNextRepositoryGeneration(
-        base,
-        commitInput('scan-3', [makeFile('AGENTS.md'), makeFile('docs/AGENTS.md')]),
-      ),
-    ).toThrow(/reused a provisional generation-owned ID/u);
-  });
-
-  it('rewrites file-scoped diagnostic references through the same rekey map', () => {
+  it('publishes the files, recognitions, and diagnostics exactly as constructed', () => {
+    // The path is the file's identity, so a commit has nothing to rekey: the
+    // attempt's records and their path references are already coherent, and a
+    // second spelling produced at commit time would be a state that could
+    // disagree with them (FR-030).
     const file = {
-      fileId: 'stale-id',
       sourceId: 'src-1',
       sourceRelativePath: 'AGENTS.md',
       encoding: 'unknown' as const,
@@ -115,23 +74,21 @@ describe('prepareNextRepositoryGeneration', () => {
       diagnosticId: 'd-1',
       code: 'file-unreadable' as const,
       sourceId: 'src-1',
-      fileId: 'stale-id',
       sourceRelativePath: 'AGENTS.md',
     };
     const sourceDiagnostic = {
       diagnosticId: 'd-2',
       code: 'root-unreadable' as const,
       sourceId: 'src-1',
-      fileId: null,
       sourceRelativePath: null,
     };
     const next = prepareNextRepositoryGeneration(
       base,
-      commitInput('scan-3', [file], [fileDiagnostic, sourceDiagnostic]),
+      commitInput('scan-2', [file], [fileDiagnostic, sourceDiagnostic]),
     );
-    expect(next.diagnostics[0]!.fileId).toBe(next.files[0]!.fileId);
-    expect(next.diagnostics[0]!.fileId).not.toBe('stale-id');
-    expect(next.diagnostics[1]).toEqual(sourceDiagnostic);
+    expect(next.files).toEqual([file]);
+    expect(next.diagnostics).toEqual([fileDiagnostic, sourceDiagnostic]);
+    expect(next.diagnostics[0]!.sourceRelativePath).toBe(next.files[0]!.sourceRelativePath);
   });
 });
 

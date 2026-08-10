@@ -1,4 +1,4 @@
-// T052/T060/T130: the vendor-behavior and runtime-composition half of the registry
+// T052/T060/T130/T158: the vendor-behavior and runtime-composition half of the registry
 // contract gate — stable reciprocal IDs, the evidence grammar, and the
 // structure-only projection vocabulary. This gate is what the runtime relies
 // on instead of re-validating the registries at scan time
@@ -379,11 +379,15 @@ describe('registry composition', () => {
     .map((entry) => entry.name)
     .sort();
 
-  it('gives every vendor directory exactly its three catalogs and its relations', () => {
+  it('gives every vendor directory exactly its catalogs, relations, and skill naming', () => {
     expect(vendorDirectories.length).toBeGreaterThan(0);
     for (const vendor of vendorDirectories) {
+      // `skill-naming.ts` is behavior rather than a record catalog — each
+      // vendor's naming implementation, composed by
+      // `src/shared/skill-naming.ts` (FR-007) — so it sits beside the
+      // catalogs without joining the per-record aggregate checks below.
       expect(readdirSync(`src/shared/registries/${vendor}`).sort()).toEqual(
-        [...CATALOG_FILES.map((catalog) => catalog.file), 'relations.ts'].sort(),
+        [...CATALOG_FILES.map((catalog) => catalog.file), 'relations.ts', 'skill-naming.ts'].sort(),
       );
     }
   });
@@ -532,6 +536,125 @@ describe('the Claude skill behaviors and strategy (T130)', () => {
       expect(ids).toContain('anthropic.claude-code.skills.locations-discovery');
       for (const id of ids) {
         expect(id).toMatch(/^anthropic\./u);
+      }
+    }
+  });
+});
+
+describe('the Copilot skill behaviors and strategies (T158)', () => {
+  it('ships one statement per surface, never one merged product claim', () => {
+    // VS Code, CLI, and Cloud document different lookup bases and incompatible
+    // selection, so each scope is its own record scoped to its own surface
+    // (FR-009; contracts/vendors/github-copilot.md § Surface boundary).
+    const surfaces = {
+      'copilot.behavior.vscode.skills': ['copilot-vscode'],
+      'copilot.behavior.vscode.user.skills': ['copilot-vscode'],
+      'copilot.behavior.cli.skills': ['copilot-cli'],
+      'copilot.behavior.cli.commands': ['copilot-cli'],
+      'copilot.behavior.cli.user.skills': ['copilot-cli'],
+      'copilot.behavior.cloud.skills': ['copilot-cloud'],
+      'copilot.behavior.cloud.remote-skills': ['copilot-cloud'],
+    } as const;
+    for (const [behaviorId, expected] of Object.entries(surfaces)) {
+      const statement = VENDOR_BEHAVIOR_STATEMENTS[behaviorId as keyof typeof surfaces];
+      expect(statement.tool, behaviorId).toBe('copilot');
+      expect(statement.surfaces, behaviorId).toEqual(expected);
+    }
+  });
+
+  it('ships the three selection strategies with the contracted pipelines', () => {
+    // The exact operations matter downstream: the grouped row's same-name
+    // statement is derived from them, and `select-first` beside
+    // `unknown-order` is what keeps VS Code and Cloud from claiming the
+    // duplicate-name winner the CLI alone documents
+    // (contracts/runtime-composition.md § Copilot rows).
+    expect(RUNTIME_COMPOSITION_STRATEGIES['copilot.vscode.skills.selection'].operations).toEqual([
+      'filter',
+      'select-first',
+      'unknown-order',
+    ]);
+    expect(RUNTIME_COMPOSITION_STRATEGIES['copilot.cli.skills.selection'].operations).toEqual([
+      'select-first',
+    ]);
+    expect(RUNTIME_COMPOSITION_STRATEGIES['copilot.cloud.skills.selection'].operations).toEqual([
+      'filter',
+      'select-first',
+      'unknown-order',
+    ]);
+    // Each strategy composes exactly its own surface's scopes, holding the
+    // published records themselves.
+    expect(
+      STRATEGY_RELATIONS['copilot.vscode.skills.selection'].consumesBehaviors.map(
+        (behavior) => behavior.behaviorId,
+      ),
+    ).toEqual(['copilot.behavior.vscode.skills', 'copilot.behavior.vscode.user.skills']);
+    expect(
+      STRATEGY_RELATIONS['copilot.cli.skills.selection'].consumesBehaviors.map(
+        (behavior) => behavior.behaviorId,
+      ),
+    ).toEqual([
+      'copilot.behavior.cli.commands',
+      'copilot.behavior.cli.skills',
+      'copilot.behavior.cli.user.skills',
+    ]);
+    expect(
+      STRATEGY_RELATIONS['copilot.cloud.skills.selection'].consumesBehaviors.map(
+        (behavior) => behavior.behaviorId,
+      ),
+    ).toEqual(['copilot.behavior.cloud.remote-skills', 'copilot.behavior.cloud.skills']);
+  });
+
+  it('keeps the hosted remote-skill fact origin-file-less and non-authorizing', () => {
+    // The one statement with no filesystem locator at all: a hosted relay has
+    // no path to name, so its locator names the hosted state and no selector,
+    // and nothing is based on it — its only owner is the Cloud strategy that
+    // composes it (contracts/vendors/github-copilot.md § Cloud and hosted
+    // behavior).
+    const remote = VENDOR_BEHAVIOR_STATEMENTS['copilot.behavior.cloud.remote-skills'];
+    expect(remote.locator).toEqual({
+      vendorScope: 'hosted-managed',
+      lookupBase: 'hosted-state',
+      relativeSelector: null,
+      traversal: 'none',
+    });
+    // No rule rests on the hosted fact: read authority comes only from the
+    // three Repository surface behaviors.
+    for (const edges of Object.values(RULE_RELATIONS)) {
+      expect(edges.basedOnBehaviors.map((behavior) => behavior.behaviorId)).not.toContain(
+        'copilot.behavior.cloud.remote-skills',
+      );
+    }
+    const owners = Object.entries(STRATEGY_RELATIONS).filter(([, edges]) =>
+      edges.consumesBehaviors.some(
+        (behavior) => behavior.behaviorId === 'copilot.behavior.cloud.remote-skills',
+      ),
+    );
+    expect(owners.map(([strategyId]) => strategyId)).toEqual(['copilot.cloud.skills.selection']);
+  });
+
+  it('cites GitHub and VS Code official pages that resolve through the sources contract', () => {
+    // The Copilot-specific slice of the generic citation gates above: every
+    // cited ID is a `github.*` or `vscode.*` row and each record cites at
+    // least one. Whether a cited section establishes its record's claim is
+    // documentation review; the generic gates prove only that each row
+    // resolves through the official-sources contract.
+    for (const record of [
+      VENDOR_BEHAVIOR_STATEMENTS['copilot.behavior.vscode.skills'],
+      VENDOR_BEHAVIOR_STATEMENTS['copilot.behavior.vscode.user.skills'],
+      VENDOR_BEHAVIOR_STATEMENTS['copilot.behavior.cli.skills'],
+      VENDOR_BEHAVIOR_STATEMENTS['copilot.behavior.cli.commands'],
+      VENDOR_BEHAVIOR_STATEMENTS['copilot.behavior.cli.user.skills'],
+      VENDOR_BEHAVIOR_STATEMENTS['copilot.behavior.cloud.skills'],
+      VENDOR_BEHAVIOR_STATEMENTS['copilot.behavior.cloud.remote-skills'],
+      RUNTIME_COMPOSITION_STRATEGIES['copilot.vscode.skills.selection'],
+      RUNTIME_COMPOSITION_STRATEGIES['copilot.cli.skills.selection'],
+      RUNTIME_COMPOSITION_STRATEGIES['copilot.cloud.skills.selection'],
+      INSPECTION_RULES['copilot.repo.skill'],
+    ]) {
+      const ids = record.evidence.map((citation) => citation.sourceId);
+      expect(ids.length).toBeGreaterThan(0);
+      for (const id of ids) {
+        expect(id).toMatch(/^(?:github|vscode)\./u);
       }
     }
   });

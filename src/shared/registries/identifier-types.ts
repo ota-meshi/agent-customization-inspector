@@ -43,10 +43,34 @@ export type CodexBehaviorId =
   | 'codex.behavior.user.skills';
 
 /**
+ * GitHub Copilot behavior statements
+ * (contracts/vendors/github-copilot.md). Statements arrive with the inventory
+ * phase that needs them; the skill phase ships the three Repository surfaces,
+ * the non-authorizing User scopes their selection strategies compose, the
+ * legacy CLI command surface the CLI selection outranks, and the
+ * origin-file-less hosted remote-skill fact.
+ */
+export type CopilotBehaviorId =
+  /** Copilot CLI legacy commands at `.claude/commands/*.md`; a same-name skill outranks one. */
+  | 'copilot.behavior.cli.commands'
+  /** Copilot CLI Repository skill discovery in the three fixed skills directories. */
+  | 'copilot.behavior.cli.skills'
+  /** Copilot CLI User skill discovery under `~/.copilot/skills` and `~/.agents/skills`. */
+  | 'copilot.behavior.cli.user.skills'
+  /** Copilot cloud agent's hosted remote-skill relay; no filesystem locator. */
+  | 'copilot.behavior.cloud.remote-skills'
+  /** Copilot cloud agent Repository skill discovery at the repository root. */
+  | 'copilot.behavior.cloud.skills'
+  /** Copilot VS Code Repository skill discovery at the workspace root. */
+  | 'copilot.behavior.vscode.skills'
+  /** Copilot VS Code User skill discovery in home and profile locations. */
+  | 'copilot.behavior.vscode.user.skills';
+
+/**
  * Every documented vendor-behavior statement the product maintains. Each
  * vendor's sub-union joins here, and the behavior registry is keyed by it.
  */
-export type BehaviorId = ClaudeBehaviorId | CodexBehaviorId;
+export type BehaviorId = ClaudeBehaviorId | CodexBehaviorId | CopilotBehaviorId;
 
 /**
  * Anthropic official documentation pages cited by the shipped records
@@ -78,12 +102,33 @@ export type OpenAiSourceId =
   'openai.codex.skills';
 
 /**
+ * GitHub official documentation pages cited by the shipped records
+ * (contracts/official-sources.md § GitHub official sources).
+ */
+export type GitHubSourceId =
+  /** The Copilot CLI command reference: skill locations, legacy commands, and their order. */
+  | 'github.copilot.cli.reference'
+  /** The Copilot agent-skills page: cloud skill discovery, usage, and shared skills. */
+  | 'github.copilot.skills';
+
+/**
+ * Microsoft Visual Studio Code official documentation pages cited by the
+ * shipped records (contracts/official-sources.md § Microsoft Visual Studio
+ * Code official sources).
+ */
+export type VsCodeSourceId =
+  /** The VS Code AI-settings reference: the per-customization location settings. */
+  | 'vscode.copilot.settings'
+  /** The VS Code agent-skills page: workspace skill locations and progressive loading. */
+  | 'vscode.copilot.skills';
+
+/**
  * Every official documentation page a shipped record cites. A citation names
  * its page by this ID as well as by URL, because the ID is what stays stable
  * when a vendor moves a page — which has already happened once — and it is what
  * the official-sources contract row is keyed by (QR-005).
  */
-export type SourceId = AnthropicSourceId | OpenAiSourceId;
+export type SourceId = AnthropicSourceId | OpenAiSourceId | GitHubSourceId | VsCodeSourceId;
 
 /**
  * Anthropic Claude Code composition strategies
@@ -102,10 +147,24 @@ export type CodexStrategyId =
   'codex.skills.discovery';
 
 /**
+ * GitHub Copilot composition strategies
+ * (contracts/runtime-composition.md). One per skill surface, because the three
+ * surfaces document incompatible selection and must not collapse into one
+ * statement (FR-009).
+ */
+export type CopilotStrategyId =
+  /** Copilot CLI first-found skill selection across its documented source order. */
+  | 'copilot.cli.skills.selection'
+  /** Copilot cloud progressive skill loading with unresolved collision behavior. */
+  | 'copilot.cloud.skills.selection'
+  /** Copilot VS Code progressive skill loading with undocumented duplicate precedence. */
+  | 'copilot.vscode.skills.selection';
+
+/**
  * Every documented runtime composition or projection strategy. Each vendor's
  * sub-union joins here, and the strategy registry is keyed by it.
  */
-export type StrategyId = ClaudeStrategyId | CodexStrategyId;
+export type StrategyId = ClaudeStrategyId | CodexStrategyId | CopilotStrategyId;
 
 /**
  * Anthropic Claude Code inspection rules
@@ -126,8 +185,17 @@ export type CodexRuleId =
   'codex.repo.skill';
 
 /**
+ * GitHub Copilot inspection rules
+ * (contracts/vendors/github-copilot.md § Inspector Repository matcher rules).
+ * Rules arrive with the inventory phase that needs them.
+ */
+export type CopilotRuleId =
+  /** Repository Copilot skills in the three fixed directories; read-authorizing `static-candidate`. */
+  'copilot.repo.skill';
+
+/**
  * Every Inspector policy rule. Each vendor's sub-union joins here, and the
  * rule registry is keyed by it. This union is therefore the complete list of
  * rules that can authorize a read.
  */
-export type RuleId = ClaudeRuleId | CodexRuleId;
+export type RuleId = ClaudeRuleId | CodexRuleId | CopilotRuleId;

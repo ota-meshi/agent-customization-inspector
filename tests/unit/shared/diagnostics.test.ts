@@ -45,7 +45,7 @@ describe('closed diagnostic registry', () => {
       // inspecting its cause, so calling the file incorrect would be a verdict
       // the scan did not reach (FR-032).
       'recognition-parse-failed':
-        'One recognition could not be parsed, so none of its declarations or instructions could be read out of it. The complete source text remains available to read; a rescan reports the current state of the file.',
+        'This file could not be parsed, so none of its declarations or instructions could be read out of it. The complete source text remains available to read; a rescan reports the current state of the file.',
     };
     for (const [code, message] of Object.entries(messages) as [DiagnosticCode, string][]) {
       expect(DIAGNOSTIC_REGISTRY[code].message).toBe(message);
@@ -54,19 +54,28 @@ describe('closed diagnostic registry', () => {
 });
 
 describe('attachment shapes', () => {
-  it('requires the coherent file tuple for a file-scoped code', () => {
+  it('requires the coherent source-and-path pair for a file-scoped code', () => {
     expect(
       () =>
         new DiagnosticRecord({ code: 'file-unreadable', lifecycleOwnerKey: null, sourceId: 's-1' }),
     ).toThrow(/file-scoped/u);
+    // The owning Source is required by both scope shapes, which is what lets
+    // the serialized `sourceId` stay non-null.
+    expect(
+      () =>
+        new DiagnosticRecord({
+          code: 'file-unreadable',
+          lifecycleOwnerKey: null,
+          sourceRelativePath: 'AGENTS.md',
+        }),
+    ).toThrow(/sourceId/u);
     const record = new DiagnosticRecord({
       code: 'file-unreadable',
       lifecycleOwnerKey: null,
       sourceId: 's-1',
-      fileId: 'f-1',
       sourceRelativePath: 'AGENTS.md',
     });
-    expect(record.fileId).toBe('f-1');
+    expect(record.sourceRelativePath).toBe('AGENTS.md');
   });
 
   it('requires only sourceId for the source-scoped root failure', () => {
@@ -76,7 +85,6 @@ describe('attachment shapes', () => {
           code: 'root-unreadable',
           lifecycleOwnerKey: 'repository',
           sourceId: 's-1',
-          fileId: 'f-1',
           sourceRelativePath: 'AGENTS.md',
         }),
     ).toThrow(/source-scoped/u);
@@ -86,7 +94,7 @@ describe('attachment shapes', () => {
       sourceId: 's-1',
     });
     expect(record.sourceId).toBe('s-1');
-    expect(record.fileId).toBeNull();
+    expect(record.sourceRelativePath).toBeNull();
   });
 
   it('forbids a lifecycle owner on a generation-owned candidate', () => {
@@ -96,7 +104,6 @@ describe('attachment shapes', () => {
           code: 'file-content-binary',
           lifecycleOwnerKey: 'repository',
           sourceId: 's-1',
-          fileId: 'f-1',
           sourceRelativePath: 'CLAUDE.md',
         }),
     ).toThrow(/forbids a lifecycle owner/u);
@@ -127,7 +134,6 @@ describe('serialization', () => {
     expect(Object.keys(serialized).sort()).toEqual([
       'code',
       'diagnosticId',
-      'fileId',
       'sourceId',
       'sourceRelativePath',
     ]);
@@ -141,7 +147,6 @@ describe('deterministic aggregation', () => {
       code,
       lifecycleOwnerKey: null,
       sourceId: 's-1',
-      fileId: `f-${code}-${sourceRelativePath}`,
       sourceRelativePath,
     });
   }
@@ -179,14 +184,13 @@ describe('deterministic aggregation', () => {
   });
 
   it('keeps legitimately repeated same-field observations as separate records', () => {
-    // Two failed recognitions on one file share every public field except the
-    // opaque ID and still publish one record each; ordering never merges
-    // records.
+    // An extraction failure is one record per (file, kind) (FR-028), so one
+    // file whose two kinds both fail publishes two records sharing every
+    // public field except the opaque ID; ordering never merges records.
     const shared = {
       code: 'recognition-parse-failed',
       lifecycleOwnerKey: null,
       sourceId: 's-1',
-      fileId: 'f-1',
       sourceRelativePath: 'a/skill.md',
     } as const;
     const first = new DiagnosticRecord(shared);
@@ -212,14 +216,12 @@ describe('successful complete atomic publication', () => {
         code: 'file-unreadable',
         lifecycleOwnerKey: null,
         sourceId: 's-1',
-        fileId: 'f-1',
         sourceRelativePath: 'AGENTS.md',
       }),
       new DiagnosticRecord({
         code: 'recognition-parse-failed',
         lifecycleOwnerKey: null,
         sourceId: 's-1',
-        fileId: 'f-2',
         sourceRelativePath: 'CLAUDE.md',
       }),
     ];
@@ -243,7 +245,6 @@ describe('successful complete atomic publication', () => {
         code: 'file-content-binary',
         lifecycleOwnerKey: null,
         sourceId: 's-1',
-        fileId: 'f-3',
         sourceRelativePath: 'BIN.md',
       }),
     ]).map((record) => record.serialize());

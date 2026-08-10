@@ -7,7 +7,7 @@
 //
 // A row's unit is decided by its kind (data-model.md § Inventory unit), so this
 // component dispatches to the kind's own list and never imposes a shared row
-// type: a skill row is one declared name with its definitions, while an MCP row
+// type: a skill row is one resolved name with its definitions, while an MCP row
 // will be one server declaration inside a carrier. What stays here is the pair
 // of empty states, which is a fact about the view rather than about any kind.
 //
@@ -39,9 +39,7 @@ const props = defineProps<{
   kind: CustomizationKind | null;
   /** The skill rows that passed the active filters, in snapshot order. */
   skillRows: readonly SkillInventoryEntryDto[];
-  /** Every published file by ID, so a row can resolve the files it names. */
-  filesById: ReadonlyMap<string, CustomizationFileSummaryDto>;
-  /** The same files by path, so a row can resolve its definition's census. */
+  /** Every published file by path, so a row can resolve the files it names. */
   filesByPath: ReadonlyMap<string, CustomizationFileSummaryDto>;
   /** How many rows the committed generation published before filtering. */
   totalCount: number;
@@ -70,9 +68,8 @@ const rowCount = computed(() => (props.kind === 'skill' ? props.skillRows.length
       <template v-if="kind === 'skill'">
         <SkillRow
           v-for="entry in skillRows"
-          :key="entry.declaredName ?? entry.definitions[0]!.fileId"
+          :key="entry.name"
           :entry="entry"
-          :files-by-id="filesById"
           :files-by-path="filesByPath"
           :diagnostics="diagnostics"
         />

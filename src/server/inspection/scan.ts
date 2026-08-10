@@ -25,25 +25,23 @@
 // converted into a Diagnostic — it propagates ordinarily from the traversal
 // call, aborts the attempt without a commit, and is reported as the failed
 // request's real error (FR-030 retains the last committed snapshot).
-import { createOpaqueId } from '../../shared/entities';
+import { SUPPORTED_TOOL_ORDER, type CustomizationKind } from '../../shared/entities';
 import {
   DiagnosticRecord,
   sortDiagnostics,
   type LifecycleOwnerKey,
 } from '../../shared/diagnostics';
-import type {
-  CustomizationFileDto,
-  SerializedDiagnostic,
-  ToolRecognitionDto,
-} from '../../shared/api-types';
+import type { CustomizationFileDto, SerializedDiagnostic } from '../../shared/api-types';
 import type { GenerationOutcome } from '../session/scan-generation';
 import { CLAUDE_REPOSITORY_RULES } from './rules/claude';
 import { CODEX_REPOSITORY_RULES } from './rules/codex';
+import { COPILOT_REPOSITORY_RULES } from './rules/copilot';
 import { resolveAdmittingRules, type CompiledInspectionRule } from './rules/registry';
 import {
-  recognizeCandidateForVendor,
+  recognizeCandidateForVendors,
   type CandidateRecognition,
   type RecognitionInput,
+  type ToolRecognition,
 } from './recognizers/candidate';
 import { join } from 'node:path';
 import { readCandidate, runTraversalScan, type TraversalScanResult } from './traversal';
@@ -51,11 +49,17 @@ import { readCandidate, runTraversalScan, type TraversalScanResult } from './tra
 /**
  * The shipped Repository rule catalog a Repository scan executes (FR-003),
  * in the closed tool order (`SUPPORTED_TOOL_ORDER`). Each inventory phase
- * contributes its vendor module here; while only Claude and Codex skills
+ * contributes its vendor module here; while only the three vendors' skills
  * ship, a repository with no `SKILL.md` legitimately publishes an empty
  * inventory rather than an error.
+ *
+ * The Copilot and Codex/Claude skill matchers overlap on purpose — `.agents`
+ * and `.claude` are shared spellings — and the traversal walks every plan in
+ * one pass, so a shared physical file is one candidate with one read whose
+ * admissions name each vendor's plan (data-model.md § ToolRecognition).
  */
 export const REPOSITORY_INSPECTION_RULES: readonly CompiledInspectionRule[] = [
+  ...COPILOT_REPOSITORY_RULES,
   ...CLAUDE_REPOSITORY_RULES,
   ...CODEX_REPOSITORY_RULES,
 ];
@@ -81,7 +85,7 @@ export type ScanPublication =
       /** Every published file, complete and diagnostic-only alike. */
       readonly files: readonly CustomizationFileDto[];
       /** Every recognition attached to a published readable file. */
-      readonly recognitions: readonly ToolRecognitionDto[];
+      readonly recognitions: readonly ToolRecognition[];
       /**
        * Each recognized skill entry point's census, keyed by its public path.
        * Kept beside the recognitions rather than on one: the list's one
@@ -180,23 +184,18 @@ export interface ScanPublicationInput {
   readonly onProgress?: (update: ScanProgressUpdate) => void;
 }
 
-// Dispatches one readable candidate's admissions to the shared engine, once
-// per tool with a shipped rule catalog. An admission whose tool is not listed
-// yet simply produces no recognition, which is what "the rule is not shipped
-// for this milestone" must look like — never a fabricated recognition of an
-// unknown kind. Tools run in the closed tool order so a candidate two products
-// recognize publishes its recognitions deterministically. The shipped Codex
-// and Claude skill matchers are disjoint, so at most one tool enumerates a
-// given candidate's directory and the merged companion lists cannot conflict.
+// Dispatches one readable candidate's admissions to the shared engine, for
+// every tool with a shipped rule catalog at once. An admission whose tool is
+// not listed yet simply produces no recognition, which is what "the rule is
+// not shipped for this milestone" must look like — never a fabricated
+// recognition of an unknown kind. Tools run in the closed tool order so a
+// candidate several products recognize publishes its recognitions
+// deterministically, and the one call is what keeps a shared candidate's
+// census a single enumeration: `.agents/skills/` is both a Codex and a
+// Copilot location, so a per-vendor dispatch would list the same directory
+// once per recognizing product.
 async function recognizeCandidate(input: RecognitionInput): Promise<CandidateRecognition> {
-  const results = [
-    await recognizeCandidateForVendor(input, 'claude'),
-    await recognizeCandidateForVendor(input, 'codex'),
-  ];
-  return {
-    recognitions: results.flatMap((result) => result.recognitions),
-    companions: results.flatMap((result) => result.companions),
-  };
+  return recognizeCandidateForVendors(input, SUPPORTED_TOOL_ORDER);
 }
 
 /**
@@ -206,7 +205,7 @@ async function recognizeCandidate(input: RecognitionInput): Promise<CandidateRec
  *    decode is complete, not partial) plus the recognitions its admissions
  *    produced;
  *  - a NUL-containing file publishes a textless `binary` item with its
- *    coherent `sourceId`/`fileId`/`sourceRelativePath` tuple and is never
+ *    coherent `sourceId`/`sourceRelativePath` pair and is never
  *    recognized, because recognition would need content it has none of. An
  *    admitted candidate's is diagnostic-only; a census-listed companion's is
  *    the ordinary fact of an asset, with no Diagnostic (FR-025);
@@ -245,7 +244,7 @@ export async function assembleScanPublication(
   }
 
   const files: CustomizationFileDto[] = [];
-  const recognitions: ToolRecognitionDto[] = [];
+  const recognitions: ToolRecognition[] = [];
   const diagnostics: DiagnosticRecord[] = [];
   let hasFileConfinedOutcome = false;
   // Companion files of every recognized candidate, keyed by display path — the
@@ -259,14 +258,12 @@ export async function assembleScanPublication(
   const skillCompanionsByPath = new Map<string, readonly string[]>();
 
   for (const candidate of input.result.files) {
-    const fileId = createOpaqueId();
     switch (candidate.outcome.kind) {
       case 'readable': {
         const admissions = resolveAdmittingRules(input.rules, candidate.admissions).map(
           (compiled, index) => ({ compiled, origin: candidate.admissions[index]! }),
         );
         const recognized = await (input.recognize ?? recognizeCandidate)({
-          fileId,
           matchedPath: candidate.publicPath,
           absolutePath: join(input.root, ...candidate.rawSegments),
           sourceRoot: input.root,
@@ -284,39 +281,53 @@ export async function assembleScanPublication(
           );
         }
         const fileDiagnosticIds: string[] = [];
-        // A failed recognition keeps the complete readable source displayed and
-        // comparison-eligible; only that recognition's derived
-        // metadata/relationships are omitted, and the diagnostic makes the
-        // generation partial (FR-028).
+        // A failed extraction keeps the complete readable source displayed and
+        // comparison-eligible; only the derived metadata/relationships are
+        // omitted, and the diagnostic makes the generation partial (FR-028).
         //
-        // The record is one diagnostic that both its owners reference: the
-        // recognition, because the failure is recognition-scoped and a row that
-        // lists recognitions has no other way to reach it, and the file,
-        // because the outcome is file-confined and the file is what a reader
-        // asks about first. A recognizer never sees the diagnostic ID it will
-        // be given, so the ID is attached here rather than inside it.
-        const published = fileRecognitions.map((recognition) => {
-          if (recognition.parseStatus !== 'failed') {
-            return recognition;
+        // One extraction per kind means one failure is one record
+        // (candidate.ts): however many tools recognize the kind, the parse
+        // ran once, so minting a record per recognition would publish one
+        // observation as several a reader cannot tell apart. The file
+        // references it because the outcome is file-confined, and every
+        // failed recognition of the kind shares the same reference, which is
+        // what each inventory definition republishes. A recognizer never sees
+        // the diagnostic ID it will be given, so the ID is attached here
+        // rather than inside it.
+        const byKind = new Map<CustomizationKind, ToolRecognition[]>();
+        for (const recognition of fileRecognitions) {
+          const group = byKind.get(recognition.details.kind) ?? [];
+          group.push(recognition);
+          byKind.set(recognition.details.kind, group);
+        }
+        for (const group of byKind.values()) {
+          // The production recognizer's groups are uniformly parsed or
+          // failed — the extraction is shared — so the per-recognition check
+          // below only keeps an injected test recognizer honest: the
+          // traversal suite drives mixed statuses through the `recognize`
+          // seam, and a parsed recognition must not reference a failure.
+          if (!group.some((recognition) => recognition.parseStatus === 'failed')) {
+            recognitions.push(...group);
+            continue;
           }
           hasFileConfinedOutcome = true;
           const diagnostic = new DiagnosticRecord({
             code: 'recognition-parse-failed',
             lifecycleOwnerKey: null,
             sourceId: input.sourceId,
-            fileId,
             sourceRelativePath: candidate.publicPath,
           });
           diagnostics.push(diagnostic);
           fileDiagnosticIds.push(diagnostic.diagnosticId);
-          return {
-            ...recognition,
-            diagnosticIds: [...recognition.diagnosticIds, diagnostic.diagnosticId],
-          };
-        });
-        recognitions.push(...published);
+          recognitions.push(
+            ...group.map((recognition) =>
+              recognition.parseStatus === 'failed'
+                ? recognition.withDiagnostic(diagnostic.diagnosticId)
+                : recognition,
+            ),
+          );
+        }
         files.push({
-          fileId,
           sourceId: input.sourceId,
           sourceRelativePath: candidate.publicPath,
           encoding: candidate.outcome.encoding,
@@ -333,12 +344,10 @@ export async function assembleScanPublication(
           code: 'file-content-binary',
           lifecycleOwnerKey: null,
           sourceId: input.sourceId,
-          fileId,
           sourceRelativePath: candidate.publicPath,
         });
         diagnostics.push(diagnostic);
         files.push({
-          fileId,
           sourceId: input.sourceId,
           sourceRelativePath: candidate.publicPath,
           encoding: 'binary',
@@ -353,12 +362,10 @@ export async function assembleScanPublication(
           code: 'file-unreadable',
           lifecycleOwnerKey: null,
           sourceId: input.sourceId,
-          fileId,
           sourceRelativePath: candidate.publicPath,
         });
         diagnostics.push(diagnostic);
         files.push({
-          fileId,
           sourceId: input.sourceId,
           sourceRelativePath: candidate.publicPath,
           encoding: 'unknown',
@@ -407,7 +414,6 @@ export async function assembleScanPublication(
   // traversal's would understate what the scan actually read.
   let companionReadBytes = 0;
   for (const [publicPath, absolutePath] of companions) {
-    const fileId = createOpaqueId();
     const outcome = await readCandidate(absolutePath);
     if (outcome.kind === 'readable' || outcome.kind === 'binary') {
       companionReadBytes += outcome.sizeBytes;
@@ -415,7 +421,6 @@ export async function assembleScanPublication(
     switch (outcome.kind) {
       case 'readable':
         files.push({
-          fileId,
           sourceId: input.sourceId,
           sourceRelativePath: publicPath,
           encoding: outcome.encoding,
@@ -433,7 +438,6 @@ export async function assembleScanPublication(
         // so NUL bytes there are a finding about the customization. Nothing
         // expected a companion to be text.
         files.push({
-          fileId,
           sourceId: input.sourceId,
           sourceRelativePath: publicPath,
           encoding: 'binary',
@@ -452,12 +456,10 @@ export async function assembleScanPublication(
           code: 'file-unreadable',
           lifecycleOwnerKey: null,
           sourceId: input.sourceId,
-          fileId,
           sourceRelativePath: publicPath,
         });
         diagnostics.push(diagnostic);
         files.push({
-          fileId,
           sourceId: input.sourceId,
           sourceRelativePath: publicPath,
           encoding: 'unknown',

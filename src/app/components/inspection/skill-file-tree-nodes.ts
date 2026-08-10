@@ -13,14 +13,6 @@ import {
   rendersNothingVisible,
 } from '../../../shared/entities';
 
-/** One file the tree offers, resolved to the committed identity that opens it. */
-export interface SkillTreeFile {
-  /** The committed file identity; the tree links to it. */
-  readonly fileId: string;
-  /** The Source-relative Path, used for the label and the nesting. */
-  readonly sourceRelativePath: string;
-}
-
 /**
  * One path label as presentation text. Control characters are escaped
  * (data-model.md § SourceRelativePath), which leaves a space a space and a
@@ -37,21 +29,24 @@ function labelFor(label: string): string {
 
 /** One file's node: a leaf the reader can open. */
 export class SkillTreeFileNode {
-  /** The file this node opens. */
-  public readonly file: SkillTreeFile;
+  /**
+   * The Source-relative Path of the file this node opens — the file's
+   * identity (FR-030), and what the branch links to.
+   */
+  public readonly sourceRelativePath: string;
 
   /** The file's own name, as presentation text. */
   public readonly label: string;
 
   /** Names one file by the last segment of its path below the tree root. */
-  public constructor(file: SkillTreeFile, name: string) {
-    this.file = file;
+  public constructor(sourceRelativePath: string, name: string) {
+    this.sourceRelativePath = sourceRelativePath;
     this.label = labelFor(name);
   }
 
-  /** Stable identity for the render; a file identity is already unique. */
+  /** Stable identity for the render; a file's path is already unique. */
   public get id(): string {
-    return this.file.fileId;
+    return this.sourceRelativePath;
   }
 }
 
@@ -89,16 +84,11 @@ export type SkillTreeNode = SkillTreeFileNode | SkillTreeDirectoryNode;
  * followed by the census in path order, so a directory's files are already
  * together — and a directory node is created the first time a file needs one.
  */
-export function buildSkillTree(
-  files: readonly SkillTreeFile[],
-  directory: string,
-): SkillTreeNode[] {
+export function buildSkillTree(files: readonly string[], directory: string): SkillTreeNode[] {
   const roots: SkillTreeNode[] = [];
   const directories = new Map<string, SkillTreeDirectoryNode>();
   for (const file of files) {
-    const relative = file.sourceRelativePath.startsWith(directory)
-      ? file.sourceRelativePath.slice(directory.length)
-      : file.sourceRelativePath;
+    const relative = file.startsWith(directory) ? file.slice(directory.length) : file;
     const parts = relative.split('/');
     const name = parts.at(-1) ?? relative;
     let siblings = roots;

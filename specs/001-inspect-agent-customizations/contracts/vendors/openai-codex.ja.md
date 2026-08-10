@@ -169,7 +169,7 @@ exclusion ruleやunionへ平坦化するものは無く、まとめて運ぶasse
 authored `sourceText`を提供するため、すべてのauthored valueは既に同じ画面に自身の綴りで存在しており、
 caption付きの複製は1つの事実の2つ目の綴りになる。Recognitionが読み出すのはfile自身の宣言であり、fileが書いたkeyで公開する
 （data-model.ja.md § Skillの表示）。そのうちinventory rowがgroupingに使うのは、そのkindのidentity
-— `skill`ならそのfile自身に記述された名前 — である。したがって本表が固定するのは、eligibleな
+— `skill`ならそのfile自身に記述された名前、fileが記述しない場合はそのskill directory名（data-model.ja.md § 一覧の単位）— である。したがって本表が固定するのは、eligibleな
 relationship kindとadmit済みsource formだけである。
 
 最終列は規範的なsource-form applicabilityであり、注釈ではない。実効的なeligibilityは、rowのclosedな

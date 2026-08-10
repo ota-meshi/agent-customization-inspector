@@ -10,14 +10,14 @@ import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { recognizeCandidateForVendor } from '../../../src/server/inspection/recognizers/candidate';
+import { recognizeCandidateForVendors } from '../../../src/server/inspection/recognizers/candidate';
 import { CODEX_REPOSITORY_RULES } from '../../../src/server/inspection/rules/codex';
 import {
   CONTENT_FIXTURE_SECRET,
   MALFORMED_SKILL_CONTENT_CASES,
   SKILL_CONTENT_CASES,
 } from '../../fixtures/content/build-fixtures';
-import type { ToolRecognitionDto } from '../../../src/shared/api-types';
+import type { ToolRecognition } from '../../../src/server/inspection/recognizers/candidate';
 
 const [codexSkillRule] = CODEX_REPOSITORY_RULES;
 
@@ -40,18 +40,17 @@ afterAll(() => {
 });
 
 /** Recognizes one authored `SKILL.md` at the fixture path. */
-async function recognize(sourceText: string): Promise<ToolRecognitionDto> {
+async function recognize(sourceText: string): Promise<ToolRecognition> {
   const matchedPath = '.agents/skills/greet/SKILL.md';
-  const { recognitions } = await recognizeCandidateForVendor(
+  const { recognitions } = await recognizeCandidateForVendors(
     {
-      fileId: 'file-1',
       matchedPath,
       absolutePath: join(root, matchedPath),
       sourceRoot: root,
       admissions: [{ compiled: codexSkillRule!, origin: { planIndex: 0, selectorIndex: 0 } }],
       sourceText,
     },
-    'codex',
+    ['codex'],
   );
   const [recognition] = recognitions;
   if (recognition === undefined) {
@@ -109,13 +108,14 @@ describe('Codex skill declared name', () => {
 
   it('records the admitting rule and the path it matched on every provenance', async () => {
     const recognition = await recognize('---\nname: greet\n---\n');
-    expect(recognition.provenances).toEqual([
-      {
-        ruleId: 'codex.repo.skill',
-        discoveryClass: 'static-candidate',
-        matchedPath: '.agents/skills/greet/SKILL.md',
-      },
-    ]);
+    // Field by field rather than a deep equality: a provenance derives its
+    // rule identifiers from the compiled rule it holds, and an equality
+    // matcher's clone has no class behind those getters.
+    expect(recognition.provenances).toHaveLength(1);
+    const [provenance] = recognition.provenances;
+    expect(provenance!.ruleId).toBe('codex.repo.skill');
+    expect(provenance!.discoveryClass).toBe('static-candidate');
+    expect(provenance!.matchedPath).toBe('.agents/skills/greet/SKILL.md');
   });
 
   it('resolves no environment reference the declared name contains', async () => {

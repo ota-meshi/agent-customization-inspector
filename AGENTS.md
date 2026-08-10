@@ -126,8 +126,8 @@ Above Expediency) to day-to-day coding decisions:
   declaration inside a file, one row per name shared by several files — they do not share a
   row type. Widening one shape with optional fields until it fits all of them produces a
   type whose invariants hold for no member. Example: the inventory publishes a file's own
-  facts once and a separate inventory per kind, because a skill row is one declared name
-  while an MCP row is one declaration inside a carrier.
+  facts once and a separate inventory per kind, because a skill row is one name as one
+  tool resolves it while an MCP row is one declaration inside a carrier.
 - Publish one fact, never a fact and something derived from it. Two states can disagree;
   one cannot. A derived value is computed where it is displayed, and a bound that a walk
   needs is expressed as a bound rather than trusted to hold. Example: a skill's companion
@@ -164,6 +164,15 @@ Above Expediency) to day-to-day coding decisions:
   the same holds for `toReversed` and `with`.
 - When a specification mandates redundant complexity, correct the specification — in both
   languages, in the same change — instead of implementing it as written.
+
+## Dependency version policy
+
+- Every dependency in `package.json` is declared as a caret range — never as an exact
+  pin — including prereleases (`^2.0.1-rc.22`). The committed lockfile owns the exact
+  resolved versions and their integrity; an exact specifier in the manifest would manage
+  the same pin in two places. When one resolution must coincide with another package's —
+  `h3` with devframe's own — the lockfile is where that coincidence lives, and the
+  documents that record the decision say so.
 
 ## Formatting policy
 

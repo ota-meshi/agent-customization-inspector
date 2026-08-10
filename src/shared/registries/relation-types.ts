@@ -49,11 +49,13 @@ import type { RuntimeCompositionStrategy } from './strategy-types';
 export interface StrategyRelations {
   /**
    * The documented behaviors this strategy composes, sorted — every scope it
-   * actually reads, User included: a behavior grants no read authority, so
-   * naming one says what the product documents rather than what the Inspector
-   * may open. What stays out is what the strategy does not compose at all:
-   * excluded surfaces and hosted inputs, which remain explicit condition facts
-   * (data-model.md § RuntimeCompositionStrategy).
+   * actually reads, User and hosted included: a behavior grants no read
+   * authority, so naming one says what the product documents rather than what
+   * the Inspector may open, and Copilot's hosted remote-skill relay is
+   * consumed by the Cloud selection exactly like a located scope. What stays
+   * out is what the strategy does not compose at all — an excluded surface,
+   * or a hosted input no maintained behavior statement records, which remain
+   * explicit condition facts (data-model.md § RegistryRelations).
    */
   readonly consumesBehaviors: readonly VendorBehaviorStatement[];
 }

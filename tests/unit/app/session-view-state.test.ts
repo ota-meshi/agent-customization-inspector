@@ -319,24 +319,28 @@ describe('session view state — session loss', () => {
   });
 });
 
-/** One committed readable file's detail, keyed by the ID under test. */
-function detailFor(fileId: string): InspectionDataResult<FileDetailDto> {
+/** The Source-relative Path of one scripted skill file, keyed by name. */
+function pathFor(name: string): string {
+  return `.agents/skills/greet/${name}.md`;
+}
+
+/** One committed readable file's detail, keyed by the path under test. */
+function detailFor(name: string): InspectionDataResult<FileDetailDto> {
   return {
     globalContentEpoch: 0,
     repositoryGeneration: 0,
     globalGeneration: null,
     data: {
+      kind: 'file',
       file: {
-        fileId,
         sourceId: 'source-repository',
-        sourceRelativePath: `.agents/skills/greet/${fileId}.md`,
+        sourceRelativePath: pathFor(name),
         encoding: 'utf-8',
         hadLeadingBom: false,
-        sourceText: `# ${fileId}\n`,
+        sourceText: `# ${name}\n`,
         sizeBytes: 8,
         diagnosticIds: [],
       },
-      recognitions: [],
       diagnostics: [],
     },
   };
@@ -351,13 +355,13 @@ describe('session view state — companion failures stay confined to the pane', 
     ]);
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.openSkill('entry-1', 'entry-1');
+    await state.openSkill(pathFor('entry-1'), pathFor('entry-1'));
     expect(state.skillDetailState.value).toBe('ready');
 
-    await state.openSkill('entry-1', 'companion-1');
+    await state.openSkill(pathFor('entry-1'), pathFor('companion-1'));
     // The recognition and the file tree describe the skill, not the file
     // that did not load, so the entry survives its companion's failure.
-    expect(state.skillDetail.value?.file.fileId).toBe('entry-1');
+    expect(state.skillDetail.value?.file.sourceRelativePath).toBe(pathFor('entry-1'));
     expect(state.openCompanion.value).toBeNull();
     expect(state.skillDetailState.value).toBe('companion-failed');
     expect(state.skillErrorMessage.value).toBe('companion chunk lost');
@@ -372,17 +376,17 @@ describe('session view state — companion failures stay confined to the pane', 
     ]);
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.openSkill('entry-1', 'entry-1');
-    await state.openSkill('entry-1', 'companion-1');
+    await state.openSkill(pathFor('entry-1'), pathFor('entry-1'));
+    await state.openSkill(pathFor('entry-1'), pathFor('companion-1'));
     expect(state.skillDetailState.value).toBe('companion-failed');
 
-    const retry = state.openSkill('entry-1', 'companion-1');
+    const retry = state.openSkill(pathFor('entry-1'), pathFor('companion-1'));
     // Synchronously back in flight: the failed branch — and its retry
     // button — unmounts, so a second click cannot double-dispatch.
     expect(state.skillDetailState.value).toBe('ready');
     await retry;
     expect(state.skillDetailState.value).toBe('ready');
-    expect(state.openCompanion.value?.file.fileId).toBe('companion-1');
+    expect(state.openCompanion.value?.file.sourceRelativePath).toBe(pathFor('companion-1'));
     // A detail success clears the skill-owned error it answers.
     expect(state.skillErrorMessage.value).toBeNull();
   });
@@ -395,16 +399,41 @@ describe('session view state — companion failures stay confined to the pane', 
     ]);
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.openSkill('entry-1', 'entry-1');
-    await state.openSkill('entry-1', 'companion-1');
+    await state.openSkill(pathFor('entry-1'), pathFor('entry-1'));
+    await state.openSkill(pathFor('entry-1'), pathFor('companion-1'));
     const requestsBefore = scripted.calls.length;
 
-    await state.openSkill('entry-1', 'companion-1');
+    await state.openSkill(pathFor('entry-1'), pathFor('companion-1'));
     // Returning to what is already held is a change of selection, not of
     // content: no request leaves, and the held detail stays adopted.
     expect(scripted.calls.length).toBe(requestsBefore);
-    expect(state.openCompanion.value?.file.fileId).toBe('companion-1');
+    expect(state.openCompanion.value?.file.sourceRelativePath).toBe(pathFor('companion-1'));
     expect(state.skillDetailState.value).toBe('ready');
+  });
+
+  it('falls to the recoverable failure state when the newer-generation refresh cannot adopt', async () => {
+    // A detail withheld as `newer-generation` recovers by refreshing and
+    // re-requesting under the adopted snapshot. When that refresh fails
+    // non-fatally, nothing is in flight and nothing would ever re-request, so
+    // the state must land on the recoverable entry-failure surface — not stay
+    // on `loading` — while the refresh's own error stays the shell's report.
+    const scripted = channelFrom([
+      sessionResult(bootstrapSnapshot()),
+      { ...detailFor('entry-1'), repositoryGeneration: 1 },
+      new Error('refresh lost the host briefly'),
+    ]);
+    const state = new SessionViewState({ channel: scripted.channel });
+    await state.start();
+    await state.openSkill(pathFor('entry-1'), pathFor('entry-1'));
+
+    expect(state.skillDetailState.value).toBe('idle');
+    expect(state.skillDetail.value).toBeNull();
+    expect(state.openCompanion.value).toBeNull();
+    // The failure is the session refresh's, reported once by the shell; the
+    // route renders its own recoverable statement without repeating it.
+    expect(state.sessionErrorMessage.value).toBe('refresh lost the host briefly');
+    expect(state.skillErrorMessage.value).toBeNull();
+    expect(state.view.value).toBe('inspection');
   });
 
   it('keeps a session failure and a detail failure as separate facts', async () => {
@@ -429,8 +458,8 @@ describe('session view state — companion failures stay confined to the pane', 
     // The detail failure arrives while the session failure is unresolved. Each
     // reaches its own surface: the shell keeps reporting the session's, and the
     // route now has one of its own to report.
-    await state.openSkill('entry-1', 'entry-1');
-    await state.openSkill('entry-1', 'companion-1');
+    await state.openSkill(pathFor('entry-1'), pathFor('entry-1'));
+    await state.openSkill(pathFor('entry-1'), pathFor('companion-1'));
     expect(state.sessionErrorMessage.value).toBe('refresh lost the host briefly');
     expect(state.skillErrorMessage.value).toBe('companion chunk lost');
 
@@ -458,8 +487,8 @@ describe('session view state — companion failures stay confined to the pane', 
     ]);
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.openSkill('entry-1', 'entry-1');
-    await state.openSkill('entry-1', 'companion-1');
+    await state.openSkill(pathFor('entry-1'), pathFor('entry-1'));
+    await state.openSkill(pathFor('entry-1'), pathFor('companion-1'));
 
     expect(state.skillErrorMessage.value).toBe('companion chunk lost');
     expect(state.sessionErrorMessage.value).toBeNull();
@@ -475,8 +504,8 @@ describe('session view state — companion failures stay confined to the pane', 
     ]);
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.openSkill('entry-1', 'entry-1');
-    await state.openSkill('entry-1', 'companion-1');
+    await state.openSkill(pathFor('entry-1'), pathFor('entry-1'));
+    await state.openSkill(pathFor('entry-1'), pathFor('companion-1'));
     expect(state.skillErrorMessage.value).toBe('companion chunk lost');
 
     // A refresh success answers session-level failures only; the retained
@@ -499,7 +528,7 @@ describe('session view state — companion failures stay confined to the pane', 
     const scripted = channelFrom([sessionResult(bootstrapSnapshot()), detailFor('entry-1')]);
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.openSkill('entry-1', 'entry-1');
+    await state.openSkill(pathFor('entry-1'), pathFor('entry-1'));
     expect(state.skillDetail.value).not.toBeNull();
 
     let stateWhenDisposed: unknown;

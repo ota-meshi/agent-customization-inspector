@@ -4,9 +4,11 @@
 // bootstrap generation 0 and advances on Repository scans, while a Global
 // sequence exists only from the enable commit that creates it until the
 // disable barrier discards it (FR-042 — disable produces no generation).
-// Every commit rekeys all of its own file IDs.
-import { createOpaqueId } from '../../shared/entities';
-import type { CustomizationFileDto, ToolRecognitionDto } from '../../shared/api-types';
+// A file's identity is its Source and Source-relative Path — stable across
+// generations, so a commit publishes the attempt's records as constructed
+// (FR-030); no per-generation file ID exists to rekey.
+import type { CustomizationFileDto } from '../../shared/api-types';
+import type { ToolRecognition } from '../inspection/recognizers/candidate';
 import type { SerializedDiagnostic } from '../../shared/diagnostics';
 
 /**
@@ -73,15 +75,15 @@ interface ScanGenerationBase {
   /** The sequence's complete committed inventory. */
   readonly files: readonly CustomizationFileDto[];
   /**
-   * Every recognition attached to a file of this generation. A recognition names
-   * the file it belongs to; the file carries no list of its recognitions, so the
-   * commit rekeys both sets of identities and rewrites that one direction.
+   * Every recognition attached to a file of this generation. A recognition
+   * names the file it belongs to by its Source-relative Path; the file carries
+   * no list of its recognitions, so there is no second spelling to disagree
+   * with that one direction.
    */
-  readonly recognitions: readonly ToolRecognitionDto[];
+  readonly recognitions: readonly ToolRecognition[];
   /**
    * Each recognized skill entry point's census result, keyed by the entry
-   * point's Source-relative Path — stable across the commit's ID rekeying,
-   * which is why the key is the path rather than the file ID. Internal: the
+   * point's Source-relative Path — the file's identity. Internal: the
    * inventory's `SkillDefinitionDto.companionFiles` is its one publication
    * (contracts/inspection-path-allowlist.md § Bounded companion census), so no
    * wire recognition repeats it.
@@ -128,75 +130,14 @@ export interface ScanCommitInput {
   readonly finishedAt: string;
   /** Whether every admitted Source was scanned; see {@link GenerationOutcome}. */
   readonly outcome: GenerationOutcome;
-  /** Files to publish; their IDs are rekeyed by the commit, not taken from here. */
+  /** Files to publish, as the attempt constructed them. */
   readonly files: readonly CustomizationFileDto[];
-  /** Recognitions to publish; their IDs are rekeyed by the commit as well. */
-  readonly recognitions: readonly ToolRecognitionDto[];
-  /** Each recognized skill entry point's census, keyed by its path (stable across rekeying). */
+  /** Recognitions to publish, as the attempt constructed them. */
+  readonly recognitions: readonly ToolRecognition[];
+  /** Each recognized skill entry point's census, keyed by its path. */
   readonly skillCompanionsByPath: ReadonlyMap<string, readonly string[]>;
   /** The attempt's diagnostics, already serialized for the DTO. */
   readonly diagnostics: readonly SerializedDiagnostic[];
-}
-
-// Every generation-owned ID — file and recognition alike, including IDs for
-// an unchanged file — is regenerated on commit so no stale client reference
-// can survive: a client holding generation-N IDs must refetch rather than
-// silently read N+1 data through an old handle. File-scoped diagnostics and
-// each recognition's `fileId` are rewritten through the one old-to-new file map,
-// so every coherent tuple keeps pointing at the records this commit publishes. A
-// file carries no list of its recognitions: which recognitions are attached to
-// it is what their own `fileId` says, so there is no second spelling to rewrite
-// and none to disagree with.
-function rekeyCommit(input: ScanCommitInput): {
-  files: readonly CustomizationFileDto[];
-  recognitions: readonly ToolRecognitionDto[];
-  diagnostics: readonly SerializedDiagnostic[];
-} {
-  // Each file's committed identity and the pairing that resolves references to
-  // it are produced together, in one pass, because they are one fact: the
-  // identity drawn for this record.
-  //
-  // A repeated provisional ID is rejected rather than resolved. This map is the
-  // only thing that answers "which committed record does this reference name",
-  // and a duplicate key makes that question unanswerable: keeping the last pair
-  // would commit a diagnostic attached to the first file against the second
-  // file's new identity while its own path still named the first. Producers draw
-  // these from `createOpaqueId`, whose 16 crypto-random bytes make a collision an
-  // authoring bug — so it fails here, beside the dangling-reference check below,
-  // instead of being carried into a committed generation.
-  const rekeyedFileIds = new Map<string, string>();
-  const files = input.files.map((file) => {
-    if (rekeyedFileIds.has(file.fileId)) {
-      throw new TypeError(`a commit reused a provisional generation-owned ID: ${file.fileId}`);
-    }
-    const fileId = createOpaqueId();
-    rekeyedFileIds.set(file.fileId, fileId);
-    return { ...file, fileId };
-  });
-  // A missing entry means the producer emitted a reference to a record it
-  // never published, which is an authoring bug rather than a runtime state:
-  // failing here is better than committing a generation whose IDs dangle. Only
-  // file IDs are referenced, so this is the only direction needed.
-  const remapFileId = (id: string): string => {
-    const next = rekeyedFileIds.get(id);
-    if (next === undefined) {
-      throw new TypeError(`a commit referenced an unpublished generation-owned ID: ${id}`);
-    }
-    return next;
-  };
-  // A recognition's own identity is assigned where it is written: nothing else
-  // resolves a recognition by its provisional ID, so the assignment needs no
-  // list of its own.
-  const recognitions = input.recognitions.map((recognition) => ({
-    ...recognition,
-    recognitionId: createOpaqueId(),
-    fileId: remapFileId(recognition.fileId),
-  }));
-  const diagnostics = input.diagnostics.map((diagnostic) => {
-    const fileId = diagnostic.fileId === null ? null : remapFileId(diagnostic.fileId);
-    return fileId === diagnostic.fileId ? diagnostic : { ...diagnostic, fileId };
-  });
-  return { files, recognitions, diagnostics };
 }
 
 /** Builds the empty zero-I/O Repository generation 0 (FR-002). */
@@ -222,7 +163,6 @@ export function prepareNextRepositoryGeneration(
   current: RepositoryScanGeneration,
   input: ScanCommitInput,
 ): RepositoryScanGeneration {
-  const { files, recognitions, diagnostics } = rekeyCommit(input);
   return {
     generation: current.generation + 1,
     baseGeneration: current.generation,
@@ -232,10 +172,10 @@ export function prepareNextRepositoryGeneration(
     startedAt: input.startedAt,
     finishedAt: input.finishedAt,
     outcome: input.outcome,
-    files,
-    recognitions,
+    files: input.files,
+    recognitions: input.recognitions,
     skillCompanionsByPath: input.skillCompanionsByPath,
-    diagnostics,
+    diagnostics: input.diagnostics,
   };
 }
 
@@ -246,7 +186,6 @@ export function prepareNextRepositoryGeneration(
  * exists at all.
  */
 export function createGlobalEnableGeneration(input: ScanCommitInput): GlobalScanGeneration {
-  const { files, recognitions, diagnostics } = rekeyCommit(input);
   return {
     generation: 1,
     baseGeneration: 0,
@@ -256,10 +195,10 @@ export function createGlobalEnableGeneration(input: ScanCommitInput): GlobalScan
     startedAt: input.startedAt,
     finishedAt: input.finishedAt,
     outcome: input.outcome,
-    files,
-    recognitions,
+    files: input.files,
+    recognitions: input.recognitions,
     skillCompanionsByPath: input.skillCompanionsByPath,
-    diagnostics,
+    diagnostics: input.diagnostics,
   };
 }
 
@@ -268,7 +207,6 @@ export function prepareNextGlobalGeneration(
   current: GlobalScanGeneration,
   input: ScanCommitInput,
 ): GlobalScanGeneration {
-  const { files, recognitions, diagnostics } = rekeyCommit(input);
   return {
     generation: current.generation + 1,
     baseGeneration: current.generation,
@@ -278,9 +216,9 @@ export function prepareNextGlobalGeneration(
     startedAt: input.startedAt,
     finishedAt: input.finishedAt,
     outcome: input.outcome,
-    files,
-    recognitions,
+    files: input.files,
+    recognitions: input.recognitions,
     skillCompanionsByPath: input.skillCompanionsByPath,
-    diagnostics,
+    diagnostics: input.diagnostics,
   };
 }

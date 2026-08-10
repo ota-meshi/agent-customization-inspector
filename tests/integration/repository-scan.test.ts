@@ -1,7 +1,8 @@
-// T055/T128: the Repository scan end to end — from the synchronous zero-I/O
-// generation 0 through the committed Codex and Claude SKILL inventories, the file-confined
-// diagnostic matrix, the source-scoped root failure, and the failures that are
-// not confined to one file (FR-001, FR-002, FR-024, FR-028, FR-030).
+// T055/T128/T156: the Repository scan end to end — from the synchronous
+// zero-I/O generation 0 through the committed Copilot, Claude, and Codex SKILL
+// inventories, the multi-tool recognition matrix, the file-confined diagnostic
+// matrix, the source-scoped root failure, and the failures that are not
+// confined to one file (FR-001, FR-002, FR-024, FR-028, FR-030).
 //
 // The suite starts from generation 0 rather than from a scan on purpose: the
 // Source the first scan reads is the one bootstrap already created, and the
@@ -16,10 +17,12 @@ import {
   FIXTURE_SECRET_LITERAL,
   buildClaudeSkillFixture,
   buildCodexSkillFixture,
+  buildCopilotSkillFixture,
   createRepositoryFixtureRoot,
 } from '../fixtures/repositories/build-fixtures';
 import { CLAUDE_REPOSITORY_RULES } from '../../src/server/inspection/rules/claude';
 import { CODEX_REPOSITORY_RULES } from '../../src/server/inspection/rules/codex';
+import { COPILOT_REPOSITORY_RULES } from '../../src/server/inspection/rules/copilot';
 import { REPOSITORY_INSPECTION_RULES, runSourceScan } from '../../src/server/inspection/scan';
 import { InspectionSession, SessionCoordinator } from '../../src/server/session/session';
 
@@ -138,7 +141,7 @@ describe('generation 0 exists before any filesystem operation (FR-002)', () => {
     expect(displayRoot).toContain('\\u0020');
   });
 
-  it('keeps the Source identity stable across a commit while rekeying file IDs', async () => {
+  it('keeps the Source identity and every file identity stable across a commit', async () => {
     const fixture = buildCodexSkillFixture('inspector-scan-stable');
     cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
     const context = bootstrap(fixture.root);
@@ -147,17 +150,17 @@ describe('generation 0 exists before any filesystem operation (FR-002)', () => {
     await scanOnce(context);
     const first = context.session.snapshot();
     expect(first.sources[0]!.sourceId).toBe(originalSourceId);
-    const firstIds = first.files.map((file) => file.fileId);
 
     await scanOnce(context, 'request');
     const second = context.session.snapshot();
     expect(second.sources[0]!.sourceId).toBe(originalSourceId);
     expect(second.repositoryGeneration).toBe(2);
-    // Every generation-owned ID is regenerated, so a client holding
-    // generation-N handles must refetch rather than silently read N+1 data.
-    for (const fileId of second.files.map((file) => file.fileId)) {
-      expect(firstIds).not.toContain(fileId);
-    }
+    // A file's identity is its Source-relative Path, stable across
+    // generations (FR-030): the new commit publishes the same identities, so
+    // a retained link resolves against it rather than dangling.
+    expect(second.files.map((file) => file.sourceRelativePath)).toEqual(
+      first.files.map((file) => file.sourceRelativePath),
+    );
   });
 });
 
@@ -175,13 +178,15 @@ describe('the scan reads the retained raw selected root', () => {
       expect(String(call[0]).startsWith(fixture.root)).toBe(true);
     }
     // The published set is the admitted skills plus the files their censuses
-    // bound: a skill is its `SKILL.md` and what ships beside it.
+    // bound: a skill is its `SKILL.md` and what ships beside it. Copilot
+    // shares the root `.agents` spelling, so its rule admits this same set
+    // and adds no path of its own.
     expect(snapshot.files.map((file) => file.sourceRelativePath)).toEqual(
       [...fixture.expectedSkillPaths, ...fixture.expectedCompanionPaths].sort(),
     );
   });
 
-  it('publishes rows in the contracted order: source kind, path, then file ID', async () => {
+  it('publishes rows in the contracted order: source kind, then path', async () => {
     const fixture = buildCodexSkillFixture('inspector-scan-order');
     cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
     const context = bootstrap(fixture.root);
@@ -208,8 +213,8 @@ describe("a skill's own directory is published with it", () => {
       // Read like any other file, and classified as nothing: no rule admitted
       // it, so it has no recognition, no kind, and no extractor applied to it.
       expect(file.diagnosticIds).toEqual([]);
-      const detail = context.session.fileDetail(file.fileId);
-      expect(detail?.recognitions).toEqual([]);
+      const detail = context.session.fileDetail(file.sourceRelativePath);
+      expect(detail?.kind).toBe('file');
     }
   });
 
@@ -240,9 +245,9 @@ describe("a skill's own directory is published with it", () => {
     expect(file?.encoding).toBe('utf-8-replaced');
     // A replacement decode is complete, not partial (FR-025).
     expect(publication.kind === 'publishable' && publication.outcome).toBe('complete');
-    const row = snapshot.skills.find((entry) => entry.declaredName === 'gar\uFFFDbled');
+    const row = snapshot.skills.find((entry) => entry.name === 'gar\uFFFDbled');
     expect(row).toBeDefined();
-    const detail = context.session.fileDetail(file!.fileId);
+    const detail = context.session.fileDetail(file!.sourceRelativePath);
     if (detail?.file.encoding !== 'utf-8-replaced') {
       throw new Error('expected the replacement-decoded variant');
     }
@@ -275,7 +280,7 @@ describe("a skill's own directory is published with it", () => {
     expect(snapshot.sources[0]!.status).toBe('ready');
     // And the skill still ships it: the asset is part of the customization,
     // listed with its other files.
-    const greet = snapshot.skills.find((entry) => entry.declaredName === 'greet');
+    const greet = snapshot.skills.find((entry) => entry.name === 'greet');
     expect(greet?.definitions[0]?.companionFiles).toContain(assetPath);
   });
 
@@ -288,7 +293,7 @@ describe("a skill's own directory is published with it", () => {
     const readme = context.session
       .snapshot()
       .files.find((file) => file.sourceRelativePath === '.agents/skills/greet/README.md');
-    const detail = context.session.fileDetail(readme!.fileId);
+    const detail = context.session.fileDetail(readme!.sourceRelativePath);
     if (detail?.file.encoding !== 'utf-8') {
       throw new Error('expected a readable companion detail');
     }
@@ -305,53 +310,68 @@ describe("a skill's own directory is published with it", () => {
 
     // A companion is part of the customization the row already names; it never
     // becomes a definition of its own.
-    const definitionPaths = snapshot.skills
-      .flatMap((entry) => entry.definitions.map((definition) => definition.fileId))
-      .map(
-        (fileId) => snapshot.files.find((file) => file.fileId === fileId)?.sourceRelativePath ?? '',
-      );
+    const definitionPaths = snapshot.skills.flatMap((entry) =>
+      entry.definitions.map((definition) => definition.sourceRelativePath),
+    );
     for (const path of fixture.expectedCompanionPaths) {
       expect(definitionPaths).not.toContain(path);
     }
     // It is named by the skill that ships it, which is how the detail view
     // resolves the directory.
-    const greet = snapshot.skills.find((entry) => entry.declaredName === 'greet');
+    const greet = snapshot.skills.find((entry) => entry.name === 'greet');
     expect(greet?.definitions[0]?.companionFiles).toEqual([...fixture.expectedCompanionPaths]);
   });
 });
 
 describe('recognition is atomic per admitted candidate (FR-005)', () => {
-  it('publishes one skill row per declared name, naming its file by ID', async () => {
+  it('publishes one skill row per resolved name, naming its file by path', async () => {
     const fixture = buildCodexSkillFixture('inspector-scan-recognize');
     cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
     const context = bootstrap(fixture.root);
     await scanOnce(context);
 
     const snapshot = context.session.snapshot();
-    const row = snapshot.skills.find((entry) => entry.declaredName === 'greet');
+    const row = snapshot.skills.find((entry) => entry.name === 'greet');
     const file = snapshot.files.find(
       (candidate) => candidate.sourceRelativePath === '.agents/skills/greet/SKILL.md',
     );
-    // The declared name is the fixture's own frontmatter value, carried end to
-    // end from the file through the recognizer to the row (FR-007), and it is
-    // the row's own identity rather than a field on the file.
+    // The row's resolved name is the fixture's own declared frontmatter
+    // value — authored when declared (FR-007) — carried end to end from the
+    // file through the recognizer to the row, and it is the row's own
+    // identity rather than a field on the file.
+    // The census is recursive and excludes the seed: `greet/` holds the
+    // admitted `SKILL.md`, a sibling `README.md`, and `nested/SKILL.md` (a
+    // near miss that is never admitted but is still a file beside the skill),
+    // so both accompany it. `.agents/skills/` is both a Copilot and a Codex
+    // location, so the one physical file is one definition per recognizing
+    // product — the ToolRecognition unit — in the closed tool order, each
+    // carrying its own invocation name and the file's one census.
+    const companionFiles = [
+      '.agents/skills/greet/README.md',
+      '.agents/skills/greet/nested/SKILL.md',
+    ];
     expect(row).toEqual({
-      declaredName: 'greet',
+      name: 'greet',
       definitions: [
         {
-          fileId: file?.fileId,
-          tools: ['codex'],
-          // The census is recursive and excludes the seed: `greet/` holds the
-          // admitted `SKILL.md`, a sibling `README.md`, and `nested/SKILL.md`
-          // (a near miss that is never admitted but is still a file beside the
-          // skill), so both accompany it.
-          companionFiles: [
-            '.agents/skills/greet/README.md',
-            '.agents/skills/greet/nested/SKILL.md',
-          ],
+          sourceRelativePath: '.agents/skills/greet/SKILL.md',
+          tool: 'copilot',
+          parseStatus: 'parsed',
+          invocationName: 'greet',
+          diagnosticIds: [],
+          companionFiles,
+        },
+        {
+          sourceRelativePath: '.agents/skills/greet/SKILL.md',
+          tool: 'codex',
+          parseStatus: 'parsed',
+          invocationName: 'greet',
+          diagnosticIds: [],
+          companionFiles,
         },
       ],
-      // One definition resolves nothing, so the row states no rule.
+      // A single tool resolving the name once faces no collision, so the row
+      // states no rule.
       sameNameResolutions: [],
     });
     // The file publishes its own facts and nothing about what it was
@@ -403,12 +423,13 @@ describe('physical identity and mid-scan change (T055)', () => {
       '.agents/skills/first/SKILL.md',
       '.agents/skills/second/SKILL.md',
     ]);
-    // One declared name, two definitions: the row's unit is the name, and both
-    // files declare it.
+    // One declared name, one row: the row's unit is the name, both files
+    // declare it, and each file is one definition per recognizing product —
+    // Codex and Copilot both read `.agents/skills/`.
     expect(snapshot.skills).toHaveLength(1);
-    expect(snapshot.skills[0]!.definitions).toHaveLength(2);
+    expect(snapshot.skills[0]!.definitions).toHaveLength(4);
     // Distinct file identities, so neither is a projection of the other.
-    expect(new Set(snapshot.files.map((file) => file.fileId)).size).toBe(2);
+    expect(new Set(snapshot.files.map((file) => file.sourceRelativePath)).size).toBe(2);
   });
 
   it('publishes a file that disappeared between discovery and reading', async () => {
@@ -531,7 +552,8 @@ describe('completed progress reports the attempt, not its starting zeros', () =>
     expect(source.progress?.visitedEntries).toBeGreaterThan(source.progress!.candidateFiles);
     expect(source.progress?.readBytes).toBeGreaterThan(0);
     expect(source.progress?.diagnosticCount).toBe(
-      context.session.snapshot().diagnostics.filter((entry) => entry.fileId !== null).length,
+      context.session.snapshot().diagnostics.filter((entry) => entry.sourceRelativePath !== null)
+        .length,
     );
   });
 });
@@ -561,23 +583,36 @@ describe('the inventory unit is the kind, not the file (T1078)', () => {
     const snapshot = context.session.snapshot();
     expect(snapshot.skills).toHaveLength(1);
     const [row] = snapshot.skills;
-    expect(row!.declaredName).toBe('release');
-    // Definitions are ordered by their file's own path, never by an opaque ID.
-    expect(row!.definitions.map((definition) => definition.fileId)).toEqual(
-      ['.agents/skills/deploy/SKILL.md', '.agents/skills/ship/SKILL.md'].map(
-        (path) => snapshot.files.find((file) => file.sourceRelativePath === path)?.fileId,
-      ),
-    );
+    expect(row!.name).toBe('release');
+    // Definitions are ordered by their file's own path, then the closed tool
+    // order within one file — never by an opaque ID. Each file is one
+    // definition per recognizing product.
+    expect(
+      row!.definitions.map((definition) => [definition.sourceRelativePath, definition.tool]),
+    ).toEqual([
+      ['.agents/skills/deploy/SKILL.md', 'copilot'],
+      ['.agents/skills/deploy/SKILL.md', 'codex'],
+      ['.agents/skills/ship/SKILL.md', 'copilot'],
+      ['.agents/skills/ship/SKILL.md', 'codex'],
+    ]);
     // Two definitions resolve differently per product, so the row states each
-    // statement instead of ordering them (FR-007). Codex keeps both.
-    expect(row!.sameNameResolutions).toEqual([{ tool: 'codex', resolution: 'all-remain' }]);
+    // statement instead of ordering them (FR-007). Both products face the
+    // collision — `.agents/skills/` is a shared spelling — and each states its
+    // own documented rule: Copilot's depends on the surface, Codex keeps both.
+    expect(row!.sameNameResolutions).toEqual([
+      { tool: 'copilot', resolution: 'surface-dependent' },
+      { tool: 'codex', resolution: 'all-remain' },
+    ]);
   });
 
   it('states a resolution only for a tool that recognizes the name twice', async () => {
-    // One name, two files, but each product recognizes one of them: Claude
-    // reads `.claude/skills`, Codex reads `.agents/skills`. Neither has two
-    // files to resolve between, so neither has a rule that applies. Counting
-    // the row's definitions instead of each tool's would state both.
+    // One name, two files: Claude recognizes only the `.claude` one and Codex
+    // only the `.agents` one, so neither has two files to resolve between and
+    // neither states a rule. Copilot reads both spellings, so it alone faces
+    // the collision — and its statement is the surface-dependent one, because
+    // no single Copilot rule is documented across VS Code, CLI, and Cloud.
+    // Counting the row's definitions instead of each tool's would state all
+    // three.
     const root = skillsDeclaring('inspector-scan-split-tools', {
       ship: '---\nname: release\n---\n',
     });
@@ -592,9 +627,28 @@ describe('the inventory unit is the kind, not the file (T1078)', () => {
 
     const snapshot = context.session.snapshot();
     const [row] = snapshot.skills;
-    expect(row!.declaredName).toBe('release');
-    expect(row!.definitions).toHaveLength(2);
-    expect(row!.sameNameResolutions).toEqual([]);
+    expect(row!.name).toBe('release');
+    expect(row!.definitions).toHaveLength(4);
+    // A definition is one recognition, and each publishes its own tool's
+    // documented invocation name (contracts/http-api.md § get-session
+    // `skills[]`): Claude's is the directory-derived `deploy`, not the
+    // authored `release` the row is keyed by, while Codex and Copilot invoke
+    // the authored name.
+    expect(
+      row!.definitions.map((definition) => [
+        definition.sourceRelativePath,
+        definition.tool,
+        definition.invocationName,
+      ]),
+    ).toEqual([
+      ['.agents/skills/ship/SKILL.md', 'copilot', 'release'],
+      ['.agents/skills/ship/SKILL.md', 'codex', 'release'],
+      ['.claude/skills/deploy/SKILL.md', 'copilot', 'release'],
+      ['.claude/skills/deploy/SKILL.md', 'claude', 'deploy'],
+    ]);
+    expect(row!.sameNameResolutions).toEqual([
+      { tool: 'copilot', resolution: 'surface-dependent' },
+    ]);
   });
 
   it('publishes two rows for two names, each stating no resolution', async () => {
@@ -608,13 +662,15 @@ describe('the inventory unit is the kind, not the file (T1078)', () => {
     const snapshot = context.session.snapshot();
     // Rows are ordered by their own key — the declared name — so nothing
     // opaque decides what the user sees first.
-    expect(snapshot.skills.map((entry) => entry.declaredName)).toEqual(['hello', 'release']);
+    expect(snapshot.skills.map((entry) => entry.name)).toEqual(['hello', 'release']);
     expect(snapshot.skills.every((entry) => entry.sameNameResolutions.length === 0)).toBe(true);
   });
 
-  it('keeps a skill that declares no name out of every named row', async () => {
-    // Two files with no name are not one skill: having no name is not an
-    // identity to share, so each is its own row and neither joins `release`.
+  it('names a skill that declares no name by its skill directory', async () => {
+    // A file with no usable name is still a named directory (FR-007):
+    // `anonymous/` and `unnamed/` take their directory names — never
+    // `release`, which only `deploy/` declares — so every row has a name and
+    // rows keep sorting by it.
     const root = skillsDeclaring('inspector-scan-nameless', {
       deploy: '---\nname: release\n---\n',
       anonymous: '# no frontmatter\n',
@@ -624,9 +680,11 @@ describe('the inventory unit is the kind, not the file (T1078)', () => {
     await scanOnce(context);
 
     const snapshot = context.session.snapshot();
-    expect(snapshot.skills.map((entry) => entry.declaredName)).toEqual(['release', null, null]);
+    expect(snapshot.skills.map((entry) => entry.name)).toEqual(['anonymous', 'release', 'unnamed']);
     for (const entry of snapshot.skills) {
-      expect(entry.definitions).toHaveLength(1);
+      // One file per row, one definition per recognizing product — Codex and
+      // Copilot both read `.agents/skills/`.
+      expect(entry.definitions.map((definition) => definition.tool)).toEqual(['copilot', 'codex']);
     }
   });
 
@@ -639,11 +697,98 @@ describe('the inventory unit is the kind, not the file (T1078)', () => {
 
     const snapshot = context.session.snapshot();
     const [definition] = snapshot.skills[0]!.definitions;
-    // A definition names its file and nothing more: the path, size, encoding,
-    // and every diagnostic live on the file itself, so the two can never
-    // disagree (T1074: a definition repeats no fact the file publishes).
-    expect(Object.keys(definition!).sort()).toEqual(['companionFiles', 'fileId', 'tools']);
-    expect(snapshot.files.filter((file) => file.fileId === definition!.fileId)).toHaveLength(1);
+    // A definition names its file by path and carries only what is its own —
+    // the recognition's parse state, its extraction diagnostics, and its
+    // tool's invocation name. The file's size, encoding, and file-scoped
+    // diagnostics live on the file itself, so the two can never disagree
+    // (T1074; the recognition-owned diagnostics are the one deliberate
+    // exception: an extraction failure is the kind's one shared record, and
+    // each definition republishes its own recognition's reference to it).
+    expect(Object.keys(definition!).sort()).toEqual([
+      'companionFiles',
+      'diagnosticIds',
+      'invocationName',
+      'parseStatus',
+      'sourceRelativePath',
+      'tool',
+    ]);
+    expect(
+      snapshot.files.filter((file) => file.sourceRelativePath === definition!.sourceRelativePath),
+    ).toHaveLength(1);
+  });
+});
+
+describe('a failed extraction is separated from a nameless parse (FR-028)', () => {
+  it('shares the one extraction-failure record across a shared file’s definitions', async () => {
+    // One unparseable `.agents` skill: the extraction ran once, so however
+    // many products recognize the kind there is one failure record (FR-028) —
+    // each definition references it as its own parse fact, and the file lists
+    // it once as its file-confined outcome.
+    const root = createRepositoryFixtureRoot('inspector-scan-failed-shared');
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    mkdirSync(join(root, '.agents/skills/broken-front'), { recursive: true });
+    writeFileSync(
+      join(root, '.agents/skills/broken-front/SKILL.md'),
+      '---\nname: [unterminated\n---\n\n# Body\n',
+      'utf8',
+    );
+    const context = bootstrap(root);
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+
+    // The row still exists — a partial generation must say which file — and
+    // is named by the skill directory: the path's own fact, not a reading of
+    // the failed parse.
+    const [row] = snapshot.skills;
+    expect(row!.name).toBe('broken-front');
+    expect(row!.definitions.map((definition) => definition.tool)).toEqual(['copilot', 'codex']);
+    for (const definition of row!.definitions) {
+      expect(definition.parseStatus).toBe('failed');
+      // The authored name is unknown, not absent, so an authored-name tool
+      // claims no documented invocation name for it.
+      expect(definition.invocationName).toBeNull();
+      expect(definition.diagnosticIds).toHaveLength(1);
+    }
+    // One shared record: both definitions name the same diagnostic, and the
+    // file lists exactly that one.
+    const [copilotDefinition, codexDefinition] = row!.definitions;
+    expect(copilotDefinition!.diagnosticIds).toEqual(codexDefinition!.diagnosticIds);
+    const file = snapshot.files.find(
+      (candidate) => candidate.sourceRelativePath === '.agents/skills/broken-front/SKILL.md',
+    );
+    expect(file!.diagnosticIds).toEqual(copilotDefinition!.diagnosticIds);
+  });
+
+  it('lets no failed pair evidence an authored-name collision', async () => {
+    // Two unparseable files in same-named skill directories — `.github` and
+    // `.agents`, both Copilot locations — share the directory-named row, so
+    // Copilot holds two of its definitions. Neither authored name is known,
+    // so Copilot is not quoted as resolving the name twice (FR-007): the
+    // shared row is this product's provisional grouping, not evidence the
+    // tool faced a collision.
+    const root = createRepositoryFixtureRoot('inspector-scan-failed-pair');
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    for (const spelling of ['.agents', '.github']) {
+      mkdirSync(join(root, spelling, 'skills/dup'), { recursive: true });
+      writeFileSync(
+        join(root, spelling, 'skills/dup/SKILL.md'),
+        '---\nname: [unterminated\n---\n',
+        'utf8',
+      );
+    }
+    const context = bootstrap(root);
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+    const [row] = snapshot.skills;
+    expect(row!.name).toBe('dup');
+    expect(row!.definitions.map((definition) => [definition.tool, definition.parseStatus])).toEqual(
+      [
+        ['copilot', 'failed'],
+        ['codex', 'failed'],
+        ['copilot', 'failed'],
+      ],
+    );
+    expect(row!.sameNameResolutions).toEqual([]);
   });
 });
 
@@ -751,7 +896,7 @@ describe('an unreadable root fails the Source attempt (FR-002)', () => {
       snapshot.diagnostics.find(
         (entry) => entry.diagnosticId === snapshot.repositoryFailureDiagnosticId,
       ),
-    ).toMatchObject({ code: 'root-unreadable', fileId: null, sourceRelativePath: null });
+    ).toMatchObject({ code: 'root-unreadable', sourceRelativePath: null });
   });
 });
 
@@ -792,8 +937,8 @@ describe('a failure not confined to one file aborts the attempt (FR-030)', () =>
     });
     const after = context.session.snapshot();
     expect(after.repositoryGeneration).toBe(1);
-    expect(after.files.map((file) => file.fileId)).toEqual(
-      committed.files.map((file) => file.fileId),
+    expect(after.files.map((file) => file.sourceRelativePath)).toEqual(
+      committed.files.map((file) => file.sourceRelativePath),
     );
     expect(after.snapshotState).toBe('stale-after-fatal-rescan');
     expect(after.staleFailures[0]).toMatchObject({
@@ -805,16 +950,17 @@ describe('a failure not confined to one file aborts the attempt (FR-030)', () =>
 });
 
 describe('Claude skills join the inventory without changing Codex results (T128)', () => {
-  it('publishes both vendors’ skills from one scan of one tree', async () => {
+  it('publishes every vendor’s skills from one scan of one tree', async () => {
     const fixture = buildClaudeSkillFixture('inspector-scan-claude');
     cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
     const context = bootstrap(fixture.root);
     await scanOnce(context);
     const snapshot = context.session.snapshot();
 
-    // The published set is both vendors' admitted skills plus the files their
-    // censuses bound — and nothing else: every near miss, the nested Codex
-    // spelling included, stays out.
+    // The published set is the admitted skills plus the files their censuses
+    // bound — and nothing else: every near miss, the nested `.agents`
+    // spelling included, stays out. Copilot's admitted set is the root subset
+    // of both other vendors' spellings, so it adds no path of its own.
     expect(snapshot.files.map((file) => file.sourceRelativePath)).toEqual(
       [
         ...fixture.expectedClaudeSkillPaths,
@@ -823,26 +969,36 @@ describe('Claude skills join the inventory without changing Codex results (T128)
       ].sort(),
     );
 
-    // Each candidate is recognized by exactly the vendor whose rule admitted
-    // it; the Codex half is what the phase must not have changed.
-    const byPath = new Map(snapshot.files.map((file) => [file.sourceRelativePath, file.fileId]));
+    // Each candidate is recognized by exactly the vendors whose rules
+    // admitted it, in the closed tool order; the Claude and Codex halves are
+    // what the Copilot phase must not have changed, and a nested `.claude`
+    // skill stays Claude's alone — Claude documents lazy descendant
+    // discovery, Copilot documents no downward lookup.
     const skillEntries = snapshot.skills.flatMap((entry) => entry.definitions);
     for (const path of fixture.expectedClaudeSkillPaths.filter(
       (one) => !one.includes('/broken/'),
     )) {
-      const definition = skillEntries.find((one) => one.fileId === byPath.get(path));
-      expect(definition?.tools, path).toEqual(['claude']);
+      const tools = skillEntries
+        .filter((one) => one.sourceRelativePath === path)
+        .map((one) => one.tool)
+        .sort();
+      const shared = fixture.expectedCopilotSkillPaths.includes(path);
+      expect(tools, path).toEqual(shared ? ['claude', 'copilot'] : ['claude']);
     }
     for (const path of fixture.expectedCodexSkillPaths) {
-      const definition = skillEntries.find((one) => one.fileId === byPath.get(path));
-      expect(definition?.tools, path).toEqual(['codex']);
+      const tools = skillEntries
+        .filter((one) => one.sourceRelativePath === path)
+        .map((one) => one.tool)
+        .sort();
+      expect(tools, path).toEqual(['codex', 'copilot']);
     }
   });
 
-  it('scans a Codex-only tree exactly as the Codex phase committed it', async () => {
+  it('keeps Codex recognitions in a Codex-only tree exactly as the Codex phase committed them', async () => {
     // The preservation half stated directly: the shipped catalog now carries
-    // both vendors, and a tree with no `.claude` directory still publishes
-    // exactly the Codex phase's set.
+    // three vendors, and in a tree with no `.claude` directory the published
+    // set is still exactly the Codex phase's — Copilot's recognitions share
+    // those same root files and admit nothing of their own.
     const fixture = buildCodexSkillFixture('inspector-scan-preserved');
     cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
     const context = bootstrap(fixture.root);
@@ -851,12 +1007,23 @@ describe('Claude skills join the inventory without changing Codex results (T128)
     expect(snapshot.files.map((file) => file.sourceRelativePath)).toEqual(
       [...fixture.expectedSkillPaths, ...fixture.expectedCompanionPaths].sort(),
     );
-    const recognizedTools = new Set(
-      snapshot.skills.flatMap((entry) =>
-        entry.definitions.flatMap((definition) => definition.tools),
-      ),
-    );
-    expect([...recognizedTools]).toEqual(['codex']);
+    // A broken-link candidate is admitted but unreadable, so it publishes as a
+    // diagnostic-only file with no recognition and appears in no definition.
+    const definitions = snapshot.skills.flatMap((entry) => entry.definitions);
+    const recognizable = fixture.expectedSkillPaths.filter((path) => !path.includes('/broken/'));
+    expect(
+      definitions
+        .filter((definition) => definition.tool === 'codex')
+        .map((definition) => definition.sourceRelativePath)
+        .sort(),
+    ).toEqual(recognizable);
+    expect(
+      definitions
+        .filter((definition) => definition.tool === 'copilot')
+        .map((definition) => definition.sourceRelativePath)
+        .sort(),
+    ).toEqual(recognizable);
+    expect(definitions.some((definition) => definition.tool === 'claude')).toBe(false);
   });
 
   it('keeps the safe-filesystem boundary: reads only admitted candidates and their censuses', async () => {
@@ -874,7 +1041,8 @@ describe('Claude skills join the inventory without changing Codex results (T128)
     );
     // Descendant expansion widens where the walk *looks*, never what it may
     // *open*: every read is an admitted candidate or a census-bound companion,
-    // each opened exactly once, and VCS internals are never touched.
+    // each opened exactly once — a candidate two products admit is still one
+    // read — and VCS internals are never touched.
     const bounded = new Set([
       ...fixture.expectedClaudeSkillPaths,
       ...fixture.expectedCodexSkillPaths,
@@ -891,6 +1059,107 @@ describe('Claude skills join the inventory without changing Codex results (T128)
       ...vi.mocked(fsIo.readFile).mock.calls,
     ].map((call) => String(call[0]));
     expect(touched.some((path) => path.includes(`${sep}.git`))).toBe(false);
+  });
+});
+
+describe('the Copilot recognition matrix (T156)', () => {
+  it('publishes one physical item per matrix row with one read and the exact tool sets', async () => {
+    const fixture = buildCopilotSkillFixture('inspector-scan-copilot');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    vi.clearAllMocks();
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+
+    // Each physical file publishes exactly once: the set is exactly the root
+    // Copilot matrix, the nested Claude layer, and the census-bound
+    // companions — with no nested Copilot context, extra-depth,
+    // configured-root, or near-miss entry, and no second identity for a
+    // second recognizing product.
+    const admitted = [
+      ...new Set([...fixture.expectedCopilotSkillPaths, ...fixture.expectedClaudeSkillPaths]),
+    ];
+    expect(snapshot.files.map((file) => file.sourceRelativePath)).toEqual(
+      [...admitted, ...fixture.expectedCompanionPaths].sort(),
+    );
+
+    // The exact matrix: `.github` is Copilot-only, `.agents` is
+    // Codex+Copilot, `.claude` is Claude+Copilot — at the root, where every
+    // Copilot surface reads — and the nested `.claude` layer is Claude's
+    // alone, through its own documented lazy descendant discovery. No
+    // definition carries any other tool set.
+    const toolsOf = (path: string): readonly string[] =>
+      snapshot.skills
+        .flatMap((entry) => entry.definitions)
+        .filter((definition) => definition.sourceRelativePath === path)
+        .map((definition) => definition.tool)
+        .sort();
+    expect(toolsOf('.github/skills/ship/SKILL.md')).toEqual(['copilot']);
+    expect(toolsOf('.agents/skills/orbit/SKILL.md')).toEqual(['codex', 'copilot']);
+    expect(toolsOf('.claude/skills/lander/SKILL.md')).toEqual(['claude', 'copilot']);
+    expect(toolsOf('packages/api/.claude/skills/lander-nested/SKILL.md')).toEqual(['claude']);
+
+    // One read per matrix row: a shared candidate is read once however many
+    // rules admit it, and companions are read once through the same path.
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) =>
+      String(call[0])
+        .slice(fixture.root.length + 1)
+        .split(sep)
+        .join('/'),
+    );
+    expect([...opened].sort()).toEqual([...admitted, ...fixture.expectedCompanionPaths].sort());
+    expect(new Set(opened).size).toBe(opened.length);
+  });
+
+  it('attaches deterministic per-tool provenance on a shared physical file', async () => {
+    const fixture = buildCopilotSkillFixture('inspector-scan-copilot-provenance');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    const { publication } = await scanOnce(context);
+    if (publication.kind !== 'publishable') {
+      throw new Error('expected a publishable outcome');
+    }
+
+    // One recognition per recognizing product in the closed tool order, each
+    // carrying its own admitting rule's provenance — never one merged record
+    // and never another product's rule ID. Asserted on the committed graph:
+    // provenance is an internal admission record no session response carries.
+    expect(
+      publication.recognitions
+        .filter((recognition) => recognition.sourceRelativePath === '.agents/skills/orbit/SKILL.md')
+        .map((recognition) => ({
+          tool: recognition.tool,
+          ruleIds: recognition.provenances.map((provenance) => provenance.ruleId),
+        })),
+    ).toEqual([
+      { tool: 'copilot', ruleIds: ['copilot.repo.skill'] },
+      { tool: 'codex', ruleIds: ['codex.repo.skill'] },
+    ]);
+  });
+
+  it('groups the shared declared name and states only the surface-dependent Copilot rule', async () => {
+    // `.github/skills/ship` and `.claude/skills/lander` both declare `voyage`:
+    // Copilot recognizes both files, so it faces the collision, while Claude
+    // recognizes one and states nothing. The Copilot statement is the
+    // surface-dependent one, because its CLI documents a first-found winner
+    // while VS Code and Cloud document no duplicate precedence (FR-007).
+    const fixture = buildCopilotSkillFixture('inspector-scan-copilot-shared-name');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+
+    const row = snapshot.skills.find((entry) => entry.name === 'voyage');
+    // Three definitions for two files: `lander` is one per recognizing
+    // product — Copilot and Claude — while `ship` is Copilot's alone.
+    expect(row?.definitions.map((definition) => definition.tool)).toEqual([
+      'copilot',
+      'claude',
+      'copilot',
+    ]);
+    expect(row?.sameNameResolutions).toEqual([
+      { tool: 'copilot', resolution: 'surface-dependent' },
+    ]);
   });
 });
 
@@ -941,6 +1210,7 @@ describe('publication authority and relationship targets', () => {
     // The shipped rules are the only source of read authority; a path
     // mentioned inside an authored file never becomes a candidate.
     expect(REPOSITORY_INSPECTION_RULES.map((compiled) => compiled.rule.ruleId)).toEqual([
+      ...COPILOT_REPOSITORY_RULES.map((compiled) => compiled.rule.ruleId),
       ...CLAUDE_REPOSITORY_RULES.map((compiled) => compiled.rule.ruleId),
       ...CODEX_REPOSITORY_RULES.map((compiled) => compiled.rule.ruleId),
     ]);

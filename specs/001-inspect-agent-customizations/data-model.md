@@ -56,7 +56,9 @@ InspectionSession
 ├── ScanAttempt (zero or more queued; at most one running; never public before commit)
 ├── RepositoryScanGeneration (exactly one last committed; the Repository sequence exists from bootstrap)
 │   └── CustomizationFile
-│       ├── ToolRecognition (zero or more; empty exactly for a census-listed companion)
+│       ├── ToolRecognition (zero or more; empty exactly for a file no recognition
+│       │   owns — a file only the census lists, or an admitted candidate whose read
+│       │   left it diagnostic-only)
 │       ├── Relationship (zero or more)
 │       └── Diagnostic (zero or more)
 ├── GlobalScanGeneration (zero or one last committed; a Global sequence exists only between
@@ -658,8 +660,8 @@ Expected cancellation creates no Diagnostic or retained error.
 After cleanup, while holding the coordinator lock, disable prepares the exact final public
 state without removing public controls or Sources. Neither commit kind
 prepares a new generation: `remove-active-state` prepares the discard of the entire Global
-sequence while the Repository sequence, its generation, and its IDs stay untouched and are
-never rekeyed by disable; `cleanup-only` changes no committed state at all. It then
+sequence while the Repository sequence, its generation, and its files stay untouched by
+disable; `cleanup-only` changes no committed state at all. It then
 revalidates operation ID, epoch, barrier state, and
 `baseGenerations`. Only then does one atomic terminal commit remove the frozen preview and all
 remaining operation-local state and clear the retained failed request's error. For
@@ -763,7 +765,7 @@ ancestor holding a `project_root_markers` entry, default `.git` and user-overrid
 | `behaviorId` | stable dotted string | Unique and defined in exactly one bilingual vendor contract |
 | `tool` | tool enum | Owning product |
 | `surfaces` | non-empty surface enum[] | For example VS Code, CLI, cloud, or shared local Codex clients; no implicit “all” |
-| `locator` | `VendorLocator` or null | Where the vendor looks and how it walks, as one field: `vendorScope` (repository/workspace, User, hosted/managed, plugin, or runtime-only), `lookupBase` (workspace root, Git/repository root, runtime `cwd`, target-path chain, tool home, profile data, active config layer, registered catalog, or hosted state), `relativeSelector` (path text only; no Inspector glob semantics and no authority), and `traversal` (exact, ancestor-chain-to-repository-root, ancestor-chain-to-filesystem-root, standard-location chain, recursive-under-base, lazy descendant, explicit registration, or none). Null in a packaged CLI |
+| `locator` | `VendorLocator` or null | Where the vendor looks and how it walks, as one field: `vendorScope` (repository/workspace, User, hosted/managed, plugin, or runtime-only), `lookupBase` (workspace root, Git/repository root, runtime `cwd`, target-path chain, tool home, profile data, active config layer, registered catalog, hosted state, or undocumented — for a documented relative location whose base the source never anchors, so that a specific member would record a guess), `relativeSelector` (path text only; no Inspector glob semantics and no authority), and `traversal` (exact, ancestor-chain-to-repository-root, ancestor-chain-to-filesystem-root, standard-location chain, recursive-under-base, lazy descendant, explicit registration, or none). Null in a packaged CLI |
 | `documentationStatus` | `DocumentationStatus` | `conflict` retains all conflicting source assertions |
 | `lifecycleQualifiers` | `LifecycleQualifier[]` | Unique fixed order; empty makes no stability claim |
 | `evidence` | non-empty `EvidenceCitation[]` | The reviewed documentation establishing this record (§ EvidenceCitation); empty in a packaged CLI |
@@ -789,9 +791,9 @@ deduplication, or precedence without turning it into read authority.
 | `lifecycleQualifiers` | `LifecycleQualifier[]` | Unique fixed order; independent of documentation completeness |
 | `evidence` | non-empty `EvidenceCitation[]` | The reviewed documentation establishing this record (§ EvidenceCitation); empty in a packaged CLI |
 
-Strategies are immutable contract data. They can explain or project an applicability
-assessment, but cannot enumerate a directory, open a relationship target, or merge the
-Inspector's Repository and Global sources.
+Strategies are immutable contract data. They explain documented composition and the
+same-name outcomes derived from it, and cannot enumerate a directory, open a relationship
+target, or merge the Inspector's Repository and Global sources.
 
 ### StructuredInspectorMatcher
 
@@ -883,7 +885,7 @@ description of that product while making the whole reference graph reviewable in
 
 | Subject | Field | Type | Rules |
 |---|---|---|---|
-| strategy | `consumesBehaviors` | non-empty ordered behavior record[] | Every documented input the strategy composes, User scope included — a behavior grants no read authority, so naming one states what the vendor documents rather than what the Inspector may open; what stays out is what the strategy does not compose at all, and excluded surfaces and hosted inputs remain explicit conditions |
+| strategy | `consumesBehaviors` | non-empty ordered behavior record[] | Every documented input the strategy composes, User and hosted scopes included — a behavior grants no read authority, so naming one states what the vendor documents rather than what the Inspector may open, and a hosted input is consumed exactly like a located scope once a maintained behavior statement records it (Copilot's remote-skill relay in its Cloud selection); what stays out is what the strategy does not compose at all — an excluded surface, or a hosted input no behavior statement records — which remain explicit conditions |
 | rule | `basedOnBehaviors` | ordered behavior record[] | Documented vendor behavior the policy is based on; never a restatement of it |
 | rule | `explainedByStrategies` | ordered strategy record[] | Composition facts used for order/applicability, never for path admission |
 
@@ -942,8 +944,8 @@ scanning. There is no repository-provided plugin for adding rules.
 Repository and Global inspection have independent lifecycles, so each keeps its own atomic
 generation sequence (spec Clarifications § Session 2026-07-22; FR-030): the Repository
 sequence exists from bootstrap generation 0, while a Global sequence exists only from the
-enable commit that creates it until disable discards it. A commit rekeys and invalidates
-only its own sequence's IDs and views and never modifies the other sequence's state.
+enable commit that creates it until disable discards it. A commit invalidates
+only its own sequence's views and never modifies the other sequence's state.
 Cross-source comparison is unaffected: it always compares each source's last committed
 state. Both generation entities share these fields:
 
@@ -1064,12 +1066,13 @@ when none exists — and builds its replacement snapshot off to the side: one sc
 for a Repository or per-Source Global rescan, or the entire Global admitted subset for an
 enable/retry batch. A complete or partial result commits exactly N+1 atomically in the
 owning sequence (the sequence-creating Global commit is exactly 1). Every Source of that
-sequence then reports the new generation, every one of that sequence's file/recognition/
-admission/relationship IDs—including IDs for an unchanged Source—is regenerated, the new
+sequence then reports the new generation — file identities are Source-relative Paths and
+stay stable across it, while per-attempt record identities (recognition and diagnostic
+IDs) are the new attempt's own — the new
 snapshot clears the `StaleSourceFailure` and referenced failure only for each successfully
 scanned Source, carries every unrelated Source's entry and failure forward, and clears that
-sequence's generation-scoped comparison/editor state. A commit never modifies, rekeys, or
-invalidates the other sequence's generation, IDs, or client state. A `remove-active-state`
+sequence's generation-scoped comparison/editor state. A commit never modifies or
+invalidates the other sequence's generation or client state. A `remove-active-state`
 Global disable is not a scan transaction: its terminal commit discards the entire Global
 sequence — its committed generation, every tool-specific Global graph, and each
 stale-failure entry/diagnostic pair — without filesystem I/O and commits no generation in
@@ -1095,8 +1098,8 @@ Repository failure record. Both report that no new inventory was committed. Expe
 Global-disable barrier emits no failure diagnostic;
 a different deterministic returned safe failure is an out-of-generation session-lifecycle Diagnostic.
 Its attachment scope follows the `Diagnostic` rules below: a file-scoped record carries
-`sourceId`, `fileId`, and Source-relative Path together; a source-scoped record carries the
-`sourceId` alone and never fabricates a file ID or path. It never carries customization source values and never
+`sourceId` and Source-relative Path together; a source-scoped record carries the
+`sourceId` alone and never fabricates a path. It never carries customization source values and never
 enters `Source.diagnosticIds`. The
 coordinator then starts the next queued transaction from the still-current N. A later
 successful complete or partial scan of the affected Source replaces N with N+1
@@ -1162,9 +1165,8 @@ owning runtime/session API error rule rather than saturating or wrapping.
 
 | Field | Type | Visibility | Rules |
 |---|---|---|---|
-| `fileId` | 128-bit, 22-character base64url opaque string | DTO | Newly generated for every generation; API never accepts a path |
 | `sourceId` | opaque string | DTO | Must identify one enabled Source |
-| `sourceRelativePath` | `SourceRelativePath` | DTO | The file's identity within its Source: display, filtering, lookup, and selection path relative to the owning Source root |
+| `sourceRelativePath` | `SourceRelativePath` | DTO | The file's identity within its Source (FR-030) — stable across generations, so no per-generation file ID exists: display, filtering, lookup, selection, and the detail request's parameter, relative to the owning Source root |
 | `encoding` | `utf-8 \| utf-8-replaced \| binary \| unknown` | DTO | Closed variant discriminator; the read state is derived from it (readable text, textless `binary`, failed-read `unknown`); invalid non-NUL sequences remain readable as replacement-decoded text |
 | `sizeBytes` | non-negative integer | DTO | Present exactly for readable text and `binary` — the outcomes with accepted bytes |
 | `hadLeadingBom` | boolean | DTO | Readable text only — a BOM concept does not exist for the other variants; true exactly when one leading UTF-8 BOM was recorded and removed before publishing `sourceText`; independent of whether replacement occurred |
@@ -1217,19 +1219,47 @@ shipped kinds do not agree on one:
 
 | Kind | The unit one row shows |
 |---|---|
-| `skill` | One declared name. It is the name the vendor's own skill listings show, and it need not match the directory holding the `SKILL.md`, so several files may declare one name and one entry lists each of them as a definition |
+| `skill` | One name as one tool resolves it (FR-007): the authored frontmatter `name` — or the skill directory name when the file declares none — which a Claude Code recognition of a nested skill prefixes root-relative. A definition is one recognition — one per `(file, tool)` — so several files resolving to one name are one entry listing each recognition as a definition, and one file whose tools resolve different names defines on each name's entry |
 | `MCP` | One `[mcp_servers.*]` declaration inside an admitted carrier, so one `.codex/config.toml` publishes as many rows as it declares servers |
 | `instructions`, `settings/config` | The file itself |
 
 A CustomizationFile therefore publishes its own facts once — Source-relative Path, read
-outcome, size, diagnostics — and each kind's inventory refers to it by `fileId` rather than
-repeating them. A companion is never a row of its own, whatever it carries (FR-003), so a
+outcome, size, diagnostics — and each kind's inventory refers to it by `sourceRelativePath`
+rather than repeating them. A companion is never a row of its own, whatever it carries (FR-003), so a
 row states the diagnostics of the files in its own census beside the definition that owns
 them, each named by its path: a read that failed inside a customization's directory is one
 of the files that made the generation partial, and the row of the customization holding it
 is the only place an inventory can say so (FR-028). One shared row shape cannot express either of the first two units: grouping
-by name would break the one recognition per `(fileId, tool, kind)` rule that ToolRecognition
+by name would break the one recognition per `(file, tool, kind)` rule that ToolRecognition
 rests on, and a file-shaped row cannot become the N rows one carrier's declarations need.
+
+A skill row's name is the name one tool resolves (FR-007): the authored frontmatter
+`name` — or the skill directory name when the file declares none or declares it empty,
+because being a named directory is what a skill is, so every row has a name and two such
+files in same-named directories share one — which a Claude Code recognition of a nested
+skill prefixes
+with the `/`-joined root-relative path of the directory holding its `.claude` and a `:`,
+so `apps/web/.claude/skills/deploy/SKILL.md` declaring `name: deploy` is `apps/web:deploy`
+on its Claude row. The last segment deliberately differs from the vendor's documented
+command name, which takes the skill directory name and treats the authored `name` as only
+a display label: comparing one skill's definitions across tools is what the row exists
+for, and the authored `name` is the one identity all three tools share, so every row is
+keyed by it and only the nested qualification shape is the vendor's. The nested form is
+always prefixed: the vendor qualifies on a name clash against layers this product never
+reads, relative to a session working directory it never observes, so the root-relative
+qualified spelling is the one stable name a static inventory can stand behind. A name is
+rendered with the same control-character escaping as a Source-relative Path
+(§ SourceRelativePath): a nested Claude row's prefix is path segments, so a name is a
+lookup and selection identity and must read as what it is.
+
+A definition carries its own recognition's parse facts: its `parseStatus`, and the
+extraction-failure reference of its kind (FR-028). One extraction per `(file, kind)`
+means one failure record, which every failed definition of the file names as its own
+parse fact and the file's `files[]` entry lists once as its file-confined outcome. A failed extraction leaves
+the authored name unknown rather than absent: the row keeps the directory-derived
+provisional identity — the path's own fact, not a reading of the failed parse — while an
+authored-name tool's `invocationName` is null and the definition evidences no
+authored-name collision. Claude Code's path-derived command name stands either way.
 
 A grouped entry never implies a winner the Inspector has not recorded. Each entry states how
 a product resolves a name it recognizes on two or more of that entry's definitions, because
@@ -1237,12 +1267,15 @@ the recorded statements differ: Codex does not merge same-name skills and both s
 available with no documented order; Claude Code keeps every one available within a root —
 a nested one under a directory-qualified command — and picks the variant matching the
 files being worked on; Copilot's CLI resolves the first in a documented source order; and
-Copilot in VS Code documents no duplicate precedence at all
+Copilot's VS Code and Cloud surfaces document no duplicate precedence at all
 (contracts/runtime-composition.md). A product that recognizes only one of the definitions
 states nothing: it is facing no collision, so its resolution rule would answer a question
-this entry is not asking it. The collision must also be the one the quoted rule answers:
-Claude Code's command names come from the skill directories, so its statement appears only
-when two of its definitions share a directory name (FR-007).
+this entry is not asking it. The collision must also be the one the quoted rule answers, and
+Claude Code's rule answers the clash of unqualified commands, which come from skill
+directories: its statement attaches to every row holding a Claude definition whose skill
+directory name is shared with another Claude-recognized skill of the same generation, and
+never to rows that share only the authored name under differently named directories
+(FR-007).
 
 A statement is published only for a product whose composition strategy is in the shipped
 registry. That is not a gap in the row: a product with no skill rule recognizes no skill, so
@@ -1252,46 +1285,60 @@ product's skill rule ships its strategy and its statement together.
 
 ### ToolRecognition
 
+A recognition is an internal record of the committed generation, carried by no session
+response (FR-027): the inventory rows and the detail are both projected from these —
+a definition is one recognition's `(file, tool)` identity, and the detail's
+`presentation` is one skill recognition's parse. In code it is a class whose one
+production construction site is the recognizer, while the recognize seam
+(`CandidateRecognition`) stays an interface tests satisfy with literal doubles.
+
 A recognition record's details are discriminated by `kind`, because what identifies a
 recognition differs by kind and does not fit one shared optional field: a skill declares a
 single `name`, while an MCP carrier declares one per server. A skill's details carry that
-declared name — the one authored value an inventory row carries, because it is presentation
-identity rather than content (FR-007, FR-027) — absent, never empty, when the file declares
-none.
+declared name — the display label and the identity every row's name is built from, which a
+nested Claude Code recognition's row prefixes root-relative (FR-007, FR-027) — absent,
+never empty, when the file declares none; a row whose file declares none, or declares it
+empty, is named by its skill directory instead.
 
 A recognition is not an inventory row. The row's unit is the kind's own (§ Inventory unit),
 so each kind's inventory is built from these records rather than published as one summary
-per file: a skill's rows group records by declared name, and an MCP carrier's rows will
+per file: a skill's rows group records by the name each tool resolves
+(§ Inventory unit), and an MCP carrier's rows will
 split one record's declarations into a row apiece. A file publishes no recognition summary
 of its own, so nothing has to state how many admissions back a record. An admission says
 which rule authorized the read and where it matched; where the customization would apply,
 and how well the rule is documented, are not on it, because no surface shows either.
 
 The sorted companion file list a skill's census produced is not on the details. It is
-published once, on the inventory definition the recognition backs
+published on the inventory definitions the file's recognitions back
 (contracts/http-api.md `skills[].definitions[].companionFiles`): a second spelling on the
-recognition would be a state able to disagree with the first. The list is empty, never
+recognition would be a state able to disagree with those, and every definition of one
+file — across tools and across entries — carries the same list, because the census is the
+file's. The list is empty, never
 absent, when the `SKILL.md` sits alone, because being a directory is what a skill is and
 every recognized skill has been enumerated. Its `length` is the only count published
 (contracts/inspection-path-allowlist.md § Bounded companion census).
 
 Each listed path is also a `CustomizationFile` of the same generation: a directory-shaped
 customization is read whole, so its accompanying files are read once each and published like
-any other file — with their own identity, path, read outcome, and complete authored source.
-They carry no recognition, because no rule admitted them and nothing classified them, so
-they appear in no kind's inventory; the definition's list is what associates them with the
+any other file — with their own identity, path, and read outcome, the complete authored
+source included when the read yielded text (FR-025).
+The census itself admits nothing: a file it alone lists carries no recognition and
+appears in no kind's inventory, while a path a rule independently admits — a nested
+`SKILL.md` inside another skill's directory — is a candidate with its own recognitions
+even while an outer census lists it. The definition's list is what associates the
+accompanying files with the
 customization they belong to, and it is what a detail surface builds that customization's
 directory from.
 
 | Field | Type | Rules |
 |---|---|---|
-| `recognitionId` | opaque string | Unique within generation |
-| `fileId` | opaque string | Many recognitions may reference one physical file |
-| `provenances` | ordered admission record[] | Sorted, non-empty set of rule/path admissions for this shared tool/kind interpretation; each record carries its `ruleId`, its `RuleDiscoveryClass`, and the matched `SourceRelativePath` — which rule authorized the read and where it matched, and nothing beyond that |
+| `sourceRelativePath` | `SourceRelativePath` | The file the recognition is attached to, by its identity (FR-030); many recognitions may reference one physical file |
+| `provenances` | ordered admission record[] | Sorted, non-empty set of rule/path admissions for this shared tool/kind interpretation; each record holds the compiled rule that authorized the read and derives its `ruleId` and `RuleDiscoveryClass` from it, beside the matched `SourceRelativePath` — and nothing beyond that |
 | `tool` | `copilot \| claude \| codex` | Required |
 | `details` | kind-discriminated payload | The recognized kind plus what identifies a recognition of that kind — for a skill, its declared name. One field, so projecting it is a copy rather than a per-kind reconstruction |
-| `parseStatus` | `not-attempted \| parsed \| failed` | `not-attempted` means no allowlisted extractor applies; `failed` is all-or-nothing for this recognition only |
-| `diagnosticIds` | opaque string[] | Recognition-scoped extraction failures within the owning file |
+| `parseStatus` | `not-attempted \| parsed \| failed` | `not-attempted` means no allowlisted extractor applies; `failed` is all-or-nothing per `(file, kind)`: the extraction runs once, shared by every tool recognizing the kind |
+| `diagnosticIds` | opaque string[] | The kind's extraction-failure record (FR-028): one per `(file, kind)`, referenced by each failed recognition of that kind and listed once by the file |
 
 The maintained supported-customization documentation is the normative presentation
 allowlist. For every supported `(tool, kind)`, it enumerates the relationship kinds and
@@ -1321,7 +1368,7 @@ the revised registry, conformance fixture, and test updates.
 The customization-kind enum is shared, but each recognizer owns its path and interpretation
 rules. A shared `AGENTS.md`, `CLAUDE.md`, `.mcp.json`, skill, or marketplace therefore stays
 one file with multiple recognitions. There is exactly one recognition for each
-`(fileId, tool, kind)` pair. Compatible admissions merge their provenances into that one
+`(file, tool, kind)` pair. Compatible admissions merge their provenances into that one
 record. If extractors for the same pair produce incompatible parsed meanings, that
 recognition becomes `failed`, retains its complete source and compatible provenance
 admissions, and publishes no metadata/relationship/derivation result. An admission is
@@ -1373,7 +1420,7 @@ the fields that happened to parse, because a partial extraction cannot say which
 values it skipped. Its file stays admitted, readable, and comparison-eligible.
 
 Fields carry no source coordinates. Nothing points into a document — the detail surface
-shows a file whole and an inventory row shows a declared name — so a range would be a field
+shows a file whole and an inventory row shows a name — so a range would be a field
 every entry carries for no reader, and one nothing could check: an extractor takes a value
 out of the same text it would measure, so requiring the two to agree can only restate the
 value and stays true when the measurement itself is wrong. A projection that must point into
@@ -1386,8 +1433,28 @@ transport unaltered.
 
 ### Skill presentation
 
-A skill's detail surface leads with the skill, not with the file that carries it: its
-declared name as the heading, then two tabs — the skill itself and its files. The skill
+A skill's detail surface leads with the skill, not with the file that carries it: its row
+name as the heading — this product's provisional identity, the same one the inventory
+lists — with the owning definition's documented invocation name beside it from the published
+`invocationName` (contracts/http-api.md § get-session `skills[]`). A definition
+is one tool's recognition, and each publishes its own tool's documented name
+(`definitions[].invocationName`); the page shows the definition its route addresses — a
+detail URL is `/skills/<tool>/<source-relative path>`, the definition's own identity, tool first as the
+broader segment, and a companion opens under the same tool segment — so which invocation
+name sits beside the heading is the link's identity rather than a preference. That
+identity is stable across rescans and server launches — it is the URL's path half, so a
+bookmarked link's path keeps naming the same file across rescans and across launches that
+select the same root, because the Source-relative Path is the
+file's identity on the wire and a detail request resolves it against the current committed
+snapshot (FR-030); a launch that selects another root (FR-001) resolves it against that
+root's scan, and the origin is devframe's port selection, fixed-default unless occupied
+(quickstart.md), so a moved port changes where a bookmark points, never which file its
+path names — and a path the current scan does not hold for the URL's tool is
+reported as a dead link. A root
+`.claude` skill whose authored `name` differs from its directory is invoked by Copilot
+under the authored name, which stays visible as the row's name, and by Claude Code under
+the directory-derived command its own definition's page shows beside it. The published value is
+the projection's, so the client renders vendor naming rather than re-deriving it. Then two tabs — the skill itself and its files. The skill
 tab lists every key the frontmatter declares, led by `name` and `description` however the
 file ordered them, and then the instructions that block was removed from. The files tab
 holds the directory and the open file's complete authored `sourceText`, which is where
@@ -1395,11 +1462,15 @@ every authored spelling stays readable. Two tabs rather than one column: they ar
 subjects, and stacked, the directory sat below everything the skill declares and
 instructs.
 
-`ToolRecognition.details` therefore carries, for the `skill` kind:
+The parse itself is published once, on the detail response's skill variant
+(`SkillFileDetailDto.presentation`, contracts/http-api.md § get-file-detail): it is the
+file's fact — every shipped vendor reads the same fixed YAML semantics — so no per-tool
+copy exists on the wire, and the internal `ToolRecognition.details` carries, for the
+`skill` kind:
 
 | Field | Type | Rules |
 |---|---|---|
-| `declaredName` | string, absent when none | The `name` scalar as the parser resolved it (§ Field reading). Absent, never empty: an authored empty name is a different fact from no name. Absent too for a `name` that resolves to anything but a scalar — naming a skill after the first item of a list it wrote would be an identity the file never declared. It is the identity the inventory row groups by (FR-007) |
+| `declaredName` | string, absent when none | The `name` scalar as the parser resolved it (§ Field reading). Absent, never empty: an authored empty name is a different fact from no name. Absent too for a `name` that resolves to anything but a scalar — naming a skill after the first item of a list it wrote would be an identity the file never declared. It is the display label and the identity every row's name is built from; a row whose file declares none, or declares it empty, is named by its skill directory, and a nested Claude Code recognition's row prefixes it root-relative (§ Inventory unit, FR-007) |
 | `frontmatter` | ordered entry[] | Every key the file declares, in authored order, keyed by the key the file wrote — never a maintained catalog's. Empty for a document with no frontmatter block, for a block written as a list or a bare scalar rather than a mapping — such a block declares no keys, and the index positions a list would be read by are not keys the file wrote — and for a `failed` extraction |
 | `bodyText` | string | The same document with its frontmatter block removed. Empty for a `failed` extraction |
 
@@ -1431,9 +1502,7 @@ complete decoded source stays available as `sourceText`.
 | Field | Type | Rules |
 |---|---|---|
 | `relationshipId` | opaque string | Unique within generation |
-| `fromFileId` | opaque string | Required |
-| `fromRecognitionId` | opaque string | Required; must belong to `fromFileId` and own `fromProvenanceId` |
-| `fromProvenanceId` | opaque string | Required; resolves one admission record owned by `fromRecognitionId`, whose matched path is the sole base for path-relative normalization |
+| origin reference | file identity plus recognition | Names the origin file by its Source-relative Path (FR-030) and the owning recognition by its `(tool, kind)`; the admission-reference shape arrives with the relationship phases that construct these records — no per-generation file or recognition ID exists to point at. The referenced admission's matched path is the sole base for path-relative normalization |
 | `ruleId` | stable relationship-only rule ID | Proves that the reference can never authorize a read |
 | `kind` | `import \| declared-component \| skill-resource \| plugin-source \| agent-reference \| context-inheritance \| runtime-reference \| order \| fallback` | Descriptive only |
 | `targetOrigin` | `authored \| documented-default` | `authored` requires one exact source occurrence; `documented-default` is allowed only for a fixed registry-defined default such as an omitted Codex plugin hook |
@@ -1462,8 +1531,10 @@ An extracted reference is emitted once per applicable admission record, so disti
 admissions never borrow another admission's directory as the
 relative base. Every extractor assigns an internal origin key made only from a closed declaration-field
 identifier, `targetOrigin`, and a zero-based source or deterministic synthetic occurrence; it contains no authored field value and is
-never serialized. The deduplication key is `fromFileId`, `fromRecognitionId`,
-`fromProvenanceId`, `ruleId`, `kind`, the origin key, and a target identity. That identity is the normalized target when available and otherwise
+never serialized. The deduplication key is the origin file's Source-relative Path, the owning recognition's
+`(tool, kind)`, the originating admission's stable reference (the shape the relationship
+phases fix — no per-generation file, recognition, or provenance ID exists), `ruleId`,
+`kind`, the origin key, and a target identity. That identity is the normalized target when available and otherwise
 a process-keyed digest of the exact authored target for `authored`, or the fixed default ID
 for `documented-default`; neither digest nor default ID leaves memory or enters logs.
 Extractors emit by the originating provenance's stable array key, recognition tool/kind,
@@ -1483,13 +1554,12 @@ retaining a relationship; only independent candidate admission can authorize a r
 | `severity` | `info \| warning \| error` | Registry-fixed by `code` and not serialized; does not imply vendor validation |
 | `scope` | `file \| source` | Registry-fixed by `code` and not serialized; required attachment discriminator; independent of generation-scoped versus session-lifecycle lifetime |
 | `sourceId` | opaque ASCII ID | Required for both scopes: every diagnostic this product produces belongs to a Source, so none of them is pathless |
-| `fileId` | optional opaque ASCII ID | Required only for `file`; forbidden for `source` |
 | `sourceRelativePath` | optional Source-relative Path | Required only for `file`, must equal that file's path within `sourceId`, and is forbidden for `source` |
 | `lifecycleOwnerKey` | `repository \| global:<tool> \| published-source:<sourceId> \| null` | Internal and never serialized; required and non-null for every out-of-generation lifecycle Diagnostic, null for generation-owned candidates, and validated against the one public owner reference |
 
 The two legal attachment shapes are therefore exactly: `file` with non-null
-`sourceId`, `fileId`, and `sourceRelativePath`; and `source` with non-null `sourceId` and
-null file/path fields. A DTO using any other combination is invalid. There is no pathless
+`sourceId` and `sourceRelativePath`; and `source` with non-null `sourceId` and a null
+path field. A DTO using any other combination is invalid. There is no pathless
 scope: a diagnostic states what happened while reading something, and the Source it was
 read under is the least context that makes it resolvable — a record naming neither would
 tell a reader that something failed somewhere. Scope is orthogonal to lifetime: a fatal
@@ -1508,7 +1578,8 @@ fixed phase, lifecycle-owner semantic order (Repository, fixed Global tool order
 existing public Source order), scope, Source-relative Path, rule/code, then emitter-
 occurrence order; an opaque Source ID never supplies the sort order. Aggregation is
 order-only: each emitter creates every observation exactly once — legitimately repeated
-records exist (one per failed recognition) — so there is
+records exist, because an extraction failure is one record per `(file, kind)` (FR-028)
+and one file's two kinds can each fail, sharing every public field — so there is
 no deduplication pass, and a double emission is an ordinary implementation bug owned by
 tests and review, not a runtime filter. A scan candidate belongs to one
 committed generation. An out-of-generation lifecycle candidate—including a fatal scan attempt
@@ -1614,13 +1685,14 @@ This state is not authoritative and is never persisted.
   inventory entries; the other sequence's state, requests, and models are untouched
   (FR-030). An equal-generation response is accepted only for the exact
   still-current request token. A detail request captures
-  `{ clientDataEpoch, generation, fileId }` with the owning sequence's current generation;
+  `{ clientDataEpoch, sourceRelativePath }`;
   its callback adopts the response only when the
-  epoch and that sequence's generation still equal current state and that readable `fileId`
-  still exists in the inventory. Every central invalidation/purge increments the same
+  epoch still equals current state — the path is the file's stable identity (FR-030), so
+  the host resolves it against whatever generation is current, and the epoch is what keeps
+  a response captured before a purge from repopulating state. Every central invalidation/purge increments the same
   epoch, so a late callback is a no-op even when response delivery was already queued.
-- `ComparisonSelection`: zero or exactly two readable `fileId` values, each from its owning
-  sequence's current committed generation — a cross-source comparison always compares each
+- `ComparisonSelection`: zero or exactly two readable files named by `sourceRelativePath`,
+  each from its owning sequence's current committed generation — a cross-source comparison always compares each
   source's last committed state. Monaco compares both complete `sourceText` values. Literal
   differences, including credential-like strings and environment references, remain
   visible.
@@ -2381,7 +2453,7 @@ to either bound state and then destroyed. The probe ID is module-private and run
 `StudyPreReadinessProductObservationDraft` has the same complete root order as the canonical
 observation payload: `schemaVersion`, `eventCode`, `eventId`, `correlationId`, `subjectId`,
 `inspectorProcessId`, `observationClass`, `actorClass`, `authorityClass`, `requestClass`,
-`targetClass`, `methodClass`, `capabilityClass`, `originClass`, `effectClass`, `workflowClass`,
+`targetClass`, `methodClass`, `originClass`, `effectClass`, `workflowClass`,
 `outcomeClass`, `automaticIssueCorrelationId`, `reviewDisposition`,
 `reviewerOneClassification`, `reviewerTwoClassification`, `sameInspectorHost`,
 `productAttributable`, `prohibited`. Version/event are `1`/`observation`; event/correlation are
@@ -2701,7 +2773,7 @@ uses the grant correlation and forwards. Any participant-shaped request missing 
 conditions—including nonexact target, no grant/replay, or user-activated page-script navigation—
 is valid-secret unknown with binding IDs and critical unauthorized/true tuple, and is blocked. A
 nonparticipant valid-secret request with missing user and either exact-issued Origin
-or missing Origin plus exact-issued Referer is bundled-SPA; only its exact authorized static/API
+or missing Origin plus exact-issued Referer is bundled-SPA; only its exact authorized static/RPC
 request forwards, while every nonexact/unauthorized request is product-attributable/prohibited and
 blocked. Valid secret plus extension-scheme Origin is extension and always unrelated/N/A/false/
 blocked. Every remaining valid-secret projection is unknown, uses binding IDs, is
@@ -2712,13 +2784,13 @@ Only the exact grant-attested participant and forwarded SPA branches may have a 
 The exact in-memory request-correlation records are content-free. A
 `StudyBrowserRequestCandidate` has complete field set and exact root order `schemaVersion`,
 `studyRunId`, `browserAttemptId`, `correlationId`, `actorClass`, `authorityClass`, `requestClass`,
-`targetClass`, `methodClass`, `capabilityClass`, `originClass`, `effectClass`,
+`targetClass`, `methodClass`, `originClass`, `effectClass`,
 `sameInspectorHost`, `productAttributable`, `prohibited`. `studyRunId` and `correlationId` are
 current/fresh `StudyOpaqueId` values; `browserAttemptId` is the current valid binding ID or literal
 `not-applicable` for a missing/invalid marker. A `StudyServerCorrelationClaim` has
 complete field set and exact root order `schemaVersion`, `studyRunId`, `correlationId`,
 `subjectId`, `inspectorProcessId`, `actorClass`, `authorityClass`, `requestClass`, `targetClass`,
-`methodClass`, `capabilityClass`, `originClass`, `effectClass`, `sameInspectorHost`,
+`methodClass`, `originClass`, `effectClass`, `sameInspectorHost`,
 `productAttributable`, `prohibited`. Both versions are literal `1`; every claim has current
 binding/registered `StudyOpaqueId` subject/process values and actor `participant | bundled-spa`;
 N/A claim IDs and every other actor are invalid. Every other ID is current; every class and boolean is from the closed observation table; and neither
@@ -2906,7 +2978,7 @@ complete field set and exact insertion order.
 | Envelope `recordKind` | Exact payload keys in order | Value rules |
 |---|---|---|
 | `capture-start` | `schemaVersion`, `eventCode`, `controlSessionId`, `studyRunId`, `workRootIdentityCommitment`, `candidateIdentityCommitment`, `candidateSha256`, `studyInputManifestSha256`, `captureProcessReady`, `watchdogReady` | Version is literal `1`, `eventCode` is literal `capture-start`, both ready fields are literal `true`, and the session/run IDs, commitments, and lowercase digests are common to all three streams |
-| `payload` | `schemaVersion`, `eventCode`, `eventId`, `correlationId`, `subjectId`, `inspectorProcessId`, `observationClass`, `actorClass`, `authorityClass`, `requestClass`, `targetClass`, `methodClass`, `capabilityClass`, `originClass`, `effectClass`, `workflowClass`, `outcomeClass`, `automaticIssueCorrelationId`, `reviewDisposition`, `reviewerOneClassification`, `reviewerTwoClassification`, `sameInspectorHost`, `productAttributable`, `prohibited` | Version is literal `1`; IDs are opaque or their exact not-applicable literal; all classes/event codes come from the closed privacy-safe tables; the final three fields are booleans and none is inferred by the verifier from retained raw data. For a product-attributable observation, the verifier accepts process N/A only as an ordered same-run/same-subject terminalization-bound pre-readiness release with workflow N/A; readiness-bound uses the assigned non-N/A ID, and every other/post-readiness product N/A row is invalid |
+| `payload` | `schemaVersion`, `eventCode`, `eventId`, `correlationId`, `subjectId`, `inspectorProcessId`, `observationClass`, `actorClass`, `authorityClass`, `requestClass`, `targetClass`, `methodClass`, `originClass`, `effectClass`, `workflowClass`, `outcomeClass`, `automaticIssueCorrelationId`, `reviewDisposition`, `reviewerOneClassification`, `reviewerTwoClassification`, `sameInspectorHost`, `productAttributable`, `prohibited` | Version is literal `1`; IDs are opaque or their exact not-applicable literal; all classes/event codes come from the closed privacy-safe tables; the final three fields are booleans and none is inferred by the verifier from retained raw data. For a product-attributable observation, the verifier accepts process N/A only as an ordered same-run/same-subject terminalization-bound pre-readiness release with workflow N/A; readiness-bound uses the assigned non-N/A ID, and every other/post-readiness product N/A row is invalid |
 | `heartbeat` | `schemaVersion`, `eventCode`, `studyRunId`, `watchdogHealthy`, `captureProcessHealthy`, `acceptedPayloadCount` | `eventCode` is literal `heartbeat`; both health fields are literal `true`; the run ID matches start and the nonnegative safe-integer count equals accepted prior `payload` records |
 | `handoff-anchor` | `schemaVersion`, `eventCode`, `studyRunId`, `checkpointRequestId`, `handoffSha256` | `eventCode` is literal `handoff-anchor`; run/request IDs match the supervisor snapshot and canonical handoff, and the lowercase digest equals the companion and exact handoff bytes |
 | `capture-stop` | `schemaVersion`, `eventCode`, `studyRunId`, `candidateSha256`, `studyInputManifestSha256`, `checkpointRequestId`, `handoffSha256`, `continuityPassed`, `finalSequence`, `envelopeCount`, `payloadRecordCount`, `heartbeatRecordCount`, `handoffAnchorRecordCount`, `priorEnvelopeSha256` | `eventCode` is literal `capture-stop`; run ID and both lowercase study digests equal start; checkpoint/handoff values equal the sole anchor; continuity is literal `true`; `handoffAnchorRecordCount` is literal `1`; `finalSequence` equals the stop envelope sequence; `envelopeCount` equals `finalSequence + 1`, the observed total, and `2 + payloadRecordCount + heartbeatRecordCount + handoffAnchorRecordCount`; all kind counts equal observed prior records; `priorEnvelopeSha256` equals the exact preceding-envelope digest and the stop envelope's `priorDigest`; the verifier independently recomputes every value before sealing |
@@ -2920,10 +2992,9 @@ The closed observation-class fields are:
 | `observationClass` | `request \| mcp \| execution \| inspected-source-mutation \| workflow` |
 | `actorClass` | `inspector \| bundled-spa \| browser-extension \| other-host-process \| operating-system \| participant \| unknown` |
 | `authorityClass` | `exact-issued \| other-loopback \| remote \| unclassifiable \| not-applicable` |
-| `requestClass` | `authorized-static \| authorized-api \| prohibited \| unrelated \| os-mediated \| unclassifiable \| not-applicable` |
-| `targetClass` | `static-manifested-asset \| static-spa-shell \| static-client-route-fallback \| api-get-session \| api-get-file \| api-post-repository-rescan \| api-get-global-consent-preview \| api-post-global-consent-preview \| api-post-global-enable \| api-post-global-rescan \| api-post-global-disable \| other-loopback \| remote \| mcp \| unclassifiable \| not-applicable` |
+| `requestClass` | `authorized-static \| authorized-rpc \| prohibited \| unrelated \| os-mediated \| unclassifiable \| not-applicable` |
+| `targetClass` | `static-manifested-asset \| static-spa-shell \| static-client-route-fallback \| connection-discovery-metadata \| rpc-channel-upgrade \| rpc-get-session \| rpc-get-file-detail \| rpc-rescan-repository \| rpc-get-global-consent-preview \| rpc-create-global-consent-preview \| rpc-enable-global \| rpc-rescan-global \| rpc-disable-global \| rpc-devframe-framework \| other-loopback \| remote \| mcp \| unclassifiable \| not-applicable` |
 | `methodClass` | `get \| head \| post \| other \| unclassifiable \| not-applicable` |
-| `capabilityClass` | `valid \| missing \| invalid \| unclassifiable \| not-applicable` |
 | `originClass` | `exact-same-origin \| missing \| mismatched \| unclassifiable \| not-applicable` |
 | `effectClass` | `none \| unauthorized-request \| command-or-code-execution \| child-process \| mcp-connection \| prohibited-outbound-request \| inspected-source-mutation \| cross-machine-content-exposure \| workflow-blocker` |
 | `workflowClass` | `discovery \| inspection \| comparison \| global-consent \| not-applicable` |
@@ -2939,7 +3010,7 @@ observation the current eligible open workflow, or permanent N/A when none is el
 accepted tag is immutable and a source never self-declares it.
 
 An authorized-static request must match exactly one row below; every listed class requires
-`authorityClass: exact-issued`, `requestClass: authorized-static`, `capabilityClass: not-applicable`,
+`authorityClass: exact-issued`, `requestClass: authorized-static`,
 `originClass: not-applicable`, `sameInspectorHost: true`,
 `productAttributable: true`, `effectClass: none`, and `prohibited: false`:
 
@@ -2948,25 +3019,35 @@ An authorized-static request must match exactly one row below; every listed clas
 | `static-manifested-asset` | `get \| head` to a manifest-listed non-HTML asset |
 | `static-spa-shell` | `get \| head` to packaged `/`/`index.html` shell |
 | `static-client-route-fallback` | `get \| head` to one closed client-route fallback |
+| `connection-discovery-metadata` | `get \| head` to devframe's fixed connection-discovery document (`__connection.json`), which names the channel's own path and carries no session data |
 
-An authorized-api request must match exactly one row below; every row requires
-`authorityClass: exact-issued`, `requestClass: authorized-api`, `capabilityClass: valid`,
+An authorized-rpc observation is either the one channel-establishment HTTP request or a
+dispatched-function server observation from the registered probe; every row requires
+`actorClass: bundled-spa`, `authorityClass: exact-issued`, `requestClass: authorized-rpc`,
 `sameInspectorHost: true`, `productAttributable: true`, `effectClass: none`, and
-`prohibited: false`. GET permits only `originClass: missing | exact-same-origin`; every POST
-requires `originClass: exact-same-origin`:
+`prohibited: false`. The channel establishment uses `targetClass: rpc-channel-upgrade`,
+`methodClass: get`, and `originClass: exact-same-origin` — the pinned browser always names
+the page origin on a WebSocket upgrade. A dispatched-function row instead uses
+`methodClass: not-applicable` and `originClass: not-applicable` — a devframe frame is not
+an HTTP request, and its connection's method and origin were classified at the upgrade —
+and `targetClass` exactly per dispatched function
+(`contracts/http-api.md` § RPC function catalog):
 
-| `targetClass` | `methodClass` | Exact HTTP contract route |
-|---|---|---|
-| `api-get-session` | `get` | `/api/v1/session` |
-| `api-get-file` | `get` | `/api/v1/files/{fileId}` with a valid opaque ID |
-| `api-post-repository-rescan` | `post` | `/api/v1/repository/rescan` |
-| `api-get-global-consent-preview` | `get` | `/api/v1/global/consent-preview` |
-| `api-post-global-consent-preview` | `post` | `/api/v1/global/consent-preview` |
-| `api-post-global-enable` | `post` | `/api/v1/global/enable` |
-| `api-post-global-rescan` | `post` | `/api/v1/global/rescan` |
-| `api-post-global-disable` | `post` | `/api/v1/global/disable` |
+| `targetClass` | RPC function |
+|---|---|
+| `rpc-get-session` | `agent-customization-inspector:get-session` |
+| `rpc-get-file-detail` | `agent-customization-inspector:get-file-detail` |
+| `rpc-rescan-repository` | `agent-customization-inspector:rescan-repository` |
+| `rpc-get-global-consent-preview` | `agent-customization-inspector:get-global-consent-preview` |
+| `rpc-create-global-consent-preview` | `agent-customization-inspector:create-global-consent-preview` |
+| `rpc-enable-global` | `agent-customization-inspector:enable-global` |
+| `rpc-rescan-global` | `agent-customization-inspector:rescan-global` |
+| `rpc-disable-global` | `agent-customization-inspector:disable-global` |
+| `rpc-devframe-framework` | devframe's own framework-registered functions — the trust handshake every connection issues and the built-ins the transport contract enumerates |
 
-No other cross-field combination is authorized. The following five rows are the complete
+A dispatched invocation naming any other function matches no row and is an exact-issued
+request outside the authorized tables, with `targetClass: unclassifiable` and
+not-applicable method and origin. No other cross-field combination is authorized. The following five rows are the complete
 product-attributable prohibited request/MCP effect table. Every row uses
 `workflowClass: not-applicable` except for supervisor assignment to the first matching open-
 context observation, `outcomeClass: observed`, and automatic plus three review fields
@@ -2975,11 +3056,11 @@ browser-attempt binding or registered product probe.
 
 | Case | Exact classification and booleans |
 |---|---|
-| Exact-issued request outside the authorized tables | `observationClass: request`; observed product-attributable `participant \| bundled-spa \| inspector` actor; `authorityClass: exact-issued`; `requestClass: prohibited`; observed closed `targetClass`, `methodClass`, `capabilityClass`, and `originClass`; `effectClass: unauthorized-request`; `sameInspectorHost: true`; `productAttributable: true`; `prohibited: true` |
-| Other-loopback request | `observationClass: request`; observed product-attributable `participant \| bundled-spa \| inspector` actor; `authorityClass: other-loopback`; `requestClass: prohibited`; `targetClass: other-loopback`; observed closed non-N/A `methodClass`; `capabilityClass: not-applicable`; `originClass: not-applicable`; `effectClass: unauthorized-request`; `sameInspectorHost: true`; `productAttributable: true`; `prohibited: true` |
-| Remote request | `observationClass: request`; observed product-attributable `participant \| bundled-spa \| inspector` actor; `authorityClass: remote`; `requestClass: prohibited`; `targetClass: remote`; observed closed non-N/A `methodClass`; `capabilityClass: not-applicable`; `originClass: not-applicable`; `effectClass: prohibited-outbound-request`; `sameInspectorHost: false`; `productAttributable: true`; `prohibited: true` |
-| Fully unclassifiable product-correlated request | `observationClass: request`; `actorClass: unknown`; `authorityClass: unclassifiable`; `requestClass: unclassifiable`; `targetClass: unclassifiable`; `methodClass: unclassifiable`; `capabilityClass: unclassifiable`; `originClass: unclassifiable`; `effectClass: unauthorized-request`; `sameInspectorHost: false`; `productAttributable: true`; `prohibited: true` |
-| Product MCP observation | `observationClass: mcp`; `actorClass: inspector`; `authorityClass: not-applicable`; `requestClass: not-applicable`; `targetClass: mcp`; `methodClass: not-applicable`; `capabilityClass: not-applicable`; `originClass: not-applicable`; `effectClass: mcp-connection`; `sameInspectorHost: false`; `productAttributable: true`; `prohibited: true` |
+| Exact-issued request outside the authorized tables | `observationClass: request`; observed product-attributable `participant \| bundled-spa \| inspector` actor; `authorityClass: exact-issued`; `requestClass: prohibited`; observed closed `targetClass`, `methodClass`, and `originClass`; `effectClass: unauthorized-request`; `sameInspectorHost: true`; `productAttributable: true`; `prohibited: true` |
+| Other-loopback request | `observationClass: request`; observed product-attributable `participant \| bundled-spa \| inspector` actor; `authorityClass: other-loopback`; `requestClass: prohibited`; `targetClass: other-loopback`; observed closed non-N/A `methodClass`; `originClass: not-applicable`; `effectClass: unauthorized-request`; `sameInspectorHost: true`; `productAttributable: true`; `prohibited: true` |
+| Remote request | `observationClass: request`; observed product-attributable `participant \| bundled-spa \| inspector` actor; `authorityClass: remote`; `requestClass: prohibited`; `targetClass: remote`; observed closed non-N/A `methodClass`; `originClass: not-applicable`; `effectClass: prohibited-outbound-request`; `sameInspectorHost: false`; `productAttributable: true`; `prohibited: true` |
+| Fully unclassifiable product-correlated request | `observationClass: request`; `actorClass: unknown`; `authorityClass: unclassifiable`; `requestClass: unclassifiable`; `targetClass: unclassifiable`; `methodClass: unclassifiable`; `originClass: unclassifiable`; `effectClass: unauthorized-request`; `sameInspectorHost: false`; `productAttributable: true`; `prohibited: true` |
+| Product MCP observation | `observationClass: mcp`; `actorClass: inspector`; `authorityClass: not-applicable`; `requestClass: not-applicable`; `targetClass: mcp`; `methodClass: not-applicable`; `originClass: not-applicable`; `effectClass: mcp-connection`; `sameInspectorHost: false`; `productAttributable: true`; `prohibited: true` |
 
 On the browser-attempt path the exact initiator decision is authoritative. Extension,
 missing-secret other-host, and invalid-secret unknown are unrelated with N/A evidence IDs, effect
@@ -2990,7 +3071,7 @@ and its applicable product/prohibited tuple. All are nonworkflow/observed with a
 Observable mounted/mapped backing-store traffic is
 `observationClass: request`, `actorClass: operating-system`, `authorityClass: not-applicable`,
 `requestClass: os-mediated`, `targetClass: not-applicable`, `methodClass: not-applicable`,
-`capabilityClass: not-applicable`, `originClass: not-applicable`, `effectClass: none`,
+`originClass: not-applicable`, `effectClass: none`,
 `workflowClass: not-applicable`, `outcomeClass: observed`, `sameInspectorHost: true`,
 `productAttributable: false`, and `prohibited: false`, with both IDs `not-applicable`; it never
 converts an Inspector request into an authorized class. Every unlisted field value or cross-field
@@ -3045,7 +3126,7 @@ fresh context/secret/bootstrap is created after stream start but immediately bef
 
 Every terminal workflow payload has one exact cross-field tuple. `eventCode` is literal
 `observation`; `observationClass` is `workflow`; `actorClass` is `participant`; and
-`authorityClass`, `requestClass`, `targetClass`, `methodClass`, `capabilityClass`, and
+`authorityClass`, `requestClass`, `targetClass`, `methodClass`, and
 `originClass` are all `not-applicable`. `workflowClass` and `outcomeClass` equal the accepted
 `StudyWorkflowOutcomeSubmission`; `sameInspectorHost` and `productAttributable` are literal
 `true`; and `prohibited` is literal `false`. The automatic field and three review fields equal the
@@ -3368,9 +3449,10 @@ old file records in place.
 ## Cross-entity invariants
 
 1. Every generation-scoped DTO belongs to one session and its owning sequence's last
-   committed generation; IDs from replaced generations return the fixed `stale-resource`
-   rejection. A commit rekeys and invalidates only its own sequence's IDs and views. A
-   fatal attempt creates no public IDs and leaves the retained generation's IDs unchanged.
+   committed generation; a detail request resolves its path against that generation and a
+   path it does not hold returns the fixed `stale-resource` rejection. A commit
+   invalidates only its own sequence's views. A fatal attempt publishes nothing and
+   leaves the retained generation unchanged.
 2. Exactly one Repository Source exists from bootstrap and its boundary is the
    selected Repository root: the exact captured invocation `process.cwd()` by default or
    the single `--root` value resolved against it. It is not required to be a Git root, and

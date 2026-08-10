@@ -14,14 +14,21 @@
 // include the user's own secrets — so the host is never exposed beyond the
 // initiating machine and no configuration can bind another interface.
 // devframe owns static SPA serving from `cli.distDir`, port selection, and
-// best-effort browser opening; the product adds no router, asset manifest,
-// or per-asset re-verification (Constitution Principle I). An unexpected
+// best-effort browser opening; the product adds no asset manifest or
+// per-asset re-verification, and its one route of its own is the
+// `/skills/**` shell fallback in `createHostApp`, which devframe's static
+// handler cannot serve (Constitution Principle I). An unexpected
 // thrown/rejected RPC handler error is serialized as-is by devframe/birpc
 // and the client shows the real error (contracts/http-api.md § Common
 // results and errors); deterministic conflicts are returned as their fixed
 // closed rejection variants, which are declared functional outcomes, not
 // sanitization.
 import { fileURLToPath } from 'node:url';
+// The `/node` subpath, not bare `h3`: Nuxt's generated tsconfig aliases the
+// bare specifier to its own bundled h3 v1 for the app project's benefit, so
+// the bare import would typecheck against the wrong major. Both spellings
+// resolve to the same installed h3 2 module instance devframe itself loads.
+import { H3, defineHandler } from 'h3/node';
 import { createDevServer, type CreateDevServerOptions } from 'devframe/adapters/dev';
 // The package manifest is the single source of these values. The bundler
 // tree-shakes the JSON module down to the referenced fields, so the
@@ -200,25 +207,29 @@ export function createInspectorDevframe(context: InspectorHostContext): Devframe
         // snapshot never carries source text, so content is reachable only by
         // asking for one file at
         // a time.
-        handler: (fileId: string): InspectionDataResult<FileDetailDto> | DeterministicRejection => {
-          const detail = context.session.fileDetail(fileId);
+        //
+        // The parameter validates by resolution, with no shape guard in front
+        // of it (contracts/http-api.md § Host requirements 6): the value is
+        // only ever compared against committed paths, never used as a
+        // filesystem operand, so any value they do not hold — a value of
+        // another type included — resolves nowhere and takes the same
+        // `stale-resource` rejection below.
+        handler: (
+          sourceRelativePath: string,
+        ): InspectionDataResult<FileDetailDto> | DeterministicRejection => {
+          const detail = context.session.fileDetail(sourceRelativePath);
           if (detail === null) {
-            // Unknown, superseded, or removed — one rejection, because a
-            // commit rekeys every generation-owned ID and the three are
-            // indistinguishable afterwards (contracts/http-api.md
-            // § get-file-detail).
+            // The current committed generations hold no file at this path —
+            // never scanned, or removed by the commit that replaced the
+            // snapshot the link came from; the two are indistinguishable and
+            // answered alike (contracts/http-api.md § get-file-detail).
             return { error: { code: 'stale-resource' } };
           }
           // Bound in the same synchronous turn as the payload, so the client's
           // epoch and generation guards compare against the state the detail
-          // was actually read from.
-          const snapshot = context.session.snapshot();
-          return {
-            globalContentEpoch: snapshot.globalContentEpoch,
-            repositoryGeneration: snapshot.repositoryGeneration,
-            globalGeneration: snapshot.globalGeneration,
-            data: detail,
-          };
+          // was actually read from — through the O(1) envelope rather than a
+          // full snapshot projection built for three scalars.
+          return { ...context.session.dataEnvelope(), data: detail };
         },
       });
       ctx.rpc.register({
@@ -296,7 +307,7 @@ export interface StartInspectorHostOptions {
 export async function startInspectorHost(
   options: StartInspectorHostOptions,
 ): Promise<Awaited<ReturnType<typeof createDevServer>>> {
-  const serverOptions: CreateDevServerOptions = {};
+  const serverOptions: CreateDevServerOptions = { app: createHostApp() };
   if (options.openBrowser !== undefined) {
     serverOptions.openBrowser = options.openBrowser;
   }
@@ -304,4 +315,44 @@ export async function startInspectorHost(
     serverOptions.onReady = options.onReady;
   }
   return createDevServer(createInspectorDevframe(options.context), serverOptions);
+}
+
+/**
+ * The H3 app devframe mounts onto, carrying the one route family devframe's
+ * own SPA fallback cannot serve: a skill detail URL ends with the file's own
+ * last segment — `/skills/<tool>/<source-relative path>`, so `SKILL.md` —
+ * and devframe's static handler deliberately skips the `index.html` fallback
+ * for a miss that looks like a file (it has an extension). This middleware
+ * only rewrites such a request to the root and falls through, so devframe's
+ * later-mounted static handler serves the packaged shell itself and every
+ * `/skills/` GET boots the same shell as the other client routes
+ * (contracts/http-api.md § Required contract tests, item 5) —
+ * without this module touching the filesystem, which QR-003 reserves to the
+ * inspection module. No packaged asset lives under `/skills/`, so nothing
+ * real is shadowed, and other methods fall through unrewritten, keeping
+ * devframe's own 405 semantics.
+ *
+ * Percent-encoding the path into the URL is not an alternative: devframe's
+ * resolver runs `decodeURIComponent` before its extension test (verified
+ * against devframe 0.7.5), so an encoded `/` or `.` is already decoded when
+ * judged and the request still misses the fallback. Only double-encoding
+ * slips through, which would make the URL unreadable and bind the client to
+ * devframe decoding exactly once. This rewrite — and the direct `h3`
+ * dependency it needs — leaves when devframe itself can be told to serve
+ * extension-ful client-route misses, e.g. by passing `ServeStaticOptions`
+ * through `createDevServer`.
+ */
+function createHostApp(): H3 {
+  const app = new H3();
+  app.use(
+    '/skills/**',
+    defineHandler((event) => {
+      const method = event.req.method;
+      if (method === 'GET' || method === 'HEAD') {
+        event.url.pathname = '/';
+      }
+      return undefined;
+    }),
+  );
+  return app;
 }

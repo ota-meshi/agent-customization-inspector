@@ -85,7 +85,7 @@ the new root path and a most-specific same-name rule, while the current guide st
 strategy therefore retain `conflict`; the root provenance is path/surface-only, contributes
 no VS Code-owned extractor fields, and preserves unknown schema and total order. Because
 the CLI descendant rule already admits the physical root file, both compatible provenances
-merge into the one `(fileId, copilot, MCP)` recognition and one read of that file.
+merge into the one `(file, copilot, MCP)` recognition and one read of that file.
 
 Every user-visible inventory/API filesystem locator that identifies an inventoried
 customization file or a safely normalized target within its owning Source is a
@@ -129,10 +129,13 @@ outside the contract.
 **Primary Dependencies**: Nuxt 4.4.8, Vue Router 5.2.0, tsdown 0.22.8, Vite 7.3.6
 (latest Nuxt-compatible release), `devframe` 0.7.5 (the pre-1.0 local-tool
 host framework), `gunshi` 0.37.0, `yaml` 2.9.0,
-`jsonc-parser` 3.3.1, `smol-toml` 1.7.0, and `monaco-editor` 0.55.1. Each is declared as a
-caret range in `package.json`; the committed lockfile pins these exact resolved versions
-with integrity. devframe's transitive
-tree (h3 2.0.1-rc.22, birpc, crossws, valibot, destr, mrmime, nostics, pathe, ufo) is
+`jsonc-parser` 3.3.1, `smol-toml` 1.7.0, `h3` 2.0.1-rc.22, and `monaco-editor` 0.55.1.
+Each is declared as a caret range in `package.json`,
+and the committed lockfile pins these exact resolved versions with integrity; `h3`'s
+resolution coincides with devframe's own h3, so the host's `/skills/**` shell fallback
+and devframe resolve one H3 module instance (research.md § 3). The rest of
+devframe's transitive
+tree (birpc, crossws, valibot, destr, mrmime, nostics, pathe, ufo) is
 owned by devframe and the lockfile rather than declared as direct dependencies. The first lockfile
 MUST revalidate these exact stable resolved versions; prereleases and incompatible newer majors
 are not considered eligible “latest” versions, and the devframe choice plus its
@@ -566,7 +569,7 @@ is `armed | consumed | destroyed`, and sends it to the browser adapter. The orde
 | Marker and projection | Actor and binding | Decision |
 |---|---|---|
 | Valid secret; navigate/document/`?1`; missing Origin; site none or same-origin; exact authorized-static target; current armed grant | `participant`; open binding | Reserve without state change, store pending while canonical grant stays armed, then let sole exact one-use `browser-broker-decision: candidate-forward` accept and atomically consume the canonical grant; validate it before adapter-copy consume/forward. |
-| Valid secret; not participant; missing user; exact-issued Origin or missing Origin plus exact-issued Referer | `bundled-spa`; open binding | Forward only exact authorized static or API; every other request is product-attributable/prohibited and blocked. |
+| Valid secret; not participant; missing user; exact-issued Origin or missing Origin plus exact-issued Referer | `bundled-spa`; open binding | Forward only exact authorized static or RPC; every other request is product-attributable/prohibited and blocked. |
 | Valid secret; extension Origin | `browser-extension`; N/A IDs | Always unrelated and blocked. |
 | Remaining valid-secret projection | `unknown`; open binding | Fail closed as product-attributable/prohibited and block. |
 | Missing secret after bootstrap | `other-host-process`; N/A IDs | Unrelated and blocked. |
@@ -1327,7 +1330,7 @@ src/
 │   │   ├── index.vue
 │   │   ├── compare.vue
 │   │   ├── global-consent.vue
-│   │   └── skills/[fileId].vue
+│   │   └── skills/[tool]/[...path].vue
 │   └── styles/
 ├── server/
 │   ├── cli.ts
@@ -1457,7 +1460,7 @@ and CLI are released and versioned together. Nuxt is configured as an SPA (`ssr:
 with the static Nitro preset, `app.baseURL: '/'`, `app.buildAssetsDir: '/_nuxt/'`, no CDN
 URL, explicit imports, and component auto-discovery disabled. Every nested client route
 therefore resolves the same root-absolute, same-origin asset URLs. A detail route belongs
-to the recognized kind whose surface it is, which is why `/skills/<fileId>` names `skills`
+to the recognized kind whose surface it is, which is why `/skills/<tool>/<source-relative path>` names `skills`
 rather than the file: what a detail shows is a skill's declarations, its instructions, and
 its directory, and another kind's detail answers different questions with a different
 layout. Every shipped inspection rule recognizes `skill`, so that is the one detail route;
@@ -1624,7 +1627,7 @@ proves the Nuxt assets, CLI, and inspection layer resolve from their built locat
 not prove the packed tarball: installing one into an isolated fixture and launching it
 through `npx --no-install` is T917, which the release gate owns.
 
-The package gate asserts the approved direct production dependency set — exactly those seven
+The package gate asserts the approved direct production dependency set — exactly those eight
 names and no others — from `package.json` and the `pnpm-lock.yaml` closure, so any new
 production dependency fails until the research.md § 3 decision is explicitly revisited. The
 committed lockfile owns each resolved version and its integrity hash, which is what keeps
@@ -1721,7 +1724,7 @@ configuration.
   are rejected before the file is opened. FR-015 through
   FR-018 continue to limit Global reads to the three instruction sets even when the vendor
   behavior registry records other supported User customizations.
-- Tool recognizers attach exactly one `ToolRecognition` per `(fileId, tool, kind)` and sort
+- Tool recognizers attach exactly one `ToolRecognition` per `(file, tool, kind)` and sort
   them by the closed tool/kind order. Compatible admissions merge provenances; incompatible
   parsed meanings fail only that recognition's all-or-nothing extraction. A recognition retains every accepted independent
   candidate provenance for the one underlying file. A parser or extractor failure is
@@ -1919,8 +1922,8 @@ configuration.
   comparison state, aborts requests, and increments `clientDataEpoch` so a late
   response cannot restore content. Every SessionSnapshot/FileDetail request captures that
   epoch, the owning sequence's current generation — the session snapshot exposes
-  `repositoryGeneration` and a nullable `globalGeneration` — plus a file ID where
-  applicable and an exact request token. An older
+  `repositoryGeneration` and a nullable `globalGeneration` — plus the file's
+  Source-relative Path where applicable and an exact request token. An older
   generation of the owning sequence is ignored. Every admitted automatic or explicit scan has an opaque
   `scanRequestId`; its Source progress and any generation it commits carry the same ID. The
   client stores the current explicit request ID and never treats an older status or inventory
@@ -2061,13 +2064,14 @@ configuration.
   Global generation — creating the sequence at generation 1 when no Global generation
   exists, or advancing it from its last committed snapshot — publishes every assembled
   Global Source atomically, clears
-  only the participating controls' applicable failure state, rekeys only Global
-  generation-owned graphs and IDs, and invalidates old Global file IDs, detail DTOs,
+  only the participating controls' applicable failure state, and invalidates old Global
+  detail DTOs,
   comparison selection, and editor state
-  once. Repository state is not part of the commit: the Repository sequence, its
-  generation, its IDs, and its views are untouched. An all-rejected enable/retry commits
+  once — file identities are Source-relative Paths and stay stable across the commit.
+  Repository state is not part of the commit: the Repository sequence, its
+  generation, and its views are untouched. An all-rejected enable/retry commits
   no generation and changes no committed
-  ID. The same coordinator lock linearizes the sequence generations and payload of every
+  state. The same coordinator lock linearizes the sequence generations and payload of every
   SessionSnapshot/FileDetail envelope; later network delivery cannot mix or relabel them.
   A later explicit rescan remains a single job for one existing Source and may commit one
   replacement generation of the owning sequence under the same complete/partial rules. Its success
@@ -2090,10 +2094,10 @@ configuration.
   closes/removes all retained root contexts, and deletes every control, consent record, and
   frozen preview.
   Each retained Diagnostic uses exactly one attachment scope, independently of its generation
-  or session-lifecycle lifetime. File scope requires a matching `sourceId`, `fileId`, and
+  or session-lifecycle lifetime. File scope requires a matching `sourceId` and
   Source-relative Path; source scope requires only `sourceId`. There is no pathless scope:
-  invalid combinations are rejected, and a source-scoped record never fabricates a file ID
-  or path. An unadmitted Global tool's failure is its control's `failureCode`, not a
+  invalid combinations are rejected, and a source-scoped record never fabricates a
+  path. An unadmitted Global tool's failure is its control's `failureCode`, not a
   Diagnostic.
   Generation 0 is a committed zero-I/O bootstrap snapshot with exactly one idle Repository
   Source selected lexically from the captured invocation working directory and optional

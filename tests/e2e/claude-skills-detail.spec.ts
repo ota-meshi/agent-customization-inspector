@@ -109,10 +109,20 @@ test.afterEach(async () => {
   await rm(fixture, { recursive: true, force: true });
 });
 
-/** Opens the named skill's detail route from the inventory. */
+/**
+ * Opens the named skill's detail route from the inventory. A shared file has
+ * one link per definition, each addressing its own `/skills/<tool>/<source-relative path>`
+ * route; this suite is about the Claude recognition, so the Claude
+ * definition's link is followed when the file has one.
+ */
 async function openSkill(page: import('@playwright/test').Page, path: string): Promise<void> {
   await page.goto(host.origin);
-  await page.getByRole('link', { name: path }).click();
+  const links = page.getByRole('link', { name: path });
+  const claudeLink = links.and(page.locator('[href^="/skills/claude/"]'));
+  // The rows render together once the snapshot arrives, so waiting for any
+  // link is waiting for all of them; counting before that saw an empty list.
+  await links.first().waitFor();
+  await ((await claudeLink.count()) > 0 ? claudeLink : links.first()).click();
 }
 
 /**
@@ -146,8 +156,14 @@ test('shows the literal credential and environment reference with no mask or rev
 
 test('leads with the name and description, then the rest of the declarations', async ({ page }) => {
   await openSkill(page, '.claude/skills/greet/SKILL.md');
-  // The two a reader needs first: which skill this is, and what it is for.
+  // The heading is the row's own name — the same one the inventory lists —
+  // and the documented invocation name sits beside it: this page is the
+  // Claude definition's own route, so the value is Claude's directory-derived
+  // command rather than the authored label (FR-007, T1081).
   await expect(page.locator('.aci-skill-detail h2')).toHaveText('claude-greet');
+  await expect(page.locator('.aci-skill-detail__invocation-name')).toHaveText(
+    'Invocation name: greet',
+  );
   // Every key the file declares, by the key the file wrote, led by the two a
   // reader looks for first however the file ordered them.
   const declarations = page.locator('.aci-skill-detail__declarations > .aci-frontmatter-block');
@@ -247,8 +263,16 @@ test('opens a nested skill as itself, not as the skill whose census lists it', a
   await openSkill(page, '.claude/skills/outer/sub/.claude/skills/inner/SKILL.md');
   // The inner file is the outer skill's companion as well as its own entry
   // point. Resolving the owner by whichever test matches first would open the
-  // outer skill, and the reader would have no way to reach the inner one.
-  await expect(page.locator('.aci-skill-detail h2')).toHaveText('zzz-inner');
+  // outer skill, and the reader would have no way to reach the inner one. The
+  // heading is the row's own name — the prefixed authored label — while the
+  // invocation list carries Claude's documented command, the prefixed
+  // directory (FR-007, T1081).
+  await expect(page.locator('.aci-skill-detail h2')).toHaveText(
+    '.claude/skills/outer/sub:zzz-inner',
+  );
+  await expect(page.locator('.aci-skill-detail__invocation-name')).toHaveText(
+    'Invocation name: .claude/skills/outer/sub:inner',
+  );
   await expect(page.locator('.aci-skill-detail__overview .aci-path')).toHaveText(
     '.claude/skills/outer/sub/.claude/skills/inner/',
   );
@@ -260,7 +284,9 @@ test('keeps a nested skill selected when one of its own companions is opened', a
   // Two censuses list this file. Answering with whichever the inventory sorted
   // first would swap the page to the outer skill from the inner skill's own
   // tree, leaving the reader no way back to the file they clicked.
-  await expect(page.locator('.aci-skill-detail h2')).toHaveText('zzz-inner');
+  await expect(page.locator('.aci-skill-detail h2')).toHaveText(
+    '.claude/skills/outer/sub:zzz-inner',
+  );
   await expect(page.locator('.aci-skill-detail__overview .aci-path')).toHaveText(
     '.claude/skills/outer/sub/.claude/skills/inner/',
   );
@@ -276,13 +302,18 @@ test('shows the instructions apart from the declarations', async ({ page }) => {
   expect(await body.innerText()).not.toContain('name: claude-greet');
 });
 
-test('shows what was recognized and nothing about a runtime it cannot see', async ({ page }) => {
+test('shows the addressed definition and nothing about a runtime it cannot see', async ({
+  page,
+}) => {
   await openSkill(page, '.claude/skills/greet/SKILL.md');
-  // The recognition says what the file is. It says nothing about whether
-  // Claude Code would load it, because that depends on a runtime this tool
-  // never observes — and a sentence about it would take the room the files
-  // below need.
-  await expect(page.locator('.aci-recognition-summary')).toContainText('Claude Code');
+  // One definition line — the route's own tool, captioned in words — because
+  // the URL addresses one definition; which other products recognize the file
+  // is the inventory's matrix. It says nothing about whether a product would
+  // load it, because that depends on a runtime this tool never observes — and
+  // a sentence about it would take the room the files below need.
+  const definition = page.locator('.aci-skill-detail__definition');
+  await expect(definition).toHaveCount(1);
+  await expect(definition).toHaveText('Claude Code · Skill');
   const detail = (await page.locator('.aci-skill-detail').textContent()) ?? '';
   for (const claim of ['Depends on runtime conditions', 'Selected by a documented rule']) {
     expect(detail).not.toContain(claim);
@@ -296,9 +327,14 @@ test('keeps a malformed Claude skill readable while its declared name is missing
   await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toContainText(
     '# Broken',
   );
-  await expect(page.locator('.aci-recognition-summary')).toContainText(
-    'One recognition could not be parsed',
-  );
+  // One extraction, one failure record (FR-028): however many products
+  // recognize the file, the parse ran once, so the message renders once —
+  // with the open file, where the reader is looking.
+  await expect(
+    page.locator('.aci-skill-detail__main li', {
+      hasText: 'This file could not be parsed',
+    }),
+  ).toHaveCount(1);
 });
 
 test('drops the content when the route leaves the file', async ({ page }) => {
@@ -309,10 +345,10 @@ test('drops the content when the route leaves the file', async ({ page }) => {
   expect(await page.locator('main').innerText()).not.toContain(FIXTURE_SECRET);
 });
 
-test('replaces a link a rescan invalidated with a recoverable state', async ({ page }) => {
+test('keeps a link resolving across a rescan through its path identity', async ({ page }) => {
   await openSkillFiles(page, '.claude/skills/greet/SKILL.md');
   await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toBeVisible();
-  const staleUrl = page.url();
+  const bookmarkedUrl = page.url();
 
   await page.getByRole('link', { name: 'Back to the inventory' }).click();
   await page.getByRole('button', { name: 'Rescan repository' }).click();
@@ -324,11 +360,60 @@ test('replaces a link a rescan invalidated with a recoverable state', async ({ p
     });
   }).toPass();
 
-  // Every file gets a new identity when a scan commits, so the earlier URL
-  // names nothing — and says so instead of failing or showing stale content.
-  await page.goto(staleUrl);
+  // The URL names the definition's stable identity — the tool and the path —
+  // and the path is the file's identity on the wire (FR-030): the same URL
+  // resolves against the new generation and the skill opens again.
+  await page.goto(bookmarkedUrl);
+  await expect(page.locator('.aci-skill-detail h2')).toHaveText('claude-greet');
+});
+
+test('rescues focus to the heading when a newer commit replaces the open detail', async ({
+  page,
+  context,
+}) => {
+  await openSkillFiles(page, '.claude/skills/greet/SKILL.md');
+  await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toBeVisible();
+
+  // A second tab of the same session commits a newer generation. Nothing
+  // polls, so this tab keeps its adopted snapshot and its next detail request
+  // meets the newer commit and is withheld (`newer-generation`).
+  const other = await context.newPage();
+  await other.goto(host.origin);
+  await other.getByRole('button', { name: 'Rescan repository' }).click();
+  await expect(async () => {
+    await other.getByRole('button', { name: 'Refresh status' }).click();
+    await expect(other.locator('.aci-scan-progress')).toContainText('Committed generation', {
+      timeout: 1_000,
+    });
+  }).toPass();
+  await other.close();
+
+  // Select a companion with keyboard focus in the file tree. Adopting the
+  // newer snapshot drops the whole detail — the tree included — so without a
+  // rescue focus would fall to the document body; it must land on the heading
+  // instead (WCAG 2.4.3), and the same path then reopens under the new
+  // generation.
+  const companion = page.getByRole('link', { name: 'reference.md' });
+  await companion.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.aci-skill-detail h2')).toBeFocused();
+  await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toContainText(
+    'reference notes',
+  );
+});
+
+test('reports a link whose path the current scan does not hold', async ({ page }) => {
+  await openSkill(page, '.claude/skills/greet/SKILL.md');
+  // The click routes client-side; the URL is captured only once the detail
+  // route owns the page, or a slow navigation would bookmark the inventory.
+  await page.waitForURL(/\/skills\//u);
+  const bookmarkedUrl = page.url();
+  // The same URL with the tool segment swapped names a definition this
+  // generation does not hold — Codex never recognizes a `.claude` skill — and
+  // the page says so instead of guessing at a nearby one.
+  await page.goto(bookmarkedUrl.replace('/skills/claude/', '/skills/codex/'));
   await expect(page.locator('.aci-skill-detail')).toContainText(
-    'does not name a file in the current scan',
+    'Nothing in the current scan sits at this link',
   );
   expect(await page.locator('main').innerText()).not.toContain(FIXTURE_SECRET);
 });
@@ -336,6 +421,6 @@ test('replaces a link a rescan invalidated with a recoverable state', async ({ p
 test('leaves the Codex detail beside it unchanged', async ({ page }) => {
   await openSkillFiles(page, '.agents/skills/codex-greet/SKILL.md');
   await expect(page.locator('.aci-skill-detail h2')).toHaveText('codex-greet');
-  await expect(page.locator('.aci-recognition-summary')).toContainText('OpenAI Codex');
+  await expect(page.locator('.aci-skill-detail__definition')).toHaveCount(1);
   await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toContainText('# Codex');
 });

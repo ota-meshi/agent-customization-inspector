@@ -1,6 +1,7 @@
-// T054/T127: Codex and Claude recognition from the admitting rule alone —
-// tool, the `skill` kind, path provenance, and the absence of any recognition
-// the shipped registry does not authorize (FR-004, FR-005).
+// T054/T127/T155: Codex, Claude, and Copilot recognition from the admitting
+// rule alone — tool, the `skill` kind, path provenance, the exact multi-tool
+// recognition matrix, and the absence of any recognition the shipped registry
+// does not authorize (FR-004, FR-005).
 //
 // The one value a recognition lifts out of the bytes is the declared name, and
 // the "no source exposure" assertions below are what keep it there: every other
@@ -13,14 +14,16 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { recognizeCandidateForVendor } from '../../../src/server/inspection/recognizers/candidate';
+import { recognizeCandidateForVendors } from '../../../src/server/inspection/recognizers/candidate';
 import { CLAUDE_REPOSITORY_RULES } from '../../../src/server/inspection/rules/claude';
 import { CODEX_REPOSITORY_RULES } from '../../../src/server/inspection/rules/codex';
+import { COPILOT_REPOSITORY_RULES } from '../../../src/server/inspection/rules/copilot';
 import type { CompiledInspectionRule } from '../../../src/server/inspection/rules/registry';
 import type { SupportedTool } from '../../../src/shared/entities';
 
 const codexSkillRule = CODEX_REPOSITORY_RULES[0]!;
 const claudeSkillRule = CLAUDE_REPOSITORY_RULES[0]!;
+const copilotSkillRule = COPILOT_REPOSITORY_RULES[0]!;
 
 /**
  * A skill directory these cases can enumerate. The recognizer runs the census
@@ -57,9 +60,8 @@ async function recognizeWith(
   // These cases are about the recognitions; the census the recognizer also
   // returns has its own suite (`companion-census.test.ts`) and its own
   // publication path (`repository-scan.test.ts`).
-  const { recognitions, companions } = await recognizeCandidateForVendor(
+  const { recognitions, companions } = await recognizeCandidateForVendors(
     {
-      fileId: 'file-1',
       matchedPath,
       absolutePath: join(root, matchedPath),
       sourceRoot: root,
@@ -69,7 +71,7 @@ async function recognizeWith(
         origin: { planIndex: index, selectorIndex: 0 },
       })),
     },
-    tool,
+    [tool],
   );
   return { recognitions, companions };
 }
@@ -97,7 +99,7 @@ describe('Codex skill recognition', () => {
     const recognitions = await recognize('.agents/skills/greet/SKILL.md');
     expect(recognitions).toHaveLength(1);
     expect(recognitions[0]).toMatchObject({
-      fileId: 'file-1',
+      sourceRelativePath: '.agents/skills/greet/SKILL.md',
       tool: 'codex',
       details: { kind: 'skill' },
       // An empty file parses: the extractor runs and finds no frontmatter, so
@@ -107,7 +109,6 @@ describe('Codex skill recognition', () => {
       parseStatus: 'parsed',
       diagnosticIds: [],
     });
-    expect(recognitions[0]!.recognitionId).toMatch(/^[A-Za-z0-9_-]{22}$/u);
   });
 
   it('derives its provenance from the admitted path and the admitting rule', async () => {
@@ -234,7 +235,7 @@ describe('Claude skill recognition (T127)', () => {
     );
     expect(recognitions).toHaveLength(1);
     expect(recognitions[0]).toMatchObject({
-      fileId: 'file-1',
+      sourceRelativePath: '.claude/skills/greet/SKILL.md',
       tool: 'claude',
       // The name is the value the grouped inventory row is keyed by (FR-007),
       // extracted from the file and never from the directory segment.
@@ -302,6 +303,82 @@ describe('Claude skill recognition (T127)', () => {
     expect(await censusOf('claude', '.claude/skills/stocked/SKILL.md', [claudeSkillRule])).toEqual([
       '.claude/skills/stocked/reference.md',
       '.claude/skills/stocked/scripts/run.sh',
+    ]);
+  });
+});
+
+describe('the Copilot recognition matrix (T155)', () => {
+  /** Recognizes one candidate for all three products at once, as the scan does. */
+  async function recognizeMatrix(
+    matchedPath: string,
+    admitting: readonly CompiledInspectionRule[],
+  ) {
+    mkdirSync(dirname(join(root, matchedPath)), { recursive: true });
+    return recognizeCandidateForVendors(
+      {
+        matchedPath,
+        absolutePath: join(root, matchedPath),
+        sourceRoot: root,
+        sourceText: '',
+        admissions: admitting.map((compiled, index) => ({
+          compiled,
+          origin: { planIndex: index, selectorIndex: 0 },
+        })),
+      },
+      ['copilot', 'claude', 'codex'],
+    );
+  }
+
+  it('recognizes a .github admission as Copilot alone', async () => {
+    const { recognitions } = await recognizeMatrix('.github/skills/ship/SKILL.md', [
+      copilotSkillRule,
+    ]);
+    expect(recognitions.map((one) => one.tool)).toEqual(['copilot']);
+    expect(recognitions[0]).toMatchObject({
+      details: { kind: 'skill' },
+      provenances: [{ ruleId: 'copilot.repo.skill', matchedPath: '.github/skills/ship/SKILL.md' }],
+    });
+  });
+
+  it('recognizes one shared .agents candidate for Copilot and Codex, and no one else', async () => {
+    // Zero extra recognitions is the matrix's negative half: a Claude
+    // recognition here would be an admission Claude's rule never made
+    // (FR-004), and the two real ones stay separate records with their own
+    // rules' provenance rather than one merged claim.
+    const { recognitions } = await recognizeMatrix('.agents/skills/greet/SKILL.md', [
+      copilotSkillRule,
+      codexSkillRule,
+    ]);
+    expect(recognitions.map((one) => one.tool)).toEqual(['copilot', 'codex']);
+    expect(recognitions.map((one) => one.provenances.map((p) => p.ruleId))).toEqual([
+      ['copilot.repo.skill'],
+      ['codex.repo.skill'],
+    ]);
+  });
+
+  it('recognizes one shared .claude candidate for Copilot and Claude, and no one else', async () => {
+    const { recognitions } = await recognizeMatrix('.claude/skills/greet/SKILL.md', [
+      copilotSkillRule,
+      claudeSkillRule,
+    ]);
+    expect(recognitions.map((one) => one.tool)).toEqual(['copilot', 'claude']);
+    expect(recognitions.map((one) => one.provenances.map((p) => p.ruleId))).toEqual([
+      ['copilot.repo.skill'],
+      ['claude.repo.skill'],
+    ]);
+  });
+
+  it('lists a shared candidate’s companions once, however many products recognize it', async () => {
+    // The census belongs to the candidate's directory: two recognizing
+    // products do not give a skill two sets of accompanying files, so the
+    // companion list carries each path exactly once.
+    const { companions } = await recognizeMatrix('.agents/skills/greet/SKILL.md', [
+      copilotSkillRule,
+      codexSkillRule,
+    ]);
+    expect(companions.map((companion) => companion.sourceRelativePath)).toEqual([
+      '.agents/skills/greet/reference.md',
+      '.agents/skills/greet/scripts/run.sh',
     ]);
   });
 });

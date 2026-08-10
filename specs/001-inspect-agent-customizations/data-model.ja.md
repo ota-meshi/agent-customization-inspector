@@ -38,7 +38,9 @@ InspectionSession
 ├── ScanAttempt（queuedを0以上、runningを最大1つ。commit前は非公開）
 ├── RepositoryScanGeneration（最後にcommit済みのものを正確に1つ。Repository sequenceはbootstrapから存在）
 │   └── CustomizationFile
-│       ├── ToolRecognition（0以上; 空になるのはcensusで列挙されたcompanionに限る）
+│       ├── ToolRecognition（0以上; 空になるのはrecognitionが所有しないfile —
+│       │   censusだけが列挙したfile、またはreadがdiagnostic-onlyにしたadmit済み
+│       │   candidate — に限る）
 │       ├── Relationship（0以上）
 │       └── Diagnostic（0以上）
 ├── GlobalScanGeneration（最後にcommit済みのものを0または1つ。Global sequenceはenableとdisableの
@@ -493,7 +495,7 @@ authorityを追加することを防ぐ。Barrierがenableのatomic disposition�
 
 Cleanup後、coordinator lock下でfinal public stateをpublic control/Source removalなしにprepareする。
 どちらのcommit kindもnew generationをprepareしない。`remove-active-state`はGlobal sequence全体のdiscardをprepareし、
-Repository sequenceとそのgeneration/IDには触れずdisableでrekeyしない。`cleanup-only`はcommitted stateを一切変えない。
+Repository sequenceとそのgeneration/fileには触れない。`cleanup-only`はcommitted stateを一切変えない。
 続いてoperation ID、epoch、
 barrier state、`baseGenerations`を再検証する。その後だけ1 atomic terminal commitがfrozen preview、残るoperation-local stateをremoveして
 retainedなfailed requestのerrorをclearする。`remove-active-state`では同じcommitがcommit済みGlobal generationをdiscardし、全Global
@@ -580,7 +582,7 @@ packaged CLIがまとめて落とすからである。どのDTO fieldもこれ�
 | `behaviorId` | stable dotted string | Uniqueで、厳密に1つのbilingual vendor contractだけで定義 |
 | `tool` | tool enum | 所有product |
 | `surfaces` | non-empty surface enum[] | VS Code、CLI、cloud、shared local Codex clientなど。暗黙の“all”なし |
-| `locator` | `VendorLocator`またはnull | Vendorがどこを見てどう辿るかを1 fieldにまとめる。`vendorScope`（repository/workspace、User、hosted/managed、plugin、runtime-only）、`lookupBase`（workspace root、Git/repository root、runtime `cwd`、target-path chain、tool home、profile data、active config layer、registered catalog、hosted state）、`relativeSelector`（path textだけ。Inspector glob semanticsを含まずauthorityを与えない）、`traversal`（exact、ancestor-chain-to-repository-root、ancestor-chain-to-filesystem-root、standard-location chain、recursive-under-base、lazy descendant、explicit registration、none）。Packaged CLIではnull |
+| `locator` | `VendorLocator`またはnull | Vendorがどこを見てどう辿るかを1 fieldにまとめる。`vendorScope`（repository/workspace、User、hosted/managed、plugin、runtime-only）、`lookupBase`（workspace root、Git/repository root、runtime `cwd`、target-path chain、tool home、profile data、active config layer、registered catalog、hosted state、undocumented — sourceがbaseをanchorしないまま相対locationを文書化している場合で、具体的なmemberを選ぶと推測を記録することになるとき）、`relativeSelector`（path textだけ。Inspector glob semanticsを含まずauthorityを与えない）、`traversal`（exact、ancestor-chain-to-repository-root、ancestor-chain-to-filesystem-root、standard-location chain、recursive-under-base、lazy descendant、explicit registration、none）。Packaged CLIではnull |
 | `documentationStatus` | `DocumentationStatus` | `conflict`は競合する全source assertionを保持 |
 | `lifecycleQualifiers` | `LifecycleQualifier[]` | Unique fixed order。Emptyはstability claimをしない |
 | `evidence` | non-emptyな`EvidenceCitation[]` | このrecordを確立するreview済みdocumentation（§ EvidenceCitation）。Packaged CLIでは空 |
@@ -604,7 +606,8 @@ authorityへ変えずに記録する。
 | `lifecycleQualifiers` | `LifecycleQualifier[]` | Unique fixed order。Documentation completenessと分離 |
 | `evidence` | non-emptyな`EvidenceCitation[]` | このrecordを確立するreview済みdocumentation（§ EvidenceCitation）。Packaged CLIでは空 |
 
-Strategyはimmutable contract dataである。Applicability assessmentを説明・projectできるが、directoryのenumerate、
+Strategyはimmutable contract dataである。文書化されたcompositionと、そこから導出される同名解決を
+説明するものであり、directoryのenumerate、
 relationship targetのopen、InspectorのRepository/Global sourceのmergeはできない。
 
 ### StructuredInspectorMatcher
@@ -678,7 +681,7 @@ Registry間の参照は、接続するrecordのfieldではなく独立したimmu
 
 | Subject | Field | Type | Rules |
 |---|---|---|---|
-| strategy | `consumesBehaviors` | non-emptyな順序付きbehavior record[] | そのstrategyが合成する文書化済みinputすべて。User scopeも含む — behaviorはread authorityを与えないため、behaviorを名指すことはInspectorが何を開いてよいかではなくvendorが何を文書化しているかを述べる。除外されるのはstrategyがそもそも合成しないものであり、excluded surfaceとhosted inputはexplicit conditionのまま |
+| strategy | `consumesBehaviors` | non-emptyな順序付きbehavior record[] | そのstrategyが合成する文書化済みinputすべて。User scopeもhosted scopeも含む — behaviorはread authorityを与えないため、behaviorを名指すことはInspectorが何を開いてよいかではなくvendorが何を文書化しているかを述べ、維持管理behavior statementがrecordしたhosted inputは所在を持つscopeと同様に合成される（CopilotのCloud selectionにおけるremote-skill relay）。除外されるのはstrategyがそもそも合成しないもの — excluded surface、またはどのbehavior statementもrecordしないhosted input — であり、それらはexplicit conditionのまま |
 | rule | `basedOnBehaviors` | 順序付きbehavior record[] | Policyが根拠とする文書化されたvendor behavior。その再記述ではない |
 | rule | `explainedByStrategies` | 順序付きstrategy record[] | Order/applicabilityに使うcomposition fact。Path admissionには使わない |
 
@@ -732,8 +735,8 @@ versionを検証する。Repository提供pluginでruleを追加する機構は�
 
 RepositoryとGlobalのinspectionはlifecycleが独立しているため、それぞれが自分のatomic generation sequenceを持つ
 （spec Clarifications § Session 2026-07-22、FR-030）。Repository sequenceはbootstrap generation 0から存在し、
-Global sequenceはそれを作るenable commitからdisableがdiscardするまでだけ存在する。Commitは自sequenceのIDと
-viewだけをrekey/invalidateし、他sequenceのstateを決して変更しない。Cross-source comparisonは影響を受けず、
+Global sequenceはそれを作るenable commitからdisableがdiscardするまでだけ存在する。Commitは自sequenceの
+viewだけをinvalidateし、他sequenceのstateを決して変更しない。Cross-source comparisonは影響を受けず、
 常に各sourceの最後にcommit済みのstateを比較する。両generation entityは次のfieldを共有する。
 
 | Field | Type | Rule |
@@ -824,11 +827,12 @@ retained disable failureが何もない場合、
 Scan transactionは自sequenceのその時点のgeneration Nから開始するか、存在しなければGlobal sequenceを作成し、
 replacement snapshotを別に構築する。Repository/per-Source Global rescanでは1つのscanned Source、enable/retry batchでは
 Global admitted subset全体である。Completeまたはpartial resultだけが所属sequenceで正確にN+1としてatomic commitされる
-（sequenceを作るGlobal commitは正確に1）。その時点でそのsequenceの全Sourceがnew generationを報告し、unchanged Sourceを
-含むそのsequenceの全file/recognition/admission/relationship IDを再生成する。新snapshotは正常scanした各Sourceの
+（sequenceを作るGlobal commitは正確に1）。その時点でそのsequenceの全Sourceがnew generationを報告する — fileのidentityはSource-relative Pathであり
+commitを跨いで安定し、per-attemptのrecord identity（recognitionとdiagnosticのID）は新しいattempt自身のものである。
+新snapshotは正常scanした各Sourceの
 `StaleSourceFailure`と参照先failureだけをclearし、無関係な全Sourceのentryとfailureをcarryし、そのsequenceの
-generation-scoped comparison/editor stateをclearする。Commitは他sequenceのgeneration、ID、client stateを決して
-変更・rekey・invalidateしない。`remove-active-state` Global disableはscan transactionではない。そのterminal commitは
+generation-scoped comparison/editor stateをclearする。Commitは他sequenceのgenerationやclient stateを決して
+変更・invalidateしない。`remove-active-state` Global disableはscan transactionではない。そのterminal commitは
 Global sequence全体 — commit済みgeneration、全tool固有Global graph、各stale-failure entry/diagnostic pair — を
 filesystem I/Oなしにdiscardし、どちらのsequenceにもgenerationをcommitしない。無関係なRepository pairは残る。
 `cleanup-only` disableはoperation-local/frozen control stateだけをremoveし、committed stateを変えずheld Repository
@@ -845,7 +849,7 @@ controlの`failureCode`を設定/置換して既存entryとそこから派生す
 Repository failure recordを使い、どちらもnew inventoryをcommitしなかったことを報告する。Global-disable barrierに
 よるexpected cancellationはfailure diagnosticをemitしない。それ以外の決定的にreturnされたsafe failureはout-of-generation
 session-lifecycle Diagnosticとする。そのattachment scopeは後述の`Diagnostic` ruleに従い、file scopeでは
-`sourceId`、`fileId`、Source-relative Pathを一緒に持ち、source scopeではfile IDやpathを捏造しない。
+`sourceId`とSource-relative Pathを一緒に持ち、source scopeではpathを捏造しない。
 Customization source valueを含めず、`Source.diagnosticIds`へ入れない。Coordinatorは次のqueued transactionを
 still-current Nから開始する。後続のaffected Sourceに対するcompleteまたはpartial正常scanがNをN+1へ
 置換してそのentryとfailure referenceだけをclearし、別Sourceのcommitでは両方を未解決のまま保つ。予期しないthrow/rejectionはこの
@@ -899,9 +903,8 @@ requeue boundaryを跨がない。全valueはJavaScript safe integerでなけれ
 
 | Field | Type | 公開範囲 | Rule |
 |---|---|---|---|
-| `fileId` | 128-bit、22-character base64url opaque string | DTO | Generationごとに新規。APIはpathを受け付けない |
 | `sourceId` | opaque string | DTO | 1つのenabled Sourceを識別 |
-| `sourceRelativePath` | `SourceRelativePath` | DTO | Source内でのfileのidentity。所有Source rootからの表示・filter・lookup・selection path |
+| `sourceRelativePath` | `SourceRelativePath` | DTO | Source内でのfileのidentity（FR-030） — generationを跨いで安定で、世代ごとのfile IDは存在しない。所有Source rootからの表示・filter・lookup・selection、およびdetail requestのparameter |
 | `encoding` | `utf-8 \| utf-8-replaced \| binary \| unknown` | DTO | Closedなvariant discriminator。Read stateはここから導出する（readable text、textを持たない`binary`、failed-read `unknown`）。NULを含まないinvalid sequenceはreplacement decode済みtextとしてreadableのまま保持 |
 | `sizeBytes` | non-negative integer | DTO | Accept済みbyteを持つoutcomeであるreadable textと`binary`だけに存在する |
 | `hadLeadingBom` | boolean | DTO | Readable textのみ。他variantにBOMの概念は存在しない。`sourceText` publish前に先頭UTF-8 BOMを正確に1つ記録・除去した場合だけtrue。Replacementの有無とは独立 |
@@ -943,27 +946,54 @@ substituteしない。
 
 | Kind | 1 rowが示す単位 |
 |---|---|
-| `skill` | 宣言名1つ。Vendor自身のskill一覧がそれを表示し、`SKILL.md`を収めるdirectory名と一致する必要もないため、複数fileが1つの名前を宣言することがあり、1 entryがそれぞれを定義として列挙する |
+| `skill` | 1つのtoolが解決した1つの名前（FR-007）: authoredなfrontmatter `name` — fileが宣言しない場合はskill directory名 — であり、nestedなskillのClaude Code recognitionはこれにroot相対のprefixを前置する。定義は1つのrecognition — `(file, tool)`につき1つ — であるため、1つの名前に解決される複数fileは1 entryが各recognitionを定義として列挙し、toolごとに異なる名前へ解決される1つのfileは各名前のentryで定義される |
 | `MCP` | Admit済みcarrier内の`[mcp_servers.*]`宣言1つ。したがって1つの`.codex/config.toml`は宣言したserverの数だけrowを公開する |
 | `instructions`、`settings/config` | File自身 |
 
 したがってCustomizationFileは自身の事実 — Source相対Path、read結果、size、diagnostic — を1度だけ
-公開し、各kindの一覧はそれを繰り返さず`fileId`で参照する。Companionは何を持っていても自身のrowに
+公開し、各kindの一覧はそれを繰り返さず`sourceRelativePath`で参照する。Companionは何を持っていても自身のrowに
 ならない（FR-003）ため、rowはそれを所有する定義の隣で、自身のcensusに属するfileのdiagnosticを
 pathで名指して述べる: customizationのdirectory内で失敗したreadはgenerationをpartialにしたfileの
 1つであり、一覧の中でそれを言えるのはそのcustomizationのrowだけである（FR-028）。共有された1つのrow形では最初の2つの単位を
-表現できない: 名前でgroupingするとToolRecognitionが依拠する`(fileId, tool, kind)`ごとに1 recognitionと
+表現できない: 名前でgroupingするとToolRecognitionが依拠する`(file, tool, kind)`ごとに1 recognitionと
 いう規定を壊し、file形のrowは1 carrierの宣言が必要とするN行になりようがない。
+
+Skill rowの名前は1つのtoolが解決した名前である（FR-007）: authoredなfrontmatter `name` —
+fileが宣言しないか空で宣言する場合はskill directory名。名前付きdirectoryであることが
+skillであり、これによりすべてのrowが名前を持ち、同名directoryに置かれたそうした2つの
+fileは1つのrowを共有する — であり、nestedなskillのClaude Code recognitionはこれに`.claude`を保持するdirectoryの
+root相対`/`-joined pathと`:`を前置するため、`name: deploy`を宣言する
+`apps/web/.claude/skills/deploy/SKILL.md`はClaude rowでは`apps/web:deploy`である。最終
+セグメントは、skill directory名を取りauthoredな`name`を表示labelだけとして扱うvendor文書化の
+command名とは意図的に異なる: 1つのskillの定義をtool横断で比較することがこのrowの存在理由で
+あり、authoredな`name`は3つのtoolが共有する唯一のidentityであるため、すべてのrowはそれで
+keyされ、vendorのものはnested qualificationの形だけである。Nested形には常にprefixが付く:
+vendorは、この製品が決して読まない層に対する名前衝突時に、決して観測しないsession working
+directory相対でqualifyするため、root相対のqualified綴りだけがstaticなinventoryが保証できる
+唯一の安定した名前である。名前はSource相対Pathと同じ制御文字escaping
+（§ SourceRelativePath）でrenderする: nestedなClaude rowのprefixはpath segmentであり、名前は
+lookupと選択のidentityとして、それ自身として読めなければならない。
+
+定義は自身のrecognitionのparse事実を運ぶ: その`parseStatus`と、そのkindのextraction失敗
+referenceである（FR-028）。extractionは`(file, kind)`ごとに1回なので失敗のrecordも1件であり、
+そのfileの失敗した各定義がそれを自身のparse事実として名指し、fileの`files[]` entryは
+file-confinedな結果としてそれを1回だけ列挙する。extractionの
+失敗はauthoredな名前を不在ではなく不明のまま残す: rowはdirectory由来の暫定的なidentity —
+失敗したparseの読みではなくpath自身の事実 — を保ち、authoredな名前を呼び出すtoolの
+`invocationName`はnullとなり、その定義はauthored-nameの衝突の証拠にならない。Claude Codeの
+path由来command名はどちらでも成立する。
 
 GroupingされたentryがInspectorの記録していない優劣を暗示することはない。各entryは、そのentryの定義の
 うち2つ以上をproductが認識する名前について、そのproductがどう解決するかを述べる。記録された記述が異なる
 ためである: Codexは同名skillをmergeせず両方が有効なまま残り文書化された順序は無い。Claude Codeは
 1つのroot内ですべてを有効なまま残し — nestedなものはdirectory-qualified commandで — 作業中のfileに
-合うvariantを選ぶ。CopilotのCLIは文書化されたsource orderの最初を解決する。VS CodeのCopilotは
-重複時の優先順位を一切文書化していない（contracts/runtime-composition.md）。定義の1つしか認識しないproductは何も述べない。衝突に直面して
+合うvariantを選ぶ。CopilotのCLIは文書化されたsource orderの最初を解決する。CopilotのVS CodeとCloudの
+surfaceは重複時の優先順位を一切文書化していない（contracts/runtime-composition.md）。定義の1つしか認識しないproductは何も述べない。衝突に直面して
 いないため、その解決ruleはこのentryが問うていない問いに答えることになる。衝突は引用するruleが答える
-ものでもなければならない: Claude Codeのcommand名はskill directoryに由来するため、その記述は2つの定義が
-directory名を共有する場合だけ現れる（FR-007）。
+ものでもなければならず、Claude Codeのruleはskill directoryに由来するunqualifiedなcommandの衝突に
+答える: その記述は、Claude定義のskill directory名を同一generationの別のClaude認識skillと
+共有するすべてのrowに付き、異なる名前のdirectoryの下でauthoredな名前だけを共有するrowには
+決して付かない（FR-007）。
 
 記述を公開するのは、composition strategyが出荷レジストリにあるproductだけとする。これはrowの欠落では
 ない: skill ruleを持たないproductはskillを認識しないため、どのentryもそこへ到達せず、strategy recordが
@@ -972,41 +1002,49 @@ skill ruleを出荷する作業が、そのstrategyと記述を一緒に出荷�
 
 ### ToolRecognition
 
+Recognitionはcommit済みgenerationの内部recordであり、どのsession responseも運ばない
+（FR-027）: inventory rowもdetailもこれらからprojectされる — 定義は1 recognitionの
+`(file, tool)` identityであり、detailの`presentation`は1つのskill recognitionのparseで
+ある。コード上は、recognizerが唯一のproduction構築場所であるclassとし、recognize seam
+（`CandidateRecognition`）はテストがliteral doubleで満たすinterfaceのままとする。
+
 Recognition recordのdetailsは`kind`で判別する。Recognitionを識別する情報はkindごとに異なり、1つの共有
 optional fieldには収まらないからである: skillは単一の`name`を宣言するが、MCP carrierはserverごとに1つ
-宣言する。Skillのdetailsはその宣言済み名を運ぶ。これは一覧rowが運ぶ唯一のauthored値であり、
-contentではなくpresentation identityだからである（FR-007、FR-027）。Fileが宣言していない場合、
-名前はemptyではなくabsentとする。
+宣言する。Skillのdetailsはその宣言済み名を運ぶ。これは表示labelであり、すべてのrowの名前の
+元となるidentityである（FR-007、FR-027）。Fileが宣言していない場合、名前はemptyではなく
+absentとする。Fileが宣言しないか空で宣言するrowは、代わりにそのskill directory名で名付けられる。
 
 Recognitionは一覧rowではない。Rowの単位はkind自身のものであり（§ 一覧の単位）、各kindの一覧はfileごとの
-summaryとして公開されるのではなく、これらのrecordから組み立てられる: skillのrowはrecordを宣言名でgrouping
-し、MCP carrierのrowは1 recordの宣言をrowごとに分割することになる。Fileは自身のrecognition summaryを
+summaryとして公開されるのではなく、これらのrecordから組み立てられる: skillのrowはrecordを各toolが
+解決した名前でgroupingし（§ 一覧の単位）、MCP carrierのrowは1 recordの宣言をrowごとに分割することになる。Fileは自身のrecognition summaryを
 公開しないため、1 recordを裏づけるadmission数を述べる必要もない。Admissionはどのruleが読み取りを認可し
 どこで一致したかを述べる。カスタマイズがどこに適用されるか、そのruleがどこまで文書化されているかは
 admissionに載せない。どちらもsurfaceが示さないからである。
 
-Skillのcensusが得たsort済みcompanion file listはdetailsには載せない。これはそのrecognitionが裏づける
-inventory定義の上で1回だけ公開される（contracts/http-api.md `skills[].definitions[].companionFiles`）。
-recognition上の2つ目の綴りは、1つ目と食い違い得る状態になるからである。`SKILL.md`が単独で置かれている
+Skillのcensusが得たsort済みcompanion file listはdetailsには載せない。これはそのfileのrecognitionが
+裏づけるinventory定義の上で公開される（contracts/http-api.md `skills[].definitions[].companionFiles`）。
+recognition上の2つ目の綴りはそれらと食い違い得る状態になるからであり、1つのfileのすべての定義 —
+tool横断でもentry横断でも — は同じlistを運ぶ。censusはfileのものだからである。`SKILL.md`が単独で置かれている
 場合、listはabsentではなくemptyとする。Directoryであることこそがskillの正体であり、認識されたskillは必ず
 列挙済みだからである。公開される件数はその`length`だけである
 （contracts/inspection-path-allowlist.md § Bounded companion census）。
 
 列挙された各pathは同じgenerationの`CustomizationFile`でもある。Directory形式のcustomizationは全体として
-読むため、付随fileは各1回読まれ、他のfileと同様に — 自身のidentity、path、read outcome、完全なauthored
-sourceを持って — 公開される。Ruleがadmitしておらず何も分類していないため、recognitionは持たず、どのkindの
-inventoryにも現れない。定義のlistがそれらを所属先のcustomizationに結び付けるものであり、detail surfaceは
+読むため、付随fileは各1回読まれ、他のfileと同様に — 自身のidentity、path、read outcomeを持ち、
+readがtextを返した場合は完全なauthored sourceも含めて（FR-025） — 公開される。Census自体は何もadmitしない: censusだけが列挙するfileはrecognitionを持たず、どのkindの
+inventoryにも現れない。一方、ruleが独立にadmitするpath — 別のskillのdirectory内にnestedな
+`SKILL.md` — は、外側のcensusに列挙されていても自身のrecognitionを持つcandidateである。
+定義のlistが付随fileを所属先のcustomizationに結び付けるものであり、detail surfaceは
 これをもとにそのcustomizationのdirectoryを構成する。
 
 | Field | Type | Rule |
 |---|---|---|
-| `recognitionId` | opaque string | Generation内unique |
-| `fileId` | opaque string | 複数recognitionが1 physical fileを参照可能 |
-| `provenances` | ordered admission record[] | 共有tool/kind解釈についてのrule/path admissionのsort済み非空set。各recordは`ruleId`、`RuleDiscoveryClass`、matched `SourceRelativePath`を持つ。どのruleが読み取りを認可しどこで一致したかであり、それ以上は持たない |
+| `sourceRelativePath` | `SourceRelativePath` | Recognitionが付くfileをそのidentityで名指す（FR-030）。複数recognitionが1 physical fileを参照可能 |
+| `provenances` | ordered admission record[] | 共有tool/kind解釈についてのrule/path admissionのsort済み非空set。各recordは読み取りを認可したcompiled ruleを保持して`ruleId`と`RuleDiscoveryClass`をそこから導出し、matched `SourceRelativePath`を傍らに持つ — それ以上は持たない |
 | `tool` | `copilot \| claude \| codex` | 必須 |
 | `details` | kind判別payload | 認識されたkindと、そのkindのrecognitionを識別するもの — skillなら宣言名。1 fieldであるため、射影はkindごとの再構成ではなくcopyで済む |
-| `parseStatus` | `not-attempted \| parsed \| failed` | `not-attempted`はallowlist extractorが非該当。`failed`はこのrecognitionだけall-or-nothing |
-| `diagnosticIds` | opaque string[] | Owning fileのrecognition-scoped extraction failure |
+| `parseStatus` | `not-attempted \| parsed \| failed` | `not-attempted`はallowlist extractorが非該当。`failed`は`(file, kind)`ごとにall-or-nothing: extractionは1回実行され、そのkindを認識する全toolが共有する |
+| `diagnosticIds` | opaque string[] | そのkindのextraction失敗record（FR-028）: `(file, kind)`ごとに1件で、そのkindの失敗した各recognitionが参照し、fileは1回だけ列挙する |
 
 維持管理するsupported-customization文書を規範的なpresentation allowlistとする。Supportedな各`(tool, kind)`について、
 relationship kindと、そのrowがcoverするadmit済みsource formを列挙する。Metadata fieldのcatalogは列挙しない。
@@ -1025,7 +1063,7 @@ dependent workを停止し、影響する英日specification、research、plan�
 再生成したtask setだけとする。
 
 Customization-kind enumは共有するが、各recognizerがpath/interpretation ruleを所有する。共有`AGENTS.md`、
-`CLAUDE.md`、`.mcp.json`、skill、marketplaceは1 fileのまま複数recognitionを持つ。`(fileId, tool, kind)` pairごとに
+`CLAUDE.md`、`.mcp.json`、skill、marketplaceは1 fileのまま複数recognitionを持つ。`(file, tool, kind)` pairごとに
 recognitionは正確に1つとする。Compatible admissionはその1 recordへprovenanceをmergeする。同じpairのextractorが
 incompatibleなparsed meaningを返した場合、そのrecognitionを`failed`とし、完全なsourceとcompatible provenance
 admissionを保持するがmetadata/relationship/derivation resultはpublishしない。Admissionをlossyな
@@ -1066,7 +1104,7 @@ YAML 1.1 tagがhost objectへ解決した値 — 綴りはlocale依存の日付�
 飛ばしたかを述べられないからである。そのfileはadmit済み・readable・comparison eligibleのまま残る。
 
 Fieldはsource座標を持たない。Documentを指すものが存在せず — detail surfaceはfileを丸ごと表示し、inventory rowは
-declared nameを表示する — rangeはreaderのいないfieldを全entryに載せることになり、しかも誰もcheckできない。
+名前を表示する — rangeはreaderのいないfieldを全entryに載せることになり、しかも誰もcheckできない。
 Extractorは測定するのと同じtextから値を取るため、両者の一致を要求してもその値を言い換えるだけであり、測定自体が
 誤っていても成立してしまう。Sourceを指す必要のあるprojectionは、座標をそれが意味を持つcheckと共に導入する。
 
@@ -1076,18 +1114,37 @@ extractionとJSON transportを変化なく通過しなければならない。
 
 ### Skillの表示
 
-Skillのdetail surfaceは、それを運ぶfileではなくskill自身から始める: 宣言名を見出しとし、その下に
-2つのtab — skill自身と、そのfile — を置く。Skill tabはfrontmatterが宣言する全keyを、fileの記述順に
+Skillのdetail surfaceは、それを運ぶfileではなくskill自身から始める: row名 — この製品の仮の
+identityで、一覧が示すものと同じ — を見出しとし、その傍らに、公開された`invocationName`
+（contracts/http-api.md § get-session `skills[]`）から、pageを所有する定義の文書化された
+invocation nameを置く。定義は1つのtoolのrecognitionであり、それぞれが自身のtoolの文書化された
+名前を公開する。pageはrouteが指す定義を示す — detail URLは`/skills/<tool>/<Source相対パス>`という
+定義自身のidentityで、広い区分であるtoolが先に来て、companionも同じtool segmentの下で開く —
+ため、見出しの傍らにどのinvocation nameが出るかはlinkのidentityであってpreferenceではない。このidentityは再スキャンとserver起動を跨いで安定である — それはURLのpath半分のことで、
+Source-relative Pathがwire上のfileのidentityであり、detail requestはそれを現在のcommit済み
+snapshotに対して解決するため、bookmarkされたlinkのpathは、再スキャンを跨ぎ、同じrootを選択する
+起動を跨いで、同じfileを名指し続ける（FR-030）。別のrootを選択する起動（FR-001）はそのrootの
+scanに対して解決し、originはdevframeのport選択に属し、固定defaultが塞がっているときだけ移る
+（quickstart.md）ため、portの移動が変えるのはbookmarkの指す先であって、そのpathが名指すfileではない。URLのtoolに
+対して現在のscanが保持しないpathはdead linkとして報告される。
+authoredな`name`がdirectoryと異なるrootの`.claude` skillは、Copilotにはauthoredな名前 —
+row名として見え続ける — で、Claude Codeには自身の定義のpageがその傍らに示すdirectory由来の
+commandで呼び出される。公開値はprojectionのものであり、
+clientはvendor namingを再導出せず公開値を描画する。
+その下に2つのtab — skill自身と、そのfile — を置く。Skill tabはfrontmatterが宣言する全keyを、fileの記述順に
 かかわらず`name`と`description`を先頭にして列挙し、続いてそのblockを取り除いた指示を置く。File tabは
 directoryと、開いているfileの完全なauthored `sourceText`を持ち、そこがすべてのauthored spellingの
 読める場所である。1列ではなく2 tabとするのは、これらが2つの主題だからであり、積み重ねるとdirectoryが
 skillの宣言と指示のすべての下に沈むからである。
 
-したがって`ToolRecognition.details`は`skill` kindについて次を運ぶ。
+Parse自体はdetail responseのskill variant（`SkillFileDetailDto.presentation`、
+contracts/http-api.md § get-file-detail）に1回だけ公開される: parseはfileの事実であり —
+shippedな全vendorが同じ固定YAML semanticsを読む — toolごとのcopyはwireに存在しない。
+内部の`ToolRecognition.details`は`skill` kindについて次を運ぶ。
 
 | Field | Type | Rule |
 |---|---|---|
-| `declaredName` | string、無ければ不在 | Parserが解決した`name` scalar（§ Field reading）。空ではなく不在とする: authoredな空の名前は「名前が無い」とは別の事実である。`name`がscalar以外へ解決するときも不在とする — fileが名前として書いていないlistの先頭itemでskillを名指すのは、fileが宣言していないidentityになる。これはinventory rowがgroupingに使うidentityである（FR-007） |
+| `declaredName` | string、無ければ不在 | Parserが解決した`name` scalar（§ Field reading）。空ではなく不在とする: authoredな空の名前は「名前が無い」とは別の事実である。`name`がscalar以外へ解決するときも不在とする — fileが名前として書いていないlistの先頭itemでskillを名指すのは、fileが宣言していないidentityになる。これは表示labelであり、すべてのrowの名前の元となるidentityである。Fileが宣言しないか空で宣言するrowはskill directory名で名付けられ、nestedなClaude Code recognitionのrowはroot相対のprefixを前置する（§ 一覧の単位、FR-007） |
 | `frontmatter` | ordered entry[] | Fileが宣言するすべてのkeyを、fileが書いたkey — 維持管理上のcatalogのものではない — でauthored順に持つ。Frontmatter blockの無いdocument、mappingではなくlistや裸のscalarとして書かれたblock — そうしたblockはkeyを宣言せず、listを読めば得られるindex位置はfileが書いたkeyではない — 、`failed` extractionでは空 |
 | `bodyText` | string | 同じdocumentからfrontmatter blockを取り除いたもの。`failed` extractionでは空 |
 
@@ -1113,9 +1170,7 @@ recognitionのextraction全体を破棄する一方、完全なdecoded sourceは
 | Field | Type | Rule |
 |---|---|---|
 | `relationshipId` | opaque string | Generation内unique |
-| `fromFileId` | opaque string | 必須 |
-| `fromRecognitionId` | opaque string | 必須。`fromFileId`に属し、`fromProvenanceId`を所有すること |
-| `fromProvenanceId` | opaque string | 必須。`fromRecognitionId`が所有する1つのadmission recordをresolveし、そのmatched pathだけをpath-relative normalizationのbaseにする |
+| origin reference | file identityとrecognition | 起点fileをそのSource-relative Path（FR-030）で、所有recognitionをその`(tool, kind)`で名指す。admission referenceの形は、これらのrecordを構築するrelationship phaseとともに到着する — 指し先になる世代ごとのfile/recognition IDは存在しない。参照したadmissionのmatched pathだけをpath-relative normalizationのbaseにする |
 | `ruleId` | stable relationship-only rule ID | 参照がreadを許可できないことを示す |
 | `kind` | `import \| declared-component \| skill-resource \| plugin-source \| agent-reference \| context-inheritance \| runtime-reference \| order \| fallback` | Descriptiveのみ |
 | `targetOrigin` | `authored \| documented-default` | `authored`はexact source occurrenceを1つ要求し、`documented-default`は省略Codex plugin hookのようなregistry固定defaultだけに許可 |
@@ -1140,8 +1195,9 @@ target fileのeffectivenessを表さない。
 抽出済みreferenceはapplicableなadmission recordごとにemitし、別rule admissionが
 別admissionのdirectoryをrelative baseとして借用しない。各extractorはclosed declaration-field identifier、
 `targetOrigin`、zero-based sourceまたはdeterministic synthetic occurrenceだけからなるinternal origin
-keyを付ける。Authored field valueを含めず、serializeしない。Deduplication keyは`fromFileId`、
-`fromRecognitionId`、`fromProvenanceId`、`ruleId`、`kind`、origin key、target identityである。Target
+keyを付ける。Authored field valueを含めず、serializeしない。Deduplication keyは、origin fileのSource-relative Path、所有recognitionの`(tool, kind)`、
+起点admissionのstable reference（relationship phaseが固定する形 — 世代ごとのfile/recognition/
+provenance IDは存在しない）、`ruleId`、`kind`、origin key、target identityである。Target
 identityは利用可能ならnormalized target、そうでなければ`authored`のexact authored targetのprocess-keyed digestまたは
 `documented-default`の固定default IDとし、digest/default IDをmemory外やlogへ出さない。Extractorは起点provenanceのstable array key、recognition tool/kind、
 relationship `ruleId`/kind、declaration-field identifier、source occurrenceの順でemitし、opaque IDをsortに
@@ -1159,12 +1215,11 @@ Opaque IDはorderに使わない。Relationshipの構築または保持中にtar
 | `severity` | `info \| warning \| error` | `code`によりregistry固定でserializeしない。Vendor validationを意味しない |
 | `scope` | `file \| source` | `code`によりregistry固定でserializeしない。必須attachment discriminator。Generation scopeかsession-lifecycleかというlifetimeとは独立 |
 | `sourceId` | opaque ASCII ID | どちらのscopeでも必須。この製品が生成するdiagnosticはすべてSourceに属するため、path-lessなものは存在しない |
-| `fileId` | optional opaque ASCII ID | `file`だけで必須、`source`で禁止 |
 | `sourceRelativePath` | optionalなSource-relative Path | `file`だけで必須で、`sourceId`内の当該file pathと一致し、`source`で禁止 |
 | `lifecycleOwnerKey` | `repository \| global:<tool> \| published-source:<sourceId> \| null` | Internalでserializeしない。全out-of-generation lifecycle Diagnosticでは必須non-null、generation-owned candidateではnullで、1つのpublic owner referenceと照合する |
 
-Legalなattachment shapeは正確に次の2つだけである。`file`はnon-nullの`sourceId`、`fileId`、
-`sourceRelativePath`を持つ。`source`はnon-nullの`sourceId`とnullのfile/path fieldを持つ。それ以外の
+Legalなattachment shapeは正確に次の2つだけである。`file`はnon-nullの`sourceId`と
+`sourceRelativePath`を持つ。`source`はnon-nullの`sourceId`とnullのpath fieldを持つ。それ以外の
 組合せを持つDTOはinvalidである。Path-lessなscopeは存在しない: diagnosticは何かを読む際に起きたことを述べる
 ものであり、それを読んだSourceは解決可能にする最小の文脈である — どちらも名指さないrecordは、どこかで何かが
 失敗したと伝えるだけになる。Scopeはlifetimeと直交する: fatal rescan lifecycle recordもfile単位のread failureも
@@ -1177,8 +1232,9 @@ attachment scope、問題と実用的な次stepを示す1つの実行可能な�
 Candidateは
 固定phase、lifecycle-owner semantic order（Repository、固定Global tool順、既存public Source順）、scope、Source-relative Path、rule/code、
 emitter occurrence順でemitする。Opaque Source ID自体をsort orderに使わない。Aggregationはorder-onlyとする。
-各emitterは各observationを正確に1回作成し、正当に繰り返されるrecord（failed recognitionごとに1件）が
-存在するため、dedup passはなく、二重emitはtests/reviewが受け持つ通常の実装バグでありruntime filterではない。
+各emitterは各observationを正確に1回作成し、正当に繰り返されるrecordが存在する — extraction失敗は
+`(file, kind)`につき1 recordであり（FR-028）、1 fileの2つのkindがそれぞれfailすると全public fieldを
+共有する2 recordになる — ため、dedup passはなく、二重emitはtests/reviewが受け持つ通常の実装バグでありruntime filterではない。
 
 Scan candidateは1つのcommit済みgenerationに属する。Commit不能なfatal scan attemptを含むout-of-generation lifecycle
 candidateはsessionだけに属し、generation/Source ID listへ入れない。Malformed request、その他client起因
@@ -1255,11 +1311,12 @@ readable-directory admissionだけが判定し、後のNode.js/OS rejectionは�
   generationがcurrent未満なら無視する。あるsequenceのgreater generationをadoptする前に、そのsequenceのfileにboundされた
   detail/comparison requestをabortし、そのsequenceのdetail/editor/comparison objectをdisposeしてから、そのsequenceの
   inventory entryだけを置換する。他sequenceのstate、request、modelには触れない（FR-030）。Equal-generation responseは
-  exactなstill-current request tokenだけを受理する。Detail requestは所属sequenceのcurrent generationで
-  `{ clientDataEpoch, generation, fileId }`をcaptureし、callback時にもepochとそのsequenceのgenerationがcurrent stateと一致し、その
-  readable `fileId`がinventoryに残る場合だけresponseをadoptする。全central invalidation/purgeが同じepochをincrementするため、
+  exactなstill-current request tokenだけを受理する。Detail requestは
+  `{ clientDataEpoch, sourceRelativePath }`をcaptureし、callback時にもepochがcurrent stateと一致する場合だけresponseをadoptする。
+  Pathはfileの安定したidentityであり（FR-030）、hostはそれをcurrentなgenerationに対して解決する。Purge前にcaptureされた
+  responseがstateを再populateしないことを守るのはepochである。全central invalidation/purgeが同じepochをincrementするため、
   response deliveryが既にqueue済みでもlate callbackはno-opになる。
-- `ComparisonSelection`: Readableな`fileId`を0または正確に2つ持ち、それぞれ所属sequenceのcurrentなcommit済み
+- `ComparisonSelection`: Readableなfileを`sourceRelativePath`で0または正確に2つ名指し、それぞれ所属sequenceのcurrentなcommit済み
   generationに属する。Cross-source comparisonは常に各sourceの最後にcommit済みstateを比較する。Literal comparisonは
   Monacoで両方の完全な`sourceText`を比較する。Credential-like stringやenvironment referenceを含むliteralな差を表示する。
 - `EditorModelState`: Opaqueなin-memory URIと完全なauthored `sourceText`を持つgeneration-scoped Monaco model。
@@ -1862,7 +1919,7 @@ destroyed`でopen→いずれかbound→destroyedのone-wayとする。Probe ID�
 
 `StudyPreReadinessProductObservationDraft`はcanonical observation payloadとsame complete root order
 `schemaVersion`, `eventCode`, `eventId`, `correlationId`, `subjectId`, `inspectorProcessId`, `observationClass`,
-`actorClass`, `authorityClass`, `requestClass`, `targetClass`, `methodClass`, `capabilityClass`, `originClass`,
+`actorClass`, `authorityClass`, `requestClass`, `targetClass`, `methodClass`, `originClass`,
 `effectClass`, `workflowClass`, `outcomeClass`, `automaticIssueCorrelationId`, `reviewDisposition`,
 `reviewerOneClassification`, `reviewerTwoClassification`, `sameInspectorHost`, `productAttributable`, `prohibited`を
 持つ。Version/eventは`1`/`observation`、event/correlationはfresh transient ID、subjectはcurrent、process/workflow/
@@ -2082,18 +2139,18 @@ Decision orderはexact: valid secret+navigate/document/?1/missing Origin+site no
 armed grantだけparticipantとしてforwardする。Participant-shaped nonexact/no-grant/replayed/user-activated page-scriptは
 valid-secret unknown/binding ID/critical unauthorized trueでblockする。Nonparticipant valid
 secret+user missing+（Origin exact-issuedまたはOrigin missing/Referer exact-issued）はbundled-SPAで、exact authorized
-static/APIだけforwardし、他はbinding ID/product/prohibitedでblockする。Extension-schemeはextension/N/A/
+static/RPCだけforwardし、他はbinding ID/product/prohibitedでblockする。Extension-schemeはextension/N/A/
 unrelated/false/block。残るvalid-secretはunknown/binding ID/unauthorized/true/critical block。Missing secretは
 syntactically valid other-hostまたはmalformed unknownとして上記N/A branch。Forward/claimはexact participant/SPAだけ。
 
 Exact in-memory request-correlation recordもcontent-freeとする。`StudyBrowserRequestCandidate`のcomplete field set/
 exact root orderは`schemaVersion`, `studyRunId`, `browserAttemptId`, `correlationId`, `actorClass`,
-`authorityClass`, `requestClass`, `targetClass`, `methodClass`, `capabilityClass`, `originClass`, `effectClass`,
+`authorityClass`, `requestClass`, `targetClass`, `methodClass`, `originClass`, `effectClass`,
 `sameInspectorHost`, `productAttributable`, `prohibited`とする。`studyRunId`/`correlationId`はcurrent/fresh
 `StudyOpaqueId`、`browserAttemptId`はcurrent valid binding IDまたはmissing/invalid marker時のliteral
 `not-applicable`とする。`StudyServerCorrelationClaim`のcomplete field set/
 exact root orderは`schemaVersion`, `studyRunId`, `correlationId`, `subjectId`, `inspectorProcessId`, `actorClass`,
-`authorityClass`, `requestClass`, `targetClass`, `methodClass`, `capabilityClass`, `originClass`, `effectClass`,
+`authorityClass`, `requestClass`, `targetClass`, `methodClass`, `originClass`, `effectClass`,
 `sameInspectorHost`, `productAttributable`, `prohibited`とする。両versionはliteral `1`、claim `subjectId`/
 `inspectorProcessId`はcurrent binding/registered `StudyOpaqueId`、actorはexact `participant | bundled-spa`とし、
 N/A claim ID/他actorをinvalidとする。その他
@@ -2239,7 +2296,7 @@ Exact envelope byteは
 | Envelope `recordKind` | Exact payload key order | Value rule |
 |---|---|---|
 | `capture-start` | `schemaVersion`, `eventCode`, `controlSessionId`, `studyRunId`, `workRootIdentityCommitment`, `candidateIdentityCommitment`, `candidateSha256`, `studyInputManifestSha256`, `captureProcessReady`, `watchdogReady` | Versionはliteral `1`、`eventCode`はliteral `capture-start`、ready fieldは両方literal `true`。Session/run ID、commitment、lowercase digestは3 streamで共通 |
-| `payload` | `schemaVersion`, `eventCode`, `eventId`, `correlationId`, `subjectId`, `inspectorProcessId`, `observationClass`, `actorClass`, `authorityClass`, `requestClass`, `targetClass`, `methodClass`, `capabilityClass`, `originClass`, `effectClass`, `workflowClass`, `outcomeClass`, `automaticIssueCorrelationId`, `reviewDisposition`, `reviewerOneClassification`, `reviewerTwoClassification`, `sameInspectorHost`, `productAttributable`, `prohibited` | Versionはliteral `1`、IDはopaqueまたはexact not-applicable literal、全class/event codeはclosed privacy-safe table由来、最後の3 fieldはboolean。Verifierはretain済みraw dataからこれらを推論しない。Product-attributable observationのprocess N/Aはordered same-run/same-subject terminalization-bound pre-readiness releaseかつworkflow N/Aだけをacceptし、readiness-boundはassigned non-N/A IDを使い、その他/readiness後のproduct N/A rowをinvalidとする |
+| `payload` | `schemaVersion`, `eventCode`, `eventId`, `correlationId`, `subjectId`, `inspectorProcessId`, `observationClass`, `actorClass`, `authorityClass`, `requestClass`, `targetClass`, `methodClass`, `originClass`, `effectClass`, `workflowClass`, `outcomeClass`, `automaticIssueCorrelationId`, `reviewDisposition`, `reviewerOneClassification`, `reviewerTwoClassification`, `sameInspectorHost`, `productAttributable`, `prohibited` | Versionはliteral `1`、IDはopaqueまたはexact not-applicable literal、全class/event codeはclosed privacy-safe table由来、最後の3 fieldはboolean。Verifierはretain済みraw dataからこれらを推論しない。Product-attributable observationのprocess N/Aはordered same-run/same-subject terminalization-bound pre-readiness releaseかつworkflow N/Aだけをacceptし、readiness-boundはassigned non-N/A IDを使い、その他/readiness後のproduct N/A rowをinvalidとする |
 | `heartbeat` | `schemaVersion`, `eventCode`, `studyRunId`, `watchdogHealthy`, `captureProcessHealthy`, `acceptedPayloadCount` | `eventCode`はliteral `heartbeat`、health fieldは両方literal `true`、run IDはstartと一致、nonnegative safe-integer countはそれ以前のaccepted `payload` record数と一致 |
 | `handoff-anchor` | `schemaVersion`, `eventCode`, `studyRunId`, `checkpointRequestId`, `handoffSha256` | `eventCode`はliteral `handoff-anchor`。Run/request IDはsupervisor snapshot/canonical handoffと一致し、lowercase digestはcompanion/exact handoff byteと一致 |
 | `capture-stop` | `schemaVersion`, `eventCode`, `studyRunId`, `candidateSha256`, `studyInputManifestSha256`, `checkpointRequestId`, `handoffSha256`, `continuityPassed`, `finalSequence`, `envelopeCount`, `payloadRecordCount`, `heartbeatRecordCount`, `handoffAnchorRecordCount`, `priorEnvelopeSha256` | `eventCode`はliteral `capture-stop`。Run ID/study digest 2件はstart、checkpoint/handoff valueはsole anchorと一致。Continuityはliteral `true`、`handoffAnchorRecordCount`はliteral `1`。`finalSequence`はstop envelope sequence、`envelopeCount`は`finalSequence + 1`、observed total、`2 + payloadRecordCount + heartbeatRecordCount + handoffAnchorRecordCount`のすべてと一致。全kind countはobserved prior recordと一致。`priorEnvelopeSha256`はexact preceding-envelope digestとstop envelopeの`priorDigest`に一致し、verifierがseal前に全valueを独立recompute |
@@ -2253,10 +2310,9 @@ Closed observation-class fieldは次のとおり。
 | `observationClass` | `request \| mcp \| execution \| inspected-source-mutation \| workflow` |
 | `actorClass` | `inspector \| bundled-spa \| browser-extension \| other-host-process \| operating-system \| participant \| unknown` |
 | `authorityClass` | `exact-issued \| other-loopback \| remote \| unclassifiable \| not-applicable` |
-| `requestClass` | `authorized-static \| authorized-api \| prohibited \| unrelated \| os-mediated \| unclassifiable \| not-applicable` |
-| `targetClass` | `static-manifested-asset \| static-spa-shell \| static-client-route-fallback \| api-get-session \| api-get-file \| api-post-repository-rescan \| api-get-global-consent-preview \| api-post-global-consent-preview \| api-post-global-enable \| api-post-global-rescan \| api-post-global-disable \| other-loopback \| remote \| mcp \| unclassifiable \| not-applicable` |
+| `requestClass` | `authorized-static \| authorized-rpc \| prohibited \| unrelated \| os-mediated \| unclassifiable \| not-applicable` |
+| `targetClass` | `static-manifested-asset \| static-spa-shell \| static-client-route-fallback \| connection-discovery-metadata \| rpc-channel-upgrade \| rpc-get-session \| rpc-get-file-detail \| rpc-rescan-repository \| rpc-get-global-consent-preview \| rpc-create-global-consent-preview \| rpc-enable-global \| rpc-rescan-global \| rpc-disable-global \| rpc-devframe-framework \| other-loopback \| remote \| mcp \| unclassifiable \| not-applicable` |
 | `methodClass` | `get \| head \| post \| other \| unclassifiable \| not-applicable` |
-| `capabilityClass` | `valid \| missing \| invalid \| unclassifiable \| not-applicable` |
 | `originClass` | `exact-same-origin \| missing \| mismatched \| unclassifiable \| not-applicable` |
 | `effectClass` | `none \| unauthorized-request \| command-or-code-execution \| child-process \| mcp-connection \| prohibited-outbound-request \| inspected-source-mutation \| cross-machine-content-exposure \| workflow-blocker` |
 | `workflowClass` | `discovery \| inspection \| comparison \| global-consent \| not-applicable` |
@@ -2270,7 +2326,7 @@ canonical serialization前に各observationへcurrent eligible open workflow、e
 assignする。Accepted tagはimmutableで、source self-declareは禁止する。
 
 Authorized-static requestは下表exact 1 rowとmatchしなければならない。全rowは`authorityClass: exact-issued`、
-`requestClass: authorized-static`、`capabilityClass: not-applicable`、`originClass: not-applicable`、
+`requestClass: authorized-static`、`originClass: not-applicable`、
 `sameInspectorHost: true`、`productAttributable: true`、`effectClass: none`、`prohibited: false`を要求する。
 
 | `targetClass` | Exact method |
@@ -2278,34 +2334,43 @@ Authorized-static requestは下表exact 1 rowとmatchしなければならない
 | `static-manifested-asset` | Manifest-listed non-HTML assetへの`get \| head` |
 | `static-spa-shell` | `get \| head` to packaged `/`/`index.html` shell |
 | `static-client-route-fallback` | Closed client-route fallback 1件への`get \| head` |
+| `connection-discovery-metadata` | Channel自身のpathを載せsession dataを一切持たないdevframe固定のconnection-discovery document(`__connection.json`)への`get \| head` |
 
-Authorized-api requestは下表exact 1 rowとmatchしなければならない。全rowは`authorityClass: exact-issued`、
-`requestClass: authorized-api`、`capabilityClass: valid`、`sameInspectorHost: true`、
-`productAttributable: true`、`effectClass: none`、`prohibited: false`を要求する。GETは
-`originClass: missing | exact-same-origin`だけ、POSTは`originClass: exact-same-origin`だけを許可する。
+Authorized-rpc observationは、channel-establishment HTTP request 1件またはregistered probeによる
+dispatched-function server observationのいずれかである。全rowは`actorClass: bundled-spa`、
+`authorityClass: exact-issued`、`requestClass: authorized-rpc`、`sameInspectorHost: true`、
+`productAttributable: true`、`effectClass: none`、`prohibited: false`を要求する。Channel establishmentは
+`targetClass: rpc-channel-upgrade`、`methodClass: get`、`originClass: exact-same-origin`を使う —
+pinned browserはWebSocket upgradeで必ずpage originを名乗る。Dispatched-function rowは代わりに
+`methodClass: not-applicable`と`originClass: not-applicable`を使い — devframe frameはHTTP requestではなく、
+そのconnectionのmethodとoriginはupgradeで分類済みである —、`targetClass`はdispatchされた関数のrow
+exact 1件とする(`contracts/http-api.ja.md` § RPC function一覧):
 
-| `targetClass` | `methodClass` | Exact HTTP contract route |
-|---|---|---|
-| `api-get-session` | `get` | `/api/v1/session` |
-| `api-get-file` | `get` | Valid opaque IDを持つ`/api/v1/files/{fileId}` |
-| `api-post-repository-rescan` | `post` | `/api/v1/repository/rescan` |
-| `api-get-global-consent-preview` | `get` | `/api/v1/global/consent-preview` |
-| `api-post-global-consent-preview` | `post` | `/api/v1/global/consent-preview` |
-| `api-post-global-enable` | `post` | `/api/v1/global/enable` |
-| `api-post-global-rescan` | `post` | `/api/v1/global/rescan` |
-| `api-post-global-disable` | `post` | `/api/v1/global/disable` |
+| `targetClass` | RPC function |
+|---|---|
+| `rpc-get-session` | `agent-customization-inspector:get-session` |
+| `rpc-get-file-detail` | `agent-customization-inspector:get-file-detail` |
+| `rpc-rescan-repository` | `agent-customization-inspector:rescan-repository` |
+| `rpc-get-global-consent-preview` | `agent-customization-inspector:get-global-consent-preview` |
+| `rpc-create-global-consent-preview` | `agent-customization-inspector:create-global-consent-preview` |
+| `rpc-enable-global` | `agent-customization-inspector:enable-global` |
+| `rpc-rescan-global` | `agent-customization-inspector:rescan-global` |
+| `rpc-disable-global` | `agent-customization-inspector:disable-global` |
+| `rpc-devframe-framework` | devframe自身のframework-registered関数 — 全connectionが発行するtrust handshakeとtransport契約が列挙するbuilt-in |
 
+その他の関数名をdispatchするinvocationはどのrowにもmatchせず、`targetClass: unclassifiable`と
+not-applicableなmethod/originを持つauthorized table外のexact-issued requestとなる。
 他のcross-field combinationはauthorizationされない。次の5行をcomplete product-attributable prohibited
 request/MCP effect tableとする。全rowでworkflowはcoordinator exception以外N/A、`outcomeClass: observed`を使い、subject/
 process IDはapplicable open browser-attempt bindingまたはregistered product probeから得る。Automatic/review field 4件はN/Aとする。
 
 | Case | Exact classification/boolean |
 |---|---|
-| Authorized table外のexact-issued request | `observationClass: request`、observed product-attributable `participant \| bundled-spa \| inspector` actor、`authorityClass: exact-issued`、`requestClass: prohibited`、observed closed `targetClass`/`methodClass`/`capabilityClass`/`originClass`、`effectClass: unauthorized-request`、`sameInspectorHost: true`、`productAttributable: true`、`prohibited: true` |
-| Other-loopback request | `observationClass: request`、observed product-attributable `participant \| bundled-spa \| inspector` actor、`authorityClass: other-loopback`、`requestClass: prohibited`、`targetClass: other-loopback`、observed closed non-N/A `methodClass`、`capabilityClass: not-applicable`、`originClass: not-applicable`、`effectClass: unauthorized-request`、`sameInspectorHost: true`、`productAttributable: true`、`prohibited: true` |
-| Remote request | `observationClass: request`、observed product-attributable `participant \| bundled-spa \| inspector` actor、`authorityClass: remote`、`requestClass: prohibited`、`targetClass: remote`、observed closed non-N/A `methodClass`、`capabilityClass: not-applicable`、`originClass: not-applicable`、`effectClass: prohibited-outbound-request`、`sameInspectorHost: false`、`productAttributable: true`、`prohibited: true` |
-| Fully unclassifiable product-correlated request | `observationClass: request`、`actorClass: unknown`、`authorityClass: unclassifiable`、`requestClass: unclassifiable`、`targetClass: unclassifiable`、`methodClass: unclassifiable`、`capabilityClass: unclassifiable`、`originClass: unclassifiable`、`effectClass: unauthorized-request`、`sameInspectorHost: false`、`productAttributable: true`、`prohibited: true` |
-| Product MCP observation | `observationClass: mcp`、`actorClass: inspector`、`authorityClass: not-applicable`、`requestClass: not-applicable`、`targetClass: mcp`、`methodClass: not-applicable`、`capabilityClass: not-applicable`、`originClass: not-applicable`、`effectClass: mcp-connection`、`sameInspectorHost: false`、`productAttributable: true`、`prohibited: true` |
+| Authorized table外のexact-issued request | `observationClass: request`、observed product-attributable `participant \| bundled-spa \| inspector` actor、`authorityClass: exact-issued`、`requestClass: prohibited`、observed closed `targetClass`/`methodClass`/`originClass`、`effectClass: unauthorized-request`、`sameInspectorHost: true`、`productAttributable: true`、`prohibited: true` |
+| Other-loopback request | `observationClass: request`、observed product-attributable `participant \| bundled-spa \| inspector` actor、`authorityClass: other-loopback`、`requestClass: prohibited`、`targetClass: other-loopback`、observed closed non-N/A `methodClass`、`originClass: not-applicable`、`effectClass: unauthorized-request`、`sameInspectorHost: true`、`productAttributable: true`、`prohibited: true` |
+| Remote request | `observationClass: request`、observed product-attributable `participant \| bundled-spa \| inspector` actor、`authorityClass: remote`、`requestClass: prohibited`、`targetClass: remote`、observed closed non-N/A `methodClass`、`originClass: not-applicable`、`effectClass: prohibited-outbound-request`、`sameInspectorHost: false`、`productAttributable: true`、`prohibited: true` |
+| Fully unclassifiable product-correlated request | `observationClass: request`、`actorClass: unknown`、`authorityClass: unclassifiable`、`requestClass: unclassifiable`、`targetClass: unclassifiable`、`methodClass: unclassifiable`、`originClass: unclassifiable`、`effectClass: unauthorized-request`、`sameInspectorHost: false`、`productAttributable: true`、`prohibited: true` |
+| Product MCP observation | `observationClass: mcp`、`actorClass: inspector`、`authorityClass: not-applicable`、`requestClass: not-applicable`、`targetClass: mcp`、`methodClass: not-applicable`、`originClass: not-applicable`、`effectClass: mcp-connection`、`sameInspectorHost: false`、`productAttributable: true`、`prohibited: true` |
 
 Browser-attempt pathはexact initiator decisionをauthorityとする。Extension、missing-secret other-host、invalid-
 secret unknownはN/A/unrelated/effect none/false。Participant-shaped nonexact/no-grant/replay/user-activated page-scriptとremaining valid-secret unknownはbinding ID/
@@ -2313,7 +2378,7 @@ critical unauthorized/true、blocked bundled-SPAはbinding ID/applicable product
 nonworkflow/observed/automatic/review N/Aとする。Observable mounted/mapped backing-store
 trafficは`observationClass: request`、`actorClass: operating-system`、`authorityClass: not-applicable`、
 `requestClass: os-mediated`、`targetClass: not-applicable`、`methodClass: not-applicable`、
-`capabilityClass: not-applicable`、`originClass: not-applicable`、`effectClass: none`、`workflowClass: not-applicable`、
+`originClass: not-applicable`、`effectClass: none`、`workflowClass: not-applicable`、
 `outcomeClass: observed`、`sameInspectorHost: true`、`productAttributable: false`、`prohibited: false`、両ID
 `not-applicable`とし、Inspector requestをauthorized classへ変換しない。Unlisted field value/cross-field combinationは
 すべてfail closedにする。
@@ -2355,7 +2420,7 @@ discovery 20件、binding最多1件とする。Per-attempt equipment/bootstrap�
 
 全terminal workflow payloadはexact 1つのcross-field tupleを持つ。`eventCode`はliteral `observation`、
 `observationClass`は`workflow`、`actorClass`は`participant`、`authorityClass`、`requestClass`、`targetClass`、
-`methodClass`、`capabilityClass`、`originClass`はすべて`not-applicable`とする。`workflowClass`/`outcomeClass`は
+`methodClass`、`originClass`はすべて`not-applicable`とする。`workflowClass`/`outcomeClass`は
 accepted `StudyWorkflowOutcomeSubmission`と一致し、`sameInspectorHost`/`productAttributable`はliteral `true`、
 `prohibited`はliteral `false`とする。Automatic/review field 4件もaccepted submissionと一致する。Successはall N/A/
 effect none。Failureはexact review truthを使い、confirmed/disagreementだけ`workflow-blocker`、automatic/clearedは
@@ -2630,9 +2695,10 @@ candidate -> readable + not-applicable/all-parsed/mixed/all-failed parse summary
 
 ## Entity横断invariant
 
-1. Generation scopeの全DTOは1つのsessionと所属sequenceの最後にcommit済みgenerationに属し、置換済みgenerationのIDは
-   固定の`stale-resource` rejectionを返す。Commitは自sequenceのIDとviewだけをrekey/invalidateする。
-   Fatal attemptはpublic IDを作らず、保持generationのIDを変えない。
+1. Generation scopeの全DTOは1つのsessionと所属sequenceの最後にcommit済みgenerationに属し、detail requestはpathを
+   そのgenerationに対して解決して、保持されていないpathには固定の`stale-resource` rejectionを返す。
+   Commitは自sequenceのviewだけをinvalidateする。
+   Fatal attemptは何もpublishせず、保持generationを変えない。
 2. BootstrapからRepository Sourceは正確に1つ存在し、そのboundaryは選択済みRepository root、すなわちdefaultでは
    captureした呼び出し時のexact `process.cwd()`、指定時はそれに対してresolveした単一の`--root` valueである。
    Git rootである必要はなく、labelはread authorityを与えない。

@@ -2,10 +2,11 @@
 // (contracts/http-api.md § get-file-detail).
 //
 // This is the one function that returns authored content, so its contract is
-// mostly about exactness and about what happens when a file ID no longer names
-// anything. Both are load-bearing: a commit rekeys every generation-owned ID,
-// so a page holding an ID from an earlier scan must get the declared
-// `stale-resource` outcome rather than whatever now sits at that path.
+// mostly about exactness and about how a request resolves across commits. Both
+// are load-bearing: the path is the file's stable identity (FR-030), so a
+// retained request resolves against the current committed snapshot — serving
+// what that generation holds at the path, and the declared `stale-resource`
+// outcome when it holds nothing.
 //
 // The suite runs the real scan over a real fixture rather than a hand-built
 // generation, because the property under test is that the source the traversal
@@ -86,28 +87,17 @@ async function scannedFixture(): Promise<{
 
 async function getFileDetail(
   context: InspectorHostContext,
-  fileId: string,
+  sourceRelativePath: string,
 ): Promise<InspectionDataResult<FileDetailDto> | DeterministicRejection> {
   const fn = registerFunctions(context).get('agent-customization-inspector:get-file-detail')!;
-  return (await fn.handler(fileId as never)) as
+  return (await fn.handler(sourceRelativePath as never)) as
     InspectionDataResult<FileDetailDto> | DeterministicRejection;
-}
-
-/** The committed file ID of the fixture's one skill. */
-function skillFileId(context: InspectorHostContext, skillPath: string): string {
-  const file = context.session
-    .snapshot()
-    .files.find((candidate) => candidate.sourceRelativePath === skillPath);
-  if (file === undefined) {
-    throw new Error('the fixture skill was not committed');
-  }
-  return file.fileId;
 }
 
 describe('get-file-detail', () => {
   it('carries the epoch and both sequence generations beside the payload', async () => {
     const { context, skillPath } = await scannedFixture();
-    const result = await getFileDetail(context, skillFileId(context, skillPath));
+    const result = await getFileDetail(context, skillPath);
     expect(Object.keys(result).toSorted()).toEqual([
       'data',
       'globalContentEpoch',
@@ -118,7 +108,7 @@ describe('get-file-detail', () => {
 
   it('returns the complete authored source exactly as it was read', async () => {
     const { context, sourceText, skillPath } = await scannedFixture();
-    const result = await getFileDetail(context, skillFileId(context, skillPath));
+    const result = await getFileDetail(context, skillPath);
     if (!('data' in result)) {
       throw new Error('expected a detail result');
     }
@@ -135,20 +125,26 @@ describe('get-file-detail', () => {
 
   it('returns the skill as its declarations and its instructions, unmasked', async () => {
     const { context, skillPath } = await scannedFixture();
-    const result = await getFileDetail(context, skillFileId(context, skillPath));
+    const result = await getFileDetail(context, skillPath);
     if (!('data' in result)) {
       throw new Error('expected a detail result');
     }
-    expect(result.data.recognitions).toHaveLength(1);
-    const details = result.data.recognitions[0]!.details;
-    if (details.kind !== 'skill') {
-      throw new Error('expected a skill recognition');
+    // The parse is the file's, published once whatever the recognizing tools
+    // are (contracts/http-api.md § get-file-detail): `.agents/skills/` is
+    // both a Copilot and a Codex location, and both read the same
+    // declarations out of the same file, so the response carries one
+    // presentation rather than one copy per product.
+    if (result.data.kind !== 'skill') {
+      throw new Error('expected the skill variant');
     }
-    // The two the detail surface leads with, then every key the file declares
-    // — credential-shaped ones included, because this is the reader's own
-    // frontmatter shown back to them without masking (FR-025).
-    expect(details.declaredName).toBe('secretive');
-    const declared = new Map(details.frontmatter.map((entry) => [entry.key, entry.value]));
+    const presentation = result.data.presentation;
+    if (presentation === null) {
+      throw new Error('expected a parsed presentation');
+    }
+    // Every key the file declares — credential-shaped ones included, because
+    // this is the reader's own frontmatter shown back to them without masking
+    // (FR-025).
+    const declared = new Map(presentation.frontmatter.map((entry) => [entry.key, entry.value]));
     const scalarOf = (key: string): string => {
       const value = declared.get(key);
       if (value?.kind !== 'scalar') {
@@ -156,12 +152,13 @@ describe('get-file-detail', () => {
       }
       return value.text;
     };
+    expect(scalarOf('name')).toBe('secretive');
     expect(scalarOf('description')).toContain(SECRET_LITERALS.inDescription);
     expect(scalarOf('api_key')).toContain(SECRET_LITERALS.inOtherKey);
     // The instructions are the body alone: the block the declarations came
     // from is not in it, and the complete file is served once as `sourceText`.
-    expect(details.bodyText).not.toContain('api_key:');
-    expect(details.bodyText).toContain(SECRET_LITERALS.inBody);
+    expect(presentation.bodyText).not.toContain('api_key:');
+    expect(presentation.bodyText).toContain(SECRET_LITERALS.inBody);
   });
 
   it('withholds authored source from the session snapshot', async () => {
@@ -176,14 +173,18 @@ describe('get-file-detail', () => {
 
   it('returns diagnostics that carry no authored value', async () => {
     const { context, unparseableSkillPath } = await scannedFixture();
-    const result = await getFileDetail(context, skillFileId(context, unparseableSkillPath));
+    const result = await getFileDetail(context, unparseableSkillPath);
     if (!('data' in result)) {
       throw new Error('expected a detail result');
     }
-    // The file whose frontmatter cannot be parsed, so the assertions below run
-    // over a diagnostic that exists. Asserting the shape of an empty list
-    // proves nothing.
-    expect(result.data.diagnostics.length).toBeGreaterThan(0);
+    // The file whose frontmatter cannot be parsed: one extraction per kind
+    // means exactly one failure record however many tools recognize it
+    // (FR-028), and the skill variant publishes no parsed presentation.
+    if (result.data.kind !== 'skill') {
+      throw new Error('expected the skill variant');
+    }
+    expect(result.data.presentation).toBeNull();
+    expect(result.data.diagnostics).toHaveLength(1);
     // A Diagnostic record is an identity, a code, and a location. The message
     // is derived from the code by the shared registry, so no per-instance text
     // can carry a source value.
@@ -191,23 +192,53 @@ describe('get-file-detail', () => {
       expect(Object.keys(diagnostic).toSorted()).toEqual([
         'code',
         'diagnosticId',
-        'fileId',
         'sourceId',
         'sourceRelativePath',
       ]);
     }
   });
 
-  it('rejects an unknown file ID as a stale resource', async () => {
+  it('resolves an argument of another type to the same stale-resource rejection', async () => {
+    // The declared parameter validates by resolution, not by a shape guard
+    // (contracts/http-api.md § Host requirements 6): a value of another type
+    // equals no committed path, so it takes the same documented rejection as
+    // a removed one, and no separate malformed-argument vocabulary exists.
     const { context } = await scannedFixture();
-    expect(await getFileDetail(context, 'not-a-committed-id')).toEqual({
+    const fn = registerFunctions(context).get('agent-customization-inspector:get-file-detail')!;
+    expect(await fn.handler(42 as never)).toEqual({ error: { code: 'stale-resource' } });
+    expect(await fn.handler(undefined as never)).toEqual({ error: { code: 'stale-resource' } });
+  });
+
+  it('never reads an extra positional argument', async () => {
+    // A function reads only its declared parameters, and rejecting input it
+    // never reads would be a runtime guard with no protective failure mode
+    // (contracts/http-api.md § Host requirements 6, § Required contract
+    // tests item 4): the declared path still resolves.
+    const { context, skillPath, sourceText } = await scannedFixture();
+    const fn = registerFunctions(context).get('agent-customization-inspector:get-file-detail')!;
+    const result = (await (fn.handler as (...args: unknown[]) => unknown)(
+      skillPath,
+      'never-read',
+    )) as InspectionDataResult<FileDetailDto> | DeterministicRejection;
+    if (!('data' in result)) {
+      throw new Error('expected a detail result');
+    }
+    const { file } = result.data;
+    if (file.encoding !== 'utf-8') {
+      throw new Error('expected the readable variant');
+    }
+    expect(file.sourceText).toBe(sourceText);
+  });
+
+  it('rejects a path the current generations do not hold as a stale resource', async () => {
+    const { context } = await scannedFixture();
+    expect(await getFileDetail(context, 'not/a/committed/path.md')).toEqual({
       error: { code: 'stale-resource' },
     });
   });
 
-  it('rejects a file ID from a superseded generation', async () => {
-    const { context, skillPath } = await scannedFixture();
-    const before = skillFileId(context, skillPath);
+  it('keeps serving a path across a rescan through its stable identity', async () => {
+    const { context, skillPath, sourceText } = await scannedFixture();
     const repository = context.session.snapshot().sources[0]!;
     const admission = context.coordinator.admitScan(repository.sourceId, {
       kind: 'request',
@@ -222,39 +253,44 @@ describe('get-file-detail', () => {
       repository.sourceId,
       `published-source:${repository.sourceId}`,
     );
-    // The file is still there; its identity is not. A commit rekeys every
-    // generation-owned ID so a client holding an old one refetches instead of
-    // silently reading newer data through a stale handle (FR-030).
-    expect(skillFileId(context, skillPath)).not.toBe(before);
-    expect(await getFileDetail(context, before)).toEqual({ error: { code: 'stale-resource' } });
+    // The path is the file's identity, stable across generations (FR-030), so
+    // the request a client retained resolves against the new committed
+    // snapshot rather than dangling with the one it was captured under.
+    expect(context.session.snapshot().repositoryGeneration).toBe(2);
+    const result = await getFileDetail(context, skillPath);
+    if (!('data' in result)) {
+      throw new Error('expected a detail result');
+    }
+    expect(result.repositoryGeneration).toBe(2);
+    if (result.data.file.encoding !== 'utf-8') {
+      throw new Error('expected the readable variant');
+    }
+    expect(result.data.file.sourceText).toBe(sourceText);
   });
 
   it('states the minimum metadata a detail must carry', async () => {
     const { context, skillPath } = await scannedFixture();
-    const result = await getFileDetail(context, skillFileId(context, skillPath));
+    const result = await getFileDetail(context, skillPath);
     if (!('data' in result)) {
       throw new Error('expected a detail result');
     }
-    expect(Object.keys(result.data).toSorted()).toEqual(['diagnostics', 'file', 'recognitions']);
-    const [recognition] = result.data.recognitions;
-    expect(Object.keys(recognition!).toSorted()).toEqual([
-      'details',
-      'diagnosticIds',
-      'fileId',
-      'parseStatus',
-      'provenances',
-      'recognitionId',
-      'tool',
+    // The skill variant is the file, the one parse, and the diagnostics —
+    // no per-tool recognition list and no admission records: which tools
+    // recognize the file and each tool's invocation name are the inventory's
+    // facts, and an admission is an internal read-authorization record no
+    // session response carries (contracts/http-api.md § get-file-detail).
+    expect(Object.keys(result.data).toSorted()).toEqual([
+      'diagnostics',
+      'file',
+      'kind',
+      'presentation',
     ]);
-    // The admission says which rule admitted the file and where it matched —
-    // never whether the product would use it, which is a runtime the Inspector
-    // does not observe and therefore does not describe, and never where the
-    // customization would apply, which no surface shows.
-    const [provenance] = recognition!.provenances;
-    expect(Object.keys(provenance!).toSorted()).toEqual([
-      'discoveryClass',
-      'matchedPath',
-      'ruleId',
+    if (result.data.kind !== 'skill') {
+      throw new Error('expected the skill variant');
+    }
+    expect(Object.keys(result.data.presentation ?? {}).toSorted()).toEqual([
+      'bodyText',
+      'frontmatter',
     ]);
   });
 });

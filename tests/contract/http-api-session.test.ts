@@ -247,7 +247,6 @@ describe('the ordinary request-owned failure lifecycle (FR-030)', () => {
         diagnosticId: 'diag-1',
         code: 'root-unreadable',
         sourceId: 'src-1',
-        fileId: null,
         sourceRelativePath: null,
       },
     });

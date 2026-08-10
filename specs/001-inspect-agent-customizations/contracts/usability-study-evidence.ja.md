@@ -696,7 +696,7 @@ IDはmodule-private/runtime-onlyでenv/argv/application/evidence/digest/output�
 
 `StudyPreReadinessProductObservationDraft`はcanonical observation payloadとsame exact root order
 `schemaVersion`, `eventCode`, `eventId`, `correlationId`, `subjectId`, `inspectorProcessId`, `observationClass`,
-`actorClass`, `authorityClass`, `requestClass`, `targetClass`, `methodClass`, `capabilityClass`, `originClass`,
+`actorClass`, `authorityClass`, `requestClass`, `targetClass`, `methodClass`, `originClass`,
 `effectClass`, `workflowClass`, `outcomeClass`, `automaticIssueCorrelationId`, `reviewDisposition`,
 `reviewerOneClassification`, `reviewerTwoClassification`, `sameInspectorHost`, `productAttributable`, `prohibited`を
 持つ。Version/eventは`1`/`observation`、event/correlationはfresh transient ID、subjectはcurrent、process/workflow/
@@ -815,7 +815,7 @@ stale/mismatched markerは`unknown`とし、いずれもunrelated、N/A binding 
 
 Proxyはforward前にBasic field全体をconsume/stripする。Secretはproxy transport authentication capability
 だけであり、validityだけでactor/product attribution、application/control capability、forward authorizationを
-成立させず、closed target/method/capability/origin policyを広げない。Raw/encoded Basic、raw secret、install
+成立させず、closed target/method/origin policyを広げない。Raw/encoded Basic、raw secret、install
 configuration、marker bindingは他inherited/evidence IPC、hash、evidence、log、process output、file、environment、
 argv、persistent profile/history/cache/credential store/keychain、application requestへ入れない。Control token、
 continuity key、IPC key、`browserAttemptId`、それらのderivativeをmarker secretへreuseしない。Normal close、
@@ -874,7 +874,7 @@ Closed ordered decision tableは次とする。
 |---|---|---|
 | Valid secret、`modeClass: navigate`、`destinationClass: document`、`userClass: present`、`originEvidenceClass: missing`、`siteClass: none \| same-origin`、exact authorized-static target、current armed grant | `participant`; open binding IDとgrant correlation | Grantをonce consumeしてforward/join。 |
 | 上記participant条件のいずれかを欠くparticipant-shaped valid-secret request（nonexact target/no grant/replay/user-activated page-script navigationを含む） | `unknown`; open binding ID | Browser-only fail-closed critical `unauthorized-request`、attributable/prohibited trueでblock。 |
-| Valid secret、participantではない、`userClass: missing`、かつ`originEvidenceClass: exact-issued`または（Origin missingかつReferer exact-issued） | `bundled-spa`; open binding ID | Exact authorized-static/APIだけforward/join。全nonexact/unauthorizedはbrowser-only product-attributable/prohibitedとしてblock。 |
+| Valid secret、participantではない、`userClass: missing`、かつ`originEvidenceClass: exact-issued`または（Origin missingかつReferer exact-issued） | `bundled-spa`; open binding ID | Exact authorized-static/RPC requestだけforward/join。全nonexact/unauthorizedはbrowser-only product-attributable/prohibitedとしてblock。 |
 | Valid secretかつextension-scheme origin | `browser-extension`; subject/process N/A | 常にbrowser-only unrelated、effect none、attributable/prohibited falseでblock。 |
 | その他valid-secret projection | `unknown`; open binding ID | Browser-only fail-closed critical request: 該当に応じて`requestClass: unclassifiable \| prohibited`、`effectClass: unauthorized-request`、`productAttributable: true`、`prohibited: true`でblock。 |
 | Bootstrap後のsyntactically valid missing secret | `other-host-process`; subject/process N/A | Browser-only unrelated/falseでblock。 |
@@ -1017,7 +1017,7 @@ adapterがheader前にfresh correlationを生成する。Transient classificatio
 `StudyBrowserRequestCandidate`をconstructし、eligible exact-issued requestでは同名incoming fieldをすべてremoveして
 canonical field exact 1件をinjectする。Blocked requestにはforwarded headerを付けない。Candidateのcomplete root orderは`schemaVersion`, `studyRunId`,
 `browserAttemptId`, `correlationId`, `actorClass`, `authorityClass`, `requestClass`, `targetClass`, `methodClass`,
-`capabilityClass`, `originClass`, `effectClass`, `sameInspectorHost`, `productAttributable`, `prohibited`とする。
+`originClass`, `effectClass`, `sameInspectorHost`, `productAttributable`, `prohibited`とする。
 Versionはliteral `1`、`studyRunId`はcurrent run、`browserAttemptId`はcurrent valid binding IDまたはmissing/
 invalid marker時のliteral `not-applicable`、`correlationId`はparticipantではgrant ID、他branchではadapter fresh IDとする。全class/booleanは
 下記closed classificationとし、candidateはsubject/process ID/raw valueを持たない。
@@ -1028,7 +1028,7 @@ encodeがreceived 43-character textとexact equalであることを要求する�
 `submit-product-event` commandのserver-claim payload variantでexact in-memory
 `StudyServerCorrelationClaim`だけをconstruct/submitする。Complete root orderは`schemaVersion`, `studyRunId`,
 `correlationId`, `subjectId`, `inspectorProcessId`,
-`actorClass`, `authorityClass`, `requestClass`, `targetClass`, `methodClass`, `capabilityClass`, `originClass`,
+`actorClass`, `authorityClass`, `requestClass`, `targetClass`, `methodClass`, `originClass`,
 `effectClass`, `sameInspectorHost`, `productAttributable`, `prohibited`とし、browser-attempt ID/raw valueを含めない。
 Command outer process IDはregistered probeを引き続きauthenticateするがclaim/evidence fieldではない。
 Canonical `correlationId` stringはsole retained header-derived valueであり、canonical payload/stream/handoff/
@@ -1038,6 +1038,13 @@ binding/registered subject/process IDをcopyし、actorはexact `participant | b
 extension/other-host/unknown claim branchはinvalidとする。Probeはunchanged controlled header 6件からprojectionを
 独立deriveしcandidate tupleとのexact一致を要求する。Direct Inspector-origin
 requestは従来のprobe-generated correlation pathを使い、browser-attempt bindingを使わない。
+
+Logical request eventとはHTTP requestである。Session channelのdevframe frameはHTTP requestではなく
+headerを持たない。Authorized upgrade 1件のjoined pairがreleaseされた後、そのconnectionのframeは
+released connectionのopaque byteとしてproxyを通過し、per-frame candidate、header injection、
+proxy側のparse/retentionは存在しない。そのconnection上でhostがdispatchする各RPC invocationは代わりに
+Inspector-sideのregistered probeが観測し、probe-generated correlation pathでsafe server observation
+1件をsubmitする。それらのobservationのclosed classificationは下記authorized-rpc rowが固定する。
 
 Supervisorは`studyRunId + correlationId`だけをkeyにするcontent-free in-memory brokerを所有する。Validated candidateごとに
 current binding/open-context scopeをsnapshotしてからevidenceを構築し、source/adapterによるworkflow supply/inferenceを許さない。
@@ -1145,7 +1152,7 @@ NDJSON file全体、すなわちsequence順の各pairについて`envelopeBytes`
 | `recordKind` | `eventCode` | Canonical construction後のexact payload property |
 |---|---|---|
 | `capture-start` | `capture-start` | `schemaVersion`, `eventCode`, `controlSessionId`, `studyRunId`, `workRootIdentityCommitment`, `candidateIdentityCommitment`, `candidateSha256`, `studyInputManifestSha256`, `captureProcessReady`, `watchdogReady` |
-| `payload` | `observation` | `schemaVersion`, `eventCode`, `eventId`, `correlationId`, `subjectId`, `inspectorProcessId`, `observationClass`, `actorClass`, `authorityClass`, `requestClass`, `targetClass`, `methodClass`, `capabilityClass`, `originClass`, `effectClass`, `workflowClass`, `outcomeClass`, `automaticIssueCorrelationId`, `reviewDisposition`, `reviewerOneClassification`, `reviewerTwoClassification`, `sameInspectorHost`, `productAttributable`, `prohibited` |
+| `payload` | `observation` | `schemaVersion`, `eventCode`, `eventId`, `correlationId`, `subjectId`, `inspectorProcessId`, `observationClass`, `actorClass`, `authorityClass`, `requestClass`, `targetClass`, `methodClass`, `originClass`, `effectClass`, `workflowClass`, `outcomeClass`, `automaticIssueCorrelationId`, `reviewDisposition`, `reviewerOneClassification`, `reviewerTwoClassification`, `sameInspectorHost`, `productAttributable`, `prohibited` |
 | `heartbeat` | `heartbeat` | `schemaVersion`, `eventCode`, `studyRunId`, `watchdogHealthy`, `captureProcessHealthy`, `acceptedPayloadCount` |
 | `handoff-anchor` | `handoff-anchor` | `schemaVersion`, `eventCode`, `studyRunId`, `checkpointRequestId`, `handoffSha256` |
 | `capture-stop` | `capture-stop` | `schemaVersion`, `eventCode`, `studyRunId`, `candidateSha256`, `studyInputManifestSha256`, `checkpointRequestId`, `handoffSha256`, `continuityPassed`, `finalSequence`, `envelopeCount`, `payloadRecordCount`, `heartbeatRecordCount`, `handoffAnchorRecordCount`, `priorEnvelopeSha256` |
@@ -1179,10 +1186,9 @@ Classification valueは次のclosed setとする。
 | `observationClass` | `request \| mcp \| execution \| inspected-source-mutation \| workflow` |
 | `actorClass` | `inspector \| bundled-spa \| browser-extension \| other-host-process \| operating-system \| participant \| unknown` |
 | `authorityClass` | `exact-issued \| other-loopback \| remote \| unclassifiable \| not-applicable` |
-| `requestClass` | `authorized-static \| authorized-api \| prohibited \| unrelated \| os-mediated \| unclassifiable \| not-applicable` |
-| `targetClass` | `static-manifested-asset \| static-spa-shell \| static-client-route-fallback \| api-get-session \| api-get-file \| api-post-repository-rescan \| api-get-global-consent-preview \| api-post-global-consent-preview \| api-post-global-enable \| api-post-global-rescan \| api-post-global-disable \| other-loopback \| remote \| mcp \| unclassifiable \| not-applicable` |
+| `requestClass` | `authorized-static \| authorized-rpc \| prohibited \| unrelated \| os-mediated \| unclassifiable \| not-applicable` |
+| `targetClass` | `static-manifested-asset \| static-spa-shell \| static-client-route-fallback \| connection-discovery-metadata \| rpc-channel-upgrade \| rpc-get-session \| rpc-get-file-detail \| rpc-rescan-repository \| rpc-get-global-consent-preview \| rpc-create-global-consent-preview \| rpc-enable-global \| rpc-rescan-global \| rpc-disable-global \| rpc-devframe-framework \| other-loopback \| remote \| mcp \| unclassifiable \| not-applicable` |
 | `methodClass` | `get \| head \| post \| other \| unclassifiable \| not-applicable` |
-| `capabilityClass` | `valid \| missing \| invalid \| unclassifiable \| not-applicable` |
 | `originClass` | `exact-same-origin \| missing \| mismatched \| unclassifiable \| not-applicable` |
 | `effectClass` | `none \| unauthorized-request \| command-or-code-execution \| child-process \| mcp-connection \| prohibited-outbound-request \| inspected-source-mutation \| cross-machine-content-exposure \| workflow-blocker` |
 | `workflowClass` | `discovery \| inspection \| comparison \| global-consent \| not-applicable` |
@@ -1197,7 +1203,7 @@ Classification valueは次のclosed setとする。
 `not-applicable`とする。Serialized tagはimmutableでsource self-declareを禁止する。
 Terminal workflow rowはexact `eventCode: observation`、`observationClass: workflow`、
 `actorClass: participant`とし、`authorityClass`、`requestClass`、`targetClass`、`methodClass`、
-`capabilityClass`、`originClass`はすべて`not-applicable`、workflowはnon-N/A 4件のうち1件、
+`originClass`はすべて`not-applicable`、workflowはnon-N/A 4件のうち1件、
 `outcomeClass: success | failure`とする。Pre-readiness failureでもstudy Inspector host contextにbindするため
 `sameInspectorHost: true`、`productAttributable: true`、`prohibited: false`とする。Successは
 `effectClass: none`とall automatic/review field N/A、failureは上記exact truth tableを使う。Reviewer confirmed/disagreement
@@ -1206,38 +1212,49 @@ launchはreturned process ID、pre-readiness failureは`inspectorProcessId: not-
 その他workflow tupleはfail closedにする。全nonworkflow payloadはautomatic fieldとreview field 3件をliteral
 `not-applicable`とし、workflowは上記coordinator exception以外N/A、MCPは`targetClass: mcp`とする。
 
-Authorized static rowは`authorityClass: exact-issued`、`requestClass: authorized-static`、static target class
-3件のうち1件、`methodClass: get | head`、`capabilityClass: not-applicable`、`originClass: not-applicable`、
+Authorized static rowは`authorityClass: exact-issued`、`requestClass: authorized-static`、packaged-serving target class
+4件のうち1件、`methodClass: get | head`、`originClass: not-applicable`、
 `sameInspectorHost: true`、`productAttributable: true`、`prohibited: false`、actor
 `participant | bundled-spa`、`effectClass: none`だけに閉じる。`static-manifested-asset`はmanifest-listed
 non-HTML assetだけ、`static-spa-shell`はpackaged `/`/`index.html` shellだけ、
-`static-client-route-fallback`はclosed client-route fallback 1件だけとする。Authorized API rowはactor `bundled-spa`、
-exact-issued authority、authorized-api request、`capabilityClass: valid`、same-host/attributable true、
-`effectClass: none`、prohibited false、次のmethod/target mapping exact 1件に閉じる。GETの`originClass`は
-`missing | exact-same-origin`だけ、POSTは`exact-same-origin`だけを許可する。
+`static-client-route-fallback`はclosed client-route fallback 1件だけ、`connection-discovery-metadata`は
+channel自身のpathを載せsession dataを一切持たないdevframe固定のconnection-discovery document
+(`__connection.json`)だけとする。Authorized-rpc rowはtransport境界で分かれる。Channel establishmentは
+browser path上のHTTP request 1件で、actor `bundled-spa`、exact-issued authority、
+`requestClass: authorized-rpc`、`targetClass: rpc-channel-upgrade`、`methodClass: get`、
+`originClass: exact-same-origin` — pinned browserはWebSocket upgradeで必ずpage originを名乗る —
+same-host/attributable true、`effectClass: none`、prohibited falseに閉じる。Released upgraded
+connection上でhostがdispatchする各RPC invocationは、registered probeからのserver observationで、
+actor、authority、request class、effect、booleanは同じ、`methodClass: not-applicable`と
+`originClass: not-applicable`とする。Frameは HTTP requestではなく、そのconnectionのmethodとoriginは
+upgradeで分類済みだからである。`targetClass`はdispatchされた関数のrow exact 1件で、exact関数名は
+probe memory内だけで分類する:
 
-| Adapter memory内だけでclassifyするexact raw route | `methodClass` | `targetClass` |
-|---|---|---|
-| `GET /api/v1/session` | `get` | `api-get-session` |
-| `GET /api/v1/files/{fileId}` | `get` | `api-get-file` |
-| `POST /api/v1/repository/rescan` | `post` | `api-post-repository-rescan` |
-| `GET /api/v1/global/consent-preview` | `get` | `api-get-global-consent-preview` |
-| `POST /api/v1/global/consent-preview` | `post` | `api-post-global-consent-preview` |
-| `POST /api/v1/global/enable` | `post` | `api-post-global-enable` |
-| `POST /api/v1/global/rescan` | `post` | `api-post-global-rescan` |
-| `POST /api/v1/global/disable` | `post` | `api-post-global-disable` |
+| RPC function(`http-api.ja.md` § RPC function一覧) | `targetClass` |
+|---|---|
+| `agent-customization-inspector:get-session` | `rpc-get-session` |
+| `agent-customization-inspector:get-file-detail` | `rpc-get-file-detail` |
+| `agent-customization-inspector:rescan-repository` | `rpc-rescan-repository` |
+| `agent-customization-inspector:get-global-consent-preview` | `rpc-get-global-consent-preview` |
+| `agent-customization-inspector:create-global-consent-preview` | `rpc-create-global-consent-preview` |
+| `agent-customization-inspector:enable-global` | `rpc-enable-global` |
+| `agent-customization-inspector:rescan-global` | `rpc-rescan-global` |
+| `agent-customization-inspector:disable-global` | `rpc-disable-global` |
+| devframe自身のframework-registered関数 — 全connectionが発行するtrust handshakeとtransport契約が列挙するbuilt-in | `rpc-devframe-framework` |
 
+その他の関数名をdispatchするinvocationはどのrowにもmatchせず、`targetClass: unclassifiable`と
+not-applicableなmethod/originを持つauthorized table外のexact-issued requestとなる。
 その他cross-field combinationをauthorizeしない。Remaining product-attributable request/MCP effect tableは次の
 exact 5行とする。全rowで`workflowClass`は上記coordinator exception以外`not-applicable`、`outcomeClass: observed`を
 使い、automatic/review field 4件を`not-applicable`とする。
 
 | Case | Exact classification/boolean |
 |---|---|
-| Authorized table外のexact-issued request | `observationClass: request`、observed product-attributable `participant \| bundled-spa \| inspector` actor、`authorityClass: exact-issued`、`requestClass: prohibited`、observed closed `targetClass`/`methodClass`/`capabilityClass`/`originClass`、`effectClass: unauthorized-request`、`sameInspectorHost: true`、`productAttributable: true`、`prohibited: true` |
-| Other-loopback request | `observationClass: request`、observed product-attributable `participant \| bundled-spa \| inspector` actor、`authorityClass: other-loopback`、`requestClass: prohibited`、`targetClass: other-loopback`、observed closed non-N/A `methodClass`、`capabilityClass: not-applicable`、`originClass: not-applicable`、`effectClass: unauthorized-request`、`sameInspectorHost: true`、`productAttributable: true`、`prohibited: true` |
-| Remote request | `observationClass: request`、observed product-attributable `participant \| bundled-spa \| inspector` actor、`authorityClass: remote`、`requestClass: prohibited`、`targetClass: remote`、observed closed non-N/A `methodClass`、`capabilityClass: not-applicable`、`originClass: not-applicable`、`effectClass: prohibited-outbound-request`、`sameInspectorHost: false`、`productAttributable: true`、`prohibited: true` |
-| Fully unclassifiable product-correlated request | `observationClass: request`、`actorClass: unknown`、`authorityClass: unclassifiable`、`requestClass: unclassifiable`、`targetClass: unclassifiable`、`methodClass: unclassifiable`、`capabilityClass: unclassifiable`、`originClass: unclassifiable`、`effectClass: unauthorized-request`、`sameInspectorHost: false`、`productAttributable: true`、`prohibited: true` |
-| Product MCP observation | `observationClass: mcp`、`actorClass: inspector`、`authorityClass: not-applicable`、`requestClass: not-applicable`、`targetClass: mcp`、`methodClass: not-applicable`、`capabilityClass: not-applicable`、`originClass: not-applicable`、`effectClass: mcp-connection`、`sameInspectorHost: false`、`productAttributable: true`、`prohibited: true` |
+| Authorized table外のexact-issued request | `observationClass: request`、observed product-attributable `participant \| bundled-spa \| inspector` actor、`authorityClass: exact-issued`、`requestClass: prohibited`、observed closed `targetClass`/`methodClass`/`originClass`、`effectClass: unauthorized-request`、`sameInspectorHost: true`、`productAttributable: true`、`prohibited: true` |
+| Other-loopback request | `observationClass: request`、observed product-attributable `participant \| bundled-spa \| inspector` actor、`authorityClass: other-loopback`、`requestClass: prohibited`、`targetClass: other-loopback`、observed closed non-N/A `methodClass`、`originClass: not-applicable`、`effectClass: unauthorized-request`、`sameInspectorHost: true`、`productAttributable: true`、`prohibited: true` |
+| Remote request | `observationClass: request`、observed product-attributable `participant \| bundled-spa \| inspector` actor、`authorityClass: remote`、`requestClass: prohibited`、`targetClass: remote`、observed closed non-N/A `methodClass`、`originClass: not-applicable`、`effectClass: prohibited-outbound-request`、`sameInspectorHost: false`、`productAttributable: true`、`prohibited: true` |
+| Fully unclassifiable product-correlated request | `observationClass: request`、`actorClass: unknown`、`authorityClass: unclassifiable`、`requestClass: unclassifiable`、`targetClass: unclassifiable`、`methodClass: unclassifiable`、`originClass: unclassifiable`、`effectClass: unauthorized-request`、`sameInspectorHost: false`、`productAttributable: true`、`prohibited: true` |
+| Product MCP observation | `observationClass: mcp`、`actorClass: inspector`、`authorityClass: not-applicable`、`requestClass: not-applicable`、`targetClass: mcp`、`methodClass: not-applicable`、`originClass: not-applicable`、`effectClass: mcp-connection`、`sameInspectorHost: false`、`productAttributable: true`、`prohibited: true` |
 
 IDはapplicable binding/probe subject/process IDとする。Browser-attempt pathではordered initiator decision
 tableをauthorityとする。Extension、missing-secret other-host、invalid-secret unknownは
@@ -1246,7 +1263,7 @@ nonexact/no-grant/replayed/user-activated page-scriptとvalid-secret remainder u
 effect unauthorized-request、attributable/prohibited true、blocked bundled-SPAはbinding IDとapplicable product-
 attributable prohibited tupleを使う。すべてoutcome observed/automatic/review N/Aで、workflowはcoordinator exception以外N/Aとする。Product correlationのないoperating-system mediationは
 `observationClass: request`、`actorClass: operating-system`、`authorityClass: not-applicable`、
-`requestClass: os-mediated`、`targetClass: not-applicable`、`methodClass: not-applicable`、`capabilityClass: not-applicable`、
+`requestClass: os-mediated`、`targetClass: not-applicable`、`methodClass: not-applicable`、
 `originClass: not-applicable`、`effectClass: none`、`workflowClass: not-applicable`、`outcomeClass: observed`、
 `sameInspectorHost: true`、`productAttributable: false`、`prohibited: false`、両ID `not-applicable`とする。
 Unlisted field value/cross-field combinationはすべてfail closedにする。

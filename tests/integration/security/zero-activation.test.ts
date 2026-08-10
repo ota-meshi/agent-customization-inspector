@@ -418,7 +418,11 @@ describe('parsing, extraction, and detail activate nothing (T085)', () => {
     for (const companion of companionFiles) {
       const file = publication.files.find((one) => one.sourceRelativePath === companion);
       expect(file).toBeDefined();
-      expect(publication.recognitions.filter((one) => one.fileId === file?.fileId)).toEqual([]);
+      expect(
+        publication.recognitions.filter(
+          (one) => one.sourceRelativePath === file?.sourceRelativePath,
+        ),
+      ).toEqual([]);
     }
   });
 
@@ -447,12 +451,9 @@ describe('parsing, extraction, and detail activate nothing (T085)', () => {
       'repository',
     );
 
-    const fileId = session
-      .snapshot()
-      .files.find((file) => file.sourceRelativePath === fixture.skillPath)?.fileId;
     vi.clearAllMocks();
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
-    const detail = session.fileDetail(fileId!);
+    const detail = session.fileDetail(fixture.skillPath);
 
     expect(detail?.file.sourceRelativePath).toBe(fixture.skillPath);
     expect(fetchSpy).not.toHaveBeenCalled();

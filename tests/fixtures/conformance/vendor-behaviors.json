@@ -106,5 +106,198 @@
         "establishes": "Local Codex clients additionally discover user skills at $HOME/.agents/skills/<name>/SKILL.md, alongside repository, admin, and system scopes."
       }
     ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cli.commands",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "undocumented",
+      "relativeSelector": ".claude/commands/<command>.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.reference",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Commands (alternative skill format)"],
+        "reviewedOn": "2026-07-15",
+        "establishes": "Copilot CLI documents .claude/commands/*.md as an alternative skill format that a same-name skill outranks, without establishing a complete project anchor or ancestor traversal."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cli.skills",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "runtime-cwd",
+      "relativeSelector": ".github/skills/<name>/SKILL.md; .agents/skills/<name>/SKILL.md; .claude/skills/<name>/SKILL.md; parent-directory .github/skills/<name>/SKILL.md (inherited, monorepo support)",
+      "traversal": "standard-location-chain"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.reference",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Skill locations"],
+        "reviewedOn": "2026-07-15",
+        "establishes": "Copilot CLI loads project skills from .github/skills, .agents/skills, and .claude/skills at the runtime project, inherits parent-directory .github/skills layers for monorepos, and resolves a duplicate name to the first found in its documented source order."
+      },
+      {
+        "sourceId": "github.copilot.skills",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/add-skills",
+        "officialHost": "docs.github.com",
+        "sections": ["Creating and adding a skill"],
+        "reviewedOn": "2026-07-15",
+        "establishes": "The create-a-skill how-to documents the authored shape — a named skill directory carrying its own SKILL.md — in the same three project directories, .github/skills, .claude/skills, and .agents/skills."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cli.user.skills",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "profile-data",
+      "relativeSelector": ".copilot/skills/<name>/SKILL.md; .agents/skills/<name>/SKILL.md",
+      "traversal": "standard-location-chain"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.reference",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Skill locations"],
+        "reviewedOn": "2026-07-15",
+        "establishes": "Copilot CLI additionally discovers personal skills in user-home locations, placed below project and inherited skills and above later sources in the documented first-found order."
+      },
+      {
+        "sourceId": "github.copilot.skills",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/add-skills",
+        "officialHost": "docs.github.com",
+        "sections": ["Adding a skill that someone else has created"],
+        "reviewedOn": "2026-07-15",
+        "establishes": "A skill copied into a personal location is the same authored directory shape as a repository skill; only its scope differs."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cloud.remote-skills",
+    "tool": "copilot",
+    "surfaces": ["copilot-cloud"],
+    "locator": {
+      "vendorScope": "hosted-managed",
+      "lookupBase": "hosted-state",
+      "relativeSelector": null,
+      "traversal": "none"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.reference",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Skill locations"],
+        "reviewedOn": "2026-07-15",
+        "establishes": "Organization- or enterprise-hosted skills are projected into a session via the AHP relay with content fetched on demand, from no repository or user filesystem location; the last-in-order placement and name-based priority it documents are the CLI surface’s, leaving Cloud collision behavior unestablished."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cloud.skills",
+    "tool": "copilot",
+    "surfaces": ["copilot-cloud"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "repository-root",
+      "relativeSelector": ".github/skills/<name>/SKILL.md; .agents/skills/<name>/SKILL.md; .claude/skills/<name>/SKILL.md",
+      "traversal": "standard-location-chain"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.skills",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/add-skills",
+        "officialHost": "docs.github.com",
+        "sections": ["Creating and adding a skill", "How Copilot uses agent skills"],
+        "reviewedOn": "2026-07-15",
+        "establishes": "Copilot cloud agent discovers repository skills in the three fixed root directories and loads a relevant skill progressively; how local personal skills project into the hosted surface is not established."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.vscode.skills",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "workspace-root",
+      "relativeSelector": ".github/skills/<name>/SKILL.md; .agents/skills/<name>/SKILL.md; .claude/skills/<name>/SKILL.md",
+      "traversal": "standard-location-chain"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.skills",
+        "url": "https://code.visualstudio.com/docs/agent-customization/agent-skills",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Create a skill", "How Copilot uses skills"],
+        "reviewedOn": "2026-07-15",
+        "establishes": "The Create-a-skill location table documents project skills in .github/skills, .claude/skills, and .agents/skills in the repository, each read from its SKILL.md, and Copilot loads a relevant skill progressively after discovering its metadata."
+      },
+      {
+        "sourceId": "vscode.copilot.settings",
+        "url": "https://code.visualstudio.com/docs/agents/reference/ai-settings",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Agent skills settings"],
+        "reviewedOn": "2026-07-15",
+        "establishes": "Skill discovery locations are setting-controlled, which keeps enablement and any additional configured location a runtime condition rather than part of the documented default lookup."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.vscode.user.skills",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "profile-data",
+      "relativeSelector": ".copilot/skills/<name>/SKILL.md; .agents/skills/<name>/SKILL.md; .claude/skills/<name>/SKILL.md",
+      "traversal": "standard-location-chain"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.skills",
+        "url": "https://code.visualstudio.com/docs/agent-customization/agent-skills",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Create a skill"],
+        "reviewedOn": "2026-07-15",
+        "establishes": "The Create-a-skill location table documents personal skills in the user profile at ~/.copilot/skills, ~/.claude/skills, and ~/.agents/skills; duplicate-name precedence against workspace skills is not documented."
+      },
+      {
+        "sourceId": "vscode.copilot.settings",
+        "url": "https://code.visualstudio.com/docs/agents/reference/ai-settings",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Agent skills settings"],
+        "reviewedOn": "2026-07-15",
+        "establishes": "User skill locations participate in the same setting-controlled discovery configuration as workspace locations."
+      }
+    ]
   }
 ]

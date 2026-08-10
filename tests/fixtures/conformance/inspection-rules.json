@@ -103,5 +103,104 @@
         "establishes": "Repository skills live at .agents/skills/<name>/SKILL.md, which is the exact location this rule admits; the User scope the same page documents is a different Source boundary the rule may not read."
       }
     ]
+  },
+  {
+    "ruleId": "copilot.repo.skill",
+    "tool": "copilot",
+    "discoveryClass": "static-candidate",
+    "kind": "skill",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".github"
+          },
+          {
+            "kind": "literal",
+            "value": "skills"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/(?:)/u"
+          },
+          {
+            "kind": "literal",
+            "value": "SKILL.md"
+          }
+        ],
+        [
+          {
+            "kind": "literal",
+            "value": ".agents"
+          },
+          {
+            "kind": "literal",
+            "value": "skills"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/(?:)/u"
+          },
+          {
+            "kind": "literal",
+            "value": "SKILL.md"
+          }
+        ],
+        [
+          {
+            "kind": "literal",
+            "value": ".claude"
+          },
+          {
+            "kind": "literal",
+            "value": "skills"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/(?:)/u"
+          },
+          {
+            "kind": "literal",
+            "value": "SKILL.md"
+          }
+        ]
+      ]
+    },
+    "derivation": null,
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.skills",
+        "url": "https://code.visualstudio.com/docs/agent-customization/agent-skills",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Create a skill", "How Copilot uses skills"],
+        "reviewedOn": "2026-07-15",
+        "establishes": "VS Code reads workspace skills from the three fixed directories this rule admits, each skill one named directory carrying its own SKILL.md."
+      },
+      {
+        "sourceId": "github.copilot.cli.reference",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Skill locations"],
+        "reviewedOn": "2026-07-15",
+        "establishes": "The Skill locations table loads project skills from .github/skills, .agents/skills, and .claude/skills at the runtime project and inherits parent-directory .github/skills layers for monorepos — no downward tier, which is why this rule stays anchored at the selected root."
+      },
+      {
+        "sourceId": "github.copilot.skills",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/add-skills",
+        "officialHost": "docs.github.com",
+        "sections": ["Creating and adding a skill"],
+        "reviewedOn": "2026-07-15",
+        "establishes": "The cloud agent reads the same three directories at the repository root, so a root candidate is authored inventory for all three surfaces at once."
+      }
+    ]
   }
 ]

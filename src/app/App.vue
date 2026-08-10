@@ -52,8 +52,8 @@ let rpcCall: ((method: string, ...args: readonly unknown[]) => Promise<unknown>)
 const sessionViewState = new SessionViewState({
   channel: {
     // The parameter tail is forwarded, not dropped: `get-file-detail` takes
-    // the file ID it is asked about, and a bridge that passed only the name
-    // would call it with none.
+    // the Source-relative Path it is asked about, and a bridge that passed
+    // only the name would call it with none.
     call: (method, ...args) =>
       rpcCall === null
         ? Promise.reject(new Error('the local inspection session is not connected yet'))
@@ -142,8 +142,8 @@ const documentTitle = computed(() => {
       // The route is part of what the page is, and a title that never changed
       // would leave a screen-reader user on a detail page hearing the
       // inventory's (WCAG 2.4.2). A page that reports its subject — the skill
-      // detail's declared name, or the state it is in when it is showing no
-      // skill — titles the tab by it, so two tabs stay distinguishable.
+      // detail's resolved row name, or the state it is in when it is showing
+      // no skill — titles the tab by it, so two tabs stay distinguishable.
       if (route.path === '/') {
         return APP_NAME;
       }
@@ -205,7 +205,7 @@ onMounted(async () => {
   //
   // `baseURL` is this page's own origin rather than devframe's default
   // `'./'`, which resolves against the current document path. This application
-  // has nested routes — `/skills/<fileId>` — and a page loaded directly at one
+  // has nested routes — `/skills/<tool>/<source-relative path>` — and a page loaded directly at one
   // of them would look for the connection metadata under `/skills/` and fail to
   // connect at all. The origin is the right base because the host serves the
   // shell from the site root (`app.baseURL` in nuxt.config.ts); a bare `'/'`
@@ -261,9 +261,9 @@ onBeforeUnmount(() => {
     <h1 ref="heading" tabindex="-1">{{ APP_NAME }}</h1>
     <!-- The inventory's own introduction, so it is shown with the inventory. A
          detail route does not repeat it: that screen is devoted to the
-         recognized skill and its files, and its recognition summary states
-         only what the Inspector found rather than making an applicability
-         claim. -->
+         recognized skill and its files — the definition line, the parsed
+         declarations, and the sources — and states only what the Inspector
+         found rather than making an applicability claim. -->
     <p v-if="route.path === '/'" class="aci-app__tagline">
       Browse the customization files AI coding agents look for in this repository. Being listed is
       not being loaded: whether a product actually uses one depends on runtime conditions this tool
