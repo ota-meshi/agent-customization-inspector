@@ -1,4 +1,4 @@
-// T058: the browser-side inventory behavior — generation-aware filters over
+// T058/T181: the browser-side inventory behavior — generation-aware filters over
 // the committed snapshot, the request-correlated rescan/retry lifecycle, the
 // empty state, and the guarantee that a session summary carries no authored
 // source. The one authored value it does carry is the skill's declared name,
@@ -24,6 +24,7 @@ import type {
   SkillInventoryEntryDto,
   SourceDto,
 } from '../../../src/shared/api-types';
+import { SUPPORTED_TOOL_ORDER } from '../../../src/shared/entities';
 import type { CustomizationKind, SupportedTool } from '../../../src/shared/entities';
 
 const REPOSITORY_SOURCE: SourceDto = {
@@ -611,6 +612,207 @@ describe('the request-correlated rescan lifecycle', () => {
     expect(state.rescanState.value).toBe('idle');
     expect(state.snapshot.value).toBeNull();
     expect(state.view.value).toBe('ended');
+  });
+});
+
+describe('unified SKILL rows across the recognizing tools (T181)', () => {
+  // The committed shape of the all-tool fixture, as the client receives it:
+  // one row per resolved name, each definition naming its file and tool, and
+  // the per-tool statements the projection derived. The filters must treat
+  // the three vendors' definitions as one population rather than per-vendor
+  // lists (data-model.md § Inventory unit).
+  function unifiedEntries(): SkillInventoryEntryDto[] {
+    const definition = (
+      tool: SupportedTool,
+      path: string,
+      invocationName: string,
+    ): SkillInventoryEntryDto['definitions'][number] => ({
+      sourceRelativePath: path,
+      tool,
+      parseStatus: 'parsed',
+      invocationName,
+      diagnosticIds: [],
+      companionFiles: [],
+    });
+    return [
+      {
+        name: 'alpha',
+        definitions: [
+          definition('copilot', '.agents/skills/alpha-a/SKILL.md', 'alpha'),
+          definition('codex', '.agents/skills/alpha-a/SKILL.md', 'alpha'),
+          definition('copilot', '.agents/skills/alpha-b/SKILL.md', 'alpha'),
+          definition('codex', '.agents/skills/alpha-b/SKILL.md', 'alpha'),
+        ],
+        sameNameResolutions: [
+          { tool: 'copilot', resolution: 'surface-dependent' },
+          { tool: 'codex', resolution: 'all-remain' },
+        ],
+      },
+      {
+        name: 'voyage',
+        definitions: [
+          definition('copilot', '.claude/skills/lander/SKILL.md', 'voyage'),
+          definition('claude', '.claude/skills/lander/SKILL.md', 'voyage'),
+          definition('copilot', '.github/skills/ship/SKILL.md', 'voyage'),
+        ],
+        sameNameResolutions: [{ tool: 'copilot', resolution: 'surface-dependent' }],
+      },
+      {
+        name: 'orbit',
+        definitions: [
+          definition('copilot', '.agents/skills/orbit/SKILL.md', 'orbit'),
+          definition('codex', '.agents/skills/orbit/SKILL.md', 'orbit'),
+        ],
+        sameNameResolutions: [],
+      },
+    ];
+  }
+
+  function unifiedSnapshot(): SessionSnapshot {
+    const paths = [
+      '.agents/skills/alpha-a/SKILL.md',
+      '.agents/skills/alpha-b/SKILL.md',
+      '.agents/skills/orbit/SKILL.md',
+      '.claude/skills/lander/SKILL.md',
+      '.github/skills/ship/SKILL.md',
+    ];
+    return snapshotWith(paths.map(file), unifiedEntries());
+  }
+
+  it('offers every recognizing tool from the one unified inventory', () => {
+    const snapshot = shallowRef<SessionSnapshot | null>(unifiedSnapshot());
+    const filters = withSelection(snapshot);
+    // Compared in order, not as a set: this array is rendered unchanged as
+    // the tool filter's options, so it must hold the closed tool order
+    // itself — all three tools recognize here, which makes the expectation
+    // the whole canonical order.
+    expect(filters.view.availableTools.value).toEqual(SUPPORTED_TOOL_ORDER);
+    expect(filters.view.availableKinds.value).toEqual(['skill']);
+    expect(filters.view.skillRows.value.map((entry) => entry.name)).toEqual([
+      'alpha',
+      'voyage',
+      'orbit',
+    ]);
+  });
+
+  it('narrows by tool and re-derives each row’s same-name statement', () => {
+    const snapshot = shallowRef<SessionSnapshot | null>(unifiedSnapshot());
+    const filters = withSelection(snapshot);
+    filters.tool.value = 'codex';
+    // Only the rows with a Codex definition remain, reduced to those
+    // definitions; Copilot's statement leaves with its hidden definitions
+    // while Codex still faces its own two-file collision.
+    const rows = filters.view.skillRows.value;
+    expect(rows.map((entry) => entry.name)).toEqual(['alpha', 'orbit']);
+    expect(rows[0]!.definitions.map((definition) => definition.tool)).toEqual(['codex', 'codex']);
+    expect(rows[0]!.sameNameResolutions).toEqual([{ tool: 'codex', resolution: 'all-remain' }]);
+    expect(rows[1]!.sameNameResolutions).toEqual([]);
+
+    filters.tool.value = 'claude';
+    const claudeRows = filters.view.skillRows.value;
+    // One Claude definition of `voyage` remains, so no tool still faces a
+    // collision and the row states nothing.
+    expect(claudeRows.map((entry) => entry.name)).toEqual(['voyage']);
+    expect(claudeRows[0]!.sameNameResolutions).toEqual([]);
+  });
+
+  it('narrows by path across tools and drops a statement with the hidden side', () => {
+    const snapshot = shallowRef<SessionSnapshot | null>(unifiedSnapshot());
+    const filters = withSelection(snapshot);
+    filters.pathQuery.value = 'alpha-a';
+    const rows = filters.view.skillRows.value;
+    // One file remains, so each tool has one definition and no collision.
+    expect(rows.map((entry) => entry.name)).toEqual(['alpha']);
+    expect(rows[0]!.definitions.map((definition) => definition.sourceRelativePath)).toEqual([
+      '.agents/skills/alpha-a/SKILL.md',
+      '.agents/skills/alpha-a/SKILL.md',
+    ]);
+    expect(rows[0]!.sameNameResolutions).toEqual([]);
+
+    // The `.github` spelling reaches only the Copilot definition of `voyage`.
+    filters.pathQuery.value = '.github/';
+    const githubRows = filters.view.skillRows.value;
+    expect(githubRows.map((entry) => entry.name)).toEqual(['voyage']);
+    expect(githubRows[0]!.definitions.map((definition) => definition.tool)).toEqual(['copilot']);
+    expect(githubRows[0]!.sameNameResolutions).toEqual([]);
+  });
+
+  it('counts the kind tab from the filtered unified rows', () => {
+    const snapshot = shallowRef<SessionSnapshot | null>(unifiedSnapshot());
+    const filters = withSelection(snapshot);
+    expect(filters.view.kindCounts.value.get('skill')).toBe(3);
+    filters.tool.value = 'claude';
+    expect(filters.view.kindCounts.value.get('skill')).toBe(1);
+    filters.pathQuery.value = 'no-such-path';
+    expect(filters.view.kindCounts.value.get('skill')).toBe(0);
+    // An unmatched filter empties the rows without touching the snapshot.
+    expect(snapshot.value!.skills).toHaveLength(3);
+  });
+
+  it('adopts and filters the unified inventory without ever requesting a detail', async () => {
+    // The detail route is the only way authored content reaches the client,
+    // so the load-bearing negative is behavioral: adopting the inventory and
+    // deriving every filtered view issues exactly one `get-session` and never
+    // a `get-file-detail`. A view that started prefetching details would put
+    // authored source into client memory from the inventory alone.
+    const calls: string[] = [];
+    const state = new SessionViewState({
+      channel: {
+        call: (method) => {
+          calls.push(method);
+          return Promise.resolve({
+            globalContentEpoch: 0,
+            repositoryGeneration: 1,
+            globalGeneration: null,
+            data: unifiedSnapshot(),
+          });
+        },
+      },
+    });
+    await state.start();
+    const filters = withSelection(state.snapshot);
+    filters.tool.value = 'claude';
+    expect(filters.view.skillRows.value.map((entry) => entry.name)).toEqual(['voyage']);
+    filters.pathQuery.value = 'alpha';
+    filters.tool.value = null;
+    expect(filters.view.skillRows.value.map((entry) => entry.name)).toEqual(['alpha']);
+    expect(calls).toEqual(['agent-customization-inspector:get-session']);
+    expect(state.skillDetail.value).toBeNull();
+    expect(JSON.stringify(state.snapshot.value)).not.toContain('sourceText');
+  });
+
+  it('gives the inventory state no field that could carry authored content', () => {
+    // What this suite can honestly prove is shape: the snapshot rows and
+    // every view derived from them keep the closed summary key sets, so
+    // authored content has no field to arrive in beyond the declared name.
+    // That real scans put no source text or secret into these fields is
+    // proven against actual fixture data where the data exists — the
+    // integration suite's session-summary case and the T184 browser
+    // regression's served-document check.
+    const snapshot = shallowRef<SessionSnapshot | null>(unifiedSnapshot());
+    const filters = withSelection(snapshot);
+    const serialized = JSON.stringify({
+      snapshot: snapshot.value,
+      rows: filters.view.skillRows.value,
+      unrecognized: filters.view.unrecognizedRows.value,
+      files: [...filters.view.filesByPath.value.values()],
+    });
+    // The derivations introduce no `sourceText`-shaped field of their own.
+    expect(serialized).not.toContain('sourceText');
+    // Each definition publishes identity and status facts only — never a
+    // parsed frontmatter value.
+    for (const entry of filters.view.skillRows.value) {
+      for (const definition of entry.definitions) {
+        expect(Object.keys(definition).sort()).toEqual([
+          'companionFiles',
+          'diagnosticIds',
+          'invocationName',
+          'parseStatus',
+          'sourceRelativePath',
+          'tool',
+        ]);
+      }
+    }
   });
 });
 

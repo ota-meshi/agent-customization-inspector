@@ -1,0 +1,11 @@
+{
+  "manifestVersion": 1,
+  "totalEntries": 100000,
+  "matchingFiles": 500,
+  "skillDirectoryPrefix": "perf-skill-",
+  "skillContentSha256": "fbf27ef024a8a3695eaf00b0734f75b05ca6f16054b4176665fc2a23da15e0b4",
+  "fillerDirectoryCount": 100,
+  "fillerFileCount": 98897,
+  "fillerContentSha256": "5abbe3515f3d669d27ba8a228a5e93515089354cba4921bc9bed860016616828",
+  "canonicalEntryListingSha256": "21e1e6101012526c957f4a9ab288c2e0dbb0e94e8f4780673839893a3ec5f47a"
+}

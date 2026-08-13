@@ -204,6 +204,7 @@ pnpm run test:unit
 pnpm run test:contract
 pnpm run test:integration
 pnpm run test:package
+pnpm run test:performance
 pnpm run test:coverage
 pnpm run test:e2e
 ```
@@ -246,6 +247,12 @@ pnpm run test:e2e
   `devframe`、`gunshi`、`h3`、`jsonc-parser`、`smol-toml`、`vfile`、`vfile-matter`、`yaml`を正確にassertし（resolved versionとintegrity hashは
   commit済み`pnpm-lock.yaml`が所有し続ける）、negative packaging fixtureは、
   missingまたはnon-regularなrequired entry pointがpublish前に`verify:package`をfailさせることを証明する。
+- Performance suiteはpackaged CLI（先にbuildする）に対してT183のSC-002 smoke passを実行する。
+  Harness integrityはgateされる — check-in済みfixture manifest、そのcanonical SHA-256、
+  reference profileが相互にbindし、構築した100,000-entry/500-file fixtureがrun前後で
+  manifestのdigestと一致しなければならない — 一方、記録されるstatus/inventory/interaction
+  timingはprofile IDとmanifest digestとともにgatingなしでpublishされる。正確な10-run
+  9-of-10 release protocolはT918が所有する。
 - Browser、contract、manual evidenceが4 user storyすべてを扱い、
   [SC-008の55行matrix](contracts/accessibility-acceptance.ja.md)のApplicableな全行とNot-applicable再確認を満たす。
   Axeのseverity結果だけではpassにならない。

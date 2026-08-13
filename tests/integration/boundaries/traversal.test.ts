@@ -230,6 +230,16 @@ describe('file-confined outcomes publish a partial generation (FR-028)', () => {
       }
       expect(publication.files).toHaveLength(2);
       expect(new Set(publication.files.map((file) => file.sourceRelativePath)).size).toBe(2);
+      // Each spelling carries its own authored bytes: the raw entry name is
+      // the exact read operand, so a walk that normalized an NFD name to NFC
+      // would read the sibling's content instead of its own — an identity
+      // swap the distinct fixture bodies make visible (FR-024).
+      for (const file of publication.files) {
+        const isDecomposed = file.sourceRelativePath !== file.sourceRelativePath.normalize('NFC');
+        expect('sourceText' in file ? file.sourceText : null, file.sourceRelativePath).toBe(
+          isDecomposed ? 'nfd spelling\n' : 'nfc spelling\n',
+        );
+      }
       expect(publication.diagnostics).toEqual([]);
       expect(publication.outcome).toBe('complete');
       expect(publication.candidateFiles).toBe(2);

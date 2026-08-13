@@ -990,9 +990,12 @@ actual environment fields, fixture-manifest digest, request ID, and committed ge
 identifiers and absolute user paths. Any profile-field change starts a new non-comparable
 measurement set.
 The profile binds `tests/performance/sc002-fixture-manifest.json` by version and the canonical
-SHA-256 in `tests/performance/sc002-fixture-manifest.sha256`. The manifest enumerates every
-generated entry and each content-bearing file digest. The validator recomputes the canonical
-manifest digest and all referenced content digests immediately before run 1 and after each
+SHA-256 in `tests/performance/sc002-fixture-manifest.sha256`. The manifest fixes every
+generated entry and each content-bearing file digest through its declarative expansion rules
+and the canonical entry-listing SHA-256 they expand to; a raw hundred-thousand-line
+enumeration would be a second copy of what the rules and digest already determine. The
+validator expands the rules, walks the built tree, recomputes every entry, content digest,
+and the canonical listing digest immediately before run 1 and after each
 run; a missing entry or any mismatch invalidates the complete ten-run set, and each run record
 repeats the same profile ID, manifest version, and canonical digest.
 After the complete

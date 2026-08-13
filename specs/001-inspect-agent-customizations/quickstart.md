@@ -239,6 +239,7 @@ pnpm run test:unit
 pnpm run test:contract
 pnpm run test:integration
 pnpm run test:package
+pnpm run test:performance
 pnpm run test:coverage
 pnpm run test:e2e
 ```
@@ -293,6 +294,13 @@ Expected:
   and integrity hashes stay owned by the committed
   `pnpm-lock.yaml` — and negative packaging fixtures prove that a missing or non-regular
   required entry point fails `verify:package` before publish.
+- The performance suite runs the T183 SC-002 smoke pass against the packaged CLI (build it
+  first): harness integrity is gated — the checked-in fixture manifest, its canonical
+  SHA-256, and the reference profile must bind together, and the built
+  100,000-entry/500-file fixture must match the manifest's digests before and after the
+  run — while the recorded status/inventory/interaction timings are published with the
+  profile ID and manifest digest without gating. T918 owns the exact ten-run nine-of-ten
+  release protocol.
 - Browser, contract, and manual evidence cover all four user stories and satisfy every
   Applicable row and Not-applicable recheck in the
   [55-row SC-008 matrix](contracts/accessibility-acceptance.md); an axe severity result alone

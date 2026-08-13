@@ -1,4 +1,4 @@
-// T052/T060/T126/T130/T133/T154/T158: the inspection-rule half of the registry contract gate — the
+// T052/T060/T126/T130/T133/T154/T158/T179: the inspection-rule half of the registry contract gate — the
 // closed matcher grammar, deterministic compilation into the immutable
 // versioned `TraversalPlan`, reciprocal references, the same-name skill
 // statement each rule derives, and the closed structure-only projection
@@ -407,6 +407,99 @@ describe('the Copilot skill slice of the reference graph (T154, T158)', () => {
     // the surface — never the CLI's winner as a product-wide claim
     // (`skill-resolution.ts`; FR-007).
     expect(sameNameSkillResolutionFor('copilot')).toBe('surface-dependent');
+  });
+});
+
+describe('the unified SKILL selector matrix (T179)', () => {
+  // Phase 12 turns the three vendor demonstrations into one inventory, so the
+  // complete selector catalog and the tool combinations it implies become one
+  // contract: which shipped programs share a directory spelling is exactly
+  // what makes one physical file publish once with several recognitions
+  // (data-model.md § ToolRecognition). These cases assert the authored
+  // matcher records; the real traversal semantics over a built tree are the
+  // integration suite's (tests/integration/repository-scan.test.ts).
+  const skillRules = rules.filter((rule) => rule.kind === 'skill');
+
+  it('ships exactly the three vendors’ read-authorizing skill rules', () => {
+    expect(skillRules.map((rule) => rule.ruleId).sort()).toEqual([
+      'claude.repo.skill',
+      'codex.repo.skill',
+      'copilot.repo.skill',
+    ]);
+    for (const rule of skillRules) {
+      expect(rule.discoveryClass, rule.ruleId).toBe('static-candidate');
+      expect(rule.matcher, rule.ruleId).not.toBeNull();
+    }
+  });
+
+  // Applies one authored selector program to one already-split public path.
+  // This is a reading of the closed grammar, not a re-implementation of the
+  // walk: a literal equals the raw entry name, a dynamic step is its own
+  // unmodified regular expression, and the recursive step consumes zero or
+  // more directory entries (data-model.md § StructuredInspectorMatcher).
+  function matches(program: readonly MatcherSegment[], segments: readonly string[]): boolean {
+    function step(programIndex: number, segmentIndex: number): boolean {
+      if (programIndex === program.length) {
+        return segmentIndex === segments.length;
+      }
+      const matcherSegment = program[programIndex]!;
+      if (matcherSegment.kind === 'recursive-directories') {
+        for (let taken = 0; segmentIndex + taken < segments.length; taken += 1) {
+          if (step(programIndex + 1, segmentIndex + taken)) {
+            return true;
+          }
+        }
+        return false;
+      }
+      if (segmentIndex >= segments.length) {
+        return false;
+      }
+      const name = segments[segmentIndex]!;
+      const admitted =
+        matcherSegment.kind === 'literal'
+          ? matcherSegment.value === name
+          : matcherSegment.pattern.test(name);
+      return admitted && step(programIndex + 1, segmentIndex + 1);
+    }
+    return step(0, 0);
+  }
+
+  // The complete recognition matrix, one representative path per combination:
+  // the four positive combinations the shipped programs must produce — the
+  // three root rows plus Claude's descendant-only row — and the near misses
+  // no combination may claim. VCS internals are absent on purpose — their
+  // exclusion is the traversal boundary's, not any matcher's.
+  const RECOGNITION_MATRIX: readonly (readonly [string, readonly string[]])[] = [
+    ['.github/skills/ship/SKILL.md', ['copilot']],
+    ['.agents/skills/orbit/SKILL.md', ['codex', 'copilot']],
+    ['.claude/skills/lander/SKILL.md', ['claude', 'copilot']],
+    // Claude's documented lazy descendant discovery is the one downward
+    // program; no other vendor documents one (FR-003).
+    ['packages/api/.claude/skills/deploy/SKILL.md', ['claude']],
+    ['packages/api/.agents/skills/deploy/SKILL.md', []],
+    ['packages/api/.github/skills/nested-ship/SKILL.md', []],
+    // Configured-root shapes stay condition facts rather than selectors.
+    ['.copilot/skills/tool/SKILL.md', []],
+    // No skill-name segment, one level too deep, and a sibling companion.
+    ['.agents/skills/SKILL.md', []],
+    ['.agents/skills/orbit/nested/SKILL.md', []],
+    ['.agents/skills/orbit/README.md', []],
+  ];
+
+  it('admits each representative path for exactly the contracted tool combination', () => {
+    for (const [path, expected] of RECOGNITION_MATRIX) {
+      const segments = path.split('/');
+      const tools = [
+        ...new Set(
+          skillRules.flatMap((rule) =>
+            rule.matcher!.selectors.some((selector) => matches(selector, segments))
+              ? [rule.tool]
+              : [],
+          ),
+        ),
+      ].sort();
+      expect(tools, path).toEqual(expected);
+    }
   });
 });
 

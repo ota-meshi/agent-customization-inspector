@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-// T042: the browser session view state (T049). Covers generation-0
+// T042/T182: the browser session view state (T049). Covers generation-0
 // adoption, immediate adoption of a transport-reported channel loss, the
 // rejection of every settlement captured before a purge, and the absence of
 // any wall-clock process-loss guarantee for a page nobody interacts with.
@@ -12,7 +12,7 @@
 // happy-dom explicitly — the `coverage` project runs the same files under
 // the Node environment its contract and integration members need.
 import { DevframeConnectionError } from 'devframe/client';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { SessionViewState } from '../../../src/app/session/view-state';
 import {
@@ -541,5 +541,225 @@ describe('session view state — companion failures stay confined to the pane', 
     state.closeSkill();
     expect(stateWhenDisposed).toBe('idle');
     expect(detailWhenDisposed).toBeNull();
+  });
+});
+
+describe('an explicit rescan replaces the whole adopted generation (T182)', () => {
+  /** A committed generation-1 snapshot with one published skill file. */
+  function committedSnapshot(): SessionSnapshot {
+    return bootstrapSnapshot({
+      repositoryGeneration: 1,
+      files: [
+        {
+          sourceId: 'source-repository',
+          sourceRelativePath: pathFor('entry-1'),
+          encoding: 'utf-8',
+          hadLeadingBom: false,
+          sizeBytes: 8,
+          diagnosticIds: [],
+        },
+      ],
+    });
+  }
+
+  /** The generation-2 replacement: the prior file is gone, another exists. */
+  function replacementSnapshot(): SessionSnapshot {
+    return bootstrapSnapshot({
+      repositoryGeneration: 2,
+      files: [
+        {
+          sourceId: 'source-repository',
+          sourceRelativePath: pathFor('entry-2'),
+          encoding: 'utf-8',
+          hadLeadingBom: false,
+          sizeBytes: 8,
+          diagnosticIds: [],
+        },
+      ],
+    });
+  }
+
+  function rescanHarness(responses: Record<string, () => unknown>) {
+    const calls: string[] = [];
+    return {
+      calls,
+      state: new SessionViewState({
+        channel: {
+          call: (method: SessionRpcFunctionName) => {
+            calls.push(method);
+            const next = responses[method]!();
+            return next instanceof Error ? Promise.reject(next) : Promise.resolve(next);
+          },
+        },
+      }),
+    };
+  }
+
+  it('adopts the replacement snapshot whole and keeps no prior-generation row', async () => {
+    const sessions = [sessionResult(committedSnapshot()), sessionResult(replacementSnapshot())];
+    const { state } = rescanHarness({
+      'agent-customization-inspector:get-session': () =>
+        sessions.length > 1 ? sessions.shift() : sessions[0],
+      'agent-customization-inspector:rescan-repository': () => ({
+        globalContentEpoch: 0,
+        data: { scanRequestId: 'req-replace', source: committedSnapshot().sources[0] },
+      }),
+    });
+    await state.start();
+    expect(state.snapshot.value?.files.map((file) => file.sourceRelativePath)).toEqual([
+      pathFor('entry-1'),
+    ]);
+
+    await state.requestRescan();
+    // The refetch after acceptance adopted the committed replacement: the
+    // whole prior inventory is gone with its generation, never merged.
+    expect(state.activeScanRequestId.value).toBe('req-replace');
+    expect(state.snapshot.value?.repositoryGeneration).toBe(2);
+    expect(state.snapshot.value?.files.map((file) => file.sourceRelativePath)).toEqual([
+      pathFor('entry-2'),
+    ]);
+  });
+
+  it('shows the stale detail state when the replaced generation no longer holds the file', async () => {
+    // The reader is on a detail page whose path the replacement commit
+    // removed. The next request for it settles as the declared
+    // `stale-resource` rejection, and the route lands on its stale state with
+    // no prior-generation content left on screen (FR-030).
+    const sessions = [sessionResult(committedSnapshot()), sessionResult(replacementSnapshot())];
+    const { state } = rescanHarness({
+      'agent-customization-inspector:get-session': () =>
+        sessions.length > 1 ? sessions.shift() : sessions[0],
+      'agent-customization-inspector:rescan-repository': () => ({
+        globalContentEpoch: 0,
+        data: { scanRequestId: 'req-replace', source: committedSnapshot().sources[0] },
+      }),
+      'agent-customization-inspector:get-file-detail': () => ({
+        error: { code: 'stale-resource' },
+      }),
+    });
+    await state.start();
+    await state.requestRescan();
+    expect(state.snapshot.value?.repositoryGeneration).toBe(2);
+
+    await state.openSkill(pathFor('entry-1'), pathFor('entry-1'));
+    expect(state.skillDetailState.value).toBe('stale');
+    expect(state.skillDetail.value).toBeNull();
+    expect(state.openCompanion.value).toBeNull();
+  });
+
+  it('supersedes an open detail request when the selection changes under it', async () => {
+    // The request token is the invocation's ownership of the page: a detail
+    // that settles after `closeSkill` advanced the version must not
+    // repopulate the state the reader already left.
+    let settleFirst!: (value: unknown) => void;
+    const first = new Promise((resolve) => {
+      settleFirst = resolve;
+    });
+    let detailCalls = 0;
+    const { state } = rescanHarness({
+      'agent-customization-inspector:get-session': () => sessionResult(committedSnapshot()),
+      'agent-customization-inspector:get-file-detail': () => {
+        detailCalls += 1;
+        return detailCalls === 1 ? first : detailFor('entry-1');
+      },
+    });
+    await state.start();
+    const opened = state.openSkill(pathFor('entry-1'), pathFor('entry-1'));
+    state.closeSkill();
+    settleFirst(detailFor('entry-1'));
+    await opened;
+    // The settled response was captured under a superseded token: nothing
+    // re-adopts it, and the route stays where the reader left it.
+    expect(state.skillDetail.value).toBeNull();
+    expect(state.skillDetailState.value).toBe('idle');
+  });
+
+  it('never adopts a detail that settles behind a rescan replacement', async () => {
+    // The reader opens a detail; while that request is in flight, an explicit
+    // rescan commits and the view adopts generation 2. The host answers every
+    // detail from its current commit, so the late settlement arrives bound to
+    // the newer generation than the request's page resolved from — and it
+    // must recover through a fresh snapshot-then-re-request, never render
+    // under state resolved from the replaced generation
+    // (contracts/http-api.md § Concurrency and lifecycle).
+    let settleDetail!: (value: unknown) => void;
+    const firstDetail = new Promise((resolve) => {
+      settleDetail = resolve;
+    });
+    let settleRefresh!: (value: unknown) => void;
+    const heldRefresh = new Promise((resolve) => {
+      settleRefresh = resolve;
+    });
+    let detailCalls = 0;
+    let sessionCalls = 0;
+    const { state } = rescanHarness({
+      'agent-customization-inspector:get-session': () => {
+        sessionCalls += 1;
+        if (sessionCalls === 1) {
+          return sessionResult(committedSnapshot());
+        }
+        // The rescan's own post-acceptance refresh is held, so the client's
+        // adopted baseline is still generation 1 when the detail settles.
+        if (sessionCalls === 2) {
+          return heldRefresh;
+        }
+        return sessionResult(replacementSnapshot());
+      },
+      'agent-customization-inspector:rescan-repository': () => ({
+        globalContentEpoch: 0,
+        data: { scanRequestId: 'req-replace', source: committedSnapshot().sources[0] },
+      }),
+      'agent-customization-inspector:get-file-detail': () => {
+        detailCalls += 1;
+        return detailCalls === 1
+          ? firstDetail
+          : { ...detailFor('entry-2'), repositoryGeneration: 2 };
+      },
+    });
+    await state.start();
+    const opened = state.openSkill(pathFor('entry-2'), pathFor('entry-2'));
+    const rescanned = state.requestRescan();
+    // Let the acceptance settle and its refresh dispatch (and stall).
+    await Promise.resolve();
+    await Promise.resolve();
+    // The host has already committed the replacement, so the in-flight detail
+    // settles bound to generation 2 while this client still holds 1. It is
+    // withheld — never rendered under state resolved from the replaced
+    // generation — and recovery re-requests after a fresh snapshot.
+    settleDetail({ ...detailFor('entry-2'), repositoryGeneration: 2 });
+    await Promise.resolve();
+    settleRefresh(sessionResult(replacementSnapshot()));
+    await opened;
+    await rescanned;
+    expect(state.snapshot.value?.repositoryGeneration).toBe(2);
+    // Adopting the replacing generation ran the FR-027 cleanup: the open
+    // selection was closed, its request token advanced, and the in-flight
+    // settlement — bound to a generation this page never resolved from — was
+    // discarded rather than adopted. Re-requesting the path under the
+    // replacement belongs to the route's own open effect, which is not
+    // mounted here, so no second request exists to adopt either.
+    expect(detailCalls).toBe(1);
+    expect(state.skillDetail.value).toBeNull();
+    expect(state.openCompanion.value).toBeNull();
+    expect(state.skillDetailState.value).toBe('idle');
+  });
+
+  it('persists nothing anywhere the page could reload it from', async () => {
+    // FR-027: the browser holds inspected data in reactive memory alone. No
+    // web storage write ever happens, so a rescan replacement cannot be
+    // resurrected from anywhere. (CacheStorage and service workers have no
+    // code path in the client at all; the session API is reached over the
+    // devframe RPC channel, not `fetch`, so there is no response to cache.)
+    const localSet = vi.spyOn(Storage.prototype, 'setItem');
+    try {
+      const scripted = channelFrom([sessionResult(committedSnapshot()), detailFor('entry-1')]);
+      const state = new SessionViewState({ channel: scripted.channel });
+      await state.start();
+      await state.openSkill(pathFor('entry-1'), pathFor('entry-1'));
+      state.closeSkill();
+      expect(localSet).not.toHaveBeenCalled();
+    } finally {
+      localSet.mockRestore();
+    }
   });
 });

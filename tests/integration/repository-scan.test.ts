@@ -1,4 +1,4 @@
-// T055/T128/T156: the Repository scan end to end — from the synchronous
+// T055/T128/T156/T180: the Repository scan end to end — from the synchronous
 // zero-I/O generation 0 through the committed Copilot, Claude, and Codex SKILL
 // inventories, the multi-tool recognition matrix, the file-confined diagnostic
 // matrix, the source-scoped root failure, and the failures that are not
@@ -9,12 +9,16 @@
 // root it reads is the retained raw selection — never the escaped display
 // boundary, which grants no read authority.
 import { chmodSync, linkSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+// The builtin behind the fs-io seam: an injection that passes every other
+// path through must call this, not the spy it is installed on.
+import { readFile as realReadFile } from 'node:fs/promises';
 import { join, sep } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import * as fsIo from '../../src/server/inspection/fs-io';
 import {
   FIXTURE_SECRET_LITERAL,
+  buildAllToolSkillFixture,
   buildClaudeSkillFixture,
   buildCodexSkillFixture,
   buildCopilotSkillFixture,
@@ -1229,5 +1233,390 @@ describe('publication authority and relationship targets', () => {
         true,
       );
     }
+  });
+});
+
+describe('the unified skill inventory (T180)', () => {
+  it('publishes every vendor’s rows deterministically with one read per physical file', async () => {
+    const fixture = buildAllToolSkillFixture('inspector-scan-unified');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    vi.clearAllMocks();
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+
+    // The published set is the union of the three admitted sets plus the
+    // censuses' companions — sorted by path, nothing else (FR-003;
+    // contracts/inspection-path-allowlist.md § Bounded companion census).
+    expect(snapshot.files.map((file) => file.sourceRelativePath)).toEqual(
+      fixture.expectedPublishedPaths,
+    );
+
+    // One read per physical file: a path two or three vendors admit is one
+    // candidate whose one read every recognizing tool republishes, and the
+    // exact raw operands aggregate under the retained raw root — the raw
+    // spelling is FR-024's, and the retained raw selection is what bootstrap
+    // created (spec.md § Clarifications, generation 0). The broken link is
+    // the one published path never opened — its target is already known
+    // missing at discovery, so `readFile` is never issued.
+    const opened = vi
+      .mocked(fsIo.readFile)
+      .mock.calls.map((call) =>
+        String(call[0])
+          .slice(fixture.root.length + 1)
+          .split(sep)
+          .join('/'),
+      )
+      .sort();
+    expect(opened).toEqual(
+      fixture.expectedPublishedPaths.filter((path) => path !== '.agents/skills/broken/SKILL.md'),
+    );
+
+    // Each admitted path is recognized by exactly its contracted combination.
+    const definitions = snapshot.skills.flatMap((entry) => entry.definitions);
+    const recognizable = (paths: readonly string[]): string[] =>
+      paths.filter((path) => !fixture.diagnosticOnlyPaths.includes(path));
+    for (const path of recognizable(fixture.expectedCodexSkillPaths)) {
+      const tools = definitions
+        .filter((definition) => definition.sourceRelativePath === path)
+        .map((definition) => definition.tool)
+        .sort();
+      expect(tools, path).toEqual(['codex', 'copilot']);
+    }
+    for (const path of recognizable(fixture.expectedClaudeSkillPaths)) {
+      const tools = definitions
+        .filter((definition) => definition.sourceRelativePath === path)
+        .map((definition) => definition.tool)
+        .sort();
+      const shared = fixture.expectedCopilotSkillPaths.includes(path);
+      expect(tools, path).toEqual(shared ? ['claude', 'copilot'] : ['claude']);
+    }
+    expect(
+      definitions
+        .filter((definition) => definition.sourceRelativePath === '.github/skills/ship/SKILL.md')
+        .map((definition) => definition.tool),
+    ).toEqual(['copilot']);
+
+    // A second scan of the unchanged tree replaces the generation with the
+    // identical publication: order and content are functions of the tree.
+    // Diagnostic IDs are each attempt's own records, so they are compared by
+    // count rather than by value.
+    const withoutDiagnosticIds = (value: unknown): unknown =>
+      JSON.parse(
+        JSON.stringify(value, (key, entry: unknown) =>
+          key === 'diagnosticIds' ? (entry as readonly string[]).length : entry,
+        ),
+      );
+    await scanOnce(context, 'request');
+    const again = context.session.snapshot();
+    expect(again.repositoryGeneration).toBe(2);
+    expect(withoutDiagnosticIds(again.files)).toEqual(withoutDiagnosticIds(snapshot.files));
+    expect(withoutDiagnosticIds(again.skills)).toEqual(withoutDiagnosticIds(snapshot.skills));
+  });
+
+  it('groups each duplicate declared name under the recognizing tools’ own rules', async () => {
+    const fixture = buildAllToolSkillFixture('inspector-scan-dup-names');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+    const byName = new Map(snapshot.skills.map((entry) => [entry.name, entry]));
+
+    // Two `.agents` files declare `alpha`, so Codex and Copilot each face the
+    // collision among their own two definitions of that name.
+    const alpha = byName.get('alpha')!;
+    expect(alpha.definitions).toHaveLength(4);
+    expect(alpha.sameNameResolutions.map((resolution) => resolution.tool).sort()).toEqual([
+      'codex',
+      'copilot',
+    ]);
+
+    // `voyage` is declared by a `.claude` file and a `.github` file. Only
+    // Copilot recognizes both, so only Copilot's statement is published —
+    // and its three surfaces make it `surface-dependent`, never a winner.
+    const voyage = byName.get('voyage')!;
+    expect(voyage.definitions.map((definition) => definition.tool).sort()).toEqual([
+      'claude',
+      'copilot',
+      'copilot',
+    ]);
+    expect(voyage.sameNameResolutions).toEqual([
+      { tool: 'copilot', resolution: 'surface-dependent' },
+    ]);
+
+    // `dup` exists at two depths under `.claude`. The nested declaration is
+    // its own context-prefixed row, and Claude's directory-name collision
+    // gate spans the two rows: each carries Claude's statement while
+    // Copilot, which sees only the root file, states nothing.
+    const dup = byName.get('dup')!;
+    expect(dup.definitions.map((definition) => definition.tool).sort()).toEqual([
+      'claude',
+      'copilot',
+    ]);
+    expect(dup.sameNameResolutions).toEqual([
+      { tool: 'claude', resolution: 'all-remain-context-selected' },
+    ]);
+    const nestedDup = byName.get('packages/api:dup')!;
+    expect(nestedDup.definitions.map((definition) => definition.tool)).toEqual(['claude']);
+    expect(nestedDup.sameNameResolutions).toEqual([
+      { tool: 'claude', resolution: 'all-remain-context-selected' },
+    ]);
+  });
+
+  it('replaces the skill rows, resolutions, and companions whole on a rescan of a changed tree', async () => {
+    const fixture = buildAllToolSkillFixture('inspector-scan-replace');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    await scanOnce(context);
+    const before = context.session.snapshot();
+    expect(before.skills.map((entry) => entry.name)).toContain('orbit');
+    const orbitBefore = before.skills.find((entry) => entry.name === 'orbit')!;
+    expect(orbitBefore.definitions[0]!.companionFiles).toContain('.agents/skills/orbit/README.md');
+
+    // Remove one skill directory — its rows, its same-name statement
+    // population, and its companion census all belong to the replaced
+    // generation and none of them may survive into the next (FR-030:
+    // whole-generation replacement, never a merge).
+    rmSync(join(fixture.root, '.agents/skills/orbit'), { recursive: true, force: true });
+    await scanOnce(context, 'request');
+    const after = context.session.snapshot();
+    expect(after.repositoryGeneration).toBe(2);
+    expect(after.skills.map((entry) => entry.name)).not.toContain('orbit');
+    expect(
+      after.files.some((file) => file.sourceRelativePath.startsWith('.agents/skills/orbit/')),
+    ).toBe(false);
+    expect(
+      after.skills.flatMap((entry) =>
+        entry.definitions.flatMap((definition) => definition.companionFiles),
+      ),
+    ).not.toContain('.agents/skills/orbit/README.md');
+    // The rest of the inventory is the changed tree's own publication, and
+    // the other rows' statements survive on their own evidence.
+    expect(after.skills.map((entry) => entry.name)).toContain('alpha');
+    expect(after.skills.find((entry) => entry.name === 'alpha')!.sameNameResolutions).toHaveLength(
+      2,
+    );
+  });
+
+  it('commits partial with exactly the deterministic file-confined diagnostics', async () => {
+    const fixture = buildAllToolSkillFixture('inspector-scan-partial');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    const { publication } = await scanOnce(context);
+    if (publication.kind !== 'publishable') {
+      throw new Error('expected a publishable outcome');
+    }
+    // The NUL-carrying candidate and, when links exist, the broken link are
+    // the only failures, each confined to its file (FR-028); every other
+    // file publishes complete in the same generation.
+    expect(publication.outcome).toBe('partial');
+    const snapshot = context.session.snapshot();
+    const diagnosed = snapshot.files.filter((file) => file.diagnosticIds.length > 0);
+    expect(diagnosed.map((file) => file.sourceRelativePath)).toEqual(fixture.diagnosticOnlyPaths);
+    expect(snapshot.diagnostics.map((diagnostic) => diagnostic.sourceRelativePath)).toEqual(
+      fixture.diagnosticOnlyPaths,
+    );
+    // A diagnostic-only file gains no recognition and no definition.
+    const definitionPaths = new Set(
+      snapshot.skills.flatMap((entry) =>
+        entry.definitions.map((definition) => definition.sourceRelativePath),
+      ),
+    );
+    for (const path of fixture.diagnosticOnlyPaths) {
+      expect(definitionPaths.has(path), path).toBe(false);
+    }
+  });
+
+  it('confines an injected read failure to that file while the generation commits', async () => {
+    const fixture = buildAllToolSkillFixture('inspector-scan-inject-read');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    const target = join(fixture.root, ...fixture.injectionTargetPath.split('/'));
+    // An ordinary read failure on one file — not a resource-exhaustion errno —
+    // is file-confined: the walk classifies it `unreadable` and every other
+    // file still publishes (FR-028). The passthrough goes to the builtin the
+    // seam re-exports; calling the spy itself here would recurse.
+    vi.mocked(fsIo.readFile).mockImplementation(async (path, options) => {
+      if (String(path) === target) {
+        throw Object.assign(new Error('injected read failure'), { code: 'EACCES' });
+      }
+      return realReadFile(path, options as never);
+    });
+    const { publication } = await scanOnce(context);
+    if (publication.kind !== 'publishable') {
+      throw new Error('expected a publishable outcome');
+    }
+    expect(publication.outcome).toBe('partial');
+    const snapshot = context.session.snapshot();
+    expect(snapshot.repositoryGeneration).toBe(1);
+    const targetFile = snapshot.files.find(
+      (file) => file.sourceRelativePath === fixture.injectionTargetPath,
+    )!;
+    expect(targetFile.encoding).toBe('unknown');
+    expect(targetFile.diagnosticIds).toHaveLength(1);
+    // Only the injected file's diagnostic joins the deterministic ones; the
+    // other vendors' files are untouched by the injection.
+    expect(snapshot.diagnostics.map((diagnostic) => diagnostic.sourceRelativePath).sort()).toEqual(
+      [...fixture.diagnosticOnlyPaths, fixture.injectionTargetPath].sort(),
+    );
+    // The complete published set, not a sample of it: every other file is
+    // still published, and the one absence the injection causes is the
+    // target's own companion — an unreadable candidate is never recognized,
+    // so its census never runs and the README beside it is not bound.
+    expect(snapshot.files.map((file) => file.sourceRelativePath)).toEqual(
+      fixture.expectedPublishedPaths.filter((path) => path !== '.agents/skills/orbit/README.md'),
+    );
+    // And the complete definition set: the unreadable target gains no
+    // definition under any tool, while every other recognizable path keeps
+    // exactly one definition per contracted recognizing tool.
+    const definitionPaths = snapshot.skills
+      .flatMap((entry) => entry.definitions.map((definition) => definition.sourceRelativePath))
+      .sort();
+    for (const path of fixture.expectedPublishedPaths) {
+      const expectedCount =
+        fixture.diagnosticOnlyPaths.includes(path) ||
+        path === fixture.injectionTargetPath ||
+        fixture.expectedCompanionPaths.includes(path)
+          ? 0
+          : [
+              fixture.expectedCodexSkillPaths.includes(path),
+              fixture.expectedClaudeSkillPaths.includes(path),
+              fixture.expectedCopilotSkillPaths.includes(path),
+            ].filter(Boolean).length;
+      expect(definitionPaths.filter((definitionPath) => definitionPath === path).length, path).toBe(
+        expectedCount,
+      );
+    }
+  });
+
+  it('aborts the attempt for an injected recognition failure with no extra read or generation', async () => {
+    const fixture = buildAllToolSkillFixture('inspector-scan-inject-throw');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    await scanOnce(context);
+    const committed = context.session.snapshot();
+    expect(committed.repositoryGeneration).toBe(1);
+
+    const sourceId = context.session.repositorySourceId;
+    const admitted = context.coordinator.admitScan(sourceId, {
+      kind: 'request',
+      operationId: 'op-inject',
+    });
+    if (admitted.kind !== 'admitted') {
+      throw new Error('expected admission');
+    }
+    vi.clearAllMocks();
+    // A thrown recognition operation is not confined to one file: no cause
+    // inspection reclassifies, retries, or recovers it (FR-029), and the
+    // aborted attempt commits nothing while the prior snapshot is retained
+    // (FR-030). The first recognition throws, so the companion reads that
+    // assembly would issue afterwards must never happen — and the rejection
+    // must be the injected object itself, exactly once: a caught-and-rethrown
+    // wrapper, or a second recognition after a swallowed first, would each be
+    // a domain catch FR-029 forbids.
+    const injected = new Error('injected recognition failure');
+    let recognizeCalls = 0;
+    let readsAtThrow = -1;
+    await expect(
+      runSourceScan({
+        sourceId,
+        root: fixture.root,
+        rootFailureOwner: `published-source:${sourceId}`,
+        recognize: () => {
+          recognizeCalls += 1;
+          readsAtThrow = vi.mocked(fsIo.readFile).mock.calls.length;
+          throw injected;
+        },
+      }),
+    ).rejects.toBe(injected);
+    expect(recognizeCalls).toBe(1);
+    // The attempt aborted where it threw: no further read was issued.
+    expect(readsAtThrow).toBeGreaterThanOrEqual(0);
+    expect(vi.mocked(fsIo.readFile).mock.calls.length).toBe(readsAtThrow);
+
+    // Lifecycle handling belongs to the trigger-owning boundary: only the
+    // coordinator's failScan records the failed request, and the prior
+    // committed snapshot is all that remains.
+    context.coordinator.failScan(admitted.scanRequestId, {
+      kind: 'error',
+      message: 'injected recognition failure',
+    });
+    const after = context.session.snapshot();
+    expect(after.repositoryGeneration).toBe(1);
+    expect(after.files).toEqual(committed.files);
+    expect(after.skills).toEqual(committed.skills);
+    expect(after.snapshotState).toBe('stale-after-fatal-rescan');
+  });
+
+  it('aborts the attempt for an injected resource-exhaustion read failure', async () => {
+    const fixture = buildAllToolSkillFixture('inspector-scan-inject-emfile');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    await scanOnce(context);
+    const committed = context.session.snapshot();
+
+    // Running out of descriptors is a process condition, not a fact about one
+    // file; converting it into that file's diagnostic would misreport the
+    // whole repository (traversal.ts § rethrowIfResourceExhaustion).
+    const target = join(fixture.root, ...fixture.injectionTargetPath.split('/'));
+    vi.mocked(fsIo.readFile).mockImplementation(async (path, options) => {
+      if (String(path) === target) {
+        throw Object.assign(new Error('injected exhaustion'), { code: 'EMFILE' });
+      }
+      return realReadFile(path, options as never);
+    });
+    const sourceId = context.session.repositorySourceId;
+    await expect(
+      runSourceScan({
+        sourceId,
+        root: fixture.root,
+        rootFailureOwner: `published-source:${sourceId}`,
+      }),
+    ).rejects.toThrow('injected exhaustion');
+    // No attempt state leaked: the committed snapshot is unchanged.
+    expect(context.session.snapshot().files).toEqual(committed.files);
+  });
+
+  it('reports monotonic progress phases across the unified attempt', async () => {
+    const fixture = buildAllToolSkillFixture('inspector-scan-progress');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const phases: string[] = [];
+    const updates: { visitedEntries: number; readBytes: number; diagnosticCount: number }[] = [];
+    const publication = await runSourceScan({
+      sourceId: 'src-progress',
+      root: fixture.root,
+      rootFailureOwner: 'repository',
+      onProgress: (update) => {
+        phases.push(update.phase);
+        updates.push({
+          visitedEntries: update.visitedEntries,
+          readBytes: update.readBytes,
+          diagnosticCount: update.diagnosticCount,
+        });
+      },
+    });
+    if (publication.kind !== 'publishable') {
+      throw new Error('expected a publishable outcome');
+    }
+    // The pipeline never reports itself running in reverse.
+    const order = ['enumerating', 'reading', 'recognizing'];
+    for (let index = 1; index < phases.length; index += 1) {
+      expect(order.indexOf(phases[index]!)).toBeGreaterThanOrEqual(
+        order.indexOf(phases[index - 1]!),
+      );
+    }
+    // The counters are cumulative for the attempt, and the committed figures
+    // are the attempt's own totals rather than its starting zeros.
+    for (let index = 1; index < updates.length; index += 1) {
+      expect(updates[index]!.visitedEntries).toBeGreaterThanOrEqual(
+        updates[index - 1]!.visitedEntries,
+      );
+      expect(updates[index]!.readBytes).toBeGreaterThanOrEqual(updates[index - 1]!.readBytes);
+      expect(updates[index]!.diagnosticCount).toBeGreaterThanOrEqual(
+        updates[index - 1]!.diagnosticCount,
+      );
+    }
+    expect(publication.visitedEntries).toBe(updates.at(-1)!.visitedEntries);
+    expect(publication.readBytes).toBe(updates.at(-1)!.readBytes);
   });
 });

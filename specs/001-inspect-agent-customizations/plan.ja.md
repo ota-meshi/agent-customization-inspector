@@ -564,8 +564,10 @@ generationについてだけ停止する。それ以前のstatus、snapshot、�
 resetしない。Profile ID、実際のenvironment field、fixture-manifest digest、request ID、commit済みgenerationを記録し、
 personal identifierとabsolute user pathだけを省略する。Profile fieldを変更すると新しい直接比較不能なmeasurement setを開始する。
 Profileは`tests/performance/sc002-fixture-manifest.json`をversionでbindし、canonical SHA-256を
-`tests/performance/sc002-fixture-manifest.sha256`に保持する。Manifestは全generated entryと各content-bearing file digestを
-列挙する。Validatorはrun 1直前と各run直後にcanonical manifest digestと参照する全content digestを再計算する。Missing entry
+`tests/performance/sc002-fixture-manifest.sha256`に保持する。Manifestは全generated entryと各content-bearing file digestを、
+そのdeclarativeなexpansion ruleとそれが展開するcanonical entry-listing SHA-256によって確定する。生の10万行の列挙は
+ruleとdigestがすでに確定するものの二重管理になる。Validatorはrun 1直前と各run直後にruleを展開し、構築済みtreeをwalkして
+全entry、content digest、canonical listing digestを再計算する。Missing entry
 またはmismatchが1件でもあれば10-run set全体を無効とし、各run recordは同じprofile ID、manifest version、canonical digestを繰り返す。
 各runで完全なinventoryが
 操作可能になった後、標準化されたfilter actionとitem-selection actionを1回ずつ実施する。各actionはbrowserの

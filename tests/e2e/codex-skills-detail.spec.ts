@@ -20,6 +20,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 
+import { tabUntilFocused } from './keyboard';
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
 
 /** A literal credential in authored source, shown exactly as written. */
@@ -483,15 +484,20 @@ test('keeps a malformed file readable while its declared name is missing', async
 test('is operable from the keyboard alone', async ({ page }) => {
   await page.goto(host.origin);
   // Reaching the skill link and following it without a pointer is the whole
-  // path to the content now.
-  await page.getByRole('link', { name: '.agents/skills/greet/SKILL.md' }).first().focus();
+  // path to the content now — reached in the page's real Tab order, so a
+  // link demoted to `tabindex="-1"` fails here where a bare `.focus()`
+  // would still land on it.
+  const skillLink = page.getByRole('link', { name: '.agents/skills/greet/SKILL.md' }).first();
+  expect(await tabUntilFocused(page, skillLink)).toBe(true);
   await page.keyboard.press('Enter');
   await expect(page.locator('.aci-skill-detail h2')).toBeFocused();
 
   // The tab strip is one stop in the page tab order and arrows move between
-  // its tabs, so the files are reachable without a pointer (QR-004).
+  // its tabs, so the files are reachable without a pointer (QR-004). Being a
+  // stop in that order is the claim, so the strip too is reached by Tab from
+  // the heading the navigation just focused.
   const skillTab = page.getByRole('tab', { name: /^skill/iu });
-  await skillTab.focus();
+  expect(await tabUntilFocused(page, skillTab)).toBe(true);
   await expect(skillTab).toBeFocused();
   await page.keyboard.press('ArrowRight');
   const filesTab = page.getByRole('tab', { name: /^files/iu });

@@ -133,6 +133,25 @@ jobs:
       - run: pnpm run verify:package
       - run: pnpm run test:package
 
+  performance:
+    # The T183 SC-002 smoke pass: harness integrity is gated, the recorded
+    # timings are not. The suite drives the packaged CLI through a rendered
+    # Chromium page, so the build and the browser install are prerequisites
+    # of this job.
+    name: Performance smoke
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_DEV_BASELINE }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm run build
+      - run: pnpm run test:performance
+
   coverage:
     name: Coverage
     runs-on: ubuntu-24.04

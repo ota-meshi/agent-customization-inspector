@@ -6,8 +6,7 @@
 // stops matching its own files fails instead of reporting a green run that
 // executed nothing — and a project whose tests are not written yet is absent
 // rather than present and empty: it arrives with the task that writes its first
-// ones (T996 for security, T183 for performance, T1041 for the documentation
-// gate).
+// ones (T996 for security, T1041 for the documentation gate).
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
@@ -47,6 +46,25 @@ export default defineConfig({
           name: 'package',
           environment: 'node',
           include: ['tests/package/**/*.test.ts'],
+        },
+      },
+      {
+        test: {
+          name: 'performance',
+          // Node like the package project. The one smoke pass — packaged CLI
+          // driven through a rendered Chromium page over the 100,000-entry
+          // fixture — runs in `globalSetup`, once, and both suites read that
+          // single run's record (T183; the ten-run protocol is T918's). No
+          // Vitest timeout governs `globalSetup`, so the pass bounds itself:
+          // every in-page wait, launch, and read-back inside the harness
+          // carries its own deadline. The files stay serialized so no second
+          // workload contends with a timed measurement or races devframe's
+          // default-port assignment, exactly what playwright.config.ts
+          // serializes the e2e suite to avoid.
+          environment: 'node',
+          include: ['tests/performance/**/*.test.ts'],
+          globalSetup: ['tests/performance/global-run.ts'],
+          fileParallelism: false,
         },
       },
       {

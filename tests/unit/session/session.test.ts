@@ -1,4 +1,4 @@
-// T026: session bootstrap and coordinator invariants — generation 0 with
+// T026/T182: session bootstrap and coordinator invariants — generation 0 with
 // exactly one enabled idle non-authorizing Repository Source, one request ID
 // across a scan lifecycle, coordinator-locked serialization, atomic
 // replacement, explicit-rescan stale state, late-result discard, and
@@ -662,5 +662,142 @@ describe('scan lifecycle', () => {
     const snapshot = session.snapshot();
     expect(snapshot.snapshotState).toBe('current');
     expect(snapshot.staleFailures).toEqual([]);
+  });
+});
+
+describe('an explicit rescan replaces the whole generation (T182)', () => {
+  it('publishes only the replacing attempt’s records after a rescan commit', async () => {
+    const session = bootstrapSession();
+    const coordinator = new SessionCoordinator(session);
+    const sourceId = session.snapshot().sources[0]!.sourceId;
+    const first = coordinator.admitScan(sourceId, { kind: 'startup', operationId: null });
+    if (first.kind !== 'admitted') {
+      throw new Error('expected admission');
+    }
+    const firstDiagnostic = new DiagnosticRecord({
+      code: 'file-unreadable',
+      lifecycleOwnerKey: null,
+      sourceId,
+      sourceRelativePath: '.agents/skills/gone/SKILL.md',
+    }).serialize();
+    await coordinator.completeScan(first.scanRequestId, {
+      recognitions: [],
+      skillCompanionsByPath: new Map(),
+      visitedEntries: 4,
+      candidateFiles: 2,
+      readBytes: 10,
+      files: [
+        {
+          sourceId,
+          sourceRelativePath: '.agents/skills/gone/SKILL.md',
+          encoding: 'unknown',
+          diagnosticIds: [firstDiagnostic.diagnosticId],
+        },
+        {
+          sourceId,
+          sourceRelativePath: '.agents/skills/kept/SKILL.md',
+          encoding: 'utf-8',
+          hadLeadingBom: false,
+          sourceText: 'kept\n',
+          sizeBytes: 5,
+          diagnosticIds: [],
+        },
+      ],
+      diagnostics: [firstDiagnostic],
+      outcome: 'partial',
+    });
+
+    const rescan = coordinator.admitScan(sourceId, { kind: 'request', operationId: 'op-r' });
+    if (rescan.kind !== 'admitted') {
+      throw new Error('expected admission');
+    }
+    await coordinator.completeScan(rescan.scanRequestId, {
+      recognitions: [],
+      skillCompanionsByPath: new Map(),
+      visitedEntries: 3,
+      candidateFiles: 1,
+      readBytes: 7,
+      files: [
+        {
+          sourceId,
+          sourceRelativePath: '.claude/skills/fresh/SKILL.md',
+          encoding: 'utf-8',
+          hadLeadingBom: false,
+          sourceText: 'fresh!\n',
+          sizeBytes: 7,
+          diagnosticIds: [],
+        },
+      ],
+      diagnostics: [],
+      outcome: 'complete',
+    });
+
+    // Replacement is whole-generation: no file, diagnostic, stale marker, or
+    // progress figure of the replaced attempt survives beside the new one
+    // (FR-030 — atomic replacement, not a merge). The publications here carry
+    // no recognitions on purpose — a recognition is a server-internal class
+    // the scan constructs — so the skill-row, resolution, and companion halves
+    // of the same replacement are proven against real scans of a changed tree
+    // in tests/integration/repository-scan.test.ts (T180/T182).
+    const snapshot = session.snapshot();
+    expect(snapshot.repositoryGeneration).toBe(2);
+    expect(snapshot.files.map((file) => file.sourceRelativePath)).toEqual([
+      '.claude/skills/fresh/SKILL.md',
+    ]);
+    expect(snapshot.diagnostics).toEqual([]);
+    expect(snapshot.snapshotState).toBe('current');
+    expect(snapshot.staleFailures).toEqual([]);
+    expect(snapshot.sources[0]!.generation).toBe(2);
+    expect(snapshot.sources[0]!.progress).toMatchObject({ visitedEntries: 3, readBytes: 7 });
+    expect(JSON.stringify(snapshot)).not.toContain('gone');
+    expect(JSON.stringify(snapshot)).not.toContain('kept');
+  });
+
+  it('starts every new session at an empty generation 0 with nothing persisted', async () => {
+    // One session commits a generation; a second session over the same
+    // selection starts from nothing. Inspection results stay session-scoped
+    // with no profile, cache, or repository file to resume from (FR-031) —
+    // and the closed inspected-source I/O surface has no operation that
+    // could have written one (FR-023).
+    const first = bootstrapSession();
+    const coordinator = new SessionCoordinator(first);
+    const sourceId = first.snapshot().sources[0]!.sourceId;
+    const admitted = coordinator.admitScan(sourceId, { kind: 'startup', operationId: null });
+    if (admitted.kind !== 'admitted') {
+      throw new Error('expected admission');
+    }
+    await coordinator.completeScan(admitted.scanRequestId, {
+      recognitions: [],
+      skillCompanionsByPath: new Map(),
+      visitedEntries: 1,
+      candidateFiles: 1,
+      readBytes: 5,
+      files: [
+        {
+          sourceId,
+          sourceRelativePath: '.agents/skills/one/SKILL.md',
+          encoding: 'utf-8',
+          hadLeadingBom: false,
+          sourceText: 'one!\n',
+          sizeBytes: 5,
+          diagnosticIds: [],
+        },
+      ],
+      diagnostics: [],
+      outcome: 'complete',
+    });
+    expect(first.snapshot().repositoryGeneration).toBe(1);
+
+    const second = bootstrapSession();
+    const rebooted = second.snapshot();
+    expect(rebooted.repositoryGeneration).toBe(0);
+    expect(rebooted.files).toEqual([]);
+    expect(rebooted.skills).toEqual([]);
+    expect(rebooted.diagnostics).toEqual([]);
+
+    // The seam every inspected-source operation goes through exports exactly
+    // the five read operations: no write, append, or metadata mutation is
+    // even importable, so persistence has nothing to be written with.
+    expect(Object.keys(fsIo).sort()).toEqual(['lstat', 'readFile', 'readdir', 'realpath', 'stat']);
   });
 });

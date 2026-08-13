@@ -41,6 +41,7 @@
     "test:contract": "vitest run --project contract",
     "test:integration": "vitest run --project integration",
     "test:package": "vitest run --project package",
+    "test:performance": "vitest run --project performance",
     "test:coverage": "vitest run --project coverage --coverage",
     "test:e2e": "playwright test"
   },
