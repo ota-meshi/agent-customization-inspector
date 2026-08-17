@@ -383,7 +383,7 @@ controlが、失敗したtoolそのものだからである。DiagnosticはSourc
 rootを一度もadmitされなかったtoolには、それが属するSourceが無い。だからこれはDiagnosticではなく、location欄を
 空けたDiagnosticでもない。Owning control failureのclearまたはdisable commitまでcodeを保持する。
 `GlobalBatchStatus`は正確に`{ scanRequestId, tools, phase, failureRef }`とする。`tools`はnon-empty fixed-tool-order admitted subset、
-`phase`は`waiting \| enumerating \| reading \| deriving \| recognizing \| failed`、`failureRef`は`failed`以外nullとする。決定的terminal
+`phase`は`waiting \| deriving \| enumerating \| reading \| recognizing \| failed`、`failureRef`は`failed`以外nullとする。決定的terminal
 failureは`{ kind: 'tool-failures', failedTools }`を使い、non-empty fixed-tool-order toolはそのbatchが失敗させたtoolと
 正確に一致する。各toolは自身のcontrolの`failureCode`として理由を持ち、この一覧はそれを繰り返さない。予期しないthrow/reject terminal failureは
 `{ kind: 'error', message }`を使い、failed requestのerror messageを持つ。Tool非依存のdeterministic Global batch failureは存在せず、全returned deterministic failureを1つ以上の
@@ -619,6 +619,8 @@ relationship targetのopen、InspectorのRepository/Global sourceのmergeはで�
 | `selectors` | non-emptyなordered uniqueなselector program（`MatcherSegment[][]`） | 1 static rule所有のalternative。各programはSource rootに相対なclosed ordered programで、final tokenはregular fileを表す |
 | `MatcherSegment` | exact discriminated union | `{ kind: 'literal', value: NonEmptyMatcherLiteralSegment }`、`{ kind: 'regex', pattern: RegExp }`、`{ kind: 'recursive-directories' }`。Executable glob、implicit discriminator、extra fieldは不可 |
 
+`StructuredInspectorMatcher`はauthored registry dataであり、そのliteralは実行前に制約される。vendorのreaderがscan attemptごとに組み立てるplanはそうではない: そのsegmentはrepository自身の構成が宣言したentry名であり、authoredのまま、filesystemが保持しうる任意のUnicodeで保たれる。walkはそれを列挙したnameと比較してentryを開くため、どのentryも名乗らない名前は何にも一致しない（spec.md FR-007、contracts/inspection-path-allowlist.ja.md § Read authority）。以下のgrammarは出荷済みmatcherだけを対象とする。
+
 `NonEmptyMatcherLiteralSegment`はnon-empty printable ASCII stringで、code unitはU+0021–U+007Eのうち`/`、`\\`、`:`, `*`、`?`、`\"`、`<`、
 `>`、`|`を除き、`.`と`..`も禁止する。同じclosed typeをstatic fixed prefix、exact target、fixed derived suffixで使う。
 Compilerはnon-ASCII registry path literalをrejectするため、fixed prefixとexact targetについてはexactなraw byte/code-unit比較がrelevance判定のすべてである。
@@ -640,8 +642,10 @@ subtreeのcompositeを、曖昧な単一expansion enumを発明せず表現で�
 
 ### TraversalPlan
 
-`TraversalPlan`は`StructuredInspectorMatcher`からcompileするimmutable shipped dataで、inspection moduleがtraverseする
-固定のtool別inspection-path allowlistを所有する（FR-003、FR-015からFR-017）。
+`TraversalPlan`は`StructuredInspectorMatcher`からcompileするimmutableな値で、inspection moduleがtraverseする
+固定のtool別inspection-path allowlistを所有する（FR-003、FR-015からFR-017）。出荷済みmatcherからcompileしたplanはshipped dataであり
+processの生存期間を通じて存在する。vendorのreaderが構成から組み立てるplanは、それを読んだ1回のscan attemptの間だけ存在し、
+そのattemptが宣言されたentry名を運び、derived ruleのidentityのもとで同じwalkが実行する。
 
 | Field | Type | Rule |
 |---|---|---|
@@ -718,8 +722,7 @@ release dataである。
 | `discoveryClass` | `static-candidate \| bounded-derived-candidate \| relationship-only \| excluded` | 最初の2つだけがreadを許可可能 |
 | `kind` | customization-kind enumまたはnull | Kind横断relationship/exclusionはnull |
 | `sourceKinds` | source-kind enum[] | Contractに明示されたRepository、Global、または両方 |
-| `matcher` | `StructuredInspectorMatcher`またはnull | Static ruleだけ。Vendor locator、ambient path、executable glob、untyped selector stringではない |
-| `derivation` | closed derived-target mappingまたはnull | `bounded-derived-candidate` ruleだけに存在する。独立してadmit済みのseed fileのallowlist済み宣言occurrenceと固定literal registry suffixから、derived target pathを1つresolveする固定registry mapping。Callback、自由形式path expression、glob、正規表現、再帰derivationは持たない |
+| `matcher` | `StructuredInspectorMatcher`またはnull | Static ruleだけで、`bounded-derived-candidate`ではnull。そのtargetは[inspection-path-allowlist contract](contracts/inspection-path-allowlist.ja.md)が定める境界のもとでvendorの構成読み取り段階から来る。Vendor locator、ambient path、executable glob、untyped selector stringではない |
 | `policyRefs` | sort済みspecification ID[] | Surfaceを許可または意図的に除外するFR/QR clause。保守buildではnon-emptyで、packaged CLIではempty。どのDTOも運ばないreviewer向けtraceabilityだからである |
 | `precedenceGroup` | stable stringまたはnull | 文書化されたselection/order semanticsを持つruleだけを結ぶ |
 | `documentationStatus` | `DocumentationStatus` | Runtime stateではなくupstream documentationのcompleteness/consistencyを表す |
@@ -727,7 +730,7 @@ release dataである。
 | `evidence` | non-emptyな`EvidenceCitation[]` | このrecordを確立するreview済みdocumentation（§ EvidenceCitation）。Packaged CLIでは空 |
 
 Build/contract validatorはpackage前にunique性、field組み合わせ、selector-programのtoken/position
-rule、exact traversal compile、参照rule ID、closed derivation mapping/acyclic性、fixtureとの
+rule、exact traversal compile、参照rule ID、全`bounded-derived-candidate` recordがidentityだけの形であること、fixtureとの
 完全一致を検証する。
 Runtime loaderはscan前にembedded registry schema、integrity、contract
 versionを検証する。Repository提供pluginでruleを追加する機構は持たない。
@@ -869,7 +872,7 @@ Global authorityを直ちにrevokeできるが、uncancellable kernel operation�
 | Field | Type | Rule |
 |---|---|---|
 | `scanRequestId` | opaque ASCII stringまたはnull | Waiting/active/final source-scan progressではnon-nullで`Source.scanRequestId`と一致。Barrier所有disable progressではnull |
-| `phase` | `waiting \| cancelling \| enumerating \| reading \| deriving \| recognizing \| complete` | `waiting`はqueue中、`cancelling`はdisable/shutdown abortのdrain中。どちらもpath/source contentを含めない |
+| `phase` | `waiting \| cancelling \| deriving \| enumerating \| reading \| recognizing \| complete` | pipeline順に並ぶ。`waiting`はqueue中、`deriving`はvendorのreaderがseedの宣言する内容を展開する段階であり、walkに先立つ構成読み取り（admit済みのattemptはここから始まる）と、そのwalkが受理したfileをseedとするreaderのwalk後の実行（tasks.md T761）の両方を指す。`cancelling`はdisable/shutdown abortのdrain中。いずれもpath/source contentを含めない |
 | `queuedAt` | `UtcTimestamp`またはnull | Accepted commandが別transaction待ちになると設定し、work開始時にclear |
 | `startedAt` | `UtcTimestamp`またはnull | Source scan開始時、またはbarrier所有progressではdisable受理時。idle/waiting中はnull |
 | `visitedEntries` | non-negative safe integer | Bound済みtraversal planがnameを観測したdirectory entry数 |
@@ -2724,7 +2727,9 @@ candidate -> readable + not-applicable/all-parsed/mixed/all-failed parse summary
 5. Discovered fileはSource/generationごとに、Source-relative Pathで識別する1つの`CustomizationFile`と、
    tool/kind pairごとに最大1 recognitionを持つ。Distinctなpathはdistinctなinventory itemであり、
    physical-identity groupingは存在しない（FR-024、FR-019）。異なるSource、attempt、generationは独立してreadする。
-6. 全readable file DTOは完全なauthored `sourceText`を返し、返却する宣言済みmetadata値は
+6. 全readable file DTOは完全なauthored `sourceText`を返す。ただしcarrierは例外であり、
+   宣言を公開するためにadmitされたfileはその宣言を返し、`sourceText`は一切返さない（spec.md FR-007）。
+   さらに、返却する宣言済みmetadata値は
    その宣言についてparserが解決した値とする。Documented defaultはauthored textをnull、
    originを明示する。Comparisonは各fieldの解決済み値と`(tool, kind, 宣言key)`を使う。Environment referenceはliteralのままでprocess environmentのlookup/substitutionを
    起こさない。Session Diagnosticはactionable location fieldだけを持てる。

@@ -42,7 +42,7 @@
 // (contracts/inspection-path-allowlist.md § existence-versus-activation
 // vocabulary), which is why no published field says a product would install,
 // enable, trust, select, or load it.
-import type { CompiledInspectionRule, SelectorOrigin } from '../rules/registry';
+import type { CompiledRule, SelectorOrigin } from '../rules/registry';
 import { RecognitionExtraction } from '../parsers/extraction';
 import { ParsedMarkdownDocument } from '../parsers/markdown';
 import { listCompanionFiles, type CompanionFile } from '../companion-census';
@@ -71,14 +71,14 @@ import type { RuleDiscoveryClass } from '../../../shared/registries/rule-types';
  * into a shape that could drift from it.
  */
 export class CandidateProvenance {
-  /** The compiled rule whose plan admitted the candidate; the source of both getters. */
-  readonly #compiled: CompiledInspectionRule;
+  /** The compiled rule that admitted the candidate — static or derived; the source of both getters. */
+  readonly #compiled: CompiledRule;
 
   /** The admitted Source-relative Path, spelled with the exact entry names. */
   public readonly matchedPath: string;
 
   /** Binds one admission to the rule that authorized it and the path it matched. */
-  public constructor(compiled: CompiledInspectionRule, matchedPath: string) {
+  public constructor(compiled: CompiledRule, matchedPath: string) {
     this.#compiled = compiled;
     this.matchedPath = matchedPath;
   }
@@ -145,7 +145,13 @@ export type RecognitionDetails =
        */
       readonly bodyText: string;
     }
-  /** Every other kind, until its recognizer phase gives it its own identity. */
+  /**
+   * Every other kind. For most, an identity arrives with the recognizer phase
+   * that needs one; `instructions` deliberately never gets one — its inventory
+   * unit is the file itself (data-model.md § Inventory unit), so the
+   * Source-relative Path the recognition already carries is the whole
+   * identity, and a per-kind payload would restate it.
+   */
   | {
       /** The recognized customization kind. */
       readonly kind: Exclude<CustomizationKind, 'skill'>;
@@ -363,10 +369,15 @@ export interface RecognitionInput {
   readonly sourceText: string;
 }
 
-/** One rule admission of a candidate, resolved from the traversal's origins. */
+/**
+ * One rule admission of a candidate, resolved from the traversal's origins.
+ * A derived candidate resolves the same way: its vendor's configuration
+ * reader contributes a plan to the same walk, so the plan index the traversal
+ * reports names the derived rule exactly as it names a static one.
+ */
 export interface RecognitionAdmission {
-  /** The compiled rule whose plan admitted the candidate. */
-  readonly compiled: CompiledInspectionRule;
+  /** The compiled rule that admitted the candidate, static or derived. */
+  readonly compiled: CompiledRule;
   /** Which authored selector of that rule matched. */
   readonly origin: SelectorOrigin;
 }

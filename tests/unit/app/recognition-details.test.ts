@@ -95,6 +95,7 @@ function snapshotWith(
     createdAt: '2026-07-25T00:00:00.000Z',
     sources: [REPOSITORY_SOURCE],
     files,
+    instructions: [],
     skills,
     diagnostics: [],
     repositoryGeneration: 1,

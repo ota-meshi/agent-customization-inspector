@@ -17,15 +17,22 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import * as fsIo from '../../src/server/inspection/fs-io';
 import {
+  FIXTURE_ENVIRONMENT_REFERENCE,
   FIXTURE_SECRET_LITERAL,
+  NUMEROUS_FALLBACK_BASENAMES,
+  NUMEROUS_FALLBACK_DECLARATION_COUNT,
   buildAllToolSkillFixture,
   buildClaudeSkillFixture,
+  buildCodexInstructionFixture,
   buildCodexSkillFixture,
   buildCopilotSkillFixture,
   createRepositoryFixtureRoot,
 } from '../fixtures/repositories/build-fixtures';
 import { CLAUDE_REPOSITORY_RULES } from '../../src/server/inspection/rules/claude';
-import { CODEX_REPOSITORY_RULES } from '../../src/server/inspection/rules/codex';
+import {
+  CODEX_REPOSITORY_RULES,
+  configuredFallbackBasenamesOf,
+} from '../../src/server/inspection/rules/codex';
 import { COPILOT_REPOSITORY_RULES } from '../../src/server/inspection/rules/copilot';
 import { REPOSITORY_INSPECTION_RULES, runSourceScan } from '../../src/server/inspection/scan';
 import { InspectionSession, SessionCoordinator } from '../../src/server/session/session';
@@ -1618,5 +1625,227 @@ describe('the unified skill inventory (T180)', () => {
     }
     expect(publication.visitedEntries).toBe(updates.at(-1)!.visitedEntries);
     expect(publication.readBytes).toBe(updates.at(-1)!.readBytes);
+  });
+});
+
+describe('the committed Codex instructions inventory (T208, activated by T1087)', () => {
+  it('commits the static rows, the carrier, and the derived fallbacks with one read each', async () => {
+    const fixture = buildCodexInstructionFixture('inspector-scan-instructions');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    vi.clearAllMocks();
+
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+
+    // One row per recognized file — the unit of this kind (data-model.md
+    // § Inventory unit) — in Source-relative Path order: the static pair plus
+    // the two derived configured fallbacks (T1090). The declared basename with
+    // no on-disk file derives nothing — the ordinary negative, no diagnostic.
+    expect(snapshot.instructions).toEqual([
+      { sourceRelativePath: 'AGENTS.md', tools: ['codex'] },
+      { sourceRelativePath: 'AGENTS.override.md', tools: ['codex'] },
+      { sourceRelativePath: 'GUIDE.codex.md', tools: ['codex'] },
+      { sourceRelativePath: 'TEAM_GUIDE.md', tools: ['codex'] },
+    ]);
+    // The carrier itself is a configuration input only: never published,
+    // never raw-displayed, in no kind's inventory and not in `files[]`.
+    expect(snapshot.files.map((file) => file.sourceRelativePath)).toEqual(
+      [...fixture.expectedInstructionPaths, ...fixture.expectedDerivedFallbackPaths].sort(),
+    );
+    // Nothing published carries a diagnostic and the generation is complete:
+    // an absent declared fallback is not a finding.
+    expect(snapshot.diagnostics).toEqual([]);
+    // The authored override content — the secret, the environment reference —
+    // stays out of the committed snapshot entirely: complete source is served
+    // only by the detail routes, one file at a time (FR-027), and no
+    // environment reference is ever resolved against the process environment.
+    const serialized = JSON.stringify(snapshot);
+    expect(serialized).not.toContain(FIXTURE_SECRET_LITERAL);
+    expect(serialized).not.toContain(FIXTURE_ENVIRONMENT_REFERENCE);
+    // The two-stage read set (T1087/T1090): the configuration-read stage
+    // opens the carrier first — configuration decides what counts as an
+    // instruction file before any candidate is scanned — and the scan stage
+    // then reads every published file once. The carrier is read exactly once,
+    // as configuration, and nothing opens a near miss or the absent declared
+    // name.
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) =>
+      String(call[0])
+        .slice(fixture.root.length + 1)
+        .split(sep)
+        .join('/'),
+    );
+    expect(opened[0]).toBe(fixture.configCarrierPath);
+    expect([...opened].sort()).toEqual(
+      [
+        fixture.configCarrierPath,
+        ...fixture.expectedInstructionPaths,
+        ...fixture.expectedDerivedFallbackPaths,
+      ].sort(),
+    );
+    expect(opened).not.toContain(fixture.absentFallbackBasename);
+    for (const nearMiss of fixture.nearMissPaths) {
+      expect(
+        snapshot.files.some((file) => file.sourceRelativePath === nearMiss),
+        nearMiss,
+      ).toBe(false);
+    }
+  });
+
+  it('configures nothing from a malformed carrier, which stays unpublished', async () => {
+    const root = createRepositoryFixtureRoot('inspector-scan-instructions-malformed');
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    mkdirSync(join(root, '.codex'), { recursive: true });
+    // A document TOML cannot parse: the configuration-read stage configures
+    // nothing — no fallback plan, zero fallback reads. The carrier is a
+    // configuration input only, never a scanned candidate, so no diagnostic
+    // and no row report it; its own surfaces arrive with the phase that owns
+    // the configuration inventory.
+    writeFileSync(join(root, '.codex/config.toml'), 'project_doc_fallback = [unclosed\n', 'utf8');
+    writeFileSync(join(root, 'TEAM_GUIDE.md'), '# would-be fallback\n', 'utf8');
+    writeFileSync(join(root, 'AGENTS.md'), '# instructions\n', 'utf8');
+    const context = bootstrap(root);
+
+    const { publication } = await scanOnce(context);
+    if (publication.kind !== 'publishable') {
+      throw new Error('expected a publishable outcome');
+    }
+    expect(publication.outcome).toBe('complete');
+    const snapshot = context.session.snapshot();
+    expect(snapshot.instructions).toEqual([{ sourceRelativePath: 'AGENTS.md', tools: ['codex'] }]);
+    expect(snapshot.files.some((file) => file.sourceRelativePath === '.codex/config.toml')).toBe(
+      false,
+    );
+    expect(snapshot.diagnostics).toEqual([]);
+    expect(snapshot.files.some((file) => file.sourceRelativePath === 'TEAM_GUIDE.md')).toBe(false);
+  });
+
+  it('confines a binary instruction candidate to its diagnostic and partial outcome', async () => {
+    const root = createRepositoryFixtureRoot('inspector-scan-instructions-binary');
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    // The override holds a NUL byte, so its read classifies as binary: the
+    // candidate publishes textless with its diagnostic while the readable
+    // regular file keeps its row (FR-025/FR-028).
+    writeFileSync(join(root, 'AGENTS.override.md'), Buffer.from([0x23, 0x00, 0xff]));
+    writeFileSync(join(root, 'AGENTS.md'), '# instructions\n', 'utf8');
+    const context = bootstrap(root);
+
+    const { publication } = await scanOnce(context);
+    if (publication.kind !== 'publishable') {
+      throw new Error('expected a publishable outcome');
+    }
+    expect(publication.outcome).toBe('partial');
+    const snapshot = context.session.snapshot();
+    // A binary candidate is never recognized — recognition would need content
+    // it has none of — so the instructions inventory lists the readable file
+    // alone while the binary one stays visible under its own facts.
+    expect(snapshot.instructions).toEqual([{ sourceRelativePath: 'AGENTS.md', tools: ['codex'] }]);
+    const binary = snapshot.files.find((file) => file.sourceRelativePath === 'AGENTS.override.md');
+    expect(binary?.encoding).toBe('binary');
+    expect(binary?.diagnosticIds).toHaveLength(1);
+    const diagnostic = snapshot.diagnostics.find(
+      (record) => record.diagnosticId === binary?.diagnosticIds[0],
+    );
+    expect(diagnostic?.code).toBe('file-content-binary');
+  });
+
+  it('keeps instruction and skill rows apart when both kinds commit together', async () => {
+    const fixture = buildCodexInstructionFixture('inspector-scan-instructions-mixed');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    mkdirSync(join(fixture.root, '.agents/skills/greet'), { recursive: true });
+    writeFileSync(
+      join(fixture.root, '.agents/skills/greet/SKILL.md'),
+      '---\nname: greet\n---\n\nHi.\n',
+      'utf8',
+    );
+    const context = bootstrap(fixture.root);
+
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+
+    expect(snapshot.instructions.map((entry) => entry.sourceRelativePath)).toEqual([
+      'AGENTS.md',
+      'AGENTS.override.md',
+      'GUIDE.codex.md',
+      'TEAM_GUIDE.md',
+    ]);
+    // The shared `.agents` spelling makes the skill a Codex and Copilot
+    // recognition; neither lands in the instructions inventory, and the
+    // instruction files land in no skill row.
+    expect(snapshot.skills.map((entry) => entry.name)).toEqual(['greet']);
+    expect(
+      snapshot.skills.flatMap((entry) =>
+        entry.definitions.map((definition) => definition.sourceRelativePath),
+      ),
+    ).toEqual(['.agents/skills/greet/SKILL.md', '.agents/skills/greet/SKILL.md']);
+  });
+});
+
+describe('the pure configured-fallback interface (T208)', () => {
+  it('retains every declaration completely, with no Inspector numeric cap', () => {
+    vi.clearAllMocks();
+    const declarations = configuredFallbackBasenamesOf(
+      `project_doc_fallback_filenames = [${NUMEROUS_FALLBACK_BASENAMES.map(
+        (basename) => `"${basename}"`,
+      ).join(', ')}]\n`,
+    );
+    // Complete retention in authored order: every one of the numerous
+    // declarations comes back, duplicates would too, and nothing truncates —
+    // capacity belongs to the vendor, the runtime, and the environment, never
+    // to an Inspector-defined ceiling.
+    expect(declarations).toHaveLength(NUMEROUS_FALLBACK_DECLARATION_COUNT);
+    expect(declarations).toEqual([...NUMEROUS_FALLBACK_BASENAMES]);
+    // Reading declarations is text, not I/O.
+    for (const name of ['lstat', 'readFile', 'readdir', 'realpath', 'stat'] as const) {
+      expect(vi.mocked(fsIo[name])).not.toHaveBeenCalled();
+    }
+  });
+
+  it('keeps a declared name whatever characters it holds, with zero I/O', () => {
+    vi.clearAllMocks();
+    // A declared value is a name the walk compares to the entries it
+    // enumerated, never a path it builds, so a separator, a dot segment, a
+    // home marker, or a control character makes a name that matches nothing —
+    // and the ordinary names declared beside it still stand. Rejecting the
+    // list would lose those for a value that could not have reached anything.
+    const declared = ['VALID.md', '~TEAM.md', 'docs/AGENTS.md', '..', 'C:AGENTS.md'];
+    expect(
+      configuredFallbackBasenamesOf(
+        `project_doc_fallback_filenames = [${declared
+          .map((basename) => `"${basename}"`)
+          .join(', ')}]\n`,
+      ),
+    ).toEqual(declared);
+    for (const name of ['lstat', 'readFile', 'readdir', 'realpath', 'stat'] as const) {
+      expect(vi.mocked(fsIo[name])).not.toHaveBeenCalled();
+    }
+  });
+
+  it('propagates a parse failure unchanged, leaving the prior snapshot intact', async () => {
+    const fixture = buildCodexInstructionFixture('inspector-scan-fallback-throw');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    await scanOnce(context);
+    const before = context.session.snapshot();
+
+    // The pure reader's own failure: a document TOML cannot parse throws to
+    // this caller — the trigger-owning boundary — with no domain catch, no
+    // classification, no retry, no Diagnostic, and no partial declaration
+    // list escaping.
+    let caught: unknown;
+    try {
+      configuredFallbackBasenamesOf('project_doc_fallback_filenames = [unclosed\n');
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(Error);
+
+    // Only the trigger-owning boundary handles lifecycle: the throw minted no
+    // Diagnostic, advanced no generation, and left the committed snapshot as
+    // it was.
+    const after = context.session.snapshot();
+    expect(after.repositoryGeneration).toBe(before.repositoryGeneration);
+    expect(after.instructions).toEqual(before.instructions);
+    expect(after.diagnostics).toEqual(before.diagnostics);
   });
 });

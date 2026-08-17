@@ -241,6 +241,28 @@ export interface SkillInventoryEntryDto {
   readonly sameNameResolutions: readonly SameNameSkillResolutionDto[];
 }
 
+/**
+ * One row of the instructions inventory (contracts/http-api.md § get-session,
+ * data-model.md § Inventory unit): the file itself. Unlike a skill row, no
+ * authored declaration names an instructions file, so the Source-relative
+ * Path is the row's whole identity and the recognizing tools are the row's
+ * one recognition fact — the file's own read outcome, size, and diagnostics
+ * stay on its `files[]` entry.
+ */
+export interface InstructionInventoryEntryDto {
+  /**
+   * The Source-relative Path of the instruction file — the file's identity
+   * (FR-030), which joins to `files[]`.
+   */
+  readonly sourceRelativePath: string;
+  /**
+   * The tools recognizing this file as instructions, deduplicated and in the
+   * closed tool order (FR-004). Non-empty: a file no tool recognizes has no
+   * row.
+   */
+  readonly tools: readonly SupportedTool[];
+}
+
 /** One tool's same-name resolution on a {@link SkillInventoryEntryDto}. */
 export interface SameNameSkillResolutionDto {
   /** The tool the statement belongs to. */
@@ -421,12 +443,18 @@ export type ScanProgressPhase =
   | 'waiting'
   /** Publication authority was revoked and work is winding down. */
   | 'cancelling'
+  /**
+   * A vendor's reader expanding what a seed declares into further targets. The
+   * shipped stage is the configuration read that precedes the walk, which is
+   * why an admitted scan starts here rather than at `enumerating`; a reader
+   * whose seed is a file the walk admitted reports the same phase from after
+   * that walk when its rule ships.
+   */
+  | 'deriving'
   /** The allowlisted traversal program is enumerating candidates. */
   | 'enumerating'
   /** Candidate file bytes are being read. */
   | 'reading'
-  /** Derived traversal rules are being expanded. */
-  | 'deriving'
   /** Recognizers and parsers are processing readable candidates. */
   | 'recognizing'
   /** The attempt reached its terminal progress state. */
@@ -567,6 +595,12 @@ export interface SessionSnapshot {
    * (FR-027).
    */
   readonly files: readonly CustomizationFileSummaryDto[];
+  /**
+   * The instructions inventory: one entry per recognized instruction file
+   * (data-model.md § Inventory unit — the unit of this kind is the file
+   * itself), in Source-relative Path order.
+   */
+  readonly instructions: readonly InstructionInventoryEntryDto[];
   /**
    * The skill inventory: one entry per name as one tool resolves it
    * (data-model.md § Inventory unit). A row's unit is decided by the kind, not

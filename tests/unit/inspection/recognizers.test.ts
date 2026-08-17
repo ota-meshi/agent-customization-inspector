@@ -16,12 +16,22 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { recognizeCandidateForVendors } from '../../../src/server/inspection/recognizers/candidate';
 import { CLAUDE_REPOSITORY_RULES } from '../../../src/server/inspection/rules/claude';
-import { CODEX_REPOSITORY_RULES } from '../../../src/server/inspection/rules/codex';
+import {
+  CODEX_DERIVED_FALLBACK_RULE,
+  CODEX_REPOSITORY_RULES,
+} from '../../../src/server/inspection/rules/codex';
 import { COPILOT_REPOSITORY_RULES } from '../../../src/server/inspection/rules/copilot';
 import type { CompiledInspectionRule } from '../../../src/server/inspection/rules/registry';
 import type { SupportedTool } from '../../../src/shared/entities';
 
-const codexSkillRule = CODEX_REPOSITORY_RULES[0]!;
+// Selected by identity rather than position: a vendor catalog grows with its
+// inventory phases, and these suites name the exact rule each case is about.
+const codexSkillRule = CODEX_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'codex.repo.skill',
+)!;
+const codexInstructionsRule = CODEX_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'codex.repo.instructions',
+)!;
 const claudeSkillRule = CLAUDE_REPOSITORY_RULES[0]!;
 const copilotSkillRule = COPILOT_REPOSITORY_RULES[0]!;
 
@@ -380,5 +390,105 @@ describe('the Copilot recognition matrix (T155)', () => {
       '.agents/skills/greet/reference.md',
       '.agents/skills/greet/scripts/run.sh',
     ]);
+  });
+});
+
+describe('Codex instruction recognition (T207)', () => {
+  it('attaches exactly one codex/instructions recognition to an admitted override', async () => {
+    const recognitions = (
+      await recognizeWith('codex', 'AGENTS.override.md', [codexInstructionsRule])
+    ).recognitions;
+    expect(recognitions).toHaveLength(1);
+    expect(recognitions[0]).toMatchObject({
+      sourceRelativePath: 'AGENTS.override.md',
+      tool: 'codex',
+      // The kind is the whole per-kind payload: an instructions row's unit is
+      // the file itself (data-model.md § Inventory unit), so no declared name
+      // or other identity exists to extract.
+      details: { kind: 'instructions' },
+      // No allowlisted extractor applies to the instructions kind in this
+      // phase — a different claim from `parsed` with nothing found.
+      parseStatus: 'not-attempted',
+      diagnosticIds: [],
+    });
+    expect(Object.keys(recognitions[0]!.details)).toEqual(['kind']);
+  });
+
+  it('derives deterministic provenance from the admitting instruction rule', async () => {
+    const recognitions = (await recognizeWith('codex', 'AGENTS.md', [codexInstructionsRule]))
+      .recognitions;
+    expect(recognitions[0]!.provenances).toHaveLength(1);
+    expect(recognitions[0]!.provenances[0]).toMatchObject({
+      ruleId: 'codex.repo.instructions',
+      matchedPath: 'AGENTS.md',
+    });
+  });
+
+  it('runs no census for an instruction candidate', async () => {
+    // A skill is a directory; an instruction file is just a file. The census
+    // is called for by the recognized kind, and `instructions` calls for
+    // none — nothing beside the file belongs to it
+    // (contracts/inspection-path-allowlist.md § Bounded companion census).
+    const { companions } = await recognizeWith('codex', 'AGENTS.override.md', [
+      codexInstructionsRule,
+    ]);
+    expect(companions).toEqual([]);
+  });
+
+  it('keeps malformed authored content inert: no extractor means no failure', async () => {
+    // The fixture override carries a malformed frontmatter-shaped block. An
+    // instructions recognition runs no extractor, so nothing can fail and the
+    // complete source simply stays with the file (FR-028 is about extraction,
+    // and none was attempted).
+    const recognitions = (
+      await recognizeWith(
+        'codex',
+        'AGENTS.override.md',
+        [codexInstructionsRule],
+        '---\nmalformed: [unclosed\n---\n\n# Override\n',
+      )
+    ).recognitions;
+    expect(recognitions[0]!.parseStatus).toBe('not-attempted');
+    expect(recognitions[0]!.diagnosticIds).toEqual([]);
+  });
+
+  it('produces no recognition for a tool the admission does not belong to', async () => {
+    // Dispatching the Codex admission to another product must yield nothing:
+    // a filename-only `AGENTS.md` is no one else's candidate before that
+    // vendor's own instruction phase ships its rule.
+    const { recognitions } = await recognizeWith('claude', 'AGENTS.md', [codexInstructionsRule]);
+    expect(recognitions).toEqual([]);
+  });
+});
+
+describe('the derived fallback recognition (T1086)', () => {
+  it('recognizes a derived fallback admission as codex instructions with derived provenance', async () => {
+    const { recognitions } = await recognizeCandidateForVendors(
+      {
+        matchedPath: 'TEAM_GUIDE.md',
+        absolutePath: join(root, 'TEAM_GUIDE.md'),
+        sourceRoot: root,
+        sourceText: '# configured fallback\n',
+        admissions: [
+          {
+            compiled: CODEX_DERIVED_FALLBACK_RULE,
+            origin: { planIndex: 3, selectorIndex: 0 },
+          },
+        ],
+      },
+      ['codex'],
+    );
+    expect(recognitions).toHaveLength(1);
+    expect(recognitions[0]).toMatchObject({
+      sourceRelativePath: 'TEAM_GUIDE.md',
+      tool: 'codex',
+      details: { kind: 'instructions' },
+      parseStatus: 'not-attempted',
+    });
+    expect(recognitions[0]!.provenances[0]).toMatchObject({
+      ruleId: 'codex.derived.fallback-basename',
+      discoveryClass: 'bounded-derived-candidate',
+      matchedPath: 'TEAM_GUIDE.md',
+    });
   });
 });

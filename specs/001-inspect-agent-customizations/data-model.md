@@ -488,7 +488,7 @@ one, rather than a Diagnostic with its location left out. The code remains until
 control failure is cleared or disable commits removal.
 `GlobalBatchStatus` is exactly `{ scanRequestId, tools, phase, failureRef }`. `tools` is the
 non-empty fixed-tool-order admitted subset; `phase` is
-`waiting \| enumerating \| reading \| deriving \| recognizing \| failed`; and `failureRef`
+`waiting \| deriving \| enumerating \| reading \| recognizing \| failed`; and `failureRef`
 is null except in `failed`. A deterministic terminal failure uses
 `{ kind: 'tool-failures', failedTools }`, where the non-empty fixed-tool-order tools are
 exactly those this batch failed; each carries its reason as its own control's `failureCode`,
@@ -805,6 +805,14 @@ target, or merge the Inspector's Repository and Global sources.
 | `selectors` | non-empty ordered unique selector programs (`MatcherSegment[][]`) | Alternatives owned by one static rule, each a closed ordered program relative to the Source root; the final token denotes a regular file |
 | `MatcherSegment` | exact discriminated union | `{ kind: 'literal', value: NonEmptyMatcherLiteralSegment }`, `{ kind: 'regex', pattern: RegExp }`, or `{ kind: 'recursive-directories' }`; no executable glob, implicit discriminator, or extra field |
 
+`StructuredInspectorMatcher` is authored registry data, so its literals are constrained
+before anything runs. A plan a vendor's reader builds per scan attempt is not: its segments
+are entry names a repository's own configuration declared, kept exactly as authored, in
+whatever Unicode a filesystem can hold. The walk compares them to the names it enumerated
+and opens the entry, so a name no entry bears matches nothing (spec.md FR-007;
+contracts/inspection-path-allowlist.md § "Read authority"), and the grammar below governs
+the shipped matchers alone.
+
 A `NonEmptyMatcherLiteralSegment` is a non-empty printable ASCII string whose code units are
 U+0021–U+007E except `/`, `\\`, `:`, `*`, `?`, `\"`, `<`, `>`, and `|`; `.` and `..` are
 also forbidden. This same closed type is used by static fixed prefixes, exact targets, and
@@ -836,9 +844,12 @@ expansion enum.
 
 ### TraversalPlan
 
-`TraversalPlan` is immutable shipped data compiled from `StructuredInspectorMatcher`; it
-owns the fixed per-tool inspection-path allowlist that the inspection module traverses
-(FR-003, FR-015 through FR-017).
+`TraversalPlan` is immutable, compiled from `StructuredInspectorMatcher`; it owns the
+fixed per-tool inspection-path allowlist that the inspection module traverses (FR-003,
+FR-015 through FR-017). A plan compiled from a shipped matcher is shipped data and exists
+for the process's lifetime; a plan a vendor's reader builds from configuration exists for
+the one scan attempt that read it, carries that attempt's declared entry names, and is
+executed by the same walk under the derived rule's identity.
 
 | Field | Type | Rules |
 |---|---|---|
@@ -927,8 +938,7 @@ the bilingual inspection-rule contract. It is not read from the inspected reposi
 | `discoveryClass` | `static-candidate \| bounded-derived-candidate \| relationship-only \| excluded` | Only the first two may authorize a read |
 | `kind` | customization-kind enum or null | Null for a cross-kind relationship/exclusion |
 | `sourceKinds` | source-kind enum[] | Repository, Global, or both as explicitly contracted |
-| `matcher` | `StructuredInspectorMatcher` or null | Static rules only; never a vendor locator, ambient path, executable glob, or untyped selector string |
-| `derivation` | closed derived-target mapping or null | Present only for `bounded-derived-candidate` rules: a fixed registry mapping that resolves one derived target path from an allowlisted declared occurrence of an independently admitted seed file plus fixed literal registry suffixes; no callback, free-form path expression, glob, regular expression, or recursive derivation |
+| `matcher` | `StructuredInspectorMatcher` or null | Static rules only, and null for a `bounded-derived-candidate`, whose targets come from its vendor's configuration-read stage under the bound the [inspection-path-allowlist contract](contracts/inspection-path-allowlist.md) states; never a vendor locator, ambient path, executable glob, or untyped selector string |
 | `policyRefs` | sorted specification ID[] | FR/QR clauses that authorize or intentionally exclude the surface; non-empty in a maintained build and empty in a packaged CLI, because they are reviewer traceability that no DTO carries |
 | `precedenceGroup` | stable string or null | Links only rules with documented selection/order semantics |
 | `documentationStatus` | `DocumentationStatus` | Describes upstream documentation completeness/consistency, not runtime state |
@@ -937,7 +947,7 @@ the bilingual inspection-rule contract. It is not read from the inspected reposi
 
 The build/contract validator checks uniqueness, legal field combinations, selector-program
 token/position rules, exact traversal compilation, referenced
-rule IDs, closed derivation mapping/acyclicity, and exact fixture agreement before packaging. The runtime
+rule IDs, the identity-only shape of every `bounded-derived-candidate` record, and exact fixture agreement before packaging. The runtime
 loader checks the embedded registry schema, integrity, and contract version before
 scanning. There is no repository-provided plugin for adding rules.
 
@@ -1122,7 +1132,7 @@ operation settles.
 | Field | Type | Rules |
 |---|---|---|
 | `scanRequestId` | opaque ASCII string or null | Non-null for waiting/active/final source-scan progress and equals `Source.scanRequestId`; null for barrier-owned disable progress |
-| `phase` | `waiting \| cancelling \| enumerating \| reading \| deriving \| recognizing \| complete` | `waiting` means queued; `cancelling` means a disable/shutdown abort is draining; neither contains a path or source content |
+| `phase` | `waiting \| cancelling \| deriving \| enumerating \| reading \| recognizing \| complete` | In pipeline order: `waiting` means queued; `deriving` is a vendor's reader expanding what a seed declares — the configuration read that precedes the walk, which is where an admitted attempt starts, and again after the walk for a reader seeded by a file that walk admitted (tasks.md T761); `cancelling` means a disable/shutdown abort is draining; none contains a path or source content |
 | `queuedAt` | `UtcTimestamp` or null | Set when an accepted command waits behind another transaction; cleared when work begins |
 | `startedAt` | `UtcTimestamp` or null | Source-scan start, or disable acceptance for barrier-owned progress; null while idle or waiting |
 | `visitedEntries` | non-negative safe integer | Number of directory entries whose names have been observed by the bound traversal plan |
@@ -3490,7 +3500,9 @@ old file records in place.
    recognition for each tool/kind pair. Distinct paths are distinct inventory items with
    no physical-identity grouping (FR-024, FR-019). Different Sources,
    attempts, and generations read independently.
-6. Every readable file DTO returns its complete authored `sourceText`; every returned
+6. Every readable file DTO returns its complete authored `sourceText`, except a carrier's:
+   a file admitted so its declarations can be published returns those declarations and no
+   `sourceText` at all (spec.md FR-007). Every returned
    declared value is the value the parser resolved for that declaration, while a
    documented default has null authored text and an explicit origin. Comparison uses each
    declaration's resolved value and `(tool, kind, declared key)`.

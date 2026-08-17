@@ -981,7 +981,10 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="aci-skill-compare">
-    <p><NuxtLink to="/">Back to the inventory</NuxtLink></p>
+    <!-- Returns to the tab this page came from: the inventory's kind is URL
+         state, so naming it here is what makes the link land on the skill
+         list rather than the kind order's default tab. -->
+    <p><NuxtLink to="/?kind=skill">Back to the inventory</NuxtLink></p>
 
     <h2 ref="heading" tabindex="-1">Compare skill files</h2>
 
@@ -1110,7 +1113,7 @@ onBeforeUnmount(() => {
         <button ref="retryButton" type="button" @click="retryOpen">Try again</button>
       </p>
       <p>
-        <NuxtLink to="/"
+        <NuxtLink to="/?kind=skill"
           >Return to the inventory and open a comparison from a skill's row.</NuxtLink
         >
       </p>

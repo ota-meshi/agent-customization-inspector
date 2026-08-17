@@ -328,28 +328,34 @@ entryにmatchしなければならない。Inspection moduleはAPI request、rel
 absolute pathを受け付けない。これが覆わない唯一のreadはcompanionのそれであり、admissionが認可するもの
 ではなく、admit済みcandidate自身のdirectoryの外のpathには届かない（§ Bounded companion census）。
 
-`bounded-derived-candidate`は独立して受理したstatic seedからのtyped edgeを使い、再帰しない。Derived candidateは別の
+`bounded-derived-candidate`は自身のmatcherではなくvendor自身のreaderが展開する — readerがwalkの前に開く構成から、またはwalkが受理して読んだfileから — 。再帰はせず、derived candidateは別の
 derivationをseedできない。Relationship-onlyおよびexcluded rule、vendor locator、runtime strategy、import、
 component reference、remote source、MCP-server-provided instructionはreadを認可しない。
 
-Bounded-derived candidateのread authorityは、inspection moduleがinterpretするclosedかつversionedな
-`DerivationProgram`だけから生じる。各programは正確なstatic seed rule、declaration field、
-seed kindを固定する。Baseは`seed-matched-path-parent`または`source-root`だけから選び、
-1つのclosed extraction variantを指定する。Segment constructionにはfixed literal segment tokenと、そのvariantが
-許可するclosed unionのtyped authored-segment tokenだけを使う。各authored tokenはunparsed pathを注入せず、
-validated済みsegmentを正確に1つ生成する。Programはfixed suffixを持ち、許可する全output formを列挙する。
-Extractしたsegmentは、static candidateのsegmentと同様にowning Source boundary内で解決しなければ
-ならない。
+Bounded-derived candidateのread authorityは、そのvendor自身のreaderだけから生じ、readerがwalkをwidenできる形は
+1つに限られる。readerはvendor contractが固定したseed — reader自身がwalkの前に開き、そのtargetが同じwalkに加わる構成path、
+またはwalkが既に受理して読んだfileであり、そのtargetはwalkの後に自身のreadとともに受理される（tasks.md T759/T761） — を読み、そのcontractが名指すdeclaration fieldを取り、宣言された各値をそのcontract行が定める
+nameまたはsegmentとして読み、出荷済みderived ruleのidentityと、そのrule contract行が固定するbase・validate済みsegment・
+その行の固定literal suffixから成るtraversal planを返す。返すのはplanであってpathではなく、各segmentはwalkが列挙した
+nameと比較されるため、宣言値は固定base配下のentry 1つにしか届かない。planはstatic candidateと同様にowning Source
+boundary内で解決しなければならない。reader自身が開くseedはinputであってcandidateではない —
+それが同時にpublishされるかどうかは、それを受理するstatic rule（存在する場合）の別の決定である。
 
-Targeted derivationはfree-form path openへfallbackしない。Interpretした各segmentはseedのdocumented
-base配下でdirectoryまたはterminal-file stepを1つずつ解決し、neighborはnameとしてだけ扱ってopenも
+Targeted derivationはfree-form path openへfallbackしない。Validateした各segmentはruleが名指すbase配下で
+directoryまたはterminal-file stepを1つずつ解決し、neighborはnameとしてだけ扱ってopenも
 readもしない。次parentへは直前に選んだdirectory経由だけで到達でき、
-interpreterはplanをwidenできない。
+readerはplanをwidenできない。
+
+以下のgrammarは、readerがpathへ変換するauthored value — baseの下でjoinしてprobeするsegment — を対象とする。
+readerが1つのentry nameとしてwalkへ渡す値はpathではなくnameである: walkはまったく同じ綴りのentryを列挙した
+場合にだけそれを受理し、そのentryを開くため、separator・dot segment・home markerを含む値は外へ届くのではなく
+何にも届かない。したがってそうした値はauthoredのまま扱い、rejectしてもその傍らで宣言された通常の名前を
+落とすだけである。
 
 Authored local pathはdata-model contractのexact pure tokenizerを使う。Prefix policyが扱うのはliteral `./` 1個だけで、U+002Fだけをseparatorと
 する。Empty input/segment、leading/trailing/repeated separator、`.`/`..`、backslash、colon、first-segment home marker、control、unpaired
 surrogateはcomplete derivationをzero target I/Oでrejectする。Percent/URL/URI decode、environment expansion、home resolve、
-platform path parseはない。Interpreterはpath stringでなくtyped regex tokenを生成する。Fixed suffix alternativeはliteral
+platform path parseはない。Readerはpath stringでなくvalidated literal segmentを生成する。Fixed suffix alternativeはliteral
 `first-present-exact`を使い、exact classification欠落だけがregistry orderの次alternativeへ進む。最初にpresentとなったpathは後続の
 read/parse resultが不成功でもlater alternativeを停止する。Ancestor-chain placementではfixed root-to-narrow placementごとに独立適用する。
 
@@ -357,8 +363,9 @@ Static traversalから独立してadmit済みのpathはderived provenanceを追�
 scopeをderived targetへwidenせず、derived resultが別のderivationのseedになることもない。
 
 Registryはdataだけを持つ。Callback、function pointer、任意の`path.join` recipe、free-form path expression、glob、
-regular expressionを供給できない。Closed schemaは本sectionが述べるものであり、そのrecord fieldは
-[data-model contract](../data-model.ja.md)の`InspectionRule.derivation` rowが定義する。初期derived-rule mappingは
+regular expressionを供給できない。したがって`bounded-derived-candidate` recordはidentityだけを持ち、`matcher`はnullである:
+vendorのreaderが生成しうるものはfieldではなく本sectionが定めるため、展開を記述できるrecordはその境界が
+乖離しうる2つ目の場所になる。出荷済みderived ruleは
 vendor contractのderived-rule table
 （[GitHub Copilot](vendors/github-copilot.ja.md)、[Claude Code](vendors/claude-code.ja.md)、
 [OpenAI Codex](vendors/openai-codex.ja.md)）が列挙する。
@@ -432,9 +439,9 @@ Contractとfixtureのvalidationは、次をすべて証明しなければなら�
    1 batch generationへpublishし、unexpected failureが実際のerrorを報告してprovisional
    subset全体をabortすることを証明する。
 5. 全staticおよびbounded-derived ruleにpositive、root/nested、boundary、symlink（透過的read）、
-   unreadable、該当するmulti-tool fixtureがある。Derived fixtureはさらにcallbackまたはfree-form path
-   constructionを使わないclosed `DerivationProgram` interpretation、nonrecursive derivation、boundary
-   containment、rejected targetをreadしないことを証明する。
+   unreadable、該当するmulti-tool fixtureがある。Derived fixtureはさらに、vendorのreaderがcallbackや
+   free-form path constructionを使わずvalidated literal segmentだけを受理すること、nonrecursive derivation、
+   boundary containment、rejected targetをreadしないことを証明する。
 6. Relationship-onlyとexcluded fixtureは、targetが存在する場合やgeneric filenameにmatchする場合もread authorityが
    0であることを証明する。FR-015からFR-018の外側で記録したUser behaviorはGlobal candidateにならない。
 7. 1 Source内の複数ruleが受理した1つのphysical fileはSource scan attemptごとに1回readし、独立した各

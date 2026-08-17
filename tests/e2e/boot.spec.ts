@@ -28,7 +28,10 @@ let host: LaunchedHost;
 
 test.beforeEach(async () => {
   fixture = await mkdtemp(join(tmpdir(), 'aci-boot-'));
-  await writeFile(join(fixture, 'AGENTS.md'), '# fixture instructions\n', 'utf8');
+  // A file no shipped rule admits, so the committed inventory stays empty.
+  // Not `AGENTS.md`: that is a recognized Codex instruction candidate since
+  // Phase 15, and this suite is about the empty-inventory boot.
+  await writeFile(join(fixture, 'NOTES.md'), '# fixture notes\n', 'utf8');
   host = await launchHost(fixture);
 });
 
@@ -53,7 +56,7 @@ test('shows one enabled Repository Source with an empty inventory', async ({ pag
   // Vendor-neutral on purpose: the sentence reports the finding, so it stays
   // correct as the shipped catalog grows past Codex.
   await expect(
-    page.getByText('No customization file was recognized in this repository.'),
+    page.getByText('No customization files were recognized in this repository.'),
   ).toBeVisible();
   await expect(page.getByText('No source-level diagnostics.')).toBeVisible();
 });

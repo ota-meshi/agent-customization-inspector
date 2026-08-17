@@ -394,32 +394,45 @@ source file. The one read this does not cover is a companion's, which no admissi
 authorizes and no path outside an admitted candidate's own directory can reach
 (§ Bounded companion census).
 
-A `bounded-derived-candidate` uses a typed edge from an independently admitted static seed
-and is nonrecursive: a derived candidate cannot seed another derivation. Relationship-only
+A `bounded-derived-candidate` is expanded by its vendor's own reader rather than by a
+matcher of its own — from configuration that reader opens before the walk, or from a file
+the walk admitted and read — and is nonrecursive: a derived candidate cannot seed another
+derivation. Relationship-only
 and excluded rules, vendor locators, runtime strategies, imports, component references,
 remote sources, and MCP-server-provided instructions never authorize a read.
 
-Read authority for a bounded-derived candidate exists only through a closed, versioned
-`DerivationProgram` interpreted by the inspection module. Each program pins the exact
-static seed rule, declaration field, and seed kind; chooses its base only from
-`seed-matched-path-parent` or
-`source-root`; names one closed extraction variant; uses only fixed literal segment tokens
-and typed authored-segment tokens from a closed union, with each authored token producing
-exactly one validated segment rather than injecting an unparsed path; declares a fixed
-suffix; and enumerates every permitted output form. Extracted segments must resolve inside
-the owning Source boundary exactly like a static candidate's segments.
+Read authority for a bounded-derived candidate exists only through its vendor's own reader,
+and a reader may widen the walk in exactly one shape. It reads the seed its vendor contract
+pins — either a configuration path the reader opens itself before the walk, whose targets
+then join that same walk, or a file the walk already admitted and read, whose targets are
+admitted after it with their own reads (tasks.md T759/T761) — takes the declaration field that contract names, reads
+each declared value as the name or the segments that contract's row makes of it, and returns
+a shipped derived rule's identity paired with a traversal plan: the base that rule's contract row fixes, the
+validated segments, and that row's fixed literal suffix. It returns a plan, never a path,
+and every segment is compared to a name the walk enumerated, so a declared value can reach
+one entry below the fixed base and nothing else, and the plan resolves inside the owning
+Source boundary exactly like a static candidate's. A seed the reader opens itself is an
+input rather than a candidate — whether it is also published is the separate decision of a
+static rule that admits it, if any.
 
-Targeted derivation never falls back to a free-form path open. Each interpreted segment
-resolves one directory or terminal-file step below the seed's documented base; neighbors
+Targeted derivation never falls back to a free-form path open. Each validated segment
+resolves one directory or terminal-file step below the base the rule names; neighbors
 are names only and receive no open or read. The next parent is reachable
-only through the preceding selected directory, so the interpreter cannot widen the plan.
+only through the preceding selected directory, so a reader cannot widen the plan.
+
+The grammar below governs an authored value a reader turns into a path — segments it joins
+below a base and probes. A value the reader hands to the walk as one entry name instead is a
+name, not a path: the walk admits it only when it enumerated an entry spelled exactly that
+way, and opens that entry, so a value holding a separator, a dot segment, or a home marker
+reaches nothing rather than reaching outward. Such a value is therefore taken as authored,
+and rejecting it would only drop the ordinary names declared beside it.
 
 Authored local paths use the exact pure tokenizer in the data-model contract. Prefix policy
 handles only one literal `./`; U+002F is the sole separator. Empty input/segments, leading,
 trailing, or repeated separators, `.`/`..`, backslash, colon, a first-segment home marker,
 controls, and unpaired surrogates reject the whole derivation with zero
 target I/O. There is no percent/URL/URI decoding, environment expansion, home resolution, or
-platform path parsing. The interpreter produces typed regex tokens, never a path
+platform path parsing. A reader produces validated literal segments, never a path
 string. Fixed suffix alternatives use literal `first-present-exact`: only a missing exact
 classification advances in registry order; the first present path stops later
 alternatives even if its later read or parse result is unsuccessful. An ancestor-
@@ -430,10 +443,12 @@ static selector scope is never widened to cover a derived target, and a derived 
 never becomes the seed of another derivation.
 
 The registry contains data only: it cannot supply a callback, function pointer, arbitrary
-`path.join` recipe, free-form path expression, glob, or regular expression. The closed
-schema is the one this section states, with its record field defined by the
-[data-model contract](../data-model.md)'s `InspectionRule.derivation` row, and the initial
-derived-rule mappings are enumerated by the vendor contracts' derived-rule tables
+`path.join` recipe, free-form path expression, glob, or regular expression. A
+`bounded-derived-candidate` record therefore carries identity alone and its `matcher` is
+null: what its vendor's reader may produce is bounded by this section rather than by a
+field, and a record that could describe the expansion would be a second place for that
+bound to drift from. The shipped derived rules are enumerated by the vendor contracts'
+derived-rule tables
 ([GitHub Copilot](vendors/github-copilot.md), [Claude Code](vendors/claude-code.md),
 [OpenAI Codex](vendors/openai-codex.md)); adding a variant or mapping is a
 contract-versioned change, not an extension point at runtime.
@@ -522,9 +537,9 @@ Contract and fixture validation must prove all of the following:
    and reports its real error.
 5. Every static and bounded-derived rule has positive, root/nested, boundary, symlinked
    (transparently read), unreadable, and applicable multi-tool fixtures. Derived fixtures additionally
-   prove closed `DerivationProgram` interpretation without callbacks or free-form path
-   construction, nonrecursive derivation, boundary containment, and no read for a rejected
-   target.
+   prove that a vendor's reader admits only validated literal segments, without callbacks or
+   free-form path construction, and prove nonrecursive derivation, boundary containment, and
+   no read for a rejected target.
 6. Relationship-only and excluded fixtures prove zero read authority even when a target
    exists or matches a generic filename. User behavior recorded outside FR-015 through
    FR-018 never becomes a Global candidate.

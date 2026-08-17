@@ -24,11 +24,13 @@
 // rather than the one running. The finding is that nothing was recognized;
 // which products and locations the release covers is documentation.
 import { computed } from 'vue';
+import InstructionRow from './rows/InstructionRow.vue';
 import SkillRow from './rows/SkillRow.vue';
 import { inventoryPanelId, inventoryTabId } from './panel-ids';
-import { CUSTOMIZATION_KIND_TEXT } from '../../../shared/entities';
+import { CUSTOMIZATION_KIND_PLURAL_TEXT } from '../../../shared/entities';
 import type {
   CustomizationFileSummaryDto,
+  InstructionInventoryEntryDto,
   SerializedDiagnostic,
   SkillInventoryEntryDto,
 } from '../../../shared/api-types';
@@ -37,6 +39,8 @@ import type { CustomizationKind } from '../../../shared/entities';
 const props = defineProps<{
   /** The kind in view; its inventory below is what this list renders. */
   kind: CustomizationKind | null;
+  /** The instruction rows that passed the active filters, in snapshot order. */
+  instructionRows: readonly InstructionInventoryEntryDto[];
   /** The skill rows that passed the active filters, in snapshot order. */
   skillRows: readonly SkillInventoryEntryDto[];
   /** Every published file by path, so a row can resolve the files it names. */
@@ -51,7 +55,13 @@ const props = defineProps<{
  * How many rows the kind in view has. It decides between the list and the two
  * empty states, and each kind answers from its own inventory.
  */
-const rowCount = computed(() => (props.kind === 'skill' ? props.skillRows.length : 0));
+const rowCount = computed(() =>
+  props.kind === 'instructions'
+    ? props.instructionRows.length
+    : props.kind === 'skill'
+      ? props.skillRows.length
+      : 0,
+);
 </script>
 
 <template>
@@ -65,6 +75,13 @@ const rowCount = computed(() => (props.kind === 'skill' ? props.skillRows.length
     :aria-labelledby="kind === null ? undefined : inventoryTabId(kind)"
   >
     <ul v-if="rowCount > 0" class="aci-list aci-inventory" role="list">
+      <template v-if="kind === 'instructions'">
+        <InstructionRow
+          v-for="entry in instructionRows"
+          :key="entry.sourceRelativePath"
+          :entry="entry"
+        />
+      </template>
       <template v-if="kind === 'skill'">
         <SkillRow
           v-for="entry in skillRows"
@@ -80,13 +97,16 @@ const rowCount = computed(() => (props.kind === 'skill' ? props.skillRows.length
          a filter. Scoped to the kind in view: files this generation could not
          read are listed under their own heading below, so claiming the
          repository has nothing would contradict the same screen. -->
+    <!-- Both sentences count the kind's rows, so they name the row unit in
+         plural rather than the kind: `CUSTOMIZATION_KIND_TEXT` labels a tab,
+         and no rule turns `Instructions` or `MCP` into a countable noun. -->
     <p v-else-if="totalCount === 0" class="aci-empty">
-      No {{ kind === null ? 'customization file' : CUSTOMIZATION_KIND_TEXT[kind].toLowerCase() }}
-      was recognized in this repository.
+      No {{ kind === null ? 'customization files' : CUSTOMIZATION_KIND_PLURAL_TEXT[kind] }} were
+      recognized in this repository.
     </p>
     <p v-else class="aci-empty">
-      No {{ kind === null ? 'row' : CUSTOMIZATION_KIND_TEXT[kind].toLowerCase() }} matches the
-      current filters.
+      No {{ kind === null ? 'customization files' : CUSTOMIZATION_KIND_PLURAL_TEXT[kind] }} match
+      the current filters.
     </p>
   </div>
 </template>

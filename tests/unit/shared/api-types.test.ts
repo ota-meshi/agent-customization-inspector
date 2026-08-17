@@ -87,6 +87,7 @@ describe('session snapshot DTO', () => {
       | 'createdAt'
       | 'sources'
       | 'files'
+      | 'instructions'
       | 'skills'
       | 'diagnostics'
       | 'repositoryGeneration'

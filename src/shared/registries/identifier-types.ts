@@ -37,8 +37,16 @@ export type ClaudeBehaviorId =
  * phase that needs them.
  */
 export type CodexBehaviorId =
+  /** Codex project configuration layers at `.codex/config.toml`. */
+  | 'codex.behavior.repo.config'
+  /** Codex per-directory project instruction lookup: override, regular, then configured fallbacks. */
+  | 'codex.behavior.repo.instructions'
   /** Codex Repository skill discovery under `.agents/skills/<name>/SKILL.md`. */
   | 'codex.behavior.repo.skills'
+  /** Codex User configuration at `<CODEX_HOME>/config.toml`; a non-authorizing carrier fact. */
+  | 'codex.behavior.user.config'
+  /** Codex User instruction fallback at `<CODEX_HOME>/AGENTS.override.md` then `AGENTS.md`. */
+  | 'codex.behavior.user.instructions'
   /** Codex User skill discovery under `$HOME/.agents/skills/<name>/SKILL.md`. */
   | 'codex.behavior.user.skills';
 
@@ -98,8 +106,12 @@ export type AnthropicSourceId =
  * (contracts/official-sources.md).
  */
 export type OpenAiSourceId =
+  /** The AGENTS.md page: how Codex discovers guidance and customizes fallback filenames. */
+  | 'openai.codex.agents-md'
+  /** The basic configuration page: the config file locations and their precedence. */
+  | 'openai.codex.config-basic'
   /** The Codex skills page: where Codex loads local skills, and their metadata. */
-  'openai.codex.skills';
+  | 'openai.codex.skills';
 
 /**
  * GitHub official documentation pages cited by the shipped records
@@ -143,8 +155,12 @@ export type ClaudeStrategyId =
  * (contracts/runtime-composition.md).
  */
 export type CodexStrategyId =
+  /** Codex config-layer resolution: closest applicable value wins across User and project layers. */
+  | 'codex.config.precedence'
+  /** Codex instruction layering: per-directory first-non-empty selection, broad-to-narrow. */
+  | 'codex.instructions.layering'
   /** Codex skill selection across Repository, User, admin, and system scopes. */
-  'codex.skills.discovery';
+  | 'codex.skills.discovery';
 
 /**
  * GitHub Copilot composition strategies
@@ -181,8 +197,12 @@ export type ClaudeRuleId =
  * arrive with the inventory phase that needs them.
  */
 export type CodexRuleId =
+  /** Configured instruction fallback basenames, seeded by the pinned `.codex/config.toml` path. */
+  | 'codex.derived.fallback-basename'
+  /** Repository Codex instructions at the exact root override/regular pair; read-authorizing `static-candidate`. */
+  | 'codex.repo.instructions'
   /** Repository Codex skills; read-authorizing `static-candidate`. */
-  'codex.repo.skill';
+  | 'codex.repo.skill';
 
 /**
  * GitHub Copilot inspection rules

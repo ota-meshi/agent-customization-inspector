@@ -216,6 +216,40 @@ function projectSkillInventory(
 }
 
 /**
+ * Projects the instructions inventory from a generation's recognitions —
+ * the unit of this kind is the file itself —
+ * (contracts/http-api.md § get-session, data-model.md § Inventory unit): one
+ * entry per recognized instruction file — the unit of this kind is the file
+ * itself — listing the tools that recognize it, deduplicated and in the
+ * closed tool order. Rows are in Source-relative Path order, so two
+ * snapshots of one generation publish the same rows and an opaque ID never
+ * decides a visible order.
+ */
+function projectFileKindInventory(
+  recognitions: readonly ToolRecognition[],
+  kind: 'instructions',
+): { sourceRelativePath: string; tools: SupportedTool[] }[] {
+  const toolsByPath = new Map<string, Set<SupportedTool>>();
+  for (const recognition of recognitions) {
+    if (recognition.details.kind !== kind) {
+      continue;
+    }
+    let tools = toolsByPath.get(recognition.sourceRelativePath);
+    if (tools === undefined) {
+      tools = new Set();
+      toolsByPath.set(recognition.sourceRelativePath, tools);
+    }
+    tools.add(recognition.tool);
+  }
+  return [...toolsByPath.entries()]
+    .map(([sourceRelativePath, tools]) => ({
+      sourceRelativePath,
+      tools: SUPPORTED_TOOL_ORDER.filter((tool) => tools.has(tool)),
+    }))
+    .sort((left, right) => compareStrings(left.sourceRelativePath, right.sourceRelativePath));
+}
+
+/**
  * A recognition narrowed to the skill kind, so {@link projectSkillInventory}
  * reads `details.declaredName` where its guard has already proved the skill
  * kind instead of re-narrowing per access.
@@ -485,6 +519,13 @@ export class InspectionSession {
         // with the fixed Global tool order.
         new Map([[this.repositorySourceId, 0]]),
       ),
+      instructions: projectFileKindInventory(
+        [
+          ...this.committedRepositoryGeneration.recognitions,
+          ...(this.committedGlobalGeneration?.recognitions ?? []),
+        ],
+        'instructions',
+      ),
       skills: projectSkillInventory(
         [
           ...this.committedRepositoryGeneration.recognitions,
@@ -678,7 +719,11 @@ export class SessionCoordinator {
     sourceState.scanRequestId = scanRequestId;
     sourceState.progress = {
       scanRequestId,
-      phase: 'enumerating',
+      // An admitted attempt begins with its configuration read, not with the
+      // walk: `runSourceScan` runs each vendor's reader before enumerating
+      // anything, so seeding `enumerating` would name a stage that has not
+      // started, and the walk's own first report moves the phase on.
+      phase: 'deriving',
       queuedAt: null,
       startedAt: new Date().toISOString(),
       visitedEntries: 0,

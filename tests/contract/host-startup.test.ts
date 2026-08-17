@@ -22,7 +22,13 @@ import { InspectionSession, SessionCoordinator } from '../../src/server/session/
 import { runTraversalScan } from '../../src/server/inspection/traversal';
 import type { InspectionDataResult, SessionSnapshot } from '../../src/shared/api-types';
 
-vi.mock('../../src/server/inspection/traversal', () => ({
+// Only the walk is stubbed. The rest of the module is the real thing, because
+// the scan's configuration-read stage reads the carrier through the same
+// module — `statThroughLink`, `readCandidate`, `rethrowIfResourceExhaustion` —
+// and a whole-module replacement would make those exports undefined rather
+// than exercise the failure this suite is about.
+vi.mock('../../src/server/inspection/traversal', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../src/server/inspection/traversal')>()),
   runTraversalScan: vi.fn(),
 }));
 

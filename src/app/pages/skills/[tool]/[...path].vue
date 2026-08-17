@@ -787,7 +787,10 @@ onBeforeUnmount(() => {
 
 <template>
   <div ref="pageRoot" class="aci-skill-detail">
-    <p><NuxtLink to="/">Back to the inventory</NuxtLink></p>
+    <!-- Returns to the tab this page came from: the inventory's kind is URL
+         state, so naming it here is what makes the link land on the skill
+         list rather than the kind order's default tab. -->
+    <p><NuxtLink to="/?kind=skill">Back to the inventory</NuxtLink></p>
 
     <h2 ref="heading" tabindex="-1">
       <!-- The row's own name heads the page — this product's provisional
@@ -840,7 +843,7 @@ onBeforeUnmount(() => {
         changed since the link was made; a rescan that brings the path back will make it resolve
         again.
       </p>
-      <p><NuxtLink to="/">Return to the inventory and open it again.</NuxtLink></p>
+      <p><NuxtLink to="/?kind=skill">Return to the inventory and open it again.</NuxtLink></p>
     </template>
 
     <!-- A failed detail request: the state fell back to idle with nothing

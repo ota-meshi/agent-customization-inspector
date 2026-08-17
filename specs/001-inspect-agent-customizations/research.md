@@ -465,12 +465,12 @@ the preview label originates before any owning Source exists and may represent a
 or invalid lexical root.
 
 Bounded derivation remains a typed single-edge provenance graph with closed deterministic target construction, not
-arbitrary reference following. The closed `DerivationProgram` union has exactly four
-initial mappings: the three vendor local-marketplace manifest rules and Codex fallback
-basename placement. A skill's sibling `agents/openai.yaml` is not among them: it is
+arbitrary reference following. It is performed by each vendor's own configuration-read
+stage, and the shipped `bounded-derived-candidate` rules it may expand are the three vendor
+local-marketplace manifest rules and Codex fallback basename placement. A skill's sibling `agents/openai.yaml` is not among them: it is
 published through the owning skill's bounded companion census rather than derived
-(contracts/vendors/openai-codex.md § Derived Repository rules). Each mapping pins an
-exact static seed provenance/
+(contracts/vendors/openai-codex.md § Derived Repository rules). Each pins an
+exact seed path or seed
 rule/kind, declaration field and syntax, base/placement, and fixed suffix alternatives.
 No callback, arbitrary path join, free-form expression, glob, or recursive
 derivation is representable. A derived provenance cannot seed another edge, while an

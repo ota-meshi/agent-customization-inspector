@@ -85,7 +85,6 @@ export const CLAUDE_REPO_SKILL_RULE = {
   kind: 'skill',
   sourceKinds: ['repository'],
   matcher: CLAUDE_REPO_SKILL_MATCHER,
-  derivation: null,
   policyRefs: SHIPS_MAINTENANCE_DATA
     ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
     : [],

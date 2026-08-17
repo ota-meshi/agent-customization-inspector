@@ -62,6 +62,52 @@
     ]
   },
   {
+    "behaviorId": "codex.behavior.repo.config",
+    "tool": "codex",
+    "surfaces": ["codex-local-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "runtime-cwd",
+      "relativeSelector": ".codex/config.toml",
+      "traversal": "ancestor-chain-to-repository-root"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.config-basic",
+        "url": "https://learn.chatgpt.com/docs/config-file/config-basic.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Codex configuration file", "Configuration precedence"],
+        "reviewedOn": "2026-08-17",
+        "establishes": "Local clients load every trusted project .codex/config.toml layer from the project root down to the runtime cwd, and the closest applicable value wins for the same key; marking a project untrusted skips its project-scoped layers entirely."
+      }
+    ]
+  },
+  {
+    "behaviorId": "codex.behavior.repo.instructions",
+    "tool": "codex",
+    "surfaces": ["codex-local-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "runtime-cwd",
+      "relativeSelector": "AGENTS.override.md; AGENTS.md; configured fallback basenames",
+      "traversal": "ancestor-chain-to-repository-root"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.agents-md",
+        "url": "https://learn.chatgpt.com/docs/agent-configuration/agents-md.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["How Codex discovers guidance", "Customize fallback filenames"],
+        "reviewedOn": "2026-08-17",
+        "establishes": "Local Codex clients build the instruction chain once at session start, walking the project root down to the runtime cwd and stopping there — without a detectable project root only the current directory is checked — selecting at most one file per directory: AGENTS.override.md, then AGENTS.md, then the configured fallback basenames. Those basenames and the project-document byte budget are themselves configuration values, declared as project_doc_fallback_filenames and project_doc_max_bytes, so which names the walk accepts depends on configuration outside the instruction files themselves."
+      }
+    ]
+  },
+  {
     "behaviorId": "codex.behavior.repo.skills",
     "tool": "codex",
     "surfaces": ["codex-local-clients"],
@@ -81,6 +127,52 @@
         "sections": ["Where Codex loads local skills"],
         "reviewedOn": "2026-07-25",
         "establishes": "Local Codex clients discover repository skills at .agents/skills/<name>/SKILL.md, scanning each directory on the chain from the runtime working directory to the repository root, and do not merge same-name skills."
+      }
+    ]
+  },
+  {
+    "behaviorId": "codex.behavior.user.config",
+    "tool": "codex",
+    "surfaces": ["codex-local-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "config.toml",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.config-basic",
+        "url": "https://learn.chatgpt.com/docs/config-file/config-basic.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Codex configuration file", "Configuration precedence"],
+        "reviewedOn": "2026-08-17",
+        "establishes": "User configuration lives at the Codex home directory's config.toml (~/.codex/config.toml by default), the CLI and IDE extension share those configuration layers, and its values resolve through the same precedence as the trusted project layers."
+      }
+    ]
+  },
+  {
+    "behaviorId": "codex.behavior.user.instructions",
+    "tool": "codex",
+    "surfaces": ["codex-local-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "AGENTS.override.md; AGENTS.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.agents-md",
+        "url": "https://learn.chatgpt.com/docs/agent-configuration/agents-md.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["How Codex discovers guidance"],
+        "reviewedOn": "2026-08-17",
+        "establishes": "Local Codex clients read a global instruction fallback at <CODEX_HOME>/AGENTS.override.md, otherwise <CODEX_HOME>/AGENTS.md, and the first non-empty global candidate precedes the project chain."
       }
     ]
   },

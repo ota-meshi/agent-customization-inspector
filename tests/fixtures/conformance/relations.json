@@ -3,6 +3,12 @@
     "claude.skills.selection": {
       "consumesBehaviors": ["claude.behavior.repo.skills", "claude.behavior.user.skills"]
     },
+    "codex.config.precedence": {
+      "consumesBehaviors": ["codex.behavior.repo.config", "codex.behavior.user.config"]
+    },
+    "codex.instructions.layering": {
+      "consumesBehaviors": ["codex.behavior.repo.instructions", "codex.behavior.user.instructions"]
+    },
     "codex.skills.discovery": {
       "consumesBehaviors": ["codex.behavior.repo.skills", "codex.behavior.user.skills"]
     },
@@ -24,6 +30,14 @@
     "claude.repo.skill": {
       "basedOnBehaviors": ["claude.behavior.repo.skills"],
       "explainedByStrategies": ["claude.skills.selection"]
+    },
+    "codex.derived.fallback-basename": {
+      "basedOnBehaviors": ["codex.behavior.repo.config", "codex.behavior.repo.instructions"],
+      "explainedByStrategies": ["codex.config.precedence", "codex.instructions.layering"]
+    },
+    "codex.repo.instructions": {
+      "basedOnBehaviors": ["codex.behavior.repo.instructions"],
+      "explainedByStrategies": ["codex.instructions.layering"]
     },
     "codex.repo.skill": {
       "basedOnBehaviors": ["codex.behavior.repo.skills"],

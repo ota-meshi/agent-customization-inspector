@@ -54,6 +54,7 @@ function snapshotWith(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot
       hadLeadingBom: false,
       sizeBytes: 10,
     })),
+    instructions: [],
     skills: [],
     diagnostics: [],
     repositoryGeneration: 0,

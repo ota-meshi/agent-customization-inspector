@@ -14,14 +14,19 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import * as fsIo from '../../../src/server/inspection/fs-io';
 import {
   buildClaudeSkillFixture,
+  buildCodexInstructionFixture,
   buildCodexSkillFixture,
   buildCopilotSkillFixture,
   type ClaudeSkillFixture,
+  type CodexInstructionFixture,
   type CodexSkillFixture,
   type CopilotSkillFixture,
 } from '../../fixtures/repositories/build-fixtures';
 import { CLAUDE_REPOSITORY_RULES } from '../../../src/server/inspection/rules/claude';
-import { CODEX_REPOSITORY_RULES } from '../../../src/server/inspection/rules/codex';
+import {
+  CODEX_DERIVED_FALLBACK_RULE,
+  CODEX_REPOSITORY_RULES,
+} from '../../../src/server/inspection/rules/codex';
 import { COPILOT_REPOSITORY_RULES } from '../../../src/server/inspection/rules/copilot';
 import { INSPECTION_RULES } from '../../../src/shared/registries/inspection-rules';
 import { RULE_RELATIONS } from '../../../src/shared/registries/relations';
@@ -72,9 +77,10 @@ async function scanFixture() {
 
 describe('the shipped codex.repo.skill plan', () => {
   it('compiles the authored program once into the immutable typed plan', () => {
-    expect(CODEX_REPOSITORY_RULES).toHaveLength(1);
-    const compiled = CODEX_REPOSITORY_RULES[0]!;
-    expect(compiled.rule.ruleId).toBe('codex.repo.skill');
+    expect(CODEX_REPOSITORY_RULES).toHaveLength(2);
+    const compiled = CODEX_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'codex.repo.skill',
+    )!;
     expect(compiled.tool).toBe('codex');
     expect(compiled.kind).toBe('skill');
     // The compiled plan is exactly what compiling the shipped matcher yields:
@@ -272,7 +278,9 @@ describe('every admission keeps its own selector origin', () => {
     // candidate retains each as its own provenance (data-model.md
     // § ToolRecognition), so collapsing states by program and position alone
     // would drop one of them.
-    const shared = CODEX_REPOSITORY_RULES[0]!;
+    const shared = CODEX_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'codex.repo.skill',
+    )!;
     vi.clearAllMocks();
     const result = await runTraversalScan({
       root: fixture.root,
@@ -294,13 +302,18 @@ describe('every admission keeps its own selector origin', () => {
 describe('vendor code classifies matches without reinterpreting selectors', () => {
   it('resolves each admission back to the rule whose plan admitted it', async () => {
     const result = await scanFixture();
+    // The skill fixture holds no instruction file, so every candidate resolves
+    // to the skill rule — whose plan is the second of the shipped Codex pair.
+    const skillPlanIndex = CODEX_REPOSITORY_RULES.findIndex(
+      (candidate) => candidate.rule.ruleId === 'codex.repo.skill',
+    );
     for (const candidate of result.files) {
       expect(candidate.admissions.length).toBeGreaterThan(0);
       const admitting = resolveAdmittingRules(CODEX_REPOSITORY_RULES, candidate.admissions);
       expect(admitting.map((compiled) => compiled.rule.ruleId)).toEqual(['codex.repo.skill']);
       // The admission names the authored selector, not the matched text, so
       // provenance never depends on re-parsing the public path.
-      expect(candidate.admissions[0]).toEqual({ planIndex: 0, selectorIndex: 0 });
+      expect(candidate.admissions[0]).toEqual({ planIndex: skillPlanIndex, selectorIndex: 0 });
     }
   });
 });
@@ -568,6 +581,143 @@ describe('the shipped copilot.repo.skill plan and its matrix (T154)', () => {
         admitting.map((compiled) => compiled.rule.ruleId),
         candidate.publicPath,
       ).toEqual(expected.get(candidate.publicPath));
+    }
+  });
+});
+
+describe('the shipped codex.repo.instructions plan (T207)', () => {
+  it('compiles the exact override/regular pair in the authored order', () => {
+    const compiled = CODEX_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'codex.repo.instructions',
+    )!;
+    expect(compiled.tool).toBe('codex');
+    expect(compiled.kind).toBe('instructions');
+    // The compiled plan is exactly what compiling the shipped matcher yields:
+    // there is no second, vendor-owned interpretation of the selector.
+    expect(compiled.plan).toEqual(
+      new TraversalPlan(INSPECTION_RULES['codex.repo.instructions']!.matcher!),
+    );
+    // Two exact single-literal programs anchored at the Repository root, the
+    // override first — the vendor's documented filename order, kept as
+    // selector order so each admission names which filename matched.
+    expect(compiled.plan.selectors.map((selector) => selector.remainder)).toEqual([
+      [{ kind: 'literal', value: 'AGENTS.override.md' }],
+      [{ kind: 'literal', value: 'AGENTS.md' }],
+    ]);
+    // The Repository pair publishes both files. First-non-empty selection is
+    // the vendor's runtime rule — and, for the Inspector, solely the Global
+    // rule's closed policy (FR-035); projecting it here would state a winner
+    // this tool has not observed (FR-009).
+    expect(compiled.plan.selectionPolicy).toBe('all-matches');
+  });
+
+  it('is explained by the layering strategy without claiming a selection', () => {
+    const rule = INSPECTION_RULES['codex.repo.instructions']!;
+    expect(
+      RULE_RELATIONS[rule.ruleId].explainedByStrategies.map((strategy) => strategy.strategyId),
+    ).toEqual(['codex.instructions.layering']);
+    for (const field of ['conditionKeys', 'applicability', 'effective']) {
+      expect(Object.keys(rule)).not.toContain(field);
+    }
+  });
+
+  it('registers the fallback derivation rule as identity only (T1085)', () => {
+    // The rule record is the derived candidates' identity — ruleId, class,
+    // kind — and nothing more: how targets are discovered is the
+    // configuration-read logic beside it, and the seed is a configuration
+    // input this product never publishes or raw-displays
+    // (contracts/vendors/openai-codex.md § Derived Repository rules).
+    const derived = INSPECTION_RULES['codex.derived.fallback-basename']!;
+    expect(derived.discoveryClass).toBe('bounded-derived-candidate');
+    expect(derived.kind).toBe('instructions');
+    expect(derived.matcher).toBeNull();
+    // The derived rule feeds no static traversal plan: the walked list holds
+    // the static rules alone, and the configuration-read stage expands the
+    // derivation into its own per-scan plan.
+    expect(CODEX_REPOSITORY_RULES.map((candidate) => candidate.rule.ruleId)).toEqual([
+      'codex.repo.instructions',
+      'codex.repo.skill',
+    ]);
+    expect(CODEX_DERIVED_FALLBACK_RULE.rule).toBe(derived);
+    expect(CODEX_DERIVED_FALLBACK_RULE.kind).toBe('instructions');
+  });
+});
+
+describe('the anchored Codex instruction inventory (T207)', () => {
+  let instructionFixture: CodexInstructionFixture;
+
+  beforeAll(() => {
+    instructionFixture = buildCodexInstructionFixture('inspector-codex-instruction-rules');
+  });
+
+  afterAll(() => {
+    rmSync(instructionFixture.root, { recursive: true, force: true });
+  });
+
+  async function scanInstructions() {
+    return scanWith(instructionFixture.root, CODEX_REPOSITORY_RULES);
+  }
+
+  it('admits exactly the root pair, the empty regular file included', async () => {
+    const result = await scanInstructions();
+    // `AGENTS.md` is authored empty and is still an admitted, readable
+    // candidate: the vendor's first-non-empty selection is runtime behavior
+    // the inventory does not project (FR-009). The carrier is deliberately
+    // not among the candidates: it is the configuration-read stage's input,
+    // never a published file, and the fallback files it declares enter
+    // through that stage's own plan — the scan suite's claim.
+    expect(result.files.map((file) => file.publicPath)).toEqual([
+      ...instructionFixture.expectedInstructionPaths,
+    ]);
+    const empty = result.files.find((file) => file.publicPath === 'AGENTS.md');
+    if (empty?.outcome.kind !== 'readable') {
+      throw new Error('expected the empty regular file to be readable');
+    }
+    expect(empty.outcome.sourceText).toBe('');
+  });
+
+  it('admits no higher-scope path and no spelling variant', async () => {
+    const result = await scanInstructions();
+    const paths = new Set(result.files.map((file) => file.publicPath));
+    for (const nearMiss of instructionFixture.nearMissPaths) {
+      expect(paths.has(nearMiss), nearMiss).toBe(false);
+    }
+  });
+
+  it('derives each provenance from the authored selector that matched', async () => {
+    const result = await scanInstructions();
+    const instructionsPlanIndex = CODEX_REPOSITORY_RULES.findIndex(
+      (candidate) => candidate.rule.ruleId === 'codex.repo.instructions',
+    );
+    // Deterministic provenance: the override is the first authored selector
+    // and the regular file the second, so which filename admitted a candidate
+    // is a fact of the walk, never re-derived from the public path.
+    const byPath = new Map(result.files.map((file) => [file.publicPath, file.admissions]));
+    expect(byPath.get('AGENTS.override.md')).toEqual([
+      { planIndex: instructionsPlanIndex, selectorIndex: 0 },
+    ]);
+    expect(byPath.get('AGENTS.md')).toEqual([
+      { planIndex: instructionsPlanIndex, selectorIndex: 1 },
+    ]);
+  });
+
+  it('walks only the static allowlist: neither the carrier nor derived targets', async () => {
+    // The bare traversal reads exactly the static candidates — the pair. The
+    // carrier and the declared fallback files exist on disk, so a walk that
+    // reached either would show up here; the carrier is read only by the
+    // configuration-read stage, and the fallback files only through the plan
+    // that stage expands (T1090), which the scan suite proves.
+    await scanInstructions();
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) =>
+      String(call[0])
+        .slice(instructionFixture.root.length + 1)
+        .split(sep)
+        .join('/'),
+    );
+    expect([...opened].sort()).toEqual([...instructionFixture.expectedInstructionPaths]);
+    expect(opened).not.toContain(instructionFixture.configCarrierPath);
+    for (const derivedPath of instructionFixture.expectedDerivedFallbackPaths) {
+      expect(opened).not.toContain(derivedPath);
     }
   });
 });

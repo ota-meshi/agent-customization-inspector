@@ -1,8 +1,9 @@
-// Codex classification over the registry-compiled inspection rules (T065).
-// This module owns no walker and no selector semantics of its own: it takes
-// the shipped `codex.repo.skill` matcher, hands it to the one registry
-// compiler, and pairs the resulting immutable `TraversalPlan` with the rule's
-// identity. Discovery itself is executed by `traversal.ts` against that plan.
+// Codex classification over the registry-compiled inspection rules (T065,
+// extended by T213). This module owns no walker and no selector semantics of
+// its own: it takes the shipped Codex matchers, hands them to the one registry
+// compiler, and pairs the resulting immutable `TraversalPlan`s with each
+// rule's identity. Discovery itself is executed by `traversal.ts` against
+// those plans.
 //
 // The separation is the point (contracts/inspection-path-allowlist.md
 // § "Vendor locators are not Inspector matchers"): a vendor module that walked
@@ -10,9 +11,29 @@
 // matching the path text again, could widen the allowlist without the plan
 // changing. Here the plan is the only authority, and vendor code only says
 // what an already-admitted candidate is recognized as.
-import { CompiledInspectionRule } from './registry';
+//
+// This module also owns Codex's configuration-read logic (T1090): plain code
+// that reads `.codex/config.toml` before a scan, takes the
+// `project_doc_fallback_filenames` values, and builds the traversal plan the
+// walk executes for them. The scan composes each vendor's reader exactly like
+// the rule catalogs, so the logic lives with the vendor it belongs to
+// (contracts/vendors/openai-codex.md § Derived Repository rules). The file
+// itself is a configuration input only: it is never published or
+// raw-displayed, so it has no candidate, row, or detail here.
+import {
+  CompiledDerivedRule,
+  CompiledInspectionRule,
+  type ConfiguredDerivedPlan,
+} from './registry';
+import { join } from 'node:path';
+import { readCandidate, rethrowIfResourceExhaustion, statThroughLink } from '../traversal';
+import { RecognitionExtraction } from '../parsers/extraction';
+import { ParsedTomlDocument } from '../parsers/toml';
 import { CODEX_RULE_RELATIONS } from '../../../shared/registries/codex/relations';
-import { CODEX_INSPECTION_RULES } from '../../../shared/registries/codex/rules';
+import {
+  CODEX_DERIVED_FALLBACK_BASENAME_RULE,
+  CODEX_INSPECTION_RULES,
+} from '../../../shared/registries/codex/rules';
 import type { RuleId } from '../../../shared/registries/identifier-types';
 import type { RuleRelations } from '../../../shared/registries/relation-types';
 import type { InspectionRule } from '../../../shared/registries/rule-types';
@@ -54,16 +75,122 @@ export class CodexCompiledRule extends CompiledInspectionRule {
 /**
  * The Codex Repository rules a Repository scan executes, in shipped order.
  * The remaining Codex rows of the vendor contract arrive with their own
- * inventory phases; this milestone ships skills only, so a repository whose
- * only Codex files are configs legitimately produces an empty inventory.
+ * inventory phases; the shipped set covers static instructions and skills,
+ * with the configured instruction fallbacks reaching the same walk through
+ * the derived rule below.
  *
- * Every shipped rule is compiled rather than filtered: a Codex record that
- * authorizes no traversal is rejected by the {@link CodexCompiledRule}
- * constructor instead of being skipped, so a registry row that cannot be
- * executed fails the build that ships it rather than disappearing from the
- * scan. Skipping arrives with the first rule whose class belongs in this
- * registry but not in this list.
+ * The catalog now carries both discovery classes, and each compiles through
+ * its own gate: the static rules below feed the traversal, while the derived
+ * rule compiles into {@link CODEX_DERIVED_FALLBACK_RULE} for the
+ * configuration-read stage — the selection is by declared class, and a record of
+ * either class that cannot be executed still fails the build that ships it
+ * through its constructor guard.
  */
 export const CODEX_REPOSITORY_RULES: readonly CodexCompiledRule[] = Object.values(
   CODEX_INSPECTION_RULES,
-).map((rule) => new CodexCompiledRule(rule));
+)
+  .filter((rule) => rule.discoveryClass === 'static-candidate')
+  .map((rule) => new CodexCompiledRule(rule));
+
+/**
+ * The compiled `codex.derived.fallback-basename` unit the configuration-read
+ * stage expands (T1089): the seed is the repository's own `.codex/config.toml`
+ * read as configuration, and the derived targets are `instructions` candidates
+ * at the Repository root, one per declared basename, scanned by the same walk
+ * as every static candidate.
+ */
+export const CODEX_DERIVED_FALLBACK_RULE = new CompiledDerivedRule(
+  CODEX_DERIVED_FALLBACK_BASENAME_RULE,
+);
+
+/**
+ * Reads one configuration seed's text for a vendor's configuration-read
+ * logic (T1090): probes the exact pinned path, and returns the decoded text
+ * of a present, readable seed — through the same single read path as every
+ * published file — or null otherwise.
+ *
+ * An absent seed configures nothing — the probe's failure is the absence
+ * fact. An unreadable or binary seed also configures nothing here: the seed
+ * is a configuration input only, never a published candidate, so there is no
+ * row or diagnostic for it to carry, and null is the whole outcome.
+ */
+async function readConfigurationSeedText(
+  root: string,
+  seedSegments: readonly string[],
+): Promise<string | null> {
+  const absolutePath = join(root, ...seedSegments);
+  let target;
+  try {
+    // Through the link, like every other read (FR-024): a seed reached by a
+    // symbolic link is the file it resolves to.
+    target = await statThroughLink(absolutePath);
+  } catch (error) {
+    // Reached by every repository that ships no `.codex/config.toml`, and by
+    // one whose seed is a dangling link: absence is the ordinary answer here.
+    // The rethrow separates the machine running out of descriptors or memory
+    // from that answer, because reporting exhaustion as "this repository
+    // declares no fallback names" would commit a complete generation missing
+    // every configured instruction file.
+    rethrowIfResourceExhaustion(error);
+    return null;
+  }
+  if (!target.isFile) {
+    // A directory, FIFO, socket, or device at the pinned path configures
+    // nothing. The type is decided before the read because the one flag-free
+    // `readFile` below would block indefinitely on a FIFO — the same gate
+    // `probeExactTarget` applies to an exact target, and the walk gets from
+    // its directory-entry types.
+    return null;
+  }
+  const outcome = await readCandidate(absolutePath);
+  return outcome.kind === 'readable' ? outcome.sourceText : null;
+}
+
+/**
+ * The configured fallback basenames one carrier document declares, in
+ * authored order — or null when the field is absent or is not a string array,
+ * which both mean the carrier configures nothing. Throws on a document TOML
+ * cannot parse; the caller's extraction boundary owns that throw as
+ * "configures nothing" too, because the carrier is never published and has no
+ * recognition to fail.
+ *
+ * Retention is complete: every declaration is kept, duplicates included, and
+ * no Inspector cap or character grammar edits the list
+ * (contracts/inspection-path-allowlist.md § Common conformance
+ * requirements). A declared value is a name, not a path: the walk compares it
+ * to the entry names it enumerated and opens the entry, so a value holding a
+ * separator, a dot segment, or a home marker matches nothing rather than
+ * reaching anything — there is no escape for a grammar to prevent, and
+ * rejecting the declaration would only lose the ordinary names beside it.
+ */
+export function configuredFallbackBasenamesOf(sourceText: string): readonly string[] | null {
+  const declared = new ParsedTomlDocument(sourceText).table['project_doc_fallback_filenames'];
+  return Array.isArray(declared) && declared.every((value) => typeof value === 'string')
+    ? declared
+    : null;
+}
+
+/**
+ * Codex's configuration-read contribution (T1090): reads the root
+ * `.codex/config.toml` — configuration deciding what counts as an
+ * instruction file, before any candidate is scanned — and expands the
+ * declared fallback basenames into the plan the same walk executes under
+ * {@link CODEX_DERIVED_FALLBACK_RULE}'s identity. An absent, unreadable,
+ * malformed, or invalidly-declaring carrier configures nothing, and the
+ * carrier itself is never a candidate.
+ */
+export async function readCodexConfiguredFallbackPlans(
+  root: string,
+): Promise<readonly ConfiguredDerivedPlan[]> {
+  const seedText = await readConfigurationSeedText(root, ['.codex', 'config.toml']);
+  if (seedText === null) {
+    return [];
+  }
+  // The extraction boundary is the one sanctioned soft-failure seam: a parse
+  // throw becomes the `failed` status here instead of a bare catch.
+  const extraction = RecognitionExtraction.run(seedText, configuredFallbackBasenamesOf);
+  const basenames = extraction.extracted ?? null;
+  return basenames !== null && basenames.length > 0
+    ? [{ rule: CODEX_DERIVED_FALLBACK_RULE, plan: CODEX_DERIVED_FALLBACK_RULE.planFor(basenames) }]
+    : [];
+}

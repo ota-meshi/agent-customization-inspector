@@ -425,10 +425,10 @@ export class TraversalPlan {
   /**
    * Compiles authored typed programs — for example
    * `TraversalPlan.fromPrograms(base, [['.claude', 'skills', ANY_NAME, 'SKILL.md']])`.
-   * Today only the traversal suites author plans this way: the shipped
-   * catalogs author `StructuredInspectorMatcher` records that compile through
-   * `CompiledInspectionRule`, so this entry point is test-facing until a
-   * catalog adopts it.
+   * The shipped catalogs author `StructuredInspectorMatcher` records that
+   * compile through `CompiledInspectionRule`; this entry point serves the
+   * traversal suites and {@link CompiledDerivedRule.planFor}, whose programs
+   * exist only per scan attempt.
    */
   public static fromPrograms(
     base: MatcherBase,
@@ -483,34 +483,19 @@ export function assertLoadableTraversalPlan(plan: TraversalPlan): void {
   }
 }
 /**
- * One shipped rule compiled into the unit a scan submits to the traversal
- * module: the record itself, its graph edges, and the traversal plan its
- * matcher compiles to. The pairing is what lets a discovered candidate carry
- * its admitting rule identity: the traversal reports the plan index that
- * admitted each file, and the caller resolves it here rather than re-matching
- * the public path (FR-019).
+ * What every compiled rule shares, whichever candidate class it belongs to:
+ * the shipped record itself, the recognizing product, and the recognized
+ * kind — the identity a candidate's provenance carries and the recognizer
+ * dispatches on. The two candidate classes extend it with what is theirs
+ * alone: a static rule's traversal plan and graph edges, a derived rule's
+ * per-scan plan construction.
  *
- * Abstract on purpose: what every vendor shares is the compilation — the
- * guards below and the plan — while the recognizing product and the vendor's
- * relations catalog belong to a per-vendor subclass such as
- * `CodexCompiledRule`, which fixes `tool` to its own literal and resolves
- * `relations` from its own vendor table. A scan therefore works over this
- * base, and a vendor's recognizer over its own subclass.
- *
- * The constructor is the read-authorizing gate: read authority is assigned by
- * discovery class, and only a candidate class carries it
- * (contracts/inspection-path-allowlist.md § Read authorization and
- * applicability, "Only a `static-candidate` or `bounded-derived-candidate` …
- * may request a read"). A relationship-only or excluded record may still carry
- * a matcher — `InspectionRule` keeps the two fields independent — so without
- * this gate a registry could widen the read allowlist by adding a row that the
- * contract says authorizes nothing. `static-candidate` and not the derived
- * class as well: a derived candidate is seeded from an already-read file
- * rather than walked, so it has no place in a traversal plan. Each guard
- * throws at module load, because a silently absent plan would read as "this
- * repository has no customizations of this rule's kind".
+ * The constructor is the shared half of each subclass's authorization gate
+ * (contracts/inspection-path-allowlist.md § "Read authorization and
+ * applicability"): a candidate class demands a recognition kind, so a record
+ * without one fails the build that ships it.
  */
-export abstract class CompiledInspectionRule {
+export abstract class CompiledRule {
   /**
    * The shipped rule record itself, so a consumer never looks one up by ID:
    * everything a recognition needs about the admitting rule — its identity,
@@ -519,16 +504,9 @@ export abstract class CompiledInspectionRule {
   public readonly rule: InspectionRule;
 
   /**
-   * The rule's graph edges, resolved by the vendor subclass from its own
-   * catalog — never supplied by a caller, so no rule can be compiled with
-   * another rule's edges.
-   */
-  public abstract readonly relations: RuleRelations;
-
-  /**
-   * The recognizing product. Each vendor subclass declares its own narrower
-   * literal, so a mixed list of compiled rules discriminates on this field
-   * and a subclass cannot exist for a `shared` record.
+   * The recognizing product. Each subclass narrows it — a vendor's static
+   * subclass to its own literal — so a mixed list of compiled rules
+   * discriminates on this field and no unit exists for a `shared` record.
    */
   public abstract readonly tool: SupportedTool;
 
@@ -538,6 +516,55 @@ export abstract class CompiledInspectionRule {
    * consumer would re-prove what one constructor proved.
    */
   public readonly kind: CustomizationKind;
+
+  /** Holds the record and proves the kind every candidate class demands. */
+  protected constructor(rule: InspectionRule) {
+    if (rule.kind === null) {
+      throw new TypeError(`rule ${rule.ruleId} admits candidates but names no recognition kind`);
+    }
+    this.rule = rule;
+    // Assigned after the guard, where the control flow has narrowed it.
+    this.kind = rule.kind;
+  }
+}
+
+/**
+ * One shipped static rule compiled into the unit a scan submits to the
+ * traversal module: the record itself, its graph edges, and the traversal
+ * plan its matcher compiles to. The pairing is what lets a discovered
+ * candidate carry its admitting rule identity: the traversal reports the plan
+ * index that admitted each file, and the caller resolves it here rather than
+ * re-matching the public path (FR-019).
+ *
+ * Abstract on purpose: what every vendor shares is the compilation — the
+ * guards below and the plan — while the recognizing product and the vendor's
+ * relations catalog belong to a per-vendor subclass such as
+ * `CodexCompiledRule`, which fixes `tool` to its own literal and resolves
+ * `relations` from its own vendor table. A scan therefore works over
+ * {@link CompiledRule}, and a vendor's recognizer over its own subclass.
+ *
+ * The constructor is the read-authorizing gate: read authority is assigned by
+ * discovery class, and only a candidate class carries it
+ * (contracts/inspection-path-allowlist.md § Read authorization and
+ * applicability, "Only a `static-candidate` or `bounded-derived-candidate` …
+ * may request a read"). A relationship-only or excluded record may still carry
+ * a matcher — `InspectionRule` keeps the two fields independent — so without
+ * this gate a registry could widen the read allowlist by adding a row that the
+ * contract says authorizes nothing. `static-candidate` and not the derived
+ * class as well: this class compiles a shipped matcher into the one plan every
+ * scan executes, while a derived rule has no matcher and reaches the same walk
+ * through a plan its vendor's configuration reader builds per scan
+ * ({@link CompiledDerivedRule}). Each guard throws at module load, because a
+ * silently absent plan would read as "this repository has no customizations of
+ * this rule's kind".
+ */
+export abstract class CompiledInspectionRule extends CompiledRule {
+  /**
+   * The rule's graph edges, resolved by the vendor subclass from its own
+   * catalog — never supplied by a caller, so no rule can be compiled with
+   * another rule's edges.
+   */
+  public abstract readonly relations: RuleRelations;
 
   /** The immutable plan compiled from the rule's structured matcher. */
   public readonly plan: TraversalPlan;
@@ -552,14 +579,68 @@ export abstract class CompiledInspectionRule {
     if (rule.matcher === null) {
       throw new TypeError(`rule ${rule.ruleId} admits candidates but carries no matcher`);
     }
-    if (rule.kind === null) {
-      throw new TypeError(`rule ${rule.ruleId} admits candidates but names no recognition kind`);
-    }
-    this.rule = rule;
-    // Assigned after the guard, where the control flow has narrowed it.
-    this.kind = rule.kind;
+    super(rule);
     this.plan = new TraversalPlan(rule.matcher);
   }
+}
+
+/**
+ * One shipped `bounded-derived-candidate` rule compiled into the executable
+ * unit whose identity a configured plan carries. The {@link CompiledRule}
+ * sibling of {@link CompiledInspectionRule} — deliberately a separate
+ * subclass, because a derived rule has no matcher of its own and a scan must
+ * not be able to submit one to the static walk. How its targets are
+ * discovered is ordinary code beside the rule — the vendor's
+ * configuration-read logic — composed by the scan exactly like the static
+ * catalogs (T1090).
+ */
+export class CompiledDerivedRule extends CompiledRule {
+  /** The recognizing product; a `shared` derived record does not exist. */
+  public override readonly tool: SupportedTool;
+
+  /**
+   * Builds the traversal plan for one configuration-read result: one exact
+   * Repository-root selector per declared basename, in authored order, each
+   * segment the name as the configuration wrote it — a name is compared to
+   * what the walk enumerated, so the shipped matchers' ASCII grammar is not
+   * this plan's (data-model.md § StructuredInspectorMatcher). The plan is per
+   * scan attempt, because
+   * the declared names are the attempt's stage-one configuration, and the
+   * walk that executes it merges a name that collides with a static target
+   * into one candidate with both provenances, exactly like any two plans
+   * admitting one file.
+   */
+  public planFor(declaredBasenames: readonly string[]): TraversalPlan {
+    return TraversalPlan.fromPrograms(
+      { kind: 'repository' },
+      declaredBasenames.map((basename) => [basename]),
+    );
+  }
+
+  /** Compiles one shipped derived record, rejecting any that cannot derive. */
+  public constructor(rule: InspectionRule) {
+    if (rule.discoveryClass !== 'bounded-derived-candidate') {
+      throw new TypeError(`rule ${rule.ruleId} is not a bounded-derived candidate`);
+    }
+    if (rule.tool === 'shared') {
+      throw new TypeError(`rule ${rule.ruleId} names no recognizing product`);
+    }
+    super(rule);
+    this.tool = rule.tool;
+  }
+}
+
+/**
+ * One derived rule a vendor's configuration-read logic activated for the
+ * coming scan (T1090): the compiled identity its candidates carry, and the
+ * plan expanding the declarations for the same walk. The shape
+ * every vendor's reader returns and the scan composes.
+ */
+export interface ConfiguredDerivedPlan {
+  /** The compiled derived rule the activated plan belongs to. */
+  readonly rule: CompiledDerivedRule;
+  /** The plan expanding the declarations, for the same walk. */
+  readonly plan: TraversalPlan;
 }
 
 /**
@@ -569,9 +650,9 @@ export abstract class CompiledInspectionRule {
  * re-matched and no selector text is reinterpreted (FR-019).
  */
 export function resolveAdmittingRules(
-  rules: readonly CompiledInspectionRule[],
+  rules: readonly CompiledRule[],
   admissions: readonly SelectorOrigin[],
-): CompiledInspectionRule[] {
+): CompiledRule[] {
   return admissions.map((admission) => {
     const rule = rules[admission.planIndex];
     if (rule === undefined) {

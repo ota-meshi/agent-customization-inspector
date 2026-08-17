@@ -19,7 +19,11 @@ import {
 } from '../../fixtures/content/build-fixtures';
 import type { ToolRecognition } from '../../../src/server/inspection/recognizers/candidate';
 
-const [codexSkillRule] = CODEX_REPOSITORY_RULES;
+// Selected by identity: the shipped Codex catalog holds the instruction rule
+// too, and these cases are about the skill recognition alone.
+const codexSkillRule = CODEX_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'codex.repo.skill',
+);
 
 /**
  * An empty skill directory these cases enumerate. The recognizer runs the

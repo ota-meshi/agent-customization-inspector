@@ -31,6 +31,7 @@ function snapshot(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot {
     createdAt: '2026-07-24T00:00:00.000Z',
     sources: [],
     files: [],
+    instructions: [],
     skills: [],
     diagnostics: [],
     repositoryGeneration: 0,

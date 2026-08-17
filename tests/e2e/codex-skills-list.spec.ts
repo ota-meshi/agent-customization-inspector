@@ -54,10 +54,12 @@ test.beforeEach(async () => {
     'utf8',
   );
   // Near misses one segment away from the selector, plus an unrelated file.
+  // Not `AGENTS.md`: that is a recognized Codex instruction candidate since
+  // Phase 15 with a tab of its own, and this suite is about the skill list.
   await mkdir(join(fixture, 'agents/skills/solo'), { recursive: true });
   await writeFile(join(fixture, 'agents/skills/solo/SKILL.md'), 'no leading dot\n', 'utf8');
   await writeFile(join(fixture, '.agents/skills/greet/README.md'), 'sibling\n', 'utf8');
-  await writeFile(join(fixture, 'AGENTS.md'), '# instructions\n', 'utf8');
+  await writeFile(join(fixture, 'NOTES.md'), '# instructions\n', 'utf8');
 
   host = await launchHost(fixture);
 });
@@ -99,7 +101,7 @@ test('shows no near-miss path and no authored source text', async ({ page }) => 
   expect(text).not.toContain('packages/api/.agents/skills/deploy/SKILL.md');
   expect(text).not.toContain('agents/skills/solo/SKILL.md');
   expect(text).not.toContain('README.md');
-  expect(text).not.toContain('AGENTS.md');
+  expect(text).not.toContain('NOTES.md');
   // The inventory carries no `sourceText`, so a credential in an authored
   // skill cannot appear in a list the user never opted into reading (FR-027).
   // One sentinel would not show that: an implementation could redact the
@@ -292,8 +294,8 @@ test('shows the filtered empty state without claiming the repository is empty', 
   // The empty state names the kind in view, because that is what has no rows —
   // and the "nothing was recognized" finding is about the repository, which is
   // a different statement the user can act on differently.
-  await expect(page.getByText('No skill matches the current filters.')).toBeVisible();
-  await expect(page.getByText('No skill was recognized in this repository.')).toHaveCount(0);
+  await expect(page.getByText('No skills match the current filters.')).toBeVisible();
+  await expect(page.getByText('No skills were recognized in this repository.')).toHaveCount(0);
 });
 
 test('rescans on demand and keeps the status tied to that request', async ({ page }) => {

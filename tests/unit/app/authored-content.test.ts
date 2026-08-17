@@ -40,6 +40,7 @@ function bootstrapSnapshot(overrides: Partial<SessionSnapshot> = {}): SessionSna
     createdAt: '2026-07-24T00:00:00.000Z',
     sources: [],
     files: [],
+    instructions: [],
     skills: [],
     diagnostics: [],
     repositoryGeneration: 0,

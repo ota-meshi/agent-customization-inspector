@@ -34,9 +34,13 @@ import {
 import type { CustomizationFileDto, SerializedDiagnostic } from '../../shared/api-types';
 import type { GenerationOutcome } from '../session/scan-generation';
 import { CLAUDE_REPOSITORY_RULES } from './rules/claude';
-import { CODEX_REPOSITORY_RULES } from './rules/codex';
 import { COPILOT_REPOSITORY_RULES } from './rules/copilot';
-import { resolveAdmittingRules, type CompiledInspectionRule } from './rules/registry';
+import {
+  resolveAdmittingRules,
+  type CompiledInspectionRule,
+  type CompiledRule,
+  type ConfiguredDerivedPlan,
+} from './rules/registry';
 import {
   recognizeCandidateForVendors,
   type CandidateRecognition,
@@ -44,14 +48,15 @@ import {
   type ToolRecognition,
 } from './recognizers/candidate';
 import { join } from 'node:path';
+import { CODEX_REPOSITORY_RULES, readCodexConfiguredFallbackPlans } from './rules/codex';
 import { readCandidate, runTraversalScan, type TraversalScanResult } from './traversal';
 
 /**
  * The shipped Repository rule catalog a Repository scan executes (FR-003),
  * in the closed tool order (`SUPPORTED_TOOL_ORDER`). Each inventory phase
- * contributes its vendor module here; while only the three vendors' skills
- * ship, a repository with no `SKILL.md` legitimately publishes an empty
- * inventory rather than an error.
+ * contributes its vendor module here; a repository that holds none of what
+ * the shipped rules match legitimately publishes an empty inventory rather
+ * than an error.
  *
  * The Copilot and Codex/Claude skill matchers overlap on purpose — `.agents`
  * and `.claude` are shared spellings — and the traversal walks every plan in
@@ -63,6 +68,17 @@ export const REPOSITORY_INSPECTION_RULES: readonly CompiledInspectionRule[] = [
   ...CLAUDE_REPOSITORY_RULES,
   ...CODEX_REPOSITORY_RULES,
 ];
+
+/**
+ * The shipped configuration readers, composed from the vendor modules
+ * exactly like the static catalog above (FR-003, T1090). Each runs before a
+ * scan and expands whatever its vendor's configuration declares into plans
+ * of the same walk; a vendor with no configuration-driven discovery simply
+ * contributes nothing.
+ */
+export const REPOSITORY_CONFIGURATION_READERS: readonly ((
+  root: string,
+) => Promise<readonly ConfiguredDerivedPlan[]>)[] = [readCodexConfiguredFallbackPlans];
 
 /**
  * The assembled publication of one completed traversal
@@ -122,7 +138,7 @@ export type ScanPublication =
  */
 export interface ScanProgressUpdate {
   /** The pipeline phase the attempt is reporting from. */
-  readonly phase: 'enumerating' | 'reading' | 'recognizing';
+  readonly phase: 'deriving' | 'enumerating' | 'reading' | 'recognizing';
   /** Directory entries whose names the traversal has observed so far. */
   readonly visitedEntries: number;
   /** Allowlisted candidate files discovered so far. */
@@ -161,7 +177,7 @@ export interface ScanPublicationInput {
    * are plan indexes into this list, so passing a different list would
    * misattribute provenance.
    */
-  readonly rules: readonly CompiledInspectionRule[];
+  readonly rules: readonly CompiledRule[];
   /** The traversal module's typed result for this attempt. */
   readonly result: TraversalScanResult;
   /**
@@ -529,10 +545,34 @@ export interface SourceScanInput {
  * never completed.
  */
 export async function runSourceScan(input: SourceScanInput): Promise<ScanPublication> {
-  const rules = input.rules ?? REPOSITORY_INSPECTION_RULES;
+  const staticRules = input.rules ?? REPOSITORY_INSPECTION_RULES;
+  // Stage one: the configuration read (T1090). Configuration decides part of
+  // what the scan targets, so each vendor's reader runs before the scan and
+  // turns the values it validates into plans of the same walk. A vendor reads
+  // its own configuration here because only that vendor knows which file
+  // carries it and what a declaration means; what the reader may produce is
+  // bounded by `ConfiguredDerivedPlan` — one shipped derived rule's identity
+  // and a plan of literal segments — so a reader widens the walk's allowlist
+  // by exactly the entries its vendor's configuration named, and by nothing
+  // else.
+  const configured: ConfiguredDerivedPlan[] = [];
+  for (const read of REPOSITORY_CONFIGURATION_READERS) {
+    configured.push(...(await read(input.root)));
+  }
+  const rules: readonly CompiledRule[] = [...staticRules, ...configured.map((entry) => entry.rule)];
+  // Stage one is over. The walk reports `enumerating` itself, but only once a
+  // directory has been listed, so a slow root would leave the configuration
+  // read on screen as the running stage long after it finished.
+  input.onProgress?.({
+    phase: 'enumerating',
+    visitedEntries: 0,
+    candidateFiles: 0,
+    readBytes: 0,
+    diagnosticCount: 0,
+  });
   const result = await runTraversalScan({
     root: input.root,
-    plans: rules.map((rule) => rule.plan),
+    plans: [...staticRules.map((rule) => rule.plan), ...configured.map((entry) => entry.plan)],
     ...(input.onProgress === undefined ? {} : { onProgress: input.onProgress }),
   });
   if (result.kind === 'scanned') {

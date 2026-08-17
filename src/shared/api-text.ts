@@ -16,21 +16,22 @@ import { CUSTOMIZATION_KIND_TEXT } from './entities';
 
 /**
  * What a running scan is doing, shown while it runs. Each names the work in the
- * reader's terms rather than in the pipeline's: `enumerating` and `deriving`
- * are stages of the traversal, and a reader watching a progress line wants to
- * know what is happening to their repository (FR-007).
+ * reader's terms rather than in the pipeline's: `deriving` is the
+ * configuration read that precedes the walk and `enumerating` the walk itself,
+ * and a reader watching a progress line wants to know what is happening to
+ * their repository (FR-007).
  */
 export const SCAN_PROGRESS_PHASE_TEXT: Readonly<Record<ScanProgressPhase, string>> = {
   /** Label for an admitted attempt that has not started. */
   waiting: 'Waiting to start',
   /** Label for an attempt winding down after its authority was revoked. */
   cancelling: 'Stopping',
+  /** Label for the configuration read that decides part of what is scanned. */
+  deriving: 'Reading configuration that decides what to scan',
   /** Label for the allowlisted traversal finding candidates. */
   enumerating: 'Looking for customization files',
   /** Label for candidate bytes being read. */
   reading: 'Reading file contents',
-  /** Label for derived traversal rules being expanded. */
-  deriving: 'Following what those files point to',
   /** Label for recognizers and parsers processing readable candidates. */
   recognizing: 'Recognizing what each file is',
   /** Label for the terminal progress state. */

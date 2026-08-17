@@ -45,6 +45,7 @@ function bootstrapSnapshot(overrides: Partial<SessionSnapshot> = {}): SessionSna
       },
     ],
     files: [],
+    instructions: [],
     skills: [],
     diagnostics: [],
     repositoryGeneration: 0,

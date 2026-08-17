@@ -79,12 +79,13 @@ async function recognizeClaude(matchedPath: string, sourceText: string) {
 describe('relationship read authority', () => {
   it('ships no rule class that could cover a relationship origin', () => {
     // The two-gate rule: an edge needs a relationship-only rule covering its
-    // origin, and the shipped registry holds only read-authorizing static
-    // candidates. With no covering rule there is no edge — and no edge means
-    // no authored target, documented default, normalization, or boundary
-    // status to fabricate.
+    // origin, and the shipped registry holds only the read-authorizing
+    // candidate classes — static, plus the one closed bounded derivation
+    // (T1089). With no covering relationship-only rule there is no edge — and
+    // no edge means no authored target, documented default, normalization, or
+    // boundary status to fabricate.
     for (const rule of Object.values(INSPECTION_RULES)) {
-      expect(rule.discoveryClass).toBe('static-candidate');
+      expect(['static-candidate', 'bounded-derived-candidate']).toContain(rule.discoveryClass);
     }
   });
 

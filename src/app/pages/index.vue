@@ -16,6 +16,7 @@
 // one RPC connection and the one adopted snapshot, and a second view state
 // would race the first for the same request tokens.
 import { computed, inject, nextTick, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import DiagnosticList from '../components/diagnostics/DiagnosticList.vue';
 import InventoryFilters from '../components/inventory/InventoryFilters.vue';
 import InventoryKindTabs from '../components/inventory/InventoryKindTabs.vue';
@@ -25,6 +26,7 @@ import ScanProgress from '../components/inventory/ScanProgress.vue';
 import { SESSION_VIEW_STATE } from '../session/view-state';
 import { useInventoryFilters } from '../composables/filters';
 import {
+  CUSTOMIZATION_KIND_ORDER,
   SOURCE_BOUNDARY_ORIGIN_TEXT,
   type CustomizationKind,
   type SupportedTool,
@@ -44,8 +46,45 @@ const snapshot = sessionViewState.snapshot;
 // `v-model` directly and the composable returns only what it derives.
 const sourceId = ref<string | null>(null);
 const tool = ref<SupportedTool | null>(null);
-const kind = ref<CustomizationKind | null>(null);
 const pathQuery = ref('');
+
+const route = useRoute();
+const router = useRouter();
+
+/**
+ * The kind read out of `?kind=`, or null for anything the closed order does
+ * not name. The URL is presentation state, never a locator: an unknown value
+ * simply leaves the default tab in view.
+ */
+function kindFromQuery(value: unknown): CustomizationKind | null {
+  return typeof value === 'string' &&
+    (CUSTOMIZATION_KIND_ORDER as readonly string[]).includes(value)
+    ? (value as CustomizationKind)
+    : null;
+}
+
+// Kind is navigation, and navigation belongs in the URL: the tab is
+// initialized from `?kind=` and every explicit tab selection is written back,
+// so a detail page's back link and the browser's own Back both restore the
+// tab the user actually left — the kind order's default would otherwise
+// swallow it. `replace` rather than `push`: switching tabs must not stack
+// history entries the Back button then has to unwind.
+//
+// What the query holds is this selection, never `filters.activeKind`. The two
+// differ on purpose: a kind the current inventory does not offer stays the
+// reader's choice while the view falls back to the first available one, so
+// the choice returns by itself when a later commit offers that kind again
+// (`filters.ts`). Writing the fallback here would put a derived value in the
+// selection's own storage, where the two could then disagree — and a reader
+// who has chosen nothing has chosen nothing, so the query stays absent and
+// the default is resolved against whatever inventory is committed then.
+const kind = ref<CustomizationKind | null>(kindFromQuery(route.query.kind));
+
+/** Selects a kind tab: the page state and the URL move together. */
+function selectKind(selected: CustomizationKind): void {
+  kind.value = selected;
+  void router.replace({ query: { ...route.query, kind: selected } });
+}
 const filters = useInventoryFilters(snapshot, { sourceId, tool, kind, pathQuery });
 
 // What the two selects display is the selection actually applied, while what
@@ -98,11 +137,19 @@ const matchCount = computed(() => {
  * How many rows the kind in view has before any filter. The summary compares
  * like with like: a skill row may stand for several files, so counting rows
  * against published files would read "2 of 3" for an inventory that lost
- * nothing.
+ * nothing. Each kind answers from its own inventory (data-model.md
+ * § Inventory unit).
  */
-const totalRowCount = computed(() =>
-  filters.activeKind.value === 'skill' ? (snapshot.value?.skills.length ?? 0) : 0,
-);
+const totalRowCount = computed(() => {
+  switch (filters.activeKind.value) {
+    case 'instructions':
+      return snapshot.value?.instructions.length ?? 0;
+    case 'skill':
+      return snapshot.value?.skills.length ?? 0;
+    default:
+      return 0;
+  }
+});
 
 /**
  * Returns the filter fields to the same neutral values they were declared with.
@@ -177,10 +224,11 @@ const staleFailureMessage = computed(() =>
       :kinds="filters.availableKinds.value"
       :active-kind="filters.activeKind.value"
       :counts="filters.kindCounts.value"
-      @select="kind = $event"
+      @select="selectKind($event)"
     />
     <InventoryList
       :kind="filters.activeKind.value"
+      :instruction-rows="filters.instructionRows.value"
       :skill-rows="filters.skillRows.value"
       :files-by-path="filters.filesByPath.value"
       :total-count="totalRowCount"

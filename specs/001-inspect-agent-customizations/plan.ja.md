@@ -635,8 +635,9 @@ Monacoには記述された完全なsourceを渡す。Browserまたはeditor run
 read-only side-by-side sourceを利用可能なまま保ち、どちらのartifactもvalid/invalidと扱わずactionableなcomparison
 failureを報告する。HTTP deliveryはAPI DTOをtruncateしない。
 
-Typed derivationはclosedな`DerivationProgram` schemaを使い、exact static seed provenanceからのdirect edgeだけを扱う。
-Derived provenanceは別のderivation edgeのseedにできないが、同じfileの独立static provenanceはeligibleなままとする。
+Typed derivationはvendor自身のreaderであり、自らseedを開く場合はwalkの前に、seedがwalkの受理したfileである場合はwalkの後に走る: そのvendor contractが固定したseedを読み、そのcontractの
+declaration fieldが持つ値を取り、出荷済みderived ruleのidentityのもとで同じwalkのplanへ展開する — 値はwalkが
+entry名と比較するものか、contract行がpathを組み立てる場合はruleの固定base配下でjoinされるsegmentである。Derived candidateは別のderivationをseedできないが、同じfileの独立static provenanceはeligibleなままとする。
 Path derivationに使うvalueはsupported runtime/platformのpath representationを満たさなければならない。完全なtraversal後に
 1 fileへ限定されるparser/path failureは、target access前にそのfileのdiagnosticとともに`partial` outcomeとして
 そのderivationを省略する。Memory、capacity、その他のenvironment-resource conditionがthrowまたはrejectionとして
@@ -1156,7 +1157,7 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   `utf-8-replaced` stringはそのまま参加するため、別のnon-whitespace textによってすでにnon-emptyである場合を除けば、
   `U+FFFD`が1つでもあればnon-emptyになる。Binaryまたはunreadableなoverrideは、そのfile別diagnosticとともに
   branchを終了し、fallbackしない（FR-035）。
-- Static matcherとclosed `DerivationProgram` unionのexact initial 4 mappingだけをcandidate read authorityとする。
+- Static matcherと、出荷済み`bounded-derived-candidate` ruleごとに1つあるvendorの構成readerだけをcandidate read authorityとする。
   これらがカバーしない唯一のreadはcensus-listed companionのreadであり、それはどのadmissionも認可せず、
   admit済みcandidate自身のdirectory外のpathからは到達できない
   （contracts/inspection-path-allowlist.ja.md § Bounded companion census）— skillのsibling
@@ -1186,7 +1187,8 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   actionableかつsource値を含まないrelationship-depth diagnosticをemitする。固定defaultを
   authored targetとしてlabel/serializeしない。Public provenanceは、読み取りを認可したruleと一致したSource-relative pathを名指し、それ以上は持たない。
   カスタマイズがどこに適用されるか、どの順序かは、どのsurfaceも行わないprojectionだからである。Derived provenanceは
-  exact `seedProvenanceId`を指定する。
+  derived candidateのadmissionは、static candidateがplanの一致したruleを名指すのと同様に、
+  それを展開したderived ruleを名指す。
   特にRepository root `.mcp.json`は、別file/readを作らずCopilot CLI provenanceとexactなVS Code 1.118以降の
   path-only provenanceをmergeする。CLI `mcpServers` extractionはprovenance-specificのままにし、登録済みの
   release-note/current-guide conflictがopenな間、VS Code provenanceはschema fieldまたは推測したwinnerを追加しない。

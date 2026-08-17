@@ -382,13 +382,14 @@ Verify:
    A documented User location never becomes Global read authority unless FR-015 through
    FR-018 name it, and runtime composition never merges the Inspector's Repository and
    Global source graphs.
-6. The closed `DerivationProgram` has exactly four initial mappings and no runtime
-   extension point: `copilot.derived.local-plugin-manifest`,
+6. The shipped `bounded-derived-candidate` rules are exactly four, each expanded by its own
+   vendor's configuration-read stage and none by a runtime extension point:
+   `copilot.derived.local-plugin-manifest`,
    `claude.derived.local-plugin-manifest`, `codex.derived.local-plugin-manifest`, and
    `codex.derived.fallback-basename`. A skill's sibling `agents/openai.yaml` is not among
    them: it is published through the owning skill's bounded companion census, not through a
    derivation (contracts/vendors/openai-codex.md § Derived Repository rules). Each is one typed
-   edge with an exact static seed rule/kind, closed declaration syntax, and fixed base/
+   edge with an exact seed path or seed rule/kind, closed declaration syntax, and fixed base/
    placement/suffix; callbacks, arbitrary joins, expressions, globs,
    and recursive derivation are unrepresentable. The program defines no numeric target,
    declaration, name, or ancestry ceiling; available capacity comes from Node.js and the
@@ -396,9 +397,9 @@ Verify:
    provenance, generic
    relationship, sibling Codex subtree, remote source, or arbitrary config/component path
    never seeds another read. An independent static provenance on the same file can
-   seed its own typed rule. Every derived provenance names its exact `seedProvenanceId`, and
-   declarations from two seed provenances never collapse even when they resolve to one
-   target. Codex fixtures
+   seed its own typed rule. Every derived admission names its derived rule, and two
+   readers' declarations never collapse even when they resolve to one target: the path
+   keeps both admissions. Codex fixtures
    cover both plain-string and object `source.path` local marketplace forms. Seed-state
    fixtures prove known-satisfied output, unresolved conditional output, no output from a
    known unsatisfied/shadowed or bounded-derived seed, and stable deduplication without a

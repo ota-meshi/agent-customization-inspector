@@ -1093,9 +1093,13 @@ diff, the UI keeps the complete read-only side-by-side source available and repo
 actionable comparison failure without treating either artifact as valid or invalid. HTTP
 delivery never truncates an API DTO.
 
-Typed derivation uses the closed `DerivationProgram` schema and only direct edges from an
-exact static seed provenance. A derived provenance cannot seed another derivation edge,
-while an independent static provenance on the same file remains eligible. Values used to
+Typed derivation is a vendor's own reader, running before the walk when it opens its seed
+itself and after the walk when its seed is a file that walk admitted: it reads the seed its
+vendor contract pins, takes the values that contract's declaration field holds, and expands them
+into a plan of the same walk under a shipped derived rule's identity — a value the walk
+compares to an entry name, or segments joined below the rule's fixed base when its contract
+row builds a path. A derived candidate cannot seed another derivation, while an independent static
+provenance on the same file remains eligible. Values used to
 derive paths must satisfy the supported runtime and platform path representation. After
 complete traversal, a parser or path failure confined to one file omits that derivation
 with that file's diagnostic under the `partial` outcome before target access. A memory,
@@ -1720,8 +1724,8 @@ configuration.
   `utf-8-replaced` string participates unchanged, so any `U+FFFD` makes it non-empty unless
   other non-whitespace text already does. A binary or unreadable override ends the branch
   with its file-scoped diagnostic and no fallback (FR-035).
-- Static matchers and the exact four initial mappings of the closed `DerivationProgram`
-  union are the only candidate read authorities. The one read they do not cover is a
+- Static matchers and the vendors' configuration readers — one per shipped
+  `bounded-derived-candidate` rule — are the only candidate read authorities. The one read they do not cover is a
   census-listed companion's, which no admission authorizes and no path outside an admitted
   candidate's own directory can reach (contracts/inspection-path-allowlist.md § Bounded
   companion census) — which is how a skill's sibling `agents/openai.yaml` is published
@@ -1754,8 +1758,9 @@ configuration.
   actionable, source-value-free relationship-depth diagnostic. A fixed default is never labeled or
   serialized as an authored target. A public provenance names the rule that authorized
   the read and the Source-relative path it matched, and nothing further: where a
-  customization would apply and in what order are projections no surface makes. A derived
-  provenance names the exact `seedProvenanceId`.
+  customization would apply and in what order are projections no surface makes. A derived candidate's
+  admission names the derived rule that expanded it, exactly as a static candidate's names
+  the rule whose plan matched.
   In particular, Repository-root `.mcp.json` merges the Copilot CLI provenance and the
   exact VS Code 1.118+ path-only provenance without another file/read. CLI `mcpServers`
   extraction remains provenance-specific; the VS Code provenance adds no schema fields or

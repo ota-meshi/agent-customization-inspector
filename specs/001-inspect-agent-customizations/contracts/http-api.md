@@ -250,6 +250,9 @@ InspectionSession
 │       discriminator — readable text adds sizeBytes and hadLeadingBom;
 │       binary adds only sizeBytes; unknown adds nothing. A file publishes its own facts
 │       only; what it was recognized as belongs to a per-kind inventory below
+├── instructions[]
+│   └── sourceRelativePath, tools[] — one row per recognized instruction file,
+│       its recognizing products in the closed tool order
 ├── skills[]
 │   └── name string,
 │       definitions[] { sourceRelativePath, tool, parseStatus, invocationName,
@@ -470,7 +473,7 @@ immediately available.
 At a queued disposition, `pendingTools` is exactly the admitted non-empty batch subset and
 `batchStatus` is exactly `{ scanRequestId, tools, phase, failureRef }` for that same subset.
 `tools` is non-empty, unique, and in fixed tool order. Its active `phase` is
-`waiting | enumerating | reading | deriving | recognizing`, with null
+`waiting | deriving | enumerating | reading | recognizing`, with null
 `failureRef`. Batch success atomically publishes every Source, clears both fields, and
 commits exactly one Global generation: generation 1 at initial enable, the Global
 sequence's N+1 for a retry batch. Terminal deterministic failure leaves empty `pendingTools` and
@@ -568,7 +571,11 @@ that both render the `key` text `1` — so a client matching declarations across
 matches by that pair, never by `key` alone. The same entry shape, `keyKind` included,
 recurs inside every nested `mapping` value.
 
-For a readable file, `sourceText` is the complete decoded source, exactly as authored.
+For a readable file, `sourceText` is the complete decoded source, exactly as authored. A
+carrier's detail variant carries no `sourceText` at all: a file admitted so its declarations
+can be published shows those declarations and never its own bytes (FR-007), so the variant
+that arrives with each carrier's phase publishes the file's facts and its declarations, and
+omits the field rather than carrying a value a surface must decline to render.
 
 A skill's `presentation` is what it declares and what it instructs, because that
 is what its detail surface leads with. `frontmatter[]` lists every key the file declares,

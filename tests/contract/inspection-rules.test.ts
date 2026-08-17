@@ -109,13 +109,14 @@ describe('inspection rule records', () => {
         expect(rule.matcher).not.toBeNull();
         expect(rule.kind).not.toBeNull();
       } else {
+        // A derived rule has no matcher of its own: its targets come from the
+        // vendor's configuration-read logic beside it, and the compiled unit
+        // still demands a non-null kind (T1089/T1090).
         expect(rule.matcher).toBeNull();
       }
-      // The first bounded-derived rule arrives with the first phase that
-      // needs one of the contract's four derivation mappings — a vendor's
-      // local plugin manifest or the Codex fallback basename; until then no
-      // rule may carry a derivation mapping.
-      expect(rule.derivation).toBeNull();
+      if (rule.discoveryClass === 'bounded-derived-candidate') {
+        expect(rule.kind).not.toBeNull();
+      }
     }
   });
 

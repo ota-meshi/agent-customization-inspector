@@ -222,6 +222,9 @@ InspectionSession
 │       discriminator — readable text adds sizeBytes and hadLeadingBom;
 │       binary adds only sizeBytes; unknown adds nothing. A file publishes its own facts
 │       only; what it was recognized as belongs to a per-kind inventory below
+├── instructions[]
+│   └── sourceRelativePath, tools[] — 認識された instruction file 1つにつき1行、
+│       それを認識した product を closed tool order で持つ
 ├── skills[]
 │   └── name string,
 │       definitions[] { sourceRelativePath, tool, parseStatus, invocationName,
@@ -414,7 +417,7 @@ pre-operation control projectionを維持する。このprojectionがnon-nullの
 Queued dispositionでは、`pendingTools`がadmitted non-empty batch subsetとexactに一致し、
 `batchStatus`はその同じsubset用のexactな`{ scanRequestId, tools, phase, failureRef }`とする。
 `tools`をnon-empty、unique、fixed tool orderとする。Active `phase`は
-`waiting | enumerating | reading | deriving | recognizing`で`failureRef`はnullとする。Batch
+`waiting | deriving | enumerating | reading | recognizing`で`failureRef`はnullとする。Batch
 successは全Sourceをatomicにpublishし、両fieldをclearしてGlobal generationをexactに1回commitする
 （initial enableではgeneration 1、retry batchではGlobal sequenceのN+1）。Terminal
 deterministic failureはempty `pendingTools`と`phase: failed`を維持し、
@@ -502,7 +505,7 @@ shipped recognitionはedgeを1つも生成できないため、すべてのrespo
 keyである — ため、file間で宣言をmatchするclientは`key`単独ではなくこの組でmatchする。
 同じentry形は`keyKind`を含めて、nestした全`mapping` value内へ再帰する。
 
-Readable fileでは`sourceText`を完全なdecoded sourceとし、書かれたとおりに保持する。
+Readable fileでは`sourceText`を完全なdecoded sourceとし、書かれたとおりに保持する。carrierのdetail variantは`sourceText`を一切持たない: 宣言を公開するためにadmitされたfileはその宣言を示し、自身のbyteは決して示さない（FR-007）。したがって各carrierのフェーズとともに到着するvariantは、fileの事実とその宣言を公開し、surfaceが描画を拒むべき値を運ぶのではなくfieldごと省く。
 
 Skillの`presentation`は、宣言している内容と指示している内容である。detail surfaceがそれを先頭に
 置くからである。`frontmatter[]`はfileが宣言するすべてのkeyを、fileが書いたkeyそのもの —

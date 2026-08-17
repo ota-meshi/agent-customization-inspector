@@ -27,6 +27,7 @@
 import { computed, type ComputedRef, type Ref } from 'vue';
 import type {
   CustomizationFileSummaryDto,
+  InstructionInventoryEntryDto,
   SessionSnapshot,
   SkillInventoryEntryDto,
   SourceDto,
@@ -91,6 +92,14 @@ export class InventoryFilterView {
   public readonly kindCounts: ComputedRef<ReadonlyMap<CustomizationKind, number>>;
 
   /**
+   * The instruction rows that pass every active filter, in snapshot order. A
+   * row is one recognized file (data-model.md § Inventory unit); a tool
+   * filter keeps the recognizing tools it matches and drops the row only when
+   * none is left, so a narrowed row states what still matches.
+   */
+  public readonly instructionRows: ComputedRef<readonly InstructionInventoryEntryDto[]>;
+
+  /**
    * The skill rows that pass every active filter, in snapshot order. A row is
    * one resolved name; a filter keeps the definitions it matches and drops a
    * row only when none is left, so a narrowed row states what still matches
@@ -149,19 +158,21 @@ export class InventoryFilterView {
     );
 
     this.availableTools = computed(() => {
-      const present = new Set(
-        (snapshot.value?.skills ?? []).flatMap((entry) =>
+      const present = new Set([
+        ...(snapshot.value?.instructions ?? []).flatMap((entry) => entry.tools),
+        ...(snapshot.value?.skills ?? []).flatMap((entry) =>
           entry.definitions.map((definition) => definition.tool),
         ),
-      );
+      ]);
       return SUPPORTED_TOOL_ORDER.filter((candidate) => present.has(candidate));
     });
     this.availableKinds = computed(() => {
       // One entry per kind whose inventory the snapshot publishes; a kind appears
       // only once its recognizer phase ships an inventory of its own.
-      const present = new Set<CustomizationKind>(
-        (snapshot.value?.skills ?? []).length > 0 ? ['skill'] : [],
-      );
+      const present = new Set<CustomizationKind>([
+        ...((snapshot.value?.instructions ?? []).length > 0 ? (['instructions'] as const) : []),
+        ...((snapshot.value?.skills ?? []).length > 0 ? (['skill'] as const) : []),
+      ]);
       return CUSTOMIZATION_KIND_ORDER.filter((candidate) => present.has(candidate));
     });
 
@@ -221,6 +232,24 @@ export class InventoryFilterView {
     };
 
     /**
+     * The instruction entries that survive every filter, each reduced to the
+     * recognizing tools that matched. A file with no matching tool is not a
+     * row: showing it would claim a match the inventory does not have.
+     */
+    this.instructionRows = computed<readonly InstructionInventoryEntryDto[]>(() =>
+      (snapshot.value?.instructions ?? []).flatMap((entry) => {
+        if (!fileMatches(entry.sourceRelativePath)) {
+          return [];
+        }
+        const tools =
+          effectiveTool.value === null
+            ? entry.tools
+            : entry.tools.filter((tool) => tool === effectiveTool.value);
+        return tools.length === 0 ? [] : [{ ...entry, tools }];
+      }),
+    );
+
+    /**
      * The skill entries that survive every filter, each reduced to the
      * definitions that matched. A name with no matching definition is not a row:
      * showing it would claim a match the inventory does not have.
@@ -260,20 +289,28 @@ export class InventoryFilterView {
       for (const candidate of this.availableKinds.value) {
         // Every kind's count is that kind's own row count with the other filters
         // applied, which is what selecting the tab would show.
-        counts.set(candidate, candidate === 'skill' ? this.skillRows.value.length : 0);
+        counts.set(
+          candidate,
+          candidate === 'instructions'
+            ? this.instructionRows.value.length
+            : candidate === 'skill'
+              ? this.skillRows.value.length
+              : 0,
+        );
       }
       return counts as ReadonlyMap<CustomizationKind, number>;
     });
 
     this.unrecognizedRows = computed(() => {
-      // The union of every kind's inventory, which is one kind so far. A kind
-      // shipping its own inventory adds itself here, or its files would be
-      // reported as unrecognized while its own tab lists them.
-      const recognized = new Set(
-        (snapshot.value?.skills ?? []).flatMap((entry) =>
+      // The union of every kind's inventory. A kind shipping its own
+      // inventory adds itself here, or its files would be reported as
+      // unrecognized while its own tab lists them.
+      const recognized = new Set([
+        ...(snapshot.value?.instructions ?? []).map((entry) => entry.sourceRelativePath),
+        ...(snapshot.value?.skills ?? []).flatMap((entry) =>
           entry.definitions.map((definition) => definition.sourceRelativePath),
         ),
-      );
+      ]);
       // A companion belongs to the customization whose directory holds it, and
       // that customization already has a row — so a companion is excluded here
       // even when it carries a diagnostic. FR-003 is explicit that an

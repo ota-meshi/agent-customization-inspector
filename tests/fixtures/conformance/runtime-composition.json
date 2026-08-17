@@ -34,6 +34,42 @@
     ]
   },
   {
+    "strategyId": "codex.config.precedence",
+    "tool": "codex",
+    "surfaces": ["codex-local-clients"],
+    "operations": ["merge-map", "replace", "select-closest"],
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.config-basic",
+        "url": "https://learn.chatgpt.com/docs/config-file/config-basic.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Codex configuration file", "Configuration precedence"],
+        "reviewedOn": "2026-08-17",
+        "establishes": "Codex resolves CLI overrides, trusted project layers from root to cwd, profile files, User config, and system config in that fixed order, using the closest applicable value for the same key."
+      }
+    ]
+  },
+  {
+    "strategyId": "codex.instructions.layering",
+    "tool": "codex",
+    "surfaces": ["codex-local-clients"],
+    "operations": ["select-first", "concatenate", "filter"],
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.agents-md",
+        "url": "https://learn.chatgpt.com/docs/agent-configuration/agents-md.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["How Codex discovers guidance", "Customize fallback filenames"],
+        "reviewedOn": "2026-08-17",
+        "establishes": "Codex selects at most one non-empty instruction file per directory in the documented filename order and concatenates the selections broad to narrow, from the global fallback through the project chain toward the runtime cwd, stopping at the project_doc_max_bytes budget; that budget and the fallback filenames are configuration values resolved outside the instruction files themselves."
+      }
+    ]
+  },
+  {
     "strategyId": "codex.skills.discovery",
     "tool": "codex",
     "surfaces": ["codex-local-clients"],

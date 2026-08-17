@@ -26,6 +26,128 @@ import type { CodexRuleId } from '../identifier-types';
 import type { InspectionRule } from '../rule-types';
 
 /**
+ * The `codex.repo.instructions` matcher, authored in the typed segment form
+ * the contract table shows: the exact `AGENTS.override.md` and `AGENTS.md`
+ * pair at the Repository root, override first, matching the vendor's
+ * documented filename order. Two selectors rather than one dynamic step, so
+ * each admission carries which authored filename matched.
+ *
+ * Codex walks the project root down to its runtime `cwd` and consults the
+ * pair per directory; the chain is built once at session start and stops at
+ * the `cwd`, so a nested `AGENTS.md` is read only by sessions whose `cwd`
+ * sits at or below it. The selected root is that project root (FR-001), so
+ * exactly one directory of the chain is in scope and a nested `AGENTS.md`
+ * belongs to a runtime context this product does not select — a near miss,
+ * never a candidate, at every later phase too. The per-directory
+ * first-non-empty selection is the
+ * vendor's own runtime rule (`codex.instructions.layering`): the Inspector
+ * admits and publishes both files when both exist, and projects no winner
+ * (FR-009).
+ */
+const CODEX_REPO_INSTRUCTIONS_MATCHER: StructuredInspectorMatcher = {
+  base: { kind: 'repository' },
+  selectors: [
+    [{ kind: 'literal', value: 'AGENTS.override.md' }],
+    [{ kind: 'literal', value: 'AGENTS.md' }],
+  ],
+};
+
+/**
+ * Codex Repository instructions: the read-authorizing counterpart of
+ * `codex.behavior.repo.instructions`, covering only the static override and
+ * regular filenames. Admitting a file is not asserting Codex loads it — an
+ * empty file is admitted and published even though the vendor's selection
+ * would skip it, because whether a runtime selects a file is conditional on
+ * inputs this tool never observes (FR-009).
+ *
+ * The configured fallback basenames the same behavior documents enter
+ * through {@link CODEX_DERIVED_FALLBACK_BASENAME_RULE} instead: their names
+ * live in the repository's `.codex/config.toml`, which the configuration-read
+ * stage reads without admitting it, and the plan that stage builds in
+ * `src/server/inspection/rules/codex.ts` is the only way one becomes a
+ * candidate (contracts/vendors/openai-codex.md § Derived Repository rules).
+ */
+export const CODEX_REPO_INSTRUCTIONS_RULE = {
+  ruleId: 'codex.repo.instructions',
+  tool: 'codex',
+  discoveryClass: 'static-candidate',
+  kind: 'instructions',
+  sourceKinds: ['repository'],
+  matcher: CODEX_REPO_INSTRUCTIONS_MATCHER,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'openai.codex.agents-md',
+          url: 'https://learn.chatgpt.com/docs/agent-configuration/agents-md.md',
+          officialHost: 'learn.chatgpt.com',
+          sections: ['How Codex discovers guidance'],
+          reviewedOn: '2026-08-17',
+          establishes:
+            'AGENTS.override.md and AGENTS.md are the static per-directory instruction filenames, consulted in that order, and the chain walks the project root down to the runtime cwd and stops there.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
+ * Configured instruction fallback basenames, seeded by the pinned
+ * `.codex/config.toml` path (contracts/vendors/openai-codex.md § Derived
+ * Repository rules). The seed is a configuration input the
+ * configuration-read stage consumes; this product never publishes or
+ * raw-displays the file itself, and its candidacy as an MCP carrier is its
+ * own later phase's decision.
+ * The configuration-read stage does exactly one thing with it: read the
+ * `project_doc_fallback_filenames` array out of the seed it opened, and give
+ * the walk one Repository-root selector per declared name, admitting whichever
+ * the walk finds as an `instructions` candidate.
+ * Runtime selection remains conditional — excluded higher layers may
+ * override the declared names — and capacity comes from Node.js and the
+ * execution environment, never an Inspector cap.
+ */
+export const CODEX_DERIVED_FALLBACK_BASENAME_RULE = {
+  ruleId: 'codex.derived.fallback-basename',
+  tool: 'codex',
+  discoveryClass: 'bounded-derived-candidate',
+  kind: 'instructions',
+  sourceKinds: ['repository'],
+  matcher: null,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'openai.codex.agents-md',
+          url: 'https://learn.chatgpt.com/docs/agent-configuration/agents-md.md',
+          officialHost: 'learn.chatgpt.com',
+          sections: ['Customize fallback filenames'],
+          reviewedOn: '2026-08-17',
+          establishes:
+            'Codex accepts additional per-directory instruction filenames declared in configuration, which is the documented behavior this closed derivation makes inspectable.',
+        },
+        {
+          sourceId: 'openai.codex.config-basic',
+          url: 'https://learn.chatgpt.com/docs/config-file/config-basic.md',
+          officialHost: 'learn.chatgpt.com',
+          sections: ['Codex configuration file'],
+          reviewedOn: '2026-08-17',
+          establishes:
+            'Settings are scoped to a project or subfolder by a .codex/config.toml file in that repository.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
  * The `codex.repo.skill` matcher, authored in the typed segment form the
  * contract table shows: `.agents/skills/<name>/SKILL.md` directly below the
  * Repository root. `ANY_NAME` is the one direct skill-name child and the
@@ -80,7 +202,6 @@ export const CODEX_REPO_SKILL_RULE = {
   kind: 'skill',
   sourceKinds: ['repository'],
   matcher: CODEX_REPO_SKILL_MATCHER,
-  derivation: null,
   policyRefs: SHIPS_MAINTENANCE_DATA
     ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
     : [],
@@ -102,7 +223,9 @@ export const CODEX_REPO_SKILL_RULE = {
     : [],
 } as const satisfies InspectionRule;
 
-/** Codex's contribution to the inspection-rule registry, keyed by `ruleId`. */
+/** Codex's contribution to the inspection-rule registry, keyed by `ruleId` in identifier order. */
 export const CODEX_INSPECTION_RULES: Readonly<Record<CodexRuleId, InspectionRule>> = {
+  [CODEX_DERIVED_FALLBACK_BASENAME_RULE.ruleId]: CODEX_DERIVED_FALLBACK_BASENAME_RULE,
+  [CODEX_REPO_INSTRUCTIONS_RULE.ruleId]: CODEX_REPO_INSTRUCTIONS_RULE,
   [CODEX_REPO_SKILL_RULE.ruleId]: CODEX_REPO_SKILL_RULE,
 };

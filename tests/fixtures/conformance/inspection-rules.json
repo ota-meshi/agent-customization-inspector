@@ -33,7 +33,6 @@
         ]
       ]
     },
-    "derivation": null,
     "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
     "precedenceGroup": null,
     "documentationStatus": "documented",
@@ -54,6 +53,76 @@
         "sections": ["Skills-directory plugins"],
         "reviewedOn": "2026-07-25",
         "establishes": "A skills directory at the exact launch working directory can also be interpreted as a plugin, a separate documented behavior that differs from plain-skill ancestor and lazy-descendant discovery and grants this rule no manifest authority."
+      }
+    ]
+  },
+  {
+    "ruleId": "codex.derived.fallback-basename",
+    "tool": "codex",
+    "discoveryClass": "bounded-derived-candidate",
+    "kind": "instructions",
+    "sourceKinds": ["repository"],
+    "matcher": null,
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.agents-md",
+        "url": "https://learn.chatgpt.com/docs/agent-configuration/agents-md.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Customize fallback filenames"],
+        "reviewedOn": "2026-08-17",
+        "establishes": "Codex accepts additional per-directory instruction filenames declared in configuration, which is the documented behavior this closed derivation makes inspectable."
+      },
+      {
+        "sourceId": "openai.codex.config-basic",
+        "url": "https://learn.chatgpt.com/docs/config-file/config-basic.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Codex configuration file"],
+        "reviewedOn": "2026-08-17",
+        "establishes": "Settings are scoped to a project or subfolder by a .codex/config.toml file in that repository."
+      }
+    ]
+  },
+  {
+    "ruleId": "codex.repo.instructions",
+    "tool": "codex",
+    "discoveryClass": "static-candidate",
+    "kind": "instructions",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": "AGENTS.override.md"
+          }
+        ],
+        [
+          {
+            "kind": "literal",
+            "value": "AGENTS.md"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.agents-md",
+        "url": "https://learn.chatgpt.com/docs/agent-configuration/agents-md.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["How Codex discovers guidance"],
+        "reviewedOn": "2026-08-17",
+        "establishes": "AGENTS.override.md and AGENTS.md are the static per-directory instruction filenames, consulted in that order, and the chain walks the project root down to the runtime cwd and stops there."
       }
     ]
   },
@@ -88,7 +157,6 @@
         ]
       ]
     },
-    "derivation": null,
     "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
     "precedenceGroup": null,
     "documentationStatus": "documented",
@@ -171,7 +239,6 @@
         ]
       ]
     },
-    "derivation": null,
     "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
     "precedenceGroup": null,
     "documentationStatus": "documented",

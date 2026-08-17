@@ -1,6 +1,6 @@
-// T050/T124/T152/T178: deterministic SKILL fixture repositories for the
-// Phase 4, Phase 8, Phase 10, and Phase 12 inventory suites (FR-003, FR-004,
-// FR-005, FR-024, FR-028).
+// T050/T124/T152/T178/T205: deterministic SKILL and Codex-instruction fixture
+// repositories for the Phase 4, Phase 8, Phase 10, Phase 12, and Phase 15
+// inventory suites (FR-003, FR-004, FR-005, FR-024, FR-028).
 //
 // The tree is built to make the allowlist's edges observable rather than
 // assumed: every positive case has a near miss one segment away from it, so a
@@ -781,3 +781,172 @@ export function buildAllToolSkillFixture(prefix = 'inspector-all-skills'): AllTo
     secretSkillPath: '.agents/skills/secretive/SKILL.md',
   };
 }
+
+/** The literal environment-reference text the instruction fixtures author. */
+export const FIXTURE_ENVIRONMENT_REFERENCE = '${CODEX_FIXTURE_ENDPOINT}';
+
+/** One built Codex instruction fixture repository (T205, extended by T1084). */
+export interface CodexInstructionFixture {
+  /** The absolute fixture root to scan. */
+  readonly root: string;
+  /**
+   * Every Source-relative Path the static `codex.repo.instructions` allowlist
+   * must admit, sorted exactly as the traversal discovers them.
+   */
+  readonly expectedInstructionPaths: readonly string[];
+  /**
+   * Paths that sit one step away from an admitted file and that no shipped
+   * rule or derivation may admit — the nested chain the vendor walks at
+   * runtime, spelling variants, VCS internals, and nested carriers. Listing
+   * them explicitly is what makes an over-broad selector a test failure
+   * rather than a silent inventory expansion.
+   */
+  readonly nearMissPaths: readonly string[];
+  /**
+   * The Source-relative Path of the root `.codex/config.toml` carrier the
+   * `codex.repo.config` rule admits (T1089). It declares the fallback
+   * basenames below, and its one read seeds the derivation.
+   */
+  readonly configCarrierPath: string;
+  /**
+   * The fallback basenames the carrier declares, in authored order. One of
+   * them names no on-disk file, so a scan proves an absent declared name is
+   * the ordinary negative rather than a diagnostic.
+   */
+  readonly configuredFallbackBasenames: readonly string[];
+  /**
+   * The declared fallback files that exist on disk — the derived
+   * `instructions` candidates the deriving stage must read and publish
+   * (T1090), sorted.
+   */
+  readonly expectedDerivedFallbackPaths: readonly string[];
+  /** The declared basename with no on-disk file: derives nothing, silently. */
+  readonly absentFallbackBasename: string;
+}
+
+/**
+ * Builds the canonical Codex instruction fixture repository.
+ *
+ * Positive cases: the root `AGENTS.override.md` — carrying a secret, a
+ * literal environment reference, an import-like line, and a malformed
+ * frontmatter-shaped block, none of which may fail a recognition that runs no
+ * extractor — an empty root `AGENTS.md`, admitted like any readable candidate
+ * even though the vendor's own selection would skip an empty file (FR-009),
+ * the root `.codex/config.toml` carrier, and the two on-disk files its
+ * declared fallback basenames name, which the deriving stage turns into
+ * `instructions` candidates (T1090).
+ *
+ * Near misses: the nested per-directory chain Codex walks at runtime
+ * (`docs/`, `packages/api/`), root spelling variants one step from each
+ * literal, VCS internals, and a nested carrier. Case variants live in
+ * near-miss directories because a case-insensitive filesystem would fold a
+ * root-level variant into the admitted file itself.
+ */
+export function buildCodexInstructionFixture(
+  prefix = 'inspector-codex-instructions',
+): CodexInstructionFixture {
+  const root = createRepositoryFixtureRoot(prefix);
+
+  // Positive: the override, with every content shape the phase must keep
+  // inert — a malformed frontmatter-shaped block (instructions run no
+  // extractor, so nothing may fail), an import-like reference (a later phase's
+  // relationship, never a read), a literal credential (readable only through
+  // the detail route, FR-027), and a literal environment reference that must
+  // never be resolved against the process environment (FR-025).
+  write(
+    root,
+    'AGENTS.override.md',
+    [
+      '---',
+      'malformed: [unclosed',
+      '---',
+      '',
+      '# Override instructions',
+      '',
+      '@docs/setup.md',
+      `token: ${FIXTURE_SECRET_LITERAL}`,
+      `endpoint: ${FIXTURE_ENVIRONMENT_REFERENCE}`,
+      '',
+    ].join('\n'),
+  );
+  // Positive: an empty regular file is still an admitted, readable candidate.
+  // The vendor's first-non-empty selection is runtime behavior this product
+  // does not project (FR-009).
+  write(root, 'AGENTS.md', '');
+
+  // Near miss: the per-directory chain Codex consults at runtime, one and
+  // several directories below the selected root. The selected root is the one
+  // in-scope layer of that chain (FR-003), so these belong to runtime working
+  // directories this product does not select.
+  write(root, 'docs/AGENTS.md', '# docs instructions\n');
+  write(root, 'packages/api/AGENTS.override.md', '# nested override\n');
+  // Near miss: spelling variants one step from each root literal. The case
+  // variants live in the near-miss directories above because a root-level
+  // `AGENTS.MD` would fold into the admitted `AGENTS.md` on a
+  // case-insensitive filesystem.
+  write(root, 'AGENT.md', 'singular\n');
+  write(root, 'AGENTS-override.md', 'hyphenated\n');
+  write(root, 'AGENTS.md.bak', 'backup suffix\n');
+  write(root, 'docs/AGENTS.MD', 'wrong case\n');
+  // Near miss: VCS internals are excluded from traversal entirely.
+  write(root, '.git/AGENTS.md', 'vcs internal\n');
+  // Near miss: a nested carrier belongs to a runtime context this product
+  // does not select, exactly like a nested AGENTS.md.
+  write(root, 'packages/api/.codex/config.toml', 'project_doc_fallback_filenames = ["X.md"]\n');
+  // Unrelated file that shares no segment with the selectors.
+  write(root, 'README.md', 'unrelated\n');
+
+  // The admitted configuration carrier and the fallback files it names
+  // (T1084/T1090). One declared basename exists nowhere, so the scan proves
+  // an absent declared name derives nothing — the ordinary negative, not a
+  // diagnostic. `X.md` exists only in the nested near-miss carrier above, so
+  // it also proves an unadmitted carrier seeds nothing.
+  const configuredFallbackBasenames = ['TEAM_GUIDE.md', 'GUIDE.codex.md', 'ABSENT_GUIDE.md'];
+  write(
+    root,
+    '.codex/config.toml',
+    `project_doc_fallback_filenames = [${configuredFallbackBasenames
+      .map((basename) => JSON.stringify(basename))
+      .join(', ')}]\n`,
+  );
+  write(root, 'TEAM_GUIDE.md', '# configured fallback TEAM_GUIDE.md\n');
+  write(root, 'GUIDE.codex.md', '# configured fallback GUIDE.codex.md\n');
+
+  return {
+    root,
+    expectedInstructionPaths: ['AGENTS.md', 'AGENTS.override.md'],
+    nearMissPaths: [
+      '.git/AGENTS.md',
+      'AGENT.md',
+      'AGENTS-override.md',
+      'AGENTS.md.bak',
+      'README.md',
+      'docs/AGENTS.MD',
+      'docs/AGENTS.md',
+      'packages/api/.codex/config.toml',
+      'packages/api/AGENTS.override.md',
+      'X.md',
+    ],
+    configCarrierPath: '.codex/config.toml',
+    configuredFallbackBasenames,
+    expectedDerivedFallbackPaths: ['GUIDE.codex.md', 'TEAM_GUIDE.md'],
+    absentFallbackBasename: 'ABSENT_GUIDE.md',
+  };
+}
+
+/**
+ * How many in-memory fallback declarations the retention cases feed the pure
+ * validator (T208). Far above any plausible authored list, so an Inspector
+ * numeric cap — which the contract forbids — would fail the count assertion
+ * rather than hide behind a small fixture.
+ */
+export const NUMEROUS_FALLBACK_DECLARATION_COUNT = 64;
+
+/**
+ * Numerous distinct configured fallback basenames, in authored order, for the
+ * complete-retention cases: every one must come back, in order, with no cap.
+ */
+export const NUMEROUS_FALLBACK_BASENAMES: readonly string[] = Array.from(
+  { length: NUMEROUS_FALLBACK_DECLARATION_COUNT },
+  (_unused, index) => `TEAM_GUIDE_${index}.md`,
+);

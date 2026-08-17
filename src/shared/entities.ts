@@ -98,6 +98,41 @@ export const CUSTOMIZATION_KIND_ORDER: readonly CustomizationKind[] = [
   'skill metadata',
 ];
 
+/**
+ * What a kind's rows are, in plural, for a sentence that counts them — the
+ * kind's own row unit rather than "files", because a row is one file for some
+ * kinds and one declaration inside a file for others (data-model.md
+ * § Inventory unit). Separate from {@link CUSTOMIZATION_KIND_TEXT}, whose
+ * values name the kind for a tab or a badge and cannot be pluralized by rule:
+ * `Instructions` is already plural and `MCP` is neither.
+ */
+export const CUSTOMIZATION_KIND_PLURAL_TEXT: Readonly<Record<CustomizationKind, string>> = {
+  /** Instruction rows are the files themselves. */
+  instructions: 'instruction files',
+  /** Rule rows are the files themselves. */
+  rule: 'rule files',
+  /** A skill row is one name as one tool resolves it. */
+  skill: 'skills',
+  /** An agent row is one custom-agent definition. */
+  agent: 'custom agents',
+  /** A prompt or command row is one definition. */
+  'prompt/command': 'prompts and commands',
+  /** A hook row is one declaration. */
+  hook: 'hook declarations',
+  /** An MCP row is one server declared inside a carrier. */
+  MCP: 'MCP servers',
+  /** A settings or configuration row is the carrier file. */
+  'settings/config': 'settings and configuration files',
+  /** An output-style row is one definition. */
+  'output style': 'output styles',
+  /** A plugin row is one manifest. */
+  plugin: 'plugin manifests',
+  /** A marketplace row is one catalog. */
+  marketplace: 'marketplace catalogs',
+  /** A skill-metadata row is one sibling metadata file. */
+  'skill metadata': 'skill metadata files',
+};
+
 /** The label shown for each kind; see {@link SOURCE_BOUNDARY_ORIGIN_TEXT}. */
 export const CUSTOMIZATION_KIND_TEXT: Readonly<Record<CustomizationKind, string>> = {
   /** Label for an instruction file. */

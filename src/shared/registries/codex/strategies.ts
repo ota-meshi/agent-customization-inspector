@@ -21,6 +21,77 @@ import type { CodexStrategyId } from '../identifier-types';
 import type { RuntimeCompositionStrategy } from '../strategy-types';
 
 /**
+ * Codex config-layer resolution: User/profile/CLI values and every trusted
+ * project `.codex/config.toml` layer from the project root down to the
+ * runtime `cwd` merge per key (`merge-map`), a closer layer's value replaces
+ * a broader one's (`replace`), and the closest applicable value wins
+ * (`select-closest`).
+ *
+ * The configured instruction fallback basenames are configuration values this
+ * resolution supplies, which is why the `codex.repo.config` rule and the
+ * `codex.derived.fallback-basename` derivation name this strategy as their
+ * explanation. A strategy explains a documented runtime edge and never
+ * authorizes a read (contracts/runtime-composition.md
+ * § codex.config.precedence).
+ */
+export const CODEX_CONFIG_PRECEDENCE_STRATEGY = {
+  strategyId: 'codex.config.precedence',
+  tool: 'codex',
+  surfaces: ['codex-local-clients'],
+  operations: ['merge-map', 'replace', 'select-closest'],
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'openai.codex.config-basic',
+          url: 'https://learn.chatgpt.com/docs/config-file/config-basic.md',
+          officialHost: 'learn.chatgpt.com',
+          sections: ['Codex configuration file', 'Configuration precedence'],
+          reviewedOn: '2026-08-17',
+          establishes:
+            'Codex resolves CLI overrides, trusted project layers from root to cwd, profile files, User config, and system config in that fixed order, using the closest applicable value for the same key.',
+        },
+      ]
+    : [],
+} as const satisfies RuntimeCompositionStrategy;
+
+/**
+ * Codex instruction layering: select the first non-empty file per documented
+ * location — the User fallback first, then each project-root-to-`cwd`
+ * directory in the documented filename order (`select-first`) — concatenate
+ * the selected files broad to narrow (`concatenate`), and stop at the
+ * upstream project-document byte budget (`filter`).
+ *
+ * `documented` even though excluded higher-scope settings can leave the
+ * configured fallback names and the exact budget unknown at inspection time:
+ * the pipeline itself is documented, and what a concrete session selects
+ * stays conditional on runtime inputs this tool never observes
+ * (contracts/runtime-composition.md § codex.instructions.layering).
+ */
+export const CODEX_INSTRUCTIONS_LAYERING_STRATEGY = {
+  strategyId: 'codex.instructions.layering',
+  tool: 'codex',
+  surfaces: ['codex-local-clients'],
+  operations: ['select-first', 'concatenate', 'filter'],
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'openai.codex.agents-md',
+          url: 'https://learn.chatgpt.com/docs/agent-configuration/agents-md.md',
+          officialHost: 'learn.chatgpt.com',
+          sections: ['How Codex discovers guidance', 'Customize fallback filenames'],
+          reviewedOn: '2026-08-17',
+          establishes:
+            'Codex selects at most one non-empty instruction file per directory in the documented filename order and concatenates the selections broad to narrow, from the global fallback through the project chain toward the runtime cwd, stopping at the project_doc_max_bytes budget; that budget and the fallback filenames are configuration values resolved outside the instruction files themselves.',
+        },
+      ]
+    : [],
+} as const satisfies RuntimeCompositionStrategy;
+
+/**
  * Codex skill discovery across Repository, User, admin, and system scopes.
  *
  * The documented outcome for a name collision is that nothing is resolved:
@@ -53,9 +124,11 @@ export const CODEX_SKILLS_DISCOVERY_STRATEGY = {
     : [],
 } as const satisfies RuntimeCompositionStrategy;
 
-/** Codex's contribution to the strategy registry, keyed by `strategyId`. */
+/** Codex's contribution to the strategy registry, keyed by `strategyId` in identifier order. */
 export const CODEX_COMPOSITION_STRATEGIES: Readonly<
   Record<CodexStrategyId, RuntimeCompositionStrategy>
 > = {
+  [CODEX_CONFIG_PRECEDENCE_STRATEGY.strategyId]: CODEX_CONFIG_PRECEDENCE_STRATEGY,
+  [CODEX_INSTRUCTIONS_LAYERING_STRATEGY.strategyId]: CODEX_INSTRUCTIONS_LAYERING_STRATEGY,
   [CODEX_SKILLS_DISCOVERY_STRATEGY.strategyId]: CODEX_SKILLS_DISCOVERY_STRATEGY,
 };
