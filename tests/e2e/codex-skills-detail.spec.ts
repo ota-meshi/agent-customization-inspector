@@ -85,9 +85,13 @@ test.afterEach(async () => {
 /** Opens the named skill's detail route from the inventory. */
 async function openSkill(page: import('@playwright/test').Page, path: string): Promise<void> {
   await page.goto(host.origin);
-  // A file two products recognize is two definitions sharing one link text;
+  // A file two products recognize offers one definition link per product;
   // each addresses its own definition route and either opens the same file.
-  await page.getByRole('link', { name: path }).first().click();
+  await page
+    .locator('.aci-skill-row__file', { hasText: path })
+    .locator('.aci-skill-row__definitions a')
+    .first()
+    .click();
 }
 
 /**
@@ -179,8 +183,8 @@ test('leads with the skill itself before any file contents', async ({ page }) =>
     'api_key',
     'one_space',
     'two_spaces',
-    ' (key with no visible characters)',
-    '  (key with no visible characters)',
+    String.raw` (key with no visible characters: \u0020)`,
+    String.raw`  (key with no visible characters: \u0020\u0020)`,
     'deep',
   ]);
   await expect(page.locator('.aci-frontmatter-block dd').nth(1)).toContainText(
@@ -202,12 +206,18 @@ test('keeps two values that both draw nothing distinguishable', async ({ page })
   // is exactly the difference under test.
   expect(await values.nth(3).locator('.aci-authored-text').textContent()).toBe(' ');
   expect(await values.nth(4).locator('.aci-authored-text').textContent()).toBe('  ');
-  await expect(values.nth(3)).toContainText('(no visible characters)');
-  await expect(values.nth(4)).toContainText('(no visible characters)');
+  // The note carries the spelled-out form, so the two declarations stay
+  // apart in a flat reading too, where whitespace collapses (FR-025).
+  await expect(values.nth(3)).toContainText(String.raw`(no visible characters: \u0020)`);
+  await expect(values.nth(4)).toContainText(String.raw`(no visible characters: \u0020\u0020)`);
 
   const keys = page.locator('.aci-frontmatter-block dt');
-  expect(await keys.nth(5).textContent()).toBe(' (key with no visible characters)');
-  expect(await keys.nth(6).textContent()).toBe('  (key with no visible characters)');
+  expect(await keys.nth(5).textContent()).toBe(
+    String.raw` (key with no visible characters: \u0020)`,
+  );
+  expect(await keys.nth(6).textContent()).toBe(
+    String.raw`  (key with no visible characters: \u0020\u0020)`,
+  );
 });
 
 test('stops indenting past the depth cap without overlapping list markers', async ({ page }) => {
@@ -461,7 +471,7 @@ test('lists supporting files nowhere in the inventory', async ({ page }) => {
   // They belong to the skill that ships them, and the skill already has a row.
   const text = await page.locator('main').innerText();
   expect(text).not.toContain('scripts/run.sh');
-  expect(text).toContain('2 supporting file(s) in this skill');
+  expect(text).toContain('2 supporting file(s)');
 });
 
 test('keeps a malformed file readable while its declared name is missing', async ({ page }) => {
@@ -487,7 +497,10 @@ test('is operable from the keyboard alone', async ({ page }) => {
   // path to the content now — reached in the page's real Tab order, so a
   // link demoted to `tabindex="-1"` fails here where a bare `.focus()`
   // would still land on it.
-  const skillLink = page.getByRole('link', { name: '.agents/skills/greet/SKILL.md' }).first();
+  const skillLink = page
+    .locator('.aci-skill-row__file', { hasText: '.agents/skills/greet/SKILL.md' })
+    .locator('.aci-skill-row__definitions a')
+    .first();
   expect(await tabUntilFocused(page, skillLink)).toBe(true);
   await page.keyboard.press('Enter');
   await expect(page.locator('.aci-skill-detail h2')).toBeFocused();

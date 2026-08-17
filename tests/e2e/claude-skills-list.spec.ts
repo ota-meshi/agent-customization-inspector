@@ -83,13 +83,12 @@ test('lists every vendor\u2019s skills together, grouped by resolved name', asyn
     'codex-greet',
     'packages/api:deploy',
   ]);
-  // One item — and one path line — per definition, each linking to its own
-  // `/skills/<tool>/<source-relative path>` route: the shared root files appear once under
-  // each of their two products, the Claude-only nested layer once.
+  // One path line per file, with a definition link per recognizing product
+  // beneath it — each linking to its own `/skills/<tool>/<source-relative
+  // path>` route — so the shared root files and the Claude-only nested layer
+  // each state their path once.
   await expect(page.locator('.aci-item .aci-path')).toHaveText([
     '.claude/skills/greet/SKILL.md',
-    '.claude/skills/greet/SKILL.md',
-    '.agents/skills/codex-greet/SKILL.md',
     '.agents/skills/codex-greet/SKILL.md',
     'packages/api/.claude/skills/deploy/SKILL.md',
   ]);
@@ -155,12 +154,7 @@ test('groups a name declared from two locations into one row listing every recog
   await expect(async () => {
     await page.getByRole('button', { name: 'Refresh status' }).click();
     await expect(grouped.locator('.aci-path')).toHaveText(
-      [
-        '.agents/skills/salute/SKILL.md',
-        '.agents/skills/salute/SKILL.md',
-        '.claude/skills/greet/SKILL.md',
-        '.claude/skills/greet/SKILL.md',
-      ],
+      ['.agents/skills/salute/SKILL.md', '.claude/skills/greet/SKILL.md'],
       { timeout: 1_000 },
     );
   }).toPass();
@@ -196,7 +190,7 @@ test('quotes no Claude rule for two commands that only share a label', async ({ 
   const grouped = page.locator('.aci-item').filter({ hasText: 'same-label' }).first();
   await expect(async () => {
     await page.getByRole('button', { name: 'Refresh status' }).click();
-    await expect(grouped.locator('.aci-path')).toHaveCount(4, { timeout: 1_000 });
+    await expect(grouped.locator('.aci-path')).toHaveCount(2, { timeout: 1_000 });
   }).toPass();
   await expect(grouped).not.toContainText('keeps all of them');
   await expect(grouped).not.toContainText('uses the first in its documented source order');
@@ -235,10 +229,7 @@ test('names a nested skill with the root-relative prefix and states the Claude r
   const root = page.locator('.aci-item', {
     has: page.locator('.aci-skill-row__name', { hasText: /^claude-twice$/u }),
   });
-  await expect(root.locator('.aci-path')).toHaveText([
-    '.claude/skills/wave/SKILL.md',
-    '.claude/skills/wave/SKILL.md',
-  ]);
+  await expect(root.locator('.aci-path')).toHaveText(['.claude/skills/wave/SKILL.md']);
   for (const row of [root, nested]) {
     await expect(row).toContainText('keeps all of them; a nested one is invoked');
     await expect(row).not.toContainText('uses the first in its documented source order');
@@ -264,7 +255,7 @@ test('states a resolution for each product that recognizes the name twice', asyn
   const grouped = page.locator('.aci-item').filter({ hasText: 'codex-twice' }).first();
   await expect(async () => {
     await page.getByRole('button', { name: 'Refresh status' }).click();
-    await expect(grouped.locator('.aci-path')).toHaveCount(4, { timeout: 1_000 });
+    await expect(grouped.locator('.aci-path')).toHaveCount(2, { timeout: 1_000 });
   }).toPass();
   await expect(grouped).toContainText('keeps all of them, in no documented order');
   await expect(grouped).toContainText(
@@ -313,11 +304,11 @@ test('filters the vendors apart with the tool filter', async ({ page }) => {
 
 test('opens a Claude definition by its file identity into the detail route', async ({ page }) => {
   await page.goto(host.origin);
-  // Two definitions share the file, so two links share its text; each
-  // addresses its own definition and either opens the same file.
+  // Two definitions share the file, so its group offers two links; each is
+  // named by its own tool and addresses its own definition route.
   const link = page
-    .locator('.aci-item', { hasText: '.claude/skills/greet/SKILL.md' })
-    .locator('.aci-path a')
+    .locator('.aci-skill-row__file', { hasText: '.claude/skills/greet/SKILL.md' })
+    .locator('.aci-skill-row__definitions a')
     .first();
   await link.click();
   // The detail route is the one surface that serves authored content; the

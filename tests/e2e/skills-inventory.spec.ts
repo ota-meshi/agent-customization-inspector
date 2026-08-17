@@ -52,13 +52,12 @@ test('lists one unified skill inventory with each file’s recognition badges', 
   await page.goto(host.origin);
   await expect(skillRows(page)).toHaveCount(expectedRowCount());
 
-  // Multi-recognition, read off the badges a definition renders: the shared
-  // spellings carry both products, `.github` and the nested `.claude` layer
-  // exactly one.
-  const definitionOf = (path: string) =>
-    page.locator('.aci-skill-row__definitions > li', { hasText: path });
+  // Multi-recognition, read off the definition links a file's group renders:
+  // the shared spellings carry both products, `.github` and the nested
+  // `.claude` layer exactly one.
+  const fileGroupOf = (path: string) => page.locator('.aci-skill-row__file', { hasText: path });
   const expectTools = async (path: string, tools: readonly string[]) => {
-    await expect(definitionOf(path).locator('.aci-skill-row__badges > li')).toHaveText([...tools]);
+    await expect(fileGroupOf(path).locator('.aci-skill-row__definitions a')).toHaveText([...tools]);
   };
   await expectTools('.agents/skills/orbit/SKILL.md', ['GitHub Copilot', 'OpenAI Codex']);
   await expectTools('.claude/skills/lander/SKILL.md', ['GitHub Copilot', 'Claude Code']);

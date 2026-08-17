@@ -121,8 +121,8 @@ const command = define({
     // (spec.md Clarifications § Session 2026-07-22).
     await executeRepositoryScan(context, admission.scanRequestId, repositorySourceId, 'repository');
     // Install shutdown handling before the launch line becomes observable.
-    // devframe calls `onReady` before its browser helper and returns the
-    // server handle afterwards, so an interrupt in that small interval is
+    // The host calls `onReady` before its `open` browser helper and returns
+    // the server handle afterwards, so an interrupt in that small interval is
     // remembered and closes the handle as soon as it becomes available.
     let closeHost: (() => Promise<void>) | null = null;
     let closeWhenReady = false;
@@ -148,9 +148,9 @@ const command = define({
       openBrowser: ctx.values.open,
       onReady: ({ origin }) => {
         // The one launch line (FR-001, contracts/http-api.md § Host
-        // requirements #4): devframe invokes this after binding and before
-        // its best-effort browser helper, so the manual fallback is always
-        // available first.
+        // requirements #4): the host invokes this after binding and before
+        // its best-effort `open` browser helper, so the manual fallback is
+        // always available first.
         console.log(`${origin}/`);
       },
     });

@@ -139,7 +139,7 @@ Every `MANUAL-*` ID is executed over the Cartesian product of the following clos
   and tool/source/kind facts; `S2` Repository empty state, a deterministic returned source
   Diagnostic, explicit rescan, and a separate thrown/rejected rescan shown as the failed
   request's error while the prior snapshot remains stale; `S3` file inspection, including Monaco source access; `S4` file diagnostic and actionable next step; `S5`
-  two-file comparison, Monaco accessible diff, and narrow inline alternative; `S6` stale or
+  two-file and one-sided comparison, Monaco accessible diff, and narrow inline alternative; `S6` stale or
   removed comparison after a compared file's owning sequence commits its replacement
   generation, plus a comparison that stays valid when a sequence owning neither compared
   file commits; `S7` Global disabled, selector-free

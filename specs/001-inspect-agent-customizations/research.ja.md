@@ -14,7 +14,8 @@ serializable contractは`src/shared/`、Node専用CLI/host/inspection codeは`sr
 Pure Node.jsの`src/server/inspection/` directoryが調査対象sourceのenumeration/readを全て所有し、CLIとともに
 bundleする。Typed inert DTOだけをbrowserへ渡す。
 Project-authored executable application codeはすべてJavaScript/TypeScriptとする。Project/dependency package payload内の
-executable codeはJavaScriptだけとし、generated HTML/CSS、JSON manifest、documentation、licenseはdeclarative artifact
+executable codeはJavaScriptだけとし — 唯一の記録済みFR-038 closure例外は`open` packageのvendoredな
+POSIX shell `xdg-open`である（§ 3） — generated HTML/CSS、JSON manifest、documentation、licenseはdeclarative artifact
 として許可する。Package-manager生成`.bin` symlink/`.cmd`/`.ps1` launcherはpayload外interoperability metadataとして
 別のclosed auditを受ける。Third-party development/test toolingは別にpin/auditするが、
 FR-038のpublished application codeには含めない。
@@ -80,10 +81,9 @@ Lockfileはpublishされたpackageには同行しないため、consumerの`npx`
 registryに対して解決する。Auditが確立するのは、このprojectが出荷し検証するtreeであり、
 後続の任意のinstallが生成するtreeではない。tsdownはproject所有moduleとshared
 contractをbundleし、任意のtransitive packageはbundleしない。Directなproduction dependencyは
-`devframe`、`gunshi`、`h3`、`jsonc-parser`、`smol-toml`、`vfile`、`vfile-matter`、`yaml`の正確に8つとし（§ 3）、`open`を全dependency
-sectionとproduction lock closureから除外する。
+`devframe`、`gunshi`、`h3`、`jsonc-parser`、`open`、`smol-toml`、`vfile`、`vfile-matter`、`yaml`の正確に9つとする（§ 3）。
 
-承認済みのdirect production dependency set — その8つのnameだけで他は含まない — を`package.json`と
+承認済みのdirect production dependency set — その9つのnameだけで他は含まない — を`package.json`と
 `pnpm-lock.yaml` closureからassertする。これによりnew production dependencyは§ 3の決定が明示的に
 見直されるまでfailする。payload content scan — `os`/`cpu`/`libc` selector、bundled/optional native package、
    native/binary/Wasm magicまたはELF/Mach-O/PE magic、`binding.gyp`、Rust/C/C++ source、`prebuilds`、
@@ -161,8 +161,9 @@ research、plan、quickstart、task artifactをすべて同期して`/speckit.pl
 | tsdown | 0.22.8 | 現行stable release。Node 24.11+をsupport |
 | Vite | 7.3.6 | Nuxt 4.4.8が宣言するbuilder range `^7.3.3`内の最新version |
 | pnpm | 11.13.0 | 現行stable package manager |
-| Local host | `devframe` 0.7.5 | `@eslint/config-inspector`の基盤であるlocal-tool host framework。Packaged SPAを`cli.distDir`から配信し、session APIをRPC channelとして担い、認証は無効化する。Port/host解決とbrowser openingを所有する（§ 8）。Pre-1.0のため、commit済みlockfileがreview済みbaselineを固定し、manifestのcaret rangeは0.7.x内にとどまる |
-| CLI | `gunshi` 0.37.0 | 現行のruntime dependency 0件のESM CLI framework。Node.js `>=22` engine requirementは宣言済みrangeと互換。Browser openingはdevframe hostが所有し（§ 8）、追加packageを必要としない |
+| Local host | `devframe` 0.7.5 | `@eslint/config-inspector`の基盤であるlocal-tool host framework。Packaged SPAを`cli.distDir`から配信し、session APIをRPC channelとして担い、認証は無効化する。Port/host解決を所有し（§ 8）、bundled openerはproductが`open`でbrowser openingを所有するため無効化される（§ 3）。Pre-1.0のため、commit済みlockfileがreview済みbaselineを固定し、manifestのcaret rangeは0.7.x内にとどまる |
+| CLI | `gunshi` 0.37.0 | 現行のruntime dependency 0件のESM CLI framework。Node.js `>=22` engine requirementは宣言済みrangeと互換 |
+| Browser opener | `open` 11.0.1 | Startup browser helper（FR-001）を担う現行stableなcross-platform opener: bind済みloopback originをOS default handlerへbest-effortで渡し、devframeのbundled openerを無効化してspawnできるhelperを正確に1つにする。VendoredなPOSIX shell `xdg-open` — Linuxでは実行可能な限りそれを使い、そうでなければsystem helper — は記録済みのFR-038 closure例外である（§ 3） |
 | Host HTTP app | `h3` 2.0.1-rc.22 | Hostはdevframeがmountする先のH3 appを自ら構築し、devframeの拡張子guard付きSPA fallbackでは配信できない`/skills/**`のshell fallbackを載せる — skill detail URLは`SKILL.md`のようにfile自身の最終segmentで終わり、devframeは拡張子判定の前にdecodeするためpercent-encodeは代案にならないからである。他の直接依存と同じくcaret rangeで宣言し、lockfileがdevframe自身のh3へresolveするため、両者は1つのmodule instanceへ解決される。devframe自身が拡張子付きclient-route missをserveできるようになれば、この依存はhost shimとともに無くなる |
 | Parser | `yaml` 2.9.0、`jsonc-parser` 3.3.1、`smol-toml` 1.7.0 | 現行stable inert data parser |
 | Frontmatter | `vfile-matter` 5.0.1、`vfile` 6.0.3 | Frontmatterのdelimiter処理。Frontmatter blockの開始と終了を決めることはBOM処理、改行、閉じfenceの形を決め直すことであり、正規表現ではなくparserの仕事である。これは同表の`yaml` engineでblockをparseする。独自の`js-yaml`を持つpackageは1つのdocumentに2つの意味を与えてしまう。js-yaml 3はYAML 1.1、`yaml`はYAML 1.2だからである |
@@ -204,6 +205,13 @@ Inspector package、public contract、永続profile、user dataが存在しな�
 blockする。Release-validation pairは後で対応するdecision evidenceを記録し、英日validation evidenceが欠落すれば
 releaseをblockする。
 
+`open` dependency — product-ownedなstartup browser helper（§ 3）— には理由付きの明示的な
+no-impact判断を記録する: public contract、session API shape、永続data、workflowに一切触れない。CLIの
+`--open`/`--no-open` surface、単一のlaunch line、表示済みURL fallbackは、どのpackageがhelperを
+所有するかに依存しない。直接宣言するpackageがhelperを所有し、devframeのbundled openerは無効化
+されており、devframe自身のopenerは`createDevServer`の`openBrowser` optionを通じてfallback pathとして
+残っている。影響を受けるconsumer、移行手順、support windowは存在しない。
+
 CLIはGunshiのstableなroot `define`/`cli` APIだけを使用する。Negatableな`open` booleanをdefault trueとして
 宣言して`--no-open`を提供し、`cli()`を`strict: true`で呼び出し、host bind前に
 すべてのpositional/rest argumentを明示的に拒否する。非同期resultをawaitし、parserが所有するvalidation
@@ -227,7 +235,7 @@ lockfileが全memberをname/version/integrity hashでpinし（OS間で同一）�
 固定される。devframe自身のtarball payloadはJavaScript/TypeScript textだけであるためNode-only package gateは維持される。
 devframeはpre-1.0であり、0.x minorがAPIをmigrateし得るため、caret rangeがそれらを除外し、commit済み
 lockfileがresolved versionをpinし、あらゆる
-bumpを§ 3のplanning-gate changeとして扱う。`tests/package/production-graph.test.ts`は、承認済みの8つの
+bumpを§ 3のplanning-gate changeとして扱う。`tests/package/production-graph.test.ts`は、承認済みの9つの
 direct dependencyであることを正確にassertする。versionとintegrityはlockfileが所有し続ける。
 
 ### 有限なrelease-certification行列
@@ -272,9 +280,9 @@ Gunshi公式の[setup requirement](https://gunshi.dev/guide/introduction/setup)�
 Node/TypeScript互換性とclosedなunknown-option behaviorの根拠にする。
 Safe-filesystem layerはNode built-inの`node:fs/promises`、`node:fs`、`node:path` APIだけを使用するため、
 platform toolchainやruntime package dependencyを追加しない。
-Directなproduction `dependencies` setは`devframe`、`gunshi`、`h3`、`jsonc-parser`、`smol-toml`、`vfile`、`vfile-matter`、`yaml`の
-正確に8つとする（caret rangeで宣言し、lockfileがexactなresolved versionへpinする。`h3`のresolved versionはdevframe自身のh3と一致し、両者は1つのmodule instanceへ解決される）: CLIとparserのpackageはnpm graph上のleafであり、h3は下記のtransitive host treeに既に含まれ、devframeがそのtreeを
-持ち込む。
+Directなproduction `dependencies` setは`devframe`、`gunshi`、`h3`、`jsonc-parser`、`open`、`smol-toml`、`vfile`、`vfile-matter`、`yaml`の
+正確に9つとする（caret rangeで宣言し、lockfileがexactなresolved versionへpinする。`h3`のresolved versionはdevframe自身のh3と一致し、両者は1つのmodule instanceへ解決される）: CLIとparserのpackageはnpm graph上のleafであり、h3は下記のtransitive host treeに既に含まれ、devframeがそのtreeを
+持ち込み、`open`はhelper検出の小さなtree（`default-browser`、`is-wsl`とそのleaf）をlockfileのpin付きで持ち込む。
 Nuxt/Vue/Vite/tsdown、Monaco、test toolingは必要outputをclosed product assetへassembleするためbuild/development-onlyとする。
 Lockfileとisolated install済みproduction closureの両方をauditする。
 
@@ -292,10 +300,15 @@ Vue/Volar workflowに当面TypeScript 6を要求し、
 Vite 7を宣言している。これらを強制すると、動作する現行Nuxt stackを使うという要件に反する。
 Dual TypeScript compilerとpnpm overrideは初期リリースに不要な複雑さとして不採用。
 
-`open` 11.0.0はJavaScript APIが便利でも不採用とする。Published tarballがexecutableなPOSIX shell
-`xdg-open` helperを含み、installed product closureをFR-038違反にしつつroot tarballだけのallowlistでは見逃すためである。
-Browser launchは代わりにdevframe hostのopener（§ 8）が所有する。それは監査済みdevframe payload内の
-plain JavaScriptであり、`open`はproduction closureに存在しないままで、openの失敗またはunsupported時は
+Browser launchをdevframe hostのbundled openerに委ねる案は、既に監査済みのdevframe payload内で
+完結するとしても不採用とする。devframeは`open` packageのlogicを自前のbundleとして抱えているため、
+どのhelperが動くか — そしてOS handlerをどう解決するか — が、このproductが自ら宣言・review・更新する
+dependencyではなくdevframeのbundle判断で固定されてしまう。Directな`open` dependencyはhelperを
+production closureの名前付きlockfile-pinned memberにし、hostはdevframeのbundled openerを無効化して
+spawnできるhelperを正確に1つにする。`open`のpublished tarballが含む唯一のnon-JavaScript executable —
+vendoredなPOSIX shell `xdg-open`で、package自身の選択policyがLinux hostでは実行可能である限りそれを使い、
+そうでないときにsystemの`xdg-open`へfallbackする —
+は記録済みのFR-038 closure例外である（spec.md FR-038）。openの失敗またはunsupported時は
 既に表示したloopback URLをmanual openできるままにする。
 
 ## 4. Vendor behavior、Inspector matcher、evidence
@@ -608,7 +621,8 @@ comparisonが消費する値である。`readOnly`、`domReadOnly`、
 オフにする。これらのdefaultは読み手自身のfileの文字にdecorationとwarning hoverを付けるもので、
 FR-032がこのsurfaceに禁じるlintingそのものである。文字の綴りが問題になる場面ではproduct自身が
 path presentationで明示する（data-model.md § SourceRelativePath）。Monacoのannounceは
-`document.body`直下の共有defaultではなくviewer componentが所有するelementへ行い、teardownでその
+`document.body`直下のdefaultではなく、editor composable moduleが所有し全mountが共有する一つの
+elementへ行い、teardownでその
 element内のlive regionを空にする。Monacoのaria moduleはそれらをmodule-levelの変数で保持するため、
 detachするだけでは最後にannounceされたauthored sourceの行が到達可能なまま残る（FR-027）。Editor
 moduleがそもそもload
@@ -655,8 +669,9 @@ session APIを、`defineRpcFunction`で宣言してdefinitionの`setup`で登録
 `devframe:streaming:*` — もframeworkが無条件に登録する。Productはそれらにagent tool、shared server
 state、streaming channelを一切登録せず、editor/finder helper（`devframe:open-in-editor`、
 `devframe:open-in-finder`）はこのproductがimportしないopt-in recipeである。Port/host解決、SPA
-fallback付きstatic配信、RPC channel、browser openingはproduct codeではなく
-devframeのpolicyである。ただしstatic配信の前段にclosedなproduct所有の要素が1つある:
+fallback付きstatic配信、RPC channelはproduct codeではなく
+devframeのpolicyであり、browser openingはproductが`open` packageを通じて所有し、devframeの
+bundled openerは無効化される（§ 3）。ただしstatic配信の前段にclosedなproduct所有の要素が1つある:
 `/skills/**`の`GET`/`HEAD`を`/`へ書き換えるrewriteで、extension-guardedなfallbackがserveできない
 skill deep linkにdevframe自身のhandlerがshellをserveできるようにする(§ 3 h3行)。Session保護はloopback bindingとする: productはper-session tokenも、独自のOrigin/Host分類も、
 hand-written HTTP routerも追加しない。devframeはWebSocket upgradeへ自身のorigin gateを適用して
@@ -703,7 +718,7 @@ channel lossまたは解釈できないprotocol、session mismatchでは、ended
 `clientDataEpoch` guard付きshared purgeを実行する。Ordinaryなhandler/serialization/delivery failureは
 そのrequestだけのerrorである。Global-disable clickではrequest dispatch前に同じ
 purgeを実行し、ordinary responseでgreater Global content epochまたはnon-null disable fenceを観測した
-場合もrender前に繰り返してclient-side `RecoveryViewState`へ入る。Purgeは全DOM/DTO/editor
+場合もrender前に繰り返してclient-side `RecoveryViewState`へ入る。Purgeはstate ownerとrender済みsurfaceが保持するDOM/DTO/editor
 stateを除去してlate responseによるcontent復活を防ぐ。Request tokenがcurrentでないsettlement、または
 capture済み`clientDataEpoch`がpurgeより古いsettlementは、late rejectionを含めno-opとする。Transport
 signalにはproduct定義のdelivery deadlineがないため、continuously idleでvisibleなpage上のprocess
@@ -725,13 +740,14 @@ Session APIは、明示的なdetail requestにだけ完全なauthored contentを
 Global disableは明示的なfull-purge例外である。
 
 Browser attempt前に、解決済みlocal origin `http://localhost:<port>/`をhostのready callbackから起動元
-terminalへ正確に1回表示する（FR-001）。Browser openingはdevframeのpolicyである: CLIのnegatableな
-`--open` flag（default true）はdevframeのopen flagへ対応し、devframeのopenerはその解決済みoriginだけを
-受け取り、inspection由来のcontent/pathを決して受け取らない（FR-022）。Productは解決されたhandlerの
+terminalへ正確に1回表示する（FR-001）。Browser openingは`open` packageを通じたproductのpolicyである（§ 3）:
+CLIのnegatableな`--open` flag（default true）は、hostがlaunch lineの後に`open`のhelperをspawnするかを
+決め、devframeのbundled openerは無効化されてspawnできるhelperは正確に1つになる。Helperはその解決済み
+originだけを受け取り、inspection由来のcontent/pathを決して受け取らない（FR-022）。Productは解決されたhandlerの
 browser family/versionを選択・probe・検証しない（FR-001）。Automatic openのdisabled、unsupported、失敗は
 serverを継続させ、いずれの場合も表示済みoriginがfallbackである。
 
-**理由**: Hosting policy — port/host解決、SPA fallback付きstatic配信、RPC transport、browser opening — は、
+**理由**: Hosting policy — port/host解決、SPA fallback付きstatic配信、RPC transport — は、
 maintainされたdevframe layerが既に所有しenforceするpolicyである。素の`node:http`上での再実装はその
 layerを重複させ、productに独自のrouterと認証機構の所有を強制していた（憲章原則I、シンプルな実装の方針）。
 `@eslint/config-inspector`は同じ形 — auth gateなしのdevframe上のtrusted single-user localhost inspector —
@@ -769,8 +785,8 @@ payloadをsession retrievalごとに繰り返さない。
   responseにrequest-token、client-epoch、session、Global-epoch、fence guardを適用する。Support対象の
   single-browser-session useには別tabをproactiveに観測するrequirementがない。
 - Project-ownedなbrowser-launch adapter（ambient environment allowlist付きの固定`/usr/bin/open`/`xdg-open`
-  spawn）も同じ理由で採らない。Browser openingはdevframeのpolicyであり、その
-  openerは解決済みlocal originだけを受け取る。
+  spawn）は採らない。Cross-platformのhelper解決はmaintainされた`open` packageが既に所有するpolicyであり
+  （§ 3）、productのhelperは解決済みlocal originだけを受け取る。
 
 ## 9. Atomic generation、rescan、実行環境依存capacity
 
@@ -1311,9 +1327,12 @@ manual accessibility check、documentation parity check、release tarball inspec
 
 **決定**: 最終analysis remediationをplanningとimplementationへ引き継ぐ。
 
-1. 固定startup OS browser helperを、許可する唯一のproduct起動child processとする。Inspection由来content/path、
-   authored value、user-supplied command、environmentで選択したhandlerを渡さない。Closedなambient platform key setだけを
-   launch environmentから直接copyしてよいが、Source rootとのlexical一致はprovenanceを変えずauthorityを与えない。Discovery、read、parse、display、
+1. 固定startup OS browser helperを、許可する唯一のproduct起動child processとする。受け取るのは表示済み
+   loopback originだけであり、inspection由来content/path、authored value、user-supplied commandを渡さない。
+   Helperはlaunch environmentを変更なしで継承する: productはどの環境変数にもinspection由来の値を書き込まず、
+   `xdg-open`が`$BROWSER`を参照するようにplatform helperがuser自身の設定を尊重するのは、inspection由来の
+   inputではなくuser preferenceの適用である。Ambient valueとSource rootのlexical一致はprovenanceを変えず
+   authorityを与えない。Discovery、read、parse、display、
    comparison、relationship処理はchild processを開始せず、`--no-open`、unsupported、failure pathでも利用可能なmanual URLを残す。
 2. 各supported `(tool, kind)`がclosedなrelationship kindとadmission済みsource-form applicabilityを所有する。
    Relationshipは、そのkindが維持管理するpresentation-allowlist rowに属し、かつactualなadmission済みsource formの

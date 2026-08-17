@@ -242,7 +242,7 @@ describe('automatic first scan', () => {
         port: 9999,
         app: {} as never,
       });
-      // devframe invokes its browser helper only after onReady resolves.
+      // The host spawns its `open` browser helper only after onReady resolves.
       order.push('browser-open');
       return {
         origin: 'http://localhost:9999',

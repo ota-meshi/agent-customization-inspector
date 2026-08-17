@@ -23,13 +23,17 @@
 // matched an Inspector rule at an allowlisted location, which is not installed,
 // enabled, selected, or effective (contracts/inspection-path-allowlist.md
 // § existence-versus-activation vocabulary).
+import { computed } from 'vue';
 import { NuxtLink } from '#components';
 import RowDiagnostics from './RowDiagnostics.vue';
+import { skillRowFiles, type SkillRowFile } from './skill-row-files';
 import { skillDetailRoute } from '../../skill-detail-route';
+import { skillComparisonRouteFor } from '../../../composables/skill-comparison';
 import {
   SAME_NAME_SKILL_RESOLUTION_TEXT,
   SUPPORTED_TOOL_TEXT,
   escapeControlCharacters,
+  inlinePresentationLabel,
   rendersNothingVisible,
 } from '../../../../shared/entities';
 import type {
@@ -65,7 +69,51 @@ function detailRouteOf(definition: SkillDefinitionDto): string {
 }
 
 /**
- * The census files of one definition that carry a diagnostic, each with the
+ * This row's definitions grouped by the file each recognizes, so a file's own
+ * facts — its path and what ships beside it — are stated once and every
+ * recognition of it keeps its own line.
+ */
+const rowFiles = computed(() => skillRowFiles(props.entry.definitions));
+
+/**
+ * The distinct readable entry-point paths of this row's definitions, in the
+ * row's own order. A comparison is a pair within one skill name — the URL
+ * itself names two of the name's copies (FR-011) — so this row is where the
+ * entry's candidate files are already known: two
+ * files may resolve to one name, and comparing them is what the comparison
+ * surface exists for. A file without readable source text is not among
+ * them — a deterministic diagnostic-only item stays visible for review but
+ * cannot be a comparison input (US3 scenario 4, FR-025).
+ */
+const comparableEntryPaths = computed(() => {
+  const paths: string[] = [];
+  for (const definition of props.entry.definitions) {
+    const path = definition.sourceRelativePath;
+    const encoding = props.filesByPath.get(path)?.encoding;
+    if ((encoding === 'utf-8' || encoding === 'utf-8-replaced') && !paths.includes(path)) {
+      paths.push(path);
+    }
+  }
+  return paths;
+});
+
+/**
+ * The comparison this row links to — its first two readable entry files —
+ * or null when the name has fewer than two, where a link would open a
+ * comparison with nothing to pair. The compare route's own file switchers
+ * take over from there: they hold every file of this name, entry points and
+ * census companions alike, so the reader switches pairs on the comparison
+ * itself instead of composing one here.
+ */
+const compareRoute = computed(() => {
+  const [first, second] = comparableEntryPaths.value;
+  return first !== undefined && second !== undefined
+    ? skillComparisonRouteFor(first, second)
+    : null;
+});
+
+/**
+ * The census files of one file that carry a diagnostic, each with the
  * presentation form of its path.
  *
  * A companion gets no inventory row of its own (FR-003), so a failed read
@@ -75,9 +123,9 @@ function detailRouteOf(definition: SkillDefinitionDto): string {
  * named by its path so the reader knows which file to open.
  */
 function affectedCompanions(
-  definition: SkillDefinitionDto,
+  file: SkillRowFile,
 ): readonly { path: string; diagnosticIds: readonly string[] }[] {
-  return definition.companionFiles.flatMap((sourceRelativePath) => {
+  return file.companionFiles.flatMap((sourceRelativePath) => {
     const file = props.filesByPath.get(sourceRelativePath);
     return file === undefined || file.diagnosticIds.length === 0
       ? []
@@ -113,59 +161,96 @@ function affectedCompanions(
       >
     </p>
 
-    <ul class="aci-skill-row__definitions" role="list">
-      <!-- One item per definition — one recognition, the `(file, tool)` unit —
-           so a file two products resolve to this name is two items sharing a
-           path, each under its own product and each linking to its own
-           definition route, `/skills/<tool>/<source-relative path>` (FR-007). -->
-      <li
-        v-for="definition in entry.definitions"
-        :key="`${definition.sourceRelativePath}:${definition.tool}`"
-      >
-        <!-- The Source-relative Path is the locator into the skill detail
-             route, which is the one surface that shows file contents. The link
-             addresses the definition by its own identity — the tool, then the
-             path — so it keeps resolving across rescans and same-root server
-             launches (FR-030).
-             Escaped for presentation (data-model.md § SourceRelativePath), so
-             a path spanning lines cannot read as two rows. -->
-        <p class="aci-path">
-          <NuxtLink class="aci-authored-text" :to="detailRouteOf(definition)">{{
-            escapeControlCharacters(definition.sourceRelativePath)
-          }}</NuxtLink>
-        </p>
-        <ul class="aci-skill-row__badges" role="list">
-          <!-- The kind is the tab the row is listed under, so repeating it on
-               every definition says nothing. The tool stays: which product a
-               definition belongs to is not visible anywhere else. -->
-          <li>{{ SUPPORTED_TOOL_TEXT[definition.tool] }}</li>
+    <ul class="aci-skill-row__files" role="list">
+      <!-- One item per file this name is declared by, and beneath it one item
+           per definition — one recognition, the `(file, tool)` unit (FR-007).
+           Grouping is what the reader sees, not what the row publishes: every
+           definition is still listed and still links to its own route, because
+           two products recognizing one file do not read it under one condition
+           and the row may not present them as though they did (FR-009). -->
+      <li v-for="file in rowFiles" :key="file.sourceRelativePath" class="aci-skill-row__file">
+        <!-- The file's own facts, stated once for the definitions below it: the
+             Source-relative Path (escaped for presentation, data-model.md
+             § SourceRelativePath, so a path spanning lines cannot read as two
+             files), and what ships beside the `SKILL.md`. The census says the
+             skill has supporting files, not that a product loads them; the
+             detail view is where the directory itself can be opened. It is
+             stated even at zero, because how many a skill ships is a fact
+             about it and "none" is part of that fact. -->
+        <p class="aci-path aci-authored-text">{{ file.pathText }}</p>
+        <p class="aci-note">{{ file.companionFiles.length }} supporting file(s)</p>
+
+        <ul class="aci-skill-row__definitions" role="list">
+          <!-- The recognizing product is the link, because the detail route is
+               the definition's own identity — the tool, then the path — and a
+               file two products recognize has two of them (FR-030). The kind
+               is the tab the row is listed under, so repeating it here says
+               nothing. -->
+          <li v-for="definition in file.definitions" :key="definition.tool">
+            <!-- The visible text is the tool alone — the path is the line
+                 above — but the accessible name carries both: a reader walking
+                 the page's links hears each link out of its visual context,
+                 and every skill row offers a link reading "GitHub Copilot"
+                 (WCAG 2.4.4). The visible text leads the label, so speaking
+                 the words on the link still activates it (WCAG 2.5.3). -->
+            <!-- The path half goes through the whitespace-safe label: the
+                 accessible-name computation collapses whitespace, and two
+                 paths differing only in it must not read as one link name
+                 (FR-025). -->
+            <NuxtLink
+              :to="detailRouteOf(definition)"
+              :aria-label="`${SUPPORTED_TOOL_TEXT[definition.tool]} — ${inlinePresentationLabel(
+                file.sourceRelativePath,
+              )}`"
+              >{{ SUPPORTED_TOOL_TEXT[definition.tool] }}</NuxtLink
+            >
+            <!-- The definition's own extraction diagnostics — its recognition's
+                 reference to the kind's one shared failure record, not the
+                 file's aggregate, so a definition reports its own kind's
+                 failure and never every problem its file carries (FR-028). -->
+            <RowDiagnostics :diagnostic-ids="definition.diagnosticIds" :diagnostics="diagnostics" />
+          </li>
         </ul>
-        <!-- What ships beside the `SKILL.md`. It says the skill has supporting
-             files, not that a product loads them; the detail view is where the
-             directory itself can be opened. -->
-        <p class="aci-note">
-          {{ definition.companionFiles.length }} supporting file(s) in this skill
-        </p>
-        <!-- The definition's own extraction diagnostics — its recognition's
-             reference to the kind's one shared failure record, not the file's
-             aggregate, so a definition reports its own kind's failure and
-             never every problem its file carries (FR-028). -->
-        <RowDiagnostics :diagnostic-ids="definition.diagnosticIds" :diagnostics="diagnostics" />
+
         <!-- A supporting file this scan could not use. Named rather than
              counted: the reader has to know which file to open in the skill's
-             tree, and the path is the only thing that says so. -->
+             tree, and the path is the only thing that says so. It belongs to
+             the file whose directory holds it rather than to any one of that
+             file's recognitions, which is why it sits here and not above. -->
         <ul
-          v-if="affectedCompanions(definition).length > 0"
+          v-if="affectedCompanions(file).length > 0"
           class="aci-skill-row__companion-diagnostics"
           role="list"
         >
-          <li v-for="companion in affectedCompanions(definition)" :key="companion.path">
+          <li v-for="companion in affectedCompanions(file)" :key="companion.path">
             <span class="aci-path aci-authored-text">{{ companion.path }}</span>
             <RowDiagnostics :diagnostic-ids="companion.diagnosticIds" :diagnostics="diagnostics" />
           </li>
         </ul>
       </li>
     </ul>
+
+    <!-- The comparison entry for this name (FR-011): the entry links compose
+         pairs within one skill name, so the row whose files share it is where
+         this entry opens — one link, no selection step. It leads with the
+         name's first two readable files, and the comparison surface's own
+         file switchers take over from there, entry points and census
+         companions alike. Absent when the name has fewer than two readable
+         files, where there is nothing to pair. -->
+    <p v-if="compareRoute !== null" class="aci-skill-row__compare">
+      <!-- The accessible name carries the row's name after the visible
+           phrase: in a links list every comparable row would otherwise
+           announce identically, the same reason the tool links above carry
+           their path (WCAG 2.4.6; label-in-name keeps the visible phrase as
+           the prefix). Through the whitespace-safe label, because the
+           accessible-name computation normalizes whitespace: two names
+           differing only invisibly must not read as one name (FR-025). -->
+      <NuxtLink
+        :to="compareRoute"
+        :aria-label="`Compare this skill's files: ${inlinePresentationLabel(entry.name)}`"
+        >Compare this skill's files</NuxtLink
+      >
+    </p>
 
     <!-- Present only when several definitions share the name; one definition
          resolves nothing. -->
@@ -179,6 +264,7 @@ function affectedCompanions(
 </template>
 
 <style scoped>
+.aci-skill-row__files,
 .aci-skill-row__definitions,
 .aci-skill-row__resolutions {
   list-style: none;
@@ -186,8 +272,19 @@ function affectedCompanions(
   padding: 0;
 }
 
-.aci-skill-row__definitions > li + li {
-  margin-block-start: 0.5rem;
+/* Two files declaring one name are two groups, so they are separated by more
+   than the gap between the lines inside either of them. */
+.aci-skill-row__files > li + li {
+  margin-block-start: 0.6rem;
+}
+
+/* The recognitions of one file, set under the file's own lines by an indent and
+   a rule. The rule is what says where the group ends: without it, a second
+   file's path read as another line of the first file's list. */
+.aci-skill-row__definitions {
+  border-inline-start: 1px solid var(--aci-border);
+  margin-block-start: 0.2rem;
+  padding-inline-start: 0.6rem;
 }
 
 /* The statements describe the row as a whole, so they sit apart from the
@@ -207,12 +304,8 @@ function affectedCompanions(
   margin: 0;
   overflow-wrap: anywhere;
 }
-.aci-skill-row__badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem 0.75rem;
-  list-style: none;
-  margin: 0.25rem 0;
-  padding: 0;
+/* The row-level comparison link, set apart from the definitions it spans. */
+.aci-skill-row__compare {
+  margin: 0.25rem 0 0;
 }
 </style>

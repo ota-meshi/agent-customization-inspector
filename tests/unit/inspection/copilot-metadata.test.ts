@@ -132,9 +132,13 @@ describe('Copilot skill declared name', () => {
       'kind',
     ]);
     expect(recognition.details.frontmatter).toEqual([
-      { key: 'name', value: { kind: 'scalar', text: 'greet' } },
-      { key: 'description', value: { kind: 'scalar', text: 'says hello' } },
-      { key: 'api_key', value: { kind: 'scalar', text: CONTENT_FIXTURE_SECRET } },
+      { key: 'name', keyKind: 'string', value: { kind: 'scalar', text: 'greet' } },
+      { key: 'description', keyKind: 'string', value: { kind: 'scalar', text: 'says hello' } },
+      {
+        key: 'api_key',
+        keyKind: 'string',
+        value: { kind: 'scalar', text: CONTENT_FIXTURE_SECRET },
+      },
     ]);
     expect(recognition.details.bodyText).toBe('\n# Greet\n\nSay hello.\n');
     // Nothing the file did not write: the recognition carries no copy of the

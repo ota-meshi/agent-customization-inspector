@@ -111,13 +111,16 @@ test.afterEach(async () => {
 
 /**
  * Opens the named skill's detail route from the inventory. A shared file has
- * one link per definition, each addressing its own `/skills/<tool>/<source-relative path>`
- * route; this suite is about the Claude recognition, so the Claude
- * definition's link is followed when the file has one.
+ * one definition link per recognizing product, each addressing its own
+ * `/skills/<tool>/<source-relative path>` route; this suite is about the
+ * Claude recognition, so the Claude definition's link is followed when the
+ * file has one.
  */
 async function openSkill(page: import('@playwright/test').Page, path: string): Promise<void> {
   await page.goto(host.origin);
-  const links = page.getByRole('link', { name: path });
+  const links = page
+    .locator('.aci-skill-row__file', { hasText: path })
+    .locator('.aci-skill-row__definitions a');
   const claudeLink = links.and(page.locator('[href^="/skills/claude/"]'));
   // The rows render together once the snapshot arrives, so waiting for any
   // link is waiting for all of them; counting before that saw an empty list.

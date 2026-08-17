@@ -73,16 +73,11 @@ test('lists exactly the allowlisted skills with their source and path', async ({
   await expect(items).toHaveCount(2);
 
   // Rows are ordered by their own unit — the declared name — so `greet`
-  // precedes `ship-it` even though its path sorts the other way. One item per
-  // definition: both root skills are Codex+Copilot, so each path appears once
-  // under each product.
+  // precedes `ship-it` even though its path sorts the other way. One path line
+  // per file: both root skills are Codex+Copilot, so each file states its path
+  // once and lists a definition link per recognizing product beneath it.
   const paths = await page.locator('.aci-item .aci-path').allInnerTexts();
-  expect(paths).toEqual([
-    '.agents/skills/greet/SKILL.md',
-    '.agents/skills/greet/SKILL.md',
-    '.agents/skills/deploy/SKILL.md',
-    '.agents/skills/deploy/SKILL.md',
-  ]);
+  expect(paths).toEqual(['.agents/skills/greet/SKILL.md', '.agents/skills/deploy/SKILL.md']);
 
   // Every row states which products recognized it — one file can be recognized
   // by several, and that is visible nowhere else. The kind is not repeated per
@@ -147,12 +142,8 @@ test('states how many supporting files a skill ships', async ({ page }) => {
   // `greet/` holds a sibling `README.md`; `deploy/` holds only its own
   // `SKILL.md` and reports zero rather than omitting the line — the count is a
   // fact about the skill, and "none" is part of it.
-  await expect(page.locator('.aci-item').first()).toContainText(
-    '1 supporting file(s) in this skill',
-  );
-  await expect(page.locator('.aci-item').last()).toContainText(
-    '0 supporting file(s) in this skill',
-  );
+  await expect(page.locator('.aci-item').first()).toContainText('1 supporting file(s)');
+  await expect(page.locator('.aci-item').last()).toContainText('0 supporting file(s)');
 });
 
 test('shows each skill by the name authored in its own file', async ({ page }) => {
@@ -164,8 +155,6 @@ test('shows each skill by the name authored in its own file', async ({ page }) =
   // path says which file authored it.
   await expect(page.locator('.aci-item .aci-path')).toHaveText([
     '.agents/skills/greet/SKILL.md',
-    '.agents/skills/greet/SKILL.md',
-    '.agents/skills/deploy/SKILL.md',
     '.agents/skills/deploy/SKILL.md',
   ]);
 });
@@ -192,12 +181,7 @@ test('shows one row for a name two files declare, with each product\u2019s rule'
   await expect(async () => {
     await page.getByRole('button', { name: 'Refresh status' }).click();
     await expect(grouped.locator('.aci-path')).toHaveText(
-      [
-        '.agents/skills/greet/SKILL.md',
-        '.agents/skills/greet/SKILL.md',
-        '.agents/skills/salute/SKILL.md',
-        '.agents/skills/salute/SKILL.md',
-      ],
+      ['.agents/skills/greet/SKILL.md', '.agents/skills/salute/SKILL.md'],
       { timeout: 1_000 },
     );
   }).toPass();
@@ -226,10 +210,9 @@ test('names a skill that declares no name by its skill directory', async ({ page
   const row = page.locator('.aci-item').filter({ hasText: '.agents/skills/nameless/SKILL.md' });
   await expect(async () => {
     await page.getByRole('button', { name: 'Refresh status' }).click();
-    await expect(row.locator('.aci-path')).toHaveText(
-      ['.agents/skills/nameless/SKILL.md', '.agents/skills/nameless/SKILL.md'],
-      { timeout: 1_000 },
-    );
+    await expect(row.locator('.aci-path')).toHaveText(['.agents/skills/nameless/SKILL.md'], {
+      timeout: 1_000,
+    });
   }).toPass();
   await expect(page.locator('.aci-scan-progress')).toContainText('Committed generation');
   await expect(row.locator('.aci-skill-row__name')).toHaveText('nameless');
@@ -332,7 +315,7 @@ test('rescans on demand and keeps the status tied to that request', async ({ pag
 
 test('links each definition by its stable tool-and-path identity', async ({ page }) => {
   await page.goto(host.origin);
-  const links = page.locator('.aci-item .aci-path a');
+  const links = page.locator('.aci-skill-row__definitions a');
   await expect(links).toHaveCount(4);
 
   // The link carries the tool and the Source-relative path — the definition's
@@ -350,9 +333,12 @@ test('links each definition by its stable tool-and-path identity', async ({ page
       '/skills/codex/.agents/skills/deploy/SKILL.md',
     ].toSorted(),
   );
-  // The row itself still offers nothing else to act on: opening the file is
-  // the one thing a row leads to.
+  // The row itself offers nothing else to act on here: opening the file is
+  // the one thing a row leads to, and the comparison entry — a link, never a
+  // selection control — appears only on a name that two readable files
+  // share, which neither of these names has (FR-011).
   await expect(page.locator('.aci-item button')).toHaveCount(0);
+  await expect(page.getByRole('link', { name: "Compare this skill's files" })).toHaveCount(0);
 });
 
 test('operates every inventory control from the keyboard', async ({ page }) => {

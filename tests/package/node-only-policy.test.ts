@@ -1,6 +1,6 @@
 // T025: Node.js-only production policy — the production dependency closure
-// derived from pnpm-lock.yaml is exactly the seven approved roots and excludes
-// `open`, and the CLI uses only gunshi's root API (research.md § 3, plan.md
+// derived from pnpm-lock.yaml is exactly the eight approved roots, and the
+// CLI uses only gunshi's root API (research.md § 3, plan.md
 // § Technical Context). Versions, registry integrity, and installed payload
 // digests are not asserted here: the committed lockfile owns them, and a test
 // that restates them only duplicates the lockfile. The per-payload content
@@ -71,12 +71,13 @@ function splitClosureKey(closureKey: string): { name: string; version: string } 
 describe('production closure policy', () => {
   const closure = productionClosure();
 
-  it('resolves the closure from the seven approved roots', () => {
+  it('resolves the closure from the eight approved roots', () => {
     const names = new Set(closure.map((key) => splitClosureKey(key).name));
     for (const root of [
       'devframe',
       'gunshi',
       'jsonc-parser',
+      'open',
       'smol-toml',
       'vfile',
       'vfile-matter',
@@ -84,7 +85,6 @@ describe('production closure policy', () => {
     ]) {
       expect(names.has(root)).toBe(true);
     }
-    expect(names.has('open')).toBe(false);
   });
 
   it('contains nothing beyond the reviewed closure', () => {
@@ -96,16 +96,27 @@ describe('production closure policy', () => {
       '@types/unist',
       '@valibot/to-json-schema',
       'birpc',
+      'bundle-name',
       'crossws',
+      'default-browser',
+      'default-browser-id',
+      'define-lazy-prop',
       'destr',
       'devframe',
       'gunshi',
       'h3',
+      'is-docker',
+      'is-in-ssh',
+      'is-inside-container',
+      'is-wsl',
       'jsonc-parser',
       'mrmime',
       'nostics',
+      'open',
       'pathe',
+      'powershell-utils',
       'rou3',
+      'run-applescript',
       'smol-toml',
       'srvx',
       'typescript',
@@ -115,6 +126,7 @@ describe('production closure policy', () => {
       'vfile',
       'vfile-matter',
       'vfile-message',
+      'wsl-utils',
       'yaml',
     ];
     expect([...new Set(closure.map((key) => splitClosureKey(key).name))].sort()).toEqual(reviewed);

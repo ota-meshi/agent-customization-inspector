@@ -90,6 +90,21 @@ describe('the packaged Monaco editor', () => {
     }
   });
 
+  it('bundles the diff surface same-origin, computed by the one editor worker', () => {
+    // The comparison route uses Monaco's own diff editor (T193,
+    // research.md § 7): a second diff engine would duplicate responsibility,
+    // and a diff surface fetched from anywhere else would take the user's
+    // file comparison off their machine. The diff editor ships inside the
+    // editor core this bundle already emits — its stylesheet class is the
+    // marker — and its diff is computed by the same emitted editor worker the
+    // single-file surface registers, so no new worker or origin appears with
+    // the comparison.
+    expect(assetText()).toContain('monaco-diff-editor');
+    const workers = assetNames().filter((name) => name.includes('.worker'));
+    expect(workers).toHaveLength(1);
+    expect(workers[0]).toMatch(/^editor\.worker-.*\.js$/u);
+  });
+
   it('ships no language-service worker', () => {
     // The application imports `editor.api` and the basic-language
     // contributions, never the full `monaco-editor` entry point that would also

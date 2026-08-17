@@ -439,6 +439,27 @@ export function rendersNothingVisible(value: string): boolean {
   return value.replaceAll(/[\s\p{Default_Ignorable_Code_Point}]/gu, '') === '';
 }
 
+/**
+ * One authored value as a single-line label for a surface that normalizes
+ * whitespace — a native `<option>`'s text, an accessible name (FR-025): the
+ * escaped spelling, or the completely spelled-out root presentation when
+ * that spelling would render as nothing or ambiguously — through leading,
+ * trailing, or consecutive whitespace, or default-ignorable code points —
+ * so two values differing only invisibly never read as one label. The
+ * predicate is a character-class test only: an authored value that happens
+ * to spell a product phrase stays as authored, because matching this
+ * product's own copy against authored text would turn display wording into
+ * load-bearing syntax, and the complete source beside every surface keeps
+ * the exact spelling.
+ */
+export function inlinePresentationLabel(value: string): string {
+  const escaped = escapeControlCharacters(value);
+  return rendersNothingVisible(escaped) ||
+    /^\s|\s{2,}|\s$|\p{Default_Ignorable_Code_Point}/u.test(escaped)
+    ? encodeRootPresentation(value)
+    : escaped;
+}
+
 /** Closed evidence-completeness enum (spec.md QR-005). */
 export type DocumentationStatus =
   /** The cited official sections fully establish the maintained assertion. */

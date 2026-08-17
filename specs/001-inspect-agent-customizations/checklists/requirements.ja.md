@@ -45,7 +45,7 @@
 - [x] Codex Global override fallbackのemptyを、任意の先頭BOM 1つを除去した後の`String.prototype.trim()`で定義し、保持した`U+FFFD`をnon-whitespaceとして扱い、安全にreadしたempty contentまたはabsentなinitial targetの場合だけfallbackを許可する
 - [x] Presentation Allowlist freezeをverification-onlyとし、意味上のmembership、source form、extractor applicability、relationship kindの変更が必要ならdependent implementationを停止し、設計同期とplan/tasks再生成を必須とする
 - [x] QR-005が`documentationStatus`を`documented | partially-documented | unknown | conflict`へclosedにし、重複のないlifecycle qualifierを`preview`、`experimental`、`deprecated`順で保持し、empty qualifierを`stable`でなくlifecycle claimなしと定義し、それらのすべてをどのresponseも運ばないmaintenance recordとして保っている
-- [x] 固定browser helperがinspection由来のpath/contentを受け取らず、closedなambient platform key setだけを直接copyでき、Source rootとのlexical一致がprovenanceを変えずauthorityを与えずhandlerを選択しない
+- [x] 固定browser helperがinspection由来のpath/contentを受け取らず、launch environmentを変更なしで継承し — productはどの環境変数にもinspection由来の値を書き込まない — Source rootとのlexical一致がprovenanceを変えずauthorityを与えない
 - [x] SC-008が、Level A/AA全基準のbilingual applicability matrix、criterion固有の非適用理由、automated/manual check mapping、0件ではないapplicable-criterion denominator、failure 0件の合格ruleを定義している
 - [x] ApplicableなSC-008 rowがcriterion固有のstable check IDとexpected observationを持ち、closed manual matrixがrelease/environment version、responsive/visual profile、workflow state、input profileを固定して、未記録のsamplingを許さない
 - [x] WCAG 2.2 criterion 2.2.2が、他contentと並行する自動更新scan/status informationをapplicableとして扱い、criterion準拠のessential exceptionを立証しない限り、検証済みpause/stop/hideまたはuser-frequency mechanismを要求する

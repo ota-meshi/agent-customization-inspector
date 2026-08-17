@@ -1,5 +1,5 @@
-// T025: production dependency graph — exactly the eight approved direct runtime
-// dependencies and the absence of `open`. Versions are not asserted here: the
+// T025: production dependency graph — exactly the nine approved direct runtime
+// dependencies. Versions are not asserted here: the
 // committed lockfile already fixes every resolved version and its integrity, so
 // re-stating them in a test would duplicate the lockfile rather than protect a
 // user. devframe's transitive tree is owned by devframe and the lockfile.
@@ -23,6 +23,9 @@ const APPROVED_PRODUCTION_DEPENDENCIES: readonly string[] = [
   // own h3, so both resolve one module instance (research.md § 3).
   'h3',
   'jsonc-parser',
+  // The product-owned startup browser helper (FR-001, research.md § 3):
+  // devframe's bundled opener stays disabled, so this is the one opener.
+  'open',
   'smol-toml',
   // Frontmatter delimiter handling, parsed with the `yaml` engine below rather
   // than a second one: a package carrying its own `js-yaml` would give one
@@ -39,21 +42,12 @@ describe('node-only production policy', () => {
     scripts?: Record<string, string>;
   };
 
-  it('declares exactly the eight approved direct production dependencies', () => {
+  it('declares exactly the nine approved direct production dependencies', () => {
     // A drive-by dependency addition must fail here until the production-graph
     // decision (research.md § 3) is explicitly revisited.
     expect(Object.keys(manifest.dependencies ?? {}).sort()).toEqual(
       [...APPROVED_PRODUCTION_DEPENDENCIES].sort(),
     );
-  });
-
-  it('never declares open in any dependency section', () => {
-    // Manifest-level guard only. Whether `open` is reachable through the
-    // production closure (including optional edges) is asserted against the
-    // lockfile in node-only-policy.test.ts; a lockfile substring probe here
-    // would duplicate that check and, in pnpm v9 format, never match.
-    expect(manifest.dependencies?.['open']).toBeUndefined();
-    expect(manifest.devDependencies?.['open']).toBeUndefined();
   });
 
   it('declares no lifecycle build or download hook', () => {

@@ -70,7 +70,9 @@ function fileDetail(): FileDetailDto {
       diagnosticIds: [],
     },
     presentation: {
-      frontmatter: [{ key: 'name', value: { kind: 'scalar', text: 'secretive' } }],
+      frontmatter: [
+        { key: 'name', keyKind: 'string', value: { kind: 'scalar', text: 'secretive' } },
+      ],
       bodyText: 'ghp_FIXTURE000\n',
     },
     diagnostics: [],
@@ -161,6 +163,10 @@ describe('authored file content in the browser', () => {
       'rescanRejection',
       'rescanState',
       'sessionErrorMessage',
+      // The skill comparison view (FR-011): two ordinary detail loads with
+      // the same guards as the single open file, and nothing that masks or
+      // reveals either side.
+      'skillComparison',
       'skillDetail',
       'skillDetailState',
       'skillErrorMessage',

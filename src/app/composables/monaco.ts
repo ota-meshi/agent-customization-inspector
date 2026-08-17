@@ -19,7 +19,7 @@
 // markup. What it adds over a plain text node is what a large authored file
 // needs: line numbers, virtualized rendering, find, keyboard navigation, and
 // Monaco's own screen-reader support.
-import { createOpaqueId, escapeControlCharacters } from '../../shared/entities';
+import { createOpaqueId, inlinePresentationLabel } from '../../shared/entities';
 
 /**
  * One registered language, reduced to what choosing between them needs. Taken
@@ -148,6 +148,64 @@ function themeForDisplay(dark: boolean, forcedColors: boolean): string {
 }
 
 /**
+ * Binds one theme-follow listener to both display queries and returns it for
+ * unbinding on dispose. Monaco's theme is global rather than per-editor, so
+ * every handle setting it sets it for all of them — which is what the page
+ * wants, because the display scheme is one fact and not one per viewer. Both
+ * queries share the listener, because the theme is one value derived from
+ * the pair (WCAG 1.4.11).
+ */
+function followDisplayTheme(
+  monaco: MonacoApi,
+  colorScheme: MediaQueryList,
+  forcedColors: MediaQueryList,
+): () => void {
+  const follow = (): void => {
+    monaco.editor.setTheme(themeForDisplay(colorScheme.matches, forcedColors.matches));
+  };
+  colorScheme.addEventListener('change', follow);
+  forcedColors.addEventListener('change', follow);
+  return follow;
+}
+
+/**
+ * Empties every announced message in the shared ARIA container. The last
+ * announcement is authored text — a line of a file, a search term — so each
+ * handle's dispose clears it (FR-027: the purge clears authored content, it
+ * does not merely unmount it). Only the text is cleared: Monaco's aria
+ * module holds its live regions in module-level variables, and emptying the
+ * wrapper that holds them would take those elements out of the document
+ * while the variables still point at them — every later announcement would
+ * then be written into a node no reader can hear. Walking the text nodes
+ * clears every message without moving a single element, and the container
+ * itself stays so whichever viewer is still open can still speak.
+ */
+function clearAnnouncedText(): void {
+  const messages = globalThis.document.createTreeWalker(
+    ariaContainer(),
+    globalThis.NodeFilter.SHOW_TEXT,
+  );
+  for (let node = messages.nextNode(); node !== null; node = messages.nextNode()) {
+    node.nodeValue = '';
+  }
+}
+
+/**
+ * Removes the stale live-region wrappers a fresh mount leaves behind. Monaco
+ * builds a new wrapper of live regions on every create when it is given a
+ * parent — the guard that would build one once is skipped in that case — and
+ * points its module-level variables at the newest. The wrappers before it
+ * are unreachable from those variables and would pile up one per mount: a
+ * tab switch, a failed-mount retry, a route revisited. Only the one Monaco
+ * is now announcing through stays.
+ */
+function dropStaleAnnouncementWrappers(announcements: HTMLElement): void {
+  for (const stale of [...announcements.children].slice(0, -1)) {
+    stale.remove();
+  }
+}
+
+/**
  * The Monaco module surface this composable uses, named so the import's shape
  * is visible here rather than inferred at each call. Declared as the type of
  * the dynamic import so it cannot drift from what is actually loaded.
@@ -193,17 +251,7 @@ export class SourceViewerHandle {
     this.#editor = editor;
     this.#colorScheme = colorScheme;
     this.#forcedColors = forcedColors;
-    // Monaco's theme is global rather than per-editor, so every handle setting
-    // it sets it for all of them — which is what the page wants, because the
-    // display scheme is one fact and not one per viewer. Both queries call it,
-    // because the theme is one value derived from the pair.
-    this.#followDisplay = (): void => {
-      this.#monaco.editor.setTheme(
-        themeForDisplay(this.#colorScheme.matches, this.#forcedColors.matches),
-      );
-    };
-    this.#colorScheme.addEventListener('change', this.#followDisplay);
-    this.#forcedColors.addEventListener('change', this.#followDisplay);
+    this.#followDisplay = followDisplayTheme(monaco, colorScheme, forcedColors);
   }
 
   /**
@@ -242,10 +290,12 @@ export class SourceViewerHandle {
     // label says which part of that file: an editor showing the instructions a
     // frontmatter block was removed from is not showing the file's source, and
     // announcing it as such would name content the reader is not being given.
-    // The path is presentation text here, so its control characters are
-    // escaped (data-model.md § SourceRelativePath).
+    // The path rides through the whitespace-safe spelling: an accessible
+    // name is a flat string whose consecutive spaces collapse, and two
+    // paths differing only in them must not name one editor (FR-025,
+    // data-model.md § SourceRelativePath).
     this.#editor.updateOptions({
-      ariaLabel: `${contentLabel} ${escapeControlCharacters(sourceRelativePath)}, read-only`,
+      ariaLabel: `${contentLabel} ${inlinePresentationLabel(sourceRelativePath)}, read-only`,
     });
     previous?.dispose();
   }
@@ -273,29 +323,7 @@ export class SourceViewerHandle {
     // After the editor, because disposing a model an attached editor still
     // holds leaves that editor pointing at a disposed document.
     model?.dispose();
-    // The last announcement is authored text — a line of the file, a search
-    // term — so it is cleared here (FR-027: the purge clears authored content,
-    // it does not merely unmount it). Only the text is: Monaco's aria module
-    // holds its four live regions in module-level variables, and emptying the
-    // wrapper that holds them takes those elements out of the document while
-    // the variables still point at them. Every later announcement would then be
-    // written into a node no reader can hear. Walking the text nodes clears
-    // every message without moving a single element.
-    //
-    // The container itself stays. Monaco's aria module keeps *one*
-    // module-level container, so the last editor to mount owns it for every
-    // editor: removing this handle's element would leave a still-open viewer
-    // announcing into a detached node, and a reader on a screen reader would
-    // simply stop being told what the editor is doing. One shared element,
-    // emptied by whichever handle disposes, keeps both true — nothing authored
-    // survives, and whoever is still open can still speak.
-    const messages = globalThis.document.createTreeWalker(
-      ariaContainer(),
-      globalThis.NodeFilter.SHOW_TEXT,
-    );
-    for (let node = messages.nextNode(); node !== null; node = messages.nextNode()) {
-      node.nodeValue = '';
-    }
+    clearAnnouncedText();
   }
 
   /**
@@ -348,6 +376,13 @@ export class SourceViewerHandle {
       automaticLayout: true,
       minimap: { enabled: false },
       scrollBeyondLastLine: false,
+      // The editor is a bounded box inside a page that scrolls. Monaco's
+      // default consumes every wheel event it receives, so a reader scrolling
+      // the page gets trapped the moment the pointer crosses the editor —
+      // even once the editor itself has nothing left to scroll. With this
+      // off, a wheel the editor cannot use any further is left to the page,
+      // which is where a reader at the editor's edge is trying to go.
+      scrollbar: { alwaysConsumeMouseWheel: false },
       renderWhitespace: 'selection',
       // Authored lines are not reflowed: a wrapped line would show a break the
       // file does not contain, and this view's claim is that it shows the file
@@ -367,16 +402,263 @@ export class SourceViewerHandle {
         ambiguousCharacters: false,
       },
     });
-    // Monaco builds a fresh wrapper of live regions on every create when it is
-    // given a parent — the guard that would build one once is skipped in that
-    // case — and points its module-level variables at the newest. The wrappers
-    // before it are unreachable from those variables and would pile up one per
-    // mount: a tab switch, a plain-text toggle, a route revisited. Only the one
-    // Monaco is now announcing through stays.
-    for (const stale of [...announcements.children].slice(0, -1)) {
-      stale.remove();
-    }
+    dropStaleAnnouncementWrappers(announcements);
     return new SourceViewerHandle(monaco, editor, colorScheme, forcedColors);
+  }
+}
+
+/** The complete input one comparison surface shows: both sides, named by path. */
+export interface SourceComparisonInput {
+  /**
+   * The first side's complete `sourceText`, exactly as committed — or, for
+   * a stated absent side (`originalAbsent`), the empty diff operand that
+   * renders the other side's content as the difference.
+   */
+  readonly originalText: string;
+  /** The first side's Source-relative Path: language choice and label. */
+  readonly originalPath: string;
+  /** The second side's text; see {@link originalText}. */
+  readonly modifiedText: string;
+  /** The second side's Source-relative Path: language choice and label. */
+  readonly modifiedPath: string;
+  /**
+   * Whether the first side names a corresponding file its copy does not
+   * ship. The side's empty text is then diff arithmetic rather than an
+   * authored empty file, and its label states the absence instead of naming
+   * a file that does not exist (FR-025).
+   */
+  readonly originalAbsent?: boolean;
+  /** Whether the second side names an absent counterpart; see {@link originalAbsent}. */
+  readonly modifiedAbsent?: boolean;
+}
+
+/**
+ * One mounted read-only source-comparison surface (research.md § 7, FR-011),
+ * owned by the component that made it. A handle is bound to the one pair of
+ * files it was mounted with: its models are created in
+ * {@link SourceDiffHandle.mount} and live exactly as long as the handle, so
+ * a different pair is a new mount — there is no model-swap path whose labels
+ * could drift from what is on screen. Constructed only by its own `mount`.
+ */
+export class SourceDiffHandle {
+  /** The one read-only diff editor this handle owns and disposes. */
+  readonly #editor: import('monaco-editor/esm/vs/editor/editor.api.js').editor.IStandaloneDiffEditor;
+
+  /** The colour-scheme query whose change listener keeps the theme in step. */
+  readonly #colorScheme: MediaQueryList;
+
+  /** The forced-colours query, watched with the scheme; see the viewer handle. */
+  readonly #forcedColors: MediaQueryList;
+
+  /** The theme-follow listener, unbound by {@link dispose}. */
+  readonly #followDisplay: () => void;
+
+  /**
+   * The two side-label restorers — one per inner editor — unbound by
+   * {@link dispose}; see the relabelling in {@link mount}.
+   */
+  readonly #relabel: readonly import('monaco-editor/esm/vs/editor/editor.api.js').IDisposable[];
+
+  /** Binds the handle to the diff editor it owns and starts following the scheme. */
+  public constructor(
+    monaco: MonacoApi,
+    editor: import('monaco-editor/esm/vs/editor/editor.api.js').editor.IStandaloneDiffEditor,
+    colorScheme: MediaQueryList,
+    forcedColors: MediaQueryList,
+    relabel: readonly import('monaco-editor/esm/vs/editor/editor.api.js').IDisposable[],
+  ) {
+    this.#editor = editor;
+    this.#colorScheme = colorScheme;
+    this.#forcedColors = forcedColors;
+    this.#followDisplay = followDisplayTheme(monaco, colorScheme, forcedColors);
+    this.#relabel = relabel;
+  }
+
+  /**
+   * Moves keyboard focus into the diff editor. Called by the comparison
+   * surface's retry path for the same reason as the viewer's: the failed
+   * state's button unmounts when the retry succeeds, and the editor the
+   * reader was trying to reach is the continuation of that click
+   * (WCAG 2.4.3).
+   */
+  public focus(): void {
+    this.#editor.focus();
+  }
+
+  /**
+   * Disposes the diff editor, both of its models, and every subscription.
+   * Separate disposal is deliberate — Monaco does not dispose models with
+   * their editor, so an editor-only teardown would retain both files'
+   * complete authored text (FR-027).
+   */
+  public dispose(): void {
+    this.#colorScheme.removeEventListener('change', this.#followDisplay);
+    this.#forcedColors.removeEventListener('change', this.#followDisplay);
+    for (const subscription of this.#relabel) {
+      subscription.dispose();
+    }
+    const model = this.#editor.getModel();
+    this.#editor.dispose();
+    // After the editor, because disposing a model an attached editor still
+    // holds leaves that editor pointing at a disposed document.
+    model?.original.dispose();
+    model?.modified.dispose();
+    clearAnnouncedText();
+  }
+
+  /**
+   * Mounts a read-only diff editor into `container` showing `comparison`
+   * (research.md § 7).
+   *
+   * The single-file surface's inertness and accessibility contract carries
+   * over — `readOnly`, `domReadOnly`, `links: false`, `contextmenu: false`,
+   * no suggestions, no Unicode lint, own ARIA container — and the diff
+   * surface adds its own three: `originalEditable: false`, because
+   * `readOnly` governs only the modified editor and the original must be as
+   * uneditable; `renderMarginRevertIcon: false`, because the margin's revert
+   * arrow is an edit affordance on a surface that must propose no change
+   * (FR-012); and `accessibilityVerbose: true`, which is a diff-editor
+   * option in Monaco 0.55 and turns on the verbose diff messages of the
+   * accessible diff viewer. Monaco's side-by-side layout and its
+   * narrow-container inline switch are left at their defaults, which is the
+   * narrow-screen inline mode the accessibility contract exercises.
+   *
+   * A construction failure propagates to the caller: the comparison
+   * component owns the fallback — the complete side-by-side sources as inert
+   * text — and a handle that half-mounted would have nothing to fall back
+   * from. The models are created only after the editor, so a failed
+   * construction leaves no model holding authored text.
+   */
+  public static async mount(
+    container: HTMLElement,
+    comparison: SourceComparisonInput,
+  ): Promise<SourceDiffHandle> {
+    const monaco = await loadMonaco();
+    const colorScheme = globalThis.matchMedia(DARK_SCHEME_QUERY);
+    const forcedColors = globalThis.matchMedia(FORCED_COLORS_QUERY);
+    // ARIA messages go into this module's own element rather than Monaco's
+    // default under `document.body`, which outlives every editor (FR-027).
+    // `ariaContainerElement` is typed on the standalone editor's construction
+    // options but not on the diff editor's; the diff editor hands its raw
+    // options to the two standalone editors it constructs, which is where the
+    // element takes effect, so the option is carried by an intersection type
+    // rather than a cast.
+    const announcements = ariaContainer();
+    const options: import('monaco-editor/esm/vs/editor/editor.api.js').editor.IStandaloneDiffEditorConstructionOptions &
+      Pick<
+        import('monaco-editor/esm/vs/editor/editor.api.js').editor.IStandaloneEditorConstructionOptions,
+        // `wordBasedSuggestions` is a global editor option the standalone
+        // diff editor applies through its configuration service, so it is
+        // carried the same way as the ARIA container.
+        'ariaContainerElement' | 'wordBasedSuggestions'
+      > = {
+      ariaContainerElement: announcements,
+      theme: themeForDisplay(colorScheme.matches, forcedColors.matches),
+      // This handle owns the theme; see the viewer handle's mount for why
+      // Monaco's own high-contrast detection stays off (WCAG 1.4.11).
+      autoDetectHighContrast: false,
+      readOnly: true,
+      domReadOnly: true,
+      originalEditable: false,
+      links: false,
+      contextmenu: false,
+      renderMarginRevertIcon: false,
+      // The comparison is literal (FR-011): Monaco's default computes the
+      // diff ignoring leading and trailing whitespace, which would render two
+      // lines differing only in that whitespace as unchanged — exactly the
+      // kind of difference FR-025 keeps distinguishable.
+      ignoreTrimWhitespace: false,
+      // Diff computation runs on Monaco and browser capacity alone: the
+      // default is a five-second cutoff that silently settles for a partial
+      // diff, which would be a product-defined computation-time ceiling
+      // research.md § 7 rules out. Zero disables the cutoff.
+      maxComputationTime: 0,
+      accessibilityVerbose: true,
+      quickSuggestions: false,
+      wordBasedSuggestions: 'off',
+      accessibilitySupport: 'auto',
+      automaticLayout: true,
+      minimap: { enabled: false },
+      scrollBeyondLastLine: false,
+      // A wheel the diff cannot scroll any further is left to the page; see
+      // the viewer handle's mount.
+      scrollbar: { alwaysConsumeMouseWheel: false },
+      renderWhitespace: 'selection',
+      wordWrap: 'off',
+      // Monaco's Unicode highlighter is a linter; see the viewer handle's
+      // mount (FR-032).
+      unicodeHighlight: {
+        nonBasicASCII: false,
+        invisibleCharacters: false,
+        ambiguousCharacters: false,
+      },
+    };
+    const editor = monaco.editor.createDiffEditor(container, options);
+    // The diff editor constructs two standalone editors, so two fresh
+    // live-region wrappers were appended; only the one Monaco is announcing
+    // through stays.
+    dropStaleAnnouncementWrappers(announcements);
+    // The two sides are named after construction, on the inner editors —
+    // the same post-construction `updateOptions` path the single-file
+    // viewer's label takes — because construction-time `originalAriaLabel`/
+    // `modifiedAriaLabel` do not survive Monaco's initial option
+    // synchronization: verified against the packaged editor, both textboxes
+    // end up carrying only the default accessibility-help hint. Each side is
+    // spelled like every path label (data-model.md § SourceRelativePath),
+    // and an absent side is named as the stated absence it is rather than as
+    // a file that does not exist (FR-025).
+    // The paths ride through the whitespace-safe spelling: an accessible
+    // name is a flat string whose consecutive spaces collapse, and two
+    // paths differing only in them must not name one editor (FR-025).
+    const originalLabel =
+      comparison.originalAbsent === true
+        ? `First side: no file at ${inlinePresentationLabel(comparison.originalPath)}`
+        : `First compared file ${inlinePresentationLabel(comparison.originalPath)}, read-only`;
+    const modifiedLabel =
+      comparison.modifiedAbsent === true
+        ? `Second side: no file at ${inlinePresentationLabel(comparison.modifiedPath)}`
+        : `Second compared file ${inlinePresentationLabel(comparison.modifiedPath)}, read-only`;
+    const applySideLabels = (): void => {
+      editor.getOriginalEditor().updateOptions({ ariaLabel: originalLabel });
+      editor.getModifiedEditor().updateOptions({ ariaLabel: modifiedLabel });
+    };
+    applySideLabels();
+    // Nor do the labels survive the editor's own later option
+    // re-synchronizations: the responsive switch between the side-by-side
+    // and inline layouts reapplies the diff options to the inner editors and
+    // wipes both labels again — verified against the packaged editor by
+    // resizing across the breakpoint. Each inner editor therefore restores
+    // the labels whenever a configuration change touches `ariaLabel`;
+    // restoring an already-correct label is not a change, so the listener
+    // settles instead of looping.
+    const relabel = [
+      editor.getOriginalEditor().onDidChangeConfiguration((event) => {
+        if (event.hasChanged(monaco.editor.EditorOption.ariaLabel)) {
+          applySideLabels();
+        }
+      }),
+      editor.getModifiedEditor().onDidChangeConfiguration((event) => {
+        if (event.hasChanged(monaco.editor.EditorOption.ariaLabel)) {
+          applySideLabels();
+        }
+      }),
+    ];
+    const languages = monaco.languages.getLanguages();
+    // Both sides hold the complete literal `sourceText` (FR-011), each in an
+    // opaque in-memory model: a Source-relative Path in a model URI would put
+    // an inspected file's location into a surface that has no need for it.
+    const original = monaco.editor.createModel(
+      comparison.originalText,
+      resolveSourceLanguage(languages, comparison.originalPath),
+      monaco.Uri.parse(`inmemory://source/${createOpaqueId()}`),
+    );
+    const modified = monaco.editor.createModel(
+      comparison.modifiedText,
+      resolveSourceLanguage(languages, comparison.modifiedPath),
+      monaco.Uri.parse(`inmemory://source/${createOpaqueId()}`),
+    );
+    editor.setModel({ original, modified });
+    return new SourceDiffHandle(monaco, editor, colorScheme, forcedColors, relabel);
   }
 }
 

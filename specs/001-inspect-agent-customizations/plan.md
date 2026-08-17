@@ -43,7 +43,8 @@ no static-export, MCP, remote-host, or automatic-watch mode. The local host is t
 devframe local-tool framework — the same foundation eslint/config-inspector uses — with
 authentication disabled: it serves the built SPA from `cli.distDir` (`dist/public`) and
 sends inert DTOs through devframe's RPC session API channel, and devframe owns port
-selection, host binding, and startup browser opening. Protection is the loopback-only
+selection and host binding, while the product owns startup browser opening through the
+`open` package with devframe's bundled opener disabled. Protection is the loopback-only
 `localhost` bind — there is no per-session token, product-owned Origin check, or
 hand-written router — and the residual exposure of an unauthenticated loopback host
 (other local processes and, via DNS rebinding, a malicious web page) is a
@@ -128,7 +129,7 @@ outside the contract.
 
 **Primary Dependencies**: Nuxt 4.4.8, Vue Router 5.2.0, tsdown 0.22.8, Vite 7.3.6
 (latest Nuxt-compatible release), `devframe` 0.7.5 (the pre-1.0 local-tool
-host framework), `gunshi` 0.37.0, `yaml` 2.9.0,
+host framework), `gunshi` 0.37.0, `open` 11.0.1, `yaml` 2.9.0,
 `jsonc-parser` 3.3.1, `smol-toml` 1.7.0, `h3` 2.0.1-rc.22, and `monaco-editor` 0.55.1.
 Each is declared as a caret range in `package.json`,
 and the committed lockfile pins these exact resolved versions with integrity; `h3`'s
@@ -956,7 +957,9 @@ certification baseline, an unavailable handler, or an unidentifiable resolved br
 automatic opening best-effort; the printed URL plus `--no-open`/manual opening in a certified
 browser is the actionable fallback. Published project/dependency package payloads and project-authored installed
 application code contain only platform-independent JavaScript application code and
-declarative static/package data; they require no install script, runtime download, or end-user
+declarative static/package data — the one exception being the `open` package's vendored
+POSIX-shell `xdg-open`, the recorded FR-038 closure exception — and they require no
+install script, runtime download, or end-user
 compiler. Package-manager-generated `node_modules/.bin` symlink/`.cmd`/`.ps1` launchers are
 payload-external interoperability metadata that map to the declared `package.json.bin` target.
 Development-only tooling is outside the product package and remains separately pinned/audited.
@@ -1023,9 +1026,11 @@ mutation. Tests instrument those calls and compare content, length, identity/lin
 mode, mtime, ctime, and observable xattrs/ACLs; an OS-only read-side atime update is recorded
 separately and is neither a failure nor proof of mutation. The separately constrained startup
 launcher owns the only permitted product-initiated child process: its fixed OS browser helper.
-The helper receives no inspection-derived content or path in argv or environment, no
-authored value or user-supplied command, and no environment-selected handler. It may copy
-only the closed ambient platform-key set directly from the launch environment; lexical
+The helper receives only the printed loopback origin — no inspection-derived content or
+path, authored value, or user-supplied command — and inherits the launch environment
+unchanged: the product writes no inspection-derived value into any environment variable,
+and a platform helper honoring the user's own configuration, such as `xdg-open`
+consulting `$BROWSER`, applies user preference. Lexical
 equality between an ambient value and a Source root does not change its provenance or grant
 read authority. The session remains usable when automatic opening is disabled, unsupported,
 or fails.
@@ -1124,7 +1129,7 @@ selected Repository root (the exact one-time invocation `process.cwd()` capture 
 or the accepted single `--root` value), zero
 to three admitted tool-specific Global sources produced by one session-wide all-tools
 opt-in (at most one each for Copilot, Claude, and Codex), exactly one root per Source, and
-exactly two distinct readable customization files in a comparison. Inventory size is governed by the supported runtime and
+at most two distinct readable customization files in a comparison, or one shown against its stated absent counterpart. Inventory size is governed by the supported runtime and
 execution environment rather than a product-defined item ceiling.
 
 ## Constitution Check
@@ -1250,10 +1255,12 @@ contract-gate rejections, lint and the remaining tests, all
 other required quality gates, and all four end-to-end stories. Monaco is
 client-only, same-origin, and model-lifetime scoped; its own diff engine avoids a
 duplicate dependency while exact authored metadata comparison stays explicit. The
-project-owned browser launcher removes the shell-bearing `open` package and confines the sole
-permitted product child process to a fixed startup OS helper that receives no inspection-derived
-content/path, authored value, user command, or environment-selected handler. It copies only the
-closed ambient platform-key set directly from the launch environment; lexical equality with a
+product-owned browser launcher spawns the maintained `open` package's fixed startup OS
+helper and confines the sole
+permitted product child process to it; the helper receives only the
+printed loopback origin — no inspection-derived content/path, authored value, or user
+command — and inherits the launch environment unchanged, into which the product writes no
+inspection-derived value; lexical equality with a
 Source root changes no provenance and grants no authority. Package gates
 assert the approved direct production dependency set from `package.json` and the
 `pnpm-lock.yaml` closure, while the committed lockfile pins each resolved version with its
@@ -1313,15 +1320,16 @@ specs/001-inspect-agent-customizations/
 src/
 ├── app/
 │   ├── App.vue
+│   ├── router.options.ts   # router scroll behavior sharing the shell's page-identity rule
 │   ├── worker-modules.d.ts
 │   ├── components/
 │   │   ├── inventory/
 │   │   ├── inspection/
-│   │   ├── comparison/
+│   │   ├── skill-comparison/
 │   │   ├── consent/
 │   │   └── diagnostics/
 │   ├── composables/
-│   │   ├── comparison.ts
+│   │   ├── skill-comparison.ts
 │   │   ├── filters.ts
 │   │   ├── monaco.ts
 │   │   └── monaco-languages.ts
@@ -1331,8 +1339,8 @@ src/
 │   │   └── view-state.ts
 │   ├── pages/
 │   │   ├── index.vue
-│   │   ├── compare.vue
 │   │   ├── global-consent.vue
+│   │   ├── skills/compare.vue
 │   │   └── skills/[tool]/[...path].vue
 │   └── styles/
 ├── server/
@@ -1593,11 +1601,10 @@ no build or package quality gate may be scheduled before they exist.
 Setup therefore configures the formatter and scaffolds the CLI entry plus every referenced assembly
 script before it configures or executes package commands, tsdown entries, or CI quality
 gates. The Setup stage is not considered runnable until those paths exist.
-Production `dependencies` is the exact-version direct set `devframe`, `gunshi`, `yaml`,
-`jsonc-parser`, `smol-toml`, `vfile`, and
-`vfile-matter`, asserted from `pnpm-lock.yaml` by `tests/package/production-graph.test.ts`;
-devframe's transitives are lockfile-owned, and `open` is absent from every dependency
-section and production lock closure.
+Production `dependencies` is the caret-declared direct set `devframe`, `gunshi`, `h3`,
+`jsonc-parser`, `open`, `smol-toml`, `vfile`, `vfile-matter`, and
+`yaml`, asserted from `pnpm-lock.yaml` by `tests/package/production-graph.test.ts`;
+devframe's and `open`'s transitives are lockfile-owned.
 Nuxt/Vue/Vite/tsdown, Monaco, Playwright, and other build/test tooling remain development-
 only.
 
@@ -1630,7 +1637,7 @@ proves the Nuxt assets, CLI, and inspection layer resolve from their built locat
 not prove the packed tarball: installing one into an isolated fixture and launching it
 through `npx --no-install` is T917, which the release gate owns.
 
-The package gate asserts the approved direct production dependency set — exactly those eight
+The package gate asserts the approved direct production dependency set — exactly those nine
 names and no others — from `package.json` and the `pnpm-lock.yaml` closure, so any new
 production dependency fails until the research.md § 3 decision is explicitly revisited. The
 committed lockfile owns each resolved version and its integrity hash, which is what keeps
@@ -1815,8 +1822,9 @@ configuration.
 - The Node host is devframe 0.7.5: the CLI starts the app definition through
   `createDevServer` from
   `devframe/adapters/dev`, sets `auth: false`, and binds the loopback `localhost` only. devframe serves
-  the built SPA from `cli.distDir` (`dist/public`) and owns port selection, host binding,
-  and startup browser opening; the session API is the set of devframe RPC functions
+  the built SPA from `cli.distDir` (`dist/public`) and owns port selection and host
+  binding, while startup browser opening is product-owned through the `open` package
+  with devframe's bundled opener disabled; the session API is the set of devframe RPC functions
   declared with `defineRpcFunction` in the app definition's `setup`
   (`src/server/host/devframe-app.ts`); the same channel also carries devframe's own
   built-ins (`devframe:agent:*`, `devframe:rpc:server-state:*`, `devframe:streaming:*`),
@@ -1854,22 +1862,26 @@ configuration.
   job, or retained failure state. Each accepted entry also retains an internal exact raw
   `lexicalRoot` beside its escaped display in that record. Enable uses only the stored raw
   value, never reverses `displayRoot`, and never rereads the environment.
-- Startup browser opening is devframe-owned: the CLI prints the plain loopback origin once
-  before devframe attempts the fixed operating-system browser-launch helper permitted by
-  FR-022, and `--no-open` disables that attempt without creating any child process. The
+- Startup browser opening is product-owned through the `open` package: the CLI prints the
+  plain loopback origin once before the host spawns the fixed operating-system
+  browser-launch helper permitted by
+  FR-022, devframe's bundled opener stays disabled so exactly one helper can spawn, and
+  `--no-open` disables the attempt without creating any child process. The
   helper invocation receives only the printed loopback origin — no inspection-derived
-  content or path, authored value, user-supplied command, or environment-selected handler;
+  content or path, authored value, or user-supplied command;
   no Source root, preview root, candidate path, file path, or authored value is copied
-  from inspection state into argv or environment, and lexical equality between such a
-  value and ambient environment text never changes provenance, grants read authority, or
-  selects a handler. The helper delegates only navigation to the OS default handler and
+  from inspection state into argv or the inherited-unchanged environment, and lexical
+  equality between such a
+  value and ambient environment text never changes provenance or grants read authority.
+  The helper delegates only navigation to the platform's own resolution — the user's own
+  configuration such as `$BROWSER` included — and
   does not select or verify a browser family/version; a successful open is not
   compatibility evidence. If automatic opening is disabled, unsupported, fails, or the
   handler or its resolved browser is unavailable, cannot be identified, or is outside the
   release-certification baseline, the server keeps running and the printed URL plus
   `--no-open` provide the documented manual-opening fallback in a certified browser
   (FR-001). Tests instrument the launch path to prove the argv/environment boundary
-  instead of re-implementing a product-owned platform map beside devframe. The one
+  instead of re-implementing a product-owned platform map beside the `open` package. The one
   terminal launch line is presentation output.
 - The session API returns inert DTOs and complete authored values only for
   an explicit detail request. The bundled browser requests one file or constructs one
@@ -1921,9 +1933,10 @@ configuration.
   delivery rejection is that request's own error: the committed snapshot stays on screen and
   another refresh can still succeed (FR-030). A lost channel, an unsupported session
   protocol, a session mismatch, or an equivalent terminal full-session reset
-  disposes editor models/workers/subscriptions, clears all session DTO/DOM/detail/
-  comparison state, aborts requests, and increments `clientDataEpoch` so a late
-  response cannot restore content. Every SessionSnapshot/FileDetail request captures that
+  disposes editor models/workers/subscriptions, clears the session DTO/DOM/detail/
+  comparison state its owners and rendered surfaces hold, aborts requests, and
+  increments `clientDataEpoch` so a late
+  response settles as a no-op instead of restoring content. Every SessionSnapshot/FileDetail request captures that
   epoch, the owning sequence's current generation — the session snapshot exposes
   `repositoryGeneration` and a nullable `globalGeneration` — plus the file's
   Source-relative Path where applicable and an exact request token. An older
@@ -2163,7 +2176,7 @@ The remaining unavoidable implementation costs are tracked explicitly:
 
 | Complexity | Why it is required | Simpler option rejected |
 |---|---|---|
-| Lockfile-pinned pre-1.0 devframe 0.7.5 host with lockfile-owned transitives (including the h3 2.0.1-rc.22 release candidate) | Reuse the config-inspector-proven local-tool host for static serving, the RPC session API, and browser opening instead of maintaining a hand-written router, token authentication, and static-manifest pipeline; within this repository's own development and CI, the committed lockfile — which the published package does not carry — holds pre-1.0 API churn and the RC transitive at one reviewed baseline for every build and test run, and the manifest's `^0.7.5` only declares the range a deliberate update may move within here (a pre-1.0 caret stays below 0.8.0). A published-package consumer's package manager resolves that same `^0.7.5` fresh against the registry at install time, exactly as it does for any other pre-1.0 dependency; nothing in the package pins a runtime baseline for them | An exact manifest pin would duplicate, for this repository's own builds, the resolution the committed lockfile already owns there — every version move is a reviewed lockfile change either way — without changing what a package consumer resolves, since the published tarball carries no lockfile either way; re-implementing the host in-repo re-creates the complexity devframe already owns |
+| Lockfile-pinned pre-1.0 devframe 0.7.5 host with lockfile-owned transitives (including the h3 2.0.1-rc.22 release candidate) | Reuse the config-inspector-proven local-tool host for static serving and the RPC session API instead of maintaining a hand-written router, token authentication, and static-manifest pipeline; within this repository's own development and CI, the committed lockfile — which the published package does not carry — holds pre-1.0 API churn and the RC transitive at one reviewed baseline for every build and test run, and the manifest's `^0.7.5` only declares the range a deliberate update may move within here (a pre-1.0 caret stays below 0.8.0). A published-package consumer's package manager resolves that same `^0.7.5` fresh against the registry at install time, exactly as it does for any other pre-1.0 dependency; nothing in the package pins a runtime baseline for them | An exact manifest pin would duplicate, for this repository's own builds, the resolution the committed lockfile already owns there — every version move is a reviewed lockfile change either way — without changing what a package consumer resolves, since the published tarball carries no lockfile either way; re-implementing the host in-repo re-creates the complexity devframe already owns |
 | Publication-authority revocation with cleanup-only late continuations | Prevent work completed after disable, shutdown, or cancellation from mutating a newer session state | Treating cancellation as physical kernel-I/O termination would make an unsupported guarantee |
 | Four fixed external terminal-equipment descriptors and supervisor-owned participant launch | Give participant, moderator, and two isolated reviewer slots deterministic nonrecording/no-echo ingress and give the sole product-exit source a real child handle | Implicit shared stdin cannot isolate votes or contexts; a harness without the product process handle cannot attest exit |
 | Adapter-owned pinned Chromium plus anonymous DevTools equipment pipe | Configure attempt-local proxy/auth without env/argv/profile persistence and ground browser/context exit in a direct OS observer | Browser authority in argv, environment, or a persistent profile violates the privacy boundary; an unowned browser has no trustworthy equipment observer |

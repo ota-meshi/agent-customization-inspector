@@ -1,5 +1,7 @@
 <script setup lang="ts">
-// One authored frontmatter block, drawn the way the file wrote it (FR-007).
+// One parsed frontmatter block: the keys and values as the parser resolved
+// them — an authored `007` arrives as `7` — in the shape the file wrote
+// (FR-007). The authored spelling stays in the source viewer beside this.
 //
 // Recursive because the shape is: a key may declare a scalar, a list, or a
 // mapping whose entries declare their own. A nested block is drawn *below* the
@@ -20,8 +22,13 @@
 // the file does not contain (FR-025, FR-033).
 import { computed } from 'vue';
 import FrontmatterValueText from './FrontmatterValueText.vue';
-import { rendersNothingVisible } from '../../../shared/entities';
-import type { FrontmatterEntryDto, FrontmatterValueDto } from '../../../shared/api-types';
+import { encodeRootPresentation, rendersNothingVisible } from '../../../shared/entities';
+import { FRONTMATTER_KEY_KIND_TEXT } from '../../../shared/api-text';
+import type {
+  FrontmatterEntryDto,
+  FrontmatterKeyKind,
+  FrontmatterValueDto,
+} from '../../../shared/api-types';
 
 const props = defineProps<{
   /** The value whose children this block draws; a mapping or a sequence. */
@@ -79,10 +86,16 @@ class BlockRow {
 
   /**
    * Whether the row is one item of a list rather than a declared key. Its
-   * label is this product's marker rather than authored text, and a block it
-   * opens carries that marker itself instead of spending a row on it.
+   * label is this product's marker rather than a declared key, and a block
+   * it opens carries that marker itself instead of spending a row on it.
    */
   public readonly fromListItem: boolean;
+
+  /**
+   * The declared key's parsed type, or null for a list item's marker row
+   * (api-types.ts § FrontmatterKeyKind).
+   */
+  public readonly keyKind: FrontmatterKeyKind | null;
 
   /** Reached only through the factories, which fix how a row was made. */
   private constructor(
@@ -90,11 +103,13 @@ class BlockRow {
     label: string,
     value: FrontmatterValueDto,
     fromListItem: boolean,
+    keyKind: FrontmatterKeyKind | null,
   ) {
     this.id = id;
     this.label = label;
     this.value = value;
     this.fromListItem = fromListItem;
+    this.keyKind = keyKind;
   }
 
   /**
@@ -107,13 +122,15 @@ class BlockRow {
 
   /**
    * The note shown for a key that draws nothing, naming which case it is. It
-   * stands beside the authored key rather than in its place: two keys made of
-   * different runs of whitespace are two different declarations, and one note
-   * for both would report a key the surface publishes as something shorter
-   * (FR-025).
+   * stands beside the authored key rather than in its place — two keys made
+   * of different runs of whitespace are two different declarations — and it
+   * carries the spelled-out form, because a flat reading collapses
+   * whitespace and would read those two declarations as one key (FR-025).
    */
   public get invisibleLabelText(): string {
-    return this.label === '' ? '(empty key)' : '(key with no visible characters)';
+    return this.label === ''
+      ? '(empty key)'
+      : `(key with no visible characters: ${encodeRootPresentation(this.label)})`;
   }
 
   /**
@@ -130,18 +147,31 @@ class BlockRow {
   }
 
   /**
+   * The note naming the key's parsed type, or null when none is drawn: a
+   * key whose type is not the string default renders like its string
+   * spelling — YAML's numeric `1` and string `"1"` are different keys of
+   * one mapping that draw identically — so the type is captioned wherever
+   * such a key is drawn, the same rule the comparison rows apply (FR-025).
+   */
+  public get kindNote(): string | null {
+    return this.keyKind !== null && this.keyKind !== 'string'
+      ? FRONTMATTER_KEY_KIND_TEXT[this.keyKind]
+      : null;
+  }
+
+  /**
    * One declared key of a mapping. Identified by its position, not by the key
    * itself: two keys can resolve to the same text — YAML's numeric `1` and
    * string `"1"` are different keys of one mapping — and a repeated render key
    * makes the framework patch the wrong row.
    */
   public static forEntry(entry: FrontmatterEntryDto, index: number): BlockRow {
-    return new BlockRow(String(index), entry.key, entry.value, false);
+    return new BlockRow(String(index), entry.key, entry.value, false, entry.keyKind);
   }
 
   /** One item of a list, identified by its position and marked as YAML marks it. */
   public static forItem(item: FrontmatterValueDto, index: number): BlockRow {
-    return new BlockRow(String(index), '-', item, true);
+    return new BlockRow(String(index), '-', item, true, null);
   }
 }
 
@@ -185,6 +215,14 @@ const rows = computed<BlockRow[]>(() => {
           ><span class="aci-muted">{{ row.invisibleLabelText }}</span></template
         >
         <template v-else>{{ row.label }}</template>
+        <!-- A non-string key renders like its string spelling; the type note
+             is what keeps them apart (see kindNote). An authored key that
+             happens to spell one of these notes stays as authored — the
+             muted styling is what tells a note from authored text, because
+             matching this product's own copy against authored text would
+             turn display wording into load-bearing syntax, and the source
+             viewer beside this surface keeps the exact spelling (FR-025). -->
+        <span v-if="row.kindNote !== null" class="aci-muted"> ({{ row.kindNote }})</span>
       </dt>
       <!-- An authored value that draws nothing — empty, or whitespace and
            zero-width characters only — would render as blank, which reads as a
@@ -275,6 +313,20 @@ ol.aci-frontmatter-block {
 .aci-frontmatter-block__key,
 .aci-frontmatter-block__value {
   align-self: baseline;
+}
+
+/* The baseline a value offers is the one its first line sits on. Without this
+   the key of a wrapping value — a `description` of several lines — was drawn
+   level with the value's *last* line, so the label appeared to belong to the
+   row below it. The cause is what the value is made of: an authored run is an
+   atomic inline (`.aci-authored-atomic`), an atomic inline's baseline is the
+   baseline of its own last line, and it is the only thing on the value's line
+   box, so it was that box's baseline too. Aligning the run to the top of the
+   line box leaves the box its own text baseline, which is the first line's.
+   Written as the value's children rather than by naming the shared utility,
+   because that class belongs to the global sheet. */
+.aci-frontmatter-block__value > * {
+  vertical-align: top;
 }
 
 .aci-frontmatter-block__key {

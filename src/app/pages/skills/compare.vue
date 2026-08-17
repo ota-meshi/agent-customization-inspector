@@ -1,0 +1,1193 @@
+<script setup lang="ts">
+// The skill comparison route (T200; FR-011, FR-012): a skill name's copies
+// compared file by corresponding file — two readable files, or one beside
+// its stated absence — their complete literal sources as one diff and their
+// recognition metadata as typed rows, with no verdict, no merge, and no
+// fix anywhere.
+//
+// The route is the skill kind's, not a shared one: the comparison is one
+// name's copies compared file by corresponding file, a model other kinds
+// do not fit — an MCP comparison compares declarations inside carrier
+// files — so it lives under `/skills/compare` and each family's comparison
+// phase designs its own surface (spec.md § Clarifications).
+//
+// The URL carries the model's own coordinates —
+// `/skills/compare?left=<entry path>&right=<entry path>&file=<relative>` —
+// the two copies named by their entry files' Source-relative Paths, the
+// identity the inventory's definitions and the detail route already use
+// (FR-030), and the compared file by its copy-relative place inside them,
+// `file` omitted for the entries themselves. Coordinates rather than two
+// free file paths, so a pair the model cannot express — two different
+// names, one copy twice, another kind's file — cannot be written, only
+// reported. The link survives rescans and server launches, resolving
+// against whatever generation is current. Direct loads boot the shell
+// first, so this page always opens against an adopted snapshot.
+//
+// Like the skill detail, this is a surface that shows file contents exactly
+// as authored — credentials included, with nothing masked and no control
+// that would uncover a masked value — and it says none of that (FR-027).
+//
+// Three things drop the open comparison, and all three are the same cleanup
+// the comparison state owns: leaving the route closes it, a client-data
+// purge clears it, and a commit drops the previous generation's view while
+// this page re-requests the same pair under the new snapshot (FR-030).
+import {
+  computed,
+  inject,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  shallowRef,
+  watch,
+  watchEffect,
+} from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { NuxtLink } from '#components';
+import RecognitionComparison from '../../components/skill-comparison/RecognitionComparison.vue';
+import SourceDiff from '../../components/skill-comparison/SourceDiff.vue';
+import { buildRecognitionComparison } from '../../components/skill-comparison/recognition-comparison';
+import { skillComparisonRouteFor } from '../../composables/skill-comparison';
+import { SESSION_VIEW_STATE } from '../../session/view-state';
+import {
+  escapeControlCharacters,
+  FILE_ENCODING_TEXT,
+  inlinePresentationLabel,
+} from '../../../shared/entities';
+import { FILE_DETAIL_KIND_TEXT } from '../../../shared/api-text';
+import type {
+  FileDetailDto,
+  SkillDefinitionDto,
+  SkillInventoryEntryDto,
+} from '../../../shared/api-types';
+
+const sessionViewState = inject(SESSION_VIEW_STATE);
+if (sessionViewState === undefined) {
+  // The shell always provides it before rendering a route; its absence is a
+  // wiring bug, and failing loudly beats rendering a comparison page with no
+  // session behind it.
+  throw new Error('the session view state was not provided by the shell');
+}
+
+const comparison = sessionViewState.skillComparison;
+const snapshot = sessionViewState.snapshot;
+const status = comparison.status;
+
+const route = useRoute();
+const router = useRouter();
+
+/**
+ * One query parameter as the single path it names. A repeated parameter
+ * arrives as an array; this route's are not repeated, so the array form
+ * folds to its first value rather than being a case.
+ */
+function queryPath(name: string): string {
+  const parameter = route.query[name];
+  if (typeof parameter === 'string') {
+    return parameter;
+  }
+  return Array.isArray(parameter) && typeof parameter[0] === 'string' ? parameter[0] : '';
+}
+
+/** The first copy's identity: its entry file's Source-relative Path (FR-030). */
+const leftPath = computed(() => queryPath('left'));
+/** The second copy's identity: its entry file's Source-relative Path (FR-030). */
+const rightPath = computed(() => queryPath('right'));
+
+/**
+ * The compared file inside the copies, copy-relative. Absent means the
+ * entries themselves: every copy's entry is its directory's `SKILL.md`, so
+ * the default is the one relative path a pair of copies always shares.
+ */
+const requestedFile = computed(() => {
+  const value = queryPath('file');
+  return value === '' ? 'SKILL.md' : value;
+});
+
+/** Whether the URL names a pair at all; without one there is nothing to open. */
+const hasPair = computed(() => leftPath.value !== '' && rightPath.value !== '');
+
+/**
+ * The coordinates most recently requested by a switcher and not yet
+ * reflected by the route. `router.replace` commits asynchronously, so two
+ * rapid switches can land inside one navigation: a second switch that
+ * composed with the route alone would compose with the coordinates being
+ * replaced and silently undo the first. Every switcher reads and composes
+ * through this pending value first; the watch below clears it the moment
+ * the route has caught up, so the route stays the identity and this ref is
+ * only the gap-filler.
+ */
+const pendingPair = shallowRef<{
+  readonly left: string;
+  readonly right: string;
+  readonly file: string;
+} | null>(null);
+
+// The route caught up (or the reader navigated): the query is the truth
+// again, and a pending value kept past this point would shadow it.
+watch([leftPath, rightPath, requestedFile], () => {
+  pendingPair.value = null;
+});
+
+/** The pending-aware current coordinates; the route's, once it has caught up. */
+const currentLeftPath = computed(() => pendingPair.value?.left ?? leftPath.value);
+const currentRightPath = computed(() => pendingPair.value?.right ?? rightPath.value);
+const currentFile = computed(() => pendingPair.value?.file ?? requestedFile.value);
+
+/**
+ * Replaces the compared coordinates in place. `replace` rather than `push`:
+ * rapid switching among a skill's files is this page's working motion, and
+ * a history entry per switch would make the back button replay every pair
+ * the reader stepped through on the way. The default compared file rides as
+ * an absent parameter, so the entry pair's URL is spelled one way.
+ */
+function switchTo(left: string, right: string, file: string): void {
+  pendingPair.value = { left, right, file };
+  void router.replace(skillComparisonRouteFor(left, right, file === 'SKILL.md' ? undefined : file));
+}
+
+/** The directory a path sits in, trailing slash kept. */
+function directoryOf(path: string): string {
+  return path.slice(0, path.lastIndexOf('/') + 1);
+}
+
+/**
+ * A name's copies as the committed inventory attributes files to them: each
+ * copy directory with the set of Source-relative Paths the copy ships — its
+ * entry file plus its published companion census
+ * (api-types.ts § SkillDefinitionDto.companionFiles).
+ */
+type CopyPopulation = ReadonlyMap<string, ReadonlySet<string>>;
+
+/**
+ * The copy directory a path belongs to, out of a name's copies: the deepest
+ * one whose published membership contains the path, never merely the first.
+ * Membership rather than a prefix test, because which files are a copy's is
+ * the census's published fact — the traversal can commit a file under a
+ * copy's prefix that the census does not attribute to it, a symbolically
+ * linked subdirectory's contents above all — and a second derivation could
+ * disagree with the one publication. Deepest rather than first, because two
+ * copy directories of one name can nest — a nested skill's root-relative
+ * prefixed name can collide with a name another file authors — and the
+ * outer copy's census lists the nested copy's files too, the same reason
+ * the detail page's owner resolution takes the innermost census.
+ */
+function copyOf(path: string, population: CopyPopulation): string | undefined {
+  let owner: string | undefined;
+  for (const [directory, members] of population) {
+    if (members.has(path) && (owner === undefined || directory.length > owner.length)) {
+      owner = directory;
+    }
+  }
+  return owner;
+}
+
+/** The committed readable paths — the comparison-eligible files (FR-025). */
+const readablePaths = computed(
+  () =>
+    new Set(
+      (snapshot.value?.files ?? [])
+        .filter((file) => file.encoding === 'utf-8' || file.encoding === 'utf-8-replaced')
+        .map((file) => file.sourceRelativePath),
+    ),
+);
+
+/**
+ * Every committed path, readable or not: what the one-sided open below asks
+ * to tell a path that resolves in the current scan from one that does not —
+ * a question about the snapshot, where membership in a copy is the
+ * census's.
+ */
+const committedPaths = computed(
+  () => new Set((snapshot.value?.files ?? []).map((file) => file.sourceRelativePath)),
+);
+
+/**
+ * The one inventory row owning the pair: both identities are entry files of
+ * its definitions. First match in the snapshot's published row order — one
+ * file can sit on two rows (a nested skill's root-relative prefixed name
+ * beside a plain one), and when two rows hold both entries the published
+ * order is the deterministic tie-break. Null when no row holds both, which
+ * the template reports instead of comparing: a pair of two different names,
+ * one copy twice, or an identity the current scan does not hold is not a
+ * comparison this model expresses.
+ */
+const owningRow = computed<SkillInventoryEntryDto | null>(() => {
+  if (!hasPair.value || currentLeftPath.value === currentRightPath.value) {
+    return null;
+  }
+  return (
+    (snapshot.value?.skills ?? []).find((entry) => {
+      const entries = new Set(entry.definitions.map((d) => d.sourceRelativePath));
+      return entries.has(currentLeftPath.value) && entries.has(currentRightPath.value);
+    }) ?? null
+  );
+});
+
+/**
+ * The owning name's copies with the files the committed inventory
+ * attributes to each — the entry file plus its published companion census
+ * (api-types.ts § SkillDefinitionDto.companionFiles). Null while no row
+ * owns the pair.
+ */
+const population = computed<CopyPopulation | null>(() => {
+  const row = owningRow.value;
+  if (row === null) {
+    return null;
+  }
+  const files = new Map<string, Set<string>>();
+  for (const definition of row.definitions) {
+    const directory = directoryOf(definition.sourceRelativePath);
+    let members = files.get(directory);
+    if (members === undefined) {
+      members = new Set();
+      files.set(directory, members);
+    }
+    members.add(definition.sourceRelativePath);
+    for (const companion of definition.companionFiles) {
+      members.add(companion);
+    }
+  }
+  return files;
+});
+
+/** The population's copy directories, in the row's definition order. */
+const copies = computed<readonly string[] | null>(() =>
+  population.value === null ? null : [...population.value.keys()],
+);
+
+/**
+ * Each copy directory's entry file — the identity a copy switch writes into
+ * the URL. One entry per directory, because a directory holds one
+ * `SKILL.md`.
+ */
+const copyEntries = computed<ReadonlyMap<string, string>>(() => {
+  const entries = new Map<string, string>();
+  for (const definition of owningRow.value?.definitions ?? []) {
+    entries.set(directoryOf(definition.sourceRelativePath), definition.sourceRelativePath);
+  }
+  return entries;
+});
+
+/** The first compared copy's directory; null while no row owns the pair. */
+const leftCopy = computed(() =>
+  owningRow.value === null ? null : directoryOf(currentLeftPath.value),
+);
+
+/** The second compared copy's directory; null while no row owns the pair. */
+const rightCopy = computed(() =>
+  owningRow.value === null ? null : directoryOf(currentRightPath.value),
+);
+
+/** The compared file coordinate, echoed while a row owns the pair. */
+const comparedFile = computed(() => (owningRow.value === null ? null : currentFile.value));
+
+/**
+ * The pair's compared file paths, composed from the copies and the compared
+ * file — the identities the detail loads and the diff labels use (FR-030).
+ * Null while no row owns the pair.
+ */
+const composedLeftPath = computed(() =>
+  leftCopy.value === null ? null : leftCopy.value + currentFile.value,
+);
+const composedRightPath = computed(() =>
+  rightCopy.value === null ? null : rightCopy.value + currentFile.value,
+);
+
+/**
+ * The copy-relative paths readable among one copy's attributed files, the
+ * entry file first and the census's own sorted order after it. Attributed,
+ * not merely a member: a nested copy's files are members of the outer
+ * copy's census too, and offering one as an outer-relative option would
+ * compose a pair that re-resolves under the inner copy — the same
+ * deepest-owner rule {@link copyOf} applies. A nested skill of a
+ * *different* name stays offered: its files are this copy's own census
+ * companions — the same set the skill detail's file tree shows — and
+ * comparing the copies' corresponding files is this model whatever a
+ * companion happens to contain (FR-011).
+ */
+function readableRelatives(directory: string): readonly string[] {
+  const files = population.value;
+  const members = files?.get(directory);
+  if (files === null || files === undefined || members === undefined) {
+    return [];
+  }
+  const relatives: string[] = [];
+  for (const path of members) {
+    if (readablePaths.value.has(path) && copyOf(path, files) === directory) {
+      relatives.push(path.slice(directory.length));
+    }
+  }
+  return relatives;
+}
+
+/**
+ * Whether one copy owns a file at `relative`, readable or not — attributed
+ * to that copy by the same deepest-owner rule the option lists apply
+ * ({@link copyOf}), never mere census membership: a nested copy's file is a
+ * member of the outer copy's census too, and treating it as the outer
+ * copy's own would compose a pair that re-resolves under the inner copy and
+ * drops the switchers mid-step.
+ */
+function ownedIn(directory: string, relative: string): boolean {
+  const files = population.value;
+  return files !== null && copyOf(directory + relative, files) === directory;
+}
+
+/** Whether one copy owns a readable file at `relative`; see {@link ownedIn}. */
+function readableIn(directory: string, relative: string): boolean {
+  return ownedIn(directory, relative) && readablePaths.value.has(directory + relative);
+}
+
+/**
+ * The copy-relative paths readable in both given copies, in the first
+ * copy's option order — what a copy switch falls back to when the current
+ * file cannot be kept, because a switch must land on a pair that has
+ * something to show.
+ */
+function commonFiles(directory: string, otherDirectory: string): readonly string[] {
+  return readableRelatives(directory).filter((relative) => readableIn(otherDirectory, relative));
+}
+
+/**
+ * One compared-file switcher option. A class because production constructs
+ * one in exactly one place — {@link fileOptions} — and the label is derived
+ * where it is read rather than stored beside what it derives from (AGENTS.md
+ * § Class and interface policy, § Implementation simplicity policy).
+ */
+class ComparedFileOption {
+  /** The copy-relative path this option steps the pair to. */
+  public readonly relative: string;
+
+  /**
+   * Which current copy alone has a file at this relative path, or null when
+   * both own one. 'left'/'right' states a genuine absence: the other copy
+   * owns nothing there and the current scan commits nothing at the composed
+   * path — exactly the condition the one-sided open requires (openCurrent),
+   * so the label and the opened comparison can never disagree. A committed
+   * file at that path the copy does not own is neither, and gets no option
+   * at all ({@link fileOptions}). Not readability: a binary counterpart is
+   * owned, so its file is not "only in" the other copy.
+   */
+  public readonly onlyIn: 'left' | 'right' | null;
+
+  /** Records one relative path and which side, if either, holds it alone. */
+  public constructor(relative: string, onlyIn: 'left' | 'right' | null) {
+    this.relative = relative;
+    this.onlyIn = onlyIn;
+  }
+
+  /**
+   * What the option reads as: the relative path through {@link inlinePresentationLabel},
+   * and — for a file only one copy ships — which skill directory that is, so
+   * the existence difference is visible in the list itself. A path that
+   * happens to spell the one-sided note stays as authored: matching this
+   * product's own copy against authored text would turn display wording
+   * into load-bearing syntax, and the comparison itself shows each side's
+   * identity in full.
+   */
+  public get label(): string {
+    const spelled = inlinePresentationLabel(this.relative);
+    if (this.onlyIn === 'left') {
+      return `${spelled} (first skill directory only)`;
+    }
+    if (this.onlyIn === 'right') {
+      return `${spelled} (second skill directory only)`;
+    }
+    return spelled;
+  }
+}
+
+/**
+ * The files the pair can step through: every file readable in either current
+ * copy — the first copy's files in committed order, then the second copy's
+ * own. The union rather than the intersection, because a file only one copy
+ * ships is itself a difference between the copies (FR-011): stepping to it
+ * shows the present side's complete content against its stated absence. A
+ * file readable in neither copy is not offered — there is nothing to show
+ * (FR-025).
+ */
+const fileOptions = computed<readonly ComparedFileOption[]>(() => {
+  const left = leftCopy.value;
+  const right = rightCopy.value;
+  if (left === null || right === null) {
+    return [];
+  }
+  const committed = committedPaths.value;
+  const options: ComparedFileOption[] = [];
+  const offer = (relative: string, other: string, onlyIn: 'left' | 'right'): void => {
+    if (ownedIn(other, relative)) {
+      options.push(new ComparedFileOption(relative, null));
+    } else if (!committed.has(other + relative)) {
+      options.push(new ComparedFileOption(relative, onlyIn));
+    }
+    // A committed file at the corresponding path that the other copy does
+    // not own — a symbolically linked subtree's independently committed
+    // contents — is neither a counterpart nor an absence: no option is
+    // offered, and a hand-written `file` coordinate naming it is rejected
+    // by the same predicate through pairFault (FR-011).
+  };
+  for (const relative of readableRelatives(left)) {
+    offer(relative, right, 'left');
+  }
+  for (const relative of readableRelatives(right)) {
+    if (!options.some((option) => option.relative === relative)) {
+      offer(relative, left, 'right');
+    }
+  }
+  return options;
+});
+
+/**
+ * Whether the switchers render: a row owns the pair — the only comparable
+ * state the URL scheme can express — and the current copies offer at least
+ * one comparable file.
+ */
+const switchersAvailable = computed(() => owningRow.value !== null && fileOptions.value.length > 0);
+
+/**
+ * The compared-file switcher binding: choosing a file moves the `file`
+ * coordinate, so the two sides are always the same file of two copies. A
+ * computed with a setter so the `<select>` binds with `v-model` and no
+ * event handler reaches into the DOM for the chosen value.
+ */
+const fileSelection = computed({
+  get: () => comparedFile.value ?? '',
+  set: (relative: string) => {
+    if (owningRow.value !== null) {
+      switchTo(currentLeftPath.value, currentRightPath.value, relative);
+    }
+  },
+});
+
+/**
+ * Whether a copy can stand on one side of a pair at `relative`: it owns a
+ * file there, or genuinely holds nothing — nothing committed at the
+ * composed path — which is the stated absence of a one-sided pair. A
+ * committed file the copy does not own is neither; see
+ * {@link fileOptions}.
+ */
+function standsAt(directory: string, relative: string): boolean {
+  return ownedIn(directory, relative) || !committedPaths.value.has(directory + relative);
+}
+
+/**
+ * The file a pair keeps when one side moves to `directory`, its other side
+ * staying on `otherDirectory`: the currently compared file whenever one of
+ * those two copies still owns it readably and the other can stand opposite
+ * it ({@link standsAt}) — a copy that owns nothing there makes the pair
+ * one-sided, which is a difference this surface states rather than a pair
+ * to steer around (FR-011), and the reader's chosen file is not changed
+ * under them. Only when the current file cannot be kept does the switch
+ * fall back to the first file both copies share, so it still lands where
+ * something can be shown; the ready announcement names the compared file,
+ * which is how that fallback is heard. Null when there is neither; that
+ * copy's option is disabled.
+ */
+function fileFor(directory: string, otherDirectory: string): string | null {
+  const current = comparedFile.value;
+  if (
+    current !== null &&
+    ((readableIn(directory, current) && standsAt(otherDirectory, current)) ||
+      (readableIn(otherDirectory, current) && standsAt(directory, current)))
+  ) {
+    return current;
+  }
+  return commonFiles(directory, otherDirectory)[0] ?? null;
+}
+
+/**
+ * Whether a copy can stand on the side whose opposite is `otherDirectory`:
+ * the other side's own copy cannot — the two sides would hold one file
+ * (FR-011) — and neither can a copy that would neither keep the current
+ * file nor share any comparable file with the other side.
+ */
+function copyDisabled(directory: string, otherDirectory: string | null): boolean {
+  return (
+    otherDirectory === null ||
+    directory === otherDirectory ||
+    fileFor(directory, otherDirectory) === null
+  );
+}
+
+/** The first side's copy switcher binding; see {@link fileSelection}. */
+const leftCopySelection = computed({
+  get: () => leftCopy.value ?? '',
+  set: (directory: string) => {
+    const entry = copyEntries.value.get(directory);
+    const other = rightCopy.value;
+    const relative = other === null ? null : fileFor(directory, other);
+    if (entry !== undefined && other !== null && relative !== null) {
+      switchTo(entry, currentRightPath.value, relative);
+    }
+  },
+});
+
+/** The second side's copy switcher binding; see {@link fileSelection}. */
+const rightCopySelection = computed({
+  get: () => rightCopy.value ?? '',
+  set: (directory: string) => {
+    const entry = copyEntries.value.get(directory);
+    const other = leftCopy.value;
+    const relative = other === null ? null : fileFor(directory, other);
+    if (entry !== undefined && other !== null && relative !== null) {
+      switchTo(currentLeftPath.value, entry, relative);
+    }
+  },
+});
+
+/**
+ * What is wrong with the link's coordinates, before any request — the
+ * model's own validation, reported instead of a comparison. Null when the
+ * pair is the model's: two distinct entry identities one row owns, with a
+ * compared file each copy either owns or genuinely lacks.
+ */
+const pairFault = computed<string | null>(() => {
+  if (!hasPair.value) {
+    return 'This link names no pair of skill directories. Open a comparison from a skill’s row in the inventory, or from its detail page.';
+  }
+  if (currentLeftPath.value === currentRightPath.value) {
+    return 'A comparison needs two distinct copies of a skill, and this link names the same one twice.';
+  }
+  const left = leftCopy.value;
+  const right = rightCopy.value;
+  if (left === null || right === null) {
+    return 'No skill name in the current scan owns both of this link’s directories. The inventory may have changed since the link was made; open a comparison from a skill’s row.';
+  }
+  // Each side must be the copy's own file or its stated absence
+  // ({@link standsAt}): a committed file at the composed path that the copy
+  // does not own — a symbolically linked subtree's independently committed
+  // contents — is outside the model, so it is reported here exactly as the
+  // switchers exclude it, never compared (FR-011).
+  if (!standsAt(left, currentFile.value) || !standsAt(right, currentFile.value)) {
+    return 'This link’s compared file is not one of the named copies’ own files. Step the compared-file switcher to a file the copies ship, or open a comparison from a skill’s row.';
+  }
+  return null;
+});
+
+/**
+ * Opens what the current coordinates name: the two-file comparison when
+ * both composed paths are committed — a binary counterpart included, whose
+ * open settles as the named not-readable outcome — and the one-sided
+ * comparison when exactly one is: the pair corresponds by construction, so
+ * an uncommitted side is the stated absence itself (FR-011). Neither
+ * committed — a hand-edited `file` no copy holds — settles as the ordinary
+ * stale outcome.
+ */
+function openCurrent(left: string, right: string): void {
+  const committed = committedPaths.value;
+  const leftCommitted = committed.has(left);
+  const rightCommitted = committed.has(right);
+  if (leftCommitted !== rightCommitted) {
+    void comparison.openSingle(leftCommitted ? left : right, leftCommitted ? 'left' : 'right');
+    return;
+  }
+  void comparison.open(left, right);
+}
+
+// One effect owns "which pair should be open", so entering the route, a URL
+// edit, a switch, and a committed generation all take the same path. The
+// committed generations are part of the key for the same reason the skill
+// detail's watch documents: adopting a newer one drops the open comparison
+// while the coordinates stay identical, so their change is what re-requests
+// the same pair under the new snapshot. Declared after the model computeds
+// because its immediate run consults them.
+watch(
+  [
+    leftPath,
+    rightPath,
+    requestedFile,
+    (): number => snapshot.value?.repositoryGeneration ?? 0,
+    (): number | null => snapshot.value?.globalGeneration ?? null,
+  ],
+  () => {
+    const left = composedLeftPath.value;
+    const right = composedRightPath.value;
+    if (left === null || right === null || pairFault.value !== null) {
+      // The coordinates are outside the model; the template reports the
+      // fault ({@link pairFault}) instead of a comparison.
+      comparison.close();
+      return;
+    }
+    openCurrent(left, right);
+  },
+  { immediate: true },
+);
+
+/**
+ * The inventory's definitions of one compared file — one per recognizing
+ * tool (FR-007), which is the inventory's fact rather than the detail's, so
+ * it is resolved from the snapshot the page already holds. The skill
+ * inventory alone, because typed recognition metadata is kind-specific
+ * (FR-011, spec.md § Clarifications): the URL's coordinates name skill
+ * entries, so no other kind's file can be a compared copy — another kind's
+ * typed metadata belongs to that kind's own surface.
+ */
+function definitionsOf(sourceRelativePath: string): readonly SkillDefinitionDto[] {
+  return (snapshot.value?.skills ?? []).flatMap((entry) =>
+    entry.definitions.filter((definition) => definition.sourceRelativePath === sourceRelativePath),
+  );
+}
+
+/**
+ * What one compared file is, beside its path: its Source family, its
+ * recognized kind, and its read outcome (US3 scenario 1). Every Source of
+ * this release is the repository's, so the family is stated directly rather
+ * than resolved through a lookup whose miss branch could name no producer;
+ * the global phases that add other Sources add the label's derivation with
+ * them (spec.md § User Story 4). The family rather than the root label,
+ * which the inventory already shows.
+ */
+function fileFacts(detail: FileDetailDto): string {
+  const facts = [
+    'Repository',
+    FILE_DETAIL_KIND_TEXT[detail.kind],
+    FILE_ENCODING_TEXT[detail.file.encoding],
+  ];
+  if (detail.file.encoding !== 'unknown') {
+    facts.push(`${detail.file.sizeBytes} bytes`);
+  }
+  return facts.join(' · ');
+}
+
+/**
+ * One side's text for the diff: the complete `sourceText` of a readable
+ * detail, the empty string for the absent side of a one-sided comparison —
+ * an empty side is what makes the present content read, line by line, as
+ * the difference — and null for a variant that has no text to show.
+ */
+function diffText(detail: FileDetailDto | null): string | null {
+  if (detail === null) {
+    return '';
+  }
+  return detail.file.encoding === 'utf-8' || detail.file.encoding === 'utf-8-replaced'
+    ? detail.file.sourceText
+    : null;
+}
+
+/**
+ * The whole ready view as one derivation, null outside 'ready': the two
+ * identity sides (each side's requested path with its adopted detail, or a
+ * null detail for the stated absence of a one-sided comparison), the diff
+ * input (the requested paths with the complete texts, guarded by the same
+ * readable-variant check the comparison state enforces so `sourceText` is
+ * never reached on a variant that lacks it), and the recognition groups —
+ * built for a one-sided pair too, whose present side's recognitions stand
+ * beside the stated absence (FR-011, T203).
+ *
+ * One computed rather than one per projection, because its release is its
+ * next read: a dirty computed retains its previous value until then, and a
+ * per-projection computed that only the ready branch reads would keep the
+ * last pair's authored content cached behind an error statement for as long
+ * as the page shows one (FR-027). Bundled here and read by the template's
+ * first branch condition on every render, the view re-derives to null on
+ * the first render after leaving 'ready' — the same flush that takes the
+ * rendered content out of the DOM. The externally reachable holders of
+ * authored text — the Monaco models and the fallback DOM — keep their
+ * synchronous disposal through the purge's owner registry; this cache is
+ * reachable only through the read that re-derives it.
+ */
+const readyView = computed(() => {
+  if (status.value !== 'ready') {
+    return null;
+  }
+  const leftPath = composedLeftPath.value;
+  const rightPath = composedRightPath.value;
+  if (leftPath === null || rightPath === null) {
+    // A torn frame between a snapshot replacement and the re-request it
+    // triggers: without a row there is no pair to show, whatever the status
+    // still says.
+    return null;
+  }
+  const left = comparison.leftDetail.value;
+  const right = comparison.rightDetail.value;
+  const originalText = diffText(left);
+  const modifiedText = diffText(right);
+  return {
+    sides: [
+      { caption: 'First file', path: leftPath, detail: left },
+      { caption: 'Second file', path: rightPath, detail: right },
+    ] as const,
+    diff:
+      originalText === null || modifiedText === null
+        ? null
+        : {
+            originalText,
+            originalPath: leftPath,
+            modifiedText,
+            modifiedPath: rightPath,
+            // Presence crosses the boundary with the texts: an absent
+            // side's empty model is diff arithmetic, not an empty file, and
+            // the surface labels the difference (FR-025).
+            originalAbsent: left === null,
+            modifiedAbsent: right === null,
+          },
+    // A one-sided pair passes its absent side as null: the present side's
+    // recognitions and declarations stand beside the stated absence (T203).
+    groups: buildRecognitionComparison(
+      left === null
+        ? null
+        : { detail: left, definitions: definitionsOf(left.file.sourceRelativePath) },
+      right === null
+        ? null
+        : { detail: right, definitions: definitionsOf(right.file.sourceRelativePath) },
+    ),
+  };
+});
+
+/**
+ * What this page says for the state it is in — one value read by both the
+ * visible copy and the live region, so what a reader hears is the sentence
+ * on the screen (WCAG 4.1.3). A link fault outranks the request status;
+ * empty for 'ready', whose content is read as focus moves through it, and
+ * for 'loading', which has its own phrase.
+ */
+const stateStatement = computed<string | null>(() => {
+  const fault = pairFault.value;
+  if (fault !== null) {
+    return fault;
+  }
+  switch (status.value) {
+    case 'same-path':
+      // Unreachable from this page — distinct copies compose distinct
+      // paths — but the state is the composable's contract for its other
+      // callers, and an arm must say something.
+      return 'A comparison needs two distinct files, and this link names the same file twice.';
+    case 'stale':
+      return 'Nothing in the current scan sits at this link’s compared file. The inventory may have changed since the link was made; a rescan that brings the file back will make it resolve again.';
+    case 'not-readable':
+      // Through the switchers' own spelling ({@link inlinePresentationLabel}), because
+      // this paragraph collapses whitespace: a path with consecutive,
+      // leading, or trailing spaces would otherwise be announced under a
+      // different spelling than the file it names (FR-025).
+      return `This file has no readable source text to compare: ${inlinePresentationLabel(
+        comparison.unreadablePath.value ?? '',
+      )}`;
+    case 'failed':
+      return comparison.errorMessage.value === null
+        ? 'This comparison could not be loaded.'
+        : `This comparison could not be loaded. ${comparison.errorMessage.value}`;
+    case 'idle':
+      return 'This comparison could not be loaded.';
+    case 'loading':
+    case 'ready':
+      return null;
+  }
+  return null;
+});
+
+/**
+ * What the polite live region announces; see {@link stateStatement}. Unlike
+ * the statement, 'loading' and 'ready' announce themselves: a reader
+ * stepping the switchers holds focus on a select, so without a completion
+ * phrase nothing would say the comparison behind it changed (WCAG 4.1.3).
+ * The ready phrase names the compared file, because a copy switch can fall
+ * back to a different file than the one the reader had ({@link fileFor}),
+ * and the name is how that change reaches ears the moved select never left.
+ */
+const announcement = computed(() => {
+  if (status.value === 'loading') {
+    return 'Loading this comparison…';
+  }
+  if (status.value === 'ready') {
+    const relative = comparedFile.value;
+    return relative === null
+      ? 'Comparison ready.'
+      : `Comparison ready: ${inlinePresentationLabel(relative)}.`;
+  }
+  return stateStatement.value ?? '';
+});
+
+/**
+ * Whether the failed statement gets a retry: 'failed' and the recoverable
+ * 'idle' both re-request the same pair, while a link fault, 'stale', and
+ * 'not-readable' describe the link itself, which no retry changes.
+ */
+const retryable = computed(
+  () => pairFault.value === null && (status.value === 'failed' || status.value === 'idle'),
+);
+
+/** The page heading, focused on entry so a keyboard user starts at the top. */
+const heading = ref<HTMLHeadingElement | null>(null);
+
+/** The ready view's own region; what the focus guard below watches. */
+const readyRegion = ref<HTMLElement | null>(null);
+
+/** The error/state statement's region; watched by the same focus guard. */
+const stateRegion = ref<HTMLElement | null>(null);
+
+/** The switchers' region; what the pickers focus guard below watches. */
+const pickersRegion = ref<HTMLElement | null>(null);
+
+/**
+ * Whether the per-side copy switchers render: only a name with more than
+ * two copies has a copy to move a side to — with exactly two, both already
+ * stand on the two sides and each selector would offer nothing but its own
+ * value (T200).
+ */
+const copySwitchersShown = computed(() => (copies.value?.length ?? 0) > 2);
+
+/** The two copy pickers; what the copy-picker focus guard below watches. */
+const firstCopyPicker = ref<HTMLElement | null>(null);
+const secondCopyPicker = ref<HTMLElement | null>(null);
+
+/** The failed statement's retry button; what the retry focus guard watches. */
+const retryButton = ref<HTMLButtonElement | null>(null);
+
+/** Set as the route is left, so the focus guard yields to the next route. */
+let leaving = false;
+
+// A generation replacement drops the ready view while keyboard focus may be
+// inside it — in the diff editor above all — and the unmount would silently
+// drop focus to the document body (WCAG 2.4.3, the skill detail page's own
+// guards' contract). Synchronous, because after the patch the focused
+// element is already gone. Scoped to the regions rather than the page, so a
+// file switch — which also leaves 'ready' for a moment — never yanks focus
+// off the switcher the reader is operating. The statement region is guarded
+// the same way: a stale statement's automatic session refresh can adopt a
+// newer generation while focus sits on the region's inventory link, and the
+// return to 'loading' unmounts that link too.
+watch(
+  status,
+  (next) => {
+    if (leaving) {
+      return;
+    }
+    const leavesReadyRegion =
+      next !== 'ready' && readyRegion.value?.contains(document.activeElement) === true;
+    const leavesStateRegion =
+      (next === 'loading' || next === 'ready') &&
+      stateRegion.value?.contains(document.activeElement) === true;
+    if (leavesReadyRegion || leavesStateRegion) {
+      heading.value?.focus();
+    }
+  },
+  { flush: 'sync' },
+);
+
+// The same rescue for the switchers themselves: a committed generation can
+// take the population away — the name lost a copy, or a compared file
+// stopped being readable — and unmount the very select the reader is
+// operating (WCAG 2.4.3). Synchronous for the same reason as above.
+watch(
+  switchersAvailable,
+  (available) => {
+    if (!available && !leaving && pickersRegion.value?.contains(document.activeElement) === true) {
+      heading.value?.focus();
+    }
+  },
+  { flush: 'sync' },
+);
+
+// The retry button is its own case: a committed generation can take the
+// pair's validity away while the reader is focused on it — 'failed'
+// settles to 'idle' through the close, so the status guards above see no
+// unmounting transition, and only pairFault's flip removes the button
+// (WCAG 2.4.3). Scoped to the button itself, because the statement region
+// stays mounted around it.
+watch(
+  retryable,
+  (can) => {
+    if (!can && !leaving && retryButton.value === document.activeElement) {
+      heading.value?.focus();
+    }
+  },
+  { flush: 'sync' },
+);
+
+// And one level deeper: a committed generation can take away only a third
+// copy the pair does not stand on — the remaining two keep the switchers
+// available, so the guard above never fires — while the copy selectors
+// alone unmount under the reader's focus (WCAG 2.4.3). The rescue scope is
+// the two copy pickers, because the file switcher stays mounted and focus
+// on it must not be yanked.
+watch(
+  copySwitchersShown,
+  (shown) => {
+    if (
+      !shown &&
+      !leaving &&
+      (firstCopyPicker.value?.contains(document.activeElement) === true ||
+        secondCopyPicker.value?.contains(document.activeElement) === true)
+    ) {
+      heading.value?.focus();
+    }
+  },
+  { flush: 'sync' },
+);
+
+/**
+ * Re-requests the pair the URL names; the failed state's retry. Focus moves
+ * to the heading first, because the button this click came from unmounts
+ * with the failed branch the moment the state returns to loading, and focus
+ * would drop to the document body (WCAG 2.4.3).
+ */
+function retryOpen(): void {
+  heading.value?.focus();
+  const left = composedLeftPath.value;
+  const right = composedRightPath.value;
+  // Narrowing only: the retry button renders only while a row owns the
+  // pair, so both composed paths exist.
+  if (left !== null && right !== null) {
+    openCurrent(left, right);
+  }
+}
+
+onMounted(() => {
+  // Arriving from the inventory: the shell is already mounted, so nothing
+  // else places focus, and this page's own mount is the moment its heading
+  // exists (WCAG 2.4.3).
+  heading.value?.focus();
+});
+
+/**
+ * What the document title says this page is showing (WCAG 2.4.2): the
+ * comparison, or the state that replaced it — a reader returning to a tab
+ * must not find a title claiming a comparison the page no longer shows.
+ */
+const titleSubject = computed<string>(() => {
+  if (pairFault.value !== null) {
+    return hasPair.value ? 'Link names no comparable pair' : 'Link names no comparison';
+  }
+  switch (status.value) {
+    case 'ready':
+    case 'loading':
+      return 'Comparing skill files';
+    case 'stale':
+      return 'Link not in this scan';
+    case 'same-path':
+      return 'Comparison needs two distinct files';
+    case 'not-readable':
+      return 'Comparison needs readable files';
+    case 'failed':
+    case 'idle':
+      return 'Comparison could not be loaded';
+  }
+  return 'Comparing skill files';
+});
+watchEffect(() => {
+  sessionViewState.pageSubject.value = titleSubject.value;
+});
+
+onBeforeUnmount(() => {
+  // Before the close, whose status change would otherwise trip the focus
+  // guard while the next route owns focus.
+  leaving = true;
+  // Leaving the route drops the authored sources this page requested, and
+  // the title subject with it.
+  sessionViewState.pageSubject.value = null;
+  comparison.close();
+});
+</script>
+
+<template>
+  <div class="aci-skill-compare">
+    <p><NuxtLink to="/">Back to the inventory</NuxtLink></p>
+
+    <h2 ref="heading" tabindex="-1">Compare skill files</h2>
+
+    <!-- Stable rather than inserted with the state it reports, because a
+         region that appears together with its message is not reliably read
+         (WCAG 4.1.3). -->
+    <p class="aci-live-region" role="status" aria-live="polite" aria-atomic="true">
+      {{ announcement }}
+    </p>
+
+    <!-- The switchers: a comparison is one corresponding file across two
+         copies of one skill name, so what a reader chooses is which file —
+         the two sides are always that same file — and, when the name has
+         more than two copies, which copies stand on the two sides. Stepping
+         the compared-file switcher is how three or more files are reviewed
+         pair by pair, with no selection composed anywhere else. Present
+         whenever a row owns the coordinates — the not-readable state
+         included, which is exactly the state a switch recovers from — while
+         a link fault ({@link pairFault}) renders the report alone.
+         Native selects, each labelled through `for`/`id` rather than a
+         wrapping label: the accessible-name computation folds an embedded
+         control's own value into a wrapping label's text, so a wrapped
+         select would announce itself with its options mixed into its name
+         (WCAG 2.4.6). -->
+    <div v-if="switchersAvailable" ref="pickersRegion" class="aci-skill-compare__pickers">
+      <div class="aci-skill-compare__picker">
+        <label for="aci-skill-compare-file">Compared file</label>
+        <select id="aci-skill-compare-file" v-model="fileSelection">
+          <!-- Every file either current copy ships readably. One a single
+               copy ships says so in its own label, and stepping to it shows
+               the present content against its stated absence — the existence
+               difference is part of the comparison (FR-011). -->
+          <option v-for="option in fileOptions" :key="option.relative" :value="option.relative">
+            {{ option.label }}
+          </option>
+        </select>
+      </div>
+      <!-- The per-side copy switchers appear only when the name has more
+           than two copies: with exactly two, both already stand on the two
+           sides and each selector would offer nothing but its own value —
+           dead controls (T200). -->
+      <template v-if="copySwitchersShown">
+        <div ref="firstCopyPicker" class="aci-skill-compare__picker">
+          <label for="aci-skill-compare-first-copy">First skill directory</label>
+          <select id="aci-skill-compare-first-copy" v-model="leftCopySelection">
+            <!-- The other side's copy is unselectable — the two sides would
+                 hold one file (FR-011) — as is a copy sharing no comparable
+                 file with it. -->
+            <option
+              v-for="directory in copies ?? []"
+              :key="directory"
+              :value="directory"
+              :disabled="directory !== leftCopy && copyDisabled(directory, rightCopy)"
+            >
+              {{ inlinePresentationLabel(directory) }}
+            </option>
+          </select>
+        </div>
+        <div ref="secondCopyPicker" class="aci-skill-compare__picker">
+          <label for="aci-skill-compare-second-copy">Second skill directory</label>
+          <select id="aci-skill-compare-second-copy" v-model="rightCopySelection">
+            <option
+              v-for="directory in copies ?? []"
+              :key="directory"
+              :value="directory"
+              :disabled="directory !== rightCopy && copyDisabled(directory, leftCopy)"
+            >
+              {{ inlinePresentationLabel(directory) }}
+            </option>
+          </select>
+        </div>
+      </template>
+    </div>
+
+    <!-- The ready view leads the branch chain so its one bundled projection
+         is evaluated on every render — that read is what re-derives it to
+         null after leaving 'ready' (see readyView). One wrapper, so the
+         focus guard can ask whether focus is inside the region a generation
+         replacement unmounts. -->
+    <div v-if="readyView !== null" ref="readyRegion">
+      <!-- Each side stated with its own identity — path, Source, file type,
+           read outcome — so neither file loses it to the diff
+           (US3 scenario 1). The order is the link's: first named, first
+           shown. The absent side of a one-sided comparison states the
+           absence in the same place: which copy has no file at this path is
+           the difference the reader came to see. -->
+      <div class="aci-skill-compare__files">
+        <section v-for="side in readyView.sides" :key="side.caption">
+          <h3>{{ side.caption }}</h3>
+          <p class="aci-skill-compare__file-path aci-path aci-authored-text">
+            {{ escapeControlCharacters(side.path) }}
+          </p>
+          <p v-if="side.detail !== null" class="aci-skill-compare__file-facts aci-note">
+            {{ fileFacts(side.detail) }}
+          </p>
+          <p v-else class="aci-skill-compare__file-facts aci-note">
+            No file at this path in this skill directory — the other side's complete content is the
+            difference.
+          </p>
+        </section>
+      </div>
+
+      <!-- Headed like the metadata section below, so the two halves of the
+           ready view sit at one heading level and the editor-failure
+           fallback's own captions nest under a heading rather than beside
+           one (WCAG 1.3.1). -->
+      <template v-if="readyView.diff !== null">
+        <h3>Source comparison</h3>
+        <SourceDiff v-bind="readyView.diff" />
+      </template>
+
+      <h3>Recognition metadata</h3>
+      <RecognitionComparison :groups="readyView.groups" />
+    </div>
+
+    <template v-else-if="status === 'loading'">
+      <p class="aci-empty">Loading this comparison…</p>
+    </template>
+
+    <!-- One wrapper for the statement view too, so the focus guard can ask
+         whether focus sits on a control an automatic refresh is about to
+         unmount (WCAG 2.4.3). -->
+    <div v-else-if="stateStatement !== null" ref="stateRegion">
+      <p :class="retryable ? 'aci-error' : 'aci-note'">{{ stateStatement }}</p>
+      <p v-if="retryable">
+        <button ref="retryButton" type="button" @click="retryOpen">Try again</button>
+      </p>
+      <p>
+        <NuxtLink to="/"
+          >Return to the inventory and open a comparison from a skill's row.</NuxtLink
+        >
+      </p>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.aci-skill-compare {
+  display: flex;
+  flex-direction: column;
+}
+
+.aci-skill-compare > p:first-child {
+  margin: 0;
+}
+
+.aci-skill-compare h2 {
+  margin: 0.25rem 0 0.5rem;
+}
+
+.aci-skill-compare h3 {
+  font-size: 1rem;
+  margin: 0.75rem 0 0.25rem;
+}
+
+/* The three switchers side by side, stacking on a narrow viewport. Each
+   label is a column so the select sits under its name, and the selects
+   shrink inside their columns rather than widening the page (WCAG 1.4.10). */
+.aci-skill-compare__pickers {
+  display: grid;
+  gap: 0.5rem 1.5rem;
+  grid-template-columns: minmax(0, 1fr);
+  margin-block: 0.25rem;
+}
+
+@media (min-width: 52rem) {
+  .aci-skill-compare__pickers {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.aci-skill-compare__picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.aci-skill-compare__pickers select {
+  max-inline-size: 100%;
+}
+
+/* The two identities side by side above the diff, stacking on a narrow
+   viewport (WCAG 1.4.10). */
+.aci-skill-compare__files {
+  display: grid;
+  gap: 0.25rem 1.5rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 52rem) {
+  .aci-skill-compare__files {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.aci-skill-compare__files h3 {
+  margin: 0.5rem 0 0.1rem;
+}
+
+.aci-skill-compare__files p {
+  margin: 0.1rem 0;
+}
+
+/* An authored path has no break opportunities of its own; wrapping keeps the
+   page from scrolling sideways at narrow widths (WCAG 1.4.10). */
+.aci-skill-compare__file-path {
+  overflow-wrap: anywhere;
+}
+</style>

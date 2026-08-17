@@ -42,6 +42,7 @@
 import { computed, shallowRef, type InjectionKey } from 'vue';
 import { SessionApiClient, type SessionRpcChannel } from './api-client';
 import { ClientDataPurge } from './client-data';
+import { SkillComparisonState } from '../composables/skill-comparison';
 import type { FileDetailDto, RejectionCode, SessionSnapshot } from '../../shared/api-types';
 
 /**
@@ -125,6 +126,17 @@ export class SessionViewState {
 
   /** The guarded API client every request goes through. */
   readonly #client: SessionApiClient;
+
+  /**
+   * The skill comparison view state (FR-011). Owned here because it shares
+   * this state's client, purge, and generation lifecycle: the same adoption
+   * that closes the open skill drops the open comparison, and the same purge
+   * clears both. The skill compare route opens and switches its view; the
+   * pair itself is the route's query, not standing state. Skill-scoped by
+   * design — a later family's comparison surface arrives as its own state,
+   * not by widening this one.
+   */
+  public readonly skillComparison: SkillComparisonState;
 
   /** Which surface to render; see {@link SessionView}. */
   public readonly view = shallowRef<SessionView>('booting');
@@ -291,6 +303,21 @@ export class SessionViewState {
         this.view.value = 'booting';
       }
     });
+    // Constructed after the two registrations above, so its own purge
+    // disposer runs after requests are aborted — a settlement can then never
+    // repopulate the comparison it clears. The two callbacks reach into this
+    // state's private members lexically; the fatal reporter exists because a
+    // comparison request's lost channel or uninterpretable protocol is a
+    // session fact this shell owns, not the comparison's.
+    this.skillComparison = new SkillComparisonState({
+      client: this.#client,
+      clientData: this.#clientData,
+      refreshFreshly: () => this.#refreshFreshly(),
+      reportFatalFailure: (error) => {
+        this.#sessionError.value = error.message;
+        this.view.value = 'ended';
+      },
+    });
   }
 
   /**
@@ -341,9 +368,12 @@ export class SessionViewState {
         // Dropping it here is the generation half of the FR-027 cleanup: the
         // route notices and re-requests the same path under the new
         // generation, which is also how a removed file becomes the
-        // `stale-resource` state instead of stale content on screen.
+        // `stale-resource` state instead of stale content on screen. The
+        // open comparison goes with it: FR-030 invalidates the previous
+        // generation's comparison view and editor-model state together.
         if (outcome.advancedSequences.length > 0) {
           this.closeSkill();
+          this.skillComparison.close();
         }
         this.snapshot.value = outcome.snapshot;
         // A refresh success answers session-level failures only: a retained

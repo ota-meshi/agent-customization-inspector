@@ -69,10 +69,14 @@ another machine remains prohibited.
    the shell works unchanged on every client route. Static serving never reaches outside
    the packaged UI output directory and never falls back to an inspected file.
 4. At startup the host prints the exact `http://localhost:<port>/` URL once to the
-   initiating terminal. Automatic browser opening is devframe-owned and best-effort under
-   FR-001: `--no-open` silently suppresses opening, and an unsupported or failed helper
-   does not block startup; the printed URL remains the fallback. The product fabricates no
-   browser-opening outcome warning because devframe exposes no helper outcome. The helper
+   initiating terminal. Automatic browser opening is product-owned through the `open`
+   package and best-effort under
+   FR-001: the helper spawns only after the launch line, devframe's bundled opener stays
+   disabled so exactly one helper can spawn, `--no-open` silently suppresses opening, and
+   an unsupported or failed helper
+   does not block startup; the printed URL remains the fallback. The product reports no
+   browser-opening outcome: opening is best-effort and the printed URL is the complete
+   fallback, so a helper failure is swallowed rather than surfaced. The helper
    receives no inspection-derived content or path (FR-022). A reload or direct navigation
    of any client route needs no token: the served shell embeds no session data, and the
    freshly loaded SPA adopts state only through the RPC channel.
@@ -112,8 +116,9 @@ another machine remains prohibited.
 | `agent-customization-inspector:rescan-global` | command | Accept one scan command for one enabled Global Source |
 | `agent-customization-inspector:disable-global` | command | The priority Global-disable barrier |
 
-Comparison views are constructed client-side from two `get-file-detail` results; there is
-no separate comparison function. There is also no masking, redaction, reveal, or
+Comparison views are constructed client-side from at most two `get-file-detail`
+results — one per present side, and a one-sided comparison's stated absent counterpart
+needs none — and there is no separate comparison function. There is also no masking, redaction, reveal, or
 environment-resolution function anywhere in the catalog, and the host does not enable
 devframe's optional MCP route.
 
@@ -507,8 +512,13 @@ Outcomes: the full or fenced DTO.
 
 ### `agent-customization-inspector:get-file-detail`
 
-Parameters: one committed Source-relative Path — the file's identity (FR-030) — as the
-function's single positional argument.
+Parameters: one committed Source-relative Path as the function's single positional
+argument. A file's identity is its Source and Source-relative Path (FR-030); the path
+alone carries that identity while exactly one Source can hold a path, which is every
+session until a Global commit publishes a second Source. The Global tasks add the
+Source qualifier to this function and to the detail and comparison routes in the same
+phase that makes two Sources able to hold one path (tasks.md T1001/T1003), so a
+Repository file never shadows a Global file at the same path.
 
 ```json
 ".claude/skills/deploy/SKILL.md"
@@ -526,10 +536,10 @@ FileDetail — kind: 'skill' | 'file'
 │   │   └── binary adds sizeBytes; unknown adds nothing further
 │   ├── presentation — the one scan-time parse, or null exactly when
 │   │   extraction failed all-or-nothing (FR-028):
-│   │   ├── frontmatter[] { key, value } — a value is one of
+│   │   ├── frontmatter[] { key, keyKind, value } — a value is one of
 │   │   │   { kind: 'scalar', text }, { kind: 'absent' },
 │   │   │   { kind: 'sequence', items[] }, or
-│   │   │   { kind: 'mapping', entries[] { key, value } }, recursively
+│   │   │   { kind: 'mapping', entries[] { key, keyKind, value } }, recursively
 │   │   └── bodyText
 │   └── diagnostics[]
 └── kind 'file' — no recognition owns the file (a file only the census
@@ -550,6 +560,13 @@ read, and where it matched, is an internal record of the committed generation
 response carries it. And there is no `relationships` array of edge records — no shipped
 recognition can produce an edge, so the array would be empty in every response, and it
 arrives with the relationship phases that populate it.
+
+Each frontmatter entry's `keyKind` is the closed union `string | number | boolean |
+null`: the declared key's parsed type under YAML 1.2's core schema. A declaration's
+identity is the `(keyKind, key)` pair — an unquoted `1` and a quoted `"1"` are two keys
+that both render the `key` text `1` — so a client matching declarations across files
+matches by that pair, never by `key` alone. The same entry shape, `keyKind` included,
+recurs inside every nested `mapping` value.
 
 For a readable file, `sourceText` is the complete decoded source, exactly as authored.
 
@@ -1186,7 +1203,7 @@ the post-acceptance failure's ordinary error. Disable itself never returns
    channel unchanged and round-trips at the client.
 5. Static traversal and encoded traversal attempts never escape the packaged `dist/public`
    output; every served byte comes from that packaged Nuxt output, no inspected file is
-   ever served, and the root, `/compare`, `/global-consent`, and
+   ever served, and the root, `/skills/compare`, `/global-consent`, and
    `/skills/<tool>/<source-relative path>` client
    routes all boot the same packaged SPA shell, which embeds no session data.
 6. Queue ordering across Repository and each tool-specific Global rescan, duplicate

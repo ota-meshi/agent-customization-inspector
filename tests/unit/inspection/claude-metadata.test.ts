@@ -105,10 +105,11 @@ describe('Claude skill declared name', () => {
       throw new Error('expected a skill recognition');
     }
     expect(recognition.details.frontmatter).toEqual([
-      { key: 'name', value: { kind: 'scalar', text: 'rich' } },
-      { key: 'description', value: { kind: 'scalar', text: 'says hello' } },
+      { key: 'name', keyKind: 'string', value: { kind: 'scalar', text: 'rich' } },
+      { key: 'description', keyKind: 'string', value: { kind: 'scalar', text: 'says hello' } },
       {
         key: 'allowed-tools',
+        keyKind: 'string',
         value: {
           kind: 'sequence',
           items: [
@@ -119,20 +120,28 @@ describe('Claude skill declared name', () => {
       },
       // An authored null declares the key and no value; the mapping below it
       // keeps its own shape all the way down rather than being summarized.
-      { key: 'empty', value: { kind: 'absent' } },
+      { key: 'empty', keyKind: 'string', value: { kind: 'absent' } },
       {
         key: 'hooks',
+        keyKind: 'string',
         value: {
           kind: 'mapping',
           entries: [
             {
               key: 'PostToolUse',
+              keyKind: 'string',
               value: {
                 kind: 'sequence',
                 items: [
                   {
                     kind: 'mapping',
-                    entries: [{ key: 'matcher', value: { kind: 'scalar', text: 'Write' } }],
+                    entries: [
+                      {
+                        key: 'matcher',
+                        keyKind: 'string',
+                        value: { kind: 'scalar', text: 'Write' },
+                      },
+                    ],
                   },
                 ],
               },
@@ -146,6 +155,7 @@ describe('Claude skill declared name', () => {
     // copy beside them would be the same fact in two states.
     expect(recognition.details.frontmatter).toContainEqual({
       key: 'description',
+      keyKind: 'string',
       value: { kind: 'scalar', text: 'says hello' },
     });
     // The instructions are the body alone: the declarations above are not
@@ -166,6 +176,7 @@ describe('Claude skill declared name', () => {
     expect(recognition.details.frontmatter).toEqual([
       {
         key: 'name',
+        keyKind: 'string',
         value: {
           kind: 'sequence',
           items: [
@@ -249,6 +260,23 @@ describe('Claude skill declared name', () => {
     // as a value that contains itself.
     const recognition = await recognize('---\nname: complex\n? [a, b]\n: paired\n---\n');
     expect(recognition.parseStatus).toBe('failed');
+  });
+
+  it('publishes the parsed type beside a key one spelling could conflate', async () => {
+    // The core schema keeps an unquoted `1` a number and `"1"` a string —
+    // two keys of one mapping — while both render as the key `1`. The
+    // parsed type is published beside the rendering so a surface matching
+    // declarations across files can match by the parser's identity rather
+    // than by the spelling alone (api-types.ts § FrontmatterKeyKind,
+    // FR-011).
+    const recognition = await recognize('---\n1: number\n"1": string\n---\n');
+    if (recognition.details.kind !== 'skill') {
+      throw new Error('expected a skill recognition');
+    }
+    expect(recognition.details.frontmatter).toEqual([
+      { key: '1', keyKind: 'number', value: { kind: 'scalar', text: 'number' } },
+      { key: '1', keyKind: 'string', value: { kind: 'scalar', text: 'string' } },
+    ]);
   });
 
   it.each([

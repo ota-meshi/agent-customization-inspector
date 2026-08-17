@@ -36,26 +36,17 @@ const props = defineProps<{
 
 /** The element Monaco takes over; empty until the editor is mounted. */
 const host = ref<HTMLDivElement | null>(null);
-/**
- * The plain-text toggle, read when a mount fails: the failure unmounts this
- * button, so focus moves to the retry only when this button was holding it
- * (WCAG 2.4.3).
- */
-const toggleButton = ref<HTMLButtonElement | null>(null);
 /** The mounted editor, or null before the first mount and after teardown. */
 const viewer = shallowRef<SourceViewerHandle | null>(null);
 /**
  * Set when loading or mounting the editor failed — a chunk that did not
  * arrive, most plausibly because the local host went away. The template
- * offers a retry instead of leaving an empty host.
+ * keeps the complete source readable as inert text and offers a retry
+ * instead of leaving an empty host. There is deliberately no standing
+ * toggle to this rendering: the fallback is the failure path, not a reader
+ * preference.
  */
 const mountError = shallowRef<boolean>(false);
-/**
- * The failure state's retry button. Held so the toggle that produced the
- * failure can hand focus to it: the toggle's own button is removed with the
- * controls, and focus would otherwise fall to the document body.
- */
-const retryButton = ref<HTMLButtonElement | null>(null);
 
 /**
  * The failure copy, bound to the visible error and to the stable live region
@@ -65,25 +56,11 @@ const retryButton = ref<HTMLButtonElement | null>(null);
  */
 const MOUNT_ERROR_MESSAGE = 'The source viewer could not be loaded.';
 
-/**
- * True while the reader has chosen the plain-text rendering over the editor.
- *
- * The editor measures characters itself and scrolls to the extent those
- * measurements produce, so a display the reader has adjusted — a user
- * stylesheet or a text-spacing override that widens glyphs (WCAG 1.4.12) —
- * can leave the end of a long line past the extent the editor will scroll to.
- * The complete text is already in this component's props, so the way out is to
- * render it as text the browser lays out and scrolls itself. Offered always
- * rather than only after a failure: whether the editor suits a reader's display
- * is the reader's judgement, not something this component can detect.
- */
-const plainText = ref(false);
-
-/** The plain-text rendering's element, so the purge can empty it synchronously. */
+/** The failure rendering's element, so the purge can empty it synchronously. */
 const fallbackElement = ref<HTMLPreElement | null>(null);
 
 /**
- * Set by the purge. The plain-text rendering binds `sourceText` directly, so the
+ * Set by the purge. The failure rendering binds `sourceText` directly, so the
  * text is in the DOM without an editor to dispose: the purge clears the element
  * and this stops the next render from writing it back before the component
  * unmounts (FR-027, data-model.md § BrowserState).
@@ -112,9 +89,10 @@ const unregisterContentOwner = sessionViewState?.registerOpenContentOwner(() => 
   // into a fresh model during the one flush before this component unmounts.
   requestedSource += 1;
   disposeViewer();
-  // The editor is not the only place the text is. The plain-text rendering is a
-  // DOM text node bound to the props, so it survives until Vue patches this
-  // component away — one flush later, when everything else is already gone.
+  // The editor is not the only place the text can be. The failure rendering
+  // is a DOM text node bound to the props, so it survives until Vue patches
+  // this component away — one flush later, when everything else is already
+  // gone.
   purged.value = true;
   fallbackElement.value?.replaceChildren();
 });
@@ -145,24 +123,13 @@ async function showCurrentSource(): Promise<void> {
     if (mounted === null) {
       // The editor chunk or its mount failed. The source is not lost — the
       // detail already holds it — so the honest state is a visible failure
-      // with a retry, not an empty host and an unhandled rejection.
-      //
-      // The failure removes the toggle, so focus follows to the retry when the
-      // toggle was holding it. The test is on the toggle rather than on the
-      // caller: the mount is awaited, so a reader can reach the toggle while
-      // the first one is still loading, and that press is not what started it.
-      // Focus is read before the state changes because afterwards the button
-      // is on its way out, and moved after the patch because until then the
-      // retry does not exist yet.
+      // with a retry above the complete text, not an empty host and an
+      // unhandled rejection. Nothing held focus in the swapped-out region —
+      // the host is an empty box until a mount succeeds — so no focus rescue
+      // is needed here; a failed retry keeps its own button mounted and
+      // focused.
       if (!unmounted && requested === requestedSource) {
-        const toggleHadFocus = document.activeElement === toggleButton.value;
         mountError.value = true;
-        if (toggleHadFocus) {
-          await nextTick();
-          if (document.activeElement === document.body) {
-            retryButton.value?.focus();
-          }
-        }
       }
       return;
     }
@@ -181,27 +148,6 @@ async function showCurrentSource(): Promise<void> {
   // in flight, and a retry that fails again would strand keyboard focus on
   // the document body (WCAG 2.4.3).
   mountError.value = false;
-}
-
-/**
- * Switches between the editor and the plain-text rendering.
- *
- * Leaving the editor disposes it, because a mounted editor holds the whole
- * authored text in a model (FR-027) and this one would be behind a rendering
- * the reader is not looking at. Returning mounts a fresh one, which is the same
- * path the first source takes.
- */
-async function togglePlainText(): Promise<void> {
-  plainText.value = !plainText.value;
-  if (plainText.value) {
-    // Supersede any mount in flight, exactly as the purge owner does: one
-    // resolving afterwards would attach an editor nothing is showing.
-    requestedSource += 1;
-    disposeViewer();
-    mountError.value = false;
-    return;
-  }
-  await showCurrentSource();
 }
 
 /**
@@ -237,11 +183,7 @@ onMounted(() => {
 watch(
   () => [props.sourceText, props.sourceRelativePath] as const,
   () => {
-    // Nothing to mount while the plain-text rendering is showing: it binds the
-    // props directly, so the new source is on screen already.
-    if (!plainText.value) {
-      void showCurrentSource();
-    }
+    void showCurrentSource();
   },
 );
 
@@ -253,42 +195,27 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <!-- The reader's own choice of rendering, stated as what the click does. It
-       is above the source so a keyboard user meets it before the surface it
-       switches. -->
-  <!-- Hidden while the editor could not be loaded at all: the plain-text
-       rendering is already what is on screen then, so a button offering it would
-       name something the click cannot do. The failure's own "Try again" is the
-       way back to the editor. -->
-  <p v-if="!mountError" class="aci-source-viewer__controls">
-    <button ref="toggleButton" type="button" @click="togglePlainText">
-      {{ plainText ? 'Show in the source viewer' : 'Show as plain text' }}
-    </button>
-  </p>
-  <div v-show="!mountError && !plainText" ref="host" class="aci-source-viewer" />
+  <div v-show="!mountError" ref="host" class="aci-source-viewer" />
   <!-- Stable rather than inserted with the failure it reports, because a
        region that appears together with its message is not reliably read. -->
   <p class="aci-live-region" role="alert" aria-live="assertive" aria-atomic="true">
     {{ mountError ? MOUNT_ERROR_MESSAGE : '' }}
   </p>
-  <p v-if="mountError && !plainText" class="aci-error">
+  <p v-if="mountError" class="aci-error">
     {{ MOUNT_ERROR_MESSAGE }}
-    <button ref="retryButton" type="button" @click="retryMount">Try again</button>
+    <button type="button" @click="retryMount">Try again</button>
   </p>
-  <!-- The same complete text as an inert text node — no markup, no links, no
-       editor — shown when the reader asked for it and when the editor could not
-       be loaded at all. The browser lays out and scrolls it, so it depends on
-       none of the editor's own character measurements. `tabindex` because the
-       box scrolls: WebKit does not make a scrollable overflow container
-       keyboard focusable on its own, so without it a reader with no pointer
-       could reach the element's text through a screen reader but never scroll
-       the box (WCAG 2.1.1). -->
-  <pre
-    v-if="mountError || plainText"
-    ref="fallbackElement"
-    class="aci-source-viewer__fallback"
-    tabindex="0"
-    >{{ purged ? '' : sourceText }}</pre>
+  <!-- The editor-failure rendering: the same complete text as an inert text
+       node — no markup, no links, no editor — so an environment that cannot
+       load the editor still shows the whole file. The browser lays out and
+       scrolls it, so it depends on none of the editor's own character
+       measurements. `tabindex` because the box scrolls: WebKit does not make
+       a scrollable overflow container keyboard focusable on its own, so
+       without it a reader with no pointer could reach the element's text
+       through a screen reader but never scroll the box (WCAG 2.1.1). -->
+  <pre v-if="mountError" ref="fallbackElement" class="aci-source-viewer__fallback" tabindex="0">{{
+    purged ? '' : sourceText
+  }}</pre>
 </template>
 
 <style scoped>

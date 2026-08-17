@@ -70,28 +70,26 @@ test('lists each recognition exactly once as a definition with the exact matrix'
 
   // Rows in name order: `orbit`, the directory-named `packages/api:lander-nested`,
   // then the grouped `voyage`.
-  // One item — and one path line — per definition, each linking to its own
-  // `/skills/<tool>/<source-relative path>` route.
+  // One path line per file; the definitions beneath it link once per
+  // recognizing product to their own `/skills/<tool>/<source-relative path>`
+  // routes.
   await expect(page.locator('.aci-item .aci-path')).toHaveText([
     '.agents/skills/orbit/SKILL.md',
-    '.agents/skills/orbit/SKILL.md',
     'packages/api/.claude/skills/lander-nested/SKILL.md',
-    '.claude/skills/lander/SKILL.md',
     '.claude/skills/lander/SKILL.md',
     '.github/skills/ship/SKILL.md',
   ]);
 
-  // The matrix, read across each path's definitions: a definition is one
-  // `(file, tool)` recognition carrying exactly its own tool's badge, and a
-  // shared path's definitions follow the fixed tool order, so the badges a
-  // path's items show together are that file's recognition matrix.
-  // `toHaveText` is exact, so an extra badge would fail rather than pass
-  // unnoticed: every root file is Copilot's, the shared spellings add the
-  // sharing product, and the nested `.claude` layer is Claude's alone.
-  const definitionOf = (path: string) =>
-    page.locator('.aci-skill-row__definitions > li', { hasText: path });
+  // The matrix, read off each file's definition links: a definition is one
+  // `(file, tool)` recognition carrying exactly its own tool's link, and a
+  // file's definitions follow the fixed tool order, so the links a file's
+  // group shows together are that file's recognition matrix. `toHaveText` is
+  // exact, so an extra definition would fail rather than pass unnoticed:
+  // every root file is Copilot's, the shared spellings add the sharing
+  // product, and the nested `.claude` layer is Claude's alone.
+  const fileGroupOf = (path: string) => page.locator('.aci-skill-row__file', { hasText: path });
   const expectTools = async (path: string, tools: readonly string[]) => {
-    await expect(definitionOf(path).locator('.aci-skill-row__badges > li')).toHaveText([...tools]);
+    await expect(fileGroupOf(path).locator('.aci-skill-row__definitions a')).toHaveText([...tools]);
   };
   await expectTools('.github/skills/ship/SKILL.md', ['GitHub Copilot']);
   await expectTools('.agents/skills/orbit/SKILL.md', ['GitHub Copilot', 'OpenAI Codex']);
@@ -136,7 +134,6 @@ test('groups the shared declared name and states the surface-dependent Copilot r
   const grouped = page.locator('.aci-item').filter({ hasText: 'voyage' }).first();
   await expect(grouped.locator('.aci-path')).toHaveText([
     '.claude/skills/lander/SKILL.md',
-    '.claude/skills/lander/SKILL.md',
     '.github/skills/ship/SKILL.md',
   ]);
   await expect(grouped).toContainText(
@@ -172,9 +169,8 @@ test('opens a Copilot definition by its stable identity into the detail route', 
 }) => {
   await page.goto(host.origin);
   const link = page
-    .locator('.aci-item', { hasText: '.github/skills/ship/SKILL.md' })
-    .first()
-    .locator('.aci-path a', { hasText: '.github/skills/ship/SKILL.md' });
+    .locator('.aci-skill-row__file', { hasText: '.github/skills/ship/SKILL.md' })
+    .locator('.aci-skill-row__definitions a');
   await link.click();
   // The detail route is the one surface that serves authored content; the
   // list milestone only proves the row links to the definition's own identity

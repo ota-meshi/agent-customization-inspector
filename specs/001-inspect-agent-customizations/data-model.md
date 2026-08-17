@@ -75,7 +75,7 @@ InspectionSession
 BrowserState
 ├── ClientDataState (request/epoch/session/fence guards and central purge)
 ├── FilterState
-├── ComparisonSelection (zero or exactly two readable files)
+├── ComparisonSelection (copy-pair coordinates: two entry identities plus a compared file)
 ├── EditorModelState (zero or more, active route/generation only)
 ├── RecoveryViewState (control-only post-purge recovery and explicit resume)
 └── SessionViewState (booting/inspection/recovery/ended view and transport-loss adoption)
@@ -150,7 +150,8 @@ The local host is the devframe local-tool framework with authentication disabled
 (spec Clarifications § Session 2026-07-22; Constitution § Quality and Safety Standards). devframe serves the
 built SPA directly from the packaged `dist/public` tree, exposes every session API
 operation as a devframe RPC function (`defineRpcFunction`) on the same loopback channel,
-and owns port selection, host binding, and startup browser opening. Session protection
+and owns port selection and host binding, while the product owns startup browser opening
+through the `open` package with devframe's bundled opener disabled. Session protection
 is the loopback-only `localhost` bind: the model defines no per-session capability or token
 entity and no request-classification record, and the residual exposure of an
 unauthenticated loopback host — other local processes and, via DNS rebinding, a
@@ -185,8 +186,9 @@ duplicates the committed job/state, records no second failure,
 and never converts a truncated body into a partial DTO; the request reports its ordinary
 error and the client recovers from a fresh
 session snapshot, exactly as for a transport failure. Monaco and the browser likewise use their
-environment-provided capabilities; comparison failure leaves both complete authored source
-views available.
+environment-provided capabilities; comparison failure leaves every present side's
+complete authored source view available — both files', or the one present file's beside
+its stated absence.
 
 An authority-free live-operation projection such as `globalEnableInProgress` is not an
 admitted success and may appear while its owning session API request is still running. It contains
@@ -1474,10 +1476,14 @@ copy exists on the wire, and the internal `ToolRecognition.details` carries, for
 | `frontmatter` | ordered entry[] | Every key the file declares, in authored order, keyed by the key the file wrote — never a maintained catalog's. Empty for a document with no frontmatter block, for a block written as a list or a bare scalar rather than a mapping — such a block declares no keys, and the index positions a list would be read by are not keys the file wrote — and for a `failed` extraction |
 | `bodyText` | string | The same document with its frontmatter block removed. Empty for a `failed` extraction |
 
-Each frontmatter entry is a `key` and a `value`, and the value mirrors what the parser
-resolved in the shape the file wrote it: a scalar carries its resolved text, an authored
-null is its own variant, a sequence carries its items, and a mapping carries entries of
-its own — recursively, so a nested block reads as the block it is. A flattened spelling
+Each frontmatter entry is a `key`, its `keyKind`, and a `value`. The `keyKind` is the
+key's parsed type — string, number, boolean, or null — published beside the rendering
+because one spelling can stand for two keys: an unquoted `1` is a number and `"1"` a
+string, both rendering as `1`, and a surface matching declarations across files matches
+by that identity rather than by the spelling alone (FR-011). The value mirrors what the
+parser resolved in the shape the file wrote it: a scalar carries its resolved text, an
+authored null is its own variant, a sequence carries its items, and a mapping carries
+entries of its own — recursively, so a nested block reads as the block it is. A flattened spelling
 of a structure is never a value: it would be text the file does not contain. A value that
 contains itself, which a YAML anchor can declare, has neither a shape to publish nor a
 JSON form to send, so it fails that recognition all-or-nothing (FR-028) rather than being
@@ -1691,9 +1697,15 @@ This state is not authoritative and is never persisted.
   the host resolves it against whatever generation is current, and the epoch is what keeps
   a response captured before a purge from repopulating state. Every central invalidation/purge increments the same
   epoch, so a late callback is a no-op even when response delivery was already queued.
-- `ComparisonSelection`: zero or exactly two readable files named by `sourceRelativePath`,
-  each from its owning sequence's current committed generation — a cross-source comparison always compares each
-  source's last committed state. Monaco compares both complete `sourceText` values. Literal
+- `ComparisonSelection`: what the skill comparison route names, by the model's own
+  coordinates — the two compared copies' entry files' `sourceRelativePath` identities
+  plus the copy-relative compared file — resolved against the owning sequence's current
+  committed generation into zero files, two readable corresponding files, or one
+  readable file beside its stated absent counterpart; a cross-source comparison always
+  compares each source's last committed state. A pair is loaded through two ordinary
+  `FileDetail` requests and a one-sided comparison through one — the absence needs no
+  request — and Monaco compares the complete `sourceText` values, the absent side empty,
+  which renders the present content, line by line, as the difference it is. Literal
   differences, including credential-like strings and environment references, remain
   visible.
 - `EditorModelState`: generation-scoped Monaco models with opaque in-memory URIs and
@@ -1714,9 +1726,13 @@ This state is not authoritative and is never persisted.
   response repeats the idempotent purge before rendering it. The client increments
   `clientDataEpoch`, aborts every request that could return inspection data, disposes every
   editor/model/comparison, clears filter state, removes all Source, generation, file,
-  detail, authored metadata, relationship, and Diagnostic DTO/DOM text, and retains only
+  detail, authored metadata, relationship, and Diagnostic DTO/DOM text from every state
+  owner and rendered surface, and retains only
   the control/error projections needed to join or retry
-  disable. A failed accepted barrier does not restore purged content; a later new full
+  disable. The purge's synchronous guarantee is that owner disposal plus the revocation
+  of settlement authority: a continuation still awaiting an aborted request may hold a
+  response it captured until that request settles and is discarded, and the epoch check
+  above is what makes such a settlement a no-op rather than a repopulation. A failed accepted barrier does not restore purged content; a later new full
   snapshot obtains content only after terminal disable success or process restart. If the
   request fails before barrier acceptance, or is a true no-op, a fresh
   session snapshot has a null fence and the purged client may immediately fetch a new full snapshot.
@@ -1765,8 +1781,11 @@ This state is not authoritative and is never persisted.
   The product does not model proactive observation by a second tab. It defines no polling
   interval, request timeout, retry timer, or memory lease, and gives process loss on a
   continuously idle visible page no product-defined wall-clock detection guarantee.
-  No service worker, browser storage, or HTTP cache persists content. The application
-  guarantees removal of its live references, not physical zeroization of browser-process
+  No service worker, browser storage, or HTTP cache persists content. What the
+  application guarantees is the synchronous disposal of its state owners, rendered
+  surfaces, and editor models plus the revocation of settlement authority — a
+  continuation still awaiting an aborted request may hold a captured response until it
+  settles as a no-op (§ ClientDataState) — not physical zeroization of browser-process
   memory outside JavaScript control.
 
 ## Release usability-study evidence

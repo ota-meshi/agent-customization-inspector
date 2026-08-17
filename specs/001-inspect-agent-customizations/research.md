@@ -16,7 +16,9 @@ and one `dist/` tree. Nuxt owns the client build; tsdown owns the Node CLI
 bundle. The pure Node.js `src/server/inspection/` directory owns all inspected-source
 enumeration/read and is bundled with the CLI. Only typed inert DTOs cross into the browser.
 All project-authored executable application code is JavaScript/TypeScript. Project and
-dependency package payloads contain executable code only as JavaScript; generated HTML/CSS,
+dependency package payloads contain executable code only as JavaScript — except the one
+recorded FR-038 closure exception, the `open` package's vendored POSIX-shell `xdg-open`
+(§ 3) — while generated HTML/CSS,
 JSON manifests, documentation, and the license remain permitted declarative artifacts.
 Package-manager-generated `.bin` symlink/`.cmd`/`.ps1` launchers are payload-external
 interoperability metadata with a separate closed audit. Third-party development/test tooling is pinned and
@@ -97,11 +99,10 @@ builds, tests, and audits against. It does not travel with the published package
 consumer's `npx` resolves those caret ranges against the registry at install time: the audit
 establishes the tree this project ships and verifies, not the tree a later install produces; tsdown bundles project-owned modules and
 shared contracts, not arbitrary transitive packages. The direct production dependencies are
-exactly the eight packages `devframe`, `gunshi`, `h3`, `jsonc-parser`, `smol-toml`,
-`vfile`, `vfile-matter`, and `yaml` (§ 3); `open` is absent from every
-dependency section and the production lock closure.
+exactly the nine packages `devframe`, `gunshi`, `h3`, `jsonc-parser`, `open`, `smol-toml`,
+`vfile`, `vfile-matter`, and `yaml` (§ 3).
 
-Assert the approved direct production dependency set — exactly those eight names and no
+Assert the approved direct production dependency set — exactly those nine names and no
 others — from `package.json` and the `pnpm-lock.yaml` closure, so any new production
 dependency fails until the § 3 decision is explicitly revisited. Payload content scans — `os`/`cpu`/`libc` selectors, bundled/optional native
    packages, native/binary/Wasm magic or ELF/Mach-O/PE magic, `binding.gyp`, Rust/C/C++
@@ -197,8 +198,9 @@ create a second dependency baseline.
 | tsdown | 0.22.8 | Current stable release; supports Node 24.11+ |
 | Vite | 7.3.6 | Newest version in Nuxt 4.4.8's declared `^7.3.3` builder range |
 | pnpm | 11.13.0 | Current stable package manager |
-| Local host | `devframe` 0.7.5 | Local-tool host framework behind `@eslint/config-inspector`; serves the packaged SPA from `cli.distDir` and carries the session API as its RPC channel with authentication disabled; owns port/host resolution and browser opening (§ 8); pre-1.0, so the committed lockfile pins the reviewed baseline and the manifest's caret range stays within 0.7.x |
-| CLI | `gunshi` 0.37.0 | Current zero-runtime-dependency ESM CLI framework; its Node.js `>=22` engine requirement fits the declared range; browser opening is owned by the devframe host (§ 8) and adds no further package |
+| Local host | `devframe` 0.7.5 | Local-tool host framework behind `@eslint/config-inspector`; serves the packaged SPA from `cli.distDir` and carries the session API as its RPC channel with authentication disabled; owns port/host resolution (§ 8), while its bundled opener stays disabled because the product owns browser opening through `open` (§ 3); pre-1.0, so the committed lockfile pins the reviewed baseline and the manifest's caret range stays within 0.7.x |
+| CLI | `gunshi` 0.37.0 | Current zero-runtime-dependency ESM CLI framework; its Node.js `>=22` engine requirement fits the declared range |
+| Browser opener | `open` 11.0.1 | Current stable cross-platform opener behind the startup browser helper (FR-001): passes the bound loopback origin to the OS default handler, best-effort, with devframe's bundled opener disabled so exactly one helper can spawn; its vendored POSIX-shell `xdg-open` — used whenever executable on Linux, the system helper otherwise — is the recorded FR-038 closure exception (§ 3) |
 | Host HTTP app | `h3` 2.0.1-rc.22 | The host builds the H3 app devframe mounts onto, carrying the `/skills/**` shell fallback devframe's extension-guarded SPA fallback cannot serve — a skill detail URL ends with the file's own last segment, such as `SKILL.md`, and percent-encoding is no alternative because devframe decodes before its extension test. Declared as a caret range like every other direct dependency, with the lockfile resolving it to devframe's own h3 so both resolve one module instance; the dependency leaves with the host shim once devframe can serve extension-ful client-route misses itself |
 | Parsers | `yaml` 2.9.0, `jsonc-parser` 3.3.1, `smol-toml` 1.7.0 | Current stable inert data parsers |
 | Frontmatter | `vfile-matter` 5.0.1, `vfile` 6.0.3 | Frontmatter delimiter handling. Deciding where a frontmatter block begins and ends means re-deciding BOM handling, line endings, and the closing-fence forms, so it is a parser rather than a regular expression. This one parses the block with the `yaml` engine already listed here; a package carrying its own `js-yaml` would give one document two meanings, because js-yaml 3 is YAML 1.1 and `yaml` is YAML 1.2 |
@@ -248,6 +250,15 @@ sections, blocks T002. The
 release-validation pair records the corresponding decision evidence later; missing bilingual
 validation evidence blocks release.
 
+The `open` dependency — the product-owned startup browser helper (§ 3) — has an
+explicit reasoned no-impact determination: it touches no public contract, session API
+shape, persisted data, or workflow. The CLI's `--open`/`--no-open` surface, the single
+launch line, and the printed-URL fallback are independent of which package owns the
+helper; the directly declared package owns it, with devframe's bundled opener disabled,
+and devframe's own opener remains available through `createDevServer`'s `openBrowser`
+option as the fallback path. No affected consumer, migration step, or support window
+exists.
+
 The CLI uses only Gunshi's stable root `define`/`cli` API. It declares a negatable `open`
 boolean with a true default to provide `--no-open`, calls `cli()` with
 `strict: true`, and explicitly rejects all positional/rest arguments before the host binds.
@@ -279,7 +290,7 @@ hash — identical across OSes — so the payload bytes are fixed at dependency 
 devframe's own tarball payload is JavaScript/TypeScript text only, so the Node-only package gate holds. devframe is
 pre-1.0: 0.x minors may migrate APIs, so the caret range excludes them, the committed
 lockfile pins the resolved version, and any bump is a § 3 planning-gate change.
-`tests/package/production-graph.test.ts` asserts exactly the eight approved direct
+`tests/package/production-graph.test.ts` asserts exactly the nine approved direct
 dependencies; their versions and integrity stay owned by the lockfile.
 
 ### Finite release-certification matrix
@@ -336,12 +347,13 @@ Gunshi's official [setup requirements](https://gunshi.dev/guide/introduction/set
 the Node/TypeScript compatibility and closed unknown-option behavior used here.
 The safe-filesystem layer uses only Node's built-in `node:fs/promises`, `node:fs`, and
 `node:path` APIs, so it adds no platform toolchain or runtime package dependency.
-The direct production `dependencies` set is exactly the eight packages `devframe`,
-`gunshi`, `h3`, `jsonc-parser`, `smol-toml`, `vfile`, `vfile-matter`, and `yaml` (declared as caret ranges,
+The direct production `dependencies` set is exactly the nine packages `devframe`,
+`gunshi`, `h3`, `jsonc-parser`, `open`, `smol-toml`, `vfile`, `vfile-matter`, and `yaml` (declared as caret ranges,
 with the lockfile pinning every resolved version; `h3` resolves to devframe's own h3,
 so both resolve one module instance): the CLI and parser packages are
-npm-graph leaves, h3 is already in devframe's transitive host tree recorded above, and
-devframe contributes that tree.
+npm-graph leaves, h3 is already in devframe's transitive host tree recorded above,
+devframe contributes that tree, and `open` brings the small helper-detection tree
+(`default-browser`, `is-wsl`, and their leaves) the lockfile pins with it.
 Nuxt/Vue/Vite/tsdown, Monaco, and test tooling are build-
 or development-only because their required output is assembled into the closed product
 assets. The lockfile and an isolated installed production closure are both audited.
@@ -364,13 +376,18 @@ declares Vite 7. Forcing either newer major would violate the user's requirement
 working current Nuxt stack. A dual TypeScript compiler or pnpm override was rejected as
 avoidable initial-release complexity.
 
-`open` 11.0.0 was rejected even though its JavaScript API is convenient: its published
-tarball contains an executable POSIX-shell `xdg-open` helper. That would make the installed
-product closure contradict FR-038 and evade a root-tarball-only allowlist. Browser launch
-is instead owned by the devframe host's opener (§ 8), which is plain JavaScript inside
-the audited devframe payload; `open` stays absent from the production closure, and a
-failed or unsupported open only leaves the already printed loopback URL for manual
-opening.
+Browser launch through the devframe host's bundled opener was rejected even though it
+ships inside the already audited devframe payload: devframe bundles its own copy of the
+`open` package's logic, so which helper runs — and how it resolves the OS handler —
+would be fixed by devframe's bundling choices instead of by a dependency this product
+declares, reviews, and upgrades on its own schedule. The direct `open` dependency makes
+the helper a named, lockfile-pinned member of the production closure, and the host
+disables devframe's bundled opener so exactly one helper can spawn. `open`'s published
+tarball contains one non-JavaScript executable — the vendored POSIX-shell `xdg-open`,
+which the package's own selection policy uses on a Linux host whenever it is executable,
+falling back to the system `xdg-open` otherwise — which is
+the recorded FR-038 closure exception (spec.md FR-038). A failed or unsupported open
+still only leaves the already printed loopback URL for manual opening.
 
 ## 4. Vendor behavior, Inspector matchers, and evidence
 
@@ -764,8 +781,9 @@ detail response carries and what comparison consumes, and is unaffected. Configu
 `ambiguousCharacters` — because those defaults decorate and hover a warning over
 characters of the reader's own file, which is the linting FR-032 forbids this surface
 from doing; where a character's spelling does matter the product states it itself, in
-path presentation (data-model.md § SourceRelativePath). Monaco announces through an
-element the viewer component owns rather than the shared default under `document.body`,
+path presentation (data-model.md § SourceRelativePath). Monaco announces through one
+element the editor composable module owns and every mount shares, rather than the
+default under `document.body`,
 which outlives every editor, and teardown empties that element's live regions: Monaco's
 aria module holds them in module-level variables, so detaching them would leave the last
 announced line of authored source reachable (FR-027). Where the editor module cannot
@@ -818,8 +836,10 @@ Constitution § Quality and Safety Standards). The CLI starts the host with `cre
 `devframe/adapters/dev`: devframe binds the loopback `localhost`, serves the built Nuxt SPA directly
 from `cli.distDir` (`dist/public`), and carries the session API as devframe RPC functions
 declared with `defineRpcFunction` and registered in the definition's `setup`. Port and
-host resolution, static serving with the SPA fallback, the RPC channel, and browser
-opening are devframe policy rather than product code, with one closed product-owned piece
+host resolution, static serving with the SPA fallback, and the RPC channel are devframe
+policy rather than product code, while browser opening is product-owned through the
+`open` package with devframe's bundled opener disabled (§ 3), with one closed
+product-owned piece
 in front of static serving: the `/skills/**` `GET`/`HEAD` rewrite to `/`, which lets
 devframe's own handler serve the shell for skill deep links its extension-guarded
 fallback cannot (§ 3 h3 row). The same channel carries devframe's own
@@ -868,7 +888,8 @@ rendered; an ordinary handler, serialization, or delivery failure is that reques
 alone. A Global-disable click invokes the same purge before request dispatch, and
 observing a greater Global content epoch or non-null disable fence in an ordinary response
 repeats it before rendering and enters client-side `RecoveryViewState`. The purge removes
-all DOM/DTO/editor state and prevents late responses from restoring content; a
+the DOM/DTO/editor state its state owners and rendered surfaces hold and prevents late
+responses from restoring content; a
 settlement whose request token is no longer current or whose captured `clientDataEpoch`
 predates the purge is a no-op, including a late rejection. The transport signal has no
 product-defined delivery deadline, so process loss on a continuously idle visible page has
@@ -914,15 +935,16 @@ inventory completion to its admitted request ID and rejects an earlier status or
 
 Print the resolved local `http://localhost:<port>/` origin exactly once to the initiating
 terminal, from the host's ready callback, before any browser attempt (FR-001). Browser
-opening is devframe policy: the CLI's negatable `--open` flag (default true) maps to
-devframe's open flag, devframe's opener receives only that resolved origin — never
-inspection-derived content or paths (FR-022) — and the product neither selects, probes,
-nor verifies the resolved handler's browser family or version (FR-001). A disabled,
-unsupported, or failed automatic open leaves the server running; the printed origin is
-the fallback in every case.
+opening is product policy through the `open` package (§ 3): the CLI's negatable `--open`
+flag (default true) decides whether the host spawns `open`'s helper after the launch
+line, devframe's bundled opener stays disabled so exactly one helper can spawn, the
+helper receives only that resolved origin — never inspection-derived content or paths
+(FR-022) — and the product neither selects, probes, nor verifies the resolved handler's
+browser family or version (FR-001). A disabled, unsupported, or failed automatic open
+leaves the server running; the printed origin is the fallback in every case.
 
 **Rationale**: Hosting policy — port and host resolution, static serving with an SPA
-fallback, the RPC transport, and browser opening — is policy the maintained devframe
+fallback, and the RPC transport — is policy the maintained devframe
 layer already owns and enforces; re-implementing it over bare `node:http` duplicated that
 layer and forced the product to own its own router and authentication machinery
 (Constitution Principle I; Implementation simplicity policy). `@eslint/config-inspector`
@@ -971,8 +993,9 @@ the separate preview avoids repeating a potentially large display payload in eve
   request-token, client-epoch, session, Global-epoch, and fence guards. The supported
   single-browser-session use has no requirement for proactive second-tab observation.
 - A project-owned browser-launch adapter (a fixed `/usr/bin/open`/`xdg-open` spawn with
-  an ambient environment allowlist) is rejected for the same reason: browser opening is
-  devframe policy, and its opener receives only the resolved local origin.
+  an ambient environment allowlist) is rejected: cross-platform helper resolution is
+  policy the maintained `open` package already owns (§ 3), and the product's helper
+  receives only the resolved local origin.
 
 ## 9. Atomic generations, rescan, and environment-dependent capacity
 
@@ -1935,10 +1958,13 @@ read-only, local, non-executing boundary.
 **Decision**: Carry the final analysis remediations into planning and implementation:
 
 1. The fixed startup OS browser helper is the only permitted product-initiated child
-   process. It receives no inspection-derived content or path, authored value, user-supplied
-   command, or environment-selected handler. It may copy only the closed ambient platform-key
-   set directly from the launch environment; lexical equality with a Source root changes no
-   provenance and grants no authority. Discovery, reading, parsing, display,
+   process. It receives only the printed loopback origin — no inspection-derived content
+   or path, authored value, or user-supplied command — and inherits the launch
+   environment unchanged: the product writes no inspection-derived value into any
+   environment variable, and a platform helper honoring the user's own configuration,
+   such as `xdg-open` consulting `$BROWSER`, applies user preference rather than an
+   inspection-derived input. Lexical equality between an ambient value and a Source root
+   changes no provenance and grants no authority. Discovery, reading, parsing, display,
    comparison, and relationship processing initiate no child process, and `--no-open` plus
    unsupported/failure paths leave a usable manual URL.
 2. Each supported `(tool, kind)` owns closed relationship kinds and admitted source-form

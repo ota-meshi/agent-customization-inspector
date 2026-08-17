@@ -127,7 +127,7 @@ checkをすべて再実行する。
   記録する。いずれも黙って省略しない。
 - **Workflow/state scenario**: `S1` populated inventory、filter、tool/source/kind factを伴うRepository discovery、
   `S2` Repository empty state、決定的にreturnされたsource Diagnostic、明示的rescan、および以前のsnapshotをstaleのまま
-  保持してfailed requestのerrorを表示する別のthrown/rejected rescan、`S3` file inspection、Monaco source access、`S4` file diagnosticと実行可能なnext step、`S5` 2-file comparison、
+  保持してfailed requestのerrorを表示する別のthrown/rejected rescan、`S3` file inspection、Monaco source access、`S4` file diagnosticと実行可能なnext step、`S5` 2-fileおよび片側comparison、
   Monaco accessible diff、narrow inline alternative、`S6` comparison対象fileのowning sequenceが
   replacement generationをcommitした後のstale/removed comparison、およびどちらのcomparison対象fileも
   所有しないsequenceのcommit後もvalidのままのcomparison、

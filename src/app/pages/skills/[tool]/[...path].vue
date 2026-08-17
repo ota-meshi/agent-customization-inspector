@@ -34,8 +34,8 @@
 // hold is reported rather than guessed at. Companions open under the same
 // tool segment.
 //
-// This is the only surface in the product that shows file contents, and it
-// shows them exactly as authored — credentials included, with nothing masked
+// This surface — like the skill comparison at `/skills/compare` — shows file
+// contents exactly as authored — credentials included, with nothing masked
 // and no control that would uncover a masked value. It says none of that: the
 // files are the reader's own, over a loopback-bound session, so a viewer that
 // announced what a file might contain would be narrating the reader's
@@ -64,6 +64,7 @@ import SkillFileTree from '../../../components/inspection/SkillFileTree.vue';
 import SourceViewer from '../../../components/inspection/SourceViewer.vue';
 import FrontmatterBlock from '../../../components/inspection/FrontmatterBlock.vue';
 import { nextTabForKey } from '../../../components/tab-navigation';
+import { skillComparisonRouteFor } from '../../../composables/skill-comparison';
 import { SESSION_VIEW_STATE } from '../../../session/view-state';
 import type { SkillDefinitionDto, SkillInventoryEntryDto } from '../../../../shared/api-types';
 import { DIAGNOSTIC_REGISTRY } from '../../../../shared/diagnostics';
@@ -117,6 +118,48 @@ const openPath = computed((): string => {
 const committedPaths = computed(
   () => new Set((snapshot.value?.files ?? []).map((file) => file.sourceRelativePath)),
 );
+
+/**
+ * The committed readable files — the comparison-eligible subset (FR-025)
+ * behind {@link comparePairRoute}: only a file with readable source text can
+ * be a comparison input.
+ */
+const comparablePaths = computed(
+  () =>
+    new Set(
+      (snapshot.value?.files ?? [])
+        .filter((file) => file.encoding === 'utf-8' || file.encoding === 'utf-8-replaced')
+        .map((file) => file.sourceRelativePath),
+    ),
+);
+
+/**
+ * The comparison this page links to — the owning name's first two readable
+ * entry-point files — or null when the name has fewer than two, where there
+ * is nothing to pair. A comparison is a pair within one skill name — the
+ * URL itself names two of the name's copies (FR-011) — and this page
+ * already knows the name: the same link the inventory row offers,
+ * so a reader deep in a skill's files never has to go back to the list to
+ * start comparing. The compare route's own file switchers take over from
+ * there, census companions included.
+ */
+const comparePairRoute = computed(() => {
+  const entry = owner.value?.entry;
+  if (entry === undefined) {
+    return null;
+  }
+  const paths: string[] = [];
+  for (const definition of entry.definitions) {
+    const path = definition.sourceRelativePath;
+    if (comparablePaths.value.has(path) && !paths.includes(path)) {
+      paths.push(path);
+    }
+  }
+  const [first, second] = paths;
+  return first !== undefined && second !== undefined
+    ? skillComparisonRouteFor(first, second)
+    : null;
+});
 
 const skillDetail = sessionViewState.skillDetail;
 const openCompanion = sessionViewState.openCompanion;
@@ -828,6 +871,14 @@ onBeforeUnmount(() => {
           {{ SUPPORTED_TOOL_TEXT[owner.definition.tool] }} ·
           {{ CUSTOMIZATION_KIND_TEXT.skill }}
         </p>
+
+        <!-- The comparison entry for this name (FR-011): present exactly when
+             the name resolves two or more readable files. The comparison
+             surface's own file switchers take over from there, this skill's
+             census files included. -->
+        <p v-if="comparePairRoute !== null" class="aci-skill-detail__compare">
+          <NuxtLink :to="comparePairRoute">Compare this skill's files</NuxtLink>
+        </p>
       </div>
 
       <!-- Two subjects, two tabs: the skill itself, and the files its
@@ -1063,9 +1114,18 @@ onBeforeUnmount(() => {
 }
 
 /* Kept short on purpose: it is what a reader needs before choosing a file, and
-   every line of it is a line the files do not get. */
+   every line of it is a line the files do not get. One wrapping row rather
+   than three stacked lines for the same reason: the path, the definition
+   caption, and the comparison entry are each a few words, and a line apiece
+   put three lines of chrome between the heading and the tabs. The gap — not a
+   separator glyph — is what keeps the three apart, so nothing new is read
+   between them. */
 .aci-skill-detail__overview {
+  align-items: baseline;
   border-bottom: 1px solid var(--aci-border);
+  column-gap: 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
   padding-bottom: 0.5rem;
 }
 

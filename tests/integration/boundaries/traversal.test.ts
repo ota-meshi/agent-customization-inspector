@@ -28,6 +28,7 @@ import { assembleScanPublication } from '../../../src/server/inspection/scan';
 import { CODEX_REPO_SKILL_RULE } from '../../../src/shared/registries/codex/rules';
 import { CODEX_RULE_RELATIONS } from '../../../src/shared/registries/codex/relations';
 import type { RecognitionParseStatus } from '../../../src/shared/api-types';
+import { RecognitionExtraction } from '../../../src/server/inspection/parsers/extraction';
 import { ToolRecognition } from '../../../src/server/inspection/recognizers/candidate';
 import { DiagnosticRecord } from '../../../src/shared/diagnostics';
 import { SessionCoordinator, InspectionSession } from '../../../src/server/session/session';
@@ -76,12 +77,24 @@ function fakeRecognition(
   tool: ToolRecognition['tool'],
   parseStatus: RecognitionParseStatus,
 ): ToolRecognition {
-  // A real record rather than a literal: the class owns construction, and the
-  // stand-in differs only in what it recognized. The kind is the one the
-  // fixture's `AGENTS.md` actually is, with no per-kind detail; a failed
-  // recognition publishes no metadata at all, and this stand-in extracts
-  // nothing in the first place (FR-028), so the admissions are empty.
-  return new ToolRecognition(sourceRelativePath, tool, { kind: 'instructions' }, parseStatus, []);
+  // A real record rather than a literal: the factory owns construction, and
+  // the stand-in differs only in what it recognized. The wanted parse status
+  // is driven through the same extraction seam production runs — a throwing
+  // extractor is `failed`, an extractor with nothing to return is `parsed`,
+  // none is `not-attempted` — because the status is the extraction's own
+  // fact, not a field to set. The kind is the one the fixture's `AGENTS.md`
+  // actually is, with no per-kind detail; a failed recognition publishes no
+  // metadata at all, and this stand-in extracts nothing in the first place
+  // (FR-028), so the admissions are empty.
+  const extraction =
+    parseStatus === 'failed'
+      ? RecognitionExtraction.run('', () => {
+          throw new Error('fixture extraction failure');
+        })
+      : parseStatus === 'parsed'
+        ? RecognitionExtraction.run('', () => undefined)
+        : RecognitionExtraction.run<undefined>('', null);
+  return ToolRecognition.recognize(sourceRelativePath, tool, 'instructions', extraction, []);
 }
 
 function bootstrapSession(root: string) {

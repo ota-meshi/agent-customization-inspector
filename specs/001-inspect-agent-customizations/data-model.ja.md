@@ -57,7 +57,7 @@ InspectionSession
 BrowserState
 ├── ClientDataState（request/epoch/session/fence guardと中央purge）
 ├── FilterState
-├── ComparisonSelection（0またはreadable fileを正確に2つ）
+├── ComparisonSelection（copyペアの座標: 2つのentry identityと比較対象ファイル）
 ├── EditorModelState（0以上。active route/generationのみ）
 ├── RecoveryViewState（control-onlyなpurge後recoveryと明示resume）
 └── SessionViewState（booting/inspection/recovery/ended viewとtransport-loss adoption）
@@ -118,8 +118,9 @@ Repository picker、ancestor search、profile、cache、resume identifierは持�
 Local hostはauthenticationをdisableしたdevframe local-tool frameworkである
 （spec Clarifications § Session 2026-07-22、Constitution § Quality and Safety Standards）。devframeはpackaged
 `dist/public` treeからbuilt SPAを直接serveし、全session API operationを同じloopback channel上の
-devframe RPC function（`defineRpcFunction`）として公開し、port選択、host binding、startup時の
-browser openを所有する。Session保護はloopback限定の`localhost` bindのみであり、このmodelはper-session
+devframe RPC function（`defineRpcFunction`）として公開し、port選択とhost bindingを所有する。
+Startup時のbrowser openはproductが`open` packageを通じて所有し、devframeのbundled openerは
+無効化される。Session保護はloopback限定の`localhost` bindのみであり、このmodelはper-session
 capability/token entityもrequest-classification recordも定義しない。Unauthenticatedな
 loopback hostの残存exposure — 他local processと、DNS rebinding経由のmalicious web page —
 はdocumented limitationである（QR-003）。
@@ -144,8 +145,8 @@ result valueを返し、devframeがその値を — successもhandler errorも �
 Handlerがreturnした後のserialization/encodingまたはdelivery failureはcommit済みjob/stateを
 rollbackまたはduplicateせず、2件目のfailureを記録せず、truncated bodyをpartial DTOへ
 変換しない。Requestは通常のerrorを報告し、clientはtransport failureとまったく同じように
-fresh session snapshotからrecoverする。Monacoとbrowserも実行環境が提供する能力を使い、comparison failure時も両方のcomplete
-authored source viewを利用可能なままにする。
+fresh session snapshotからrecoverする。Monacoとbrowserも実行環境が提供する能力を使い、comparison failure時も存在する各側のcomplete
+authored source view — 両ファイルの、または存在する1ファイルのviewとその明示された不在 — を利用可能なままにする。
 
 `globalEnableInProgress`のようなauthority-free live-operation projectionはadmit済みsuccessではなく、所有session API requestの実行中に
 表示され得る。Candidate state/authorityを含まず、atomic commit前にoperationが失敗すればremoveし、commit済みstateに対する
@@ -1148,7 +1149,11 @@ shippedな全vendorが同じ固定YAML semanticsを読む — toolごとのcopy�
 | `frontmatter` | ordered entry[] | Fileが宣言するすべてのkeyを、fileが書いたkey — 維持管理上のcatalogのものではない — でauthored順に持つ。Frontmatter blockの無いdocument、mappingではなくlistや裸のscalarとして書かれたblock — そうしたblockはkeyを宣言せず、listを読めば得られるindex位置はfileが書いたkeyではない — 、`failed` extractionでは空 |
 | `bodyText` | string | 同じdocumentからfrontmatter blockを取り除いたもの。`failed` extractionでは空 |
 
-各frontmatter entryは`key`と`value`とし、`value`はparserが解決した内容をfileが書いた形のまま
+各frontmatter entryは`key`、その`keyKind`、`value`とする。`keyKind`はkeyのparse済みの型 —
+string、number、boolean、null — であり、renderingの隣にpublishする。1つの綴りが2つのkeyを
+表し得るからである: unquoteの`1`はnumber、`"1"`はstringで、どちらも`1`とrenderされ、file間で
+宣言をmatchするsurfaceは綴り単独ではなくこのidentityでmatchする（FR-011）。`value`はparserが
+解決した内容をfileが書いた形のまま
 写す: scalarは解決済みのtextを持ち、authored nullは独自のvariantとし、sequenceはitemを、
 mappingは自身のentryを再帰的に持つ。これによりnestしたblockはblockとして読める。構造を平坦化した
 綴りはvalueにしない: それはfileが含まないtextだからである。YAML anchorが宣言し得る「自身を含む値」は
@@ -1316,9 +1321,13 @@ readable-directory admissionだけが判定し、後のNode.js/OS rejectionは�
   Pathはfileの安定したidentityであり（FR-030）、hostはそれをcurrentなgenerationに対して解決する。Purge前にcaptureされた
   responseがstateを再populateしないことを守るのはepochである。全central invalidation/purgeが同じepochをincrementするため、
   response deliveryが既にqueue済みでもlate callbackはno-opになる。
-- `ComparisonSelection`: Readableなfileを`sourceRelativePath`で0または正確に2つ名指し、それぞれ所属sequenceのcurrentなcommit済み
-  generationに属する。Cross-source comparisonは常に各sourceの最後にcommit済みstateを比較する。Literal comparisonは
-  Monacoで両方の完全な`sourceText`を比較する。Credential-like stringやenvironment referenceを含むliteralな差を表示する。
+- `ComparisonSelection`: skill comparison routeがmodel自身の座標 — 比較する2つのcopyのentry fileの
+  `sourceRelativePath` identityとcopy相対の比較対象ファイル — で名指すもの。所属sequenceのcurrentな
+  commit済みgenerationに対して、0件、対応するreadableなfileを2つ、またはreadableなfile 1つと
+  明示された不在へ解決される。Cross-source comparisonは常に各sourceの最後に
+  commit済みstateを比較する。ペアは通常の`FileDetail` request 2件で、片側comparisonは1件でloadする — 不在はrequestを
+  要しない — 。MonacoはcompleteなsourceText同士を比較し、不在側は空として、存在する側の内容を行ごとにそれ自体が
+  差分として描画する。Credential-like stringやenvironment referenceを含むliteralな差を表示する。
 - `EditorModelState`: Opaqueなin-memory URIと完全なauthored `sourceText`を持つgeneration-scoped Monaco model。
   所有editor、subscription、全modelはroute close、selection replacement、file removal、source disable、
   所属sequenceのgeneration変更時に個別にdisposeする。
@@ -1332,7 +1341,8 @@ readable-directory admissionだけが判定し、後のNode.js/OS rejectionは�
 - Global disableは代わりに下記central full-session purgeを使う。Global-disable actionはrequest送信前に全inspection contentをlocal purgeする。Ordinary responseでより大きい`globalContentEpoch`または
   non-null `globalDisableInProgress`を観測した場合もrender前にidempotent purgeを繰り返す。Clientは`clientDataEpoch`をincrementし、inspection dataを
   返し得る全requestをabortし、全editor/model/comparisonをdisposeし、filter stateをclearして、全Source/generation/file/detail/authored
-  metadata/relationship/Diagnostic DTO/DOM textをremoveする。Disableへのjoin/retryに必要なcontrol/error projectionだけを保持できる。
+  metadata/relationship/Diagnostic DTO/DOM textをあらゆるstate ownerとrender済みsurfaceからremoveする。Disableへのjoin/retryに必要なcontrol/error projectionだけを保持できる。
+  Purgeの同期保証はこのowner disposalとsettlement authorityの失効である: abort済みrequestをまだawaitしているcontinuationは、そのrequestがsettleして破棄されるまで捕捉済みresponseを保持し得るが、上記のepoch検査がそのsettlementをrepopulationではなくno-opにする。
   Accepted barrier failureではpurge済みcontentをrestoreせず、terminal disable successまたはprocess restart後のnew full snapshotだけからcontentを取得する。
   Barrier acceptance前にrequestがfailした場合、またはtrue no-opの場合、fresh session snapshotのfenceはnullであり、purge済みclientはnew full snapshotを直ちにfetchできる。
 - `RecoveryViewState`: Global-disableのpre-send purge、またはordinary responseがgreater epochか
@@ -1372,8 +1382,10 @@ readable-directory admissionだけが判定し、後のNode.js/OS rejectionは�
   recoveryへ入る。Productは別tabからのproactiveな観測をmodelしない。Polling interval、request
   timeout、retry timer、memory leaseを定義せず、continuously idleでvisibleなpage上のprocess lossに
   product定義のwall-clock検出保証を設けない。Service worker、browser storage、HTTP cacheへcontentを
-  永続化しない。Applicationが保証するのはlive referenceの除去であり、JavaScript制御外
-  browser-process memoryの物理的zeroizationではない。
+  永続化しない。Applicationが保証するのは、state owner・rendered surface・editor modelの
+  同期的なdisposalとsettlement authorityの失効 — abort済みrequestをまだawaitしているcontinuationは、
+  no-opとしてsettleするまで捕捉済みresponseを保持し得る（§ ClientDataState） — であり、
+  JavaScript制御外browser-process memoryの物理的zeroizationではない。
 
 ## Release usability-study evidence
 

@@ -88,15 +88,18 @@ Expected:
   publish. The locked production dependencies are asserted directly from `pnpm-lock.yaml`
   by the package tests. These checks do not validate customization-file content.
 - All project-authored application code and executable code in every project/dependency
-  tarball payload is JavaScript. The generated HTML shell, CSS, JSON files, and required
-  documentation/license files are declarative, non-executable artifacts. Package-
+  tarball payload is JavaScript, with two limited recorded exceptions. Package-
   manager-generated `.bin` symlinks and `.cmd`/`.ps1` launch shims exist outside those
-  payloads and are the only limited interoperability exception: each maps one exact
+  payloads: each maps one exact
   declared `package.json.bin` target to audited Node JavaScript, forwards argv only, and
-  adds no input or application logic. The direct production dependencies are exactly the eight
-  packages `devframe`, `gunshi`, `h3`, `jsonc-parser`, `smol-toml`, `vfile`, `vfile-matter`, and
-  `yaml`; devframe's transitive tree is owned by devframe
-  and the lockfile, and `open` is absent from every dependency section.
+  adds no input or application logic. The `open` package's vendored POSIX-shell
+  `xdg-open` is the one in-payload exception (spec.md FR-038): on a Linux host the
+  package's own selection policy uses that vendored copy whenever it is executable and
+  falls back to the system `xdg-open` otherwise. The generated HTML shell, CSS, JSON files, and required
+  documentation/license files are declarative, non-executable artifacts. The direct production dependencies are exactly the nine
+  packages `devframe`, `gunshi`, `h3`, `jsonc-parser`, `open`, `smol-toml`, `vfile`, `vfile-matter`, and
+  `yaml`; devframe's and `open`'s transitive trees are owned by those packages
+  and the lockfile.
 - Build output contains no fixture, raw customization text, Global content, cache, or
   source-map path that exposes an inspected machine.
 
@@ -154,10 +157,10 @@ actionable message rather than a session or session-API error.
 
 Expected:
 
-- The devframe host prints the local `http://localhost:<port>/` origin exactly once before
+- The host prints the local `http://localhost:<port>/` origin exactly once before
   any browser attempt and never binds a non-loopback address. The printed URL is the plain origin: it
-  carries no per-session token, fragment, or other secret. With `--no-open` — a devframe
-  CLI flag — no browser opens and no browser-helper child process is created.
+  carries no per-session token, fragment, or other secret. With `--no-open` — the CLI's
+  negatable product flag — no browser opens and no browser-helper child process is created.
 - The Repository source root shown by the browser is the `all-supported` fixture itself.
 - Within 1 second the UI visibly renders and exposes to assistive technology a status for the
   current scan request that says queued, names an active phase, or reports complete, partial,
@@ -167,8 +170,10 @@ Expected:
 - The first complete inventory appears without any file outside the frozen path contract.
 - Stopping the process destroys the server session. On a loaded page, devframe reports loss
   of the loopback host through its transport without being queried. A transport-reported channel loss —
-  or a protocol the client cannot speak — purges every DTO, DOM source value, editor
-  model/worker, and comparison before the session-ended view. An ordinary rejection of the
+  or a protocol the client cannot speak — purges the DTO, DOM source value, editor
+  model/worker, and comparison state from every state owner and rendered surface before
+  the session-ended view, and revokes settlement authority so a response a still-pending
+  request captured settles as a no-op (data-model.md § BrowserState). An ordinary rejection of the
   current session RPC, from a handler or from delivery, is that request's error alone: the
   committed snapshot stays on screen and another refresh can still succeed
   (contracts/http-api.md § Concurrency and lifecycle). The SPA issues no liveness RPC, installs
@@ -191,14 +196,18 @@ cd /path/to/intended/repository-root
 npx agent-customization-inspector
 ```
 
-Port and host resolution, the printed origin, and automatic browser opening are owned by
+Port and host resolution and the printed origin are owned by
 the devframe local-tool framework that hosts the session: devframe serves the built SPA
-from `dist/public`, exposes the session API as its RPC channel, and opens the printed
-origin in the operating system's default browser at startup. That fixed startup opening is
-the only product-initiated child process permitted in the initial release; it receives no
-inspection-derived content or path, authored value, user-supplied command, or
-environment-selected handler, and `--no-open`-style suppression flags are devframe CLI
-flags rather than hand-written product options. A missing or failing opener leaves the
+from `dist/public` and exposes the session API as its RPC channel. Automatic browser
+opening is product-owned through the `open` package: after the launch line, the host
+spawns `open`'s fixed OS helper with the printed origin, with devframe's bundled opener
+disabled so exactly one helper can spawn. That fixed startup opening is
+the only product-initiated child process permitted in the initial release; it receives
+only the printed origin — no inspection-derived content or path, authored value, or
+user-supplied command — and inherits the launch environment unchanged, into which the
+product writes no inspection-derived value; a platform helper honoring the user's own
+`$BROWSER` applies user preference. The CLI's negatable `--open` flag (default true)
+provides `--no-open` suppression. A missing or failing opener leaves the
 server running: the already printed local origin is the FR-001 fallback. Apart from the
 optional single `--root`, there is no repository picker/ancestor-root discovery,
 remote-host flag, static-export command, or MCP command in the initial release.
@@ -210,7 +219,7 @@ There is no separate operational-event log, closed error-code taxonomy, or gener
 envelope: terminal and UI output are read by the same user who owns the inspected files.
 
 Automatic opening merely delegates the printed origin to the operating system's default
-browser; devframe neither selects nor verifies a browser version, and a successful open is
+browser; the helper neither selects nor verifies a browser version, and a successful open is
 not compatibility evidence.
 For deterministic certification, use `--no-open` and paste the printed URL into one of the
 three pinned Playwright revisions. For every enrolled participant-study session, record the
@@ -276,9 +285,11 @@ Expected:
   product-issued outbound request as defined by FR-022, dynamic evaluation, or source mutation. Explicit
   UNC/server-share/device vectors prove zero filesystem/DNS/SMB calls. A lexically
   indistinguishable pre-mounted/mapped network source may cause OS-mediated traffic and is
-  recorded separately as the FR-022 platform/environment limitation. The devframe-owned
-  startup browser opening receives no inspection-derived
-  content/path, authored value, user-supplied command, or environment-selected handler.
+  recorded separately as the FR-022 platform/environment limitation. The product-owned
+  startup browser opening through the `open` package receives only the printed origin —
+  no inspection-derived content/path, authored value, or user-supplied command — and
+  inherits the launch environment, into which the product writes no inspection-derived
+  value.
   There are no host-security or HTTP-router contract suites to run: protection is the
   loopback-only `localhost` bind alone — no per-session token, Origin check, or product
   router exists — and an unexpected session-API failure propagates its real error to the requesting
@@ -289,8 +300,8 @@ Expected:
   the current gate neither installs a tarball nor invokes an installed package link. T917 owns
   the final-release test that packs and installs into an isolated fixture and launches
   `npx --no-install` without relying on the working tree or a runtime download.
-  The production-graph tests assert exactly the eight approved direct dependencies
-  `devframe`, `gunshi`, `h3`, `jsonc-parser`, `smol-toml`, `vfile`, `vfile-matter`, and `yaml` — their resolved versions
+  The production-graph tests assert exactly the nine approved direct dependencies
+  `devframe`, `gunshi`, `h3`, `jsonc-parser`, `open`, `smol-toml`, `vfile`, `vfile-matter`, and `yaml` — their resolved versions
   and integrity hashes stay owned by the committed
   `pnpm-lock.yaml` — and negative packaging fixtures prove that a missing or non-regular
   required entry point fails `verify:package` before publish.
@@ -553,17 +564,20 @@ Verify:
 
 Verify:
 
-1. In the Repository comparison flow, exactly two distinct readable active-generation files
-   from the same Repository Source can be selected; items without source text —
-   binary among them — cannot be selected. Cross-Source comparison is verified only after Global enablement in
-   the next workflow.
+1. In the Repository comparison flow, a skill name with two or more readable entry files
+   offers one comparison entry on its row and detail page; the comparison's switchers
+   step the pair through corresponding files and copies, offering every file at least one
+   current copy ships readably. A file only one copy ships shows its present side against
+   a stated absence; a counterpart that exists without readable source text — binary
+   among them — is not an absence, and selecting that pair reports the named not-readable
+   outcome instead. A file readable in neither copy is never offered. Cross-Source
+   comparison is verified only after Global enablement in the next workflow.
 2. Read-only Monaco source models contain the complete authored text without masking or
    environment substitution, disable links/editing, and use opaque in-memory URIs rather
    than filesystem paths.
 3. Monaco shows literal source differences without semantic ranking, merge, lint,
    validation, formatting, conversion, or fix suggestions. Recognition metadata remains
-   distinguishable and is compared by typed fields in Vue rather than serialized as JSON;
-   provenance paths and relationship edges remain separate rows.
+   distinguishable and is compared by typed fields in Vue rather than serialized as JSON.
 4. Monaco and browser capacity comes from the browser engine and execution environment.
    A recoverable editor computation failure reports an actionable diagnostic without
    removing the complete read-only side-by-side authored source.
@@ -573,16 +587,17 @@ Verify:
    labeled controls and the accessible diff viewer without a focus trap.
 7. The packed app loads its editor worker from a same-origin static asset with no
    external request or `blob:` worker.
-8. Direct loads of `/`, `/compare`, `/global-consent`, and `/skills/<tool>/<source-relative path>` all boot from
+8. Direct loads of `/`, `/skills/compare`, `/global-consent`, and `/skills/<tool>/<source-relative path>` all boot from
    the same root-absolute assets served by the devframe host.
 9. Session-loss and response-guard tests cover a devframe-transport-reported channel loss,
    channel loss or unsupported protocol on the current non-superseded RPC, session-ID mismatch,
    greater Global content epoch or non-null disable fence, and a late in-flight response after
    the client epoch changes. A transport-reported channel loss or unsupported protocol on the current RPC performs
    the shared full client-data purge and enters the session-ended view, while an ordinary
-   request rejection stays that request's error; no pre-purge inventory, detail,
-   comparison, editor, or authored-content DTO/DOM state remains or is automatically
-   restored. The SPA calls no liveness function, installs no visibility,
+   request rejection stays that request's error; every state owner and rendered surface
+   drops its pre-purge inventory, detail, comparison, editor, and authored-content
+   DTO/DOM state, none of it is automatically restored, and a late settlement is a no-op
+   rather than a repopulation (data-model.md § BrowserState). The SPA calls no liveness function, installs no visibility,
    unload, or other page-lifecycle listener, and issues no request because time elapsed, the
    page became hidden, or it returned to visibility. Devframe owns the event-driven host-loss
    signal, and the product sets no wall-clock process-loss deadline for a continuously idle
@@ -1618,9 +1633,9 @@ the packed release candidate and recheck every `REVIEW-*` rationale against the 
 diff, the packed tarball's file list, and the rendered packed interface. An axe severity result alone does
 not establish SC-008. The contract freezes the complete, non-sampled execution matrix:
 
-1. Use only the keyboard to launch/follow the URL, filter, open and close a file, select two
-   files, compare, open Global consent, enable/disable Global, rescan, and return to
-   inventory.
+1. Use only the keyboard to launch/follow the URL, filter, open and close a file, open a
+   skill's comparison from its row link and switch its compared file and copies, open Global
+   consent, enable/disable Global, rescan, and return to inventory.
 2. Confirm visible focus, logical focus order, skip/navigation landmarks, unique labels,
    status announcements, error/next-step association, and no focus loss on generation
    replacement.
@@ -1657,9 +1672,9 @@ the exact `package.json.files` entries `dist`, `README.md`, `README.ja.md`, and
 the remaining `dist` contents are Nuxt/tsdown build output and are not re-enumerated by a
 product manifest. Inspect the exact `bin` mapping and absence of `main`/`module`/`exports`,
 license notices, exact shebang/executable mode, and the published README pair. The direct
-production dependencies are exactly the eight packages `devframe`, `gunshi`, `h3`, `jsonc-parser`,
-`smol-toml`, `vfile`, `vfile-matter`, and `yaml`; `open` must be absent from every dependency section, while devframe's transitive
-tree is owned by devframe and the lockfile.
+production dependencies are exactly the nine packages `devframe`, `gunshi`, `h3`, `jsonc-parser`,
+`open`, `smol-toml`, `vfile`, `vfile-matter`, and `yaml`; devframe's and `open`'s transitive
+trees are owned by those packages and the lockfile.
 
 There is no host-security or HTTP-API-router contract step to rerun: devframe owns
 hosting policy, so the product has no per-session token, product-owned Origin check, or
@@ -1679,8 +1694,8 @@ window, and rollback/support path. Missing or one-language-only evidence fails t
 gate.
 
 Assert the approved production dependency set from `package.json` and the `pnpm-lock.yaml`
-closure: exactly the eight direct dependencies `devframe`, `gunshi`, `h3`, `jsonc-parser`,
-`smol-toml`, `vfile`, `vfile-matter`, and `yaml`, so a graph change fails the gate until the dependency decision is
+closure: exactly the nine direct dependencies `devframe`, `gunshi`, `h3`, `jsonc-parser`,
+`open`, `smol-toml`, `vfile`, `vfile-matter`, and `yaml`, so a graph change fails the gate until the dependency decision is
 explicitly revisited. The committed lockfile owns each resolved version and its integrity
 hash, which is what pins every production package's payload bytes. Only generated
 Package-manager-generated `.bin` symlinks and `.cmd`/`.ps1` shims map to the exact declared
@@ -1698,8 +1713,9 @@ duplicates the lockfile, and install-time enforcement belongs to the package man
 
 Launch tests must cover the printed origin line appearing before any browser attempt, zero
 browser-helper child processes under `--no-open`, and inspection remaining usable when
-automatic opening is disabled, unsupported, or fails — automatic opening, port/host
-resolution, and the open/suppress flags are devframe-owned, and the tests prove that no
+automatic opening is disabled, unsupported, or fails — port/host
+resolution is devframe-owned while automatic opening and the negatable `--open` flag are
+product-owned through the `open` package, and the tests prove that no
 inspection-derived content, path, or authored value reaches that opener. They also cover
 Gunshi's non-binding help/version, strict unknown-option rejection,
 explicit positional/rest rejection, default exact captured `process.cwd()`, and one `--root`

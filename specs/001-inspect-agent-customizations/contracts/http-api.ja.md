@@ -62,10 +62,12 @@ customization-selected destination、別machineへの調査content送信は禁�
    `app.baseURL: '/'`、CDN URLなしを使うため、shellは全client routeで変更なしに動作する。
    Static servingはpackaged UI output directoryの外へ到達せず、inspected fileへfallbackしない。
 4. 起動時にhostは正確な`http://localhost:<port>/` URLを起動元terminalへ1回表示する。自動browser
-   openingはdevframe-ownedかつFR-001に基づくbest-effortであり、`--no-open`はopeningを何も出力
+   openingは`open` packageを通じたproduct-ownedかつFR-001に基づくbest-effortであり、helperは
+   launch lineの後にだけspawnされ、devframeのbundled openerは無効化されてspawnできるhelperは
+   正確に1つになり、`--no-open`はopeningを何も出力
    せずに抑止する。Unsupportedまたはfailedのhelperはstartupを妨げず、表示済みURLがfallbackとして
-   残る。devframeはhelper outcomeを公開しないため、productはbrowser
-   opening outcomeのwarningを捏造しない。Helperはinspection由来のcontentもpathも受け取らない
+   残る。Productはbrowser opening outcomeを報告しない: openingはbest-effortで表示済みURLが完全な
+   fallbackであるため、helperのfailureは表面化させず握りつぶす。Helperはinspection由来のcontentもpathも受け取らない
    （FR-022）。任意のclient routeのreload/direct navigationにtokenは不要である。Serveされる
    shellはsession dataをembedせず、新しくloadしたSPAはRPC channelだけを通じてstateをadoptする。
 5. 固定help/version textと必須の起動元terminal向け1回限りlaunch lineのほかに、hostはtelemetryも
@@ -100,8 +102,8 @@ customization-selected destination、別machineへの調査content送信は禁�
 | `agent-customization-inspector:rescan-global` | command | Enabled Global Source 1件のscan command受理 |
 | `agent-customization-inspector:disable-global` | command | Priority Global-disable barrier |
 
-Comparison viewは2件の`get-file-detail` resultからclient側で構築し、独立したcomparison
-functionは存在しない。Catalogのどこにもmasking、redaction、reveal、environment-resolution
+Comparison viewは最大2件の`get-file-detail` resultからclient側で構築する — 存在する側ごとに1件で、
+片側comparisonの明示された不在の対応物はrequestを要しない — 。独立したcomparison functionは存在しない。Catalogのどこにもmasking、redaction、reveal、environment-resolution
 functionは存在せず、hostはdevframeのoptional MCP routeをenableしない。
 
 同じchannelには、このcatalogではなくframeworkが無条件に登録するdevframe自身のbuilt-inも載る:
@@ -448,8 +450,12 @@ Outcomes: fullまたはfenced DTO。
 
 ### `agent-customization-inspector:get-file-detail`
 
-Parameters: commit済みSource-relative Path — fileのidentity（FR-030） — を1つ、functionの
-単一positional argumentとして渡す。
+Parameters: commit済みSource-relative Pathを1つ、functionの単一positional argumentとして
+渡す。Fileのidentityは、そのSourceとSource-relative Pathである（FR-030）。1つのpathを
+保持できるSourceが1つだけの間 — Global commitが第2のSourceをpublishするまでの全session —
+はpath単独がそのidentityを運ぶ。2つのSourceが1つのpathを保持できるようになるのと同じ
+phaseで、Global taskがこのfunctionとdetail/comparison routeへSource qualifierを追加する
+（tasks.md T1001/T1003）ため、同一pathのGlobal fileがRepository fileに隠されることはない。
 
 ```json
 ".claude/skills/deploy/SKILL.md"
@@ -466,10 +472,10 @@ FileDetail — kind: 'skill' | 'file'
 │   │   └── binaryはさらにsizeBytesを持ち、unknownはこれ以上何も持たない
 │   ├── presentation — scan時の1回のparse。extractionがall-or-nothingで
 │   │   失敗したときは正確にnull（FR-028）:
-│   │   ├── frontmatter[] { key, value } — valueは
+│   │   ├── frontmatter[] { key, keyKind, value } — valueは
 │   │   │   { kind: 'scalar', text }、{ kind: 'absent' }、
 │   │   │   { kind: 'sequence', items[] }、
-│   │   │   { kind: 'mapping', entries[] { key, value } }のいずれかで、再帰する
+│   │   │   { kind: 'mapping', entries[] { key, keyKind, value } }のいずれかで、再帰する
 │   │   └── bodyText
 │   └── diagnostics[]
 └── kind 'file' — fileを所有するrecognitionが無い（censusだけが列挙したfile、
@@ -489,6 +495,12 @@ phaseが読むことになるcommit済みgenerationの内部record（data-model.
 であり、session responseは運ばない。Edge recordの`relationships` arrayも存在しない —
 shipped recognitionはedgeを1つも生成できないため、すべてのresponseで空になる。これは
 それを埋めるrelationship phaseとともに到着する。
+
+各frontmatter entryの`keyKind`はclosed union `string | number | boolean | null`であり、
+宣言keyのYAML 1.2 core schema下でのparse済みの型である。宣言のidentityは`(keyKind, key)`の
+組である — unquoteの`1`とquoteされた`"1"`は、どちらも`key` textとして`1`をrenderする2つの
+keyである — ため、file間で宣言をmatchするclientは`key`単独ではなくこの組でmatchする。
+同じentry形は`keyKind`を含めて、nestした全`mapping` value内へ再帰する。
 
 Readable fileでは`sourceText`を完全なdecoded sourceとし、書かれたとおりに保持する。
 
@@ -1037,7 +1049,7 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
    round-tripすることを証明する。
 5. Static traversal/encoded traversal attemptがpackaged `dist/public` outputの外へ出ない。Serve
    される全byteがそのpackaged Nuxt outputに由来し、inspected fileを一切serveせず、root、
-   `/compare`、`/global-consent`、`/skills/<tool>/<Source相対パス>`のclient routeがすべて同じpackaged SPA shell
+   `/skills/compare`、`/global-consent`、`/skills/<tool>/<Source相対パス>`のclient routeがすべて同じpackaged SPA shell
    をbootし、そのshellはsession dataをembedしない。
 6. Repositoryと各tool-specific Global rescanのqueue order、duplicate rejection、abort、partial
    outcome、fatal failure、pollingがwhole generationだけを公開する。別のSourceの後でqueueした

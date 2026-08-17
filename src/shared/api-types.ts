@@ -74,8 +74,28 @@ export type FrontmatterValueDto =
     };
 
 /**
- * One authored frontmatter declaration, as the skill detail surface shows it
- * (data-model.md § Skill presentation).
+ * The parsed type of a declared frontmatter key under YAML 1.2's core schema
+ * (data-model.md § Field reading). Published beside the rendered spelling
+ * because one spelling can stand for two keys — an unquoted `1` is a number
+ * and `"1"` a string, both rendering as `1` — and a surface matching
+ * declarations across files needs the parser's identity, not the spelling
+ * alone (FR-011).
+ */
+export type FrontmatterKeyKind =
+  /** A string key, quoted or plain. */
+  | 'string'
+  /** A key the core schema resolves to a number. */
+  | 'number'
+  /** A key the core schema resolves to a boolean. */
+  | 'boolean'
+  /** A key resolving to null: `~`, `null`, or an empty key. */
+  | 'null';
+
+/**
+ * One parsed frontmatter declaration, as the skill detail surface shows it
+ * (data-model.md § Skill presentation): the key and value carry what the
+ * parser resolved, while the authored spelling stays in the complete
+ * `sourceText` served beside them.
  *
  * The key is the file's own, never a vendor catalog's: this is the reader's
  * frontmatter shown back to them, so a key the product has no opinion about is
@@ -90,6 +110,12 @@ export interface FrontmatterEntryDto {
    * beside these.
    */
   readonly key: string;
+  /**
+   * The parsed type of the declared key ({@link FrontmatterKeyKind}): what
+   * tells apart the two keys one spelling can stand for, since `key` renders
+   * a numeric `1` and a string `"1"` identically.
+   */
+  readonly keyKind: FrontmatterKeyKind;
   /** What the key declares; see {@link FrontmatterValueDto}. */
   readonly value: FrontmatterValueDto;
 }

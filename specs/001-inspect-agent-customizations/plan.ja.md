@@ -35,8 +35,9 @@ Security boundaryを厳密にする。Browserはfilesystemを読まず、Node ho
 カスタマイズファイルをdynamic importせず、初期リリースにはstatic export、MCP、remote host、
 自動watch modeを設けない。Local hostにはeslint/config-inspectorと同じ基盤であるdevframe local-tool
 frameworkをauthentication無効で採用する。devframeはbuild済みSPAを`cli.distDir`（`dist/public`）から
-配信し、devframeのRPC session API channelを通じてinert DTOを送り、port選択、host binding、起動時の
-browser openを所有する。保護はloopback限定の`localhost` bindだけであり、per-session token、product所有のOrigin check、
+配信し、devframeのRPC session API channelを通じてinert DTOを送り、port選択とhost bindingを所有する。
+起動時のbrowser openはproductが`open` packageを通じて所有し、devframeのbundled openerは無効化される。
+保護はloopback限定の`localhost` bindだけであり、per-session token、product所有のOrigin check、
 hand-writtenなrouterは存在しない。認証なしloopback hostの残存exposure（他のlocal processと、
 DNS rebinding経由の悪意あるweb page）は、Constitution § Quality and Safety Standardsが記録するdocumented limitationとする。
 Session APIは明示的なdetail requestにだけ、完全な
@@ -102,7 +103,7 @@ Vue 3.5.39とする。6つのNode/OS floor jobはcompatibleな全minor/patch rel
 
 **主要依存関係**: Nuxt 4.4.8、Vue Router 5.2.0、tsdown 0.22.8、Vite 7.3.6
 （Nuxtと互換性のある最新release）、`devframe` 0.7.5（pre-1.0 local-tool host framework）、
-`gunshi` 0.37.0、`yaml` 2.9.0、
+`gunshi` 0.37.0、`open` 11.0.1、`yaml` 2.9.0、
 `jsonc-parser` 3.3.1、`smol-toml` 1.7.0、`h3` 2.0.1-rc.22、`monaco-editor` 0.55.1。いずれも`package.json`には
 caret rangeで宣言し、commit済みlockfileがこれらのexactなresolved versionとintegrityをpinする。
 `h3`のresolved versionはdevframe自身のh3と一致するため、hostの`/skills/**` shell fallbackと
@@ -540,7 +541,8 @@ WebKit revisionについて、Node.js 24.18.0の`ubuntu-24.04` x64で完全なbr
 handlerへ渡すだけでbrowser family/versionを選択または検証せず、helper成功をbrowser compatibility evidenceとしない。Certification
 baseline外のhandler、利用不能なhandler、または識別不能な解決先browserの場合、自動openはbest-effortのままとし、表示済みURLと
 `--no-open`を使ってcertified browserでmanual openすることをactionable fallbackとする。公開project/dependency package payloadとproject-authored installed application codeはplatform非依存の
-JavaScript application codeとdeclarativeなstatic/package dataだけを含み、install script、runtime download、end-user compilerを必要としない。
+JavaScript application codeとdeclarativeなstatic/package dataだけを含み — 唯一の例外は記録済みFR-038 closure例外である
+`open` packageのvendoredなPOSIX shell `xdg-open` — install script、runtime download、end-user compilerを必要としない。
 Package-manager生成`node_modules/.bin` symlink/`.cmd`/`.ps1` launcherはpayload外interoperability metadataであり、
 宣言済み`package.json.bin` targetへmapする。Development-only toolingはproduct package外で別にpin/auditする。
 Serverはloopback interface（host `localhost`）だけへbindし、remote deployment modeを持たない。
@@ -588,9 +590,10 @@ write、truncate、create、rename、delete、link、mode/ownership/time/xattr/A
 一切requestしない。Testではこれらのcallをinstrumentし、content、length、identity/link state、mode、mtime、ctime、
 観測可能なxattr/ACLを比較する。OSのread semanticsだけによるatime更新は別に記録し、failureともmutationの証明とも
 しない。別途制約されたstartup launcherは、許可するproduct起動child processを唯一所有し、
-その対象は固定OS browser helperだけとする。このhelperはargvまたはenvironmentとしてinspection由来のcontent/path、
-authored value、user-supplied command、environmentで選択したhandlerを受け取らない。Closedなambient platform key setだけを
-launch environmentから直接copyしてよい。Ambient valueがSource rootとlexicalに同じでもprovenanceは変化せずread authorityを
+その対象は固定OS browser helperだけとする。このhelperが受け取るのは表示済みloopback originだけであり、inspection由来のcontent/path、
+authored value、user-supplied commandを受け取らない。Helperはlaunch environmentを変更なしで継承する:
+productはどの環境変数にもinspection由来の値を書き込まず、`xdg-open`が`$BROWSER`を参照するように
+platform helperがuser自身の設定を尊重するのはuser preferenceの適用である。Ambient valueがSource rootとlexicalに同じでもprovenanceは変化せずread authorityを
 与えない。自動起動を無効にした場合、非対応の場合、または失敗した場合もsessionを利用可能に保つ。Boundary外byteを受理・公開しない。Symbolic linkは透過的にreadし、link先がmissingまたは
 unreadableなlinkはそのfileのfile別diagnosticになる。
 Global read前に明示的opt-inを要求する。Loopback session APIは明示的なdetail requestにだけ完全な
@@ -658,7 +661,7 @@ file-scope `Diagnostic` DTOは、actionableなlocationとして必要最小限�
 **規模・scope**: ローカルuser 1人、選択済みRepository root（defaultでは1回captureしたexact invocation
 `process.cwd()`、またはaccepted single `--root` value）をrootとするRepository sourceを正確に1つ、session-wideな
 all-tools opt-in 1回から作るadmit済みのtool別Global sourceを0から3つ（Copilot、Claude、Codexごとに最大1つ）、Sourceごとにrootを正確に1つ、
-comparison内は異なるreadableなカスタマイズファイル正確に2件。Inventory sizeはproduct定義のitem上限ではなくsupported runtimeと
+comparison内は異なるreadableなカスタマイズファイル最大2件、または明示された不在の対応物に対して表示する1件。Inventory sizeはproduct定義のitem上限ではなくsupported runtimeと
 execution environmentによって決まる。
 
 ## 憲章適合確認
@@ -747,9 +750,11 @@ channelを渡る）、sanitized envelope、generic error entity、log-content ru
 selector grammarとそのcontract-gate rejection、lintと残りのtest、
 その他の必須品質gate、4つのend-to-end storyを扱う。Monacoはclient-only、
 same-origin、model lifetime scopeとし、固有diff engineでdependency重複を避け、exact authored metadata比較を
-明示的に保つ。Project-owned browser launcherによりshellを含む`open` packageを除去し、許可する唯一のproduct child
-processを、inspection由来のcontent/path、authored value、user command、environment-selected handlerを受け取らない固定startup
-OS helperへ限定する。Closedなambient platform key setだけをlaunch environmentから直接copyし、Source rootとのlexical一致は
+明示的に保つ。Product-owned browser launcherはmaintainされた`open` packageの固定startup OS helperをspawnし、
+許可する唯一のproduct child
+processをそれに限定する。Helperが受け取るのは表示済みloopback originだけであり、inspection由来のcontent/path、authored value、
+user commandを受け取らない。Helperはlaunch environmentを変更なしで継承し、productはそこへinspection由来の
+値を書き込まない。Source rootとのlexical一致は
 provenanceを変えずauthorityを与えない。Package gateは承認済みのdirect production dependency setを
 `package.json`と`pnpm-lock.yaml` closureからassertし、commit済みlockfileが各resolved versionとintegrity hashを
 pinすることでproduction payloadをそのdigestでbyte-pinし続ける。Third-party development/test toolingはpublished FR-038 boundary外のままとする。
@@ -805,15 +810,16 @@ specs/001-inspect-agent-customizations/
 src/
 ├── app/
 │   ├── App.vue
+│   ├── router.options.ts   # shellのpage-identity ruleを共有するrouter scroll behavior
 │   ├── worker-modules.d.ts
 │   ├── components/
 │   │   ├── inventory/
 │   │   ├── inspection/
-│   │   ├── comparison/
+│   │   ├── skill-comparison/
 │   │   ├── consent/
 │   │   └── diagnostics/
 │   ├── composables/
-│   │   ├── comparison.ts
+│   │   ├── skill-comparison.ts
 │   │   ├── filters.ts
 │   │   ├── monaco.ts
 │   │   └── monaco-languages.ts
@@ -823,8 +829,8 @@ src/
 │   │   └── view-state.ts
 │   ├── pages/
 │   │   ├── index.vue
-│   │   ├── compare.vue
 │   │   ├── global-consent.vue
+│   │   ├── skills/compare.vue
 │   │   └── skills/[tool]/[...path].vue
 │   └── styles/
 ├── server/
@@ -1054,10 +1060,9 @@ buildまたはpackage quality gateを配置しない。
 したがってSetupでは、package command、tsdown entry、CI quality gateを設定または実行する前にformatterを
 設定し、CLI entryと参照される全assembly scriptをscaffoldする。それらのpathが存在するまでSetup stageを
 runnableとみなさない。
-Production `dependencies`はexact-versionのdirect set `devframe`、`gunshi`、`yaml`、`jsonc-parser`、
-`smol-toml`、`vfile`、`vfile-matter`とし、`tests/package/production-graph.test.ts`が`pnpm-lock.yaml`から直接assertする。
-devframeのtransitiveはlockfileが所有し、`open`を
-全dependency sectionとproduction lock closureから除外する。Nuxt/Vue/Vite/tsdown、Monaco、Playwright、その他
+Production `dependencies`はcaret宣言のdirect set `devframe`、`gunshi`、`h3`、`jsonc-parser`、`open`、
+`smol-toml`、`vfile`、`vfile-matter`、`yaml`とし、`tests/package/production-graph.test.ts`が`pnpm-lock.yaml`から直接assertする。
+devframeと`open`のtransitiveはlockfileが所有する。Nuxt/Vue/Vite/tsdown、Monaco、Playwright、その他
 build/test toolingはdevelopment-onlyとする。
 
 Cross-platform CIはmacOS、Linux、Windowsで同じpure Node.js inspection-filesystem integration suiteを
@@ -1085,7 +1090,7 @@ entry pointをadvertiseしない。Package testはbin targetの保持された�
 locationから解決されることを証明する。Pack済みtarballは証明しない: tarballをisolated fixtureへinstallし
 `npx --no-install`で起動するのはT917であり、release gateが所有する。
 
-Package gateは、承認済みのdirect production dependency set — その8つのnameだけで他は含まない — を
+Package gateは、承認済みのdirect production dependency set — その9つのnameだけで他は含まない — を
 `package.json`と`pnpm-lock.yaml` closureからassertする。これによりnew production dependencyは
 research.md § 3の決定が明示的に見直されるまでfailする。各resolved versionとそのintegrity hashは
 commit済みlockfileが所有し、production payload byteを固定し続けるのはこのlockfileである。payload content scan — native/binary/Wasm magic、shell helperとshebang audit、
@@ -1229,7 +1234,8 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   projectionへ適用する。
 - Node hostはdevframe 0.7.5とする。CLIは`devframe/adapters/dev`の`createDevServer`でapp definitionを
   起動し、`auth: false`を設定してloopbackの`localhost`だけへbindする。devframeはbuild済みSPAを`cli.distDir`
-  （`dist/public`）から配信し、port選択、host binding、起動時のbrowser openを所有する。Session APIは
+  （`dist/public`）から配信し、port選択とhost bindingを所有する。起動時のbrowser openはproductが
+  `open` packageを通じて所有し、devframeのbundled openerは無効化される。Session APIは
   app definitionの`setup`（`src/server/host/devframe-app.ts`）で`defineRpcFunction`により宣言するdevframe RPC
   functionの集合とする。同じchannelにはdevframe自身のbuilt-in（`devframe:agent:*`、
   `devframe:rpc:server-state:*`、`devframe:streaming:*`）もframeworkが無条件に登録するが、この
@@ -1258,17 +1264,19 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   伝播させ、preview、authority、job、retained failure stateを作成しない。Accepted entryはinternal exact raw
   `lexicalRoot`もescaped displayと並べて同じrecordに保持する。Enableは保存済みraw valueだけを使い、`displayRoot`を逆変換せずenvironmentを
   再読込しない。
-- 起動時のbrowser openはdevframeが所有する。CLIは、devframeがFR-022で許可された固定OS browser-launch
-  helperを試行する前にplainなloopback originを1回表示し、`--no-open`はchild processを一切作らずにその
+- 起動時のbrowser openはproductが`open` packageを通じて所有する。CLIは、hostがFR-022で許可された固定OS
+  browser-launch helperをspawnする前にplainなloopback originを1回表示し、devframeのbundled openerは
+  無効化されてspawnできるhelperは正確に1つになり、`--no-open`はchild processを一切作らずにその
   試行を無効化する。Helper呼び出しが受け取るのは表示済みloopback originだけであり、inspection由来の
-  content/path、authored value、user-supplied command、environmentで選択したhandlerを受け取らない。
+  content/path、authored value、user-supplied commandを受け取らない。
   Source root、preview root、candidate path、file path、authored valueはinspection stateから
-  argv/environmentへcopyせず、そうした値とambientなenvironment textのlexical一致はprovenanceを変えず、
-  read authorityを与えず、handlerを選択しない。HelperはnavigationだけをOS default handlerへ委譲し、
+  argvへも、変更なしで継承されるenvironmentへもcopyせず、そうした値とambientなenvironment textの
+  lexical一致はprovenanceを変えず、read authorityを与えない。Helperはnavigationだけをplatform自身の
+  解決 — `$BROWSER`のようなuser自身の設定を含む — へ委譲し、
   browser family/versionを選択・検証しない。Openの成功はcompatibility evidenceではない。自動openが
   無効、非対応、失敗の場合、またはhandlerや解決先browserが利用不能、識別不能、release-certification
   baseline外の場合もserverは継続し、表示済みURLと`--no-open`がcertified browserでの文書化済み
-  manual-open fallbackを提供する（FR-001）。Testはdevframeの隣にproduct所有のplatform mapを再実装する
+  manual-open fallbackを提供する（FR-001）。Testは`open` packageの隣にproduct所有のplatform mapを再実装する
   代わりに、launch pathをinstrumentしてargv/environment boundaryを証明する。Terminalのlaunch line 1件は
   presentation outputとする。
 - Session APIはinert DTOと完全なauthored valueを明示的なdetail requestにだけ返す。Bundled browserは
@@ -1305,8 +1313,8 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   memory leaseも、page-lifecycle purgeも無い。transportがhost喪失を自ら報告するため、
   process lossはpollingせずにended viewになる。通常のhandler/delivery rejectionはそのrequest自身の
   errorであり、commit済みsnapshotは画面に残り、次のrefreshが成功しうる（FR-030）。Channel喪失、
-  未対応のsession protocol、session mismatch、または同等のterminal full-session resetではeditor model/worker/subscriptionをdisposeし、全session DTO/DOM/detail/comparison stateをclearして
-  requestをabortし、`clientDataEpoch`をincrementしてlate responseによるcontent復活を防ぐ。全SessionSnapshot/FileDetail
+  未対応のsession protocol、session mismatch、または同等のterminal full-session resetではeditor model/worker/subscriptionをdisposeし、ownerとrender済みsurfaceが保持するsession DTO/DOM/detail/comparison stateをclearして
+  requestをabortし、`clientDataEpoch`をincrementしてlate responseをcontent復活ではなくno-opとしてsettleさせる。全SessionSnapshot/FileDetail
   requestはepoch、owning sequenceのcurrent generation — session snapshotは`repositoryGeneration`とnullableな
   `globalGeneration`を公開する — 該当時fileのSource-relative Path、exact request tokenをcaptureする。Owning sequenceのolder generationは無視し、
   admitted済みの自動または明示scanはそれぞれopaqueな`scanRequestId`を持ち、そのSource progressとcommitするgenerationは
@@ -1479,7 +1487,7 @@ generic error-envelopeもoperational-log/telemetry機構も存在せず、それ
 
 | 複雑さ | 必要な理由 | 不採用とした単純案 |
 |---|---|---|
-| Lockfile所有transitive（h3 2.0.1-rc.22 release candidateを含む）を持つlockfile-pinnedなpre-1.0 devframe 0.7.5 host | Hand-writtenなrouter、token authentication、static-manifest pipelineを維持する代わりに、config-inspectorで実証済みのlocal-tool hostをstatic配信、RPC session API、browser openに再利用する。本repository自身のdevelopmentとCIの中では、公開packageが持たないcommit済みlockfileが、全build/test runでpre-1.0のAPI churnとRC transitiveを1つのreview済みbaselineに固定し、manifestの`^0.7.5`はここでの意図的なupdateが動ける受け入れrangeを宣言するだけである（pre-1.0のcaretは0.8.0未満にとどまる）。公開package consumerのpackage managerは、他の任意のpre-1.0 dependencyと同様に、install時にその同じ`^0.7.5`をregistryに対して新たにresolveする。Packageのどこもconsumerのruntime baselineを固定しない | Exactなmanifest pinは、本repository自身のbuildについてはcommit済みlockfileがそこですでに所有するresolutionを重複させるだけである — どちらでもversionの移動はreviewされるlockfile変更である — が、package consumerがresolveするものは変えない。公開tarballはどちらの場合もlockfileを運ばないためである。Hostのin-repo再実装はdevframeがすでに所有する複雑さを再現する |
+| Lockfile所有transitive（h3 2.0.1-rc.22 release candidateを含む）を持つlockfile-pinnedなpre-1.0 devframe 0.7.5 host | Hand-writtenなrouter、token authentication、static-manifest pipelineを維持する代わりに、config-inspectorで実証済みのlocal-tool hostをstatic配信とRPC session APIに再利用する。本repository自身のdevelopmentとCIの中では、公開packageが持たないcommit済みlockfileが、全build/test runでpre-1.0のAPI churnとRC transitiveを1つのreview済みbaselineに固定し、manifestの`^0.7.5`はここでの意図的なupdateが動ける受け入れrangeを宣言するだけである（pre-1.0のcaretは0.8.0未満にとどまる）。公開package consumerのpackage managerは、他の任意のpre-1.0 dependencyと同様に、install時にその同じ`^0.7.5`をregistryに対して新たにresolveする。Packageのどこもconsumerのruntime baselineを固定しない | Exactなmanifest pinは、本repository自身のbuildについてはcommit済みlockfileがそこですでに所有するresolutionを重複させるだけである — どちらでもversionの移動はreviewされるlockfile変更である — が、package consumerがresolveするものは変えない。公開tarballはどちらの場合もlockfileを運ばないためである。Hostのin-repo再実装はdevframeがすでに所有する複雑さを再現する |
 | Publication-authority revocationとcleanup-onlyなlate continuation | Disable、shutdown、cancellation後に完了したworkが新しいsession stateを変更するのを防ぐ | Cancellationをphysicalなkernel-I/O terminationと扱うと未対応の保証になる |
 | 4件の固定external terminal-equipment descriptorとsupervisor-owned participant launch | Participant、moderator、isolated reviewer slot 2件へ決定的なnonrecording/no-echo ingressを与え、sole product-exit sourceへ実child handleを与える | Implicit shared stdinはvote/contextを分離できず、product process handleを持たないharnessはexitをattestできない |
 | Adapter-owned pinned Chromiumとanonymous DevTools equipment pipe | Env/argv/profileへ永続化せずattempt-local proxy/authを設定し、browser/context exitをdirect OS observerへgroundする | Browser authorityをargv/environment/persistent profileへ置くとprivacy boundaryに違反し、ownerのないbrowserは信頼できるequipment observerを持たない |

@@ -74,13 +74,14 @@ pnpm run build
   同じpipelineが直前に生成したsibling artifactの再列挙はredundantなpolicyである。Missingまたはnon-regularな
   entryはpublish前にgateをfailさせる。Locked済みproduction dependencyはpackage testが`pnpm-lock.yaml`から
   直接assertする。これらのcheckはcustomization-file contentをvalidateしない。
-- Project-authored application codeと全project/dependency tarball payload内のexecutable codeはすべてJavaScriptとする。
-  生成HTML shell、CSS、JSON file、必須documentation/license fileはdeclarativeかつnon-executableなartifactとする。
+- Project-authored application codeと全project/dependency tarball payload内のexecutable codeは、2つの限定的な記録済み例外を除きすべてJavaScriptとする。
   Package manager生成の`.bin` symlinkと
-  `.cmd`/`.ps1` launch shimはpayload外の唯一の限定interop例外とし、それぞれexactな宣言済み`package.json.bin` targetを
-  audit済みNode JavaScriptへ対応させ、argvだけをforwardして追加input/application logicを持たせない。Directなproduction dependencyは正確に8件、`devframe`、`gunshi`、`h3`、
-  `jsonc-parser`、`smol-toml`、`vfile`、`vfile-matter`、`yaml`とする。devframeのtransitive treeはdevframeとlockfileが所有し、`open`は全dependency
-  sectionで不在とする。
+  `.cmd`/`.ps1` launch shimはpayload外に存在し、それぞれexactな宣言済み`package.json.bin` targetを
+  audit済みNode JavaScriptへ対応させ、argvだけをforwardして追加input/application logicを持たせない。
+  `open` packageのvendoredなPOSIX shell `xdg-open`はpayload内の唯一の例外である
+  （spec.md FR-038）: Linux hostでは、package自身の選択policyがvendored copyを実行可能である限り使い、
+  そうでないときにsystemの`xdg-open`へfallbackする。生成HTML shell、CSS、JSON file、必須documentation/license fileはdeclarativeかつnon-executableなartifactとする。Directなproduction dependencyは正確に9件、`devframe`、`gunshi`、`h3`、
+  `jsonc-parser`、`open`、`smol-toml`、`vfile`、`vfile-matter`、`yaml`とする。devframeと`open`のtransitive treeはそれぞれのpackageとlockfileが所有する。
 - Build outputにfixture、raw customization text、Global content、cache、inspected machineを公開する
   source-map pathが含まれない。
 
@@ -135,9 +136,9 @@ launchを終了させる。
 
 期待結果:
 
-- devframe hostがbrowser attempt前にlocalな`http://localhost:<port>/` originを正確に1回表示し、non-loopback addressへ
+- Hostがbrowser attempt前にlocalな`http://localhost:<port>/` originを正確に1回表示し、non-loopback addressへ
   bindしない。表示URLはplainなoriginであり、per-session token、fragment、その他のsecretを含まない。
-  devframe CLI flagである`--no-open`ではbrowserを開かず、browser-helper child processも作らない。
+  CLIのnegatableなproduct flagである`--no-open`ではbrowserを開かず、browser-helper child processも作らない。
 - Browser表示のRepository source rootは`all-supported` fixture自身。
 - 1秒以内に現在のscan requestについて、queued、active phase名、complete、partial、またはfailedを明示するstatusを画面に
   表示しassistive technologyにも公開する。Failureは実行可能な次の手順も示し、Source/progressはそのrequestのopaqueな
@@ -146,8 +147,9 @@ launchを終了させる。
 - 最初のcomplete inventoryが表示され、凍結path contract外のfileを含まない。
 - Process停止でserver sessionを破棄する。読み込み済みpageでは、devframeが問い合わせなしにtransport経由でloopback
   hostの喪失を報告する。Transportが報告するchannel loss、またはcurrentかつnon-supersededなsession RPCの
-  clientが解釈できないprotocolは、session-ended view前に全DTO、DOM source value、editor model/worker、
-  comparisonをpurgeする。SPAはliveness RPCを発行せず、visibility、unload、その他の
+  clientが解釈できないprotocolは、session-ended view前にDTO、DOM source value、editor model/worker、
+  comparison stateをあらゆるstate ownerとrender済みsurfaceからpurgeし、settlement authorityを失効させて、
+  pending中のrequestが捕捉したresponseをno-opとしてsettleさせる（data-model.md § BrowserState）。SPAはliveness RPCを発行せず、visibility、unload、その他の
   page-lifecycle listenerを設置せず、pageがhiddenになっただけではpurgeせず、visibilityへ戻ってもrefetchしない。
   Polling interval、request timeout、retry timer、memory lease、continuously idleなpageに対するwall-clockの
   process-loss保証を定義しない。Portを再利用して再起動しても`sessionId`が変わり、purge前にcaptureしたresponseも
@@ -165,12 +167,16 @@ cd /path/to/intended/repository-root
 npx agent-customization-inspector
 ```
 
-Port/host resolution、表示origin、automatic browser openingは、sessionをhostするdevframe local-tool
+Port/host resolutionと表示originは、sessionをhostするdevframe local-tool
 frameworkが所有する。devframeはbuild済みSPAを`dist/public`から配信し、session APIをそのRPC channelとして
-公開し、startup時に表示originをOSのdefault browserで開く。このfixed startup openingがinitial releaseで
+公開する。Automatic browser openingはproductが`open` packageを通じて所有する: launch lineの後にhostが
+表示origin付きで`open`の固定OS helperをspawnし、devframeのbundled openerは無効化されてspawnできる
+helperは正確に1つになる。このfixed startup openingがinitial releaseで
 許可する唯一のproduct起動child processであり、inspection由来のcontent、path、authored value、
-user-supplied command、environment-selected handlerを受け取らない。`--no-open`系のsuppression flagは
-hand-writtenなproduct optionではなくdevframe CLI flagである。Openerがmissingまたはfailedでもserverは
+user-supplied commandを受け取らず、launch environmentを変更なしで継承する — productはそこへ
+inspection由来の値を書き込まず、user自身の`$BROWSER`を尊重するplatform helperはuser preferenceを
+適用している。CLIのnegatableな`--open` flag
+（default true）が`--no-open`のsuppressionを提供する。Openerがmissingまたはfailedでもserverは
 継続し、既に表示したlocal originがFR-001のfallbackである。
 任意の単一`--root`を除き、初期リリースにはrepository picker/ancestor-root discovery、remote-host flag、
 static-export command、MCP commandはない。
@@ -180,7 +186,7 @@ session-API requestはdevframe channel越しにreal errorを返す。その間se
 committed snapshotは表示され続ける。別建てのoperational-event log、closedなerror-code taxonomy、
 genericなerror envelopeは存在しない。Terminal/UI outputを読むのは、調査対象fileを所有するのと同じuserである。
 
-Automatic openingは表示originをOS default browserへ委譲するだけで、devframeはbrowser versionを選択も検証もしない。
+Automatic openingは表示originをOS default browserへ委譲するだけで、helperはbrowser versionを選択も検証もしない。
 Openの成功はcompatibility evidenceではない。Deterministicなcertificationでは`--no-open`を使い、表示URLを3つのpin済みPlaywright revisionの1つへ
 貼り付ける。Enrollment済みのparticipant-study sessionごとに、実際のOS default handlerまたはそのunavailabilityと、解決可能な
 場合は実際のbrowser family/revisionを記録する。Default handler自体がcertifiedである必要はなく、fallbackはenrollmentの前提では
@@ -233,8 +239,10 @@ pnpm run test:e2e
   `GET`/`HEAD`とlocal session API channel（どちらもloopback-onlyなdevframe bindの背後でunauthenticated）を別々に分類・検証する。Source containmentとcustomization由来のexecution、child process、MCP
   connection、FR-022で定義した禁止対象のdirect product-issued outbound request、dynamic evaluation、source mutationが0であることを証明する。Explicit
   UNC/server-share/device vectorではfilesystem/DNS/SMB call 0件を証明する。Lexicalに識別不能なpre-mounted/mapped network sourceはOS-mediated
-  trafficを発生させ得るためFR-022のplatform/environment limitationとして別に記録する。devframe所有のstartup
-  browser openingへinspection由来のcontent/path、authored value、user-supplied command、environment-selected handlerを渡さない。
+  trafficを発生させ得るためFR-022のplatform/environment limitationとして別に記録する。`open` packageを通じた
+  product所有のstartup
+  browser openingへ渡すのは表示済みoriginだけであり、inspection由来のcontent/path、authored value、
+  user-supplied commandを渡さず、productがinspection由来の値を書き込まないlaunch environmentを継承する。
   実行すべきhost-securityやHTTP-router contract suiteは存在しない。Per-session token、Origin check、hand-written routerは
   削除済みで、protectionはloopback限定の`localhost` bindだけであり、unexpectedなsession-API failureはreal errorをrequesting clientへ
   そのままpropagateし、sessionは利用可能なままとする。
@@ -243,8 +251,8 @@ pnpm run test:e2e
   graceful shutdownを検証する。これはpackaged pathだけのisolationであり、現行gateはtarballをinstallせず、
   installed package linkもinvokeしない。T917が、isolated fixtureへpack/installし、working treeまたは
   runtime downloadへ依存せず`npx --no-install`でlaunchするfinal-release testを所有する。
-  Production-graph testは承認済みのdirect dependency 8 件、すなわち
-  `devframe`、`gunshi`、`h3`、`jsonc-parser`、`smol-toml`、`vfile`、`vfile-matter`、`yaml`を正確にassertし（resolved versionとintegrity hashは
+  Production-graph testは承認済みのdirect dependency 9 件、すなわち
+  `devframe`、`gunshi`、`h3`、`jsonc-parser`、`open`、`smol-toml`、`vfile`、`vfile-matter`、`yaml`を正確にassertし（resolved versionとintegrity hashは
   commit済み`pnpm-lock.yaml`が所有し続ける）、negative packaging fixtureは、
   missingまたはnon-regularなrequired entry pointがpublish前に`verify:package`をfailさせることを証明する。
 - Performance suiteはpackaged CLI（先にbuildする）に対してT183のSC-002 smoke passを実行する。
@@ -453,13 +461,17 @@ pnpm exec vitest run --project unit \
 
 確認項目:
 
-1. Repository comparison flowでは、同じRepository Sourceからactive-generationのreadableなdistinct fileを正確に2つ選べ、
-   source textを持たないitem — binaryを含む — は選べない。Cross-Source comparisonは次のworkflowでGlobal enable後にだけ検証する。
+1. Repository comparison flowでは、2つ以上のreadableなentry fileを持つskill名がそのrowとdetail画面に比較エントリを
+   1つ提供する。比較画面のswitcherは対応するファイルとcopyの間でペアを切り替え、少なくとも片方の現在のcopyが
+   readableに持つ全ファイルを選択肢として提供する。片方のcopyだけが持つファイルは存在する側を明示された不在に
+   対して表示する。readableなsource textなしに存在する対応物 — binaryを含む — は不在ではなく、そのペアを選ぶと
+   ファイル名を挙げたnot-readableの結果を報告する。どちらのcopyでもreadableでないファイルは決して提供しない。
+   Cross-Source comparisonは次のworkflowでGlobal enable後にだけ検証する。
 2. Read-only Monaco source modelがmasking/環境置換なしで記述された完全なtextを保持し、link/editingを無効にし、
    filesystem pathではなくopaqueなin-memory URIを使う。
 3. Monacoがsemantic ranking、merge、lint、validation、format、convert、fix suggestionなしでliteral
    source差を表示する。Recognition metadataは区別可能なまま、JSONへserializeせずVueでtyped fieldを
-   比較し、provenance pathとrelationship edgeを別rowに保つ。
+   比較する。
 4. Monacoとbrowserのcapacityはbrowser engineと実行環境から継承する。Recoverableなeditor computation failureは
    記述された完全なread-only side-by-side sourceを削除せず、actionable diagnosticを示す。
 5. Rescan、removal、Global disable、route closeがstale selectionと表示済みdetail stateをclearし、関連する
@@ -468,14 +480,15 @@ pnpm exec vitest run --project unit \
    diffへ入り、navigateし、抜けられる。
 7. Packed appがeditor workerをsame-origin static assetからloadし、external requestも`blob:` workerも
    発生させない。
-8. `/`、`/compare`、`/global-consent`、`/skills/<tool>/<Source相対パス>`のdirect loadが、devframe hostが配信する同じ
+8. `/`、`/skills/compare`、`/global-consent`、`/skills/<tool>/<Source相対パス>`のdirect loadが、devframe hostが配信する同じ
    root-absolute assetからbootする。
 9. Session-loss/response-guard testは、devframe transportが報告するchannel loss、currentかつnon-supersededなRPCの
    現在の非supersededなRPCでのchannel lossまたは解釈できないprotocol、session-ID mismatch、greater Global content epochまたはnon-null disable fence、
    client epoch変更後のlate in-flight responseを扱う。CurrentなRPCでのtransport報告channel lossまたは解釈できないprotocolはshared full
    client-data purgeを実行してsession-ended viewへ入り — ordinaryなrequest rejectionはそのrequestの
-   errorに留まり — pre-purge inventory/detail/comparison/editor/authored-content
-   DTO/DOM stateが残留・自動復活しないことを証明する。SPAはliveness functionを呼ばず、
+   errorに留まり — あらゆるstate ownerとrender済みsurfaceがpre-purge inventory/detail/comparison/editor/authored-content
+   DTO/DOM stateを落とし、何も自動復活せず、late settlementはrepopulationではなく
+   no-opになることを証明する（data-model.md § BrowserState）。SPAはliveness functionを呼ばず、
    visibility、unload、その他のpage-lifecycle listenerを設置せず、経過時間、pageのhidden化、visibilityへの復帰を
    理由にrequestを発行しない。Event-drivenなhost-loss signalはdevframeが所有し、productはcontinuously idleなpageに
    wall-clockのprocess-loss deadlineを設定しない。Ordinaryなinspection-data responseのrender前にgreater epochまたは
@@ -1066,7 +1079,7 @@ release candidateに対してcriterion固有の全`AUTO-*` checkを合格させ�
 packed tarballのfile list、render済みpacked interfaceに対して全`REVIEW-*` rationaleを再確認する。Axeのseverity resultだけでは
 SC-008を立証できない。Contractはsamplingしない完全なexecution matrixを固定する。
 
-1. Keyboardだけでlaunch/URL follow、filter、file open/close、2 file select/compare、
+1. Keyboardだけでlaunch/URL follow、filter、file open/close、skill rowのlinkからの比較openとcompared file/copy切替、
    Global consent open、Global enable/disable、rescan、inventory returnを行う。
 2. Visible focus、logical focus order、skip/navigation landmark、unique label、status announcement、
    error/next-step association、generation replacement時にfocusを失わないことを確認する。
@@ -1099,8 +1112,8 @@ exact `package.json.files` entryの`dist`、`README.md`、`README.ja.md`、`LICE
 を含むことをassertする。残りの`dist` contentはNuxt/tsdownのbuild outputであり、
 product manifestで再列挙しない。Exact `bin` mappingと
 `main`/`module`/`exports`不在、license notice、保持されたexact shebang、
-公開README pairを確認する。Directなproduction dependencyは正確に8件、`devframe`、`gunshi`、`h3`、
-`jsonc-parser`、`smol-toml`、`vfile`、`vfile-matter`、`yaml`とし、`open`は全dependency sectionで不在とする。devframeのtransitive treeはdevframeと
+公開README pairを確認する。Directなproduction dependencyは正確に9件、`devframe`、`gunshi`、`h3`、
+`jsonc-parser`、`open`、`smol-toml`、`vfile`、`vfile-matter`、`yaml`とする。devframeと`open`のtransitive treeはそれぞれのpackageと
 lockfileが所有する。
 
 再実行すべきhost-securityやHTTP-API-router contract stepは存在しない。devframeがhosting policy
@@ -1116,7 +1129,7 @@ initial baselineをno impactとして記録する。それ以外では必要なc
 rollback/support pathを記録する。Evidenceが欠落するか一方の言語だけならrelease gateをfailureとする。
 
 承認済みproduction dependency setを`package.json`と`pnpm-lock.yaml` closureからassertする。すなわちdirect
-dependency 8 件、`devframe`、`gunshi`、`h3`、`jsonc-parser`、`smol-toml`、`vfile`、`vfile-matter`、`yaml`を正確にassertし、graph変更は
+dependency 9 件、`devframe`、`gunshi`、`h3`、`jsonc-parser`、`open`、`smol-toml`、`vfile`、`vfile-matter`、`yaml`を正確にassertし、graph変更は
 dependency決定が明示的に見直されるまでgateをfailさせる。各resolved versionとそのintegrity hashはcommit済み
 lockfileが所有し、全production packageのpayload byteをpinするのはこのlockfileである。
 Exactな宣言済み
@@ -1132,7 +1145,8 @@ package managerが所有するからである。
 
 Launch testは、browser attempt前に表示されるorigin line、`--no-open`でbrowser-helper child processが
 0件であること、automatic openingがdisabled、unsupported、failedでもinspectionが利用可能なままであることを扱う。
-Automatic opening、port/host resolution、open/suppress flagはdevframe所有であり、testはinspection由来の
+Port/host resolutionはdevframe所有、automatic openingとnegatableな`--open` flagは`open` packageを通じた
+product所有であり、testはinspection由来の
 content、path、authored valueがそのopenerへ到達しないことを証明する。
 Gunshiのbindしないhelp/version、strict unknown-option拒否、明示的なpositional/rest拒否、固定されnonzero
 validation failure、await済みcompletionに加え、defaultでcaptureしたexact `process.cwd()`と、

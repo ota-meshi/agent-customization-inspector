@@ -49,6 +49,7 @@ import { listCompanionFiles, type CompanionFile } from '../companion-census';
 import type { CustomizationKind, SupportedTool } from '../../../shared/entities';
 import type {
   FrontmatterEntryDto,
+  FrontmatterKeyKind,
   FrontmatterValueDto,
   RecognitionParseStatus,
 } from '../../../shared/api-types';
@@ -160,10 +161,12 @@ export type RecognitionDetails =
  * inventory rows and the detail response are both projected from these — a
  * definition is one recognition's `(file, tool)` identity, and the detail's
  * `presentation` is one skill recognition's parse — so the record itself
- * carries no wire identity of its own. A class, because the recognizer below
- * is the one production construction site; the one later change a record
- * takes — the scan attaching its kind's extraction-failure reference — is a
- * named derivation rather than a spread copy.
+ * carries no wire identity of its own. A class reached only through its two
+ * factories, which fix how a record comes to be: {@link recognize} derives
+ * the published fields from the kind's shared extraction and the admissions,
+ * and {@link withDiagnostic} — the one later change a record takes, the scan
+ * attaching its kind's extraction-failure reference — is a named derivation
+ * rather than a spread copy.
  */
 export class ToolRecognition {
   /**
@@ -195,22 +198,18 @@ export class ToolRecognition {
    * attached through {@link withDiagnostic}: one extraction per kind means
    * one record, shared by every recognition of that kind, and each inventory
    * definition republishes its own recognition's reference. Empty as
-   * constructed — the recognizer never sees the ID the scan will mint.
+   * recognized — the recognizer never sees the ID the scan will mint.
    */
   public readonly diagnosticIds: readonly string[];
 
-  /**
-   * Builds one recognition as the recognizer produced it. `diagnosticIds`
-   * starts empty at the recognizer's construction site; only
-   * {@link withDiagnostic} passes a non-empty list.
-   */
-  public constructor(
+  /** Reached only through the factories, which fix how a record was made. */
+  private constructor(
     sourceRelativePath: string,
     tool: SupportedTool,
     details: RecognitionDetails,
     parseStatus: RecognitionParseStatus,
     provenances: readonly CandidateProvenance[],
-    diagnosticIds: readonly string[] = [],
+    diagnosticIds: readonly string[],
   ) {
     this.sourceRelativePath = sourceRelativePath;
     this.tool = tool;
@@ -218,6 +217,43 @@ export class ToolRecognition {
     this.parseStatus = parseStatus;
     this.provenances = provenances;
     this.diagnosticIds = diagnosticIds;
+  }
+
+  /**
+   * Builds one recognition from what the recognizer holds: the kind's shared
+   * extraction and the rule admissions behind the record. The derivations
+   * live here rather than at the call site so this factory is the one place
+   * that says how a recognition's data comes to be (AGENTS.md § Class and
+   * interface policy): the per-kind payload from the extraction's result,
+   * the parse status from its outcome, and the provenances from the
+   * admissions — ordered by admitting rule so two scans of the same tree
+   * publish the same record, with the selector index breaking the tie for a
+   * rule with several alternatives, because the index is the admission's and
+   * no published field carries it.
+   */
+  public static recognize(
+    sourceRelativePath: string,
+    tool: SupportedTool,
+    kind: CustomizationKind,
+    extraction: RecognitionExtraction<SkillPresentation | undefined>,
+    admissions: readonly RecognitionAdmission[],
+  ): ToolRecognition {
+    return new ToolRecognition(
+      sourceRelativePath,
+      tool,
+      buildDetails(kind, extraction.extracted),
+      extraction.status,
+      admissions
+        .toSorted((left, right) =>
+          left.compiled.rule.ruleId !== right.compiled.rule.ruleId
+            ? left.compiled.rule.ruleId < right.compiled.rule.ruleId
+              ? -1
+              : 1
+            : left.origin.selectorIndex - right.origin.selectorIndex,
+        )
+        .map((admission) => new CandidateProvenance(admission.compiled, sourceRelativePath)),
+      [],
+    );
   }
 
   /**
@@ -377,10 +413,14 @@ class SkillPresentation {
     // decoded source stays in the source viewer.
     const declared: ReadonlyMap<unknown, unknown> =
       document.frontmatter instanceof Map ? document.frontmatter : new Map();
-    this.frontmatter = [...declared].map(([key, value]) => ({
-      key: renderDeclaredKey(key),
-      value: renderDeclaredValue(value, []),
-    }));
+    this.frontmatter = [...declared].map(([key, value]) => {
+      const resolved = resolveDeclaredKey(key);
+      return {
+        key: resolved.text,
+        keyKind: resolved.kind,
+        value: renderDeclaredValue(value, []),
+      };
+    });
     // The name is the one declaration read out on its own, because it is the
     // identity an inventory row is grouped by and the heading a detail page
     // shows. Read from the parsed mapping rather than from the rendered
@@ -404,10 +444,14 @@ class SkillPresentation {
 }
 
 /**
- * Renders one declared key as the text a product resolves it to
- * (data-model.md § Field reading): a quoted `"01"` stays `01`, and an
- * unquoted `01` is the integer the core schema resolves it to, exactly as the
- * value on the other side of the colon would be.
+ * Resolves one declared key to the text a product resolves it to and the
+ * parsed type that text came from (data-model.md § Field reading): a quoted
+ * `"01"` stays `01`, and an unquoted `01` is the integer the core schema
+ * resolves it to, exactly as the value on the other side of the colon would
+ * be. The type is published with the text because the parser keeps a numeric
+ * key apart from the string that spells it while both render identically,
+ * and the comparison surface matches declarations by the parser's identity
+ * rather than by the spelling alone (FR-011).
  *
  * A YAML key need not be a scalar — `? [a, b]` declares a list as a key — and
  * a list has no rendering as the name of a row. Such a block fails its
@@ -415,15 +459,21 @@ class SkillPresentation {
  * same outcome as a value that contains itself, rather than being titled with
  * a spelling this product invented for it (FR-025, FR-028).
  */
-function renderDeclaredKey(key: unknown): string {
-  if (typeof key === 'string' || typeof key === 'number' || typeof key === 'boolean') {
-    return String(key);
+function resolveDeclaredKey(key: unknown): { text: string; kind: FrontmatterKeyKind } {
+  if (typeof key === 'string') {
+    return { text: key, kind: 'string' };
+  }
+  if (typeof key === 'number') {
+    return { text: String(key), kind: 'number' };
+  }
+  if (typeof key === 'boolean') {
+    return { text: String(key), kind: 'boolean' };
   }
   if (key === null || key === undefined) {
     // `~:` and an empty key both resolve to null under the core schema;
     // `null` is that key written out, not a stand-in for a key this surface
     // could not read.
-    return 'null';
+    return { text: 'null', kind: 'null' };
   }
   throw new TypeError('frontmatter declares a key that is not a scalar');
 }
@@ -476,10 +526,14 @@ function renderDeclaredValue(value: unknown, ancestors: readonly object[]): Fron
   }
   return {
     kind: 'mapping',
-    entries: [...value].map(([key, nested]) => ({
-      key: renderDeclaredKey(key),
-      value: renderDeclaredValue(nested, path),
-    })),
+    entries: [...value].map(([key, nested]) => {
+      const resolved = resolveDeclaredKey(key);
+      return {
+        key: resolved.text,
+        keyKind: resolved.kind,
+        value: renderDeclaredValue(nested, path),
+      };
+    }),
   };
 }
 
@@ -577,28 +631,9 @@ export async function recognizeCandidateForVendors(
     return extraction;
   };
   const recognitions = [...byTool.entries()].flatMap(([tool, byKind]) =>
-    [...byKind.entries()].map(([kind, group]): ToolRecognition => {
-      const extraction = extractionFor(kind);
-      return new ToolRecognition(
-        input.matchedPath,
-        tool,
-        buildDetails(kind, extraction.extracted),
-        extraction.status,
-        // Ordered by admitting rule so two scans of the same tree publish the
-        // same record; the selector index breaks the tie for a rule with several
-        // alternatives. Sorted before the records are built, because the index
-        // is the admission's and no published field carries it.
-        group
-          .toSorted((left, right) =>
-            left.compiled.rule.ruleId !== right.compiled.rule.ruleId
-              ? left.compiled.rule.ruleId < right.compiled.rule.ruleId
-                ? -1
-                : 1
-              : left.origin.selectorIndex - right.origin.selectorIndex,
-          )
-          .map((admission) => new CandidateProvenance(admission.compiled, input.matchedPath)),
-      );
-    }),
+    [...byKind.entries()].map(([kind, group]) =>
+      ToolRecognition.recognize(input.matchedPath, tool, kind, extractionFor(kind), group),
+    ),
   );
   return { recognitions, companions };
 }

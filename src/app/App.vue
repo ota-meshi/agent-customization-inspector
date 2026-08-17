@@ -34,8 +34,9 @@ import {
   watchEffect,
 } from 'vue';
 import { NuxtPage } from '#components';
-import { useRoute, useRouter, type RouteLocationNormalized } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { connectDevframe, isCallableStatus } from 'devframe/client';
+import { pageKey } from './router.options';
 import { SESSION_VIEW_STATE, SessionViewState, type SessionView } from './session/view-state';
 import { escapeControlCharacters } from '../shared/entities';
 import './styles/main.css';
@@ -72,23 +73,17 @@ const route = useRoute();
 // Boot is deliberately not a navigation: content arriving asynchronously must
 // not yank focus off the heading the user is already on.
 useRouter().afterEach((to, from, failure) => {
-  // Only when the page itself changes. `pageKey` is what decides that, so
-  // selecting another file of one skill is not a navigation for this purpose:
-  // moving focus there would pull the reader out of the tree they are using,
-  // which is the whole reason the detail route does not move it either.
+  // Only when the page itself changes. `pageKey` — shared with the router's
+  // scroll behavior (router.options.ts), so scroll and focus decide "did the
+  // page change" once and can never part ways — is what decides that, so
+  // selecting another file of one skill is not a navigation for this
+  // purpose: moving focus there would pull the reader out of the tree they
+  // are using, which is the whole reason the detail route does not move it
+  // either.
   if (failure === undefined && pageKey(to) !== pageKey(from)) {
     heading.value?.focus();
   }
 });
-
-/**
- * The identity a page keeps across parameter changes: its matched route path,
- * with the parameters left in place rather than interpolated. A route with no
- * match falls back to its full path, which keys nothing together — the same
- * outcome as having no key at all.
- */
-const pageKey = (target: RouteLocationNormalized): string =>
-  target.matched[0]?.path ?? target.fullPath;
 
 /**
  * What the current route is, for the document title: the fallback surface
@@ -171,9 +166,9 @@ watchEffect(() => {
 // focus in the outgoing view is unmounted with it: the boot view's own "Retry
 // connecting" button when the connection then succeeds, or anything at all when
 // the session ends. Focus would drop to the document body (WCAG 2.4.3), and the
-// shell heading is the one landmark every view keeps. Post-flush and conditional
-// on the body, because before the patch the outgoing element still holds focus,
-// and an element that survived the change keeps it.
+// shell heading is the one landmark every view keeps. Post-flush waits until the
+// outgoing element has unmounted; the body check lets an element that survived
+// the change keep its focus.
 watch(
   view,
   () => {
@@ -316,29 +311,27 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-/* The standing note under the title: muted, because it qualifies the page
-   rather than saying what is on it. */
+/* The standing note under the title: muted and note-sized, because it
+   qualifies the page rather than saying what is on it. */
 .aci-app__tagline {
   color: var(--aci-muted);
+  font-size: 0.875rem;
   margin: 0.25rem 0;
 }
-/* A viewport-tall column that scrolls inside itself, so a route can take the
-   height its own layout needs. `height` rather than `min-height`: a flex
-   container whose height is only floored stays content-sized, `flex-grow` finds
-   no free space to hand out, and a route that asked to fit grows the page
-   instead. Scrolling here rather than on the document is what lets a long
-   inventory scroll without the document scrolling under it. `dvh` follows a
-   mobile browser's retracting toolbar, with `vh` for anything that does not
-   know it. */
+/* A centered reading column in a document that scrolls itself. The shell is
+   deliberately not a viewport-tall inner scroller: the document is the one
+   scroll container, so there is exactly one scrollbar and it sits at the
+   window edge, a wheel turned anywhere — the side gutters included — reaches
+   it, and an absolutely positioned one-pixel live region extends nothing a
+   reader can see. An inner scroller gets each of those wrong: its own second
+   scrollbar beside the document's, gutters over a document with nothing to
+   scroll, and a below-the-fold live region sizing the document behind it. */
 .aci-app {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  height: 100dvh;
   margin: 0 auto;
   max-width: 72rem;
-  overflow-y: auto;
   padding: 1.5rem 1.25rem 2rem;
 }
 
@@ -352,14 +345,5 @@ onBeforeUnmount(() => {
 .aci-app h1:focus {
   outline: 2px solid var(--aci-accent);
   outline-offset: 2px;
-}
-
-/* The shell grows with its content on a short viewport or at 200% zoom, where
-   a viewport-tall column would clip what it holds (WCAG 1.4.4, 1.4.10). */
-@media (max-height: 32rem) {
-  .aci-app {
-    height: auto;
-    overflow-y: visible;
-  }
 }
 </style>

@@ -16,16 +16,26 @@
 :root {
   color-scheme: light dark;
   --aci-surface: Canvas;
+  /* Two surfaces above the page, mixed from the same system colors rather than
+     pinned: a panel that stands apart from the flow, and a well that sits
+     inside one. With `Canvas` alone every box is drawn by its border and
+     nothing else, so a panel, a row, and the page all read as one plane and
+     the reader has to find the boundaries by following hairlines. The mix runs
+     toward `CanvasText`, so it lightens a dark canvas and darkens a light one
+     without either value being written down. Forced-colors rendering discards
+     both and paints `Canvas`, which is why the border — not the fill — is
+     still what identifies every box (WCAG 1.4.11). */
+  --aci-surface-raised: color-mix(in srgb, CanvasText 4%, Canvas);
+  --aci-surface-sunken: color-mix(in srgb, CanvasText 7%, Canvas);
   --aci-text: CanvasText;
   --aci-muted: color-mix(in srgb, CanvasText 62%, Canvas);
   /* 45% rather than a lighter hairline: this one token draws every boundary the
      shell has, including the ones that identify a component or its state — the
      selected kind tab, the source viewer, the plain-text box — and those need
      3:1 against the surface (WCAG 1.4.11). At 45% the mix is 3.36:1 on a white
-     canvas and 4.50:1 on a dark one; the 22% hairline it replaces was 1.69:1
-     and 2.04:1. One token rather than a decorative and a functional pair,
-     because a second token is a second rule to keep true and every boundary
-     here reads fine at the stronger value. */
+     canvas and 4.50:1 on a dark one. One token rather than a decorative and a
+     functional pair, because a second token is a second rule to keep true and
+     every boundary here reads fine at this value. */
   --aci-border: color-mix(in srgb, CanvasText 45%, Canvas);
   --aci-accent: AccentColor;
 }
@@ -35,7 +45,25 @@ body {
   background: var(--aci-surface);
   color: var(--aci-text);
   font-family: system-ui, sans-serif;
-  line-height: 1.6;
+  line-height: 1.55;
+}
+
+/* Links carry the body's own color and are identified by their underline, not
+   by a hue. Two reasons rather than taste: the inventory is mostly links —
+   every path and every recognizing tool — and the browser default painted that
+   list in two colors at once, unvisited beside visited, which reports browsing
+   history as though it were something the scan found. An underline also says
+   "link" without color doing it alone (WCAG 1.4.1). Thickening on hover and
+   focus is the feedback the color change used to give. */
+a {
+  color: inherit;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+a:hover,
+a:focus-visible {
+  text-decoration-thickness: 2px;
 }
 
 /* Section headings. Written as the element rather than through the shell's
@@ -53,6 +81,15 @@ h2 {
 .aci-empty {
   color: var(--aci-muted);
   margin: 0.25rem 0;
+}
+
+/* A note qualifies what is beside it — what a label is, what a count counts,
+   what the page does not do — so it is set below the text it qualifies. At body
+   size these notes are most of the vertical space above the inventory, and they
+   read as the page's own subject rather than as its margin. `.aci-empty` keeps
+   body size: it is not a qualifier but the whole answer a surface has. */
+.aci-note {
+  font-size: 0.875rem;
 }
 
 .aci-list {
@@ -141,6 +178,7 @@ button[aria-disabled='true'] {
  * each section's own rule, because the scan status and the filters are one
  * shape a reader sees twice; drawn separately the two would drift. */
 .aci-panel {
+  background: var(--aci-surface-raised);
   border: 1px solid var(--aci-border);
   border-radius: 0.5rem;
   margin: 0.75rem 0;
@@ -176,9 +214,15 @@ button[aria-disabled='true'] {
   gap: 0.5rem;
 }
 
+/* A row is a list of short labels and paths, not prose, so its leading is
+   tighter than the body's: the body value is set for sentences that wrap, and
+   applying it here spent a third of the row's height on the gaps between
+   one-line values. */
 .aci-item {
+  background: var(--aci-surface-raised);
   border: 1px solid var(--aci-border);
   border-radius: 0.5rem;
+  line-height: 1.4;
   padding: 0.5rem 0.75rem;
 }
 

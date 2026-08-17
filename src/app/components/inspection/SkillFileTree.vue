@@ -13,6 +13,11 @@
 // simply absent: every file in the tree is one the current generation holds, so
 // selecting any of them resolves.
 //
+// The tree carries no comparison controls: the comparison's entry links and
+// switchers compose pairs within one skill name, and the comparison
+// surface's own file switchers — reached from the detail page's link beside
+// the definition line — are where a pair is composed and switched.
+//
 // This component owns the landmark and the scroll box; the nesting is drawn by
 // the branch below it, which is recursive because the structure is.
 import { computed } from 'vue';

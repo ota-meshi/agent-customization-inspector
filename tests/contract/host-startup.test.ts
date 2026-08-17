@@ -1,6 +1,8 @@
 // T040: host startup contracts for the devframe dev server
 // (contracts/http-api.md § Host requirements, § RPC function catalog).
-// Covers the packaged-shell serving configuration, the unauthenticated
+// Covers the packaged-shell serving configuration, the product-owned
+// best-effort `open` browser helper running after the launch line with
+// devframe's bundled opener disabled, the unauthenticated
 // loopback binding, the absence of startup documentation/network access and
 // of any customization-content classification at startup, the exact packed
 // package fields, and the ownerless automatic-startup rejection reaching the
@@ -28,15 +30,21 @@ vi.mock('devframe/adapters/dev', () => ({
   createDevServer: vi.fn(async () => ({ origin: 'http://localhost:1234', close: vi.fn() })),
 }));
 
+vi.mock('open', () => ({ default: vi.fn(async () => ({}) as never) }));
+const { default: open } = await import('open');
+
+/** The `onReady` payload devframe reports after binding the loopback port. */
+const READY_INFO = { origin: 'http://localhost:1234', port: 1234, app: {} as never };
+
 describe('host startup', () => {
-  it('hands the inspector definition to devframe and forwards only its options', async () => {
+  it('hands the inspector definition to devframe with its bundled opener disabled', async () => {
     // The suite otherwise exercises the definition directly, which cannot show
     // that anything starts a server with it: `startInspectorHost` is the one
-    // call the CLI makes, and an option it dropped — `openBrowser`, `onReady` —
-    // would silently change what a launch does.
+    // call the CLI makes. The product owns browser opening through the `open`
+    // package, so every launch hands devframe an explicit `openBrowser: false`
+    // — inheriting devframe's own opener would let a second helper spawn.
     const context = hostContext();
-    const onReady = vi.fn();
-    await startInspectorHost({ context, openBrowser: false, onReady });
+    await startInspectorHost({ context, openBrowser: true });
     expect(vi.mocked(createDevServer)).toHaveBeenCalledTimes(1);
     const [definition, options] = vi.mocked(createDevServer).mock.calls[0]!;
     // The definition this suite exercises everywhere else — identified by the
@@ -44,24 +52,52 @@ describe('host startup', () => {
     // the RPC catalog.
     expect(definition.id).toBe(createInspectorDevframe(context).id);
     expect(typeof definition.setup).toBe('function');
-    // Besides the launch's own options, the host always hands devframe the H3
+    // Besides the composed onReady, the host always hands devframe the H3
     // app carrying the `/skills/**` shell fallback — the one route family
     // devframe's extension-guarded SPA fallback cannot serve; the served
     // behavior itself is proven in the browser suites' fresh deep-link loads.
-    const { app, ...forwarded } = options!;
-    expect(app).toBeDefined();
-    expect(forwarded).toEqual({ openBrowser: false, onReady });
+    expect(options?.app).toBeDefined();
+    expect(options?.openBrowser).toBe(false);
+    expect(typeof options?.onReady).toBe('function');
   });
 
-  it('passes no server options besides the host app when the launch names none', async () => {
-    await startInspectorHost({ context: hostContext() });
-    const [, options] = vi.mocked(createDevServer).mock.calls.at(-1)!;
-    // An absent option must stay absent rather than becoming an explicit
-    // `undefined`, which devframe would read as a value the launch chose; the
-    // host's own app is the one value every launch carries.
-    const { app, ...forwarded } = options!;
-    expect(app).toBeDefined();
-    expect(forwarded).toEqual({});
+  it('prints through the caller onReady before spawning the open helper', async () => {
+    // FR-001: the launch line is the fallback for a failed or unsupported
+    // helper, so it must be observable before the helper runs.
+    const order: string[] = [];
+    const onReady = vi.fn(() => {
+      order.push('caller-ready');
+    });
+    vi.mocked(open).mockImplementationOnce(async () => {
+      order.push('open-helper');
+      return {} as never;
+    });
+    await startInspectorHost({ context: hostContext(), openBrowser: true, onReady });
+    await vi.mocked(createDevServer).mock.calls.at(-1)![1]!.onReady!(READY_INFO);
+    expect(onReady).toHaveBeenCalledWith(READY_INFO);
+    expect(vi.mocked(open)).toHaveBeenCalledWith('http://localhost:1234/');
+    expect(order).toEqual(['caller-ready', 'open-helper']);
+  });
+
+  it.each([
+    ['false maps from --no-open', { openBrowser: false }],
+    ['an unset option opens nothing', {}],
+  ])('spawns no helper when %s', async (_label, launch) => {
+    vi.mocked(open).mockClear();
+    await startInspectorHost({ context: hostContext(), ...launch });
+    await vi.mocked(createDevServer).mock.calls.at(-1)![1]!.onReady!(READY_INFO);
+    expect(vi.mocked(open)).not.toHaveBeenCalled();
+  });
+
+  it('keeps a failed helper spawn best-effort instead of failing the launch', async () => {
+    // The rejection `open` reports when no OS helper can spawn (e.g. a Linux
+    // host without xdg-open). FR-001 makes opening best-effort: the launch
+    // line already printed is the fallback and the startup must not fail.
+    vi.mocked(open).mockRejectedValueOnce(new Error('no helper available'));
+    await startInspectorHost({ context: hostContext(), openBrowser: true });
+    await expect(
+      vi.mocked(createDevServer).mock.calls.at(-1)![1]!.onReady!(READY_INFO),
+    ).resolves.toBeUndefined();
   });
 });
 
