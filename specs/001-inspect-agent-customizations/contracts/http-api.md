@@ -60,12 +60,13 @@ another machine remains prohibited.
 3. Static byte serving is devframe-owned. The served SPA shell and assets are exactly what
    the Nuxt build emitted into the packaged `dist/public`; the product defines no
    static-assets manifest, no per-asset integrity re-verification, and no hand-written
-   router. The one product-owned piece in front of it is the closed `/skills/**` rewrite:
-   a `GET`/`HEAD` whose path enters that route family is rewritten to `/` and falls
-   through, so devframe's own static handler serves the packaged shell for skill deep
+   router. The one product-owned piece in front of it is the closed detail-route
+   rewrite — `/skills/**` and `/instructions/**`, one family per shipped kind detail:
+   a `GET`/`HEAD` whose path enters either route family is rewritten to `/` and falls
+   through, so devframe's own static handler serves the packaged shell for detail deep
    links its extension-guarded SPA fallback would treat as file misses. The rewrite
-   touches no filesystem and shadows nothing — no packaged asset lives under `/skills/`
-   (§ Required contract tests, item 5). Nuxt uses `app.baseURL: '/'` and no CDN URL, so
+   touches no filesystem and shadows nothing — no packaged asset lives under either
+   family (§ Required contract tests, item 5). Nuxt uses `app.baseURL: '/'` and no CDN URL, so
    the shell works unchanged on every client route. Static serving never reaches outside
    the packaged UI output directory and never falls back to an inspected file.
 4. At startup the host prints the exact `http://localhost:<port>/` URL once to the
@@ -531,7 +532,7 @@ Returns one active-generation file detail, discriminated by whether a recognitio
 the file:
 
 ```text
-FileDetail — kind: 'skill' | 'file'
+FileDetail — kind: 'skill' | 'instructions' | 'file'
 ├── kind 'skill' — the file is a recognized skill entry point:
 │   ├── file — one CustomizationFile, discriminated by encoding:
 │   │   ├── sourceId, sourceRelativePath, encoding, diagnosticIds[]
@@ -545,6 +546,11 @@ FileDetail — kind: 'skill' | 'file'
 │   │   │   { kind: 'mapping', entries[] { key, keyKind, value } }, recursively
 │   │   └── bodyText
 │   └── diagnostics[]
+├── kind 'instructions' — the file is a recognized instruction file:
+│   ├── file — as above
+│   ├── presentation — as the skill variant: the same one scan-time parse,
+│   │   with the same null-on-failure rule (FR-028)
+│   └── diagnostics[]
 └── kind 'file' — no recognition owns the file (a file only the census
     lists, or a diagnostic-only candidate):
     ├── file — as above
@@ -557,12 +563,18 @@ the same fixed YAML semantics, so the extraction runs once per `(file, kind)` �
 response publishes it once as `presentation`. There is no per-tool recognition list:
 which tools recognize the file, each tool's invocation name, and its parse state are the
 inventory's facts (`skills[].definitions[]`), and the route's tool segment says which
-definition a page is about. There is no admission record either: which rule authorized a
-read, and where it matched, is an internal record of the committed generation
-(data-model.md § ToolRecognition) that the relationship phases will read; no session
-response carries it. And there is no `relationships` array of edge records — no shipped
-recognition can produce an edge, so the array would be empty in every response, and it
-arrives with the relationship phases that populate it.
+definition a page is about; an instruction file's recognizing tools are its inventory
+row's (`instructions[]`), and its detail route carries no tool segment because the
+kind's unit is the file itself. There is no admission record either: which rule
+authorized a read, and where it matched, is an internal record of the committed
+generation (data-model.md § ToolRecognition) that the relationship phases will read; no
+session response carries it — a configured fallback instruction file's detail is
+therefore indistinguishable in shape from a static one's. And there is no
+`relationships` array of edge records — no shipped recognition can produce an edge, so
+the array would be empty in every response, and it arrives with the relationship phases
+that populate it; a Codex instruction file in particular yields none, because no cited
+official page establishes an import or reference syntax for `AGENTS.md`, so an authored
+`@path`-looking token stays source text.
 
 Each frontmatter entry's `keyKind` is the closed union `string | number | boolean |
 null`: the declared key's parsed type under YAML 1.2's core schema. A declaration's
@@ -1210,8 +1222,9 @@ the post-acceptance failure's ordinary error. Disable itself never returns
    channel unchanged and round-trips at the client.
 5. Static traversal and encoded traversal attempts never escape the packaged `dist/public`
    output; every served byte comes from that packaged Nuxt output, no inspected file is
-   ever served, and the root, `/skills/compare`, `/global-consent`, and
-   `/skills/<tool>/<source-relative path>` client
+   ever served, and the root, `/skills/compare`, `/global-consent`,
+   `/skills/<tool>/<source-relative path>`, and
+   `/instructions/<source-relative path>` client
    routes all boot the same packaged SPA shell, which embeds no session data.
 6. Queue ordering across Repository and each tool-specific Global rescan, duplicate
    rejection, aborts, partial outcomes, fatal failures, and polling expose only

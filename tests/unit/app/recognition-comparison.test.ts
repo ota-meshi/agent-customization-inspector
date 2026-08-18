@@ -27,7 +27,7 @@ import type {
 } from '../../../src/shared/api-types';
 
 /** One readable skill detail with the given parsed declarations. */
-function skillDetail(
+function entryDetail(
   path: string,
   frontmatter: readonly FrontmatterEntryDto[] | null,
 ): FileDetailDto {
@@ -151,7 +151,7 @@ describe('resolved-value equality', () => {
 describe('recognition matching by (tool, kind, declared key)', () => {
   it('pairs recognitions of one tool and matches their declared keys', () => {
     const left = side(
-      skillDetail('.agents/skills/alpha/SKILL.md', [
+      entryDetail('.agents/skills/alpha/SKILL.md', [
         scalar('name', 'alpha'),
         scalar('retries', '7'),
         scalar('api_key', 'ghp_LEFT'),
@@ -160,7 +160,7 @@ describe('recognition matching by (tool, kind, declared key)', () => {
       [definition('.agents/skills/alpha/SKILL.md', 'codex')],
     );
     const right = side(
-      skillDetail('.agents/skills/beta/SKILL.md', [
+      entryDetail('.agents/skills/beta/SKILL.md', [
         scalar('name', 'beta'),
         // Authored `007`, resolved `7`: equal as resolved values even though
         // the source spellings differ.
@@ -215,11 +215,11 @@ describe('recognition matching by (tool, kind, declared key)', () => {
     const path = '.agents/skills/alpha/SKILL.md';
     const otherPath = '.agents/skills/beta/SKILL.md';
     const left = side(
-      skillDetail(path, [scalar('1', 'alpha', 'number'), scalar('1', 'beta', 'string')]),
+      entryDetail(path, [scalar('1', 'alpha', 'number'), scalar('1', 'beta', 'string')]),
       [definition(path, 'codex')],
     );
     const right = side(
-      skillDetail(otherPath, [scalar('1', 'beta', 'string'), scalar('1', 'alpha', 'number')]),
+      entryDetail(otherPath, [scalar('1', 'beta', 'string'), scalar('1', 'alpha', 'number')]),
       [definition(otherPath, 'codex')],
     );
     const groups = buildRecognitionComparison(left, right);
@@ -248,10 +248,10 @@ describe('recognition matching by (tool, kind, declared key)', () => {
     const path = '.agents/skills/alpha/SKILL.md';
     const otherPath = '.agents/skills/beta/SKILL.md';
     const left = side(
-      skillDetail(path, [scalar('1', 'first', 'number'), scalar('1', 'second', 'string')]),
+      entryDetail(path, [scalar('1', 'first', 'number'), scalar('1', 'second', 'string')]),
       [definition(path, 'codex')],
     );
-    const right = side(skillDetail(otherPath, [scalar('1', 'second', 'string')]), [
+    const right = side(entryDetail(otherPath, [scalar('1', 'second', 'string')]), [
       definition(otherPath, 'codex'),
     ]);
     const groups = buildRecognitionComparison(left, right);
@@ -278,8 +278,8 @@ describe('recognition matching by (tool, kind, declared key)', () => {
     // component's (FR-025).
     const path = '.agents/skills/alpha/SKILL.md';
     const otherPath = '.agents/skills/beta/SKILL.md';
-    const left = side(skillDetail(path, [scalar('name', 'alpha')]), [definition(path, 'codex')]);
-    const right = side(skillDetail(otherPath, [scalar('name', 'beta')]), [
+    const left = side(entryDetail(path, [scalar('name', 'alpha')]), [definition(path, 'codex')]);
+    const right = side(entryDetail(otherPath, [scalar('name', 'beta')]), [
       definition(otherPath, 'codex'),
     ]);
     const groups = buildRecognitionComparison(left, right);
@@ -313,7 +313,7 @@ describe('recognition matching by (tool, kind, declared key)', () => {
     // recognitions’ rows, with the absence as its own side state rather
     // than a fabricated file that declares nothing (FR-025).
     const path = '.agents/skills/alpha/.claude/skills/inner/SKILL.md';
-    const present = side(skillDetail(path, [scalar('name', 'inner')]), [
+    const present = side(entryDetail(path, [scalar('name', 'inner')]), [
       definition(path, 'claude'),
     ]);
     const groups = buildRecognitionComparison(present, null);
@@ -336,11 +336,11 @@ describe('recognition matching by (tool, kind, declared key)', () => {
     const path = '.agents/skills/alpha/SKILL.md';
     const otherPath = '.agents/skills/beta/SKILL.md';
     const frontmatter = [scalar('name', 'alpha')];
-    const left = side(skillDetail(path, frontmatter), [
+    const left = side(entryDetail(path, frontmatter), [
       definition(path, 'copilot'),
       definition(path, 'codex'),
     ]);
-    const right = side(skillDetail(otherPath, frontmatter), [
+    const right = side(entryDetail(otherPath, frontmatter), [
       definition(otherPath, 'copilot'),
       definition(otherPath, 'codex'),
     ]);
@@ -351,10 +351,10 @@ describe('recognition matching by (tool, kind, declared key)', () => {
   });
 
   it('states a side with no recognition of the tool instead of inventing key rows', () => {
-    const left = side(skillDetail('.claude/skills/alpha/SKILL.md', [scalar('name', 'alpha')]), [
+    const left = side(entryDetail('.claude/skills/alpha/SKILL.md', [scalar('name', 'alpha')]), [
       definition('.claude/skills/alpha/SKILL.md', 'claude'),
     ]);
-    const right = side(skillDetail('.agents/skills/beta/SKILL.md', [scalar('name', 'beta')]), [
+    const right = side(entryDetail('.agents/skills/beta/SKILL.md', [scalar('name', 'beta')]), [
       definition('.agents/skills/beta/SKILL.md', 'codex'),
     ]);
     const groups = buildRecognitionComparison(left, right);
@@ -370,10 +370,10 @@ describe('recognition matching by (tool, kind, declared key)', () => {
   });
 
   it('states a failed extraction as unknown declarations, not as empty ones', () => {
-    const left = side(skillDetail('.agents/skills/alpha/SKILL.md', [scalar('name', 'alpha')]), [
+    const left = side(entryDetail('.agents/skills/alpha/SKILL.md', [scalar('name', 'alpha')]), [
       definition('.agents/skills/alpha/SKILL.md', 'codex'),
     ]);
-    const right = side(skillDetail('.agents/skills/broken/SKILL.md', null), [
+    const right = side(entryDetail('.agents/skills/broken/SKILL.md', null), [
       definition('.agents/skills/broken/SKILL.md', 'codex', 'failed'),
     ]);
     const groups = buildRecognitionComparison(left, right);
@@ -402,7 +402,7 @@ describe('recognition matching by (tool, kind, declared key)', () => {
     // and no declaration row is invented for a file that parsed nothing.
     const skillPath = '.agents/skills/alpha/SKILL.md';
     const groups = buildRecognitionComparison(
-      side(skillDetail(skillPath, [scalar('name', 'alpha')]), [definition(skillPath, 'codex')]),
+      side(entryDetail(skillPath, [scalar('name', 'alpha')]), [definition(skillPath, 'codex')]),
       side(companionDetail('.agents/skills/alpha/agents/openai.yaml'), []),
     );
     expect(groups).toHaveLength(1);
@@ -413,8 +413,8 @@ describe('recognition matching by (tool, kind, declared key)', () => {
   it('publishes descriptive rows only — no rank, no winner, no fabricated relationships', () => {
     const path = '.agents/skills/alpha/SKILL.md';
     const otherPath = '.agents/skills/beta/SKILL.md';
-    const left = side(skillDetail(path, [scalar('name', 'alpha')]), [definition(path, 'codex')]);
-    const right = side(skillDetail(otherPath, [scalar('name', 'beta')]), [
+    const left = side(entryDetail(path, [scalar('name', 'alpha')]), [definition(path, 'codex')]);
+    const right = side(entryDetail(otherPath, [scalar('name', 'beta')]), [
       definition(otherPath, 'codex'),
     ]);
     const groups = buildRecognitionComparison(left, right);

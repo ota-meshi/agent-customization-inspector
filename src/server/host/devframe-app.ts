@@ -16,9 +16,9 @@
 // devframe owns static SPA serving from `cli.distDir` and port selection;
 // the product owns best-effort startup browser opening through the `open`
 // package (research.md § 3), adds no asset manifest or
-// per-asset re-verification, and its one route of its own is the
-// `/skills/**` shell fallback in `createHostApp`, which devframe's static
-// handler cannot serve (Constitution Principle I). An unexpected
+// per-asset re-verification, and its only routes of its own are the
+// `/skills/**` and `/instructions/**` shell fallbacks in `createHostApp`,
+// which devframe's static handler cannot serve (Constitution Principle I). An unexpected
 // thrown/rejected RPC handler error is serialized as-is by devframe/birpc
 // and the client shows the real error (contracts/http-api.md § Common
 // results and errors); deterministic conflicts are returned as their fixed
@@ -341,17 +341,18 @@ export async function startInspectorHost(
 }
 
 /**
- * The H3 app devframe mounts onto, carrying the one route family devframe's
- * own SPA fallback cannot serve: a skill detail URL ends with the file's own
- * last segment — `/skills/<tool>/<source-relative path>`, so `SKILL.md` —
+ * The H3 app devframe mounts onto, carrying the route families devframe's
+ * own SPA fallback cannot serve: a detail URL ends with the file's own
+ * last segment — `/skills/<tool>/<source-relative path>` with `SKILL.md`,
+ * `/instructions/<source-relative path>` with `AGENTS.md` —
  * and devframe's static handler deliberately skips the `index.html` fallback
  * for a miss that looks like a file (it has an extension). This middleware
  * only rewrites such a request to the root and falls through, so devframe's
  * later-mounted static handler serves the packaged shell itself and every
- * `/skills/` GET boots the same shell as the other client routes
+ * detail-family GET boots the same shell as the other client routes
  * (contracts/http-api.md § Required contract tests, item 5) —
  * without this module touching the filesystem, which QR-003 reserves to the
- * inspection module. No packaged asset lives under `/skills/`, so nothing
+ * inspection module. No packaged asset lives under either family, so nothing
  * real is shadowed, and other methods fall through unrewritten, keeping
  * devframe's own 405 semantics.
  *
@@ -367,15 +368,17 @@ export async function startInspectorHost(
  */
 function createHostApp(): H3 {
   const app = new H3();
-  app.use(
-    '/skills/**',
-    defineHandler((event) => {
-      const method = event.req.method;
-      if (method === 'GET' || method === 'HEAD') {
-        event.url.pathname = '/';
-      }
-      return undefined;
-    }),
-  );
+  const rewriteToShell = defineHandler((event) => {
+    const method = event.req.method;
+    if (method === 'GET' || method === 'HEAD') {
+      event.url.pathname = '/';
+    }
+    return undefined;
+  });
+  // One route family per kind detail: each arrives with the phase that ships
+  // its detail route, because a rewrite for a route no page serves would turn
+  // a real 404 into a silent shell boot.
+  app.use('/skills/**', rewriteToShell);
+  app.use('/instructions/**', rewriteToShell);
   return app;
 }

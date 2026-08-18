@@ -1008,8 +1008,8 @@ skill ruleを出荷する作業が、そのstrategyと記述を一緒に出荷�
 
 Recognitionはcommit済みgenerationの内部recordであり、どのsession responseも運ばない
 （FR-027）: inventory rowもdetailもこれらからprojectされる — 定義は1 recognitionの
-`(file, tool)` identityであり、detailの`presentation`は1つのskill recognitionのparseで
-ある。コード上は、recognizerが唯一のproduction構築場所であるclassとし、recognize seam
+`(file, tool)` identityであり、detailの`presentation`は1つのMarkdown recognition —
+skillまたはinstruction file — のparseである。コード上は、recognizerが唯一のproduction構築場所であるclassとし、recognize seam
 （`CandidateRecognition`）はテストがliteral doubleで満たすinterfaceのままとする。
 
 Recognition recordのdetailsは`kind`で判別する。Recognitionを識別する情報はkindごとに異なり、1つの共有
@@ -1017,6 +1017,9 @@ optional fieldには収まらないからである: skillは単一の`name`を�
 宣言する。Skillのdetailsはその宣言済み名を運ぶ。これは表示labelであり、すべてのrowの名前の
 元となるidentityである（FR-007、FR-027）。Fileが宣言していない場合、名前はemptyではなく
 absentとする。Fileが宣言しないか空で宣言するrowは、代わりにそのskill directory名で名付けられる。
+Instruction recognitionのdetailsは同じ1回のparse — 書かれた順の宣言済みkeyとblockを
+除いたbody — を運び、名前は意図的に持たない: このkindの一覧の単位はfileそのものである
+ため、recognitionが既に運ぶSource-relative Pathがidentityの全体である。
 
 Recognitionは一覧rowではない。Rowの単位はkind自身のものであり（§ 一覧の単位）、各kindの一覧はfileごとの
 summaryとして公開されるのではなく、これらのrecordから組み立てられる: skillのrowはrecordを各toolが

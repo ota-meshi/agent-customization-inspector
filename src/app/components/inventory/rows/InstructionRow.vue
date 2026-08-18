@@ -1,8 +1,8 @@
 <script setup lang="ts">
-// An instructions row (T214). The row's unit is the file itself
-// (data-model.md § Inventory unit): no authored declaration names an
-// instructions file, so the Source-relative Path is the row's identity and
-// the recognizing products are its one recognition fact.
+// An instructions row (T214, linked to its detail by T224). The row's unit is
+// the file itself (data-model.md § Inventory unit): no authored declaration
+// names an instructions file, so the Source-relative Path is the row's
+// identity and the recognizing products are its one recognition fact.
 //
 // A row shows what was found and how it was classified — never what it says.
 // The snapshot carries no `sourceText`, and complete authored content is
@@ -14,6 +14,8 @@
 // admitted files list side by side with no winner (FR-009;
 // contracts/inspection-path-allowlist.md § existence-versus-activation
 // vocabulary).
+import { NuxtLink } from '#components';
+import { instructionDetailRoute } from '../../instruction-detail-route';
 import { SUPPORTED_TOOL_TEXT, escapeControlCharacters } from '../../../../shared/entities';
 import type { InstructionInventoryEntryDto } from '../../../../shared/api-types';
 
@@ -27,6 +29,14 @@ const props = defineProps<{
  * a path spanning lines cannot read as two files.
  */
 const pathText = escapeControlCharacters(props.entry.sourceRelativePath);
+
+/**
+ * The file's own detail route. One route however many products recognize the
+ * file, because the kind's unit is the file: unlike a skill definition, no
+ * per-tool fact distinguishes what the page would show, so every recognizing
+ * product's link addresses the same detail (T224).
+ */
+const detailRoute = instructionDetailRoute(props.entry.sourceRelativePath);
 </script>
 
 <template>
@@ -35,12 +45,13 @@ const pathText = escapeControlCharacters(props.entry.sourceRelativePath);
          and never as a locator anything can open (FR-024). -->
     <p class="aci-path aci-authored-text">{{ pathText }}</p>
 
-    <!-- Every product that recognized the file, in the closed tool order.
-         Plain text rather than a link: the instructions detail route arrives
-         with its own phase, and a link with nowhere to go would be a broken
-         promise. -->
+    <!-- Every product that recognized the file, in the closed tool order,
+         each linking to the file's own detail route: selecting an
+         instruction is how its complete inert detail opens (T224). -->
     <ul class="aci-instruction-row__tools" role="list">
-      <li v-for="tool in entry.tools" :key="tool">{{ SUPPORTED_TOOL_TEXT[tool] }}</li>
+      <li v-for="tool in entry.tools" :key="tool">
+        <NuxtLink :to="detailRoute">{{ SUPPORTED_TOOL_TEXT[tool] }}</NuxtLink>
+      </li>
     </ul>
   </li>
 </template>

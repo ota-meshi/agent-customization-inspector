@@ -37,7 +37,7 @@ import type { ClientDataPurge, PurgeReason } from './client-data';
 export const SESSION_RPC_FUNCTIONS = {
   /** Full `InspectionSession` snapshot, or the fenced control DTO. */
   getSession: 'agent-customization-inspector:get-session',
-  /** One committed file's complete authored source and, for a skill, its parse. */
+  /** One committed file's complete authored source and, for a Markdown customization — a skill or an instruction file — its parse. */
   getFileDetail: 'agent-customization-inspector:get-file-detail',
   /** Accept one explicit Repository scan command. */
   rescanRepository: 'agent-customization-inspector:rescan-repository',
@@ -164,7 +164,7 @@ export type FileDetailOutcome =
   | {
       /** Every guard passed; the file's complete detail may be rendered. */
       readonly kind: 'adopted';
-      /** The committed file with its authored source and, for a skill, its parse. */
+      /** The committed file with its authored source and, for a Markdown customization — a skill or an instruction file — its parse. */
       readonly detail: FileDetailDto;
     }
   | {
@@ -179,7 +179,7 @@ export type FileDetailOutcome =
        * snapshot, which the path — the file's whole identity — can survive,
        * so its content would render under labels resolved from the older
        * one. Nothing is adopted; the caller refreshes and re-requests
-       * (`SessionViewState.openSkill`).
+       * (`SessionViewState.openFileDetail`).
        */
       readonly kind: 'newer-generation';
     }
@@ -672,7 +672,7 @@ export class SessionApiClient {
     // Such a response is not adopted: rendering it would put the newer
     // generation's source and parse under the name and census this
     // page resolved from the older one. The caller refreshes, adopts the
-    // newer snapshot, and re-requests (`SessionViewState.openSkill`). There
+    // newer snapshot, and re-requests (`SessionViewState.openFileDetail`). There
     // is no older branch to guard: the host serves every detail from its
     // current commit under one coordinator, so it cannot answer from a
     // generation behind one this client has already adopted.

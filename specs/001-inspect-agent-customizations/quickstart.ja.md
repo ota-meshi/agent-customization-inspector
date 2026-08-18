@@ -269,6 +269,7 @@ pnpm run test:e2e
 
 ```bash
 pnpm exec vitest run --project contract tests/contract/vendor-behaviors
+pnpm exec vitest run --project contract tests/contract/runtime-composition
 pnpm exec vitest run --project contract tests/contract/inspection-rules
 ```
 

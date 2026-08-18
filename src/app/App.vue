@@ -90,7 +90,13 @@ useRouter().afterEach((to, from, failure) => {
  * name when the active page reports no subject of its own through
  * {@link SessionViewState.pageSubject}.
  */
-const routeTitle = computed(() => (route.path.startsWith('/skills/') ? 'Skill' : 'Inspection'));
+const routeTitle = computed(() =>
+  route.path.startsWith('/skills/')
+    ? 'Skill'
+    : route.path.startsWith('/instructions')
+      ? 'Instructions'
+      : 'Inspection',
+);
 
 const startupErrorMessage = shallowRef<string | null>(null);
 const heading = ref<HTMLHeadingElement | null>(null);

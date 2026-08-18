@@ -393,7 +393,7 @@ describe('the Copilot recognition matrix (T155)', () => {
   });
 });
 
-describe('Codex instruction recognition (T207)', () => {
+describe('Codex instruction recognition (T207, presentation added by T222)', () => {
   it('attaches exactly one codex/instructions recognition to an admitted override', async () => {
     const recognitions = (
       await recognizeWith('codex', 'AGENTS.override.md', [codexInstructionsRule])
@@ -402,16 +402,16 @@ describe('Codex instruction recognition (T207)', () => {
     expect(recognitions[0]).toMatchObject({
       sourceRelativePath: 'AGENTS.override.md',
       tool: 'codex',
-      // The kind is the whole per-kind payload: an instructions row's unit is
-      // the file itself (data-model.md § Inventory unit), so no declared name
-      // or other identity exists to extract.
+      // The payload is the file's presentation and nothing more: an
+      // instructions row's unit is the file itself (data-model.md § Inventory
+      // unit), so no declared name or other identity exists to extract — the
+      // one frontmatter parse a skill uses feeds the detail's declarations
+      // and instructions (T222).
       details: { kind: 'instructions' },
-      // No allowlisted extractor applies to the instructions kind in this
-      // phase — a different claim from `parsed` with nothing found.
-      parseStatus: 'not-attempted',
+      parseStatus: 'parsed',
       diagnosticIds: [],
     });
-    expect(Object.keys(recognitions[0]!.details)).toEqual(['kind']);
+    expect(Object.keys(recognitions[0]!.details)).toEqual(['kind', 'frontmatter', 'bodyText']);
   });
 
   it('derives deterministic provenance from the admitting instruction rule', async () => {
@@ -435,11 +435,12 @@ describe('Codex instruction recognition (T207)', () => {
     expect(companions).toEqual([]);
   });
 
-  it('keeps malformed authored content inert: no extractor means no failure', async () => {
-    // The fixture override carries a malformed frontmatter-shaped block. An
-    // instructions recognition runs no extractor, so nothing can fail and the
-    // complete source simply stays with the file (FR-028 is about extraction,
-    // and none was attempted).
+  it('fails a malformed frontmatter block all-or-nothing, publishing nothing parsed', async () => {
+    // The instructions kind runs the one frontmatter parse a skill uses
+    // (T222), so a malformed block is that recognition's `failed` state:
+    // extraction is all-or-nothing, nothing parsed is published, and the
+    // complete source stays with the file — the scan attaches the failure's
+    // diagnostic, which is why none is here (FR-028).
     const recognitions = (
       await recognizeWith(
         'codex',
@@ -448,7 +449,12 @@ describe('Codex instruction recognition (T207)', () => {
         '---\nmalformed: [unclosed\n---\n\n# Override\n',
       )
     ).recognitions;
-    expect(recognitions[0]!.parseStatus).toBe('not-attempted');
+    expect(recognitions[0]!.parseStatus).toBe('failed');
+    expect(recognitions[0]!.details).toEqual({
+      kind: 'instructions',
+      frontmatter: [],
+      bodyText: '',
+    });
     expect(recognitions[0]!.diagnosticIds).toEqual([]);
   });
 
@@ -482,8 +488,10 @@ describe('the derived fallback recognition (T1086)', () => {
     expect(recognitions[0]).toMatchObject({
       sourceRelativePath: 'TEAM_GUIDE.md',
       tool: 'codex',
-      details: { kind: 'instructions' },
-      parseStatus: 'not-attempted',
+      // A derived admission's recognition is the ordinary instructions
+      // recognition: the same one parse feeds its presentation (T222).
+      details: { kind: 'instructions', bodyText: '# configured fallback\n' },
+      parseStatus: 'parsed',
     });
     expect(recognitions[0]!.provenances[0]).toMatchObject({
       ruleId: 'codex.derived.fallback-basename',

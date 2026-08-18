@@ -40,13 +40,15 @@ export const SCAN_PROGRESS_PHASE_TEXT: Readonly<Record<ScanProgressPhase, string
 
 /**
  * What a file detail's kind reads as (contracts/http-api.md § get-file-detail).
- * 'skill' shares the customization kind's own caption, so a skill reads the
- * same wherever it is named; 'file' states the honest fact that no
- * recognition owns the file, never a fabricated kind (FR-012).
+ * 'skill' and 'instructions' share the customization kind's own captions, so
+ * each reads the same wherever it is named; 'file' states the honest fact
+ * that no recognition owns the file, never a fabricated kind (FR-012).
  */
 export const FILE_DETAIL_KIND_TEXT: Readonly<Record<FileDetailDto['kind'], string>> = {
   /** Caption for a detail a skill recognition owns. */
   skill: CUSTOMIZATION_KIND_TEXT.skill,
+  /** Caption for a detail an instructions recognition owns. */
+  instructions: CUSTOMIZATION_KIND_TEXT.instructions,
   /** Caption for a census-listed or otherwise unrecognized file's detail. */
   file: 'No recognized kind',
 };

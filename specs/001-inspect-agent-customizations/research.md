@@ -840,8 +840,9 @@ host resolution, static serving with the SPA fallback, and the RPC channel are d
 policy rather than product code, while browser opening is product-owned through the
 `open` package with devframe's bundled opener disabled (§ 3), with one closed
 product-owned piece
-in front of static serving: the `/skills/**` `GET`/`HEAD` rewrite to `/`, which lets
-devframe's own handler serve the shell for skill deep links its extension-guarded
+in front of static serving: the `/skills/**` and `/instructions/**` `GET`/`HEAD`
+rewrites to `/`, one route family per shipped kind detail, which let
+devframe's own handler serve the shell for detail deep links its extension-guarded
 fallback cannot (§ 3 h3 row). The same channel carries devframe's own
 built-ins — `devframe:agent:*`, `devframe:rpc:server-state:*`, and
 `devframe:streaming:*` — which the framework registers unconditionally; the product

@@ -1,4 +1,4 @@
-// T081: the file-detail function of the session API
+// T081/T218: the file-detail function of the session API
 // (contracts/http-api.md § get-file-detail).
 //
 // This is the one function that returns authored content, so its contract is
@@ -20,7 +20,12 @@ import {
   type InspectorHostContext,
 } from '../../src/server/host/devframe-app';
 import { InspectionSession, SessionCoordinator } from '../../src/server/session/session';
-import { buildSecretFixture, SECRET_LITERALS } from '../fixtures/secrets/build-fixtures';
+import {
+  buildSecretFixture,
+  ENVIRONMENT_REFERENCE,
+  SECRET_LITERALS,
+  type SecretFixture,
+} from '../fixtures/secrets/build-fixtures';
 import type {
   DeterministicRejection,
   FileDetailDto,
@@ -57,6 +62,7 @@ function registerFunctions(context: InspectorHostContext): Map<string, CapturedR
 /** Boots a session over the secret fixture and runs its first scan. */
 async function scannedFixture(): Promise<{
   readonly context: InspectorHostContext;
+  readonly fixture: SecretFixture;
   readonly sourceText: string;
   readonly skillPath: string;
   readonly unparseableSkillPath: string;
@@ -79,6 +85,7 @@ async function scannedFixture(): Promise<{
   await executeRepositoryScan(context, admission.scanRequestId, repository.sourceId, 'repository');
   return {
     context,
+    fixture,
     sourceText: fixture.sourceText,
     skillPath: fixture.skillPath,
     unparseableSkillPath: fixture.unparseableSkillPath,
@@ -235,6 +242,100 @@ describe('get-file-detail', () => {
     expect(await getFileDetail(context, 'not/a/committed/path.md')).toEqual({
       error: { code: 'stale-resource' },
     });
+  });
+
+  it('returns the instruction detail as its declarations and instructions, unmasked (T218)', async () => {
+    const { context, fixture } = await scannedFixture();
+    const result = await getFileDetail(context, fixture.instructionPath);
+    if (!('data' in result)) {
+      throw new Error('expected a detail result');
+    }
+    // The instruction variant carries the same one scan-time parse the skill
+    // variant does (contracts/http-api.md § get-file-detail): the file's own
+    // fact, published once whatever the recognizing tools are.
+    if (result.data.kind !== 'instructions') {
+      throw new Error('expected the instructions variant');
+    }
+    const presentation = result.data.presentation;
+    if (presentation === null) {
+      throw new Error('expected a parsed presentation');
+    }
+    // Every key in authored order — the fixture's keys are deliberately not
+    // alphabetical, so agreement here is agreement with the file, not with a
+    // sort. The credential and the environment reference appear exactly as
+    // written: nothing masks, and nothing resolves (FR-025).
+    expect(presentation.frontmatter.map((entry) => entry.key)).toEqual([
+      'scope',
+      'endpoint',
+      'api_key',
+    ]);
+    const values = new Map(presentation.frontmatter.map((entry) => [entry.key, entry.value]));
+    expect(values.get('endpoint')).toEqual({ kind: 'scalar', text: ENVIRONMENT_REFERENCE });
+    expect(values.get('api_key')).toEqual({ kind: 'scalar', text: SECRET_LITERALS.inOtherKey });
+    // The instructions are the body alone, and a reference-looking token in
+    // them stays source text: no relationship field of any spelling is in the
+    // response (T217; data-model.md § Relationship).
+    expect(presentation.bodyText).not.toContain('scope:');
+    expect(presentation.bodyText).toContain(`Deploy with ${SECRET_LITERALS.inBody}`);
+    expect(presentation.bodyText).toContain('@docs/target.md');
+    expect(JSON.stringify(result.data)).not.toContain('relationship');
+    expect(Object.keys(result.data).toSorted()).toEqual([
+      'diagnostics',
+      'file',
+      'kind',
+      'presentation',
+    ]);
+  });
+
+  it('returns the complete authored instruction source exactly as it was read (T218)', async () => {
+    const { context, fixture } = await scannedFixture();
+    const result = await getFileDetail(context, fixture.instructionPath);
+    if (!('data' in result)) {
+      throw new Error('expected a detail result');
+    }
+    const { file } = result.data;
+    if (file.encoding !== 'utf-8') {
+      throw new Error('expected the readable variant');
+    }
+    expect(file.sourceText).toBe(fixture.instructionSourceText);
+  });
+
+  it('serves a configured fallback instruction file through the same variant (T218)', async () => {
+    // The carrier's declared name became a scan target through the
+    // configuration read (Phase 15); its detail is the ordinary instruction
+    // detail — provenance is an internal read-authorization record no
+    // response carries.
+    const { context, fixture } = await scannedFixture();
+    const result = await getFileDetail(context, fixture.fallbackInstructionPath);
+    if (!('data' in result)) {
+      throw new Error('expected a detail result');
+    }
+    expect(result.data.kind).toBe('instructions');
+    if (result.data.kind !== 'instructions' || result.data.presentation === null) {
+      throw new Error('expected a parsed instructions variant');
+    }
+    expect(result.data.presentation.frontmatter).toEqual([]);
+    expect(result.data.presentation.bodyText).toBe('# Configured fallback instructions\n');
+  });
+
+  it('publishes null presentation with the failure diagnostic for an unparseable instruction file (T218)', async () => {
+    const { context, fixture } = await scannedFixture();
+    const result = await getFileDetail(context, fixture.unparseableInstructionPath);
+    if (!('data' in result)) {
+      throw new Error('expected a detail result');
+    }
+    if (result.data.kind !== 'instructions') {
+      throw new Error('expected the instructions variant');
+    }
+    // The same all-or-nothing rule as the skill variant (FR-028): nothing
+    // parsed, one (file, kind) failure record, complete source still served.
+    expect(result.data.presentation).toBeNull();
+    expect(result.data.diagnostics).toHaveLength(1);
+    expect(result.data.diagnostics[0]!.code).toBe('recognition-parse-failed');
+    if (result.data.file.encoding !== 'utf-8') {
+      throw new Error('expected the readable variant');
+    }
+    expect(result.data.file.sourceText).toContain('# Override');
   });
 
   it('keeps serving a path across a rescan through its stable identity', async () => {

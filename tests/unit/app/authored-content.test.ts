@@ -119,9 +119,9 @@ describe('authored file content in the browser', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.openSkill('file-1', 'file-1');
-    expect(state.skillDetailState.value).toBe('ready');
-    const file = state.skillDetail.value?.file;
+    await state.openFileDetail('file-1', 'file-1');
+    expect(state.fileDetailState.value).toBe('ready');
+    const file = state.entryDetail.value?.file;
     if (file?.encoding !== 'utf-8') {
       throw new Error('expected the readable variant');
     }
@@ -148,10 +148,13 @@ describe('authored file content in the browser', () => {
     ];
     expect(surface.toSorted()).toEqual([
       'activeScanRequestId',
-      'closeSkill',
+      'closeFileDetail',
+      'detailErrorMessage',
       'dispose',
+      'entryDetail',
+      'fileDetailState',
       'openCompanion',
-      'openSkill',
+      'openFileDetail',
       // The active route's title subject — a display name the page already
       // renders as its heading, never authored content.
       'pageSubject',
@@ -168,9 +171,6 @@ describe('authored file content in the browser', () => {
       // the same guards as the single open file, and nothing that masks or
       // reveals either side.
       'skillComparison',
-      'skillDetail',
-      'skillDetailState',
-      'skillErrorMessage',
       'snapshot',
       'start',
       'view',
@@ -185,12 +185,12 @@ describe('authored file content in the browser', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.openSkill('file-1', 'file-1');
+    await state.openFileDetail('file-1', 'file-1');
     // A lost channel purges, and the content belongs to the session that is
     // gone — it is held in memory only and goes with it.
     state.reportChannelLost(new Error('socket closed'));
-    expect(state.skillDetail.value).toBeNull();
-    expect(state.skillDetailState.value).toBe('idle');
+    expect(state.entryDetail.value).toBeNull();
+    expect(state.fileDetailState.value).toBe('idle');
     state.dispose();
   });
 
@@ -201,9 +201,9 @@ describe('authored file content in the browser', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.openSkill('file-1', 'file-1');
-    state.closeSkill();
-    expect(state.skillDetail.value).toBeNull();
+    await state.openFileDetail('file-1', 'file-1');
+    state.closeFileDetail();
+    expect(state.entryDetail.value).toBeNull();
     state.dispose();
   });
 
@@ -224,13 +224,13 @@ describe('authored file content in the browser', () => {
       },
     });
     await state.start();
-    const opening = state.openSkill('file-1', 'file-1');
-    state.closeSkill();
+    const opening = state.openFileDetail('file-1', 'file-1');
+    state.closeFileDetail();
     settleDetail(new Error('the host failed while the reader was leaving'));
     await opening;
-    expect(state.skillErrorMessage.value).toBeNull();
-    expect(state.skillDetailState.value).toBe('idle');
-    expect(state.skillDetail.value).toBeNull();
+    expect(state.detailErrorMessage.value).toBeNull();
+    expect(state.fileDetailState.value).toBe('idle');
+    expect(state.entryDetail.value).toBeNull();
     state.dispose();
   });
 
@@ -255,12 +255,12 @@ describe('authored file content in the browser', () => {
       },
     });
     await state.start();
-    await state.openSkill('file-1', 'file-1');
-    expect(state.skillDetailState.value).toBe('ready');
+    await state.openFileDetail('file-1', 'file-1');
+    expect(state.fileDetailState.value).toBe('ready');
     // The next adoption advances the sequence, so the ID this page holds names
     // a file that no longer exists.
     await state.refresh();
-    expect(state.skillDetail.value).toBeNull();
+    expect(state.entryDetail.value).toBeNull();
     state.dispose();
   });
 
@@ -271,9 +271,9 @@ describe('authored file content in the browser', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.openSkill('from-an-older-generation', 'from-an-older-generation');
-    expect(state.skillDetailState.value).toBe('stale');
-    expect(state.skillErrorMessage.value).toBeNull();
+    await state.openFileDetail('from-an-older-generation', 'from-an-older-generation');
+    expect(state.fileDetailState.value).toBe('stale');
+    expect(state.detailErrorMessage.value).toBeNull();
     state.dispose();
   });
 
@@ -309,10 +309,10 @@ describe('authored file content in the browser', () => {
     const state = new SessionViewState({ channel });
     await state.start();
     hostGeneration = 2;
-    await state.openSkill('file-1', 'file-1');
+    await state.openFileDetail('file-1', 'file-1');
     // Nothing mixed rendered: the newer-generation response was withheld
     // rather than adopted.
-    expect(state.skillDetail.value).toBeNull();
+    expect(state.entryDetail.value).toBeNull();
     // The withholding triggered the refresh that adopts the newer snapshot.
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(calls.filter((method) => method === SESSION_RPC_FUNCTIONS.getSession).length).toBe(2);

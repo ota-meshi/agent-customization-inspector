@@ -54,10 +54,11 @@ customization-selected destination、別machineへの調査content送信は禁�
 3. Static byte servingはdevframe-ownedである。ServeされるSPA shellとassetはNuxt buildがpackaged
    `dist/public`へ出力したものそのままであり、productはstatic-assets manifest、per-asset
    integrity再検証、hand-written routerを一切定義しない。その前段にあるproduct所有の要素は
-   closedな`/skills/**` rewrite 1つだけである: そのroute familyに入るpathの`GET`/`HEAD`を`/`へ
-   書き換えてfall throughさせ、extension-guardedなSPA fallbackがfile missとして扱うskill deep
+   closedなdetail-route rewrite — `/skills/**`と`/instructions/**`、shipped kind detailごとに
+   1 family — だけである: いずれかのroute familyに入るpathの`GET`/`HEAD`を`/`へ
+   書き換えてfall throughさせ、extension-guardedなSPA fallbackがfile missとして扱うdetail deep
    linkにも、devframe自身のstatic handlerがpackaged shellをserveする。Rewriteはfilesystemに
-   触れず何もshadowしない — `/skills/`配下にpackaged assetは存在しない(§ 必須contract test
+   触れず何もshadowしない — どちらのfamily配下にもpackaged assetは存在しない(§ 必須contract test
    項目5)。Nuxtは
    `app.baseURL: '/'`、CDN URLなしを使うため、shellは全client routeで変更なしに動作する。
    Static servingはpackaged UI output directoryの外へ到達せず、inspected fileへfallbackしない。
@@ -467,7 +468,7 @@ phaseで、Global taskがこのfunctionとdetail/comparison routeへSource quali
 Active-generation file detailを1件返す。fileをrecognitionが所有するかどうかで判別される。
 
 ```text
-FileDetail — kind: 'skill' | 'file'
+FileDetail — kind: 'skill' | 'instructions' | 'file'
 ├── kind 'skill' — fileは認識されたskillのentry point:
 │   ├── file — encodingで判別されるCustomizationFile 1件:
 │   │   ├── sourceId, sourceRelativePath, encoding, diagnosticIds[]
@@ -481,6 +482,11 @@ FileDetail — kind: 'skill' | 'file'
 │   │   │   { kind: 'mapping', entries[] { key, keyKind, value } }のいずれかで、再帰する
 │   │   └── bodyText
 │   └── diagnostics[]
+├── kind 'instructions' — fileは認識されたinstruction file:
+│   ├── file — 上と同じ
+│   ├── presentation — skill variantと同じ: 同じscan時の1回のparseで、
+│   │   失敗時nullの規則も同じ（FR-028）
+│   └── diagnostics[]
 └── kind 'file' — fileを所有するrecognitionが無い（censusだけが列挙したfile、
     またはdiagnostic-onlyのcandidate）:
     ├── file — 上と同じ
@@ -493,11 +499,16 @@ semanticsを読むため、extractionは`(file, kind)`ごとに1回実行され�
 それを`presentation`として1回だけ公開する。Toolごとのrecognition一覧は存在しない:
 どのtoolがこのfileを認識するか、各toolのinvocation name、そのparse stateはinventoryの
 事実（`skills[].definitions[]`）であり、routeのtool segmentがpageの対象定義を言う。
+instruction fileの認識toolはそのinventory row（`instructions[]`）の事実であり、その
+detail routeはtool segmentを持たない。このkindの単位はfileそのものだからである。
 Admission recordも存在しない: どのruleがreadを認可しどこにmatchしたかは、relationship
 phaseが読むことになるcommit済みgenerationの内部record（data-model.md § ToolRecognition）
-であり、session responseは運ばない。Edge recordの`relationships` arrayも存在しない —
+であり、session responseは運ばない — したがって設定済みfallback instruction fileの
+detailは、staticなものと形の上で区別できない。Edge recordの`relationships` arrayも存在しない —
 shipped recognitionはedgeを1つも生成できないため、すべてのresponseで空になる。これは
-それを埋めるrelationship phaseとともに到着する。
+それを埋めるrelationship phaseとともに到着する。特にCodex instruction fileは1つも
+生成しない: 引用済みのofficial pageは`AGENTS.md`のimport/reference syntaxを何も
+確立していないため、書かれた`@path`状のtokenはsource textのままである。
 
 各frontmatter entryの`keyKind`はclosed union `string | number | boolean | null`であり、
 宣言keyのYAML 1.2 core schema下でのparse済みの型である。宣言のidentityは`(keyKind, key)`の
@@ -1052,7 +1063,8 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
    round-tripすることを証明する。
 5. Static traversal/encoded traversal attemptがpackaged `dist/public` outputの外へ出ない。Serve
    される全byteがそのpackaged Nuxt outputに由来し、inspected fileを一切serveせず、root、
-   `/skills/compare`、`/global-consent`、`/skills/<tool>/<Source相対パス>`のclient routeがすべて同じpackaged SPA shell
+   `/skills/compare`、`/global-consent`、`/skills/<tool>/<Source相対パス>`、
+   `/instructions/<Source相対パス>`のclient routeがすべて同じpackaged SPA shell
    をbootし、そのshellはsession dataをembedしない。
 6. Repositoryと各tool-specific Global rescanのqueue order、duplicate rejection、abort、partial
    outcome、fatal failure、pollingがwhole generationだけを公開する。別のSourceの後でqueueした

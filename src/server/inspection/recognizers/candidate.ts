@@ -16,13 +16,15 @@
 // and a per-vendor entry point would enumerate the same directory once per
 // recognizing product.
 //
-// A skill's declarations are read out as the file wrote them (FR-007): every
-// declared key in authored order, plus the instructions left once the block is
-// removed. The declared name leads because it seeds the resolved name the
-// grouped inventory row is keyed by and the heading a detail page shows —
-// authored when declared, the skill directory otherwise — and the authored
-// value is not recoverable from the path: a skill's `name` need not match its
-// directory.
+// A Markdown customization's declarations — a skill's, and an instruction
+// file's — are read out as the file wrote them (FR-007): every declared key in
+// authored order, plus the instructions left once the block is removed. The
+// skill's declared name leads because it seeds the resolved name the grouped
+// inventory row is keyed by and the heading a detail page shows — authored
+// when declared, the skill directory otherwise — and the authored value is not
+// recoverable from the path: a skill's `name` need not match its directory. An
+// instruction file has no name to read at all: its inventory unit is the file
+// itself, so its payload is the presentation alone.
 // No value is captioned, classified, or explained: what a key means is the
 // vendor's documentation, not this product's.
 //
@@ -146,15 +148,39 @@ export type RecognitionDetails =
       readonly bodyText: string;
     }
   /**
-   * Every other kind. For most, an identity arrives with the recognizer phase
-   * that needs one; `instructions` deliberately never gets one — its inventory
-   * unit is the file itself (data-model.md § Inventory unit), so the
-   * Source-relative Path the recognition already carries is the whole
-   * identity, and a per-kind payload would restate it.
+   * An instruction file, presented by what it declares. The kind deliberately
+   * has no identity field: its inventory unit is the file itself
+   * (data-model.md § Inventory unit), so the Source-relative Path the
+   * recognition already carries is the whole identity, and no declared name
+   * is read. What the kind does carry is the file's own presentation — the
+   * same one parse a skill uses — because the detail leads with the keys the
+   * file declares and the instructions that follow them (FR-007).
    */
   | {
       /** The recognized customization kind. */
-      readonly kind: Exclude<CustomizationKind, 'skill'>;
+      readonly kind: 'instructions';
+      /**
+       * Every key the instruction file's frontmatter declares, in authored
+       * order; the source of the detail response's `presentation.frontmatter`.
+       * Empty when the file declares no frontmatter, and empty for a `failed`
+       * extraction, which publishes nothing while the complete source stays
+       * displayed (FR-028).
+       */
+      readonly frontmatter: readonly FrontmatterEntryDto[];
+      /**
+       * The file with its frontmatter block removed: the source of the detail
+       * response's `presentation.bodyText`. Empty for a `failed` extraction:
+       * extraction is all-or-nothing (FR-028).
+       */
+      readonly bodyText: string;
+    }
+  /**
+   * Every other kind. An identity or presentation arrives with the recognizer
+   * phase that needs one; until then the kind alone is the record.
+   */
+  | {
+      /** The recognized customization kind. */
+      readonly kind: Exclude<CustomizationKind, 'skill' | 'instructions'>;
     };
 
 /**
@@ -166,7 +192,8 @@ export type RecognitionDetails =
  * Internal to the committed generation, never serialized to a client: the
  * inventory rows and the detail response are both projected from these — a
  * definition is one recognition's `(file, tool)` identity, and the detail's
- * `presentation` is one skill recognition's parse — so the record itself
+ * `presentation` is one Markdown recognition's parse, the skill's or the
+ * instruction file's — so the record itself
  * carries no wire identity of its own. A class reached only through its two
  * factories, which fix how a record comes to be: {@link recognize} derives
  * the published fields from the kind's shared extraction and the admissions,
@@ -241,7 +268,7 @@ export class ToolRecognition {
     sourceRelativePath: string,
     tool: SupportedTool,
     kind: CustomizationKind,
-    extraction: RecognitionExtraction<SkillPresentation | undefined>,
+    extraction: RecognitionExtraction<MarkdownPresentation | undefined>,
     admissions: readonly RecognitionAdmission[],
   ): ToolRecognition {
     return new ToolRecognition(
@@ -383,16 +410,23 @@ export interface RecognitionAdmission {
 }
 
 /**
- * What a `SKILL.md` reads as: the declarations it makes and the instructions
- * that follow them.
+ * What a frontmatter-led Markdown customization reads as: the declarations it
+ * makes and the instructions that follow them. Both shipped Markdown kinds —
+ * a `SKILL.md` and an instruction file — read this way, through the one parse,
+ * so the presentation a detail shows cannot differ by kind (FR-007).
  *
- * The two are separated because they answer different questions — which skill
- * is this and what does it do, versus what it tells the product to do — and a
- * detail surface that showed only the raw file would leave the reader to find
- * the seam themselves.
+ * The two halves are separated because they answer different questions — what
+ * the file declares about itself, versus what it tells the product to do —
+ * and a detail surface that showed only the raw file would leave the reader
+ * to find the seam themselves.
  */
-class SkillPresentation {
-  /** The name the file declares, or undefined when it declares none. */
+class MarkdownPresentation {
+  /**
+   * The name the file declares, or undefined when it declares none. Read here
+   * because the parse runs once; published only by the skill kind, whose
+   * inventory rows are named by it — an instruction file's unit is the file,
+   * so no name is published for it (data-model.md § Inventory unit).
+   */
   public readonly declaredName: string | undefined;
 
   /** Every declared key in authored order; see {@link FrontmatterEntryDto}. */
@@ -402,11 +436,11 @@ class SkillPresentation {
   public readonly bodyText: string;
 
   /**
-   * Reads one `SKILL.md` under the product's fixed YAML semantics: quoting and
-   * escapes resolved, `007` read as `7`, a key declared twice resolved to its
-   * later declaration (data-model.md § Field reading). Every shipped skill
-   * contract reads the same `name` and `description` scalars, so the reading
-   * lives once here.
+   * Reads one Markdown customization under the product's fixed YAML
+   * semantics: quoting and escapes resolved, `007` read as `7`, a key
+   * declared twice resolved to its later declaration (data-model.md § Field
+   * reading). Every shipped contract reads the same fixed semantics, so the
+   * reading lives once here.
    *
    * Throws for a present-but-unparseable frontmatter block;
    * {@link RecognitionExtraction.run} turns the throw into the recognition's
@@ -439,7 +473,7 @@ class SkillPresentation {
     // that value would name a skill after the first item of a list the file
     // did not write as a name. Every other declaration, the description
     // included, is published once in `frontmatter` and read from there.
-    this.declaredName = SkillPresentation.#scalarOf(declared, 'name');
+    this.declaredName = MarkdownPresentation.#scalarOf(declared, 'name');
   }
 
   /**
@@ -549,17 +583,29 @@ function renderDeclaredValue(value: unknown, ancestors: readonly object[]): Fron
 }
 
 /**
- * Builds a recognition's per-kind payload. Only `skill` has one so far: the
- * name it declares in its own file. The census the recognizer runs is not part
- * of it — the companion list's one publication is the inventory's
- * `SkillDefinitionDto.companionFiles`, so a second copy here would be the same
- * fact in two responses. Every other kind carries just its kind until its
- * recognizer phase gives it an identity of its own.
+ * Builds a recognition's per-kind payload. The two Markdown kinds carry the
+ * one shared parse — the skill leading with the name it declares in its own
+ * file, the instruction file with no name to read because its inventory unit
+ * is the file itself (data-model.md § Inventory unit). The census the
+ * recognizer runs is not part of either — the companion list's one
+ * publication is the inventory's `SkillDefinitionDto.companionFiles`, so a
+ * second copy here would be the same fact in two responses. Every other kind
+ * carries just its kind until its recognizer phase gives it an identity of
+ * its own.
  */
 function buildDetails(
   kind: CustomizationKind,
-  presentation: SkillPresentation | undefined,
+  presentation: MarkdownPresentation | undefined,
 ): RecognitionDetails {
+  if (kind === 'instructions') {
+    // A failed extraction has no presentation at all, which is what publishes
+    // nothing rather than the part that parsed (FR-028).
+    return {
+      kind,
+      frontmatter: presentation?.frontmatter ?? [],
+      bodyText: presentation?.bodyText ?? '',
+    };
+  }
   if (kind !== 'skill') {
     return { kind };
   }
@@ -626,16 +672,20 @@ export async function recognizeCandidateForVendors(
   const candidateDirectory = input.matchedPath.slice(0, input.matchedPath.lastIndexOf('/') + 1);
   const companions = census.map((listed) => new CompanionSourceFile(candidateDirectory, listed));
   // One extraction per kind, shared by every tool recognizing it: what a
-  // `SKILL.md` declares does not depend on which product reads it — every
-  // shipped skill contract reads the same fixed YAML semantics — so parsing
-  // once is the same-fact-once rule, not an optimization with a semantic.
-  const extractions = new Map<CustomizationKind, RecognitionExtraction<SkillPresentation>>();
-  const extractionFor = (kind: CustomizationKind): RecognitionExtraction<SkillPresentation> => {
+  // Markdown customization declares does not depend on which product reads
+  // it — every shipped contract reads the same fixed YAML semantics — so
+  // parsing once is the same-fact-once rule, not an optimization with a
+  // semantic. Both Markdown kinds run the same parse; the per-kind payload
+  // decides what of it is published (`buildDetails`).
+  const extractions = new Map<CustomizationKind, RecognitionExtraction<MarkdownPresentation>>();
+  const extractionFor = (kind: CustomizationKind): RecognitionExtraction<MarkdownPresentation> => {
     let extraction = extractions.get(kind);
     if (extraction === undefined) {
       extraction = RecognitionExtraction.run(
         input.sourceText,
-        kind === 'skill' ? (text) => new SkillPresentation(text) : null,
+        kind === 'skill' || kind === 'instructions'
+          ? (text) => new MarkdownPresentation(text)
+          : null,
       );
       extractions.set(kind, extraction);
     }

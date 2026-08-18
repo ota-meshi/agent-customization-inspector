@@ -1,5 +1,6 @@
-// T141: the shipped relationship policy for the Claude skill detail milestone
-// (data-model.md § Relationship, FR-028, FR-029).
+// T141/T217: the shipped relationship policy for the Claude skill detail and
+// Codex instruction detail milestones (data-model.md § Relationship, FR-028,
+// FR-029).
 //
 // A relationship may be emitted only when its kind is listed by the owning
 // presentation-allowlist row *and* its origin is covered by a relationship-only
@@ -24,6 +25,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import * as fsIo from '../../../src/server/inspection/fs-io';
 import { recognizeCandidateForVendors } from '../../../src/server/inspection/recognizers/candidate';
 import { CLAUDE_REPOSITORY_RULES } from '../../../src/server/inspection/rules/claude';
+import { CODEX_REPOSITORY_RULES } from '../../../src/server/inspection/rules/codex';
 import { INSPECTION_RULES } from '../../../src/shared/registries/inspection-rules';
 import { assembleScanPublication } from '../../../src/server/inspection/scan';
 
@@ -40,6 +42,10 @@ vi.mock('../../../src/server/inspection/fs-io', async (importOriginal) => {
 });
 
 const [claudeSkillRule] = CLAUDE_REPOSITORY_RULES;
+
+const codexInstructionRule = CODEX_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'codex.repo.instructions',
+);
 
 let root: string;
 
@@ -128,6 +134,104 @@ describe('relationship read authority', () => {
     ]) {
       expect(serialized).not.toContain(field);
     }
+  });
+});
+
+/** Recognizes one authored Codex instruction file at the given admitted path. */
+async function recognizeCodexInstruction(matchedPath: string, sourceText: string) {
+  const { recognitions } = await recognizeCandidateForVendors(
+    {
+      matchedPath,
+      absolutePath: join(root, matchedPath),
+      sourceRoot: root,
+      admissions: [{ compiled: codexInstructionRule!, origin: { planIndex: 0, selectorIndex: 0 } }],
+      sourceText,
+    },
+    ['codex'],
+  );
+  return recognitions;
+}
+
+describe('Codex instruction files emit no relationship at all (T217)', () => {
+  // No official Codex page this repository cites establishes an import or
+  // reference syntax for `AGENTS.md` — the AGENTS.md page documents discovery
+  // and fallback filenames only — so a Codex instruction file yields no
+  // `runtime-reference`: the presentation allowlist's row permits the kind,
+  // it does not require an extractor to invent occurrences.
+
+  it('keeps reference-looking source as source text and accesses no target', async () => {
+    // An `@path`-looking token, a Markdown link, and a bare path — each a
+    // spelling an import syntax elsewhere might read — stay authored text,
+    // and the real file they all point at is never opened. Recognition of an
+    // instruction file performs no filesystem operation at all: no read, and
+    // no census either, because the kind is not directory-shaped.
+    const recognitions = await recognizeCodexInstruction(
+      'AGENTS.md',
+      '---\nscope: repo\n---\n\nSee @docs/target.md and [the guide](docs/target.md).\ndocs/target.md\n',
+    );
+    expect(recognitions).toHaveLength(1);
+    expect(recognitions[0]!.details.kind).toBe('instructions');
+    expect(vi.mocked(fsIo.readFile)).not.toHaveBeenCalled();
+    expect(vi.mocked(fsIo.readdir)).not.toHaveBeenCalled();
+  });
+
+  it('publishes no relationship vocabulary on the instruction recognition', async () => {
+    const recognitions = await recognizeCodexInstruction(
+      'AGENTS.md',
+      'Read @docs/target.md before anything.\n',
+    );
+    const serialized = JSON.stringify(recognitions);
+    // No edge fields (data-model.md § Relationship: an unlisted or uncovered
+    // reference "cannot be promoted to a generic, inferred, or fallback
+    // relationship").
+    for (const field of [
+      'relationshipId',
+      'targetOrigin',
+      'authoredTarget',
+      'semanticTarget',
+      'normalizedTarget',
+      'boundaryStatus',
+      'resolutionStatus',
+    ]) {
+      expect(serialized).not.toContain(field);
+    }
+  });
+
+  it('resolves an environment reference nowhere', async () => {
+    // The authored `${...}` spelling is published exactly as written, and no
+    // process environment is consulted: a resolved value would be runtime
+    // state this product never observes, and substituting it would rewrite
+    // the reader's own file (FR-025).
+    process.env['ACI_T217_REFERENCE'] = 'resolved-from-environment';
+    try {
+      const recognitions = await recognizeCodexInstruction(
+        'AGENTS.md',
+
+        '---\nendpoint: ${ACI_T217_REFERENCE}\n---\n\nUse ${ACI_T217_REFERENCE} here.\n',
+      );
+      const serialized = JSON.stringify(recognitions);
+      expect(serialized).toContain('${ACI_T217_REFERENCE}');
+      expect(serialized).not.toContain('resolved-from-environment');
+    } finally {
+      delete process.env['ACI_T217_REFERENCE'];
+    }
+  });
+
+  it('confines an unparseable instruction frontmatter to the one recognition', async () => {
+    // The same all-or-nothing rule the skill kind follows (FR-028): nothing
+    // parsed is published — no declarations, no body — while the candidate
+    // stays admitted and its complete source stays displayed.
+    const recognitions = await recognizeCodexInstruction(
+      'AGENTS.md',
+      '---\nscope: [unterminated\n---\n\n# Body\n',
+    );
+    expect(recognitions[0]!.parseStatus).toBe('failed');
+    expect(recognitions[0]!.details).toEqual({
+      kind: 'instructions',
+      frontmatter: [],
+      bodyText: '',
+    });
+    expect(recognitions[0]!.diagnosticIds).toEqual([]);
   });
 });
 

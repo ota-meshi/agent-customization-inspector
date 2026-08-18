@@ -34,10 +34,10 @@ export type RecognitionParseStatus =
   | 'failed';
 
 /**
- * One authored frontmatter value, as the skill detail surface shows it
- * (data-model.md § Skill presentation). The shape mirrors what the parser
- * resolved, so a mapping is shown as a mapping and a list as a list rather
- * than as a summary of one.
+ * One authored frontmatter value, as the detail surfaces — the skill's and
+ * the instruction file's — show it (data-model.md § Skill presentation). The
+ * shape mirrors what the parser resolved, so a mapping is shown as a mapping
+ * and a list as a list rather than as a summary of one.
  */
 export type FrontmatterValueDto =
   /** A string, number, or boolean the syntax resolved to one value. */
@@ -92,10 +92,10 @@ export type FrontmatterKeyKind =
   | 'null';
 
 /**
- * One parsed frontmatter declaration, as the skill detail surface shows it
- * (data-model.md § Skill presentation): the key and value carry what the
- * parser resolved, while the authored spelling stays in the complete
- * `sourceText` served beside them.
+ * One parsed frontmatter declaration, as the detail surfaces — the skill's
+ * and the instruction file's — show it (data-model.md § Skill presentation):
+ * the key and value carry what the parser resolved, while the authored
+ * spelling stays in the complete `sourceText` served beside them.
  *
  * The key is the file's own, never a vendor catalog's: this is the reader's
  * frontmatter shown back to them, so a key the product has no opinion about is
@@ -272,22 +272,23 @@ export interface SameNameSkillResolutionDto {
 }
 
 /**
- * What the one scan-time parse resolved out of a skill entry point, as its
+ * What the one scan-time parse resolved out of a frontmatter-led Markdown
+ * customization file — a skill entry point or an instruction file — as its
  * detail surface shows it (data-model.md § Skill presentation): every
  * declaration by the key the file wrote, and the instructions the frontmatter
  * block was removed from. Published rather than re-parsed in the browser,
  * because the inventory row's name comes from the same parse — a second
  * parser would be a second opinion that could disagree with it (FR-007).
  */
-export interface SkillPresentationDto {
+export interface MarkdownPresentationDto {
   /**
-   * Every key the `SKILL.md` frontmatter declares, in authored order — the
+   * Every key the file's frontmatter declares, in authored order — the
    * file's own declarations, shown as declarations rather than buried in the
    * source (FR-007). Empty when the file declares no frontmatter.
    */
   readonly frontmatter: readonly FrontmatterEntryDto[];
   /**
-   * The `SKILL.md` with its frontmatter block removed: the instructions the
+   * The file with its frontmatter block removed: the instructions the
    * product would read. Separated from the declarations above because they
    * answer different questions, and the split is the parser's own — see
    * `parsers/markdown.ts`.
@@ -320,7 +321,27 @@ export interface SkillFileDetailDto extends FileDetailBase {
    * failed all-or-nothing (FR-028): nothing was parsed, the failure's
    * Diagnostic is in `diagnostics`, and the complete source stays readable.
    */
-  readonly presentation: SkillPresentationDto | null;
+  readonly presentation: MarkdownPresentationDto | null;
+}
+
+/**
+ * Detail of a recognized instruction file: the file plus what the one
+ * scan-time parse resolved (contracts/http-api.md § get-file-detail). The
+ * inventory unit of this kind is the file itself (data-model.md § Inventory
+ * unit), so no per-tool identity exists here either: which tools recognize
+ * the file is the instructions inventory's fact, and the parse — the same
+ * fixed YAML semantics every vendor reads — is published once as the file's.
+ */
+export interface InstructionFileDetailDto extends FileDetailBase {
+  /** Discriminant: the file is a recognized instruction file. */
+  readonly kind: 'instructions';
+  /**
+   * The parsed declarations and instructions, or null exactly when extraction
+   * failed all-or-nothing (FR-028), the same rule the skill variant follows:
+   * nothing was parsed, the failure's Diagnostic is in `diagnostics`, and the
+   * complete source stays readable.
+   */
+  readonly presentation: MarkdownPresentationDto | null;
 }
 
 /**
@@ -347,14 +368,18 @@ export interface UnrecognizedFileDetailDto extends FileDetailBase {
  * is covered by a relationship-only rule in the central registry
  * (contracts/runtime-composition.md § Normative relationship-only registry);
  * no shipped recognition can produce an edge, so the array would be empty in
- * every response this release returns. There is no per-tool recognition list
+ * every response this release returns. A Codex instruction file in particular
+ * yields no edge: no cited official page establishes an import or reference
+ * syntax for `AGENTS.md`, so an authored `@path`-looking token is source text
+ * like any other (tasks.md T217). There is no per-tool recognition list
  * either: the parse the detail shows is the file's, and the recognizing tools
  * with their invocation names are published by the inventory the page already
  * holds. A skill's resources are published as
  * `SkillDefinitionDto.companionFiles`, which the census enumerates and never
  * admits; the vendor rule modules say why they get no rule of their own.
  */
-export type FileDetailDto = SkillFileDetailDto | UnrecognizedFileDetailDto;
+export type FileDetailDto =
+  SkillFileDetailDto | InstructionFileDetailDto | UnrecognizedFileDetailDto;
 
 /** Fields every discovered file carries regardless of its read outcome. */
 interface CustomizationFileBase {

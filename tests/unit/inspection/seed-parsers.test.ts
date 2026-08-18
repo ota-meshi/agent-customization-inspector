@@ -68,6 +68,36 @@ describe('the Codex carrier seed extraction (T1086)', () => {
     expect(configuredFallbackBasenamesOf('project_doc_fallback_filenames = [1, 2]\n')).toBeNull();
   });
 
+  it('reports an authored empty list as exactly the empty list (T216)', () => {
+    // An authored `[]` is a declaration of zero names — a different fact from
+    // an absent field, which declares nothing at all. The extraction reports
+    // it as declared; the configuration reader derives no plan from a list
+    // with nothing in it, so the two stay one behavior with two spellings.
+    expect(configuredFallbackBasenamesOf('project_doc_fallback_filenames = []\n')).toEqual([]);
+  });
+
+  it('keeps every declared name in whole characters (T216)', () => {
+    // Values are read in whole characters (data-model.md § Value fidelity):
+    // an astral character is two UTF-16 code units and a combining mark two
+    // code points, and both must survive extraction unaltered — a name the
+    // walk compares to directory entries cannot be compared through a
+    // truncated spelling.
+    expect(
+      configuredFallbackBasenamesOf(
+        'project_doc_fallback_filenames = ["\u{1F680}GUIDE.md", "équipe.md"]\n',
+      ),
+    ).toEqual(['\u{1F680}GUIDE.md', 'équipe.md']);
+  });
+
+  it('declares nothing when any member is not a string (T216)', () => {
+    // The field is a string array or it configures nothing, atomically: a
+    // mixed array is not partially read, because keeping the strings would
+    // publish a list the carrier did not declare.
+    expect(
+      configuredFallbackBasenamesOf('project_doc_fallback_filenames = ["GUIDE.md", 1]\n'),
+    ).toBeNull();
+  });
+
   it('keeps a declared name whatever it spells', () => {
     // The declared value is a name the walk compares to the entries it
     // enumerated, so a name a repository can actually carry is kept, and one

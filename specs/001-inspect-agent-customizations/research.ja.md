@@ -672,8 +672,9 @@ state、streaming channelを一切登録せず、editor/finder helper（`devfram
 fallback付きstatic配信、RPC channelはproduct codeではなく
 devframeのpolicyであり、browser openingはproductが`open` packageを通じて所有し、devframeの
 bundled openerは無効化される（§ 3）。ただしstatic配信の前段にclosedなproduct所有の要素が1つある:
-`/skills/**`の`GET`/`HEAD`を`/`へ書き換えるrewriteで、extension-guardedなfallbackがserveできない
-skill deep linkにdevframe自身のhandlerがshellをserveできるようにする(§ 3 h3行)。Session保護はloopback bindingとする: productはper-session tokenも、独自のOrigin/Host分類も、
+`/skills/**`と`/instructions/**`の`GET`/`HEAD`を`/`へ書き換えるrewrite（shipped kind detailごとに
+1 route family）で、extension-guardedなfallbackがserveできない
+detail deep linkにdevframe自身のhandlerがshellをserveできるようにする(§ 3 h3行)。Session保護はloopback bindingとする: productはper-session tokenも、独自のOrigin/Host分類も、
 hand-written HTTP routerも追加しない。devframeはWebSocket upgradeへ自身のorigin gateを適用して
 おり、それがproduct所有のcheckを置かない理由である。ただしこのgateは以下のexposureを有界化する
 ものではなく、そう読んではならない。Gateは`Origin`を持たないrequest（非browser client）と、

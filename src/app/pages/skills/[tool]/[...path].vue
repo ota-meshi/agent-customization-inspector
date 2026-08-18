@@ -161,11 +161,11 @@ const comparePairRoute = computed(() => {
     : null;
 });
 
-const skillDetail = sessionViewState.skillDetail;
+const entryDetail = sessionViewState.entryDetail;
 const openCompanion = sessionViewState.openCompanion;
-const detailState = sessionViewState.skillDetailState;
+const detailState = sessionViewState.fileDetailState;
 /** This route's own failed request, which this page reports and announces. */
-const skillError = sessionViewState.skillErrorMessage;
+const detailError = sessionViewState.detailErrorMessage;
 const snapshot = sessionViewState.snapshot;
 
 /**
@@ -313,7 +313,7 @@ const invocationNameInvisible = computed(() => {
  * the failure's diagnostic says so (FR-028).
  */
 const skillPresentation = computed(() => {
-  const detail = skillDetail.value;
+  const detail = entryDetail.value;
   return detail !== null && detail.kind === 'skill' ? detail.presentation : null;
 });
 
@@ -365,6 +365,24 @@ const SKILL_DETAIL_TAB_TEXT: Readonly<Record<SkillDetailTab, string>> = {
 const activeTab = ref<SkillDetailTab>('skill');
 /** The tab buttons, so a switch this page decides can carry focus with it. */
 const tabButtons = ref<HTMLButtonElement[]>([]);
+
+/**
+ * Whether the reader has picked a tab for the open skill. The content rule
+ * below still runs whenever the selection changes — a companion is shown in
+ * the files panel however the reader arrived at it — but a detail that merely
+ * came back for the same selection never overrides this: the open effect
+ * re-requests the same path when a newer generation is adopted, and that
+ * content was refetched rather than reselected. Cleared when the skill
+ * changes, because a different skill is a different page; a file change
+ * within one skill keeps it, because choosing a file is not choosing a tab.
+ */
+let readerChoseTab = false;
+
+/** Selects a tab for the reader, recording that the strip is theirs now. */
+function chooseTab(tab: SkillDetailTab): void {
+  readerChoseTab = true;
+  activeTab.value = tab;
+}
 
 /**
  * The page's root, for the stale guard and {@link selectTab}. Declared before
@@ -420,7 +438,7 @@ function onTabKeydown(event: KeyboardEvent, index: number): void {
     return;
   }
   event.preventDefault();
-  activeTab.value = next;
+  chooseTab(next);
   document.getElementById(skillTabId(next))?.focus();
 }
 
@@ -441,6 +459,20 @@ watch(
     () => skillPresentation.value !== null,
   ],
   ([entryPathValue, openPathValue, hasPresentation], previous) => {
+    const skillChanged = previous === undefined || previous[0] !== entryPathValue;
+    const fileChanged = previous === undefined || previous[1] !== openPathValue;
+    if (skillChanged) {
+      readerChoseTab = false;
+    }
+    // Nothing about the selection changed, so this is the same file's detail
+    // going away and coming back: `SessionViewState` drops the open detail
+    // when it adopts a newer generation and the open effect re-requests the
+    // same path, which flips the presentation off and on. A strip the reader
+    // has set stays as they set it through that — the content was refetched,
+    // not reselected ({@link chooseTab}).
+    if (!skillChanged && !fileChanged && readerChoseTab) {
+      return;
+    }
     // A companion is shown in the files panel, so that is where the reader has
     // to be to see it — however they arrived. Keying only on the skill left a
     // history step to another of its files changing the URL and the tree's
@@ -462,7 +494,6 @@ watch(
     // change leaves the tab alone: choosing `SKILL.md` from the file list is a
     // file selection, and answering it by leaving the list would undo the
     // reader's own click.
-    const skillChanged = previous === undefined || previous[0] !== entryPathValue;
     const declarationsArrived = previous !== undefined && !previous[2] && hasPresentation;
     if (skillChanged || declarationsArrived) {
       selectTab('skill');
@@ -492,7 +523,7 @@ const entryPath = computed(() => treeFiles.value[0] ?? '');
 const skillBodyIsEmpty = computed(() => (skillPresentation.value?.bodyText ?? '') === '');
 
 const openFile = computed(() => {
-  const file = openCompanion.value?.file ?? skillDetail.value?.file ?? null;
+  const file = openCompanion.value?.file ?? entryDetail.value?.file ?? null;
   return file !== null && file.sourceRelativePath === openPath.value ? file : null;
 });
 
@@ -512,7 +543,7 @@ const openFilePathText = computed(() =>
  * the list renders as published.
  */
 const openFileDiagnostics = computed(() => {
-  const detail = openCompanion.value ?? skillDetail.value;
+  const detail = openCompanion.value ?? entryDetail.value;
   return detail?.diagnostics ?? [];
 });
 
@@ -523,7 +554,7 @@ const openFileDiagnostics = computed(() => {
  * presentation exists: the parsed panel needs no failure story.
  */
 const entryDiagnostics = computed(() => {
-  const detail = skillDetail.value;
+  const detail = entryDetail.value;
   return detail !== null && detail.kind === 'skill' && detail.presentation === null
     ? detail.diagnostics
     : [];
@@ -540,19 +571,19 @@ const entryDiagnostics = computed(() => {
 const detailFailure = computed<string | null>(() => {
   // The idle branch needs no error to speak: an idle page holding nothing is
   // this route's recoverable failure state however it was reached — a failed
-  // entry request carries its message in `skillError`, while a
+  // entry request carries its message in `detailError`, while a
   // newer-generation refresh that could not adopt leaves the message to the
-  // shell (`SessionViewState.openSkill`) and this statement stands alone.
+  // shell (`SessionViewState.openFileDetail`) and this statement stands alone.
   const statement =
     detailState.value === 'companion-failed'
       ? 'This file could not be loaded.'
-      : skillDetail.value === null && detailState.value === 'idle'
+      : entryDetail.value === null && detailState.value === 'idle'
         ? 'This skill could not be loaded.'
         : null;
   if (statement === null) {
     return null;
   }
-  return skillError.value === null ? statement : `${statement} ${skillError.value}`;
+  return detailError.value === null ? statement : `${statement} ${detailError.value}`;
 });
 
 /**
@@ -603,7 +634,7 @@ const requestOpen = (): void => {
   if (resolved === null) {
     return;
   }
-  void sessionViewState.openSkill(resolved.definition.sourceRelativePath, openPath.value);
+  void sessionViewState.openFileDetail(resolved.definition.sourceRelativePath, openPath.value);
 };
 
 // One effect owns "which skill and file should be open", so entering the route
@@ -633,7 +664,7 @@ watch(
       // the point: the page shows the recoverable state below, and holding the
       // last skill's source behind it would keep authored content the reader
       // has navigated away from.
-      sessionViewState.closeSkill();
+      sessionViewState.closeFileDetail();
       return;
     }
     requestOpen();
@@ -742,7 +773,7 @@ watch(
 // skill, whose own watcher focuses the heading after the flush so the new
 // name is what gets announced (WCAG 2.4.3).
 watch(
-  skillDetail,
+  entryDetail,
   (detail, previous) => {
     if (
       detail === null &&
@@ -781,7 +812,7 @@ onBeforeUnmount(() => {
   // Leaving the route drops the authored source this page requested, and the
   // title subject with it — the next route reports its own or none.
   sessionViewState.pageSubject.value = null;
-  sessionViewState.closeSkill();
+  sessionViewState.closeFileDetail();
 });
 </script>
 
@@ -852,14 +883,14 @@ onBeforeUnmount(() => {
          the other. The real message is shown rather than a phrase standing in
          for it, and the retry beside it is the way back without re-finding the
          link. -->
-    <template v-else-if="skillDetail === null">
+    <template v-else-if="entryDetail === null">
       <p class="aci-error">{{ detailFailure }}</p>
       <p>
         <button type="button" @click="retryOpen">Try again</button>
       </p>
     </template>
 
-    <template v-else-if="skillDetail">
+    <template v-else-if="entryDetail">
       <div class="aci-skill-detail__overview">
         <!-- Path text escapes control characters for presentation
              (data-model.md § SourceRelativePath); the stored value that roots
@@ -902,7 +933,7 @@ onBeforeUnmount(() => {
           :aria-controls="skillTabPanelId(tab)"
           :aria-selected="tab === activeTab"
           :tabindex="tab === activeTab ? 0 : -1"
-          @click="activeTab = tab"
+          @click="chooseTab(tab)"
           @keydown="onTabKeydown($event, index)"
         >
           {{ SKILL_DETAIL_TAB_TEXT[tab] }}

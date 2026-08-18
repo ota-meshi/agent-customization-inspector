@@ -1300,7 +1300,8 @@ product's skill rule ships its strategy and its statement together.
 A recognition is an internal record of the committed generation, carried by no session
 response (FR-027): the inventory rows and the detail are both projected from these —
 a definition is one recognition's `(file, tool)` identity, and the detail's
-`presentation` is one skill recognition's parse. In code it is a class whose one
+`presentation` is one Markdown recognition's parse, the skill's or the instruction
+file's. In code it is a class whose one
 production construction site is the recognizer, while the recognize seam
 (`CandidateRecognition`) stays an interface tests satisfy with literal doubles.
 
@@ -1310,7 +1311,11 @@ single `name`, while an MCP carrier declares one per server. A skill's details c
 declared name — the display label and the identity every row's name is built from, which a
 nested Claude Code recognition's row prefixes root-relative (FR-007, FR-027) — absent,
 never empty, when the file declares none; a row whose file declares none, or declares it
-empty, is named by its skill directory instead.
+empty, is named by its skill directory instead. An instruction recognition's details
+carry the same one parse — the declared keys in authored order and the body the block
+was removed from — and deliberately no name: the kind's inventory unit is the file
+itself, so the Source-relative Path the recognition already carries is the whole
+identity.
 
 A recognition is not an inventory row. The row's unit is the kind's own (§ Inventory unit),
 so each kind's inventory is built from these records rather than published as one summary

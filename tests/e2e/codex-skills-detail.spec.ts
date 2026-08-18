@@ -252,6 +252,27 @@ test('leaves an environment reference as the characters that were written', asyn
   );
 });
 
+test('leaves the tab strip where the reader put it while they choose files', async ({ page }) => {
+  // Choosing a file is not choosing a tab. The reader opens the files, walks
+  // the tree — including back to the entry point, which shows the same file
+  // the Skill tab was built from — and the strip stays theirs throughout: a
+  // page that answered a tree click by leaving the tree would undo the click
+  // that was just made.
+  await openSkillFiles(page, '.agents/skills/greet/SKILL.md');
+  const filesTab = page.getByRole('tab', { name: /^files/iu });
+  const tree = page.getByRole('navigation', { name: 'Files in this skill' });
+
+  await tree.getByRole('link', { name: 'run.sh' }).click();
+  await expect(filesTab).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toContainText('echo hi');
+
+  await tree.getByRole('link', { name: 'SKILL.md' }).click();
+  await expect(filesTab).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('.aci-skill-detail__main h3')).toHaveText(
+    '.agents/skills/greet/SKILL.md',
+  );
+});
+
 test('shows the addressed definition and nothing about a runtime it cannot see', async ({
   page,
 }) => {

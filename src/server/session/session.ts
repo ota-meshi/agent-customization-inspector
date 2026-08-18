@@ -262,6 +262,22 @@ type SkillRecognition = ToolRecognition & {
 function isSkillRecognition(recognition: ToolRecognition): recognition is SkillRecognition {
   return recognition.details.kind === 'skill';
 }
+
+/**
+ * A recognition narrowed to the instructions kind, so {@link
+ * InspectionSession.fileDetail} reads the presentation fields where its guard
+ * has already proved the kind instead of re-narrowing per access.
+ */
+type InstructionRecognition = ToolRecognition & {
+  readonly details: Extract<RecognitionDetails, { kind: 'instructions' }>;
+};
+
+/** Whether one recognition is the instructions kind, narrowing it for the detail. */
+function isInstructionRecognition(
+  recognition: ToolRecognition,
+): recognition is InstructionRecognition {
+  return recognition.details.kind === 'instructions';
+}
 /**
  * The same-name resolution of each product behind a grouped entry, deduplicated
  * and in the contracted tool order. It states what each vendor documents so the
@@ -438,28 +454,50 @@ export class InspectionSession {
         file.diagnosticIds.includes(diagnostic.diagnosticId),
       );
       // The parse the detail shows is the file's, not a recognizing tool's:
-      // every skill recognition of the file shares the one extraction
-      // (candidate.ts), so any one of them carries it. A file with none is
-      // the plain variant — a census companion, or a diagnostic-only
-      // candidate (contracts/http-api.md § get-file-detail).
+      // every recognition of the file's kind shares the one extraction
+      // (candidate.ts), so any one of them carries it. A file with neither
+      // Markdown kind is the plain variant — a census companion, or a
+      // diagnostic-only candidate (contracts/http-api.md § get-file-detail).
+      // No shipped rule recognizes one file as both kinds; the skill lookup
+      // runs first so the order is fixed rather than incidental.
       const skill = generation.recognitions.find(
         (recognition): recognition is SkillRecognition =>
           recognition.sourceRelativePath === sourceRelativePath && isSkillRecognition(recognition),
       );
-      if (skill === undefined) {
-        return { kind: 'file', file, diagnostics };
+      if (skill !== undefined) {
+        return {
+          kind: 'skill',
+          file,
+          // Null exactly for a failed extraction: nothing was parsed, and the
+          // diagnostic above is the failure's record (FR-028).
+          presentation:
+            skill.parseStatus === 'parsed'
+              ? { frontmatter: skill.details.frontmatter, bodyText: skill.details.bodyText }
+              : null,
+          diagnostics,
+        };
       }
-      return {
-        kind: 'skill',
-        file,
-        // Null exactly for a failed extraction: nothing was parsed, and the
-        // diagnostic above is the failure's record (FR-028).
-        presentation:
-          skill.parseStatus === 'parsed'
-            ? { frontmatter: skill.details.frontmatter, bodyText: skill.details.bodyText }
-            : null,
-        diagnostics,
-      };
+      const instruction = generation.recognitions.find(
+        (recognition): recognition is InstructionRecognition =>
+          recognition.sourceRelativePath === sourceRelativePath &&
+          isInstructionRecognition(recognition),
+      );
+      if (instruction !== undefined) {
+        return {
+          kind: 'instructions',
+          file,
+          // The same all-or-nothing rule as the skill variant (FR-028).
+          presentation:
+            instruction.parseStatus === 'parsed'
+              ? {
+                  frontmatter: instruction.details.frontmatter,
+                  bodyText: instruction.details.bodyText,
+                }
+              : null,
+          diagnostics,
+        };
+      }
+      return { kind: 'file', file, diagnostics };
     }
     return null;
   }

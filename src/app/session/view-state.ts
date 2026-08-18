@@ -130,7 +130,7 @@ export class SessionViewState {
   /**
    * The skill comparison view state (FR-011). Owned here because it shares
    * this state's client, purge, and generation lifecycle: the same adoption
-   * that closes the open skill drops the open comparison, and the same purge
+   * that closes the open detail drops the open comparison, and the same purge
    * clears both. The skill compare route opens and switches its view; the
    * pair itself is the route's query, not standing state. Skill-scoped by
    * design — a later family's comparison surface arrives as its own state,
@@ -147,7 +147,7 @@ export class SessionViewState {
   /**
    * The real error message of a failed session-level request — a refresh, a
    * rescan command, a lost channel — or null while none is retained. Held
-   * apart from {@link #skillError} because the two describe different things
+   * apart from {@link #detailError} because the two describe different things
    * and can be true at once: one slot would let a companion's failure erase a
    * refresh failure nobody has resolved, and clearing it with the route would
    * take both.
@@ -155,12 +155,12 @@ export class SessionViewState {
   readonly #sessionError = shallowRef<string | null>(null);
 
   /**
-   * The real error message of the open skill's own failed detail request, or
+   * The real error message of the open detail's own failed request, or
    * null while none is retained. Cleared with the route that owns it: left
    * behind it would sit on the inventory with no file context and no retry
    * control.
    */
-  readonly #skillError = shallowRef<string | null>(null);
+  readonly #detailError = shallowRef<string | null>(null);
 
   /**
    * The session's own failure, shown and announced by the shell.
@@ -174,10 +174,10 @@ export class SessionViewState {
   public readonly sessionErrorMessage = computed<string | null>(() => this.#sessionError.value);
 
   /**
-   * The open skill's own failed detail request, shown and announced by the
+   * The open detail's own failed request, shown and announced by the
    * detail route beside its retry; see {@link sessionErrorMessage}.
    */
-  public readonly skillErrorMessage = computed<string | null>(() => this.#skillError.value);
+  public readonly detailErrorMessage = computed<string | null>(() => this.#detailError.value);
 
   /** Where the one explicit rescan command stands; see {@link RescanState}. */
   public readonly rescanState = shallowRef<RescanState>('idle');
@@ -193,18 +193,19 @@ export class SessionViewState {
   public readonly rescanRejection = shallowRef<RejectionCode | null>(null);
 
   /**
-   * The open skill's entry point — the `SKILL.md` whose recognitions say what
-   * the skill is.
+   * The open customization's own file — a skill's `SKILL.md` entry point, or
+   * an instruction file itself — whose recognitions say what the open
+   * customization is.
    *
-   * Set as soon as {@link openSkill} owns it, which is before the page is
-   * 'ready': a direct link to a companion fetches the entry first, and holding
-   * it from that moment is what leaves 'companion-failed' a skill to keep
-   * showing instead of an empty page. The detail route renders its loading state
-   * until 'ready' or 'companion-failed', so an entry set during 'loading' is
-   * state no surface has shown yet. Null in 'idle', in 'stale', and until the
-   * entry answers.
+   * Set as soon as {@link openFileDetail} owns it, which is before the page is
+   * 'ready': a direct link to a skill's companion fetches the entry first, and
+   * holding it from that moment is what leaves 'companion-failed' a skill to
+   * keep showing instead of an empty page. The detail route renders its
+   * loading state until 'ready' or 'companion-failed', so an entry set during
+   * 'loading' is state no surface has shown yet. Null in 'idle', in 'stale',
+   * and until the entry answers.
    */
-  public readonly skillDetail = shallowRef<FileDetailDto | null>(null);
+  public readonly entryDetail = shallowRef<FileDetailDto | null>(null);
 
   /**
    * The companion file being read, or null when the entry point itself is.
@@ -213,13 +214,13 @@ export class SessionViewState {
    */
   public readonly openCompanion = shallowRef<FileDetailDto | null>(null);
 
-  /** Where the open skill stands; see {@link FileDetailState}. */
-  public readonly skillDetailState = shallowRef<FileDetailState>('idle');
+  /** Where the open detail stands; see {@link FileDetailState}. */
+  public readonly fileDetailState = shallowRef<FileDetailState>('idle');
 
   /**
-   * The subject the active route reports for the document title — the skill
-   * detail page writes its heading's name here, so the title says which skill
-   * a tab shows rather than only which surface (WCAG 2.4.2,
+   * The subject the active route reports for the document title — a detail
+   * page writes its heading's subject here, so the title says which
+   * customization a tab shows rather than only which surface (WCAG 2.4.2,
    * contracts/accessibility-acceptance.md: a descriptive, state-appropriate
    * document title per route). Null when the active route has no subject
    * beyond itself; the shell then titles the route by its surface name. The
@@ -228,22 +229,22 @@ export class SessionViewState {
   public readonly pageSubject = shallowRef<string | null>(null);
 
   /**
-   * Counts skill requests, so a settlement can tell whether the page still
+   * Counts detail requests, so a settlement can tell whether the page still
    * wants what it asked for. A purge, a superseded request, and a closed route
    * are three different ways for that to stop being true, and only this one
    * covers the route.
    */
-  #skillRequestVersion = 0;
+  #detailRequestVersion = 0;
 
   /**
    * Disposers of component-owned holders of the open detail's content — the
-   * Monaco model above all. {@link closeSkill} runs them synchronously,
+   * Monaco model above all. {@link closeFileDetail} runs them synchronously,
    * because the contract orders dispose before replace (data-model.md
    * § BrowserState): a sequence's greater generation is adopted only after
    * the previous generation's editor objects are gone, and waiting for the
    * reactive unmount would leave them alive for one render flush after the
    * replacement. The purge reaches them through the same path — its disposer
-   * closes the skill.
+   * closes the open detail.
    */
   readonly #openContentOwners = new Set<() => void>();
 
@@ -284,13 +285,13 @@ export class SessionViewState {
     });
     this.#clientData.register(() => {
       // Everything this module holds from the purged session: the snapshot and
-      // its inventory/Source/file/diagnostic graph, the open skill's authored
+      // its inventory/Source/file/diagnostic graph, the open detail's authored
       // source, and any retained error. Later phases register their own owners
       // (comparison, editor models, filters) with this same purge rather than
       // extending this callback.
       this.snapshot.value = null;
       this.#sessionError.value = null;
-      this.closeSkill();
+      this.closeFileDetail();
       // The rescan command belongs to the purged session too: its request ID
       // is meaningless against a different host session, and leaving it set
       // would let a post-purge status be mistaken for that command's result.
@@ -372,7 +373,7 @@ export class SessionViewState {
         // open comparison goes with it: FR-030 invalidates the previous
         // generation's comparison view and editor-model state together.
         if (outcome.advancedSequences.length > 0) {
-          this.closeSkill();
+          this.closeFileDetail();
           this.skillComparison.close();
         }
         this.snapshot.value = outcome.snapshot;
@@ -553,16 +554,16 @@ export class SessionViewState {
   }
 
   /**
-   * Drops the open skill and the authored source it holds, and invalidates any
-   * request still in flight for it.
+   * Drops the open detail and the authored source it holds, and invalidates
+   * any request still in flight for it.
    *
    * Advancing the version is the load-bearing half. A detail request that
    * settles after the route left would otherwise assign the source it fetched
    * to state nothing is showing, so leaving a file would put its content back
    * in memory a moment after taking it out.
    */
-  public closeSkill(): void {
-    this.#skillRequestVersion += 1;
+  public closeFileDetail(): void {
+    this.#detailRequestVersion += 1;
     // The reactive state goes first and the component-owned content second.
     // Both happen in this one synchronous block, so what the contract orders
     // still holds: the editor objects are gone before the caller replaces the
@@ -575,72 +576,74 @@ export class SessionViewState {
     // editor the reader was in, so by the time the watchers run the focused
     // element is already the document body and there is nothing left to
     // rescue (WCAG 2.4.3).
-    this.skillDetail.value = null;
+    this.entryDetail.value = null;
     this.openCompanion.value = null;
-    this.skillDetailState.value = 'idle';
+    this.fileDetailState.value = 'idle';
     for (const disposer of this.#openContentOwners) {
       disposer();
     }
     // A detail failure belongs to the route that requested it. A session error
     // survives: it describes the session, not the file the reader just left.
-    this.#skillError.value = null;
+    this.#detailError.value = null;
   }
 
   /**
-   * Requests one skill's entry point and the file being read from it, and
-   * adopts both, or records why the skill could not be shown.
+   * Requests one customization's own file — a skill's entry point, or an
+   * instruction file itself — and the file being read from it, and adopts
+   * both, or records why the detail could not be shown. A kind with no
+   * companion files opens its one file as both arguments.
    *
-   * The entry point is fetched even when a companion is what the reader
-   * selected, because the census alone admits nothing: what this page's skill
-   * is comes from its own entry point — a census-listed file may carry its
-   * own recognitions, a nested `SKILL.md`, but those belong to its own route —
-   * and a page that showed only the companion's detail would say nothing was
-   * recognized here.
+   * The entry point is fetched even when a skill's companion is what the
+   * reader selected, because the census alone admits nothing: what this
+   * page's skill is comes from its own entry point — a census-listed file may
+   * carry its own recognitions, a nested `SKILL.md`, but those belong to its
+   * own route — and a page that showed only the companion's detail would say
+   * nothing was recognized here.
    *
-   * Every write to the skill state happens in this function, behind one
+   * Every write to the detail state happens in this function, behind one
    * ownership check, so the three ways an invocation stops owning the page —
-   * a purge cleared it, `closeSkill` left it, a newer `openSkill` superseded
+   * a purge cleared it, `closeFileDetail` left it, a newer `openFileDetail` superseded
    * it — cannot each grow their own handling.
    */
-  public async openSkill(entryPath: string, openPath: string): Promise<void> {
-    this.#skillRequestVersion += 1;
-    const requested = this.#skillRequestVersion;
+  public async openFileDetail(entryPath: string, openPath: string): Promise<void> {
+    this.#detailRequestVersion += 1;
+    const requested = this.#detailRequestVersion;
     // The new selection owns the page now: a previous file's retained detail
     // error would otherwise sit beside this selection's loading and stale
     // states, describing a file the page no longer shows.
-    this.#skillError.value = null;
+    this.#detailError.value = null;
     // Same boundary as `refresh`: the client guards its own settlement against
     // a purge, but that guard and the writes below are different microtasks,
     // so the epoch is re-read at each write to make the check and the commit
-    // one synchronous step (FR-027, FR-042). `closeSkill` advances the version
+    // one synchronous step (FR-027, FR-042). `closeFileDetail` advances the version
     // without aborting the request — leaving the route is not an error and
     // cancels nothing already sent — which is why the version is the other
     // half of this check: without it, a detail settling after the reader
-    // returned to the inventory would put a skill's error on it.
+    // returned to the inventory would put another route's error on it.
     const capturedEpoch = this.#clientData.epoch();
     const owns = (): boolean =>
-      requested === this.#skillRequestVersion && this.#clientData.epoch() === capturedEpoch;
-    // The entry point already on screen when the skill has not changed. Keeping
-    // it is what makes selecting another file of one skill a change to the
-    // source alone: clearing it would take the page through its loading state,
-    // unmounting the tree the reader is using — and the link they just
-    // activated with it, dropping keyboard focus to the document.
+      requested === this.#detailRequestVersion && this.#clientData.epoch() === capturedEpoch;
+    // The entry point already on screen when the customization has not
+    // changed. Keeping it is what makes selecting another file of one skill a
+    // change to the source alone: clearing it would take the page through its
+    // loading state, unmounting the tree the reader is using — and the link
+    // they just activated with it, dropping keyboard focus to the document.
     const held =
-      this.skillDetail.value?.file.sourceRelativePath === entryPath ? this.skillDetail.value : null;
-    if (held !== null && this.skillDetailState.value === 'companion-failed') {
+      this.entryDetail.value?.file.sourceRelativePath === entryPath ? this.entryDetail.value : null;
+    if (held !== null && this.fileDetailState.value === 'companion-failed') {
       // A retry — or another file selected — from the failed pane: the entry
       // stays, and the pane returns to its in-flight state so the failed
       // branch and its retry button unmount. Left standing, the button could
       // dispatch a second request whose supersession discards the first's
       // success and then fails alone.
-      this.skillDetailState.value = 'ready';
+      this.fileDetailState.value = 'ready';
     }
     if (held === null) {
-      this.skillDetailState.value = 'loading';
-      // The previous skill's authored source is dropped before the next one is
-      // asked for, so a slow request never leaves one file's content on screen
-      // under another skill's heading.
-      this.skillDetail.value = null;
+      this.fileDetailState.value = 'loading';
+      // The previous detail's authored source is dropped before the next one
+      // is asked for, so a slow request never leaves one file's content on
+      // screen under another customization's heading.
+      this.entryDetail.value = null;
       this.openCompanion.value = null;
     }
     /**
@@ -661,9 +664,9 @@ export class SessionViewState {
           // generation holds a file at the path. It is a declared functional
           // outcome, shown as its own state rather than as an error.
           if (owns()) {
-            this.skillDetail.value = null;
+            this.entryDetail.value = null;
             this.openCompanion.value = null;
-            this.skillDetailState.value = 'stale';
+            this.fileDetailState.value = 'stale';
             // The rejection proves this client's snapshot is older than the
             // host's committed generation — the path came from a snapshot
             // whose file the commit since removed. Refetching now makes
@@ -683,15 +686,15 @@ export class SessionViewState {
             // A companion's own failure fails only the pane: the held entry
             // still describes the skill — its recognition and file tree are
             // not what failed — where an entry failure leaves nothing to show.
-            if (sourceRelativePath !== entryPath && this.skillDetail.value !== null) {
+            if (sourceRelativePath !== entryPath && this.entryDetail.value !== null) {
               this.openCompanion.value = null;
-              this.skillDetailState.value = 'companion-failed';
+              this.fileDetailState.value = 'companion-failed';
             } else {
-              this.skillDetail.value = null;
+              this.entryDetail.value = null;
               this.openCompanion.value = null;
-              this.skillDetailState.value = 'idle';
+              this.fileDetailState.value = 'idle';
             }
-            this.#skillError.value = outcome.error.message;
+            this.#detailError.value = outcome.error.message;
           }
           return null;
         case 'newer-generation':
@@ -717,9 +720,9 @@ export class SessionViewState {
             // (`#sessionError`), so no message is copied here — the route
             // states its own condition and neither surface repeats the other.
             if (owns()) {
-              this.skillDetail.value = null;
+              this.entryDetail.value = null;
               this.openCompanion.value = null;
-              this.skillDetailState.value = 'idle';
+              this.fileDetailState.value = 'idle';
             }
           }
           return null;
@@ -739,7 +742,7 @@ export class SessionViewState {
     // own failure must fail only the pane, and that requires the entry to
     // already be the page's held state — a direct link to a companion starts
     // with none.
-    this.skillDetail.value = entry;
+    this.entryDetail.value = entry;
     // One request when the entry point is what is open: it is already here, and
     // asking again would put one file's detail in two places. A companion the
     // page is already holding is reused for the same reason the entry is —
@@ -755,10 +758,10 @@ export class SessionViewState {
       return;
     }
     this.openCompanion.value = companion;
-    this.skillDetailState.value = 'ready';
+    this.fileDetailState.value = 'ready';
     // A detail success answers detail failures only; a session error — a failed
     // refresh, say — is still true of the session and stays.
-    this.#skillError.value = null;
+    this.#detailError.value = null;
   }
 
   /** Adopts the initial snapshot; the same fetch-and-adopt as {@link refresh}. */
@@ -794,7 +797,7 @@ export class SessionViewState {
    * greater generation must both dispose editor models synchronously, and
    * waiting for the reactive unmount would leave authored content in the
    * model for one render flush after everything else was already gone. Both
-   * paths run through {@link closeSkill}.
+   * paths run through {@link closeFileDetail}.
    */
   public registerOpenContentOwner(disposer: () => void): () => void {
     this.#openContentOwners.add(disposer);

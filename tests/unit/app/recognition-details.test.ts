@@ -1,5 +1,6 @@
-// T170: the typed detail identity of a shared file's recognitions (FR-007,
-// FR-030, data-model.md § Inventory unit, § Skill presentation).
+// T170/T218: the typed detail identity of a shared file's recognitions and of
+// an instruction row (FR-007, FR-030, data-model.md § Inventory unit,
+// § Skill presentation).
 //
 // One physical file two products admit is one definition per recognizing
 // tool, and the client keeps those definitions separate all the way to the
@@ -16,10 +17,12 @@
 import { describe, expect, it } from 'vitest';
 import { ref, shallowRef, type Ref } from 'vue';
 
+import { instructionDetailRoute } from '../../../src/app/components/instruction-detail-route';
 import { skillDetailRoute } from '../../../src/app/components/skill-detail-route';
 import { useInventoryFilters } from '../../../src/app/composables/filters';
 import type {
   CustomizationFileSummaryDto,
+  InstructionInventoryEntryDto,
   SessionSnapshot,
   SkillDefinitionDto,
   SkillInventoryEntryDto,
@@ -89,13 +92,14 @@ function sharedRow(): SkillInventoryEntryDto {
 function snapshotWith(
   files: readonly CustomizationFileSummaryDto[],
   skills: readonly SkillInventoryEntryDto[],
+  instructions: readonly InstructionInventoryEntryDto[] = [],
 ): SessionSnapshot {
   return {
     sessionId: 'session-1',
     createdAt: '2026-07-25T00:00:00.000Z',
     sources: [REPOSITORY_SOURCE],
     files,
-    instructions: [],
+    instructions,
     skills,
     diagnostics: [],
     repositoryGeneration: 1,
@@ -201,5 +205,58 @@ describe('a shared file’s recognitions stay separate definitions', () => {
     expect(view.skillRows.value[0]?.sameNameResolutions).toEqual([
       { tool: 'copilot', resolution: 'surface-dependent' },
     ]);
+  });
+});
+
+describe('an instruction row addresses the file’s own detail route (T218)', () => {
+  it('builds one route from the path alone, segments encoded and separators kept', () => {
+    // The kind's unit is the file (data-model.md § Inventory unit), so the
+    // route carries no tool segment: however many products recognize the
+    // file, they name one page, and the path is the whole identity (FR-030).
+    expect(instructionDetailRoute('AGENTS.md')).toBe('/instructions/AGENTS.md');
+    // Each segment is percent-encoded so an authored entry name cannot
+    // smuggle a separator or a query into the URL, while `/` separators stay
+    // separators for the catch-all route to split on.
+    expect(instructionDetailRoute('docs/team guide.md')).toBe('/instructions/docs/team%20guide.md');
+    expect(instructionDetailRoute('a?b/c#d.md')).toBe('/instructions/a%3Fb/c%23d.md');
+  });
+
+  it('narrows a row’s recognizing tools without changing the row’s identity', () => {
+    // A tool filter keeps the recognizing tools it matches; what it never
+    // does is re-key the row, because the path is the identity the detail
+    // route resolves — a filtered view still links to the same page.
+    const entry: InstructionInventoryEntryDto = {
+      sourceRelativePath: 'AGENTS.md',
+      tools: ['copilot', 'codex'],
+    };
+    const snapshot = shallowRef<SessionSnapshot | null>(
+      snapshotWith([file('AGENTS.md')], [], [entry]),
+    );
+    const { tool, view } = withSelection(snapshot);
+    tool.value = 'codex';
+    expect(view.instructionRows.value).toEqual([
+      { sourceRelativePath: 'AGENTS.md', tools: ['codex'] },
+    ]);
+    expect(instructionDetailRoute(view.instructionRows.value[0]!.sourceRelativePath)).toBe(
+      '/instructions/AGENTS.md',
+    );
+  });
+
+  it('resolves a stale link’s path to no row', () => {
+    // A path the committed inventory does not list resolves to no owner: the
+    // detail route reports the dead link instead of guessing at a nearby
+    // file, the same answer the host's `stale-resource` rejection gives a
+    // fetched detail (T218).
+    const snapshot = shallowRef<SessionSnapshot | null>(
+      snapshotWith(
+        [file('AGENTS.md')],
+        [],
+        [{ sourceRelativePath: 'AGENTS.md', tools: ['codex'] }],
+      ),
+    );
+    const { view } = withSelection(snapshot);
+    expect(
+      view.instructionRows.value.find((row) => row.sourceRelativePath === 'REMOVED_GUIDE.md'),
+    ).toBeUndefined();
   });
 });

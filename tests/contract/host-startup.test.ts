@@ -59,9 +59,10 @@ describe('host startup', () => {
     expect(definition.id).toBe(createInspectorDevframe(context).id);
     expect(typeof definition.setup).toBe('function');
     // Besides the composed onReady, the host always hands devframe the H3
-    // app carrying the `/skills/**` shell fallback — the one route family
-    // devframe's extension-guarded SPA fallback cannot serve; the served
-    // behavior itself is proven in the browser suites' fresh deep-link loads.
+    // app carrying the `/skills/**` and `/instructions/**` shell fallbacks —
+    // the route families devframe's extension-guarded SPA fallback cannot
+    // serve; the served behavior itself is proven in the browser suites'
+    // fresh deep-link loads.
     expect(options?.app).toBeDefined();
     expect(options?.openBrowser).toBe(false);
     expect(typeof options?.onReady).toBe('function');

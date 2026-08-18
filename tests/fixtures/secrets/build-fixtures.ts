@@ -27,6 +27,14 @@ export const SECRET_LITERALS = {
   inBody: 'AKIAFIXTURE000000000',
 } as const;
 
+/**
+ * An environment reference authored into the instruction file, which must
+ * render everywhere exactly as these characters and resolve nowhere: no
+ * process-environment sentinel may replace it (FR-025, tasks.md T218).
+ */
+
+export const ENVIRONMENT_REFERENCE = '${ACI_FIXTURE_ENDPOINT}';
+
 /** One built secret-bearing fixture repository. */
 export interface SecretFixture {
   /** The absolute fixture root to scan. */
@@ -41,6 +49,28 @@ export interface SecretFixture {
    * diagnostic may not contain proves nothing over a tree that produces none.
    */
   readonly unparseableSkillPath: string;
+  /**
+   * The Source-relative Path of the static Codex instruction file, declaring
+   * frontmatter keys out of alphabetical order — with a credential and the
+   * environment reference among the values — and a body of its own, so the
+   * instruction detail's authored-order and exactness claims have something
+   * to bite on (tasks.md T218).
+   */
+  readonly instructionPath: string;
+  /** The complete authored text of that instruction file. */
+  readonly instructionSourceText: string;
+  /**
+   * The Source-relative Path of the configured fallback instruction file the
+   * tree's own `.codex/config.toml` declares, activated by the
+   * configuration-read stage rather than by a static rule (tasks.md T218).
+   */
+  readonly fallbackInstructionPath: string;
+  /**
+   * The Source-relative Path of an instruction file whose frontmatter cannot
+   * be parsed, so the instruction detail's failure branch — null
+   * presentation beside the complete source — is reachable (FR-028).
+   */
+  readonly unparseableInstructionPath: string;
 }
 
 // Writes one fixture file, creating parents. Every write happens here, before
@@ -77,5 +107,41 @@ export function buildSecretFixture(prefix = 'inspector-secrets'): SecretFixture 
   write(root, skillPath, sourceText);
   const unparseableSkillPath = '.agents/skills/unparseable/SKILL.md';
   write(root, unparseableSkillPath, '---\nname: [unterminated\n---\n\n# Body\n');
-  return { root, skillPath, sourceText, unparseableSkillPath };
+  // The static Codex instruction file. Its keys are deliberately not in
+  // alphabetical order — the detail publishes declarations in authored order,
+  // and a fixture whose authored order happens to be sorted proves nothing —
+  // and its values carry a credential and the environment reference, which
+  // every surface must show exactly as written and resolve nowhere.
+  const instructionPath = 'AGENTS.md';
+  const instructionSourceText = [
+    '---',
+    'scope: repository',
+    `endpoint: ${ENVIRONMENT_REFERENCE}`,
+    `api_key: ${SECRET_LITERALS.inOtherKey}`,
+    '---',
+    '',
+    '# House rules',
+    '',
+    `Deploy with ${SECRET_LITERALS.inBody} and read @docs/target.md first.`,
+    '',
+  ].join('\n');
+  write(root, instructionPath, instructionSourceText);
+  // The configured fallback: the carrier declares the name, the
+  // configuration-read stage turns it into a scan target, and the carrier
+  // itself is never published.
+  write(root, '.codex/config.toml', 'project_doc_fallback_filenames = ["TEAM_GUIDE.md"]\n');
+  const fallbackInstructionPath = 'TEAM_GUIDE.md';
+  write(root, fallbackInstructionPath, '# Configured fallback instructions\n');
+  const unparseableInstructionPath = 'AGENTS.override.md';
+  write(root, unparseableInstructionPath, '---\nscope: [unterminated\n---\n\n# Override\n');
+  return {
+    root,
+    skillPath,
+    sourceText,
+    unparseableSkillPath,
+    instructionPath,
+    instructionSourceText,
+    fallbackInstructionPath,
+    unparseableInstructionPath,
+  };
 }

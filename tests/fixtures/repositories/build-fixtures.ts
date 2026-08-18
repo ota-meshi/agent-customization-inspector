@@ -847,25 +847,29 @@ export function buildCodexInstructionFixture(
 ): CodexInstructionFixture {
   const root = createRepositoryFixtureRoot(prefix);
 
-  // Positive: the override, with every content shape the phase must keep
-  // inert — a malformed frontmatter-shaped block (instructions run no
-  // extractor, so nothing may fail), an import-like reference (a later phase's
-  // relationship, never a read), a literal credential (readable only through
-  // the detail route, FR-027), and a literal environment reference that must
-  // never be resolved against the process environment (FR-025).
+  // Positive: the override, with every content shape the inventory must keep
+  // inert — a frontmatter block whose declarations stay out of every session
+  // summary, an import-like reference that stays source text (no cited Codex
+  // page establishes a reference syntax, T217), a literal credential
+  // (readable only through the detail route, FR-027), and a literal
+  // environment reference that must never be resolved against the process
+  // environment (FR-025). The block parses: a malformed block is the
+  // instruction extraction's own `failed` state since T222, and that failure
+  // case lives in the Phase 16 suites rather than in this inventory fixture,
+  // whose committed generation stays complete.
   write(
     root,
     'AGENTS.override.md',
     [
       '---',
-      'malformed: [unclosed',
+      'scope: override',
+      `endpoint: ${FIXTURE_ENVIRONMENT_REFERENCE}`,
       '---',
       '',
       '# Override instructions',
       '',
       '@docs/setup.md',
       `token: ${FIXTURE_SECRET_LITERAL}`,
-      `endpoint: ${FIXTURE_ENVIRONMENT_REFERENCE}`,
       '',
     ].join('\n'),
   );

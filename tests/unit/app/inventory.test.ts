@@ -778,7 +778,7 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
     filters.tool.value = null;
     expect(filters.view.skillRows.value.map((entry) => entry.name)).toEqual(['alpha']);
     expect(calls).toEqual(['agent-customization-inspector:get-session']);
-    expect(state.skillDetail.value).toBeNull();
+    expect(state.entryDetail.value).toBeNull();
     expect(JSON.stringify(state.snapshot.value)).not.toContain('sourceText');
   });
 
