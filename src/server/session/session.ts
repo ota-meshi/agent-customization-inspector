@@ -32,6 +32,7 @@ import type {
   CustomizationFileSummaryDto,
   FileDetailDto,
   InspectionDataResult,
+  InstructionInventoryEntryDto,
   SameNameSkillResolutionDto,
   SkillDefinitionDto,
   ScanProgressPhase,
@@ -216,37 +217,56 @@ function projectSkillInventory(
 }
 
 /**
- * Projects the instructions inventory from a generation's recognitions —
- * the unit of this kind is the file itself —
+ * Projects the instructions inventory from a generation's recognitions
  * (contracts/http-api.md § get-session, data-model.md § Inventory unit): one
- * entry per recognized instruction file — the unit of this kind is the file
- * itself — listing the tools that recognize it, deduplicated and in the
- * closed tool order. Rows are in Source-relative Path order, so two
- * snapshots of one generation publish the same rows and an opaque ID never
- * decides a visible order.
+ * entry per applicability range, listing each file that range governs with
+ * the tools recognizing it, deduplicated and in the closed tool order.
+ *
+ * Grouping is by exact text equality of the range each recognition derived —
+ * nothing here parses a glob, normalizes a spelling, or decides whether two
+ * ranges overlap — so the root `AGENTS.md` and `CLAUDE.md` share one row while
+ * a `packages/api/CLAUDE.md` has its own. Ranges are in range order and files
+ * within a range in Source-relative Path order, so two snapshots of one
+ * generation publish the same rows and an opaque ID never decides a visible
+ * order.
+ *
+ * Two recognitions of one file can derive different ranges when their rules
+ * name different container directories; the file then appears under each,
+ * carrying only the tools that put it there. That is the honest outcome of
+ * two products governing differently, not a collision to resolve.
  */
-function projectFileKindInventory(
+function projectInstructionInventory(
   recognitions: readonly ToolRecognition[],
-  kind: 'instructions',
-): { sourceRelativePath: string; tools: SupportedTool[] }[] {
-  const toolsByPath = new Map<string, Set<SupportedTool>>();
+): InstructionInventoryEntryDto[] {
+  const toolsByRangeAndPath = new Map<string, Map<string, Set<SupportedTool>>>();
   for (const recognition of recognitions) {
-    if (recognition.details.kind !== kind) {
+    if (recognition.details.kind !== 'instructions') {
       continue;
     }
-    let tools = toolsByPath.get(recognition.sourceRelativePath);
+    const range = recognition.details.applicabilityRange;
+    let byPath = toolsByRangeAndPath.get(range);
+    if (byPath === undefined) {
+      byPath = new Map();
+      toolsByRangeAndPath.set(range, byPath);
+    }
+    let tools = byPath.get(recognition.sourceRelativePath);
     if (tools === undefined) {
       tools = new Set();
-      toolsByPath.set(recognition.sourceRelativePath, tools);
+      byPath.set(recognition.sourceRelativePath, tools);
     }
     tools.add(recognition.tool);
   }
-  return [...toolsByPath.entries()]
-    .map(([sourceRelativePath, tools]) => ({
-      sourceRelativePath,
-      tools: SUPPORTED_TOOL_ORDER.filter((tool) => tools.has(tool)),
+  return [...toolsByRangeAndPath.entries()]
+    .map(([applicabilityRange, byPath]) => ({
+      applicabilityRange,
+      files: [...byPath.entries()]
+        .map(([sourceRelativePath, tools]) => ({
+          sourceRelativePath,
+          tools: SUPPORTED_TOOL_ORDER.filter((tool) => tools.has(tool)),
+        }))
+        .sort((left, right) => compareStrings(left.sourceRelativePath, right.sourceRelativePath)),
     }))
-    .sort((left, right) => compareStrings(left.sourceRelativePath, right.sourceRelativePath));
+    .sort((left, right) => compareStrings(left.applicabilityRange, right.applicabilityRange));
 }
 
 /**
@@ -557,13 +577,10 @@ export class InspectionSession {
         // with the fixed Global tool order.
         new Map([[this.repositorySourceId, 0]]),
       ),
-      instructions: projectFileKindInventory(
-        [
-          ...this.committedRepositoryGeneration.recognitions,
-          ...(this.committedGlobalGeneration?.recognitions ?? []),
-        ],
-        'instructions',
-      ),
+      instructions: projectInstructionInventory([
+        ...this.committedRepositoryGeneration.recognitions,
+        ...(this.committedGlobalGeneration?.recognitions ?? []),
+      ]),
       skills: projectSkillInventory(
         [
           ...this.committedRepositoryGeneration.recognitions,

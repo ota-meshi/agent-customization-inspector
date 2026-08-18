@@ -191,7 +191,7 @@ connection、execution、import、installation、activationのauthorityを一切
 
 | `ToolRecognition.kind` | Eligibleな`Relationship.kind` value | Initial-release source form |
 |---|---|---|
-| `instructions` | `runtime-reference` | 受理済みstatic、configured-fallback、またはGlobal instruction file内の正確なauthored import/reference target token。Path-derived scope/orderとbyte-budget factはtyped stateでありmetadataではない |
+| `instructions` | — | 受理済みstatic、configured-fallback、またはGlobal instruction file。Authored reference状のtokenはsource textであり、抽出されるreferenceではない。Path-derived scope/orderとbyte-budget factはtyped stateでありmetadataではない |
 | `rule` | `runtime-reference` | 受理済みdirect-child `.rules` fileの正確なargument/value/item occurrence。Commentと未列挙Starlark expressionはsource textだけに残す |
 | `skill` | `skill-resource`<br>`runtime-reference` | 受理済み`SKILL.md`の正確な`name`と`description` frontmatter value。Resource/script/reference targetはrelationshipになり得るが、そのedgeを通じてreadしない |
 | `agent` | `agent-reference`<br>`skill-resource`<br>`context-inheritance`<br>`runtime-reference` | 受理済み`.codex/agents/*.toml`の正確なsupported TOML value/item/map-key occurrence。MCPはinherited/carrier relationshipのままで、agent所有のMCP recognitionにはならない |

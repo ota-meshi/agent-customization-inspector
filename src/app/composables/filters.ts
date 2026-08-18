@@ -35,7 +35,7 @@ import type {
 import {
   CUSTOMIZATION_KIND_ORDER,
   SUPPORTED_TOOL_ORDER,
-  escapeControlCharacters,
+  pathPresentationLabel,
   type CustomizationKind,
   type SupportedTool,
 } from '../../shared/entities';
@@ -159,7 +159,9 @@ export class InventoryFilterView {
 
     this.availableTools = computed(() => {
       const present = new Set([
-        ...(snapshot.value?.instructions ?? []).flatMap((entry) => entry.tools),
+        ...(snapshot.value?.instructions ?? []).flatMap((entry) =>
+          entry.files.flatMap((file) => file.tools),
+        ),
         ...(snapshot.value?.skills ?? []).flatMap((entry) =>
           entry.definitions.map((definition) => definition.tool),
         ),
@@ -222,30 +224,38 @@ export class InventoryFilterView {
       if (effectiveSourceId.value !== null && file.sourceId !== effectiveSourceId.value) {
         return false;
       }
-      // Matched against the same spelling the list renders — the
-      // presentation-escaped path — so typing or pasting what the screen
-      // shows always matches, control characters included.
+      // Matched against the same spelling the list renders
+      // ({@link pathPresentationLabel}), so typing or pasting what the screen
+      // shows always matches — control characters included, and a name built
+      // only from invisible code points included too: the row spells such a
+      // name out, and matching the escaped form instead would leave the text
+      // on the screen matching nothing.
       return (
         query.value === '' ||
-        escapeControlCharacters(file.sourceRelativePath).toLowerCase().includes(query.value)
+        pathPresentationLabel(file.sourceRelativePath).toLowerCase().includes(query.value)
       );
     };
 
     /**
      * The instruction entries that survive every filter, each reduced to the
-     * recognizing tools that matched. A file with no matching tool is not a
-     * row: showing it would claim a match the inventory does not have.
+     * files that matched and each of those to the recognizing tools that
+     * matched. A file with no matching tool is not listed and a range with no
+     * listed file is not a row: showing either would claim a match the
+     * inventory does not have.
      */
     this.instructionRows = computed<readonly InstructionInventoryEntryDto[]>(() =>
       (snapshot.value?.instructions ?? []).flatMap((entry) => {
-        if (!fileMatches(entry.sourceRelativePath)) {
-          return [];
-        }
-        const tools =
-          effectiveTool.value === null
-            ? entry.tools
-            : entry.tools.filter((tool) => tool === effectiveTool.value);
-        return tools.length === 0 ? [] : [{ ...entry, tools }];
+        const files = entry.files.flatMap((file) => {
+          if (!fileMatches(file.sourceRelativePath)) {
+            return [];
+          }
+          const tools =
+            effectiveTool.value === null
+              ? file.tools
+              : file.tools.filter((tool) => tool === effectiveTool.value);
+          return tools.length === 0 ? [] : [{ ...file, tools }];
+        });
+        return files.length === 0 ? [] : [{ ...entry, files }];
       }),
     );
 
@@ -298,7 +308,7 @@ export class InventoryFilterView {
               : 0,
         );
       }
-      return counts as ReadonlyMap<CustomizationKind, number>;
+      return counts;
     });
 
     this.unrecognizedRows = computed(() => {
@@ -306,7 +316,9 @@ export class InventoryFilterView {
       // inventory adds itself here, or its files would be reported as
       // unrecognized while its own tab lists them.
       const recognized = new Set([
-        ...(snapshot.value?.instructions ?? []).map((entry) => entry.sourceRelativePath),
+        ...(snapshot.value?.instructions ?? []).flatMap((entry) =>
+          entry.files.map((file) => file.sourceRelativePath),
+        ),
         ...(snapshot.value?.skills ?? []).flatMap((entry) =>
           entry.definitions.map((definition) => definition.sourceRelativePath),
         ),

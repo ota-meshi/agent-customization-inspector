@@ -303,15 +303,22 @@ describe('traversal-plan compilation', () => {
 });
 
 describe('the Claude skill slice of the reference graph (T130, T133)', () => {
-  it('ships exactly one read-authorizing Claude record and no exclusion', () => {
-    // The phase-local half of the registry catalog check: this milestone adds
-    // `claude.repo.skill` alone. No `excluded` or `relationship-only` Claude
-    // row ships yet — a symlinked skill needs none because links are read
-    // through their targets (FR-024) — and the eventual complete catalog gate
-    // is T913's, not this suite's.
+  it('ships only read-authorizing Claude records and no exclusion', () => {
+    // The phase-local half of the registry catalog check: the shipped Claude
+    // catalog is the instruction and skill rules, both read-authorizing. No
+    // `excluded` or `relationship-only` Claude row ships yet — a symlinked
+    // skill needs none because links are read through their targets (FR-024),
+    // and an unsupported instruction location is simply a path no selector
+    // reaches (T232) — and the eventual complete catalog gate is T913's, not
+    // this suite's.
     const claudeRules = rules.filter((rule) => rule.tool === 'claude');
-    expect(claudeRules.map((rule) => rule.ruleId)).toEqual(['claude.repo.skill']);
-    expect(claudeRules[0]!.discoveryClass).toBe('static-candidate');
+    expect(claudeRules.map((rule) => rule.ruleId)).toEqual([
+      'claude.repo.instructions',
+      'claude.repo.skill',
+    ]);
+    for (const rule of claudeRules) {
+      expect(rule.discoveryClass, rule.ruleId).toBe('static-candidate');
+    }
   });
 
   it('bases the rule on the Repository behavior and explains it by the selection strategy', () => {

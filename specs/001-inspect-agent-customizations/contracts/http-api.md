@@ -252,8 +252,10 @@ InspectionSession
 │       binary adds only sizeBytes; unknown adds nothing. A file publishes its own facts
 │       only; what it was recognized as belongs to a per-kind inventory below
 ├── instructions[]
-│   └── sourceRelativePath, tools[] — one row per recognized instruction file,
-│       its recognizing products in the closed tool order
+│   └── applicabilityRange string,
+│       files[] { sourceRelativePath, tools[] } — one row per applicability range,
+│       each file it governs with that file's recognizing products in the
+│       closed tool order
 ├── skills[]
 │   └── name string,
 │       definitions[] { sourceRelativePath, tool, parseStatus, invocationName,
@@ -294,8 +296,10 @@ definition's invocation name beside the row name when one is published (data-mod
 from the one projection that keys the rows, so vendor naming cannot drift between server
 and client. An
 MCP server is one `[mcp_servers.*]` declaration inside its carrier, so one admitted
-`.codex/config.toml` publishes as many rows as it declares servers. An instructions file is
-the file itself. Every other kind's unit is settled by the task that ships its inventory,
+`.codex/config.toml` publishes as many rows as it declares servers. An instructions row is one applicability range — the glob the
+governing files' own paths derive, `**` at the Repository root — listing each file it
+governs, so the root `AGENTS.md` and `CLAUDE.md` share one row and a `packages/api/CLAUDE.md`
+has its own (data-model.md § Inventory unit). Every other kind's unit is settled by the task that ships its inventory,
 from that kind's own vendor contract. A physical file therefore appears once in `files[]` with its own facts —
 path, read outcome, size, diagnostics — and each kind's inventory refers to it by
 `sourceRelativePath` and repeats none of them; a definition's recognition-owned parse
@@ -563,18 +567,23 @@ the same fixed YAML semantics, so the extraction runs once per `(file, kind)` �
 response publishes it once as `presentation`. There is no per-tool recognition list:
 which tools recognize the file, each tool's invocation name, and its parse state are the
 inventory's facts (`skills[].definitions[]`), and the route's tool segment says which
-definition a page is about; an instruction file's recognizing tools are its inventory
-row's (`instructions[]`), and its detail route carries no tool segment because the
-kind's unit is the file itself. There is no admission record either: which rule
+definition a page is about; an instruction file's recognizing tools are listed beside it on
+its inventory row (`instructions[]`), and its detail route carries no tool segment
+because no per-tool fact distinguishes what the page would show. There is no admission record either: which rule
 authorized a read, and where it matched, is an internal record of the committed
 generation (data-model.md § ToolRecognition) that the relationship phases will read; no
 session response carries it — a configured fallback instruction file's detail is
 therefore indistinguishable in shape from a static one's. And there is no
 `relationships` array of edge records — no shipped recognition can produce an edge, so
 the array would be empty in every response, and it arrives with the relationship phases
-that populate it; a Codex instruction file in particular yields none, because no cited
-official page establishes an import or reference syntax for `AGENTS.md`, so an authored
-`@path`-looking token stays source text.
+that populate it. An instruction file never yields one, whichever product recognizes it:
+this product does not read references out of prose, because no vendor page fixes where an
+authored `@path`-shaped token ends, so every boundary rule would be this product's own
+invention and a wrong one asserts a reference the reader never wrote. Such a token stays
+source text, and no relationship-only rule covers an instruction origin. The edges later
+phases do publish come from declarations a format delimits — a frontmatter value, a JSON
+or TOML field, a map key — where the boundary is the format's rather than this
+product's.
 
 Each frontmatter entry's `keyKind` is the closed union `string | number | boolean |
 null`: the declared key's parsed type under YAML 1.2's core schema. A declaration's

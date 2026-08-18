@@ -26,6 +26,14 @@
   ことを先に立証してください。
 - Userが事実誤認を訂正したときは、その誤りを生んだ推論patternを監査し、同じ短絡を使った他の指摘も
   続行前に再確認してください。報告された1件だけを直しても、同じ失敗が再発できる状態は残ります。
+- 要件が何を求めているかを述べる前に、その節を最後まで読んでください。ここでの要件はしばしば1つの
+  長い文の連なりであり、冒頭はその要約ではありません。FR-007を冒頭数行から性格づけた結果、
+  「inventory rowの単位を定めていない」という主張が出ましたが、その文の連なりが定めている当のものが
+  それでした。最後まで読んだ本文から引用するか、読んでいないと述べてください。
+- Userに判断を求める前に、artifactの中に決定が無いか探してください。Specificationがすでに答えて
+  いる問いは、userの注意を費やしたうえ、決着済みの問いに2つ目の食い違う答えを招きます。しかも
+  決着済みの答えの方が通常は優れています。契約全体を見たうえで下されたものだからです。artifactが
+  開いたままにしていることだけを尋ね、どのartifactを確認したかを述べてください。
 
 ## ドキュメントの内容方針
 
@@ -92,6 +100,12 @@
 - 不変性の機構は`readonly`型で全部です。Compile済み・出荷済みのdataをruntimeで再凍結しないでください。このcodebaseが生成し消費するdataに対する`Object.freeze`は、userが経験する何も守りません。そのdataを辿るdeep freezeは、プログラムを自分自身から守るために書かれたtraversalです。例: `TraversalPlan`のconstructorはplanを記述どおりに返します。それが不変の出荷dataであることは型の性質であり、runtimeのpassではありません。
 - Iterableが既に持っている挙動に到達するために、それをmaterializeしないでください。配列の分割代入、`for...of`、呼び出しへのspreadは、いずれもiterator protocolを直接消費します。したがってそれらの手前に置く`[...set]`は何も得ないコピーです。`const [first, ...rest] = set`が言語のできることそのものです。コピーするのは、元が本当に持っていないものを得る場合だけにしてください — 元が変化する間も保持したい配列、またはpushするアルゴリズムのための可変配列です。
 - 変更を伴うmethodがコピーの理由になっているときは、変更を伴わないmethodを使ってください。`array.toSorted(compare)`が`[...array].sort(compare)`の書き下していた操作です。`toReversed`と`with`も同様です。
+- 上の規則はmechanismについてのものであり、すでに公開している値の正しさには適用しません。出荷済み
+  contractの値は、今日それ自体として真でなければなりません。「まだ誰も消費していない」は誰が損害を
+  受けるかへの答えであって、その言明が成り立つかへの答えではありません。globとして文書化した適用
+  範囲を、宣言側の消費者がいないという理由でescapeせずに公開した結果、`packages/[api]` directoryは
+  文字classを意味するpatternを公開しました。誤りだったのは何かが最初に読んだ時点ではなく、公開した
+  時点です。
 - Specificationが冗長な複雑さを要求している場合は、書かれたとおりに実装せず、同じ変更の中で両言語のspecificationを修正してください。
 
 ## 依存versionの方針
@@ -146,6 +160,23 @@
   registry record、複数の呼び出し側が組み立てるoptions bag、testがliteralのdoubleで満たす
   境界（`CandidateRecognition`、`SessionRpcChannel`）。Vue componentのpropsは、frameworkが
   shapeとして消費するためinterfaceのままにします。
+- Memberの置き場所は、それが何についての事実かで決めます。到達しやすさで決めてはいけません。
+  一部のmemberだけが持つcapabilityは、その族全体を表すtypeには属しません: 複数のkindにまたがる
+  typeが、そのうち1つにしか意味を持たないmemberを宣言すると、他のすべてのkindが答えを持たない
+  問いに答えさせられます。呼び出し側ではなくcompilerを満たすために書いた実装は、そのmemberの
+  置き場所が誤っている証拠です。出荷する実装のコメント自身に「まだ誰も呼ばない」と書く必要が
+  生じたら、それが合図です。狭い族には専用の単位を与え、呼び出し側には
+  それらが構成するclosedなunionを、もともと両者を区別しているfieldでdiscriminateさせて
+  持たせます。そうすればcompilerが答えられる単位へnarrowし、呼び出し側はcapabilityを
+  主張しません: 1つの広いclassに対する型述語 — fieldの比較から`x is Narrow`を返すもの — は、
+  主張したmemberについて何も証明せず、guardの服を着たcastでしかありません。各単位は自身の
+  半分をconstructorで証明し、class本体が約束するnarrowなdiscriminantを宣言します。例: instruction fileの適用範囲は`instructions` ruleについての事実なので、全kindが
+  共有するrule単位ではなくinstructionのcompiled単位に置きます — skill ruleはそれについて
+  何も答えません。
+- 同じ判定は1つ上の層にも当てはまります: 出荷するrecordのfieldが1行を除いて空であるなら、
+  それは1つのvendorの事実を、全vendorが運ぶshapeで記述しています。事実は属する場所 — その
+  vendor自身のmodule、記述対象のrecordの隣 — に置きます。各vendorのconfiguration readerが
+  自身のruleの隣にあり、scanがvendorを知らずにそれを合成するのと同じ形です。
 
 ## コーディングエージェントが実行するPlaywright検証の方針
 

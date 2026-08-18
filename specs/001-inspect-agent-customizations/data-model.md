@@ -1233,7 +1233,8 @@ shipped kinds do not agree on one:
 |---|---|
 | `skill` | One name as one tool resolves it (FR-007): the authored frontmatter `name` — or the skill directory name when the file declares none — which a Claude Code recognition of a nested skill prefixes root-relative. A definition is one recognition — one per `(file, tool)` — so several files resolving to one name are one entry listing each recognition as a definition, and one file whose tools resolve different names defines on each name's entry |
 | `MCP` | One `[mcp_servers.*]` declaration inside an admitted carrier, so one `.codex/config.toml` publishes as many rows as it declares servers |
-| `instructions`, `settings/config` | The file itself |
+| `instructions` | One applicability range: the glob the governing files' own paths derive, listing each file it governs with that file's recognizing tools |
+| `settings/config` | The file itself |
 
 A CustomizationFile therefore publishes its own facts once — Source-relative Path, read
 outcome, size, diagnostics — and each kind's inventory refers to it by `sourceRelativePath`
@@ -1244,6 +1245,33 @@ of the files that made the generation partial, and the row of the customization 
 is the only place an inventory can say so (FR-028). One shared row shape cannot express either of the first two units: grouping
 by name would break the one recognition per `(file, tool, kind)` rule that ToolRecognition
 rests on, and a file-shaped row cannot become the N rows one carrier's declarations need.
+
+An instruction row's applicability range is derived from the file's Source-relative Path,
+never from the vendor's runtime: the range is the directory the file sits in, spelled as a
+glob relative to the Repository root, once a directory the recognizing product keeps its
+instruction files in is stripped from the tail. Claude Code keeps one at `.claude` for
+`CLAUDE.md` alone — the page names `./CLAUDE.md` **or** `./.claude/CLAUDE.md` as the one
+project instruction location while listing local instructions at `./CLAUDE.local.md`
+only — so `.claude/CLAUDE.md` and the root `CLAUDE.md` derive one range and share one row,
+`packages/api/.claude/CLAUDE.md` derives `packages/api/**`, and a
+`.claude/CLAUDE.local.md` keeps its directory and derives `.claude/**`. What such a
+directory means is that product's own fact, so each product answers for its own rules
+rather than declaring a list some shared derivation reads.
+
+A derived range is a pattern built from literals, so each directory name is escaped where
+a glob would read it as syntax — the wildcards, the class and brace delimiters, the
+extended-group parentheses, a leading negation, and the escape character itself. A
+repository holding `packages/[api]` therefore publishes `packages/\[api\]/**`, which
+denotes that directory rather than a class over `a`, `p`, and `i`. Escaping is not
+parsing: nothing interprets a pattern, and this only spells the product's own so the
+spelling means what the path says. Rows group by exact text equality of that glob: nothing
+parses a glob, normalizes a spelling, or decides whether two ranges overlap, so
+`packages/api/**` and `packages/api/**/*` are two ranges. The derived spelling is one a
+product fixes rather than one chosen per file, which is what keeps the derived side of the
+grouping consistent; a file that declares its own range is keyed by that declared value
+instead, and that branch arrives with the phase whose recognizer extracts one. A range
+states what a file governs. It is never a claim that a product loaded the file: an
+admission is not an activation (FR-009).
 
 A skill row's name is the name one tool resolves (FR-007): the authored frontmatter
 `name` — or the skill directory name when the file declares none or declares it empty,

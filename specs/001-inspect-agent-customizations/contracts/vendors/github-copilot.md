@@ -298,8 +298,8 @@ even when stored below the same boundary.
 | `copilot.derived.local-plugin-manifest` | An accepted Copilot marketplace entry with a documented local `source` | At the validated local plugin root: `.plugin/plugin.json`, `plugin.json`, `.github/plugin/plugin.json`, `.claude-plugin/plugin.json` | `copilot.behavior.vscode.plugins`, `copilot.behavior.cli.plugins` | `copilot.vscode.plugins.activation`, `copilot.cli.plugins.activation` | Accept `plugins/foo` or `./plugins/foo`; resolve from the catalog root and remain inside it; try only the enumerated manifest names in documented order; the derivation is nonrecursive. Git, HTTP(S), npm, absolute, and home-relative sources remain relationships | FR-003, FR-004, FR-005, FR-024, QR-001, QR-004, QR-005 | `github.copilot.cli.plugins`, `vscode.copilot.plugins` |
 
 The relationship-only rules referenced by this vendor—
-`copilot.relationship.instruction-import`, `copilot.relationship.prompt-reference`,
-`copilot.relationship.settings`, `copilot.relationship.component`, and
+`copilot.relationship.prompt-reference`, `copilot.relationship.settings`,
+`copilot.relationship.component`, and
 `copilot.relationship.agent-context`—are defined exactly once in the
 [central relationship-only registry](../runtime-composition.md#normative-relationship-only-registry).
 This index grants no read authority and does not duplicate those definitions.
@@ -332,7 +332,7 @@ is required, dependent work stops, every affected English/Japanese design artifa
 synchronized, and `/speckit.plan` and `/speckit.tasks` are rerun before the revised contract
 is consumed.
 
-The rows are exhaustive. A contained MCP or Hook declaration uses the `MCP` or `hook`
+The rows are exhaustive. `—` means the eligible set is empty. A contained MCP or Hook declaration uses the `MCP` or `hook`
 row on its already admitted owner file; it does not gain fields from the owner's other
 recognition and does not create a synthetic file. A reference the allowlist does not name remains visible only in complete `sourceText`. No allowlist stands between a declaration and its publication: a skill's declarations are the keys its file wrote, and an authored key set is not closed (FR-007). A relationship can be emitted only when both its
 kind is listed here and its origin is covered by the appropriate relationship-only rule
@@ -341,7 +341,7 @@ import, installation, or activation authority.
 
 | `ToolRecognition.kind` | Eligible `Relationship.kind` values | Initial-release source forms |
 |---|---|---|
-| `instructions` | `import` | Exact supported frontmatter values in an accepted `*.instructions.md`, plus authored CLI `@path` targets in accepted `.github/copilot-instructions.md`, `AGENTS.md`, or Copilot-recognized `CLAUDE.md`; path-derived scope and enablement remain typed facts |
+| `instructions` | — | An accepted `*.instructions.md`, `.github/copilot-instructions.md`, `AGENTS.md`, or Copilot-recognized `CLAUDE.md`; an authored CLI `@path` target is source text, never an extracted reference, and a supported frontmatter value such as `applyTo` declares the range the file governs rather than a target. Path-derived scope and enablement remain typed facts |
 | `skill` | `skill-resource`<br>`context-inheritance` | Exact supported frontmatter value/item occurrences in an accepted `SKILL.md`; relative resource references can be relationships but never authorize reads |
 | `MCP` | `runtime-reference` | Server-name map keys and exact supported server leaf/item occurrences in an accepted CLI `mcpServers` file, VS Code `.vscode/mcp.json` `servers` file, or custom-agent-contained declaration; a VS Code 1.118+ root `.mcp.json` provenance is path/surface-only and adds no VS Code-owned extractor fields until direct documentation establishes its schema, while any CLI extraction on the same file remains independent; environment/header values are the ones their parser resolved and are never expanded |
 | `prompt/command` | `skill-resource`<br>`agent-reference`<br>`runtime-reference` | Exact supported frontmatter value/item occurrences in an accepted VS Code prompt or root direct-child CLI command; prompt/command invocation names derived from matched paths remain typed provenance, and links or `#file` targets remain inert |

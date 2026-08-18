@@ -267,9 +267,8 @@ settings、agent、skill、hook、MCP、LSP、extension、plugin、permission、
 | `copilot.derived.local-plugin-manifest` | Documented local `source`を持つaccepted Copilot marketplace entry | Validated local plugin rootの`.plugin/plugin.json`、`plugin.json`、`.github/plugin/plugin.json`、`.claude-plugin/plugin.json` | `copilot.behavior.vscode.plugins`, `copilot.behavior.cli.plugins` | `copilot.vscode.plugins.activation`, `copilot.cli.plugins.activation` | `plugins/foo`または`./plugins/foo`を受理しcatalog rootからresolveして内部に留める。列挙済みmanifest名だけをdocumented orderで確認し、derivationは再帰しない。Git、HTTP(S)、npm、absolute、home-relative sourceはrelationshipのまま | FR-003、FR-004、FR-005、FR-024、QR-001、QR-004、QR-005 | `github.copilot.cli.plugins`, `vscode.copilot.plugins` |
 
 このvendorが参照するrelationship-only rule、すなわち
-`copilot.relationship.instruction-import`、`copilot.relationship.prompt-reference`、
-`copilot.relationship.settings`、`copilot.relationship.component`、
-`copilot.relationship.agent-context`は、
+`copilot.relationship.prompt-reference`、`copilot.relationship.settings`、
+`copilot.relationship.component`、`copilot.relationship.agent-context`は、
 [中央relationship-only registry](../runtime-composition.ja.md#normative-relationship-only-registry)だけで一度定義する。
 このindexはread authorityを与えず、定義を重複しない。
 
@@ -296,7 +295,7 @@ eligible set、source form、extractor applicability、relationship kindをautho
 意味変更してはならない。この種の変更が必要ならdependent workを停止し、影響する英日design artifactをすべて同期し、
 改訂contractを利用する前に`/speckit.plan`と`/speckit.tasks`を再実行する。
 
-各rowは網羅的である。Contained MCPまたはHook declarationは、すでにadmission済みのowner file上で`MCP`または
+各rowは網羅的であり、`—`はeligible setが空であることを意味する。Contained MCPまたはHook declarationは、すでにadmission済みのowner file上で`MCP`または
 `hook` rowを使う。Ownerの別recognitionからfieldを取得せず、synthetic fileも作らない。Allowlistが記載しないreferenceは、
 完全な`sourceText`だけに残す。宣言とその公開の間にallowlistは立たない: skillの宣言はfileが書いた
 keyであり、authored keyの集合は閉じていない（FR-007）。Relationshipは、そのkindがこの表にあり、かつoriginが中央registryの適切な
@@ -305,7 +304,7 @@ installation、activationのauthorityを一切与えない。
 
 | `ToolRecognition.kind` | Eligibleな`Relationship.kind` value | Initial-release source form |
 |---|---|---|
-| `instructions` | `import` | 受理済み`*.instructions.md`の正確なsupported frontmatter valueと、受理済み`.github/copilot-instructions.md`、`AGENTS.md`、またはCopilot recognition済み`CLAUDE.md`にあるauthored CLI `@path` target。Path-derived scopeとenablementはtyped factのままとする |
+| `instructions` | — | 受理済み`*.instructions.md`、`.github/copilot-instructions.md`、`AGENTS.md`、またはCopilot recognition済み`CLAUDE.md`。Authored CLI `@path` targetはsource textであり、抽出されるreferenceではない。`applyTo`のようなsupported frontmatter valueは、targetではなくそのfileが統べる範囲を宣言する。Path-derived scopeとenablementはtyped factのままとする |
 | `skill` | `skill-resource`<br>`context-inheritance` | 受理済み`SKILL.md`の正確なsupported frontmatter value/item occurrence。Relative resource referenceはrelationshipにできるがreadをauthorizeしない |
 | `MCP` | `runtime-reference` | 受理済みCLI `mcpServers` file、VS Code `.vscode/mcp.json` `servers` file、またはcustom-agent-contained declarationにあるserver-name map keyと正確なsupported server leaf/item occurrence。VS Code 1.118以降のroot `.mcp.json` provenanceはpath/surface-onlyで、direct documentationがschemaを確立するまでVS Code所有extractor fieldを追加しない。同じfileのCLI extractionは独立のまま。Environment/header valueはそのparserが解決した値とし、展開しない |
 | `prompt/command` | `skill-resource`<br>`agent-reference`<br>`runtime-reference` | 受理済みVS Code promptまたはroot direct-child CLI commandの正確なsupported frontmatter value/item occurrence。Matched pathから導出するprompt/command invocation nameはtyped provenanceのままとし、linkまたは`#file` targetはinertに保つ |

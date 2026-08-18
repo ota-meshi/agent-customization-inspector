@@ -23,8 +23,12 @@
 import {
   CompiledDerivedRule,
   CompiledInspectionRule,
+  type CompiledStaticCandidateRule,
+  type CompiledStaticInstructionRule,
+  type CompiledStaticNonInstructionRule,
   type ConfiguredDerivedPlan,
 } from './registry';
+import type { CustomizationKind } from '../../../shared/entities';
 import { join } from 'node:path';
 import { readCandidate, rethrowIfResourceExhaustion, statThroughLink } from '../traversal';
 import { RecognitionExtraction } from '../parsers/extraction';
@@ -44,7 +48,7 @@ import type { InspectionRule } from '../../../shared/registries/rule-types';
  * discriminates on, and the relations resolved from Codex's catalog by the
  * rule's own identity, so no rule can be compiled with another rule's edges.
  */
-export class CodexCompiledRule extends CompiledInspectionRule {
+export abstract class CodexCompiledRule extends CompiledInspectionRule {
   /** Always `codex`; the discriminant a mixed vendor list narrows on. */
   public override readonly tool: 'codex';
 
@@ -73,6 +77,58 @@ export class CodexCompiledRule extends CompiledInspectionRule {
 }
 
 /**
+ * A Codex instruction rule compiled for execution: everything a Codex rule is,
+ * plus the one question only an instruction rule answers.
+ *
+ * Codex builds its instruction chain from the project root down to the runtime
+ * working directory and stops there, so a nested `AGENTS.md` belongs to a
+ * context this product does not select and is never a candidate: every Codex
+ * instruction this inventory holds sits at the selected root and governs the
+ * repository entirely (data-model.md § Inventory unit).
+ */
+export class CodexCompiledInstructionRule
+  extends CodexCompiledRule
+  implements CompiledStaticInstructionRule
+{
+  /** Narrowed to the one kind this unit compiles; the constructor proves it. */
+  declare public readonly kind: 'instructions';
+
+  /** The Repository root's `**`; every Codex instruction candidate sits there. */
+  public applicabilityRangeOf(): string {
+    return '**';
+  }
+
+  /** Compiles one Codex instruction record, rejecting one of another kind. */
+  public constructor(rule: InspectionRule) {
+    super(rule);
+    if (rule.kind !== 'instructions') {
+      throw new TypeError(`rule ${rule.ruleId} is not a Codex instruction rule`);
+    }
+  }
+}
+
+/**
+ * A Codex rule of every other kind, compiled for execution. It answers nothing
+ * about applicability, which is exactly what a skill rule has to say about it
+ * (see `CompiledNonInstructionRule`).
+ */
+export class CodexCompiledOtherKindRule
+  extends CodexCompiledRule
+  implements CompiledStaticNonInstructionRule
+{
+  /** Narrowed to the kinds this unit compiles; the constructor proves it. */
+  declare public readonly kind: Exclude<CustomizationKind, 'instructions'>;
+
+  /** Compiles one Codex record of any kind but `instructions`. */
+  public constructor(rule: InspectionRule) {
+    super(rule);
+    if (rule.kind === 'instructions') {
+      throw new TypeError(`rule ${rule.ruleId} needs the Codex instruction unit`);
+    }
+  }
+}
+
+/**
  * The Codex Repository rules a Repository scan executes, in shipped order.
  * The remaining Codex rows of the vendor contract arrive with their own
  * inventory phases; the shipped set covers static instructions and skills,
@@ -86,11 +142,17 @@ export class CodexCompiledRule extends CompiledInspectionRule {
  * either class that cannot be executed still fails the build that ships it
  * through its constructor guard.
  */
-export const CODEX_REPOSITORY_RULES: readonly CodexCompiledRule[] = Object.values(
+export const CODEX_REPOSITORY_RULES: readonly CompiledStaticCandidateRule[] = Object.values(
   CODEX_INSPECTION_RULES,
 )
   .filter((rule) => rule.discoveryClass === 'static-candidate')
-  .map((rule) => new CodexCompiledRule(rule));
+  .map((rule) =>
+    // An instruction record compiles into the unit that can answer what its
+    // files govern; every other kind compiles into the plain one.
+    rule.kind === 'instructions'
+      ? new CodexCompiledInstructionRule(rule)
+      : new CodexCompiledOtherKindRule(rule),
+  );
 
 /**
  * The compiled `codex.derived.fallback-basename` unit the configuration-read

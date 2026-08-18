@@ -436,3 +436,39 @@ test('leaves the Codex detail beside it unchanged', async ({ page }) => {
   await expect(page.locator('.aci-skill-detail__definition')).toHaveCount(1);
   await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toContainText('# Codex');
 });
+
+test('keeps the reader in the file list when a newer commit replaces the open skill', async ({
+  page,
+  context,
+}) => {
+  // The reader is in the file list with the entry point itself open — the
+  // state the tab watcher's own comment says a file selection must not be
+  // undone from.
+  await openSkillFiles(page, '.claude/skills/greet/SKILL.md');
+  await page.getByRole('link', { name: 'SKILL.md' }).first().click();
+  await expect(page.getByRole('tab', { name: /^files/iu })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+
+  const other = await context.newPage();
+  await other.goto(host.origin);
+  await other.getByRole('button', { name: 'Rescan repository' }).click();
+  await expect(async () => {
+    await other.getByRole('button', { name: 'Refresh status' }).click();
+    await expect(other.locator('.aci-scan-progress')).toContainText('Committed generation', {
+      timeout: 1_000,
+    });
+  }).toPass();
+  await other.close();
+
+  // Selecting the open file again meets the newer commit, which drops the
+  // detail and re-requests the same skill (FR-030). The skill did not change,
+  // so the strip stays where the reader put it.
+  await page.getByRole('link', { name: 'SKILL.md' }).first().click();
+  await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toBeVisible();
+  await expect(page.getByRole('tab', { name: /^files/iu })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+});

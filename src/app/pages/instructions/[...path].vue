@@ -50,9 +50,8 @@ import {
   CUSTOMIZATION_KIND_TEXT,
   FILE_ENCODING_TEXT,
   SUPPORTED_TOOL_TEXT,
-  encodeRootPresentation,
   escapeControlCharacters,
-  rendersNothingVisible,
+  pathPresentationLabel,
 } from '../../../shared/entities';
 
 const sessionViewState = inject(SESSION_VIEW_STATE);
@@ -92,27 +91,26 @@ const snapshot = sessionViewState.snapshot;
  */
 const owner = computed(
   () =>
-    (snapshot.value?.instructions ?? []).find(
-      (entry) => entry.sourceRelativePath === openPath.value,
-    ) ?? null,
+    (snapshot.value?.instructions ?? [])
+      .flatMap((entry) => entry.files)
+      .find((file) => file.sourceRelativePath === openPath.value) ?? null,
 );
 
 /**
- * The path as the heading shows it (data-model.md § SourceRelativePath):
- * control characters escaped, and — when that escaped spelling would render
- * no character at all, which a configured fallback basename of whitespace or
- * default-ignorable code points can produce — spelled out in full, because a
- * path label that renders as nothing identifies nothing (WCAG 2.4.6).
+ * The path as the heading shows it, through the one label rule every surface
+ * that draws a path uses ({@link pathPresentationLabel}).
  */
-const pathIsSpelledOut = computed(
-  () => openPath.value !== '' && rendersNothingVisible(escapeControlCharacters(openPath.value)),
-);
+const pathText = computed(() => pathPresentationLabel(openPath.value));
 
-const pathText = computed(() =>
-  pathIsSpelledOut.value
-    ? encodeRootPresentation(openPath.value)
-    : escapeControlCharacters(openPath.value),
-);
+/**
+ * Whether {@link pathText} is the spelled-out form rather than the file's own
+ * spelling — which a configured fallback basename of whitespace or
+ * default-ignorable code points produces. The label then draws this product's
+ * characters instead of the reader's, so it is not authored text and does not
+ * title the tab. Compared against the escaping rather than tested again, so
+ * the two cannot answer differently.
+ */
+const pathIsSpelledOut = computed(() => pathText.value !== escapeControlCharacters(openPath.value));
 
 /**
  * The products that recognize this file, restated from the row so the page
@@ -188,22 +186,6 @@ const INSTRUCTION_DETAIL_TAB_TEXT: Readonly<Record<InstructionDetailTab, string>
 
 const activeTab = ref<InstructionDetailTab>('instructions');
 
-/**
- * Whether the reader has picked a tab for the open path. The arrival watch
- * below sets a content-appropriate tab only while this is false: the open
- * effect re-requests the same path when a newer generation is adopted, and a
- * re-arrival that reset the strip would undo a selection the reader already
- * made — the content was refetched, not reselected. Cleared when the path
- * changes, because a different file is a different page.
- */
-let readerChoseTab = false;
-
-/** Selects a tab on the reader's behalf, recording that the strip is theirs now. */
-function chooseTab(tab: InstructionDetailTab): void {
-  readerChoseTab = true;
-  activeTab.value = tab;
-}
-
 /** The page's root, for the focus guards below. */
 const pageRoot = ref<HTMLElement | null>(null);
 
@@ -230,7 +212,7 @@ function onTabKeydown(event: KeyboardEvent, index: number): void {
     return;
   }
   event.preventDefault();
-  chooseTab(next);
+  activeTab.value = next;
   document.getElementById(instructionTabId(next))?.focus();
 }
 
@@ -238,27 +220,20 @@ function onTabKeydown(event: KeyboardEvent, index: number): void {
  * Opening a file starts on what it declares and instructs — unless its
  * extraction failed, where that panel has nothing parsed to show and the
  * complete source is the honest landing (FR-028): the failure's diagnostic
- * stays visible on both. The tab is set when the path changes, and when a
- * detail arrives — whether it parsed or failed — for a path whose strip the
- * reader has not touched: the first arrival after a navigation, and a
- * re-arrival after the open effect re-requests the same path under a newly
- * adopted generation. A re-arrival never overrides a tab the reader chose
- * ({@link chooseTab}).
+ * stays visible on both.
+ *
+ * The detail's arrival is where that is decided, because it is the first
+ * moment there is anything to decide between: the strip is rendered beside
+ * the detail, so until one is in hand no tab is on screen to have been
+ * chosen. The URL moving is not a second moment — `openDetail` is this
+ * path's or nothing (above), so a file the reader moves to decides on its
+ * own arrival.
  */
-watch(
-  [openPath, openDetail],
-  ([path, detail], previous) => {
-    const pathChanged = previous === undefined || previous[0] !== path;
-    if (pathChanged) {
-      readerChoseTab = false;
-    }
-    const detailArrived = detail !== null && (previous === undefined || previous[1] === null);
-    if (pathChanged || (detailArrived && !readerChoseTab)) {
-      activeTab.value = presentation.value !== null ? 'instructions' : 'file';
-    }
-  },
-  { immediate: true },
-);
+watch(openDetail, (detail) => {
+  if (detail !== null) {
+    activeTab.value = presentation.value !== null ? 'instructions' : 'file';
+  }
+});
 
 /**
  * What this route says when its own request failed, or null when none has:
@@ -528,7 +503,7 @@ onBeforeUnmount(() => {
           :aria-controls="instructionTabPanelId(tab)"
           :aria-selected="tab === activeTab"
           :tabindex="tab === activeTab ? 0 : -1"
-          @click="chooseTab(tab)"
+          @click="activeTab = tab"
           @keydown="onTabKeydown($event, index)"
         >
           {{ INSTRUCTION_DETAIL_TAB_TEXT[tab] }}

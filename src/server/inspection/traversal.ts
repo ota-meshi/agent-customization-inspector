@@ -140,12 +140,44 @@ export type TraversalScanResult =
     };
 
 /**
- * VCS internals are excluded from traversal
- * (contracts/inspection-path-allowlist.md). Exported so any other enumeration
- * excludes exactly the same names rather than keeping a second list that could
- * drift from this one.
+ * VCS internals: the repository's own machinery rather than customizations
+ * authored in it, excluded wherever the walk would reach them — by entry name
+ * as an entry is met, and on the resolved real path through
+ * {@link isVcsInternalPath} (contracts/inspection-path-allowlist.md).
+ * Exported so any other enumeration excludes exactly the same names rather
+ * than keeping a second list that could drift from this one.
  */
 export const VCS_INTERNALS = new Set(['.git', '.hg', '.svn']);
+
+/**
+ * Installed-package directory names the walk never enters
+ * (contracts/inspection-path-allowlist.md).
+ *
+ * A `node_modules` directory holds packages a package manager installed, so a
+ * customization file inside one belongs to the package that shipped it and is
+ * reproduced from the manifest and lockfile rather than authored in the
+ * repository under inspection. A product may still read such a file at
+ * runtime — Claude Code discovers a `CLAUDE.md` in any subdirectory it reads a
+ * file in — so this narrows what the inventory reports rather than describing
+ * what an agent can load.
+ *
+ * Two things separate this from the VCS internals above. It is decided once
+ * the entry's type is resolved, because the exclusion is about a directory: an
+ * entry of this name that resolves to a regular file is an ordinary file. And
+ * it is decided by entry name alone, never on the resolved real path: reaching
+ * an object store is wrong however the walk got there, while a directory the
+ * repository placed at a path of its own is the repository's, whatever its
+ * link resolves to — a symbolic link at an authored location is inventoried on
+ * that location's terms, the same reason links are followed transparently at
+ * all (FR-024).
+ *
+ * Decided by name rather than by any ignore file the repository carries: an
+ * ignore file states what its own tooling skips, which is a different question
+ * and a moving one, and reading it would make the inventory depend on a file
+ * the reader did not write for this purpose. Another ecosystem's
+ * installed-dependency directory arrives with the report that names it.
+ */
+export const INSTALLED_PACKAGE_DIRECTORIES = new Set(['node_modules']);
 
 /**
  * Whether a resolved real path reaches VCS internals the container's own path
@@ -394,6 +426,13 @@ async function walkDirectory(
         origins: fileAdmissions,
       });
     }
+    if (isDirectory && INSTALLED_PACKAGE_DIRECTORIES.has(entry.name)) {
+      // Decided here rather than beside the VCS name check above, because this
+      // exclusion is about a directory: an entry of this name that resolves to
+      // a regular file is an ordinary file, and a `.codex/config.toml` naming
+      // it as a configured instruction basename admits it like any other.
+      continue;
+    }
     if (isDirectory && descendStates.length > 0) {
       // Real-path tracking over the current ancestor chain terminates link
       // cycles (FR-024): a directory is skipped only when its real path is
@@ -402,10 +441,14 @@ async function walkDirectory(
       // target — links are not aliases). The realpath read is ordinary and
       // read-only like every other operation.
       const real = await realpath(entryPath);
-      // Excluded here as well as by name: the name check above cannot see a
-      // link that reaches VCS internals under another spelling. Judged against
-      // the Source root, so a root that itself lives under a `.git` path is an
-      // ordinary root.
+      // VCS internals are excluded here as well as by name: the name check
+      // above cannot see a link that reaches an object store under another
+      // spelling, and enumerating one is wrong however the walk got there.
+      // `node_modules` is deliberately not re-checked on the resolved path — a
+      // directory the repository placed at a path of its own is the
+      // repository's, whatever its link resolves to. Judged against the Source
+      // root, so a root that itself lives under a `.git` path is an ordinary
+      // root.
       if (isVcsInternalPath(rootReal, real) || visitedRealPaths.has(real)) {
         continue;
       }

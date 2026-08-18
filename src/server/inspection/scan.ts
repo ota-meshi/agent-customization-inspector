@@ -37,8 +37,8 @@ import { CLAUDE_REPOSITORY_RULES } from './rules/claude';
 import { COPILOT_REPOSITORY_RULES } from './rules/copilot';
 import {
   resolveAdmittingRules,
-  type CompiledInspectionRule,
-  type CompiledRule,
+  type CompiledCandidateRule,
+  type CompiledStaticCandidateRule,
   type ConfiguredDerivedPlan,
 } from './rules/registry';
 import {
@@ -63,7 +63,7 @@ import { readCandidate, runTraversalScan, type TraversalScanResult } from './tra
  * one pass, so a shared physical file is one candidate with one read whose
  * admissions name each vendor's plan (data-model.md § ToolRecognition).
  */
-export const REPOSITORY_INSPECTION_RULES: readonly CompiledInspectionRule[] = [
+export const REPOSITORY_INSPECTION_RULES: readonly CompiledStaticCandidateRule[] = [
   ...COPILOT_REPOSITORY_RULES,
   ...CLAUDE_REPOSITORY_RULES,
   ...CODEX_REPOSITORY_RULES,
@@ -177,7 +177,7 @@ export interface ScanPublicationInput {
    * are plan indexes into this list, so passing a different list would
    * misattribute provenance.
    */
-  readonly rules: readonly CompiledRule[];
+  readonly rules: readonly CompiledCandidateRule[];
   /** The traversal module's typed result for this attempt. */
   readonly result: TraversalScanResult;
   /**
@@ -287,13 +287,28 @@ export async function assembleScanPublication(
           sourceText: candidate.outcome.sourceText,
         });
         const fileRecognitions = recognized.recognitions;
-        for (const companion of recognized.companions) {
+        // A census-listed path a rule independently admits keeps its own
+        // recognitions and rows (FR-007): the walk admitted it, so it is a
+        // customization of its own rather than one of the files that ship with
+        // the skill beside it. A `CLAUDE.md` inside a skill directory is the
+        // case — an ordinary instruction file that happens to sit there — and
+        // listing it as a companion would put its diagnostics on the skill's
+        // row, offer it as one of the skill's files to compare, and let a
+        // binary one disappear from the files in no kind, all while its own
+        // kind already has it.
+        const independentlyAdmitted = new Set(
+          input.result.files.map((discovered) => discovered.publicPath),
+        );
+        const censusOnly = recognized.companions.filter(
+          (companion) => !independentlyAdmitted.has(companion.sourceRelativePath),
+        );
+        for (const companion of censusOnly) {
           companions.set(companion.sourceRelativePath, companion.absolutePath);
         }
         if (fileRecognitions.some((recognition) => recognition.details.kind === 'skill')) {
           skillCompanionsByPath.set(
             candidate.publicPath,
-            recognized.companions.map((companion) => companion.sourceRelativePath),
+            censusOnly.map((companion) => companion.sourceRelativePath),
           );
         }
         const fileDiagnosticIds: string[] = [];
@@ -525,7 +540,7 @@ export interface SourceScanInput {
   /** The lifecycle owner of a `root-unreadable` failure; see {@link ScanPublicationInput}. */
   readonly rootFailureOwner: LifecycleOwnerKey;
   /** The compiled rule catalog to execute; defaults to the shipped Repository set. */
-  readonly rules?: readonly CompiledInspectionRule[];
+  readonly rules?: readonly CompiledStaticCandidateRule[];
   /** The vendor recognizer dispatch; see {@link ScanPublicationInput.recognize}. */
   readonly recognize?: (input: RecognitionInput) => Promise<CandidateRecognition>;
   /**
@@ -559,7 +574,10 @@ export async function runSourceScan(input: SourceScanInput): Promise<ScanPublica
   for (const read of REPOSITORY_CONFIGURATION_READERS) {
     configured.push(...(await read(input.root)));
   }
-  const rules: readonly CompiledRule[] = [...staticRules, ...configured.map((entry) => entry.rule)];
+  const rules: readonly CompiledCandidateRule[] = [
+    ...staticRules,
+    ...configured.map((entry) => entry.rule),
+  ];
   // Stage one is over. The walk reports `enumerating` itself, but only once a
   // directory has been listed, so a slow root would leave the configuration
   // read on screen as the running stage long after it finished.

@@ -1,5 +1,13 @@
 {
   "strategies": {
+    "claude.instructions.layering": {
+      "consumesBehaviors": [
+        "claude.behavior.repo.instructions.ancestor",
+        "claude.behavior.repo.instructions.descendant",
+        "claude.behavior.repo.instructions.launch",
+        "claude.behavior.user.instructions"
+      ]
+    },
     "claude.skills.selection": {
       "consumesBehaviors": ["claude.behavior.repo.skills", "claude.behavior.user.skills"]
     },
@@ -27,6 +35,14 @@
     }
   },
   "rules": {
+    "claude.repo.instructions": {
+      "basedOnBehaviors": [
+        "claude.behavior.repo.instructions.ancestor",
+        "claude.behavior.repo.instructions.descendant",
+        "claude.behavior.repo.instructions.launch"
+      ],
+      "explainedByStrategies": ["claude.instructions.layering"]
+    },
     "claude.repo.skill": {
       "basedOnBehaviors": ["claude.behavior.repo.skills"],
       "explainedByStrategies": ["claude.skills.selection"]

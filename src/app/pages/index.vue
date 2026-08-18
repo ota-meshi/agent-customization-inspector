@@ -26,8 +26,8 @@ import ScanProgress from '../components/inventory/ScanProgress.vue';
 import { SESSION_VIEW_STATE } from '../session/view-state';
 import { useInventoryFilters } from '../composables/filters';
 import {
-  CUSTOMIZATION_KIND_ORDER,
   SOURCE_BOUNDARY_ORIGIN_TEXT,
+  isCustomizationKind,
   type CustomizationKind,
   type SupportedTool,
 } from '../../shared/entities';
@@ -57,10 +57,7 @@ const router = useRouter();
  * simply leaves the default tab in view.
  */
 function kindFromQuery(value: unknown): CustomizationKind | null {
-  return typeof value === 'string' &&
-    (CUSTOMIZATION_KIND_ORDER as readonly string[]).includes(value)
-    ? (value as CustomizationKind)
-    : null;
+  return isCustomizationKind(value) ? value : null;
 }
 
 // Kind is navigation, and navigation belongs in the URL: the tab is

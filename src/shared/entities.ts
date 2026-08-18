@@ -99,6 +99,29 @@ export const CUSTOMIZATION_KIND_ORDER: readonly CustomizationKind[] = [
 ];
 
 /**
+ * Whether an untyped value is one of the closed customization kinds.
+ *
+ * A predicate rather than a membership test followed by an assertion: the
+ * comparison is what proves the type, so nothing has to be told. The value
+ * arrives from outside the closed catalog — a `?kind=` query the reader typed
+ * — and anything the catalog does not name is simply not a kind.
+ */
+export function isCustomizationKind(value: unknown): value is CustomizationKind {
+  return typeof value === 'string' && CUSTOMIZATION_KIND_ORDER.some((kind) => kind === value);
+}
+
+/**
+ * Whether an untyped value is one of the supported tools.
+ *
+ * A predicate for the same reason as {@link isCustomizationKind}: a filter
+ * control hands back the raw text of the option the reader chose, and the
+ * comparison against the closed catalog is what makes it a tool.
+ */
+export function isSupportedTool(value: unknown): value is SupportedTool {
+  return typeof value === 'string' && SUPPORTED_TOOL_ORDER.some((tool) => tool === value);
+}
+
+/**
  * What a kind's rows are, in plural, for a sentence that counts them — the
  * kind's own row unit rather than "files", because a row is one file for some
  * kinds and one declaration inside a file for others (data-model.md
@@ -461,6 +484,26 @@ export function escapeControlCharacters(value: string): string {
 }
 
 /**
+ * One applicability range as presentation text (data-model.md § Inventory
+ * unit): the same control-character escaping every published path gets, minus
+ * the backslash.
+ *
+ * A range is a glob, and its backslashes are the glob's own syntax — the
+ * escape a derived range puts in front of a directory name's `[`, `*`, or
+ * `!`. Sending it through {@link escapeControlCharacters} would rewrite each
+ * of those and show a pattern nobody wrote. The characters that cannot be
+ * shown as themselves are still escaped, so a range spanning lines cannot read
+ * as two.
+ */
+export function applicabilityRangePresentation(value: string): string {
+  return value.replaceAll(
+    // eslint-disable-next-line no-control-regex -- matching the Cc range is this function's purpose
+    /[\u0000-\u001F\u007F-\u009F\u061C\u200E\u200F\u2028\u2029\u202A-\u202E\u2066-\u2069]/gu,
+    (character) => `\\u${character.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')}`,
+  );
+}
+
+/**
  * Whether a label would render as nothing: it has no character that draws.
  *
  * Whitespace is the obvious case, but not the only one — U+200B, U+FEFF, and
@@ -472,6 +515,32 @@ export function escapeControlCharacters(value: string): string {
  */
 export function rendersNothingVisible(value: string): boolean {
   return value.replaceAll(/[\s\p{Default_Ignorable_Code_Point}]/gu, '') === '';
+}
+
+/**
+ * One authored path or entry name as the text a surface draws for it: the
+ * escaped spelling ({@link escapeControlCharacters}), or the completely
+ * spelled-out root presentation when that spelling would still draw nothing
+ * (data-model.md § SourceRelativePath). A label that renders as nothing leaves
+ * the row or link carrying it with neither visible text nor an accessible
+ * name, so it is spelled out entirely, the way a root label is, because it
+ * then has to be unambiguous on its own.
+ *
+ * Escaping alone cannot reach that: it leaves a space a space and a zero-width
+ * space a zero-width space. What reaches it is a value with no character that
+ * draws at all. For a whole Source-relative Path that means a single
+ * segment — `/` draws, so every nested path keeps one visible character — and
+ * a repository gets there through a Codex configured fallback basename, an
+ * entry name the walk compares that no character grammar constrains. A tree
+ * label is one entry name rather than a path, so any depth can reach it.
+ *
+ * Distinct from {@link inlinePresentationLabel}, which additionally spells out
+ * a value whose whitespace a surface would collapse; here the authored
+ * whitespace renders as authored wherever the drawing surface preserves it.
+ */
+export function pathPresentationLabel(value: string): string {
+  const escaped = escapeControlCharacters(value);
+  return rendersNothingVisible(escaped) ? encodeRootPresentation(value) : escaped;
 }
 
 /**

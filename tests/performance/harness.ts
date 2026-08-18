@@ -587,7 +587,7 @@ export async function readBackSessionIdentifiers(origin: string): Promise<Sc002S
 // digest freezes that review event without holding a second copy of any
 // label.
 const REVIEWED_STATUS_WORDING_SHA256 =
-  'aad93a382351223a4927d576f4f238575594b0c18eea3a0fc045998d137421ef';
+  'fe67ba03ebbf417ddda7d0220fdf74593ae5ed054b3cb5a6efade8df3554f91b';
 
 /**
  * The canonical listing the review seal covers: each measured status wording

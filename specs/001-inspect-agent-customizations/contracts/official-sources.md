@@ -170,9 +170,9 @@ No heading, prose, blank line, or line after that contiguous table is hashed.
 
 | Vendor | English table SHA-256 | Japanese table SHA-256 |
 |---|---|---|
-| GitHub Copilot | `b737dd07f7560dca05b7602fc255576e429cca944e23f381d84eb833331dc082` | `ef1f80872752e331012918c7f55bb255d13c93e640a739ef2f3eec8732bb4b82` |
-| Claude Code | `bc44f85bc148ed6b9455476deb5c54ab86d76f1d0f82b69897bc79659a2e1586` | `d473fa6e584433d0811415ac0ec570fabc86dae11c3fe2d5a9fc1e99121499f4` |
-| OpenAI Codex | `ec9b60738328ad26c8b6f7ff3998e72da6fe9f8a3dbc43b71f2ef71b668ca1db` | `a324d475de5d92650b5b760c764829f4ac187c05d8efcda803455e800b0205ab` |
+| GitHub Copilot | `76c5b11c8f6218e4caf3389b141ff80156a473700b81320bbf60487dbdee3801` | `d56d328eb05bd49244906f151770151f9b68a97ee60c7c6c281cfc0145f9714d` |
+| Claude Code | `ca5d4634e6b96b746cf16344a0a362136511751fb7d671ee755995b5b8583c8b` | `f2119c187e6da3954b0b8c8b0cb48125b1653f15fa3de296c74d41bef8754302` |
+| OpenAI Codex | `626905f3b2a0953b7361e1cc870fbba539e2c4512945fc4ef1c8fb28f39c5346` | `0043b0b1d7d7dd4084f0064a95bbf9cf84631d60ecad73ad931f2be9abd87174` |
 
 The implementation freeze test must recompute all six inputs exactly, require one and only
 one matching heading and contiguous table per file, compare every digest in constant time,
@@ -237,9 +237,9 @@ and does not admit an unregistered source repository or issue as substitute evid
 | `sourceId` | `canonicalUrl` | `officialHost` | Exact `sectionAnchors` | `reviewedOn` |
 |---|---|---|---|---|
 | `anthropic.claude-code.directory.file-reference` | <https://code.claude.com/docs/en/claude-directory> | `code.claude.com` | `File reference` | `2026-07-25` |
-| `anthropic.claude-code.memory.locations-load` | <https://code.claude.com/docs/en/memory> | `code.claude.com` | `Choose where to put CLAUDE.md files`; `How CLAUDE.md files load`; `Organize rules with .claude/rules/`; `Auto memory` | `2026-07-25` |
+| `anthropic.claude-code.memory.locations-load` | <https://code.claude.com/docs/en/memory> | `code.claude.com` | `Choose where to put CLAUDE.md files`; `AGENTS.md`; `How CLAUDE.md files load`; `Organize rules with .claude/rules/`; `Auto memory` | `2026-08-18` |
 | `anthropic.claude-code.large-codebases.start-directory` | <https://code.claude.com/docs/en/large-codebases> | `code.claude.com` | `Choose where to start Claude`; `Layer CLAUDE.md files by directory`; `Add per-directory skills` | `2026-07-25` |
-| `anthropic.claude-code.sdk.setting-sources` | <https://code.claude.com/docs/en/agent-sdk/claude-code-features> | `code.claude.com` | `Control filesystem settings with settingSources`; `CLAUDE.md load locations` | `2026-07-15` |
+| `anthropic.claude-code.sdk.setting-sources` | <https://code.claude.com/docs/en/agent-sdk/claude-code-features> | `code.claude.com` | `Control filesystem settings with settingSources`; `CLAUDE.md load locations` | `2026-08-18` |
 | `anthropic.claude-code.settings.scopes-precedence` | <https://code.claude.com/docs/en/settings> | `code.claude.com` | `Configuration scopes`; `Settings precedence`; `Plugin configuration` | `2026-07-25` |
 | `anthropic.claude-code.skills.locations-discovery` | <https://code.claude.com/docs/en/skills> | `code.claude.com` | `Where skills live`; `How a skill gets its command name` | `2026-08-08` |
 | `anthropic.claude-code.subagents.scope-context` | <https://code.claude.com/docs/en/sub-agents> | `code.claude.com` | `Choose the subagent scope`; `Scope MCP servers to a subagent`; `Preload skills into subagents`; `Enable persistent memory`; `What loads at startup`; `Let subagents spawn their own subagents` | `2026-07-25` |

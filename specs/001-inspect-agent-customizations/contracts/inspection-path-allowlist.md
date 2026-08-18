@@ -328,11 +328,30 @@ target is missing or unreadable yields that file's `file-unreadable` Diagnostic,
 recursive traversal tracks visited directories by real path so a link cycle cannot
 prevent a scan from terminating. Hard links are ordinary files: there is no
 physical-identity grouping, no read-once semantics, and no primary/alias path selection.
-`.git/`, `.hg/`, and `.svn/` internals are excluded from traversal. The exclusion is
-judged on the resolved real path of a directory relative to the walk's own container — the
-Source root, or the fixed subtree a targeted walk was given — so an entry that reaches
-those internals under another name is excluded too, while a Source root whose own path
-contains such a segment is an ordinary root that is scanned normally.
+A directory named `.git`, `.hg`, `.svn`, or `node_modules` is never entered. VCS
+internals are the repository's own machinery rather than customizations authored in it; a
+`node_modules` directory holds packages a package manager installed, so a customization
+file inside one belongs to the package that shipped it and is reproduced from the manifest
+and lockfile rather than authored in the repository under inspection. A product may still
+read such a file at runtime — Claude Code discovers a `CLAUDE.md` in any subdirectory it
+reads a file in — so the exclusion narrows what this product inventories rather than
+describing what an agent can load.
+
+VCS internals are excluded on the resolved real path as well, judged relative to the
+walk's own container — the Source root, or the fixed subtree a targeted walk was given —
+so an entry that reaches them under another name is excluded too, while a Source root
+whose own path contains such a segment is an ordinary root that is scanned normally.
+`node_modules` is excluded by entry name and by nothing else, and only once the entry's
+type is resolved: reaching an object store is wrong however the walk got there, while a
+directory the repository placed at a path of its own is the repository's, whatever its
+link resolves to, so a symbolic link at an authored location is inventoried on that
+location's terms — the same reason links are followed transparently at all (FR-024). The
+exclusion is about a directory, so an entry of that name resolving to a regular file is an
+ordinary file and is admitted by whatever rule names it.
+
+The list is exactly these names: another ecosystem's installed-dependency directory
+arrives with the report that names it, never as a guessed set, and no ignore file is read
+to decide any of it.
 
 A problem confined to one file stays confined (FR-028): an unreadable file yields
 the file-scoped `file-unreadable` Diagnostic, an admitted candidate's NUL-containing

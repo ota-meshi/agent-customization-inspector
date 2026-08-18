@@ -1,5 +1,31 @@
 [
   {
+    "strategyId": "claude.instructions.layering",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "operations": ["append"],
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.memory.locations-load",
+        "url": "https://code.claude.com/docs/en/memory",
+        "officialHost": "code.claude.com",
+        "sections": ["Choose where to put CLAUDE.md files", "How CLAUDE.md files load"],
+        "reviewedOn": "2026-08-18",
+        "establishes": "The documented scopes load from broadest to most specific, all discovered files are concatenated into context rather than overriding each other, content is ordered from the filesystem root down to the working directory, and within one directory CLAUDE.local.md is appended after CLAUDE.md."
+      },
+      {
+        "sourceId": "anthropic.claude-code.sdk.setting-sources",
+        "url": "https://code.claude.com/docs/en/agent-sdk/claude-code-features",
+        "officialHost": "code.claude.com",
+        "sections": ["CLAUDE.md load locations"],
+        "reviewedOn": "2026-08-18",
+        "establishes": "All levels are additive — if both project and user files exist the agent sees both — and there is no hard precedence rule between levels, so conflicting instructions have no documented deterministic winner."
+      }
+    ]
+  },
+  {
     "strategyId": "claude.skills.selection",
     "tool": "claude",
     "surfaces": ["claude-cli-and-ide-clients"],

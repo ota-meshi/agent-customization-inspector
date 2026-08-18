@@ -1,6 +1,7 @@
-// T050/T124/T152/T178/T205: deterministic SKILL and Codex-instruction fixture
-// repositories for the Phase 4, Phase 8, Phase 10, Phase 12, and Phase 15
-// inventory suites (FR-003, FR-004, FR-005, FR-024, FR-028).
+// T050/T124/T152/T178/T205/T226: deterministic SKILL, Codex-instruction, and
+// Claude-instruction fixture repositories for the Phase 4, Phase 8, Phase 10,
+// Phase 12, Phase 15, and Phase 17 inventory suites (FR-003, FR-004, FR-005,
+// FR-024, FR-028).
 //
 // The tree is built to make the allowlist's edges observable rather than
 // assumed: every positive case has a near miss one segment away from it, so a
@@ -954,3 +955,167 @@ export const NUMEROUS_FALLBACK_BASENAMES: readonly string[] = Array.from(
   { length: NUMEROUS_FALLBACK_DECLARATION_COUNT },
   (_unused, index) => `TEAM_GUIDE_${index}.md`,
 );
+
+/** One built Claude instruction fixture repository (T226). */
+export interface ClaudeInstructionFixture {
+  /** The absolute fixture root to scan. */
+  readonly root: string;
+  /**
+   * Every Source-relative Path the `claude.repo.instructions` allowlist must
+   * admit, sorted exactly as the scan publishes them. The any-depth program
+   * reaches the root, `.claude/`, and every descendant alike: which layer a
+   * concrete session would load depends on its working directory and on the
+   * files it reads, neither of which this product observes (FR-009).
+   */
+  readonly expectedClaudeInstructionPaths: readonly string[];
+  /**
+   * The Source-relative Paths `codex.repo.instructions` admits in the same
+   * tree, sorted. The Codex-preservation half of the phase: the same scan
+   * that adds Claude rows must keep admitting exactly these, and no Claude
+   * rule may recognize one of them.
+   */
+  readonly expectedCodexInstructionPaths: readonly string[];
+  /**
+   * Paths that sit one step away from an admitted file and that no shipped
+   * rule may admit — spelling variants, VCS internals, and the target of the
+   * authored import. Listing them explicitly is what makes an over-broad
+   * selector a test failure rather than a silent inventory expansion.
+   */
+  readonly nearMissPaths: readonly string[];
+  /**
+   * The admitted instruction file whose frontmatter block cannot be parsed:
+   * its recognition fails all-or-nothing and publishes the
+   * `recognition-parse-failed` Diagnostic while its complete source stays
+   * readable, making the attempt's generation `partial` (FR-028).
+   */
+  readonly malformedInstructionPath: string;
+  /**
+   * The file the root `CLAUDE.md` names with an authored `@path` token. It
+   * exists on disk precisely so a scan can prove no target is opened: this
+   * phase emits no relationship at all, and a relationship target confers no
+   * read authority wherever one is emitted (T238 owns the imports).
+   */
+  readonly importTargetPath: string;
+  /** The admitted instruction file carrying the literal credential. */
+  readonly secretInstructionPath: string;
+}
+
+/**
+ * Builds the canonical Claude instruction fixture repository (T226).
+ *
+ * Positive cases: the root `CLAUDE.md` — carrying frontmatter, a literal
+ * credential, an authored `@path` import token, and a literal environment
+ * reference — the root `CLAUDE.local.md`, the root `.claude/CLAUDE.md` the
+ * any-depth program reaches through its directory step, a nested
+ * `packages/api/CLAUDE.md`, a nested `packages/api/.claude/CLAUDE.md`, and a
+ * `docs/CLAUDE.md` whose frontmatter cannot be parsed.
+ *
+ * Codex preservation: the root `AGENTS.md`. Claude Code reads `CLAUDE.md`,
+ * not `AGENTS.md` (memory page § AGENTS.md), so the file stays a Codex
+ * instruction row alone however many Claude rules ship.
+ *
+ * Near misses: spelling variants one step from each literal, VCS internals,
+ * an installed package's own `CLAUDE.md` at the root's `node_modules` and at a
+ * nested one, and the import target. The case variants live in a directory holding no
+ * admitted file, because a case-insensitive filesystem would fold a variant
+ * written beside an admitted file into that file itself.
+ */
+export function buildClaudeInstructionFixture(
+  prefix = 'inspector-claude-instructions',
+): ClaudeInstructionFixture {
+  const root = createRepositoryFixtureRoot(prefix);
+
+  // Positive: the root project instruction file, with every content shape the
+  // inventory must keep inert — declarations that stay out of every session
+  // summary, an authored `@path` token whose target is never opened in this
+  // phase, a literal credential readable only through the detail route
+  // (FR-027), and a literal environment reference that must never be resolved
+  // against the process environment (FR-025).
+  write(
+    root,
+    'CLAUDE.md',
+    [
+      '---',
+      'scope: project',
+      `endpoint: ${FIXTURE_ENVIRONMENT_REFERENCE}`,
+      '---',
+      '',
+      '# Project instructions',
+      '',
+      '@docs/setup.md',
+      `token: ${FIXTURE_SECRET_LITERAL}`,
+      '',
+    ].join('\n'),
+  );
+  // Positive: the local variant beside it, and the `.claude` directory form
+  // the page names as the other project instruction location. Both are
+  // reached by the same any-depth programs.
+  write(root, 'CLAUDE.local.md', '# Local instructions\n');
+  write(root, '.claude/CLAUDE.md', '# Directory-form project instructions\n');
+  // Positive: nested files. Claude discovers subdirectory instruction files
+  // on demand as it reads files under them, so a descendant is a layer Claude
+  // can genuinely load — the same nesting that stays a near miss for Codex.
+  write(root, 'packages/api/CLAUDE.md', '# Nested instructions\n');
+  write(root, 'packages/api/.claude/CLAUDE.md', '# Nested directory-form instructions\n');
+  // Positive, and the attempt's one file-confined failure: a frontmatter block
+  // no parser can read. The recognition fails all-or-nothing, its diagnostic
+  // is confined to this file, and the complete source stays readable (FR-028).
+  write(root, 'docs/CLAUDE.md', '---\nscope: [docs\n---\n\n# Docs instructions\n');
+
+  // Codex preservation: `AGENTS.md` is a Codex instruction candidate and never
+  // a Claude one — the memory page states that Claude Code reads `CLAUDE.md`,
+  // not `AGENTS.md`.
+  write(root, 'AGENTS.md', '# Codex instructions\n');
+
+  // Near miss: the target of the authored import. This phase emits no
+  // relationship at all, and no scan may open it.
+  write(root, 'docs/setup.md', '# setup\n');
+  // Near miss: spelling variants one step from each literal. The case
+  // variants live under `tools/`, which holds no admitted file, because a
+  // case-insensitive filesystem would fold one written beside an admitted
+  // file into that file itself.
+  write(root, 'CLAUDE.md.bak', 'backup suffix\n');
+  write(root, 'CLAUDE-local.md', 'hyphenated\n');
+  write(root, 'CLAUDE.local.md.bak', 'backup suffix\n');
+  write(root, 'tools/CLAUDE.MD', 'wrong case\n');
+  write(root, 'tools/claude.md', 'wrong case\n');
+  // Near miss: VCS internals are excluded from traversal entirely.
+  write(root, '.git/CLAUDE.md', 'vcs internal\n');
+  // Near miss: an installed package's own instruction file, at the root's own
+  // `node_modules` and at a nested one. A package manager put them there and
+  // the packages that ship them own them, so they are not this repository's
+  // customizations however deep the walk would otherwise reach
+  // (contracts/inspection-path-allowlist.md).
+  write(root, 'node_modules/some-package/CLAUDE.md', '# package instructions\n');
+  write(root, 'packages/api/node_modules/other-package/CLAUDE.md', '# package instructions\n');
+  // Unrelated file that shares no segment with the selectors.
+  write(root, 'README.md', 'unrelated\n');
+
+  return {
+    root,
+    expectedClaudeInstructionPaths: [
+      '.claude/CLAUDE.md',
+      'CLAUDE.local.md',
+      'CLAUDE.md',
+      'docs/CLAUDE.md',
+      'packages/api/.claude/CLAUDE.md',
+      'packages/api/CLAUDE.md',
+    ],
+    expectedCodexInstructionPaths: ['AGENTS.md'],
+    nearMissPaths: [
+      '.git/CLAUDE.md',
+      'CLAUDE-local.md',
+      'CLAUDE.local.md.bak',
+      'CLAUDE.md.bak',
+      'README.md',
+      'docs/setup.md',
+      'node_modules/some-package/CLAUDE.md',
+      'packages/api/node_modules/other-package/CLAUDE.md',
+      'tools/CLAUDE.MD',
+      'tools/claude.md',
+    ],
+    malformedInstructionPath: 'docs/CLAUDE.md',
+    importTargetPath: 'docs/setup.md',
+    secretInstructionPath: 'CLAUDE.md',
+  };
+}

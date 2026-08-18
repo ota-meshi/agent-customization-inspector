@@ -14,14 +14,39 @@
 //
 // Ordering is by identifier within each array, so two builds of the same
 // contract agree and the materialized fixture is byte-stable.
-import { CLAUDE_REPO_SKILLS_BEHAVIOR, CLAUDE_USER_SKILLS_BEHAVIOR } from './behaviors';
-import { CLAUDE_REPO_SKILL_RULE } from './rules';
-import { CLAUDE_SKILLS_SELECTION_STRATEGY } from './strategies';
+import {
+  CLAUDE_REPO_INSTRUCTIONS_ANCESTOR_BEHAVIOR,
+  CLAUDE_REPO_INSTRUCTIONS_DESCENDANT_BEHAVIOR,
+  CLAUDE_REPO_INSTRUCTIONS_LAUNCH_BEHAVIOR,
+  CLAUDE_REPO_SKILLS_BEHAVIOR,
+  CLAUDE_USER_INSTRUCTIONS_BEHAVIOR,
+  CLAUDE_USER_SKILLS_BEHAVIOR,
+} from './behaviors';
+import { CLAUDE_REPO_INSTRUCTIONS_RULE, CLAUDE_REPO_SKILL_RULE } from './rules';
+import {
+  CLAUDE_INSTRUCTIONS_LAYERING_STRATEGY,
+  CLAUDE_SKILLS_SELECTION_STRATEGY,
+} from './strategies';
 import type { RuleRelations, StrategyRelations } from '../relation-types';
 import type { ClaudeRuleId, ClaudeStrategyId } from '../identifier-types';
 
 /** What each Claude strategy composes. What documents it is its own `evidence`. */
 export const CLAUDE_STRATEGY_RELATIONS: Readonly<Record<ClaudeStrategyId, StrategyRelations>> = {
+  /**
+   * Instruction layering composes all four documented instruction scopes. The
+   * User file is listed even though only the Repository ones are readable:
+   * the strategy describes Claude's runtime, and omitting it would misdescribe
+   * the documented broadest-to-most-specific order as starting at the
+   * repository.
+   */
+  [CLAUDE_INSTRUCTIONS_LAYERING_STRATEGY.strategyId]: {
+    consumesBehaviors: [
+      CLAUDE_REPO_INSTRUCTIONS_ANCESTOR_BEHAVIOR,
+      CLAUDE_REPO_INSTRUCTIONS_DESCENDANT_BEHAVIOR,
+      CLAUDE_REPO_INSTRUCTIONS_LAUNCH_BEHAVIOR,
+      CLAUDE_USER_INSTRUCTIONS_BEHAVIOR,
+    ],
+  },
   /**
    * Skill selection composes both documented skill scopes. Both are listed
    * even though only the Repository scope is readable: the strategy describes
@@ -36,6 +61,20 @@ export const CLAUDE_STRATEGY_RELATIONS: Readonly<Record<ClaudeStrategyId, Strate
 
 /** What each Claude inspection rule is based on and explained by. What evidences it is its own `evidence`. */
 export const CLAUDE_RULE_RELATIONS: Readonly<Record<ClaudeRuleId, RuleRelations>> = {
+  /**
+   * The Repository instruction rule is based on the three Repository lookups
+   * it admits for — the User file is a different Source boundary this rule may
+   * not read — and is explained by the layering strategy, which owns the load
+   * order the rule deliberately does not project (FR-009).
+   */
+  [CLAUDE_REPO_INSTRUCTIONS_RULE.ruleId]: {
+    basedOnBehaviors: [
+      CLAUDE_REPO_INSTRUCTIONS_ANCESTOR_BEHAVIOR,
+      CLAUDE_REPO_INSTRUCTIONS_DESCENDANT_BEHAVIOR,
+      CLAUDE_REPO_INSTRUCTIONS_LAUNCH_BEHAVIOR,
+    ],
+    explainedByStrategies: [CLAUDE_INSTRUCTIONS_LAYERING_STRATEGY],
+  },
   /**
    * The Repository skill rule is based on the Repository lookup alone — the
    * User scope is a different Source boundary this rule may not read — and is

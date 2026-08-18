@@ -243,13 +243,30 @@ export interface SkillInventoryEntryDto {
 
 /**
  * One row of the instructions inventory (contracts/http-api.md § get-session,
- * data-model.md § Inventory unit): the file itself. Unlike a skill row, no
- * authored declaration names an instructions file, so the Source-relative
- * Path is the row's whole identity and the recognizing tools are the row's
- * one recognition fact — the file's own read outcome, size, and diagnostics
- * stay on its `files[]` entry.
+ * data-model.md § Inventory unit): one applicability range and the files that
+ * govern it. Unlike a skill row, no authored declaration names an instructions
+ * file, so a file is identified by its Source-relative Path and grouped by
+ * what it governs — which is why the root `AGENTS.md` and `CLAUDE.md` share
+ * one row. The file's own read outcome, size, and diagnostics stay on its
+ * `files[]` entry.
  */
 export interface InstructionInventoryEntryDto {
+  /**
+   * The glob the row's files govern, relative to the Repository root — `**`
+   * at the root — and the row's identity. Rows are grouped by exact text
+   * equality of this value: nothing parses it, normalizes its spelling, or
+   * decides whether two ranges overlap.
+   */
+  readonly applicabilityRange: string;
+  /**
+   * The files this range governs, in Source-relative Path order. Non-empty: a
+   * range exists because a file derived it.
+   */
+  readonly files: readonly InstructionInventoryFileDto[];
+}
+
+/** One instruction file listed under the range it governs. */
+export interface InstructionInventoryFileDto {
   /**
    * The Source-relative Path of the instruction file — the file's identity
    * (FR-030), which joins to `files[]`.
@@ -257,8 +274,8 @@ export interface InstructionInventoryEntryDto {
   readonly sourceRelativePath: string;
   /**
    * The tools recognizing this file as instructions, deduplicated and in the
-   * closed tool order (FR-004). Non-empty: a file no tool recognizes has no
-   * row.
+   * closed tool order (FR-004). Non-empty: a file no tool recognizes is listed
+   * under no range.
    */
   readonly tools: readonly SupportedTool[];
 }
@@ -326,11 +343,12 @@ export interface SkillFileDetailDto extends FileDetailBase {
 
 /**
  * Detail of a recognized instruction file: the file plus what the one
- * scan-time parse resolved (contracts/http-api.md § get-file-detail). The
- * inventory unit of this kind is the file itself (data-model.md § Inventory
- * unit), so no per-tool identity exists here either: which tools recognize
- * the file is the instructions inventory's fact, and the parse — the same
- * fixed YAML semantics every vendor reads — is published once as the file's.
+ * scan-time parse resolved (contracts/http-api.md § get-file-detail). A
+ * detail is addressed by the file even though the inventory groups rows by
+ * applicability range (data-model.md § Inventory unit), and no per-tool
+ * identity exists here: which tools recognize the file is the instructions
+ * inventory's fact, and the parse — the same fixed YAML semantics every
+ * vendor reads — is published once as the file's.
  */
 export interface InstructionFileDetailDto extends FileDetailBase {
   /** Discriminant: the file is a recognized instruction file. */
@@ -368,10 +386,19 @@ export interface UnrecognizedFileDetailDto extends FileDetailBase {
  * is covered by a relationship-only rule in the central registry
  * (contracts/runtime-composition.md § Normative relationship-only registry);
  * no shipped recognition can produce an edge, so the array would be empty in
- * every response this release returns. A Codex instruction file in particular
- * yields no edge: no cited official page establishes an import or reference
- * syntax for `AGENTS.md`, so an authored `@path`-looking token is source text
- * like any other (tasks.md T217). There is no per-tool recognition list
+ * every response this release returns.
+ *
+ * An instruction file never will, whichever product recognizes it. This
+ * product does not read references out of prose: no vendor page fixes where an
+ * authored `@path`-shaped token ends, so every boundary rule would be this
+ * product's own invention and a wrong one asserts a reference the reader never
+ * wrote. Such a token is source text like any other, and the registry
+ * accordingly carries no relationship-only rule an instruction origin could be
+ * covered by, so the second gate is closed as well (tasks.md T217, T238). The
+ * edges that do arrive with later phases come from declarations a format
+ * delimits — a frontmatter value, a JSON or TOML field, a map key — where the
+ * boundary is the format's rather than this product's.
+ * There is no per-tool recognition list
  * either: the parse the detail shows is the file's, and the recognizing tools
  * with their invocation names are published by the inventory the page already
  * holds. A skill's resources are published as
@@ -621,9 +648,9 @@ export interface SessionSnapshot {
    */
   readonly files: readonly CustomizationFileSummaryDto[];
   /**
-   * The instructions inventory: one entry per recognized instruction file
-   * (data-model.md § Inventory unit — the unit of this kind is the file
-   * itself), in Source-relative Path order.
+   * The instructions inventory: one entry per applicability range
+   * (data-model.md § Inventory unit), in range order, each listing the files
+   * it governs in Source-relative Path order.
    */
   readonly instructions: readonly InstructionInventoryEntryDto[];
   /**

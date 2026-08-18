@@ -25,6 +25,7 @@
 import { dirname, isAbsolute, join, relative, sep } from 'node:path';
 import { readdir, realpath } from './fs-io';
 import {
+  INSTALLED_PACKAGE_DIRECTORIES,
   VCS_INTERNALS,
   isVcsInternalPath,
   rethrowIfResourceExhaustion,
@@ -65,7 +66,8 @@ export class CompanionFile {
 
 /**
  * Lists the regular files accompanying `seedPath` in its own directory,
- * recursively, excluding the seed itself and VCS internals. Display paths are
+ * recursively, excluding the seed itself, VCS internals, and installed-package
+ * directories, exactly as the walk excludes them (traversal.ts). Display paths are
  * relative to that directory, spelled with the exact entry names like every
  * other published path (FR-024), and sorted, so two scans of one tree publish
  * the same list.
@@ -196,12 +198,21 @@ async function collectWithin(
       continue;
     }
     if (isDirectory) {
+      if (INSTALLED_PACKAGE_DIRECTORIES.has(entry.name)) {
+        // Decided once the type is resolved, because this exclusion is about a
+        // directory: a regular file of that name inside a skill's directory is
+        // one of the files that ship with the skill, and dropping it would
+        // show a skill missing a file its own directory has.
+        continue;
+      }
       const real = await realpath(entryPath);
       // A directory whose real path is outside the census root is not part of
       // this customization's directory, however it is reached. VCS internals
       // are excluded on the resolved path too: the name check above cannot see
       // a link that reaches `.git` under another spelling, and a census that
       // followed one would report the object store as a skill's companions.
+      // An installed-package directory is excluded by name alone, exactly as
+      // the walk excludes it (traversal.ts).
       if (!isWithin(seedReal, real) || isVcsInternalPath(rootReal, real)) {
         continue;
       }

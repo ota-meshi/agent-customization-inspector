@@ -367,24 +367,6 @@ const activeTab = ref<SkillDetailTab>('skill');
 const tabButtons = ref<HTMLButtonElement[]>([]);
 
 /**
- * Whether the reader has picked a tab for the open skill. The content rule
- * below still runs whenever the selection changes — a companion is shown in
- * the files panel however the reader arrived at it — but a detail that merely
- * came back for the same selection never overrides this: the open effect
- * re-requests the same path when a newer generation is adopted, and that
- * content was refetched rather than reselected. Cleared when the skill
- * changes, because a different skill is a different page; a file change
- * within one skill keeps it, because choosing a file is not choosing a tab.
- */
-let readerChoseTab = false;
-
-/** Selects a tab for the reader, recording that the strip is theirs now. */
-function chooseTab(tab: SkillDetailTab): void {
-  readerChoseTab = true;
-  activeTab.value = tab;
-}
-
-/**
  * The page's root, for the stale guard and {@link selectTab}. Declared before
  * the tab-selection watch below: that watch is immediate, so it calls
  * `selectTab` synchronously during setup, and a `const` declared after it
@@ -438,7 +420,7 @@ function onTabKeydown(event: KeyboardEvent, index: number): void {
     return;
   }
   event.preventDefault();
-  chooseTab(next);
+  activeTab.value = next;
   document.getElementById(skillTabId(next))?.focus();
 }
 
@@ -448,10 +430,24 @@ function onTabKeydown(event: KeyboardEvent, index: number): void {
  * file, and landing them on the declarations would answer a question they did
  * not ask.
  *
- * Keyed on the skill rather than on the open file: selecting a file inside the
- * files panel must not send the reader back to the other tab, and it changes
- * the open file on every click.
+ * Keyed on the open file as well as the skill, because a history step to
+ * another of the skill's files changes the URL and the tree's marking and the
+ * panel holding that file has to come with them. What a file change must not
+ * do is pull the reader out of the list they are using, so the branches below
+ * decide per case instead of resetting the strip on every change.
+ *
+ * Decided once per (skill, open file), not once per arrival. A commit drops
+ * the open detail and the route re-requests the same path under the new
+ * generation (FR-030), so a rescan while the reader is reading takes the
+ * detail away and brings the same one back. Deciding again on that round trip
+ * would send a reader who had opened the files list back to the declarations
+ * — twice, since the empty moment in between reads as a skill with nothing in
+ * it. What the current selection belongs to is remembered below — the skill,
+ * the open file, and whether the declarations are in hand, because their
+ * arrival is its own decision — so anything else decides on its own arrival,
+ * and leaving the route drops the memory with the component.
  */
+const tabDecidedFor = ref<string | null>(null);
 watch(
   [
     () => owner.value?.definition.sourceRelativePath,
@@ -459,20 +455,17 @@ watch(
     () => skillPresentation.value !== null,
   ],
   ([entryPathValue, openPathValue, hasPresentation], previous) => {
-    const skillChanged = previous === undefined || previous[0] !== entryPathValue;
-    const fileChanged = previous === undefined || previous[1] !== openPathValue;
-    if (skillChanged) {
-      readerChoseTab = false;
-    }
-    // Nothing about the selection changed, so this is the same file's detail
-    // going away and coming back: `SessionViewState` drops the open detail
-    // when it adopts a newer generation and the open effect re-requests the
-    // same path, which flips the presentation off and on. A strip the reader
-    // has set stays as they set it through that — the content was refetched,
-    // not reselected ({@link chooseTab}).
-    if (!skillChanged && !fileChanged && readerChoseTab) {
+    if (entryPathValue === undefined) {
+      // Nothing is in hand: the first render before the detail arrives, and
+      // the gap a rescan opens. There is no tab to decide between yet, and the
+      // strip keeps whatever the reader last chose until there is.
       return;
     }
+    const decidingFor = `${entryPathValue}\u0000${openPathValue}\u0000${hasPresentation}`;
+    if (tabDecidedFor.value === decidingFor) {
+      return;
+    }
+    tabDecidedFor.value = decidingFor;
     // A companion is shown in the files panel, so that is where the reader has
     // to be to see it — however they arrived. Keying only on the skill left a
     // history step to another of its files changing the URL and the tree's
@@ -483,7 +476,7 @@ watch(
     // panel has nothing in it — no declarations and no instructions — while the
     // complete source is one tab away, and opening on an empty panel would read
     // as a file with nothing in it (FR-028).
-    if (!hasPresentation || (entryPathValue !== undefined && entryPathValue !== openPathValue)) {
+    if (!hasPresentation || entryPathValue !== openPathValue) {
       selectTab('files');
       return;
     }
@@ -494,6 +487,7 @@ watch(
     // change leaves the tab alone: choosing `SKILL.md` from the file list is a
     // file selection, and answering it by leaving the list would undo the
     // reader's own click.
+    const skillChanged = previous === undefined || previous[0] !== entryPathValue;
     const declarationsArrived = previous !== undefined && !previous[2] && hasPresentation;
     if (skillChanged || declarationsArrived) {
       selectTab('skill');
@@ -933,7 +927,7 @@ onBeforeUnmount(() => {
           :aria-controls="skillTabPanelId(tab)"
           :aria-selected="tab === activeTab"
           :tabindex="tab === activeTab ? 0 : -1"
-          @click="chooseTab(tab)"
+          @click="activeTab = tab"
           @keydown="onTabKeydown($event, index)"
         >
           {{ SKILL_DETAIL_TAB_TEXT[tab] }}

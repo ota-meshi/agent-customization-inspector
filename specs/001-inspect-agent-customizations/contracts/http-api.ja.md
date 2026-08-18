@@ -224,8 +224,10 @@ InspectionSession
 │       binary adds only sizeBytes; unknown adds nothing. A file publishes its own facts
 │       only; what it was recognized as belongs to a per-kind inventory below
 ├── instructions[]
-│   └── sourceRelativePath, tools[] — 認識された instruction file 1つにつき1行、
-│       それを認識した product を closed tool order で持つ
+│   └── applicabilityRange string,
+│       files[] { sourceRelativePath, tools[] } — 適用範囲1つにつき1行、
+│       その範囲が担当する各 file を、その file を認識した product の
+│       closed tool order とともに持つ
 ├── skills[]
 │   └── name string,
 │       definitions[] { sourceRelativePath, tool, parseStatus, invocationName,
@@ -259,7 +261,7 @@ recordも1件であり（FR-028）、そのfileの失敗した各定義がそれ
 それを1回だけ列挙する。Detailは公開されている場合にpageを所有する定義のinvocation nameを
 row名の傍らに示す（data-model.md § Skillの表示）。値はrowをkeyする同じprojectionから来るため、vendor
 namingがserverとclientの間で乖離することはない。MCP serverはcarrier内の`[mcp_servers.*]`宣言1つであり、admit済みの`.codex/config.toml` 1つは
-宣言したserverの数だけrowを公開する。Instructions fileはfile自身である。他のkindの単位は、その一覧を出荷するtaskが、そのkind自身の
+宣言したserverの数だけrowを公開する。Instructions rowは1つの適用範囲 — 担当するfile自身のpathが導出するglobであり、Repository rootでは`**` — であり、担当する各fileを列挙する。したがってrootの`AGENTS.md`と`CLAUDE.md`は1 rowを共有し、`packages/api/CLAUDE.md`は自身のrowを持つ（data-model.md § 一覧の単位）。他のkindの単位は、その一覧を出荷するtaskが、そのkind自身の
 vendor contractから決める。したがって物理fileは
 `files[]`に自身の事実 — path、read結果、size、diagnostic — とともに1度だけ現れ、各kindの一覧は
 `sourceRelativePath`で参照してそれらを繰り返さない。定義が持つrecognition所有のparse事実だけが
@@ -499,16 +501,21 @@ semanticsを読むため、extractionは`(file, kind)`ごとに1回実行され�
 それを`presentation`として1回だけ公開する。Toolごとのrecognition一覧は存在しない:
 どのtoolがこのfileを認識するか、各toolのinvocation name、そのparse stateはinventoryの
 事実（`skills[].definitions[]`）であり、routeのtool segmentがpageの対象定義を言う。
-instruction fileの認識toolはそのinventory row（`instructions[]`）の事実であり、その
-detail routeはtool segmentを持たない。このkindの単位はfileそのものだからである。
+instruction fileの認識toolはそのinventory row（`instructions[]`）でfileの隣に
+列挙され、detail routeはtool segmentを持たない。pageが示す内容を分ける
+toolごとの事実が存在しないためである。
 Admission recordも存在しない: どのruleがreadを認可しどこにmatchしたかは、relationship
 phaseが読むことになるcommit済みgenerationの内部record（data-model.md § ToolRecognition）
 であり、session responseは運ばない — したがって設定済みfallback instruction fileの
 detailは、staticなものと形の上で区別できない。Edge recordの`relationships` arrayも存在しない —
 shipped recognitionはedgeを1つも生成できないため、すべてのresponseで空になる。これは
-それを埋めるrelationship phaseとともに到着する。特にCodex instruction fileは1つも
-生成しない: 引用済みのofficial pageは`AGENTS.md`のimport/reference syntaxを何も
-確立していないため、書かれた`@path`状のtokenはsource textのままである。
+それを埋めるrelationship phaseとともに到着する。Instruction fileは、どのproductが認識しても
+1つも生成しない。この製品はprose中から参照を読み取らない: 書かれた`@path`状のtokenがどこで
+終わるかを定めたvendor pageは無く、境界ruleはすべてこの製品自身の発明になり、誤ったruleは
+読者が書いていない参照を主張することになるからである。そのtokenはsource textのままであり、
+instruction originをcoverするrelationship-only ruleも存在しない。後続phaseが公開するedgeは、
+formatが区切る宣言 — frontmatterの値、JSON/TOMLのfield、mapのkey — に由来する。境界を決めるのは
+formatであって、この製品ではない。
 
 各frontmatter entryの`keyKind`はclosed union `string | number | boolean | null`であり、
 宣言keyのYAML 1.2 core schema下でのparse済みの型である。宣言のidentityは`(keyKind, key)`の

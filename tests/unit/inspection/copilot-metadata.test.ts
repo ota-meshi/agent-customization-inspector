@@ -27,7 +27,9 @@ import {
 import type { ToolRecognition } from '../../../src/server/inspection/recognizers/candidate';
 
 const [copilotSkillRule] = COPILOT_REPOSITORY_RULES;
-const [claudeSkillRule] = CLAUDE_REPOSITORY_RULES;
+const claudeSkillRule = CLAUDE_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'claude.repo.skill',
+)!;
 
 /**
  * Which authored selector of `copilot.repo.skill` a fixture path matches: the

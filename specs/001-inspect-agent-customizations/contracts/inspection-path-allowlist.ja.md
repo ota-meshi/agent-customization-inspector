@@ -272,11 +272,26 @@ product内で唯一のpattern評価であり、一度に1つのentry nameへ適�
 readするagentが見るものを表示するからである。Targetがmissingまたはunreadableなlinkはそのfileの
 `file-unreadable` Diagnosticになり、recursiveなtraversalはreal pathで訪問済みdirectoryを追跡して
 link cycleがscanの終了を妨げないようにする。Hard linkは通常のfileであり、physical-identity grouping、
-read-once semantics、primary/alias path selectionは存在しない。`.git/`、`.hg/`、`.svn/`内部の判定は、directoryの解決済みreal pathをwalk自身のcontainer — Source root、
-またはtargeted walkに与えられたfixed subtree — からの相対で行う。したがって別名でそれらの内部へ到達する
-entryも除外される一方、Source root自身のpathにそのsegmentが含まれているだけの場合は通常のrootとして
-走査する。`.git/`、`.hg/`、`.svn/`内部は
-traversal対象外とする。
+read-once semantics、primary/alias path selectionは存在しない。`.git`、`.hg`、`.svn`、`node_modules`という名前のdirectoryには決して入らない。VCS内部は
+repository自身の機構であってrepositoryでauthorされたcustomizationではない。`node_modules`
+directoryはpackage managerがinstallしたpackageを保持するため、その中のcustomization fileは
+それをshipしたpackageのものであり、検査対象のrepositoryでauthorされたものではなくmanifestと
+lockfileから再現される。製品はruntimeでそのfileを読み得る — Claude Codeはfileをreadした
+subdirectoryの`CLAUDE.md`を発見する — ため、この除外はagentがloadできるものの記述ではなく、
+この製品がinventoryする対象を狭めるものである。
+
+VCS内部は解決済みreal pathでも除外し、その判定はwalk自身のcontainer — Source root、または
+targeted walkに与えられたfixed subtree — からの相対で行う。したがって別名でそこへ到達するentryも
+除外される一方、Source root自身のpathにそのsegmentが含まれているだけの場合は通常のrootとして
+走査する。`node_modules`はentry名だけで除外し、それ以外では除外しない。さらにentryのtypeを解決した後で
+判定する: object storeへ到達するのはwalkの経路によらず誤りである一方、repositoryが自身のpathに
+置いたdirectoryは、そのlinkが何へ解決されようとrepositoryのものだからである。したがって
+authorされた場所にあるsymbolic linkは、その場所の条件でinventoryする — linkを透過的に辿るのと
+同じ理由である（FR-024）。この除外はdirectoryについてのものなので、その名前のentryが通常のfileへ
+解決される場合は通常のfileであり、それを名指すruleが admit する。
+
+対象はこれらの名前だけであり、他のecosystemのinstalled-dependency directoryはそれを報告する
+事例とともに追加する。推測で集合を広げることはせず、除外の判断にignore fileを読むこともしない。
 
 1 fileに限定された問題はそのfileに閉じる（FR-028）。Unreadable fileはfile-scopedな
 `file-unreadable` Diagnostic、admit済みcandidateのNULを含むcontentは`file-content-binary`となる —

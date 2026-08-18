@@ -78,8 +78,10 @@ const rowCount = computed(() =>
       <template v-if="kind === 'instructions'">
         <InstructionRow
           v-for="entry in instructionRows"
-          :key="entry.sourceRelativePath"
+          :key="entry.applicabilityRange"
           :entry="entry"
+          :files-by-path="filesByPath"
+          :diagnostics="diagnostics"
         />
       </template>
       <template v-if="kind === 'skill'">

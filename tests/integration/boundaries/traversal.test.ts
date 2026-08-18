@@ -21,11 +21,15 @@ import {
 import {
   ANY_DIRECTORIES,
   TraversalPlan,
-  type CompiledInspectionRule,
+  type CompiledStaticNonInstructionRule,
 } from '../../../src/server/inspection/rules/registry';
 import { runTraversalScan } from '../../../src/server/inspection/traversal';
 import { assembleScanPublication } from '../../../src/server/inspection/scan';
-import { CODEX_REPO_SKILL_RULE } from '../../../src/shared/registries/codex/rules';
+import {
+  CODEX_REPO_INSTRUCTIONS_RULE,
+  CODEX_REPO_SKILL_RULE,
+} from '../../../src/shared/registries/codex/rules';
+import { CodexCompiledInstructionRule } from '../../../src/server/inspection/rules/codex';
 import { CODEX_RULE_RELATIONS } from '../../../src/shared/registries/codex/relations';
 import type { RecognitionParseStatus } from '../../../src/shared/api-types';
 import { RecognitionExtraction } from '../../../src/server/inspection/parsers/extraction';
@@ -55,7 +59,7 @@ const AGENTS_PLAN = TraversalPlan.fromPrograms({ kind: 'repository' }, [
 // under test with a stand-in rule identity rather than the shipped Codex
 // catalog: the matrix must behave identically for whichever rule admitted a
 // candidate.
-function codexSkillRule(plan: TraversalPlan): CompiledInspectionRule {
+function codexSkillRule(plan: TraversalPlan): CompiledStaticNonInstructionRule {
   return {
     rule: CODEX_REPO_SKILL_RULE,
     relations: CODEX_RULE_RELATIONS['codex.repo.skill'],
@@ -65,7 +69,14 @@ function codexSkillRule(plan: TraversalPlan): CompiledInspectionRule {
   };
 }
 
-const AGENTS_RULES: readonly CompiledInspectionRule[] = [codexSkillRule(AGENTS_PLAN)];
+const AGENTS_RULES: readonly CompiledStaticNonInstructionRule[] = [codexSkillRule(AGENTS_PLAN)];
+
+// The shipped Codex instruction rule, compiled as itself: the stand-in
+// recognitions below are of the `instructions` kind, and an instruction
+// recognition's range is answered by the rule that admitted it, so the
+// admission has to be a rule that can answer. Its own plan is irrelevant here —
+// the traversal runs `AGENTS_RULES` above.
+const INSTRUCTION_ADMISSION_RULE = new CodexCompiledInstructionRule(CODEX_REPO_INSTRUCTIONS_RULE);
 
 // A recognizer stand-in for the FR-028 parse-failure arm. The shipped Codex
 // recognizer reaches `failed` only through a malformed `SKILL.md`, so the
@@ -83,9 +94,11 @@ function fakeRecognition(
   // extractor is `failed`, an extractor with nothing to return is `parsed`,
   // none is `not-attempted` — because the status is the extraction's own
   // fact, not a field to set. The kind is the one the fixture's `AGENTS.md`
-  // actually is, with no per-kind detail; a failed recognition publishes no
-  // metadata at all, and this stand-in extracts nothing in the first place
-  // (FR-028), so the admissions are empty.
+  // actually is; a failed recognition publishes no metadata at all, and this
+  // stand-in extracts nothing in the first place (FR-028). It still carries an
+  // admission, because a recognition exists only where a rule admitted the
+  // file, and an instruction recognition asks that rule what the file
+  // governs.
   const extraction =
     parseStatus === 'failed'
       ? RecognitionExtraction.run('', () => {
@@ -94,7 +107,9 @@ function fakeRecognition(
       : parseStatus === 'parsed'
         ? RecognitionExtraction.run('', () => undefined)
         : RecognitionExtraction.run<undefined>('', null);
-  return ToolRecognition.recognize(sourceRelativePath, tool, 'instructions', extraction, []);
+  return ToolRecognition.recognize(sourceRelativePath, tool, 'instructions', extraction, [
+    { compiled: INSTRUCTION_ADMISSION_RULE, origin: { planIndex: 0, selectorIndex: 0 } },
+  ]);
 }
 
 function bootstrapSession(root: string) {

@@ -66,16 +66,21 @@ test.describe('instruction rows with an admitted carrier', () => {
     // selected on arrival.
     await expect(page.getByRole('tab', { selected: true })).toContainText('Instructions');
     const items = page.getByRole('tabpanel').locator('.aci-item');
-    await expect(items).toHaveCount(3);
-    // Rows are in Source-relative Path order — the row's own key — and each
-    // states its recognizing product. The configured fallback the carrier
-    // declares lists beside the static pair; the absent declared name derives
-    // nothing. Which file a Codex session would select is runtime this
-    // product does not project.
+    // Every file sits at the Repository root, so they share the root's one
+    // applicability range — the row's unit (data-model.md § Inventory unit).
+    await expect(items).toHaveCount(1);
+    await expect(items.locator('.aci-instruction-row__range')).toHaveText('**');
+    // Files are in Source-relative Path order under the range, and each states
+    // its recognizing product. The configured fallback the carrier declares
+    // lists beside the static pair; the absent declared name derives nothing.
+    // Which file a Codex session would select is runtime this product does not
+    // project.
     const paths = await page.getByRole('tabpanel').locator('.aci-item .aci-path').allInnerTexts();
     expect(paths).toEqual(['AGENTS.md', 'AGENTS.override.md', 'TEAM_GUIDE.md']);
-    for (const item of await items.all()) {
-      await expect(item).toContainText('OpenAI Codex');
+    const fileEntries = page.getByRole('tabpanel').locator('.aci-instruction-row__files > li');
+    await expect(fileEntries).toHaveCount(3);
+    for (const entry of await fileEntries.all()) {
+      await expect(entry).toContainText('OpenAI Codex');
     }
     const text = await page.locator('main').innerText();
     expect(text).not.toContain('ABSENT_GUIDE.md');
@@ -83,7 +88,7 @@ test.describe('instruction rows with an admitted carrier', () => {
 
   test('never shows the carrier: no row, no tab, no mention', async ({ page }) => {
     await page.goto(host.origin);
-    await expect(page.getByRole('tabpanel').locator('.aci-item')).toHaveCount(3);
+    await expect(page.getByRole('tabpanel').locator('.aci-item')).toHaveCount(1);
     // The configuration input is not part of the inventory: the one kind tab
     // is Instructions, and the carrier's path appears nowhere on the page.
     await expect(page.getByRole('tab')).toHaveCount(1);
@@ -94,7 +99,7 @@ test.describe('instruction rows with an admitted carrier', () => {
 
   test('shows no near-miss path and no authored source text', async ({ page }) => {
     await page.goto(host.origin);
-    await expect(page.getByRole('tabpanel').locator('.aci-item')).toHaveCount(3);
+    await expect(page.getByRole('tabpanel').locator('.aci-item')).toHaveCount(1);
     const text = await page.locator('main').innerText();
     expect(text).not.toContain('docs/AGENTS.md');
     // The inventory carries no `sourceText`, so a credential or an
@@ -110,25 +115,30 @@ test.describe('instruction rows with an admitted carrier', () => {
 
   test('narrows the rows with the tool and path filters', async ({ page }) => {
     await page.goto(host.origin);
-    await expect(page.getByRole('tabpanel').locator('.aci-item')).toHaveCount(3);
+    await expect(page.getByRole('tabpanel').locator('.aci-item')).toHaveCount(1);
 
-    // Tool: the one recognizing product keeps every row.
+    const fileEntries = page.getByRole('tabpanel').locator('.aci-instruction-row__files > li');
+
+    // Tool: the one recognizing product keeps every file.
     await page.getByLabel('Tool').selectOption('codex');
-    await expect(page.getByRole('tabpanel').locator('.aci-item')).toHaveCount(3);
+    await expect(page.getByRole('tabpanel').locator('.aci-item')).toHaveCount(1);
+    await expect(fileEntries).toHaveCount(3);
 
-    // Path composes over the same population.
+    // Path composes over the same population, narrowing the files inside the
+    // range rather than the range itself.
     await page.getByLabel('Path contains').fill('override');
     await expect(page.getByRole('tabpanel').locator('.aci-item')).toHaveCount(1);
+    await expect(fileEntries).toHaveCount(1);
     await expect(page.getByRole('tabpanel').locator('.aci-item').first()).toContainText(
       'AGENTS.override.md',
     );
     await expect(page.getByRole('status').filter({ hasText: 'Showing' })).toContainText(
-      'Showing 1 of 3',
+      'Showing 1 of 1',
     );
 
-    // Clearing restores the committed rows.
+    // Clearing restores every file under the committed range.
     await page.getByRole('button', { name: 'Clear filters' }).click();
-    await expect(page.getByRole('tabpanel').locator('.aci-item')).toHaveCount(3);
+    await expect(fileEntries).toHaveCount(3);
   });
 });
 

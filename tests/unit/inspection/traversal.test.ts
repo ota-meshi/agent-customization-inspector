@@ -351,6 +351,21 @@ describe('VCS-internal exclusion by resolved path', () => {
     ).toBe(true);
   });
 
+  it('leaves an installed-package path to the entry-name check alone', () => {
+    // `node_modules` is excluded by entry name and nowhere else: a directory
+    // the repository placed at a path of its own is the repository's, whatever
+    // its link resolves to, so a resolved path running through an install tree
+    // is not by itself a reason to skip it — a symbolic link at an authored
+    // location is inventoried on that location's terms (FR-024;
+    // contracts/inspection-path-allowlist.md).
+    expect(isVcsInternalPath(asPath('', 'repo'), asPath('', 'repo', 'node_modules', 'pkg'))).toBe(
+      false,
+    );
+    expect(
+      isVcsInternalPath(asPath('', 'container'), asPath('', 'elsewhere', 'node_modules', 'pkg')),
+    ).toBe(false);
+  });
+
   it('excludes an alias target sharing no prefix with the container', () => {
     // The POSIX stand-in for a Windows cross-drive alias: `path.relative`
     // between two drives yields an absolute path, so a relative()-based check

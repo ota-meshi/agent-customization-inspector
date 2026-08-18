@@ -517,10 +517,10 @@ Verify:
    request returns its real error message to the browser — there is no generic error
    envelope or closed operational-event schema — and that message is shown to the user
    while the session stays usable.
-5. Malformed, binary, unreadable, broken-symlink, disappeared-before-read, cyclic,
-   traversal, and boundary-crossing fixtures produce actionable safe per-file Diagnostics
-   (`recognition-parse-failed`, `file-content-binary`, `file-unreadable`, and the
-   reference diagnostics) while every unaffected file stays discoverable and
+5. Malformed, binary, unreadable, broken-symlink, disappeared-before-read, cyclic, and
+   traversal fixtures produce actionable safe per-file Diagnostics
+   (`recognition-parse-failed`, `file-content-binary`, and `file-unreadable`)
+   while every unaffected file stays discoverable and
    viewable through a `partial` commit after complete traversal. A symlinked customization
    file is instead read transparently and its linked content is inspected; only a link
    whose target is missing or unreadable yields `file-unreadable`. A failure not confined to
@@ -1479,8 +1479,8 @@ OS-attributable access-time movement separately without counting it for or again
 criterion.
 
 The SC-007 manifest contains at least one fixture for every file-confined outcome class —
-malformed content, binary content, invalid non-NUL UTF-8 replacement decoding, an
-unreadable file (including a broken symbolic link), and a boundary-crossing reference —
+malformed content, binary content, invalid non-NUL UTF-8 replacement decoding, and an
+unreadable file (including a broken symbolic link) —
 and for every
 failure class — a session-API request rejected before job acceptance, a failure after an
 accepted session-API job, and a startup failure. It also exercises a post-acceptance Global-disable
@@ -1537,8 +1537,7 @@ unreadable — yields `file-unreadable`; an admitted candidate's NUL-containing 
 yields the diagnostic-only `file-content-binary` item, where a census-listed companion's
 binary bytes yield none; a parser or extractor failure yields
 `recognition-parse-failed` while the complete readable source stays displayed and
-comparison-eligible; and a boundary-crossing reference is reported without reading its
-target. Each fixture proves that the affected item retains enough Source and
+comparison-eligible. Each fixture proves that the affected item retains enough Source and
 source-relative-path context to resolve the problem and that the same scan still publishes
 every complete unaffected file. A missing or unreadable source root instead fails that
 Source's scan with its source-scoped `root-unreadable` diagnostic while the session stays

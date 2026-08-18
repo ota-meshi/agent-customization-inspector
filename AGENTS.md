@@ -31,6 +31,16 @@ policy agreed in conversation and left there is a policy the next session does n
 - When a user corrects a factual mistake, audit the reasoning pattern that produced it and recheck
   the other findings that used the same shortcut before continuing. Correcting only the reported
   instance leaves the same failure ready to recur.
+- Read the whole clause before saying what it requires. A requirement here is often one
+  long sentence-chain, so its opening is not a summary of it: characterizing FR-007 from
+  its first lines produced the claim that it does not fix the inventory row unit, which is
+  the one thing that sentence-chain settles. Quote from the text you actually read to the
+  end, or say you have not read it.
+- Before asking the user to decide, search the artifacts for the decision. A question the
+  specification already answers costs the user their attention and invites a second,
+  conflicting answer to a settled question — and the settled answer is usually the better
+  one, because it was made with the whole contract in view. Ask only what the artifacts
+  leave open, and say which artifact you checked.
 
 ## Documentation content policy
 
@@ -229,6 +239,28 @@ Above Expediency) to day-to-day coding decisions:
   boundaries that tests satisfy with literal doubles (`CandidateRecognition`,
   `SessionRpcChannel`). Vue component props stay interfaces because the framework
   consumes them as shapes.
+- A member's home is decided by what it is a fact about, never by what is
+  convenient to reach. A capability only some members of a family have does not
+  belong on the type that represents the whole family: a type that spans several
+  kinds must not declare a member meaningful to one of them, because every other
+  kind is then forced to answer a question it has no answer to — and an
+  implementation written to satisfy the compiler rather than a caller is the
+  proof that the member is in the wrong place. When a shipped implementation's
+  own comment has to say that nothing calls it, that is the signal. Give the
+  narrower family its own unit, and let callers hold the closed union those
+  units form, discriminated by the field that already tells them apart. The
+  compiler then narrows to the unit that can answer, and no call site asserts
+  a capability: a type predicate over one wide class — `x is Narrow` returned
+  from a field comparison — proves nothing about the members it claims, so it
+  is a cast wearing a guard's clothes. Each unit proves its own half in its
+  constructor and declares the narrow discriminant its class body promises. Example: an instruction file's applicability range is a fact about an
+  `instructions` rule, so it lives on the instruction compiled unit rather than
+  on the rule unit every kind shares — a skill rule answers nothing about it.
+- The same test applies one level up: a field on a shipped record that is empty
+  for every row but one is describing one vendor's fact through a shape every
+  vendor carries. Put the fact where it belongs — in that vendor's own module,
+  beside the record it describes — the way each vendor's configuration reader
+  lives beside its rules and the scan composes it without knowing the vendor.
 
 ## Agent-run Playwright verification policy
 

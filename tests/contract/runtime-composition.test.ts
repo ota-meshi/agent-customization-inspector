@@ -1,6 +1,6 @@
-// T219: the Codex instruction slice of the runtime-composition graph, with
-// reciprocal contract references (contracts/runtime-composition.md § Codex
-// rows; FR-035, FR-009).
+// T219/T239: the instruction slice of the runtime-composition graph, with
+// reciprocal contract references (contracts/runtime-composition.md § Codex and
+// Claude rows; FR-035, FR-009).
 //
 // The generic registry gates (`vendor-behaviors.test.ts`) prove every record
 // resolves, cites, and serializes; what this suite pins is the instruction
@@ -160,4 +160,83 @@ describe('the Codex instruction composition strategies (T219)', () => {
       }
     },
   );
+});
+
+describe('the Claude instruction composition strategy (T239)', () => {
+  it('ships one operation, which is the whole documented statement', () => {
+    // `append` alone, and the absence is the content: every discovered file is
+    // added rather than one winning, and the page states there is no hard
+    // precedence between levels. A `select-first` or `replace` here would
+    // record a resolution the vendor does not document, which is exactly what
+    // the instruction detail must not project (FR-009,
+    // contracts/runtime-composition.md § claude.instructions.layering).
+    const layering = RUNTIME_COMPOSITION_STRATEGIES['claude.instructions.layering'];
+    expect(layering.tool).toBe('claude');
+    expect(layering.operations).toEqual(['append']);
+    expect(layering.documentationStatus).toBe('documented');
+    expect(layering.lifecycleQualifiers).toEqual([]);
+  });
+
+  it('composes the strategy from all four documented scopes, by identity', () => {
+    // The User file is listed even though only the Repository scopes are
+    // readable: the strategy describes Claude's runtime, and omitting it would
+    // misdescribe the documented broadest-to-most-specific order as starting
+    // at the repository (claude/relations.ts).
+    const consumed = STRATEGY_RELATIONS['claude.instructions.layering'].consumesBehaviors;
+    expect(consumed.map((behavior) => behavior.behaviorId)).toEqual([
+      'claude.behavior.repo.instructions.ancestor',
+      'claude.behavior.repo.instructions.descendant',
+      'claude.behavior.repo.instructions.launch',
+      'claude.behavior.user.instructions',
+    ]);
+    for (const behavior of consumed) {
+      expect(VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId]).toBe(behavior);
+    }
+  });
+
+  it('explains the instruction rule through that strategy alone, by identity', () => {
+    // The rule rests on the three Repository lookups it admits for — the User
+    // file is a different Source boundary it may not read — and names one
+    // strategy, which owns the load order the rule deliberately does not
+    // project. The three Repository behaviors are what the any-depth matcher
+    // covers between them, so a rule based on fewer would admit paths no
+    // documented lookup reaches.
+    const rule = RULE_RELATIONS['claude.repo.instructions'];
+    expect(rule.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'claude.behavior.repo.instructions.ancestor',
+      'claude.behavior.repo.instructions.descendant',
+      'claude.behavior.repo.instructions.launch',
+    ]);
+    expect(rule.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual([
+      'claude.instructions.layering',
+    ]);
+    for (const strategy of rule.explainedByStrategies) {
+      expect(RUNTIME_COMPOSITION_STRATEGIES[strategy.strategyId]).toBe(strategy);
+    }
+    for (const behavior of rule.basedOnBehaviors) {
+      expect(VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId]).toBe(behavior);
+    }
+  });
+
+  it('states the contract row reciprocally with the shipped record, in both languages', () => {
+    // Same gate as the Codex rows: the bilingual contract is the normative
+    // side and the registry its implementation counterpart, so a shipped
+    // operation the row does not state — or a row behavior the relation does
+    // not consume — fails here rather than in review.
+    const record = RUNTIME_COMPOSITION_STRATEGIES['claude.instructions.layering'];
+    const consumed = STRATEGY_RELATIONS['claude.instructions.layering'].consumesBehaviors.map(
+      (behavior) => behavior.behaviorId,
+    );
+    const cited = record.evidence.map((citation) => citation.sourceId);
+    expect(cited.length).toBeGreaterThan(0);
+    for (const path of [
+      'specs/001-inspect-agent-customizations/contracts/runtime-composition.md',
+      'specs/001-inspect-agent-customizations/contracts/runtime-composition.ja.md',
+    ]) {
+      const row = parseStrategyRow(path, 'claude.instructions.layering');
+      expect(row.operations, path).toEqual(record.operations);
+      expect(row.consumesBehaviors, path).toEqual(consumed);
+      expect(row.evidence, path).toEqual(cited);
+    }
+  });
 });

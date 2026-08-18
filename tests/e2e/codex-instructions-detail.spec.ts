@@ -88,11 +88,12 @@ test.afterEach(async () => {
 /** Opens the named instruction file's detail route from the inventory. */
 async function openInstruction(page: import('@playwright/test').Page, path: string): Promise<void> {
   await page.goto(host.origin);
-  // Every recognizing product's link addresses the same file detail: the
-  // kind's unit is the file, so the row offers the route per product and
-  // either opens the same page (T224).
+  // Scoped to the file's own entry inside its range row: the row's unit is the
+  // applicability range, so one row lists several files and only the entry
+  // holding this path offers this file's links. Every recognizing product's
+  // link addresses the same file detail, so the first one opens it (T224).
   await page
-    .locator('.aci-item', { hasText: path })
+    .locator('.aci-instruction-row__files > li', { hasText: path })
     .locator('.aci-instruction-row__tools a')
     .first()
     .click();

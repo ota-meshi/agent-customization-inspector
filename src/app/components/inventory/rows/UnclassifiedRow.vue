@@ -9,7 +9,7 @@
 // listed the file if one had recognized it.
 import { computed } from 'vue';
 import RowDiagnostics from './RowDiagnostics.vue';
-import { FILE_ENCODING_TEXT, escapeControlCharacters } from '../../../../shared/entities';
+import { FILE_ENCODING_TEXT, pathPresentationLabel } from '../../../../shared/entities';
 import type {
   CustomizationFileSummaryDto,
   SerializedDiagnostic,
@@ -26,11 +26,13 @@ const props = defineProps<{
 const readOutcome = computed(() => FILE_ENCODING_TEXT[props.file.encoding]);
 
 /**
- * The path as presentation text: control characters escaped (data-model.md
- * § SourceRelativePath), so an authored name spanning lines cannot read as
- * two rows. A computed keeps the pre-wrap paragraph's binding on one line.
+ * The path as presentation text (data-model.md § SourceRelativePath): control
+ * characters escaped, so an authored name spanning lines cannot read as two
+ * rows, and spelled out in full when escaping alone would still draw nothing —
+ * this row's path is all it is identified by, and a blank one identifies no
+ * file. A computed keeps the pre-wrap paragraph's binding on one line.
  */
-const pathText = computed(() => escapeControlCharacters(props.file.sourceRelativePath));
+const pathText = computed(() => pathPresentationLabel(props.file.sourceRelativePath));
 </script>
 
 <template>

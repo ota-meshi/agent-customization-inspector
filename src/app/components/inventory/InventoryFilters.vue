@@ -17,7 +17,7 @@
 // kind is presented differently, so one is always in view — and it lives in the
 // tab strip beside this section.
 import { nextTick, useTemplateRef } from 'vue';
-import { SUPPORTED_TOOL_TEXT, type SupportedTool } from '../../../shared/entities';
+import { SUPPORTED_TOOL_TEXT, isSupportedTool, type SupportedTool } from '../../../shared/entities';
 import type { SourceDto } from '../../../shared/api-types';
 
 defineProps<{
@@ -37,6 +37,18 @@ const emit = defineEmits<{
   /** The user asked to clear every filter. */
   clear: [];
 }>();
+
+/**
+ * The tool the reader chose, read out of the control's own text.
+ *
+ * A `<select>` hands back the raw text of the chosen option, so the closed
+ * catalog is what turns it into a tool — the empty option is "all tools", and
+ * anything the catalog does not name selects nothing rather than being
+ * declared a tool the inventory has no rows for.
+ */
+function toolFromSelection(value: string): SupportedTool | null {
+  return isSupportedTool(value) ? value : null;
+}
 
 /**
  * The row-count line, which is where focus goes when the button that had it
@@ -101,9 +113,7 @@ function toSelectValue(value: string | null): string {
         <select
           id="aci-inventory-filters-tool"
           :value="toSelectValue(tool)"
-          @change="
-            tool = (($event.target as HTMLSelectElement).value || null) as SupportedTool | null
-          "
+          @change="tool = toolFromSelection(($event.target as HTMLSelectElement).value)"
         >
           <option value="">All tools</option>
           <option v-for="candidate in availableTools" :key="candidate" :value="candidate">

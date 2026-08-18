@@ -26,8 +26,16 @@
  * phase that needs them.
  */
 export type ClaudeBehaviorId =
+  /** Claude instruction discovery in each directory above the runtime `cwd`, toward the filesystem root. */
+  | 'claude.behavior.repo.instructions.ancestor'
+  /** Claude instruction discovery in a subdirectory of the runtime `cwd`, on demand. */
+  | 'claude.behavior.repo.instructions.descendant'
+  /** Claude instruction discovery in the exact runtime `cwd`, at session start. */
+  | 'claude.behavior.repo.instructions.launch'
   /** Claude Repository skill discovery under `.claude/skills/<skill-name>/SKILL.md`. */
   | 'claude.behavior.repo.skills'
+  /** Claude User instructions at `<claude-config-dir>/CLAUDE.md`. */
+  | 'claude.behavior.user.instructions'
   /** Claude User skill discovery under `<claude-config-dir>/skills/<skill-name>/SKILL.md`. */
   | 'claude.behavior.user.skills';
 
@@ -88,6 +96,10 @@ export type BehaviorId = ClaudeBehaviorId | CodexBehaviorId | CopilotBehaviorId;
 export type AnthropicSourceId =
   /** The Claude Code skills page: where skills live and how they are named. */
   | 'anthropic.claude-code.skills.locations-discovery'
+  /** The memory page: where CLAUDE.md files live, how they load, and that AGENTS.md is not read. */
+  | 'anthropic.claude-code.memory.locations-load'
+  /** The Agent SDK features page: the settingSources gate and the CLAUDE.md load-location table. */
+  | 'anthropic.claude-code.sdk.setting-sources'
   /** The large-codebases page: the start directory and per-directory skills. */
   | 'anthropic.claude-code.large-codebases.start-directory'
   /** The IDE-integrations page: shared configuration and per-surface differences. */
@@ -147,8 +159,10 @@ export type SourceId = AnthropicSourceId | OpenAiSourceId | GitHubSourceId | VsC
  * (contracts/runtime-composition.md).
  */
 export type ClaudeStrategyId =
+  /** Claude instruction layering: User, ancestor, launch, and lazy descendant files, broad to narrow. */
+  | 'claude.instructions.layering'
   /** Claude skill selection across enterprise, User, project, and bundled scopes. */
-  'claude.skills.selection';
+  | 'claude.skills.selection';
 
 /**
  * OpenAI Codex composition strategies
@@ -188,8 +202,10 @@ export type StrategyId = ClaudeStrategyId | CodexStrategyId | CopilotStrategyId;
  * arrive with the inventory phase that needs them.
  */
 export type ClaudeRuleId =
+  /** Repository Claude instructions at every depth; read-authorizing `static-candidate`. */
+  | 'claude.repo.instructions'
   /** Repository Claude skills; read-authorizing `static-candidate`. */
-  'claude.repo.skill';
+  | 'claude.repo.skill';
 
 /**
  * OpenAI Codex inspection rules

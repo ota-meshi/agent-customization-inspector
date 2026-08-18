@@ -599,6 +599,13 @@ export class CompiledDerivedRule extends CompiledRule {
   public override readonly tool: SupportedTool;
 
   /**
+   * Narrowed to the one kind a shipped derivation has. The constructor proves
+   * it; a derivation of another kind arrives with the unit that can answer for
+   * it, rather than by widening this one.
+   */
+  declare public readonly kind: 'instructions';
+
+  /**
    * Builds the traversal plan for one configuration-read result: one exact
    * Repository-root selector per declared basename, in authored order, each
    * segment the name as the configuration wrote it — a name is compared to
@@ -617,6 +624,19 @@ export class CompiledDerivedRule extends CompiledRule {
     );
   }
 
+  /**
+   * The Repository root's `**`: a derived plan is one exact Repository-root
+   * selector per declared basename ({@link planFor}), so every candidate it
+   * admits sits at the root and governs the repository entirely.
+   *
+   * Declared here rather than inherited, because a derived rule has no
+   * matcher and so cannot be a static instruction unit: this class is the
+   * derived half of {@link CompiledInstructionRule}.
+   */
+  public applicabilityRangeOf(): string {
+    return '**';
+  }
+
   /** Compiles one shipped derived record, rejecting any that cannot derive. */
   public constructor(rule: InspectionRule) {
     if (rule.discoveryClass !== 'bounded-derived-candidate') {
@@ -625,10 +645,103 @@ export class CompiledDerivedRule extends CompiledRule {
     if (rule.tool === 'shared') {
       throw new TypeError(`rule ${rule.ruleId} names no recognizing product`);
     }
+    if (rule.kind !== 'instructions') {
+      throw new TypeError(`rule ${rule.ruleId} derives a kind this unit cannot answer for`);
+    }
     super(rule);
     this.tool = rule.tool;
   }
 }
+
+/**
+ * The characters a derived applicability range escapes, because a glob reads
+ * them as syntax: the wildcards `*` and `?`, the class and brace delimiters,
+ * the extended-group parentheses, the leading negation `!`, and the escape
+ * character itself (data-model.md § Inventory unit).
+ *
+ * A directory name is a literal, and a range built by joining literals is a
+ * pattern that has to denote exactly those directories: a repository with a
+ * `packages/[api]` directory would otherwise publish `packages/[api]/**`,
+ * which reads as a character class over `a`, `p`, and `i`. Escaping is not
+ * parsing — nothing here interprets a pattern, it only spells one of its own
+ * so that the spelling means what the path says.
+ */
+const GLOB_SYNTAX_CHARACTERS = /[\\*?[\]{}()!]/gu;
+
+/**
+ * One literal path segment as a glob that denotes exactly it
+ * (data-model.md § Inventory unit). Shared so every product's derived range
+ * escapes alike: a range is grouped by exact spelling, so two products
+ * spelling one directory differently would be two rows.
+ */
+export function escapeGlobLiteral(segment: string): string {
+  return segment.replace(GLOB_SYNTAX_CHARACTERS, (character) => `\\${character}`);
+}
+
+/**
+ * A compiled rule that admits *instruction* files, and can therefore answer
+ * the glob one of its admitted files governs, relative to the Repository root
+ * (data-model.md § Inventory unit) — the identity the instructions inventory
+ * groups its rows by.
+ *
+ * Deliberately not a member of {@link CompiledRule}. That class is what every
+ * kind compiles to, and an applicability range is a fact about an instruction
+ * file alone: declaring it there would make a skill rule answer a question it
+ * has no answer to (AGENTS.md § Class and interface policy). A product whose
+ * catalog holds an instruction record compiles that record into a unit
+ * implementing this; a product with no instruction rule — Copilot today —
+ * implements nothing.
+ *
+ * What the answer is belongs to the product: a root-anchored lookup answers
+ * the root's `**`, because that is where the Inspector's boundary is (FR-001)
+ * and a file admitted there governs the repository entirely, while a product
+ * documenting per-directory discovery derives the range from the path.
+ *
+ * `sourceRelativePath` is raw entry names joined with `/` on every platform
+ * ({@link toPublicPath}), so an implementation that reads it splits on `/`
+ * rather than on the host separator.
+ *
+ * Never a claim that a product loaded the file: an admission is not an
+ * activation (FR-009).
+ */
+export interface CompiledStaticInstructionRule extends CompiledInspectionRule {
+  /** The recognized kind; an instruction unit compiles instruction records alone. */
+  readonly kind: 'instructions';
+  /** The glob one admitted file governs, relative to the Repository root. */
+  applicabilityRangeOf(sourceRelativePath: string): string;
+}
+
+/**
+ * A compiled static rule of a kind whose files govern no range — every kind
+ * but `instructions`. It answers nothing about applicability, which is the
+ * whole point: a skill rule has no such answer to give.
+ */
+export interface CompiledStaticNonInstructionRule extends CompiledInspectionRule {
+  /** Every recognized kind but `instructions`. */
+  readonly kind: Exclude<CustomizationKind, 'instructions'>;
+}
+
+/**
+ * What a scan submits to the traversal: a static rule seen through the closed
+ * union its `kind` discriminates. Every member carries the plan the walk
+ * executes, so a catalog needs no second type beside this one.
+ */
+export type CompiledStaticCandidateRule =
+  CompiledStaticInstructionRule | CompiledStaticNonInstructionRule;
+
+/**
+ * What a recognizer receives: any rule that can admit a candidate — a static
+ * one or a vendor's derivation — seen through the closed union its `kind`
+ * discriminates.
+ *
+ * A union rather than the {@link CompiledRule} class, so narrowing to the unit
+ * that can answer an applicability range is the compiler's own work on
+ * `kind` — a type predicate over the class would assert the capability instead
+ * of proving it, which is a cast wearing a guard's clothes. Each concrete unit
+ * proves its half in its constructor and declares the narrow `kind` its class
+ * body promises, so the discriminant cannot disagree with the record.
+ */
+export type CompiledCandidateRule = CompiledStaticCandidateRule | CompiledDerivedRule;
 
 /**
  * One derived rule a vendor's configuration-read logic activated for the
@@ -650,9 +763,9 @@ export interface ConfiguredDerivedPlan {
  * re-matched and no selector text is reinterpreted (FR-019).
  */
 export function resolveAdmittingRules(
-  rules: readonly CompiledRule[],
+  rules: readonly CompiledCandidateRule[],
   admissions: readonly SelectorOrigin[],
-): CompiledRule[] {
+): CompiledCandidateRule[] {
   return admissions.map((admission) => {
     const rule = rules[admission.planIndex];
     if (rule === undefined) {

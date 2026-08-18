@@ -23,6 +23,193 @@ import type { ClaudeBehaviorId } from '../identifier-types';
 import type { VendorBehaviorStatement } from '../behavior-types';
 
 /**
+ * Claude instruction discovery in the exact runtime working directory:
+ * `CLAUDE.md`, `.claude/CLAUDE.md`, and `CLAUDE.local.md` there are loaded in
+ * full at session start.
+ *
+ * The `.claude/CLAUDE.md` form is documented for this scope alone — the
+ * ancestor walk and the lazy descendant discovery below name the bare
+ * filenames only — which is what makes those two statements
+ * `partially-documented` rather than this one.
+ */
+export const CLAUDE_REPO_INSTRUCTIONS_LAUNCH_BEHAVIOR = {
+  behaviorId: 'claude.behavior.repo.instructions.launch',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'repository',
+        lookupBase: 'runtime-cwd',
+        relativeSelector: 'CLAUDE.md; .claude/CLAUDE.md; CLAUDE.local.md',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.memory.locations-load',
+          url: 'https://code.claude.com/docs/en/memory',
+          officialHost: 'code.claude.com',
+          sections: ['Choose where to put CLAUDE.md files', 'How CLAUDE.md files load'],
+          reviewedOn: '2026-08-18',
+          establishes:
+            'Project instructions live at ./CLAUDE.md or ./.claude/CLAUDE.md and local instructions at ./CLAUDE.local.md, and CLAUDE.md and CLAUDE.local.md files at and above the working directory are loaded in full at launch.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.sdk.setting-sources',
+          url: 'https://code.claude.com/docs/en/agent-sdk/claude-code-features',
+          officialHost: 'code.claude.com',
+          sections: ['CLAUDE.md load locations'],
+          reviewedOn: '2026-08-18',
+          establishes:
+            'The load-location table names <cwd>/CLAUDE.md or <cwd>/.claude/CLAUDE.md as the project root location and <cwd>/CLAUDE.local.md as the local one, both read from the working directory itself.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Claude instruction discovery above the runtime working directory: each
+ * parent directory in turn is checked for `CLAUDE.md` and `CLAUDE.local.md`,
+ * continuing toward the filesystem root.
+ *
+ * `partially-documented` because the walk is stated for the bare filenames
+ * only: no cited section establishes a `.claude/CLAUDE.md` variant on an
+ * ancestor directory (contracts/vendors/claude-code.md § Canonical
+ * evidence-assessment index).
+ */
+export const CLAUDE_REPO_INSTRUCTIONS_ANCESTOR_BEHAVIOR = {
+  behaviorId: 'claude.behavior.repo.instructions.ancestor',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'repository',
+        lookupBase: 'runtime-cwd',
+        relativeSelector: 'CLAUDE.md; CLAUDE.local.md',
+        // Upward and deliberately not repository-bounded: the page describes
+        // walking up the directory tree without naming a repository root as
+        // the stop, unlike the skill layers above (see `VendorTraversal`).
+        traversal: 'ancestor-chain-to-filesystem-root',
+      }
+    : null,
+  documentationStatus: 'partially-documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.memory.locations-load',
+          url: 'https://code.claude.com/docs/en/memory',
+          officialHost: 'code.claude.com',
+          sections: ['How CLAUDE.md files load'],
+          reviewedOn: '2026-08-18',
+          establishes:
+            'Claude Code walks up the directory tree from the working directory, checking each directory for CLAUDE.md and CLAUDE.local.md; the walk names no repository root as its stop, and it names no .claude/CLAUDE.md variant on an ancestor directory.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.sdk.setting-sources',
+          url: 'https://code.claude.com/docs/en/agent-sdk/claude-code-features',
+          officialHost: 'code.claude.com',
+          sections: ['CLAUDE.md load locations'],
+          reviewedOn: '2026-08-18',
+          establishes:
+            'CLAUDE.md files in directories above cwd are loaded at session start, and CLAUDE.local.md in every parent directory with them; the table names the .claude directory form for the project root row alone.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Claude instruction discovery below the runtime working directory:
+ * `CLAUDE.md` and `CLAUDE.local.md` in a subdirectory join the session when
+ * Claude reads a file in that subtree, rather than at launch.
+ *
+ * This on-demand half is why the Inspector's rule expands to descendant
+ * inventory: a file under any subdirectory is one Claude can genuinely load.
+ * `partially-documented` for the same reason as the ancestor walk — the
+ * descendant form is stated for the bare filenames only.
+ */
+export const CLAUDE_REPO_INSTRUCTIONS_DESCENDANT_BEHAVIOR = {
+  behaviorId: 'claude.behavior.repo.instructions.descendant',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'repository',
+        lookupBase: 'runtime-cwd',
+        relativeSelector: 'CLAUDE.md; CLAUDE.local.md',
+        traversal: 'lazy-descendant',
+      }
+    : null,
+  documentationStatus: 'partially-documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.memory.locations-load',
+          url: 'https://code.claude.com/docs/en/memory',
+          officialHost: 'code.claude.com',
+          sections: ['Choose where to put CLAUDE.md files', 'How CLAUDE.md files load'],
+          reviewedOn: '2026-08-18',
+          establishes:
+            'Claude Code also discovers CLAUDE.md and CLAUDE.local.md files in subdirectories under the working directory and includes them when it reads files in those subdirectories, and it names no .claude/CLAUDE.md variant for that descendant case.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.sdk.setting-sources',
+          url: 'https://code.claude.com/docs/en/agent-sdk/claude-code-features',
+          officialHost: 'code.claude.com',
+          sections: ['CLAUDE.md load locations'],
+          reviewedOn: '2026-08-18',
+          establishes:
+            'CLAUDE.md files in subdirectories of cwd are loaded on demand when the agent reads a file in that subtree.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Claude User instructions at `<claude-config-dir>/CLAUDE.md`. Recorded for
+ * maintenance and for the layering strategy that composes it: it expands no
+ * Global inspection, and the only rule that will ever read the surface is the
+ * consent-gated `claude.global.instructions`
+ * (contracts/vendors/claude-code.md § User behavior).
+ */
+export const CLAUDE_USER_INSTRUCTIONS_BEHAVIOR = {
+  behaviorId: 'claude.behavior.user.instructions',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'user',
+        // `<claude-config-dir>` is `CLAUDE_CONFIG_DIR` when configured and
+        // `~/.claude` otherwise — the product's own home, so the base is
+        // `tool-home` rather than the profile data a `$HOME`-anchored lookup
+        // would use.
+        lookupBase: 'tool-home',
+        relativeSelector: 'CLAUDE.md',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.memory.locations-load',
+          url: 'https://code.claude.com/docs/en/memory',
+          officialHost: 'code.claude.com',
+          sections: ['Choose where to put CLAUDE.md files'],
+          reviewedOn: '2026-08-18',
+          establishes:
+            'User instructions live at ~/.claude/CLAUDE.md and hold personal preferences for all projects, one of the scopes the documented broadest-to-most-specific load order spans.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
  * Claude Repository skill discovery: each `<skill-layer>` from the launch
  * working directory through the Git repository root carries
  * `.claude/skills/<skill-name>/SKILL.md`, with ancestor layers discovered at
@@ -126,14 +313,21 @@ export const CLAUDE_USER_SKILLS_BEHAVIOR = {
 } as const satisfies VendorBehaviorStatement;
 
 /**
- * Claude's contribution to the behavior registry, keyed by `behaviorId`. Both
- * skill statements ship together because `claude.skills.selection` composes
- * both; shipping one alone would leave the dangling edge the contract gate
- * rejects.
+ * Claude's contribution to the behavior registry, keyed by `behaviorId` in
+ * identifier order. A scope's statements ship together with the strategy that
+ * composes them — `claude.skills.selection` spans both skill scopes and
+ * `claude.instructions.layering` all four instruction ones — because shipping
+ * one alone would leave the dangling edge the contract gate rejects.
  */
 export const CLAUDE_BEHAVIOR_STATEMENTS: Readonly<
   Record<ClaudeBehaviorId, VendorBehaviorStatement>
 > = {
+  [CLAUDE_REPO_INSTRUCTIONS_ANCESTOR_BEHAVIOR.behaviorId]:
+    CLAUDE_REPO_INSTRUCTIONS_ANCESTOR_BEHAVIOR,
+  [CLAUDE_REPO_INSTRUCTIONS_DESCENDANT_BEHAVIOR.behaviorId]:
+    CLAUDE_REPO_INSTRUCTIONS_DESCENDANT_BEHAVIOR,
+  [CLAUDE_REPO_INSTRUCTIONS_LAUNCH_BEHAVIOR.behaviorId]: CLAUDE_REPO_INSTRUCTIONS_LAUNCH_BEHAVIOR,
   [CLAUDE_REPO_SKILLS_BEHAVIOR.behaviorId]: CLAUDE_REPO_SKILLS_BEHAVIOR,
+  [CLAUDE_USER_INSTRUCTIONS_BEHAVIOR.behaviorId]: CLAUDE_USER_INSTRUCTIONS_BEHAVIOR,
   [CLAUDE_USER_SKILLS_BEHAVIOR.behaviorId]: CLAUDE_USER_SKILLS_BEHAVIOR,
 };

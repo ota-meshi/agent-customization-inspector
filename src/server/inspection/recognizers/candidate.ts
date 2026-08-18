@@ -44,7 +44,7 @@
 // (contracts/inspection-path-allowlist.md § existence-versus-activation
 // vocabulary), which is why no published field says a product would install,
 // enable, trust, select, or load it.
-import type { CompiledRule, SelectorOrigin } from '../rules/registry';
+import type { CompiledCandidateRule, SelectorOrigin } from '../rules/registry';
 import { RecognitionExtraction } from '../parsers/extraction';
 import { ParsedMarkdownDocument } from '../parsers/markdown';
 import { listCompanionFiles, type CompanionFile } from '../companion-census';
@@ -74,13 +74,13 @@ import type { RuleDiscoveryClass } from '../../../shared/registries/rule-types';
  */
 export class CandidateProvenance {
   /** The compiled rule that admitted the candidate — static or derived; the source of both getters. */
-  readonly #compiled: CompiledRule;
+  readonly #compiled: CompiledCandidateRule;
 
   /** The admitted Source-relative Path, spelled with the exact entry names. */
   public readonly matchedPath: string;
 
   /** Binds one admission to the rule that authorized it and the path it matched. */
-  public constructor(compiled: CompiledRule, matchedPath: string) {
+  public constructor(compiled: CompiledCandidateRule, matchedPath: string) {
     this.#compiled = compiled;
     this.matchedPath = matchedPath;
   }
@@ -148,13 +148,13 @@ export type RecognitionDetails =
       readonly bodyText: string;
     }
   /**
-   * An instruction file, presented by what it declares. The kind deliberately
-   * has no identity field: its inventory unit is the file itself
-   * (data-model.md § Inventory unit), so the Source-relative Path the
-   * recognition already carries is the whole identity, and no declared name
-   * is read. What the kind does carry is the file's own presentation — the
-   * same one parse a skill uses — because the detail leads with the keys the
-   * file declares and the instructions that follow them (FR-007).
+   * An instruction file, presented by what it declares and grouped by what it
+   * governs. No declared name is read: the Source-relative Path the
+   * recognition already carries is the file's whole identity. What the kind
+   * carries instead is the file's own presentation — the same one parse a
+   * skill uses, because the detail leads with the keys the file declares and
+   * the instructions that follow them (FR-007) — and the applicability range
+   * its inventory row is grouped by (data-model.md § Inventory unit).
    */
   | {
       /** The recognized customization kind. */
@@ -173,6 +173,14 @@ export type RecognitionDetails =
        * extraction is all-or-nothing (FR-028).
        */
       readonly bodyText: string;
+      /**
+       * The glob this file governs, relative to the Repository root, and the
+       * identity its inventory row is grouped by (data-model.md § Inventory
+       * unit). Derived from the file's own path and the admitting rules'
+       * container directories, so it survives a `failed` extraction: what a
+       * file governs is a fact of where it sits, not of what parsed.
+       */
+      readonly applicabilityRange: string;
     }
   /**
    * Every other kind. An identity or presentation arrives with the recognizer
@@ -274,7 +282,7 @@ export class ToolRecognition {
     return new ToolRecognition(
       sourceRelativePath,
       tool,
-      buildDetails(kind, extraction.extracted),
+      buildDetails(kind, extraction.extracted, sourceRelativePath, admissions),
       extraction.status,
       admissions
         .toSorted((left, right) =>
@@ -404,7 +412,7 @@ export interface RecognitionInput {
  */
 export interface RecognitionAdmission {
   /** The compiled rule that admitted the candidate, static or derived. */
-  readonly compiled: CompiledRule;
+  readonly compiled: CompiledCandidateRule;
   /** Which authored selector of that rule matched. */
   readonly origin: SelectorOrigin;
 }
@@ -596,14 +604,30 @@ function renderDeclaredValue(value: unknown, ancestors: readonly object[]): Fron
 function buildDetails(
   kind: CustomizationKind,
   presentation: MarkdownPresentation | undefined,
+  sourceRelativePath: string,
+  admissions: readonly RecognitionAdmission[],
 ): RecognitionDetails {
   if (kind === 'instructions') {
+    // Asked of the admitting rule, which is where a product's own answer lives
+    // (data-model.md § Inventory unit). Any admission answers: a recognition's
+    // admissions are one product's, and that product defines the answer once,
+    // so they cannot disagree. The narrowing is the compiler's own, over the
+    // `kind` that discriminates `CompiledCandidateRule` — nothing here asserts
+    // a capability the unit might not have.
+    const [admission] = admissions;
+    if (admission === undefined || admission.compiled.kind !== 'instructions') {
+      throw new TypeError('an instructions recognition has no rule that can answer its range');
+    }
+    const applicabilityRange = admission.compiled.applicabilityRangeOf(sourceRelativePath);
     // A failed extraction has no presentation at all, which is what publishes
-    // nothing rather than the part that parsed (FR-028).
+    // nothing rather than the part that parsed (FR-028). The range is not part
+    // of that: it comes from the path, so a file whose declarations could not
+    // be read still groups where it belongs.
     return {
       kind,
       frontmatter: presentation?.frontmatter ?? [],
       bodyText: presentation?.bodyText ?? '',
+      applicabilityRange,
     };
   }
   if (kind !== 'skill') {

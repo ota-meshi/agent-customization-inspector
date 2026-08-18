@@ -423,9 +423,9 @@ pnpm exec vitest run --project unit \
 4. Session Diagnosticは文書化済みのclosed fieldだけを含む。Failしたsession-API requestはgenericなerror envelopeや
    closedなoperational-event schemaを介さず、real error messageをbrowserへ返す。そのmessageをuserへ表示し、
    sessionは利用可能なままとする。
-5. Malformed、binary、unreadable、broken symlink、発見からread前までに消失、cycle、traversal、boundary-crossingの
+5. Malformed、binary、unreadable、broken symlink、発見からread前までに消失、cycle、traversalの
    fixtureはactionable safeなper-file Diagnostic（`recognition-parse-failed`、`file-content-binary`、
-   `file-unreadable`、およびreference diagnostic）を作り、非影響fileはすべて完全なtraversal後の
+   `file-unreadable`）を作り、非影響fileはすべて完全なtraversal後の
    `partial` commitを通じて発見・閲覧可能なままとする。Symlinkされたcustomization fileは代わりにtransparentに
    readされ、そのlinked contentをinspectionする。Targetがmissingまたはunreadableなlinkだけが
    `file-unreadable`を生じる。単一fileに限定されないfailureはresult/generationを
@@ -968,7 +968,7 @@ filesystem/DNS/SMB call 0件を証明する）、mutation assertionのためにp
 OS起因だけのaccess-time movementをcriterionの成否に数えず別に記録する。
 
 SC-007 manifestは、全file-confined outcome class、すなわちmalformed content、binary content、invalidなnon-NUL
-UTF-8 replacement decoding、unreadable file（broken symbolic linkを含む）、boundary-crossing referenceのfixtureと、全failure
+UTF-8 replacement decoding、unreadable file（broken symbolic linkを含む）のfixtureと、全failure
 class、すなわちjob acceptance前にrejectされたsession-API request、accepted session-API job後のfailure、startup failureのfixtureを
 それぞれ1件以上含む。さらに、processがaliveのまま全inspection dataをfenceし、failしたrequestのerrorをretainして
 retry/joinを利用可能にし、次の手順としてrestartを提示するpost-acceptance Global-disable failureも実行する。InvalidなNon-NUL UTF-8はreadableな
@@ -1003,8 +1003,7 @@ lint verdictを作らず、failureをcapacity、resource、operational causeで�
 Per-file diagnostic fixtureは各file-confined classを扱う。Unreadableまたは発見からread前までに消失したfile
 （targetがmissingまたはunreadableなsymbolic linkを含む）は`file-unreadable`を生じる。admit済みcandidateのNULを含むcontentは
 diagnostic-onlyの`file-content-binary` itemを生じ、census掲載companionのbinary bytesは何も生じない。Parser/extractor failureは`recognition-parse-failed`を生じ、
-完全なreadable sourceは表示およびcomparison-eligibleのまま残る。Boundary-crossing referenceはtargetをreadせずに
-報告される。各fixtureは、affected itemが問題解決に十分なSourceとsource-relative path contextを保持し、同じscanが
+完全なreadable sourceは表示およびcomparison-eligibleのまま残る。各fixtureは、affected itemが問題解決に十分なSourceとsource-relative path contextを保持し、同じscanが
 完全な非影響fileをすべてpublishすることを証明する。Source rootがmissingまたはunreadableな場合は代わりにそのSourceの
 scanがsource-scopedな`root-unreadable` diagnosticとともにfailし、sessionは利用可能なままとする。
 

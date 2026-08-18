@@ -1,5 +1,98 @@
 [
   {
+    "behaviorId": "claude.behavior.repo.instructions.ancestor",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "runtime-cwd",
+      "relativeSelector": "CLAUDE.md; CLAUDE.local.md",
+      "traversal": "ancestor-chain-to-filesystem-root"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.memory.locations-load",
+        "url": "https://code.claude.com/docs/en/memory",
+        "officialHost": "code.claude.com",
+        "sections": ["How CLAUDE.md files load"],
+        "reviewedOn": "2026-08-18",
+        "establishes": "Claude Code walks up the directory tree from the working directory, checking each directory for CLAUDE.md and CLAUDE.local.md; the walk names no repository root as its stop, and it names no .claude/CLAUDE.md variant on an ancestor directory."
+      },
+      {
+        "sourceId": "anthropic.claude-code.sdk.setting-sources",
+        "url": "https://code.claude.com/docs/en/agent-sdk/claude-code-features",
+        "officialHost": "code.claude.com",
+        "sections": ["CLAUDE.md load locations"],
+        "reviewedOn": "2026-08-18",
+        "establishes": "CLAUDE.md files in directories above cwd are loaded at session start, and CLAUDE.local.md in every parent directory with them; the table names the .claude directory form for the project root row alone."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.repo.instructions.descendant",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "runtime-cwd",
+      "relativeSelector": "CLAUDE.md; CLAUDE.local.md",
+      "traversal": "lazy-descendant"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.memory.locations-load",
+        "url": "https://code.claude.com/docs/en/memory",
+        "officialHost": "code.claude.com",
+        "sections": ["Choose where to put CLAUDE.md files", "How CLAUDE.md files load"],
+        "reviewedOn": "2026-08-18",
+        "establishes": "Claude Code also discovers CLAUDE.md and CLAUDE.local.md files in subdirectories under the working directory and includes them when it reads files in those subdirectories, and it names no .claude/CLAUDE.md variant for that descendant case."
+      },
+      {
+        "sourceId": "anthropic.claude-code.sdk.setting-sources",
+        "url": "https://code.claude.com/docs/en/agent-sdk/claude-code-features",
+        "officialHost": "code.claude.com",
+        "sections": ["CLAUDE.md load locations"],
+        "reviewedOn": "2026-08-18",
+        "establishes": "CLAUDE.md files in subdirectories of cwd are loaded on demand when the agent reads a file in that subtree."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.repo.instructions.launch",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "runtime-cwd",
+      "relativeSelector": "CLAUDE.md; .claude/CLAUDE.md; CLAUDE.local.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.memory.locations-load",
+        "url": "https://code.claude.com/docs/en/memory",
+        "officialHost": "code.claude.com",
+        "sections": ["Choose where to put CLAUDE.md files", "How CLAUDE.md files load"],
+        "reviewedOn": "2026-08-18",
+        "establishes": "Project instructions live at ./CLAUDE.md or ./.claude/CLAUDE.md and local instructions at ./CLAUDE.local.md, and CLAUDE.md and CLAUDE.local.md files at and above the working directory are loaded in full at launch."
+      },
+      {
+        "sourceId": "anthropic.claude-code.sdk.setting-sources",
+        "url": "https://code.claude.com/docs/en/agent-sdk/claude-code-features",
+        "officialHost": "code.claude.com",
+        "sections": ["CLAUDE.md load locations"],
+        "reviewedOn": "2026-08-18",
+        "establishes": "The load-location table names <cwd>/CLAUDE.md or <cwd>/.claude/CLAUDE.md as the project root location and <cwd>/CLAUDE.local.md as the local one, both read from the working directory itself."
+      }
+    ]
+  },
+  {
     "behaviorId": "claude.behavior.repo.skills",
     "tool": "claude",
     "surfaces": ["claude-cli-and-ide-clients"],
@@ -35,6 +128,29 @@
         "sections": ["Choose where to start Claude", "Add per-directory skills"],
         "reviewedOn": "2026-07-25",
         "establishes": "The launch directory decides which skill layers load at startup, and nested directories can carry their own .claude/skills directories that join the session as files under them are accessed."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.user.instructions",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "CLAUDE.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.memory.locations-load",
+        "url": "https://code.claude.com/docs/en/memory",
+        "officialHost": "code.claude.com",
+        "sections": ["Choose where to put CLAUDE.md files"],
+        "reviewedOn": "2026-08-18",
+        "establishes": "User instructions live at ~/.claude/CLAUDE.md and hold personal preferences for all projects, one of the scopes the documented broadest-to-most-specific load order spans."
       }
     ]
   },

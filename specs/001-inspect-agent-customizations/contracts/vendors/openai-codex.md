@@ -222,7 +222,7 @@ authority.
 
 | `ToolRecognition.kind` | Eligible `Relationship.kind` values | Initial-release source forms |
 |---|---|---|
-| `instructions` | `runtime-reference` | Exact authored import/reference target tokens in an accepted static, configured-fallback, or Global instruction file; path-derived scope/order and byte-budget facts are typed state, not metadata |
+| `instructions` | — | An accepted static, configured-fallback, or Global instruction file; an authored reference-looking token is source text, never an extracted reference. Path-derived scope/order and byte-budget facts are typed state, not metadata |
 | `rule` | `runtime-reference` | Exact argument/value/item occurrences in accepted direct-child `.rules` files; comments and unlisted Starlark expressions remain source text only |
 | `skill` | `skill-resource`<br>`runtime-reference` | Exact `name` and `description` frontmatter values in an accepted `SKILL.md`; resource/script/reference targets can be relationships but are never read through those edges |
 | `agent` | `agent-reference`<br>`skill-resource`<br>`context-inheritance`<br>`runtime-reference` | Exact supported TOML value/item/map-key occurrences in an accepted `.codex/agents/*.toml`; MCP remains an inherited/carrier relationship and never becomes an agent-owned MCP recognition |

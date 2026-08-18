@@ -183,3 +183,27 @@ describe('listCompanionFiles', () => {
     ).rejects.toThrow();
   });
 });
+
+describe('an installed-package name that is not a directory (T1097)', () => {
+  it('lists a regular file named node_modules beside the skill', async () => {
+    // The exclusion is about a directory a package manager filled. An entry of
+    // that name resolving to a regular file is one of the files that ship with
+    // the skill, and dropping it would show a skill missing a file its own
+    // directory has (contracts/inspection-path-allowlist.md).
+    const root = mkdtempSync(join(tmpdir(), 'inspector-census-installed-'));
+    try {
+      mkdirSync(join(root, 'skill/node_modules'), { recursive: true });
+      writeFileSync(join(root, 'skill/SKILL.md'), '# skill\n', 'utf8');
+      writeFileSync(join(root, 'skill/node_modules/pkg.md'), '# packaged\n', 'utf8');
+      const listed = await listCompanionFiles(root, join(root, 'skill/SKILL.md'));
+      expect(listed.map((entry) => entry.censusRelativePath)).toEqual([]);
+
+      rmSync(join(root, 'skill/node_modules'), { recursive: true, force: true });
+      writeFileSync(join(root, 'skill/node_modules'), 'an ordinary file\n', 'utf8');
+      const withFile = await listCompanionFiles(root, join(root, 'skill/SKILL.md'));
+      expect(withFile.map((entry) => entry.censusRelativePath)).toEqual(['node_modules']);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});

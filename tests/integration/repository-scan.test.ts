@@ -22,6 +22,7 @@ import {
   NUMEROUS_FALLBACK_BASENAMES,
   NUMEROUS_FALLBACK_DECLARATION_COUNT,
   buildAllToolSkillFixture,
+  buildClaudeInstructionFixture,
   buildClaudeSkillFixture,
   buildCodexInstructionFixture,
   buildCodexSkillFixture,
@@ -1638,15 +1639,22 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
     await scanOnce(context);
     const snapshot = context.session.snapshot();
 
-    // One row per recognized file — the unit of this kind (data-model.md
-    // § Inventory unit) — in Source-relative Path order: the static pair plus
-    // the two derived configured fallbacks (T1090). The declared basename with
-    // no on-disk file derives nothing — the ordinary negative, no diagnostic.
+    // One row per applicability range — the unit of this kind (data-model.md
+    // § Inventory unit) — with its files in Source-relative Path order. Every
+    // file here sits at the Repository root, so the static pair and the two
+    // derived configured fallbacks (T1090) share the root's one range. The
+    // declared basename with no on-disk file derives nothing — the ordinary
+    // negative, no diagnostic.
     expect(snapshot.instructions).toEqual([
-      { sourceRelativePath: 'AGENTS.md', tools: ['codex'] },
-      { sourceRelativePath: 'AGENTS.override.md', tools: ['codex'] },
-      { sourceRelativePath: 'GUIDE.codex.md', tools: ['codex'] },
-      { sourceRelativePath: 'TEAM_GUIDE.md', tools: ['codex'] },
+      {
+        applicabilityRange: '**',
+        files: [
+          { sourceRelativePath: 'AGENTS.md', tools: ['codex'] },
+          { sourceRelativePath: 'AGENTS.override.md', tools: ['codex'] },
+          { sourceRelativePath: 'GUIDE.codex.md', tools: ['codex'] },
+          { sourceRelativePath: 'TEAM_GUIDE.md', tools: ['codex'] },
+        ],
+      },
     ]);
     // The carrier itself is a configuration input only: never published,
     // never raw-displayed, in no kind's inventory and not in `files[]`.
@@ -1712,7 +1720,12 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
     }
     expect(publication.outcome).toBe('complete');
     const snapshot = context.session.snapshot();
-    expect(snapshot.instructions).toEqual([{ sourceRelativePath: 'AGENTS.md', tools: ['codex'] }]);
+    expect(snapshot.instructions).toEqual([
+      {
+        applicabilityRange: '**',
+        files: [{ sourceRelativePath: 'AGENTS.md', tools: ['codex'] }],
+      },
+    ]);
     expect(snapshot.files.some((file) => file.sourceRelativePath === '.codex/config.toml')).toBe(
       false,
     );
@@ -1739,7 +1752,12 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
     // A binary candidate is never recognized — recognition would need content
     // it has none of — so the instructions inventory lists the readable file
     // alone while the binary one stays visible under its own facts.
-    expect(snapshot.instructions).toEqual([{ sourceRelativePath: 'AGENTS.md', tools: ['codex'] }]);
+    expect(snapshot.instructions).toEqual([
+      {
+        applicabilityRange: '**',
+        files: [{ sourceRelativePath: 'AGENTS.md', tools: ['codex'] }],
+      },
+    ]);
     const binary = snapshot.files.find((file) => file.sourceRelativePath === 'AGENTS.override.md');
     expect(binary?.encoding).toBe('binary');
     expect(binary?.diagnosticIds).toHaveLength(1);
@@ -1763,7 +1781,11 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
     await scanOnce(context);
     const snapshot = context.session.snapshot();
 
-    expect(snapshot.instructions.map((entry) => entry.sourceRelativePath)).toEqual([
+    // One range at the Repository root, holding every static and derived
+    // instruction file the fixture publishes.
+    expect(snapshot.instructions).toHaveLength(1);
+    expect(snapshot.instructions[0]!.applicabilityRange).toBe('**');
+    expect(snapshot.instructions[0]!.files.map((entry) => entry.sourceRelativePath)).toEqual([
       'AGENTS.md',
       'AGENTS.override.md',
       'GUIDE.codex.md',
@@ -1847,5 +1869,155 @@ describe('the pure configured-fallback interface (T208)', () => {
     expect(after.repositoryGeneration).toBe(before.repositoryGeneration);
     expect(after.instructions).toEqual(before.instructions);
     expect(after.diagnostics).toEqual(before.diagnostics);
+  });
+});
+
+describe('the committed Claude instructions inventory (T229)', () => {
+  it('commits every depth with one read each, keeping the Codex row unchanged', async () => {
+    const fixture = buildClaudeInstructionFixture('inspector-scan-claude-instructions');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    vi.clearAllMocks();
+
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+
+    // One row per applicability range (data-model.md § Inventory unit), each
+    // listing its files in Source-relative Path order. The root range holds
+    // `AGENTS.md` beside the Claude files — which is the grouping this phase
+    // exists for — and `.claude/CLAUDE.md` lands there too, because `.claude`
+    // is the rule's own container rather than what the file governs.
+    // `AGENTS.md` gains no Claude recognition: Claude Code reads `CLAUDE.md`,
+    // not `AGENTS.md`. No row states which documented layer a file belongs
+    // to, because that is a relation to a working directory this product does
+    // not observe (FR-009).
+    expect(snapshot.instructions).toEqual([
+      {
+        applicabilityRange: '**',
+        files: [
+          { sourceRelativePath: '.claude/CLAUDE.md', tools: ['claude'] },
+          { sourceRelativePath: 'AGENTS.md', tools: ['codex'] },
+          { sourceRelativePath: 'CLAUDE.local.md', tools: ['claude'] },
+          { sourceRelativePath: 'CLAUDE.md', tools: ['claude'] },
+        ],
+      },
+      {
+        applicabilityRange: 'docs/**',
+        files: [{ sourceRelativePath: 'docs/CLAUDE.md', tools: ['claude'] }],
+      },
+      {
+        applicabilityRange: 'packages/api/**',
+        files: [
+          { sourceRelativePath: 'packages/api/.claude/CLAUDE.md', tools: ['claude'] },
+          { sourceRelativePath: 'packages/api/CLAUDE.md', tools: ['claude'] },
+        ],
+      },
+    ]);
+    // Every published file is read exactly once, and no near miss — the
+    // spelling variants, the VCS internal, or the target the root
+    // `CLAUDE.md` names with an `@path` token — is opened at all. This phase
+    // emits no relationship, and a relationship target confers no read
+    // authority wherever one is emitted.
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) =>
+      String(call[0])
+        .slice(fixture.root.length + 1)
+        .split(sep)
+        .join('/'),
+    );
+    expect([...opened].sort()).toEqual(
+      [...fixture.expectedClaudeInstructionPaths, ...fixture.expectedCodexInstructionPaths].sort(),
+    );
+    expect(new Set(opened).size).toBe(opened.length);
+    for (const nearMiss of fixture.nearMissPaths) {
+      expect(opened, nearMiss).not.toContain(nearMiss);
+      expect(
+        snapshot.files.some((file) => file.sourceRelativePath === nearMiss),
+        nearMiss,
+      ).toBe(false);
+    }
+    // The authored content — the credential, the environment reference, the
+    // import token — stays out of the committed snapshot entirely: complete
+    // source is served only by the detail routes, one file at a time
+    // (FR-027), and no environment reference is ever resolved against the
+    // process environment.
+    const serialized = JSON.stringify(snapshot);
+    expect(serialized).not.toContain(FIXTURE_SECRET_LITERAL);
+    expect(serialized).not.toContain(FIXTURE_ENVIRONMENT_REFERENCE);
+    expect(serialized).not.toContain('@docs/setup.md');
+  });
+
+  it('confines the malformed file to its own diagnostic and a partial outcome', async () => {
+    const fixture = buildClaudeInstructionFixture('inspector-scan-claude-instructions-partial');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+
+    const { publication } = await scanOnce(context);
+    if (publication.kind !== 'publishable') {
+      throw new Error('expected a publishable outcome');
+    }
+    // A frontmatter block no parser can read is that recognition's `failed`
+    // state: extraction is all-or-nothing, the file keeps its row and its
+    // complete readable source, and the failure makes the generation
+    // `partial` without touching any other file (FR-028).
+    expect(publication.outcome).toBe('partial');
+    const snapshot = context.session.snapshot();
+    expect(snapshot.diagnostics).toHaveLength(1);
+    expect(snapshot.diagnostics[0]!.code).toBe('recognition-parse-failed');
+    const malformed = snapshot.files.find(
+      (file) => file.sourceRelativePath === fixture.malformedInstructionPath,
+    );
+    expect(malformed?.diagnosticIds).toEqual([snapshot.diagnostics[0]!.diagnosticId]);
+    for (const file of snapshot.files) {
+      if (file.sourceRelativePath !== fixture.malformedInstructionPath) {
+        expect(file.diagnosticIds, file.sourceRelativePath).toEqual([]);
+      }
+    }
+    // The failure changes no grouping: a range comes from where a file sits,
+    // not from what parsed, so the three ranges and their seven files stay.
+    expect(snapshot.instructions.map((entry) => entry.applicabilityRange)).toEqual([
+      '**',
+      'docs/**',
+      'packages/api/**',
+    ]);
+    expect(snapshot.instructions.flatMap((entry) => entry.files)).toHaveLength(7);
+  });
+});
+
+describe('a census-listed path a rule independently admits (FR-007)', () => {
+  it('keeps its own recognition and leaves the skill census without it', async () => {
+    const root = createRepositoryFixtureRoot('inspector-scan-independent-companion');
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    mkdirSync(join(root, '.claude/skills/greet'), { recursive: true });
+    writeFileSync(
+      join(root, '.claude/skills/greet/SKILL.md'),
+      '---\nname: greet\n---\n\nHi.\n',
+      'utf8',
+    );
+    // An ordinary instruction file that happens to sit in a skill's directory:
+    // the walk admits it, so it is a customization of its own rather than one
+    // of the files that ship with the skill.
+    writeFileSync(join(root, '.claude/skills/greet/CLAUDE.md'), '# inside a skill\n', 'utf8');
+    // A file no rule admits stays what it is — one of the skill's own files.
+    writeFileSync(join(root, '.claude/skills/greet/reference.md'), '# reference\n', 'utf8');
+    const context = bootstrap(root);
+
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+
+    expect(snapshot.instructions).toEqual([
+      {
+        applicabilityRange: '.claude/skills/greet/**',
+        files: [{ sourceRelativePath: '.claude/skills/greet/CLAUDE.md', tools: ['claude'] }],
+      },
+    ]);
+    // The census keeps the file that has no row of its own and drops the one
+    // that does: a skill row that listed the instruction file would state its
+    // diagnostics, offer it for comparison, and speak for a file its own kind
+    // already publishes.
+    expect(
+      snapshot.skills.flatMap((entry) =>
+        entry.definitions.flatMap((definition) => definition.companionFiles),
+      ),
+    ).toEqual(['.claude/skills/greet/reference.md', '.claude/skills/greet/reference.md']);
   });
 });

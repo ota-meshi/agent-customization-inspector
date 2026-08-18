@@ -20,6 +20,7 @@ import { ref, shallowRef, type Ref } from 'vue';
 import { instructionDetailRoute } from '../../../src/app/components/instruction-detail-route';
 import { skillDetailRoute } from '../../../src/app/components/skill-detail-route';
 import { useInventoryFilters } from '../../../src/app/composables/filters';
+import { pathPresentationLabel } from '../../../src/shared/entities';
 import type {
   CustomizationFileSummaryDto,
   InstructionInventoryEntryDto,
@@ -226,8 +227,8 @@ describe('an instruction row addresses the file’s own detail route (T218)', ()
     // does is re-key the row, because the path is the identity the detail
     // route resolves — a filtered view still links to the same page.
     const entry: InstructionInventoryEntryDto = {
-      sourceRelativePath: 'AGENTS.md',
-      tools: ['copilot', 'codex'],
+      applicabilityRange: '**',
+      files: [{ sourceRelativePath: 'AGENTS.md', tools: ['copilot', 'codex'] }],
     };
     const snapshot = shallowRef<SessionSnapshot | null>(
       snapshotWith([file('AGENTS.md')], [], [entry]),
@@ -235,11 +236,14 @@ describe('an instruction row addresses the file’s own detail route (T218)', ()
     const { tool, view } = withSelection(snapshot);
     tool.value = 'codex';
     expect(view.instructionRows.value).toEqual([
-      { sourceRelativePath: 'AGENTS.md', tools: ['codex'] },
+      {
+        applicabilityRange: '**',
+        files: [{ sourceRelativePath: 'AGENTS.md', tools: ['codex'] }],
+      },
     ]);
-    expect(instructionDetailRoute(view.instructionRows.value[0]!.sourceRelativePath)).toBe(
-      '/instructions/AGENTS.md',
-    );
+    expect(
+      instructionDetailRoute(view.instructionRows.value[0]!.files[0]!.sourceRelativePath),
+    ).toBe('/instructions/AGENTS.md');
   });
 
   it('resolves a stale link’s path to no row', () => {
@@ -251,12 +255,51 @@ describe('an instruction row addresses the file’s own detail route (T218)', ()
       snapshotWith(
         [file('AGENTS.md')],
         [],
-        [{ sourceRelativePath: 'AGENTS.md', tools: ['codex'] }],
+        [
+          {
+            applicabilityRange: '**',
+            files: [{ sourceRelativePath: 'AGENTS.md', tools: ['codex'] }],
+          },
+        ],
       ),
     );
     const { view } = withSelection(snapshot);
     expect(
-      view.instructionRows.value.find((row) => row.sourceRelativePath === 'REMOVED_GUIDE.md'),
+      view.instructionRows.value
+        .flatMap((row) => row.files)
+        .find((file) => file.sourceRelativePath === 'REMOVED_GUIDE.md'),
     ).toBeUndefined();
+  });
+});
+
+describe('the path filter matches the spelling the rows render (T1096)', () => {
+  it('matches a name built only from invisible code points by its spelled-out form', () => {
+    // A configured fallback basename can be a single space: the row spells it
+    // out, because an escaped space still draws nothing and a row identified
+    // by nothing identifies nothing. The filter has to compare the same
+    // spelling, or the text on the screen matches no row while the raw
+    // character matches every row through an empty query.
+    const invisible = ' ';
+    const snapshot = shallowRef<SessionSnapshot | null>(
+      snapshotWith(
+        [file(invisible), file('AGENTS.md')],
+        [],
+        [
+          {
+            applicabilityRange: '**',
+            files: [
+              { sourceRelativePath: invisible, tools: ['codex'] },
+              { sourceRelativePath: 'AGENTS.md', tools: ['codex'] },
+            ],
+          },
+        ],
+      ),
+    );
+    const { pathQuery, view } = withSelection(snapshot);
+
+    pathQuery.value = pathPresentationLabel(invisible);
+    expect(view.instructionRows.value.flatMap((row) => row.files)).toEqual([
+      { sourceRelativePath: invisible, tools: ['codex'] },
+    ]);
   });
 });

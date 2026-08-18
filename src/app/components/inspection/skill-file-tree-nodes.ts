@@ -7,25 +7,7 @@
 // Nesting is derived from the paths rather than requested from the host: the
 // census publishes Source-relative paths, and the directory structure is what
 // their shared prefixes already say.
-import {
-  encodeRootPresentation,
-  escapeControlCharacters,
-  rendersNothingVisible,
-} from '../../../shared/entities';
-
-/**
- * One path label as presentation text. Control characters are escaped
- * (data-model.md § SourceRelativePath), which leaves a space a space and a
- * zero-width space a zero-width space — so a label built only from those would
- * render as nothing, and the file's link would have neither visible text nor an
- * accessible name. A label with nothing visible left is therefore spelled out
- * entirely, the way a root label is, because it has to be unambiguous on its
- * own.
- */
-function labelFor(label: string): string {
-  const escaped = escapeControlCharacters(label);
-  return rendersNothingVisible(escaped) ? encodeRootPresentation(label) : escaped;
-}
+import { pathPresentationLabel } from '../../../shared/entities';
 
 /** One file's node: a leaf the reader can open. */
 export class SkillTreeFileNode {
@@ -41,7 +23,7 @@ export class SkillTreeFileNode {
   /** Names one file by the last segment of its path below the tree root. */
   public constructor(sourceRelativePath: string, name: string) {
     this.sourceRelativePath = sourceRelativePath;
-    this.label = labelFor(name);
+    this.label = pathPresentationLabel(name);
   }
 
   /** Stable identity for the render; a file's path is already unique. */
@@ -70,7 +52,7 @@ export class SkillTreeDirectoryNode {
   /** Names one directory by the segments leading to it, its own name last. */
   public constructor(ancestors: readonly string[], name: string) {
     this.id = [...ancestors, name].join('/');
-    this.label = labelFor(name);
+    this.label = pathPresentationLabel(name);
   }
 }
 

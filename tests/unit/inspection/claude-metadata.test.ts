@@ -22,7 +22,9 @@ import {
 } from '../../fixtures/content/build-fixtures';
 import type { ToolRecognition } from '../../../src/server/inspection/recognizers/candidate';
 
-const [claudeSkillRule] = CLAUDE_REPOSITORY_RULES;
+const claudeSkillRule = CLAUDE_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'claude.repo.skill',
+)!;
 
 /**
  * An empty skill directory these cases enumerate. The recognizer runs the

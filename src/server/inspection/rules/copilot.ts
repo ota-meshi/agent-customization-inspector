@@ -10,7 +10,8 @@
 // matching the path text again, could widen the allowlist without the plan
 // changing. Here the plan is the only authority, and vendor code only says
 // what an already-admitted candidate is recognized as.
-import { CompiledInspectionRule } from './registry';
+import { CompiledInspectionRule, type CompiledStaticNonInstructionRule } from './registry';
+import type { CustomizationKind } from '../../../shared/entities';
 import { COPILOT_RULE_RELATIONS } from '../../../shared/registries/copilot/relations';
 import { COPILOT_INSPECTION_RULES } from '../../../shared/registries/copilot/rules';
 import type { RuleId } from '../../../shared/registries/identifier-types';
@@ -23,18 +24,33 @@ import type { InspectionRule } from '../../../shared/registries/rule-types';
  * discriminates on, and the relations resolved from Copilot's catalog by the
  * rule's own identity, so no rule can be compiled with another rule's edges.
  */
-export class CopilotCompiledRule extends CompiledInspectionRule {
+export class CopilotCompiledRule
+  extends CompiledInspectionRule
+  implements CompiledStaticNonInstructionRule
+{
   /** Always `copilot`; the discriminant a mixed vendor list narrows on. */
   public override readonly tool: 'copilot';
 
   /** The rule's edges from {@link COPILOT_RULE_RELATIONS}, keyed by its own ID. */
   public override readonly relations: RuleRelations;
 
-  /** Compiles one Copilot record, rejecting one another product owns. */
+  /** Narrowed to the kinds this unit compiles; the constructor proves it. */
+  declare public readonly kind: Exclude<CustomizationKind, 'instructions'>;
+
+  /**
+   * Compiles one Copilot record, rejecting one another product owns and one
+   * whose kind this unit cannot answer for. Copilot ships no instruction rule
+   * yet, so it has no instruction unit; a record of that kind arriving here
+   * fails the build that ships it rather than compiling into a rule with no
+   * applicability range (see `CompiledInstructionRule`).
+   */
   public constructor(rule: InspectionRule) {
     super(rule);
     if (rule.tool !== 'copilot') {
       throw new TypeError(`rule ${rule.ruleId} is not a Copilot rule`);
+    }
+    if (rule.kind === 'instructions') {
+      throw new TypeError(`rule ${rule.ruleId} needs a Copilot instruction unit`);
     }
     this.tool = rule.tool;
     // Widened to a partial view for the lookup: `InspectionRule` does not

@@ -21,6 +21,50 @@ import type { ClaudeStrategyId } from '../identifier-types';
 import type { RuntimeCompositionStrategy } from '../strategy-types';
 
 /**
+ * Claude instruction layering: the User file, each ancestor directory's
+ * files, the launch directory's own, and the lazily discovered descendant
+ * ones are all added to context in load order, broadest scope first
+ * (`append`).
+ *
+ * One operation and deliberately no second: every discovered file is added
+ * rather than one winning, and the page states that there is no hard
+ * precedence between levels — conflicting natural-language instructions are
+ * left to the model rather than resolved into a setting-style winner. A
+ * `select-first` or `replace` here would record a resolution the vendor does
+ * not document (contracts/runtime-composition.md § claude.instructions.layering).
+ */
+export const CLAUDE_INSTRUCTIONS_LAYERING_STRATEGY = {
+  strategyId: 'claude.instructions.layering',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  operations: ['append'],
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.memory.locations-load',
+          url: 'https://code.claude.com/docs/en/memory',
+          officialHost: 'code.claude.com',
+          sections: ['Choose where to put CLAUDE.md files', 'How CLAUDE.md files load'],
+          reviewedOn: '2026-08-18',
+          establishes:
+            'The documented scopes load from broadest to most specific, all discovered files are concatenated into context rather than overriding each other, content is ordered from the filesystem root down to the working directory, and within one directory CLAUDE.local.md is appended after CLAUDE.md.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.sdk.setting-sources',
+          url: 'https://code.claude.com/docs/en/agent-sdk/claude-code-features',
+          officialHost: 'code.claude.com',
+          sections: ['CLAUDE.md load locations'],
+          reviewedOn: '2026-08-18',
+          establishes:
+            'All levels are additive — if both project and user files exist the agent sees both — and there is no hard precedence rule between levels, so conflicting instructions have no documented deterministic winner.',
+        },
+      ]
+    : [],
+} as const satisfies RuntimeCompositionStrategy;
+
+/**
  * Claude skill selection for same-name skills within one root.
  *
  * The documented outcome for a name clash inside one repository is that every
@@ -76,9 +120,10 @@ export const CLAUDE_SKILLS_SELECTION_STRATEGY = {
     : [],
 } as const satisfies RuntimeCompositionStrategy;
 
-/** Claude's contribution to the strategy registry, keyed by `strategyId`. */
+/** Claude's contribution to the strategy registry, keyed by `strategyId` in identifier order. */
 export const CLAUDE_COMPOSITION_STRATEGIES: Readonly<
   Record<ClaudeStrategyId, RuntimeCompositionStrategy>
 > = {
+  [CLAUDE_INSTRUCTIONS_LAYERING_STRATEGY.strategyId]: CLAUDE_INSTRUCTIONS_LAYERING_STRATEGY,
   [CLAUDE_SKILLS_SELECTION_STRATEGY.strategyId]: CLAUDE_SKILLS_SELECTION_STRATEGY,
 };

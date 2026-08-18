@@ -1,7 +1,7 @@
-// T054/T127/T155: Codex, Claude, and Copilot recognition from the admitting
-// rule alone — tool, the `skill` kind, path provenance, the exact multi-tool
-// recognition matrix, and the absence of any recognition the shipped registry
-// does not authorize (FR-004, FR-005).
+// T054/T127/T155/T207/T228: Codex, Claude, and Copilot recognition from the
+// admitting rule alone — tool, the `skill` and `instructions` kinds, path
+// provenance, the exact multi-tool recognition matrix, and the absence of any
+// recognition the shipped registry does not authorize (FR-004, FR-005).
 //
 // The one value a recognition lifts out of the bytes is the declared name, and
 // the "no source exposure" assertions below are what keep it there: every other
@@ -21,7 +21,7 @@ import {
   CODEX_REPOSITORY_RULES,
 } from '../../../src/server/inspection/rules/codex';
 import { COPILOT_REPOSITORY_RULES } from '../../../src/server/inspection/rules/copilot';
-import type { CompiledInspectionRule } from '../../../src/server/inspection/rules/registry';
+import type { CompiledStaticCandidateRule } from '../../../src/server/inspection/rules/registry';
 import type { SupportedTool } from '../../../src/shared/entities';
 
 // Selected by identity rather than position: a vendor catalog grows with its
@@ -32,7 +32,12 @@ const codexSkillRule = CODEX_REPOSITORY_RULES.find(
 const codexInstructionsRule = CODEX_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'codex.repo.instructions',
 )!;
-const claudeSkillRule = CLAUDE_REPOSITORY_RULES[0]!;
+const claudeSkillRule = CLAUDE_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'claude.repo.skill',
+)!;
+const claudeInstructionsRule = CLAUDE_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'claude.repo.instructions',
+)!;
 const copilotSkillRule = COPILOT_REPOSITORY_RULES[0]!;
 
 /**
@@ -60,7 +65,7 @@ afterAll(() => {
 async function recognizeWith(
   tool: SupportedTool,
   matchedPath: string,
-  rules: readonly CompiledInspectionRule[],
+  rules: readonly CompiledStaticCandidateRule[],
   sourceText = '',
 ) {
   // The census enumerates the candidate's own directory and propagates a
@@ -88,7 +93,7 @@ async function recognizeWith(
 
 async function recognize(
   matchedPath: string,
-  rules: readonly CompiledInspectionRule[] = [codexSkillRule],
+  rules: readonly CompiledStaticCandidateRule[] = [codexSkillRule],
   sourceText = '',
 ) {
   return (await recognizeWith('codex', matchedPath, rules, sourceText)).recognitions;
@@ -98,7 +103,7 @@ async function recognize(
 async function censusOf(
   tool: SupportedTool,
   matchedPath: string,
-  rules: readonly CompiledInspectionRule[],
+  rules: readonly CompiledStaticCandidateRule[],
 ) {
   const { companions } = await recognizeWith(tool, matchedPath, rules);
   return companions.map((companion) => companion.sourceRelativePath);
@@ -231,7 +236,7 @@ describe('Codex skill recognition', () => {
 describe('Claude skill recognition (T127)', () => {
   async function recognizeClaude(
     matchedPath: string,
-    rules: readonly CompiledInspectionRule[] = [claudeSkillRule],
+    rules: readonly CompiledStaticCandidateRule[] = [claudeSkillRule],
     sourceText = '',
   ) {
     return (await recognizeWith('claude', matchedPath, rules, sourceText)).recognitions;
@@ -321,7 +326,7 @@ describe('the Copilot recognition matrix (T155)', () => {
   /** Recognizes one candidate for all three products at once, as the scan does. */
   async function recognizeMatrix(
     matchedPath: string,
-    admitting: readonly CompiledInspectionRule[],
+    admitting: readonly CompiledStaticCandidateRule[],
   ) {
     mkdirSync(dirname(join(root, matchedPath)), { recursive: true });
     return recognizeCandidateForVendors(
@@ -411,7 +416,16 @@ describe('Codex instruction recognition (T207, presentation added by T222)', () 
       parseStatus: 'parsed',
       diagnosticIds: [],
     });
-    expect(Object.keys(recognitions[0]!.details)).toEqual(['kind', 'frontmatter', 'bodyText']);
+    expect(Object.keys(recognitions[0]!.details)).toEqual([
+      'kind',
+      'frontmatter',
+      'bodyText',
+      'applicabilityRange',
+    ]);
+    // The root's range: the file governs the whole Repository (data-model.md
+    // § Inventory unit), which is what puts it on one row with the
+    // `CLAUDE.md` beside it.
+    expect(recognitions[0]!.details).toMatchObject({ applicabilityRange: '**' });
   });
 
   it('derives deterministic provenance from the admitting instruction rule', async () => {
@@ -450,10 +464,13 @@ describe('Codex instruction recognition (T207, presentation added by T222)', () 
       )
     ).recognitions;
     expect(recognitions[0]!.parseStatus).toBe('failed');
+    // The range survives the failure: what a file governs comes from where it
+    // sits, not from what parsed (FR-028).
     expect(recognitions[0]!.details).toEqual({
       kind: 'instructions',
       frontmatter: [],
       bodyText: '',
+      applicabilityRange: '**',
     });
     expect(recognitions[0]!.diagnosticIds).toEqual([]);
   });
@@ -498,5 +515,82 @@ describe('the derived fallback recognition (T1086)', () => {
       discoveryClass: 'bounded-derived-candidate',
       matchedPath: 'TEAM_GUIDE.md',
     });
+  });
+});
+
+describe('Claude instruction recognition (T228)', () => {
+  it('attaches exactly one claude/instructions recognition to an admitted CLAUDE.md', async () => {
+    const recognitions = (await recognizeWith('claude', 'CLAUDE.md', [claudeInstructionsRule]))
+      .recognitions;
+    expect(recognitions).toHaveLength(1);
+    expect(recognitions[0]).toMatchObject({
+      sourceRelativePath: 'CLAUDE.md',
+      tool: 'claude',
+      // The payload is the file's presentation and nothing more: an
+      // instructions row's unit is the file itself (data-model.md § Inventory
+      // unit), so no declared name or other identity exists to extract, and
+      // no per-file classification says which documented layer the file
+      // belongs to — that is a relation to a working directory this product
+      // does not observe (FR-009).
+      details: { kind: 'instructions' },
+      parseStatus: 'parsed',
+      diagnosticIds: [],
+    });
+    expect(Object.keys(recognitions[0]!.details)).toEqual([
+      'kind',
+      'frontmatter',
+      'bodyText',
+      'applicabilityRange',
+    ]);
+  });
+
+  it('recognizes a nested file exactly as it recognizes the root one', async () => {
+    // Whether a file is the launch directory's, an ancestor's, or a lazily
+    // discovered descendant's is a relation to the vendor's runtime working
+    // directory. Nothing distinguishes the two recognitions but the path the
+    // walk admitted.
+    const nested = (
+      await recognizeWith('claude', 'packages/api/.claude/CLAUDE.md', [claudeInstructionsRule])
+    ).recognitions;
+    expect(nested).toHaveLength(1);
+    // `.claude` is the rule's own container, so the nested directory-form file
+    // governs what a `packages/api/CLAUDE.md` governs rather than a
+    // `.claude`-shaped range of its own (data-model.md § Inventory unit).
+    expect(nested[0]!.details).toEqual({
+      kind: 'instructions',
+      frontmatter: [],
+      bodyText: '',
+      applicabilityRange: 'packages/api/**',
+    });
+    expect(nested[0]!.provenances).toMatchObject([
+      { ruleId: 'claude.repo.instructions', matchedPath: 'packages/api/.claude/CLAUDE.md' },
+    ]);
+  });
+
+  it('derives deterministic provenance from the admitting instruction rule', async () => {
+    const recognitions = (
+      await recognizeWith('claude', 'CLAUDE.local.md', [claudeInstructionsRule])
+    ).recognitions;
+    expect(recognitions[0]!.provenances).toHaveLength(1);
+    expect(recognitions[0]!.provenances[0]).toMatchObject({
+      ruleId: 'claude.repo.instructions',
+      matchedPath: 'CLAUDE.local.md',
+    });
+  });
+
+  it('runs no census for an instruction candidate', async () => {
+    // A skill is a directory; an instruction file is just a file
+    // (contracts/inspection-path-allowlist.md § Bounded companion census).
+    const { companions } = await recognizeWith('claude', 'CLAUDE.md', [claudeInstructionsRule]);
+    expect(companions).toEqual([]);
+  });
+
+  it('produces no Claude recognition for a filename-only AGENTS.md', async () => {
+    // Claude Code reads `CLAUDE.md`, not `AGENTS.md`
+    // (anthropic.claude-code.memory.locations-load § AGENTS.md): dispatching
+    // the Codex admission to Claude must yield nothing rather than a
+    // recognition invented from the filename.
+    const { recognitions } = await recognizeWith('claude', 'AGENTS.md', [codexInstructionsRule]);
+    expect(recognitions).toEqual([]);
   });
 });

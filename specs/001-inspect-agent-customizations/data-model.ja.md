@@ -952,7 +952,8 @@ substituteしない。
 |---|---|
 | `skill` | 1つのtoolが解決した1つの名前（FR-007）: authoredなfrontmatter `name` — fileが宣言しない場合はskill directory名 — であり、nestedなskillのClaude Code recognitionはこれにroot相対のprefixを前置する。定義は1つのrecognition — `(file, tool)`につき1つ — であるため、1つの名前に解決される複数fileは1 entryが各recognitionを定義として列挙し、toolごとに異なる名前へ解決される1つのfileは各名前のentryで定義される |
 | `MCP` | Admit済みcarrier内の`[mcp_servers.*]`宣言1つ。したがって1つの`.codex/config.toml`は宣言したserverの数だけrowを公開する |
-| `instructions`、`settings/config` | File自身 |
+| `instructions` | 1つの適用範囲: 担当するfile自身のpathが導出するglobであり、担当する各fileをそのfileの認識toolとともに列挙する |
+| `settings/config` | File自身 |
 
 したがってCustomizationFileは自身の事実 — Source相対Path、read結果、size、diagnostic — を1度だけ
 公開し、各kindの一覧はそれを繰り返さず`sourceRelativePath`で参照する。Companionは何を持っていても自身のrowに
@@ -961,6 +962,28 @@ pathで名指して述べる: customizationのdirectory内で失敗したreadは
 1つであり、一覧の中でそれを言えるのはそのcustomizationのrowだけである（FR-028）。共有された1つのrow形では最初の2つの単位を
 表現できない: 名前でgroupingするとToolRecognitionが依拠する`(file, tool, kind)`ごとに1 recognitionと
 いう規定を壊し、file形のrowは1 carrierの宣言が必要とするN行になりようがない。
+
+Instruction rowの適用範囲はfileのSource相対Pathから導出するのであって、vendorのruntimeからでは
+ない: 範囲はfileが置かれたdirectoryであり、認識した製品がinstruction fileを置くためのdirectoryを
+末尾から取り除いたうえで、Repository root相対のglobとして綴る。Claude Codeは`.claude`を
+`CLAUDE.md`にだけ持つ — ページはproject instructionの唯一の場所として`./CLAUDE.md`**または**
+`./.claude/CLAUDE.md`を挙げる一方、local instructionは`./CLAUDE.local.md`だけを挙げる — ため、
+`.claude/CLAUDE.md`とrootの`CLAUDE.md`は1つの範囲を導出して1 rowを共有し、
+`packages/api/.claude/CLAUDE.md`は`packages/api/**`を導出し、`.claude/CLAUDE.local.md`は自身の
+directoryを保って`.claude/**`を導出する。そうしたdirectoryが何を意味するかはその製品自身の
+事実であるため、共有の導出が読む一覧を宣言するのではなく、各製品が自身のruleについて答える。
+
+導出した範囲はliteralから組み立てたpatternであるため、各directory名はglobがsyntaxとして読む
+箇所をescapeする — wildcard、character classとbraceの区切り、extended groupの括弧、先頭の
+negation、そしてescape文字自身である。したがって`packages/[api]`を持つrepositoryは
+`packages/\[api\]/**`を公開し、`a`・`p`・`i`のclassではなくそのdirectory自身を表す。escapeは
+parseではない: patternを解釈するものは無く、pathが述べるとおりの意味になるように自身の綴りを
+決めるだけである。Rowはそのglobの厳密な文字列一致でgroupingする: globのparse、綴りの正規化、
+2つの範囲が重なるかの判定は行わないため、`packages/api/**`と`packages/api/**/*`は2つの範囲で
+ある。導出側の綴りはfileごとではなく製品が固定するものであり、それがgroupingの導出側を
+一貫させる。自身の範囲を宣言するfileはその宣言値でkeyされ、
+その分岐はrecognizerが宣言を抽出するphaseとともに到着する。範囲はfileが担当する対象を述べる。
+製品がそのfileをloadしたという主張では決してない: admissionはactivationではない（FR-009）。
 
 Skill rowの名前は1つのtoolが解決した名前である（FR-007）: authoredなfrontmatter `name` —
 fileが宣言しないか空で宣言する場合はskill directory名。名前付きdirectoryであることが

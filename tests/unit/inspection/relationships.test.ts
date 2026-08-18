@@ -1,6 +1,6 @@
-// T141/T217: the shipped relationship policy for the Claude skill detail and
-// Codex instruction detail milestones (data-model.md § Relationship, FR-028,
-// FR-029).
+// T141/T217/T238: the shipped relationship policy for the Claude skill detail
+// and the two instruction detail milestones (data-model.md § Relationship,
+// FR-028, FR-029).
 //
 // A relationship may be emitted only when its kind is listed by the owning
 // presentation-allowlist row *and* its origin is covered by a relationship-only
@@ -41,11 +41,17 @@ vi.mock('../../../src/server/inspection/fs-io', async (importOriginal) => {
   );
 });
 
-const [claudeSkillRule] = CLAUDE_REPOSITORY_RULES;
+const claudeSkillRule = CLAUDE_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'claude.repo.skill',
+)!;
 
 const codexInstructionRule = CODEX_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'codex.repo.instructions',
 );
+
+const claudeInstructionRule = CLAUDE_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'claude.repo.instructions',
+)!;
 
 let root: string;
 
@@ -230,8 +236,97 @@ describe('Codex instruction files emit no relationship at all (T217)', () => {
       kind: 'instructions',
       frontmatter: [],
       bodyText: '',
+      applicabilityRange: '**',
     });
     expect(recognitions[0]!.diagnosticIds).toEqual([]);
+  });
+});
+
+/** Recognizes one authored Claude instruction file at the given admitted path. */
+async function recognizeClaudeInstruction(matchedPath: string, sourceText: string) {
+  const { recognitions } = await recognizeCandidateForVendors(
+    {
+      matchedPath,
+      absolutePath: join(root, matchedPath),
+      sourceRoot: root,
+      admissions: [{ compiled: claudeInstructionRule, origin: { planIndex: 0, selectorIndex: 0 } }],
+      sourceText,
+    },
+    ['claude'],
+  );
+  return recognitions;
+}
+
+describe('Claude instruction files emit no relationship either (T238)', () => {
+  // Deliberately not the Codex case restated. Claude Code *does* document an
+  // import syntax — `@path/to/import`, skipping Markdown code spans and fenced
+  // blocks — so the reason no edge is emitted is a standing product decision
+  // rather than an absent vendor statement: this product does not read
+  // references out of prose. No page fixes where such a token ends, so every
+  // boundary rule would be this product's own invention and a wrong one
+  // asserts a reference the reader never wrote. That decision is not "not
+  // yet": no relationship-only rule covers an instruction origin, and the
+  // presentation allowlist merely permits a kind, which never requires an
+  // extractor to find occurrences (T217). This suite is what keeps a reader of
+  // the vendor page from "fixing" it back into existence.
+
+  it('keeps an authored @path token as source text and accesses no target', async () => {
+    const recognitions = await recognizeClaudeInstruction(
+      'CLAUDE.md',
+      '# Project instructions\n\nSee @docs/target.md and [the guide](docs/target.md).\ndocs/target.md\n',
+    );
+    expect(recognitions).toHaveLength(1);
+    expect(recognitions[0]!.details.kind).toBe('instructions');
+    // The token reaches the reader through the complete source and the body
+    // the frontmatter block was removed from, which is where they wrote it.
+    expect(recognitions[0]!.details).toMatchObject({
+      bodyText: expect.stringContaining('@docs/target.md') as unknown as string,
+    });
+    // The file the token names exists on disk, and nothing opened it: an
+    // instruction recognition performs no filesystem operation at all — no
+    // read, and no census, because the kind is not directory-shaped.
+    expect(vi.mocked(fsIo.readFile)).not.toHaveBeenCalled();
+    expect(vi.mocked(fsIo.readdir)).not.toHaveBeenCalled();
+  });
+
+  it('publishes no relationship vocabulary on the instruction recognition', async () => {
+    const recognitions = await recognizeClaudeInstruction(
+      'packages/api/CLAUDE.md',
+      'Read @../../docs/target.md and @/etc/hosts and @~/notes.md before anything.\n',
+    );
+    const serialized = JSON.stringify(recognitions);
+    // Not one edge field, and in particular no boundary verdict: the two
+    // targets that leave this Source are as unclassified as the one that does
+    // not (data-model.md § Relationship — an unlisted or uncovered reference
+    // "cannot be promoted to a generic, inferred, or fallback relationship").
+    for (const field of [
+      'relationshipId',
+      'targetOrigin',
+      'authoredTarget',
+      'semanticTarget',
+      'normalizedTarget',
+      'boundaryStatus',
+      'resolutionStatus',
+    ]) {
+      expect(serialized).not.toContain(field);
+    }
+  });
+
+  it('resolves an environment reference in a reference-looking token nowhere', async () => {
+    // Same rule as everywhere else: the authored spelling is published as
+    // written and no process environment is consulted (FR-026).
+    process.env['ACI_T238_REFERENCE'] = 'resolved-from-environment';
+    try {
+      const recognitions = await recognizeClaudeInstruction(
+        'CLAUDE.md',
+        'Import @${ACI_T238_REFERENCE}/notes.md here.\n',
+      );
+      const serialized = JSON.stringify(recognitions);
+      expect(serialized).toContain('${ACI_T238_REFERENCE}');
+      expect(serialized).not.toContain('resolved-from-environment');
+    } finally {
+      delete process.env['ACI_T238_REFERENCE'];
+    }
   });
 });
 

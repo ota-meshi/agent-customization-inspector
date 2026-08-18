@@ -4,12 +4,17 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  CUSTOMIZATION_KIND_ORDER,
   LIFECYCLE_QUALIFIER_ORDER,
+  SUPPORTED_TOOL_ORDER,
   createOpaqueId,
   createSourceBoundaryDto,
   decodeSourceBytes,
   encodeRootPresentation,
   escapeControlCharacters,
+  isCustomizationKind,
+  isSupportedTool,
+  pathPresentationLabel,
   rendersNothingVisible,
 } from '../../../src/shared/entities';
 
@@ -181,6 +186,42 @@ describe('escapeControlCharacters', () => {
   });
 });
 
+describe('pathPresentationLabel', () => {
+  it('renders an ordinary path as its escaped spelling', () => {
+    // The authored spelling is the path's presentation identity, so a value
+    // with anything that draws is exactly what `escapeControlCharacters`
+    // produces — the fallback is for the case that has nothing.
+    expect(pathPresentationLabel('.agents/skills/café name/SKILL.md')).toBe(
+      '.agents/skills/café name/SKILL.md',
+    );
+    expect(pathPresentationLabel('a\nb.md')).toBe('a\\u000Ab.md');
+  });
+
+  it('spells out a value that would draw nothing at all', () => {
+    // Escaping leaves a space a space and a zero-width space a zero-width
+    // space, so a name built only from those renders as an empty label — and
+    // a row or link carrying it would have neither visible text nor an
+    // accessible name (data-model.md § SourceRelativePath).
+    expect(pathPresentationLabel(' ')).toBe('\\u0020');
+    expect(pathPresentationLabel('​​')).toBe('\\u200B\\u200B');
+    expect(pathPresentationLabel('﻿­')).toBe('\\uFEFF\\u00AD');
+  });
+
+  it('keeps two invisible values apart, which the escaped spelling cannot', () => {
+    // One space and two spaces are two entry names one directory can hold.
+    // Escaping renders both as blank, so the spelled-out form is what keeps
+    // their rows distinguishable (FR-025).
+    expect(pathPresentationLabel(' ')).not.toBe(pathPresentationLabel('  '));
+  });
+
+  it('leaves a nested path alone however invisible its segments are', () => {
+    // `/` draws, so only a single-segment value can reach the fallback — the
+    // case a Codex configured fallback basename produces, since no character
+    // grammar constrains a declared entry name.
+    expect(pathPresentationLabel('docs/​')).toBe('docs/​');
+  });
+});
+
 describe('evidence vocabulary', () => {
   it('fixes the lifecycle qualifier order', () => {
     // The order is contract data the registry gate checks each record's
@@ -196,5 +237,34 @@ describe('opaque IDs', () => {
     const id = createOpaqueId();
     expect(id).toMatch(/^[A-Za-z0-9_-]{22}$/u);
     expect(createOpaqueId()).not.toBe(id);
+  });
+});
+
+describe('closed-catalog predicates', () => {
+  // The catalogs are what turn text from outside the product — a `?kind=`
+  // query the reader typed, the raw value a `<select>` hands back — into a
+  // member of a closed union. A predicate rather than a membership test
+  // followed by an assertion, so the comparison is what proves the type.
+  it('recognizes every catalogued kind and tool', () => {
+    for (const kind of CUSTOMIZATION_KIND_ORDER) {
+      expect(isCustomizationKind(kind), kind).toBe(true);
+    }
+    for (const tool of SUPPORTED_TOOL_ORDER) {
+      expect(isSupportedTool(tool), tool).toBe(true);
+    }
+  });
+
+  it('rejects text the catalogue does not name, and every non-string', () => {
+    // A near miss in spelling or case is not a member: the wire values are
+    // exact, and a tab that opened on a guessed kind would show rows the URL
+    // did not ask for.
+    for (const value of ['', 'Skill', 'skills', 'instruction', 'CLAUDE', 'gemini']) {
+      expect(isCustomizationKind(value), value).toBe(false);
+      expect(isSupportedTool(value), value).toBe(false);
+    }
+    for (const value of [null, undefined, 0, {}, ['skill'], new String('skill')]) {
+      expect(isCustomizationKind(value)).toBe(false);
+      expect(isSupportedTool(value)).toBe(false);
+    }
   });
 });

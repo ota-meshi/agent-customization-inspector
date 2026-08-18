@@ -1,5 +1,63 @@
 [
   {
+    "ruleId": "claude.repo.instructions",
+    "tool": "claude",
+    "discoveryClass": "static-candidate",
+    "kind": "instructions",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "recursive-directories"
+          },
+          {
+            "kind": "literal",
+            "value": "CLAUDE.md"
+          }
+        ],
+        [
+          {
+            "kind": "recursive-directories"
+          },
+          {
+            "kind": "literal",
+            "value": "CLAUDE.local.md"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.memory.locations-load",
+        "url": "https://code.claude.com/docs/en/memory",
+        "officialHost": "code.claude.com",
+        "sections": [
+          "Choose where to put CLAUDE.md files",
+          "AGENTS.md",
+          "How CLAUDE.md files load"
+        ],
+        "reviewedOn": "2026-08-18",
+        "establishes": "Project instructions are ./CLAUDE.md or ./.claude/CLAUDE.md and local instructions ./CLAUDE.local.md; the same two filenames are checked in every directory above the working directory and discovered in subdirectories below it, which is the shape this rule admits at the selected root and every descendant. Claude Code reads CLAUDE.md and not AGENTS.md, which is why no selector here names that filename."
+      },
+      {
+        "sourceId": "anthropic.claude-code.sdk.setting-sources",
+        "url": "https://code.claude.com/docs/en/agent-sdk/claude-code-features",
+        "officialHost": "code.claude.com",
+        "sections": ["CLAUDE.md load locations"],
+        "reviewedOn": "2026-08-18",
+        "establishes": "The load-location table lists the project root, parent-directory, subdirectory, and local rows separately, and each is gated on a settingSources value — a runtime input this tool never observes, which is why one rule admits every depth and classifies none of them."
+      }
+    ]
+  },
+  {
     "ruleId": "claude.repo.skill",
     "tool": "claude",
     "discoveryClass": "static-candidate",

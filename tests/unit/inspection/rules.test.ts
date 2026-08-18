@@ -1,7 +1,8 @@
-// T053/T126/T154: the Codex, Claude, and Copilot SKILL rules as executed —
-// each authored program compiles once into the typed plan, the safe filesystem
-// executes only that plan, and vendor code classifies matches without owning a
-// walker or reinterpreting selectors (FR-003, FR-019, FR-024).
+// T053/T126/T154/T207/T228: the Codex, Claude, and Copilot SKILL and
+// instruction rules as executed — each authored program compiles once into the
+// typed plan, the safe filesystem executes only that plan, and vendor code
+// classifies matches without owning a walker or reinterpreting selectors
+// (FR-003, FR-019, FR-024).
 //
 // The near-miss assertions carry the weight here. A selector that is one
 // segment too loose still passes every positive case, so the only way an
@@ -13,10 +14,12 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import * as fsIo from '../../../src/server/inspection/fs-io';
 import {
+  buildClaudeInstructionFixture,
   buildClaudeSkillFixture,
   buildCodexInstructionFixture,
   buildCodexSkillFixture,
   buildCopilotSkillFixture,
+  type ClaudeInstructionFixture,
   type ClaudeSkillFixture,
   type CodexInstructionFixture,
   type CodexSkillFixture,
@@ -336,9 +339,9 @@ describe('an admission is not an activation', () => {
 
 describe('the shipped claude.repo.skill plan (T126)', () => {
   it('compiles the authored descendant program once into the immutable typed plan', () => {
-    expect(CLAUDE_REPOSITORY_RULES).toHaveLength(1);
-    const compiled = CLAUDE_REPOSITORY_RULES[0]!;
-    expect(compiled.rule.ruleId).toBe('claude.repo.skill');
+    const compiled = CLAUDE_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'claude.repo.skill',
+    )!;
     expect(compiled.tool).toBe('claude');
     expect(compiled.kind).toBe('skill');
     // The compiled plan is exactly what compiling the shipped matcher yields:
@@ -719,5 +722,172 @@ describe('the anchored Codex instruction inventory (T207)', () => {
     for (const derivedPath of instructionFixture.expectedDerivedFallbackPaths) {
       expect(opened).not.toContain(derivedPath);
     }
+  });
+});
+
+describe('the shipped claude.repo.instructions plan (T228)', () => {
+  it('compiles the two any-depth filename programs in the authored order', () => {
+    const compiled = CLAUDE_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'claude.repo.instructions',
+    )!;
+    expect(compiled.tool).toBe('claude');
+    expect(compiled.kind).toBe('instructions');
+    // The compiled plan is exactly what compiling the shipped matcher yields:
+    // there is no second, vendor-owned interpretation of the selector.
+    expect(compiled.plan).toEqual(
+      new TraversalPlan(INSPECTION_RULES['claude.repo.instructions']!.matcher!),
+    );
+    // Two programs rather than one dynamic step, so each admission carries
+    // which authored filename matched — and exactly two, because the
+    // any-depth `CLAUDE.md` program already reaches `./.claude/CLAUDE.md` at
+    // the root and at every depth. A third `['.claude', 'CLAUDE.md']`
+    // selector would only add a second admission of a file the first program
+    // already admitted (contracts/vendors/claude-code.md § Repository
+    // Inspector matchers).
+    expect(compiled.plan.selectors.map((selector) => selector.remainder)).toEqual([
+      [{ kind: 'recursive-directories' }, { kind: 'literal', value: 'CLAUDE.md' }],
+      [{ kind: 'recursive-directories' }, { kind: 'literal', value: 'CLAUDE.local.md' }],
+    ]);
+    // Both admitted files are published side by side. Which one a session
+    // loads depends on its working directory and on the files it reads,
+    // neither of which this tool observes, so no winner is projected
+    // (FR-009).
+    expect(compiled.plan.selectionPolicy).toBe('all-matches');
+  });
+
+  it('rests on the three Repository lookups and is explained by the layering', () => {
+    // The User scope is a different Source boundary this rule may not read,
+    // so it is absent from the rule's own basis while the layering strategy
+    // that owns the composition still consumes it. The rule states nothing
+    // about which layer a session would load.
+    const rule = INSPECTION_RULES['claude.repo.instructions']!;
+    expect(
+      RULE_RELATIONS[rule.ruleId].basedOnBehaviors.map((behavior) => behavior.behaviorId),
+    ).toEqual([
+      'claude.behavior.repo.instructions.ancestor',
+      'claude.behavior.repo.instructions.descendant',
+      'claude.behavior.repo.instructions.launch',
+    ]);
+    expect(
+      RULE_RELATIONS[rule.ruleId].explainedByStrategies.map((strategy) => strategy.strategyId),
+    ).toEqual(['claude.instructions.layering']);
+    for (const field of ['conditionKeys', 'applicability', 'effective']) {
+      expect(Object.keys(rule)).not.toContain(field);
+    }
+  });
+});
+
+describe('the any-depth Claude instruction inventory (T228)', () => {
+  let instructionFixture: ClaudeInstructionFixture;
+
+  beforeAll(() => {
+    instructionFixture = buildClaudeInstructionFixture('inspector-claude-instruction-rules');
+  });
+
+  afterAll(() => {
+    rmSync(instructionFixture.root, { recursive: true, force: true });
+  });
+
+  it('admits CLAUDE.md and CLAUDE.local.md at the root and at every depth', async () => {
+    const result = await scanWith(instructionFixture.root, CLAUDE_REPOSITORY_RULES);
+    // The nested `.claude/CLAUDE.md` files are among them: `ANY_DIRECTORIES`
+    // matches `.claude` like any other directory, so the directory form the
+    // page names is reached by the same program that reaches the bare
+    // filename, at the root and below it alike.
+    expect(result.files.map((file) => file.publicPath).sort()).toEqual([
+      ...instructionFixture.expectedClaudeInstructionPaths,
+    ]);
+  });
+
+  it('never recognizes AGENTS.md, which the Codex plans still admit', async () => {
+    // Claude Code reads `CLAUDE.md`, not `AGENTS.md`
+    // (anthropic.claude-code.memory.locations-load § AGENTS.md), so the file
+    // is a Codex instruction candidate and nothing more — the phase changes
+    // neither side of the Codex allowlist.
+    const claudeOnly = await scanWith(instructionFixture.root, CLAUDE_REPOSITORY_RULES);
+    expect(claudeOnly.files.map((file) => file.publicPath)).not.toContain('AGENTS.md');
+    const codexOnly = await scanWith(instructionFixture.root, CODEX_REPOSITORY_RULES);
+    expect(codexOnly.files.map((file) => file.publicPath)).toEqual([
+      ...instructionFixture.expectedCodexInstructionPaths,
+    ]);
+  });
+
+  it('admits no spelling variant, VCS internal, installed package, or relationship target', async () => {
+    const result = await scanWith(instructionFixture.root, [
+      ...CLAUDE_REPOSITORY_RULES,
+      ...CODEX_REPOSITORY_RULES,
+    ]);
+    const paths = new Set(result.files.map((file) => file.publicPath));
+    for (const nearMiss of instructionFixture.nearMissPaths) {
+      expect(paths.has(nearMiss), nearMiss).toBe(false);
+    }
+  });
+
+  it('derives each provenance from the authored selector that matched', async () => {
+    const result = await scanWith(instructionFixture.root, CLAUDE_REPOSITORY_RULES);
+    const planIndex = CLAUDE_REPOSITORY_RULES.findIndex(
+      (candidate) => candidate.rule.ruleId === 'claude.repo.instructions',
+    );
+    // Deterministic provenance: `CLAUDE.md` is the first authored selector and
+    // `CLAUDE.local.md` the second, so which filename admitted a candidate is
+    // a fact of the walk rather than something re-derived from the public
+    // path — and each file carries exactly one admission, because no second
+    // program reaches it.
+    const byPath = new Map(result.files.map((file) => [file.publicPath, file.admissions]));
+    for (const path of ['CLAUDE.md', '.claude/CLAUDE.md', 'packages/api/.claude/CLAUDE.md']) {
+      expect(byPath.get(path), path).toEqual([{ planIndex, selectorIndex: 0 }]);
+    }
+    expect(byPath.get('CLAUDE.local.md')).toEqual([{ planIndex, selectorIndex: 1 }]);
+  });
+
+  it('opens only the admitted candidates, never the authored import target', async () => {
+    // This phase emits no relationship at all, and a relationship target
+    // confers zero read authority wherever one is emitted (T238 owns the
+    // imports): the file the root `CLAUDE.md` names with an `@path` token
+    // exists on disk and is never opened.
+    await scanWith(instructionFixture.root, CLAUDE_REPOSITORY_RULES);
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) =>
+      String(call[0])
+        .slice(instructionFixture.root.length + 1)
+        .split(sep)
+        .join('/'),
+    );
+    expect([...opened].sort()).toEqual([...instructionFixture.expectedClaudeInstructionPaths]);
+    expect(opened).not.toContain(instructionFixture.importTargetPath);
+  });
+});
+
+describe('the applicability range a Claude instruction rule answers (T1093)', () => {
+  // Narrowed by the discriminant the union carries, exactly as the recognizer
+  // narrows it: only an instruction unit answers a range.
+  const instructionRule = CLAUDE_REPOSITORY_RULES.find(
+    (candidate) => candidate.kind === 'instructions',
+  );
+  if (instructionRule === undefined || instructionRule.kind !== 'instructions') {
+    throw new Error('expected a compiled Claude instruction rule');
+  }
+  const rangeOf = (path: string): string => instructionRule.applicabilityRangeOf(path);
+
+  it('answers the Repository root for a file the root holds', () => {
+    expect(rangeOf('CLAUDE.md')).toBe('**');
+    expect(rangeOf('CLAUDE.local.md')).toBe('**');
+  });
+
+  it('drops a trailing `.claude` for CLAUDE.md and for nothing else', () => {
+    // The page names `./CLAUDE.md` **or** `./.claude/CLAUDE.md` as the one
+    // project instruction location, and lists local instructions at
+    // `./CLAUDE.local.md` alone, so the directory form is that filename's.
+    expect(rangeOf('.claude/CLAUDE.md')).toBe('**');
+    expect(rangeOf('packages/api/.claude/CLAUDE.md')).toBe('packages/api/**');
+    expect(rangeOf('.claude/CLAUDE.local.md')).toBe('.claude/**');
+  });
+
+  it('spells a directory name that reads as glob syntax as the literal it is', () => {
+    // A range is published as a glob, so a literal directory name has to be
+    // escaped or the pattern denotes something else — `packages/[api]/**`
+    // would read as a class over `a`, `p`, and `i`.
+    expect(rangeOf('packages/[api]/CLAUDE.md')).toBe('packages/\\[api\\]/**');
+    expect(rangeOf('foo*/CLAUDE.md')).toBe('foo\\*/**');
+    expect(rangeOf('!docs/CLAUDE.md')).toBe('\\!docs/**');
   });
 });
