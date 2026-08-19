@@ -26,6 +26,7 @@ import {
   SOURCE_STATUS_TEXT,
   SUPPORTED_TOOL_TEXT,
 } from '../../../src/shared/entities';
+import { VENDOR_SURFACE_TEXT } from '../../../src/shared/registries/behavior-text';
 
 /** Every table whose values reach a screen, named as its module names it. */
 const TABLES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
@@ -41,6 +42,7 @@ const TABLES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   SOURCE_BOUNDARY_ORIGIN_TEXT,
   SOURCE_STATUS_TEXT,
   SUPPORTED_TOOL_TEXT,
+  VENDOR_SURFACE_TEXT,
 };
 
 /**
@@ -59,6 +61,7 @@ describe('the user-visible copy of the closed vocabularies', () => {
     expect(WIRE_TOKENS).toContain('recognition-parse-failed');
     expect(WIRE_TOKENS).toContain('utf-8-replaced');
     expect(WIRE_TOKENS).toContain('all-remain');
+    expect(WIRE_TOKENS).toContain('copilot-vscode');
   });
 
   it.each(Object.entries(TABLES))('renders no wire token as itself: %s', (_name, table) => {

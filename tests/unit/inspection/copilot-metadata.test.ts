@@ -26,7 +26,9 @@ import {
 } from '../../fixtures/content/build-fixtures';
 import type { ToolRecognition } from '../../../src/server/inspection/recognizers/candidate';
 
-const [copilotSkillRule] = COPILOT_REPOSITORY_RULES;
+const copilotSkillRule = COPILOT_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'copilot.repo.skill',
+)!;
 const claudeSkillRule = CLAUDE_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'claude.repo.skill',
 )!;
@@ -38,6 +40,14 @@ const claudeSkillRule = CLAUDE_REPOSITORY_RULES.find(
 function copilotSelectorIndexOf(matchedPath: string): number {
   return ['.github/', '.agents/', '.claude/'].findIndex((prefix) => matchedPath.startsWith(prefix));
 }
+
+/**
+ * Where the skill rule sits in the catalog these cases submit. A plan index
+ * names a position in that list rather than a rule, so it is read from the
+ * list instead of written as a constant that a new Copilot rule would silently
+ * invalidate.
+ */
+const copilotSkillPlanIndex = COPILOT_REPOSITORY_RULES.indexOf(copilotSkillRule);
 
 /**
  * Empty skill directories these cases enumerate. The recognizer runs the
@@ -74,7 +84,10 @@ async function recognize(
       admissions: [
         {
           compiled: copilotSkillRule!,
-          origin: { planIndex: 0, selectorIndex: copilotSelectorIndexOf(matchedPath) },
+          origin: {
+            planIndex: copilotSkillPlanIndex,
+            selectorIndex: copilotSelectorIndexOf(matchedPath),
+          },
         },
       ],
       sourceText,
@@ -210,7 +223,10 @@ describe('Copilot skill declared name', () => {
         admissions: [
           {
             compiled: copilotSkillRule!,
-            origin: { planIndex: 0, selectorIndex: copilotSelectorIndexOf(matchedPath) },
+            origin: {
+              planIndex: copilotSkillPlanIndex,
+              selectorIndex: copilotSelectorIndexOf(matchedPath),
+            },
           },
           { compiled: claudeSkillRule!, origin: { planIndex: 1, selectorIndex: 0 } },
         ],
@@ -299,5 +315,141 @@ describe('Copilot skill declared name', () => {
       expect(provenance!.discoveryClass).toBe('static-candidate');
       expect(provenance!.matchedPath).toBe(matchedPath);
     }
+  });
+});
+
+describe('Copilot instruction declarations (T261)', () => {
+  /** Recognizes one authored Copilot instruction file at the given admitted path. */
+  async function recognizeInstruction(
+    sourceText: string,
+    matchedPath: string,
+    ruleId: string,
+  ): Promise<ToolRecognition> {
+    const compiled = COPILOT_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === ruleId,
+    )!;
+    const { recognitions } = await recognizeCandidateForVendors(
+      {
+        matchedPath,
+        absolutePath: join(root, matchedPath),
+        sourceRoot: root,
+        admissions: [{ compiled, origin: { planIndex: 0, selectorIndex: 0 } }],
+        sourceText,
+      },
+      ['copilot'],
+    );
+    expect(recognitions).toHaveLength(1);
+    return recognitions[0]!;
+  }
+
+  it('publishes every declared key by the name the file wrote, in the file’s order', async () => {
+    // No closed field catalog exists for an instruction file: what it declares
+    // is the author's, so the detail leads with the keys they wrote, in their
+    // order, and a key this product has no opinion about is published exactly
+    // like one it does (FR-007). `applyTo` is one of those keys — it also
+    // keys the row, which is a fact about the range and changes nothing about
+    // how the declaration itself is shown.
+    const recognition = await recognizeInstruction(
+      [
+        '---',
+        "applyTo: 'src/frontend/**'",
+        'excludeAgent: copilot-swe-agent',
+        'description: Frontend conventions',
+        'unknownToThisProduct: 7',
+        '---',
+        '',
+        '# Frontend',
+        '',
+      ].join('\n'),
+      '.github/instructions/frontend.instructions.md',
+      'copilot.repo.instructions.path',
+    );
+    if (recognition.details.kind !== 'instructions') {
+      throw new Error('expected an instructions recognition');
+    }
+    expect(recognition.details.frontmatter.map((entry) => entry.key)).toEqual([
+      'applyTo',
+      'excludeAgent',
+      'description',
+      'unknownToThisProduct',
+    ]);
+    // Values are what the parser resolved under the product's fixed YAML
+    // semantics — an unquoted `7` is the number it resolves to — never a
+    // slice of the authored line (data-model.md § Field reading).
+    expect(recognition.details.frontmatter.map((entry) => entry.value)).toEqual([
+      { kind: 'scalar', text: 'src/frontend/**' },
+      { kind: 'scalar', text: 'copilot-swe-agent' },
+      { kind: 'scalar', text: 'Frontend conventions' },
+      { kind: 'scalar', text: '7' },
+    ]);
+    // The body is the file with its declarations removed, which is the other
+    // half of the one parse the detail shows.
+    expect(recognition.details.bodyText).toContain('# Frontend');
+    expect(recognition.details.bodyText).not.toContain('applyTo');
+  });
+
+  it('publishes a literal credential unmasked and resolves no environment reference', async () => {
+    // The two rules every authored value follows: what the file wrote is what
+    // the reader sees, with no masking, reveal state, or substitution
+    // (FR-025, FR-026). A credential is readable only through the detail
+    // route, which is a decision about where, never about whether.
+    process.env['ACI_T261_METADATA'] = 'resolved-from-environment';
+    try {
+      const recognition = await recognizeInstruction(
+        `---\ntoken: ${CONTENT_FIXTURE_SECRET}\nendpoint: \${ACI_T261_METADATA}/v1\n---\n\n# Repository\n`,
+        '.github/copilot-instructions.md',
+        'copilot.repo.instructions.repository',
+      );
+      const serialized = JSON.stringify(recognition);
+      expect(serialized).toContain(CONTENT_FIXTURE_SECRET);
+      expect(serialized).toContain('${ACI_T261_METADATA}');
+      expect(serialized).not.toContain('resolved-from-environment');
+    } finally {
+      delete process.env['ACI_T261_METADATA'];
+    }
+  });
+
+  it('states no surface condition, enablement, or winner on the recognition', async () => {
+    // What a session would do with the file turns on runtime this product does
+    // not observe: which surface is running, whether a location setting
+    // enables it, which of several applicable files a layer picks. Copilot's
+    // three surfaces document incompatible composition, so a single answer
+    // would be an invention (FR-009). The recognition therefore carries the
+    // file's own declarations and what it governs, and nothing else.
+    const recognition = await recognizeInstruction(
+      "---\napplyTo: '**'\n---\n\n# Everything\n",
+      '.github/instructions/all.instructions.md',
+      'copilot.repo.instructions.path',
+    );
+    const serialized = JSON.stringify(recognition).toLowerCase();
+    for (const claim of [
+      'enabled',
+      'disabled',
+      'selected',
+      'winner',
+      'precedence',
+      'active',
+      'loaded',
+      'applies',
+    ]) {
+      expect(serialized, claim).not.toContain(claim);
+    }
+  });
+
+  it('carries the admitting rule and the surfaces it rests on, on every provenance', async () => {
+    // Field by field rather than a deep equality: a provenance derives its
+    // identifiers and its surfaces from the compiled rule it holds, and an
+    // equality matcher's clone has no class behind those getters.
+    const recognition = await recognizeInstruction(
+      '# API context\n',
+      'packages/api/.github/copilot-instructions.md',
+      'copilot.repo.instructions.repository-cli-context',
+    );
+    expect(recognition.provenances).toHaveLength(1);
+    const [provenance] = recognition.provenances;
+    expect(provenance!.ruleId).toBe('copilot.repo.instructions.repository-cli-context');
+    expect(provenance!.discoveryClass).toBe('static-candidate');
+    expect(provenance!.matchedPath).toBe('packages/api/.github/copilot-instructions.md');
+    expect(provenance!.recognizingSurfaces).toEqual(['copilot-cli']);
   });
 });

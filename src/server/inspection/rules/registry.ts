@@ -14,7 +14,10 @@
 // are deliberately not re-checked at runtime (AGENTS.md Implementation
 // simplicity policy). Per-vendor rule catalogs arrive with their inventory
 // phases; this module owns only the shared closed grammar and compilation.
+import type { FrontmatterEntryDto } from '../../../shared/api-types';
 import type { CustomizationKind, SupportedTool } from '../../../shared/entities';
+import { VENDOR_SURFACE_ORDER } from '../../../shared/registries/behavior-text';
+import type { VendorSurface } from '../../../shared/registries/behavior-types';
 import type { InspectionRule } from '../../../shared/registries/rule-types';
 import type { RuleRelations } from '../../../shared/registries/relation-types';
 
@@ -517,6 +520,39 @@ export abstract class CompiledRule {
    */
   public readonly kind: CustomizationKind;
 
+  /**
+   * The rule's graph edges, resolved by the vendor subclass from its own
+   * catalog — never supplied by a caller, so no rule can be compiled with
+   * another rule's edges.
+   *
+   * Declared on the class every candidate compiles to rather than on the
+   * static one alone: which documented behavior a policy rests on is a fact
+   * about every rule, and a derived rule's edges are keyed in the same
+   * registry as a static one's.
+   */
+  public abstract readonly relations: RuleRelations;
+
+  /**
+   * The product surfaces whose documented behavior this rule rests on, in the
+   * closed surface order — what a recognition means when it names a surface
+   * (contracts/vendors/github-copilot.md § Surface boundary).
+   *
+   * Derived rather than stored, and derived from the rule's own edges rather
+   * than from a field beside them: a behavior statement already names the
+   * surfaces it is scoped to, so a second list here could disagree with it.
+   * Which surfaces a Copilot instruction rule reaches is therefore decided by
+   * which behaviors it is based on — which is why that vendor splits one
+   * documented filename into a root-exact and a CLI-context rule instead of
+   * tagging one rule with three surfaces it does not uniformly have.
+   *
+   * Never a claim that a surface loaded the file: an admission is not an
+   * activation (FR-009).
+   */
+  public get recognizingSurfaces(): readonly VendorSurface[] {
+    const named = new Set(this.relations.basedOnBehaviors.flatMap((behavior) => behavior.surfaces));
+    return VENDOR_SURFACE_ORDER.filter((surface) => named.has(surface));
+  }
+
   /** Holds the record and proves the kind every candidate class demands. */
   protected constructor(rule: InspectionRule) {
     if (rule.kind === null) {
@@ -559,13 +595,6 @@ export abstract class CompiledRule {
  * this rule's kind".
  */
 export abstract class CompiledInspectionRule extends CompiledRule {
-  /**
-   * The rule's graph edges, resolved by the vendor subclass from its own
-   * catalog — never supplied by a caller, so no rule can be compiled with
-   * another rule's edges.
-   */
-  public abstract readonly relations: RuleRelations;
-
   /** The immutable plan compiled from the rule's structured matcher. */
   public readonly plan: TraversalPlan;
 
@@ -594,10 +623,7 @@ export abstract class CompiledInspectionRule extends CompiledRule {
  * configuration-read logic — composed by the scan exactly like the static
  * catalogs (T1090).
  */
-export class CompiledDerivedRule extends CompiledRule {
-  /** The recognizing product; a `shared` derived record does not exist. */
-  public override readonly tool: SupportedTool;
-
+export abstract class CompiledDerivedRule extends CompiledRule {
   /**
    * Narrowed to the one kind a shipped derivation has. The constructor proves
    * it; a derivation of another kind arrives with the unit that can answer for
@@ -637,19 +663,21 @@ export class CompiledDerivedRule extends CompiledRule {
     return '**';
   }
 
-  /** Compiles one shipped derived record, rejecting any that cannot derive. */
-  public constructor(rule: InspectionRule) {
+  /**
+   * Compiles one shipped derived record, rejecting any that cannot derive.
+   * Which product recognizes it and which edges it carries are the vendor
+   * subclass's, exactly as for a static rule: a shared class resolving them
+   * would have to reach the aggregate registry, and that import runs back into
+   * this module.
+   */
+  protected constructor(rule: InspectionRule) {
     if (rule.discoveryClass !== 'bounded-derived-candidate') {
       throw new TypeError(`rule ${rule.ruleId} is not a bounded-derived candidate`);
-    }
-    if (rule.tool === 'shared') {
-      throw new TypeError(`rule ${rule.ruleId} names no recognizing product`);
     }
     if (rule.kind !== 'instructions') {
       throw new TypeError(`rule ${rule.ruleId} derives a kind this unit cannot answer for`);
     }
     super(rule);
-    this.tool = rule.tool;
   }
 }
 
@@ -689,8 +717,7 @@ export function escapeGlobLiteral(segment: string): string {
  * file alone: declaring it there would make a skill rule answer a question it
  * has no answer to (AGENTS.md § Class and interface policy). A product whose
  * catalog holds an instruction record compiles that record into a unit
- * implementing this; a product with no instruction rule — Copilot today —
- * implements nothing.
+ * implementing this — each shipped product has one.
  *
  * What the answer is belongs to the product: a root-anchored lookup answers
  * the root's `**`, because that is where the Inspector's boundary is (FR-001)
@@ -701,14 +728,31 @@ export function escapeGlobLiteral(segment: string): string {
  * ({@link toPublicPath}), so an implementation that reads it splits on `/`
  * rather than on the host separator.
  *
+ * `declared` is what the file's frontmatter declares, because some products
+ * let a file name its own range — Copilot's `applyTo` — and a declared range
+ * is what that file governs however its path reads (spec.md § Clarifications).
+ * It is empty for a file that declares nothing and for one whose extraction
+ * failed (FR-028).
+ *
+ * The answer is null exactly when the product reads the filename's range from
+ * its declaration alone and the declarations supply none — Copilot's
+ * `.instructions.md` without a usable `applyTo`, which its surfaces document
+ * as not applied automatically. Deriving a range from such a file's path
+ * would state the widest governance for a file the vendor gives none, so the
+ * honest answer is that no range is known, and the inventory lists the file
+ * under the row that says so (data-model.md § Inventory unit).
+ *
  * Never a claim that a product loaded the file: an admission is not an
  * activation (FR-009).
  */
 export interface CompiledStaticInstructionRule extends CompiledInspectionRule {
   /** The recognized kind; an instruction unit compiles instruction records alone. */
   readonly kind: 'instructions';
-  /** The glob one admitted file governs, relative to the Repository root. */
-  applicabilityRangeOf(sourceRelativePath: string): string;
+  /** The glob one admitted file governs, or null when it has none; see above. */
+  applicabilityRangeOf(
+    sourceRelativePath: string,
+    declared: readonly FrontmatterEntryDto[],
+  ): string | null;
 }
 
 /**

@@ -38,7 +38,9 @@ const claudeSkillRule = CLAUDE_REPOSITORY_RULES.find(
 const claudeInstructionsRule = CLAUDE_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'claude.repo.instructions',
 )!;
-const copilotSkillRule = COPILOT_REPOSITORY_RULES[0]!;
+const copilotSkillRule = COPILOT_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'copilot.repo.skill',
+)!;
 
 /**
  * A skill directory these cases can enumerate. The recognizer runs the census
@@ -407,11 +409,11 @@ describe('Codex instruction recognition (T207, presentation added by T222)', () 
     expect(recognitions[0]).toMatchObject({
       sourceRelativePath: 'AGENTS.override.md',
       tool: 'codex',
-      // The payload is the file's presentation and nothing more: an
-      // instructions row's unit is the file itself (data-model.md § Inventory
-      // unit), so no declared name or other identity exists to extract — the
-      // one frontmatter parse a skill uses feeds the detail's declarations
-      // and instructions (T222).
+      // The payload is the file's presentation plus the range its row is
+      // grouped by — one applicability range, or the no-range row
+      // (data-model.md § Inventory unit) — so no declared name exists to
+      // extract: the one frontmatter parse a skill uses feeds the detail's
+      // declarations and instructions (T222).
       details: { kind: 'instructions' },
       parseStatus: 'parsed',
       diagnosticIds: [],
@@ -592,5 +594,95 @@ describe('Claude instruction recognition (T228)', () => {
     // recognition invented from the filename.
     const { recognitions } = await recognizeWith('claude', 'AGENTS.md', [codexInstructionsRule]);
     expect(recognitions).toEqual([]);
+  });
+});
+
+describe('surface-qualified Copilot instruction recognition (T247, T257)', () => {
+  /** The compiled unit for one shipped Copilot rule, by its own identifier. */
+  function copilotRule(ruleId: string): CompiledStaticCandidateRule {
+    return COPILOT_REPOSITORY_RULES.find((compiled) => compiled.rule.ruleId === ruleId)!;
+  }
+
+  /** Recognizes one candidate for Copilot alone, from the rules that admitted it. */
+  async function recognizeCopilot(matchedPath: string, ruleIds: readonly string[]) {
+    mkdirSync(dirname(join(root, matchedPath)), { recursive: true });
+    const { recognitions } = await recognizeCandidateForVendors(
+      {
+        matchedPath,
+        absolutePath: join(root, matchedPath),
+        sourceRoot: root,
+        sourceText: '',
+        admissions: ruleIds.map((ruleId, index) => ({
+          compiled: copilotRule(ruleId),
+          origin: { planIndex: index, selectorIndex: 0 },
+        })),
+      },
+      ['copilot'],
+    );
+    expect(recognitions).toHaveLength(1);
+    return recognitions[0]!;
+  }
+
+  it('unions the surfaces of every rule that admitted the file', async () => {
+    // The root repository-wide file is admitted twice — the root-exact rule
+    // and the CLI-context rule — so its one recognition names all three
+    // surfaces. That union is what the row publishes, and it is derived from
+    // the admissions rather than stored, so it cannot disagree with the rules
+    // (contracts/vendors/github-copilot.md § Surface boundary).
+    const rootFile = await recognizeCopilot('.github/copilot-instructions.md', [
+      'copilot.repo.instructions.repository',
+      'copilot.repo.instructions.repository-cli-context',
+    ]);
+    expect([
+      ...new Set(rootFile.provenances.flatMap((provenance) => provenance.recognizingSurfaces)),
+    ]).toEqual(['copilot-vscode', 'copilot-cloud', 'copilot-cli']);
+  });
+
+  it('names the CLI alone for a file only the CLI-context rule admitted', async () => {
+    // The other half of the split: no editor or hosted surface documents
+    // reading this location, so borrowing their provenance would assert a
+    // lookup neither performs.
+    const nested = await recognizeCopilot('packages/api/.github/copilot-instructions.md', [
+      'copilot.repo.instructions.repository-cli-context',
+    ]);
+    expect(nested.provenances.flatMap((provenance) => provenance.recognizingSurfaces)).toEqual([
+      'copilot-cli',
+    ]);
+  });
+
+  it('names the two surfaces that document GEMINI.md and not the editor', async () => {
+    // VS Code documents no `GEMINI.md` at all, so the editor is absent rather
+    // than assumed from the other root alternative beside it.
+    const gemini = await recognizeCopilot('GEMINI.md', ['copilot.repo.instructions.gemini-root']);
+    expect(gemini.provenances.flatMap((provenance) => provenance.recognizingSurfaces)).toEqual([
+      'copilot-cli',
+      'copilot-cloud',
+    ]);
+  });
+
+  it('recognizes each admitted file as the instructions kind with its own range', async () => {
+    // A recognition carries what its inventory row is grouped by, derived from
+    // the path by the rule that admitted it (data-model.md § Inventory unit).
+    const cases: readonly (readonly [string, string, string | null])[] = [
+      ['.github/copilot-instructions.md', 'copilot.repo.instructions.repository', '**'],
+      // A path-specific file's range is its own declaration or nothing; this
+      // one declares nothing, so it has no range and lists under the row that
+      // says so (T265).
+      [
+        'packages/api/.github/instructions/api.instructions.md',
+        'copilot.repo.instructions.path-cli-context',
+        null,
+      ],
+      ['packages/api/AGENTS.md', 'copilot.repo.instructions.agents', 'packages/api/**'],
+      ['CLAUDE.md', 'copilot.repo.instructions.claude-root', '**'],
+    ];
+    for (const [matchedPath, ruleId, range] of cases) {
+      const recognition = await recognizeCopilot(matchedPath, [ruleId]);
+      expect(recognition.tool, matchedPath).toBe('copilot');
+      if (recognition.details.kind !== 'instructions') {
+        throw new Error(`expected an instructions recognition for ${matchedPath}`);
+      }
+      expect(recognition.details.applicabilityRange, matchedPath).toBe(range);
+    }
   });
 });

@@ -231,6 +231,431 @@
     ]
   },
   {
+    "ruleId": "copilot.excluded.additional-standard-locations",
+    "tool": "copilot",
+    "discoveryClass": "excluded",
+    "kind": null,
+    "sourceKinds": ["repository"],
+    "matcher": null,
+    "policyRefs": ["FR-003", "FR-004", "FR-024", "QR-001", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.instructions",
+        "url": "https://code.visualstudio.com/docs/agent-customization/custom-instructions",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Use a CLAUDE.md file", "Instructions file locations"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "VS Code documents the .claude folder spelling of CLAUDE.md, the local CLAUDE.local.md variant, and the Claude-format .claude/rules folder as instruction locations — the locations this release leaves out while keeping the behavior on record."
+      },
+      {
+        "sourceId": "github.copilot.cli.instructions",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions",
+        "officialHost": "docs.github.com",
+        "sections": ["Types of custom instructions"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "Copilot CLI discovers CLAUDE.md, its .claude spelling, and GEMINI.md in every standard location its session covers, not only at the repository root."
+      }
+    ]
+  },
+  {
+    "ruleId": "copilot.excluded.extra-directories",
+    "tool": "copilot",
+    "discoveryClass": "excluded",
+    "kind": null,
+    "sourceKinds": ["repository"],
+    "matcher": null,
+    "policyRefs": ["FR-001", "FR-003", "FR-024", "QR-001", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.instructions",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions",
+        "officialHost": "docs.github.com",
+        "sections": ["Types of custom instructions"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "Directories listed in COPILOT_CUSTOM_INSTRUCTIONS_DIRS supply additional AGENTS.md and *.instructions.md files, which are lookup roots outside the boundary a scan was authorized for."
+      },
+      {
+        "sourceId": "github.copilot.cli.reference",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Skill locations"],
+        "reviewedOn": "2026-07-15",
+        "establishes": "The CLI reference documents COPILOT_SKILLS_DIRS adding skill lookup roots, which name directories outside the boundary a scan was authorized for."
+      },
+      {
+        "sourceId": "vscode.copilot.settings",
+        "url": "https://code.visualstudio.com/docs/agents/reference/ai-settings",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Custom instructions settings", "Agent skills settings"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "VS Code settings can add instruction and skill locations beyond the fixed directories, making participation a runtime input rather than part of the documented default lookup."
+      }
+    ]
+  },
+  {
+    "ruleId": "copilot.repo.instructions.agents",
+    "tool": "copilot",
+    "discoveryClass": "static-candidate",
+    "kind": "instructions",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "recursive-directories"
+          },
+          {
+            "kind": "literal",
+            "value": "AGENTS.md"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.instructions",
+        "url": "https://code.visualstudio.com/docs/agent-customization/custom-instructions",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Use an AGENTS.md file", "Use multiple AGENTS.md files (experimental)"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "VS Code applies the workspace-root AGENTS.md always-on and, under an experimental setting, searches every subfolder and leaves the choice among nested files to the model; the settings defaults live on the behavior record this rule rests on."
+      },
+      {
+        "sourceId": "github.copilot.cli.instructions",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions",
+        "officialHost": "docs.github.com",
+        "sections": ["Types of custom instructions"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "Copilot CLI discovers AGENTS.md in its standard locations, which are directories inside the selected root rather than the root alone."
+      },
+      {
+        "sourceId": "github.copilot.cloud.instructions",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-repository-instructions",
+        "officialHost": "docs.github.com",
+        "sections": ["Creating custom instructions"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "The cloud agent accepts AGENTS.md anywhere within the repository and takes the nearest one in the directory tree, so a file at any depth is authored inventory for that surface."
+      }
+    ]
+  },
+  {
+    "ruleId": "copilot.repo.instructions.claude-root",
+    "tool": "copilot",
+    "discoveryClass": "static-candidate",
+    "kind": "instructions",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": "CLAUDE.md"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.instructions",
+        "url": "https://code.visualstudio.com/docs/agent-customization/custom-instructions",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Use a CLAUDE.md file"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "With Claude compatibility enabled, VS Code applies CLAUDE.md as always-on instructions; the workspace root is one of its documented locations, and the others are left out of this release rather than denied."
+      },
+      {
+        "sourceId": "github.copilot.cli.instructions",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions",
+        "officialHost": "docs.github.com",
+        "sections": ["Types of custom instructions"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "Copilot CLI discovers CLAUDE.md in its standard locations as one of its agent-instruction files, so a root file carries CLI provenance beside the other two surfaces."
+      },
+      {
+        "sourceId": "github.copilot.cloud.instructions",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-repository-instructions",
+        "officialHost": "docs.github.com",
+        "sections": ["Creating custom instructions"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "A single CLAUDE.md stored in the root of the repository is the cloud agent’s documented alternative to AGENTS.md, which is the exact location this rule admits."
+      }
+    ]
+  },
+  {
+    "ruleId": "copilot.repo.instructions.gemini-root",
+    "tool": "copilot",
+    "discoveryClass": "static-candidate",
+    "kind": "instructions",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": "GEMINI.md"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.instructions",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions",
+        "officialHost": "docs.github.com",
+        "sections": ["Types of custom instructions"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "Copilot CLI discovers GEMINI.md in its standard locations as one of its agent-instruction files; its non-root locations are left out of this release rather than denied."
+      },
+      {
+        "sourceId": "github.copilot.cloud.instructions",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-repository-instructions",
+        "officialHost": "docs.github.com",
+        "sections": ["Creating custom instructions"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "A single GEMINI.md stored in the root of the repository is the cloud agent’s documented alternative to AGENTS.md."
+      },
+      {
+        "sourceId": "github.copilot.instructions.support",
+        "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
+        "officialHost": "docs.github.com",
+        "sections": ["Visual Studio Code", "Copilot CLI"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "The support matrix lists GEMINI.md among the CLI’s agent-instruction types while the rows for VS Code’s own Copilot Chat list AGENTS.md alone, which is why the editor surface is absent here."
+      }
+    ]
+  },
+  {
+    "ruleId": "copilot.repo.instructions.path",
+    "tool": "copilot",
+    "discoveryClass": "static-candidate",
+    "kind": "instructions",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".github"
+          },
+          {
+            "kind": "literal",
+            "value": "instructions"
+          },
+          {
+            "kind": "recursive-directories"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/\\.instructions\\.md$/u"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.instructions",
+        "url": "https://code.visualstudio.com/docs/agent-customization/custom-instructions",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Use .instructions.md files", "Instructions file locations"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "VS Code searches the workspace .github/instructions folder recursively for files carrying this filename suffix, subdirectories included, which is the subtree this rule admits below the selected root."
+      },
+      {
+        "sourceId": "github.copilot.cloud.instructions",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-repository-instructions",
+        "officialHost": "docs.github.com",
+        "sections": ["Creating path-specific custom instructions"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "The cloud agent reads path-specific files within or below the same repository-root subtree, so one candidate there is authored inventory for both surfaces."
+      }
+    ]
+  },
+  {
+    "ruleId": "copilot.repo.instructions.path-cli-context",
+    "tool": "copilot",
+    "discoveryClass": "static-candidate",
+    "kind": "instructions",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "recursive-directories"
+          },
+          {
+            "kind": "literal",
+            "value": ".github"
+          },
+          {
+            "kind": "literal",
+            "value": "instructions"
+          },
+          {
+            "kind": "recursive-directories"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/\\.instructions\\.md$/u"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.instructions",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions",
+        "officialHost": "docs.github.com",
+        "sections": ["Types of custom instructions", "Creating path-specific custom instructions"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "Copilot CLI discovers modular instruction files below .github/instructions in its standard locations — excluding the intermediate directories for this filename — and subdirectories may organize them, so which instructions directories exist depends on the context a session runs in rather than on one anchored path."
+      },
+      {
+        "sourceId": "github.copilot.instructions.support",
+        "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
+        "officialHost": "docs.github.com",
+        "sections": ["Copilot CLI"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "The support matrix scopes path-specific instruction files to the Copilot CLI surface separately from the other two, which is the provenance this rule carries alone."
+      }
+    ]
+  },
+  {
+    "ruleId": "copilot.repo.instructions.repository",
+    "tool": "copilot",
+    "discoveryClass": "static-candidate",
+    "kind": "instructions",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".github"
+          },
+          {
+            "kind": "literal",
+            "value": "copilot-instructions.md"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.instructions",
+        "url": "https://code.visualstudio.com/docs/agent-customization/custom-instructions",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Use a .github/copilot-instructions.md file"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "VS Code reads exactly one repository-wide instruction file at the workspace root, which is the exact path this rule admits at the selected root."
+      },
+      {
+        "sourceId": "github.copilot.cloud.instructions",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-repository-instructions",
+        "officialHost": "docs.github.com",
+        "sections": ["Creating repository-wide custom instructions"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "The cloud agent reads the same file at the repository root, so one root candidate is authored inventory for both surfaces at once."
+      }
+    ]
+  },
+  {
+    "ruleId": "copilot.repo.instructions.repository-cli-context",
+    "tool": "copilot",
+    "discoveryClass": "static-candidate",
+    "kind": "instructions",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "recursive-directories"
+          },
+          {
+            "kind": "literal",
+            "value": ".github"
+          },
+          {
+            "kind": "literal",
+            "value": "copilot-instructions.md"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.instructions",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions",
+        "officialHost": "docs.github.com",
+        "sections": ["Types of custom instructions"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "Copilot CLI discovers the repository-wide filename in its standard locations — the repository root, the current working directory, the directories between them, and directories on the path of a file it is working on — which is why every context inside the selected root is inventoried instead of the root alone."
+      },
+      {
+        "sourceId": "github.copilot.instructions.support",
+        "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
+        "officialHost": "docs.github.com",
+        "sections": ["Copilot CLI"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "The support matrix scopes the repository-wide instruction file to the Copilot CLI surface separately from the other two, which is the provenance this rule carries alone."
+      }
+    ]
+  },
+  {
     "ruleId": "copilot.repo.skill",
     "tool": "copilot",
     "discoveryClass": "static-candidate",

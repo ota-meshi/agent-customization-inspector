@@ -37,8 +37,12 @@ test.describe('instruction rows with an admitted carrier', () => {
       'utf8',
     );
     await writeFile(join(fixture, 'AGENTS.md'), '# Regular instructions\n', 'utf8');
-    // Near miss: the nested chain Codex walks at runtime belongs to working
-    // directories this product does not select, so it is never listed.
+    // A nested `AGENTS.md`: the chain Codex walks at runtime belongs to working
+    // directories this product does not select, so Codex's own rule stays
+    // anchored at the root and never lists it. Copilot's does list it — all
+    // three of its surfaces document reaching a nested file — so the page
+    // shows it as a Copilot row of its own range, and the Codex rows below
+    // stay exactly what they were (T255).
     await mkdir(join(fixture, 'docs'), { recursive: true });
     await writeFile(join(fixture, 'docs/AGENTS.md'), '# nested instructions\n', 'utf8');
     // The configuration carrier declares one on-disk fallback and one absent
@@ -66,29 +70,42 @@ test.describe('instruction rows with an admitted carrier', () => {
     // selected on arrival.
     await expect(page.getByRole('tab', { selected: true })).toContainText('Instructions');
     const items = page.getByRole('tabpanel').locator('.aci-item');
-    // Every file sits at the Repository root, so they share the root's one
-    // applicability range — the row's unit (data-model.md § Inventory unit).
-    await expect(items).toHaveCount(1);
-    await expect(items.locator('.aci-instruction-row__range')).toHaveText('**');
-    // Files are in Source-relative Path order under the range, and each states
+    // Every Codex file sits at the Repository root, so they share the root's
+    // one applicability range — the row's unit (data-model.md § Inventory
+    // unit) — and the nested `AGENTS.md` Copilot alone recognizes has a row of
+    // its own.
+    await expect(items).toHaveCount(2);
+    await expect(items.locator('.aci-instruction-row__range')).toHaveText(['**', 'docs/**']);
+    // Files are in Source-relative Path order under each range, and each states
     // its recognizing product. The configured fallback the carrier declares
     // lists beside the static pair; the absent declared name derives nothing.
     // Which file a Codex session would select is runtime this product does not
     // project.
     const paths = await page.getByRole('tabpanel').locator('.aci-item .aci-path').allInnerTexts();
-    expect(paths).toEqual(['AGENTS.md', 'AGENTS.override.md', 'TEAM_GUIDE.md']);
+    expect(paths).toEqual(['AGENTS.md', 'AGENTS.override.md', 'TEAM_GUIDE.md', 'docs/AGENTS.md']);
     const fileEntries = page.getByRole('tabpanel').locator('.aci-instruction-row__files > li');
-    await expect(fileEntries).toHaveCount(3);
-    for (const entry of await fileEntries.all()) {
-      await expect(entry).toContainText('OpenAI Codex');
+    await expect(fileEntries).toHaveCount(4);
+    for (const path of ['AGENTS.md', 'AGENTS.override.md', 'TEAM_GUIDE.md']) {
+      await expect(
+        fileEntries.filter({ has: page.getByText(path, { exact: true }) }),
+      ).toContainText('OpenAI Codex');
     }
+    // The shared root filename is Copilot's as well; the two Codex-only
+    // spellings beside it are not, which is what keeps the shared row a
+    // statement about the file rather than about the directory.
+    await expect(
+      fileEntries.filter({ has: page.getByText('AGENTS.md', { exact: true }) }),
+    ).toContainText('GitHub Copilot');
+    await expect(
+      fileEntries.filter({ has: page.getByText('AGENTS.override.md', { exact: true }) }),
+    ).not.toContainText('GitHub Copilot');
     const text = await page.locator('main').innerText();
     expect(text).not.toContain('ABSENT_GUIDE.md');
   });
 
   test('never shows the carrier: no row, no tab, no mention', async ({ page }) => {
     await page.goto(host.origin);
-    await expect(page.getByRole('tabpanel').locator('.aci-item')).toHaveCount(1);
+    await expect(page.getByRole('tabpanel').locator('.aci-item')).toHaveCount(2);
     // The configuration input is not part of the inventory: the one kind tab
     // is Instructions, and the carrier's path appears nowhere on the page.
     await expect(page.getByRole('tab')).toHaveCount(1);
@@ -97,11 +114,10 @@ test.describe('instruction rows with an admitted carrier', () => {
     expect(text).not.toContain('config.toml');
   });
 
-  test('shows no near-miss path and no authored source text', async ({ page }) => {
+  test('shows no authored source text', async ({ page }) => {
     await page.goto(host.origin);
-    await expect(page.getByRole('tabpanel').locator('.aci-item')).toHaveCount(1);
+    await expect(page.getByRole('tabpanel').locator('.aci-item')).toHaveCount(2);
     const text = await page.locator('main').innerText();
-    expect(text).not.toContain('docs/AGENTS.md');
     // The inventory carries no `sourceText`, so a credential or an
     // environment reference in an authored instruction file cannot appear in
     // a list the user never opted into reading (FR-027) — and nothing ever
@@ -115,11 +131,13 @@ test.describe('instruction rows with an admitted carrier', () => {
 
   test('narrows the rows with the tool and path filters', async ({ page }) => {
     await page.goto(host.origin);
-    await expect(page.getByRole('tabpanel').locator('.aci-item')).toHaveCount(1);
+    await expect(page.getByRole('tabpanel').locator('.aci-item')).toHaveCount(2);
 
     const fileEntries = page.getByRole('tabpanel').locator('.aci-instruction-row__files > li');
 
-    // Tool: the one recognizing product keeps every file.
+    // Tool: OpenAI Codex keeps the three files at the root and drops the
+    // nested one only Copilot recognizes, leaving the Codex rows exactly as
+    // this phase committed them.
     await page.getByLabel('Tool').selectOption('codex');
     await expect(page.getByRole('tabpanel').locator('.aci-item')).toHaveCount(1);
     await expect(fileEntries).toHaveCount(3);
@@ -133,12 +151,13 @@ test.describe('instruction rows with an admitted carrier', () => {
       'AGENTS.override.md',
     );
     await expect(page.getByRole('status').filter({ hasText: 'Showing' })).toContainText(
-      'Showing 1 of 1',
+      'Showing 1 of 2',
     );
 
-    // Clearing restores every file under the committed range.
+    // Clearing restores every committed range and every file under it.
     await page.getByRole('button', { name: 'Clear filters' }).click();
-    await expect(fileEntries).toHaveCount(3);
+    await expect(page.getByRole('tabpanel').locator('.aci-item')).toHaveCount(2);
+    await expect(fileEntries).toHaveCount(4);
   });
 });
 

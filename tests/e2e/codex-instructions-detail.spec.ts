@@ -105,7 +105,7 @@ test('opens complete inert static instruction detail from the inventory', async 
   // the recognizing product and the kind beside it.
   await expect(page.locator('.aci-instruction-detail h2')).toHaveText('AGENTS.md');
   await expect(page.locator('.aci-instruction-detail__recognition')).toHaveText(
-    'OpenAI Codex · Instructions',
+    'GitHub Copilot (VS Code, CLI, Cloud agent), OpenAI Codex (Local clients) · Instructions',
   );
   // The declarations lead, in authored order — scope, endpoint, api_key is
   // the file's own order, not a sort — with the credential and the

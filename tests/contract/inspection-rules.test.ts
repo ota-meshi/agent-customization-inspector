@@ -17,7 +17,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import { INSPECTION_RULES } from '../../src/shared/registries/inspection-rules';
-import { RULE_RELATIONS } from '../../src/shared/registries/relations';
+import { RULE_RELATIONS, STRATEGY_RELATIONS } from '../../src/shared/registries/relations';
 import { RUNTIME_COMPOSITION_STRATEGIES } from '../../src/shared/registries/runtime-composition';
 import { VENDOR_BEHAVIOR_STATEMENTS } from '../../src/shared/registries/vendor-behaviors';
 import {
@@ -341,15 +341,142 @@ describe('the Claude skill slice of the reference graph (T130, T133)', () => {
 });
 
 describe('the Copilot skill slice of the reference graph (T154, T158)', () => {
-  it('ships exactly one read-authorizing Copilot record and no exclusion', () => {
-    // The phase-local half of the registry catalog check: this milestone adds
-    // `copilot.repo.skill` alone. Rejecting configured or environment-supplied
-    // skill roots needs no `excluded` record — no selector reaches outside the
-    // three fixed directory spellings — and the eventual complete catalog gate
-    // is T913's, not this suite's.
-    const copilotRules = rules.filter((rule) => rule.tool === 'copilot');
-    expect(copilotRules.map((rule) => rule.ruleId)).toEqual(['copilot.repo.skill']);
-    expect(copilotRules[0]!.discoveryClass).toBe('static-candidate');
+  it('ships the seven instruction candidates, the skill rule, and exactly two exclusions', () => {
+    // The phase-local half of the registry catalog check: the shipped Copilot
+    // catalog is the skill rule plus the seven instruction rules, all
+    // read-authorizing, and the catalog's first two `excluded` records. The
+    // eventual complete catalog gate is T913's, not this suite's.
+    //
+    // Naming the exclusions is what makes them reviewable: rejecting a
+    // configured or environment-supplied root is still the matchers' own
+    // doing — no selector reaches outside the fixed directory spellings — so
+    // an exclusion record states that the omission was decided, and a third
+    // one appearing here would be an exclusion nobody reviewed.
+    const byClass = (discoveryClass: string): string[] =>
+      rules
+        .filter((rule) => rule.tool === 'copilot' && rule.discoveryClass === discoveryClass)
+        .map((rule) => rule.ruleId);
+    expect(byClass('static-candidate')).toEqual([
+      'copilot.repo.instructions.agents',
+      'copilot.repo.instructions.claude-root',
+      'copilot.repo.instructions.gemini-root',
+      'copilot.repo.instructions.path',
+      'copilot.repo.instructions.path-cli-context',
+      'copilot.repo.instructions.repository',
+      'copilot.repo.instructions.repository-cli-context',
+      'copilot.repo.skill',
+    ]);
+    expect(byClass('excluded')).toEqual([
+      'copilot.excluded.additional-standard-locations',
+      'copilot.excluded.extra-directories',
+    ]);
+    expect(rules.filter((rule) => rule.tool === 'copilot')).toHaveLength(10);
+  });
+
+  it('gives an exclusion no matcher, no kind, and no strategy (T251)', () => {
+    // An excluded record is the opposite of an admission: it states that a
+    // documented location is outside this release. A matcher would make it
+    // read-authorizing, a recognized kind would claim it recognizes something,
+    // and a strategy would explain an order for a file that is never read. It
+    // still names the behaviors it leaves out, which is what keeps "outside
+    // this release" distinguishable from "the vendor documents nothing here".
+    for (const ruleId of [
+      'copilot.excluded.additional-standard-locations',
+      'copilot.excluded.extra-directories',
+    ] as const) {
+      const rule = INSPECTION_RULES[ruleId];
+      expect(rule.matcher, ruleId).toBeNull();
+      expect(rule.kind, ruleId).toBeNull();
+      expect(RULE_RELATIONS[ruleId].explainedByStrategies, ruleId).toEqual([]);
+      expect(RULE_RELATIONS[ruleId].basedOnBehaviors.length, ruleId).toBeGreaterThan(0);
+    }
+    expect(
+      RULE_RELATIONS['copilot.excluded.additional-standard-locations'].basedOnBehaviors.map(
+        (behavior) => behavior.behaviorId,
+      ),
+    ).toEqual([
+      'copilot.behavior.cli.instructions.claude',
+      'copilot.behavior.cli.instructions.gemini',
+      'copilot.behavior.vscode.instructions.claude',
+      'copilot.behavior.vscode.instructions.path',
+    ]);
+    expect(
+      RULE_RELATIONS['copilot.excluded.extra-directories'].basedOnBehaviors.map(
+        (behavior) => behavior.behaviorId,
+      ),
+    ).toEqual([
+      // The CLI agents behavior is here because COPILOT_CUSTOM_INSTRUCTIONS_DIRS
+      // supplies additional AGENTS.md files as well as *.instructions.md ones.
+      'copilot.behavior.cli.instructions.agents',
+      'copilot.behavior.cli.instructions.path',
+      'copilot.behavior.cli.skills',
+      'copilot.behavior.vscode.instructions.path',
+      'copilot.behavior.vscode.skills',
+    ]);
+  });
+
+  it('splits each documented filename into the surfaces its rules rest on (T251, T257)', () => {
+    // The phase's whole subject: a rule carries the surfaces of the behaviors
+    // it is based on, so a root-exact rule and a CLI-context rule over one
+    // filename are what let a root file name all three surfaces while a nested
+    // one names the CLI's alone. Read off the compiled units, because that is
+    // the value a recognition publishes.
+    const surfacesOf = (ruleId: string): readonly string[] =>
+      COPILOT_REPOSITORY_RULES.find((compiled) => compiled.rule.ruleId === ruleId)!
+        .recognizingSurfaces;
+    expect(surfacesOf('copilot.repo.instructions.repository')).toEqual([
+      'copilot-vscode',
+      'copilot-cloud',
+    ]);
+    expect(surfacesOf('copilot.repo.instructions.repository-cli-context')).toEqual(['copilot-cli']);
+    expect(surfacesOf('copilot.repo.instructions.path')).toEqual([
+      'copilot-vscode',
+      'copilot-cloud',
+    ]);
+    expect(surfacesOf('copilot.repo.instructions.path-cli-context')).toEqual(['copilot-cli']);
+    // `AGENTS.md` is the one location all three surfaces document without a
+    // split, and `GEMINI.md` the one no editor documents at all.
+    expect(surfacesOf('copilot.repo.instructions.agents')).toEqual([
+      'copilot-vscode',
+      'copilot-cli',
+      'copilot-cloud',
+    ]);
+    expect(surfacesOf('copilot.repo.instructions.claude-root')).toEqual([
+      'copilot-vscode',
+      'copilot-cli',
+      'copilot-cloud',
+    ]);
+    expect(surfacesOf('copilot.repo.instructions.gemini-root')).toEqual([
+      'copilot-cli',
+      'copilot-cloud',
+    ]);
+  });
+
+  it('grants the hosted organization instructions no candidate at all (T252)', () => {
+    // The origin-file-less instruction fact: it names no local path, so no
+    // rule may rest on it and nothing about it can create a candidate. Its
+    // only owner is the Cloud layering that composes it.
+    for (const edges of Object.values(RULE_RELATIONS)) {
+      expect(edges.basedOnBehaviors.map((behavior) => behavior.behaviorId)).not.toContain(
+        'copilot.behavior.cloud.organization-instructions',
+      );
+    }
+    const owners = Object.entries(STRATEGY_RELATIONS).filter(([, edges]) =>
+      edges.consumesBehaviors.some(
+        (behavior) => behavior.behaviorId === 'copilot.behavior.cloud.organization-instructions',
+      ),
+    );
+    expect(owners.map(([strategyId]) => strategyId)).toEqual([
+      'copilot.cloud.instructions.layering',
+    ]);
+    expect(
+      VENDOR_BEHAVIOR_STATEMENTS['copilot.behavior.cloud.organization-instructions'].locator,
+    ).toEqual({
+      vendorScope: 'hosted-managed',
+      lookupBase: 'hosted-state',
+      relativeSelector: null,
+      traversal: 'none',
+    });
   });
 
   it('authors the three exact root-anchored selector programs and no broadening (T154)', () => {

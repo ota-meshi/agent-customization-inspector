@@ -228,7 +228,15 @@ describe('an instruction row addresses the file’s own detail route (T218)', ()
     // route resolves — a filtered view still links to the same page.
     const entry: InstructionInventoryEntryDto = {
       applicabilityRange: '**',
-      files: [{ sourceRelativePath: 'AGENTS.md', tools: ['copilot', 'codex'] }],
+      files: [
+        {
+          sourceRelativePath: 'AGENTS.md',
+          recognitions: [
+            { tool: 'copilot', surfaces: ['copilot-vscode', 'copilot-cli', 'copilot-cloud'] },
+            { tool: 'codex', surfaces: ['codex-local-clients'] },
+          ],
+        },
+      ],
     };
     const snapshot = shallowRef<SessionSnapshot | null>(
       snapshotWith([file('AGENTS.md')], [], [entry]),
@@ -238,7 +246,12 @@ describe('an instruction row addresses the file’s own detail route (T218)', ()
     expect(view.instructionRows.value).toEqual([
       {
         applicabilityRange: '**',
-        files: [{ sourceRelativePath: 'AGENTS.md', tools: ['codex'] }],
+        files: [
+          {
+            sourceRelativePath: 'AGENTS.md',
+            recognitions: [{ tool: 'codex', surfaces: ['codex-local-clients'] }],
+          },
+        ],
       },
     ]);
     expect(
@@ -258,7 +271,12 @@ describe('an instruction row addresses the file’s own detail route (T218)', ()
         [
           {
             applicabilityRange: '**',
-            files: [{ sourceRelativePath: 'AGENTS.md', tools: ['codex'] }],
+            files: [
+              {
+                sourceRelativePath: 'AGENTS.md',
+                recognitions: [{ tool: 'codex', surfaces: ['codex-local-clients'] }],
+              },
+            ],
           },
         ],
       ),
@@ -288,8 +306,14 @@ describe('the path filter matches the spelling the rows render (T1096)', () => {
           {
             applicabilityRange: '**',
             files: [
-              { sourceRelativePath: invisible, tools: ['codex'] },
-              { sourceRelativePath: 'AGENTS.md', tools: ['codex'] },
+              {
+                sourceRelativePath: invisible,
+                recognitions: [{ tool: 'codex', surfaces: ['codex-local-clients'] }],
+              },
+              {
+                sourceRelativePath: 'AGENTS.md',
+                recognitions: [{ tool: 'codex', surfaces: ['codex-local-clients'] }],
+              },
             ],
           },
         ],
@@ -299,7 +323,10 @@ describe('the path filter matches the spelling the rows render (T1096)', () => {
 
     pathQuery.value = pathPresentationLabel(invisible);
     expect(view.instructionRows.value.flatMap((row) => row.files)).toEqual([
-      { sourceRelativePath: invisible, tools: ['codex'] },
+      {
+        sourceRelativePath: invisible,
+        recognitions: [{ tool: 'codex', surfaces: ['codex-local-clients'] }],
+      },
     ]);
   });
 });

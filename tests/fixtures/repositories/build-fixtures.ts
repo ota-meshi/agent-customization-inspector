@@ -1,7 +1,7 @@
-// T050/T124/T152/T178/T205/T226: deterministic SKILL, Codex-instruction, and
-// Claude-instruction fixture repositories for the Phase 4, Phase 8, Phase 10,
-// Phase 12, Phase 15, and Phase 17 inventory suites (FR-003, FR-004, FR-005,
-// FR-024, FR-028).
+// T050/T124/T152/T178/T205/T226/T245: deterministic SKILL, Codex-instruction,
+// Claude-instruction, and Copilot-instruction fixture repositories for the
+// Phase 4, Phase 8, Phase 10, Phase 12, Phase 15, Phase 17, and Phase 19
+// inventory suites (FR-003, FR-004, FR-005, FR-024, FR-028).
 //
 // The tree is built to make the allowlist's edges observable rather than
 // assumed: every positive case has a near miss one segment away from it, so a
@@ -796,11 +796,24 @@ export interface CodexInstructionFixture {
    */
   readonly expectedInstructionPaths: readonly string[];
   /**
+   * The Source-relative Paths the Copilot instruction rules admit in the same
+   * tree, sorted. `AGENTS.md` is Codex's and Copilot's at the root, and the
+   * nested `docs/AGENTS.md` is Copilot's alone: Codex's rule is anchored at
+   * the selected root while Copilot's reaches every depth, so one file is a
+   * Codex near miss and a Copilot candidate at once.
+   */
+  readonly expectedCopilotInstructionPaths: readonly string[];
+  /**
    * Paths that sit one step away from an admitted file and that no shipped
-   * rule or derivation may admit — the nested chain the vendor walks at
-   * runtime, spelling variants, VCS internals, and nested carriers. Listing
-   * them explicitly is what makes an over-broad selector a test failure
-   * rather than a silent inventory expansion.
+   * rule or derivation of any product may admit — the nested chain the vendor
+   * walks at runtime, spelling variants, VCS internals, and nested carriers.
+   * Listing them explicitly is what makes an over-broad selector a test
+   * failure rather than a silent inventory expansion.
+   *
+   * A path another product admits is not one of these, however plainly it is a
+   * near miss for Codex: `docs/AGENTS.md` proves Codex's rule stays anchored at
+   * the root, and the suites that scan Codex's rules alone assert their
+   * admitted set exactly, which is what keeps that proof.
    */
   readonly nearMissPaths: readonly string[];
   /**
@@ -920,6 +933,7 @@ export function buildCodexInstructionFixture(
   return {
     root,
     expectedInstructionPaths: ['AGENTS.md', 'AGENTS.override.md'],
+    expectedCopilotInstructionPaths: ['AGENTS.md', 'docs/AGENTS.md'],
     nearMissPaths: [
       '.git/AGENTS.md',
       'AGENT.md',
@@ -927,7 +941,6 @@ export function buildCodexInstructionFixture(
       'AGENTS.md.bak',
       'README.md',
       'docs/AGENTS.MD',
-      'docs/AGENTS.md',
       'packages/api/.codex/config.toml',
       'packages/api/AGENTS.override.md',
       'X.md',
@@ -975,6 +988,14 @@ export interface ClaudeInstructionFixture {
    * rule may recognize one of them.
    */
   readonly expectedCodexInstructionPaths: readonly string[];
+  /**
+   * The Source-relative Paths the Copilot instruction rules admit in the same
+   * tree, sorted. The root `AGENTS.md` and the root `CLAUDE.md` are shared
+   * files — one physical file, two products — while the nested and `.claude`
+   * spellings stay Claude's alone, because Copilot documents its `CLAUDE.md`
+   * alternative at the repository root only (T256).
+   */
+  readonly expectedCopilotInstructionPaths: readonly string[];
   /**
    * Paths that sit one step away from an admitted file and that no shipped
    * rule may admit — spelling variants, VCS internals, and the target of the
@@ -1102,6 +1123,7 @@ export function buildClaudeInstructionFixture(
       'packages/api/CLAUDE.md',
     ],
     expectedCodexInstructionPaths: ['AGENTS.md'],
+    expectedCopilotInstructionPaths: ['AGENTS.md', 'CLAUDE.md'],
     nearMissPaths: [
       '.git/CLAUDE.md',
       'CLAUDE-local.md',
@@ -1117,5 +1139,245 @@ export function buildClaudeInstructionFixture(
     malformedInstructionPath: 'docs/CLAUDE.md',
     importTargetPath: 'docs/setup.md',
     secretInstructionPath: 'CLAUDE.md',
+  };
+}
+
+/** One built Copilot instruction fixture repository (T245). */
+export interface CopilotInstructionFixture {
+  /** The absolute fixture root to scan. */
+  readonly root: string;
+  /**
+   * Every Source-relative Path the Copilot instruction rules must admit,
+   * keyed by the rule that admits it and sorted within each rule. Keyed
+   * rather than flattened, because the phase's whole subject is which rule
+   * admits which file: the root `.github/copilot-instructions.md` appears
+   * under both repository rules and a nested one under the CLI-context rule
+   * alone, which is what makes a recognition able to name its surfaces.
+   */
+  readonly expectedCopilotInstructionPaths: Readonly<Record<string, readonly string[]>>;
+  /**
+   * The Source-relative Paths the Claude and Codex instruction rules admit in
+   * the same tree, sorted. The preservation half of the phase: the same scan
+   * that adds Copilot rows must keep admitting exactly these.
+   */
+  readonly expectedClaudeInstructionPaths: readonly string[];
+  /** As {@link expectedClaudeInstructionPaths}, for Codex. */
+  readonly expectedCodexInstructionPaths: readonly string[];
+  /**
+   * Paths that sit one step away from an admitted file and that no shipped
+   * rule may admit: spelling variants, the locations
+   * `copilot.excluded.additional-standard-locations` keeps out of this
+   * release, the runtime-supplied root shapes
+   * `copilot.excluded.extra-directories` names, VCS internals, and installed
+   * packages. Listing them explicitly is what makes an over-broad selector a
+   * test failure rather than a silent inventory expansion.
+   *
+   * A path here is not necessarily unrecognized: `.claude/CLAUDE.md` and
+   * `packages/api/CLAUDE.md` are Claude instruction files. What this states is
+   * that no *Copilot* rule admits them.
+   */
+  readonly copilotNearMissPaths: readonly string[];
+  /**
+   * The admitted path-instruction file declaring `applyTo`. Its declaration
+   * is what it really governs, and nothing in this phase reads it: the row's
+   * range comes from the path until the recognizer that extracts the
+   * declaration ships (spec.md § Clarifications).
+   */
+  readonly applyToInstructionPath: string;
+  /**
+   * The admitted instruction file whose frontmatter block cannot be parsed:
+   * its recognition fails all-or-nothing and publishes the
+   * `recognition-parse-failed` Diagnostic while its complete source stays
+   * readable, making the attempt's generation `partial` (FR-028).
+   */
+  readonly malformedInstructionPath: string;
+  /** The admitted instruction file carrying the literal credential. */
+  readonly secretInstructionPath: string;
+}
+
+/**
+ * Builds the canonical Copilot instruction fixture repository (T245).
+ *
+ * Positive cases cover all seven shipped rules and, deliberately, both sides
+ * of the root/CLI split: the root `.github/copilot-instructions.md` is
+ * admitted twice — by the root-exact rule and by the CLI-context rule whose
+ * leading recursive step matches zero directories — while
+ * `packages/api/.github/copilot-instructions.md` is admitted by the
+ * CLI-context rule alone. The same pairing exists for the path-instruction
+ * subtree, where the range is the file's own `applyTo` or nothing: one file
+ * declares one, and the nested one declares none, so it proves the no-range
+ * row rather than a range read off its location (T265).
+ *
+ * Shared files: the root `AGENTS.md` is Codex's and Copilot's, and the root
+ * `CLAUDE.md` is Claude's and Copilot's. The root `GEMINI.md` is Copilot's
+ * alone — no other shipped product recognizes that filename.
+ *
+ * Exclusions, written as ordinary files so their absence from the Copilot
+ * inventory is observable rather than assumed: the `.claude` instruction
+ * spellings and the non-root `CLAUDE.md`/`GEMINI.md` that
+ * `copilot.excluded.additional-standard-locations` keeps out, and the
+ * `.copilot/instructions` and configured-location shapes
+ * `copilot.excluded.extra-directories` names.
+ *
+ * Hosted inputs get no file at all, which is the point:
+ * `copilot.behavior.cloud.organization-instructions` names no local path, so
+ * no fixture can stand for it and no candidate may appear for it.
+ */
+export function buildCopilotInstructionFixture(
+  prefix = 'inspector-copilot-instructions',
+): CopilotInstructionFixture {
+  const root = createRepositoryFixtureRoot(prefix);
+
+  // Positive: the repository-wide file at the selected root, carrying the
+  // content shapes the inventory must keep inert — a literal credential
+  // readable only through the detail route (FR-027) and a literal environment
+  // reference that must never be resolved against the process environment
+  // (FR-025). Two rules admit it, and its recognition names all three surfaces.
+  write(
+    root,
+    '.github/copilot-instructions.md',
+    [
+      '# Repository-wide instructions',
+      '',
+      `endpoint: ${FIXTURE_ENVIRONMENT_REFERENCE}`,
+      `token: ${FIXTURE_SECRET_LITERAL}`,
+      '',
+    ].join('\n'),
+  );
+  // Positive: the same filename in a subdirectory. Copilot CLI reads it when
+  // its session context is that directory; no editor or hosted surface
+  // documents such a location, so this file's recognition names the CLI alone.
+  write(
+    root,
+    'packages/api/.github/copilot-instructions.md',
+    '# API context repository-wide instructions\n',
+  );
+  // Positive: path-specific instructions at the root-exact subtree, one
+  // directly inside it and one nested below. Both derive the root's range:
+  // the whole `.github/instructions` location is where Copilot keeps the file.
+  write(
+    root,
+    '.github/instructions/frontend.instructions.md',
+    ['---', "applyTo: 'src/frontend/**'", '---', '', '# Frontend instructions', ''].join('\n'),
+  );
+  write(root, '.github/instructions/nested/backend.instructions.md', '# Backend instructions\n');
+  // Positive, and the attempt's one file-confined failure: a frontmatter block
+  // no parser can read. The recognition fails all-or-nothing, its diagnostic
+  // is confined to this file, and the complete source stays readable (FR-028).
+  write(
+    root,
+    '.github/instructions/broken.instructions.md',
+    '---\napplyTo: [src\n---\n\n# Broken instructions\n',
+  );
+  // Positive: the path-instruction subtree in a subdirectory — the CLI-context
+  // rule alone, exactly like the repository-wide pair above.
+  write(root, 'packages/api/.github/instructions/api.instructions.md', '# API path instructions\n');
+  // Positive: `AGENTS.md` at the root and nested. All three surfaces reach it,
+  // each in its own documented way, and the root file is a Codex instruction
+  // too — one physical file, two products.
+  write(root, 'AGENTS.md', '# Shared agent instructions\n');
+  write(root, 'packages/api/AGENTS.md', '# Nested agent instructions\n');
+  // Positive: the two root-only agent-instruction alternatives. `CLAUDE.md` is
+  // Claude's as well; `GEMINI.md` is Copilot's alone, and its recognition
+  // names the CLI and Cloud surfaces because VS Code documents no `GEMINI.md`.
+  write(root, 'CLAUDE.md', '# Root Claude-compatible instructions\n');
+  write(root, 'GEMINI.md', '# Root Gemini-compatible instructions\n');
+
+  // Excluded by initial scope, written so their absence is observable: the
+  // `.claude` instruction spellings and the local variant VS Code and the CLI
+  // document, and the non-root alternatives the CLI documents. Each is
+  // `copilot.excluded.additional-standard-locations`; the first three are
+  // Claude instruction files, which is what makes "no Copilot rule admits it"
+  // a statement about Copilot rather than about the file.
+  write(root, '.claude/CLAUDE.md', '# Directory-form Claude instructions\n');
+  write(root, 'CLAUDE.local.md', '# Local Claude instructions\n');
+  write(root, 'packages/api/CLAUDE.md', '# Nested Claude instructions\n');
+  write(root, 'packages/api/GEMINI.md', '# Nested Gemini instructions\n');
+  write(root, '.claude/rules/style.md', '# Claude-compatible rule\n');
+
+  // Runtime-supplied lookup roots — `copilot.excluded.extra-directories`. A
+  // scan root is the one selected boundary (FR-001), so a directory named by
+  // an environment variable or a setting is never one, and no selector reaches
+  // these shapes.
+  write(root, '.copilot/instructions/personal.instructions.md', '# Configured location\n');
+  write(root, 'custom-instructions/team.instructions.md', '# Configured location\n');
+
+  // Near miss: spelling variants one step from each literal. The case variants
+  // live under `tools/`, which holds no admitted file, because a
+  // case-insensitive filesystem would fold a variant written beside an
+  // admitted file into that file itself.
+  write(root, '.github/copilot-instructions.markdown', 'wrong suffix\n');
+  write(root, '.github/instructions.md', 'not the directory\n');
+  write(root, '.github/instructions/README.md', 'wrong suffix\n');
+  write(root, '.github/instructions/notes.instructions.markdown', 'wrong suffix\n');
+  write(root, 'tools/.github/COPILOT-INSTRUCTIONS.md', 'wrong case\n');
+  write(root, 'tools/agents.md', 'wrong case\n');
+  // Near miss: VCS internals are excluded from traversal entirely.
+  write(root, '.git/AGENTS.md', 'vcs internal\n');
+  // Near miss: an installed package's own instruction files. A package manager
+  // put them there and the packages that ship them own them, so they are not
+  // this repository's customizations however deep the walk would otherwise
+  // reach (contracts/inspection-path-allowlist.md).
+  write(root, 'node_modules/some-package/AGENTS.md', '# package instructions\n');
+  write(
+    root,
+    'node_modules/some-package/.github/copilot-instructions.md',
+    '# package instructions\n',
+  );
+  // Unrelated file that shares no segment with the selectors.
+  write(root, 'README.md', 'unrelated\n');
+
+  return {
+    root,
+    expectedCopilotInstructionPaths: {
+      'copilot.repo.instructions.agents': ['AGENTS.md', 'packages/api/AGENTS.md'],
+      'copilot.repo.instructions.claude-root': ['CLAUDE.md'],
+      'copilot.repo.instructions.gemini-root': ['GEMINI.md'],
+      'copilot.repo.instructions.path': [
+        '.github/instructions/broken.instructions.md',
+        '.github/instructions/frontend.instructions.md',
+        '.github/instructions/nested/backend.instructions.md',
+      ],
+      'copilot.repo.instructions.path-cli-context': [
+        '.github/instructions/broken.instructions.md',
+        '.github/instructions/frontend.instructions.md',
+        '.github/instructions/nested/backend.instructions.md',
+        'packages/api/.github/instructions/api.instructions.md',
+      ],
+      'copilot.repo.instructions.repository': ['.github/copilot-instructions.md'],
+      'copilot.repo.instructions.repository-cli-context': [
+        '.github/copilot-instructions.md',
+        'packages/api/.github/copilot-instructions.md',
+      ],
+    },
+    expectedClaudeInstructionPaths: [
+      '.claude/CLAUDE.md',
+      'CLAUDE.local.md',
+      'CLAUDE.md',
+      'packages/api/CLAUDE.md',
+    ],
+    expectedCodexInstructionPaths: ['AGENTS.md'],
+    copilotNearMissPaths: [
+      '.claude/CLAUDE.md',
+      '.claude/rules/style.md',
+      '.copilot/instructions/personal.instructions.md',
+      '.git/AGENTS.md',
+      '.github/copilot-instructions.markdown',
+      '.github/instructions.md',
+      '.github/instructions/README.md',
+      '.github/instructions/notes.instructions.markdown',
+      'CLAUDE.local.md',
+      'README.md',
+      'custom-instructions/team.instructions.md',
+      'node_modules/some-package/.github/copilot-instructions.md',
+      'node_modules/some-package/AGENTS.md',
+      'packages/api/CLAUDE.md',
+      'packages/api/GEMINI.md',
+      'tools/.github/COPILOT-INSTRUCTIONS.md',
+      'tools/agents.md',
+    ],
+    applyToInstructionPath: '.github/instructions/frontend.instructions.md',
+    malformedInstructionPath: '.github/instructions/broken.instructions.md',
+    secretInstructionPath: '.github/copilot-instructions.md',
   };
 }

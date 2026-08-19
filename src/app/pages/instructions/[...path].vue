@@ -53,6 +53,7 @@ import {
   escapeControlCharacters,
   pathPresentationLabel,
 } from '../../../shared/entities';
+import { VENDOR_SURFACE_TEXT } from '../../../shared/registries/behavior-text';
 
 const sessionViewState = inject(SESSION_VIEW_STATE);
 if (sessionViewState === undefined) {
@@ -113,12 +114,20 @@ const pathText = computed(() => pathPresentationLabel(openPath.value));
 const pathIsSpelledOut = computed(() => pathText.value !== escapeControlCharacters(openPath.value));
 
 /**
- * The products that recognize this file, restated from the row so the page
- * and the list agree (FR-007). The row's tools are already deduplicated and
- * in the closed tool order.
+ * The products that recognize this file and the surfaces they recognize it
+ * on, restated from the row so the page and the list agree (FR-007). The row's
+ * recognitions are already in the closed tool order and each one's surfaces in
+ * the closed surface order.
  */
 const toolsText = computed(() =>
-  (owner.value?.tools ?? []).map((tool) => SUPPORTED_TOOL_TEXT[tool]).join(', '),
+  (owner.value?.recognitions ?? [])
+    .map(
+      (recognition) =>
+        `${SUPPORTED_TOOL_TEXT[recognition.tool]} (${recognition.surfaces
+          .map((surface) => VENDOR_SURFACE_TEXT[surface])
+          .join(', ')})`,
+    )
+    .join(', '),
 );
 
 /**

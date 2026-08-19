@@ -66,6 +66,10 @@ function codexSkillRule(plan: TraversalPlan): CompiledStaticNonInstructionRule {
     tool: 'codex',
     kind: 'skill',
     plan,
+    // Stated rather than derived from the relations beside it: a stand-in
+    // supplies the identity a candidate carries, and Codex's one surface is
+    // that identity's whole answer here.
+    recognizingSurfaces: ['codex-local-clients'],
   };
 }
 

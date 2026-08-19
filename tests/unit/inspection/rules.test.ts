@@ -18,11 +18,13 @@ import {
   buildClaudeSkillFixture,
   buildCodexInstructionFixture,
   buildCodexSkillFixture,
+  buildCopilotInstructionFixture,
   buildCopilotSkillFixture,
   type ClaudeInstructionFixture,
   type ClaudeSkillFixture,
   type CodexInstructionFixture,
   type CodexSkillFixture,
+  type CopilotInstructionFixture,
   type CopilotSkillFixture,
 } from '../../fixtures/repositories/build-fixtures';
 import { CLAUDE_REPOSITORY_RULES } from '../../../src/server/inspection/rules/claude';
@@ -40,6 +42,7 @@ import {
 } from '../../../src/server/inspection/rules/registry';
 import { runTraversalScan } from '../../../src/server/inspection/traversal';
 import { runSourceScan } from '../../../src/server/inspection/scan';
+import type { FrontmatterEntryDto, FrontmatterValueDto } from '../../../src/shared/api-types';
 
 // Pass-through spies over the inspection module's closed fs surface: the
 // product's calls stay real while the suite asserts exactly which paths were
@@ -482,9 +485,9 @@ describe('the shipped copilot.repo.skill plan and its matrix (T154)', () => {
   });
 
   it('compiles the three authored programs once into the immutable typed plan', () => {
-    expect(COPILOT_REPOSITORY_RULES).toHaveLength(1);
-    const compiled = COPILOT_REPOSITORY_RULES[0]!;
-    expect(compiled.rule.ruleId).toBe('copilot.repo.skill');
+    const compiled = COPILOT_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'copilot.repo.skill',
+    )!;
     expect(compiled.tool).toBe('copilot');
     expect(compiled.kind).toBe('skill');
     // The compiled plan is exactly what compiling the shipped matcher yields:
@@ -508,8 +511,14 @@ describe('the shipped copilot.repo.skill plan and its matrix (T154)', () => {
     ]);
   });
 
+  // The skill rule alone: this suite is about the skill matrix, and the
+  // instruction rules that ship beside it admit files of the same tree.
+  const copilotSkillRules = COPILOT_REPOSITORY_RULES.filter(
+    (candidate) => candidate.rule.ruleId === 'copilot.repo.skill',
+  );
+
   async function scanCopilot() {
-    return scanWith(copilot.root, COPILOT_REPOSITORY_RULES);
+    return scanWith(copilot.root, copilotSkillRules);
   }
 
   it('admits the root context of all three spellings, and nothing else', async () => {
@@ -544,7 +553,7 @@ describe('the shipped copilot.repo.skill plan and its matrix (T154)', () => {
     const selectorByPrefix = (path: string): number =>
       path.includes('.github/') ? 0 : path.includes('.agents/') ? 1 : 2;
     for (const candidate of result.files) {
-      const admitting = resolveAdmittingRules(COPILOT_REPOSITORY_RULES, candidate.admissions);
+      const admitting = resolveAdmittingRules(copilotSkillRules, candidate.admissions);
       expect(admitting.map((compiled) => compiled.rule.ruleId)).toEqual(['copilot.repo.skill']);
       expect(candidate.admissions[0], candidate.publicPath).toEqual({
         planIndex: 0,
@@ -866,7 +875,11 @@ describe('the applicability range a Claude instruction rule answers (T1093)', ()
   if (instructionRule === undefined || instructionRule.kind !== 'instructions') {
     throw new Error('expected a compiled Claude instruction rule');
   }
-  const rangeOf = (path: string): string => instructionRule.applicabilityRangeOf(path);
+  // Claude's rules name no declaration that could carry a range, so every case
+  // here answers from the path with an empty declaration set — and always
+  // answers: only a declared-range filename can have no range, and Claude
+  // ships none.
+  const rangeOf = (path: string): string | null => instructionRule.applicabilityRangeOf(path, []);
 
   it('answers the Repository root for a file the root holds', () => {
     expect(rangeOf('CLAUDE.md')).toBe('**');
@@ -889,5 +902,268 @@ describe('the applicability range a Claude instruction rule answers (T1093)', ()
     expect(rangeOf('packages/[api]/CLAUDE.md')).toBe('packages/\\[api\\]/**');
     expect(rangeOf('foo*/CLAUDE.md')).toBe('foo\\*/**');
     expect(rangeOf('!docs/CLAUDE.md')).toBe('\\!docs/**');
+  });
+});
+
+describe('the shipped Copilot instruction plans and their matrix (T247)', () => {
+  let copilotInstructions: CopilotInstructionFixture;
+
+  beforeAll(() => {
+    copilotInstructions = buildCopilotInstructionFixture('inspector-copilot-instruction-rules');
+  });
+
+  afterAll(() => {
+    rmSync(copilotInstructions.root, { recursive: true, force: true });
+  });
+
+  /** The compiled unit for one shipped Copilot rule, by its own identifier. */
+  function copilotRule(ruleId: string) {
+    return COPILOT_REPOSITORY_RULES.find((candidate) => candidate.rule.ruleId === ruleId)!;
+  }
+
+  /**
+   * What one Copilot rule says an admitted file governs — null for a
+   * declared-range filename that declares none. Declarations default to
+   * empty, which is both a file that declares nothing and one whose
+   * extraction failed.
+   */
+  function rangeOf(
+    ruleId: string,
+    path: string,
+    declared: readonly FrontmatterEntryDto[] = [],
+  ): string | null {
+    const compiled = copilotRule(ruleId);
+    if (compiled.kind !== 'instructions') {
+      throw new Error(`expected a compiled Copilot instruction rule for ${ruleId}`);
+    }
+    return compiled.applicabilityRangeOf(path, declared);
+  }
+
+  /** One declared frontmatter key, for the declared-range cases below. */
+  function declare(key: string, value: FrontmatterValueDto): FrontmatterEntryDto[] {
+    return [{ key, keyKind: 'string', value }];
+  }
+
+  /** The paths one Copilot rule admits on its own, sorted as the walk found them. */
+  async function admittedBy(ruleId: string): Promise<string[]> {
+    const result = await scanWith(copilotInstructions.root, [copilotRule(ruleId)]);
+    return result.files.map((file) => file.publicPath);
+  }
+
+  it('admits exactly the contracted paths, rule by rule', async () => {
+    // Each rule scanned alone, so an over-broad program is a failure of the
+    // rule that owns it rather than of whichever one happened to admit the
+    // file first. The expectation is the fixture's own description, keyed by
+    // rule, so the built tree and the claim about it cannot drift
+    // (contracts/vendors/github-copilot.md § Inspector Repository matcher
+    // rules).
+    const expectations = copilotInstructions.expectedCopilotInstructionPaths;
+    // All seven, named here so a rule that stopped being described — and would
+    // therefore be asserted about by nothing — fails instead of disappearing.
+    expect(Object.keys(expectations)).toHaveLength(7);
+    for (const [ruleId, expected] of Object.entries(expectations)) {
+      expect(await admittedBy(ruleId), ruleId).toEqual(expected);
+    }
+  });
+
+  it('admits no excluded location, configured root, or spelling variant', async () => {
+    // The negative matrix, run against every Copilot rule at once: the
+    // `.claude` instruction spellings and non-root alternatives
+    // `copilot.excluded.additional-standard-locations` keeps out, the
+    // runtime-supplied roots `copilot.excluded.extra-directories` names, VCS
+    // internals, installed packages, and the spelling variants one step from
+    // each literal. None of them is reachable at all — no selector goes
+    // outside the fixed spellings, which is why the exclusions need no
+    // mechanism (T251).
+    const result = await scanWith(
+      copilotInstructions.root,
+      COPILOT_REPOSITORY_RULES.filter((candidate) => candidate.kind === 'instructions'),
+    );
+    const paths = new Set(result.files.map((file) => file.publicPath));
+    for (const nearMiss of copilotInstructions.copilotNearMissPaths) {
+      expect(paths.has(nearMiss), nearMiss).toBe(false);
+    }
+  });
+
+  it('gives the root repository-wide file both provenances and a nested one only the CLI’s', async () => {
+    // The phase's subject: `ANY_DIRECTORIES` matches zero segments, so the
+    // root file is one candidate with two admissions while the nested file has
+    // one. That is what lets a recognition name all three surfaces at the root
+    // and the CLI's alone below it, without duplicating the file's identity.
+    const rules = [
+      copilotRule('copilot.repo.instructions.repository'),
+      copilotRule('copilot.repo.instructions.repository-cli-context'),
+    ];
+    const result = await scanWith(copilotInstructions.root, rules);
+    const admittingIds = (path: string): string[] =>
+      resolveAdmittingRules(
+        rules,
+        result.files.find((file) => file.publicPath === path)!.admissions,
+      ).map((compiled) => compiled.rule.ruleId);
+    expect(admittingIds('.github/copilot-instructions.md')).toEqual([
+      'copilot.repo.instructions.repository',
+      'copilot.repo.instructions.repository-cli-context',
+    ]);
+    expect(admittingIds('packages/api/.github/copilot-instructions.md')).toEqual([
+      'copilot.repo.instructions.repository-cli-context',
+    ]);
+  });
+
+  it('derives what each path-ranged file governs from its own path', () => {
+    // The repository-wide file strips the `.github` Copilot keeps it in and
+    // the agent-instruction filenames keep their whole directory, because no
+    // source documents Copilot keeping one of them in `.github`
+    // (data-model.md § Inventory unit). A path-specific file is not here at
+    // all: its range is its own declaration or nothing, so with no usable
+    // `applyTo` the answer is null whichever rule admitted it (T265).
+    expect(rangeOf('copilot.repo.instructions.repository', '.github/copilot-instructions.md')).toBe(
+      '**',
+    );
+    expect(
+      rangeOf(
+        'copilot.repo.instructions.repository-cli-context',
+        'packages/api/.github/copilot-instructions.md',
+      ),
+    ).toBe('packages/api/**');
+    expect(
+      rangeOf('copilot.repo.instructions.path', '.github/instructions/frontend.instructions.md'),
+    ).toBeNull();
+    expect(
+      rangeOf(
+        'copilot.repo.instructions.path-cli-context',
+        'packages/api/.github/instructions/api.instructions.md',
+      ),
+    ).toBeNull();
+    expect(rangeOf('copilot.repo.instructions.agents', 'AGENTS.md')).toBe('**');
+    expect(rangeOf('copilot.repo.instructions.agents', 'packages/api/AGENTS.md')).toBe(
+      'packages/api/**',
+    );
+    // `.github` is Copilot's keeping directory for the two filenames its own
+    // selectors put there, and for nothing else: an `AGENTS.md` inside it
+    // governs that directory, because no source says Copilot keeps one there.
+    expect(rangeOf('copilot.repo.instructions.agents', 'tools/.github/AGENTS.md')).toBe(
+      'tools/.github/**',
+    );
+    expect(rangeOf('copilot.repo.instructions.claude-root', 'CLAUDE.md')).toBe('**');
+    expect(rangeOf('copilot.repo.instructions.gemini-root', 'GEMINI.md')).toBe('**');
+  });
+
+  it('keys a path-specific file by the range it declares, wherever it sits (T265)', () => {
+    // `applyTo` is what a path-specific file governs, so the declared value
+    // keys the row and the path decides nothing (spec.md § Clarifications).
+    // The value is published as authored and never escaped: it already is the
+    // author's pattern, and escaping would turn it into a directory literally
+    // named that.
+    const scalar = (text: string): FrontmatterValueDto => ({ kind: 'scalar', text });
+    expect(
+      rangeOf(
+        'copilot.repo.instructions.path',
+        '.github/instructions/frontend.instructions.md',
+        declare('applyTo', scalar('src/frontend/**')),
+      ),
+    ).toBe('src/frontend/**');
+    // A file deep inside the subtree, and one under a CLI context: the
+    // declaration outranks both paths, which is the whole content of the
+    // declared branch.
+    expect(
+      rangeOf(
+        'copilot.repo.instructions.path-cli-context',
+        'packages/api/.github/instructions/api.instructions.md',
+        declare('applyTo', scalar('packages/api/src/**')),
+      ),
+    ).toBe('packages/api/src/**');
+    // Copilot writes several globs into one `applyTo` value. Nothing parses
+    // it: rows group by exact text, so one declaration is one row however many
+    // patterns its author put in it.
+    expect(
+      rangeOf(
+        'copilot.repo.instructions.path',
+        '.github/instructions/many.instructions.md',
+        declare('applyTo', scalar('**/*.ts,**/*.tsx')),
+      ),
+    ).toBe('**/*.ts,**/*.tsx');
+  });
+
+  it('answers no range for a declaration a row cannot be keyed by (T265)', () => {
+    // Each of these is a declared-range file that supplied nothing a row can
+    // be keyed by. The product reads this filename's range from its
+    // declaration alone — VS Code documents an undeclared file as not applied
+    // automatically — so the honest answer is that there is no range, never a
+    // governance read off the path. The declaration itself still reaches the
+    // reader through the file's own detail.
+    const path = '.github/instructions/frontend.instructions.md';
+    // A sequence and a mapping have no rendering as one row's identity.
+    expect(
+      rangeOf(
+        'copilot.repo.instructions.path',
+        path,
+        declare('applyTo', { kind: 'sequence', items: [] }),
+      ),
+    ).toBeNull();
+    expect(
+      rangeOf(
+        'copilot.repo.instructions.path',
+        path,
+        declare('applyTo', { kind: 'mapping', entries: [] }),
+      ),
+    ).toBeNull();
+    // An authored empty string denotes nothing, and a declared null is the key
+    // written with no value at all.
+    expect(
+      rangeOf(
+        'copilot.repo.instructions.path',
+        path,
+        declare('applyTo', { kind: 'scalar', text: '' }),
+      ),
+    ).toBeNull();
+    expect(
+      rangeOf('copilot.repo.instructions.path', path, declare('applyTo', { kind: 'absent' })),
+    ).toBeNull();
+    // A file whose extraction failed declares nothing here: no range is known,
+    // and its parse-failure diagnostic states why beside it (FR-028).
+    expect(rangeOf('copilot.repo.instructions.path', path, [])).toBeNull();
+    // And the key is read only for the filename Copilot documents it on: an
+    // `AGENTS.md` carrying `applyTo` declared it to nobody, and its range
+    // stays the path's.
+    expect(
+      rangeOf(
+        'copilot.repo.instructions.agents',
+        'packages/api/AGENTS.md',
+        declare('applyTo', { kind: 'scalar', text: 'src/**' }),
+      ),
+    ).toBe('packages/api/**');
+  });
+
+  it('keeps every product’s instruction rows when all three catalogs run together', async () => {
+    // The shared-file half: one physical `AGENTS.md` is Codex's and Copilot's,
+    // one physical root `CLAUDE.md` is Claude's and Copilot's, and each is
+    // read once and admitted for each product's plan. The Claude-only
+    // spellings stay Claude's, because Copilot documents its `CLAUDE.md`
+    // alternative at the repository root alone.
+    const rules = [
+      ...CODEX_REPOSITORY_RULES,
+      ...CLAUDE_REPOSITORY_RULES,
+      ...COPILOT_REPOSITORY_RULES,
+    ];
+    const result = await scanWith(copilotInstructions.root, rules);
+    const toolsFor = (path: string): string[] => {
+      const file = result.files.find((candidate) => candidate.publicPath === path);
+      return file === undefined
+        ? []
+        : [
+            ...new Set(
+              resolveAdmittingRules(rules, file.admissions).map((compiled) => compiled.tool),
+            ),
+          ].sort();
+    };
+    expect(toolsFor('AGENTS.md')).toEqual(['codex', 'copilot']);
+    expect(toolsFor('CLAUDE.md')).toEqual(['claude', 'copilot']);
+    expect(toolsFor('GEMINI.md')).toEqual(['copilot']);
+    expect(toolsFor('.claude/CLAUDE.md')).toEqual(['claude']);
+    expect(toolsFor('CLAUDE.local.md')).toEqual(['claude']);
+    expect(toolsFor('packages/api/CLAUDE.md')).toEqual(['claude']);
+    // The hosted organization instructions name no local path, so nothing in
+    // the tree can stand for them and no candidate exists for them.
+    expect(toolsFor('packages/api/GEMINI.md')).toEqual([]);
   });
 });

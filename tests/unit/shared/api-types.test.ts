@@ -105,16 +105,17 @@ describe('session snapshot DTO', () => {
 });
 
 describe('candidate provenance', () => {
-  it('says which rule admitted the file and where, and nothing further', () => {
+  it('says which rule admitted the file, where, and for which surfaces', () => {
     // An admission is a read-authorization record
     // (contracts/inspection-path-allowlist.md § Read authorization): which
-    // shipped rule authorized the read, how that rule creates candidates, and
-    // the path it matched — an internal record of the committed generation,
-    // carried by no session response. Where the customization would apply was
-    // the vocabulary of a projection no surface shows, so no record carries
-    // one.
+    // shipped rule authorized the read, how that rule creates candidates, the
+    // path it matched, and the product surfaces that rule rests on — an
+    // internal record of the committed generation, whose surfaces alone reach
+    // a response, unioned across a recognition's admissions by the instructions
+    // projection (T257). Where the customization would apply was the
+    // vocabulary of a projection no surface shows, so no record carries one.
     expectTypeOf<keyof CandidateProvenance>().toEqualTypeOf<
-      'ruleId' | 'discoveryClass' | 'matchedPath'
+      'ruleId' | 'discoveryClass' | 'matchedPath' | 'recognizingSurfaces'
     >();
   });
 });

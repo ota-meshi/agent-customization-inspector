@@ -252,10 +252,12 @@ InspectionSession
 │       binary adds only sizeBytes; unknown adds nothing. A file publishes its own facts
 │       only; what it was recognized as belongs to a per-kind inventory below
 ├── instructions[]
-│   └── applicabilityRange string,
-│       files[] { sourceRelativePath, tools[] } — one row per applicability range,
-│       each file it governs with that file's recognizing products in the
-│       closed tool order
+│   └── applicabilityRange string | null,
+│       files[] { sourceRelativePath, recognitions[] { tool, surfaces[] } } —
+│       one row per applicability range, each file it governs with that file's
+│       recognitions in the closed tool order, and each recognition's product
+│       surfaces in the closed surface order; the one null row closes the
+│       list with the files whose range is not known
 ├── skills[]
 │   └── name string,
 │       definitions[] { sourceRelativePath, tool, parseStatus, invocationName,
@@ -297,9 +299,20 @@ from the one projection that keys the rows, so vendor naming cannot drift betwee
 and client. An
 MCP server is one `[mcp_servers.*]` declaration inside its carrier, so one admitted
 `.codex/config.toml` publishes as many rows as it declares servers. An instructions row is one applicability range — the glob the
-governing files' own paths derive, `**` at the Repository root — listing each file it
-governs, so the root `AGENTS.md` and `CLAUDE.md` share one row and a `packages/api/CLAUDE.md`
-has its own (data-model.md § Inventory unit). Every other kind's unit is settled by the task that ships its inventory,
+governing files' own paths derive, `**` at the Repository root, or the one a file declares
+for itself — listing each file it governs, so the root `AGENTS.md` and `CLAUDE.md` share one
+row and a `packages/api/CLAUDE.md`
+has its own (data-model.md § Inventory unit). The one row whose range is null closes the
+list: its files' vendor reads that filename's applicability from the declaration alone,
+and their declarations supply none a row can be keyed by — or could not be read at
+all, which each file's own diagnostics state, so the row states that no range is known
+rather than that none is declared (FR-028). A listed file names its recognitions rather
+than its tools, because a tool alone cannot say where a product reads the file from: GitHub
+Copilot's editor, CLI, and cloud surfaces document different lookup bases for the same
+filenames, so a root `.github/copilot-instructions.md` is read by all three while the same
+filename in a subdirectory is a CLI context alone. Each recognition's `surfaces` are the
+surfaces of the documented behaviors its admitting rules rest on, and naming one is never
+a claim that the surface loaded the file (FR-009). Every other kind's unit is settled by the task that ships its inventory,
 from that kind's own vendor contract. A physical file therefore appears once in `files[]` with its own facts —
 path, read outcome, size, diagnostics — and each kind's inventory refers to it by
 `sourceRelativePath` and repeats none of them; a definition's recognition-owned parse
@@ -453,12 +466,22 @@ acknowledgement state (FR-027): loopback binding is the complete host-side prote
 interactions to read, and the API neither accepts nor claims to enforce one.
 Authored values — complete source text, declared authored metadata, authored relationship
 targets, and either comparison side — are reachable only by requesting one `FileDetail` or
-constructing one comparison at a time; no inventory or session response carries them. The one
-exception is a skill entry's `name`, the identity a row is listed under: the name each
-recognizing tool resolves — the authored `name`, prefixed root-relative for a nested
-Claude Code recognition — because a list that cannot name what it lists is not an
-inventory (FR-007, data-model.md § Inventory unit). Every other declared value stays
-behind an explicit detail request. The
+constructing one comparison at a time; no inventory or session response carries them. The
+exception is the identity a row is listed under, because a list that cannot name what it
+lists is not an inventory (FR-007, data-model.md § Inventory unit). Two rows have one: a
+skill entry's `name` — the name each recognizing tool resolves, the authored `name`,
+prefixed root-relative for a nested Claude Code recognition — and an instructions entry's
+`applicabilityRange` when the file declares one for itself rather than deriving it from
+its path, which is Copilot's `applyTo`. The authored part of each is the value the scan's
+one parse resolved (data-model.md § Field reading) — the skill name's `007` read as `7`,
+the range's quotes and escapes resolved — with no masking, escaping, or normalization
+added by this product; the parts of a skill's name this product supplies — the directory
+fallback when the file declares none, and the root-relative prefix a nested Claude Code
+recognition carries — are built from the path the response already publishes, under
+FR-007's naming rules.
+Neither widens past the
+row's identity — no other declared value travels with it — so every other declared value
+stays behind an explicit detail request. The
 central full-session client-data purge drops what the client holds. Route closure, selection
 replacement, file or Source removal, and generation replacement are scoped cleanup rather
 than that central purge; a generation replacement in either sequence disposes only that

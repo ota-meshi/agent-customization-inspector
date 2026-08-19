@@ -38,11 +38,21 @@ interface ContractStrategyRow {
   readonly evidence: readonly string[];
 }
 
+/** How many cells a normative strategy row has; see {@link parseStrategyRow}. */
+const STRATEGY_ROW_CELLS = 8;
+
 /**
  * Parses one strategy's row out of a runtime-composition contract file. The
  * row is found by its backticked strategy ID in the first cell; backticked
  * tokens are extracted per cell, so the English `, ` and Japanese `、`
  * separators parse identically.
+ *
+ * A strategy ID can open more than one row of that contract: the canonical
+ * evidence-assessment index keys its exceptions by the same ID, in a
+ * four-column table. The normative row is the one with the strategy table's
+ * own column count, so the cell count is what selects it — reading the first
+ * match instead would compare a documentation status against an operations
+ * list.
  */
 function parseStrategyRow(path: string, strategyId: string): ContractStrategyRow {
   for (const line of readFileSync(path, 'utf8').split('\n')) {
@@ -50,6 +60,9 @@ function parseStrategyRow(path: string, strategyId: string): ContractStrategyRow
       continue;
     }
     const cells = line.replace(/^\| /u, '').replace(/ \|$/u, '').split(' | ');
+    if (cells.length !== STRATEGY_ROW_CELLS) {
+      continue;
+    }
     const tokens = (cell: string | undefined): string[] =>
       [...(cell ?? '').matchAll(/`([^`]+)`/gu)].map((match) => match[1]!);
     return {
@@ -58,7 +71,7 @@ function parseStrategyRow(path: string, strategyId: string): ContractStrategyRow
       evidence: tokens(cells[7]),
     };
   }
-  throw new Error(`no ${strategyId} row in ${path}`);
+  throw new Error(`no normative ${strategyId} row in ${path}`);
 }
 
 describe('the Codex instruction composition strategies (T219)', () => {
@@ -239,4 +252,187 @@ describe('the Claude instruction composition strategy (T239)', () => {
       expect(row.evidence, path).toEqual(cited);
     }
   });
+});
+
+/** The three Copilot instruction layerings, as the cases below index them. */
+type CopilotInstructionStrategyId =
+  | 'copilot.cli.instructions.layering'
+  | 'copilot.cloud.instructions.layering'
+  | 'copilot.vscode.instructions.layering';
+
+/** The seven Copilot instruction rules, as the cases below index them. */
+type CopilotInstructionRuleId =
+  | 'copilot.repo.instructions.agents'
+  | 'copilot.repo.instructions.claude-root'
+  | 'copilot.repo.instructions.gemini-root'
+  | 'copilot.repo.instructions.path'
+  | 'copilot.repo.instructions.path-cli-context'
+  | 'copilot.repo.instructions.repository'
+  | 'copilot.repo.instructions.repository-cli-context';
+
+describe('the Copilot instruction composition strategies (T262)', () => {
+  /** The three surface layerings the Copilot instruction rules name. */
+  const COPILOT_INSTRUCTION_STRATEGY_IDS = [
+    'copilot.cli.instructions.layering',
+    'copilot.cloud.instructions.layering',
+    'copilot.vscode.instructions.layering',
+  ] as const;
+
+  it('ships one pipeline per surface, never one merged product claim', () => {
+    // The three surfaces document incompatible composition — the CLI
+    // deduplicates identical files of three documented categories and
+    // establishes no precedence among the rest, Cloud takes the nearest
+    // `AGENTS.md` on the worked path while leaving the combined files' order
+    // unresolved, and VS Code has a layer order but no order inside a layer —
+    // so collapsing them would invent a product-wide rule no surface
+    // documents (FR-009).
+    const operations = Object.fromEntries(
+      COPILOT_INSTRUCTION_STRATEGY_IDS.map((strategyId) => [
+        strategyId,
+        RUNTIME_COMPOSITION_STRATEGIES[strategyId].operations,
+      ]),
+    );
+    expect(operations).toEqual({
+      'copilot.cli.instructions.layering': ['filter', 'deduplicate', 'append', 'unknown-order'],
+      'copilot.cloud.instructions.layering': [
+        'filter',
+        'select-closest',
+        'append',
+        'unknown-order',
+      ],
+      'copilot.vscode.instructions.layering': ['filter', 'append', 'unknown-order'],
+    });
+    for (const strategyId of COPILOT_INSTRUCTION_STRATEGY_IDS) {
+      const record = RUNTIME_COMPOSITION_STRATEGIES[strategyId];
+      expect(record.tool, strategyId).toBe('copilot');
+      expect(record.surfaces, strategyId).toHaveLength(1);
+    }
+    // `unknown-order` on all three is the content, not a gap: what is
+    // unresolved stays unresolved rather than becoming an inferred winner —
+    // the Cloud pipeline's own unknowns are the order among the combined
+    // repository files and the coexistence of the agent-instruction
+    // alternatives.
+    for (const strategyId of COPILOT_INSTRUCTION_STRATEGY_IDS) {
+      expect(RUNTIME_COMPOSITION_STRATEGIES[strategyId].documentationStatus, strategyId).toBe(
+        'partially-documented',
+      );
+    }
+  });
+
+  it('composes each surface from exactly its own documented scopes, by identity', () => {
+    // Every scope the surface reads, User and hosted included: a behavior
+    // grants no read authority, so naming one says what the product documents
+    // rather than what the Inspector may open. The Cloud pipeline's hosted
+    // organization layer is listed exactly like a located scope — what it
+    // lacks is a path, not a place in the composition.
+    const consumed = (strategyId: CopilotInstructionStrategyId): readonly string[] =>
+      STRATEGY_RELATIONS[strategyId].consumesBehaviors.map((behavior) => behavior.behaviorId);
+    expect(consumed('copilot.cli.instructions.layering')).toEqual([
+      'copilot.behavior.cli.instructions.agents',
+      'copilot.behavior.cli.instructions.claude',
+      'copilot.behavior.cli.instructions.gemini',
+      'copilot.behavior.cli.instructions.path',
+      'copilot.behavior.cli.instructions.repository',
+      'copilot.behavior.cli.user.instructions.path',
+      'copilot.behavior.cli.user.instructions.root',
+    ]);
+    expect(consumed('copilot.cloud.instructions.layering')).toEqual([
+      'copilot.behavior.cloud.instructions.agents',
+      'copilot.behavior.cloud.instructions.alternatives',
+      'copilot.behavior.cloud.instructions.path',
+      'copilot.behavior.cloud.instructions.repository',
+      'copilot.behavior.cloud.organization-instructions',
+    ]);
+    expect(consumed('copilot.vscode.instructions.layering')).toEqual([
+      'copilot.behavior.vscode.instructions.agents',
+      'copilot.behavior.vscode.instructions.claude',
+      'copilot.behavior.vscode.instructions.path',
+      'copilot.behavior.vscode.instructions.repository',
+      'copilot.behavior.vscode.user.claude',
+      'copilot.behavior.vscode.user.instructions',
+    ]);
+    for (const strategyId of COPILOT_INSTRUCTION_STRATEGY_IDS) {
+      for (const behavior of STRATEGY_RELATIONS[strategyId].consumesBehaviors) {
+        expect(VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId]).toBe(behavior);
+      }
+    }
+    // No settings behavior takes part. `chat.instructionsFilesLocations` and
+    // the CLI's own configuration decide at runtime which locations
+    // participate, and that stays a condition rather than a scope a strategy
+    // composes — a settings statement would invite a settings rule, and this
+    // wave authorizes no settings read.
+    for (const strategyId of COPILOT_INSTRUCTION_STRATEGY_IDS) {
+      for (const behaviorId of consumed(strategyId)) {
+        expect(behaviorId, strategyId).not.toContain('settings');
+      }
+    }
+  });
+
+  it('explains each instruction rule through the surfaces it rests on, by identity', () => {
+    // The reciprocal half of the split: a rule's strategies are the layerings
+    // of the surfaces its behaviors belong to, so the root-exact rule is
+    // explained by two and its CLI-context twin by one. That is what makes a
+    // recognition's surfaces readable off the rule rather than inferred.
+    const explained = (ruleId: CopilotInstructionRuleId): readonly string[] =>
+      RULE_RELATIONS[ruleId].explainedByStrategies.map((strategy) => strategy.strategyId);
+    expect(explained('copilot.repo.instructions.repository')).toEqual([
+      'copilot.cloud.instructions.layering',
+      'copilot.vscode.instructions.layering',
+    ]);
+    expect(explained('copilot.repo.instructions.repository-cli-context')).toEqual([
+      'copilot.cli.instructions.layering',
+    ]);
+    expect(explained('copilot.repo.instructions.path')).toEqual([
+      'copilot.cloud.instructions.layering',
+      'copilot.vscode.instructions.layering',
+    ]);
+    expect(explained('copilot.repo.instructions.path-cli-context')).toEqual([
+      'copilot.cli.instructions.layering',
+    ]);
+    expect(explained('copilot.repo.instructions.agents')).toEqual([
+      'copilot.cli.instructions.layering',
+      'copilot.cloud.instructions.layering',
+      'copilot.vscode.instructions.layering',
+    ]);
+    expect(explained('copilot.repo.instructions.claude-root')).toEqual([
+      'copilot.cli.instructions.layering',
+      'copilot.cloud.instructions.layering',
+      'copilot.vscode.instructions.layering',
+    ]);
+    // VS Code documents no `GEMINI.md`, so its layering is absent here rather
+    // than assumed from the root alternative beside it.
+    expect(explained('copilot.repo.instructions.gemini-root')).toEqual([
+      'copilot.cli.instructions.layering',
+      'copilot.cloud.instructions.layering',
+    ]);
+    for (const [ruleId, edges] of Object.entries(RULE_RELATIONS)) {
+      if (!ruleId.startsWith('copilot.repo.instructions.')) {
+        continue;
+      }
+      for (const strategy of edges.explainedByStrategies) {
+        expect(RUNTIME_COMPOSITION_STRATEGIES[strategy.strategyId]).toBe(strategy);
+      }
+    }
+  });
+
+  it.each(COPILOT_INSTRUCTION_STRATEGY_IDS)(
+    'states the %s contract row reciprocally with the shipped record, in both languages',
+    (strategyId) => {
+      const record = RUNTIME_COMPOSITION_STRATEGIES[strategyId];
+      const consumed = STRATEGY_RELATIONS[strategyId].consumesBehaviors.map(
+        (behavior) => behavior.behaviorId,
+      );
+      const cited = record.evidence.map((citation) => citation.sourceId);
+      expect(cited.length).toBeGreaterThan(0);
+      for (const path of [
+        'specs/001-inspect-agent-customizations/contracts/runtime-composition.md',
+        'specs/001-inspect-agent-customizations/contracts/runtime-composition.ja.md',
+      ]) {
+        const row = parseStrategyRow(path, strategyId);
+        expect(row.operations, path).toEqual(record.operations);
+        expect(row.consumesBehaviors, path).toEqual(consumed);
+        expect(row.evidence, path).toEqual(cited);
+      }
+    },
+  );
 });

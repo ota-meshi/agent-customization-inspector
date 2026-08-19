@@ -952,7 +952,7 @@ substituteしない。
 |---|---|
 | `skill` | 1つのtoolが解決した1つの名前（FR-007）: authoredなfrontmatter `name` — fileが宣言しない場合はskill directory名 — であり、nestedなskillのClaude Code recognitionはこれにroot相対のprefixを前置する。定義は1つのrecognition — `(file, tool)`につき1つ — であるため、1つの名前に解決される複数fileは1 entryが各recognitionを定義として列挙し、toolごとに異なる名前へ解決される1つのfileは各名前のentryで定義される |
 | `MCP` | Admit済みcarrier内の`[mcp_servers.*]`宣言1つ。したがって1つの`.codex/config.toml`は宣言したserverの数だけrowを公開する |
-| `instructions` | 1つの適用範囲: 担当するfile自身のpathが導出するglobであり、担当する各fileをそのfileの認識toolとともに列挙する |
+| `instructions` | 1つの適用範囲: 担当するfile自身のpathが導出するglobであり、担当する各fileをそのfileのrecognitionとともに列挙する — 各recognitionは1つのproductと、そのfileをadmitしたruleが依拠するdocumented behaviorのsurfaceである。toolだけでは、productがそのfileをどこから読むのかを言えないためである |
 | `settings/config` | File自身 |
 
 したがってCustomizationFileは自身の事実 — Source相対Path、read結果、size、diagnostic — を1度だけ
@@ -963,7 +963,7 @@ pathで名指して述べる: customizationのdirectory内で失敗したreadは
 表現できない: 名前でgroupingするとToolRecognitionが依拠する`(file, tool, kind)`ごとに1 recognitionと
 いう規定を壊し、file形のrowは1 carrierの宣言が必要とするN行になりようがない。
 
-Instruction rowの適用範囲はfileのSource相対Pathから導出するのであって、vendorのruntimeからでは
+Instruction rowの適用範囲は、ほとんどのfileでは、fileのSource相対Pathから導出するのであって、vendorのruntimeからでは
 ない: 範囲はfileが置かれたdirectoryであり、認識した製品がinstruction fileを置くためのdirectoryを
 末尾から取り除いたうえで、Repository root相対のglobとして綴る。Claude Codeは`.claude`を
 `CLAUDE.md`にだけ持つ — ページはproject instructionの唯一の場所として`./CLAUDE.md`**または**
@@ -981,8 +981,17 @@ parseではない: patternを解釈するものは無く、pathが述べると�
 決めるだけである。Rowはそのglobの厳密な文字列一致でgroupingする: globのparse、綴りの正規化、
 2つの範囲が重なるかの判定は行わないため、`packages/api/**`と`packages/api/**/*`は2つの範囲で
 ある。導出側の綴りはfileごとではなく製品が固定するものであり、それがgroupingの導出側を
-一貫させる。自身の範囲を宣言するfileはその宣言値でkeyされ、
-その分岐はrecognizerが宣言を抽出するphaseとともに到着する。範囲はfileが担当する対象を述べる。
+一貫させる。自身の範囲を宣言するfile — Copilotの`applyTo` — はその宣言値でkeyされる。
+宣言された範囲はparserが解決したとおりに公開する（§ Fieldの読み取り）— 値自身のquoteと
+escapeは、すべての宣言値と同じく一度だけ解決される — 一方でこの製品はそれ以上escapeしない:
+解決済みの値こそが著者自身のpatternであり、escapeすればその名前のdirectory literalとして
+綴ってしまうからである。rowをkeyできる
+ものを何も宣言しないそうしたfile — 宣言なし、authoredな空値、rowとして綴れないlistや
+mapping、あるいは宣言をまったく読めなかったfile（FR-028） — は既知の範囲を持たない: その
+vendorはこのfile名の適用可否を宣言だけから読むため、pathから読み取った範囲は、vendorが
+何も与えないfileに最大の担当範囲を述べることになる。そうしたfileは`applicabilityRange`が
+nullである1つのrowを共有し、すべての範囲付きrowの後にsortされる。
+範囲はfileが担当する対象を述べる。
 製品がそのfileをloadしたという主張では決してない: admissionはactivationではない（FR-009）。
 
 Skill rowの名前は1つのtoolが解決した名前である（FR-007）: authoredなfrontmatter `name` —

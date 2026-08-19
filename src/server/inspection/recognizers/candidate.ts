@@ -23,8 +23,9 @@
 // inventory row is keyed by and the heading a detail page shows — authored
 // when declared, the skill directory otherwise — and the authored value is not
 // recoverable from the path: a skill's `name` need not match its directory. An
-// instruction file has no name to read at all: its inventory unit is the file
-// itself, so its payload is the presentation alone.
+// instruction file has no name to read at all — its payload is the
+// presentation plus the applicability range its inventory row is grouped by
+// (data-model.md § Inventory unit).
 // No value is captioned, classified, or explained: what a key means is the
 // vendor's documentation, not this product's.
 //
@@ -49,6 +50,7 @@ import { RecognitionExtraction } from '../parsers/extraction';
 import { ParsedMarkdownDocument } from '../parsers/markdown';
 import { listCompanionFiles, type CompanionFile } from '../companion-census';
 import type { CustomizationKind, SupportedTool } from '../../../shared/entities';
+import type { VendorSurface } from '../../../shared/registries/behavior-types';
 import type {
   FrontmatterEntryDto,
   FrontmatterKeyKind,
@@ -98,6 +100,19 @@ export class CandidateProvenance {
   /** How that rule creates candidates; see {@link RuleDiscoveryClass}. */
   public get discoveryClass(): RuleDiscoveryClass {
     return this.#compiled.rule.discoveryClass;
+  }
+
+  /**
+   * The product surfaces the admitting rule rests on, from the rule itself
+   * (`CompiledRule.recognizingSurfaces`). A recognition's surfaces are the
+   * union over its admissions, which is what makes the union meaningful: one
+   * physical `.github/copilot-instructions.md` at the root is admitted by the
+   * root-exact rule and by the CLI-context rule, so its one recognition names
+   * all three Copilot surfaces, while the same filename in a subdirectory is
+   * admitted by the CLI-context rule alone and names the CLI's.
+   */
+  public get recognizingSurfaces(): readonly VendorSurface[] {
+    return this.#compiled.recognizingSurfaces;
   }
 }
 
@@ -174,13 +189,16 @@ export type RecognitionDetails =
        */
       readonly bodyText: string;
       /**
-       * The glob this file governs, relative to the Repository root, and the
-       * identity its inventory row is grouped by (data-model.md § Inventory
-       * unit). Derived from the file's own path and the admitting rules'
-       * container directories, so it survives a `failed` extraction: what a
-       * file governs is a fact of where it sits, not of what parsed.
+       * The glob this file governs relative to the Repository root — derived
+       * from the path, or declared by the file itself where its product reads
+       * one (Copilot's `applyTo`) — and the identity its inventory row is
+       * grouped by (data-model.md § Inventory unit). Null exactly when the
+       * product reads this filename's range from its declaration alone and
+       * the declarations supply none: such a file lists under the row that
+       * says no range is known — which covers a file whose declarations could
+       * not be read at all, its parse-failure diagnostic beside it (FR-028).
        */
-      readonly applicabilityRange: string;
+      readonly applicabilityRange: string | null;
     }
   /**
    * Every other kind. An identity or presentation arrives with the recognizer
@@ -432,8 +450,9 @@ class MarkdownPresentation {
   /**
    * The name the file declares, or undefined when it declares none. Read here
    * because the parse runs once; published only by the skill kind, whose
-   * inventory rows are named by it — an instruction file's unit is the file,
-   * so no name is published for it (data-model.md § Inventory unit).
+   * inventory rows are named by it — an instruction file's row is keyed by
+   * its applicability range, not by a name, so no name is published for it
+   * (data-model.md § Inventory unit).
    */
   public readonly declaredName: string | undefined;
 
@@ -618,14 +637,21 @@ function buildDetails(
     if (admission === undefined || admission.compiled.kind !== 'instructions') {
       throw new TypeError('an instructions recognition has no rule that can answer its range');
     }
-    const applicabilityRange = admission.compiled.applicabilityRangeOf(sourceRelativePath);
     // A failed extraction has no presentation at all, which is what publishes
-    // nothing rather than the part that parsed (FR-028). The range is not part
-    // of that: it comes from the path, so a file whose declarations could not
-    // be read still groups where it belongs.
+    // nothing rather than the part that parsed (FR-028). The declarations are
+    // handed to the rule all the same, and an empty set answers like a file
+    // that declares nothing: a path-derived range where the product derives
+    // one, and null — the no-known-range row — where the product reads this
+    // filename's range from its declaration alone, so an unreadable
+    // declaration block never widens into a range read off the path.
+    const frontmatter = presentation?.frontmatter ?? [];
+    const applicabilityRange = admission.compiled.applicabilityRangeOf(
+      sourceRelativePath,
+      frontmatter,
+    );
     return {
       kind,
-      frontmatter: presentation?.frontmatter ?? [],
+      frontmatter,
       bodyText: presentation?.bodyText ?? '',
       applicabilityRange,
     };

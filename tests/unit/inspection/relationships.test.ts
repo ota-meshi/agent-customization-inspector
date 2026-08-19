@@ -25,6 +25,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import * as fsIo from '../../../src/server/inspection/fs-io';
 import { recognizeCandidateForVendors } from '../../../src/server/inspection/recognizers/candidate';
 import { CLAUDE_REPOSITORY_RULES } from '../../../src/server/inspection/rules/claude';
+import { COPILOT_REPOSITORY_RULES } from '../../../src/server/inspection/rules/copilot';
 import { CODEX_REPOSITORY_RULES } from '../../../src/server/inspection/rules/codex';
 import { INSPECTION_RULES } from '../../../src/shared/registries/inspection-rules';
 import { assembleScanPublication } from '../../../src/server/inspection/scan';
@@ -91,13 +92,19 @@ async function recognizeClaude(matchedPath: string, sourceText: string) {
 describe('relationship read authority', () => {
   it('ships no rule class that could cover a relationship origin', () => {
     // The two-gate rule: an edge needs a relationship-only rule covering its
-    // origin, and the shipped registry holds only the read-authorizing
-    // candidate classes — static, plus the one closed bounded derivation
-    // (T1089). With no covering relationship-only rule there is no edge — and
-    // no edge means no authored target, documented default, normalization, or
-    // boundary status to fabricate.
+    // origin, and the shipped registry holds none. What it does hold beside
+    // the read-authorizing candidate classes — static, plus the one closed
+    // bounded derivation (T1089) — is `excluded` records, which are the
+    // opposite of an edge: they say a documented location is outside this
+    // release and authorize nothing at all (T251). With no covering
+    // relationship-only rule there is no edge — and no edge means no authored
+    // target, documented default, normalization, or boundary status to
+    // fabricate.
     for (const rule of Object.values(INSPECTION_RULES)) {
-      expect(['static-candidate', 'bounded-derived-candidate']).toContain(rule.discoveryClass);
+      expect(['static-candidate', 'bounded-derived-candidate', 'excluded']).toContain(
+        rule.discoveryClass,
+      );
+      expect(rule.discoveryClass, rule.ruleId).not.toBe('relationship-only');
     }
   });
 
@@ -393,5 +400,101 @@ describe('failure propagation through the recognition domain (FR-028/FR-029)', (
         recognize: () => Promise.reject(failure),
       }),
     ).rejects.toBe(failure);
+  });
+});
+
+/** Recognizes one authored Copilot instruction file at the given admitted path. */
+async function recognizeCopilotInstruction(
+  matchedPath: string,
+  sourceText: string,
+  ruleId: string,
+) {
+  const compiled = COPILOT_REPOSITORY_RULES.find((candidate) => candidate.rule.ruleId === ruleId)!;
+  const { recognitions } = await recognizeCandidateForVendors(
+    {
+      matchedPath,
+      absolutePath: join(root, matchedPath),
+      sourceRoot: root,
+      admissions: [{ compiled, origin: { planIndex: 0, selectorIndex: 0 } }],
+      sourceText,
+    },
+    ['copilot'],
+  );
+  return recognitions;
+}
+
+describe('Copilot instruction files emit no relationship either (T261)', () => {
+  // A third product, and a third reason. Copilot's relationship-only rules
+  // originate at an accepted prompt, settings file, component declaration, or
+  // custom-agent profile — never at an instruction file — so there is no
+  // covering rule and therefore no edge (contracts/runtime-composition.md
+  // § Normative relationship-only registry). The CLI does document an
+  // `@path` reference syntax for some instruction filenames, exactly as
+  // Claude documents one for its own — and the answer is the same standing
+  // decision: no covering rule, no edge, and the token stays source text
+  // (T238). `applyTo` is not even that: it names a pattern, not a file.
+
+  it('keeps a reference-looking value as an ordinary declaration and opens nothing', async () => {
+    const recognitions = await recognizeCopilotInstruction(
+      '.github/instructions/frontend.instructions.md',
+      "---\napplyTo: 'src/frontend/**'\nreference: docs/target.md\n---\n\nSee docs/target.md.\n",
+      'copilot.repo.instructions.path',
+    );
+    expect(recognitions).toHaveLength(1);
+    expect(recognitions[0]!.details.kind).toBe('instructions');
+    // Both values reach the reader as the file wrote them — one through the
+    // declarations, one through the body — and neither is followed. An
+    // instruction recognition performs no filesystem operation at all: no
+    // read, and no census, because the kind is not directory-shaped.
+    expect(vi.mocked(fsIo.readFile)).not.toHaveBeenCalled();
+    expect(vi.mocked(fsIo.readdir)).not.toHaveBeenCalled();
+  });
+
+  it('publishes no relationship vocabulary on the instruction recognition', async () => {
+    const recognitions = await recognizeCopilotInstruction(
+      '.github/copilot-instructions.md',
+      '---\nreference: ../../etc/hosts\n---\n\nAlso ~/notes.md and /etc/hosts.\n',
+      'copilot.repo.instructions.repository',
+    );
+    const serialized = JSON.stringify(recognitions);
+    // Not one edge field, and in particular no boundary verdict: the values
+    // that leave this Source are as unclassified as the one that does not
+    // (data-model.md § Relationship).
+    for (const field of [
+      'relationshipId',
+      'targetOrigin',
+      'authoredTarget',
+      'semanticTarget',
+      'normalizedTarget',
+      'boundaryStatus',
+      'resolutionStatus',
+    ]) {
+      expect(serialized).not.toContain(field);
+    }
+  });
+
+  it('resolves an environment reference in a declared value nowhere', async () => {
+    // Same rule as everywhere else: the authored spelling is published as
+    // written and no process environment is consulted (FR-026) — including in
+    // the one declared value that keys a row.
+    process.env['ACI_T261_REFERENCE'] = 'resolved-from-environment';
+    try {
+      const recognitions = await recognizeCopilotInstruction(
+        '.github/instructions/env.instructions.md',
+        "---\napplyTo: '${ACI_T261_REFERENCE}/**'\n---\n\nBody.\n",
+        'copilot.repo.instructions.path',
+      );
+      const serialized = JSON.stringify(recognitions);
+      expect(serialized).toContain('${ACI_T261_REFERENCE}');
+      expect(serialized).not.toContain('resolved-from-environment');
+      // The row it keys is the authored spelling too: a range is grouped by
+      // exact text, and substituting one would group files by a value their
+      // author never wrote.
+      expect(recognitions[0]!.details).toMatchObject({
+        applicabilityRange: '${ACI_T261_REFERENCE}/**',
+      });
+    } finally {
+      delete process.env['ACI_T261_REFERENCE'];
+    }
   });
 });

@@ -160,7 +160,7 @@ export class InventoryFilterView {
     this.availableTools = computed(() => {
       const present = new Set([
         ...(snapshot.value?.instructions ?? []).flatMap((entry) =>
-          entry.files.flatMap((file) => file.tools),
+          entry.files.flatMap((file) => file.recognitions.map((recognition) => recognition.tool)),
         ),
         ...(snapshot.value?.skills ?? []).flatMap((entry) =>
           entry.definitions.map((definition) => definition.tool),
@@ -238,10 +238,14 @@ export class InventoryFilterView {
 
     /**
      * The instruction entries that survive every filter, each reduced to the
-     * files that matched and each of those to the recognizing tools that
-     * matched. A file with no matching tool is not listed and a range with no
+     * files that matched and each of those to the recognitions that matched. A
+     * file with no matching recognition is not listed and a range with no
      * listed file is not a row: showing either would claim a match the
      * inventory does not have.
+     *
+     * A recognition is kept or dropped whole, surfaces included: the tool
+     * filter selects a product, and a product's recognition of a file is one
+     * fact however many of its surfaces read the file.
      */
     this.instructionRows = computed<readonly InstructionInventoryEntryDto[]>(() =>
       (snapshot.value?.instructions ?? []).flatMap((entry) => {
@@ -249,11 +253,11 @@ export class InventoryFilterView {
           if (!fileMatches(file.sourceRelativePath)) {
             return [];
           }
-          const tools =
+          const recognitions =
             effectiveTool.value === null
-              ? file.tools
-              : file.tools.filter((tool) => tool === effectiveTool.value);
-          return tools.length === 0 ? [] : [{ ...file, tools }];
+              ? file.recognitions
+              : file.recognitions.filter((recognition) => recognition.tool === effectiveTool.value);
+          return recognitions.length === 0 ? [] : [{ ...file, recognitions }];
         });
         return files.length === 0 ? [] : [{ ...entry, files }];
       }),

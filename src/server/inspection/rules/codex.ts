@@ -155,13 +155,47 @@ export const CODEX_REPOSITORY_RULES: readonly CompiledStaticCandidateRule[] = Ob
   );
 
 /**
+ * A Codex derived rule compiled for execution: the shared derivation from the
+ * base, plus what is Codex's own — the same two things a static Codex rule
+ * fixes, for the same reasons. A derived candidate is recognized and rendered
+ * exactly like a static one, so it has to answer the same questions: which
+ * product recognized it, and which documented behavior its rule rests on.
+ */
+export class CodexCompiledDerivedRule extends CompiledDerivedRule {
+  /** Always `codex`; the discriminant a mixed vendor list narrows on. */
+  public override readonly tool: 'codex';
+
+  /** The rule's edges from {@link CODEX_RULE_RELATIONS}, keyed by its own ID. */
+  public override readonly relations: RuleRelations;
+
+  /** Compiles one Codex derived record, rejecting one another product owns. */
+  public constructor(rule: InspectionRule) {
+    super(rule);
+    if (rule.tool !== 'codex') {
+      throw new TypeError(`rule ${rule.ruleId} is not a Codex rule`);
+    }
+    this.tool = rule.tool;
+    // Widened for the lookup and rejected loudly on a miss, exactly as in
+    // `CodexCompiledRule`: `InspectionRule` does not correlate `tool` with
+    // `ruleId`, so a Codex-tagged record whose ID another vendor's catalog
+    // owns must fail rather than compile with that vendor's edges.
+    const relations: Readonly<Partial<Record<RuleId, RuleRelations>>> = CODEX_RULE_RELATIONS;
+    const edges = relations[rule.ruleId];
+    if (edges === undefined) {
+      throw new TypeError(`rule ${rule.ruleId} has no Codex relations`);
+    }
+    this.relations = edges;
+  }
+}
+
+/**
  * The compiled `codex.derived.fallback-basename` unit the configuration-read
  * stage expands (T1089): the seed is the repository's own `.codex/config.toml`
  * read as configuration, and the derived targets are `instructions` candidates
  * at the Repository root, one per declared basename, scanned by the same walk
  * as every static candidate.
  */
-export const CODEX_DERIVED_FALLBACK_RULE = new CompiledDerivedRule(
+export const CODEX_DERIVED_FALLBACK_RULE = new CodexCompiledDerivedRule(
   CODEX_DERIVED_FALLBACK_BASENAME_RULE,
 );
 

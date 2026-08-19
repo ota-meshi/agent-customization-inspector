@@ -1233,7 +1233,7 @@ shipped kinds do not agree on one:
 |---|---|
 | `skill` | One name as one tool resolves it (FR-007): the authored frontmatter `name` — or the skill directory name when the file declares none — which a Claude Code recognition of a nested skill prefixes root-relative. A definition is one recognition — one per `(file, tool)` — so several files resolving to one name are one entry listing each recognition as a definition, and one file whose tools resolve different names defines on each name's entry |
 | `MCP` | One `[mcp_servers.*]` declaration inside an admitted carrier, so one `.codex/config.toml` publishes as many rows as it declares servers |
-| `instructions` | One applicability range: the glob the governing files' own paths derive, listing each file it governs with that file's recognizing tools |
+| `instructions` | One applicability range: the glob the governing files' own paths derive, listing each file it governs with that file's recognitions — each one product and the surfaces of the documented behaviors its admitting rules rest on, because a tool alone cannot say where a product reads the file from |
 | `settings/config` | The file itself |
 
 A CustomizationFile therefore publishes its own facts once — Source-relative Path, read
@@ -1246,7 +1246,7 @@ is the only place an inventory can say so (FR-028). One shared row shape cannot 
 by name would break the one recognition per `(file, tool, kind)` rule that ToolRecognition
 rests on, and a file-shaped row cannot become the N rows one carrier's declarations need.
 
-An instruction row's applicability range is derived from the file's Source-relative Path,
+An instruction row's applicability range is, for most files, derived from the file's Source-relative Path,
 never from the vendor's runtime: the range is the directory the file sits in, spelled as a
 glob relative to the Repository root, once a directory the recognizing product keeps its
 instruction files in is stripped from the tail. Claude Code keeps one at `.claude` for
@@ -1268,8 +1268,16 @@ spelling means what the path says. Rows group by exact text equality of that glo
 parses a glob, normalizes a spelling, or decides whether two ranges overlap, so
 `packages/api/**` and `packages/api/**/*` are two ranges. The derived spelling is one a
 product fixes rather than one chosen per file, which is what keeps the derived side of the
-grouping consistent; a file that declares its own range is keyed by that declared value
-instead, and that branch arrives with the phase whose recognizer extracts one. A range
+grouping consistent; a file that declares its own range — Copilot's `applyTo` — is keyed by
+that declared value instead. A declared range is published as the parser resolved it
+(§ Field reading) — the value's own quotes and escapes resolved once, like every declared
+value — and this product escapes nothing further: the resolved value already is the
+author's pattern, and escaping it would spell a directory literally named that. Such a file that declares nothing a row can be keyed by — no
+declaration, an authored empty value, a list or mapping with no row spelling, or
+declarations that could not be read at all (FR-028) — has no known range: its vendor reads that
+filename's applicability from the declaration alone, so a range read off the path would
+state the widest governance for a file the vendor gives none. Those files share the one
+row whose `applicabilityRange` is null, sorted after every ranged row. A range
 states what a file governs. It is never a claim that a product loaded the file: an
 admission is not an activation (FR-009).
 

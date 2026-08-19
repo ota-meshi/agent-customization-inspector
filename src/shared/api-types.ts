@@ -14,6 +14,7 @@ import type {
   SourceStatus,
   SupportedTool,
 } from './entities';
+import type { VendorSurface } from './registries/behavior-types';
 import type { RejectionCode } from './rejection-codes';
 
 /**
@@ -244,20 +245,26 @@ export interface SkillInventoryEntryDto {
 /**
  * One row of the instructions inventory (contracts/http-api.md § get-session,
  * data-model.md § Inventory unit): one applicability range and the files that
- * govern it. Unlike a skill row, no authored declaration names an instructions
- * file, so a file is identified by its Source-relative Path and grouped by
- * what it governs — which is why the root `AGENTS.md` and `CLAUDE.md` share
- * one row. The file's own read outcome, size, and diagnostics stay on its
- * `files[]` entry.
+ * govern it. A file is identified by its Source-relative Path and grouped by
+ * the range it governs — path-derived for most files, which is why the root
+ * `AGENTS.md` and `CLAUDE.md` share one row, and declared by the file itself
+ * where its product reads one. The file's own read outcome, size, and
+ * diagnostics stay on its `files[]` entry.
  */
 export interface InstructionInventoryEntryDto {
   /**
    * The glob the row's files govern, relative to the Repository root — `**`
-   * at the root — and the row's identity. Rows are grouped by exact text
+   * at the root, or the range a file declares for itself (Copilot's
+   * `applyTo`) — and the row's identity. Rows are grouped by exact text
    * equality of this value: nothing parses it, normalizes its spelling, or
    * decides whether two ranges overlap.
+   *
+   * Null for the one row of files whose range is not known: a file whose
+   * product reads this filename's range from its declaration alone, and whose
+   * declarations supply none a row can be keyed by — or could not be read at
+   * all (FR-028). Sorted after every ranged row.
    */
-  readonly applicabilityRange: string;
+  readonly applicabilityRange: string | null;
   /**
    * The files this range governs, in Source-relative Path order. Non-empty: a
    * range exists because a file derived it.
@@ -273,11 +280,37 @@ export interface InstructionInventoryFileDto {
    */
   readonly sourceRelativePath: string;
   /**
-   * The tools recognizing this file as instructions, deduplicated and in the
-   * closed tool order (FR-004). Non-empty: a file no tool recognizes is listed
-   * under no range.
+   * What recognized this file as instructions — one entry per recognizing
+   * tool, in the closed tool order (FR-004). Non-empty: a file nothing
+   * recognizes is listed under no range.
    */
-  readonly tools: readonly SupportedTool[];
+  readonly recognitions: readonly InstructionRecognitionDto[];
+}
+
+/**
+ * One tool's recognition of an instruction file, on the row that lists it.
+ *
+ * The tool alone cannot say where the file is read from: GitHub Copilot's
+ * editor, CLI, and cloud surfaces document different lookup bases for the same
+ * filenames, so a `.github/copilot-instructions.md` at the root is read by all
+ * three while one in a subdirectory is a CLI context alone
+ * (contracts/vendors/github-copilot.md § Surface boundary). The surfaces are
+ * therefore published beside the tool rather than left to a reader to infer
+ * from the path.
+ */
+export interface InstructionRecognitionDto {
+  /** The tool that recognized the file. */
+  readonly tool: SupportedTool;
+  /**
+   * That tool's surfaces whose documented behavior the admitting rules rest
+   * on, deduplicated and in the closed surface order. Non-empty: every rule is
+   * based on at least one behavior statement, and a statement names at least
+   * one surface.
+   *
+   * Never a claim that a surface loaded the file: an admission is not an
+   * activation (FR-009).
+   */
+  readonly surfaces: readonly VendorSurface[];
 }
 
 /** One tool's same-name resolution on a {@link SkillInventoryEntryDto}. */

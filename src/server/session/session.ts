@@ -12,6 +12,8 @@ import {
   createOpaqueId,
   createSourceBoundaryDto,
 } from '../../shared/entities';
+import { VENDOR_SURFACE_ORDER } from '../../shared/registries/behavior-text';
+import type { VendorSurface } from '../../shared/registries/behavior-types';
 import {
   SKILL_NAMING,
   facesSameNameCollision,
@@ -219,8 +221,22 @@ function projectSkillInventory(
 /**
  * Projects the instructions inventory from a generation's recognitions
  * (contracts/http-api.md § get-session, data-model.md § Inventory unit): one
- * entry per applicability range, listing each file that range governs with
- * the tools recognizing it, deduplicated and in the closed tool order.
+ * entry per applicability range, listing each file that range governs with the
+ * recognitions attached to it, in the closed tool order.
+ *
+ * A recognition's surfaces are the union over its own admissions, computed
+ * here because this is where they are published: an admission holds the rule
+ * that authorized it, and a rule already names the behaviors it rests on, so
+ * a stored surface list would be a second copy of what those records say. The
+ * union is what makes a root `.github/copilot-instructions.md` name all three
+ * Copilot surfaces while the same filename in a subdirectory names the CLI's
+ * alone — two admissions of one file against one.
+ *
+ * A null range is a row like any other — the row of files whose range is not
+ * known, because their product reads this filename's range from its
+ * declaration alone and the declarations supply none a row can be keyed by,
+ * an unreadable declaration block among them (data-model.md § Inventory
+ * unit). It sorts after every ranged row.
  *
  * Grouping is by exact text equality of the range each recognition derived —
  * nothing here parses a glob, normalizes a spelling, or decides whether two
@@ -232,41 +248,60 @@ function projectSkillInventory(
  *
  * Two recognitions of one file can derive different ranges when their rules
  * name different container directories; the file then appears under each,
- * carrying only the tools that put it there. That is the honest outcome of
- * two products governing differently, not a collision to resolve.
+ * carrying only the recognitions that put it there. That is the honest outcome
+ * of two products governing differently, not a collision to resolve.
  */
 function projectInstructionInventory(
   recognitions: readonly ToolRecognition[],
 ): InstructionInventoryEntryDto[] {
-  const toolsByRangeAndPath = new Map<string, Map<string, Set<SupportedTool>>>();
+  const surfacesByRangeAndPath = new Map<
+    string | null,
+    Map<string, Map<SupportedTool, Set<VendorSurface>>>
+  >();
   for (const recognition of recognitions) {
     if (recognition.details.kind !== 'instructions') {
       continue;
     }
     const range = recognition.details.applicabilityRange;
-    let byPath = toolsByRangeAndPath.get(range);
+    let byPath = surfacesByRangeAndPath.get(range);
     if (byPath === undefined) {
       byPath = new Map();
-      toolsByRangeAndPath.set(range, byPath);
+      surfacesByRangeAndPath.set(range, byPath);
     }
-    let tools = byPath.get(recognition.sourceRelativePath);
-    if (tools === undefined) {
-      tools = new Set();
-      byPath.set(recognition.sourceRelativePath, tools);
+    let byTool = byPath.get(recognition.sourceRelativePath);
+    if (byTool === undefined) {
+      byTool = new Map();
+      byPath.set(recognition.sourceRelativePath, byTool);
     }
-    tools.add(recognition.tool);
+    let surfaces = byTool.get(recognition.tool);
+    if (surfaces === undefined) {
+      surfaces = new Set();
+      byTool.set(recognition.tool, surfaces);
+    }
+    for (const provenance of recognition.provenances) {
+      for (const surface of provenance.recognizingSurfaces) {
+        surfaces.add(surface);
+      }
+    }
   }
-  return [...toolsByRangeAndPath.entries()]
-    .map(([applicabilityRange, byPath]) => ({
-      applicabilityRange,
-      files: [...byPath.entries()]
-        .map(([sourceRelativePath, tools]) => ({
-          sourceRelativePath,
-          tools: SUPPORTED_TOOL_ORDER.filter((tool) => tools.has(tool)),
-        }))
-        .sort((left, right) => compareStrings(left.sourceRelativePath, right.sourceRelativePath)),
-    }))
-    .sort((left, right) => compareStrings(left.applicabilityRange, right.applicabilityRange));
+  return (
+    [...surfacesByRangeAndPath.entries()]
+      .map(([applicabilityRange, byPath]) => ({
+        applicabilityRange,
+        files: [...byPath.entries()]
+          .map(([sourceRelativePath, byTool]) => ({
+            sourceRelativePath,
+            recognitions: SUPPORTED_TOOL_ORDER.filter((tool) => byTool.has(tool)).map((tool) => ({
+              tool,
+              surfaces: VENDOR_SURFACE_ORDER.filter((surface) => byTool.get(tool)!.has(surface)),
+            })),
+          }))
+          .sort((left, right) => compareStrings(left.sourceRelativePath, right.sourceRelativePath)),
+      }))
+      // Ranged rows in range order, and the one no-range row after them all —
+      // nulls-last is the comparator's own rule ({@link compareStrings}).
+      .sort((left, right) => compareStrings(left.applicabilityRange, right.applicabilityRange))
+  );
 }
 
 /**
@@ -327,8 +362,20 @@ function resolutionsFor(
     });
 }
 
-/** Locale-independent string order, so every host sorts a snapshot alike. */
-function compareStrings(left: string, right: string): number {
+/**
+ * Locale-independent string order, so every host sorts a snapshot alike.
+ *
+ * Null orders after every string. The one nullable ordering key in this
+ * projection is the instructions inventory's applicability range, whose null
+ * row closes the list (contracts/http-api.md § get-session): a row of files
+ * that declare no range is not "less than" any range, so it follows them all,
+ * and the rule lives here so the sort call reads like every other one instead
+ * of restating it as a ternary.
+ */
+function compareStrings(left: string | null, right: string | null): number {
+  if (left === null || right === null) {
+    return left === null ? (right === null ? 0 : 1) : -1;
+  }
   return left < right ? -1 : left > right ? 1 : 0;
 }
 

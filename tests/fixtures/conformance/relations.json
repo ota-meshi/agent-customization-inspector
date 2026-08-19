@@ -20,6 +20,17 @@
     "codex.skills.discovery": {
       "consumesBehaviors": ["codex.behavior.repo.skills", "codex.behavior.user.skills"]
     },
+    "copilot.cli.instructions.layering": {
+      "consumesBehaviors": [
+        "copilot.behavior.cli.instructions.agents",
+        "copilot.behavior.cli.instructions.claude",
+        "copilot.behavior.cli.instructions.gemini",
+        "copilot.behavior.cli.instructions.path",
+        "copilot.behavior.cli.instructions.repository",
+        "copilot.behavior.cli.user.instructions.path",
+        "copilot.behavior.cli.user.instructions.root"
+      ]
+    },
     "copilot.cli.skills.selection": {
       "consumesBehaviors": [
         "copilot.behavior.cli.commands",
@@ -27,8 +38,27 @@
         "copilot.behavior.cli.user.skills"
       ]
     },
+    "copilot.cloud.instructions.layering": {
+      "consumesBehaviors": [
+        "copilot.behavior.cloud.instructions.agents",
+        "copilot.behavior.cloud.instructions.alternatives",
+        "copilot.behavior.cloud.instructions.path",
+        "copilot.behavior.cloud.instructions.repository",
+        "copilot.behavior.cloud.organization-instructions"
+      ]
+    },
     "copilot.cloud.skills.selection": {
       "consumesBehaviors": ["copilot.behavior.cloud.remote-skills", "copilot.behavior.cloud.skills"]
+    },
+    "copilot.vscode.instructions.layering": {
+      "consumesBehaviors": [
+        "copilot.behavior.vscode.instructions.agents",
+        "copilot.behavior.vscode.instructions.claude",
+        "copilot.behavior.vscode.instructions.path",
+        "copilot.behavior.vscode.instructions.repository",
+        "copilot.behavior.vscode.user.claude",
+        "copilot.behavior.vscode.user.instructions"
+      ]
     },
     "copilot.vscode.skills.selection": {
       "consumesBehaviors": ["copilot.behavior.vscode.skills", "copilot.behavior.vscode.user.skills"]
@@ -58,6 +88,87 @@
     "codex.repo.skill": {
       "basedOnBehaviors": ["codex.behavior.repo.skills"],
       "explainedByStrategies": ["codex.skills.discovery"]
+    },
+    "copilot.excluded.additional-standard-locations": {
+      "basedOnBehaviors": [
+        "copilot.behavior.cli.instructions.claude",
+        "copilot.behavior.cli.instructions.gemini",
+        "copilot.behavior.vscode.instructions.claude",
+        "copilot.behavior.vscode.instructions.path"
+      ],
+      "explainedByStrategies": []
+    },
+    "copilot.excluded.extra-directories": {
+      "basedOnBehaviors": [
+        "copilot.behavior.cli.instructions.agents",
+        "copilot.behavior.cli.instructions.path",
+        "copilot.behavior.cli.skills",
+        "copilot.behavior.vscode.instructions.path",
+        "copilot.behavior.vscode.skills"
+      ],
+      "explainedByStrategies": []
+    },
+    "copilot.repo.instructions.agents": {
+      "basedOnBehaviors": [
+        "copilot.behavior.cli.instructions.agents",
+        "copilot.behavior.cloud.instructions.agents",
+        "copilot.behavior.vscode.instructions.agents"
+      ],
+      "explainedByStrategies": [
+        "copilot.cli.instructions.layering",
+        "copilot.cloud.instructions.layering",
+        "copilot.vscode.instructions.layering"
+      ]
+    },
+    "copilot.repo.instructions.claude-root": {
+      "basedOnBehaviors": [
+        "copilot.behavior.cli.instructions.claude",
+        "copilot.behavior.cloud.instructions.alternatives",
+        "copilot.behavior.vscode.instructions.claude"
+      ],
+      "explainedByStrategies": [
+        "copilot.cli.instructions.layering",
+        "copilot.cloud.instructions.layering",
+        "copilot.vscode.instructions.layering"
+      ]
+    },
+    "copilot.repo.instructions.gemini-root": {
+      "basedOnBehaviors": [
+        "copilot.behavior.cli.instructions.gemini",
+        "copilot.behavior.cloud.instructions.alternatives"
+      ],
+      "explainedByStrategies": [
+        "copilot.cli.instructions.layering",
+        "copilot.cloud.instructions.layering"
+      ]
+    },
+    "copilot.repo.instructions.path": {
+      "basedOnBehaviors": [
+        "copilot.behavior.cloud.instructions.path",
+        "copilot.behavior.vscode.instructions.path"
+      ],
+      "explainedByStrategies": [
+        "copilot.cloud.instructions.layering",
+        "copilot.vscode.instructions.layering"
+      ]
+    },
+    "copilot.repo.instructions.path-cli-context": {
+      "basedOnBehaviors": ["copilot.behavior.cli.instructions.path"],
+      "explainedByStrategies": ["copilot.cli.instructions.layering"]
+    },
+    "copilot.repo.instructions.repository": {
+      "basedOnBehaviors": [
+        "copilot.behavior.cloud.instructions.repository",
+        "copilot.behavior.vscode.instructions.repository"
+      ],
+      "explainedByStrategies": [
+        "copilot.cloud.instructions.layering",
+        "copilot.vscode.instructions.layering"
+      ]
+    },
+    "copilot.repo.instructions.repository-cli-context": {
+      "basedOnBehaviors": ["copilot.behavior.cli.instructions.repository"],
+      "explainedByStrategies": ["copilot.cli.instructions.layering"]
     },
     "copilot.repo.skill": {
       "basedOnBehaviors": [

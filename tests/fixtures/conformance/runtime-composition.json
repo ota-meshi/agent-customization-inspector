@@ -114,6 +114,32 @@
     ]
   },
   {
+    "strategyId": "copilot.cli.instructions.layering",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "operations": ["filter", "deduplicate", "append", "unknown-order"],
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.instructions",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions",
+        "officialHost": "docs.github.com",
+        "sections": ["How multiple instruction files interact", "Types of custom instructions"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "Copilot CLI combines the applicable user-level and repository instruction files, removes duplicate copies of identical user-level copilot-instructions.md, repository-wide, and agent instruction files — path-specific files are not in that deduplication list — defines no general precedence order, includes path-specific files only when their applyTo matches a file it is working with, and skips a file disabled with the /instructions command."
+      },
+      {
+        "sourceId": "github.copilot.instructions.support",
+        "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
+        "officialHost": "docs.github.com",
+        "sections": ["Copilot CLI"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "The support matrix names the repository and personal instruction types this surface draws on, which is the input set the pipeline filters and combines."
+      }
+    ]
+  },
+  {
     "strategyId": "copilot.cli.skills.selection",
     "tool": "copilot",
     "surfaces": ["copilot-cli"],
@@ -128,6 +154,32 @@
         "sections": ["Skill locations", "Commands (alternative skill format)"],
         "reviewedOn": "2026-07-15",
         "establishes": "The CLI resolves a duplicate skill name to the first found in its documented source order, and a same-name skill has higher priority than a legacy command."
+      }
+    ]
+  },
+  {
+    "strategyId": "copilot.cloud.instructions.layering",
+    "tool": "copilot",
+    "surfaces": ["copilot-cloud"],
+    "operations": ["filter", "select-closest", "append", "unknown-order"],
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cloud.instructions",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-repository-instructions",
+        "officialHost": "docs.github.com",
+        "sections": ["Creating custom instructions", "Custom instructions in use"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "The repository-wide file and the path-specific files whose pattern matches are used together, the nearest AGENTS.md in the directory tree takes precedence among agent files, and repository instructions are prioritized before organization instructions with all relevant sets still provided; the order among the combined files inside the repository layer and the coexistence of the agent-instruction alternatives are not established."
+      },
+      {
+        "sourceId": "github.copilot.instructions.support",
+        "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
+        "officialHost": "docs.github.com",
+        "sections": ["GitHub.com"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "The support matrix lists personal instructions for Copilot Chat and not for the cloud agent, which is why no hosted personal layer is projected into this pipeline."
       }
     ]
   },
@@ -158,6 +210,36 @@
     ]
   },
   {
+    "strategyId": "copilot.vscode.instructions.layering",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "operations": ["filter", "append", "unknown-order"],
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": ["experimental"],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.instructions",
+        "url": "https://code.visualstudio.com/docs/agent-customization/custom-instructions",
+        "officialHost": "code.visualstudio.com",
+        "sections": [
+          "Types of instruction files",
+          "Instruction priority",
+          "Use multiple AGENTS.md files (experimental)"
+        ],
+        "reviewedOn": "2026-08-19",
+        "establishes": "VS Code combines every applicable instruction file into the chat context with no specific order guaranteed; when conflicts occur the documented priority is personal, then repository, then organization instructions, with every applicable set still provided; and nested AGENTS.md selection is an experimental setting that leaves the choice to the model."
+      },
+      {
+        "sourceId": "vscode.copilot.settings",
+        "url": "https://code.visualstudio.com/docs/agents/reference/ai-settings",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Custom instructions settings"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "Enablement and location settings decide which instruction inputs participate at all, which is the filtering step ahead of the layer order."
+      }
+    ]
+  },
+  {
     "strategyId": "copilot.vscode.skills.selection",
     "tool": "copilot",
     "surfaces": ["copilot-vscode"],
@@ -178,7 +260,7 @@
         "url": "https://code.visualstudio.com/docs/agents/reference/ai-settings",
         "officialHost": "code.visualstudio.com",
         "sections": ["Agent skills settings"],
-        "reviewedOn": "2026-07-15",
+        "reviewedOn": "2026-08-19",
         "establishes": "Which skill locations participate is setting-filtered before any selection happens."
       },
       {

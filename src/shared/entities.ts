@@ -494,13 +494,29 @@ export function escapeControlCharacters(value: string): string {
  * of those and show a pattern nobody wrote. The characters that cannot be
  * shown as themselves are still escaped, so a range spanning lines cannot read
  * as two.
+ *
+ * The spelled-out fallback below is what a declared range needs and a derived
+ * one never does. A derived range is built from directory names and a `*`, so
+ * it always has a character that draws; a range a file declares for itself is
+ * arbitrary authored text, and one written entirely from spaces or
+ * default-ignorable code points would leave its row with neither visible text
+ * nor an accessible name — the same failure {@link pathPresentationLabel}
+ * exists to prevent, resolved the same way, because a row identified by
+ * nothing identifies nothing.
+ *
+ * An authored backslash that spells this function's own escape introducer —
+ * `\u` followed by four hex digits — is escaped first, so a range containing
+ * the literal six characters `\u000A` and one containing a real U+000A render
+ * differently instead of as one text. Only that shape: every other backslash
+ * is glob syntax and stays exactly as written.
  */
 export function applicabilityRangePresentation(value: string): string {
-  return value.replaceAll(
+  const escaped = value.replaceAll(/\\(?=u[0-9A-Fa-f]{4})/gu, '\\u005C').replaceAll(
     // eslint-disable-next-line no-control-regex -- matching the Cc range is this function's purpose
     /[\u0000-\u001F\u007F-\u009F\u061C\u200E\u200F\u2028\u2029\u202A-\u202E\u2066-\u2069]/gu,
     (character) => `\\u${character.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')}`,
   );
+  return rendersNothingVisible(escaped) ? encodeRootPresentation(value) : escaped;
 }
 
 /**

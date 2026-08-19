@@ -64,21 +64,60 @@ export type CodexBehaviorId =
  * phase that needs them; the skill phase ships the three Repository surfaces,
  * the non-authorizing User scopes their selection strategies compose, the
  * legacy CLI command surface the CLI selection outranks, and the
- * origin-file-less hosted remote-skill fact.
+ * origin-file-less hosted remote-skill fact. The instruction phase ships one
+ * statement per surface and per instruction location, because VS Code, CLI,
+ * and Cloud document different lookup bases for the same filenames and two
+ * surfaces with different bases are two statements (§ Surface boundary).
  */
 export type CopilotBehaviorId =
   /** Copilot CLI legacy commands at `.claude/commands/*.md`; a same-name skill outranks one. */
   | 'copilot.behavior.cli.commands'
+  /** Copilot CLI `AGENTS.md` discovery across its documented standard locations. */
+  | 'copilot.behavior.cli.instructions.agents'
+  /** Copilot CLI `CLAUDE.md` and `.claude/CLAUDE.md` discovery across its standard locations. */
+  | 'copilot.behavior.cli.instructions.claude'
+  /** Copilot CLI `GEMINI.md` discovery across its documented standard locations. */
+  | 'copilot.behavior.cli.instructions.gemini'
+  /** Copilot CLI path-specific instructions below each admitted `.github/instructions` directory. */
+  | 'copilot.behavior.cli.instructions.path'
+  /** Copilot CLI repository-wide `.github/copilot-instructions.md` across its standard locations. */
+  | 'copilot.behavior.cli.instructions.repository'
   /** Copilot CLI Repository skill discovery in the three fixed skills directories. */
   | 'copilot.behavior.cli.skills'
+  /** Copilot CLI User path instructions below `<COPILOT_HOME>/instructions`. */
+  | 'copilot.behavior.cli.user.instructions.path'
+  /** Copilot CLI User instructions at `<COPILOT_HOME>/copilot-instructions.md`. */
+  | 'copilot.behavior.cli.user.instructions.root'
   /** Copilot CLI User skill discovery under `~/.copilot/skills` and `~/.agents/skills`. */
   | 'copilot.behavior.cli.user.skills'
+  /** Copilot cloud agent `AGENTS.md` discovery over the repository tree. */
+  | 'copilot.behavior.cloud.instructions.agents'
+  /** Copilot cloud agent root-only `CLAUDE.md` and `GEMINI.md` agent-instruction alternatives. */
+  | 'copilot.behavior.cloud.instructions.alternatives'
+  /** Copilot cloud agent path-specific instructions below the root `.github/instructions`. */
+  | 'copilot.behavior.cloud.instructions.path'
+  /** Copilot cloud agent repository-wide `.github/copilot-instructions.md` at the repository root. */
+  | 'copilot.behavior.cloud.instructions.repository'
+  /** Copilot cloud agent's hosted organization instructions; no filesystem locator. */
+  | 'copilot.behavior.cloud.organization-instructions'
   /** Copilot cloud agent's hosted remote-skill relay; no filesystem locator. */
   | 'copilot.behavior.cloud.remote-skills'
   /** Copilot cloud agent Repository skill discovery at the repository root. */
   | 'copilot.behavior.cloud.skills'
+  /** Copilot VS Code `AGENTS.md` discovery; the nested tier is experimental. */
+  | 'copilot.behavior.vscode.instructions.agents'
+  /** Copilot VS Code `CLAUDE.md` compatibility locations at the workspace root. */
+  | 'copilot.behavior.vscode.instructions.claude'
+  /** Copilot VS Code path-specific instructions below its instruction locations. */
+  | 'copilot.behavior.vscode.instructions.path'
+  /** Copilot VS Code repository-wide `.github/copilot-instructions.md` at the workspace root. */
+  | 'copilot.behavior.vscode.instructions.repository'
   /** Copilot VS Code Repository skill discovery at the workspace root. */
   | 'copilot.behavior.vscode.skills'
+  /** Copilot VS Code User `~/.claude/CLAUDE.md` personal instructions. */
+  | 'copilot.behavior.vscode.user.claude'
+  /** Copilot VS Code User instruction locations in home and profile data. */
+  | 'copilot.behavior.vscode.user.instructions'
   /** Copilot VS Code User skill discovery in home and profile locations. */
   | 'copilot.behavior.vscode.user.skills';
 
@@ -130,8 +169,14 @@ export type OpenAiSourceId =
  * (contracts/official-sources.md § GitHub official sources).
  */
 export type GitHubSourceId =
+  /** The Copilot CLI custom-instructions how-to: the CLI instruction kinds and their locations. */
+  | 'github.copilot.cli.instructions'
   /** The Copilot CLI command reference: skill locations, legacy commands, and their order. */
   | 'github.copilot.cli.reference'
+  /** The cloud-agent repository-instructions how-to: root, path-specific, and alternative files. */
+  | 'github.copilot.cloud.instructions'
+  /** The custom-instructions support matrix: which instruction file each surface reads. */
+  | 'github.copilot.instructions.support'
   /** The Copilot agent-skills page: cloud skill discovery, usage, and shared skills. */
   | 'github.copilot.skills';
 
@@ -141,6 +186,10 @@ export type GitHubSourceId =
  * Code official sources).
  */
 export type VsCodeSourceId =
+  /** The VS Code agent-customization overview: what each customization gives you, and monorepos. */
+  | 'vscode.copilot.customization'
+  /** The VS Code custom-instructions page: the instruction file kinds and their locations. */
+  | 'vscode.copilot.instructions'
   /** The VS Code AI-settings reference: the per-customization location settings. */
   | 'vscode.copilot.settings'
   /** The VS Code agent-skills page: workspace skill locations and progressive loading. */
@@ -183,10 +232,16 @@ export type CodexStrategyId =
  * statement (FR-009).
  */
 export type CopilotStrategyId =
+  /** Copilot CLI instruction layering with deduplication and no general precedence. */
+  | 'copilot.cli.instructions.layering'
   /** Copilot CLI first-found skill selection across its documented source order. */
   | 'copilot.cli.skills.selection'
+  /** Copilot cloud instruction layering, Repository before organization. */
+  | 'copilot.cloud.instructions.layering'
   /** Copilot cloud progressive skill loading with unresolved collision behavior. */
   | 'copilot.cloud.skills.selection'
+  /** Copilot VS Code instruction layering, personal before Repository before organization. */
+  | 'copilot.vscode.instructions.layering'
   /** Copilot VS Code progressive skill loading with undocumented duplicate precedence. */
   | 'copilot.vscode.skills.selection';
 
@@ -226,8 +281,26 @@ export type CodexRuleId =
  * Rules arrive with the inventory phase that needs them.
  */
 export type CopilotRuleId =
+  /** VS Code `.claude` instruction locations and non-root CLI alternatives left out of this release. */
+  | 'copilot.excluded.additional-standard-locations'
+  /** Runtime-supplied instruction and skill roots that never become scan roots. */
+  | 'copilot.excluded.extra-directories'
+  /** Repository `AGENTS.md` at every depth; read-authorizing `static-candidate`. */
+  | 'copilot.repo.instructions.agents'
+  /** The root `CLAUDE.md` agent-instruction alternative; read-authorizing `static-candidate`. */
+  | 'copilot.repo.instructions.claude-root'
+  /** The root `GEMINI.md` agent-instruction alternative; read-authorizing `static-candidate`. */
+  | 'copilot.repo.instructions.gemini-root'
+  /** Root-exact `.github/instructions` path instructions; read-authorizing `static-candidate`. */
+  | 'copilot.repo.instructions.path'
+  /** CLI-context `.github/instructions` path instructions; read-authorizing `static-candidate`. */
+  | 'copilot.repo.instructions.path-cli-context'
+  /** The root-exact `.github/copilot-instructions.md`; read-authorizing `static-candidate`. */
+  | 'copilot.repo.instructions.repository'
+  /** CLI-context `.github/copilot-instructions.md`; read-authorizing `static-candidate`. */
+  | 'copilot.repo.instructions.repository-cli-context'
   /** Repository Copilot skills in the three fixed directories; read-authorizing `static-candidate`. */
-  'copilot.repo.skill';
+  | 'copilot.repo.skill';
 
 /**
  * Every Inspector policy rule. Each vendor's sub-union joins here, and the

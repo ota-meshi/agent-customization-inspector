@@ -26,6 +26,7 @@ import {
   buildClaudeSkillFixture,
   buildCodexInstructionFixture,
   buildCodexSkillFixture,
+  buildCopilotInstructionFixture,
   buildCopilotSkillFixture,
   createRepositoryFixtureRoot,
 } from '../fixtures/repositories/build-fixtures';
@@ -1629,6 +1630,27 @@ describe('the unified skill inventory (T180)', () => {
   });
 });
 
+/**
+ * The recognitions an instruction row publishes, spelled once for the suites
+ * below. A recognition names its tool and the surfaces its admitting rules
+ * rest on, and every Copilot rule that reaches a shared instruction filename —
+ * `AGENTS.md`, the root `CLAUDE.md` — rests on all three of that product's
+ * surfaces (T257).
+ */
+const COPILOT_ALL_SURFACES = {
+  tool: 'copilot',
+  surfaces: ['copilot-vscode', 'copilot-cli', 'copilot-cloud'],
+} as const;
+/** Codex's one surface; see {@link COPILOT_ALL_SURFACES}. */
+const CODEX_ONLY = { tool: 'codex', surfaces: ['codex-local-clients'] } as const;
+/** Claude Code's one surface; see {@link COPILOT_ALL_SURFACES}. */
+const CLAUDE_ONLY = { tool: 'claude', surfaces: ['claude-cli-and-ide-clients'] } as const;
+/**
+ * Copilot's CLI alone — what a file admitted by a CLI-context rule names, and
+ * the whole point of splitting one documented filename into two rules.
+ */
+const COPILOT_CLI_ONLY = { tool: 'copilot', surfaces: ['copilot-cli'] } as const;
+
 describe('the committed Codex instructions inventory (T208, activated by T1087)', () => {
   it('commits the static rows, the carrier, and the derived fallbacks with one read each', async () => {
     const fixture = buildCodexInstructionFixture('inspector-scan-instructions');
@@ -1640,26 +1662,46 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
     const snapshot = context.session.snapshot();
 
     // One row per applicability range — the unit of this kind (data-model.md
-    // § Inventory unit) — with its files in Source-relative Path order. Every
-    // file here sits at the Repository root, so the static pair and the two
-    // derived configured fallbacks (T1090) share the root's one range. The
+    // § Inventory unit) — with its files in Source-relative Path order. The
+    // Codex files all sit at the Repository root, so the static pair and the
+    // two derived configured fallbacks (T1090) share the root's one range. The
     // declared basename with no on-disk file derives nothing — the ordinary
     // negative, no diagnostic.
+    //
+    // `AGENTS.md` is Copilot's too, at the root and at the depth the fixture's
+    // near miss sits at: Codex's rule is anchored at the root, while Copilot's
+    // reaches every depth because all three of its surfaces document reaching a
+    // nested file, each in its own way (T255). The nested file is therefore not
+    // a near miss for every product — it is a Copilot row of its own range, and
+    // the Codex rows beside it are unchanged.
     expect(snapshot.instructions).toEqual([
       {
         applicabilityRange: '**',
         files: [
-          { sourceRelativePath: 'AGENTS.md', tools: ['codex'] },
-          { sourceRelativePath: 'AGENTS.override.md', tools: ['codex'] },
-          { sourceRelativePath: 'GUIDE.codex.md', tools: ['codex'] },
-          { sourceRelativePath: 'TEAM_GUIDE.md', tools: ['codex'] },
+          { sourceRelativePath: 'AGENTS.md', recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY] },
+          { sourceRelativePath: 'AGENTS.override.md', recognitions: [CODEX_ONLY] },
+          { sourceRelativePath: 'GUIDE.codex.md', recognitions: [CODEX_ONLY] },
+          { sourceRelativePath: 'TEAM_GUIDE.md', recognitions: [CODEX_ONLY] },
         ],
+      },
+      {
+        applicabilityRange: 'docs/**',
+        files: [{ sourceRelativePath: 'docs/AGENTS.md', recognitions: [COPILOT_ALL_SURFACES] }],
       },
     ]);
     // The carrier itself is a configuration input only: never published,
-    // never raw-displayed, in no kind's inventory and not in `files[]`.
+    // never raw-displayed, in no kind's inventory and not in `files[]`. The
+    // published set is the union across products, which is what makes the
+    // nested `docs/AGENTS.md` appear at all: a file read once and listed once,
+    // however many products' rules admitted it.
     expect(snapshot.files.map((file) => file.sourceRelativePath)).toEqual(
-      [...fixture.expectedInstructionPaths, ...fixture.expectedDerivedFallbackPaths].sort(),
+      [
+        ...new Set([
+          ...fixture.expectedInstructionPaths,
+          ...fixture.expectedCopilotInstructionPaths,
+          ...fixture.expectedDerivedFallbackPaths,
+        ]),
+      ].sort(),
     );
     // Nothing published carries a diagnostic and the generation is complete:
     // an absent declared fallback is not a finding.
@@ -1687,10 +1729,16 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
     expect([...opened].sort()).toEqual(
       [
         fixture.configCarrierPath,
-        ...fixture.expectedInstructionPaths,
-        ...fixture.expectedDerivedFallbackPaths,
+        ...new Set([
+          ...fixture.expectedInstructionPaths,
+          ...fixture.expectedCopilotInstructionPaths,
+          ...fixture.expectedDerivedFallbackPaths,
+        ]),
       ].sort(),
     );
+    // One read per physical file, whichever products admitted it: the root
+    // `AGENTS.md` carries a Codex and a Copilot recognition and is opened once.
+    expect(new Set(opened).size).toBe(opened.length);
     expect(opened).not.toContain(fixture.absentFallbackBasename);
     for (const nearMiss of fixture.nearMissPaths) {
       expect(
@@ -1723,7 +1771,12 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
     expect(snapshot.instructions).toEqual([
       {
         applicabilityRange: '**',
-        files: [{ sourceRelativePath: 'AGENTS.md', tools: ['codex'] }],
+        files: [
+          {
+            sourceRelativePath: 'AGENTS.md',
+            recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY],
+          },
+        ],
       },
     ]);
     expect(snapshot.files.some((file) => file.sourceRelativePath === '.codex/config.toml')).toBe(
@@ -1755,7 +1808,12 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
     expect(snapshot.instructions).toEqual([
       {
         applicabilityRange: '**',
-        files: [{ sourceRelativePath: 'AGENTS.md', tools: ['codex'] }],
+        files: [
+          {
+            sourceRelativePath: 'AGENTS.md',
+            recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY],
+          },
+        ],
       },
     ]);
     const binary = snapshot.files.find((file) => file.sourceRelativePath === 'AGENTS.override.md');
@@ -1781,10 +1839,13 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
     await scanOnce(context);
     const snapshot = context.session.snapshot();
 
-    // One range at the Repository root, holding every static and derived
-    // instruction file the fixture publishes.
-    expect(snapshot.instructions).toHaveLength(1);
-    expect(snapshot.instructions[0]!.applicabilityRange).toBe('**');
+    // The Repository root's range holds every static and derived instruction
+    // file the fixture publishes; the fixture's nested `docs/AGENTS.md` is a
+    // Copilot row of its own range beside it.
+    expect(snapshot.instructions.map((entry) => entry.applicabilityRange)).toEqual([
+      '**',
+      'docs/**',
+    ]);
     expect(snapshot.instructions[0]!.files.map((entry) => entry.sourceRelativePath)).toEqual([
       'AGENTS.md',
       'AGENTS.override.md',
@@ -1891,25 +1952,54 @@ describe('the committed Claude instructions inventory (T229)', () => {
     // not `AGENTS.md`. No row states which documented layer a file belongs
     // to, because that is a relation to a working directory this product does
     // not observe (FR-009).
+    //
+    // The two shared root files carry a Copilot recognition too, and the
+    // Claude-only ones show why that is a statement rather than a filename
+    // rule: Copilot documents its `CLAUDE.md` alternative at the repository
+    // root alone, so `.claude/CLAUDE.md`, `CLAUDE.local.md`, and every nested
+    // `CLAUDE.md` stay Claude's (T256).
     expect(snapshot.instructions).toEqual([
       {
         applicabilityRange: '**',
         files: [
-          { sourceRelativePath: '.claude/CLAUDE.md', tools: ['claude'] },
-          { sourceRelativePath: 'AGENTS.md', tools: ['codex'] },
-          { sourceRelativePath: 'CLAUDE.local.md', tools: ['claude'] },
-          { sourceRelativePath: 'CLAUDE.md', tools: ['claude'] },
+          {
+            sourceRelativePath: '.claude/CLAUDE.md',
+            recognitions: [CLAUDE_ONLY],
+          },
+          {
+            sourceRelativePath: 'AGENTS.md',
+            recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY],
+          },
+          {
+            sourceRelativePath: 'CLAUDE.local.md',
+            recognitions: [CLAUDE_ONLY],
+          },
+          {
+            sourceRelativePath: 'CLAUDE.md',
+            recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY],
+          },
         ],
       },
       {
         applicabilityRange: 'docs/**',
-        files: [{ sourceRelativePath: 'docs/CLAUDE.md', tools: ['claude'] }],
+        files: [
+          {
+            sourceRelativePath: 'docs/CLAUDE.md',
+            recognitions: [CLAUDE_ONLY],
+          },
+        ],
       },
       {
         applicabilityRange: 'packages/api/**',
         files: [
-          { sourceRelativePath: 'packages/api/.claude/CLAUDE.md', tools: ['claude'] },
-          { sourceRelativePath: 'packages/api/CLAUDE.md', tools: ['claude'] },
+          {
+            sourceRelativePath: 'packages/api/.claude/CLAUDE.md',
+            recognitions: [CLAUDE_ONLY],
+          },
+          {
+            sourceRelativePath: 'packages/api/CLAUDE.md',
+            recognitions: [CLAUDE_ONLY],
+          },
         ],
       },
     ]);
@@ -1983,6 +2073,164 @@ describe('the committed Claude instructions inventory (T229)', () => {
   });
 });
 
+describe('the committed Copilot instructions inventory (T248)', () => {
+  it('commits every rule’s rows with one read each and no rejected-target access', async () => {
+    const fixture = buildCopilotInstructionFixture('inspector-scan-copilot-instructions');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    vi.clearAllMocks();
+
+    const { publication } = await scanOnce(context);
+    if (publication.kind !== 'publishable') {
+      throw new Error('expected a publishable outcome');
+    }
+    const snapshot = context.session.snapshot();
+
+    // One row per applicability range, each listing its files in
+    // Source-relative Path order (data-model.md § Inventory unit). The
+    // repository-wide file strips the `.github` Copilot keeps it in,
+    // `AGENTS.md` keeps its own directory, a path-specific file's range is its
+    // own `applyTo` declaration, and one that declares none lists under the
+    // no-range row that closes the list — a range read off its path would
+    // state governance the vendor gives such a file none of (T265).
+    //
+    // Which surfaces each recognition names is the phase's subject: the root
+    // repository-wide file is admitted by the root-exact rule and by the
+    // CLI-context rule, so it names all three, and the one under
+    // `packages/api/` names the CLI's alone.
+    expect(snapshot.instructions).toEqual([
+      {
+        applicabilityRange: '**',
+        files: [
+          // Claude's own container spelling: `.claude/CLAUDE.md` derives the
+          // root's range too, so the shared root row holds it beside the
+          // Copilot files (T1092).
+          { sourceRelativePath: '.claude/CLAUDE.md', recognitions: [CLAUDE_ONLY] },
+          {
+            sourceRelativePath: '.github/copilot-instructions.md',
+            recognitions: [COPILOT_ALL_SURFACES],
+          },
+          { sourceRelativePath: 'AGENTS.md', recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY] },
+          { sourceRelativePath: 'CLAUDE.local.md', recognitions: [CLAUDE_ONLY] },
+          { sourceRelativePath: 'CLAUDE.md', recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY] },
+          {
+            // VS Code documents no `GEMINI.md`, so the editor is absent rather
+            // than assumed from the root alternative beside it (T256).
+            sourceRelativePath: 'GEMINI.md',
+            recognitions: [{ tool: 'copilot', surfaces: ['copilot-cli', 'copilot-cloud'] }],
+          },
+        ],
+      },
+      {
+        applicabilityRange: 'packages/api/**',
+        files: [
+          {
+            sourceRelativePath: 'packages/api/.github/copilot-instructions.md',
+            recognitions: [COPILOT_CLI_ONLY],
+          },
+          {
+            sourceRelativePath: 'packages/api/AGENTS.md',
+            recognitions: [COPILOT_ALL_SURFACES],
+          },
+          { sourceRelativePath: 'packages/api/CLAUDE.md', recognitions: [CLAUDE_ONLY] },
+        ],
+      },
+      {
+        // A path-specific file names its own range, so `applyTo` keys the row
+        // and the file's location decides nothing (T265). The value is the
+        // author's pattern as the parser resolved it — quotes resolved, and
+        // nothing escaped or normalized by this product.
+        applicabilityRange: 'src/frontend/**',
+        files: [
+          {
+            sourceRelativePath: '.github/instructions/frontend.instructions.md',
+            recognitions: [COPILOT_ALL_SURFACES],
+          },
+        ],
+      },
+      {
+        // The no-range row closes the list: a path-specific file that
+        // declares no usable `applyTo` has no range at all — one because it
+        // declares none, one nested likewise, and one whose declarations
+        // could not be parsed, with that file's own diagnostic saying why
+        // (FR-028).
+        applicabilityRange: null,
+        files: [
+          {
+            sourceRelativePath: '.github/instructions/broken.instructions.md',
+            recognitions: [COPILOT_ALL_SURFACES],
+          },
+          {
+            sourceRelativePath: '.github/instructions/nested/backend.instructions.md',
+            recognitions: [COPILOT_ALL_SURFACES],
+          },
+          {
+            sourceRelativePath: 'packages/api/.github/instructions/api.instructions.md',
+            recognitions: [COPILOT_CLI_ONLY],
+          },
+        ],
+      },
+    ]);
+
+    // One read per physical file, and nothing outside the admitted set is
+    // opened: an excluded location, a runtime-supplied root, a spelling
+    // variant, and an installed package's own instruction file are all
+    // rejected by never being matched (T251).
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) =>
+      String(call[0])
+        .slice(fixture.root.length + 1)
+        .split(sep)
+        .join('/'),
+    );
+    expect(new Set(opened).size).toBe(opened.length);
+    expect([...opened].sort()).toEqual(
+      [
+        ...new Set([
+          ...Object.values(fixture.expectedCopilotInstructionPaths).flat(),
+          ...fixture.expectedClaudeInstructionPaths,
+          ...fixture.expectedCodexInstructionPaths,
+        ]),
+      ].sort(),
+    );
+    for (const nearMiss of fixture.copilotNearMissPaths) {
+      if (
+        fixture.expectedClaudeInstructionPaths.includes(nearMiss) ||
+        fixture.expectedCodexInstructionPaths.includes(nearMiss)
+      ) {
+        // Another product admits it; what the Copilot near-miss list states is
+        // that no Copilot rule does, which the rows above assert.
+        continue;
+      }
+      expect(opened, nearMiss).not.toContain(nearMiss);
+      expect(
+        snapshot.files.some((file) => file.sourceRelativePath === nearMiss),
+        nearMiss,
+      ).toBe(false);
+    }
+
+    // The one file-confined failure is the malformed path-instruction file:
+    // its recognition fails all-or-nothing, the generation is `partial`, and
+    // every other file keeps its row (FR-028).
+    expect(publication.outcome).toBe('partial');
+    const diagnosed = snapshot.files.filter((file) => file.diagnosticIds.length > 0);
+    expect(diagnosed.map((file) => file.sourceRelativePath)).toEqual([
+      fixture.malformedInstructionPath,
+    ]);
+
+    // The authored content — the credential, the environment reference —
+    // stays out of the committed snapshot entirely: complete source is served
+    // only by the detail routes, one file at a time (FR-027), and no
+    // environment reference is ever resolved against the process environment.
+    const serialized = JSON.stringify(snapshot);
+    expect(serialized).not.toContain(FIXTURE_SECRET_LITERAL);
+    expect(serialized).not.toContain(FIXTURE_ENVIRONMENT_REFERENCE);
+    // The declaration reaches the row as its range and nowhere else: the key
+    // itself is the file's own and is published only by the detail route, one
+    // file at a time (FR-027).
+    expect(serialized).not.toContain('applyTo');
+  });
+});
+
 describe('a census-listed path a rule independently admits (FR-007)', () => {
   it('keeps its own recognition and leaves the skill census without it', async () => {
     const root = createRepositoryFixtureRoot('inspector-scan-independent-companion');
@@ -2007,7 +2255,12 @@ describe('a census-listed path a rule independently admits (FR-007)', () => {
     expect(snapshot.instructions).toEqual([
       {
         applicabilityRange: '.claude/skills/greet/**',
-        files: [{ sourceRelativePath: '.claude/skills/greet/CLAUDE.md', tools: ['claude'] }],
+        files: [
+          {
+            sourceRelativePath: '.claude/skills/greet/CLAUDE.md',
+            recognitions: [CLAUDE_ONLY],
+          },
+        ],
       },
     ]);
     // The census keeps the file that has no row of its own and drops the one

@@ -224,10 +224,12 @@ InspectionSession
 │       binary adds only sizeBytes; unknown adds nothing. A file publishes its own facts
 │       only; what it was recognized as belongs to a per-kind inventory below
 ├── instructions[]
-│   └── applicabilityRange string,
-│       files[] { sourceRelativePath, tools[] } — 適用範囲1つにつき1行、
-│       その範囲が担当する各 file を、その file を認識した product の
-│       closed tool order とともに持つ
+│   └── applicabilityRange string | null,
+│       files[] { sourceRelativePath, recognitions[] { tool, surfaces[] } } —
+│       適用範囲1つにつき1行、その範囲が担当する各 file を、その file の
+│       recognition を closed tool order で、各 recognition の product surface を
+│       closed surface order で持つ。null の1行が一覧を閉じ、既知の範囲を
+│       持たない file を持つ
 ├── skills[]
 │   └── name string,
 │       definitions[] { sourceRelativePath, tool, parseStatus, invocationName,
@@ -261,7 +263,7 @@ recordも1件であり（FR-028）、そのfileの失敗した各定義がそれ
 それを1回だけ列挙する。Detailは公開されている場合にpageを所有する定義のinvocation nameを
 row名の傍らに示す（data-model.md § Skillの表示）。値はrowをkeyする同じprojectionから来るため、vendor
 namingがserverとclientの間で乖離することはない。MCP serverはcarrier内の`[mcp_servers.*]`宣言1つであり、admit済みの`.codex/config.toml` 1つは
-宣言したserverの数だけrowを公開する。Instructions rowは1つの適用範囲 — 担当するfile自身のpathが導出するglobであり、Repository rootでは`**` — であり、担当する各fileを列挙する。したがってrootの`AGENTS.md`と`CLAUDE.md`は1 rowを共有し、`packages/api/CLAUDE.md`は自身のrowを持つ（data-model.md § 一覧の単位）。他のkindの単位は、その一覧を出荷するtaskが、そのkind自身の
+宣言したserverの数だけrowを公開する。Instructions rowは1つの適用範囲 — 担当するfile自身のpathが導出するglobであり、Repository rootでは`**`、あるいはfileが自身のために宣言したもの — であり、担当する各fileを列挙する。したがってrootの`AGENTS.md`と`CLAUDE.md`は1 rowを共有し、`packages/api/CLAUDE.md`は自身のrowを持つ（data-model.md § 一覧の単位）。範囲がnullである1つのrowが一覧を閉じる: そのfileのvendorはこのfile名の適用可否を宣言だけから読み、宣言はrowをkeyできるものを何も供給していない — あるいはまったく読めなかった。その理由は各file自身のdiagnosticsが述べるため、rowは「宣言がない」ではなく「既知の範囲がない」と述べる（FR-028）。列挙されるfileはtoolではなくrecognitionを名指す。toolだけでは、productがそのfileをどこから読むのかを言えないためである: GitHub CopilotのeditorとCLIとcloudの各surfaceは、同じ名前のfileに対して異なるlookup baseをdocumentしている。したがってrootの`.github/copilot-instructions.md`は3つのsurfaceすべてが読み、同じ名前でもsubdirectoryにあるものはCLIのcontextだけである。各recognitionの`surfaces`は、そのfileをadmitしたruleが依拠するdocumented behaviorのsurfaceであり、surfaceを名指すことはそのsurfaceがfileをloadしたという主張では決してない（FR-009）。他のkindの単位は、その一覧を出荷するtaskが、そのkind自身の
 vendor contractから決める。したがって物理fileは
 `files[]`に自身の事実 — path、read結果、size、diagnostic — とともに1度だけ現れ、各kindの一覧は
 `sourceRelativePath`で参照してそれらを繰り返さない。定義が持つrecognition所有のparse事実だけが
@@ -398,11 +400,14 @@ fieldを送らない。閲覧者自身のfileをloopback束縛のsession上で�
 APIはacknowledgementを受け付けず、enforceするとも主張しない。
 Authored value（完全なsource text、declared authored metadata、authored relationship target、
 comparisonの両side）へは、`FileDetail`を1つずつrequestするかcomparisonを1つずつ構築することで
-のみ到達でき、inventoryやsessionのresponseはそれを運ばない。例外はskill entryの`name`
-1つだけであり、これはrowが列挙される識別子である: 認識した各toolが解決する名前 — authoredな
-`name`で、nestedなClaude Code recognitionではroot相対のprefix付き — であり、自らが列挙する
-ものを名指せない一覧はinventoryではないからである（FR-007、data-model.md § 一覧の単位）。それ以外の宣言済みの値は
-明示的なdetail requestの背後にとどまる。中央full-session client-data purgeは
+のみ到達でき、inventoryやsessionのresponseはそれを運ばない。例外はrowが列挙される識別子で
+ある。自らが列挙するものを名指せない一覧はinventoryではないからである（FR-007、data-model.md
+§ 一覧の単位）。これを持つrowは2つある: skill entryの`name` — 認識した各toolが解決する名前、
+つまりauthoredな`name`で、nestedなClaude Code recognitionではroot相対のprefix付き — と、
+fileがpathから導出するのではなく自身のために宣言した場合のinstructions entryの
+`applicabilityRange`、すなわちCopilotの`applyTo`である。それぞれのauthoredな部分は、scan時の一度のparseが解決した値である（data-model.md § Fieldの読み取り）— skill nameの`007`は`7`として、rangeのquoteとescapeは解決済みで — この製品はmasking・escape・正規化のいずれも加えない。skill名のうちこの製品が供給する部分 — fileが宣言しないときのdirectory fallbackと、nestedなClaude Code recognitionが持つroot相対のprefix — は、responseが既に公開しているpathから、FR-007の命名ruleに従って構成される。
+どちらもrowのidentityを超えて広がらず、他の宣言値がそれに伴って運ばれることはないため、
+それ以外の宣言済みの値は明示的なdetail requestの背後にとどまる。中央full-session client-data purgeは
 clientが保持するものを破棄する。Route close、selection replacement、file/Source removal、
 どちらかのsequenceのgeneration replacementはその中央purgeではなくscope限定cleanupであり、
 generation replacementはそのsequenceのscoped modelだけをdisposeする。Global disableは中央purgeを

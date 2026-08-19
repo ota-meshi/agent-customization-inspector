@@ -1,23 +1,32 @@
 <script setup lang="ts">
 // An instructions row (T214, linked to its detail by T224, grouped by what its
 // files govern by T1095). The row's unit is one applicability range
-// (data-model.md § Inventory unit): no authored declaration names an
-// instructions file, so a file is identified by its Source-relative Path and
-// grouped by the range it governs — which is why the root `AGENTS.md` and
-// `CLAUDE.md` are one row, and a `packages/api/CLAUDE.md` its own.
+// (data-model.md § Inventory unit): a file is identified by its
+// Source-relative Path and grouped by the range it governs — path-derived for
+// most files, which is why the root `AGENTS.md` and `CLAUDE.md` are one row
+// and a `packages/api/CLAUDE.md` its own, and declared by the file itself
+// where its product reads one (Copilot's `applyTo`). One row has no range at
+// all: the files whose product reads this filename's range from its
+// declaration alone and whose declarations supply none a row can be keyed
+// by — including a file whose declarations could not be read, whose range is
+// unknown rather than absent.
 //
 // A row shows what was found, how it was classified, and what it governs —
 // never what it says. The snapshot carries no `sourceText`, and complete
-// authored content is served only by the detail route, one file at a time
-// (FR-027).
+// authored content is served only by the detail route, one file at a time —
+// with the row identity itself as FR-027's stated exception, which is why a
+// declared range can stand here.
 //
-// A range is where a file sits, not what a session loaded. Codex selects at
-// most one non-empty instruction file per directory, and Claude loads a file at
-// session start or only once it reads a file beside it — outcomes that turn on
+// A derived range is where a file sits and a declared one is what the file
+// says of itself; neither is what a session loaded. Codex selects at most one
+// non-empty instruction file per directory, Claude loads a file at session
+// start or only once it reads a file beside it, and whether a declared
+// pattern matches depends on what a session works on — outcomes that turn on
 // runtime this tool does not observe, so the row states no winner, no order,
 // and no loading condition (FR-009;
 // contracts/inspection-path-allowlist.md § existence-versus-activation
-// vocabulary).
+// vocabulary). The no-range row keeps the same discipline: it states that no
+// range is known for its files, never whether a session would use them.
 //
 // Nothing here renders an exclusion: an unsupported instruction location is a
 // path no shipped selector reaches, so it is simply absent from the inventory
@@ -31,6 +40,7 @@ import {
   applicabilityRangePresentation,
   pathPresentationLabel,
 } from '../../../../shared/entities';
+import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text';
 import type {
   CustomizationFileSummaryDto,
   InstructionInventoryEntryDto,
@@ -55,9 +65,17 @@ const props = defineProps<{
  * The range in its presentation form (data-model.md § Inventory unit): a name
  * spanning lines cannot make one range read as two, while the backslashes the
  * range uses to spell a literal directory name stay the glob syntax they are
- * ({@link applicabilityRangePresentation}).
+ * ({@link applicabilityRangePresentation}). The no-range row gets plain copy,
+ * because there is no glob to show. The copy says no range is known rather
+ * than that none is declared, because the row also holds a file whose
+ * declarations could not be read at all — such a file may well declare one,
+ * and its own diagnostic below says why nothing could be read (FR-028).
  */
-const rangeText = computed(() => applicabilityRangePresentation(props.entry.applicabilityRange));
+const rangeText = computed(() =>
+  props.entry.applicabilityRange === null
+    ? 'No known applicability range'
+    : applicabilityRangePresentation(props.entry.applicabilityRange),
+);
 
 /**
  * Each file this range governs, with the text and route the row renders for
@@ -84,7 +102,11 @@ const rowFiles = computed(() =>
     key: file.sourceRelativePath,
     pathText: pathPresentationLabel(file.sourceRelativePath),
     detailRoute: instructionDetailRoute(file.sourceRelativePath),
-    tools: file.tools,
+    recognitions: file.recognitions.map((recognition) => ({
+      tool: recognition.tool,
+      toolText: SUPPORTED_TOOL_TEXT[recognition.tool],
+      surfacesText: recognition.surfaces.map((surface) => VENDOR_SURFACE_TEXT[surface]).join(', '),
+    })),
     diagnosticIds: props.filesByPath.get(file.sourceRelativePath)?.diagnosticIds ?? [],
   })),
 );
@@ -103,10 +125,21 @@ const rowFiles = computed(() =>
 
         <!-- Every product that recognized the file, in the closed tool order,
              each linking to the file's own detail route: selecting an
-             instruction is how its complete inert detail opens (T224). -->
+             instruction is how its complete inert detail opens (T224).
+
+             The surfaces sit beside the product because the product alone
+             does not say where the file is read from: Copilot's editor, CLI,
+             and cloud surfaces document different lookup bases for the same
+             filenames, so a root file names all three while the same filename
+             in a subdirectory names the CLI's alone. It is where a product
+             documents reading the file, never a claim that a session loaded
+             it (FR-009). -->
         <ul class="aci-instruction-row__tools" role="list">
-          <li v-for="tool in file.tools" :key="tool">
-            <NuxtLink :to="file.detailRoute">{{ SUPPORTED_TOOL_TEXT[tool] }}</NuxtLink>
+          <li v-for="recognition in file.recognitions" :key="recognition.tool">
+            <NuxtLink :to="file.detailRoute">{{ recognition.toolText }}</NuxtLink>
+            <span class="aci-instruction-row__surfaces aci-muted">{{
+              recognition.surfacesText
+            }}</span>
           </li>
         </ul>
 
@@ -139,5 +172,17 @@ const rowFiles = computed(() =>
      matching how a skill row groups its definitions. */
   border-inline-start: 1px solid var(--aci-border);
   padding-inline-start: 0.6rem;
+}
+
+/* The surfaces trail the product on the same line, set apart by a separator
+   rather than by punctuation inside the text: the product is the link, and the
+   surfaces qualify it. */
+.aci-instruction-row__surfaces {
+  margin-inline-start: 0.4rem;
+}
+
+.aci-instruction-row__surfaces::before {
+  content: '·';
+  margin-inline-end: 0.4rem;
 }
 </style>

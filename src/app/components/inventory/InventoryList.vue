@@ -76,9 +76,13 @@ const rowCount = computed(() =>
   >
     <ul v-if="rowCount > 0" class="aci-list aci-inventory" role="list">
       <template v-if="kind === 'instructions'">
+        <!-- Keyed by the range with the no-range row spelled as an empty key:
+             at most one row has a null range, and no glob key is empty — a
+             range always ends in its pattern — so the spelling collides with
+             nothing. -->
         <InstructionRow
           v-for="entry in instructionRows"
-          :key="entry.applicabilityRange"
+          :key="entry.applicabilityRange ?? ''"
           :entry="entry"
           :files-by-path="filesByPath"
           :diagnostics="diagnostics"
