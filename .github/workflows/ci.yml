@@ -167,7 +167,18 @@ jobs:
       - run: pnpm run test:coverage
 
   browser:
-    name: Browser certification suite
+    # One job per Playwright project rather than all three browsers in a
+    # single job. Installing chromium, firefox, and webkit with their apt
+    # dependencies together, then running the full suite three times over,
+    # used to fill the runner's disk before the matrix run finished
+    # (ENOSPC). Each browser now gets its own runner and its own disk
+    # budget, matching this file's "every gate is an independent job"
+    # design.
+    name: Browser certification suite (${{ matrix.browser }})
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
@@ -177,12 +188,12 @@ jobs:
           node-version: ${{ env.NODE_DEV_BASELINE }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium firefox webkit
+      - run: pnpm exec playwright install --with-deps ${{ matrix.browser }}
       # The browser suite drives the packaged CLI (dist/cli.mjs serving
       # dist/public), so the build is a prerequisite of this job.
       - run: pnpm run build
       - name: Run primary-workflow and accessibility suite
-        run: pnpm run test:e2e
+        run: pnpm run test:e2e -- --project=${{ matrix.browser }}
 
   build:
     name: Development/build baseline (Node.js 24.18.0, ubuntu-24.04 x64)
