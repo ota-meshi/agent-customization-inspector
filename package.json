@@ -31,6 +31,7 @@
     "dev:prepare": "nuxt prepare",
     "build": "node scripts/clean-build-output.mjs && nuxt build && tsdown",
     "start": "node dist/cli.mjs",
+    "start:fixture": "node scripts/serve-fixture.ts",
     "build-and-start": "pnpm run build && pnpm run start",
     "verify:package": "node scripts/verify-package-files.mjs",
     "format": "prettier --write .",

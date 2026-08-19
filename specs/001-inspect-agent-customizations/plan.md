@@ -25,8 +25,9 @@ as an adversary, and all inspected-source filesystem I/O lives only under
 the fixed inspection-path allowlist with per-file diagnostics for entries it cannot use.
 The browser presents complete authored
 source in a read-only Monaco editor and uses Monaco's diff editor for source comparison;
-recognition metadata is matched by tool/kind/field and compares the values the parsers
-resolved, in ordinary Vue components.
+tool recognition is compared per tool, and declared metadata — the file's one parse per
+kind — is matched by kind/field and compares the values the parsers resolved, in
+ordinary Vue components.
 
 Root selection is simple and lexical: the CLI captures `process.cwd()` exactly once and
 accepts `--root <path>`, resolving a repeated option to the parser's last value. An absolute option is kept as given, a relative option
@@ -43,8 +44,9 @@ no static-export, MCP, remote-host, or automatic-watch mode. The local host is t
 devframe local-tool framework — the same foundation eslint/config-inspector uses — with
 authentication disabled: it serves the built SPA from `cli.distDir` (`dist/public`) and
 sends inert DTOs through devframe's RPC session API channel, and devframe owns port
-selection and host binding, while the product owns startup browser opening through the
-`open` package with devframe's bundled opener disabled. Protection is the loopback-only
+selection and host binding, while the product owns startup browser opening — the macOS
+Chromium tab reuse in front of the `open` package's helper (research.md § 3) — with
+devframe's bundled opener disabled. Protection is the loopback-only
 `localhost` bind — there is no per-session token, product-owned Origin check, or
 hand-written router — and the residual exposure of an unauthenticated loopback host
 (other local processes and, via DNS rebinding, a malicious web page) is a
@@ -1025,8 +1027,11 @@ create, rename, delete, link, mode/ownership/time/xattr/ACL change, or equivalen
 mutation. Tests instrument those calls and compare content, length, identity/link state,
 mode, mtime, ctime, and observable xattrs/ACLs; an OS-only read-side atime update is recorded
 separately and is neither a failure nor proof of mutation. The separately constrained startup
-launcher owns the only permitted product-initiated child process: its fixed OS browser helper.
-The helper receives only the printed loopback origin — no inspection-derived content or
+launcher owns the only permitted product-initiated child-process surface: on macOS the
+fixed process-list probe and fixed tab-reuse script through the OS `osascript` automation
+host, otherwise its fixed OS browser helper.
+Every spawned process receives only fixed arguments and the printed loopback origin — no
+inspection-derived content or
 path, authored value, or user-supplied command — and inherits the launch environment
 unchanged: the product writes no inspection-derived value into any environment variable,
 and a platform helper honoring the user's own configuration, such as `xdg-open`
@@ -1259,9 +1264,10 @@ contract-gate rejections, lint and the remaining tests, all
 other required quality gates, and all four end-to-end stories. Monaco is
 client-only, same-origin, and model-lifetime scoped; its own diff engine avoids a
 duplicate dependency while exact authored metadata comparison stays explicit. The
-product-owned browser launcher spawns the maintained `open` package's fixed startup OS
-helper and confines the sole
-permitted product child process to it; the helper receives only the
+product-owned browser launcher confines product child processes to startup opening —
+on macOS the fixed process-list probe and fixed tab-reuse script through the OS
+`osascript` automation host, otherwise the maintained `open` package's fixed startup OS
+helper; every spawned process receives only fixed arguments and the
 printed loopback origin — no inspection-derived content/path, authored value, or user
 command — and inherits the launch environment unchanged, into which the product writes no
 inspection-derived value; lexical equality with a
@@ -1828,8 +1834,9 @@ configuration.
   `createDevServer` from
   `devframe/adapters/dev`, sets `auth: false`, and binds the loopback `localhost` only. devframe serves
   the built SPA from `cli.distDir` (`dist/public`) and owns port selection and host
-  binding, while startup browser opening is product-owned through the `open` package
-  with devframe's bundled opener disabled; the session API is the set of devframe RPC functions
+  binding, while startup browser opening is product-owned — the macOS Chromium tab
+  reuse in front of the `open` package's helper (research.md § 3) — with devframe's
+  bundled opener disabled; the session API is the set of devframe RPC functions
   declared with `defineRpcFunction` in the app definition's `setup`
   (`src/server/host/devframe-app.ts`); the same channel also carries devframe's own
   built-ins (`devframe:agent:*`, `devframe:rpc:server-state:*`, `devframe:streaming:*`),
@@ -1867,21 +1874,24 @@ configuration.
   job, or retained failure state. Each accepted entry also retains an internal exact raw
   `lexicalRoot` beside its escaped display in that record. Enable uses only the stored raw
   value, never reverses `displayRoot`, and never rereads the environment.
-- Startup browser opening is product-owned through the `open` package: the CLI prints the
-  plain loopback origin once before the host spawns the fixed operating-system
-  browser-launch helper permitted by
-  FR-022, devframe's bundled opener stays disabled so exactly one helper can spawn, and
-  `--no-open` disables the attempt without creating any child process. The
-  helper invocation receives only the printed loopback origin — no inspection-derived
-  content or path, authored value, or user-supplied command;
+- Startup browser opening is product-owned through the startup opener: the CLI prints the
+  plain loopback origin once before the host runs it inside the closed child-process
+  surface permitted by FR-022 — on macOS the fixed process-list probe and the fixed
+  tab-reuse script through the OS `osascript` automation host in front of the fixed
+  operating-system browser-launch helper, elsewhere that helper alone (research.md § 3) —
+  devframe's bundled opener stays disabled so only the product's opener runs, and
+  `--no-open` disables the attempt without creating any child process. Every
+  spawned invocation receives only fixed arguments and the printed loopback origin — no
+  inspection-derived content or path, authored value, or user-supplied command;
   no Source root, preview root, candidate path, file path, or authored value is copied
   from inspection state into argv or the inherited-unchanged environment, and lexical
   equality between such a
   value and ambient environment text never changes provenance or grants read authority.
-  The helper delegates only navigation to the platform's own resolution — the user's own
-  configuration such as `$BROWSER` included — and
-  does not select or verify a browser family/version; a successful open is not
-  compatibility evidence. If automatic opening is disabled, unsupported, fails, or the
+  The fallback helper delegates only navigation to the platform's own resolution — the
+  user's own configuration such as `$BROWSER` included — and beyond the fixed-list reuse
+  choice the product
+  does not select or verify a browser family/version; neither a successful reuse nor a
+  successful open is compatibility evidence. If automatic opening is disabled, unsupported, fails, or the
   handler or its resolved browser is unavailable, cannot be identified, or is outside the
   release-certification baseline, the server keeps running and the printed URL plus
   `--no-open` provide the documented manual-opening fallback in a certified browser
@@ -1908,9 +1918,10 @@ configuration.
   `renderMarginRevertIcon: false`, and contain the complete authored text without resolving
   environment-variable references. `accessibilitySupport`
   stays `auto`, `accessibilityVerbose` is enabled, and each view has an `ariaLabel`.
-  Monaco's diff editor owns literal source comparison; recognition metadata is
-  matched by `(tool, kind, declared key)` and compares/renders each field's resolved value in
-  Vue rather than serializing it into an editor.
+  Monaco's diff editor owns literal source comparison; tool recognition is compared per
+  tool, and a file's declared metadata — one parse per kind — is matched by
+  `(kind, declared key)` and compares/renders each field's resolved value once in Vue
+  rather than serializing it into an editor.
   Repository comparison acceptance first uses two distinct readable current-generation customization files from the
   same Repository Source; only after a successful Global commit does US4 verify a readable
   Repository file against a readable Global file while retaining each owning Source and
@@ -1966,7 +1977,7 @@ configuration.
   epoch, Global control/progress, each failed tool's control `failureCode`, and the failed
   requests' errors only. When the disable fence is non-null, the session route supplies the exact
   control-only `GlobalFenceRecoverySnapshot`; when the fence is null, it supplies a normal
-  full `InspectionSession`, but the recovering client adopts only those control/error fields
+  full `SessionSnapshot`, but the recovering client adopts only those control/error fields
   and discards its inspection graph. If active, disable is available from that view immediately; the SPA fetches
   and verifies the matching frozen consent preview before reconstructing retry controls.
   The recovery view offers an explicit Resume inspection action only when the disable fence

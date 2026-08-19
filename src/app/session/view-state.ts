@@ -42,6 +42,7 @@
 import { computed, shallowRef, type InjectionKey } from 'vue';
 import { SessionApiClient, type SessionRpcChannel } from './api-client';
 import { ClientDataPurge } from './client-data';
+import { InstructionComparisonState } from '../composables/instruction-comparison';
 import { SkillComparisonState } from '../composables/skill-comparison';
 import type { FileDetailDto, RejectionCode, SessionSnapshot } from '../../shared/api-types';
 
@@ -137,6 +138,16 @@ export class SessionViewState {
    * not by widening this one.
    */
   public readonly skillComparison: SkillComparisonState;
+
+  /**
+   * The instruction comparison view state (FR-011), owned here for the same
+   * reasons {@link skillComparison} is. Its own state rather than a widening
+   * of the skill one, because comparison is kind-specific with no shared
+   * module (spec.md § Clarifications Session 2026-08-14): this kind's model
+   * is two committed instruction files compared whole, with no copy or
+   * corresponding-file coordinate.
+   */
+  public readonly instructionComparison: InstructionComparisonState;
 
   /** Which surface to render; see {@link SessionView}. */
   public readonly view = shallowRef<SessionView>('booting');
@@ -319,6 +330,19 @@ export class SessionViewState {
         this.view.value = 'ended';
       },
     });
+    // The instruction kind's own comparison state, wired exactly like the
+    // skill one and for the same reasons — including its place after the two
+    // registrations above, so its purge disposer runs after requests are
+    // aborted.
+    this.instructionComparison = new InstructionComparisonState({
+      client: this.#client,
+      clientData: this.#clientData,
+      refreshFreshly: () => this.#refreshFreshly(),
+      reportFatalFailure: (error) => {
+        this.#sessionError.value = error.message;
+        this.view.value = 'ended';
+      },
+    });
   }
 
   /**
@@ -375,6 +399,7 @@ export class SessionViewState {
         if (outcome.advancedSequences.length > 0) {
           this.closeFileDetail();
           this.skillComparison.close();
+          this.instructionComparison.close();
         }
         this.snapshot.value = outcome.snapshot;
         // A refresh success answers session-level failures only: a retained

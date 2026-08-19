@@ -16,9 +16,9 @@
 // The claims here can only be made against a rendered page: that the
 // complete authored sources are on screen together with their literal
 // credential differences unmasked, that an environment reference stays the
-// characters that were written, that recognition metadata renders as typed
-// rows matched by tool, kind, and declared key, and that leaving the route
-// takes the content away again. The editor-failure fallback has no standing
+// characters that were written, that tool recognition renders per tool while
+// the files' declared metadata renders once as typed rows matched by
+// declared key, and that leaving the route takes the content away again. The editor-failure fallback has no standing
 // toggle to drive it from the page; its
 // construction-failure path is covered at the composable level.
 //
@@ -336,41 +336,45 @@ test('resolves a hand-edited compared file against the copies', async ({ page })
   await expect(page.locator('.aci-source-diff')).toContainText('Greet notes line (claude).');
 });
 
-test('renders recognition metadata as typed rows matched by tool, kind, and key', async ({
-  page,
-}) => {
+test('states tool recognition per tool and compares declared metadata once', async ({ page }) => {
   await openComparison(page);
   const comparison = page.locator('.aci-recognition-comparison');
+  // The two facts have two homes (research.md § 7): per-tool recognition
+  // rows, and the files' declared metadata compared once under no tool
+  // caption.
+  await expect(comparison.locator('h3')).toHaveText(['Tool recognition', 'Declared metadata']);
   // The `.agents` file is recognized by GitHub Copilot and OpenAI Codex, the
-  // `.claude` file by GitHub Copilot and Claude Code: one group per tool in
-  // the contracted order, each recognition distinguishable from the physical
-  // file (US3 scenario 2), captioned in words.
-  await expect(comparison.locator('h4')).toHaveText([
+  // `.claude` file by GitHub Copilot and Claude Code: one recognition row
+  // per tool in the contracted order, each recognition distinguishable from
+  // the physical file (US3 scenario 2), captioned in words.
+  const toolTable = comparison.locator('table').first();
+  await expect(toolTable.locator('tbody th')).toHaveText([
     'GitHub Copilot · Skill',
     'Claude Code · Skill',
     'OpenAI Codex · Skill',
   ]);
-  const copilotGroup = comparison.locator('section').first();
-  // The declared credential difference is a row with both resolved values.
-  const apiKeyRow = copilotGroup.locator('tr', { hasText: 'api_key' });
+  await expect(toolTable.locator('tr', { hasText: 'GitHub Copilot' })).not.toContainText(
+    'Not recognized',
+  );
+  await expect(toolTable.locator('tr', { hasText: 'Claude Code' })).toContainText('Not recognized');
+  await expect(toolTable.locator('tr', { hasText: 'OpenAI Codex' })).toContainText(
+    'Not recognized',
+  );
+  // The declared credential difference is one row with both resolved
+  // values — the declarations are the files' one parse, so the row appears
+  // exactly once, under no tool heading.
+  const apiKeyRow = comparison.locator('tr', { hasText: 'api_key' });
+  await expect(apiKeyRow).toHaveCount(1);
   await expect(apiKeyRow).toContainText(AGENTS_SECRET);
   await expect(apiKeyRow).toContainText(CLAUDE_SECRET);
   await expect(apiKeyRow).toContainText('Differs');
   // `7` and `007` resolve to the same value: the row says so while the
   // literal spelling difference stays visible in the source diff above.
-  await expect(copilotGroup.locator('tr', { hasText: 'retries' })).toContainText('Same');
+  await expect(comparison.locator('tr', { hasText: 'retries' })).toContainText('Same');
   // A key only one file declares is shown against no declaration.
-  const onlyAgentsRow = copilotGroup.locator('tr', { hasText: 'only_agents' });
+  const onlyAgentsRow = comparison.locator('tr', { hasText: 'only_agents' });
   await expect(onlyAgentsRow).toContainText('not declared');
   await expect(onlyAgentsRow).toContainText('Differs');
-  // A tool that recognizes only one side is stated, with no key rows
-  // fabricated against a recognition that does not exist.
-  await expect(comparison.locator('section').nth(1)).toContainText(
-    'First file: Claude Code does not recognize this file.',
-  );
-  await expect(comparison.locator('section').nth(2)).toContainText(
-    'Second file: OpenAI Codex does not recognize this file.',
-  );
 });
 
 test('shows the tab title for the comparison the page holds', async ({ page }) => {

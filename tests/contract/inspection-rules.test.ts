@@ -1,8 +1,9 @@
-// T052/T060/T126/T130/T133/T154/T158/T179: the inspection-rule half of the registry contract gate — the
-// closed matcher grammar, deterministic compilation into the immutable
-// versioned `TraversalPlan`, reciprocal references, the same-name skill
-// statement each rule derives, and the closed structure-only projection
-// vocabulary.
+// T052/T060/T126/T130/T133/T154/T158/T179/T269: the inspection-rule half of
+// the registry contract gate — the closed matcher grammar, deterministic
+// compilation into the immutable versioned `TraversalPlan`, reciprocal
+// references, the same-name skill statement each rule derives, the unified
+// skill and instruction selector matrices, and the closed structure-only
+// projection vocabulary.
 //
 // Production exclusion of maintenance-only data is not here. A citation lives
 // on the record that carries it, so no import graph separates them; the built
@@ -545,6 +546,59 @@ describe('the Copilot skill slice of the reference graph (T154, T158)', () => {
   });
 });
 
+// Applies one authored selector program to one already-split public path.
+// This is a reading of the closed grammar, not a re-implementation of the
+// walk: a literal equals the raw entry name, a dynamic step is its own
+// unmodified regular expression, and the recursive step consumes zero or
+// more directory entries (data-model.md § StructuredInspectorMatcher). The
+// two selector-matrix suites below (T179, T269) share it.
+function matches(program: readonly MatcherSegment[], segments: readonly string[]): boolean {
+  function step(programIndex: number, segmentIndex: number): boolean {
+    if (programIndex === program.length) {
+      return segmentIndex === segments.length;
+    }
+    const matcherSegment = program[programIndex]!;
+    if (matcherSegment.kind === 'recursive-directories') {
+      for (let taken = 0; segmentIndex + taken < segments.length; taken += 1) {
+        if (step(programIndex + 1, segmentIndex + taken)) {
+          return true;
+        }
+      }
+      return false;
+    }
+    if (segmentIndex >= segments.length) {
+      return false;
+    }
+    const name = segments[segmentIndex]!;
+    const admitted =
+      matcherSegment.kind === 'literal'
+        ? matcherSegment.value === name
+        : matcherSegment.pattern.test(name);
+    return admitted && step(programIndex + 1, segmentIndex + 1);
+  }
+  return step(0, 0);
+}
+
+// The distinct tools whose rules admit the given path, sorted. What a matrix
+// case asserts is a tool combination, so the reduction from rules to tools
+// lives beside the matcher reading rather than in every case.
+function admittingTools(
+  candidateRules: readonly (typeof rules)[number][],
+  path: string,
+): readonly string[] {
+  const segments = path.split('/');
+  return [
+    ...new Set(
+      candidateRules.flatMap((rule) =>
+        rule.matcher !== null &&
+        rule.matcher.selectors.some((selector) => matches(selector, segments))
+          ? [rule.tool]
+          : [],
+      ),
+    ),
+  ].sort();
+}
+
 describe('the unified SKILL selector matrix (T179)', () => {
   // Phase 12 turns the three vendor demonstrations into one inventory, so the
   // complete selector catalog and the tool combinations it implies become one
@@ -566,38 +620,6 @@ describe('the unified SKILL selector matrix (T179)', () => {
       expect(rule.matcher, rule.ruleId).not.toBeNull();
     }
   });
-
-  // Applies one authored selector program to one already-split public path.
-  // This is a reading of the closed grammar, not a re-implementation of the
-  // walk: a literal equals the raw entry name, a dynamic step is its own
-  // unmodified regular expression, and the recursive step consumes zero or
-  // more directory entries (data-model.md § StructuredInspectorMatcher).
-  function matches(program: readonly MatcherSegment[], segments: readonly string[]): boolean {
-    function step(programIndex: number, segmentIndex: number): boolean {
-      if (programIndex === program.length) {
-        return segmentIndex === segments.length;
-      }
-      const matcherSegment = program[programIndex]!;
-      if (matcherSegment.kind === 'recursive-directories') {
-        for (let taken = 0; segmentIndex + taken < segments.length; taken += 1) {
-          if (step(programIndex + 1, segmentIndex + taken)) {
-            return true;
-          }
-        }
-        return false;
-      }
-      if (segmentIndex >= segments.length) {
-        return false;
-      }
-      const name = segments[segmentIndex]!;
-      const admitted =
-        matcherSegment.kind === 'literal'
-          ? matcherSegment.value === name
-          : matcherSegment.pattern.test(name);
-      return admitted && step(programIndex + 1, segmentIndex + 1);
-    }
-    return step(0, 0);
-  }
 
   // The complete recognition matrix, one representative path per combination:
   // the four positive combinations the shipped programs must produce — the
@@ -623,17 +645,107 @@ describe('the unified SKILL selector matrix (T179)', () => {
 
   it('admits each representative path for exactly the contracted tool combination', () => {
     for (const [path, expected] of RECOGNITION_MATRIX) {
-      const segments = path.split('/');
-      const tools = [
-        ...new Set(
-          skillRules.flatMap((rule) =>
-            rule.matcher!.selectors.some((selector) => matches(selector, segments))
-              ? [rule.tool]
-              : [],
-          ),
-        ),
-      ].sort();
-      expect(tools, path).toEqual(expected);
+      expect(admittingTools(skillRules, path), path).toEqual(expected);
+    }
+  });
+});
+
+describe('the unified instruction selector matrix (T269)', () => {
+  // Phase 21 consolidates the per-vendor instruction phases into the explicit
+  // shared-file matrix, so the complete static selector catalog and the tool
+  // combinations it implies become one contract, exactly as T179 did for
+  // skills. These cases assert the authored matcher records; the traversal
+  // semantics over a built tree — the derived fallback expansion included —
+  // are the integration suite's (tests/integration/repository-scan.test.ts).
+  const instructionRules = rules.filter((rule) => rule.kind === 'instructions');
+  const staticInstructionRules = instructionRules.filter(
+    (rule) => rule.discoveryClass === 'static-candidate',
+  );
+
+  it('ships exactly the nine static instruction selectors of the three vendors', () => {
+    expect(staticInstructionRules.map((rule) => rule.ruleId).sort()).toEqual([
+      'claude.repo.instructions',
+      'codex.repo.instructions',
+      'copilot.repo.instructions.agents',
+      'copilot.repo.instructions.claude-root',
+      'copilot.repo.instructions.gemini-root',
+      'copilot.repo.instructions.path',
+      'copilot.repo.instructions.path-cli-context',
+      'copilot.repo.instructions.repository',
+      'copilot.repo.instructions.repository-cli-context',
+    ]);
+    for (const rule of staticInstructionRules) {
+      expect(rule.matcher, rule.ruleId).not.toBeNull();
+    }
+  });
+
+  it('ships the derived fallback rule as identity only', () => {
+    // The configured fallbacks reach the walk through the configuration-read
+    // stage, so the shipped record is the derived candidates' identity and
+    // nothing else: no matcher, and no second Codex instruction selector that
+    // could admit a fallback name by path (data-model.md § InspectionRule).
+    const derived = instructionRules.filter(
+      (rule) => rule.discoveryClass === 'bounded-derived-candidate',
+    );
+    expect(derived.map((rule) => rule.ruleId)).toEqual(['codex.derived.fallback-basename']);
+    expect(derived[0]!.matcher).toBeNull();
+    expect(derived[0]!.tool).toBe('codex');
+  });
+
+  it('keeps the instruction-adjacent exclusions non-authorizing', () => {
+    // The two Copilot exclusions are the only shipped exclusion records, and
+    // an exclusion authorizes nothing: no matcher to admit by and no kind to
+    // recognize as (T251 owns their full shape).
+    const exclusions = rules.filter((rule) => rule.discoveryClass === 'excluded');
+    expect(exclusions.map((rule) => rule.ruleId).sort()).toEqual([
+      'copilot.excluded.additional-standard-locations',
+      'copilot.excluded.extra-directories',
+    ]);
+    for (const rule of exclusions) {
+      expect(rule.matcher, rule.ruleId).toBeNull();
+      expect(rule.kind, rule.ruleId).toBeNull();
+    }
+  });
+
+  // The complete static recognition matrix, one representative path per
+  // combination (Phase 21): `AGENTS.md` is Codex+Copilot at the root and
+  // Copilot's alone below it, root `CLAUDE.md` is Claude+Copilot while a
+  // nested `CLAUDE.md` is Claude-only, `CLAUDE.local.md` is Claude-only at
+  // every depth, and the remaining Copilot spellings are Copilot's alone. A
+  // configured fallback name is deliberately admitted by no static selector:
+  // its only path into the walk is the configuration-read derivation, which
+  // is what "never by filename inference" means. VCS internals and
+  // `node_modules` are absent on purpose — their exclusion is the traversal
+  // boundary's, not any matcher's.
+  const RECOGNITION_MATRIX: readonly (readonly [string, readonly string[]])[] = [
+    ['AGENTS.md', ['codex', 'copilot']],
+    ['AGENTS.override.md', ['codex']],
+    ['docs/AGENTS.md', ['copilot']],
+    ['CLAUDE.md', ['claude', 'copilot']],
+    ['packages/api/CLAUDE.md', ['claude']],
+    ['.claude/CLAUDE.md', ['claude']],
+    ['CLAUDE.local.md', ['claude']],
+    ['packages/api/CLAUDE.local.md', ['claude']],
+    ['GEMINI.md', ['copilot']],
+    ['packages/api/GEMINI.md', []],
+    ['.github/copilot-instructions.md', ['copilot']],
+    ['packages/api/.github/copilot-instructions.md', ['copilot']],
+    ['.github/instructions/frontend.instructions.md', ['copilot']],
+    ['packages/api/.github/instructions/api.instructions.md', ['copilot']],
+    // A declared fallback basename and its carrier: no static selector.
+    ['TEAM_GUIDE.md', []],
+    ['.codex/config.toml', []],
+    // Nested override, excluded Copilot locations, and spelling variants.
+    ['packages/api/AGENTS.override.md', []],
+    ['.claude/rules/style.md', []],
+    ['.copilot/instructions/personal.instructions.md', []],
+    ['AGENT.md', []],
+    ['.github/instructions/README.md', []],
+  ];
+
+  it('admits each representative path for exactly the contracted tool combination', () => {
+    for (const [path, expected] of RECOGNITION_MATRIX) {
+      expect(admittingTools(staticInstructionRules, path), path).toEqual(expected);
     }
   });
 });

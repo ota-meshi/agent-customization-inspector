@@ -20,8 +20,9 @@ serializable contractを`src/shared/`に置き、1つの公開`dist/`にまと�
 workspace内で動作する。調査対象のカスタマイズファイルをadversaryとしてmodel化せず、調査対象sourceへの
 filesystem I/Oはすべて`src/server/inspection/` directory配下だけに置く。そこでは固定inspection path allowlistに対する
 通常の再帰的`node:fs/promises` walkを行い、使用できないentryにはfile別diagnosticを付ける。Browserは記述された完全な
-sourceをread-only Monaco editorで表示し、source比較にはMonaco diff editorを使う。Recognition metadataは
-tool/kind/fieldで対応付け、parserが解決した値を通常のVue componentで比較・表示する。
+sourceをread-only Monaco editorで表示し、source比較にはMonaco diff editorを使う。Tool recognitionは
+toolごとに比較し、宣言済みmetadata — fileのkindごとに1回のparse — はkind/fieldで対応付け、
+parserが解決した値を通常のVue componentで比較・表示する。
 
 Root selectionは単純かつlexicalとする。CLIは`process.cwd()`を正確に1回captureし、`--root <path>`を
 acceptする（反復指定はparserのlast valueへ解決）。Absolute optionはそのまま保持し、relative optionはcapture済みinvocation directoryに対して
@@ -36,7 +37,8 @@ Security boundaryを厳密にする。Browserはfilesystemを読まず、Node ho
 自動watch modeを設けない。Local hostにはeslint/config-inspectorと同じ基盤であるdevframe local-tool
 frameworkをauthentication無効で採用する。devframeはbuild済みSPAを`cli.distDir`（`dist/public`）から
 配信し、devframeのRPC session API channelを通じてinert DTOを送り、port選択とhost bindingを所有する。
-起動時のbrowser openはproductが`open` packageを通じて所有し、devframeのbundled openerは無効化される。
+起動時のbrowser openはproductが所有する — macOSのChromium tab再利用を`open` packageのhelperの
+前段に置く（research.md § 3）— 形で、devframeのbundled openerは無効化される。
 保護はloopback限定の`localhost` bindだけであり、per-session token、product所有のOrigin check、
 hand-writtenなrouterは存在しない。認証なしloopback hostの残存exposure（他のlocal processと、
 DNS rebinding経由の悪意あるweb page）は、Constitution § Quality and Safety Standardsが記録するdocumented limitationとする。
@@ -589,9 +591,9 @@ filesystem、DNS、SMB callより前にrejectする。Inspected-source I/O bound
 write、truncate、create、rename、delete、link、mode/ownership/time/xattr/ACL変更、または同等のplatform mutationを
 一切requestしない。Testではこれらのcallをinstrumentし、content、length、identity/link state、mode、mtime、ctime、
 観測可能なxattr/ACLを比較する。OSのread semanticsだけによるatime更新は別に記録し、failureともmutationの証明とも
-しない。別途制約されたstartup launcherは、許可するproduct起動child processを唯一所有し、
-その対象は固定OS browser helperだけとする。このhelperが受け取るのは表示済みloopback originだけであり、inspection由来のcontent/path、
-authored value、user-supplied commandを受け取らない。Helperはlaunch environmentを変更なしで継承する:
+しない。別途制約されたstartup launcherは、許可するproductのchild-process surfaceを唯一所有し、
+その対象はmacOSでは固定のprocess一覧probeと、OSの`osascript` automation hostで実行する固定のtab再利用script、それ以外では固定OS browser helperとする。spawnされるどのprocessも固定の引数と表示済みloopback originだけを受け取り、inspection由来のcontent/path、
+authored value、user-supplied commandを受け取らない。各childはlaunch environmentを変更なしで継承する:
 productはどの環境変数にもinspection由来の値を書き込まず、`xdg-open`が`$BROWSER`を参照するように
 platform helperがuser自身の設定を尊重するのはuser preferenceの適用である。Ambient valueがSource rootとlexicalに同じでもprovenanceは変化せずread authorityを
 与えない。自動起動を無効にした場合、非対応の場合、または失敗した場合もsessionを利用可能に保つ。Boundary外byteを受理・公開しない。Symbolic linkは透過的にreadし、link先がmissingまたは
@@ -751,10 +753,11 @@ channelを渡る）、sanitized envelope、generic error entity、log-content ru
 selector grammarとそのcontract-gate rejection、lintと残りのtest、
 その他の必須品質gate、4つのend-to-end storyを扱う。Monacoはclient-only、
 same-origin、model lifetime scopeとし、固有diff engineでdependency重複を避け、exact authored metadata比較を
-明示的に保つ。Product-owned browser launcherはmaintainされた`open` packageの固定startup OS helperをspawnし、
-許可する唯一のproduct child
-processをそれに限定する。Helperが受け取るのは表示済みloopback originだけであり、inspection由来のcontent/path、authored value、
-user commandを受け取らない。Helperはlaunch environmentを変更なしで継承し、productはそこへinspection由来の
+明示的に保つ。Product-owned browser launcherは、productのchild processをstartup openingに限定する —
+macOSでは固定のprocess一覧probeと、OSの`osascript` automation hostで実行する固定のtab再利用script、
+それ以外ではmaintainされた`open` packageの固定startup OS helper。spawnされるどのprocessも
+固定の引数と表示済みloopback originだけを受け取り、inspection由来のcontent/path、authored value、
+user commandを受け取らない。各childはlaunch environmentを変更なしで継承し、productはそこへinspection由来の
 値を書き込まない。Source rootとのlexical一致は
 provenanceを変えずauthorityを与えない。Package gateは承認済みのdirect production dependency setを
 `package.json`と`pnpm-lock.yaml` closureからassertし、commit済みlockfileが各resolved versionとintegrity hashを
@@ -1237,7 +1240,8 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
 - Node hostはdevframe 0.7.5とする。CLIは`devframe/adapters/dev`の`createDevServer`でapp definitionを
   起動し、`auth: false`を設定してloopbackの`localhost`だけへbindする。devframeはbuild済みSPAを`cli.distDir`
   （`dist/public`）から配信し、port選択とhost bindingを所有する。起動時のbrowser openはproductが
-  `open` packageを通じて所有し、devframeのbundled openerは無効化される。Session APIは
+  所有し — macOSのChromium tab再利用を`open` packageのhelperの前段に置く（research.md § 3）—、
+  devframeのbundled openerは無効化される。Session APIは
   app definitionの`setup`（`src/server/host/devframe-app.ts`）で`defineRpcFunction`により宣言するdevframe RPC
   functionの集合とする。同じchannelにはdevframe自身のbuilt-in（`devframe:agent:*`、
   `devframe:rpc:server-state:*`、`devframe:streaming:*`）もframeworkが無条件に登録するが、この
@@ -1266,16 +1270,18 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   伝播させ、preview、authority、job、retained failure stateを作成しない。Accepted entryはinternal exact raw
   `lexicalRoot`もescaped displayと並べて同じrecordに保持する。Enableは保存済みraw valueだけを使い、`displayRoot`を逆変換せずenvironmentを
   再読込しない。
-- 起動時のbrowser openはproductが`open` packageを通じて所有する。CLIは、hostがFR-022で許可された固定OS
-  browser-launch helperをspawnする前にplainなloopback originを1回表示し、devframeのbundled openerは
-  無効化されてspawnできるhelperは正確に1つになり、`--no-open`はchild processを一切作らずにその
-  試行を無効化する。Helper呼び出しが受け取るのは表示済みloopback originだけであり、inspection由来の
-  content/path、authored value、user-supplied commandを受け取らない。
+- 起動時のbrowser openはproductがstartup openerを通じて所有する。CLIは、hostがFR-022で許可された
+  closedなchild-process surface — macOSでは固定のprocess一覧probeと、OSの`osascript` automation host
+  で実行する固定のtab再利用scriptを固定OS browser-launch helperの前段に置き、それ以外ではそのhelper
+  だけ（research.md § 3）— の中でopenerを実行する前にplainなloopback originを1回表示し、devframeの
+  bundled openerは無効化されてproductのopenerだけが動き、`--no-open`はchild processを一切作らずにその
+  試行を無効化する。spawnされるどの呼び出しも固定の引数と表示済みloopback originだけを受け取り、
+  inspection由来のcontent/path、authored value、user-supplied commandを受け取らない。
   Source root、preview root、candidate path、file path、authored valueはinspection stateから
   argvへも、変更なしで継承されるenvironmentへもcopyせず、そうした値とambientなenvironment textの
-  lexical一致はprovenanceを変えず、read authorityを与えない。Helperはnavigationだけをplatform自身の
-  解決 — `$BROWSER`のようなuser自身の設定を含む — へ委譲し、
-  browser family/versionを選択・検証しない。Openの成功はcompatibility evidenceではない。自動openが
+  lexical一致はprovenanceを変えず、read authorityを与えない。Fallback helperはnavigationだけをplatform自身の
+  解決 — `$BROWSER`のようなuser自身の設定を含む — へ委譲し、固定一覧に基づく再利用の選択を超えて
+  productはbrowser family/versionを選択・検証しない。再利用の成功もopenの成功もcompatibility evidenceではない。自動openが
   無効、非対応、失敗の場合、またはhandlerや解決先browserが利用不能、識別不能、release-certification
   baseline外の場合もserverは継続し、表示済みURLと`--no-open`がcertified browserでの文書化済み
   manual-open fallbackを提供する（FR-001）。Testは`open` packageの隣にproduct所有のplatform mapを再実装する
@@ -1295,9 +1301,9 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   opaqueなin-memory URIを使い、`readOnly`、`domReadOnly`、`originalEditable: false`、`links: false`、
   `renderMarginRevertIcon: false`を設定し、環境変数参照を解決せず記述された完全なtextを保持する。`accessibilitySupport`は`auto`、
   `accessibilityVerbose`はenabledとし、各viewに`ariaLabel`を付ける。
-  Literal source comparisonはMonaco diff editorが所有する。Recognition metadataは
-  `(tool, kind, 宣言key)`で対応付けて各fieldの解決済み値を比較・Vue表示し、editorへ
-  serializeしない。Repository comparison acceptanceでは最初に同じRepository Source内のreadableなcurrent-generation distinctなカスタマイズファイル
+  Literal source comparisonはMonaco diff editorが所有する。Tool recognitionはtoolごとに
+  比較し、fileの宣言済みmetadata — kindごとに1回のparse — は`(kind, 宣言key)`で
+  対応付けて各fieldの解決済み値を1回だけ比較・Vue表示し、editorへserializeしない。Repository comparison acceptanceでは最初に同じRepository Source内のreadableなcurrent-generation distinctなカスタマイズファイル
   2件を使用し、正常なGlobal commit後だけ、各owning SourceとSource-relative namespaceを維持したままreadableなRepository
   fileとGlobal fileの比較をUS4で検証する。他contentと並行して表示するRepository/Globalの自動更新scan/status informationは、共通のkeyboard操作可能な
   pause/resumeとon-demand-refresh controlを使う。Pauseはunderlying scanを停止せず、表示/live-region statusをlast valueで
@@ -1331,7 +1337,7 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   SPAはpurge済みIDを保持・比較せず、
   返された`sessionId`をnew baselineとして採用し、epoch、Global control/progress、失敗した各toolのcontrol `failureCode`、
   failed requestのerrorだけから最小限のclient-side `RecoveryViewState`を構築する。Disable fenceがnon-nullならsession routeはexactで
-  control-onlyな`GlobalFenceRecoverySnapshot`を返す。Fenceがnullならnormal full `InspectionSession`を返すが、recovering clientは
+  control-onlyな`GlobalFenceRecoverySnapshot`を返す。Fenceがnullならnormal full `SessionSnapshot`を返すが、recovering clientは
   そのcontrol/error fieldだけを採用してinspection graphを破棄する。Activeなら
   そのviewからdisableを直ちに利用でき、matching frozen consent previewを取得・検証してからretry controlを再構築する。
   Recovery viewはdisable fenceがnullでnormal full snapshotを取得可能な場合だけ明示Resume inspection actionを提示し、matching sessionを再取得してdefault

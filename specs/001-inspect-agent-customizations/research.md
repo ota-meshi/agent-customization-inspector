@@ -200,7 +200,7 @@ create a second dependency baseline.
 | pnpm | 11.13.0 | Current stable package manager |
 | Local host | `devframe` 0.7.5 | Local-tool host framework behind `@eslint/config-inspector`; serves the packaged SPA from `cli.distDir` and carries the session API as its RPC channel with authentication disabled; owns port/host resolution (§ 8), while its bundled opener stays disabled because the product owns browser opening through `open` (§ 3); pre-1.0, so the committed lockfile pins the reviewed baseline and the manifest's caret range stays within 0.7.x |
 | CLI | `gunshi` 0.37.0 | Current zero-runtime-dependency ESM CLI framework; its Node.js `>=22` engine requirement fits the declared range |
-| Browser opener | `open` 11.0.1 | Current stable cross-platform opener behind the startup browser helper (FR-001): passes the bound loopback origin to the OS default handler, best-effort, with devframe's bundled opener disabled so exactly one helper can spawn; its vendored POSIX-shell `xdg-open` — used whenever executable on Linux, the system helper otherwise — is the recorded FR-038 closure exception (§ 3) |
+| Browser opener | `open` 11.0.1 | Current stable cross-platform opener behind the startup opener's fallback (FR-001): passes the bound loopback origin to the OS default handler, best-effort, whenever the macOS Chromium tab reuse does not apply or fails (§ 3), with devframe's bundled opener disabled so only the product's opener runs; its vendored POSIX-shell `xdg-open` — used whenever executable on Linux, the system helper otherwise — is the recorded FR-038 closure exception (§ 3) |
 | Host HTTP app | `h3` 2.0.1-rc.22 | The host builds the H3 app devframe mounts onto, carrying the `/skills/**` shell fallback devframe's extension-guarded SPA fallback cannot serve — a skill detail URL ends with the file's own last segment, such as `SKILL.md`, and percent-encoding is no alternative because devframe decodes before its extension test. Declared as a caret range like every other direct dependency, with the lockfile resolving it to devframe's own h3 so both resolve one module instance; the dependency leaves with the host shim once devframe can serve extension-ful client-route misses itself |
 | Parsers | `yaml` 2.9.0, `jsonc-parser` 3.3.1, `smol-toml` 1.7.0 | Current stable inert data parsers |
 | Frontmatter | `vfile-matter` 5.0.1, `vfile` 6.0.3 | Frontmatter delimiter handling. Deciding where a frontmatter block begins and ends means re-deciding BOM handling, line endings, and the closing-fence forms, so it is a parser rather than a regular expression. This one parses the block with the `yaml` engine already listed here; a package carrying its own `js-yaml` would give one document two meanings, because js-yaml 3 is YAML 1.1 and `yaml` is YAML 1.2 |
@@ -250,7 +250,7 @@ sections, blocks T002. The
 release-validation pair records the corresponding decision evidence later; missing bilingual
 validation evidence blocks release.
 
-The `open` dependency — the product-owned startup browser helper (§ 3) — has an
+The `open` dependency — the startup opener's fallback helper (§ 3) — has an
 explicit reasoned no-impact determination: it touches no public contract, session API
 shape, persisted data, or workflow. The CLI's `--open`/`--no-open` surface, the single
 launch line, and the printed-URL fallback are independent of which package owns the
@@ -382,12 +382,28 @@ ships inside the already audited devframe payload: devframe bundles its own copy
 would be fixed by devframe's bundling choices instead of by a dependency this product
 declares, reviews, and upgrades on its own schedule. The direct `open` dependency makes
 the helper a named, lockfile-pinned member of the production closure, and the host
-disables devframe's bundled opener so exactly one helper can spawn. `open`'s published
+disables devframe's bundled opener so only the product's opener runs. `open`'s published
 tarball contains one non-JavaScript executable — the vendored POSIX-shell `xdg-open`,
 which the package's own selection policy uses on a Linux host whenever it is executable,
 falling back to the system `xdg-open` otherwise — which is
 the recorded FR-038 closure exception (spec.md FR-038). A failed or unsupported open
 still only leaves the already printed loopback URL for manual opening.
+
+On macOS the product first tries to reuse a tab a running Chromium-family browser
+already has on the session origin, the way Vite ships it: a fixed `ps cax` probe reads
+which fixed-list application (the Chrome variants, Microsoft Edge, Brave, Vivaldi,
+Chromium) is running, and a fixed product-authored JXA script — JavaScript, adapted from
+create-react-app's MIT-licensed opener and embedded as a source constant so the packaged
+CLI stays one bundle — runs through the operating system's `osascript` automation host to
+focus and reload the matching tab, retarget an empty new-tab page, or only otherwise open
+a new tab in that browser. The attempt deliberately prefers a running Chromium-family
+browser over the OS default handler, and macOS gates it behind a one-time automation
+consent whose denial fails it silently; every failure — including no fixed-list browser
+running — falls back to the `open` helper above, which always opens a new tab. Windows,
+Linux, and non-Chromium browsers get no reuse: no platform API addresses "the tab showing
+this URL", so the automation-scriptable Chromium family on macOS is the whole reachable
+surface. Every spawned process receives only fixed arguments and the bound loopback
+origin (FR-022, spec.md § Clarifications Session 2026-07-19).
 
 ## 4. Vendor behavior, Inspector matchers, and evidence
 
@@ -678,7 +694,9 @@ kernel termination is not promised.
 Perform best-effort metadata extraction after decoding. Every declaration the recognized
 kind publishes carries one entry holding the value its parser resolved. The public metadata
 list is in the order the kind publishes, one entry per declaration, and its cross-file
-identity is tool, kind, and the declared key. A key declared twice resolves to its later declaration,
+identity is kind and the declared key: the list is the file's one parse for the recognized
+kind, which every recognizing tool shares, so a tool is not a coordinate of a
+declaration. A key declared twice resolves to its later declaration,
 which is what the product loading the file has.
 JSON/YAML/TOML quoting, escapes, block indicators, numeric/date spelling, and collection
 punctuation therefore remain visible. That one resolved value is also what drives typed
@@ -795,9 +813,10 @@ disabled links, and the client still loads no external worker, blob worker, or e
 string. Diff
 highlighting uses Monaco and browser capacity without a product-defined line or computation-
 time cutoff. If Monaco or the browser reports a recoverable failure, retain the complete
-read-only side-by-side source and a diagnostic. Recognition metadata is matched by tool, kind, and declared key,
-then compares and renders each declaration's resolved value in Vue rows rather than
-serializing it into Monaco. Preserve Monaco's
+read-only side-by-side source and a diagnostic. Tool recognition is compared per tool,
+while a file's declared metadata — one parse per kind — is matched by kind and declared
+key and rendered once in Vue rows rather than serialized into Monaco: a tool is not a
+coordinate of a declaration, so no tool captions or repeats the declaration rows. Preserve Monaco's
 accessible diff viewer, ARIA labels, keyboard navigation, and narrow-screen inline mode
 for explicit accessibility testing.
 
@@ -838,7 +857,8 @@ from `cli.distDir` (`dist/public`), and carries the session API as devframe RPC 
 declared with `defineRpcFunction` and registered in the definition's `setup`. Port and
 host resolution, static serving with the SPA fallback, and the RPC channel are devframe
 policy rather than product code, while browser opening is product-owned through the
-`open` package with devframe's bundled opener disabled (§ 3), with one closed
+startup opener — the macOS Chromium tab reuse in front of the `open` package's
+helper — with devframe's bundled opener disabled (§ 3), with one closed
 product-owned piece
 in front of static serving: the `/skills/**` and `/instructions/**` `GET`/`HEAD`
 rewrites to `/`, one route family per shipped kind detail, which let
@@ -898,7 +918,7 @@ no product-defined wall-clock detection guarantee.
 
 A non-null fence makes the session route return the exact control-only
 `GlobalFenceRecoverySnapshot`; a null fence makes it return a normal full
-`InspectionSession`, from which the recovering client adopts only the control/error
+`SessionSnapshot`, from which the recovering client adopts only the control/error
 projection and discards the inspection graph. Recovery adopts the returned `sessionId` as
 the new baseline without retaining or comparing the purged ID. Active consent makes disable
 available from that view immediately; the preview route returns the exact frozen preview so
@@ -936,13 +956,15 @@ inventory completion to its admitted request ID and rejects an earlier status or
 
 Print the resolved local `http://localhost:<port>/` origin exactly once to the initiating
 terminal, from the host's ready callback, before any browser attempt (FR-001). Browser
-opening is product policy through the `open` package (§ 3): the CLI's negatable `--open`
-flag (default true) decides whether the host spawns `open`'s helper after the launch
-line, devframe's bundled opener stays disabled so exactly one helper can spawn, the
-helper receives only that resolved origin — never inspection-derived content or paths
-(FR-022) — and the product neither selects, probes, nor verifies the resolved handler's
-browser family or version (FR-001). A disabled, unsupported, or failed automatic open
-leaves the server running; the printed origin is the fallback in every case.
+opening is product policy through the startup opener (§ 3): the CLI's negatable `--open`
+flag (default true) decides whether the host runs it after the launch line, devframe's
+bundled opener stays disabled so only the product's opener runs, on macOS a session tab a
+running Chromium-family browser already has is focused before `open`'s helper spawns a
+new one, every spawned process receives only fixed arguments and that resolved origin —
+never inspection-derived content or paths (FR-022) — and beyond the fixed-list reuse
+choice the product neither selects, probes, nor verifies the resolved handler's browser
+family or version (FR-001). A disabled, unsupported, or failed automatic open leaves the
+server running; the printed origin is the fallback in every case.
 
 **Rationale**: Hosting policy — port and host resolution, static serving with an SPA
 fallback, and the RPC transport — is policy the maintained devframe
@@ -995,8 +1017,11 @@ the separate preview avoids repeating a potentially large display payload in eve
   single-browser-session use has no requirement for proactive second-tab observation.
 - A project-owned browser-launch adapter (a fixed `/usr/bin/open`/`xdg-open` spawn with
   an ambient environment allowlist) is rejected: cross-platform helper resolution is
-  policy the maintained `open` package already owns (§ 3), and the product's helper
-  receives only the resolved local origin.
+  policy the maintained `open` package already owns (§ 3). The macOS tab reuse in front
+  of that fallback is not such an adapter: it resolves no handler and owns no platform
+  map — it drives one running fixed-list application and hands every other case to
+  `open` — and every spawned process receives only fixed arguments and the resolved
+  local origin.
 
 ## 9. Atomic generations, rescan, and environment-dependent capacity
 
@@ -1958,13 +1983,15 @@ read-only, local, non-executing boundary.
 
 **Decision**: Carry the final analysis remediations into planning and implementation:
 
-1. The fixed startup OS browser helper is the only permitted product-initiated child
-   process. It receives only the printed loopback origin — no inspection-derived content
-   or path, authored value, or user-supplied command — and inherits the launch
-   environment unchanged: the product writes no inspection-derived value into any
-   environment variable, and a platform helper honoring the user's own configuration,
-   such as `xdg-open` consulting `$BROWSER`, applies user preference rather than an
-   inspection-derived input. Lexical equality between an ambient value and a Source root
+1. Startup browser opening is the only permitted product-initiated child-process
+   surface: on macOS the fixed process-list probe and fixed tab-reuse script through the
+   OS `osascript` automation host, otherwise the fixed startup OS browser helper (§ 3).
+   Every spawned process receives only fixed arguments and the printed loopback origin —
+   no inspection-derived content or path, authored value, or user-supplied command — and
+   inherits the launch environment unchanged: the product writes no inspection-derived
+   value into any environment variable, and a platform helper honoring the user's own
+   configuration, such as `xdg-open` consulting `$BROWSER`, applies user preference
+   rather than an inspection-derived input. Lexical equality between an ambient value and a Source root
    changes no provenance and grants no authority. Discovery, reading, parsing, display,
    comparison, and relationship processing initiate no child process, and `--no-open` plus
    unsupported/failure paths leave a usable manual URL.

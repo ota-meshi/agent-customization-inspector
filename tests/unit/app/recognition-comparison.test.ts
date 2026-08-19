@@ -1,23 +1,25 @@
-// T192/T201: recognition-metadata comparison rows (FR-011, FR-012;
+// T192/T201: recognition-metadata comparison (FR-011, FR-012;
 // research.md § 7).
 //
-// The assertions run against the row-building module rather than a mounted
-// component: the unit project has no single-file-component compiler (the same
-// reason T083 gives), and the decisions under test — which recognitions pair
-// up, which declared keys match, and what "equal" means — are data decisions
-// the component only draws. What genuinely needs a rendered page is asserted
-// against the real app in `tests/e2e/skills-comparison.spec.ts`.
+// The assertions run against the comparison-building module rather than a
+// mounted component: the unit project has no single-file-component compiler
+// (the same reason T083 gives), and the decisions under test — which tools
+// recognize which side, which declared keys match, and what "equal" means —
+// are data decisions the component only draws. What genuinely needs a
+// rendered page is asserted against the real app in
+// `tests/e2e/skills-comparison.spec.ts`.
 //
-// The contract: recognition metadata is matched by exact `(tool, kind,
-// declared key)` and each declaration's resolved value is compared
-// structurally, with no ranking, no winner claim, and no fabricated rows for
-// data the wire does not carry (relationships ship with no recognition in
-// this release, so none may be invented here).
+// The contract: tool recognition is compared per tool, while the files'
+// declared metadata — one parse per kind (FR-028) — is matched by exact
+// `(kind, declared key)` and compared once, each declaration's resolved
+// value structurally, with no ranking, no winner claim, and no fabricated
+// rows for data the wire does not carry (relationships ship with no
+// recognition in this release, so none may be invented here).
 import { describe, expect, it } from 'vitest';
 
+import { frontmatterValuesEqual } from '../../../src/app/components/inspection/declaration-comparison';
 import {
-  buildRecognitionComparison,
-  frontmatterValuesEqual,
+  SkillRecognitionComparison,
   type ComparisonSideInput,
 } from '../../../src/app/components/skill-comparison/recognition-comparison';
 import type {
@@ -148,8 +150,8 @@ describe('resolved-value equality', () => {
   });
 });
 
-describe('recognition matching by (tool, kind, declared key)', () => {
-  it('pairs recognitions of one tool and matches their declared keys', () => {
+describe('recognition and declared-metadata comparison', () => {
+  it('matches the files’ declared keys once, by (kind, declared key)', () => {
     const left = side(
       entryDetail('.agents/skills/alpha/SKILL.md', [
         scalar('name', 'alpha'),
@@ -170,23 +172,24 @@ describe('recognition matching by (tool, kind, declared key)', () => {
       [definition('.agents/skills/beta/SKILL.md', 'codex')],
     );
 
-    const groups = buildRecognitionComparison(left, right);
-    expect(groups).toHaveLength(1);
-    const group = groups[0]!;
-    expect(group.tool).toBe('codex');
-    expect(group.kind).toBe('skill');
-    expect(group.left).toBe('recognized');
-    expect(group.right).toBe('recognized');
+    const comparison = new SkillRecognitionComparison(left, right);
+    expect(comparison.tools.map((row) => [row.tool, row.kind, row.left, row.right])).toEqual([
+      ['codex', 'skill', 'recognized', 'recognized'],
+    ]);
+    expect(comparison.leftDeclarations).toBe('parsed');
+    expect(comparison.rightDeclarations).toBe('parsed');
 
     // Key union in first-file authored order, then keys only the second file
-    // declares, in its order — no ranking reorders them.
-    expect(group.declarations.map((row) => row.key)).toEqual([
+    // declares, in its order — no ranking reorders them. One list for the
+    // pair: the declarations are the files' one parse, not any tool's, so no
+    // tool repeats or captions them (research.md § 7).
+    expect(comparison.declarations.map((row) => row.key)).toEqual([
       'name',
       'retries',
       'api_key',
       'only_left',
     ]);
-    const byKey = new Map(group.declarations.map((row) => [row.key, row]));
+    const byKey = new Map(comparison.declarations.map((row) => [row.key, row]));
     expect(byKey.get('retries')).toMatchObject({ equal: true });
     expect(byKey.get('name')).toMatchObject({ equal: false });
     expect(byKey.get('api_key')).toMatchObject({
@@ -214,24 +217,24 @@ describe('recognition matching by (tool, kind, declared key)', () => {
     // resolved: both keys equal (FR-011, FR-025).
     const path = '.agents/skills/alpha/SKILL.md';
     const otherPath = '.agents/skills/beta/SKILL.md';
-    const left = side(
-      entryDetail(path, [scalar('1', 'alpha', 'number'), scalar('1', 'beta', 'string')]),
-      [definition(path, 'codex')],
+    const comparison = new SkillRecognitionComparison(
+      side(entryDetail(path, [scalar('1', 'alpha', 'number'), scalar('1', 'beta', 'string')]), [
+        definition(path, 'codex'),
+      ]),
+      side(
+        entryDetail(otherPath, [scalar('1', 'beta', 'string'), scalar('1', 'alpha', 'number')]),
+        [definition(otherPath, 'codex')],
+      ),
     );
-    const right = side(
-      entryDetail(otherPath, [scalar('1', 'beta', 'string'), scalar('1', 'alpha', 'number')]),
-      [definition(otherPath, 'codex')],
-    );
-    const groups = buildRecognitionComparison(left, right);
-    expect(groups[0]!.declarations).toHaveLength(2);
-    expect(groups[0]!.declarations[0]).toMatchObject({
+    expect(comparison.declarations).toHaveLength(2);
+    expect(comparison.declarations[0]).toMatchObject({
       key: '1',
       keyKind: 'number',
       left: { kind: 'scalar', text: 'alpha' },
       right: { kind: 'scalar', text: 'alpha' },
       equal: true,
     });
-    expect(groups[0]!.declarations[1]).toMatchObject({
+    expect(comparison.declarations[1]).toMatchObject({
       key: '1',
       keyKind: 'string',
       left: { kind: 'scalar', text: 'beta' },
@@ -247,23 +250,23 @@ describe('recognition matching by (tool, kind, declared key)', () => {
     // right's same-spelled string key (FR-011).
     const path = '.agents/skills/alpha/SKILL.md';
     const otherPath = '.agents/skills/beta/SKILL.md';
-    const left = side(
-      entryDetail(path, [scalar('1', 'first', 'number'), scalar('1', 'second', 'string')]),
-      [definition(path, 'codex')],
+    const comparison = new SkillRecognitionComparison(
+      side(entryDetail(path, [scalar('1', 'first', 'number'), scalar('1', 'second', 'string')]), [
+        definition(path, 'codex'),
+      ]),
+      side(entryDetail(otherPath, [scalar('1', 'second', 'string')]), [
+        definition(otherPath, 'codex'),
+      ]),
     );
-    const right = side(entryDetail(otherPath, [scalar('1', 'second', 'string')]), [
-      definition(otherPath, 'codex'),
-    ]);
-    const groups = buildRecognitionComparison(left, right);
-    expect(groups[0]!.declarations).toHaveLength(2);
-    expect(groups[0]!.declarations[0]).toMatchObject({
+    expect(comparison.declarations).toHaveLength(2);
+    expect(comparison.declarations[0]).toMatchObject({
       key: '1',
       keyKind: 'number',
       left: { kind: 'scalar', text: 'first' },
       right: null,
       equal: false,
     });
-    expect(groups[0]!.declarations[1]).toMatchObject({
+    expect(comparison.declarations[1]).toMatchObject({
       key: '1',
       keyKind: 'string',
       left: { kind: 'scalar', text: 'second' },
@@ -278,12 +281,11 @@ describe('recognition matching by (tool, kind, declared key)', () => {
     // component's (FR-025).
     const path = '.agents/skills/alpha/SKILL.md';
     const otherPath = '.agents/skills/beta/SKILL.md';
-    const left = side(entryDetail(path, [scalar('name', 'alpha')]), [definition(path, 'codex')]);
-    const right = side(entryDetail(otherPath, [scalar('name', 'beta')]), [
-      definition(otherPath, 'codex'),
-    ]);
-    const groups = buildRecognitionComparison(left, right);
-    expect(groups[0]!.declarations[0]).toMatchObject({
+    const comparison = new SkillRecognitionComparison(
+      side(entryDetail(path, [scalar('name', 'alpha')]), [definition(path, 'codex')]),
+      side(entryDetail(otherPath, [scalar('name', 'beta')]), [definition(otherPath, 'codex')]),
+    );
+    expect(comparison.declarations[0]).toMatchObject({
       key: 'name',
       keyKind: 'string',
     });
@@ -316,128 +318,149 @@ describe('recognition matching by (tool, kind, declared key)', () => {
     const present = side(entryDetail(path, [scalar('name', 'inner')]), [
       definition(path, 'claude'),
     ]);
-    const groups = buildRecognitionComparison(present, null);
-    expect(groups).toHaveLength(1);
-    expect(groups[0]).toMatchObject({ tool: 'claude', left: 'recognized', right: 'file-absent' });
-    expect(groups[0]!.declarations).toHaveLength(1);
-    expect(groups[0]!.declarations[0]).toMatchObject({
+    const comparison = new SkillRecognitionComparison(present, null);
+    expect(comparison.tools.map((row) => [row.tool, row.left, row.right])).toEqual([
+      ['claude', 'recognized', 'file-absent'],
+    ]);
+    expect(comparison.leftDeclarations).toBe('parsed');
+    expect(comparison.rightDeclarations).toBe('file-absent');
+    expect(comparison.declarations).toHaveLength(1);
+    expect(comparison.declarations[0]).toMatchObject({
       key: 'name',
       left: { kind: 'scalar', text: 'inner' },
       right: null,
       equal: false,
     });
     // A plain companion beside an absence still fabricates nothing.
-    expect(
-      buildRecognitionComparison(side(companionDetail('.agents/skills/alpha/notes.md'), []), null),
-    ).toEqual([]);
+    const companion = new SkillRecognitionComparison(
+      side(companionDetail('.agents/skills/alpha/notes.md'), []),
+      null,
+    );
+    expect(companion.tools).toEqual([]);
+    expect(companion.declarations).toEqual([]);
   });
 
-  it('publishes one group per recognizing tool, in the contracted tool order', () => {
+  it('publishes one recognition row per recognizing tool, in the contracted tool order', () => {
     const path = '.agents/skills/alpha/SKILL.md';
     const otherPath = '.agents/skills/beta/SKILL.md';
     const frontmatter = [scalar('name', 'alpha')];
-    const left = side(entryDetail(path, frontmatter), [
-      definition(path, 'copilot'),
-      definition(path, 'codex'),
-    ]);
-    const right = side(entryDetail(otherPath, frontmatter), [
-      definition(otherPath, 'copilot'),
-      definition(otherPath, 'codex'),
-    ]);
-    const groups = buildRecognitionComparison(left, right);
+    const comparison = new SkillRecognitionComparison(
+      side(entryDetail(path, frontmatter), [
+        definition(path, 'copilot'),
+        definition(path, 'codex'),
+      ]),
+      side(entryDetail(otherPath, frontmatter), [
+        definition(otherPath, 'copilot'),
+        definition(otherPath, 'codex'),
+      ]),
+    );
     // The contracted tool order, not a preference: each recognition remains
-    // distinguishable from the physical file (US3 scenario 2).
-    expect(groups.map((group) => group.tool)).toEqual(['copilot', 'codex']);
+    // distinguishable from the physical file (US3 scenario 2). The declared
+    // keys stay one list however many tools recognize both sides — they are
+    // the files' one parse, published once (research.md § 7).
+    expect(comparison.tools.map((row) => row.tool)).toEqual(['copilot', 'codex']);
+    expect(comparison.declarations).toHaveLength(1);
   });
 
-  it('states a side with no recognition of the tool instead of inventing key rows', () => {
-    const left = side(entryDetail('.claude/skills/alpha/SKILL.md', [scalar('name', 'alpha')]), [
-      definition('.claude/skills/alpha/SKILL.md', 'claude'),
+  it('states per-tool recognition apart from the files’ declaration match', () => {
+    // Disjoint recognitions — a `.claude` copy Claude alone recognizes
+    // against an `.agents` copy Codex alone does: each tool's row states
+    // its unrecognized side, while the declared metadata still compares,
+    // because the declarations are the files' parses and both parsed
+    // (research.md § 7).
+    const comparison = new SkillRecognitionComparison(
+      side(entryDetail('.claude/skills/alpha/SKILL.md', [scalar('name', 'alpha')]), [
+        definition('.claude/skills/alpha/SKILL.md', 'claude'),
+      ]),
+      side(entryDetail('.agents/skills/beta/SKILL.md', [scalar('name', 'beta')]), [
+        definition('.agents/skills/beta/SKILL.md', 'codex'),
+      ]),
+    );
+    expect(comparison.tools.map((row) => [row.tool, row.left, row.right])).toEqual([
+      ['claude', 'recognized', 'not-recognized'],
+      ['codex', 'not-recognized', 'recognized'],
     ]);
-    const right = side(entryDetail('.agents/skills/beta/SKILL.md', [scalar('name', 'beta')]), [
-      definition('.agents/skills/beta/SKILL.md', 'codex'),
-    ]);
-    const groups = buildRecognitionComparison(left, right);
-    expect(groups.map((group) => group.tool)).toEqual(['claude', 'codex']);
-    // Matching is by exact (tool, kind, declared key): with no matching
-    // recognition on the other side there is no pair to compare, so the group
-    // states the absence and fabricates no per-key comparison against a
-    // recognition that does not exist.
-    expect(groups[0]).toMatchObject({ left: 'recognized', right: 'not-recognized' });
-    expect(groups[0]!.declarations).toEqual([]);
-    expect(groups[1]).toMatchObject({ left: 'not-recognized', right: 'recognized' });
-    expect(groups[1]!.declarations).toEqual([]);
+    expect(comparison.declarations.map((row) => [row.key, row.equal])).toEqual([['name', false]]);
   });
 
   it('states a failed extraction as unknown declarations, not as empty ones', () => {
-    const left = side(entryDetail('.agents/skills/alpha/SKILL.md', [scalar('name', 'alpha')]), [
-      definition('.agents/skills/alpha/SKILL.md', 'codex'),
+    const comparison = new SkillRecognitionComparison(
+      side(entryDetail('.agents/skills/alpha/SKILL.md', [scalar('name', 'alpha')]), [
+        definition('.agents/skills/alpha/SKILL.md', 'codex'),
+      ]),
+      side(entryDetail('.agents/skills/broken/SKILL.md', null), [
+        definition('.agents/skills/broken/SKILL.md', 'codex', 'failed'),
+      ]),
+    );
+    // Recognition is the definition's existence; the parse is the file's own
+    // fact, so the failed side stays a recognized side whose declarations
+    // are unknown (FR-028): comparing the parsed side's values against
+    // "nothing declared" would state a difference no parse established.
+    expect(comparison.tools.map((row) => [row.tool, row.left, row.right])).toEqual([
+      ['codex', 'recognized', 'recognized'],
     ]);
-    const right = side(entryDetail('.agents/skills/broken/SKILL.md', null), [
-      definition('.agents/skills/broken/SKILL.md', 'codex', 'failed'),
-    ]);
-    const groups = buildRecognitionComparison(left, right);
-    expect(groups).toHaveLength(1);
-    // The failed side's declarations are unknown (FR-028): comparing the
-    // parsed side's values against "nothing declared" would state a
-    // difference no parse established.
-    expect(groups[0]).toMatchObject({ left: 'recognized', right: 'extraction-failed' });
-    expect(groups[0]!.declarations).toEqual([]);
+    expect(comparison.rightDeclarations).toBe('extraction-failed');
+    expect(comparison.declarations).toEqual([]);
   });
 
-  it('builds no group at all for files no recognition owns', () => {
+  it('builds no recognition row at all for files no recognition owns', () => {
     // Two census companions compared through the generic path publish no
-    // recognition rows, because the files carry none (T201): their literal
-    // sources are the whole comparison.
-    const groups = buildRecognitionComparison(
+    // recognition rows and no declaration rows, because the files carry
+    // none (T201): their literal sources are the whole comparison.
+    const comparison = new SkillRecognitionComparison(
       side(companionDetail('.agents/skills/alpha/agents/openai.yaml'), []),
       side(companionDetail('.agents/skills/beta/agents/openai.yaml'), []),
     );
-    expect(groups).toEqual([]);
+    expect(comparison.tools).toEqual([]);
+    expect(comparison.leftDeclarations).toBe('not-a-skill');
+    expect(comparison.rightDeclarations).toBe('not-a-skill');
+    expect(comparison.declarations).toEqual([]);
   });
 
   it('fabricates nothing onto a companion compared against a recognized skill (T201)', () => {
     // A skill against one of its census companions: the skill's recognition
-    // stays its own group, the companion side is stated as not recognized,
-    // and no declaration row is invented for a file that parsed nothing.
+    // stays its own row, the companion side is stated as not recognized and
+    // not a skill, and no declaration row is invented for a file that
+    // parsed nothing.
     const skillPath = '.agents/skills/alpha/SKILL.md';
-    const groups = buildRecognitionComparison(
+    const comparison = new SkillRecognitionComparison(
       side(entryDetail(skillPath, [scalar('name', 'alpha')]), [definition(skillPath, 'codex')]),
       side(companionDetail('.agents/skills/alpha/agents/openai.yaml'), []),
     );
-    expect(groups).toHaveLength(1);
-    expect(groups[0]).toMatchObject({ tool: 'codex', left: 'recognized', right: 'not-recognized' });
-    expect(groups[0]!.declarations).toEqual([]);
+    expect(comparison.tools.map((row) => [row.tool, row.left, row.right])).toEqual([
+      ['codex', 'recognized', 'not-recognized'],
+    ]);
+    expect(comparison.rightDeclarations).toBe('not-a-skill');
+    expect(comparison.declarations).toEqual([]);
   });
 
   it('publishes descriptive rows only — no rank, no winner, no fabricated relationships', () => {
     const path = '.agents/skills/alpha/SKILL.md';
     const otherPath = '.agents/skills/beta/SKILL.md';
-    const left = side(entryDetail(path, [scalar('name', 'alpha')]), [definition(path, 'codex')]);
-    const right = side(entryDetail(otherPath, [scalar('name', 'beta')]), [
-      definition(otherPath, 'codex'),
-    ]);
-    const groups = buildRecognitionComparison(left, right);
-    // The closed shape is the claim (FR-012): a group states which
-    // recognitions exist and how their declarations compare, and nothing
-    // else — no ordering verdict, no effectiveness claim, and no
+    const comparison = new SkillRecognitionComparison(
+      side(entryDetail(path, [scalar('name', 'alpha')]), [definition(path, 'codex')]),
+      side(entryDetail(otherPath, [scalar('name', 'beta')]), [definition(otherPath, 'codex')]),
+    );
+    // The closed shape is the claim (FR-012): the comparison states which
+    // recognitions exist and how the files' declarations compare, and
+    // nothing else — no ordering verdict, no effectiveness claim, and no
     // relationship rows, because no shipped recognition publishes an edge
     // for the wire to carry (api-types.ts § FileDetailDto). A row holds one
     // key identity and its two resolved values; `equal` is not among its
     // fields because it is derived by a getter from the values it compares,
     // never stored beside them.
-    for (const group of groups) {
-      expect(Object.keys(group).toSorted()).toEqual([
-        'declarations',
-        'kind',
-        'left',
-        'right',
-        'tool',
-      ]);
-      for (const row of group.declarations) {
-        expect(Object.keys(row).toSorted()).toEqual(['key', 'keyKind', 'left', 'right']);
-        expect(typeof row.equal).toBe('boolean');
-      }
+    expect(Object.keys(comparison).toSorted()).toEqual([
+      'declarations',
+      'leftDeclarations',
+      'rightDeclarations',
+      'tools',
+    ]);
+    for (const row of comparison.tools) {
+      expect(Object.keys(row).toSorted()).toEqual(['kind', 'left', 'right', 'tool']);
+    }
+    for (const row of comparison.declarations) {
+      expect(Object.keys(row).toSorted()).toEqual(['key', 'keyKind', 'left', 'right']);
+      expect(typeof row.equal).toBe('boolean');
     }
   });
 });

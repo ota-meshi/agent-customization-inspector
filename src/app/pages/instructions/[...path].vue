@@ -44,6 +44,7 @@ import { NuxtLink } from '#components';
 import SourceViewer from '../../components/inspection/SourceViewer.vue';
 import FrontmatterBlock from '../../components/inspection/FrontmatterBlock.vue';
 import { nextTabForKey } from '../../components/tab-navigation';
+import { instructionComparisonRouteFor } from '../../composables/instruction-comparison';
 import { SESSION_VIEW_STATE } from '../../session/view-state';
 import { DIAGNOSTIC_REGISTRY } from '../../../shared/diagnostics';
 import {
@@ -51,6 +52,7 @@ import {
   FILE_ENCODING_TEXT,
   SUPPORTED_TOOL_TEXT,
   escapeControlCharacters,
+  isReadableFile,
   pathPresentationLabel,
 } from '../../../shared/entities';
 import { VENDOR_SURFACE_TEXT } from '../../../shared/registries/behavior-text';
@@ -129,6 +131,40 @@ const toolsText = computed(() =>
     )
     .join(', '),
 );
+
+/** The committed readable paths — the comparison-eligible files (FR-025). */
+const comparablePaths = computed(
+  () =>
+    new Set(
+      (snapshot.value?.files ?? []).filter(isReadableFile).map((file) => file.sourceRelativePath),
+    ),
+);
+
+/**
+ * The comparison entry for this file (FR-011, T278): this file beside a
+ * counterpart of its own applicability-range row — the row that owns every
+ * pair this file can be part of, exactly as a skill's entry link stays
+ * inside its name's row. Null when this file is not readable or its row
+ * holds no readable counterpart; the compare route's own pickers take over
+ * from there, so any other pair of the row is one pick away rather than
+ * composed here.
+ */
+const comparePairRoute = computed(() => {
+  if (owner.value === null || !comparablePaths.value.has(openPath.value)) {
+    return null;
+  }
+  const ownRow = (snapshot.value?.instructions ?? []).find((entry) =>
+    entry.files.some((file) => file.sourceRelativePath === openPath.value),
+  );
+  const counterpart = ownRow?.files.find(
+    (file) =>
+      file.sourceRelativePath !== openPath.value &&
+      comparablePaths.value.has(file.sourceRelativePath),
+  );
+  return counterpart === undefined
+    ? null
+    : instructionComparisonRouteFor(openPath.value, counterpart.sourceRelativePath);
+});
 
 /**
  * The open detail once it is this path's: the fetched entry whose file is the
@@ -495,6 +531,14 @@ onBeforeUnmount(() => {
         <p class="aci-instruction-detail__recognition">
           {{ toolsText }} · {{ CUSTOMIZATION_KIND_TEXT.instructions }}
         </p>
+
+        <!-- The comparison entry for this file (FR-011): present exactly
+             when the current scan holds another readable instruction file to
+             stand opposite it. The comparison surface's own pickers take
+             over from there. -->
+        <p v-if="comparePairRoute !== null" class="aci-instruction-detail__compare">
+          <NuxtLink :to="comparePairRoute">Compare this instruction file</NuxtLink>
+        </p>
       </div>
 
       <!-- Two subjects, two tabs: what the parse read out of the file, and
@@ -582,13 +626,7 @@ onBeforeUnmount(() => {
           {{ FILE_ENCODING_TEXT[openDetail.file.encoding]
           }}<template v-if="openDetail.file.encoding !== 'unknown'">
             · {{ openDetail.file.sizeBytes }} bytes</template
-          ><template
-            v-if="
-              (openDetail.file.encoding === 'utf-8' ||
-                openDetail.file.encoding === 'utf-8-replaced') &&
-              openDetail.file.hadLeadingBom
-            "
-          >
+          ><template v-if="isReadableFile(openDetail.file) && openDetail.file.hadLeadingBom">
             · byte-order mark removed before decoding</template
           >
         </p>
@@ -608,9 +646,7 @@ onBeforeUnmount(() => {
         <!-- Only the readable variants carry text. An unreadable file has no
              source to show and its diagnostic above says why. -->
         <SourceViewer
-          v-if="
-            openDetail.file.encoding === 'utf-8' || openDetail.file.encoding === 'utf-8-replaced'
-          "
+          v-if="isReadableFile(openDetail.file)"
           :source-text="openDetail.file.sourceText"
           :source-relative-path="openDetail.file.sourceRelativePath"
         />

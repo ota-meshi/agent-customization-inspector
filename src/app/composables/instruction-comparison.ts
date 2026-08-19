@@ -1,34 +1,31 @@
-// The skill comparison view state for the browser SPA (T195; FR-011,
+// The instruction comparison view state for the browser SPA (T278; FR-011,
 // FR-030, data-model.md § BrowserState · ComparisonSelection).
 //
-// This surface is the skill kind's, not a shared one: a skill comparison
-// is one name's copies compared file by
-// corresponding file, a model other kinds do not fit — an MCP comparison,
-// for one, compares declarations inside carrier files rather than
-// same-named file copies — so each family's comparison phase designs its
-// own surface, and nothing here pretends to be it.
+// This surface is the instruction kind's, not a shared one: comparison is
+// kind-specific with no shared module (spec.md § Clarifications Session
+// 2026-08-14), and this kind's model is two files of one
+// applicability-range row compared whole — the row-owned pair the skill
+// precedent establishes, with the range row standing where the skill name's
+// row stands. An instruction file is complete in itself, with no copy
+// directory and no corresponding-file coordinate, so the row's files are
+// compared whole rather than file by corresponding file.
 //
 // The comparison selection is the route's:
-// `/skills/compare?left=<entry path>&right=<entry path>&file=<relative>`
-// names two copies of one skill name by their entry files' Source-relative
-// Paths — the identity the inventory and the detail route use (FR-030) —
-// and the compared file inside them, and the compare page's own switchers
-// are how a reader moves those coordinates. There is no standing
-// pre-selection state: the entry links are built where a name's files are
-// already known (the inventory row and the skill detail page), and a
-// persistent two-file selection could not switch among three or more files
-// the way the switchers do. A pair the model does not express is reported
-// by the page, never opened (FR-011).
+// `/instructions/compare?left=<path>&right=<path>` names the two files by
+// their Source-relative Paths — the identity the inventory and the detail
+// route use (FR-030); the owning range row is derived from them, because a
+// file governs exactly one range — and the compare page's own pickers are
+// how a reader moves those coordinates within the row. There is no standing
+// pre-selection state, and a pair the model does not express is reported by
+// the page, never opened (FR-011).
 //
-// What this class holds is the open view: the ordinary `get-file-detail`
-// loads a pair needs — two for a two-file pair, one for a one-sided pair
-// whose absent side is the stated absence itself — of files the client
-// already lists. There is no compare API, because a comparison is a read of
-// committed details, not a new resource. The view is generation-scoped
-// (FR-030): a commit that replaces the owning sequence's snapshot
-// invalidates the previous generation's comparison view and editor-model
-// state, and the central client-data purge (FR-027) clears them the same
-// way.
+// What this class holds is the open view: the two ordinary `get-file-detail`
+// loads of files the client already lists. There is no compare API, because
+// a comparison is a read of committed details, not a new resource. The view
+// is generation-scoped (FR-030): a commit that replaces the owning
+// sequence's snapshot invalidates the previous generation's comparison view
+// and editor-model state, and the central client-data purge (FR-027) clears
+// them the same way.
 //
 // Construction performs no I/O, and the state is owned by the one
 // `SessionViewState`: a second instance would race the first for the same
@@ -44,23 +41,20 @@ import type { FileDetailDto } from '../../shared/api-types';
  *  - 'idle'         nothing is open, or the open pair was cleaned up; with a
  *                   pair still named by the route this is the recoverable
  *                   state whose retry re-requests it
- *  - 'loading'      the pair's detail requests are in flight — two for a
- *                   two-file pair, one for a one-sided pair
- *  - 'ready'        every present side's detail passed its guards and may be
- *                   rendered; a one-sided pair's absent side stays null as
- *                   the stated absence
+ *  - 'loading'      the pair's two detail requests are in flight
+ *  - 'ready'        both details passed their guards and may be rendered
  *  - 'same-path'    the route named one path twice; the same file must not
  *                   occupy both sides (FR-011)
  *  - 'stale'        a named path resolves to no current-generation file
  *  - 'not-readable' a named file holds no readable source text (FR-025)
  *  - 'failed'       a request failed ordinarily; the real message is kept
  */
-export type SkillComparisonViewStatus =
+export type InstructionComparisonViewStatus =
   /** Nothing is open, or the open pair was cleaned up. */
   | 'idle'
-  /** The pair's detail requests — one or two — are in flight. */
+  /** The pair's two detail requests are in flight. */
   | 'loading'
-  /** Every present side's detail passed its guards and is rendered. */
+  /** Both details passed their guards and are rendered. */
   | 'ready'
   /** The route named one path twice (FR-011). */
   | 'same-path'
@@ -68,38 +62,30 @@ export type SkillComparisonViewStatus =
   | 'stale'
   /** A named file holds no readable source text (FR-025). */
   | 'not-readable'
-  /** A request failed ordinarily; see {@link SkillComparisonState.errorMessage}. */
+  /** A request failed ordinarily; see {@link InstructionComparisonState.errorMessage}. */
   | 'failed';
 
 /**
- * The skill comparison route of one compared pair. `left` and `right` are
- * the two copies' identities — their entry files' Source-relative Paths,
- * the same identity the inventory's definitions and the detail route use
- * (FR-030) — and `comparedFile` is the copy-relative path of the file the
- * pair shows, omitted for the entries themselves. The URL carries the
- * comparison model's own coordinates rather than two free file paths, so a
- * pair the model cannot express — two files of different names, one file
- * twice, a cross-kind pair — cannot be written. A module function beside
- * the state class so every surface that builds the link — the inventory
- * row's and detail page's entry links, and the compare route's own
- * switchers — builds the same URL.
+ * The instruction comparison route of one compared pair. `left` and `right`
+ * are the two files' Source-relative Paths — the identity the inventory rows
+ * and the detail route use (FR-030); the applicability-range row that owns
+ * the pair is derived from them rather than carried, because a file governs
+ * exactly one range. A module function beside the state class so every
+ * surface that builds the link — the inventory row's and detail page's
+ * entry links, and the compare route's own pickers — builds the same URL.
  */
-export function skillComparisonRouteFor(
+export function instructionComparisonRouteFor(
   left: string,
   right: string,
-  comparedFile?: string,
 ): {
   readonly path: string;
-  readonly query: { readonly left: string; readonly right: string; readonly file?: string };
+  readonly query: { readonly left: string; readonly right: string };
 } {
-  return {
-    path: '/skills/compare',
-    query: { left, right, ...(comparedFile === undefined ? {} : { file: comparedFile }) },
-  };
+  return { path: '/instructions/compare', query: { left, right } };
 }
 
-/** Construction inputs for {@link SkillComparisonState}. */
-export interface SkillComparisonStateOptions {
+/** Construction inputs for {@link InstructionComparisonState}. */
+export interface InstructionComparisonStateOptions {
   /** The guarded API client the pair's detail loads go through. */
   readonly client: SessionApiClient;
   /** The shared purge: the epoch guard, and where this state registers its clearing. */
@@ -122,34 +108,30 @@ export interface SkillComparisonStateOptions {
 }
 
 /**
- * The one open skill comparison view (FR-011). Every public member has a
- * render site or caller in the compare route; nothing is exposed only so a
+ * The one open instruction comparison view (FR-011). Every public member has
+ * a render site or caller in the compare route; nothing is exposed only so a
  * test can read it.
  */
-export class SkillComparisonState {
+export class InstructionComparisonState {
   /** The guarded API client the two detail loads go through. */
   readonly #client: SessionApiClient;
 
   /** The shared purge; the epoch source for every settlement guard. */
   readonly #clientData: ClientDataPurge;
 
-  /** See {@link SkillComparisonStateOptions.refreshFreshly}. */
+  /** See {@link InstructionComparisonStateOptions.refreshFreshly}. */
   readonly #refreshFreshly: () => Promise<void>;
 
-  /** See {@link SkillComparisonStateOptions.reportFatalFailure}. */
+  /** See {@link InstructionComparisonStateOptions.reportFatalFailure}. */
   readonly #reportFatalFailure: (error: Error) => void;
 
-  /** Where the one open comparison stands; see {@link SkillComparisonViewStatus}. */
-  public readonly status = shallowRef<SkillComparisonViewStatus>('idle');
+  /** Where the one open comparison stands; see {@link InstructionComparisonViewStatus}. */
+  public readonly status = shallowRef<InstructionComparisonViewStatus>('idle');
 
-  /**
-   * The first compared file's adopted detail. Null outside 'ready' — and
-   * within it for the absent side of a one-sided comparison
-   * ({@link openSingle}), where the missing counterpart is the difference.
-   */
+  /** The first compared file's adopted detail. Null outside 'ready'. */
   public readonly leftDetail = shallowRef<FileDetailDto | null>(null);
 
-  /** The second compared file's adopted detail; see {@link leftDetail}. */
+  /** The second compared file's adopted detail. Null outside 'ready'. */
   public readonly rightDetail = shallowRef<FileDetailDto | null>(null);
 
   /**
@@ -184,7 +166,7 @@ export class SkillComparisonState {
   readonly #openContentOwners = new Set<() => void>();
 
   /** Wires the state and registers its clearing with the shared purge. */
-  public constructor(options: SkillComparisonStateOptions) {
+  public constructor(options: InstructionComparisonStateOptions) {
     this.#client = options.client;
     this.#clientData = options.clientData;
     this.#refreshFreshly = options.refreshFreshly;
@@ -200,9 +182,8 @@ export class SkillComparisonState {
   /**
    * Registers one component-owned holder of the open comparison's content,
    * returning its unregister function. Exists for the same reason the skill
-   * detail's registry does (`SessionViewState.registerOpenContentOwner`):
-   * the models are owned by the component that mounted them while the
-   * disposal order is this module's contract.
+   * comparison's registry does: the models are owned by the component that
+   * mounted them while the disposal order is this module's contract.
    */
   public registerOpenContentOwner(disposer: () => void): () => void {
     this.#openContentOwners.add(disposer);
@@ -213,7 +194,7 @@ export class SkillComparisonState {
    * Drops the open view: supersedes any request still in flight, clears the
    * reactive state, and disposes the component-owned content synchronously.
    * The reactive state goes first and the owned content second, in one
-   * synchronous block, for the same ordering the skill detail's close
+   * synchronous block, for the same ordering the skill comparison's drop
    * documents (data-model.md § BrowserState).
    */
   #dropView(): void {
@@ -240,11 +221,11 @@ export class SkillComparisonState {
   }
 
   /**
-   * Opens the comparison of exactly two distinct files: two ordinary detail
-   * loads, in order, adopted together or not at all (FR-011). Every write
-   * happens behind one ownership check, so the ways an invocation stops
-   * owning the view — a purge, a generation change, a close, a newer open —
-   * cannot each grow their own handling.
+   * Opens the comparison of exactly two distinct instruction files: two
+   * ordinary detail loads, in order, adopted together or not at all
+   * (FR-011). Every write happens behind one ownership check, so the ways an
+   * invocation stops owning the view — a purge, a generation change, a
+   * close, a newer open — cannot each grow their own handling.
    */
   public async open(leftPath: string, rightPath: string): Promise<void> {
     // The previous pair's content is dropped before anything is requested,
@@ -281,35 +262,6 @@ export class SkillComparisonState {
     // half of it.
     this.leftDetail.value = left;
     this.rightDetail.value = right;
-    this.status.value = 'ready';
-  }
-
-  /**
-   * Opens the one-sided comparison of a file only one of the name's copies
-   * ships: the present side's complete content against its absent
-   * counterpart — the absence itself is the difference the surface exists to
-   * show. One ordinary detail load; the absent side's detail stays null
-   * within 'ready', and the compare route renders the missing side as the
-   * stated absence. The caller decides one-sidedness against the committed
-   * snapshot it holds; a path that turns out uncommitted still settles as
-   * the ordinary stale outcome.
-   */
-  public async openSingle(presentPath: string, presentSide: 'left' | 'right'): Promise<void> {
-    this.#dropView();
-    const requested = this.#requestVersion;
-    const capturedEpoch = this.#clientData.epoch();
-    const owns = (): boolean =>
-      requested === this.#requestVersion && this.#clientData.epoch() === capturedEpoch;
-    this.status.value = 'loading';
-    const present = await this.#fetchOwned(presentPath, owns);
-    if (present === null || !owns()) {
-      return;
-    }
-    if (presentSide === 'left') {
-      this.leftDetail.value = present;
-    } else {
-      this.rightDetail.value = present;
-    }
     this.status.value = 'ready';
   }
 

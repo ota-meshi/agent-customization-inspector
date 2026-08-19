@@ -163,7 +163,7 @@ research、plan、quickstart、task artifactをすべて同期して`/speckit.pl
 | pnpm | 11.13.0 | 現行stable package manager |
 | Local host | `devframe` 0.7.5 | `@eslint/config-inspector`の基盤であるlocal-tool host framework。Packaged SPAを`cli.distDir`から配信し、session APIをRPC channelとして担い、認証は無効化する。Port/host解決を所有し（§ 8）、bundled openerはproductが`open`でbrowser openingを所有するため無効化される（§ 3）。Pre-1.0のため、commit済みlockfileがreview済みbaselineを固定し、manifestのcaret rangeは0.7.x内にとどまる |
 | CLI | `gunshi` 0.37.0 | 現行のruntime dependency 0件のESM CLI framework。Node.js `>=22` engine requirementは宣言済みrangeと互換 |
-| Browser opener | `open` 11.0.1 | Startup browser helper（FR-001）を担う現行stableなcross-platform opener: bind済みloopback originをOS default handlerへbest-effortで渡し、devframeのbundled openerを無効化してspawnできるhelperを正確に1つにする。VendoredなPOSIX shell `xdg-open` — Linuxでは実行可能な限りそれを使い、そうでなければsystem helper — は記録済みのFR-038 closure例外である（§ 3） |
+| Browser opener | `open` 11.0.1 | Startup openerのfallback（FR-001）を担う現行stableなcross-platform opener: macOSのChromium tab再利用が適用されないか失敗した場合に（§ 3）、bind済みloopback originをOS default handlerへbest-effortで渡し、devframeのbundled openerを無効化してproductのopenerだけが動くようにする。VendoredなPOSIX shell `xdg-open` — Linuxでは実行可能な限りそれを使い、そうでなければsystem helper — は記録済みのFR-038 closure例外である（§ 3） |
 | Host HTTP app | `h3` 2.0.1-rc.22 | Hostはdevframeがmountする先のH3 appを自ら構築し、devframeの拡張子guard付きSPA fallbackでは配信できない`/skills/**`のshell fallbackを載せる — skill detail URLは`SKILL.md`のようにfile自身の最終segmentで終わり、devframeは拡張子判定の前にdecodeするためpercent-encodeは代案にならないからである。他の直接依存と同じくcaret rangeで宣言し、lockfileがdevframe自身のh3へresolveするため、両者は1つのmodule instanceへ解決される。devframe自身が拡張子付きclient-route missをserveできるようになれば、この依存はhost shimとともに無くなる |
 | Parser | `yaml` 2.9.0、`jsonc-parser` 3.3.1、`smol-toml` 1.7.0 | 現行stable inert data parser |
 | Frontmatter | `vfile-matter` 5.0.1、`vfile` 6.0.3 | Frontmatterのdelimiter処理。Frontmatter blockの開始と終了を決めることはBOM処理、改行、閉じfenceの形を決め直すことであり、正規表現ではなくparserの仕事である。これは同表の`yaml` engineでblockをparseする。独自の`js-yaml`を持つpackageは1つのdocumentに2つの意味を与えてしまう。js-yaml 3はYAML 1.1、`yaml`はYAML 1.2だからである |
@@ -205,7 +205,7 @@ Inspector package、public contract、永続profile、user dataが存在しな�
 blockする。Release-validation pairは後で対応するdecision evidenceを記録し、英日validation evidenceが欠落すれば
 releaseをblockする。
 
-`open` dependency — product-ownedなstartup browser helper（§ 3）— には理由付きの明示的な
+`open` dependency — startup openerのfallback helper（§ 3）— には理由付きの明示的な
 no-impact判断を記録する: public contract、session API shape、永続data、workflowに一切触れない。CLIの
 `--open`/`--no-open` surface、単一のlaunch line、表示済みURL fallbackは、どのpackageがhelperを
 所有するかに依存しない。直接宣言するpackageがhelperを所有し、devframeのbundled openerは無効化
@@ -305,11 +305,25 @@ Browser launchをdevframe hostのbundled openerに委ねる案は、既に監査
 どのhelperが動くか — そしてOS handlerをどう解決するか — が、このproductが自ら宣言・review・更新する
 dependencyではなくdevframeのbundle判断で固定されてしまう。Directな`open` dependencyはhelperを
 production closureの名前付きlockfile-pinned memberにし、hostはdevframeのbundled openerを無効化して
-spawnできるhelperを正確に1つにする。`open`のpublished tarballが含む唯一のnon-JavaScript executable —
+productのopenerだけが動くようにする。`open`のpublished tarballが含む唯一のnon-JavaScript executable —
 vendoredなPOSIX shell `xdg-open`で、package自身の選択policyがLinux hostでは実行可能である限りそれを使い、
 そうでないときにsystemの`xdg-open`へfallbackする —
 は記録済みのFR-038 closure例外である（spec.md FR-038）。openの失敗またはunsupported時は
 既に表示したloopback URLをmanual openできるままにする。
+
+macOSでは、Viteが実装しているのと同じ方法で、起動中のChromium系browserが既にsession originを
+開いているtabの再利用をまず試みる: 固定の`ps cax` probeが固定一覧のapplication（Chrome系variant、
+Microsoft Edge、Brave、Vivaldi、Chromium）のどれが起動中かを読み、product-authoredな固定JXA script —
+JavaScriptであり、create-react-appのMIT-licensed openerから改変し、packaged CLIを単一bundleに保つため
+source定数として埋め込む — をOSの`osascript` automation hostで実行して、一致するtabをfocusして
+reloadし、空のnew-tab pageをretargetし、それも無いときだけそのbrowserに新しいtabを開く。この
+attemptは、起動中のChromium系browserをOS default handlerより意図的に優先する。macOSはこれを
+一度きりのautomation consentの背後に置き、拒否されればattemptは静かに失敗する。あらゆる失敗 —
+固定一覧のbrowserが起動していない場合を含む — は上記の`open` helperへfallbackし、それは常に新しい
+tabを開く。Windows、Linux、非Chromium browserに再利用は無い:「このURLを表示しているtab」を
+指すplatform APIが存在しないため、macOS上のautomation-scriptableなChromium系が到達可能な
+surfaceの全てである。spawnされるどのprocessも、固定の引数とbind済みloopback originだけを受け取る
+（FR-022、spec.md § Clarifications Session 2026-07-19）。
 
 ## 4. Vendor behavior、Inspector matcher、evidence
 
@@ -538,7 +552,7 @@ RPC handlerのerrorはdevframeがserializeする形のままdevframe channelを�
 持たない。Startup所有failureはprocess top levelへ到達する。Process-level OOMやkernel terminationからのrecoverは保証しない。
 
 Decode後にbest-effort metadata extractionを行う。認識したkindが公開する宣言ごとに、そのparserが解決した値を持つentryを
-1件持つ。Public metadata listはそのkindが公開する順で宣言ごとに1件とし、stable identityはtool、kind、宣言keyとする。
+1件持つ。Public metadata listはそのkindが公開する順で宣言ごとに1件とし、cross-file identityはkindと宣言keyとする。listはそのfileの認識kindに対する1回のparseであり、認識する全toolが共有するため、toolは宣言の座標ではない。
 2回宣言されたkeyは後の宣言へ解決され、それがそのfileを読み込む製品の得る値である。
 JSON/YAML/TOMLのquote、escape、block indicator、number/date spelling、collection punctuationを表示に残す。Typed
 classification、relationship normalization、bounded derivationを駆動するのも、その解決済みの値である。
@@ -632,8 +646,10 @@ devframe hostがNuxt outputを直接配信するため（§ 8）、product-assem
 表示のinert性はread-onlyなeditor設定、Vue text binding、無効なlinkによって成立し、clientは引き続き
 external worker、blob worker、evaluated stringをloadしない。Diff highlightはproduct独自のline数/computation-time cutoffを設けず、Monacoとbrowserの
 capacityに従う。Monacoまたはbrowserがrecoverable failureを報告した場合もcomplete read-only side-by-side sourceと
-diagnosticを残す。Recognition metadataはtool、kind、宣言keyで対応付け、各宣言の解決済み値をVueのrowで
-比較・表示する。
+diagnosticを残す。Tool recognitionはtoolごとに比較し、fileの宣言済みmetadata — kindごとに
+1回のparse — はkindと宣言keyで対応付けて、各宣言の解決済み値をVueのrowで1回だけ
+比較・表示し、Monacoへはserializeしない。toolは宣言の座標ではないため、どのtoolも
+宣言rowをcaptionしたり繰り返したりしない。
 Monacoのaccessible diff viewer、ARIA label、keyboard navigation、narrow-screen inline modeを維持し、
 明示的なaccessibility test対象にする。
 
@@ -670,7 +686,8 @@ session APIを、`defineRpcFunction`で宣言してdefinitionの`setup`で登録
 state、streaming channelを一切登録せず、editor/finder helper（`devframe:open-in-editor`、
 `devframe:open-in-finder`）はこのproductがimportしないopt-in recipeである。Port/host解決、SPA
 fallback付きstatic配信、RPC channelはproduct codeではなく
-devframeのpolicyであり、browser openingはproductが`open` packageを通じて所有し、devframeの
+devframeのpolicyであり、browser openingはproductがstartup opener — macOSのChromium tab再利用を
+`open` packageのhelperの前段に置く — を通じて所有し、devframeの
 bundled openerは無効化される（§ 3）。ただしstatic配信の前段にclosedなproduct所有の要素が1つある:
 `/skills/**`と`/instructions/**`の`GET`/`HEAD`を`/`へ書き換えるrewrite（shipped kind detailごとに
 1 route family）で、extension-guardedなfallbackがserveできない
@@ -726,7 +743,7 @@ signalにはproduct定義のdelivery deadlineがないため、continuously idle
 lossにはproduct定義のwall-clock検出保証を設けない。
 
 Non-null fenceならsession routeはexactでcontrol-onlyな`GlobalFenceRecoverySnapshot`を返す。
-Null fenceならnormal full `InspectionSession`を返すが、recovering clientはcontrol/error projectionだけを
+Null fenceならnormal full `SessionSnapshot`を返すが、recovering clientはcontrol/error projectionだけを
 採用してinspection graphを破棄する。Recoveryはpurge済みIDを保持・比較せず、返された`sessionId`を
 new baselineとして採用する。Active consent中はそのviewからdisableを直ちに利用でき、preview routeが
 exact frozen previewを返した後だけbrowser persistenceやenvironment再readなしでretry controlを再構築
@@ -741,10 +758,12 @@ Session APIは、明示的なdetail requestにだけ完全なauthored contentを
 Global disableは明示的なfull-purge例外である。
 
 Browser attempt前に、解決済みlocal origin `http://localhost:<port>/`をhostのready callbackから起動元
-terminalへ正確に1回表示する（FR-001）。Browser openingは`open` packageを通じたproductのpolicyである（§ 3）:
-CLIのnegatableな`--open` flag（default true）は、hostがlaunch lineの後に`open`のhelperをspawnするかを
-決め、devframeのbundled openerは無効化されてspawnできるhelperは正確に1つになる。Helperはその解決済み
-originだけを受け取り、inspection由来のcontent/pathを決して受け取らない（FR-022）。Productは解決されたhandlerの
+terminalへ正確に1回表示する（FR-001）。Browser openingはstartup openerを通じたproductのpolicyである（§ 3）:
+CLIのnegatableな`--open` flag（default true）は、hostがlaunch lineの後にそれを実行するかを決め、
+devframeのbundled openerは無効化されてproductのopenerだけが動く。macOSでは、起動中のChromium系
+browserが既に持つsession tabを、`open`のhelperが新しいtabをspawnする前にfocusする。spawnされる
+どのprocessも固定の引数とその解決済みoriginだけを受け取り、inspection由来のcontent/pathを決して
+受け取らない（FR-022）。固定一覧に基づく再利用の選択を超えて、Productは解決されたhandlerの
 browser family/versionを選択・probe・検証しない（FR-001）。Automatic openのdisabled、unsupported、失敗は
 serverを継続させ、いずれの場合も表示済みoriginがfallbackである。
 
@@ -786,8 +805,10 @@ payloadをsession retrievalごとに繰り返さない。
   responseにrequest-token、client-epoch、session、Global-epoch、fence guardを適用する。Support対象の
   single-browser-session useには別tabをproactiveに観測するrequirementがない。
 - Project-ownedなbrowser-launch adapter（ambient environment allowlist付きの固定`/usr/bin/open`/`xdg-open`
-  spawn）は採らない。Cross-platformのhelper解決はmaintainされた`open` packageが既に所有するpolicyであり
-  （§ 3）、productのhelperは解決済みlocal originだけを受け取る。
+  spawn）は採らない。Cross-platformのhelper解決はmaintainされた`open` packageが既に所有するpolicyである
+  （§ 3）。そのfallbackの前段に立つmacOSのtab再利用はこのようなadapterではない: handlerを一切解決せず
+  platform mapも持たず — 起動中の固定一覧applicationを1つ操作し、それ以外のすべての場合を`open`へ
+  渡す — spawnされるどのprocessも固定の引数と解決済みlocal originだけを受け取る。
 
 ## 9. Atomic generation、rescan、実行環境依存capacity
 
@@ -1328,9 +1349,11 @@ manual accessibility check、documentation parity check、release tarball inspec
 
 **決定**: 最終analysis remediationをplanningとimplementationへ引き継ぐ。
 
-1. 固定startup OS browser helperを、許可する唯一のproduct起動child processとする。受け取るのは表示済み
-   loopback originだけであり、inspection由来content/path、authored value、user-supplied commandを渡さない。
-   Helperはlaunch environmentを変更なしで継承する: productはどの環境変数にもinspection由来の値を書き込まず、
+1. Startup時のbrowser openingを、許可する唯一のproductのchild-process surfaceとする: macOSでは固定の
+   process一覧probeと、OSの`osascript` automation hostで実行する固定のtab再利用script、それ以外では
+   固定startup OS browser helper（§ 3）。spawnされるどのprocessも固定の引数と表示済み
+   loopback originだけを受け取り、inspection由来content/path、authored value、user-supplied commandを受け取らない。
+   各childはlaunch environmentを変更なしで継承する: productはどの環境変数にもinspection由来の値を書き込まず、
    `xdg-open`が`$BROWSER`を参照するようにplatform helperがuser自身の設定を尊重するのは、inspection由来の
    inputではなくuser preferenceの適用である。Ambient valueとSource rootのlexical一致はprovenanceを変えず
    authorityを与えない。Discovery、read、parse、display、

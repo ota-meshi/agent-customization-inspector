@@ -73,6 +73,7 @@ import {
   FILE_ENCODING_TEXT,
   SUPPORTED_TOOL_TEXT,
   escapeControlCharacters,
+  isReadableFile,
   rendersNothingVisible,
 } from '../../../../shared/entities';
 
@@ -127,9 +128,7 @@ const committedPaths = computed(
 const comparablePaths = computed(
   () =>
     new Set(
-      (snapshot.value?.files ?? [])
-        .filter((file) => file.encoding === 'utf-8' || file.encoding === 'utf-8-replaced')
-        .map((file) => file.sourceRelativePath),
+      (snapshot.value?.files ?? []).filter(isReadableFile).map((file) => file.sourceRelativePath),
     ),
 );
 
@@ -1052,12 +1051,7 @@ onBeforeUnmount(() => {
                 {{ FILE_ENCODING_TEXT[openFile.encoding]
                 }}<template v-if="openFile.encoding !== 'unknown'">
                   · {{ openFile.sizeBytes }} bytes</template
-                ><template
-                  v-if="
-                    (openFile.encoding === 'utf-8' || openFile.encoding === 'utf-8-replaced') &&
-                    openFile.hadLeadingBom
-                  "
-                >
+                ><template v-if="isReadableFile(openFile) && openFile.hadLeadingBom">
                   · byte-order mark removed before decoding</template
                 >
               </p>
@@ -1081,7 +1075,7 @@ onBeforeUnmount(() => {
                a skill's own asset — has none either, and the encoding line
                above is the whole story. -->
               <SourceViewer
-                v-if="openFile.encoding === 'utf-8' || openFile.encoding === 'utf-8-replaced'"
+                v-if="isReadableFile(openFile)"
                 :source-text="openFile.sourceText"
                 :source-relative-path="openFile.sourceRelativePath"
               />

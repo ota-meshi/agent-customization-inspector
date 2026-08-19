@@ -2,6 +2,7 @@
   "extends": "./.nuxt/tsconfig.json",
   "compilerOptions": {
     "types": ["node"],
+    "allowImportingTsExtensions": true,
     "checkJs": true,
     "exactOptionalPropertyTypes": true,
     "noFallthroughCasesInSwitch": true,

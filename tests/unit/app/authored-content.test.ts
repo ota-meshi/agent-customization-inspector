@@ -153,6 +153,10 @@ describe('authored file content in the browser', () => {
       'dispose',
       'entryDetail',
       'fileDetailState',
+      // The instruction comparison view (FR-011): the instruction kind's own
+      // two ordinary detail loads, with the same guards as the skill one and
+      // nothing that masks or reveals either side.
+      'instructionComparison',
       'openCompanion',
       'openFileDetail',
       // The active route's title subject — a display name the page already

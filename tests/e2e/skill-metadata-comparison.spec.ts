@@ -126,11 +126,12 @@ test('publishes no recognition rows for files that carry none', async ({ page })
   await openCompanionComparison(page);
   // No `skill metadata` recognition exists (Phase 6 decision), so nothing is
   // typed about these files: the metadata section states that instead of
-  // fabricating rows, and the literal sources above are the comparison.
+  // fabricating rows or section headings, and the literal sources above are
+  // the comparison.
   const comparison = page.locator('.aci-recognition-comparison');
   await expect(comparison).toContainText('No compared file here carries a recognition');
   await expect(comparison.locator('table')).toHaveCount(0);
-  await expect(comparison.locator('h4')).toHaveCount(0);
+  await expect(comparison.locator('h3')).toHaveCount(0);
 });
 
 test('shows authored sensitive values unchanged, with no masking or reveal control', async ({

@@ -45,13 +45,14 @@ import { useRoute, useRouter } from 'vue-router';
 import { NuxtLink } from '#components';
 import RecognitionComparison from '../../components/skill-comparison/RecognitionComparison.vue';
 import SourceDiff from '../../components/skill-comparison/SourceDiff.vue';
-import { buildRecognitionComparison } from '../../components/skill-comparison/recognition-comparison';
+import { SkillRecognitionComparison } from '../../components/skill-comparison/recognition-comparison';
 import { skillComparisonRouteFor } from '../../composables/skill-comparison';
 import { SESSION_VIEW_STATE } from '../../session/view-state';
 import {
   escapeControlCharacters,
   FILE_ENCODING_TEXT,
   inlinePresentationLabel,
+  isReadableFile,
 } from '../../../shared/entities';
 import { FILE_DETAIL_KIND_TEXT } from '../../../shared/api-text';
 import type {
@@ -185,9 +186,7 @@ function copyOf(path: string, population: CopyPopulation): string | undefined {
 const readablePaths = computed(
   () =>
     new Set(
-      (snapshot.value?.files ?? [])
-        .filter((file) => file.encoding === 'utf-8' || file.encoding === 'utf-8-replaced')
-        .map((file) => file.sourceRelativePath),
+      (snapshot.value?.files ?? []).filter(isReadableFile).map((file) => file.sourceRelativePath),
     ),
 );
 
@@ -659,9 +658,7 @@ function diffText(detail: FileDetailDto | null): string | null {
   if (detail === null) {
     return '';
   }
-  return detail.file.encoding === 'utf-8' || detail.file.encoding === 'utf-8-replaced'
-    ? detail.file.sourceText
-    : null;
+  return isReadableFile(detail.file) ? detail.file.sourceText : null;
 }
 
 /**
@@ -670,9 +667,10 @@ function diffText(detail: FileDetailDto | null): string | null {
  * null detail for the stated absence of a one-sided comparison), the diff
  * input (the requested paths with the complete texts, guarded by the same
  * readable-variant check the comparison state enforces so `sourceText` is
- * never reached on a variant that lacks it), and the recognition groups —
- * built for a one-sided pair too, whose present side's recognitions stand
- * beside the stated absence (FR-011, T203).
+ * never reached on a variant that lacks it), and the recognition
+ * comparison — built for a one-sided pair too, whose present side's
+ * recognitions and declarations stand beside the stated absence (FR-011,
+ * T203).
  *
  * One computed rather than one per projection, because its release is its
  * next read: a dirty computed retains its previous value until then, and a
@@ -723,7 +721,7 @@ const readyView = computed(() => {
           },
     // A one-sided pair passes its absent side as null: the present side's
     // recognitions and declarations stand beside the stated absence (T203).
-    groups: buildRecognitionComparison(
+    recognition: new SkillRecognitionComparison(
       left === null
         ? null
         : { detail: left, definitions: definitionsOf(left.file.sourceRelativePath) },
@@ -1087,7 +1085,7 @@ onBeforeUnmount(() => {
         </section>
       </div>
 
-      <!-- Headed like the metadata section below, so the two halves of the
+      <!-- Headed like the metadata sections below, so the halves of the
            ready view sit at one heading level and the editor-failure
            fallback's own captions nest under a heading rather than beside
            one (WCAG 1.3.1). -->
@@ -1096,8 +1094,9 @@ onBeforeUnmount(() => {
         <SourceDiff v-bind="readyView.diff" />
       </template>
 
-      <h3>Recognition metadata</h3>
-      <RecognitionComparison :groups="readyView.groups" />
+      <!-- The component owns its two section headings — tool recognition and
+           declared metadata are two facts with two homes (research.md § 7). -->
+      <RecognitionComparison :comparison="readyView.recognition" />
     </div>
 
     <template v-else-if="status === 'loading'">

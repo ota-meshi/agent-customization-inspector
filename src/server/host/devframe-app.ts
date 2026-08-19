@@ -14,8 +14,8 @@
 // include the user's own secrets — so the host is never exposed beyond the
 // initiating machine and no configuration can bind another interface.
 // devframe owns static SPA serving from `cli.distDir` and port selection;
-// the product owns best-effort startup browser opening through the `open`
-// package (research.md § 3), adds no asset manifest or
+// the product owns best-effort startup browser opening through its startup
+// opener (`./browser-opener`, research.md § 3), adds no asset manifest or
 // per-asset re-verification, and its only routes of its own are the
 // `/skills/**` and `/instructions/**` shell fallbacks in `createHostApp`,
 // which devframe's static handler cannot serve (Constitution Principle I). An unexpected
@@ -31,7 +31,7 @@ import { fileURLToPath } from 'node:url';
 // resolve to the same installed h3 2 module instance devframe itself loads.
 import { H3, defineHandler } from 'h3/node';
 import { createDevServer, type CreateDevServerOptions } from 'devframe/adapters/dev';
-import open from 'open';
+import { openStartupBrowser } from './browser-opener';
 // The package manifest is the single source of these values. The bundler
 // tree-shakes the JSON module down to the referenced fields, so the
 // packaged CLI never reads package.json at runtime.
@@ -291,21 +291,22 @@ export interface StartInspectorHostOptions {
   /** The session/coordinator pair the RPC functions serve. */
   readonly context: InspectorHostContext;
   /**
-   * Automatic browser opening (FR-001): `true` spawns the `open` package's
-   * fixed OS helper with the bound loopback origin, best-effort; `false`
-   * maps from `--no-open`.
+   * Automatic browser opening (FR-001): `true` runs the product's startup
+   * opener with the bound loopback origin, best-effort — the macOS
+   * Chromium tab reuse in front of the `open` package's fixed OS helper
+   * (`./browser-opener`); `false` maps from `--no-open`.
    */
   readonly openBrowser?: boolean;
-  /** Called after loopback bind and before the host's `open` browser helper. */
+  /** Called after loopback bind and before the host's startup opener. */
   readonly onReady?: CreateDevServerOptions['onReady'];
 }
 
 /**
  * Starts the loopback devframe dev server for the inspector definition.
  * devframe owns port selection, the loopback `localhost` bind, and static
- * serving; the product owns startup browser opening through the `open`
- * package (FR-001, research.md § 3), so devframe's bundled opener stays
- * disabled and exactly one helper can spawn. The caller (the CLI) awaits
+ * serving; the product owns startup browser opening through its startup
+ * opener (FR-001, research.md § 3), so devframe's bundled opener stays
+ * disabled and only the product's opener runs. The caller (the CLI) awaits
  * the handle for graceful shutdown. An ownerless startup throw/rejection
  * propagates to the process top level ordinarily (contracts/http-api.md
  * § Common results and errors).
@@ -320,19 +321,19 @@ export async function startInspectorHost(
     openBrowser: false,
     onReady: async (info) => {
       // The caller's onReady prints the launch line first, so the manual
-      // fallback URL is always observable before any helper runs (FR-001,
+      // fallback URL is always observable before any opener runs (FR-001,
       // contracts/http-api.md § Host requirements #4).
       await options.onReady?.(info);
       if (options.openBrowser === true) {
         try {
-          await open(`${info.origin}/`);
+          await openStartupBrowser(`${info.origin}/`);
         } catch {
-          // Reached when the OS helper cannot spawn — e.g. a Linux host
-          // whose PATH lacks xdg-open and whose vendored fallback is not
-          // executable. Opening is best-effort by contract (FR-001): the
-          // already printed launch line is the fallback, and the contracted
-          // terminal output carries no helper outcome report
-          // (contracts/http-api.md § Host requirements #5).
+          // Reached when the opener's `open` fallback cannot spawn the OS
+          // helper — e.g. a Linux host whose PATH lacks xdg-open and whose
+          // vendored fallback is not executable. Opening is best-effort by
+          // contract (FR-001): the already printed launch line is the
+          // fallback, and the contracted terminal output carries no opener
+          // outcome report (contracts/http-api.md § Host requirements #5).
         }
       }
     },

@@ -35,9 +35,11 @@ import { computed } from 'vue';
 import { NuxtLink } from '#components';
 import RowDiagnostics from './RowDiagnostics.vue';
 import { instructionDetailRoute } from '../../instruction-detail-route';
+import { instructionComparisonRouteFor } from '../../../composables/instruction-comparison';
 import {
   SUPPORTED_TOOL_TEXT,
   applicabilityRangePresentation,
+  isReadableFile,
   pathPresentationLabel,
 } from '../../../../shared/entities';
 import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text';
@@ -110,6 +112,25 @@ const rowFiles = computed(() =>
     diagnosticIds: props.filesByPath.get(file.sourceRelativePath)?.diagnosticIds ?? [],
   })),
 );
+
+/**
+ * The comparison this row links to — its first two readable files (FR-025:
+ * a diagnostic-only file is not comparison-eligible) — or null when the
+ * range has fewer than two, where a link would open a comparison with
+ * nothing to pair. The compare route's own pickers take over from there:
+ * they hold every committed instruction file, so the reader steps to any
+ * other pair on the comparison itself instead of composing one here (T278).
+ */
+const compareRoute = computed(() => {
+  const readable = props.entry.files.filter((file) => {
+    const published = props.filesByPath.get(file.sourceRelativePath);
+    return published !== undefined && isReadableFile(published);
+  });
+  const [first, second] = readable;
+  return first !== undefined && second !== undefined
+    ? instructionComparisonRouteFor(first.sourceRelativePath, second.sourceRelativePath)
+    : null;
+});
 </script>
 
 <template>
@@ -146,6 +167,16 @@ const rowFiles = computed(() =>
         <RowDiagnostics :diagnostic-ids="file.diagnosticIds" :diagnostics="diagnostics" />
       </li>
     </ul>
+
+    <p v-if="compareRoute !== null" class="aci-instruction-row__compare">
+      <!-- The accessible name carries the row's range after the visible
+           phrase: in a links list every comparable row would otherwise
+           announce identically (WCAG 2.4.6; label-in-name keeps the visible
+           phrase as the prefix). -->
+      <NuxtLink :to="compareRoute" :aria-label="`Compare this range's files: ${rangeText}`"
+        >Compare this range's files</NuxtLink
+      >
+    </p>
   </li>
 </template>
 

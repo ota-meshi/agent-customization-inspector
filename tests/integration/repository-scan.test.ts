@@ -1,8 +1,9 @@
-// T055/T128/T156/T180: the Repository scan end to end — from the synchronous
-// zero-I/O generation 0 through the committed Copilot, Claude, and Codex SKILL
-// inventories, the multi-tool recognition matrix, the file-confined diagnostic
-// matrix, the source-scoped root failure, and the failures that are not
-// confined to one file (FR-001, FR-002, FR-024, FR-028, FR-030).
+// T055/T128/T156/T180/T270: the Repository scan end to end — from the
+// synchronous zero-I/O generation 0 through the committed Copilot, Claude,
+// and Codex SKILL inventories, the per-vendor and unified instruction
+// inventories, the multi-tool recognition matrix, the file-confined
+// diagnostic matrix, the source-scoped root failure, and the failures that
+// are not confined to one file (FR-001, FR-002, FR-024, FR-028, FR-030).
 //
 // The suite starts from generation 0 rather than from a scan on purpose: the
 // Source the first scan reads is the one bootstrap already created, and the
@@ -22,6 +23,7 @@ import {
   NUMEROUS_FALLBACK_BASENAMES,
   NUMEROUS_FALLBACK_DECLARATION_COUNT,
   buildAllToolSkillFixture,
+  buildAllVendorInstructionFixture,
   buildClaudeInstructionFixture,
   buildClaudeSkillFixture,
   buildCodexInstructionFixture,
@@ -2272,5 +2274,295 @@ describe('a census-listed path a rule independently admits (FR-007)', () => {
         entry.definitions.flatMap((definition) => definition.companionFiles),
       ),
     ).toEqual(['.claude/skills/greet/reference.md', '.claude/skills/greet/reference.md']);
+  });
+});
+
+describe('the unified instructions inventory (T270)', () => {
+  // Phase 21 consolidates the per-vendor instruction phases into one scan of
+  // one tree: the explicit shared-file matrix — `AGENTS.md` Codex+Copilot,
+  // root `CLAUDE.md` Claude+Copilot, nested `CLAUDE.md` Claude-only,
+  // `CLAUDE.local.md` Claude-only — with the configured fallbacks Phase 15
+  // activated, one physical item and one read per admitted file, and the
+  // closed publication matrix under injected failures (FR-028, FR-030).
+
+  /** The complete committed instruction rows of the untouched fixture tree. */
+  function expectedInstructionRows(fixture: {
+    readonly injectionUnreadable?: boolean;
+  }): readonly unknown[] {
+    // The injected read failure removes exactly the target's recognitions
+    // while every other row survives; spelling both states here keeps the
+    // partial-continuity case asserting the complete matrix rather than a
+    // sample of it.
+    const rootFiles = [
+      { sourceRelativePath: '.claude/CLAUDE.md', recognitions: [CLAUDE_ONLY] },
+      {
+        sourceRelativePath: '.github/copilot-instructions.md',
+        recognitions: [COPILOT_ALL_SURFACES],
+      },
+      ...(fixture.injectionUnreadable === true
+        ? []
+        : [{ sourceRelativePath: 'AGENTS.md', recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY] }]),
+      { sourceRelativePath: 'AGENTS.override.md', recognitions: [CODEX_ONLY] },
+      { sourceRelativePath: 'CLAUDE.local.md', recognitions: [CLAUDE_ONLY] },
+      { sourceRelativePath: 'CLAUDE.md', recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY] },
+      {
+        // VS Code documents no `GEMINI.md`, so the editor is absent rather
+        // than assumed from the root alternative beside it (T256).
+        sourceRelativePath: 'GEMINI.md',
+        recognitions: [{ tool: 'copilot', surfaces: ['copilot-cli', 'copilot-cloud'] }],
+      },
+      { sourceRelativePath: 'GUIDE.codex.md', recognitions: [CODEX_ONLY] },
+      { sourceRelativePath: 'TEAM_GUIDE.md', recognitions: [CODEX_ONLY] },
+    ];
+    return [
+      { applicabilityRange: '**', files: rootFiles },
+      {
+        applicabilityRange: 'docs/**',
+        files: [
+          { sourceRelativePath: 'docs/AGENTS.md', recognitions: [COPILOT_ALL_SURFACES] },
+          // The malformed file keeps its row: what failed is reading its
+          // declarations, and a path-derived range comes from where the file
+          // sits (FR-028, T1093).
+          { sourceRelativePath: 'docs/CLAUDE.md', recognitions: [CLAUDE_ONLY] },
+        ],
+      },
+      {
+        applicabilityRange: 'packages/api/**',
+        files: [
+          { sourceRelativePath: 'packages/api/.claude/CLAUDE.md', recognitions: [CLAUDE_ONLY] },
+          {
+            sourceRelativePath: 'packages/api/.github/copilot-instructions.md',
+            recognitions: [COPILOT_CLI_ONLY],
+          },
+          { sourceRelativePath: 'packages/api/AGENTS.md', recognitions: [COPILOT_ALL_SURFACES] },
+          // The nested `CLAUDE.md` the configuration does not name: Claude's
+          // alone, with zero Codex recognition — a configured fallback is an
+          // entry name matched at the Repository root, and no filename
+          // inference promotes a nested file (Phase 21).
+          { sourceRelativePath: 'packages/api/CLAUDE.md', recognitions: [CLAUDE_ONLY] },
+        ],
+      },
+      {
+        applicabilityRange: 'src/frontend/**',
+        files: [
+          {
+            sourceRelativePath: '.github/instructions/frontend.instructions.md',
+            recognitions: [COPILOT_ALL_SURFACES],
+          },
+        ],
+      },
+      {
+        applicabilityRange: null,
+        files: [
+          {
+            sourceRelativePath: '.github/instructions/nested/backend.instructions.md',
+            recognitions: [COPILOT_ALL_SURFACES],
+          },
+          {
+            sourceRelativePath: 'packages/api/.github/instructions/api.instructions.md',
+            recognitions: [COPILOT_CLI_ONLY],
+          },
+        ],
+      },
+    ];
+  }
+
+  it('commits the exact shared-file matrix with one physical item and one read per file', async () => {
+    const fixture = buildAllVendorInstructionFixture('inspector-scan-all-instructions');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    vi.clearAllMocks();
+
+    const { publication } = await scanOnce(context);
+    if (publication.kind !== 'publishable') {
+      throw new Error('expected a publishable outcome');
+    }
+    const snapshot = context.session.snapshot();
+
+    // The complete committed rows: one row per applicability range, files in
+    // Source-relative Path order, recognitions in the closed tool order with
+    // deterministic per-tool surfaces. The binary candidate is recognized by
+    // nothing and appears in no row (FR-025).
+    expect(snapshot.instructions).toEqual(expectedInstructionRows({}));
+
+    // One physical item per admitted file, published once whatever the number
+    // of admitting products, in raw-path order.
+    expect(snapshot.files.map((file) => file.sourceRelativePath)).toEqual(
+      fixture.expectedPublishedPaths,
+    );
+
+    // The two-stage read set: the carrier first, as configuration, then every
+    // published file exactly once. Nothing opens a near miss, the absent
+    // declared name, the nested fallback variant, or the import target
+    // (FR-019, QR-003).
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) =>
+      String(call[0])
+        .slice(fixture.root.length + 1)
+        .split(sep)
+        .join('/'),
+    );
+    expect(opened[0]).toBe(fixture.configCarrierPath);
+    expect(new Set(opened).size).toBe(opened.length);
+    expect([...opened].sort()).toEqual(
+      [fixture.configCarrierPath, ...fixture.expectedPublishedPaths].sort(),
+    );
+    expect(opened).not.toContain(fixture.absentFallbackBasename);
+    expect(opened).not.toContain(fixture.nestedFallbackVariantPath);
+    expect(opened).not.toContain(fixture.importTargetPath);
+    for (const nearMiss of fixture.nearMissPaths) {
+      expect(
+        snapshot.files.some((file) => file.sourceRelativePath === nearMiss),
+        nearMiss,
+      ).toBe(false);
+    }
+
+    // Partial publication only after complete traversal: the two
+    // deterministic file-confined outcomes — the malformed frontmatter and
+    // the binary candidate — are the generation's only diagnostics, and both
+    // files stay published under their own facts (FR-028).
+    expect(publication.outcome).toBe('partial');
+    expect(snapshot.diagnostics.map((diagnostic) => diagnostic.sourceRelativePath).sort()).toEqual(
+      [fixture.malformedInstructionPath, ...fixture.diagnosticOnlyPaths].sort(),
+    );
+    const binary = snapshot.files.find(
+      (file) => file.sourceRelativePath === fixture.diagnosticOnlyPaths[0],
+    );
+    expect(binary?.encoding).toBe('binary');
+
+    // No authored content in the committed snapshot (FR-027), and no
+    // environment reference resolved against the process environment.
+    const serialized = JSON.stringify(snapshot);
+    expect(serialized).not.toContain(FIXTURE_SECRET_LITERAL);
+    expect(serialized).not.toContain(FIXTURE_ENVIRONMENT_REFERENCE);
+  });
+
+  it('confines an injected read failure to that file while the matrix commits partial', async () => {
+    const fixture = buildAllVendorInstructionFixture('inspector-scan-all-instructions-read');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    const target = join(fixture.root, ...fixture.injectionTargetPath.split('/'));
+    // An ordinary read failure on the shared root `AGENTS.md` is
+    // file-confined: the walk classifies it `unreadable`, its recognitions —
+    // Codex's and Copilot's alike — never come to exist, and every other file
+    // of the matrix still publishes (FR-028).
+    vi.mocked(fsIo.readFile).mockImplementation(async (path, options) => {
+      if (String(path) === target) {
+        throw Object.assign(new Error('injected read failure'), { code: 'EACCES' });
+      }
+      return realReadFile(path, options as never);
+    });
+    const { publication } = await scanOnce(context);
+    if (publication.kind !== 'publishable') {
+      throw new Error('expected a publishable outcome');
+    }
+    expect(publication.outcome).toBe('partial');
+    const snapshot = context.session.snapshot();
+    expect(snapshot.repositoryGeneration).toBe(1);
+    // Only the injected file's diagnostic joins the two deterministic ones.
+    expect(snapshot.diagnostics.map((diagnostic) => diagnostic.sourceRelativePath).sort()).toEqual(
+      [
+        fixture.injectionTargetPath,
+        fixture.malformedInstructionPath,
+        ...fixture.diagnosticOnlyPaths,
+      ].sort(),
+    );
+    // The complete published set is retained — the unreadable target keeps
+    // its diagnostic-only item — while its row alone drops out of the matrix.
+    expect(snapshot.files.map((file) => file.sourceRelativePath)).toEqual(
+      fixture.expectedPublishedPaths,
+    );
+    expect(snapshot.instructions).toEqual(expectedInstructionRows({ injectionUnreadable: true }));
+  });
+
+  it('aborts the attempt for an injected recognition failure, retaining the prior commit', async () => {
+    const fixture = buildAllVendorInstructionFixture('inspector-scan-all-instructions-throw');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    await scanOnce(context);
+    const committed = context.session.snapshot();
+    expect(committed.repositoryGeneration).toBe(1);
+
+    const sourceId = context.session.repositorySourceId;
+    const admitted = context.coordinator.admitScan(sourceId, {
+      kind: 'request',
+      operationId: 'op-inject-instructions',
+    });
+    if (admitted.kind !== 'admitted') {
+      throw new Error('expected admission');
+    }
+    vi.clearAllMocks();
+    // A thrown recognition operation is not confined to one file: it
+    // propagates unchanged with no domain catch, cause classification, or
+    // retry (FR-029), the aborted attempt commits no item, derived result,
+    // body, or generation, and the prior snapshot is retained (FR-030). The
+    // rejection must be the injected object itself, exactly once.
+    const injected = new Error('injected recognition failure');
+    let recognizeCalls = 0;
+    let readsAtThrow = -1;
+    await expect(
+      runSourceScan({
+        sourceId,
+        root: fixture.root,
+        rootFailureOwner: `published-source:${sourceId}`,
+        recognize: () => {
+          recognizeCalls += 1;
+          readsAtThrow = vi.mocked(fsIo.readFile).mock.calls.length;
+          throw injected;
+        },
+      }),
+    ).rejects.toBe(injected);
+    expect(recognizeCalls).toBe(1);
+    // The attempt aborted where it threw: no further read was issued — no
+    // rejected target, no extra config access, no companion.
+    expect(readsAtThrow).toBeGreaterThanOrEqual(0);
+    expect(vi.mocked(fsIo.readFile).mock.calls.length).toBe(readsAtThrow);
+
+    context.coordinator.failScan(admitted.scanRequestId, {
+      kind: 'error',
+      message: 'injected recognition failure',
+    });
+    const after = context.session.snapshot();
+    expect(after.repositoryGeneration).toBe(1);
+    expect(after.files).toEqual(committed.files);
+    expect(after.instructions).toEqual(committed.instructions);
+    expect(after.snapshotState).toBe('stale-after-fatal-rescan');
+  });
+
+  it('replaces the instruction rows, fallbacks included, whole on a rescan of a changed tree', async () => {
+    const fixture = buildAllVendorInstructionFixture('inspector-scan-all-instructions-rescan');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    await scanOnce(context);
+    expect(context.session.snapshot().instructions).toEqual(expectedInstructionRows({}));
+
+    // The tree changes under the committed generation: the override and one
+    // fallback file disappear, and the carrier stops declaring any fallback.
+    // A rescan replaces the rows whole — atomic continuity, not an edit of
+    // the previous generation (FR-030).
+    rmSync(join(fixture.root, 'AGENTS.override.md'));
+    rmSync(join(fixture.root, 'TEAM_GUIDE.md'));
+    writeFileSync(join(fixture.root, '.codex/config.toml'), 'model = "o4"\n', 'utf8');
+    await scanOnce(context, 'request');
+
+    const snapshot = context.session.snapshot();
+    expect(snapshot.repositoryGeneration).toBe(2);
+    const rootRow = snapshot.instructions.find((entry) => entry.applicabilityRange === '**')!;
+    const rootPaths = rootRow.files.map((file) => file.sourceRelativePath);
+    expect(rootPaths).not.toContain('AGENTS.override.md');
+    expect(rootPaths).not.toContain('TEAM_GUIDE.md');
+    // The other on-disk declared name loses its derivation with the
+    // declaration, not with its file: `GUIDE.codex.md` still exists and is
+    // simply no longer an instruction candidate of anything.
+    expect(rootPaths).not.toContain('GUIDE.codex.md');
+    expect(snapshot.files.some((file) => file.sourceRelativePath === 'GUIDE.codex.md')).toBe(false);
+    // The rest of the matrix survives the rescan unchanged.
+    expect(rootPaths).toEqual([
+      '.claude/CLAUDE.md',
+      '.github/copilot-instructions.md',
+      'AGENTS.md',
+      'CLAUDE.local.md',
+      'CLAUDE.md',
+      'GEMINI.md',
+    ]);
   });
 });

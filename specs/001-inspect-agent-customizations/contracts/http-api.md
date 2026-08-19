@@ -70,15 +70,17 @@ another machine remains prohibited.
    the shell works unchanged on every client route. Static serving never reaches outside
    the packaged UI output directory and never falls back to an inspected file.
 4. At startup the host prints the exact `http://localhost:<port>/` URL once to the
-   initiating terminal. Automatic browser opening is product-owned through the `open`
-   package and best-effort under
-   FR-001: the helper spawns only after the launch line, devframe's bundled opener stays
-   disabled so exactly one helper can spawn, `--no-open` silently suppresses opening, and
-   an unsupported or failed helper
+   initiating terminal. Automatic browser opening is product-owned through the startup
+   opener and best-effort under
+   FR-001: the opener runs only after the launch line, devframe's bundled opener stays
+   disabled so only the product's opener runs, on macOS a session tab a running
+   Chromium-family browser already has is focused before the `open` package's helper
+   spawns a new one (research.md § 3), `--no-open` silently suppresses opening, and
+   an unsupported or failed opener
    does not block startup; the printed URL remains the fallback. The product reports no
    browser-opening outcome: opening is best-effort and the printed URL is the complete
-   fallback, so a helper failure is swallowed rather than surfaced. The helper
-   receives no inspection-derived content or path (FR-022). A reload or direct navigation
+   fallback, so an opener failure is swallowed rather than surfaced. No spawned process
+   receives inspection-derived content or path (FR-022). A reload or direct navigation
    of any client route needs no token: the served shell embeds no session data, and the
    freshly loaded SPA adopts state only through the RPC channel.
 5. Beyond fixed help/version text and the required one-time initiating-terminal launch
@@ -108,7 +110,7 @@ another machine remains prohibited.
 
 | Function | Kind | Purpose |
 |---|---|---|
-| `agent-customization-inspector:get-session` | read | Full `InspectionSession` snapshot, or the control-only `GlobalFenceRecoverySnapshot` while fenced |
+| `agent-customization-inspector:get-session` | read | Full `SessionSnapshot` snapshot, or the control-only `GlobalFenceRecoverySnapshot` while fenced |
 | `agent-customization-inspector:get-file-detail` | read | One active-generation `FileDetail` |
 | `agent-customization-inspector:rescan-repository` | command | Accept one explicit Repository scan command |
 | `agent-customization-inspector:get-global-consent-preview` | read | Current or frozen `GlobalConsentPreview` |
@@ -150,7 +152,7 @@ Every normal inspection-data success result carries `globalContentEpoch`,
 Repository and Global inspection keep independent generation sequences because their
 lifecycles are independent (FR-030): the Repository sequence starts at bootstrap
 generation 0, while a Global sequence is created at generation 1 by the enable commit and
-discarded by disable, which commits nothing. For a full `InspectionSession`, the
+discarded by disable, which commits nothing. For a full `SessionSnapshot`, the
 result-level values equal `data.repositoryGeneration` and `data.globalGeneration`; for a
 `FileDetail`, every returned generation-owned ID belongs to the exact committed generation
 of the file's owning sequence. The server captures the epoch and both generations,
@@ -233,7 +235,7 @@ the devframe channel is used request/response only for the declared functions.
 Result data:
 
 ```text
-InspectionSession
+SessionSnapshot
 ├── sessionId, createdAt, repositoryGeneration, globalGeneration, snapshotState, globalContentEpoch,
 │   staleFailures[] { sourceId, failureRef, failedAt, baseGeneration },
 │   globalEnableInProgress null | { kind, operationId, previewId },
@@ -681,8 +683,10 @@ kind — makes the generation `partial` and the complete readable
 source stays displayed and comparison-eligible (FR-028). A failure that is not confined to
 one file fails the attempt and is exposed, when RPC-owned, as the request's ordinary
 error. Structural metadata comparison uses
-`(tool, kind, declared key)`, so two tools or kinds never collide merely because their key
-matches.
+`(kind, declared key)` — a declaration is its file's one parse for the kind, shared by
+every recognizing tool, so a tool is not a coordinate of it and two kinds never collide
+merely because their key matches; tool recognition is compared per tool beside the
+declarations.
 
 A declared value carries whole characters — an astral character is two UTF-16 code units
 and a combining mark is two code points — so it survives extraction and JSON transport
@@ -1204,7 +1208,8 @@ the post-acceptance failure's ordinary error. Disable itself never returns
    what a parse did. Compatible provenance
    merges once inside the internal recognition record, and inconsistent meaning fails
    that extraction all-or-nothing. Comparison keys are
-   `(tool, kind, declared key)`. Astral characters, combining sequences, and ordinary BMP text
+   `(kind, declared key)`, with tool recognition compared per tool beside the
+   declarations. Astral characters, combining sequences, and ordinary BMP text
    prove that a declared value survives extraction and JSON transport whole.
    Every returned relationship tuple `(tool, kind, relationship kind)` must appear in the
    maintained presentation allowlist, and the exact authored occurrence must be supported by
@@ -1254,8 +1259,8 @@ the post-acceptance failure's ordinary error. Disable itself never returns
    channel unchanged and round-trips at the client.
 5. Static traversal and encoded traversal attempts never escape the packaged `dist/public`
    output; every served byte comes from that packaged Nuxt output, no inspected file is
-   ever served, and the root, `/skills/compare`, `/global-consent`,
-   `/skills/<tool>/<source-relative path>`, and
+   ever served, and the root, `/skills/compare`, `/instructions/compare`,
+   `/global-consent`, `/skills/<tool>/<source-relative path>`, and
    `/instructions/<source-relative path>` client
    routes all boot the same packaged SPA shell, which embeds no session data.
 6. Queue ordering across Repository and each tool-specific Global rescan, duplicate

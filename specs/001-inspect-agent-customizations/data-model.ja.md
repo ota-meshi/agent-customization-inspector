@@ -30,7 +30,7 @@ ContractRegistry（immutable、contract-versioned）
     └── InspectionRule
         └── EvidenceCitation（1つ以上）
 
-InspectionSession
+SessionSnapshot
 ├── Source（Repositoryを正確に1つ）
 │   ├── SourceBoundary（正確に1つ）
 ├── Source（Globalを0から3つ。support対象toolごとに最大1つ）
@@ -57,7 +57,7 @@ InspectionSession
 BrowserState
 ├── ClientDataState（request/epoch/session/fence guardと中央purge）
 ├── FilterState
-├── ComparisonSelection（copyペアの座標: 2つのentry identityと比較対象ファイル）
+├── ComparisonSelection（kind固有のcomparison surfaceごとに1つ: そのrouteの座標）
 ├── EditorModelState（0以上。active route/generationのみ）
 ├── RecoveryViewState（control-onlyなpurge後recoveryと明示resume）
 └── SessionViewState（booting/inspection/recovery/ended viewとtransport-loss adoption）
@@ -65,7 +65,7 @@ BrowserState
 
 ## Entity
 
-### InspectionSession
+### SessionSnapshot
 
 | Field | Type | 公開範囲 | Rule |
 |---|---|---|---|
@@ -86,7 +86,7 @@ BrowserState
 | `rootOptionValue` | exact stringまたはnull | internal | 省略時null。それ以外はlifecycle/audit correlation専用にsole validated `--root` argumentを保持する。Lexical selection後はfilesystem operandに使わない |
 | `selectedRepositoryRoot` | absolute platform path string | internal | `--root`省略時は`invocationCwd`。指定時はabsolute optionをそのまま保持するか、relative optionをplatformの`node:path` resolutionで`invocationCwd`に対してresolveする。Selectionはfilesystem/network I/Oを一切行わない |
 
-`InspectionSession`はnormal full snapshotで、`globalDisableInProgress`がnullの場合だけ返す。Disable barrier acceptance後はcommit済み各generation/全Sourceを
+`SessionSnapshot`はnormal full snapshotで、`globalDisableInProgress`がnullの場合だけ返す。Disable barrier acceptance後はcommit済み各generation/全Sourceを
 cleanup/retry用にinternal保持してよいが、full session、inventory、generation、Source、file、detail、Diagnostic、relationship、authored metadata、
 comparison routeはすべて固定の`global-disable-pending` conflictを返す。Session routeだけは下記control-only `GlobalFenceRecoverySnapshot`を返す。
 各data handlerは`globalContentEpoch`をcaptureしてsuccess bodyを完全構築した後、coordinator lock下でepoch不変かつfence nullを要求してbodyをbindする。
@@ -1121,7 +1121,7 @@ classify、retry、recoverしない。Triggerを所有するboundaryへpropagate
 generation resultを作らず、session API boundaryがtriggerを所有する場合はfailed requestのerrorとして通常どおり報告する。
 
 Recognitionはclosed tool順`copilot`、`claude`、`codex`、次に表記載のkind順でsortし、opaque IDを使わない。
-File間metadata comparisonは`(tool, kind, 宣言key)`を使い、宣言keyが一致するだけで別toolや別kindが衝突することはない。
+File間metadata comparisonは`(kind, 宣言key)`を使う。宣言はfileの認識kindに対する1回のparseであってtoolは宣言の座標ではなく — tool recognitionはtoolごとに宣言の横で比較する — 宣言keyが一致するだけで別kindが衝突することはない。
 
 ### Field reading
 
@@ -1359,11 +1359,16 @@ readable-directory admissionだけが判定し、後のNode.js/OS rejectionは�
   Pathはfileの安定したidentityであり（FR-030）、hostはそれをcurrentなgenerationに対して解決する。Purge前にcaptureされた
   responseがstateを再populateしないことを守るのはepochである。全central invalidation/purgeが同じepochをincrementするため、
   response deliveryが既にqueue済みでもlate callbackはno-opになる。
-- `ComparisonSelection`: skill comparison routeがmodel自身の座標 — 比較する2つのcopyのentry fileの
-  `sourceRelativePath` identityとcopy相対の比較対象ファイル — で名指すもの。所属sequenceのcurrentな
+- `ComparisonSelection`: kind固有のcomparison routeがそのkind自身の座標で名指すもの
+  （spec.md § Clarifications Session 2026-08-14）。Skill routeは比較する2つのcopyのentry fileの
+  `sourceRelativePath` identityとcopy相対の比較対象ファイルを名指し、所属sequenceのcurrentな
   commit済みgenerationに対して、0件、対応するreadableなfileを2つ、またはreadableなfile 1つと
-  明示された不在へ解決される。Cross-source comparisonは常に各sourceの最後に
-  commit済みstateを比較する。ペアは通常の`FileDetail` request 2件で、片側comparisonは1件でloadする — 不在はrequestを
+  明示された不在へ解決される。Instruction routeは、current generationの1つのapplicability-range行が
+  保持する2つのfileの`sourceRelativePath` identityを名指す — skillの前例が確立した、行が所有するペアであり、
+  skill名の行の位置にrange行が立つ。fileはちょうど1つのrangeを統治するため、所有する行は2つのidentityから
+  導出される — 。0件またはreadableなfile 2つへ解決される: instruction fileはそれ自体で完結するため、
+  どちらの側も明示された不在にはならず、単一の行が保持しないペアは比較されずに報告される。Cross-source comparisonは常に各sourceの最後に
+  commit済みstateを比較する。ペアは通常の`FileDetail` request 2件で、片側のskill comparisonは1件でloadする — 不在はrequestを
   要しない — 。MonacoはcompleteなsourceText同士を比較し、不在側は空として、存在する側の内容を行ごとにそれ自体が
   差分として描画する。Credential-like stringやenvironment referenceを含むliteralな差を表示する。
 - `EditorModelState`: Opaqueなin-memory URIと完全なauthored `sourceText`を持つgeneration-scoped Monaco model。
@@ -2766,7 +2771,7 @@ candidate -> readable + not-applicable/all-parsed/mixed/all-failed parse summary
    宣言を公開するためにadmitされたfileはその宣言を返し、`sourceText`は一切返さない（spec.md FR-007）。
    さらに、返却する宣言済みmetadata値は
    その宣言についてparserが解決した値とする。Documented defaultはauthored textをnull、
-   originを明示する。Comparisonは各fieldの解決済み値と`(tool, kind, 宣言key)`を使う。Environment referenceはliteralのままでprocess environmentのlookup/substitutionを
+   originを明示する。Comparisonは各fieldの解決済み値と`(kind, 宣言key)`を使い、tool recognitionはtoolごとに宣言の横で比較する。Environment referenceはliteralのままでprocess environmentのlookup/substitutionを
    起こさない。Session Diagnosticはactionable location fieldだけを持てる。
 7. Documentation status、authored/installed state、selection、trust、enablement、その他condition factを
    provenance固有かつ直交したまま保ち、「effective configuration」やlossyなrecognition-level winnerへ

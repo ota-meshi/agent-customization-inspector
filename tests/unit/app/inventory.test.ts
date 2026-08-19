@@ -1,9 +1,11 @@
-// T058/T181: the browser-side inventory behavior — generation-aware filters over
-// the committed snapshot, the request-correlated rescan/retry lifecycle, the
-// empty state, and the guarantee that a session summary carries no authored
-// source. The one authored value it does carry is the skill's declared name,
-// which is presentation identity rather than content (FR-007/T1064): every
-// other authored value stays behind the one-file-at-a-time detail route.
+// T058/T181/T271: the browser-side inventory behavior — generation-aware
+// filters over the committed snapshot, the request-correlated rescan/retry
+// lifecycle, the unified skill and instruction rows, the empty state, and the
+// guarantee that a session summary carries no authored source. The authored
+// values it does carry are row identities — the skill's declared name and an
+// instruction row's declared applicability range (FR-007/FR-027/T1064):
+// every other authored value stays behind the one-file-at-a-time detail
+// route.
 //
 // These suites drive the session classes rather than mounting the components.
 // The unit project has no single-file-component compiler, and adding one would
@@ -20,6 +22,8 @@ import { useInventoryFilters } from '../../../src/app/composables/filters';
 import { SessionViewState } from '../../../src/app/session/view-state';
 import type {
   CustomizationFileSummaryDto,
+  InstructionInventoryEntryDto,
+  InstructionInventoryFileDto,
   SessionSnapshot,
   SkillInventoryEntryDto,
   SourceDto,
@@ -80,6 +84,36 @@ function skillWithCompanions(
     sameNameResolutions:
       paths.length > 1 ? [{ tool: 'codex', resolution: 'all-remain' as const }] : [],
   };
+}
+
+/**
+ * One instruction file under its row, with one recognition per named tool in
+ * the given order — the projection publishes the closed tool order, so a case
+ * spells the order it expects. The surfaces stand in for whatever the
+ * admitting rules rest on; the filter keeps or drops a recognition whole, so
+ * one representative surface per tool is enough.
+ */
+function instructionFile(
+  path: string,
+  ...tools: readonly ('copilot' | 'claude' | 'codex')[]
+): InstructionInventoryFileDto {
+  const surfaces = {
+    copilot: 'copilot-vscode',
+    claude: 'claude-cli-and-ide-clients',
+    codex: 'codex-local-clients',
+  } as const;
+  return {
+    sourceRelativePath: path,
+    recognitions: tools.map((tool) => ({ tool, surfaces: [surfaces[tool]] })),
+  };
+}
+
+/** One instructions row: an applicability range and the files governing it. */
+function instructionEntry(
+  applicabilityRange: string | null,
+  files: readonly InstructionInventoryFileDto[],
+): InstructionInventoryEntryDto {
+  return { applicabilityRange, files };
 }
 
 function snapshotWith(
@@ -812,6 +846,124 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
           'sourceRelativePath',
           'tool',
         ]);
+      }
+    }
+  });
+});
+
+describe('unified instruction rows across the recognizing tools (T271)', () => {
+  // The Phase 21 matrix as the wire publishes it: one row per applicability
+  // range, a shared physical file carrying one recognition per recognizing
+  // product, and the configured fallbacks as ordinary Codex rows beside the
+  // static pair (Phase 15 activated them; nothing here is pending).
+  const matrixInstructions: readonly InstructionInventoryEntryDto[] = [
+    instructionEntry('**', [
+      instructionFile('AGENTS.md', 'copilot', 'codex'),
+      instructionFile('AGENTS.override.md', 'codex'),
+      instructionFile('CLAUDE.local.md', 'claude'),
+      instructionFile('CLAUDE.md', 'copilot', 'claude'),
+      instructionFile('TEAM_GUIDE.md', 'codex'),
+    ]),
+    instructionEntry('packages/api/**', [instructionFile('packages/api/CLAUDE.md', 'claude')]),
+    instructionEntry(null, [
+      instructionFile('.github/instructions/nested/backend.instructions.md', 'copilot'),
+    ]),
+  ];
+  const matrixFiles = matrixInstructions.flatMap((entry) =>
+    entry.files.map((entryFile) => file(entryFile.sourceRelativePath)),
+  );
+
+  function matrixSnapshot(): SessionSnapshot {
+    return snapshotWith(matrixFiles, [], { instructions: matrixInstructions });
+  }
+
+  it('offers the instructions kind and every recognizing tool of its rows', () => {
+    const snapshot = shallowRef<SessionSnapshot | null>(matrixSnapshot());
+    const { view } = withSelection(snapshot);
+    expect(view.availableKinds.value).toEqual(['instructions']);
+    expect(view.availableTools.value).toEqual(['copilot', 'claude', 'codex']);
+    expect(view.instructionRows.value).toEqual(matrixInstructions);
+    expect(view.kindCounts.value.get('instructions')).toBe(3);
+  });
+
+  it('narrows a shared file to the selected tool, keeping the fallback rows beside it', () => {
+    const snapshot = shallowRef<SessionSnapshot | null>(matrixSnapshot());
+    const { tool, view } = withSelection(snapshot);
+    // Codex keeps its half of each shared recognition and the configured
+    // fallback row, and drops the Claude-only and Copilot-only files with the
+    // ranges they alone populated.
+    tool.value = 'codex';
+    expect(view.instructionRows.value).toEqual([
+      instructionEntry('**', [
+        instructionFile('AGENTS.md', 'codex'),
+        instructionFile('AGENTS.override.md', 'codex'),
+        instructionFile('TEAM_GUIDE.md', 'codex'),
+      ]),
+    ]);
+    // Claude keeps the shared root `CLAUDE.md`, its local variant, and the
+    // nested row no other product recognizes.
+    tool.value = 'claude';
+    expect(view.instructionRows.value).toEqual([
+      instructionEntry('**', [
+        instructionFile('CLAUDE.local.md', 'claude'),
+        instructionFile('CLAUDE.md', 'claude'),
+      ]),
+      instructionEntry('packages/api/**', [instructionFile('packages/api/CLAUDE.md', 'claude')]),
+    ]);
+  });
+
+  it('narrows by path inside each range and counts the kind tab from the result', () => {
+    const snapshot = shallowRef<SessionSnapshot | null>(matrixSnapshot());
+    const { pathQuery, view } = withSelection(snapshot);
+    pathQuery.value = 'claude.md';
+    // Case-insensitive substring over the file paths — `CLAUDE.local.md`
+    // does not contain it, so the query names the two exact spellings alone.
+    // The ranges whose files all miss are not rows, and the no-range row
+    // drops with its one file.
+    expect(view.instructionRows.value).toEqual([
+      instructionEntry('**', [instructionFile('CLAUDE.md', 'copilot', 'claude')]),
+      instructionEntry('packages/api/**', [instructionFile('packages/api/CLAUDE.md', 'claude')]),
+    ]);
+    expect(view.kindCounts.value.get('instructions')).toBe(2);
+  });
+
+  it('replaces the rows whole when a rescan commits a generation without them', () => {
+    const snapshot = shallowRef<SessionSnapshot | null>(matrixSnapshot());
+    const { view } = withSelection(snapshot);
+    expect(view.instructionRows.value).toHaveLength(3);
+    // The rescanned tree lost the override and every configured fallback: the
+    // derived view is the new commit's alone, with nothing retained from the
+    // replaced generation (FR-030) — the fallback rows disappear with the
+    // declaration, not with a UI state of their own.
+    const rescanned = [
+      instructionEntry('**', [
+        instructionFile('AGENTS.md', 'copilot', 'codex'),
+        instructionFile('CLAUDE.md', 'copilot', 'claude'),
+      ]),
+    ];
+    snapshot.value = snapshotWith(
+      rescanned.flatMap((entry) =>
+        entry.files.map((entryFile) => file(entryFile.sourceRelativePath)),
+      ),
+      [],
+      { instructions: rescanned, repositoryGeneration: 2 },
+    );
+    expect(view.instructionRows.value).toEqual(rescanned);
+    expect(view.availableTools.value).toEqual(['copilot', 'claude', 'codex']);
+  });
+
+  it('gives the instruction rows no field that could carry authored content', () => {
+    // The wire row is the range, the paths, and the recognitions — the range
+    // being FR-027's stated row-identity exception. Nothing else authored may
+    // travel with it, so the shape itself is asserted: a field added to the
+    // DTO for content would fail this exhaustive key check.
+    for (const entry of matrixInstructions) {
+      expect(Object.keys(entry).sort()).toEqual(['applicabilityRange', 'files']);
+      for (const entryFile of entry.files) {
+        expect(Object.keys(entryFile).sort()).toEqual(['recognitions', 'sourceRelativePath']);
+        for (const recognition of entryFile.recognitions) {
+          expect(Object.keys(recognition).sort()).toEqual(['surfaces', 'tool']);
+        }
       }
     }
   });

@@ -19,3 +19,6 @@ test-results/
 # Node.js build and pack outputs
 *.tsbuildinfo
 *.tgz
+
+# Fixture trees served by `pnpm run start:fixture`
+.tmp/

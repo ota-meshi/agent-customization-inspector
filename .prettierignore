@@ -6,6 +6,7 @@ coverage/
 playwright-report/
 test-results/
 .pnpm-store/
+.tmp/
 
 # Spec-kit's scaffolding and the speckit-* skills it installs are taken from
 # upstream whole.

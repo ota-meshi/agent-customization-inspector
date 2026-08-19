@@ -1,8 +1,8 @@
-// T040: host startup contracts for the devframe dev server
-// (contracts/http-api.md § Host requirements, § RPC function catalog).
-// Covers the packaged-shell serving configuration, the product-owned
-// best-effort `open` browser helper running after the launch line with
-// devframe's bundled opener disabled, the unauthenticated
+// T040, extended by T1098: host startup contracts for the devframe dev
+// server (contracts/http-api.md § Host requirements, § RPC function
+// catalog). Covers the packaged-shell serving configuration, the
+// product-owned best-effort startup opener running after the launch line
+// with devframe's bundled opener disabled, the unauthenticated
 // loopback binding, the absence of startup documentation/network access and
 // of any customization-content classification at startup, the exact packed
 // package fields, and the ownerless automatic-startup rejection reaching the
@@ -36,8 +36,14 @@ vi.mock('devframe/adapters/dev', () => ({
   createDevServer: vi.fn(async () => ({ origin: 'http://localhost:1234', close: vi.fn() })),
 }));
 
-vi.mock('open', () => ({ default: vi.fn(async () => ({}) as never) }));
-const { default: open } = await import('open');
+// The host's one opener entry point (browser-opener.ts). The opener's own
+// platform split — the macOS Chromium tab reuse in front of the `open`
+// fallback — is proven in tests/unit/browser-opener.test.ts; this suite owns
+// when the host invokes it, with what, and that its failure stays swallowed.
+vi.mock('../../src/server/host/browser-opener', () => ({
+  openStartupBrowser: vi.fn(async () => undefined),
+}));
+const { openStartupBrowser } = await import('../../src/server/host/browser-opener');
 
 /** The `onReady` payload devframe reports after binding the loopback port. */
 const READY_INFO = { origin: 'http://localhost:1234', port: 1234, app: {} as never };
@@ -46,9 +52,9 @@ describe('host startup', () => {
   it('hands the inspector definition to devframe with its bundled opener disabled', async () => {
     // The suite otherwise exercises the definition directly, which cannot show
     // that anything starts a server with it: `startInspectorHost` is the one
-    // call the CLI makes. The product owns browser opening through the `open`
-    // package, so every launch hands devframe an explicit `openBrowser: false`
-    // — inheriting devframe's own opener would let a second helper spawn.
+    // call the CLI makes. The product owns browser opening through its startup
+    // opener, so every launch hands devframe an explicit `openBrowser: false`
+    // — inheriting devframe's own opener would let a second opener spawn.
     const context = hostContext();
     await startInspectorHost({ context, openBrowser: true });
     expect(vi.mocked(createDevServer)).toHaveBeenCalledTimes(1);
@@ -68,39 +74,39 @@ describe('host startup', () => {
     expect(typeof options?.onReady).toBe('function');
   });
 
-  it('prints through the caller onReady before spawning the open helper', async () => {
+  it('prints through the caller onReady before running the startup opener', async () => {
     // FR-001: the launch line is the fallback for a failed or unsupported
-    // helper, so it must be observable before the helper runs.
+    // opener, so it must be observable before the opener runs.
     const order: string[] = [];
     const onReady = vi.fn(() => {
       order.push('caller-ready');
     });
-    vi.mocked(open).mockImplementationOnce(async () => {
-      order.push('open-helper');
-      return {} as never;
+    vi.mocked(openStartupBrowser).mockImplementationOnce(async () => {
+      order.push('startup-opener');
     });
     await startInspectorHost({ context: hostContext(), openBrowser: true, onReady });
     await vi.mocked(createDevServer).mock.calls.at(-1)![1]!.onReady!(READY_INFO);
     expect(onReady).toHaveBeenCalledWith(READY_INFO);
-    expect(vi.mocked(open)).toHaveBeenCalledWith('http://localhost:1234/');
-    expect(order).toEqual(['caller-ready', 'open-helper']);
+    expect(vi.mocked(openStartupBrowser)).toHaveBeenCalledWith('http://localhost:1234/');
+    expect(order).toEqual(['caller-ready', 'startup-opener']);
   });
 
   it.each([
     ['false maps from --no-open', { openBrowser: false }],
     ['an unset option opens nothing', {}],
-  ])('spawns no helper when %s', async (_label, launch) => {
-    vi.mocked(open).mockClear();
+  ])('runs no opener when %s', async (_label, launch) => {
+    vi.mocked(openStartupBrowser).mockClear();
     await startInspectorHost({ context: hostContext(), ...launch });
     await vi.mocked(createDevServer).mock.calls.at(-1)![1]!.onReady!(READY_INFO);
-    expect(vi.mocked(open)).not.toHaveBeenCalled();
+    expect(vi.mocked(openStartupBrowser)).not.toHaveBeenCalled();
   });
 
-  it('keeps a failed helper spawn best-effort instead of failing the launch', async () => {
-    // The rejection `open` reports when no OS helper can spawn (e.g. a Linux
-    // host without xdg-open). FR-001 makes opening best-effort: the launch
-    // line already printed is the fallback and the startup must not fail.
-    vi.mocked(open).mockRejectedValueOnce(new Error('no helper available'));
+  it('keeps a failed opener best-effort instead of failing the launch', async () => {
+    // The rejection the opener propagates when its `open` fallback cannot
+    // spawn an OS helper (e.g. a Linux host without xdg-open). FR-001 makes
+    // opening best-effort: the launch line already printed is the fallback
+    // and the startup must not fail.
+    vi.mocked(openStartupBrowser).mockRejectedValueOnce(new Error('no helper available'));
     await startInspectorHost({ context: hostContext(), openBrowser: true });
     await expect(
       vi.mocked(createDevServer).mock.calls.at(-1)![1]!.onReady!(READY_INFO),

@@ -132,19 +132,25 @@ Read the printed URL rather than assuming a port. devframe selects another local
 its default is already bound, so a stale inspector left running would otherwise take the
 connection.
 
-To exercise root selection, launch from a conformance fixture so that the fixture
-directory—not the repository containing the implementation—is the process `cwd`:
+To exercise the inspector against a deterministic fixture repository — the exact trees
+the suites assert against, written by the builders in
+`tests/fixtures/repositories/build-fixtures.ts` — one script rebuilds the named fixture
+under the git-ignored `.tmp/fixtures/` tree and serves it with the same packaged CLI:
 
 ```bash
-cd tests/fixtures/repositories/all-supported
-node ../../../../dist/cli.mjs --no-open
+pnpm run start:fixture all-instructions --no-open
 ```
 
-The equivalent explicit-root launch from another directory is:
+The first argument names the fixture (omitted, it is `all-skills`; an unknown name lists
+the available ones), and everything after it is passed to the CLI verbatim. Each launch
+replaces that fixture's previous tree, so edits made while browsing never leak into the
+next one, and the tree stays on disk afterwards for inspection. The launcher selects the
+root with `--root`; to exercise the invocation-`cwd` selection instead, change into a
+tree a launch left behind and start the CLI from there:
 
 ```bash
-cd /path/to/agent-customization-inspector
-node dist/cli.mjs --no-open --root tests/fixtures/repositories/all-supported
+cd .tmp/fixtures/all-instructions
+node ../../../dist/cli.mjs --no-open
 ```
 
 The CLI captures the invocation `process.cwd()` once. Omission uses that exact string.
@@ -161,7 +167,7 @@ Expected:
   any browser attempt and never binds a non-loopback address. The printed URL is the plain origin: it
   carries no per-session token, fragment, or other secret. With `--no-open` — the CLI's
   negatable product flag — no browser opens and no browser-helper child process is created.
-- The Repository source root shown by the browser is the `all-supported` fixture itself.
+- The Repository source root shown by the browser is the launched fixture tree itself.
 - Within 1 second the UI visibly renders and exposes to assistive technology a status for the
   current scan request that says queued, names an active phase, or reports complete, partial,
   or failed (with a practical next step for failure), and the Source/progress identifies that
@@ -199,11 +205,14 @@ npx agent-customization-inspector
 Port and host resolution and the printed origin are owned by
 the devframe local-tool framework that hosts the session: devframe serves the built SPA
 from `dist/public` and exposes the session API as its RPC channel. Automatic browser
-opening is product-owned through the `open` package: after the launch line, the host
-spawns `open`'s fixed OS helper with the printed origin, with devframe's bundled opener
-disabled so exactly one helper can spawn. That fixed startup opening is
-the only product-initiated child process permitted in the initial release; it receives
-only the printed origin — no inspection-derived content or path, authored value, or
+opening is product-owned through the startup opener: after the launch line, on macOS the
+host first tries to focus a session tab a running Chromium-family browser already has —
+the fixed process-list probe and the fixed tab-reuse script through the OS `osascript`
+automation host — and otherwise spawns `open`'s fixed OS helper with the printed origin,
+with devframe's bundled opener disabled so only the product's opener runs. That fixed
+startup opening is the only product-initiated child-process surface permitted in the
+initial release; every spawned process receives only fixed arguments and the printed
+origin — no inspection-derived content or path, authored value, or
 user-supplied command — and inherits the launch environment unchanged, into which the
 product writes no inspection-derived value; a platform helper honoring the user's own
 `$BROWSER` applies user preference. The CLI's negatable `--open` flag (default true)
@@ -286,10 +295,11 @@ Expected:
   UNC/server-share/device vectors prove zero filesystem/DNS/SMB calls. A lexically
   indistinguishable pre-mounted/mapped network source may cause OS-mediated traffic and is
   recorded separately as the FR-022 platform/environment limitation. The product-owned
-  startup browser opening through the `open` package receives only the printed origin —
-  no inspection-derived content/path, authored value, or user-supplied command — and
-  inherits the launch environment, into which the product writes no inspection-derived
-  value.
+  startup browser opening — on macOS the fixed tab-reuse attempt in front of the `open`
+  package's helper — passes its child processes only fixed arguments and the printed
+  origin — no inspection-derived content/path, authored value, or user-supplied
+  command — and every spawned process inherits the launch environment, into which the
+  product writes no inspection-derived value.
   There are no host-security or HTTP-router contract suites to run: protection is the
   loopback-only `localhost` bind alone — no per-session token, Origin check, or product
   router exists — and an unexpected session-API failure propagates its real error to the requesting
@@ -503,7 +513,8 @@ Verify:
    views, and every displayed metadata value is the one its parser resolved for that field;
    no mask or reveal control exists. A key declared twice resolves to its later declaration,
    so there is one value per field and structural metadata comparison matches
-   `(tool, kind, declared key)`. Boundary-sized TOML integers,
+   `(kind, declared key)`, with tool recognition compared per tool beside the
+   declarations. Boundary-sized TOML integers,
    floats, and date/time values retain their typed canonical semantic payload without
    JavaScript precision loss while their authored spellings remain unchanged. No
    acknowledgement API, field, or client state exists, and none is needed: the session API is
@@ -589,7 +600,7 @@ Verify:
    labeled controls and the accessible diff viewer without a focus trap.
 7. The packed app loads its editor worker from a same-origin static asset with no
    external request or `blob:` worker.
-8. Direct loads of `/`, `/skills/compare`, `/global-consent`, and `/skills/<tool>/<source-relative path>` all boot from
+8. Direct loads of `/`, `/skills/compare`, `/instructions/compare`, `/global-consent`, and `/skills/<tool>/<source-relative path>` all boot from
    the same root-absolute assets served by the devframe host.
 9. Session-loss and response-guard tests cover a devframe-transport-reported channel loss,
    channel loss or unsupported protocol on the current non-superseded RPC, session-ID mismatch,
@@ -628,7 +639,7 @@ Verify:
     the returned `sessionId` without retaining or comparing the
     purged ID and constructs only client-side `RecoveryViewState`. With a non-null disable
     fence, the session route returns the exact control-only `GlobalFenceRecoverySnapshot`;
-    with a null fence it returns a normal full `InspectionSession`, but recovery adopts only
+    with a null fence it returns a normal full `SessionSnapshot`, but recovery adopts only
     `globalContentEpoch`, Global control and enable/disable projections, each failed tool's
     `failureCode` on its own control, the retained failure errors, and any newly verified
     frozen preview, and discards the inspection graph. It restores no inventory, Source, file, generation, detail, comparison, editor,
@@ -1713,10 +1724,11 @@ resolved version with its integrity hash, so restating those values in a test on
 duplicates the lockfile, and install-time enforcement belongs to the package manager.
 
 Launch tests must cover the printed origin line appearing before any browser attempt, zero
-browser-helper child processes under `--no-open`, and inspection remaining usable when
+opener child processes under `--no-open`, and inspection remaining usable when
 automatic opening is disabled, unsupported, or fails — port/host
 resolution is devframe-owned while automatic opening and the negatable `--open` flag are
-product-owned through the `open` package, and the tests prove that no
+product-owned through the startup opener — the macOS Chromium tab reuse in front of the
+`open` package's helper — and the tests prove that no
 inspection-derived content, path, or authored value reaches that opener. They also cover
 Gunshi's non-binding help/version, strict unknown-option rejection,
 explicit positional/rest rejection, default exact captured `process.cwd()`, and one `--root`

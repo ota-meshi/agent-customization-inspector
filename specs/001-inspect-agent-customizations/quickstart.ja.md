@@ -112,19 +112,24 @@ pnpm start --no-open --root /path/to/repository
 Portを決め打ちせず、printされたURLを読む。devframeはdefault portが既にbindされていれば別の
 local portを選ぶため、実行したままの古いinspectorが接続を奪う可能性がある。
 
-Root selectionを確認するには、implementation repositoryではなくfixture directoryがprocess `cwd`に
-なるようconformance fixtureから起動する。
+決定論的なfixture repository — suiteがassertする対象と同一の、
+`tests/fixtures/repositories/build-fixtures.ts`のbuilderが書き出すtree — に対してinspectorを
+確認するには、1つのscriptが指名されたfixtureをgit-ignoredな`.tmp/fixtures/` treeの下に
+再構築し、同じpackaged CLIで配信する。
 
 ```bash
-cd tests/fixtures/repositories/all-supported
-node ../../../../dist/cli.mjs --no-open
+pnpm run start:fixture all-instructions --no-open
 ```
 
-別directoryから明示rootを指定する同等のlaunchは次のとおり。
+第1引数はfixture名（省略時は`all-skills`。未知の名前は利用可能な一覧を表示する）で、それ以降は
+すべてCLIへそのまま渡す。Launchごとにそのfixtureの前回treeを置き換えるため、閲覧中の手編集が
+次回へ漏れることはなく、treeはその後もinspection用にdisk上へ残る。Launcherは`--root`でrootを
+選択する。呼び出し`cwd`によるselectionを確認するには、launchが残したtreeへ移動してそこから
+CLIを起動する。
 
 ```bash
-cd /path/to/agent-customization-inspector
-node dist/cli.mjs --no-open --root tests/fixtures/repositories/all-supported
+cd .tmp/fixtures/all-instructions
+node ../../../dist/cli.mjs --no-open
 ```
 
 CLIは呼び出し時の`process.cwd()`を1回だけcaptureする。省略時はそのexact stringを使う。`--root`は
@@ -139,7 +144,7 @@ launchを終了させる。
 - Hostがbrowser attempt前にlocalな`http://localhost:<port>/` originを正確に1回表示し、non-loopback addressへ
   bindしない。表示URLはplainなoriginであり、per-session token、fragment、その他のsecretを含まない。
   CLIのnegatableなproduct flagである`--no-open`ではbrowserを開かず、browser-helper child processも作らない。
-- Browser表示のRepository source rootは`all-supported` fixture自身。
+- Browser表示のRepository source rootはlaunchしたfixture tree自身。
 - 1秒以内に現在のscan requestについて、queued、active phase名、complete、partial、またはfailedを明示するstatusを画面に
   表示しassistive technologyにも公開する。Failureは実行可能な次の手順も示し、Source/progressはそのrequestのopaqueな
   `scanRequestId`を識別する。一般的なspinner/loading label、変化しない
@@ -169,10 +174,13 @@ npx agent-customization-inspector
 
 Port/host resolutionと表示originは、sessionをhostするdevframe local-tool
 frameworkが所有する。devframeはbuild済みSPAを`dist/public`から配信し、session APIをそのRPC channelとして
-公開する。Automatic browser openingはproductが`open` packageを通じて所有する: launch lineの後にhostが
-表示origin付きで`open`の固定OS helperをspawnし、devframeのbundled openerは無効化されてspawnできる
-helperは正確に1つになる。このfixed startup openingがinitial releaseで
-許可する唯一のproduct起動child processであり、inspection由来のcontent、path、authored value、
+公開する。Automatic browser openingはproductがstartup openerを通じて所有する: launch lineの後、
+macOSではまず、起動中のChromium系browserが既に表示originを開いているsession tabのfocusを試み
+（固定のprocess一覧probeと、OSの`osascript` automation hostで実行する固定のtab再利用script）、
+それ以外の場合は表示origin付きで`open`の固定OS helperをspawnし、devframeのbundled openerは
+無効化されてproductのopenerだけが動く。このfixed startup openingがinitial releaseで
+許可する唯一のproductのchild-process surfaceであり、spawnされるどのprocessも固定の引数と表示origin
+だけを受け取り、inspection由来のcontent、path、authored value、
 user-supplied commandを受け取らず、launch environmentを変更なしで継承する — productはそこへ
 inspection由来の値を書き込まず、user自身の`$BROWSER`を尊重するplatform helperはuser preferenceを
 適用している。CLIのnegatableな`--open` flag
@@ -239,10 +247,10 @@ pnpm run test:e2e
   `GET`/`HEAD`とlocal session API channel（どちらもloopback-onlyなdevframe bindの背後でunauthenticated）を別々に分類・検証する。Source containmentとcustomization由来のexecution、child process、MCP
   connection、FR-022で定義した禁止対象のdirect product-issued outbound request、dynamic evaluation、source mutationが0であることを証明する。Explicit
   UNC/server-share/device vectorではfilesystem/DNS/SMB call 0件を証明する。Lexicalに識別不能なpre-mounted/mapped network sourceはOS-mediated
-  trafficを発生させ得るためFR-022のplatform/environment limitationとして別に記録する。`open` packageを通じた
-  product所有のstartup
-  browser openingへ渡すのは表示済みoriginだけであり、inspection由来のcontent/path、authored value、
-  user-supplied commandを渡さず、productがinspection由来の値を書き込まないlaunch environmentを継承する。
+  trafficを発生させ得るためFR-022のplatform/environment limitationとして別に記録する。Product所有の
+  startup browser opening — macOSでは固定のtab再利用attemptを`open` packageのhelperの前段に置く —
+  がそのchild processへ渡すのは固定の引数と表示済みoriginだけであり、inspection由来のcontent/path、authored value、
+  user-supplied commandを渡さず、spawnされるどのprocessも、productがinspection由来の値を書き込まないlaunch environmentを継承する。
   実行すべきhost-securityやHTTP-router contract suiteは存在しない。Per-session token、Origin check、hand-written routerは
   削除済みで、protectionはloopback限定の`localhost` bindだけであり、unexpectedなsession-API failureはreal errorをrequesting clientへ
   そのままpropagateし、sessionは利用可能なままとする。
@@ -412,7 +420,7 @@ pnpm exec vitest run --project unit \
    Skill自身のtab間の移動はnavigationであってgateではない。
    maintained fixtureの全literal credentialをsource/comparison viewへ記述されたまま表示し、表示metadata値は
    そのfieldについてparserが解決した値とする。mask/reveal controlは設けない。2回宣言されたkeyは後の宣言へ
-   解決されるため値はfieldごとに1件であり、structural metadata comparisonは`(tool, kind, 宣言key)`で対応付ける。Boundary-sizeのTOML integer、float、date/time valueはJavaScript precision lossなく
+   解決されるため値はfieldごとに1件であり、structural metadata comparisonは`(kind, 宣言key)`で対応付け、tool recognitionはtoolごとに宣言の横で比較する。Boundary-sizeのTOML integer、float、date/time valueはJavaScript precision lossなく
    typed canonical semantic payloadを保ち、authored spellingも変更しない。Acknowledgement API、field、
    client stateはいずれも存在せず、必要でもない。Session APIはloopback-boundなlocal hostを通じてだけ
    到達でき、その境界がすべてだからである。Authored contentへは1つのfileまたは1つのcomparisonに対する明示的なrequestでのみ
@@ -481,7 +489,7 @@ pnpm exec vitest run --project unit \
    diffへ入り、navigateし、抜けられる。
 7. Packed appがeditor workerをsame-origin static assetからloadし、external requestも`blob:` workerも
    発生させない。
-8. `/`、`/skills/compare`、`/global-consent`、`/skills/<tool>/<Source相対パス>`のdirect loadが、devframe hostが配信する同じ
+8. `/`、`/skills/compare`、`/instructions/compare`、`/global-consent`、`/skills/<tool>/<Source相対パス>`のdirect loadが、devframe hostが配信する同じ
    root-absolute assetからbootする。
 9. Session-loss/response-guard testは、devframe transportが報告するchannel loss、currentかつnon-supersededなRPCの
    現在の非supersededなRPCでのchannel lossまたは解釈できないprotocol、session-ID mismatch、greater Global content epochまたはnon-null disable fence、
@@ -509,7 +517,7 @@ pnpm exec vitest run --project unit \
     実行し、任意のresponseでgreater epochまたはnon-null fenceを観測した場合はrender前に再びpurgeする。その後
     recoveryはloopback session API経由でfresh sessionを取得する。Purge済みIDを保持・比較せず返された`sessionId`を採用し、client-side
     `RecoveryViewState`だけを構築する。Disable fenceがnon-nullならsession routeはexactでcontrol-onlyな
-    `GlobalFenceRecoverySnapshot`を返す。Fenceがnullならnormal full `InspectionSession`を返すが、recoveryは`globalContentEpoch`、Global controlと
+    `GlobalFenceRecoverySnapshot`を返す。Fenceがnullならnormal full `SessionSnapshot`を返すが、recoveryは`globalContentEpoch`、Global controlと
     enable/disable projection、失敗した各toolの自身のcontrol上の`failureCode`、retain済みfailure error、任意のnewly verified
     frozen previewだけを採用し、inspection graphを破棄する。Inventory、Source、file、generation、detail、comparison、editor、authored source、selection、
     filterは復元しない。状態に応じてdisable/join/wait、retry-disable、またはeligibleなGlobal retryを利用できる。
@@ -1143,9 +1151,10 @@ scope外とする。commit済みlockfileが各resolved versionとintegrity hash�
 それらをtestで再記述してもlockfileを二重化するだけであり、install時のenforcementは
 package managerが所有するからである。
 
-Launch testは、browser attempt前に表示されるorigin line、`--no-open`でbrowser-helper child processが
+Launch testは、browser attempt前に表示されるorigin line、`--no-open`でopenerのchild processが
 0件であること、automatic openingがdisabled、unsupported、failedでもinspectionが利用可能なままであることを扱う。
-Port/host resolutionはdevframe所有、automatic openingとnegatableな`--open` flagは`open` packageを通じた
+Port/host resolutionはdevframe所有、automatic openingとnegatableな`--open` flagはstartup opener —
+macOSのChromium tab再利用を`open` packageのhelperの前段に置く — を通じた
 product所有であり、testはinspection由来の
 content、path、authored valueがそのopenerへ到達しないことを証明する。
 Gunshiのbindしないhelp/version、strict unknown-option拒否、明示的なpositional/rest拒否、固定されnonzero

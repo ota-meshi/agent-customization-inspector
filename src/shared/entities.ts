@@ -260,6 +260,21 @@ export type FileEncoding =
   /** The read failed before any bytes could be classified. */
   | 'unknown';
 
+/**
+ * Whether a file's read yielded text this product can display and compare
+ * (FR-025): the {@link ReadableFileEncoding} subset, which is exactly the
+ * subset whose variants carry `sourceText`. A type predicate over any
+ * encoding-discriminated shape, so a file union narrows to its readable
+ * variants wherever the check passes. This is the one place the readable
+ * subset is spelled as a check, so no surface's gate can fall out of step
+ * with the classification it reads.
+ */
+export function isReadableFile<File extends { readonly encoding: FileEncoding }>(
+  file: File,
+): file is Extract<File, { readonly encoding: ReadableFileEncoding }> {
+  return file.encoding === 'utf-8' || file.encoding === 'utf-8-replaced';
+}
+
 /** The label shown for each decode outcome; see {@link SOURCE_BOUNDARY_ORIGIN_TEXT}. */
 export const FILE_ENCODING_TEXT: Readonly<Record<FileEncoding, string>> = {
   /** Decoded as UTF-8 without replacement. */

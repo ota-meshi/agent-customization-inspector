@@ -16,6 +16,7 @@ export default withNuxt()
       'coverage/**',
       'playwright-report/**',
       'test-results/**',
+      '.tmp/**',
     ],
   })
   // Config entries are named for the file unit they cover, one entry per

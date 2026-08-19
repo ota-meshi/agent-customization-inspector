@@ -48,7 +48,7 @@ ContractRegistry (immutable, contract-versioned)
     └── InspectionRule
         └── EvidenceCitation (one or more)
 
-InspectionSession
+SessionSnapshot
 ├── Source (exactly one Repository)
 │   ├── SourceBoundary (exactly one)
 ├── Source (zero to three Global; at most one per supported tool)
@@ -75,7 +75,7 @@ InspectionSession
 BrowserState
 ├── ClientDataState (request/epoch/session/fence guards and central purge)
 ├── FilterState
-├── ComparisonSelection (copy-pair coordinates: two entry identities plus a compared file)
+├── ComparisonSelection (one per kind-specific comparison surface: the route's own coordinates)
 ├── EditorModelState (zero or more, active route/generation only)
 ├── RecoveryViewState (control-only post-purge recovery and explicit resume)
 └── SessionViewState (booting/inspection/recovery/ended view and transport-loss adoption)
@@ -83,7 +83,7 @@ BrowserState
 
 ## Entities
 
-### InspectionSession
+### SessionSnapshot
 
 | Field | Type | Visibility | Rules |
 |---|---|---|---|
@@ -104,7 +104,7 @@ BrowserState
 | `rootOptionValue` | exact string or null | internal | Null when omitted; otherwise the sole validated `--root` argument retained for lifecycle/audit correlation only; it is never used as a filesystem operand after lexical selection |
 | `selectedRepositoryRoot` | absolute platform path string | internal | `invocationCwd` when `--root` is omitted; otherwise the absolute option kept as given, or the relative option resolved against `invocationCwd` with the platform `node:path` resolution; selection performs zero filesystem or network I/O |
 
-`InspectionSession` is the normal full snapshot and is returned only while
+`SessionSnapshot` is the normal full snapshot and is returned only while
 `globalDisableInProgress` is null. Once a disable barrier is accepted, the committed
 generations and all Sources may remain internally for cleanup/retry, but every full session,
 inventory, generation, Source, file, detail, Diagnostic, relationship, authored metadata,
@@ -1446,8 +1446,9 @@ and is reported ordinarily as the failed request's error when a session API boun
 
 Recognitions are ordered by the closed tool order `copilot`, `claude`, `codex`, then the
 kind order listed in the table, never by opaque ID. Cross-file metadata comparison uses
-`(tool, kind, declared key)`; two tools or kinds never collide merely because a declared
-key matches.
+`(kind, declared key)`: a declaration is its file's one parse for the recognized kind, so
+a tool is not a coordinate of it — tool recognition is compared per tool beside the
+declarations — and two kinds never collide merely because a declared key matches.
 
 ### Field reading
 
@@ -1748,17 +1749,25 @@ This state is not authoritative and is never persisted.
   the host resolves it against whatever generation is current, and the epoch is what keeps
   a response captured before a purge from repopulating state. Every central invalidation/purge increments the same
   epoch, so a late callback is a no-op even when response delivery was already queued.
-- `ComparisonSelection`: what the skill comparison route names, by the model's own
-  coordinates — the two compared copies' entry files' `sourceRelativePath` identities
-  plus the copy-relative compared file — resolved against the owning sequence's current
+- `ComparisonSelection`: what a kind-specific comparison route names, by that kind's own
+  coordinates (spec.md § Clarifications Session 2026-08-14). The skill route names the
+  two compared copies' entry files' `sourceRelativePath` identities
+  plus the copy-relative compared file, resolved against the owning sequence's current
   committed generation into zero files, two readable corresponding files, or one
-  readable file beside its stated absent counterpart; a cross-source comparison always
+  readable file beside its stated absent counterpart. The instruction route names two
+  files' `sourceRelativePath` identities that one applicability-range row of the
+  current generation holds — the row-owned pair the skill precedent establishes, the
+  range row standing where the skill name's row stands, and derived from the two
+  identities because a file governs exactly one range — resolved into zero or two
+  readable files: an instruction file is complete in itself, so no side can be a
+  stated absence, and a pair no single row holds is reported rather than compared. A
+  cross-source comparison always
   compares each source's last committed state. A pair is loaded through two ordinary
-  `FileDetail` requests and a one-sided comparison through one — the absence needs no
-  request — and Monaco compares the complete `sourceText` values, the absent side empty,
-  which renders the present content, line by line, as the difference it is. Literal
-  differences, including credential-like strings and environment references, remain
-  visible.
+  `FileDetail` requests and a one-sided skill comparison through one — the absence needs
+  no request — and Monaco compares the complete `sourceText` values, the absent side
+  empty, which renders the present content, line by line, as the difference it is.
+  Literal differences, including credential-like strings and environment references,
+  remain visible.
 - `EditorModelState`: generation-scoped Monaco models with opaque in-memory URIs and
   complete authored `sourceText`. The owning editor, subscriptions, and every model are disposed
   independently on route close, selection replacement, file removal, source disable, or
@@ -3546,7 +3555,8 @@ old file records in place.
    `sourceText` at all (spec.md FR-007). Every returned
    declared value is the value the parser resolved for that declaration, while a
    documented default has null authored text and an explicit origin. Comparison uses each
-   declaration's resolved value and `(tool, kind, declared key)`.
+   declaration's resolved value and `(kind, declared key)`, with tool recognition
+   compared per tool beside the declarations.
    Environment references remain literal and never cause a process-environment
    lookup or substitution. Session Diagnostics may carry only their actionable
    location fields.

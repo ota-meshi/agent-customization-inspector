@@ -34,6 +34,7 @@ import {
   SUPPORTED_TOOL_TEXT,
   escapeControlCharacters,
   inlinePresentationLabel,
+  isReadableFile,
   rendersNothingVisible,
 } from '../../../../shared/entities';
 import type {
@@ -89,8 +90,8 @@ const comparableEntryPaths = computed(() => {
   const paths: string[] = [];
   for (const definition of props.entry.definitions) {
     const path = definition.sourceRelativePath;
-    const encoding = props.filesByPath.get(path)?.encoding;
-    if ((encoding === 'utf-8' || encoding === 'utf-8-replaced') && !paths.includes(path)) {
+    const file = props.filesByPath.get(path);
+    if (file !== undefined && isReadableFile(file) && !paths.includes(path)) {
       paths.push(path);
     }
   }

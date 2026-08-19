@@ -63,12 +63,13 @@ customization-selected destination、別machineへの調査content送信は禁�
    `app.baseURL: '/'`、CDN URLなしを使うため、shellは全client routeで変更なしに動作する。
    Static servingはpackaged UI output directoryの外へ到達せず、inspected fileへfallbackしない。
 4. 起動時にhostは正確な`http://localhost:<port>/` URLを起動元terminalへ1回表示する。自動browser
-   openingは`open` packageを通じたproduct-ownedかつFR-001に基づくbest-effortであり、helperは
-   launch lineの後にだけspawnされ、devframeのbundled openerは無効化されてspawnできるhelperは
-   正確に1つになり、`--no-open`はopeningを何も出力
-   せずに抑止する。Unsupportedまたはfailedのhelperはstartupを妨げず、表示済みURLがfallbackとして
+   openingはstartup openerを通じたproduct-ownedかつFR-001に基づくbest-effortであり、openerは
+   launch lineの後にだけ動き、devframeのbundled openerは無効化されてproductのopenerだけが動く。
+   macOSでは、起動中のChromium系browserが既に持つsession tabを、`open` packageのhelperが新しい
+   tabをspawnする前にfocusする（research.md § 3）。`--no-open`はopeningを何も出力
+   せずに抑止する。Unsupportedまたはfailedのopenerはstartupを妨げず、表示済みURLがfallbackとして
    残る。Productはbrowser opening outcomeを報告しない: openingはbest-effortで表示済みURLが完全な
-   fallbackであるため、helperのfailureは表面化させず握りつぶす。Helperはinspection由来のcontentもpathも受け取らない
+   fallbackであるため、openerのfailureは表面化させず握りつぶす。spawnされるどのprocessもinspection由来のcontentもpathも受け取らない
    （FR-022）。任意のclient routeのreload/direct navigationにtokenは不要である。Serveされる
    shellはsession dataをembedせず、新しくloadしたSPAはRPC channelだけを通じてstateをadoptする。
 5. 固定help/version textと必須の起動元terminal向け1回限りlaunch lineのほかに、hostはtelemetryも
@@ -94,7 +95,7 @@ customization-selected destination、別machineへの調査content送信は禁�
 
 | Function | Kind | Purpose |
 |---|---|---|
-| `agent-customization-inspector:get-session` | read | Full `InspectionSession` snapshot、またはfence中のcontrol-only `GlobalFenceRecoverySnapshot` |
+| `agent-customization-inspector:get-session` | read | Full `SessionSnapshot` snapshot、またはfence中のcontrol-only `GlobalFenceRecoverySnapshot` |
 | `agent-customization-inspector:get-file-detail` | read | Active-generationの`FileDetail` 1件 |
 | `agent-customization-inspector:rescan-repository` | command | 明示Repository scan command 1件の受理 |
 | `agent-customization-inspector:get-global-consent-preview` | read | Currentまたはfrozenの`GlobalConsentPreview` |
@@ -131,7 +132,7 @@ productはstreaming channelを宣言しない）。Editor/finder helper（`devfr
 `globalGeneration`（Global sequenceが存在しない間はnull）を持つ。RepositoryとGlobalの
 inspectionはlifecycleが独立であるため、それぞれ独立したgeneration sequenceを保つ（FR-030）。
 すなわちRepository sequenceはbootstrap generation 0から始まり、Global sequenceはenable commitが
-generation 1として作成し、disableが何もcommitせずに破棄する。Full `InspectionSession`では
+generation 1として作成し、disableが何もcommitせずに破棄する。Full `SessionSnapshot`では
 result-levelの値が`data.repositoryGeneration`と`data.globalGeneration`に一致し、`FileDetail`では
 返却する全generation-owned IDがそのfileのowning sequenceのexactなcommitted generationに属する。
 Serverはepochと両generationをcaptureしてcomplete
@@ -205,7 +206,7 @@ devframe channelは宣言済みfunctionのrequest/responseとしてだけ使う�
 Result data:
 
 ```text
-InspectionSession
+SessionSnapshot
 ├── sessionId, createdAt, repositoryGeneration, globalGeneration, snapshotState, globalContentEpoch,
 │   staleFailures[] { sourceId, failureRef, failedAt, baseGeneration },
 │   globalEnableInProgress null | { kind, operationId, previewId },
@@ -578,8 +579,9 @@ derivationは返さず、file-scopedな`recognition-parse-failed` Diagnostic —
 toolがいくつあっても1 record — がgenerationを`partial`にし、完全なreadable sourceの表示と
 comparison eligibilityは保たれる（FR-028）。1 fileに限定されないfailureは
 attemptをfailさせ、RPC所有の場合はrequestのordinary errorとして公開する。
-Structural metadata comparisonは`(tool, kind, 宣言key)`を使うため、fieldが同じでも
-別tool/kindは衝突しない。
+Structural metadata comparisonは`(kind, 宣言key)`を使う。宣言はfileのそのkindに対する
+1回のparseであって認識する全toolが共有するため、toolは宣言の座標ではなく、fieldが
+同じでも別kindは衝突しない。tool recognitionはtoolごとに宣言の横で比較する。
 
 Declared valueは文字を丸ごと運ぶ。astral characterはUTF-16 code unit 2つ、combining markは
 code point 2つだからである。よってextractionとJSON transportを変化なく通過し、Unicode normalizationも
@@ -1031,7 +1033,7 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
    よらず1 record — を公開する。Parseが何をしたかを読み手が知るのはそこである。
    Compatible provenanceは内部のrecognition record内で1回mergeし、inconsistent meaningは
    そのextractionをall-or-nothingでfailさせる。Comparison keyは
-   `(tool, kind, 宣言key)`とする。Astral character、combining sequence、通常BMP textにより、
+   `(kind, 宣言key)`とし、tool recognitionはtoolごとに宣言の横で比較する。Astral character、combining sequence、通常BMP textにより、
    declared valueがextractionとJSON transportを丸ごと通過することを証明する。返却する全relationship tuple
    `(tool, kind, relationship kind)`は、維持管理するpresentation allowlistに含まれ、かつexactな
    authored occurrenceがrecognitionのactualなadmission済みsource form用extractorでsupportされ
@@ -1075,7 +1077,7 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
    round-tripすることを証明する。
 5. Static traversal/encoded traversal attemptがpackaged `dist/public` outputの外へ出ない。Serve
    される全byteがそのpackaged Nuxt outputに由来し、inspected fileを一切serveせず、root、
-   `/skills/compare`、`/global-consent`、`/skills/<tool>/<Source相対パス>`、
+   `/skills/compare`、`/instructions/compare`、`/global-consent`、`/skills/<tool>/<Source相対パス>`、
    `/instructions/<Source相対パス>`のclient routeがすべて同じpackaged SPA shell
    をbootし、そのshellはsession dataをembedしない。
 6. Repositoryと各tool-specific Global rescanのqueue order、duplicate rejection、abort、partial
