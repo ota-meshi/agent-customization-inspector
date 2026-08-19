@@ -192,8 +192,12 @@ jobs:
       # The browser suite drives the packaged CLI (dist/cli.mjs serving
       # dist/public), so the build is a prerequisite of this job.
       - run: pnpm run build
+      # No `--` before the flag: Playwright's CLI treats a literal `--`
+      # token as the start of its own positional test-file filters, so
+      # `pnpm run test:e2e -- --project=x` silently drops the project
+      # filter and runs every project's tests instead of just `x`.
       - name: Run primary-workflow and accessibility suite
-        run: pnpm run test:e2e -- --project=${{ matrix.browser }}
+        run: pnpm run test:e2e --project=${{ matrix.browser }}
 
   build:
     name: Development/build baseline (Node.js 24.18.0, ubuntu-24.04 x64)
