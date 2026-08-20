@@ -42,9 +42,10 @@ import {
 import { useRoute } from 'vue-router';
 import { NuxtLink } from '#components';
 import SourceViewer from '../../components/inspection/SourceViewer.vue';
-import FrontmatterBlock from '../../components/inspection/FrontmatterBlock.vue';
+import DeclarationBlock from '../../components/inspection/DeclarationBlock.vue';
 import { nextTabForKey } from '../../components/tab-navigation';
 import { instructionComparisonRouteFor } from '../../composables/instruction-comparison';
+import { usePageOwnership } from '../../composables/page-ownership';
 import { SESSION_VIEW_STATE } from '../../session/view-state';
 import { DIAGNOSTIC_REGISTRY } from '../../../shared/diagnostics';
 import {
@@ -132,13 +133,26 @@ const toolsText = computed(() =>
     .join(', '),
 );
 
-/** The committed readable paths — the comparison-eligible files (FR-025). */
-const comparablePaths = computed(
-  () =>
-    new Set(
-      (snapshot.value?.files ?? []).filter(isReadableFile).map((file) => file.sourceRelativePath),
+/**
+ * The comparison-eligible files: readable (FR-025), and not an MCP carrier —
+ * a carrier's source is never displayed (FR-007), so a Codex configured
+ * fallback naming `.mcp.json` must not make the carrier this file's
+ * comparison counterpart, exactly as the inventory row and the compare
+ * route's own pickers exclude it.
+ */
+const comparablePaths = computed(() => {
+  const carriers = new Set(
+    (snapshot.value?.mcp ?? []).flatMap((entry) =>
+      entry.declarations.map((declaration) => declaration.sourceRelativePath),
     ),
-);
+  );
+  return new Set(
+    (snapshot.value?.files ?? [])
+      .filter(isReadableFile)
+      .map((file) => file.sourceRelativePath)
+      .filter((path) => !carriers.has(path)),
+  );
+});
 
 /**
  * The comparison entry for this file (FR-011, T278): this file beside a
@@ -331,11 +345,13 @@ let leaving = false;
  * on every selection, and the failed-load branch calls it again as the retry.
  * The one file is both arguments: this kind has no companion to read from it.
  */
+const pageOwnership = usePageOwnership();
+
 const requestOpen = (): void => {
   if (owner.value === null) {
     return;
   }
-  void sessionViewState.openFileDetail(openPath.value, openPath.value);
+  void pageOwnership.openFileDetail(openPath.value, openPath.value);
 };
 
 // One effect owns "which file should be open", so entering the route and a
@@ -356,7 +372,7 @@ watch(
       // the point: the page shows the recoverable state below, and holding
       // authored content the reader navigated away from would keep it in
       // memory for nothing.
-      sessionViewState.closeFileDetail();
+      pageOwnership.close();
       return;
     }
     requestOpen();
@@ -398,7 +414,10 @@ const titleSubject = computed<string | null>(() => {
   return pathIsSpelledOut.value ? null : openPath.value;
 });
 watchEffect(() => {
-  sessionViewState.pageSubject.value = titleSubject.value;
+  // Reported as this page instance's own, so an outgoing page's unmount
+  // cannot erase what this page just titled the tab with
+  // (`SessionViewState.reportPageSubject`).
+  pageOwnership.reportSubject(titleSubject.value);
 });
 
 /**
@@ -462,10 +481,9 @@ watch(
 
 onBeforeUnmount(() => {
   leaving = true;
-  // Leaving the route drops the authored source this page requested, and the
-  // title subject with it — the next route reports its own or none.
-  sessionViewState.pageSubject.value = null;
-  sessionViewState.closeFileDetail();
+  // The title subject and the open detail are both `usePageOwnership`'s to
+  // drop, after unmount, where the focus guards above are naturally inert
+  // and a replacement page's own report or open stands.
 });
 </script>
 
@@ -593,7 +611,7 @@ onBeforeUnmount(() => {
           <p v-if="presentation.frontmatter.length === 0" class="aci-note">
             This file declares none.
           </p>
-          <FrontmatterBlock v-else :value="declarationBlock" />
+          <DeclarationBlock v-else :value="declarationBlock" />
         </div>
 
         <div v-if="presentation" class="aci-instruction-detail__instructions">

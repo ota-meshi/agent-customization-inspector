@@ -97,7 +97,7 @@ Expected:
   package's own selection policy uses that vendored copy whenever it is executable and
   falls back to the system `xdg-open` otherwise. The generated HTML shell, CSS, JSON files, and required
   documentation/license files are declarative, non-executable artifacts. The direct production dependencies are exactly the nine
-  packages `devframe`, `gunshi`, `h3`, `jsonc-parser`, `open`, `smol-toml`, `vfile`, `vfile-matter`, and
+  packages `devframe`, `gunshi`, `h3`, `open`, `smol-toml`, `strip-json-comments`, `vfile`, `vfile-matter`, and
   `yaml`; devframe's and `open`'s transitive trees are owned by those packages
   and the lockfile.
 - Build output contains no fixture, raw customization text, Global content, cache, or
@@ -311,7 +311,7 @@ Expected:
   the final-release test that packs and installs into an isolated fixture and launches
   `npx --no-install` without relying on the working tree or a runtime download.
   The production-graph tests assert exactly the nine approved direct dependencies
-  `devframe`, `gunshi`, `h3`, `jsonc-parser`, `open`, `smol-toml`, `vfile`, `vfile-matter`, and `yaml` — their resolved versions
+  `devframe`, `gunshi`, `h3`, `open`, `smol-toml`, `strip-json-comments`, `vfile`, `vfile-matter`, and `yaml` — their resolved versions
   and integrity hashes stay owned by the committed
   `pnpm-lock.yaml` — and negative packaging fixtures prove that a missing or non-regular
   required entry point fails `verify:package` before publish.
@@ -1684,8 +1684,8 @@ the exact `package.json.files` entries `dist`, `README.md`, `README.ja.md`, and
 the remaining `dist` contents are Nuxt/tsdown build output and are not re-enumerated by a
 product manifest. Inspect the exact `bin` mapping and absence of `main`/`module`/`exports`,
 license notices, exact shebang/executable mode, and the published README pair. The direct
-production dependencies are exactly the nine packages `devframe`, `gunshi`, `h3`, `jsonc-parser`,
-`open`, `smol-toml`, `vfile`, `vfile-matter`, and `yaml`; devframe's and `open`'s transitive
+production dependencies are exactly the nine packages `devframe`, `gunshi`, `h3`, `open`,
+`smol-toml`, `strip-json-comments`, `vfile`, `vfile-matter`, and `yaml`; devframe's and `open`'s transitive
 trees are owned by those packages and the lockfile.
 
 There is no host-security or HTTP-API-router contract step to rerun: devframe owns
@@ -1706,8 +1706,8 @@ window, and rollback/support path. Missing or one-language-only evidence fails t
 gate.
 
 Assert the approved production dependency set from `package.json` and the `pnpm-lock.yaml`
-closure: exactly the nine direct dependencies `devframe`, `gunshi`, `h3`, `jsonc-parser`,
-`open`, `smol-toml`, `vfile`, `vfile-matter`, and `yaml`, so a graph change fails the gate until the dependency decision is
+closure: exactly the nine direct dependencies `devframe`, `gunshi`, `h3`, `open`,
+`smol-toml`, `strip-json-comments`, `vfile`, `vfile-matter`, and `yaml`, so a graph change fails the gate until the dependency decision is
 explicitly revisited. The committed lockfile owns each resolved version and its integrity
 hash, which is what pins every production package's payload bytes. Only generated
 Package-manager-generated `.bin` symlinks and `.cmd`/`.ps1` shims map to the exact declared

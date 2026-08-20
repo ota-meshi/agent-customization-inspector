@@ -86,8 +86,10 @@ originを持つproposed lexical rootのone-way escaped presentationで、absolut
 `SourceRelativePath`ではなく、inventory itemを識別せず、read authorityを与えない。
 
 全Inspector Repository matcherは選択されたRepository rootを明示baseとし、globのように見えるrendered string
-形式を持たないtyped segment array programとしてauthorする。先頭の`ANY_DIRECTORIES` segmentが意味するのは
-下向きInspector descendant inventoryだけであり、vendor traversalではない。Static
+形式を持たないtyped segment array programとしてauthorする。先頭の`ANY_DIRECTORIES` segmentが意味するのは、
+vendorがworked-fileまたはdescendant anchorを通じてあらゆる深さで文書化しているlocationに対する下向き
+Inspector descendant inventoryだけであり、vendor traversalではない。Runtime cwd chain上でしか文書化されて
+いないlocationはselected rootだけでadmitする。Static
 candidate、vendor-specific one-edge derivation、relationship-only reference、exclusionを分離する。File存在と
 product surface、runtime root/`cwd`、target match、trust、enablement、selection、installation、managed policy、
 external runtime factを別に保ち、inventoryをeffective agent configurationに見せない。Originating fileを
@@ -106,7 +108,7 @@ Vue 3.5.39とする。6つのNode/OS floor jobはcompatibleな全minor/patch rel
 **主要依存関係**: Nuxt 4.4.8、Vue Router 5.2.0、tsdown 0.22.8、Vite 7.3.6
 （Nuxtと互換性のある最新release）、`devframe` 0.7.5（pre-1.0 local-tool host framework）、
 `gunshi` 0.37.0、`open` 11.0.1、`yaml` 2.9.0、
-`jsonc-parser` 3.3.1、`smol-toml` 1.7.0、`h3` 2.0.1-rc.22、`monaco-editor` 0.55.1。いずれも`package.json`には
+`strip-json-comments` 5.0.3、`smol-toml` 1.7.0、`h3` 2.0.1-rc.22、`monaco-editor` 0.55.1。いずれも`package.json`には
 caret rangeで宣言し、commit済みlockfileがこれらのexactなresolved versionとintegrityをpinする。
 `h3`のresolved versionはdevframe自身のh3と一致するため、hostの`/skills/**` shell fallbackと
 devframeは1つのH3 module instanceに解決される（research.md § 3）。devframeの残りのtransitive tree
@@ -1064,8 +1066,8 @@ buildまたはpackage quality gateを配置しない。
 したがってSetupでは、package command、tsdown entry、CI quality gateを設定または実行する前にformatterを
 設定し、CLI entryと参照される全assembly scriptをscaffoldする。それらのpathが存在するまでSetup stageを
 runnableとみなさない。
-Production `dependencies`はcaret宣言のdirect set `devframe`、`gunshi`、`h3`、`jsonc-parser`、`open`、
-`smol-toml`、`vfile`、`vfile-matter`、`yaml`とし、`tests/package/production-graph.test.ts`が`pnpm-lock.yaml`から直接assertする。
+Production `dependencies`はcaret宣言のdirect set `devframe`、`gunshi`、`h3`、`open`、
+`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`yaml`とし、`tests/package/production-graph.test.ts`が`pnpm-lock.yaml`から直接assertする。
 devframeと`open`のtransitiveはlockfileが所有する。Nuxt/Vue/Vite/tsdown、Monaco、Playwright、その他
 build/test toolingはdevelopment-onlyとする。
 

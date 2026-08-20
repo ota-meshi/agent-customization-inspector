@@ -166,7 +166,10 @@ root.
 `ANY_DIRECTORIES` is the one directional axis, and it points downward. It describes only the Inspector's inventory of directories below its anchor.
 It does not mean that a vendor walks downward, walks upward, searches ancestors, recognizes
 every nested repository, or applies the matched file in a particular runtime context. Those
-claims require separate vendor behavior and strategy records.
+claims require separate vendor behavior and strategy records. A leading `ANY_DIRECTORIES`
+is authored only for a location the vendor documents at any depth — a worked-file or
+descendant anchor, such as on-demand subdirectory loading or discovery in the directories
+on the path of a file being worked on.
 
 There is deliberately no upward axis. The allowlist is anchored at the selected root and
 reports that root's customizations (FR-003), so a vendor lookup that walks upward from a

@@ -102,6 +102,7 @@ function snapshotWith(
     files,
     instructions,
     skills,
+    mcp: [],
     diagnostics: [],
     repositoryGeneration: 1,
     globalGeneration: null,

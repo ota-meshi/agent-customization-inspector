@@ -27,6 +27,7 @@ import {
   assertLoadableTraversalPlan,
   ProgramLevel,
   normalizeSelectorOrigins,
+  type ConfiguredDerivedPlan,
   type MatcherSegment,
   type ProgramState,
   type SelectorOrigin,
@@ -69,6 +70,34 @@ export type CandidateOutcome =
       /** The read failed before bytes could be classified (FR-024). */
       readonly kind: 'unreadable';
     };
+
+/**
+ * One candidate read a stage-one configuration reader already performed,
+ * handed to the walk so the same physical file is never read twice in one
+ * attempt (T282): the walk's classification cache is pre-populated with it,
+ * and the reader's bytes join the attempt's tally. Produced today by the
+ * Codex configuration read for `.codex/config.toml`, whose path the walk
+ * also admits as the `codex.repo.config` candidate.
+ */
+export interface SeededCandidateRead {
+  /** Exact raw entry-name segments of the file the reader opened. */
+  readonly rawSegments: readonly string[];
+  /** The reader's classification, exactly as the walk would have produced it. */
+  readonly outcome: CandidateOutcome;
+}
+
+/**
+ * What one vendor's stage-one configuration read contributes to the coming
+ * scan (T1090): the derived plans its configuration activated, and the
+ * candidate reads it performed while deciding them, seeded into the walk so
+ * one physical file is read once per attempt ({@link SeededCandidateRead}).
+ */
+export interface ConfigurationReadResult {
+  /** The derived rules the configuration activated, with their plans. */
+  readonly plans: readonly ConfiguredDerivedPlan[];
+  /** The candidate reads the reader performed, for the walk's cache. */
+  readonly seededReads: readonly SeededCandidateRead[];
+}
 
 /**
  * One discovered candidate file with its read outcome. Raw entry-name
@@ -595,6 +624,17 @@ export interface TraversalScanInput {
   /** The compiled inspection allowlist to interpret as data (FR-019). */
   readonly plans: readonly TraversalPlan[];
   /**
+   * Candidate reads a configuration reader already performed in stage one —
+   * the Codex `.codex/config.toml` read that decided the fallback plans —
+   * seeded into this walk's classification cache, so the one physical file
+   * the reader opened is never opened again by the walk that admits it as a
+   * candidate: one read, one text, one byte count, and a generation whose
+   * fallback plan and published carrier cannot disagree about the file's
+   * contents (contracts/inspection-path-allowlist.md § Common conformance
+   * requirements, T282).
+   */
+  readonly seededReads?: readonly SeededCandidateRead[];
+  /**
    * Called as the attempt works, with what it has done so far. It exists so a
    * refresh during a long scan shows movement rather than the zeros the attempt
    * was admitted with; the walk ignores what it returns and is never paced by
@@ -694,6 +734,15 @@ export async function runTraversalScan(input: TraversalScanInput): Promise<Trave
   }
 
   const discovered = new Map<string, PendingCandidate>();
+  // Stage one's bytes precede the walk (the scan reports them before calling
+  // in), so every report here starts from them: a mid-walk `enumerating`
+  // update must not show fewer bytes than the report that preceded the walk
+  // (data-model.md § ScanProgress: the counters are monotonically
+  // non-decreasing within an attempt).
+  const seededBytes = (input.seededReads ?? []).reduce(
+    (total, seeded) => total + ('sizeBytes' in seeded.outcome ? seeded.outcome.sizeBytes : 0),
+    0,
+  );
   // What the walk actually looked at, so a completed scan reports its own work
   // instead of the zero the progress counters were admitted with. The candidate
   // tally is read from `discovered` at report time rather than tracked
@@ -708,7 +757,7 @@ export async function runTraversalScan(input: TraversalScanInput): Promise<Trave
               phase: 'enumerating',
               visitedEntries,
               candidateFiles: discovered.size,
-              readBytes: 0,
+              readBytes: seededBytes,
               diagnosticCount: 0,
             }),
   };
@@ -819,9 +868,10 @@ export async function runTraversalScan(input: TraversalScanInput): Promise<Trave
   }
 
   const files: TraversalCandidate[] = [];
-  // Bytes this attempt accepted, counted as they are read. The publication
-  // cannot supply it: an empty override is read but not published.
-  let readBytes = 0;
+  // Bytes this attempt accepted, counted as they are read, starting from the
+  // stage-one reads that arrived already performed. The publication cannot
+  // supply it: an empty override is read but not published.
+  let readBytes = seededBytes;
   // Candidates a first-non-empty plan classified without recording them as
   // discoveries: it probes its targets in order and publishes only the one that
   // decides. Counted here so the published figure covers them, while a walk's
@@ -844,6 +894,13 @@ export async function runTraversalScan(input: TraversalScanInput): Promise<Trave
   // progress update whichever selector asked for it: an attempt whose only work
   // is a first-non-empty target would otherwise report nothing at all.
   const outcomes = new Map<string, CandidateOutcome>();
+  // Stage one's own reads arrive pre-classified (see `seededReads`): the
+  // cache answer is what makes the walk's later admission of the same path a
+  // lookup instead of a second read. Their bytes are already in the tally —
+  // `readBytes` starts from `seededBytes` above.
+  for (const seeded of input.seededReads ?? []) {
+    outcomes.set(rawKey(seeded.rawSegments), seeded.outcome);
+  }
   const classifyOnce = async (
     rawSegments: readonly string[],
     knownUnreadable: boolean,

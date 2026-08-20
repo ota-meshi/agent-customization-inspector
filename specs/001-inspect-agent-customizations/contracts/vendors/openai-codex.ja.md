@@ -33,7 +33,7 @@ status、Inspector status列はrationaleまたはInspector scope stateであり�
 | `codex.behavior.repo.rules` | `partially-documented` | `[experimental]` | Nested recursionは未指定でrules featureはexperimental |
 | `codex.behavior.user.rules` | `documented` | `[experimental]` | 文書化済みUser rules surfaceはexperimental |
 | `codex.behavior.user.prompts` | `documented` | `[deprecated]` | 文書化済みcustom-prompt surfaceはdeprecated |
-| `codex.repo.agent` | `partially-documented` | `[]` | Descendant inventoryは完全に指定されたproject search外のpossible contextを含む |
+| `codex.repo.agent` | `partially-documented` | `[]` | Rootの`.codex/agents/`は文書化されているが、完全なproject directory searchは十分に指定されていない |
 | `codex.repo.rules` | `documented` | `[experimental]` | Inspector ruleは文書化済みdirect childだけをadmitし、未確立のnestingを除外する |
 
 固定qualifier順は`preview`、`experimental`、`deprecated`とする。ここでは複数qualifierを持つrowはないが、一般の
@@ -57,8 +57,9 @@ fileをadmitしたかであって、そのruleがどれだけ文書化されて�
 
 ## Inspector Repository rule
 
-この表のBaseはすべて正確なInspector Repository boundary — selected Repository root、表記は`Repository` — である。`descendant-inventory` expansionは
-boundary配下の可能なruntime contextをinventoryするだけであり、Codexが下向きwalkするとは主張しない。
+この表のBaseはすべて正確なInspector Repository boundary — selected Repository root、表記は`Repository` — である。`descendant-inventory` expansionを
+使えるのは、vendorがworked-fileまたはdescendant anchorを通じてあらゆる深さで文書化しているlocationだけである。Codexはそれを文書化していないため、
+以下のselectorはすべてrootにanchorされ、どの行もCodexが下向きwalkするとは主張しない。
 より狭いexclusionまたはGlobal requirementを後述しない限り、全行のpolicy referenceはFR-003、FR-004、
 FR-005、FR-024、QR-001、QR-004、QR-005である。
 

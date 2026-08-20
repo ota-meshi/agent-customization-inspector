@@ -25,7 +25,7 @@ import {
 import { SUPPORTED_TOOL_ORDER, type SupportedTool } from '../../../shared/entities';
 import type {
   FileDetailDto,
-  FrontmatterEntryDto,
+  DeclaredEntryDto,
   SkillDefinitionDto,
 } from '../../../shared/api-types';
 
@@ -213,7 +213,7 @@ export class SkillRecognitionComparison {
  * One parsed side's declarations. Callers guard on the 'parsed' state, which
  * is derived from the same detail, so the presentation is present here.
  */
-function entriesOf(side: ComparisonSideInput): readonly FrontmatterEntryDto[] {
+function entriesOf(side: ComparisonSideInput): readonly DeclaredEntryDto[] {
   const detail = side.detail;
   return detail.kind === 'skill' && detail.presentation !== null
     ? detail.presentation.frontmatter

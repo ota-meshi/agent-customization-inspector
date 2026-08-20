@@ -35,6 +35,7 @@ import { computed } from 'vue';
 import { NuxtLink } from '#components';
 import RowDiagnostics from './RowDiagnostics.vue';
 import { instructionDetailRoute } from '../../instruction-detail-route';
+import { mcpDetailRoute } from '../../mcp-detail-route';
 import { instructionComparisonRouteFor } from '../../../composables/instruction-comparison';
 import {
   SUPPORTED_TOOL_TEXT,
@@ -59,6 +60,14 @@ const props = defineProps<{
    * names.
    */
   filesByPath: ReadonlyMap<string, CustomizationFileSummaryDto>;
+  /**
+   * Every path with an MCP recognition in the committed generation. A file
+   * here is a declaration carrier whose `FileDetail` is withheld by contract
+   * (FR-007) — a Codex configured fallback can make the root `.mcp.json` an
+   * instructions candidate too — so the row routes it to the carrier's own
+   * MCP view and never composes it into a comparison.
+   */
+  mcpCarrierPaths: ReadonlySet<string>;
   /** The generation's diagnostics, resolved per file by {@link RowDiagnostics}. */
   diagnostics: readonly SerializedDiagnostic[];
 }>();
@@ -86,7 +95,11 @@ const rangeText = computed(() =>
  * show (T224) — and the diagnostics are the file's own too, which is the only
  * place an instruction file's file-confined outcome can be named: it is
  * recognized, so it appears under no "files in no kind" heading, and a
- * `partial` generation would otherwise state no cause (FR-028).
+ * `partial` generation would otherwise state no cause (FR-028). A file that
+ * is also an MCP carrier routes to the carrier's own view instead: its
+ * `FileDetail` is withheld by contract (FR-007), so the instruction detail
+ * route would answer `stale-resource`, and the MCP view is where the file's
+ * facts live.
  *
  * A file's path goes through the shared label rule rather than plain escaping
  * ({@link pathPresentationLabel}): a root-level name built only from
@@ -103,7 +116,9 @@ const rowFiles = computed(() =>
   props.entry.files.map((file) => ({
     key: file.sourceRelativePath,
     pathText: pathPresentationLabel(file.sourceRelativePath),
-    detailRoute: instructionDetailRoute(file.sourceRelativePath),
+    detailRoute: props.mcpCarrierPaths.has(file.sourceRelativePath)
+      ? mcpDetailRoute(file.sourceRelativePath)
+      : instructionDetailRoute(file.sourceRelativePath),
     recognitions: file.recognitions.map((recognition) => ({
       tool: recognition.tool,
       toolText: SUPPORTED_TOOL_TEXT[recognition.tool],
@@ -114,17 +129,22 @@ const rowFiles = computed(() =>
 );
 
 /**
- * The comparison this row links to — its first two readable files (FR-025:
- * a diagnostic-only file is not comparison-eligible) — or null when the
- * range has fewer than two, where a link would open a comparison with
- * nothing to pair. The compare route's own pickers take over from there:
+ * The comparison this row links to — its first two comparable files — or
+ * null when the range has fewer than two, where a link would open a
+ * comparison with nothing to pair. Comparable means readable (FR-025: a
+ * diagnostic-only file is not comparison-eligible) and not an MCP carrier,
+ * whose source no comparison may display (FR-007). The compare route's own pickers take over from there:
  * they hold every committed instruction file, so the reader steps to any
  * other pair on the comparison itself instead of composing one here (T278).
  */
 const compareRoute = computed(() => {
   const readable = props.entry.files.filter((file) => {
     const published = props.filesByPath.get(file.sourceRelativePath);
-    return published !== undefined && isReadableFile(published);
+    return (
+      published !== undefined &&
+      isReadableFile(published) &&
+      !props.mcpCarrierPaths.has(file.sourceRelativePath)
+    );
   });
   const [first, second] = readable;
   return first !== undefined && second !== undefined

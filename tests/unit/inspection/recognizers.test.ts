@@ -1,6 +1,6 @@
-// T054/T127/T155/T207/T228: Codex, Claude, and Copilot recognition from the
-// admitting rule alone — tool, the `skill` and `instructions` kinds, path
-// provenance, the exact multi-tool recognition matrix, and the absence of any
+// T054/T127/T155/T207/T228/T283: Codex, Claude, and Copilot recognition from
+// the admitting rule alone — tool, the `skill`, `instructions`, and `MCP`
+// kinds, path provenance, the exact multi-tool recognition matrix, and the absence of any
 // recognition the shipped registry does not authorize (FR-004, FR-005).
 //
 // The one value a recognition lifts out of the bytes is the declared name, and
@@ -32,14 +32,29 @@ const codexSkillRule = CODEX_REPOSITORY_RULES.find(
 const codexInstructionsRule = CODEX_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'codex.repo.instructions',
 )!;
+const codexConfigRule = CODEX_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'codex.repo.config',
+)!;
 const claudeSkillRule = CLAUDE_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'claude.repo.skill',
+)!;
+const claudeMcpRule = CLAUDE_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'claude.repo.mcp',
 )!;
 const claudeInstructionsRule = CLAUDE_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'claude.repo.instructions',
 )!;
 const copilotSkillRule = COPILOT_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'copilot.repo.skill',
+)!;
+const copilotMcpRule = COPILOT_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'copilot.repo.mcp',
+)!;
+const copilotVscodeMcpRule = COPILOT_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'copilot.repo.mcp.vscode',
+)!;
+const copilotVscodeRootMcpRule = COPILOT_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'copilot.repo.mcp.vscode-root',
 )!;
 
 /**
@@ -482,6 +497,682 @@ describe('Codex instruction recognition (T207, presentation added by T222)', () 
     // a filename-only `AGENTS.md` is no one else's candidate before that
     // vendor's own instruction phase ships its rule.
     const { recognitions } = await recognizeWith('claude', 'AGENTS.md', [codexInstructionsRule]);
+    expect(recognitions).toEqual([]);
+  });
+});
+
+describe('Codex MCP recognition (T283)', () => {
+  const carrierPath = '.codex/config.toml';
+
+  it('attaches one codex/MCP recognition with one row per declaration, in authored order', async () => {
+    const recognitions = (
+      await recognizeWith(
+        'codex',
+        carrierPath,
+        [codexConfigRule],
+        [
+          'project_doc_fallback_filenames = ["TEAM_GUIDE.md"]',
+          '',
+          '[mcp_servers.context7]',
+          'command = "npx"',
+          'args = ["-y", "@upstash/context7-mcp"]',
+          '',
+          '[mcp_servers.docs-http]',
+          'url = "https://docs.example.com/mcp"',
+          '',
+        ].join('\n'),
+      )
+    ).recognitions;
+    // One recognition per `(file, tool, kind)`: the carrier's admission
+    // yields the MCP recognition and nothing else — no instructions, no
+    // settings recognition before the phase that owns one.
+    expect(recognitions).toHaveLength(1);
+    expect(recognitions[0]).toMatchObject({
+      sourceRelativePath: carrierPath,
+      tool: 'codex',
+      parseStatus: 'parsed',
+      diagnosticIds: [],
+    });
+    if (recognitions[0]!.details.kind !== 'MCP') {
+      throw new Error('expected an MCP recognition');
+    }
+    // One declaration per named server table, in the parser's resolved
+    // order, each carrying the fields the carrier wrote as resolved values
+    // (FR-007); the fallback declaration beside them stays configuration.
+    expect(recognitions[0]!.details.servers.map((server) => server.name)).toEqual([
+      'context7',
+      'docs-http',
+    ]);
+    expect(recognitions[0]!.details.servers[0]!.fields).toEqual([
+      { key: 'command', keyKind: 'string', value: { kind: 'scalar', text: 'npx' } },
+      {
+        key: 'args',
+        keyKind: 'string',
+        value: {
+          kind: 'sequence',
+          items: [
+            { kind: 'scalar', text: '-y' },
+            { kind: 'scalar', text: '@upstash/context7-mcp' },
+          ],
+        },
+      },
+    ]);
+  });
+
+  it('derives deterministic provenance from the admitting carrier rule', async () => {
+    const recognitions = (
+      await recognizeWith('codex', carrierPath, [codexConfigRule], '[mcp_servers.one]\n')
+    ).recognitions;
+    expect(recognitions[0]!.provenances).toHaveLength(1);
+    expect(recognitions[0]!.provenances[0]).toMatchObject({
+      ruleId: 'codex.repo.config',
+      discoveryClass: 'static-candidate',
+      matchedPath: carrierPath,
+    });
+  });
+
+  it('publishes an empty declaration set for a carrier that declares none', async () => {
+    // Absent declarations are omitted, not failed: the carrier is a
+    // recognized MCP carrier either way, and `parsed` with zero rows is what
+    // "declares no server" looks like — distinct from the failed state below.
+    for (const sourceText of [
+      'project_doc_fallback_filenames = ["TEAM_GUIDE.md"]\n',
+      // A `mcp_servers` value that is not a table declares nothing either.
+      'mcp_servers = "not a table"\n',
+    ]) {
+      const recognitions = (
+        await recognizeWith('codex', carrierPath, [codexConfigRule], sourceText)
+      ).recognitions;
+      expect(recognitions[0]).toMatchObject({
+        parseStatus: 'parsed',
+        details: { kind: 'MCP', servers: [] },
+      });
+    }
+  });
+
+  it('omits a malformed declaration whole while keeping the ordinary ones', async () => {
+    // Atomic omission: a `mcp_servers` entry that is not a table is no
+    // declaration, and dropping it must not take the well-formed neighbors
+    // with it — or publish any partial rendering of the dropped one.
+    const recognitions = (
+      await recognizeWith(
+        'codex',
+        carrierPath,
+        [codexConfigRule],
+        ['[mcp_servers]', 'broken = "oops"', '', '[mcp_servers.kept]', 'command = "npx"', ''].join(
+          '\n',
+        ),
+      )
+    ).recognitions;
+    if (recognitions[0]!.details.kind !== 'MCP') {
+      throw new Error('expected an MCP recognition');
+    }
+    expect(recognitions[0]!.parseStatus).toBe('parsed');
+    expect(recognitions[0]!.details.servers.map((server) => server.name)).toEqual(['kept']);
+  });
+
+  it('fails the whole recognition on a document TOML cannot parse', async () => {
+    // All-or-nothing (FR-028): nothing parsed is published — no partial
+    // declaration list — while the carrier stays an admitted candidate whose
+    // diagnostic the scan attaches.
+    const recognitions = (
+      await recognizeWith('codex', carrierPath, [codexConfigRule], '[mcp_servers.broken\n')
+    ).recognitions;
+    expect(recognitions[0]!.parseStatus).toBe('failed');
+    expect(recognitions[0]!.details).toEqual({ kind: 'MCP', servers: [] });
+    expect(recognitions[0]!.diagnosticIds).toEqual([]);
+  });
+
+  it('keeps declared secrets and environment references literal and unresolved', async () => {
+    // The values are the file's own resolved literals: nothing looks up the
+    // process environment, so no process value can reach the record (FR-026).
+    const recognitions = (
+      await recognizeWith(
+        'codex',
+        carrierPath,
+        [codexConfigRule],
+        '[mcp_servers.ctx.env]\nAPI_KEY = "$HOME/${TOKEN}"\n',
+      )
+    ).recognitions;
+    if (recognitions[0]!.details.kind !== 'MCP') {
+      throw new Error('expected an MCP recognition');
+    }
+    expect(recognitions[0]!.details.servers[0]).toEqual({
+      name: 'ctx',
+      fields: [
+        {
+          key: 'env',
+          keyKind: 'string',
+          value: {
+            kind: 'mapping',
+            entries: [
+              {
+                key: 'API_KEY',
+                keyKind: 'string',
+                value: { kind: 'scalar', text: '$HOME/${TOKEN}' },
+              },
+            ],
+          },
+        },
+      ],
+    });
+    expect(JSON.stringify(recognitions[0])).not.toContain(process.env['HOME'] ?? '\0unset');
+  });
+
+  it('runs no census for an MCP carrier and produces nothing for another tool', async () => {
+    // The carrier is just a file — nothing beside it belongs to it — and the
+    // admission is Codex's alone.
+    const { companions, recognitions } = await recognizeWith('codex', carrierPath, [
+      codexConfigRule,
+    ]);
+    expect(companions).toEqual([]);
+    expect(recognitions).toHaveLength(1);
+    const other = await recognizeWith('claude', carrierPath, [codexConfigRule]);
+    expect(other.recognitions).toEqual([]);
+  });
+});
+
+describe('Claude MCP recognition (T306)', () => {
+  const carrierPath = '.mcp.json';
+
+  it('attaches one claude/MCP recognition with one row per declaration, in authored order', async () => {
+    const recognitions = (
+      await recognizeWith(
+        'claude',
+        carrierPath,
+        [claudeMcpRule],
+        JSON.stringify({
+          mcpServers: {
+            context7: { command: 'npx', args: ['-y', '@upstash/context7-mcp'] },
+            'docs-http': { url: 'https://docs.example.com/mcp' },
+          },
+        }),
+      )
+    ).recognitions;
+    // One recognition per `(file, tool, kind)`: the carrier's admission
+    // yields the MCP recognition and nothing else.
+    expect(recognitions).toHaveLength(1);
+    expect(recognitions[0]).toMatchObject({
+      sourceRelativePath: carrierPath,
+      tool: 'claude',
+      parseStatus: 'parsed',
+      diagnosticIds: [],
+    });
+    if (recognitions[0]!.details.kind !== 'MCP') {
+      throw new Error('expected an MCP recognition');
+    }
+    // One declaration per named map entry, in the parser's resolved order,
+    // each carrying the fields the carrier wrote as resolved values (FR-007).
+    expect(recognitions[0]!.details.servers.map((server) => server.name)).toEqual([
+      'context7',
+      'docs-http',
+    ]);
+    expect(recognitions[0]!.details.servers[0]!.fields).toEqual([
+      { key: 'command', keyKind: 'string', value: { kind: 'scalar', text: 'npx' } },
+      {
+        key: 'args',
+        keyKind: 'string',
+        value: {
+          kind: 'sequence',
+          items: [
+            { kind: 'scalar', text: '-y' },
+            { kind: 'scalar', text: '@upstash/context7-mcp' },
+          ],
+        },
+      },
+    ]);
+  });
+
+  it('derives deterministic provenance from the admitting carrier rule', async () => {
+    const recognitions = (
+      await recognizeWith('claude', carrierPath, [claudeMcpRule], '{ "mcpServers": {} }')
+    ).recognitions;
+    expect(recognitions[0]!.provenances).toHaveLength(1);
+    expect(recognitions[0]!.provenances[0]).toMatchObject({
+      ruleId: 'claude.repo.mcp',
+      discoveryClass: 'static-candidate',
+      matchedPath: carrierPath,
+    });
+  });
+
+  it('publishes an empty declaration set for a carrier that declares none', async () => {
+    // Absent declarations are omitted, not failed: `parsed` with zero rows is
+    // what "declares no server" looks like — distinct from the failed state
+    // below (FR-028). A root or `mcpServers` value of another shape declares
+    // nothing either.
+    for (const sourceText of ['{}', '{ "mcpServers": 3 }', '{ "mcpServers": [] }', '[]', 'null']) {
+      const recognitions = (await recognizeWith('claude', carrierPath, [claudeMcpRule], sourceText))
+        .recognitions;
+      expect(recognitions[0], sourceText).toMatchObject({
+        parseStatus: 'parsed',
+        details: { kind: 'MCP', servers: [] },
+      });
+    }
+  });
+
+  it('omits a malformed declaration whole while keeping the ordinary ones', async () => {
+    // Atomic omission: an `mcpServers` entry that is not an object is no
+    // declaration, and dropping it must not take the well-formed neighbors
+    // with it — or publish any partial rendering of the dropped one.
+    const recognitions = (
+      await recognizeWith(
+        'claude',
+        carrierPath,
+        [claudeMcpRule],
+        JSON.stringify({
+          mcpServers: { broken: 'oops', kept: { command: 'npx' }, alsoBroken: null },
+        }),
+      )
+    ).recognitions;
+    if (recognitions[0]!.details.kind !== 'MCP') {
+      throw new Error('expected an MCP recognition');
+    }
+    expect(recognitions[0]!.parseStatus).toBe('parsed');
+    expect(recognitions[0]!.details.servers.map((server) => server.name)).toEqual(['kept']);
+  });
+
+  it('fails the whole recognition on a document strict JSON cannot parse', async () => {
+    // All-or-nothing (FR-028): nothing parsed is published — no partial
+    // declaration list — while the carrier stays an admitted candidate whose
+    // diagnostic the scan attaches. Strict JSON, so a comment or a trailing
+    // comma fails the document exactly as the vendor's own reader would.
+    for (const sourceText of [
+      '{ "mcpServers": { broken\n',
+      '{ "mcpServers": {}, } ',
+      '// comment\n{}',
+    ]) {
+      const recognitions = (await recognizeWith('claude', carrierPath, [claudeMcpRule], sourceText))
+        .recognitions;
+      expect(recognitions[0]!.parseStatus, sourceText).toBe('failed');
+      expect(recognitions[0]!.details).toEqual({ kind: 'MCP', servers: [] });
+      expect(recognitions[0]!.diagnosticIds).toEqual([]);
+    }
+  });
+
+  it('keeps declared secrets and environment references literal and unresolved', async () => {
+    // The values are the file's own resolved literals: nothing looks up the
+    // process environment, so no process value can reach the record (FR-026),
+    // and a relative command stays the literal the file wrote — its
+    // resolution base is not established by current official pages, and this
+    // product records no base and computes no path (FR-009).
+    const recognitions = (
+      await recognizeWith(
+        'claude',
+        carrierPath,
+        [claudeMcpRule],
+        JSON.stringify({
+          mcpServers: {
+            ctx: { command: './scripts/run.sh', env: { API_KEY: '$HOME/${TOKEN}' } },
+          },
+        }),
+      )
+    ).recognitions;
+    if (recognitions[0]!.details.kind !== 'MCP') {
+      throw new Error('expected an MCP recognition');
+    }
+    expect(recognitions[0]!.details.servers[0]).toEqual({
+      name: 'ctx',
+      fields: [
+        {
+          key: 'command',
+          keyKind: 'string',
+          value: { kind: 'scalar', text: './scripts/run.sh' },
+        },
+        {
+          key: 'env',
+          keyKind: 'string',
+          value: {
+            kind: 'mapping',
+            entries: [
+              {
+                key: 'API_KEY',
+                keyKind: 'string',
+                value: { kind: 'scalar', text: '$HOME/${TOKEN}' },
+              },
+            ],
+          },
+        },
+      ],
+    });
+    expect(JSON.stringify(recognitions[0])).not.toContain(process.env['HOME'] ?? '\0unset');
+  });
+
+  it('runs no census for an MCP carrier and produces nothing for another tool', async () => {
+    const { companions, recognitions } = await recognizeWith('claude', carrierPath, [
+      claudeMcpRule,
+    ]);
+    expect(companions).toEqual([]);
+    // An unparseable empty-string carrier still has its one failed
+    // recognition; the point here is the census and the tool gate.
+    expect(recognitions).toHaveLength(1);
+    const other = await recognizeWith('codex', carrierPath, [claudeMcpRule]);
+    expect(other.recognitions).toEqual([]);
+  });
+});
+
+describe('Copilot CLI MCP recognition (T336)', () => {
+  it('attaches one copilot/MCP recognition with rows per declaration and CLI provenance', async () => {
+    // The CLI carrier is the same strict-JSON `mcpServers` form Claude's
+    // carrier reads — the shared semantics are pinned by the Claude suite
+    // above through the one JSON document seam — so what belongs here is the
+    // Copilot rule's own classification and provenance.
+    const recognitions = (
+      await recognizeWith(
+        'copilot',
+        '.github/mcp.json',
+        [copilotMcpRule],
+        JSON.stringify({
+          mcpServers: { 'api-db': { url: 'https://db.example.com/mcp' }, broken: 'x' },
+        }),
+      )
+    ).recognitions;
+    expect(recognitions).toHaveLength(1);
+    expect(recognitions[0]).toMatchObject({
+      sourceRelativePath: '.github/mcp.json',
+      tool: 'copilot',
+      parseStatus: 'parsed',
+    });
+    if (recognitions[0]!.details.kind !== 'MCP') {
+      throw new Error('expected an MCP recognition');
+    }
+    // The non-object entry is omitted whole; the kept declaration carries the
+    // fields the file wrote as resolved values (FR-007).
+    expect(recognitions[0]!.details.servers).toEqual([
+      {
+        name: 'api-db',
+        fields: [
+          {
+            key: 'url',
+            keyKind: 'string',
+            value: { kind: 'scalar', text: 'https://db.example.com/mcp' },
+          },
+        ],
+      },
+    ]);
+    expect(recognitions[0]!.provenances).toHaveLength(1);
+    expect(recognitions[0]!.provenances[0]).toMatchObject({
+      ruleId: 'copilot.repo.mcp',
+      discoveryClass: 'static-candidate',
+    });
+    expect(recognitions[0]!.provenances[0]!.recognizingSurfaces).toEqual(['copilot-cli']);
+  });
+
+  it('fails the whole recognition on a document strict JSON cannot parse', async () => {
+    const recognitions = (
+      await recognizeWith('copilot', '.github/mcp.json', [copilotMcpRule], '{ "mcpServers": {')
+    ).recognitions;
+    expect(recognitions[0]).toMatchObject({
+      parseStatus: 'failed',
+      details: { kind: 'MCP', servers: [] },
+    });
+  });
+
+  it('recognizes the shared root carrier once per product, each by its own reading', async () => {
+    // The root `.mcp.json` is one physical file two products admit: Claude's
+    // exact project rule and the CLI's root-exact workspace rule. One
+    // candidate, one recognition per `(file, tool, kind)`, each carrying its
+    // own product's admission — and each tool's own reading, because the two
+    // vendors' schemas differ (data-model.md § ToolRecognition). On the
+    // wrapper form both readings agree.
+    const { recognitions } = await recognizeCandidateForVendors(
+      {
+        matchedPath: '.mcp.json',
+        absolutePath: join(root, '.mcp.json'),
+        sourceRoot: root,
+        sourceText: JSON.stringify({ mcpServers: { shared: { command: 'npx' } } }),
+        admissions: [
+          { compiled: claudeMcpRule, origin: { planIndex: 0, selectorIndex: 0 } },
+          { compiled: copilotMcpRule, origin: { planIndex: 1, selectorIndex: 0 } },
+        ],
+      },
+      ['claude', 'copilot'],
+    );
+    expect(recognitions.map((recognition) => [recognition.tool, recognition.details.kind])).toEqual(
+      [
+        ['claude', 'MCP'],
+        ['copilot', 'MCP'],
+      ],
+    );
+    for (const recognition of recognitions) {
+      if (recognition.details.kind !== 'MCP') {
+        throw new Error('expected MCP recognitions');
+      }
+      expect(recognition.details.servers.map((server) => server.name)).toEqual(['shared']);
+      expect(recognition.provenances).toHaveLength(1);
+    }
+    expect(recognitions[0]!.provenances[0]!.ruleId).toBe('claude.repo.mcp');
+    expect(recognitions[1]!.provenances[0]!.ruleId).toBe('copilot.repo.mcp');
+  });
+
+  it('reads the bare top-level schema as the CLI alone documents it (T341)', async () => {
+    // The CLI accepts a project-level file whose top-level keys are the
+    // server names themselves; Claude documents only the `mcpServers`
+    // wrapper. One shared bare-format root carrier therefore declares
+    // servers to Copilot and none to Claude — each tool's recognition is its
+    // own vendor's reading.
+    const { recognitions } = await recognizeCandidateForVendors(
+      {
+        matchedPath: '.mcp.json',
+        absolutePath: join(root, '.mcp.json'),
+        sourceRoot: root,
+        sourceText: JSON.stringify({ playwright: { command: 'npx' }, note: 'not a mapping' }),
+        admissions: [
+          { compiled: claudeMcpRule, origin: { planIndex: 0, selectorIndex: 0 } },
+          { compiled: copilotMcpRule, origin: { planIndex: 1, selectorIndex: 0 } },
+        ],
+      },
+      ['claude', 'copilot'],
+    );
+    const byTool = new Map(recognitions.map((recognition) => [recognition.tool, recognition]));
+    const claude = byTool.get('claude');
+    const copilot = byTool.get('copilot');
+    if (claude?.details.kind !== 'MCP' || copilot?.details.kind !== 'MCP') {
+      throw new Error('expected MCP recognitions for both tools');
+    }
+    expect(claude.details.servers).toEqual([]);
+    expect(copilot.details.servers.map((server) => server.name)).toEqual(['playwright']);
+    // A declared `mcpServers` key is the wrapper form for the CLI too: it is
+    // never read as a bare server of that name, and a non-mapping wrapper
+    // declares none.
+    const wrapperAsScalar = await recognizeCandidateForVendors(
+      {
+        matchedPath: '.mcp.json',
+        absolutePath: join(root, '.mcp.json'),
+        sourceRoot: root,
+        sourceText: JSON.stringify({ mcpServers: 'not a mapping', other: { command: 'x' } }),
+        admissions: [{ compiled: copilotMcpRule, origin: { planIndex: 0, selectorIndex: 0 } }],
+      },
+      ['copilot'],
+    );
+    const [only] = wrapperAsScalar.recognitions;
+    if (only?.details.kind !== 'MCP') {
+      throw new Error('expected the Copilot MCP recognition');
+    }
+    expect(only.details.servers).toEqual([]);
+  });
+});
+
+describe('Copilot VS Code MCP recognition (T356, T364)', () => {
+  it('reads the documented JSONC servers schema, comments and all, by the keys written', async () => {
+    // The editor configuration format: comments and a trailing comma are the
+    // format's own syntax, the non-mapping entry declares no server, and the
+    // `inputs` and `sandbox` sections beside `servers` declare nothing. The
+    // kept declaration carries the fields the file wrote as resolved values
+    // (FR-007, FR-026).
+    const recognitions = (
+      await recognizeWith(
+        'copilot',
+        '.vscode/mcp.json',
+        [copilotVscodeMcpRule],
+        `{
+  // Shared through source control.
+  "servers": {
+    "docs": { "type": "http", "url": "https://docs.example.com/mcp" },
+    "broken": "not an object",
+  },
+  "inputs": [{ "id": "api-key" }],
+  "sandbox": { "network": {} }
+}`,
+      )
+    ).recognitions;
+    expect(recognitions).toHaveLength(1);
+    if (recognitions[0]!.details.kind !== 'MCP') {
+      throw new Error('expected an MCP recognition');
+    }
+    expect(recognitions[0]!.details.servers).toEqual([
+      {
+        name: 'docs',
+        fields: [
+          { key: 'type', keyKind: 'string', value: { kind: 'scalar', text: 'http' } },
+          {
+            key: 'url',
+            keyKind: 'string',
+            value: { kind: 'scalar', text: 'https://docs.example.com/mcp' },
+          },
+        ],
+      },
+    ]);
+    expect(recognitions[0]!.provenances).toHaveLength(1);
+    expect(recognitions[0]!.provenances[0]).toMatchObject({
+      ruleId: 'copilot.repo.mcp.vscode',
+      discoveryClass: 'static-candidate',
+    });
+    expect(recognitions[0]!.provenances[0]!.recognizingSurfaces).toEqual(['copilot-vscode']);
+  });
+
+  it('reads no bare form: a document without the servers wrapper declares none', async () => {
+    // The guide documents the wrapper alone, so top-level mapping keys are
+    // not server names here — unlike the CLI schema — and a non-mapping
+    // `servers` declares none rather than failing.
+    for (const text of [
+      JSON.stringify({ playwright: { command: 'npx' } }),
+      JSON.stringify({ servers: 'not a mapping' }),
+    ]) {
+      const recognitions = (
+        await recognizeWith('copilot', '.vscode/mcp.json', [copilotVscodeMcpRule], text)
+      ).recognitions;
+      expect(recognitions[0]).toMatchObject({
+        parseStatus: 'parsed',
+        details: { kind: 'MCP', servers: [] },
+      });
+    }
+  });
+
+  it('fails the whole recognition on a document JSONC cannot parse', async () => {
+    const recognitions = (
+      await recognizeWith('copilot', '.vscode/mcp.json', [copilotVscodeMcpRule], '{ "servers": {')
+    ).recognitions;
+    expect(recognitions[0]).toMatchObject({
+      parseStatus: 'failed',
+      details: { kind: 'MCP', servers: [] },
+    });
+  });
+
+  it('merges the root provenances into one recognition read by the CLI alone (T362)', async () => {
+    // The root `.mcp.json` under both Copilot admissions: one recognition
+    // with two provenances — the surfaces union — whose declarations are the
+    // CLI reading's. The bare form proves it: a VS Code extractor does not
+    // exist for the root file, so the bare names could only have come from
+    // the CLI's own documented schema.
+    const { recognitions } = await recognizeCandidateForVendors(
+      {
+        matchedPath: '.mcp.json',
+        absolutePath: join(root, '.mcp.json'),
+        sourceRoot: root,
+        sourceText: JSON.stringify({ playwright: { command: 'npx' } }),
+        admissions: [
+          { compiled: copilotMcpRule, origin: { planIndex: 0, selectorIndex: 0 } },
+          { compiled: copilotVscodeRootMcpRule, origin: { planIndex: 1, selectorIndex: 0 } },
+        ],
+      },
+      ['copilot'],
+    );
+    expect(recognitions).toHaveLength(1);
+    if (recognitions[0]!.details.kind !== 'MCP') {
+      throw new Error('expected an MCP recognition');
+    }
+    expect(recognitions[0]!.details.servers.map((server) => server.name)).toEqual(['playwright']);
+    expect(recognitions[0]!.provenances.map((provenance) => provenance.ruleId)).toEqual([
+      'copilot.repo.mcp',
+      'copilot.repo.mcp.vscode-root',
+    ]);
+  });
+});
+
+describe('the contained-MCP owner gate (T325)', () => {
+  const skillPath = '.claude/skills/deploy/SKILL.md';
+  const mcpSpellingSource = [
+    '---',
+    'name: deploy',
+    'mcpServers:',
+    '  context7:',
+    '    command: npx',
+    '---',
+    '',
+    '# Deploy',
+    '',
+  ].join('\n');
+
+  it('attaches no MCP recognition to a skill whose frontmatter spells mcpServers', async () => {
+    // Claude documents no `mcpServers` skill-frontmatter field — the skills
+    // page's frontmatter reference and the changelog place that field on
+    // agents alone — so the spelling is ordinary frontmatter under the
+    // skill's own kind and declares nothing any product reads (user
+    // decision, 2026-08-20). The adapter table ships empty: the documented
+    // owner families — agent frontmatter, plugin manifests, settings — are
+    // kinds no Repository rule admits yet.
+    for (const sourceText of [
+      mcpSpellingSource,
+      '---\nname: deploy\n---\n\n# Deploy\n',
+      '---\nname: deploy\nmcpServers: enabled\n---\n',
+    ]) {
+      const recognitions = (await recognizeWith('claude', skillPath, [claudeSkillRule], sourceText))
+        .recognitions;
+      expect(
+        recognitions.map((recognition) => recognition.details.kind),
+        sourceText,
+      ).toEqual(['skill']);
+    }
+  });
+
+  it('keeps the gate per tool: a Copilot admission of the same file contains nothing either', async () => {
+    const { recognitions } = await recognizeCandidateForVendors(
+      {
+        matchedPath: skillPath,
+        absolutePath: join(root, skillPath),
+        sourceRoot: root,
+        sourceText: mcpSpellingSource,
+        admissions: [
+          { compiled: claudeSkillRule, origin: { planIndex: 0, selectorIndex: 0 } },
+          { compiled: copilotSkillRule, origin: { planIndex: 1, selectorIndex: 0 } },
+        ],
+      },
+      ['claude', 'copilot'],
+    );
+    expect(recognitions.map((recognition) => [recognition.tool, recognition.details.kind])).toEqual(
+      [
+        ['claude', 'skill'],
+        ['copilot', 'skill'],
+      ],
+    );
+  });
+
+  it('creates no recognition for an unadmitted owner however many declarations it carries', async () => {
+    // The activation gate future owner families will run behind: dispatch
+    // requires an admitted owner recognition, so a settings file, plugin
+    // manifest, or agent file that no rule admits reaches no adapter — those
+    // families stay inert until their phases admit their files and add their
+    // adapter entries.
+    const { recognitions } = await recognizeCandidateForVendors(
+      {
+        matchedPath: '.claude/settings.json',
+        absolutePath: join(root, '.claude/settings.json'),
+        sourceRoot: root,
+        sourceText: '{ "mcpServers": { "settings-server": { "command": "noop" } } }',
+        admissions: [],
+      },
+      ['claude'],
+    );
     expect(recognitions).toEqual([]);
   });
 });

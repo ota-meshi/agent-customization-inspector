@@ -1,5 +1,5 @@
-// T141/T217/T238: the shipped relationship policy for the Claude skill detail
-// and the two instruction detail milestones (data-model.md § Relationship,
+// T141/T217/T238/T292: the shipped relationship policy for the Claude skill
+// detail, the two instruction detail milestones, and the Codex MCP carrier (data-model.md § Relationship,
 // FR-028, FR-029).
 //
 // A relationship may be emitted only when its kind is listed by the owning
@@ -28,6 +28,7 @@ import { CLAUDE_REPOSITORY_RULES } from '../../../src/server/inspection/rules/cl
 import { COPILOT_REPOSITORY_RULES } from '../../../src/server/inspection/rules/copilot';
 import { CODEX_REPOSITORY_RULES } from '../../../src/server/inspection/rules/codex';
 import { INSPECTION_RULES } from '../../../src/shared/registries/inspection-rules';
+import { CODEX_STRATEGY_RELATIONS } from '../../../src/shared/registries/codex/relations';
 import { assembleScanPublication } from '../../../src/server/inspection/scan';
 
 // Pass-through spies over the closed fs surface, so a case can prove which
@@ -146,6 +147,101 @@ describe('relationship read authority', () => {
       'resolutionStatus',
     ]) {
       expect(serialized).not.toContain(field);
+    }
+  });
+});
+
+/** Recognizes the authored Codex MCP carrier at its one admitted path. */
+async function recognizeCodexCarrier(sourceText: string) {
+  const codexConfigRule = CODEX_REPOSITORY_RULES.find(
+    (compiled) => compiled.rule.ruleId === 'codex.repo.config',
+  )!;
+  const matchedPath = '.codex/config.toml';
+  mkdirSync(join(root, '.codex'), { recursive: true });
+  const { recognitions } = await recognizeCandidateForVendors(
+    {
+      matchedPath,
+      absolutePath: join(root, matchedPath),
+      sourceRoot: root,
+      admissions: [{ compiled: codexConfigRule, origin: { planIndex: 0, selectorIndex: 0 } }],
+      sourceText,
+    },
+    ['codex'],
+  );
+  return recognitions;
+}
+
+describe('Codex MCP declarations emit no relationship and promote no target (T292)', () => {
+  // Every reference shape the eventual MCP schema will care about — a named
+  // parent server, an inline command with arguments, an ancestor path, a
+  // plugin path, a runtime-only environment reference — authored into one
+  // carrier. The declarations publish as the values they are; no edge, no
+  // read, no promotion.
+  const CARRIER_TEXT = [
+    '[mcp_servers.named]',
+    'command = "npx"',
+    'args = ["-y", "some-package"]',
+    '',
+    '[mcp_servers.named.env]',
+    'ENDPOINT = "${RUNTIME_ONLY_REFERENCE}"',
+    '',
+    '[mcp_servers.pathy]',
+    'command = "../../docs/target.md"',
+    'plugin = "./.codex-plugin/plugin.json"',
+    'agents = ["reviewer"]',
+    '',
+  ].join('\n');
+
+  it('opens no declared target while recognizing the carrier', async () => {
+    // The declared command names a real file outside the carrier; a plugin
+    // path and an agent reference sit beside it. Recognition reads nothing:
+    // the engine parses the text it was handed, runs no census for the MCP
+    // kind, and never resolves a declared path to anything (FR-020).
+    const recognitions = await recognizeCodexCarrier(CARRIER_TEXT);
+    expect(recognitions).toHaveLength(1);
+    expect(vi.mocked(fsIo.readFile)).not.toHaveBeenCalled();
+    expect(vi.mocked(fsIo.readdir)).not.toHaveBeenCalled();
+  });
+
+  it('publishes the references as declarations and no relationship vocabulary', async () => {
+    const recognitions = await recognizeCodexCarrier(CARRIER_TEXT);
+    const serialized = JSON.stringify(recognitions);
+    // The values are there, exactly as authored...
+    expect(serialized).toContain('../../docs/target.md');
+    expect(serialized).toContain('${RUNTIME_ONLY_REFERENCE}');
+    // ...and no edge fields are: an unlisted or uncovered reference cannot be
+    // promoted to a generic, inferred, or fallback relationship
+    // (data-model.md § Relationship).
+    for (const field of [
+      'relationshipId',
+      'targetOrigin',
+      'authoredTarget',
+      'semanticTarget',
+      'normalizedTarget',
+      'boundaryStatus',
+      'resolutionStatus',
+    ]) {
+      expect(serialized).not.toContain(field);
+    }
+  });
+
+  it('keeps the agent-inheritance adapter dormant, with no behavior backlink', () => {
+    // The agent-inheritance edge arrives with the phase that ships Codex
+    // agents. Until then the adapter is pure absence: the MCP strategy
+    // consumes no agent behavior — nothing exists for a backlink to dangle
+    // from — and no shipped identifier names a Codex agent behavior or
+    // strategy for it to reference prematurely.
+    const consumed = CODEX_STRATEGY_RELATIONS['codex.mcp.configuration'].consumesBehaviors;
+    expect(consumed.map((behavior) => behavior.behaviorId)).toEqual([
+      'codex.behavior.repo.mcp',
+      'codex.behavior.user.config',
+    ]);
+    const shippedCodexIds = [
+      ...Object.keys(CODEX_STRATEGY_RELATIONS),
+      ...consumed.map((behavior) => behavior.behaviorId),
+    ];
+    for (const id of shippedCodexIds) {
+      expect(id).not.toContain('agent');
     }
   });
 });

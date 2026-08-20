@@ -115,6 +115,113 @@ export const CODEX_REPO_CONFIG_BEHAVIOR = {
 } as const satisfies VendorBehaviorStatement;
 
 /**
+ * Codex config-contained hooks: every active trusted project config layer can
+ * carry a standalone `.codex/hooks.json` and an inline `[hooks]` table in its
+ * `.codex/config.toml`, all matching hooks additive across layers.
+ *
+ * A non-authorizing statement the `codex.repo.config` rule is partly based on:
+ * the carrier it admits can contain an inline `[hooks]` table, and recording
+ * that documented fact grants no Hook candidate, recognition, or execution
+ * authority — the Hook inventory and the standalone `hooks.json` candidacy
+ * arrive with their own phase (contracts/vendors/openai-codex.md § Documented
+ * Repository behavior).
+ */
+export const CODEX_REPO_HOOKS_BEHAVIOR = {
+  behaviorId: 'codex.behavior.repo.hooks',
+  tool: 'codex',
+  surfaces: ['codex-local-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'repository',
+        // The documented lookup reads each already-active config layer rather
+        // than walking directories itself, so the base is the layer and the
+        // statement carries no traversal of its own: which layers are active
+        // is `codex.behavior.repo.config`'s chain.
+        lookupBase: 'active-config-layer',
+        relativeSelector: '.codex/hooks.json; inline [hooks] in .codex/config.toml',
+        traversal: 'none',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'openai.codex.hooks',
+          url: 'https://learn.chatgpt.com/docs/hooks.md',
+          officialHost: 'learn.chatgpt.com',
+          sections: ['Where Codex looks for hooks', 'Config shape'],
+          reviewedOn: '2026-07-25',
+          establishes:
+            'Each active trusted project layer contributes hooks from its .codex/hooks.json and from an inline [hooks] table in its .codex/config.toml; all matching hooks are additive, and a file and inline table at one layer are both loaded with a warning.',
+        },
+        {
+          sourceId: 'openai.codex.config-basic',
+          url: 'https://learn.chatgpt.com/docs/config-file/config-basic.md',
+          officialHost: 'learn.chatgpt.com',
+          sections: ['Codex configuration file', 'Configuration precedence'],
+          reviewedOn: '2026-08-17',
+          establishes:
+            'The active project config layers the hook lookup reads are the trusted .codex/config.toml files from the project root down to the runtime cwd.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Codex MCP server declarations: `[mcp_servers.*]` tables inside the active
+ * `.codex/config.toml` layers, resolved through the ordinary config-layer
+ * precedence; project layers require trust.
+ *
+ * The documented behavior the `codex.repo.config` rule's contained MCP
+ * recognition rests on. It says where Codex documents declaring servers and
+ * never that one is enabled, trusted, or connected: whether a declared server
+ * is used depends on runtime inputs this tool never observes, and inspection
+ * never connects (FR-009; contracts/runtime-composition.md
+ * § codex.mcp.configuration).
+ */
+export const CODEX_REPO_MCP_BEHAVIOR = {
+  behaviorId: 'codex.behavior.repo.mcp',
+  tool: 'codex',
+  surfaces: ['codex-local-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'repository',
+        // Declarations live inside the already-active config layers; the
+        // layer chain itself is `codex.behavior.repo.config`'s statement, so
+        // this one records no walk of its own.
+        lookupBase: 'active-config-layer',
+        relativeSelector: '[mcp_servers.*] inside .codex/config.toml',
+        traversal: 'none',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'openai.codex.mcp',
+          url: 'https://learn.chatgpt.com/docs/extend/mcp.md',
+          officialHost: 'learn.chatgpt.com',
+          sections: ['Connect Codex to an MCP server'],
+          reviewedOn: '2026-07-25',
+          establishes:
+            'MCP servers are declared as named [mcp_servers.*] tables in the Codex configuration file, one table per server.',
+        },
+        {
+          sourceId: 'openai.codex.config-basic',
+          url: 'https://learn.chatgpt.com/docs/config-file/config-basic.md',
+          officialHost: 'learn.chatgpt.com',
+          sections: ['Codex configuration file', 'Configuration precedence'],
+          reviewedOn: '2026-08-17',
+          establishes:
+            'MCP declarations follow the same config-layer resolution as every other configuration value, and project-scoped layers apply only when the project is trusted.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
  * Codex User configuration: `<CODEX_HOME>/config.toml` and profile files,
  * shared by every local client and resolved through the same precedence as
  * the project layers.
@@ -289,7 +396,9 @@ export const CODEX_USER_SKILLS_BEHAVIOR = {
 export const CODEX_BEHAVIOR_STATEMENTS: Readonly<Record<CodexBehaviorId, VendorBehaviorStatement>> =
   {
     [CODEX_REPO_CONFIG_BEHAVIOR.behaviorId]: CODEX_REPO_CONFIG_BEHAVIOR,
+    [CODEX_REPO_HOOKS_BEHAVIOR.behaviorId]: CODEX_REPO_HOOKS_BEHAVIOR,
     [CODEX_REPO_INSTRUCTIONS_BEHAVIOR.behaviorId]: CODEX_REPO_INSTRUCTIONS_BEHAVIOR,
+    [CODEX_REPO_MCP_BEHAVIOR.behaviorId]: CODEX_REPO_MCP_BEHAVIOR,
     [CODEX_REPO_SKILLS_BEHAVIOR.behaviorId]: CODEX_REPO_SKILLS_BEHAVIOR,
     [CODEX_USER_CONFIG_BEHAVIOR.behaviorId]: CODEX_USER_CONFIG_BEHAVIOR,
     [CODEX_USER_INSTRUCTIONS_BEHAVIOR.behaviorId]: CODEX_USER_INSTRUCTIONS_BEHAVIOR,

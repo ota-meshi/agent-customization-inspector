@@ -19,6 +19,7 @@ import type {
   CommandResult,
   FileDetailDto,
   InspectionDataResult,
+  McpCarrierDetailDto,
   ScanAdmission,
   SessionSnapshot,
   SourceDto,
@@ -39,6 +40,8 @@ export const SESSION_RPC_FUNCTIONS = {
   getSession: 'agent-customization-inspector:get-session',
   /** One committed file's complete authored source and, for a Markdown customization — a skill or an instruction file — its parse. */
   getFileDetail: 'agent-customization-inspector:get-file-detail',
+  /** One MCP-declaring file's declarations and file facts, never its source (FR-007). */
+  getMcpCarrierDetail: 'agent-customization-inspector:get-mcp-carrier-detail',
   /** Accept one explicit Repository scan command. */
   rescanRepository: 'agent-customization-inspector:rescan-repository',
 } as const;
@@ -57,8 +60,8 @@ export type SessionRpcFunctionName =
 export interface SessionRpcChannel {
   /**
    * Invokes one registered server function by its exact catalog name. The
-   * variadic tail is the function's own parameters — only `get-file-detail`
-   * takes one — kept untyped here because the channel is a transport and the
+   * variadic tail is the function's own parameters — only the two detail
+   * functions take one — kept untyped here because the channel is a transport and the
    * per-function shapes are checked where each call is issued.
    */
   call: (method: SessionRpcFunctionName, ...args: readonly unknown[]) => Promise<unknown>;
@@ -160,12 +163,12 @@ export type SessionFetchOutcome =
  * is the request-token family below — a newer selection supersedes the older
  * request before it can render.
  */
-export type FileDetailOutcome =
+export type DetailFetchOutcome<Detail> =
   | {
-      /** Every guard passed; the file's complete detail may be rendered. */
+      /** Every guard passed; the detail may be rendered. */
       readonly kind: 'adopted';
-      /** The committed file with its authored source and, for a Markdown customization — a skill or an instruction file — its parse. */
-      readonly detail: FileDetailDto;
+      /** The committed detail the invoked function serves. */
+      readonly detail: Detail;
     }
   | {
       /** No current generation holds a file at the path; see `stale-resource`. */
@@ -203,6 +206,20 @@ export type FileDetailOutcome =
       /** True when the channel is gone or the protocol was unsupported. */
       readonly fatal: boolean;
     };
+
+/**
+ * The outcome of one guarded `get-file-detail` request: the shared detail
+ * outcome carrying the committed file with its authored source and, for a
+ * Markdown customization, its parse.
+ */
+export type FileDetailOutcome = DetailFetchOutcome<FileDetailDto>;
+
+/**
+ * The outcome of one guarded `get-mcp-carrier-detail` request: the shared
+ * detail outcome carrying the carrier's declarations and content-free file
+ * facts — the one detail response with no authored source in it (FR-007).
+ */
+export type McpCarrierDetailOutcome = DetailFetchOutcome<McpCarrierDetailDto>;
 
 /**
  * The outcome of one guarded `rescan-repository` command. A rescan is a
@@ -611,15 +628,46 @@ export class SessionApiClient {
    * as `newer-generation` — the caller refreshes and re-requests the same
    * path — rather than rendered under state resolved from the older one.
    */
-  public async fetchFileDetail(sourceRelativePath: string): Promise<FileDetailOutcome> {
-    const token = Symbol('get-file-detail');
+  public fetchFileDetail(sourceRelativePath: string): Promise<FileDetailOutcome> {
+    return this.#fetchDetail<FileDetailDto>(
+      SESSION_RPC_FUNCTIONS.getFileDetail,
+      sourceRelativePath,
+    );
+  }
+
+  /**
+   * Issues one guarded MCP-carrier-detail request through the same guards,
+   * token family, and adoption rules as {@link fetchFileDetail}: the two
+   * functions serve the one open detail, so a newer request of either kind
+   * supersedes an older of the other (contracts/http-api.md
+   * § get-mcp-carrier-detail).
+   */
+  public fetchMcpCarrierDetail(sourceRelativePath: string): Promise<McpCarrierDetailOutcome> {
+    return this.#fetchDetail<McpCarrierDetailDto>(
+      SESSION_RPC_FUNCTIONS.getMcpCarrierDetail,
+      sourceRelativePath,
+    );
+  }
+
+  /**
+   * The one guarded detail fetch both detail functions share. `Detail` is the
+   * invoked function's declared result payload; the cast below is the same
+   * wire-boundary typing every guarded fetch performs on its own settled
+   * value, made once here so the two public methods cannot drift in guard
+   * order or outcome shape.
+   */
+  async #fetchDetail<Detail>(
+    functionName: SessionRpcFunctionName,
+    sourceRelativePath: string,
+  ): Promise<DetailFetchOutcome<Detail>> {
+    const token = Symbol(functionName);
     const controller = new AbortController();
     this.#latestDetailToken = token;
     this.#outstandingData.add(controller);
     const capturedClientDataEpoch = this.#clientData.epoch();
     let settled: unknown;
     try {
-      settled = await this.#channel.call(SESSION_RPC_FUNCTIONS.getFileDetail, sourceRelativePath);
+      settled = await this.#channel.call(functionName, sourceRelativePath);
     } catch (cause: unknown) {
       this.#outstandingData.delete(controller);
       const discarded = this.#guardSettlement(
@@ -654,7 +702,7 @@ export class SessionApiClient {
       this.#clientData.purge('channel-failure');
       return { kind: 'failed', error, fatal: true };
     }
-    const result = settled as InspectionDataResult<FileDetailDto>;
+    const result = settled as InspectionDataResult<Detail>;
     // The same epoch ordering every inspection-data success passes. A greater
     // epoch means a Global purge landed while this request was in flight, and
     // the content it carries belongs to state this page must drop before

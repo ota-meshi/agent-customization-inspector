@@ -48,6 +48,7 @@ import SourceDiff from '../../components/skill-comparison/SourceDiff.vue';
 import { SkillRecognitionComparison } from '../../components/skill-comparison/recognition-comparison';
 import { skillComparisonRouteFor } from '../../composables/skill-comparison';
 import { SESSION_VIEW_STATE } from '../../session/view-state';
+import { usePageOwnership } from '../../composables/page-ownership';
 import {
   escapeControlCharacters,
   FILE_ENCODING_TEXT,
@@ -74,6 +75,8 @@ const snapshot = sessionViewState.snapshot;
 const status = comparison.status;
 
 const route = useRoute();
+
+const pageOwnership = usePageOwnership();
 const router = useRouter();
 
 /**
@@ -963,16 +966,19 @@ const titleSubject = computed<string>(() => {
   return 'Comparing skill files';
 });
 watchEffect(() => {
-  sessionViewState.pageSubject.value = titleSubject.value;
+  // Reported as this page instance's own, so an outgoing page's unmount
+  // cannot erase what this page just titled the tab with
+  // (`SessionViewState.reportPageSubject`).
+  pageOwnership.reportSubject(titleSubject.value);
 });
 
 onBeforeUnmount(() => {
   // Before the close, whose status change would otherwise trip the focus
   // guard while the next route owns focus.
   leaving = true;
-  // Leaving the route drops the authored sources this page requested, and
-  // the title subject with it.
-  sessionViewState.pageSubject.value = null;
+  // Leaving the route drops the authored sources this page requested; the
+  // title subject is `usePageOwnership`'s to release, after unmount, where a
+  // replacement page's own report stands.
   comparison.close();
 });
 </script>

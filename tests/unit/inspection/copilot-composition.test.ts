@@ -19,7 +19,7 @@ import { INSPECTION_RULES } from '../../../src/shared/registries/inspection-rule
 import { RULE_RELATIONS } from '../../../src/shared/registries/relations';
 import { RUNTIME_COMPOSITION_STRATEGIES } from '../../../src/shared/registries/runtime-composition';
 import { VENDOR_BEHAVIOR_STATEMENTS } from '../../../src/shared/registries/vendor-behaviors';
-import type { FrontmatterEntryDto } from '../../../src/shared/api-types';
+import type { DeclaredEntryDto } from '../../../src/shared/api-types';
 
 /** The compiled Copilot instruction units, which are what a scan submits. */
 const copilotInstructionRules = COPILOT_REPOSITORY_RULES.filter(
@@ -28,7 +28,7 @@ const copilotInstructionRules = COPILOT_REPOSITORY_RULES.filter(
 
 describe('an `applyTo` declaration keys a row and decides nothing else', () => {
   /** One `applyTo` declaration, as the parser resolves it. */
-  const declaredApplyTo = (text: string): readonly FrontmatterEntryDto[] => [
+  const declaredApplyTo = (text: string): readonly DeclaredEntryDto[] => [
     { key: 'applyTo', keyKind: 'string', value: { kind: 'scalar', text } },
   ];
 

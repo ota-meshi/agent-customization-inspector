@@ -70,6 +70,7 @@ describe('the registered session RPC catalog', () => {
   it('registers exactly the functions this release ships', () => {
     expect([...registerFunctions().keys()].toSorted()).toEqual([
       'agent-customization-inspector:get-file-detail',
+      'agent-customization-inspector:get-mcp-carrier-detail',
       'agent-customization-inspector:get-session',
       'agent-customization-inspector:rescan-repository',
     ]);

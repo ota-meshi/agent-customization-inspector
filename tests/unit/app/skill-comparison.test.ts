@@ -56,6 +56,7 @@ function snapshotWith(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot
     })),
     instructions: [],
     skills: [],
+    mcp: [],
     diagnostics: [],
     repositoryGeneration: 0,
     globalGeneration: null,

@@ -143,6 +143,8 @@ const totalRowCount = computed(() => {
       return snapshot.value?.instructions.length ?? 0;
     case 'skill':
       return snapshot.value?.skills.length ?? 0;
+    case 'MCP':
+      return snapshot.value?.mcp.length ?? 0;
     default:
       return 0;
   }
@@ -227,7 +229,9 @@ const staleFailureMessage = computed(() =>
       :kind="filters.activeKind.value"
       :instruction-rows="filters.instructionRows.value"
       :skill-rows="filters.skillRows.value"
+      :mcp-rows="filters.mcpRows.value"
       :files-by-path="filters.filesByPath.value"
+      :mcp-carrier-paths="filters.mcpCarrierPaths.value"
       :total-count="totalRowCount"
       :diagnostics="snapshot.diagnostics"
     />

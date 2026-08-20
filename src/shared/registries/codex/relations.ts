@@ -16,7 +16,9 @@
 // contract agree and the materialized fixture is byte-stable.
 import {
   CODEX_REPO_CONFIG_BEHAVIOR,
+  CODEX_REPO_HOOKS_BEHAVIOR,
   CODEX_REPO_INSTRUCTIONS_BEHAVIOR,
+  CODEX_REPO_MCP_BEHAVIOR,
   CODEX_REPO_SKILLS_BEHAVIOR,
   CODEX_USER_CONFIG_BEHAVIOR,
   CODEX_USER_INSTRUCTIONS_BEHAVIOR,
@@ -24,12 +26,14 @@ import {
 } from './behaviors';
 import {
   CODEX_DERIVED_FALLBACK_BASENAME_RULE,
+  CODEX_REPO_CONFIG_RULE,
   CODEX_REPO_INSTRUCTIONS_RULE,
   CODEX_REPO_SKILL_RULE,
 } from './rules';
 import {
   CODEX_CONFIG_PRECEDENCE_STRATEGY,
   CODEX_INSTRUCTIONS_LAYERING_STRATEGY,
+  CODEX_MCP_CONFIGURATION_STRATEGY,
   CODEX_SKILLS_DISCOVERY_STRATEGY,
 } from './strategies';
 import type { RuleRelations, StrategyRelations } from '../relation-types';
@@ -57,6 +61,16 @@ export const CODEX_STRATEGY_RELATIONS: Readonly<Record<CodexStrategyId, Strategy
     consumesBehaviors: [CODEX_REPO_INSTRUCTIONS_BEHAVIOR, CODEX_USER_INSTRUCTIONS_BEHAVIOR],
   },
   /**
+   * MCP configuration composes the Repository declaration behavior and the
+   * User host configuration the same layer resolution reads. Only the
+   * Repository carrier is readable; the edge records the vendor's documented
+   * resolution, and recording it authorizes no read and no connection
+   * (contracts/runtime-composition.md § codex.mcp.configuration).
+   */
+  [CODEX_MCP_CONFIGURATION_STRATEGY.strategyId]: {
+    consumesBehaviors: [CODEX_REPO_MCP_BEHAVIOR, CODEX_USER_CONFIG_BEHAVIOR],
+  },
+  /**
    * Skill discovery composes both documented skill scopes. Both are listed
    * even though only the Repository scope is readable: the strategy describes
    * Codex's runtime, and omitting the User scope would misdescribe it as
@@ -80,6 +94,24 @@ export const CODEX_RULE_RELATIONS: Readonly<Record<CodexRuleId, RuleRelations>> 
   [CODEX_DERIVED_FALLBACK_BASENAME_RULE.ruleId]: {
     basedOnBehaviors: [CODEX_REPO_CONFIG_BEHAVIOR, CODEX_REPO_INSTRUCTIONS_BEHAVIOR],
     explainedByStrategies: [CODEX_CONFIG_PRECEDENCE_STRATEGY, CODEX_INSTRUCTIONS_LAYERING_STRATEGY],
+  },
+  /**
+   * The config carrier's candidacy is based on the three behaviors the
+   * carrier's contract row names: the config-layer lookup that locates the
+   * file, the MCP declarations it can contain — the recognition this
+   * admission ships — and the inline hooks it can also contain, recorded
+   * without granting any Hook candidate or recognition. It is explained by
+   * the precedence that resolves the layers and by the MCP configuration
+   * strategy that resolves the contained declarations
+   * (contracts/vendors/openai-codex.md § Inspector Repository rules).
+   */
+  [CODEX_REPO_CONFIG_RULE.ruleId]: {
+    basedOnBehaviors: [
+      CODEX_REPO_CONFIG_BEHAVIOR,
+      CODEX_REPO_HOOKS_BEHAVIOR,
+      CODEX_REPO_MCP_BEHAVIOR,
+    ],
+    explainedByStrategies: [CODEX_CONFIG_PRECEDENCE_STRATEGY, CODEX_MCP_CONFIGURATION_STRATEGY],
   },
   /**
    * The Repository instruction rule is based on the project instruction

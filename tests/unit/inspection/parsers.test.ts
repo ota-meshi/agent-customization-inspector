@@ -1,5 +1,6 @@
-// T075: byte decoding and inert frontmatter reading (FR-025, FR-028,
-// spec.md § Byte Decode Outcomes, data-model.md § Field reading).
+// T075, T371 (parsing seam): byte decoding, inert frontmatter reading, and
+// the JSON-family document seams (FR-025, FR-028, spec.md § Byte Decode
+// Outcomes, data-model.md § Field reading).
 //
 // Two contracts meet here. Decoding decides whether a file has readable text at
 // all and does it exactly once; reading decides what that text resolves to.
@@ -14,6 +15,12 @@
 import { describe, expect, it } from 'vitest';
 import { decodeSourceBytes } from '../../../src/shared/entities';
 import { ParsedMarkdownDocument } from '../../../src/server/inspection/parsers/markdown';
+import {
+  ParsedJsoncDocument,
+  ParsedStrictJsonDocument,
+} from '../../../src/server/inspection/parsers/json';
+import { ParsedTomlDocument } from '../../../src/server/inspection/parsers/toml';
+import type { DeclaredEntryDto } from '../../../src/shared/api-types';
 import {
   MALFORMED_SKILL_CONTENT_CASES,
   SKILL_CONTENT_CASES,
@@ -69,29 +76,35 @@ describe('byte decoding', () => {
 });
 
 /**
- * The declarations of one document, as the parser answers them: a `Map` in the
- * order the file wrote its keys, empty when the document declares no block.
- * Asserting against entry arrays is what makes that order part of the claim —
- * an object comparison would pass whatever order the keys came back in.
+ * The declarations of one document as the parser publishes them: the rendered
+ * entries in the order the file wrote its keys, empty when the document
+ * declares no block. Asserting against the entry array is what makes that
+ * order part of the claim, and the entry's own `keyKind` is what keeps a
+ * numeric key distinct from the string that spells it.
  */
-function declarationsOf(sourceText: string): ReadonlyMap<unknown, unknown> {
-  const { frontmatter } = new ParsedMarkdownDocument(sourceText);
-  return frontmatter instanceof Map ? frontmatter : new Map();
+function declarationsOf(sourceText: string): readonly DeclaredEntryDto[] {
+  return new ParsedMarkdownDocument(sourceText).frontmatterEntries;
+}
+
+/** One entry reduced to the `[key, scalar text]` pair most cases assert. */
+function scalarPairsOf(sourceText: string): readonly (readonly [string, string])[] {
+  return declarationsOf(sourceText).map((entry) => [
+    entry.key,
+    entry.value.kind === 'scalar' ? entry.value.text : `<${entry.value.kind}>`,
+  ]);
 }
 
 describe('frontmatter reading', () => {
   it.each(SKILL_CONTENT_CASES.map((testCase) => [testCase.id, testCase] as const))(
     'resolves to the value a product loading the file would have: %s',
     (_id, testCase) => {
-      const declared = declarationsOf(testCase.sourceText).get('name');
-      // Compared as text, because that is the form the recognizer publishes;
-      // `007` resolves to the number 7 and reads as `7`.
-      const read =
-        typeof declared === 'string' ||
-        typeof declared === 'number' ||
-        typeof declared === 'boolean'
-          ? String(declared)
-          : null;
+      const declared = declarationsOf(testCase.sourceText).find(
+        (entry) => entry.keyKind === 'string' && entry.key === 'name',
+      );
+      // Compared as the rendered text, because that is the form the surfaces
+      // publish; `007` resolves to the number 7 and reads as `7`, and a
+      // non-scalar value is no name at all.
+      const read = declared?.value.kind === 'scalar' ? declared.value.text : null;
       expect(read).toBe(testCase.name);
     },
   );
@@ -109,21 +122,21 @@ describe('frontmatter reading', () => {
   it('resolves a document with no frontmatter block to no fields', () => {
     // Not a failure: a `SKILL.md` that declares nothing is an ordinary file,
     // and failing it would turn "declares no metadata" into a diagnostic.
-    expect([...declarationsOf('---\nno closing fence\n')]).toEqual([]);
-    expect([...declarationsOf('# Just a heading\n')]).toEqual([]);
-    expect([...declarationsOf('---\n---\n')]).toEqual([]);
+    expect(declarationsOf('---\nno closing fence\n')).toEqual([]);
+    expect(declarationsOf('# Just a heading\n')).toEqual([]);
+    expect(declarationsOf('---\n---\n')).toEqual([]);
   });
 
   it('reads a block whose closing fence is at end of file', () => {
-    expect([...declarationsOf('---\nname: g\n---')]).toEqual([['name', 'g']]);
+    expect(scalarPairsOf('---\nname: g\n---')).toEqual([['name', 'g']]);
   });
 
   it('reads a block that uses CRLF line endings', () => {
-    expect([...declarationsOf('---\r\nname: g\r\n---\r\nBody\r\n')]).toEqual([['name', 'g']]);
+    expect(scalarPairsOf('---\r\nname: g\r\n---\r\nBody\r\n')).toEqual([['name', 'g']]);
   });
 
   it('does not mistake a dashed value for the closing fence', () => {
-    expect([...declarationsOf('---\nname: ---\n---\nBody\n')]).toEqual([['name', '---']]);
+    expect(scalarPairsOf('---\nname: ---\n---\nBody\n')).toEqual([['name', '---']]);
   });
 
   it.each([
@@ -134,14 +147,14 @@ describe('frontmatter reading', () => {
     ['an info string on the opening fence', '---yaml\nname: g\n---\n'],
     ['a leading blank line', '\n---\nname: g\n---\n'],
   ])('recognizes no block in %s', (_shape, source) => {
-    expect([...declarationsOf(source)]).toEqual([]);
+    expect(declarationsOf(source)).toEqual([]);
   });
 
   it('reads YAML 1.2 core semantics rather than 1.1', () => {
     // Left to a default, `yes` would be a boolean and `12:30` a sexagesimal
     // number, and a customization's fields would mean something other than what
     // its author's own tools read.
-    expect([...declarationsOf('---\nname: yes\nother: 12:30\n---\n')]).toEqual([
+    expect(scalarPairsOf('---\nname: yes\nother: 12:30\n---\n')).toEqual([
       ['name', 'yes'],
       ['other', '12:30'],
     ]);
@@ -150,34 +163,164 @@ describe('frontmatter reading', () => {
   it('resolves a key declared twice to its later declaration', () => {
     // Refusing the document instead would be this tool deciding a customization
     // is invalid, which is not its job.
-    expect([...declarationsOf('---\nname: first\nname: second\n---\n')]).toEqual([
-      ['name', 'second'],
-    ]);
+    expect(scalarPairsOf('---\nname: first\nname: second\n---\n')).toEqual([['name', 'second']]);
   });
 
   it('keeps the keys in the order the file wrote them', () => {
     // A plain object would not: JavaScript lists integer-like keys first, in
     // ascending numeric order, so a file declaring `10` then `2` would be
     // shown `2` first — an order no one wrote.
-    expect([...declarationsOf('---\n"10": ten\n"2": two\na: letter\n---\n').keys()]).toEqual([
-      '10',
-      '2',
-      'a',
+    expect(
+      declarationsOf('---\n"10": ten\n"2": two\na: letter\n---\n').map((entry) => [
+        entry.keyKind,
+        entry.key,
+      ]),
+    ).toEqual([
+      ['string', '10'],
+      ['string', '2'],
+      ['string', 'a'],
     ]);
     // Unquoted, the same keys resolve to the integers a product loading the
-    // file gets, and stay in the order they were declared.
-    expect([...declarationsOf('---\n10: ten\n2: two\na: letter\n---\n').keys()]).toEqual([
-      10,
-      2,
-      'a',
+    // file gets — which `keyKind` keeps distinct from the strings spelling
+    // them — and stay in the order they were declared.
+    expect(
+      declarationsOf('---\n10: ten\n2: two\na: letter\n---\n').map((entry) => [
+        entry.keyKind,
+        entry.key,
+      ]),
+    ).toEqual([
+      ['number', '10'],
+      ['number', '2'],
+      ['string', 'a'],
     ]);
   });
 
   it('resolves an alias and keeps the scalar an unknown tag carried', () => {
-    expect([...declarationsOf('---\na: &x g\nname: *x\n---\n')]).toEqual([
+    expect(scalarPairsOf('---\na: &x g\nname: *x\n---\n')).toEqual([
       ['a', 'g'],
       ['name', 'g'],
     ]);
-    expect([...declarationsOf('---\nname: !!weird greet\n---\n')]).toEqual([['name', 'greet']]);
+    expect(scalarPairsOf('---\nname: !!weird greet\n---\n')).toEqual([['name', 'greet']]);
+  });
+});
+
+describe('the JSON-family document seams (T371 parsing seam)', () => {
+  it('keeps the strict document strict: a comment or trailing comma fails whole', () => {
+    // The format is the caller's contract, fixed by which class it names: the
+    // root `.mcp.json` reading must fail exactly where the vendor's own
+    // strict reader would, and no option exists to relax it (T371's
+    // never-for-root rule, enforced by identifier).
+    expect(() => new ParsedStrictJsonDocument('// comment\n{}')).toThrow();
+    expect(() => new ParsedStrictJsonDocument('{ "a": 1, }')).toThrow();
+    expect(() => new ParsedStrictJsonDocument('')).toThrow();
+  });
+
+  it('reads JSONC comments and a trailing comma into the same rendered entries', () => {
+    // The leniency VS Code's own config files document, with comments as
+    // format syntax, never declarations: the comment syntax is blanked and
+    // the remainder resolves through the same JSON.parse as strict JSON.
+    const document = new ParsedJsoncDocument(
+      ['{', '  // stdio server', '  "a": 1,', '  /* block */ "b": [true, null],', '}'].join('\n'),
+    );
+    expect(document.entries).toEqual([
+      { key: 'a', keyKind: 'string', value: { kind: 'scalar', text: '1' } },
+      {
+        key: 'b',
+        keyKind: 'string',
+        value: {
+          kind: 'sequence',
+          items: [{ kind: 'scalar', text: 'true' }, { kind: 'absent' }],
+        },
+      },
+    ]);
+  });
+
+  it('fails a malformed JSONC document whole instead of publishing the recovery', () => {
+    // Blanking the comment syntax repairs nothing else: any syntax error in
+    // the remainder fails the document whole (FR-028), and an empty document
+    // is such an error, as it is for JSON.parse('').
+    expect(() => new ParsedJsoncDocument('{ "a": , }')).toThrow(SyntaxError);
+    expect(() => new ParsedJsoncDocument('{ "a": 1 ')).toThrow(SyntaxError);
+    expect(() => new ParsedJsoncDocument('')).toThrow(SyntaxError);
+  });
+
+  it("renders entries in the parser's resolved order, the platform enumeration included", () => {
+    // A plain parsed object enumerates integer-like keys first in numeric
+    // order whatever the file's spelling ordered — a JavaScript property of
+    // every parsed object, accepted rather than worked around (user
+    // decision, 2026-08-20; contracts/http-api.md § get-mcp-carrier-detail
+    // spells the published order as the parser's). Both classes share the
+    // one `JSON.parse` resolution — the JSONC class only blanks the comment
+    // syntax first — so this case pins the accepted behavior for both.
+    const source = '{ "10": { "z": 1, "1": 2 }, "2": true }';
+    for (const document of [
+      new ParsedStrictJsonDocument(source),
+      new ParsedJsoncDocument(source),
+    ]) {
+      expect(document.entries.map((entry) => entry.key)).toEqual(['2', '10']);
+      const nested = document.entries.find((entry) => entry.key === '10');
+      if (nested?.value.kind !== 'mapping') {
+        throw new Error('expected the "10" entry to be a mapping');
+      }
+      expect(nested.value.entries.map((entry) => entry.key)).toEqual(['1', 'z']);
+    }
+  });
+
+  it('keeps an authored __proto__ key a declaration in either format', () => {
+    // `JSON.parse` defines `__proto__` as an ordinary own property, and both
+    // classes share that one resolution — the pinned regression is a lenient
+    // parser whose object construction drops the key, which would make a
+    // `.vscode/mcp.json` server of that name vanish with no diagnostic
+    // (FR-028).
+    const source = '{ "__proto__": { "command": "x" }, "ok": 1 }';
+    for (const document of [
+      new ParsedStrictJsonDocument(source),
+      new ParsedJsoncDocument(source),
+    ]) {
+      expect(document.entries.map((entry) => entry.key)).toEqual(['__proto__', 'ok']);
+      expect(document.entries[0]!.value).toEqual({
+        kind: 'mapping',
+        entries: [{ key: 'command', keyKind: 'string', value: { kind: 'scalar', text: 'x' } }],
+      });
+    }
+  });
+
+  it("keeps JSONC's duplicate-key semantics: later value, earlier place", () => {
+    const document = new ParsedJsoncDocument('{ "a": 1, "b": 2, "a": 3 }');
+    expect(document.entries).toEqual([
+      { key: 'a', keyKind: 'string', value: { kind: 'scalar', text: '3' } },
+      { key: 'b', keyKind: 'string', value: { kind: 'scalar', text: '2' } },
+    ]);
+  });
+
+  it("keeps JSON.parse's duplicate-key semantics: later value, earlier place", () => {
+    const document = new ParsedStrictJsonDocument('{ "a": 1, "b": 2, "a": 3 }');
+    expect(document.entries).toEqual([
+      { key: 'a', keyKind: 'string', value: { kind: 'scalar', text: '3' } },
+      { key: 'b', keyKind: 'string', value: { kind: 'scalar', text: '2' } },
+    ]);
+  });
+
+  it("renders an authored negative zero as String's 0, in every format", () => {
+    // `String(-0)` is `"0"`: the renderings publish the platform's own
+    // resolution as is, with no signed-zero special case (user decision,
+    // 2026-08-20 — the same acceptance as integer-like key enumeration).
+    expect(new ParsedStrictJsonDocument('{ "n": -0 }').entries).toEqual([
+      { key: 'n', keyKind: 'string', value: { kind: 'scalar', text: '0' } },
+    ]);
+    expect(new ParsedTomlDocument('n = -0.0').entries).toEqual([
+      { key: 'n', keyKind: 'string', value: { kind: 'scalar', text: '0' } },
+    ]);
+    expect(declarationsOf('---\nn: -0.0\n---\n')).toEqual([
+      { key: 'n', keyKind: 'string', value: { kind: 'scalar', text: '0' } },
+    ]);
+  });
+
+  it('renders no entry for a non-object root, in either format', () => {
+    // A root array, scalar, or null declares no key — a rendering fact, not a
+    // parse failure — so the entries are empty rather than invented.
+    expect(new ParsedStrictJsonDocument('[1, 2]').entries).toEqual([]);
+    expect(new ParsedStrictJsonDocument('null').entries).toEqual([]);
+    expect(new ParsedJsoncDocument('// just a list\n[1, 2]').entries).toEqual([]);
   });
 });

@@ -1,6 +1,8 @@
-// T168: the Copilot skill's declared-name reading and its recognition-level
-// facts (data-model.md § Field reading, FR-003, FR-007, FR-009, FR-026,
-// FR-028).
+// T168, T344, T364: the Copilot skill's declared-name reading and its
+// recognition-level facts, the Copilot CLI MCP carrier's whole-entry field
+// reading over both documented schemas, and the VS Code MCP carrier's JSONC
+// `servers` reading beside the reading-less 1.118+ root provenance
+// (data-model.md § Field reading, FR-003, FR-007, FR-009, FR-026, FR-028).
 //
 // Copilot reads a skill through the one shared extractor, so these cases pin
 // what is Copilot's own: recognitions for exactly the three fixed directory
@@ -19,6 +21,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { recognizeCandidateForVendors } from '../../../src/server/inspection/recognizers/candidate';
 import { CLAUDE_REPOSITORY_RULES } from '../../../src/server/inspection/rules/claude';
 import { COPILOT_REPOSITORY_RULES } from '../../../src/server/inspection/rules/copilot';
+import {
+  COPILOT_CLI_MCP_SELECTION_STRATEGY,
+  COPILOT_VSCODE_MCP_SELECTION_STRATEGY,
+} from '../../../src/shared/registries/copilot/strategies';
+import { COPILOT_VSCODE_MCP_BEHAVIOR } from '../../../src/shared/registries/copilot/behaviors';
 import {
   CONTENT_FIXTURE_SECRET,
   MALFORMED_SKILL_CONTENT_CASES,
@@ -451,5 +458,173 @@ describe('Copilot instruction declarations (T261)', () => {
     expect(provenance!.discoveryClass).toBe('static-candidate');
     expect(provenance!.matchedPath).toBe('packages/api/.github/copilot-instructions.md');
     expect(provenance!.recognizingSurfaces).toEqual(['copilot-cli']);
+  });
+});
+
+const copilotMcpRule = COPILOT_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'copilot.repo.mcp',
+)!;
+if (copilotMcpRule.kind !== 'MCP' || copilotMcpRule.mcpReading !== 'own') {
+  throw new Error('expected the compiled Copilot MCP carrier rule');
+}
+
+describe('the Copilot CLI MCP carrier reading (T344)', () => {
+  it('reads the wrapper schema by the keys the file wrote, values literal', () => {
+    // The `mcpServers` object form: one declaration per named map entry, the
+    // fields exactly as resolved — the credential whole, the environment
+    // reference as its own characters, a relative command joined to no base
+    // (FR-026; `claude-metadata.test.ts` proves the same for Claude's
+    // reading of the shared root file).
+    const servers = copilotMcpRule.serverDeclarationsOf(
+      JSON.stringify({
+        mcpServers: {
+          tavily: {
+            command: './scripts/run.sh',
+            env: { API_KEY: 'tvly-SECRET', ENDPOINT: '${TAVILY_ENDPOINT}' },
+          },
+          odd: { command: 42 },
+          broken: 'not a mapping',
+        },
+      }),
+    );
+    expect(servers.map((server) => server.name)).toEqual(['tavily', 'odd']);
+    const serialized = JSON.stringify(servers);
+    expect(serialized).toContain('tvly-SECRET');
+    expect(serialized).toContain('${TAVILY_ENDPOINT}');
+    expect(serialized).toContain('./scripts/run.sh');
+    // The malformed-command declaration is still a named declaration this
+    // release lists — no field schema — while a non-mapping entry declares no
+    // server and is omitted whole.
+    expect(servers[1]).toEqual({
+      name: 'odd',
+      fields: [{ key: 'command', keyKind: 'string', value: { kind: 'scalar', text: '42' } }],
+    });
+  });
+
+  it('reads the bare top-level schema the CLI alone documents', () => {
+    // The second documented project-level form: each top-level key is a
+    // server name (github.copilot.cli.mcp § Adding per-repository MCP
+    // servers), with the same structural classification — a non-mapping
+    // top-level entry declares no server and is omitted whole.
+    const servers = copilotMcpRule.serverDeclarationsOf(
+      JSON.stringify({
+        playwright: { type: 'local', command: 'npx', args: ['@playwright/mcp@latest'] },
+        note: 'not a mapping',
+      }),
+    );
+    expect(servers.map((server) => server.name)).toEqual(['playwright']);
+    expect(JSON.stringify(servers)).toContain('@playwright/mcp@latest');
+  });
+
+  it('lets a declared mcpServers key select the wrapper form, never a bare server', () => {
+    // The vendor documents `mcpServers` as the wrapper, so a file declaring
+    // that key is the wrapper form: a non-mapping wrapper declares none, and
+    // the key itself is never read as a bare server of that name.
+    expect(
+      copilotMcpRule.serverDeclarationsOf(
+        JSON.stringify({ mcpServers: 'not a mapping', other: { command: 'x' } }),
+      ),
+    ).toEqual([]);
+    expect(copilotMcpRule.serverDeclarationsOf('{}')).toEqual([]);
+    expect(copilotMcpRule.serverDeclarationsOf('[1, 2]')).toEqual([]);
+  });
+
+  it('throws on text strict JSON cannot parse, for the extraction boundary to confine', () => {
+    // The CLI carriers are strict JSON: a comment or trailing comma fails the
+    // document exactly as the vendor's own reader would, and the recognizer's
+    // extraction boundary turns the throw into that recognition's `failed`
+    // state while the carrier stays an admitted candidate (FR-028).
+    expect(() => copilotMcpRule.serverDeclarationsOf('{ "mcpServers": {')).toThrow();
+    expect(() => copilotMcpRule.serverDeclarationsOf('// comment\n{}')).toThrow();
+    expect(() => copilotMcpRule.serverDeclarationsOf('')).toThrow();
+  });
+
+  it('records the documented source order as the strategy, not as a projection', () => {
+    // Session-additional → plugin → workspace → User selection of whole
+    // entries, with the workspace files' own duplicate order documented too —
+    // closer-to-`cwd` wins, `.mcp.json` over `.github/mcp.json` in one
+    // directory — is `copilot.cli.mcp.selection`'s statement. It lives in the
+    // maintained registry record, gated reciprocally against the bilingual
+    // contract row, and no recognition field projects a winner (FR-009).
+    expect(COPILOT_CLI_MCP_SELECTION_STRATEGY.operations).toEqual(['select-first', 'replace']);
+    expect(COPILOT_CLI_MCP_SELECTION_STRATEGY.tool).toBe('copilot');
+    expect(COPILOT_CLI_MCP_SELECTION_STRATEGY.documentationStatus).toBe('documented');
+  });
+});
+
+const copilotVscodeMcpRule = COPILOT_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'copilot.repo.mcp.vscode',
+)!;
+if (copilotVscodeMcpRule.kind !== 'MCP' || copilotVscodeMcpRule.mcpReading !== 'own') {
+  throw new Error('expected the compiled VS Code MCP carrier rule');
+}
+
+describe('the Copilot VS Code MCP carrier reading (T364)', () => {
+  it('reads the documented servers schema as JSONC, by the keys the file wrote', () => {
+    // The editor configuration format: comments and a trailing comma are the
+    // format's own syntax, the non-mapping entry declares no server and is
+    // omitted whole, and the `inputs` and `sandbox` sections beside
+    // `servers` declare nothing. The values are the carrier's own literals -
+    // the credential whole, the input reference as its own characters,
+    // resolved against nothing (FR-007, FR-026).
+    const servers = copilotVscodeMcpRule.serverDeclarationsOf(`{
+  // Workspace servers.
+  "servers": {
+    "gh": {
+      "type": "http",
+      "url": "https://api.example.com/mcp",
+      "headers": { "Authorization": "Bearer ghp-SECRET" }
+    },
+    "local": { "command": "./run.sh", "env": { "KEY": "\${input:api-key}" } },
+    "broken": "not an object",
+  },
+  "inputs": [{ "id": "api-key" }],
+  "sandbox": { "network": {} }
+}`);
+    expect(servers.map((server) => server.name)).toEqual(['gh', 'local']);
+    const serialized = JSON.stringify(servers);
+    expect(serialized).toContain('ghp-SECRET');
+    expect(serialized).toContain('${input:api-key}');
+  });
+
+  it('reads no bare form: the guide documents the wrapper alone', () => {
+    // Top-level mapping keys are not server names here - unlike the CLI's
+    // second schema - so a document without `servers` declares none, as does
+    // a non-mapping `servers`.
+    expect(
+      copilotVscodeMcpRule.serverDeclarationsOf(JSON.stringify({ playwright: { command: 'x' } })),
+    ).toEqual([]);
+    expect(
+      copilotVscodeMcpRule.serverDeclarationsOf(JSON.stringify({ servers: 'not a mapping' })),
+    ).toEqual([]);
+  });
+
+  it('throws on text JSONC cannot parse, for the extraction boundary to confine', () => {
+    expect(() => copilotVscodeMcpRule.serverDeclarationsOf('{ "servers": {')).toThrow();
+    expect(() => copilotVscodeMcpRule.serverDeclarationsOf('')).toThrow();
+  });
+
+  it('owns no reading for the 1.118+ root provenance, whose conflict stays recorded', () => {
+    // The root `.mcp.json` admission is path/surface provenance only: its
+    // compiled unit declares no reading, so the root carrier's declarations
+    // can only ever be the co-admitting CLI rule's own extraction. The
+    // location conflict between the current guide and the 1.118 release note
+    // - and the unknown root schema and total same-name order - are the
+    // behavior's and strategy's recorded facts, never a projection (FR-009).
+    const rootProvenance = COPILOT_REPOSITORY_RULES.find(
+      (compiled) => compiled.rule.ruleId === 'copilot.repo.mcp.vscode-root',
+    )!;
+    if (rootProvenance.kind !== 'MCP') {
+      throw new Error('expected the compiled VS Code root MCP provenance rule');
+    }
+    expect(rootProvenance.mcpReading).toBe('none');
+    expect(rootProvenance.rule.documentationStatus).toBe('conflict');
+    expect(COPILOT_VSCODE_MCP_BEHAVIOR.documentationStatus).toBe('conflict');
+    expect(COPILOT_VSCODE_MCP_SELECTION_STRATEGY.operations).toEqual([
+      'merge-map',
+      'replace',
+      'unknown-order',
+    ]);
+    expect(COPILOT_VSCODE_MCP_SELECTION_STRATEGY.documentationStatus).toBe('conflict');
   });
 });

@@ -165,9 +165,9 @@ test('leads with the addressed Copilot definition and its authored invocation na
   await expect(page.locator('.aci-skill-detail__definition')).toHaveText('GitHub Copilot · Skill');
   // Every key the file declares, by the key the file wrote, credential-shaped
   // keys included — nothing captioned, classified, or withheld.
-  const declarations = page.locator('.aci-skill-detail__declarations > .aci-frontmatter-block');
+  const declarations = page.locator('.aci-skill-detail__declarations > .aci-declaration-block');
   await expect(declarations.locator('> dt')).toHaveText(['name', 'description', 'api_key']);
-  await expect(declarations.locator('> dd.aci-frontmatter-block__value')).toHaveText([
+  await expect(declarations.locator('> dd.aci-declaration-block__value')).toHaveText([
     'github-ship',
     `deploy with ${FIXTURE_SECRET} and ${FIXTURE_ENV_REFERENCE}`,
     FIXTURE_SECRET,

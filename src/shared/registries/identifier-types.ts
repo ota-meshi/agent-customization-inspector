@@ -26,16 +26,26 @@
  * phase that needs them.
  */
 export type ClaudeBehaviorId =
+  /** Claude subagent discovery: recursive Markdown under each layer's `.claude/agents/`; a non-authorizing MCP-selection input. */
+  | 'claude.behavior.repo.agents'
   /** Claude instruction discovery in each directory above the runtime `cwd`, toward the filesystem root. */
   | 'claude.behavior.repo.instructions.ancestor'
   /** Claude instruction discovery in a subdirectory of the runtime `cwd`, on demand. */
   | 'claude.behavior.repo.instructions.descendant'
   /** Claude instruction discovery in the exact runtime `cwd`, at session start. */
   | 'claude.behavior.repo.instructions.launch'
+  /** Claude project MCP declarations at `<project-root>/.mcp.json`. */
+  | 'claude.behavior.repo.mcp'
+  /** Claude plugin content at an explicitly selected `<plugin-root>`; a non-authorizing MCP-selection input. */
+  | 'claude.behavior.repo.plugin'
   /** Claude Repository skill discovery under `.claude/skills/<skill-name>/SKILL.md`. */
   | 'claude.behavior.repo.skills'
   /** Claude User instructions at `<claude-config-dir>/CLAUDE.md`. */
   | 'claude.behavior.user.instructions'
+  /** Claude User and per-project local MCP state at `<home>/.claude.json`; a non-authorizing fact. */
+  | 'claude.behavior.user.mcp-state'
+  /** Claude installed plugin data under `<claude-config-dir>/plugins/`; a non-authorizing fact. */
+  | 'claude.behavior.user.plugins'
   /** Claude User skill discovery under `<claude-config-dir>/skills/<skill-name>/SKILL.md`. */
   | 'claude.behavior.user.skills';
 
@@ -47,8 +57,12 @@ export type ClaudeBehaviorId =
 export type CodexBehaviorId =
   /** Codex project configuration layers at `.codex/config.toml`. */
   | 'codex.behavior.repo.config'
+  /** Codex hooks in every active trusted config layer: `.codex/hooks.json` and inline `[hooks]`. */
+  | 'codex.behavior.repo.hooks'
   /** Codex per-directory project instruction lookup: override, regular, then configured fallbacks. */
   | 'codex.behavior.repo.instructions'
+  /** Codex MCP server declarations: `[mcp_servers.*]` inside active `.codex/config.toml` layers. */
+  | 'codex.behavior.repo.mcp'
   /** Codex Repository skill discovery under `.agents/skills/<name>/SKILL.md`. */
   | 'codex.behavior.repo.skills'
   /** Codex User configuration at `<CODEX_HOME>/config.toml`; a non-authorizing carrier fact. */
@@ -82,12 +96,16 @@ export type CopilotBehaviorId =
   | 'copilot.behavior.cli.instructions.path'
   /** Copilot CLI repository-wide `.github/copilot-instructions.md` across its standard locations. */
   | 'copilot.behavior.cli.instructions.repository'
+  /** Copilot CLI workspace MCP declarations: `.mcp.json` and `.github/mcp.json` on each ancestor. */
+  | 'copilot.behavior.cli.mcp'
   /** Copilot CLI Repository skill discovery in the three fixed skills directories. */
   | 'copilot.behavior.cli.skills'
   /** Copilot CLI User path instructions below `<COPILOT_HOME>/instructions`. */
   | 'copilot.behavior.cli.user.instructions.path'
   /** Copilot CLI User instructions at `<COPILOT_HOME>/copilot-instructions.md`. */
   | 'copilot.behavior.cli.user.instructions.root'
+  /** Copilot CLI User MCP configuration at `<COPILOT_HOME>/mcp-config.json`; a non-authorizing fact. */
+  | 'copilot.behavior.cli.user.mcp'
   /** Copilot CLI User skill discovery under `~/.copilot/skills` and `~/.agents/skills`. */
   | 'copilot.behavior.cli.user.skills'
   /** Copilot cloud agent `AGENTS.md` discovery over the repository tree. */
@@ -104,6 +122,8 @@ export type CopilotBehaviorId =
   | 'copilot.behavior.cloud.remote-skills'
   /** Copilot cloud agent Repository skill discovery at the repository root. */
   | 'copilot.behavior.cloud.skills'
+  /** Copilot VS Code custom-agent discovery in the workspace `.github/agents` and `.claude/agents` directories. */
+  | 'copilot.behavior.vscode.agents'
   /** Copilot VS Code `AGENTS.md` discovery; the nested tier is experimental. */
   | 'copilot.behavior.vscode.instructions.agents'
   /** Copilot VS Code `CLAUDE.md` compatibility locations at the workspace root. */
@@ -112,12 +132,16 @@ export type CopilotBehaviorId =
   | 'copilot.behavior.vscode.instructions.path'
   /** Copilot VS Code repository-wide `.github/copilot-instructions.md` at the workspace root. */
   | 'copilot.behavior.vscode.instructions.repository'
+  /** Copilot VS Code workspace MCP configuration: `.vscode/mcp.json`, and root `.mcp.json` for 1.118+. */
+  | 'copilot.behavior.vscode.mcp'
   /** Copilot VS Code Repository skill discovery at the workspace root. */
   | 'copilot.behavior.vscode.skills'
   /** Copilot VS Code User `~/.claude/CLAUDE.md` personal instructions. */
   | 'copilot.behavior.vscode.user.claude'
   /** Copilot VS Code User instruction locations in home and profile data. */
   | 'copilot.behavior.vscode.user.instructions'
+  /** Copilot VS Code User MCP configuration in the profile's own `mcp.json`. */
+  | 'copilot.behavior.vscode.user.mcp'
   /** Copilot VS Code User skill discovery in home and profile locations. */
   | 'copilot.behavior.vscode.user.skills';
 
@@ -133,6 +157,14 @@ export type BehaviorId = ClaudeBehaviorId | CodexBehaviorId | CopilotBehaviorId;
  * them.
  */
 export type AnthropicSourceId =
+  /** The Claude directory page: which files live where under `~/.claude` and beside it. */
+  | 'anthropic.claude-code.directory.file-reference'
+  /** The Claude Code environment-variables page: the variables the product reads, `CLAUDE_CONFIG_DIR` among them. */
+  | 'anthropic.claude-code.env-vars'
+  /** The Claude Code MCP page: installation scopes and plugin-provided servers. */
+  | 'anthropic.claude-code.mcp.scopes-precedence'
+  /** The subagents page: agent scopes, per-agent MCP scoping, and context inheritance. */
+  | 'anthropic.claude-code.subagents.scope-context'
   /** The Claude Code skills page: where skills live and how they are named. */
   | 'anthropic.claude-code.skills.locations-discovery'
   /** The memory page: where CLAUDE.md files live, how they load, and that AGENTS.md is not read. */
@@ -161,6 +193,10 @@ export type OpenAiSourceId =
   | 'openai.codex.agents-md'
   /** The basic configuration page: the config file locations and their precedence. */
   | 'openai.codex.config-basic'
+  /** The Codex hooks page: where hooks live, their config shape, and their review gate. */
+  | 'openai.codex.hooks'
+  /** The Codex MCP page: how MCP servers are declared and connected. */
+  | 'openai.codex.mcp'
   /** The Codex skills page: where Codex loads local skills, and their metadata. */
   | 'openai.codex.skills';
 
@@ -171,6 +207,8 @@ export type OpenAiSourceId =
 export type GitHubSourceId =
   /** The Copilot CLI custom-instructions how-to: the CLI instruction kinds and their locations. */
   | 'github.copilot.cli.instructions'
+  /** The Copilot CLI MCP how-to: the per-repository carrier files and their two declaration schemas. */
+  | 'github.copilot.cli.mcp'
   /** The Copilot CLI command reference: skill locations, legacy commands, and their order. */
   | 'github.copilot.cli.reference'
   /** The cloud-agent repository-instructions how-to: root, path-specific, and alternative files. */
@@ -178,7 +216,9 @@ export type GitHubSourceId =
   /** The custom-instructions support matrix: which instruction file each surface reads. */
   | 'github.copilot.instructions.support'
   /** The Copilot agent-skills page: cloud skill discovery, usage, and shared skills. */
-  | 'github.copilot.skills';
+  | 'github.copilot.skills'
+  /** The custom-agents configuration reference: the shared agent profile format, contained MCP included. */
+  | 'github.copilot.custom-agents';
 
 /**
  * Microsoft Visual Studio Code official documentation pages cited by the
@@ -193,7 +233,13 @@ export type VsCodeSourceId =
   /** The VS Code AI-settings reference: the per-customization location settings. */
   | 'vscode.copilot.settings'
   /** The VS Code agent-skills page: workspace skill locations and progressive loading. */
-  | 'vscode.copilot.skills';
+  | 'vscode.copilot.skills'
+  /** The VS Code custom-agents page: workspace agent file locations and structure. */
+  | 'vscode.copilot.custom-agents'
+  /** The VS Code MCP-servers page: the mcp.json locations, the `servers` schema, and server trust. */
+  | 'vscode.copilot.mcp'
+  /** The VS Code 1.118 release note adding workspace-root `.mcp.json` and same-name deduplication. */
+  | 'vscode.copilot.mcp.workspace-root-release';
 
 /**
  * Every official documentation page a shipped record cites. A citation names
@@ -210,6 +256,8 @@ export type SourceId = AnthropicSourceId | OpenAiSourceId | GitHubSourceId | VsC
 export type ClaudeStrategyId =
   /** Claude instruction layering: User, ancestor, launch, and lazy descendant files, broad to narrow. */
   | 'claude.instructions.layering'
+  /** Claude MCP selection: whole same-name server entries in local, project, User, plugin, connector order. */
+  | 'claude.mcp.selection'
   /** Claude skill selection across enterprise, User, project, and bundled scopes. */
   | 'claude.skills.selection';
 
@@ -222,6 +270,8 @@ export type CodexStrategyId =
   | 'codex.config.precedence'
   /** Codex instruction layering: per-directory first-non-empty selection, broad-to-narrow. */
   | 'codex.instructions.layering'
+  /** Codex MCP configuration: `[mcp_servers.*]` resolved through the config-layer precedence. */
+  | 'codex.mcp.configuration'
   /** Codex skill selection across Repository, User, admin, and system scopes. */
   | 'codex.skills.discovery';
 
@@ -234,12 +284,16 @@ export type CodexStrategyId =
 export type CopilotStrategyId =
   /** Copilot CLI instruction layering with deduplication and no general precedence. */
   | 'copilot.cli.instructions.layering'
+  /** Copilot CLI MCP selection: session-additional, plugin, workspace, then User sources. */
+  | 'copilot.cli.mcp.selection'
   /** Copilot CLI first-found skill selection across its documented source order. */
   | 'copilot.cli.skills.selection'
   /** Copilot cloud instruction layering, Repository before organization. */
   | 'copilot.cloud.instructions.layering'
   /** Copilot cloud progressive skill loading with unresolved collision behavior. */
   | 'copilot.cloud.skills.selection'
+  /** Copilot VS Code MCP selection with the 1.118/current-guide location conflict and unknown total order. */
+  | 'copilot.vscode.mcp.selection'
   /** Copilot VS Code instruction layering, personal before Repository before organization. */
   | 'copilot.vscode.instructions.layering'
   /** Copilot VS Code progressive skill loading with undocumented duplicate precedence. */
@@ -259,6 +313,8 @@ export type StrategyId = ClaudeStrategyId | CodexStrategyId | CopilotStrategyId;
 export type ClaudeRuleId =
   /** Repository Claude instructions at every depth; read-authorizing `static-candidate`. */
   | 'claude.repo.instructions'
+  /** The exact root `.mcp.json` MCP declaration carrier; read-authorizing `static-candidate`. */
+  | 'claude.repo.mcp'
   /** Repository Claude skills; read-authorizing `static-candidate`. */
   | 'claude.repo.skill';
 
@@ -270,6 +326,8 @@ export type ClaudeRuleId =
 export type CodexRuleId =
   /** Configured instruction fallback basenames, seeded by the pinned `.codex/config.toml` path. */
   | 'codex.derived.fallback-basename'
+  /** The root-exact `.codex/config.toml` MCP carrier; read-authorizing `static-candidate`. */
+  | 'codex.repo.config'
   /** Repository Codex instructions at the exact root override/regular pair; read-authorizing `static-candidate`. */
   | 'codex.repo.instructions'
   /** Repository Codex skills; read-authorizing `static-candidate`. */
@@ -299,6 +357,12 @@ export type CopilotRuleId =
   | 'copilot.repo.instructions.repository'
   /** CLI-context `.github/copilot-instructions.md`; read-authorizing `static-candidate`. */
   | 'copilot.repo.instructions.repository-cli-context'
+  /** The two root-exact CLI workspace MCP carriers `.mcp.json` and `.github/mcp.json`; read-authorizing `static-candidate`. */
+  | 'copilot.repo.mcp'
+  /** The dedicated VS Code `.vscode/mcp.json` carrier; read-authorizing `static-candidate`. */
+  | 'copilot.repo.mcp.vscode'
+  /** The VS Code 1.118+ root `.mcp.json` path/surface provenance; read-authorizing `static-candidate`. */
+  | 'copilot.repo.mcp.vscode-root'
   /** Repository Copilot skills in the three fixed directories; read-authorizing `static-candidate`. */
   | 'copilot.repo.skill';
 

@@ -1,4 +1,4 @@
-// T056, extended by T085: Codex SKILL discovery and detail activate nothing
+// T056, extended by T085 and T294: Codex SKILL and MCP discovery and detail activate nothing
 // (FR-019, FR-022, FR-023, QR-002, QR-003). Discovery reads files and
 // classifies paths, extraction parses what was read, and a detail request
 // serves it; none of them may execute, connect, resolve, load, or modify
@@ -35,7 +35,13 @@ import tls from 'node:tls';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import * as fsIo from '../../../src/server/inspection/fs-io';
-import { buildCodexSkillFixture } from '../../fixtures/repositories/build-fixtures';
+import {
+  buildClaudeMcpFixture,
+  buildCodexMcpFixture,
+  buildCodexSkillFixture,
+  buildCopilotCliMcpFixture,
+  buildCopilotVscodeMcpFixture,
+} from '../../fixtures/repositories/build-fixtures';
 import {
   READ_ONLY_FS_SURFACE,
   collectFsMutationViolations,
@@ -459,5 +465,435 @@ describe('parsing, extraction, and detail activate nothing (T085)', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(vi.mocked(fsIo.readFile).mock.calls).toEqual([]);
     expect(vi.mocked(fsIo.readdir).mock.calls).toEqual([]);
+  });
+});
+
+describe('Codex MCP inspection connects to nothing (T294)', () => {
+  // FR-022 authorizes exactly two internal loopback HTTP classes, and both
+  // belong to the host rather than to inspection: (1) static/SPA GET/HEAD for
+  // the packaged UI assets, and (2) the local session API channel. Neither is
+  // issued by a scan or a detail assembly, so the classification here is that
+  // every product-issued request observed during MCP inspection is zero —
+  // the two authorized classes cannot appear because their issuer (the
+  // served browser page) is not running, and any request that did appear
+  // would be a prohibited one by that same split.
+  it('declares servers without any DNS, socket, HTTP, MCP, auth, or probing request', async () => {
+    const fixture = buildCodexMcpFixture('inspector-zero-activation-mcp');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const observed: string[] = [];
+    const globalScope = globalThis as Record<string, unknown>;
+    const originals = new Map<string, unknown>();
+    for (const name of ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'open']) {
+      originals.set(name, globalScope[name]);
+      globalScope[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during MCP inspection`);
+      };
+    }
+    // The same closed Node surfaces the skill-scan case spies on: a declared
+    // server reaches the outside only through one of these, so an MCP scan
+    // that touches none of them connected to, resolved, authenticated
+    // against, executed, and probed nothing — the declared command included,
+    // which would need `child_process` to run.
+    const nodeSurfaces: [Record<string, unknown>, string][] = [
+      [net as unknown as Record<string, unknown>, 'createConnection'],
+      [net as unknown as Record<string, unknown>, 'connect'],
+      [tls as unknown as Record<string, unknown>, 'connect'],
+      [dns as unknown as Record<string, unknown>, 'lookup'],
+      [dns as unknown as Record<string, unknown>, 'resolve'],
+      [childProcess as unknown as Record<string, unknown>, 'spawn'],
+      [childProcess as unknown as Record<string, unknown>, 'exec'],
+      [childProcess as unknown as Record<string, unknown>, 'execFile'],
+      [childProcess as unknown as Record<string, unknown>, 'fork'],
+      [http as unknown as Record<string, unknown>, 'request'],
+      [https as unknown as Record<string, unknown>, 'request'],
+      [dgram as unknown as Record<string, unknown>, 'createSocket'],
+    ];
+    const nodeOriginals = nodeSurfaces.map(([host, name]) => {
+      const original = host[name];
+      host[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during MCP inspection`);
+      };
+      return { host, name, original } as const;
+    });
+    vi.clearAllMocks();
+    try {
+      const publication = await runSourceScan({
+        sourceId: 'src-1',
+        root: fixture.root,
+        rootFailureOwner: 'repository',
+      });
+      expect(publication.kind).toBe('publishable');
+    } finally {
+      for (const [name, value] of originals) {
+        globalScope[name] = value;
+      }
+      for (const { host, name, original } of nodeOriginals) {
+        host[name] = original;
+      }
+    }
+    expect(observed).toEqual([]);
+    // No expansion and no referenced-file read either: the carrier is read
+    // once — the configuration stage's read, seeded into the walk for its
+    // candidacy (T282) — plus the published files, never the standalone near
+    // miss, the nested carrier, a declared command path, or a plugin load.
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) => String(call[0]));
+    for (const forbidden of fixture.nearMissPaths) {
+      expect(opened).not.toContain(join(fixture.root, ...forbidden.split('/')));
+    }
+    expect(
+      opened.filter((path) => path === join(fixture.root, '.codex', 'config.toml')),
+    ).toHaveLength(1);
+  });
+
+  it('assembles the MCP carrier detail without any request or read', async () => {
+    const fixture = buildCodexMcpFixture('inspector-zero-activation-mcp-detail');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const session = new InspectionSession({
+      invocationCwd: fixture.root,
+      rootOptionValue: null,
+    });
+    const context = { session, coordinator: new SessionCoordinator(session) };
+    const repository = session.snapshot().sources[0]!;
+    const admission = context.coordinator.admitScan(repository.sourceId, {
+      kind: 'startup',
+      operationId: null,
+    });
+    if (admission.kind !== 'admitted') {
+      throw new Error('the first scan was not admitted');
+    }
+    await executeRepositoryScan(
+      context,
+      admission.scanRequestId,
+      repository.sourceId,
+      'repository',
+    );
+
+    vi.clearAllMocks();
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const detail = session.mcpCarrierDetail(fixture.carrierPath);
+
+    // Served from the committed generation: the declared servers reach the
+    // response while nothing connects, resolves, executes, or reads — the
+    // declared URL and command are inert values on the wire (FR-022).
+    expect(detail?.servers?.map((server) => server.name)).toEqual([...fixture.expectedServerNames]);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(vi.mocked(fsIo.readFile).mock.calls).toEqual([]);
+    expect(vi.mocked(fsIo.readdir).mock.calls).toEqual([]);
+  });
+});
+
+describe('Claude MCP inspection connects to nothing (T315, T326)', () => {
+  // The same closed classification as the Codex case above: every
+  // product-issued request observed during MCP inspection is zero, for the
+  // standalone carrier and the skill-contained owner alike.
+  it('declares file and contained servers without any DNS, socket, HTTP, MCP, auth, or probing request', async () => {
+    const fixture = buildClaudeMcpFixture('inspector-zero-activation-claude-mcp');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const observed: string[] = [];
+    const globalScope = globalThis as Record<string, unknown>;
+    const originals = new Map<string, unknown>();
+    for (const name of ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'open']) {
+      originals.set(name, globalScope[name]);
+      globalScope[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during MCP inspection`);
+      };
+    }
+    const nodeSurfaces: [Record<string, unknown>, string][] = [
+      [net as unknown as Record<string, unknown>, 'createConnection'],
+      [net as unknown as Record<string, unknown>, 'connect'],
+      [tls as unknown as Record<string, unknown>, 'connect'],
+      [dns as unknown as Record<string, unknown>, 'lookup'],
+      [dns as unknown as Record<string, unknown>, 'resolve'],
+      [childProcess as unknown as Record<string, unknown>, 'spawn'],
+      [childProcess as unknown as Record<string, unknown>, 'exec'],
+      [childProcess as unknown as Record<string, unknown>, 'execFile'],
+      [childProcess as unknown as Record<string, unknown>, 'fork'],
+      [http as unknown as Record<string, unknown>, 'request'],
+      [https as unknown as Record<string, unknown>, 'request'],
+      [dgram as unknown as Record<string, unknown>, 'createSocket'],
+    ];
+    const nodeOriginals = nodeSurfaces.map(([host, name]) => {
+      const original = host[name];
+      host[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during MCP inspection`);
+      };
+      return { host, name, original } as const;
+    });
+    vi.clearAllMocks();
+    try {
+      const publication = await runSourceScan({
+        sourceId: 'src-1',
+        root: fixture.root,
+        rootFailureOwner: 'repository',
+      });
+      expect(publication.kind).toBe('publishable');
+    } finally {
+      for (const [name, value] of originals) {
+        globalScope[name] = value;
+      }
+      for (const { host, name, original } of nodeOriginals) {
+        host[name] = original;
+      }
+    }
+    expect(observed).toEqual([]);
+    // No expansion and no referenced-file read either: never the declared
+    // command target, the User-state filename, a plugin or settings owner no
+    // rule admits, the link target as its own candidate, or a connector
+    // state. The carrier is read exactly once — one candidacy, no
+    // configuration stage — whether it is a regular file or a link read
+    // through its target (FR-024).
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) => String(call[0]));
+    for (const forbidden of [
+      ...fixture.nearMissPaths,
+      ...fixture.unadmittedOwnerPaths,
+      fixture.commandTargetPath,
+    ]) {
+      expect(opened).not.toContain(join(fixture.root, ...forbidden.split('/')));
+    }
+    expect(opened.filter((path) => path === join(fixture.root, '.mcp.json'))).toHaveLength(1);
+    // The skill spelling `mcpServers` is read once too — as the skill it is,
+    // never re-read for an MCP fact Claude does not document.
+    expect(
+      opened.filter(
+        (path) => path === join(fixture.root, ...fixture.mcpFrontmatterSkillPath.split('/')),
+      ),
+    ).toHaveLength(1);
+  });
+
+  it('assembles the carrier detail without any request or read', async () => {
+    const fixture = buildClaudeMcpFixture('inspector-zero-activation-claude-mcp-detail');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const session = new InspectionSession({
+      invocationCwd: fixture.root,
+      rootOptionValue: null,
+    });
+    const context = { session, coordinator: new SessionCoordinator(session) };
+    const repository = session.snapshot().sources[0]!;
+    const admission = context.coordinator.admitScan(repository.sourceId, {
+      kind: 'startup',
+      operationId: null,
+    });
+    if (admission.kind !== 'admitted') {
+      throw new Error('the first scan was not admitted');
+    }
+    await executeRepositoryScan(
+      context,
+      admission.scanRequestId,
+      repository.sourceId,
+      'repository',
+    );
+
+    vi.clearAllMocks();
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    // Served from the committed generation: the standalone carrier's servers,
+    // source-free (FR-007). The skill whose frontmatter spells `mcpServers`
+    // is no carrier at all — Claude documents no such skill field — so its
+    // path holds no MCP resource, while its own skill detail serves its
+    // source under its own kind.
+    const carrier = session.mcpCarrierDetail(fixture.carrierPath);
+    expect(carrier?.servers?.map((server) => server.name)).toEqual([
+      ...fixture.expectedCarrierServerNames,
+    ]);
+    expect(JSON.stringify(carrier)).not.toContain('sourceText');
+    expect(session.mcpCarrierDetail(fixture.mcpFrontmatterSkillPath)).toBeNull();
+    const ownerDetail = session.fileDetail(fixture.mcpFrontmatterSkillPath);
+    expect(ownerDetail?.kind).toBe('skill');
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(vi.mocked(fsIo.readFile).mock.calls).toEqual([]);
+    expect(vi.mocked(fsIo.readdir).mock.calls).toEqual([]);
+  });
+});
+
+describe('Copilot CLI MCP inspection connects to nothing (T345)', () => {
+  // The same closed classification as the Codex and Claude cases above:
+  // every product-issued request observed during MCP inspection is zero, for
+  // both root-level carriers and both documented declaration schemas.
+  it('declares servers without any DNS, socket, HTTP, MCP, auth, or probing request', async () => {
+    const fixture = buildCopilotCliMcpFixture('inspector-zero-activation-copilot-mcp');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const observed: string[] = [];
+    const globalScope = globalThis as Record<string, unknown>;
+    const originals = new Map<string, unknown>();
+    for (const name of ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'open']) {
+      originals.set(name, globalScope[name]);
+      globalScope[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during MCP inspection`);
+      };
+    }
+    const nodeSurfaces: [Record<string, unknown>, string][] = [
+      [net as unknown as Record<string, unknown>, 'createConnection'],
+      [net as unknown as Record<string, unknown>, 'connect'],
+      [tls as unknown as Record<string, unknown>, 'connect'],
+      [dns as unknown as Record<string, unknown>, 'lookup'],
+      [dns as unknown as Record<string, unknown>, 'resolve'],
+      [childProcess as unknown as Record<string, unknown>, 'spawn'],
+      [childProcess as unknown as Record<string, unknown>, 'exec'],
+      [childProcess as unknown as Record<string, unknown>, 'execFile'],
+      [childProcess as unknown as Record<string, unknown>, 'fork'],
+      [http as unknown as Record<string, unknown>, 'request'],
+      [https as unknown as Record<string, unknown>, 'request'],
+      [dgram as unknown as Record<string, unknown>, 'createSocket'],
+    ];
+    const nodeOriginals = nodeSurfaces.map(([host, name]) => {
+      const original = host[name];
+      host[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during MCP inspection`);
+      };
+      return { host, name, original } as const;
+    });
+    vi.clearAllMocks();
+    try {
+      const publication = await runSourceScan({
+        sourceId: 'src-1',
+        root: fixture.root,
+        rootFailureOwner: 'repository',
+      });
+      expect(publication.kind).toBe('publishable');
+    } finally {
+      for (const [name, value] of originals) {
+        globalScope[name] = value;
+      }
+      for (const { host, name, original } of nodeOriginals) {
+        host[name] = original;
+      }
+    }
+    expect(observed).toEqual([]);
+    // No expansion and no referenced-file read either: never a subdirectory
+    // carrier, the User-config filename, the general VS Code settings file,
+    // or the link target as its own candidate. Each root-level carrier is
+    // read exactly once — the `.github` spelling through its link where the
+    // platform created one (FR-024).
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) => String(call[0]));
+    for (const forbidden of fixture.nearMissPaths) {
+      expect(opened).not.toContain(join(fixture.root, ...forbidden.split('/')));
+    }
+    for (const carrier of [fixture.rootCarrierPath, fixture.githubCarrierPath]) {
+      expect(
+        opened.filter((path) => path === join(fixture.root, ...carrier.split('/'))),
+      ).toHaveLength(1);
+    }
+  });
+
+  it('assembles both carriers’ details without any request or read', async () => {
+    const fixture = buildCopilotCliMcpFixture('inspector-zero-activation-copilot-mcp-detail');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const session = new InspectionSession({
+      invocationCwd: fixture.root,
+      rootOptionValue: null,
+    });
+    const context = { session, coordinator: new SessionCoordinator(session) };
+    const repository = session.snapshot().sources[0]!;
+    const admission = context.coordinator.admitScan(repository.sourceId, {
+      kind: 'startup',
+      operationId: null,
+    });
+    if (admission.kind !== 'admitted') {
+      throw new Error('the first scan was not admitted');
+    }
+    await executeRepositoryScan(
+      context,
+      admission.scanRequestId,
+      repository.sourceId,
+      'repository',
+    );
+
+    vi.clearAllMocks();
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    // Served from the committed generation, source-free for both documented
+    // schemas (FR-007): the wrapper-form root carrier and the bare-form
+    // `.github` spelling alike.
+    const rootCarrier = session.mcpCarrierDetail(fixture.rootCarrierPath);
+    expect(rootCarrier?.servers?.map((server) => server.name)).toEqual([
+      ...fixture.expectedRootServerNames,
+    ]);
+    const githubCarrier = session.mcpCarrierDetail(fixture.githubCarrierPath);
+    expect(githubCarrier?.servers?.map((server) => server.name)).toEqual([
+      ...fixture.expectedGithubServerNames,
+    ]);
+    expect(JSON.stringify(rootCarrier)).not.toContain('sourceText');
+    expect(JSON.stringify(githubCarrier)).not.toContain('sourceText');
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(vi.mocked(fsIo.readFile).mock.calls).toEqual([]);
+    expect(vi.mocked(fsIo.readdir).mock.calls).toEqual([]);
+  });
+});
+
+describe('Copilot VS Code MCP inspection connects to nothing (T365)', () => {
+  it('declares servers without any DNS, socket, HTTP, MCP, auth, or trust request', async () => {
+    // The same closed classification as the CLI case above, over the
+    // dedicated JSONC carrier and the shared root file: no declared command
+    // ran, no URL or header was used, no environment or input reference was
+    // resolved, and no trust prompt or User/profile state was touched.
+    const fixture = buildCopilotVscodeMcpFixture('inspector-zero-activation-vscode-mcp');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const observed: string[] = [];
+    const globalScope = globalThis as Record<string, unknown>;
+    const originals = new Map<string, unknown>();
+    for (const name of ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'open']) {
+      originals.set(name, globalScope[name]);
+      globalScope[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during MCP inspection`);
+      };
+    }
+    const nodeSurfaces: [Record<string, unknown>, string][] = [
+      [net as unknown as Record<string, unknown>, 'createConnection'],
+      [net as unknown as Record<string, unknown>, 'connect'],
+      [tls as unknown as Record<string, unknown>, 'connect'],
+      [dns as unknown as Record<string, unknown>, 'lookup'],
+      [dns as unknown as Record<string, unknown>, 'resolve'],
+      [childProcess as unknown as Record<string, unknown>, 'spawn'],
+      [childProcess as unknown as Record<string, unknown>, 'exec'],
+      [childProcess as unknown as Record<string, unknown>, 'execFile'],
+      [childProcess as unknown as Record<string, unknown>, 'fork'],
+      [http as unknown as Record<string, unknown>, 'request'],
+      [https as unknown as Record<string, unknown>, 'request'],
+      [dgram as unknown as Record<string, unknown>, 'createSocket'],
+    ];
+    const nodeOriginals = nodeSurfaces.map(([host, name]) => {
+      const original = host[name];
+      host[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during MCP inspection`);
+      };
+      return { host, name, original } as const;
+    });
+    vi.clearAllMocks();
+    try {
+      const publication = await runSourceScan({
+        sourceId: 'src-1',
+        root: fixture.root,
+        rootFailureOwner: 'repository',
+      });
+      expect(publication.kind).toBe('publishable');
+    } finally {
+      for (const [name, value] of originals) {
+        globalScope[name] = value;
+      }
+      for (const { host, name, original } of nodeOriginals) {
+        host[name] = original;
+      }
+    }
+    expect(observed).toEqual([]);
+    // No expansion: never the nested workspace, the general settings file,
+    // the user-profile filename, or the link target as its own candidate,
+    // and each admitted carrier is read exactly once — the `.vscode`
+    // spelling through its link where the platform created one (FR-024),
+    // the root file once for all three of its admissions.
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) => String(call[0]));
+    for (const forbidden of fixture.nearMissPaths) {
+      expect(opened).not.toContain(join(fixture.root, ...forbidden.split('/')));
+    }
+    for (const carrier of [fixture.rootCarrierPath, fixture.vscodeCarrierPath]) {
+      expect(
+        opened.filter((path) => path === join(fixture.root, ...carrier.split('/'))),
+      ).toHaveLength(1);
+    }
   });
 });

@@ -39,7 +39,7 @@ columns are rationale or Inspector-scope state, not serialized status scalars.
 | `codex.behavior.repo.rules` | `partially-documented` | `[experimental]` | Nested recursion is unspecified and the rules feature is experimental |
 | `codex.behavior.user.rules` | `documented` | `[experimental]` | The documented User rules surface is experimental |
 | `codex.behavior.user.prompts` | `documented` | `[deprecated]` | The documented custom-prompt surface is deprecated |
-| `codex.repo.agent` | `partially-documented` | `[]` | Descendant inventory includes possible contexts beyond the fully specified project search |
+| `codex.repo.agent` | `partially-documented` | `[]` | The root's `.codex/agents/` is documented, but the complete project directory search is not fully specified |
 | `codex.repo.rules` | `documented` | `[experimental]` | The Inspector rule admits only documented direct children and excludes unestablished nesting |
 
 The fixed qualifier order is `preview`, `experimental`, `deprecated`; no row here has more
@@ -66,8 +66,9 @@ how completely that rule is documented.
 
 All bases in this table are the exact Inspector Repository boundary — the selected
 Repository root, spelled `Repository`. A
-`descendant-inventory` expansion inventories possible runtime contexts below that
-boundary; it does not claim that Codex walks downward. Every row has policy references
+`descendant-inventory` expansion is used only for a location the vendor documents at any
+depth through a worked-file or descendant anchor; Codex documents none, so every selector
+below is anchored at the root and no row claims that Codex walks downward. Every row has policy references
 FR-003, FR-004, FR-005, FR-024, QR-001, QR-004, and QR-005 unless a narrower exclusion or
 Global requirement is stated below.
 

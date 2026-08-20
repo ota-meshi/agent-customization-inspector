@@ -137,7 +137,8 @@ Above Expediency) to day-to-day coding decisions:
   row type. Widening one shape with optional fields until it fits all of them produces a
   type whose invariants hold for no member. Example: the inventory publishes a file's own
   facts once and a separate inventory per kind, because a skill row is one name as one
-  tool resolves it while an MCP row is one declaration inside a carrier.
+  tool resolves it while an MCP row is one declared server name listing every
+  declaration — one per `(carrier, tool)` — that resolves it.
 - Publish one fact, never a fact and something derived from it. Two states can disagree;
   one cannot. A derived value is computed where it is displayed, and a bound that a walk
   needs is expressed as a bound rather than trusted to hold. Example: a skill's companion
@@ -320,8 +321,8 @@ Placement:
 Naming:
 
 - A component's classes are BEM, and the block is the component's own name, so the name
-  says where the rule lives: `aci-frontmatter-block`, `aci-frontmatter-block__key`, and
-  `aci-frontmatter-block__nested--list-item` in `FrontmatterBlock.vue`;
+  says where the rule lives: `aci-declaration-block`, `aci-declaration-block__key`, and
+  `aci-declaration-block__nested--list-item` in `DeclarationBlock.vue`;
   `aci-skill-file-tree-branch__file` in `SkillFileTreeBranch.vue`;
   `aci-scan-progress__actions` in
   `ScanProgress.vue`. Naming the block after the component is what makes a collision

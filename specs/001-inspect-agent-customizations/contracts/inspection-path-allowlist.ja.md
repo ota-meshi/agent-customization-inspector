@@ -140,7 +140,9 @@ Composite selectorでは複数labelを記載できる。
 `ANY_DIRECTORIES`が唯一の方向性を持つ軸であり、それは下向きである。それが表すのは
 anchorより下のdirectoryに対するInspectorのinventoryだけである。Vendorが下向きまたは上向きにwalkする、ancestorを
 探す、すべてのnested repositoryを認識する、あるruntime contextでmatch fileを適用する、のいずれも意味しない。
-これらの主張には別のvendor behavior recordとstrategy recordが必要である。
+これらの主張には別のvendor behavior recordとstrategy recordが必要である。先頭の`ANY_DIRECTORIES`をauthorできる
+のは、vendorがあらゆる深さで文書化しているlocation — サブディレクトリのon-demand loadや、作業中fileのpath上の
+directoryでのdiscoveryといった、worked-fileまたはdescendant anchorを持つlocation — だけである。
 
 上向きの軸は意図的に持たない。Allowlistは選択されたrootにanchorされ、そのrootのcustomizationを報告する
 （FR-003）。したがってruntime working directoryから上るvendor lookupが与えるin-scopeなlayerはちょうど1つであり、

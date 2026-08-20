@@ -100,13 +100,15 @@ export const COPILOT_REPO_INSTRUCTIONS_REPOSITORY_RULE = {
 
 /**
  * `copilot.repo.instructions.repository-cli-context`: the same filename below
- * any directory, because Copilot CLI reads it relative to its standard
- * locations — the repository root, its runtime working directory, the
- * directories between them, and the directories on the path of a file it is
- * working on.
+ * any directory, justified by the worked-file half of the CLI's standard
+ * locations alone — the CLI documents this filename in the directories on the
+ * path of a file it is working on, and every directory below the selected
+ * root lies on the path of the files under it, so the vendor documents the
+ * filename at every depth. The chain half — the repository root, the runtime
+ * working directory, and the directories between them — justifies nothing
+ * below the root: its one member every session shares is the selected root.
  *
- * An Inspector-only descendant inventory of the contexts a CLI session could
- * have, never a claim that the CLI walks downward. `ANY_DIRECTORIES` matches
+ * Never a claim that the CLI walks downward. `ANY_DIRECTORIES` matches
  * zero segments, so this program also covers the selected root: the root file
  * is one candidate with two admissions, carrying CLI provenance from here and
  * VS Code/Cloud provenance from the rule above, which is exactly the
@@ -143,7 +145,7 @@ export const COPILOT_REPO_INSTRUCTIONS_REPOSITORY_CLI_CONTEXT_RULE = {
           sections: ['Types of custom instructions'],
           reviewedOn: '2026-08-19',
           establishes:
-            'Copilot CLI discovers the repository-wide filename in its standard locations — the repository root, the current working directory, the directories between them, and directories on the path of a file it is working on — which is why every context inside the selected root is inventoried instead of the root alone.',
+            'Copilot CLI discovers the repository-wide filename in its standard locations, which include the directories on the path of a file it is working on — the documented worked-file reach that is why this rule admits the filename at every depth, since every directory lies on the path of the files under it — while the chain locations (root, working directory, the directories between them) contribute only the selected root, the one member every session shares.',
         },
         {
           sourceId: 'github.copilot.instructions.support',
@@ -217,13 +219,15 @@ export const COPILOT_REPO_INSTRUCTIONS_PATH_RULE = {
 /**
  * `copilot.repo.instructions.path-cli-context`: the same subtree below any
  * directory, for the same reason as the repository-wide CLI-context rule —
- * the CLI reads `.github/instructions` relative to its standard locations, so
- * the Inspector inventories the contexts inside the selected root.
+ * the CLI documents `.github/instructions` in the directories on the path of
+ * a file it is working on, which puts the subtree at every depth below the
+ * selected root; the chain locations contribute only the root itself.
  *
  * The CLI's documented chain excludes the directories between the repository
- * root and its runtime working directory. That distinction depends on a
- * runtime working directory this product does not observe, so it stays a
- * condition on the behavior rather than narrowing what is admitted here.
+ * root and its runtime working directory for this filename. That distinction
+ * depends on a runtime working directory this product does not observe, so it
+ * stays a condition on the behavior rather than narrowing what is admitted
+ * here.
  */
 export const COPILOT_REPO_INSTRUCTIONS_PATH_CLI_CONTEXT_RULE = {
   ruleId: 'copilot.repo.instructions.path-cli-context',
@@ -258,7 +262,7 @@ export const COPILOT_REPO_INSTRUCTIONS_PATH_CLI_CONTEXT_RULE = {
           sections: ['Types of custom instructions', 'Creating path-specific custom instructions'],
           reviewedOn: '2026-08-19',
           establishes:
-            'Copilot CLI discovers modular instruction files below .github/instructions in its standard locations — excluding the intermediate directories for this filename — and subdirectories may organize them, so which instructions directories exist depends on the context a session runs in rather than on one anchored path.',
+            'Copilot CLI discovers modular instruction files below .github/instructions in its standard locations — excluding the intermediate directories for this filename — and those locations include the directories on the path of a file it is working on, the documented worked-file reach that is why this rule admits the subtree at every depth; subdirectories inside each instructions directory may organize the files.',
         },
         {
           sourceId: 'github.copilot.instructions.support',
@@ -276,12 +280,12 @@ export const COPILOT_REPO_INSTRUCTIONS_PATH_CLI_CONTEXT_RULE = {
 /**
  * `copilot.repo.instructions.agents`: `AGENTS.md` at every depth below the
  * selected root. The one instruction rule the three surfaces share without a
- * CLI-context split, because each documents reaching a nested file in its own
+ * CLI-context split, because each documents reading a nested file in its own
  * way: Cloud takes the nearest one on the worked path, VS Code inventories
- * subfolders under an experimental setting, and the CLI reads it from its
- * standard locations. Which of those a session performs is runtime this
- * product does not observe, so every depth is authored inventory and no
- * per-file classification is published (FR-009).
+ * subfolders under an experimental setting, and the CLI documents it in the
+ * directories on the path of a file it is working on. Which of those a
+ * session performs is runtime this product does not observe, so every depth
+ * is authored inventory and no per-file classification is published (FR-009).
  *
  * This rule is also where the additional standard locations and the
  * runtime-supplied roots stop being admitted: its terminal literal is exact,
@@ -324,7 +328,7 @@ export const COPILOT_REPO_INSTRUCTIONS_AGENTS_RULE = {
           sections: ['Types of custom instructions'],
           reviewedOn: '2026-08-19',
           establishes:
-            'Copilot CLI discovers AGENTS.md in its standard locations, which are directories inside the selected root rather than the root alone.',
+            'Copilot CLI discovers AGENTS.md in its standard locations, which include the directories on the path of a file it is working on — the documented worked-file reach that puts the filename at every depth below the selected root, while the chain locations contribute only the root itself.',
         },
         {
           sourceId: 'github.copilot.cloud.instructions',
@@ -556,7 +560,7 @@ export const COPILOT_EXCLUDED_EXTRA_DIRECTORIES_RULE = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
           officialHost: 'docs.github.com',
           sections: ['Skill locations'],
-          reviewedOn: '2026-07-15',
+          reviewedOn: '2026-08-20',
           establishes:
             'The CLI reference documents COPILOT_SKILLS_DIRS adding skill lookup roots, which name directories outside the boundary a scan was authorized for.',
         },
@@ -583,14 +587,14 @@ export const COPILOT_EXCLUDED_EXTRA_DIRECTORIES_RULE = {
  * file exact.
  *
  * Anchored like Codex's program, and for the same reason: no Copilot surface
- * documents a downward skill lookup from a root context — VS Code and Cloud
+ * documents a downward or worked-file skill lookup — VS Code and Cloud
  * read their exact workspace or repository root, and the CLI reads its
  * runtime project plus the upward parent-`.github/skills` monorepo tier — so
- * a nested skills directory belongs to a runtime context this product does
- * not select, and admitting it would report what a subdirectory launch or a
- * nested workspace folder would read rather than this root's customizations
- * (FR-003). That dependency stays the `runtime-cwd`/`workspace-root`
- * condition on the behavior records, never an admission
+ * a nested skills directory is a runtime-chain member this product does not
+ * select and is never a candidate (FR-003). The chain's one member every
+ * session shares is the selected root, which these anchored programs admit;
+ * the runtime dependency stays the `runtime-cwd`/`workspace-root` condition
+ * on the behavior records, never an admission
  * (contracts/vendors/github-copilot.md § Inspector Repository matcher rules).
  *
  * The three programs differ only in their fixed directory literal, so nothing
@@ -671,7 +675,7 @@ export const COPILOT_REPO_SKILL_RULE = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
           officialHost: 'docs.github.com',
           sections: ['Skill locations'],
-          reviewedOn: '2026-07-15',
+          reviewedOn: '2026-08-20',
           establishes:
             'The Skill locations table loads project skills from .github/skills, .agents/skills, and .claude/skills at the runtime project and inherits parent-directory .github/skills layers for monorepos — no downward tier, which is why this rule stays anchored at the selected root.',
         },
@@ -683,6 +687,205 @@ export const COPILOT_REPO_SKILL_RULE = {
           reviewedOn: '2026-07-15',
           establishes:
             'The cloud agent reads the same three directories at the repository root, so a root candidate is authored inventory for all three surfaces at once.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
+ * The `copilot.repo.mcp` matcher, authored in the typed segment form the
+ * contract table shows: the two root-exact programs `['.mcp.json']` and
+ * `['.github', 'mcp.json']`. Two programs rather than one dynamic step, so
+ * each admission carries which authored spelling matched.
+ *
+ * Root-exact and deliberately not recursive: the vendor documents these
+ * files on an upward walk whose one terminal every session shares is the Git
+ * root — the selected root is the only point of that chain this product's
+ * frame contains, so a subdirectory file is a runtime-chain member this
+ * product does not select and is never a candidate
+ * (contracts/vendors/github-copilot.md § Inspector Repository matcher
+ * rules), exactly as a nested `AGENTS.md` is never a Codex candidate. This
+ * differs from the CLI instruction rules' descendant inventory, whose
+ * documented locations include the directories on the path of a file being
+ * worked on — an anchor the whole tree carries; the MCP walk documents no
+ * worked-file anchor.
+ */
+const COPILOT_REPO_MCP_MATCHER: StructuredInspectorMatcher = {
+  base: { kind: 'repository' },
+  selectors: [
+    [{ kind: 'literal', value: '.mcp.json' }],
+    [
+      { kind: 'literal', value: '.github' },
+      { kind: 'literal', value: 'mcp.json' },
+    ],
+  ],
+};
+
+/**
+ * Copilot CLI workspace MCP declarations: the read-authorizing counterpart of
+ * `copilot.behavior.cli.mcp`, at the one chain point this product's frame
+ * contains — the selected root. Admitting a carrier is not asserting the CLI
+ * connects anything — workspace trust stays a condition this tool never
+ * observes — and no declared command, URL, or path gains read or connection
+ * authority from the admission.
+ *
+ * The root `.mcp.json` this rule admits is the same physical file
+ * `claude.repo.mcp` admits: one candidate, one read, two tools' recognitions
+ * (data-model.md § ToolRecognition). The User configuration at
+ * `<COPILOT_HOME>/mcp-config.json`, session additional configuration, plugin
+ * servers, and hosted state are different boundaries no Repository rule may
+ * read; their statements exist as non-authorizing behavior records, and the
+ * exclusions that name them ship with the Global phase that owns them
+ * (FR-015, FR-018).
+ */
+export const COPILOT_REPO_MCP_RULE = {
+  ruleId: 'copilot.repo.mcp',
+  tool: 'copilot',
+  discoveryClass: 'static-candidate',
+  kind: 'MCP',
+  sourceKinds: ['repository'],
+  matcher: COPILOT_REPO_MCP_MATCHER,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.cli.reference',
+          url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
+          officialHost: 'docs.github.com',
+          sections: ['MCP server configuration'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'Workspace MCP servers are .mcp.json and .github/mcp.json files on an upward walk that terminates at the Git root, which is why this rule admits both spellings at the selected root — the one walk member every session shares — and nothing below it.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
+ * The `copilot.repo.mcp.vscode` matcher: the one exact workspace program
+ * `['.vscode', 'mcp.json']`. Root-exact by the guide's own words — the
+ * workspace location is the workspace root's `.vscode` directory — so a
+ * subdirectory `.vscode/mcp.json` belongs to a workspace this product does
+ * not select and is a near miss.
+ */
+const COPILOT_REPO_MCP_VSCODE_MATCHER: StructuredInspectorMatcher = {
+  base: { kind: 'repository' },
+  selectors: [
+    [
+      { kind: 'literal', value: '.vscode' },
+      { kind: 'literal', value: 'mcp.json' },
+    ],
+  ],
+};
+
+/**
+ * Copilot VS Code workspace MCP declarations: the read-authorizing
+ * counterpart of `copilot.behavior.vscode.mcp` for the dedicated
+ * `.vscode/mcp.json` carrier the current guide documents. Its schema is the
+ * guide's own — a top-level `servers` map read as JSONC, the editor's
+ * configuration format — and differs from the CLI carriers' strict-JSON
+ * schemas, which is why the rule compiles into its own reading unit.
+ * Admitting the carrier asserts nothing about trust or enablement, and no
+ * declared command, URL, or path gains read or connection authority
+ * (contracts/vendors/github-copilot.md § Inspector Repository matcher rules).
+ */
+export const COPILOT_REPO_MCP_VSCODE_RULE = {
+  ruleId: 'copilot.repo.mcp.vscode',
+  tool: 'copilot',
+  discoveryClass: 'static-candidate',
+  kind: 'MCP',
+  sourceKinds: ['repository'],
+  matcher: COPILOT_REPO_MCP_VSCODE_MATCHER,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'vscode.copilot.mcp',
+          url: 'https://code.visualstudio.com/docs/agent-customization/mcp-servers',
+          officialHost: 'code.visualstudio.com',
+          sections: ['Configure the mcp.json file'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'The workspace location for the mcp.json configuration is .vscode/mcp.json in the project, declared with the top-level servers map, which is the exact path and schema this rule admits and reads.',
+        },
+        {
+          sourceId: 'github.copilot.cli.reference',
+          url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
+          officialHost: 'docs.github.com',
+          sections: ['MCP server configuration'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'The CLI documents its own workspace carriers and schemas apart from this file, which is why the VS Code carrier compiles into its own reading unit instead of sharing the CLI extraction.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
+ * The `copilot.repo.mcp.vscode-root` matcher: the one exact root program
+ * `['.mcp.json']` — the same physical path one of `copilot.repo.mcp`'s
+ * selectors admits, on purpose: the two admissions are two provenances of
+ * one candidate, never two files or two reads.
+ */
+const COPILOT_REPO_MCP_VSCODE_ROOT_MATCHER: StructuredInspectorMatcher = {
+  base: { kind: 'repository' },
+  selectors: [[{ kind: 'literal', value: '.mcp.json' }]],
+};
+
+/**
+ * VS Code 1.118+ path/surface provenance for the workspace-root `.mcp.json`:
+ * the release note documents the location, while the current guide's
+ * exhaustive location list omits it and neither page establishes the root
+ * file's VS Code schema — the conflict the based-on behavior records. The
+ * rule therefore compiles into the provenance-only MCP unit: its admission
+ * puts the VS Code surface on the root carrier's one Copilot recognition,
+ * and the declarations of that recognition stay the co-admitting CLI rule's
+ * independently documented extraction. No VS Code-owned extractor exists
+ * until direct documentation resolves the conflict
+ * (contracts/vendors/github-copilot.md § Inspector Repository matcher rules).
+ */
+export const COPILOT_REPO_MCP_VSCODE_ROOT_RULE = {
+  ruleId: 'copilot.repo.mcp.vscode-root',
+  tool: 'copilot',
+  discoveryClass: 'static-candidate',
+  kind: 'MCP',
+  sourceKinds: ['repository'],
+  matcher: COPILOT_REPO_MCP_VSCODE_ROOT_MATCHER,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'conflict',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'vscode.copilot.mcp.workspace-root-release',
+          url: 'https://code.visualstudio.com/updates/v1_118',
+          officialHost: 'code.visualstudio.com',
+          sections: ['Workspace .mcp.json files and server deduplication'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'VS Code 1.118 reads workspace-level .mcp.json files as MCP server declarations, which is the exact root path this provenance admits; the note defines no schema for the file, which is why the admission stays path and surface only.',
+        },
+        {
+          sourceId: 'vscode.copilot.mcp',
+          url: 'https://code.visualstudio.com/docs/agent-customization/mcp-servers',
+          officialHost: 'code.visualstudio.com',
+          sections: ['Configure the mcp.json file'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'The current guide names exactly two locations for the mcp.json file and the workspace root is not one of them, which is the conflict with the release note this rule retains rather than resolves.',
         },
       ]
     : [],
@@ -702,5 +905,8 @@ export const COPILOT_INSPECTION_RULES: Readonly<Record<CopilotRuleId, Inspection
   [COPILOT_REPO_INSTRUCTIONS_REPOSITORY_RULE.ruleId]: COPILOT_REPO_INSTRUCTIONS_REPOSITORY_RULE,
   [COPILOT_REPO_INSTRUCTIONS_REPOSITORY_CLI_CONTEXT_RULE.ruleId]:
     COPILOT_REPO_INSTRUCTIONS_REPOSITORY_CLI_CONTEXT_RULE,
+  [COPILOT_REPO_MCP_RULE.ruleId]: COPILOT_REPO_MCP_RULE,
+  [COPILOT_REPO_MCP_VSCODE_RULE.ruleId]: COPILOT_REPO_MCP_VSCODE_RULE,
+  [COPILOT_REPO_MCP_VSCODE_ROOT_RULE.ruleId]: COPILOT_REPO_MCP_VSCODE_ROOT_RULE,
   [COPILOT_REPO_SKILL_RULE.ruleId]: COPILOT_REPO_SKILL_RULE,
 };

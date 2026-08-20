@@ -92,6 +92,59 @@ export const CODEX_INSTRUCTIONS_LAYERING_STRATEGY = {
 } as const satisfies RuntimeCompositionStrategy;
 
 /**
+ * Codex MCP configuration: `[mcp_servers.*]` declarations resolve through the
+ * ordinary per-value config precedence — layers merge by key (`merge-map`),
+ * and the closest applicable layer's value wins for each key it writes
+ * (`replace`) — the same resolution every other configuration value follows.
+ * The documented unit is the value, not the server entry: a closer layer
+ * writing one field of a server overlays that field, and the broader layer's
+ * other fields stand, so no whole-entry replacement is asserted here.
+ *
+ * Trust, enablement, and server availability are retained as separate
+ * condition facts rather than composed into a winner, and inspection never
+ * connects to a declared server: the strategy explains a documented runtime
+ * edge and never creates one (contracts/runtime-composition.md
+ * § codex.mcp.configuration).
+ *
+ * The agent-inheritance edge — a Codex custom agent inheriting its parent's
+ * MCP configuration — is deliberately dormant here: no Codex agent behavior
+ * or strategy identifier ships yet, so this record consumes none and nothing
+ * links back to it. The edge arrives whole with the phase that ships Codex
+ * agents, rather than as a premature reference the contract gate could not
+ * resolve (T298).
+ */
+export const CODEX_MCP_CONFIGURATION_STRATEGY = {
+  strategyId: 'codex.mcp.configuration',
+  tool: 'codex',
+  surfaces: ['codex-local-clients'],
+  operations: ['merge-map', 'replace'],
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'openai.codex.config-basic',
+          url: 'https://learn.chatgpt.com/docs/config-file/config-basic.md',
+          officialHost: 'learn.chatgpt.com',
+          sections: ['Codex configuration file', 'Configuration precedence'],
+          reviewedOn: '2026-08-17',
+          establishes:
+            'MCP declarations resolve through the ordinary config-layer precedence: the active layers merge per key and the closest applicable declaration wins, with project layers applying only when the project is trusted.',
+        },
+        {
+          sourceId: 'openai.codex.mcp',
+          url: 'https://learn.chatgpt.com/docs/extend/mcp.md',
+          officialHost: 'learn.chatgpt.com',
+          sections: ['Connect Codex to an MCP server'],
+          reviewedOn: '2026-07-25',
+          establishes:
+            'Servers are declared as named [mcp_servers.*] tables in the configuration file — the map whose keys the per-value layer resolution operates over.',
+        },
+      ]
+    : [],
+} as const satisfies RuntimeCompositionStrategy;
+
+/**
  * Codex skill discovery across Repository, User, admin, and system scopes.
  *
  * The documented outcome for a name collision is that nothing is resolved:
@@ -130,5 +183,6 @@ export const CODEX_COMPOSITION_STRATEGIES: Readonly<
 > = {
   [CODEX_CONFIG_PRECEDENCE_STRATEGY.strategyId]: CODEX_CONFIG_PRECEDENCE_STRATEGY,
   [CODEX_INSTRUCTIONS_LAYERING_STRATEGY.strategyId]: CODEX_INSTRUCTIONS_LAYERING_STRATEGY,
+  [CODEX_MCP_CONFIGURATION_STRATEGY.strategyId]: CODEX_MCP_CONFIGURATION_STRATEGY,
   [CODEX_SKILLS_DISCOVERY_STRATEGY.strategyId]: CODEX_SKILLS_DISCOVERY_STRATEGY,
 };

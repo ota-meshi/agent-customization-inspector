@@ -262,10 +262,12 @@ raw entry names traversal returned (FR-024); filesystem operations use the retai
 segments rather than re-parsing it. A raw name is the string Node.js returned for the
 entry — `fs` decodes names as UTF-8 by documented default, so a platform name that is
 not valid UTF-8 arrives replacement-decoded, and a name the platform cannot resolve
-again through that string surfaces as the affected operation's ordinary failure. Presentation escapes control characters and the bidirectional formatting characters
-(U+061C, U+200E, U+200F, U+202A–U+202E, U+2066–U+2069) without
-changing the stored value: those characters reorder the text around them, so a path
-carrying one would render as a different path than the one it identifies. A path label with
+again through that string surfaces as the affected operation's ordinary failure. Presentation escapes control characters, the bidirectional formatting characters
+(U+061C, U+200E, U+200F, U+202A–U+202E, U+2066–U+2069), and lone surrogates without
+changing the stored value: the formatting characters reorder the text around them, so a
+path carrying one would render as a different path than the one it identifies, and a
+lone surrogate draws as the one replacement glyph, so two names differing only in which
+surrogate they carry would render identically. A path label with
 no character that draws — one built only from whitespace or default-ignorable code points
 such as U+200B — is instead spelled out in full, because a label that renders as nothing
 leaves its control with neither visible text nor an accessible name. On the wire, `sourceRelativePath` serializes only the `value`
@@ -1232,7 +1234,7 @@ shipped kinds do not agree on one:
 | Kind | The unit one row shows |
 |---|---|
 | `skill` | One name as one tool resolves it (FR-007): the authored frontmatter `name` — or the skill directory name when the file declares none — which a Claude Code recognition of a nested skill prefixes root-relative. A definition is one recognition — one per `(file, tool)` — so several files resolving to one name are one entry listing each recognition as a definition, and one file whose tools resolve different names defines on each name's entry |
-| `MCP` | One `[mcp_servers.*]` declaration inside an admitted carrier, so one `.codex/config.toml` publishes as many rows as it declares servers |
+| `MCP` | One declared server name: every `[mcp_servers.*]`-style declaration resolving that name — one per `(carrier, tool)` — is listed inside the name's row, so one `.codex/config.toml` contributes one declaration per server it declares, and a second carrier declaring the same name joins that name's row. A declaration's home is a standalone carrier or an already admitted owner file whose own content contains declarations — one of the documented owner families (an agent file, a plugin manifest, a settings file), none of which any rule admits yet — and both homes join the name's row identically, each declaration naming its own file. The one row whose name is null closes the list with the carriers currently publishing no named declaration — an unreadable declaration block, whose rows are unknown, or a carrier declaring none |
 | `instructions` | One applicability range: the glob the governing files' own paths derive, listing each file it governs with that file's recognitions — each one product and the surfaces of the documented behaviors its admitting rules rest on, because a tool alone cannot say where a product reads the file from |
 | `settings/config` | The file itself |
 
@@ -1356,8 +1358,17 @@ identity.
 A recognition is not an inventory row. The row's unit is the kind's own (§ Inventory unit),
 so each kind's inventory is built from these records rather than published as one summary
 per file: a skill's rows group records by the name each tool resolves
-(§ Inventory unit), and an MCP carrier's rows will
-split one record's declarations into a row apiece. A file publishes no recognition summary
+(§ Inventory unit), and an MCP carrier's declarations
+are grouped by declared name, one row per name across every carrier. A contained MCP
+declaration is one more recognition on its already admitted owner file — the same
+`(file, tool, MCP)` record shape, carrying the owner's own admissions as its provenances
+— never a synthetic per-declaration candidate. Its owner families are the documented
+ones — an agent's frontmatter, a plugin manifest, a settings file — none of which any
+rule admits yet, so no shipped recognition is contained today; a skill is never such an
+owner, because Claude documents no `mcpServers` skill-frontmatter field, and a skill
+spelling that key holds its skill recognition alone. Only an owner whose extraction
+produced at least one named declaration will hold the second record
+at all. A file publishes no recognition summary
 of its own, so nothing has to state how many admissions back a record. An admission says
 which rule authorized the read and where it matched; where the customization would apply,
 and how well the rule is documented, are not on it, because no surface shows either.
@@ -1390,7 +1401,7 @@ directory from.
 | `provenances` | ordered admission record[] | Sorted, non-empty set of rule/path admissions for this shared tool/kind interpretation; each record holds the compiled rule that authorized the read and derives its `ruleId` and `RuleDiscoveryClass` from it, beside the matched `SourceRelativePath` — and nothing beyond that |
 | `tool` | `copilot \| claude \| codex` | Required |
 | `details` | kind-discriminated payload | The recognized kind plus what identifies a recognition of that kind — for a skill, its declared name. One field, so projecting it is a copy rather than a per-kind reconstruction |
-| `parseStatus` | `not-attempted \| parsed \| failed` | `not-attempted` means no allowlisted extractor applies; `failed` is all-or-nothing per `(file, kind)`: the extraction runs once, shared by every tool recognizing the kind |
+| `parseStatus` | `not-attempted \| parsed \| failed` | `not-attempted` means no allowlisted extractor applies; `failed` is all-or-nothing per `(file, kind)`: the Markdown kinds run one extraction shared by every recognizing tool, while the MCP kind runs each recognizing tool's own documented reading over the one decoded text (§ Field reading) — readings that share their parser family, so a text one rejects fails them all and the failure unit stays the `(file, kind)` pair |
 | `diagnosticIds` | opaque string[] | The kind's extraction-failure record (FR-028): one per `(file, kind)`, referenced by each failed recognition of that kind and listed once by the file |
 
 The maintained supported-customization documentation is the normative presentation
@@ -1428,7 +1439,7 @@ admissions, and publishes no metadata/relationship/derivation result. An admissi
 never collapsed into a lossy recognition-level aggregate: each keeps the rule that
 authorized its read and the path it matched.
 For a Repository-root `.mcp.json`, the Copilot/MCP recognition can therefore carry both
-the CLI descendant-inventory provenance and the exact VS Code 1.118+ provenance without a
+the root-exact CLI provenance and the exact VS Code 1.118+ provenance without a
 second file or read. CLI `mcpServers` extraction remains tied to the CLI provenance. The
 VS Code provenance is path/surface-only, has `documentationStatus: conflict`, and adds no
 VS Code-owned extractor fields or inferred same-name winner until direct official
@@ -1446,26 +1457,46 @@ and is reported ordinarily as the failed request's error when a session API boun
 
 Recognitions are ordered by the closed tool order `copilot`, `claude`, `codex`, then the
 kind order listed in the table, never by opaque ID. Cross-file metadata comparison uses
-`(kind, declared key)`: a declaration is its file's one parse for the recognized kind, so
-a tool is not a coordinate of it — tool recognition is compared per tool beside the
-declarations — and two kinds never collide merely because a declared key matches.
+`(kind, declared key)`: a frontmatter declaration is its file's one parse for the
+recognized Markdown kind, so a tool is not a coordinate of it — tool recognition is
+compared per tool beside the declarations — and two kinds never collide merely because a
+declared key matches. The MCP kind's declarations are each recognizing tool's own
+reading (§ Field reading) and take part in no cross-file metadata comparison.
 
 ### Field reading
 
-An extractor reports what the parser resolves a declaration to under YAML 1.2's core
-schema — one documented, deterministic reading: quoting and escapes resolved, `007` read as
-`7`, a key declared twice resolved to its later declaration, an alias resolved to the value
-it points at, and a tag outside the schema leaving the scalar it carried. None of those is
-refused. It is stated as the Inspector's reading, not as the value a vendor's runtime
+An extractor reports what its format's parser resolves a declaration to — one
+documented, deterministic reading per admitted source form: YAML 1.2's core schema for a
+Markdown file's frontmatter, strict JSON (`JSON.parse`) for the `.mcp.json` and
+`.github/mcp.json` carriers, JSONC for the `.vscode/mcp.json` carrier — comments and a
+trailing comma are the editor configuration format's own syntax, and any other syntax
+error still fails the document whole — and TOML 1.0 for the `.codex/config.toml`
+carrier. In every
+format, quoting and escapes are resolved once. A key declared twice resolves to its
+later declaration where the format's parser resolves one — the YAML schema and strict
+JSON both do — while TOML 1.0 refuses a redefined key outright, so a carrier declaring
+one fails its recognition as any other document its parser rejects. Under the YAML
+schema an alias additionally resolves to the value it
+points at, `007` reads as `7`, and a tag outside the schema leaves the scalar it carried.
+None of those is
+refused. A scalar renders through the platform's own string conversion, so a distinction
+that conversion does not spell — a signed zero renders as `0` — is the platform's
+resolution accepted as is, exactly as the platform's integer-like key enumeration order
+is. It is stated as the Inspector's reading, not as the value a vendor's runtime
 holds: a vendor may coerce further per field — Claude Code reads `yes` as true for its
 boolean frontmatter fields, where the core schema leaves the string `yes` — and what a
 product does with a value is runtime this tool never observes (FR-009). The Inspector is
-not a validator standing between the two either, and the complete decoded source is on the
-same detail response as `sourceText` for any reader who needs the spelling.
+not a validator standing between the two either. For a file whose kind serves source — a
+skill, an instruction file, a census companion — the complete decoded source is on the
+same detail response as `sourceText` for any reader who needs the spelling; an MCP
+carrier's detail deliberately carries none (FR-007), so its declarations are the reading's
+whole publication.
 
 A recognition is refused when the file offers nothing this surface can show as the file
-wrote it: a document whose frontmatter cannot be parsed at all; a key that is not a scalar,
-which has no text that names a row without inventing one; a value an explicit YAML 1.1 tag
+wrote it: a document its format's parser cannot parse at all — a malformed frontmatter
+block, strict-JSON or TOML syntax the carrier's parser rejects; a YAML key that is not a
+scalar, which has no text that names a row without inventing one — JSON and TOML keys are
+always strings; a value an explicit YAML 1.1 tag
 resolved to a host object, whose only spellings are a locale-dependent date or
 `[object Set]`; and a value that contains itself, which has neither a shape to publish nor
 a JSON form to send. Each yields no value to report rather than a value this product made
@@ -3596,8 +3627,11 @@ old file records in place.
 13. Vendor lookup bases/traversal and Inspector matchers are different record types. Every
     Repository matcher is an authored typed segment program based at the selected
     Repository root; an `ANY_DIRECTORIES` segment can mean only explicit downward
-    Inspector inventory—not vendor traversal or runtime selection. A vendor lookup that
-    runs upward terminates at that same selected root, so it is never a selector token
+    Inspector inventory—not vendor traversal or runtime selection—and a leading one is
+    authored only for a location the vendor documents at any depth through a worked-file
+    or descendant anchor. A vendor lookup that
+    runs upward terminates at that same selected root, so it contributes exactly one
+    in-scope layer and is never a selector token
     either.
 14. `snapshotState` is derived from session-owned `staleFailures`, never stored in or used
     to mutate a committed generation. Each entry names one Source and carries its

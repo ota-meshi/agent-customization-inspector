@@ -42,6 +42,7 @@ function bootstrapSnapshot(overrides: Partial<SessionSnapshot> = {}): SessionSna
     files: [],
     instructions: [],
     skills: [],
+    mcp: [],
     diagnostics: [],
     repositoryGeneration: 0,
     globalGeneration: null,
@@ -148,6 +149,7 @@ describe('authored file content in the browser', () => {
     ];
     expect(surface.toSorted()).toEqual([
       'activeScanRequestId',
+      'carrierDetail',
       'closeFileDetail',
       'detailErrorMessage',
       'dispose',
@@ -157,6 +159,7 @@ describe('authored file content in the browser', () => {
       // two ordinary detail loads, with the same guards as the skill one and
       // nothing that masks or reveals either side.
       'instructionComparison',
+      'openCarrierDetail',
       'openCompanion',
       'openFileDetail',
       // The active route's title subject — a display name the page already
@@ -166,7 +169,11 @@ describe('authored file content in the browser', () => {
       // Lets a component register its Monaco model for synchronous disposal
       // on purge and on generation replacement — the opposite of a reveal.
       'registerOpenContentOwner',
+      // The subject's ownership pair (`usePageOwnership`): a report and its
+      // guarded release, both over the display name above.
+      'releasePageSubject',
       'reportChannelLost',
+      'reportPageSubject',
       'requestRescan',
       'rescanRejection',
       'rescanState',

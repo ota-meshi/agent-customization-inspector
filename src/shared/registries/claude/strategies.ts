@@ -114,7 +114,72 @@ export const CLAUDE_SKILLS_SELECTION_STRATEGY = {
           sections: ['VS Code extension vs. Claude Code CLI'],
           reviewedOn: '2026-07-25',
           establishes:
-            'The CLI and the IDE integrations share the same configuration while feature availability differs by surface, so which surface is running remains a condition of any selection outcome.',
+            'The CLI-versus-extension feature table records commands and skills as all available on the CLI and a subset on the extension, so which surface is running remains a condition of any selection outcome.',
+        },
+      ]
+    : [],
+} as const satisfies RuntimeCompositionStrategy;
+
+/**
+ * Claude MCP selection for duplicate server declarations.
+ *
+ * The documented outcome for a duplicate is that one entire entry is
+ * selected in local, project, User, plugin, then connector order —
+ * `select-first` of whole entries, so a higher source's declaration
+ * `replace`s a lower one's rather than merging fields with it. What makes
+ * two declarations a duplicate differs by source: the three scopes match by
+ * name, while plugins and connectors match by endpoint — one pointing at the
+ * same URL or command as a server above it is the duplicate, whatever it is
+ * named. A subagent inherits the selected parent tools by default and then
+ * applies tool filters, which is the `filter` step; inline agent servers
+ * live only for that agent. The Inspector records the documented edge, never
+ * a winner: which source a concrete session selects depends on runtime
+ * state — trust, approval, enablement, installed plugins — this tool never
+ * observes.
+ *
+ * `partially-documented` per the vendor contract's canonical index: the
+ * exact project-root selection the project scope rests on is only partially
+ * specified.
+ */
+export const CLAUDE_MCP_SELECTION_STRATEGY = {
+  strategyId: 'claude.mcp.selection',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  operations: ['select-first', 'replace', 'filter'],
+  documentationStatus: 'partially-documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.ide.shared-differences',
+          url: 'https://code.claude.com/docs/en/ide-integrations',
+          officialHost: 'code.claude.com',
+          sections: ['VS Code extension vs. Claude Code CLI'],
+          reviewedOn: '2026-07-25',
+          establishes:
+            'The CLI-versus-extension feature table records MCP server configuration as full on the CLI and partial on the VS Code extension, so which surface is running remains a condition of any selection outcome.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.mcp.scopes-precedence',
+          url: 'https://code.claude.com/docs/en/mcp',
+          officialHost: 'code.claude.com',
+          sections: [
+            'MCP installation scopes',
+            'Scope hierarchy and precedence',
+            'Plugin-provided MCP servers',
+          ],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'A duplicate is resolved by source order as a whole entry — local, project, user, plugin-provided, then connectors, with no field merging across sources — and what makes a duplicate differs by source: the three scopes match by name, while plugins and connectors match by endpoint, treating one that points at the same URL or command as a server above it as the duplicate.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.subagents.scope-context',
+          url: 'https://code.claude.com/docs/en/sub-agents',
+          officialHost: 'code.claude.com',
+          sections: ['Available tools', 'Scope MCP servers to a subagent'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'Subagents inherit the built-in and MCP tools available in the main conversation, narrowed by the documented filters, with the tools and disallowedTools fields restricting the set — the inherit-then-filter step this pipeline records; servers declared inline on an agent are connected when the subagent starts and disconnected when it finishes, while string entries reference servers already configured in the session.',
         },
       ]
     : [],
@@ -125,5 +190,6 @@ export const CLAUDE_COMPOSITION_STRATEGIES: Readonly<
   Record<ClaudeStrategyId, RuntimeCompositionStrategy>
 > = {
   [CLAUDE_INSTRUCTIONS_LAYERING_STRATEGY.strategyId]: CLAUDE_INSTRUCTIONS_LAYERING_STRATEGY,
+  [CLAUDE_MCP_SELECTION_STRATEGY.strategyId]: CLAUDE_MCP_SELECTION_STRATEGY,
   [CLAUDE_SKILLS_SELECTION_STRATEGY.strategyId]: CLAUDE_SKILLS_SELECTION_STRATEGY,
 };

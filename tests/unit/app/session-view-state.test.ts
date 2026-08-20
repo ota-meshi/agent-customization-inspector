@@ -21,6 +21,7 @@ import {
 } from '../../../src/app/session/api-client';
 import type {
   FileDetailDto,
+  McpCarrierDetailDto,
   InspectionDataResult,
   SessionSnapshot,
 } from '../../../src/shared/api-types';
@@ -47,6 +48,7 @@ function bootstrapSnapshot(overrides: Partial<SessionSnapshot> = {}): SessionSna
     files: [],
     instructions: [],
     skills: [],
+    mcp: [],
     diagnostics: [],
     repositoryGeneration: 0,
     globalGeneration: null,
@@ -342,6 +344,124 @@ function detailFor(name: string): InspectionDataResult<FileDetailDto> {
         sizeBytes: 8,
         diagnosticIds: [],
       },
+      diagnostics: [],
+    },
+  };
+}
+
+describe('session view state — detail ownership across page instances', () => {
+  it("ignores an outgoing page's close once its replacement opened its own detail", async () => {
+    // Route navigation mounts the next detail page before the previous one is
+    // torn down, so the outgoing page's unmount cleanup runs after the
+    // replacement's open. Each page opens and closes through its own token
+    // (`useDetailPageOwnership`); a close presented with a token that no
+    // longer owns the state must not advance the request version, or the
+    // replacement's in-flight response would be discarded and its page left
+    // on the failure state.
+    const outgoingPage = Symbol('outgoing');
+    const replacementPage = Symbol('replacement');
+    const scripted = channelFrom([
+      sessionResult(bootstrapSnapshot()),
+      detailFor('entry-1'),
+      detailFor('entry-2'),
+    ]);
+    const state = new SessionViewState({ channel: scripted.channel });
+    await state.start();
+    await state.openFileDetail(pathFor('entry-1'), pathFor('entry-1'), outgoingPage);
+
+    const replacementOpen = state.openFileDetail(
+      pathFor('entry-2'),
+      pathFor('entry-2'),
+      replacementPage,
+    );
+    // The outgoing page's unmount cleanup, arriving after the replacement's
+    // open: a no-op, because the state is no longer its to drop.
+    state.closeFileDetail(outgoingPage);
+    await replacementOpen;
+    expect(state.fileDetailState.value).toBe('ready');
+    expect(state.entryDetail.value?.file.sourceRelativePath).toBe(pathFor('entry-2'));
+  });
+
+  it('still closes for the owning page, and unconditionally for the view state itself', async () => {
+    const page = Symbol('page');
+    const scripted = channelFrom([sessionResult(bootstrapSnapshot()), detailFor('entry-1')]);
+    const state = new SessionViewState({ channel: scripted.channel });
+    await state.start();
+    await state.openFileDetail(pathFor('entry-1'), pathFor('entry-1'), page);
+    // The owner leaving to a non-detail route drops what it requested.
+    state.closeFileDetail(page);
+    expect(state.fileDetailState.value).toBe('idle');
+    expect(state.entryDetail.value).toBeNull();
+
+    // An ownerless close is the view state's own lifecycle — refresh, purge —
+    // and always applies.
+    await state.openFileDetail(pathFor('entry-1'), pathFor('entry-1'), page);
+    state.closeFileDetail();
+    expect(state.fileDetailState.value).toBe('idle');
+    expect(state.entryDetail.value).toBeNull();
+  });
+
+  it("keeps the replacement page's title subject through the outgoing release", () => {
+    // The subject follows the same mount ordering as the detail: the
+    // replacement page reports before the outgoing page's unmount cleanup
+    // runs, so a release presented with a token that no longer owns the
+    // subject must not null the replacement's report — a dead-link page's
+    // title would otherwise fall back to the generic route name for good.
+    const scripted = channelFrom([sessionResult(bootstrapSnapshot())]);
+    const state = new SessionViewState({ channel: scripted.channel });
+    const outgoingPage = Symbol('outgoing');
+    const replacementPage = Symbol('replacement');
+    state.reportPageSubject('outgoing subject', outgoingPage);
+    state.reportPageSubject('replacement subject', replacementPage);
+    state.releasePageSubject(outgoingPage);
+    expect(state.pageSubject.value).toBe('replacement subject');
+    // The owner itself leaving releases, and the view state's own ownerless
+    // release always applies.
+    state.releasePageSubject(replacementPage);
+    expect(state.pageSubject.value).toBeNull();
+    state.reportPageSubject('again', replacementPage);
+    state.releasePageSubject();
+    expect(state.pageSubject.value).toBeNull();
+  });
+
+  it('drops a held carrier detail when a file detail opens over it', async () => {
+    // Navigation from an MCP carrier page to a skill or instruction page: the
+    // outgoing page's ownership-guarded close is superseded by the incoming
+    // open, so the open itself clears the carrier slot — the open-detail
+    // state must not hold both slots at once.
+    const scripted = channelFrom([
+      sessionResult(bootstrapSnapshot()),
+      carrierFor('.mcp.json'),
+      detailFor('entry-1'),
+    ]);
+    const state = new SessionViewState({ channel: scripted.channel });
+    await state.start();
+    await state.openCarrierDetail('.mcp.json');
+    expect(state.carrierDetail.value?.file.sourceRelativePath).toBe('.mcp.json');
+
+    await state.openFileDetail(pathFor('entry-1'), pathFor('entry-1'));
+    expect(state.entryDetail.value?.file.sourceRelativePath).toBe(pathFor('entry-1'));
+    expect(state.carrierDetail.value).toBeNull();
+    expect(state.fileDetailState.value).toBe('ready');
+  });
+});
+
+/** One committed MCP carrier's source-free detail, keyed by its path. */
+function carrierFor(sourceRelativePath: string): InspectionDataResult<McpCarrierDetailDto> {
+  return {
+    globalContentEpoch: 0,
+    repositoryGeneration: 0,
+    globalGeneration: null,
+    data: {
+      file: {
+        sourceId: 'source-repository',
+        sourceRelativePath,
+        encoding: 'utf-8',
+        hadLeadingBom: false,
+        sizeBytes: 24,
+        diagnosticIds: [],
+      },
+      servers: [],
       diagnostics: [],
     },
   };

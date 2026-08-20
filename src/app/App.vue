@@ -95,7 +95,9 @@ const routeTitle = computed(() =>
     ? 'Skill'
     : route.path.startsWith('/instructions')
       ? 'Instructions'
-      : 'Inspection',
+      : route.path.startsWith('/mcp')
+        ? 'MCP'
+        : 'Inspection',
 );
 
 const startupErrorMessage = shallowRef<string | null>(null);

@@ -7,6 +7,7 @@ import {
   CUSTOMIZATION_KIND_ORDER,
   LIFECYCLE_QUALIFIER_ORDER,
   SUPPORTED_TOOL_ORDER,
+  containsInvisibleCharacters,
   createOpaqueId,
   createSourceBoundaryDto,
   decodeSourceBytes,
@@ -134,12 +135,39 @@ describe('rendersNothingVisible', () => {
     expect(rendersNothingVisible('   ')).toBe(true);
     expect(rendersNothingVisible('\uFEFF\u00AD')).toBe(true);
     expect(rendersNothingVisible('')).toBe(true);
+    // Raw C0/C1 controls draw nothing: a JSON \"\\u0000\" resolves to a NUL
+    // the surfaces would render glyphlessly, so a value made only of them is
+    // invisible and gets the spelled-out note beside it.
+    expect(rendersNothingVisible('\u0000')).toBe(true);
+    expect(rendersNothingVisible('\u0001\u009F')).toBe(true);
   });
 
   it('reports a label with anything that draws', () => {
     expect(rendersNothingVisible('SKILL.md')).toBe(false);
     // A zero-width space beside a real character still leaves the character.
     expect(rendersNothingVisible('\u200Ba')).toBe(false);
+  });
+});
+
+describe('containsInvisibleCharacters', () => {
+  it('reports a character that draws nothing beside ones that draw', () => {
+    // `a` + NUL + `b` and `a` + U+200B + `b` both read as `ab`: the detail
+    // surfaces put a spelled-out note beside such a value so two
+    // declarations differing only invisibly stay apart (FR-025).
+    expect(containsInvisibleCharacters('a\u0000b')).toBe(true);
+    expect(containsInvisibleCharacters('a\u200Bb')).toBe(true);
+    expect(containsInvisibleCharacters('soft\u00ADhyphen')).toBe(true);
+    expect(containsInvisibleCharacters('bom\uFEFF')).toBe(true);
+    expect(containsInvisibleCharacters('\u009Fc1')).toBe(true);
+  });
+
+  it('accepts text whose every character draws or shapes layout', () => {
+    expect(containsInvisibleCharacters('SKILL.md')).toBe(false);
+    // Tab, line feed, and carriage return shape layout the reader can see,
+    // so they are not the silent kind this predicate reports.
+    expect(containsInvisibleCharacters('a\tb\nc\rd')).toBe(false);
+    expect(containsInvisibleCharacters('spaced  out')).toBe(false);
+    expect(containsInvisibleCharacters('')).toBe(false);
   });
 });
 
@@ -151,6 +179,18 @@ describe('escapeControlCharacters', () => {
     expect(escapeControlCharacters('a\nb')).toBe('a\\u000Ab');
     expect(escapeControlCharacters('tab\tseparated')).toBe('tab\\u0009separated');
     expect(escapeControlCharacters('\u0000\u007F\u0085')).toBe('\\u0000\\u007F\\u0085');
+  });
+
+  it('spells a lone surrogate out while astral characters render as themselves', () => {
+    // Strict JSON's "\uD800" escape resolves to a lone surrogate, which a
+    // browser draws as the one replacement glyph: two names differing only
+    // in which surrogate they carry would render identically, and the
+    // carrier's source is never displayed to tell them apart (FR-007).
+    expect(escapeControlCharacters('a\uD800b')).toBe('a\\uD800b');
+    expect(escapeControlCharacters('a\uDC01b')).toBe('a\\uDC01b');
+    // A well-formed pair is one code point outside the class, so an astral
+    // character stays as authored.
+    expect(escapeControlCharacters('a\u{1F600}b')).toBe('a\u{1F600}b');
   });
 
   it('escapes the backslash so the mapping is injective', () => {

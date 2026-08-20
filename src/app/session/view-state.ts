@@ -44,7 +44,12 @@ import { SessionApiClient, type SessionRpcChannel } from './api-client';
 import { ClientDataPurge } from './client-data';
 import { InstructionComparisonState } from '../composables/instruction-comparison';
 import { SkillComparisonState } from '../composables/skill-comparison';
-import type { FileDetailDto, RejectionCode, SessionSnapshot } from '../../shared/api-types';
+import type {
+  FileDetailDto,
+  McpCarrierDetailDto,
+  RejectionCode,
+  SessionSnapshot,
+} from '../../shared/api-types';
 
 /**
  * Which surface is showing. Only 'inspection' may display inspection data.
@@ -225,6 +230,16 @@ export class SessionViewState {
    */
   public readonly openCompanion = shallowRef<FileDetailDto | null>(null);
 
+  /**
+   * The open MCP carrier detail, or null while none is. Its own slot beside
+   * {@link entryDetail} because it is another function's result with another
+   * shape — the one detail response with no authored source in it (FR-007;
+   * contracts/http-api.md § get-mcp-carrier-detail) — while the request
+   * version, state machine, and purge path below are shared: the two slots
+   * are one open detail, so at most one is non-null.
+   */
+  public readonly carrierDetail = shallowRef<McpCarrierDetailDto | null>(null);
+
   /** Where the open detail stands; see {@link FileDetailState}. */
   public readonly fileDetailState = shallowRef<FileDetailState>('idle');
 
@@ -234,10 +249,47 @@ export class SessionViewState {
    * customization a tab shows rather than only which surface (WCAG 2.4.2,
    * contracts/accessibility-acceptance.md: a descriptive, state-appropriate
    * document title per route). Null when the active route has no subject
-   * beyond itself; the shell then titles the route by its surface name. The
-   * reporting page owns clearing it on unmount.
+   * beyond itself; the shell then titles the route by its surface name.
+   * Written through {@link reportPageSubject} and cleared through
+   * {@link releasePageSubject}, because route navigation mounts the next page
+   * before the previous one is torn down: an unowned clear in the outgoing
+   * page's unmount would erase the subject its replacement just reported —
+   * permanently, when the replacement is a dead-link view with no later
+   * state change to re-report it.
    */
   public readonly pageSubject = shallowRef<string | null>(null);
+
+  /**
+   * The token of the page instance whose report the subject currently
+   * carries, or null when no page owns it; the same unmount-ordering guard
+   * {@link #detailOwner} is (`usePageOwnership`).
+   */
+  #pageSubjectOwner: symbol | null = null;
+
+  /**
+   * Reports the active route's title subject as the calling page instance's
+   * own, so a later release by a page that no longer owns it is a no-op.
+   */
+  public reportPageSubject(value: string | null, owner?: symbol): void {
+    this.#pageSubjectOwner = owner ?? null;
+    this.pageSubject.value = value;
+  }
+
+  /**
+   * Clears the title subject if the caller still owns it; the view state's
+   * own lifecycle passes no token and always applies.
+   */
+  public releasePageSubject(owner?: symbol): void {
+    if (
+      owner !== undefined &&
+      this.#pageSubjectOwner !== null &&
+      this.#pageSubjectOwner !== owner
+    ) {
+      return;
+    }
+    this.#pageSubjectOwner = null;
+    this.pageSubject.value = null;
+  }
 
   /**
    * Counts detail requests, so a settlement can tell whether the page still
@@ -246,6 +298,20 @@ export class SessionViewState {
    * covers the route.
    */
   #detailRequestVersion = 0;
+
+  /**
+   * The token of the page instance whose open call the detail state currently
+   * answers, or null when nothing is open. Route navigation mounts the next
+   * detail page before the previous one is torn down (the page is rendered
+   * under Suspense), so the outgoing page's unmount cleanup runs after its
+   * replacement has already opened its own detail; an unowned close there
+   * would advance {@link #detailRequestVersion} and discard the replacement's
+   * in-flight response. Each page passes its own token to its open and close
+   * calls, and {@link closeFileDetail} skips a close whose caller no longer
+   * owns the state; the view-state's own lifecycle closes — refresh, purge —
+   * pass no token and always apply.
+   */
+  #detailOwner: symbol | null = null;
 
   /**
    * Disposers of component-owned holders of the open detail's content — the
@@ -587,7 +653,15 @@ export class SessionViewState {
    * to state nothing is showing, so leaving a file would put its content back
    * in memory a moment after taking it out.
    */
-  public closeFileDetail(): void {
+  public closeFileDetail(owner?: symbol): void {
+    if (owner !== undefined && this.#detailOwner !== null && this.#detailOwner !== owner) {
+      // The caller is an outgoing page whose replacement already opened its
+      // own detail (see {@link #detailOwner}): its cleanup is complete the
+      // moment it no longer owns the state, and applying it would discard the
+      // replacement's in-flight request.
+      return;
+    }
+    this.#detailOwner = null;
     this.#detailRequestVersion += 1;
     // The reactive state goes first and the component-owned content second.
     // Both happen in this one synchronous block, so what the contract orders
@@ -603,6 +677,7 @@ export class SessionViewState {
     // rescue (WCAG 2.4.3).
     this.entryDetail.value = null;
     this.openCompanion.value = null;
+    this.carrierDetail.value = null;
     this.fileDetailState.value = 'idle';
     for (const disposer of this.#openContentOwners) {
       disposer();
@@ -630,7 +705,8 @@ export class SessionViewState {
    * a purge cleared it, `closeFileDetail` left it, a newer `openFileDetail` superseded
    * it — cannot each grow their own handling.
    */
-  public async openFileDetail(entryPath: string, openPath: string): Promise<void> {
+  public async openFileDetail(entryPath: string, openPath: string, owner?: symbol): Promise<void> {
+    this.#detailOwner = owner ?? null;
     this.#detailRequestVersion += 1;
     const requested = this.#detailRequestVersion;
     // The new selection owns the page now: a previous file's retained detail
@@ -667,9 +743,14 @@ export class SessionViewState {
       this.fileDetailState.value = 'loading';
       // The previous detail's authored source is dropped before the next one
       // is asked for, so a slow request never leaves one file's content on
-      // screen under another customization's heading.
+      // screen under another customization's heading. The carrier slot too:
+      // an MCP page's detail — commands, headers, environment values — would
+      // otherwise survive a navigation to a skill or instruction page, whose
+      // open supersedes the outgoing page's ownership-guarded close, and the
+      // open-detail state would hold two slots at once.
       this.entryDetail.value = null;
       this.openCompanion.value = null;
+      this.carrierDetail.value = null;
     }
     /**
      * Fetches one detail and settles every non-detail outcome, so the entry
@@ -787,6 +868,88 @@ export class SessionViewState {
     // A detail success answers detail failures only; a session error — a failed
     // refresh, say — is still true of the session and stays.
     this.#detailError.value = null;
+  }
+
+  /**
+   * Requests one MCP-declaring file's declarations — a standalone carrier's
+   * or a contained-declaration owner's — and adopts them, or records why they
+   * could not be shown — the carrier counterpart of
+   * {@link openFileDetail}, through the same request version, epoch capture,
+   * and state machine, because the two functions serve the one open detail
+   * (contracts/http-api.md § get-mcp-carrier-detail). There is no companion
+   * half: the declarations arrive in the one response, and an owner's own
+   * source is the skill route's business, not this request's.
+   */
+  public async openCarrierDetail(sourceRelativePath: string, owner?: symbol): Promise<void> {
+    this.#detailOwner = owner ?? null;
+    this.#detailRequestVersion += 1;
+    const requested = this.#detailRequestVersion;
+    this.#detailError.value = null;
+    const capturedEpoch = this.#clientData.epoch();
+    const owns = (): boolean =>
+      requested === this.#detailRequestVersion && this.#clientData.epoch() === capturedEpoch;
+    // The carrier already on screen when the selection moved within it: a
+    // step between two declarations of one carrier changes which record the
+    // page heads itself with, not the response it renders from, so the held
+    // detail answers without a second fetch.
+    if (this.carrierDetail.value?.file.sourceRelativePath === sourceRelativePath) {
+      this.fileDetailState.value = 'ready';
+      return;
+    }
+    this.fileDetailState.value = 'loading';
+    // The previous detail — either slot's — is dropped before the next one is
+    // asked for, so a slow request never leaves one file's content on screen
+    // under another customization's heading.
+    this.entryDetail.value = null;
+    this.openCompanion.value = null;
+    this.carrierDetail.value = null;
+    const outcome = await this.#client.fetchMcpCarrierDetail(sourceRelativePath);
+    switch (outcome.kind) {
+      case 'adopted':
+        if (owns()) {
+          this.carrierDetail.value = outcome.detail;
+          this.fileDetailState.value = 'ready';
+          this.#detailError.value = null;
+        }
+        return;
+      case 'rejected':
+        // No current generation holds an admitted carrier at the path — the
+        // same declared outcome, shown as the same stale state, as a file
+        // detail's (contracts/http-api.md § get-mcp-carrier-detail).
+        if (owns()) {
+          this.carrierDetail.value = null;
+          this.fileDetailState.value = 'stale';
+          void this.refresh();
+        }
+        return;
+      case 'failed':
+        if (outcome.fatal) {
+          this.#sessionError.value = outcome.error.message;
+          this.view.value = 'ended';
+        } else if (owns()) {
+          this.carrierDetail.value = null;
+          this.fileDetailState.value = 'idle';
+          this.#detailError.value = outcome.error.message;
+        }
+        return;
+      case 'newer-generation':
+        // Same recovery as the file detail's: adopt the newer snapshot, and
+        // the route's own open effect re-requests the path under it.
+        if (owns()) {
+          await this.#refreshFreshly();
+          if (owns()) {
+            this.carrierDetail.value = null;
+            this.fileDetailState.value = 'idle';
+          }
+        }
+        return;
+      case 'purged':
+        // The disposer already cleared the detail along with the view.
+        return;
+      case 'discarded':
+        // A newer selection superseded this request and owns the state now.
+        return;
+    }
   }
 
   /** Adopts the initial snapshot; the same fetch-and-adopt as {@link refresh}. */

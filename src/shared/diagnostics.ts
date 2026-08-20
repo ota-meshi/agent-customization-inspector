@@ -126,22 +126,24 @@ export const DIAGNOSTIC_REGISTRY: Readonly<Record<DiagnosticCode, DiagnosticRegi
       'This file contains NUL bytes, so it is recorded without source text and nothing was parsed from it. Use a binary-capable viewer if you need to inspect its contents.',
   },
   /**
-   * One (file, kind) extraction failed while the authored source remains
-   * available — one record however many tools recognize the kind, because
-   * the parse ran once. Extraction is all-or-nothing (FR-028), so the
-   * message names the whole of what is missing rather than one field of it:
-   * nothing the parser would have read out — the declared name and
-   * description, the declarations, and the instructions the block was
-   * removed from — reaches the screen, and the detail surface omits both of
-   * its sections. Count-independent wording, because the one sentence covers
-   * every recognizing tool's definition.
+   * One (file, kind) extraction failed — one record however many tools
+   * recognize the kind, because the parse ran once. Extraction is
+   * all-or-nothing (FR-028), so the message names the whole of what is
+   * missing rather than one field of it: nothing the parser would have read
+   * out — the declared name and description, the declarations, and the
+   * instructions the block was removed from — reaches the screen, and the
+   * detail surface omits both of its sections. Count-independent wording,
+   * and deliberately no promise about the source: a skill's or instruction
+   * file's source stays displayed beside this record, but a pure MCP
+   * carrier's bytes reach no surface at all (FR-007), so the one shared
+   * sentence claims only what is true for every kind that can carry it.
    */
   'recognition-parse-failed': {
     ownerKind: 'candidate-file',
     scope: 'file',
     severity: 'warning',
     message:
-      'This file could not be parsed, so none of its declarations or instructions could be read out of it. The complete source text remains available to read; a rescan reports the current state of the file.',
+      'This file could not be parsed, so none of its declarations or instructions could be read out of it. They are unknown rather than absent; a rescan reports the current state of the file.',
   },
 };
 

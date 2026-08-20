@@ -148,6 +148,83 @@ export const CODEX_DERIVED_FALLBACK_BASENAME_RULE = {
 } as const satisfies InspectionRule;
 
 /**
+ * The `codex.repo.config` matcher: the exact `.codex/config.toml` pair of
+ * literals at the Repository root. Codex loads project config layers from the
+ * project root down to the runtime `cwd`, and the selected root is that
+ * project root (FR-001), so exactly one layer of the chain is in scope and a
+ * nested carrier stays a near miss at every later phase too.
+ */
+const CODEX_REPO_CONFIG_MATCHER: StructuredInspectorMatcher = {
+  base: { kind: 'repository' },
+  selectors: [
+    [
+      { kind: 'literal', value: '.codex' },
+      { kind: 'literal', value: 'config.toml' },
+    ],
+  ],
+};
+
+/**
+ * The Codex Repository config carrier — the carrier's first and only
+ * candidacy, admitted so the `[mcp_servers.*]` declarations it contains can be
+ * published as the MCP inventory's rows, one per declaration (data-model.md
+ * § Inventory unit). Inline declarations are metadata on this one candidate
+ * and create no second file: a standalone `.mcp.json` is not a Codex
+ * Repository candidate (contracts/vendors/openai-codex.md § Inspector
+ * Repository rules).
+ *
+ * This admission does not replace the configuration read: the fallback
+ * derivation still reads the same physical file as its seed before the walk
+ * (`codex.derived.fallback-basename`), because configuration decides what the
+ * walk targets and must be known first. What this rule adds is the candidacy —
+ * the file publishes its own facts in `files[]` like every candidate — while
+ * honoring the decision that the carrier's own source text reaches no surface:
+ * its detail publishes the declarations by the keys the file wrote, never the
+ * file's bytes (FR-007).
+ *
+ * Admitting the carrier is not asserting Codex loads it: project layers apply
+ * only to trusted projects, and whether a declared server is enabled or
+ * connected depends on runtime inputs this tool never observes (FR-009).
+ * Inspection never connects to a declared server.
+ */
+export const CODEX_REPO_CONFIG_RULE = {
+  ruleId: 'codex.repo.config',
+  tool: 'codex',
+  discoveryClass: 'static-candidate',
+  kind: 'MCP',
+  sourceKinds: ['repository'],
+  matcher: CODEX_REPO_CONFIG_MATCHER,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'openai.codex.config-basic',
+          url: 'https://learn.chatgpt.com/docs/config-file/config-basic.md',
+          officialHost: 'learn.chatgpt.com',
+          sections: ['Codex configuration file', 'Configuration precedence'],
+          reviewedOn: '2026-08-17',
+          establishes:
+            'Project configuration lives in .codex/config.toml, loaded per trusted layer from the project root down to the runtime cwd — the root layer being the one inside the selected Repository boundary.',
+        },
+        {
+          sourceId: 'openai.codex.mcp',
+          url: 'https://learn.chatgpt.com/docs/extend/mcp.md',
+          officialHost: 'learn.chatgpt.com',
+          sections: ['Connect Codex to an MCP server'],
+          reviewedOn: '2026-07-25',
+          establishes:
+            'MCP servers are declared as named [mcp_servers.*] tables inside that configuration file, which is why the carrier is admitted for the MCP inventory rather than any standalone MCP file.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
  * The `codex.repo.skill` matcher, authored in the typed segment form the
  * contract table shows: `.agents/skills/<name>/SKILL.md` directly below the
  * Repository root. `ANY_NAME` is the one direct skill-name child and the
@@ -226,6 +303,7 @@ export const CODEX_REPO_SKILL_RULE = {
 /** Codex's contribution to the inspection-rule registry, keyed by `ruleId` in identifier order. */
 export const CODEX_INSPECTION_RULES: Readonly<Record<CodexRuleId, InspectionRule>> = {
   [CODEX_DERIVED_FALLBACK_BASENAME_RULE.ruleId]: CODEX_DERIVED_FALLBACK_BASENAME_RULE,
+  [CODEX_REPO_CONFIG_RULE.ruleId]: CODEX_REPO_CONFIG_RULE,
   [CODEX_REPO_INSTRUCTIONS_RULE.ruleId]: CODEX_REPO_INSTRUCTIONS_RULE,
   [CODEX_REPO_SKILL_RULE.ruleId]: CODEX_REPO_SKILL_RULE,
 };

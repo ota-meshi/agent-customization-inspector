@@ -21,7 +21,7 @@ import {
 import {
   ANY_DIRECTORIES,
   TraversalPlan,
-  type CompiledStaticNonInstructionRule,
+  type CompiledStaticOtherKindRule,
 } from '../../../src/server/inspection/rules/registry';
 import { runTraversalScan } from '../../../src/server/inspection/traversal';
 import { assembleScanPublication } from '../../../src/server/inspection/scan';
@@ -59,7 +59,7 @@ const AGENTS_PLAN = TraversalPlan.fromPrograms({ kind: 'repository' }, [
 // under test with a stand-in rule identity rather than the shipped Codex
 // catalog: the matrix must behave identically for whichever rule admitted a
 // candidate.
-function codexSkillRule(plan: TraversalPlan): CompiledStaticNonInstructionRule {
+function codexSkillRule(plan: TraversalPlan): CompiledStaticOtherKindRule {
   return {
     rule: CODEX_REPO_SKILL_RULE,
     relations: CODEX_RULE_RELATIONS['codex.repo.skill'],
@@ -73,7 +73,7 @@ function codexSkillRule(plan: TraversalPlan): CompiledStaticNonInstructionRule {
   };
 }
 
-const AGENTS_RULES: readonly CompiledStaticNonInstructionRule[] = [codexSkillRule(AGENTS_PLAN)];
+const AGENTS_RULES: readonly CompiledStaticOtherKindRule[] = [codexSkillRule(AGENTS_PLAN)];
 
 // The shipped Codex instruction rule, compiled as itself: the stand-in
 // recognitions below are of the `instructions` kind, and an instruction
@@ -103,15 +103,18 @@ function fakeRecognition(
   // admission, because a recognition exists only where a rule admitted the
   // file, and an instruction recognition asks that rule what the file
   // governs.
-  const extraction =
+  // Typed as the factory's own extraction parameter: the Markdown
+  // presentation class is the recognizer module's private, so the stand-in
+  // names the type through the signature it satisfies.
+  const extraction: Parameters<typeof ToolRecognition.recognizeInstructions>[2] =
     parseStatus === 'failed'
       ? RecognitionExtraction.run('', () => {
           throw new Error('fixture extraction failure');
         })
       : parseStatus === 'parsed'
         ? RecognitionExtraction.run('', () => undefined)
-        : RecognitionExtraction.run<undefined>('', null);
-  return ToolRecognition.recognize(sourceRelativePath, tool, 'instructions', extraction, [
+        : RecognitionExtraction.run('', null);
+  return ToolRecognition.recognizeInstructions(sourceRelativePath, tool, extraction, [
     { compiled: INSTRUCTION_ADMISSION_RULE, origin: { planIndex: 0, selectorIndex: 0 } },
   ]);
 }

@@ -16,37 +16,41 @@ import {
   CONTENT_FIXTURE_SECRET,
 } from '../../fixtures/content/build-fixtures';
 
-/** The frontmatter of one authored document, read as the recognizer reads it. */
-function frontmatterOf(sourceText: string): ReadonlyMap<unknown, unknown> {
-  const { frontmatter } = new ParsedMarkdownDocument(sourceText);
-  return frontmatter instanceof Map ? frontmatter : new Map();
+/** One key's rendered scalar text, read exactly as the surfaces publish it. */
+function scalarOf(sourceText: string, key: string): string | null {
+  const entry = new ParsedMarkdownDocument(sourceText).frontmatterEntries.find(
+    (candidate) => candidate.keyKind === 'string' && candidate.key === key,
+  );
+  return entry?.value.kind === 'scalar' ? entry.value.text : null;
 }
 
 describe('declared values', () => {
   it('reports a literal credential whole, with no masking or reveal step', () => {
-    const fields = frontmatterOf(`---\ndescription: "token ${CONTENT_FIXTURE_SECRET}"\n---\n`);
-    expect(fields.get('description')).toBe(`token ${CONTENT_FIXTURE_SECRET}`);
+    expect(
+      scalarOf(`---\ndescription: "token ${CONTENT_FIXTURE_SECRET}"\n---\n`, 'description'),
+    ).toBe(`token ${CONTENT_FIXTURE_SECRET}`);
   });
 
   it('leaves environment-reference syntax as the characters that were written', () => {
-    const fields = frontmatterOf('---\ndescription: "$HOME/${TOKEN}"\n---\n');
     // The host reads no process environment on an inspected file's behalf, and
     // YAML resolves no such reference either, so it is text and stays text.
-    expect(fields.get('description')).toBe('$HOME/${TOKEN}');
+    expect(scalarOf('---\ndescription: "$HOME/${TOKEN}"\n---\n', 'description')).toBe(
+      '$HOME/${TOKEN}',
+    );
   });
 
   it('cuts no surrogate pair or combining sequence in half', () => {
-    const fields = frontmatterOf(`---\nname: ${ASTRAL_AND_COMBINING}\n---\n`);
     // Every layer works in whole characters: an astral character is two UTF-16
     // code units and a combining mark is two code points, and a value that
     // survived a count in either would be truncated here.
-    expect(fields.get('name')).toBe(ASTRAL_AND_COMBINING);
+    expect(scalarOf(`---\nname: ${ASTRAL_AND_COMBINING}\n---\n`, 'name')).toBe(
+      ASTRAL_AND_COMBINING,
+    );
   });
 
   it('survives a JSON transport round trip unchanged', () => {
-    const fields = frontmatterOf(`---\nname: "${ASTRAL_AND_COMBINING}"\n---\n`);
     const transported: { value?: string } = JSON.parse(
-      JSON.stringify({ value: fields.get('name') }),
+      JSON.stringify({ value: scalarOf(`---\nname: "${ASTRAL_AND_COMBINING}"\n---\n`, 'name') }),
     );
     expect(transported.value).toBe(ASTRAL_AND_COMBINING);
   });

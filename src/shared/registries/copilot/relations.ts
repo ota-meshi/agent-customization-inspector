@@ -16,6 +16,7 @@
 // contract agree and the materialized fixture is byte-stable.
 import {
   COPILOT_CLI_COMMANDS_BEHAVIOR,
+  COPILOT_CLI_MCP_BEHAVIOR,
   COPILOT_CLI_INSTRUCTIONS_AGENTS_BEHAVIOR,
   COPILOT_CLI_INSTRUCTIONS_CLAUDE_BEHAVIOR,
   COPILOT_CLI_INSTRUCTIONS_GEMINI_BEHAVIOR,
@@ -24,6 +25,7 @@ import {
   COPILOT_CLI_SKILLS_BEHAVIOR,
   COPILOT_CLI_USER_INSTRUCTIONS_PATH_BEHAVIOR,
   COPILOT_CLI_USER_INSTRUCTIONS_ROOT_BEHAVIOR,
+  COPILOT_CLI_USER_MCP_BEHAVIOR,
   COPILOT_CLI_USER_SKILLS_BEHAVIOR,
   COPILOT_CLOUD_INSTRUCTIONS_AGENTS_BEHAVIOR,
   COPILOT_CLOUD_INSTRUCTIONS_ALTERNATIVES_BEHAVIOR,
@@ -36,8 +38,10 @@ import {
   COPILOT_VSCODE_INSTRUCTIONS_CLAUDE_BEHAVIOR,
   COPILOT_VSCODE_INSTRUCTIONS_PATH_BEHAVIOR,
   COPILOT_VSCODE_INSTRUCTIONS_REPOSITORY_BEHAVIOR,
+  COPILOT_VSCODE_MCP_BEHAVIOR,
   COPILOT_VSCODE_SKILLS_BEHAVIOR,
   COPILOT_VSCODE_USER_CLAUDE_BEHAVIOR,
+  COPILOT_VSCODE_USER_MCP_BEHAVIOR,
   COPILOT_VSCODE_USER_INSTRUCTIONS_BEHAVIOR,
   COPILOT_VSCODE_USER_SKILLS_BEHAVIOR,
 } from './behaviors';
@@ -51,14 +55,19 @@ import {
   COPILOT_REPO_INSTRUCTIONS_PATH_RULE,
   COPILOT_REPO_INSTRUCTIONS_REPOSITORY_CLI_CONTEXT_RULE,
   COPILOT_REPO_INSTRUCTIONS_REPOSITORY_RULE,
+  COPILOT_REPO_MCP_RULE,
+  COPILOT_REPO_MCP_VSCODE_ROOT_RULE,
+  COPILOT_REPO_MCP_VSCODE_RULE,
   COPILOT_REPO_SKILL_RULE,
 } from './rules';
 import {
   COPILOT_CLI_INSTRUCTIONS_LAYERING_STRATEGY,
+  COPILOT_CLI_MCP_SELECTION_STRATEGY,
   COPILOT_CLI_SKILLS_SELECTION_STRATEGY,
   COPILOT_CLOUD_INSTRUCTIONS_LAYERING_STRATEGY,
   COPILOT_CLOUD_SKILLS_SELECTION_STRATEGY,
   COPILOT_VSCODE_INSTRUCTIONS_LAYERING_STRATEGY,
+  COPILOT_VSCODE_MCP_SELECTION_STRATEGY,
   COPILOT_VSCODE_SKILLS_SELECTION_STRATEGY,
 } from './strategies';
 import type { RuleRelations, StrategyRelations } from '../relation-types';
@@ -83,6 +92,20 @@ export const COPILOT_STRATEGY_RELATIONS: Readonly<Record<CopilotStrategyId, Stra
       COPILOT_CLI_USER_INSTRUCTIONS_PATH_BEHAVIOR,
       COPILOT_CLI_USER_INSTRUCTIONS_ROOT_BEHAVIOR,
     ],
+  },
+  /**
+   * CLI MCP selection composes both documented MCP sources this product
+   * records: the workspace files and the User configuration. Only the
+   * workspace carriers are readable; the User statement is listed all the
+   * same, because the strategy describes the CLI's runtime and omitting it
+   * would misdescribe the documented session-additional/plugin/workspace/User
+   * order as choosing among workspace files alone. The session-additional
+   * option and plugin-provided servers are runtime and plugin state with no
+   * behavior statement to consume at this milestone
+   * (contracts/runtime-composition.md § copilot.cli.mcp.selection).
+   */
+  [COPILOT_CLI_MCP_SELECTION_STRATEGY.strategyId]: {
+    consumesBehaviors: [COPILOT_CLI_MCP_BEHAVIOR, COPILOT_CLI_USER_MCP_BEHAVIOR],
   },
   /**
    * Cloud instruction layering composes the four Repository locations and the
@@ -141,6 +164,16 @@ export const COPILOT_STRATEGY_RELATIONS: Readonly<Record<CopilotStrategyId, Stra
   /** VS Code selection composes the workspace and User skill scopes. */
   [COPILOT_VSCODE_SKILLS_SELECTION_STRATEGY.strategyId]: {
     consumesBehaviors: [COPILOT_VSCODE_SKILLS_BEHAVIOR, COPILOT_VSCODE_USER_SKILLS_BEHAVIOR],
+  },
+  /**
+   * VS Code MCP selection composes the workspace file scopes with the User
+   * configuration — the release note's most-specific rule leaves the
+   * same-name winner across them unresolved. An agent profile is not an
+   * input: the custom-agents reference documents `mcp-servers` as not used
+   * in VS Code custom agents (contracts/runtime-composition.md).
+   */
+  [COPILOT_VSCODE_MCP_SELECTION_STRATEGY.strategyId]: {
+    consumesBehaviors: [COPILOT_VSCODE_MCP_BEHAVIOR, COPILOT_VSCODE_USER_MCP_BEHAVIOR],
   },
 };
 
@@ -280,6 +313,36 @@ export const COPILOT_RULE_RELATIONS: Readonly<Record<CopilotRuleId, RuleRelation
    * of the product (FR-009). The grouped inventory row derives its same-name
    * statement from exactly these three (`skill-resolution.ts`).
    */
+  /**
+   * The CLI workspace MCP rule is based on the workspace lookup alone — the
+   * User configuration, session additions, plugin servers, and hosted state
+   * are different boundaries this rule may not read — and is explained by the
+   * selection strategy, which owns the source order the rule deliberately
+   * does not project (FR-009).
+   */
+  [COPILOT_REPO_MCP_RULE.ruleId]: {
+    basedOnBehaviors: [COPILOT_CLI_MCP_BEHAVIOR],
+    explainedByStrategies: [COPILOT_CLI_MCP_SELECTION_STRATEGY],
+  },
+  /**
+   * The dedicated `.vscode/mcp.json` carrier rests on the VS Code workspace
+   * lookup alone and is explained by the VS Code selection strategy, which
+   * owns the input order the rule deliberately does not project (FR-009).
+   */
+  [COPILOT_REPO_MCP_VSCODE_RULE.ruleId]: {
+    basedOnBehaviors: [COPILOT_VSCODE_MCP_BEHAVIOR],
+    explainedByStrategies: [COPILOT_VSCODE_MCP_SELECTION_STRATEGY],
+  },
+  /**
+   * The root `.mcp.json` path/surface provenance rests on the same VS Code
+   * lookup — the release-note half of its conflict — and is explained by the
+   * same strategy; that the admission carries no reading is the compiled
+   * unit's own contract, not a different graph shape.
+   */
+  [COPILOT_REPO_MCP_VSCODE_ROOT_RULE.ruleId]: {
+    basedOnBehaviors: [COPILOT_VSCODE_MCP_BEHAVIOR],
+    explainedByStrategies: [COPILOT_VSCODE_MCP_SELECTION_STRATEGY],
+  },
   [COPILOT_REPO_SKILL_RULE.ruleId]: {
     basedOnBehaviors: [
       COPILOT_CLI_SKILLS_BEHAVIOR,

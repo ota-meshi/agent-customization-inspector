@@ -211,7 +211,7 @@ raw entry nameそのままの綴りである（FR-024）。Filesystem operation�
 Raw nameはNode.jsがそのentryに対して返したstringである — `fs`は文書化された既定としてnameをUTF-8で
 decodeするため、valid UTF-8でないplatform上の名前はreplacement-decodeされて届き、そのstringを通じて
 platformが再解決できない名前は、影響を受けるoperationの通常のfailureとして表面化する。
-Presentationはstored valueを変えず、control characterと双方向書式characters（U+061C、U+200E、U+200F、U+202A–U+202E、U+2066–U+2069）をescapeする。これらは周囲の文字順を反転させるため、いずれかを含むpathは自身が識別するpathとは別のpathとして表示されてしまう。描画される文字を持たないpath label — 空白のみ、またはU+200Bのようなdefault-ignorable code pointのみで構成されたもの — は代わりに全体を綴って表示する。何も描画しないlabelは、そのcontrolに可視textもaccessible nameも残さないからである。
+Presentationはstored valueを変えず、control character、双方向書式characters（U+061C、U+200E、U+200F、U+202A–U+202E、U+2066–U+2069）、lone surrogateをescapeする。書式charactersは周囲の文字順を反転させるため、いずれかを含むpathは自身が識別するpathとは別のpathとして表示されてしまい、lone surrogateは1つのreplacement glyphとして描画されるため、どのsurrogateを含むかだけが異なる2つの名前は同一に表示されてしまう。描画される文字を持たないpath label — 空白のみ、またはU+200Bのようなdefault-ignorable code pointのみで構成されたもの — は代わりに全体を綴って表示する。何も描画しないlabelは、そのcontrolに可視textもaccessible nameも残さないからである。
 Wire上では`sourceRelativePath`は`value` stringだけをserializeし、
 containing file DTOの`sourceId`がpublic ownership linkを提供する。
 
@@ -951,7 +951,7 @@ substituteしない。
 | Kind | 1 rowが示す単位 |
 |---|---|
 | `skill` | 1つのtoolが解決した1つの名前（FR-007）: authoredなfrontmatter `name` — fileが宣言しない場合はskill directory名 — であり、nestedなskillのClaude Code recognitionはこれにroot相対のprefixを前置する。定義は1つのrecognition — `(file, tool)`につき1つ — であるため、1つの名前に解決される複数fileは1 entryが各recognitionを定義として列挙し、toolごとに異なる名前へ解決される1つのfileは各名前のentryで定義される |
-| `MCP` | Admit済みcarrier内の`[mcp_servers.*]`宣言1つ。したがって1つの`.codex/config.toml`は宣言したserverの数だけrowを公開する |
+| `MCP` | 宣言されたserver名1つ: その名前を解決するすべての`[mcp_servers.*]`型宣言 — `(carrier, tool)`ごとに1つ — がその名前のrowの中に列挙される。したがって1つの`.codex/config.toml`は宣言したserverごとに宣言を1つ寄与し、同じ名前を宣言する第2のcarrierはその名前のrowに合流する。宣言の住処はstandalone carrierか、自身の内容に宣言を含むadmit済みowner file — 文書化されたowner family（agent file、plugin manifest、settings file）のいずれかで、どれもまだruleがadmitしていない — であり、どちらの住処も同一の形でその名前のrowに合流し、各宣言は自身のfileを名指す。nameがnullである1つのrowがlistを閉じ、現在named宣言を公開していないcarrier — rowが不明である読めない宣言block、または何も宣言しないcarrier — を保持する |
 | `instructions` | 1つの適用範囲: 担当するfile自身のpathが導出するglobであり、担当する各fileをそのfileのrecognitionとともに列挙する — 各recognitionは1つのproductと、そのfileをadmitしたruleが依拠するdocumented behaviorのsurfaceである。toolだけでは、productがそのfileをどこから読むのかを言えないためである |
 | `settings/config` | File自身 |
 
@@ -1055,7 +1055,7 @@ Instruction recognitionのdetailsは同じ1回のparse — 書かれた順の宣
 
 Recognitionは一覧rowではない。Rowの単位はkind自身のものであり（§ 一覧の単位）、各kindの一覧はfileごとの
 summaryとして公開されるのではなく、これらのrecordから組み立てられる: skillのrowはrecordを各toolが
-解決した名前でgroupingし（§ 一覧の単位）、MCP carrierのrowは1 recordの宣言をrowごとに分割することになる。Fileは自身のrecognition summaryを
+解決した名前でgroupingし（§ 一覧の単位）、MCP carrierの宣言は宣言されたserver名でgroupingされ、全carrierを通じて名前ごとに1 rowになる。含有MCP宣言は、すでにadmitされたowner file上のもう1つのrecognitionである — 同じ`(file, tool, MCP)` record shapeで、owner自身のadmissionをprovenanceとして運ぶ — のであって、宣言ごとのsynthetic candidateでは決してない。Owner familyは文書化されたもの — agentのfrontmatter、plugin manifest、settings file — で、どれもまだruleがadmitしておらず、今日containedなrecognitionは1つも出荷されない。Skillは決してownerにならない: Claudeは`mcpServers`というskill-frontmatter fieldを文書化しておらず、そのkeyを綴るskillはskill recognitionだけを持つ。Named宣言を1つ以上extractionが生んだownerだけが、2つ目のrecordをそもそも持つことになる。Fileは自身のrecognition summaryを
 公開しないため、1 recordを裏づけるadmission数を述べる必要もない。Admissionはどのruleが読み取りを認可し
 どこで一致したかを述べる。カスタマイズがどこに適用されるか、そのruleがどこまで文書化されているかは
 admissionに載せない。どちらもsurfaceが示さないからである。
@@ -1082,7 +1082,7 @@ inventoryにも現れない。一方、ruleが独立にadmitするpath — 別�
 | `provenances` | ordered admission record[] | 共有tool/kind解釈についてのrule/path admissionのsort済み非空set。各recordは読み取りを認可したcompiled ruleを保持して`ruleId`と`RuleDiscoveryClass`をそこから導出し、matched `SourceRelativePath`を傍らに持つ — それ以上は持たない |
 | `tool` | `copilot \| claude \| codex` | 必須 |
 | `details` | kind判別payload | 認識されたkindと、そのkindのrecognitionを識別するもの — skillなら宣言名。1 fieldであるため、射影はkindごとの再構成ではなくcopyで済む |
-| `parseStatus` | `not-attempted \| parsed \| failed` | `not-attempted`はallowlist extractorが非該当。`failed`は`(file, kind)`ごとにall-or-nothing: extractionは1回実行され、そのkindを認識する全toolが共有する |
+| `parseStatus` | `not-attempted \| parsed \| failed` | `not-attempted`はallowlist extractorが非該当。`failed`は`(file, kind)`ごとにall-or-nothing: Markdown kindは1回のextractionを全recognizing toolで共有し、MCP kindは1つのdecoded text上で各recognizing tool自身のdocumented readingを実行する（§ Field reading）。それらのreadingはparser familyを共有するため、一方が拒むtextは全readingを失敗させ、失敗の単位は`(file, kind)`の組に留まる |
 | `diagnosticIds` | opaque string[] | そのkindのextraction失敗record（FR-028）: `(file, kind)`ごとに1件で、そのkindの失敗した各recognitionが参照し、fileは1回だけ列挙する |
 
 維持管理するsupported-customization文書を規範的なpresentation allowlistとする。Supportedな各`(tool, kind)`について、
@@ -1108,8 +1108,8 @@ incompatibleなparsed meaningを返した場合、そのrecognitionを`failed`�
 admissionを保持するがmetadata/relationship/derivation resultはpublishしない。Admissionをlossyな
 recognition-level aggregateへcollapseすることはなく、各admissionは自身の読み取りを認可したruleと一致した
 pathを保持する。
-したがってRepository root `.mcp.json`のCopilot/MCP recognitionは、2つ目のfile/readを作らずCLI
-descendant-inventory provenanceとexactなVS Code 1.118以降provenanceの両方を保持できる。CLI `mcpServers`
+したがってRepository root `.mcp.json`のCopilot/MCP recognitionは、2つ目のfile/readを作らず
+root-exactなCLI provenanceとexactなVS Code 1.118以降provenanceの両方を保持できる。CLI `mcpServers`
 extractionはCLI provenanceに結び付けたままにする。VS Code provenanceはpath/surface-onlyで
 `documentationStatus: conflict`を持ち、direct official documentationがroot schemaとtotal location orderを
 確立するまでVS Code所有extractor fieldまたは推測したsame-name winnerを追加しない。
@@ -1121,21 +1121,33 @@ classify、retry、recoverしない。Triggerを所有するboundaryへpropagate
 generation resultを作らず、session API boundaryがtriggerを所有する場合はfailed requestのerrorとして通常どおり報告する。
 
 Recognitionはclosed tool順`copilot`、`claude`、`codex`、次に表記載のkind順でsortし、opaque IDを使わない。
-File間metadata comparisonは`(kind, 宣言key)`を使う。宣言はfileの認識kindに対する1回のparseであってtoolは宣言の座標ではなく — tool recognitionはtoolごとに宣言の横で比較する — 宣言keyが一致するだけで別kindが衝突することはない。
+File間metadata comparisonは`(kind, 宣言key)`を使う。frontmatter宣言はfileの認識Markdown kindに対する1回のparseであってtoolは宣言の座標ではなく — tool recognitionはtoolごとに宣言の横で比較する — 宣言keyが一致するだけで別kindが衝突することはない。MCP kindの宣言は各recognizing tool自身のreading（§ Field reading）であり、file間metadata comparisonには一切参加しない。
 
 ### Field reading
 
-Extractorは、認識したkindが公開する宣言を、parserがYAML 1.2 core schemaの下で解決した結果 — 文書化された
-決定的なreading 1つ — として報告する: quoteとescapeは解決され、`007`は`7`として読まれ、2回宣言されたkeyは
-後の宣言に解決され、aliasは指す先の値に解決され、schema外のtagはそれが担っていたscalarを残す。いずれも
-拒否しない。これはInspector自身のreadingとして述べるのであって、vendorのruntimeが持つ値の主張ではない:
+Extractorは、認識したkindが公開する宣言を、そのformatのparserが解決した結果 — admit済みsource formごとに
+文書化された決定的なreading 1つ — として報告する: Markdown fileのfrontmatterはYAML 1.2 core schema、
+`.mcp.json`と`.github/mcp.json`のcarrierはstrict JSON（`JSON.parse`）、`.vscode/mcp.json`のcarrierは
+JSONC — commentとtrailing commaはeditor configuration format自身のsyntaxであり、それ以外のsyntax errorは
+依然としてdocument全体を失敗させる — であり、`.codex/config.toml`のcarrierは
+TOML 1.0である。どのformatでもquoteとescapeは1度だけ解決される。2回宣言されたkeyは、formatのparserが
+解決を与える場合 — YAML schemaとstrict JSONはどちらも与える — 後の宣言に解決される。一方TOML 1.0は
+keyの再定義そのものを拒むため、それを宣言するcarrierは、parserが拒む他のあらゆるdocumentと同じく
+recognitionに失敗する。YAML schemaの下ではさらにaliasが指す先の値に解決され、`007`は`7`として読まれ、schema外のtagはそれが
+担っていたscalarを残す。いずれも
+拒否しない。scalarはplatform自身のstring変換でrenderするため、その変換が綴らない区別 —
+signed zeroは`0`とrenderされる — はplatformの解決をそのまま受け入れたものであり、platformの
+integer的keyの列挙順の受容とまったく同じである。これはInspector自身のreadingとして述べるのであって、vendorのruntimeが持つ値の主張ではない:
 vendorはfieldごとにさらにcoerceし得る — Claude Codeはbooleanなfrontmatter fieldで`yes`をtrueと読むが、
 core schemaは文字列`yes`を残す — し、製品が値をどう扱うかはこのtoolが観測しないruntimeである（FR-009）。
-Inspectorはその間に立つvalidatorでもない。綴りが必要なreaderのために、完全なdecoded sourceは同じdetail
-responseの`sourceText`として同席している。
+Inspectorはその間に立つvalidatorでもない。kindがsourceをserveするfile — skill、instruction file、census
+companion — では、綴りが必要なreaderのために完全なdecoded sourceが同じdetail responseの`sourceText`として
+同席する。MCP carrierのdetailは意図的にそれを運ばない（FR-007）ため、その宣言がreadingの公開のすべてである。
 
-Fileがfileの書いたとおりに見せられるものを何も提供しないとき、recognitionを拒否する。Frontmatterが
-まったくparseできないdocument、scalarでないkey — 発明せずに行を名指すtextが存在しない — 、明示的な
+Fileがfileの書いたとおりに見せられるものを何も提供しないとき、recognitionを拒否する。そのformatのparserが
+まったくparseできないdocument — malformedなfrontmatter block、carrierのparserが拒むstrict JSONまたは
+TOMLのsyntax — 、scalarでないYAMLのkey — 発明せずに行を名指すtextが存在しない。JSONとTOMLのkeyは常に
+stringである — 、明示的な
 YAML 1.1 tagがhost objectへ解決した値 — 綴りはlocale依存の日付か`[object Set]`しかない — 、そして
 自分自身を含む値 — publishする形もsendするJSON形式も持たない — である。いずれも、この製品が作った
 値ではなく「報告すべき値なし」を返す。これはrecognition単位でatomicと
@@ -2800,7 +2812,9 @@ candidate -> readable + not-applicable/all-parsed/mixed/all-failed parse summary
     buildをfailさせる。
 13. Vendor lookup base/traversalとInspector matcherは別record typeである。全Repository matcherはselected
     Repository rootを基点にauthorしたtyped segment programである。`ANY_DIRECTORIES` segmentは明示的な下向きInspector inventoryだけを意味し、vendor traversalや
-    runtime selectionを意味しない。上へ辿るvendor lookupも同じselected rootで終わるため、selector tokenにはならない。
+    runtime selectionを意味しない。先頭に置けるのは、vendorがworked-fileまたはdescendant anchorを通じて
+    あらゆる深さで文書化しているlocationだけである。上へ辿るvendor lookupも同じselected rootで終わるため、
+    in-scopeなlayerをちょうど1つ与えるだけで、selector tokenにはならない。
 14. `snapshotState`はsession所有の`staleFailures`から派生し、commit済みgenerationへ保存せず変更にも
     使わない。各entryは1つのSourceとそのcurrentな実行可能failure reference（lifecycle `Diagnostic`またはfailed requestのerror message）を持ち、
     そこから`ScanAttempt`やworking-set memberへ到達できない。そのSourceのcomplete/partial正常scanまたはSource除去だけが

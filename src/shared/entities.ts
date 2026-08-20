@@ -483,6 +483,11 @@ export function encodeRootPresentation(value: string): string {
  *   containing a real U+000A and a different name containing the six literal
  *   characters `\u000A` would render identically, and both can exist in one
  *   directory.
+ * - A lone surrogate, which strict JSON's `"\uD800"` escape resolves to and a
+ *   browser draws as the one replacement glyph: two names differing only in
+ *   which surrogate they carry would render identically. Under the `u` flag
+ *   the class matches only an unpaired surrogate — a well-formed pair is one
+ *   code point outside it — so astral characters render as themselves.
  *
  * Every other character, spaces included, renders as itself, because the
  * authored spelling is the path's presentation identity. Distinct from
@@ -493,7 +498,7 @@ export function encodeRootPresentation(value: string): string {
 export function escapeControlCharacters(value: string): string {
   return value.replaceAll(
     // eslint-disable-next-line no-control-regex -- matching the Cc range is this function's purpose
-    /[\u0000-\u001F\u007F-\u009F\u061C\u200E\u200F\u2028\u2029\u202A-\u202E\u2066-\u2069\\]/gu,
+    /[\u0000-\u001F\u007F-\u009F\u061C\u200E\u200F\u2028\u2029\u202A-\u202E\u2066-\u2069\uD800-\uDFFF\\]/gu,
     (character) => `\\u${character.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')}`,
   );
 }
@@ -528,7 +533,7 @@ export function escapeControlCharacters(value: string): string {
 export function applicabilityRangePresentation(value: string): string {
   const escaped = value.replaceAll(/\\(?=u[0-9A-Fa-f]{4})/gu, '\\u005C').replaceAll(
     // eslint-disable-next-line no-control-regex -- matching the Cc range is this function's purpose
-    /[\u0000-\u001F\u007F-\u009F\u061C\u200E\u200F\u2028\u2029\u202A-\u202E\u2066-\u2069]/gu,
+    /[\u0000-\u001F\u007F-\u009F\u061C\u200E\u200F\u2028\u2029\u202A-\u202E\u2066-\u2069\uD800-\uDFFF]/gu,
     (character) => `\\u${character.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')}`,
   );
   return rendersNothingVisible(escaped) ? encodeRootPresentation(value) : escaped;
@@ -539,13 +544,37 @@ export function applicabilityRangePresentation(value: string): string {
  *
  * Whitespace is the obvious case, but not the only one — U+200B, U+FEFF, and
  * U+00AD are default-ignorable rather than whitespace, so `String.trim` keeps
- * them and a name made of them is a name the reader cannot see. Callers use
+ * them and a name made of them is a name the reader cannot see. Raw control
+ * characters (`Cc`) draw nothing either: a JSON `"\u0000"` resolves to a NUL
+ * the surfaces render glyphlessly, so a declared value or key made only of
+ * them needs the same spelled-out note — the path labels never see one raw,
+ * because {@link escapeControlCharacters} runs before this test there.
+ * Callers use
  * this as a renderability test, never to change what is stored or displayed: a
  * heading falls back to another true label, and a path label is spelled out in
  * full, but the authored value itself stays exactly as authored (FR-025).
  */
 export function rendersNothingVisible(value: string): boolean {
-  return value.replaceAll(/[\s\p{Default_Ignorable_Code_Point}]/gu, '') === '';
+  return value.replaceAll(/[\s\p{Cc}\p{Default_Ignorable_Code_Point}]/gu, '') === '';
+}
+
+/**
+ * Whether a value carries a character no surface draws — a raw `Cc` control
+ * other than the tab, line feed, and carriage return that shape layout, or a
+ * default-ignorable code point such as U+200B or U+00AD. Such a value still
+ * draws its other characters, so it renders as a *different* value: `a` +
+ * U+0000 + `b` and `a` + U+200B + `b` both read as `ab`, and two
+ * declarations differing only in an invisible character would read as one.
+ * Callers add a spelled-out note beside the authored rendering; the value
+ * itself stays exactly as authored (FR-025). Distinct from
+ * {@link rendersNothingVisible}, which tests whether the whole value draws
+ * nothing at all.
+ */
+export function containsInvisibleCharacters(value: string): boolean {
+  // eslint-disable-next-line no-control-regex -- matching the Cc range is this function's purpose
+  return /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\p{Default_Ignorable_Code_Point}]/u.test(
+    value,
+  );
 }
 
 /**

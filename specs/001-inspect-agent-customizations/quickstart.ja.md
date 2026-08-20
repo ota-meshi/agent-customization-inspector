@@ -81,7 +81,7 @@ pnpm run build
   `open` packageのvendoredなPOSIX shell `xdg-open`はpayload内の唯一の例外である
   （spec.md FR-038）: Linux hostでは、package自身の選択policyがvendored copyを実行可能である限り使い、
   そうでないときにsystemの`xdg-open`へfallbackする。生成HTML shell、CSS、JSON file、必須documentation/license fileはdeclarativeかつnon-executableなartifactとする。Directなproduction dependencyは正確に9件、`devframe`、`gunshi`、`h3`、
-  `jsonc-parser`、`open`、`smol-toml`、`vfile`、`vfile-matter`、`yaml`とする。devframeと`open`のtransitive treeはそれぞれのpackageとlockfileが所有する。
+  `open`、`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`yaml`とする。devframeと`open`のtransitive treeはそれぞれのpackageとlockfileが所有する。
 - Build outputにfixture、raw customization text、Global content、cache、inspected machineを公開する
   source-map pathが含まれない。
 
@@ -260,7 +260,7 @@ pnpm run test:e2e
   installed package linkもinvokeしない。T917が、isolated fixtureへpack/installし、working treeまたは
   runtime downloadへ依存せず`npx --no-install`でlaunchするfinal-release testを所有する。
   Production-graph testは承認済みのdirect dependency 9 件、すなわち
-  `devframe`、`gunshi`、`h3`、`jsonc-parser`、`open`、`smol-toml`、`vfile`、`vfile-matter`、`yaml`を正確にassertし（resolved versionとintegrity hashは
+  `devframe`、`gunshi`、`h3`、`open`、`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`yaml`を正確にassertし（resolved versionとintegrity hashは
   commit済み`pnpm-lock.yaml`が所有し続ける）、negative packaging fixtureは、
   missingまたはnon-regularなrequired entry pointがpublish前に`verify:package`をfailさせることを証明する。
 - Performance suiteはpackaged CLI（先にbuildする）に対してT183のSC-002 smoke passを実行する。
@@ -1121,7 +1121,7 @@ exact `package.json.files` entryの`dist`、`README.md`、`README.ja.md`、`LICE
 product manifestで再列挙しない。Exact `bin` mappingと
 `main`/`module`/`exports`不在、license notice、保持されたexact shebang、
 公開README pairを確認する。Directなproduction dependencyは正確に9件、`devframe`、`gunshi`、`h3`、
-`jsonc-parser`、`open`、`smol-toml`、`vfile`、`vfile-matter`、`yaml`とする。devframeと`open`のtransitive treeはそれぞれのpackageと
+`open`、`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`yaml`とする。devframeと`open`のtransitive treeはそれぞれのpackageと
 lockfileが所有する。
 
 再実行すべきhost-securityやHTTP-API-router contract stepは存在しない。devframeがhosting policy
@@ -1137,7 +1137,7 @@ initial baselineをno impactとして記録する。それ以外では必要なc
 rollback/support pathを記録する。Evidenceが欠落するか一方の言語だけならrelease gateをfailureとする。
 
 承認済みproduction dependency setを`package.json`と`pnpm-lock.yaml` closureからassertする。すなわちdirect
-dependency 9 件、`devframe`、`gunshi`、`h3`、`jsonc-parser`、`open`、`smol-toml`、`vfile`、`vfile-matter`、`yaml`を正確にassertし、graph変更は
+dependency 9 件、`devframe`、`gunshi`、`h3`、`open`、`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`yaml`を正確にassertし、graph変更は
 dependency決定が明示的に見直されるまでgateをfailさせる。各resolved versionとそのintegrity hashはcommit済み
 lockfileが所有し、全production packageのpayload byteをpinするのはこのlockfileである。
 Exactな宣言済み

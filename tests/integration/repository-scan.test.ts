@@ -9,7 +9,7 @@
 // Source the first scan reads is the one bootstrap already created, and the
 // root it reads is the retained raw selection — never the escaped display
 // boundary, which grants no read authority.
-import { chmodSync, linkSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, linkSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 // The builtin behind the fs-io seam: an injection that passes every other
 // path through must call this, not the spy it is installed on.
 import { readFile as realReadFile } from 'node:fs/promises';
@@ -25,8 +25,12 @@ import {
   buildAllToolSkillFixture,
   buildAllVendorInstructionFixture,
   buildClaudeInstructionFixture,
+  buildClaudeMcpFixture,
   buildClaudeSkillFixture,
+  buildCopilotCliMcpFixture,
+  buildCopilotVscodeMcpFixture,
   buildCodexInstructionFixture,
+  buildCodexMcpFixture,
   buildCodexSkillFixture,
   buildCopilotInstructionFixture,
   buildCopilotSkillFixture,
@@ -1691,20 +1695,41 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
         files: [{ sourceRelativePath: 'docs/AGENTS.md', recognitions: [COPILOT_ALL_SURFACES] }],
       },
     ]);
-    // The carrier itself is a configuration input only: never published,
-    // never raw-displayed, in no kind's inventory and not in `files[]`. The
-    // published set is the union across products, which is what makes the
-    // nested `docs/AGENTS.md` appear at all: a file read once and listed once,
-    // however many products' rules admitted it.
+    // The carrier publishes like any candidate since its own candidacy
+    // shipped (`codex.repo.config`, T286) — its facts in `files[]`, its
+    // contained declarations as the MCP inventory, and never its source text
+    // in any snapshot. The published set is the union across products, which
+    // is what makes the nested `docs/AGENTS.md` appear at all: a file read
+    // once by the walk and listed once, however many products' rules admitted
+    // it.
     expect(snapshot.files.map((file) => file.sourceRelativePath)).toEqual(
       [
         ...new Set([
+          fixture.configCarrierPath,
           ...fixture.expectedInstructionPaths,
           ...fixture.expectedCopilotInstructionPaths,
           ...fixture.expectedDerivedFallbackPaths,
         ]),
       ].sort(),
     );
+    // The carrier's MCP row: this fixture's carrier declares fallback
+    // basenames and no `[mcp_servers.*]` table, so it sits on the no-name row
+    // that closes the list — "declares none", not a failure, which its
+    // declaration's own `parseStatus` states (FR-028).
+    expect(snapshot.mcp).toEqual([
+      {
+        name: null,
+        declarations: [
+          {
+            sourceRelativePath: fixture.configCarrierPath,
+            tool: 'codex',
+            surfaces: ['codex-local-clients'],
+            parseStatus: 'parsed',
+            diagnosticIds: [],
+          },
+        ],
+      },
+    ]);
     // Nothing published carries a diagnostic and the generation is complete:
     // an absent declared fallback is not a finding.
     expect(snapshot.diagnostics).toEqual([]);
@@ -1717,9 +1742,12 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
     expect(serialized).not.toContain(FIXTURE_ENVIRONMENT_REFERENCE);
     // The two-stage read set (T1087/T1090): the configuration-read stage
     // opens the carrier first — configuration decides what counts as an
-    // instruction file before any candidate is scanned — and the scan stage
-    // then reads every published file once. The carrier is read exactly once,
-    // as configuration, and nothing opens a near miss or the absent declared
+    // instruction file before any candidate is scanned — and that one read is
+    // seeded into the walk, so the carrier's own candidacy (T286) is
+    // classified from the same bytes instead of a second open: one physical
+    // file, one read per attempt (T282), and a generation whose fallback plan
+    // and published carrier cannot disagree. The walk then reads every other
+    // published file once. Nothing opens a near miss or the absent declared
     // name.
     const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) =>
       String(call[0])
@@ -1728,9 +1756,10 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
         .join('/'),
     );
     expect(opened[0]).toBe(fixture.configCarrierPath);
-    expect([...opened].sort()).toEqual(
+    expect(opened.filter((path) => path === fixture.configCarrierPath)).toHaveLength(1);
+    const walked = opened.slice(1);
+    expect([...walked].sort()).toEqual(
       [
-        fixture.configCarrierPath,
         ...new Set([
           ...fixture.expectedInstructionPaths,
           ...fixture.expectedCopilotInstructionPaths,
@@ -1738,9 +1767,10 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
         ]),
       ].sort(),
     );
-    // One read per physical file, whichever products admitted it: the root
-    // `AGENTS.md` carries a Codex and a Copilot recognition and is opened once.
-    expect(new Set(opened).size).toBe(opened.length);
+    // One walk read per physical file, whichever products admitted it: the
+    // root `AGENTS.md` carries a Codex and a Copilot recognition and is
+    // opened once.
+    expect(new Set(walked).size).toBe(walked.length);
     expect(opened).not.toContain(fixture.absentFallbackBasename);
     for (const nearMiss of fixture.nearMissPaths) {
       expect(
@@ -1750,15 +1780,16 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
     }
   });
 
-  it('configures nothing from a malformed carrier, which stays unpublished', async () => {
+  it('configures nothing from a malformed carrier while its failed recognition publishes', async () => {
     const root = createRepositoryFixtureRoot('inspector-scan-instructions-malformed');
     cleanups.push(() => rmSync(root, { recursive: true, force: true }));
     mkdirSync(join(root, '.codex'), { recursive: true });
     // A document TOML cannot parse: the configuration-read stage configures
-    // nothing — no fallback plan, zero fallback reads. The carrier is a
-    // configuration input only, never a scanned candidate, so no diagnostic
-    // and no row report it; its own surfaces arrive with the phase that owns
-    // the configuration inventory.
+    // nothing — no fallback plan, zero fallback reads — while the walk still
+    // admits the carrier under its own candidacy (T286). Its MCP recognition
+    // fails all-or-nothing with the `recognition-parse-failed` Diagnostic:
+    // the declaration rows are unknown rather than absent, the carrier's
+    // facts stay published, and the generation commits `partial` (FR-028).
     writeFileSync(join(root, '.codex/config.toml'), 'project_doc_fallback = [unclosed\n', 'utf8');
     writeFileSync(join(root, 'TEAM_GUIDE.md'), '# would-be fallback\n', 'utf8');
     writeFileSync(join(root, 'AGENTS.md'), '# instructions\n', 'utf8');
@@ -1768,7 +1799,7 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
     if (publication.kind !== 'publishable') {
       throw new Error('expected a publishable outcome');
     }
-    expect(publication.outcome).toBe('complete');
+    expect(publication.outcome).toBe('partial');
     const snapshot = context.session.snapshot();
     expect(snapshot.instructions).toEqual([
       {
@@ -1781,11 +1812,392 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
         ],
       },
     ]);
-    expect(snapshot.files.some((file) => file.sourceRelativePath === '.codex/config.toml')).toBe(
-      false,
-    );
-    expect(snapshot.diagnostics).toEqual([]);
+    const carrier = snapshot.files.find((file) => file.sourceRelativePath === '.codex/config.toml');
+    expect(carrier).toBeDefined();
+    expect(carrier!.diagnosticIds).toHaveLength(1);
+    expect(snapshot.diagnostics).toEqual([
+      expect.objectContaining({
+        code: 'recognition-parse-failed',
+        sourceRelativePath: '.codex/config.toml',
+      }),
+    ]);
+    expect(snapshot.mcp).toEqual([
+      {
+        name: null,
+        declarations: [
+          {
+            sourceRelativePath: '.codex/config.toml',
+            tool: 'codex',
+            surfaces: ['codex-local-clients'],
+            parseStatus: 'failed',
+            diagnosticIds: carrier!.diagnosticIds,
+          },
+        ],
+      },
+    ]);
+    // The would-be fallback stays a plain unadmitted file: a carrier that
+    // configures nothing derives nothing.
     expect(snapshot.files.some((file) => file.sourceRelativePath === 'TEAM_GUIDE.md')).toBe(false);
+  });
+
+  it('commits one MCP row per declaration on the carrier, named by its authored key', async () => {
+    const fixture = buildCodexMcpFixture('inspector-scan-mcp');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    vi.clearAllMocks();
+
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+
+    // The MCP inventory: one row per declared server name in name order, each
+    // listing the one declaration resolving it, the non-table `mcp_servers`
+    // entry omitted whole (data-model.md § Inventory unit). The nested carrier
+    // re-declares a root server name and contributes nothing: it belongs to a
+    // runtime working directory this product does not select, so no second
+    // declaration joins the name's row. The fixture's root `.mcp.json` is
+    // Claude's carrier (T309) declaring no server, so the null row closes the
+    // list with that one declaration.
+    expect(snapshot.mcp).toEqual([
+      ...[...fixture.expectedServerNames].sort().map((name) => ({
+        name,
+        declarations: [
+          {
+            sourceRelativePath: fixture.carrierPath,
+            tool: 'codex',
+            surfaces: ['codex-local-clients'],
+            parseStatus: 'parsed',
+            diagnosticIds: [],
+          },
+        ],
+      })),
+      {
+        name: null,
+        // The shared root `.mcp.json` is one physical file two products
+        // admit — Copilot's CLI workspace rule and Claude's project rule —
+        // declaring no server for either, in the closed tool order.
+        declarations: [
+          {
+            sourceRelativePath: '.mcp.json',
+            tool: 'copilot',
+            // Both Copilot surfaces: the CLI reading and the VS Code 1.118+
+            // path/surface provenance share the root carrier's recognition
+            // (T362).
+            surfaces: ['copilot-vscode', 'copilot-cli'],
+            parseStatus: 'parsed',
+            diagnosticIds: [],
+          },
+          {
+            sourceRelativePath: '.mcp.json',
+            tool: 'claude',
+            surfaces: ['claude-cli-and-ide-clients'],
+            parseStatus: 'parsed',
+            diagnosticIds: [],
+          },
+        ],
+      },
+    ]);
+    // The instruction and fallback rows beside it stay what Phase 15 made
+    // them: the carrier's candidacy changes neither.
+    expect(snapshot.instructions).toEqual([
+      {
+        applicabilityRange: '**',
+        files: [
+          { sourceRelativePath: 'AGENTS.md', recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY] },
+          { sourceRelativePath: 'TEAM_GUIDE.md', recognitions: [CODEX_ONLY] },
+        ],
+      },
+    ]);
+    // No declared value reaches the snapshot: the secret and the environment
+    // reference live in the carrier's declarations, which only the detail
+    // serves, one file at a time (FR-026/FR-027).
+    const serialized = JSON.stringify(snapshot);
+    expect(serialized).not.toContain(FIXTURE_SECRET_LITERAL);
+    expect(serialized).not.toContain(FIXTURE_ENVIRONMENT_REFERENCE);
+    // Zero connection: the scan's reads are the carrier's two stages and the
+    // published files — no declared command ran and no URL was fetched, so
+    // nothing outside the fixture tree was opened.
+    for (const nearMiss of fixture.nearMissPaths) {
+      expect(
+        snapshot.files.some((file) => file.sourceRelativePath === nearMiss),
+        nearMiss,
+      ).toBe(false);
+    }
+  });
+
+  it('groups Claude carrier and skill-contained declarations of one name into one row (T312)', async () => {
+    const fixture = buildClaudeMcpFixture('inspector-scan-claude-mcp');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    vi.clearAllMocks();
+
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+
+    // The name-grouped inventory (data-model.md § Inventory unit): every row
+    // is the root carrier's own. The skill whose frontmatter spells
+    // `mcpServers` contributes nothing — Claude documents no such skill
+    // field, so its re-declared `context7` joins no row and its `deploy-db`
+    // never appears — and the unadmitted owner files reach no recognition at
+    // all. No null row exists: the one carrier publishes named rows.
+    const claudeDeclaration = (sourceRelativePath: string) => ({
+      sourceRelativePath,
+      tool: 'claude',
+      surfaces: ['claude-cli-and-ide-clients'],
+      parseStatus: 'parsed',
+      diagnosticIds: [],
+    });
+    const copilotDeclaration = (sourceRelativePath: string) => ({
+      sourceRelativePath,
+      tool: 'copilot',
+      // The root spelling carries the VS Code 1.118+ provenance beside the
+      // CLI admission, so its one Copilot recognition names both surfaces;
+      // every other carrier spelling stays the CLI's alone (T362).
+      surfaces:
+        sourceRelativePath === '.mcp.json' ? ['copilot-vscode', 'copilot-cli'] : ['copilot-cli'],
+      parseStatus: 'parsed',
+      diagnosticIds: [],
+    });
+    // The root carrier is one physical file two products admit, so every
+    // name it declares lists a Copilot declaration beside Claude's (T342);
+    // the subdirectory carrier is a near miss for every product.
+    expect(snapshot.mcp).toEqual(
+      ['context7', 'docs-http', 'odd'].map((name) => ({
+        name,
+        declarations: [
+          copilotDeclaration(fixture.carrierPath),
+          claudeDeclaration(fixture.carrierPath),
+        ],
+      })),
+    );
+    // Both skills stay exactly skills: the `mcpServers` spelling is ordinary
+    // frontmatter under the skill's own kind, not a second inventory home.
+    const skillPaths = snapshot.skills.flatMap((entry) =>
+      entry.definitions.map((definition) => definition.sourceRelativePath),
+    );
+    expect(skillPaths).toContain(fixture.mcpFrontmatterSkillPath);
+    expect(skillPaths).toContain(fixture.plainSkillPath);
+    // No declared value reaches the snapshot (FR-026/FR-027), and no near
+    // miss, unadmitted owner content, or command target was published.
+    const serialized = JSON.stringify(snapshot);
+    expect(serialized).not.toContain(FIXTURE_SECRET_LITERAL);
+    expect(serialized).not.toContain(FIXTURE_ENVIRONMENT_REFERENCE);
+    for (const forbidden of [...fixture.nearMissPaths, ...fixture.unadmittedOwnerPaths]) {
+      expect(
+        snapshot.files.some((file) => file.sourceRelativePath === forbidden),
+        forbidden,
+      ).toBe(false);
+    }
+  });
+
+  it('groups ancestor workspace declarations and the shared root across products (T342)', async () => {
+    const fixture = buildCopilotCliMcpFixture('inspector-scan-copilot-cli-mcp');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    vi.clearAllMocks();
+
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+
+    const copilotDeclaration = (sourceRelativePath: string) => ({
+      sourceRelativePath,
+      tool: 'copilot',
+      // The root spelling carries the VS Code 1.118+ provenance beside the
+      // CLI admission, so its one Copilot recognition names both surfaces;
+      // every other carrier spelling stays the CLI's alone (T362).
+      surfaces:
+        sourceRelativePath === '.mcp.json' ? ['copilot-vscode', 'copilot-cli'] : ['copilot-cli'],
+      parseStatus: 'parsed',
+      diagnosticIds: [],
+    });
+    const claudeDeclaration = (sourceRelativePath: string) => ({
+      sourceRelativePath,
+      tool: 'claude',
+      surfaces: ['claude-cli-and-ide-clients'],
+      parseStatus: 'parsed',
+      diagnosticIds: [],
+    });
+    // The name-grouped inventory across the two root-level spellings and two
+    // products' shared root: the duplicate name lists the `.github` carrier —
+    // the CLI's alone — and the root carrier as Copilot's and Claude's
+    // recognitions of one physical file, with no order projected among them
+    // (FR-009). The subdirectory carriers of both spellings are near misses
+    // for every product.
+    expect(snapshot.mcp).toEqual([
+      { name: 'gh-actions', declarations: [copilotDeclaration(fixture.githubCarrierPath)] },
+      {
+        name: 'odd',
+        declarations: [
+          copilotDeclaration(fixture.rootCarrierPath),
+          claudeDeclaration(fixture.rootCarrierPath),
+        ],
+      },
+      {
+        name: fixture.duplicateServerName,
+        declarations: [
+          copilotDeclaration(fixture.githubCarrierPath),
+          copilotDeclaration(fixture.rootCarrierPath),
+          claudeDeclaration(fixture.rootCarrierPath),
+        ],
+      },
+    ]);
+    // No declared value reaches the snapshot (FR-026/FR-027), and no near
+    // miss was published.
+    const serialized = JSON.stringify(snapshot);
+    expect(serialized).not.toContain(FIXTURE_SECRET_LITERAL);
+    expect(serialized).not.toContain(FIXTURE_ENVIRONMENT_REFERENCE);
+    for (const nearMiss of fixture.nearMissPaths) {
+      expect(
+        snapshot.files.some((file) => file.sourceRelativePath === nearMiss),
+        nearMiss,
+      ).toBe(false);
+    }
+  });
+
+  it('groups the VS Code carrier and the shared root across surfaces (T362)', async () => {
+    const fixture = buildCopilotVscodeMcpFixture('inspector-scan-vscode-mcp');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    vi.clearAllMocks();
+
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+
+    // The name-grouped inventory: the dedicated `.vscode` carrier's rows are
+    // the VS Code surface's alone, the shared root's one Copilot recognition
+    // names both surfaces — its CLI reading with the 1.118+ path/surface
+    // provenance beside it — and Claude's recognition of the same physical
+    // file stands beside them. The duplicate name groups both carriers'
+    // declarations into one row with no order projected among them (FR-009).
+    const vscodeDeclaration = {
+      sourceRelativePath: fixture.vscodeCarrierPath,
+      tool: 'copilot',
+      surfaces: ['copilot-vscode'],
+      parseStatus: 'parsed',
+      diagnosticIds: [],
+    };
+    const rootCopilotDeclaration = {
+      sourceRelativePath: fixture.rootCarrierPath,
+      tool: 'copilot',
+      surfaces: ['copilot-vscode', 'copilot-cli'],
+      parseStatus: 'parsed',
+      diagnosticIds: [],
+    };
+    const rootClaudeDeclaration = {
+      sourceRelativePath: fixture.rootCarrierPath,
+      tool: 'claude',
+      surfaces: ['claude-cli-and-ide-clients'],
+      parseStatus: 'parsed',
+      diagnosticIds: [],
+    };
+    expect(snapshot.mcp).toEqual([
+      { name: 'root-only', declarations: [rootCopilotDeclaration, rootClaudeDeclaration] },
+      {
+        name: fixture.duplicateServerName,
+        declarations: [rootCopilotDeclaration, rootClaudeDeclaration, vscodeDeclaration],
+      },
+      { name: 'vs-http', declarations: [vscodeDeclaration] },
+      { name: 'vs-local', declarations: [vscodeDeclaration] },
+    ]);
+    // No declared value reaches the snapshot (FR-026/FR-027), and no near
+    // miss was published.
+    const serialized = JSON.stringify(snapshot);
+    expect(serialized).not.toContain(FIXTURE_SECRET_LITERAL);
+    expect(serialized).not.toContain(FIXTURE_ENVIRONMENT_REFERENCE);
+    for (const nearMiss of fixture.nearMissPaths) {
+      expect(
+        snapshot.files.some((file) => file.sourceRelativePath === nearMiss),
+        nearMiss,
+      ).toBe(false);
+    }
+  });
+
+  it('serves a bare-form shared root as its union, with no no-name row', async () => {
+    // One physical root `.mcp.json` in the CLI's bare top-level schema. The
+    // Copilot CLI reading publishes both names; Claude's wrapper-only reading
+    // parses the same document and finds no `mcpServers` entry. The no-name
+    // row is a statement about the file — "this carrier publishes no named
+    // declaration" — and this file does publish names, so Claude's empty
+    // reading joins no row and the null row does not exist.
+    const root = createRepositoryFixtureRoot('inspector-scan-bare-root-mcp');
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    writeFileSync(
+      join(root, '.mcp.json'),
+      '{ "alpha": { "command": "npx" }, "beta": { "url": "https://example.invalid/mcp" } }\n',
+      'utf8',
+    );
+    const context = bootstrap(root);
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+    expect(snapshot.mcp).toEqual([
+      {
+        name: 'alpha',
+        declarations: [
+          {
+            sourceRelativePath: '.mcp.json',
+            tool: 'copilot',
+            // Both Copilot surfaces: the CLI reading and the VS Code 1.118+
+            // path/surface provenance share the root carrier's recognition
+            // (T362).
+            surfaces: ['copilot-vscode', 'copilot-cli'],
+            parseStatus: 'parsed',
+            diagnosticIds: [],
+          },
+        ],
+      },
+      {
+        name: 'beta',
+        declarations: [
+          {
+            sourceRelativePath: '.mcp.json',
+            tool: 'copilot',
+            // Both Copilot surfaces: the CLI reading and the VS Code 1.118+
+            // path/surface provenance share the root carrier's recognition
+            // (T362).
+            surfaces: ['copilot-vscode', 'copilot-cli'],
+            parseStatus: 'parsed',
+            diagnosticIds: [],
+          },
+        ],
+      },
+    ]);
+    // The file-unit detail answers with the union of the readings rather than
+    // with whichever recognition sits first: Claude's parsed-empty reading
+    // contributes nothing, and the CLI's names are served, not null
+    // (contracts/http-api.md § get-mcp-carrier-detail).
+    const detail = context.session.mcpCarrierDetail('.mcp.json');
+    expect(detail?.servers?.map((server) => server.name)).toEqual(['alpha', 'beta']);
+  });
+
+  it('reads no configuration seed through a link into VCS internals', async () => {
+    // A `.codex` that is a symbolic link to `.git`: the stage-one
+    // configuration read resolves real paths and applies the same VCS
+    // exclusion the walk applies, so a config carrier whose real location is
+    // VCS-internal derives no plans and publishes no candidate
+    // (rules/codex.ts § readConfigurationSeed).
+    const root = createRepositoryFixtureRoot('inspector-scan-vcs-seed');
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    mkdirSync(join(root, '.git'), { recursive: true });
+    writeFileSync(
+      join(root, '.git/config.toml'),
+      'project_doc_fallback_filenames = ["EXTRA.md"]\n',
+      'utf8',
+    );
+    writeFileSync(join(root, 'EXTRA.md'), 'configured fallback body\n', 'utf8');
+    try {
+      symlinkSync(join(root, '.git'), join(root, '.codex'));
+    } catch {
+      // The platform (or its configuration) does not permit creating the
+      // link, so the case under test cannot exist here.
+      return;
+    }
+    const context = bootstrap(root);
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+    // No seed: the declared fallback derived nothing, so `EXTRA.md` was never
+    // admitted, and the carrier path itself was published by nothing.
+    expect(snapshot.files).toEqual([]);
+    expect(snapshot.instructions).toEqual([]);
+    expect(snapshot.mcp).toEqual([]);
   });
 
   it('confines a binary instruction candidate to its diagnostic and partial outcome', async () => {
@@ -2391,10 +2803,13 @@ describe('the unified instructions inventory (T270)', () => {
       fixture.expectedPublishedPaths,
     );
 
-    // The two-stage read set: the carrier first, as configuration, then every
-    // published file exactly once. Nothing opens a near miss, the absent
-    // declared name, the nested fallback variant, or the import target
-    // (FR-019, QR-003).
+    // The two-stage read set: the carrier first, as configuration, and that
+    // one read seeded into the walk — the carrier's own candidacy (T286)
+    // publishes from the same bytes, one read per physical file per attempt
+    // (T282) — then the walk reading every other published file exactly
+    // once. Nothing opens a near miss, the absent declared
+    // name, the nested fallback variant, or the import target (FR-019,
+    // QR-003).
     const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) =>
       String(call[0])
         .slice(fixture.root.length + 1)
@@ -2403,9 +2818,7 @@ describe('the unified instructions inventory (T270)', () => {
     );
     expect(opened[0]).toBe(fixture.configCarrierPath);
     expect(new Set(opened).size).toBe(opened.length);
-    expect([...opened].sort()).toEqual(
-      [fixture.configCarrierPath, ...fixture.expectedPublishedPaths].sort(),
-    );
+    expect([...opened].sort()).toEqual([...fixture.expectedPublishedPaths].sort());
     expect(opened).not.toContain(fixture.absentFallbackBasename);
     expect(opened).not.toContain(fixture.nestedFallbackVariantPath);
     expect(opened).not.toContain(fixture.importTargetPath);

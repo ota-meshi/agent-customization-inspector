@@ -49,7 +49,13 @@ import {
 } from './recognizers/candidate';
 import { join } from 'node:path';
 import { CODEX_REPOSITORY_RULES, readCodexConfiguredFallbackPlans } from './rules/codex';
-import { readCandidate, runTraversalScan, type TraversalScanResult } from './traversal';
+import {
+  readCandidate,
+  runTraversalScan,
+  type ConfigurationReadResult,
+  type SeededCandidateRead,
+  type TraversalScanResult,
+} from './traversal';
 
 /**
  * The shipped Repository rule catalog a Repository scan executes (FR-003),
@@ -78,7 +84,7 @@ export const REPOSITORY_INSPECTION_RULES: readonly CompiledStaticCandidateRule[]
  */
 export const REPOSITORY_CONFIGURATION_READERS: readonly ((
   root: string,
-) => Promise<readonly ConfiguredDerivedPlan[]>)[] = [readCodexConfiguredFallbackPlans];
+) => Promise<ConfigurationReadResult>)[] = [readCodexConfiguredFallbackPlans];
 
 /**
  * The assembled publication of one completed traversal
@@ -316,10 +322,13 @@ export async function assembleScanPublication(
         // comparison-eligible; only the derived metadata/relationships are
         // omitted, and the diagnostic makes the generation partial (FR-028).
         //
-        // One extraction per kind means one failure is one record
-        // (candidate.ts): however many tools recognize the kind, the parse
-        // ran once, so minting a record per recognition would publish one
-        // observation as several a reader cannot tell apart. The file
+        // One failure is one record per (file, kind): the Markdown kinds
+        // share one extraction across every recognizing tool, and the MCP
+        // kind's per-tool readings share their parser family over the one
+        // decoded text, so a text one reading rejects fails them all
+        // (candidate.ts; data-model.md § ToolRecognition). Minting a record
+        // per recognition would publish one observation as several a reader
+        // cannot tell apart. The file
         // references it because the outcome is file-confined, and every
         // failed recognition of the kind shares the same reference, which is
         // what each inventory definition republishes. A recognizer never sees
@@ -333,10 +342,12 @@ export async function assembleScanPublication(
         }
         for (const group of byKind.values()) {
           // The production recognizer's groups are uniformly parsed or
-          // failed — the extraction is shared — so the per-recognition check
-          // below only keeps an injected test recognizer honest: the
-          // traversal suite drives mixed statuses through the `recognize`
-          // seam, and a parsed recognition must not reference a failure.
+          // failed — shared extraction for the Markdown kinds, one parser
+          // family for the MCP kind's per-tool readings — so the
+          // per-recognition check below only keeps an injected test
+          // recognizer honest: the traversal suite drives mixed statuses
+          // through the `recognize` seam, and a parsed recognition must not
+          // reference a failure.
           if (!group.some((recognition) => recognition.parseStatus === 'failed')) {
             recognitions.push(...group);
             continue;
@@ -571,8 +582,15 @@ export async function runSourceScan(input: SourceScanInput): Promise<ScanPublica
   // by exactly the entries its vendor's configuration named, and by nothing
   // else.
   const configured: ConfiguredDerivedPlan[] = [];
+  const seededReads: SeededCandidateRead[] = [];
   for (const read of REPOSITORY_CONFIGURATION_READERS) {
-    configured.push(...(await read(input.root)));
+    const contribution = await read(input.root);
+    configured.push(...contribution.plans);
+    // The reads stage one performed travel into the walk, so the candidate a
+    // reader's file also is — `.codex/config.toml` under `codex.repo.config` —
+    // is classified from the same bytes the configuration was, and one
+    // physical file is read once per attempt (T282).
+    seededReads.push(...contribution.seededReads);
   }
   const rules: readonly CompiledCandidateRule[] = [
     ...staticRules,
@@ -580,17 +598,22 @@ export async function runSourceScan(input: SourceScanInput): Promise<ScanPublica
   ];
   // Stage one is over. The walk reports `enumerating` itself, but only once a
   // directory has been listed, so a slow root would leave the configuration
-  // read on screen as the running stage long after it finished.
+  // read on screen as the running stage long after it finished. The bytes
+  // stage one read are already the attempt's work, so the report carries them.
   input.onProgress?.({
     phase: 'enumerating',
     visitedEntries: 0,
     candidateFiles: 0,
-    readBytes: 0,
+    readBytes: seededReads.reduce(
+      (total, seeded) => total + ('sizeBytes' in seeded.outcome ? seeded.outcome.sizeBytes : 0),
+      0,
+    ),
     diagnosticCount: 0,
   });
   const result = await runTraversalScan({
     root: input.root,
     plans: [...staticRules.map((rule) => rule.plan), ...configured.map((entry) => entry.plan)],
+    seededReads,
     ...(input.onProgress === undefined ? {} : { onProgress: input.onProgress }),
   });
   if (result.kind === 'scanned') {

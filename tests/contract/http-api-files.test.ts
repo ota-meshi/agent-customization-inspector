@@ -11,7 +11,8 @@
 // The suite runs the real scan over a real fixture rather than a hand-built
 // generation, because the property under test is that the source the traversal
 // read reaches the response unchanged — which a fabricated DTO could not show.
-import { rmSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
@@ -26,10 +27,24 @@ import {
   SECRET_LITERALS,
   type SecretFixture,
 } from '../fixtures/secrets/build-fixtures';
+import {
+  FIXTURE_ENVIRONMENT_REFERENCE,
+  FIXTURE_SECRET_LITERAL,
+  buildClaudeMcpFixture,
+  buildCodexMcpFixture,
+  buildCopilotCliMcpFixture,
+  buildCopilotVscodeMcpFixture,
+  createRepositoryFixtureRoot,
+  type ClaudeMcpFixture,
+  type CodexMcpFixture,
+  type CopilotCliMcpFixture,
+  type CopilotVscodeMcpFixture,
+} from '../fixtures/repositories/build-fixtures';
 import type {
   DeterministicRejection,
   FileDetailDto,
   InspectionDataResult,
+  McpCarrierDetailDto,
 } from '../../src/shared/api-types';
 
 /** One registered RPC function as captured from the definition's `setup`. */
@@ -393,5 +408,635 @@ describe('get-file-detail', () => {
       'bodyText',
       'frontmatter',
     ]);
+  });
+});
+
+async function getMcpCarrierDetail(
+  context: InspectorHostContext,
+  sourceRelativePath: string,
+): Promise<InspectionDataResult<McpCarrierDetailDto> | DeterministicRejection> {
+  const fn = registerFunctions(context).get(
+    'agent-customization-inspector:get-mcp-carrier-detail',
+  )!;
+  return (await fn.handler(sourceRelativePath as never)) as
+    InspectionDataResult<McpCarrierDetailDto> | DeterministicRejection;
+}
+
+describe('get-mcp-carrier-detail for the Codex MCP carrier (T295)', () => {
+  /** Boots a session over the MCP fixture and runs its first scan. */
+  async function scannedMcpFixture(): Promise<{
+    readonly context: InspectorHostContext;
+    readonly fixture: CodexMcpFixture;
+  }> {
+    const fixture = buildCodexMcpFixture('inspector-mcp-detail-contract');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const session = new InspectionSession({
+      invocationCwd: fixture.root,
+      rootOptionValue: null,
+    });
+    const context: InspectorHostContext = {
+      session,
+      coordinator: new SessionCoordinator(session),
+    };
+    const repository = session.snapshot().sources[0]!;
+    const admission = context.coordinator.admitScan(repository.sourceId, {
+      kind: 'startup',
+      operationId: null,
+    });
+    if (admission.kind !== 'admitted') {
+      throw new Error('the first scan was not admitted');
+    }
+    await executeRepositoryScan(
+      context,
+      admission.scanRequestId,
+      repository.sourceId,
+      'repository',
+    );
+    return { context, fixture };
+  }
+
+  it('returns the declarations by the keys the carrier wrote, in authored order', async () => {
+    const { context, fixture } = await scannedMcpFixture();
+    const result = await getMcpCarrierDetail(context, fixture.carrierPath);
+    if (!('data' in result)) {
+      throw new Error('expected the carrier detail result');
+    }
+    const servers = result.data.servers;
+    if (servers === null) {
+      throw new Error('expected parsed declarations');
+    }
+    // One declaration per named server table, in the parser's resolved
+    // order, the non-table `mcp_servers` entry omitted whole; each
+    // declaration's fields are the keys the carrier wrote, resolved once —
+    // the command and its arguments, the URL, the headers, the environment
+    // values — with a numeric command kept as its resolved value rather than
+    // schema-checked away (FR-007).
+    expect(servers.map((server) => server.name)).toEqual([...fixture.expectedServerNames]);
+    const [context7, docsHttp, odd] = servers;
+    expect(context7!.fields.map((field) => field.key)).toEqual([
+      'command',
+      'args',
+      'agents',
+      'env',
+    ]);
+    expect(context7!.fields[0]!.value).toEqual({ kind: 'scalar', text: 'npx' });
+    expect(docsHttp!.fields.map((field) => field.key)).toEqual(['url', 'headers']);
+    expect(docsHttp!.fields[0]!.value).toEqual({
+      kind: 'scalar',
+      text: 'https://docs.example.com/mcp',
+    });
+    expect(odd!.fields).toEqual([
+      { key: 'command', keyKind: 'string', value: { kind: 'scalar', text: '42' } },
+    ]);
+  });
+
+  it('serves the carrier with no sourceText field at all', async () => {
+    const { context, fixture } = await scannedMcpFixture();
+    const result = await getMcpCarrierDetail(context, fixture.carrierPath);
+    if (!('data' in result)) {
+      throw new Error('expected the carrier detail result');
+    }
+    // The function's whole point (FR-007): the carrier's facts and its
+    // declarations, and never its bytes — the field is absent from the
+    // shape, not nulled, so no surface has a value it must decline to
+    // render. The raw TOML spelling reaches no response either.
+    expect(Object.keys(result.data).toSorted()).toEqual(['diagnostics', 'file', 'servers']);
+    expect('sourceText' in result.data.file).toBe(false);
+    const serialized = JSON.stringify(result);
+    expect(serialized).not.toContain('sourceText');
+    expect(serialized).not.toContain('[mcp_servers');
+    expect(result.data.file).toMatchObject({
+      sourceRelativePath: fixture.carrierPath,
+      encoding: 'utf-8',
+    });
+    expect(result.data.file.encoding === 'utf-8' && result.data.file.sizeBytes).toBeGreaterThan(0);
+  });
+
+  it('shows declared secrets and environment references literally, resolving nothing', async () => {
+    const { context, fixture } = await scannedMcpFixture();
+    const result = await getMcpCarrierDetail(context, fixture.carrierPath);
+    if (!('data' in result)) {
+      throw new Error('expected the carrier detail result');
+    }
+    // The declared values are the carrier's own literals: the credential is
+    // present, whole, and unmarked, and the environment reference stays the
+    // exact characters that were written — no process value is substituted
+    // for it (FR-026).
+    const serialized = JSON.stringify(result.data.servers);
+    expect(serialized).toContain(FIXTURE_SECRET_LITERAL);
+    expect(serialized).toContain(FIXTURE_ENVIRONMENT_REFERENCE);
+    expect(serialized).not.toContain(process.env['HOME'] ?? '\0unset');
+  });
+
+  it('publishes null servers with the failure diagnostic for an unparseable carrier', async () => {
+    const root = createRepositoryFixtureRoot('inspector-mcp-detail-malformed');
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    mkdirSync(join(root, '.codex'), { recursive: true });
+    writeFileSync(join(root, '.codex/config.toml'), '[mcp_servers.broken\n', 'utf8');
+    const session = new InspectionSession({ invocationCwd: root, rootOptionValue: null });
+    const context: InspectorHostContext = {
+      session,
+      coordinator: new SessionCoordinator(session),
+    };
+    const repository = session.snapshot().sources[0]!;
+    const admission = context.coordinator.admitScan(repository.sourceId, {
+      kind: 'startup',
+      operationId: null,
+    });
+    if (admission.kind !== 'admitted') {
+      throw new Error('the first scan was not admitted');
+    }
+    await executeRepositoryScan(
+      context,
+      admission.scanRequestId,
+      repository.sourceId,
+      'repository',
+    );
+    const result = await getMcpCarrierDetail(context, '.codex/config.toml');
+    if (!('data' in result)) {
+      throw new Error('expected the carrier detail result');
+    }
+    // Null exactly for the failed extraction: the rows are unknown rather
+    // than absent, the failure's record is in `diagnostics`, and the
+    // carrier's bytes still reach no response (FR-007, FR-028).
+    expect(result.data.servers).toBeNull();
+    expect(result.data.diagnostics).toEqual([
+      expect.objectContaining({ code: 'recognition-parse-failed' }),
+    ]);
+    expect(JSON.stringify(result)).not.toContain('sourceText');
+  });
+
+  it('withholds the carrier bytes even when a configured fallback recognizes it (FR-007)', async () => {
+    // A Codex `project_doc_fallback_filenames` entry naming `.mcp.json` makes
+    // the root carrier an instructions candidate too. The instructions
+    // variant carries the full body text, so answering it for this file
+    // would hand out the bytes — credentials included — that the carrier's
+    // admission withholds; the carrier's protection wins, and the path is
+    // `get-mcp-carrier-detail`'s resource alone.
+    const root = createRepositoryFixtureRoot('inspector-mcp-fallback-carrier');
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    mkdirSync(join(root, '.codex'), { recursive: true });
+    writeFileSync(
+      join(root, '.codex/config.toml'),
+      'project_doc_fallback_filenames = [".mcp.json"]\n',
+      'utf8',
+    );
+    writeFileSync(
+      join(root, '.mcp.json'),
+      `{ "mcpServers": { "db": { "env": { "TOKEN": "${FIXTURE_SECRET_LITERAL}" } } } }\n`,
+      'utf8',
+    );
+    const session = new InspectionSession({ invocationCwd: root, rootOptionValue: null });
+    const context: InspectorHostContext = {
+      session,
+      coordinator: new SessionCoordinator(session),
+    };
+    const repository = session.snapshot().sources[0]!;
+    const admission = context.coordinator.admitScan(repository.sourceId, {
+      kind: 'startup',
+      operationId: null,
+    });
+    if (admission.kind !== 'admitted') {
+      throw new Error('the first scan was not admitted');
+    }
+    await executeRepositoryScan(
+      context,
+      admission.scanRequestId,
+      repository.sourceId,
+      'repository',
+    );
+    // The premise this test exists for: the fallback really did add a Codex
+    // instructions recognition on the carrier file. Without this, the
+    // stale-resource assertion below would pass vacuously.
+    const carrierInstructionFiles = session
+      .snapshot()
+      .instructions.flatMap((entry) => entry.files)
+      .filter((file) => file.sourceRelativePath === '.mcp.json');
+    expect(carrierInstructionFiles).not.toHaveLength(0);
+    // The source-serving function holds nothing at the carrier's path, and no
+    // authored byte of the carrier reaches its response.
+    const detail = await getFileDetail(context, '.mcp.json');
+    expect(detail).toEqual({ error: { code: 'stale-resource' } });
+    expect(JSON.stringify(detail)).not.toContain(FIXTURE_SECRET_LITERAL);
+    // The declarations remain served by the carrier's own function.
+    const carrier = await getMcpCarrierDetail(context, '.mcp.json');
+    if (!('data' in carrier)) {
+      throw new Error('expected the carrier detail result');
+    }
+    expect(carrier.data.servers?.map((server) => server.name)).toEqual(['db']);
+  });
+
+  it('validates by resolution: each function rejects the other’s resource as stale', async () => {
+    const { context, fixture } = await scannedMcpFixture();
+    // The nested near miss was never admitted, so its path resolves to
+    // nothing for either function. (The root `.mcp.json` is no longer a
+    // negative here: it is Claude's own carrier, T309.)
+    expect(await getMcpCarrierDetail(context, 'packages/api/.codex/config.toml')).toEqual({
+      error: { code: 'stale-resource' },
+    });
+    // A committed instruction file is `get-file-detail`'s resource, not a
+    // carrier; the carrier is `get-mcp-carrier-detail`'s resource, not a
+    // file detail — the carrier's bytes must reach no response, so the
+    // source-serving function holds no detail at its path
+    // (contracts/http-api.md § get-file-detail, § get-mcp-carrier-detail).
+    expect(await getMcpCarrierDetail(context, 'AGENTS.md')).toEqual({
+      error: { code: 'stale-resource' },
+    });
+    expect(await getFileDetail(context, fixture.carrierPath)).toEqual({
+      error: { code: 'stale-resource' },
+    });
+  });
+});
+
+describe('get-mcp-carrier-detail for the Copilot CLI carriers (T346)', () => {
+  /** One scanned Copilot CLI MCP fixture and its host context. */
+  async function scannedCopilotMcpFixture(): Promise<{
+    readonly context: InspectorHostContext;
+    readonly fixture: CopilotCliMcpFixture;
+  }> {
+    const fixture = buildCopilotCliMcpFixture('inspector-copilot-mcp-detail-contract');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const session = new InspectionSession({
+      invocationCwd: fixture.root,
+      rootOptionValue: null,
+    });
+    const context: InspectorHostContext = {
+      session,
+      coordinator: new SessionCoordinator(session),
+    };
+    const repository = session.snapshot().sources[0]!;
+    const admission = context.coordinator.admitScan(repository.sourceId, {
+      kind: 'startup',
+      operationId: null,
+    });
+    if (admission.kind !== 'admitted') {
+      throw new Error('the first scan was not admitted');
+    }
+    await executeRepositoryScan(
+      context,
+      admission.scanRequestId,
+      repository.sourceId,
+      'repository',
+    );
+    return { context, fixture };
+  }
+
+  it('serves both documented schemas by the keys each file wrote, source-free and literal', async () => {
+    const { context, fixture } = await scannedCopilotMcpFixture();
+    // The wrapper-form root carrier: one declaration per named `mcpServers`
+    // entry in the parser's resolved order, the non-object entry omitted
+    // whole, and every value the literal the file wrote — the credential
+    // whole and unmarked, the environment reference as its own characters,
+    // resolved against nothing (FR-007, FR-026).
+    const root = await getMcpCarrierDetail(context, fixture.rootCarrierPath);
+    if (!('data' in root) || root.data.servers === null) {
+      throw new Error('expected the root carrier declarations');
+    }
+    expect(root.data.servers.map((server) => server.name)).toEqual([
+      ...fixture.expectedRootServerNames,
+    ]);
+    const serializedRoot = JSON.stringify(root);
+    expect(serializedRoot).toContain(FIXTURE_SECRET_LITERAL);
+    expect(serializedRoot).toContain(FIXTURE_ENVIRONMENT_REFERENCE);
+    expect(serializedRoot).not.toContain('sourceText');
+    expect(serializedRoot).not.toContain('"mcpServers"');
+    expect(serializedRoot).not.toContain(process.env['HOME'] ?? '\0unset');
+    // The bare-form `.github` spelling — the second documented schema — is
+    // served identically, read through its link where the platform created
+    // one (FR-024), each declaration by the keys the file wrote.
+    const github = await getMcpCarrierDetail(context, fixture.githubCarrierPath);
+    if (!('data' in github) || github.data.servers === null) {
+      throw new Error('expected the .github carrier declarations');
+    }
+    expect(github.data.servers.map((server) => server.name)).toEqual([
+      ...fixture.expectedGithubServerNames,
+    ]);
+    expect(JSON.stringify(github)).not.toContain('sourceText');
+    // The duplicate name appears in each carrier's own detail: which
+    // declaration a session selects is the strategy's statement, never a
+    // field either response projects (FR-009).
+    for (const detail of [root.data, github.data]) {
+      expect(
+        detail.servers!.filter((server) => server.name === fixture.duplicateServerName),
+      ).toHaveLength(1);
+    }
+  });
+
+  it('validates by resolution: near misses and carriers resolve per function', async () => {
+    const { context, fixture } = await scannedCopilotMcpFixture();
+    // A subdirectory carrier was never admitted, so its path resolves to
+    // nothing for either function; the admitted carriers' bytes reach no
+    // response, so the source-serving function holds no detail at their
+    // paths (contracts/http-api.md § get-file-detail,
+    // § get-mcp-carrier-detail).
+    expect(await getMcpCarrierDetail(context, 'packages/api/.mcp.json')).toEqual({
+      error: { code: 'stale-resource' },
+    });
+    for (const carrier of [fixture.rootCarrierPath, fixture.githubCarrierPath]) {
+      expect(await getFileDetail(context, carrier)).toEqual({
+        error: { code: 'stale-resource' },
+      });
+    }
+  });
+
+  it('publishes null servers with the failure diagnostic for an unparseable CLI carrier', async () => {
+    const root = createRepositoryFixtureRoot('inspector-copilot-mcp-detail-malformed');
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    mkdirSync(join(root, '.github'), { recursive: true });
+    writeFileSync(join(root, '.github/mcp.json'), '{ "gh-actions": { broken\n', 'utf8');
+    const session = new InspectionSession({ invocationCwd: root, rootOptionValue: null });
+    const context: InspectorHostContext = {
+      session,
+      coordinator: new SessionCoordinator(session),
+    };
+    const repository = session.snapshot().sources[0]!;
+    const admission = context.coordinator.admitScan(repository.sourceId, {
+      kind: 'startup',
+      operationId: null,
+    });
+    if (admission.kind !== 'admitted') {
+      throw new Error('the first scan was not admitted');
+    }
+    await executeRepositoryScan(
+      context,
+      admission.scanRequestId,
+      repository.sourceId,
+      'repository',
+    );
+    const result = await getMcpCarrierDetail(context, '.github/mcp.json');
+    if (!('data' in result)) {
+      throw new Error('expected the carrier detail result');
+    }
+    // Null exactly for the failed extraction: the rows are unknown rather
+    // than absent, the failure's record is in `diagnostics`, and the
+    // carrier's bytes still reach no response (FR-007, FR-028).
+    expect(result.data.servers).toBeNull();
+    expect(result.data.diagnostics).toEqual([
+      expect.objectContaining({ code: 'recognition-parse-failed' }),
+    ]);
+    expect(JSON.stringify(result)).not.toContain('sourceText');
+  });
+});
+
+describe('get-mcp-carrier-detail for the Copilot VS Code carriers (T366)', () => {
+  /** One scanned Copilot VS Code MCP fixture and its host context. */
+  async function scannedVscodeMcpFixture(): Promise<{
+    readonly context: InspectorHostContext;
+    readonly fixture: CopilotVscodeMcpFixture;
+  }> {
+    const fixture = buildCopilotVscodeMcpFixture('inspector-vscode-mcp-detail-contract');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const session = new InspectionSession({
+      invocationCwd: fixture.root,
+      rootOptionValue: null,
+    });
+    const context: InspectorHostContext = {
+      session,
+      coordinator: new SessionCoordinator(session),
+    };
+    const repository = session.snapshot().sources[0]!;
+    const admission = context.coordinator.admitScan(repository.sourceId, {
+      kind: 'startup',
+      operationId: null,
+    });
+    if (admission.kind !== 'admitted') {
+      throw new Error('the first scan was not admitted');
+    }
+    await executeRepositoryScan(
+      context,
+      admission.scanRequestId,
+      repository.sourceId,
+      'repository',
+    );
+    return { context, fixture };
+  }
+
+  it('serves the dedicated JSONC carrier by the keys the file wrote, source-free', async () => {
+    const { context, fixture } = await scannedVscodeMcpFixture();
+    // One declaration per named `servers` entry in the parser's resolved
+    // order, the non-object entry omitted whole, comments consumed as the
+    // format's own syntax, and every value the literal the file wrote — the
+    // credential whole and unmarked, the environment reference as its own
+    // characters, resolved against nothing (FR-007, FR-026). The `inputs`
+    // and `sandbox` sections declare no server and appear as none.
+    const vscode = await getMcpCarrierDetail(context, fixture.vscodeCarrierPath);
+    if (!('data' in vscode) || vscode.data.servers === null) {
+      throw new Error('expected the .vscode carrier declarations');
+    }
+    expect(vscode.data.servers.map((server) => server.name)).toEqual([
+      ...fixture.expectedVscodeServerNames,
+    ]);
+    const serialized = JSON.stringify(vscode);
+    expect(serialized).toContain(FIXTURE_SECRET_LITERAL);
+    expect(serialized).toContain(FIXTURE_ENVIRONMENT_REFERENCE);
+    expect(serialized).not.toContain('sourceText');
+    expect(serialized).not.toContain('"inputs"');
+    expect(serialized).not.toContain(process.env['HOME'] ?? '\0unset');
+    // The shared root file is served as its own carrier — the CLI reading's
+    // declarations, with no VS Code-owned field beside them: the 1.118+
+    // admission is path/surface provenance only.
+    const root = await getMcpCarrierDetail(context, fixture.rootCarrierPath);
+    if (!('data' in root) || root.data.servers === null) {
+      throw new Error('expected the root carrier declarations');
+    }
+    expect(root.data.servers.map((server) => server.name)).toEqual([
+      ...fixture.expectedRootServerNames,
+    ]);
+    // The duplicate name appears in each carrier's own detail: which
+    // declaration a session selects is the strategy's statement, never a
+    // field either response projects (FR-009).
+    for (const detail of [vscode.data, root.data]) {
+      expect(
+        detail.servers!.filter((server) => server.name === fixture.duplicateServerName),
+      ).toHaveLength(1);
+    }
+  });
+
+  it('validates by resolution: near misses and carriers resolve per function', async () => {
+    const { context, fixture } = await scannedVscodeMcpFixture();
+    // The nested workspace carrier was never admitted, so its path resolves
+    // to nothing for either function; the admitted carriers' bytes reach no
+    // response, so the source-serving function holds no detail at their
+    // paths (contracts/http-api.md § get-file-detail,
+    // § get-mcp-carrier-detail).
+    expect(await getMcpCarrierDetail(context, 'packages/api/.vscode/mcp.json')).toEqual({
+      error: { code: 'stale-resource' },
+    });
+    for (const carrier of [fixture.vscodeCarrierPath, fixture.rootCarrierPath]) {
+      expect(await getFileDetail(context, carrier)).toEqual({
+        error: { code: 'stale-resource' },
+      });
+    }
+  });
+
+  it('publishes null servers with the failure diagnostic for an unparseable carrier', async () => {
+    const root = createRepositoryFixtureRoot('inspector-vscode-mcp-detail-malformed');
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    mkdirSync(join(root, '.vscode'), { recursive: true });
+    writeFileSync(join(root, '.vscode/mcp.json'), '{ "servers": { "gh": { broken\n', 'utf8');
+    const session = new InspectionSession({ invocationCwd: root, rootOptionValue: null });
+    const context: InspectorHostContext = {
+      session,
+      coordinator: new SessionCoordinator(session),
+    };
+    const repository = session.snapshot().sources[0]!;
+    const admission = context.coordinator.admitScan(repository.sourceId, {
+      kind: 'startup',
+      operationId: null,
+    });
+    if (admission.kind !== 'admitted') {
+      throw new Error('the first scan was not admitted');
+    }
+    await executeRepositoryScan(
+      context,
+      admission.scanRequestId,
+      repository.sourceId,
+      'repository',
+    );
+    const result = await getMcpCarrierDetail(context, '.vscode/mcp.json');
+    if (!('data' in result)) {
+      throw new Error('expected the carrier detail result');
+    }
+    // Null exactly for the failed extraction: the rows are unknown rather
+    // than absent, the failure's record is in `diagnostics`, and the
+    // carrier's bytes still reach no response (FR-007, FR-028).
+    expect(result.data.servers).toBeNull();
+    expect(result.data.diagnostics).toEqual([
+      expect.objectContaining({ code: 'recognition-parse-failed' }),
+    ]);
+    expect(JSON.stringify(result)).not.toContain('sourceText');
+  });
+});
+
+describe('get-mcp-carrier-detail for Claude declarations (T316)', () => {
+  /** One scanned Claude MCP fixture and its host context. */
+  async function scannedClaudeMcpFixture(): Promise<{
+    readonly context: InspectorHostContext;
+    readonly fixture: ClaudeMcpFixture;
+  }> {
+    const fixture = buildClaudeMcpFixture('inspector-claude-mcp-detail-contract');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const session = new InspectionSession({
+      invocationCwd: fixture.root,
+      rootOptionValue: null,
+    });
+    const context: InspectorHostContext = {
+      session,
+      coordinator: new SessionCoordinator(session),
+    };
+    const repository = session.snapshot().sources[0]!;
+    const admission = context.coordinator.admitScan(repository.sourceId, {
+      kind: 'startup',
+      operationId: null,
+    });
+    if (admission.kind !== 'admitted') {
+      throw new Error('the first scan was not admitted');
+    }
+    await executeRepositoryScan(
+      context,
+      admission.scanRequestId,
+      repository.sourceId,
+      'repository',
+    );
+    return { context, fixture };
+  }
+
+  it('returns the carrier declarations by the keys the file wrote, source-free and literal', async () => {
+    const { context, fixture } = await scannedClaudeMcpFixture();
+    const result = await getMcpCarrierDetail(context, fixture.carrierPath);
+    if (!('data' in result)) {
+      throw new Error('expected the carrier detail result');
+    }
+    const servers = result.data.servers;
+    if (servers === null) {
+      throw new Error('expected parsed declarations');
+    }
+    // One declaration per named `mcpServers` entry in the parser's resolved
+    // order, the non-object entry omitted whole; each declaration's fields
+    // are the keys the carrier wrote, resolved once, with a numeric command
+    // kept as its resolved value rather than schema-checked away (FR-007).
+    expect(servers.map((server) => server.name)).toEqual([...fixture.expectedCarrierServerNames]);
+    const [context7, docsHttp, odd] = servers;
+    expect(context7!.fields.map((field) => field.key)).toEqual(['command', 'args', 'env']);
+    // The relative command is the literal the file wrote — its resolution
+    // base is not established by current official pages, and no computed
+    // path stands in for it (FR-009).
+    expect(context7!.fields[0]!.value).toEqual({ kind: 'scalar', text: './scripts/context7.sh' });
+    expect(docsHttp!.fields.map((field) => field.key)).toEqual(['type', 'url', 'headers']);
+    expect(odd!.fields).toEqual([
+      { key: 'command', keyKind: 'string', value: { kind: 'scalar', text: '42' } },
+    ]);
+    // Source-free and unresolved: no sourceText field exists on the shape,
+    // the raw JSON spelling reaches no response, the credential is present
+    // whole and unmarked, and the environment reference stays the exact
+    // characters that were written (FR-007, FR-026).
+    const serialized = JSON.stringify(result);
+    expect(serialized).not.toContain('sourceText');
+    expect(serialized).not.toContain('"mcpServers"');
+    expect(serialized).toContain(FIXTURE_SECRET_LITERAL);
+    expect(serialized).toContain(FIXTURE_ENVIRONMENT_REFERENCE);
+    expect(serialized).not.toContain(process.env['HOME'] ?? '\0unset');
+  });
+
+  it('keeps a skill spelling mcpServers a skill: no MCP resource at its path (T327)', async () => {
+    const { context, fixture } = await scannedClaudeMcpFixture();
+    // Claude documents no `mcpServers` skill-frontmatter field, so the
+    // spelling declares nothing any product reads: the path holds no carrier
+    // resource, for the spelling skill and the plain skill alike.
+    for (const skillPath of [fixture.mcpFrontmatterSkillPath, fixture.plainSkillPath]) {
+      expect(await getMcpCarrierDetail(context, skillPath)).toEqual({
+        error: { code: 'stale-resource' },
+      });
+    }
+    // The file itself keeps its own kind's detail, source included: the
+    // frontmatter is ordinary skill content, credential and all (FR-027),
+    // while only the pure carrier's path is stale for get-file-detail.
+    const owner = await getFileDetail(context, fixture.mcpFrontmatterSkillPath);
+    if (!('data' in owner) || owner.data.kind !== 'skill') {
+      throw new Error('expected the skill detail');
+    }
+    expect(owner.data.file.encoding === 'utf-8' && owner.data.file.sourceText).toContain(
+      'mcpServers:',
+    );
+    expect(await getFileDetail(context, fixture.carrierPath)).toEqual({
+      error: { code: 'stale-resource' },
+    });
+  });
+
+  it('publishes null servers with the failure diagnostic for an unparseable carrier', async () => {
+    const root = createRepositoryFixtureRoot('inspector-claude-mcp-detail-malformed');
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    writeFileSync(join(root, '.mcp.json'), '{ "mcpServers": { broken\n', 'utf8');
+    const session = new InspectionSession({ invocationCwd: root, rootOptionValue: null });
+    const context: InspectorHostContext = {
+      session,
+      coordinator: new SessionCoordinator(session),
+    };
+    const repository = session.snapshot().sources[0]!;
+    const admission = context.coordinator.admitScan(repository.sourceId, {
+      kind: 'startup',
+      operationId: null,
+    });
+    if (admission.kind !== 'admitted') {
+      throw new Error('the first scan was not admitted');
+    }
+    await executeRepositoryScan(
+      context,
+      admission.scanRequestId,
+      repository.sourceId,
+      'repository',
+    );
+    const result = await getMcpCarrierDetail(context, '.mcp.json');
+    if (!('data' in result)) {
+      throw new Error('expected the carrier detail result');
+    }
+    // Null exactly for the failed extraction: the rows are unknown rather
+    // than absent, the failure's record is in `diagnostics`, and the
+    // carrier's bytes still reach no response (FR-007, FR-028).
+    expect(result.data.servers).toBeNull();
+    expect(result.data.diagnostics).toEqual([
+      expect.objectContaining({ code: 'recognition-parse-failed' }),
+    ]);
+    expect(JSON.stringify(result)).not.toContain('sourceText');
   });
 });

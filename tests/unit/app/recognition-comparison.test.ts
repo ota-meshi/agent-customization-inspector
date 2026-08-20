@@ -17,22 +17,19 @@
 // recognition in this release, so none may be invented here).
 import { describe, expect, it } from 'vitest';
 
-import { frontmatterValuesEqual } from '../../../src/app/components/inspection/declaration-comparison';
+import { declaredValuesEqual } from '../../../src/app/components/inspection/declaration-comparison';
 import {
   SkillRecognitionComparison,
   type ComparisonSideInput,
 } from '../../../src/app/components/skill-comparison/recognition-comparison';
 import type {
   FileDetailDto,
-  FrontmatterEntryDto,
+  DeclaredEntryDto,
   SkillDefinitionDto,
 } from '../../../src/shared/api-types';
 
 /** One readable skill detail with the given parsed declarations. */
-function entryDetail(
-  path: string,
-  frontmatter: readonly FrontmatterEntryDto[] | null,
-): FileDetailDto {
+function entryDetail(path: string, frontmatter: readonly DeclaredEntryDto[] | null): FileDetailDto {
   return {
     kind: 'skill',
     file: {
@@ -86,8 +83,8 @@ function definition(
 function scalar(
   key: string,
   text: string,
-  keyKind: FrontmatterEntryDto['keyKind'] = 'string',
-): FrontmatterEntryDto {
+  keyKind: DeclaredEntryDto['keyKind'] = 'string',
+): DeclaredEntryDto {
   return { key, keyKind, value: { kind: 'scalar', text } };
 }
 
@@ -105,12 +102,12 @@ describe('resolved-value equality', () => {
     // as `7` — so equality here is equality of what the vendors' shared YAML
     // reading produces, while the literal spelling difference stays visible in
     // the source diff beside these rows.
-    expect(
-      frontmatterValuesEqual({ kind: 'scalar', text: '7' }, { kind: 'scalar', text: '7' }),
-    ).toBe(true);
-    expect(
-      frontmatterValuesEqual({ kind: 'scalar', text: '7' }, { kind: 'scalar', text: '8' }),
-    ).toBe(false);
+    expect(declaredValuesEqual({ kind: 'scalar', text: '7' }, { kind: 'scalar', text: '7' })).toBe(
+      true,
+    );
+    expect(declaredValuesEqual({ kind: 'scalar', text: '7' }, { kind: 'scalar', text: '8' })).toBe(
+      false,
+    );
   });
 
   it('compares structures member by member, in authored order', () => {
@@ -125,16 +122,16 @@ describe('resolved-value equality', () => {
       kind: 'mapping',
       entries: [scalar('b', '2'), scalar('a', '1')],
     } as const;
-    expect(frontmatterValuesEqual(ordered, ordered)).toBe(true);
-    expect(frontmatterValuesEqual(ordered, reordered)).toBe(false);
+    expect(declaredValuesEqual(ordered, ordered)).toBe(true);
+    expect(declaredValuesEqual(ordered, reordered)).toBe(false);
     expect(
-      frontmatterValuesEqual(
+      declaredValuesEqual(
         { kind: 'sequence', items: [{ kind: 'scalar', text: 'x' }, { kind: 'absent' }] },
         { kind: 'sequence', items: [{ kind: 'scalar', text: 'x' }, { kind: 'absent' }] },
       ),
     ).toBe(true);
     expect(
-      frontmatterValuesEqual(
+      declaredValuesEqual(
         { kind: 'sequence', items: [{ kind: 'scalar', text: 'x' }] },
         {
           kind: 'sequence',
@@ -145,8 +142,8 @@ describe('resolved-value equality', () => {
         },
       ),
     ).toBe(false);
-    expect(frontmatterValuesEqual({ kind: 'absent' }, { kind: 'absent' })).toBe(true);
-    expect(frontmatterValuesEqual({ kind: 'absent' }, { kind: 'scalar', text: '' })).toBe(false);
+    expect(declaredValuesEqual({ kind: 'absent' }, { kind: 'absent' })).toBe(true);
+    expect(declaredValuesEqual({ kind: 'absent' }, { kind: 'scalar', text: '' })).toBe(false);
   });
 });
 
@@ -209,7 +206,7 @@ describe('recognition and declared-metadata comparison', () => {
   it('matches same-spelled keys by their parsed type, never by spelling alone', () => {
     // One spelling can stand for two keys: the parser keeps a numeric `1`
     // apart from a string `"1"`, and both publish the rendered key `1` with
-    // their parsed type beside it (api-types.ts § FrontmatterKeyKind).
+    // their parsed type beside it (api-types.ts § DeclaredKeyKind).
     // Here the two files declare the same two key-value pairs in opposite
     // authored order; matching by spelling and position would pair the
     // number key's value against the string key's and report two false
@@ -296,13 +293,13 @@ describe('recognition and declared-metadata comparison', () => {
     // the number key `1` is not the mapping whose entry is the string key
     // `"1"`, however alike they render (FR-011).
     expect(
-      frontmatterValuesEqual(
+      declaredValuesEqual(
         { kind: 'mapping', entries: [scalar('1', 'x', 'number')] },
         { kind: 'mapping', entries: [scalar('1', 'x', 'string')] },
       ),
     ).toBe(false);
     expect(
-      frontmatterValuesEqual(
+      declaredValuesEqual(
         { kind: 'mapping', entries: [scalar('1', 'x', 'number')] },
         { kind: 'mapping', entries: [scalar('1', 'x', 'number')] },
       ),

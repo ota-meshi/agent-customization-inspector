@@ -175,6 +175,93 @@ describe('the Codex instruction composition strategies (T219)', () => {
   );
 });
 
+describe('the Codex MCP composition strategy (T296)', () => {
+  it('ships the MCP configuration pipeline with its exact documented operations', () => {
+    // `merge-map`, `replace` is the complete documented pipeline: the
+    // per-name declarations merge across the active config layers and a
+    // closer layer's declaration replaces a broader one's. Trust, enablement,
+    // and availability stay condition facts rather than operations, and no
+    // operation connects: a strategy explains a documented runtime edge and
+    // never creates one (contracts/runtime-composition.md
+    // § codex.mcp.configuration).
+    const configuration = RUNTIME_COMPOSITION_STRATEGIES['codex.mcp.configuration'];
+    expect(configuration.tool).toBe('codex');
+    expect(configuration.operations).toEqual(['merge-map', 'replace']);
+    expect(configuration.documentationStatus).toBe('documented');
+  });
+
+  it('composes the strategy from the declaration and host-config behaviors, by identity', () => {
+    // The User half is listed even though only the Repository carrier is
+    // readable: the same layer resolution reads the host configuration, and
+    // omitting it would misdescribe the merge as project-only. No agent
+    // behavior is consumed — the agent-inheritance edge stays dormant until
+    // the phase that ships Codex agents, with nothing here for it to link
+    // back to.
+    const consumed = STRATEGY_RELATIONS['codex.mcp.configuration'].consumesBehaviors;
+    expect(consumed.map((behavior) => behavior.behaviorId)).toEqual([
+      'codex.behavior.repo.mcp',
+      'codex.behavior.user.config',
+    ]);
+    for (const behavior of consumed) {
+      expect(VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId]).toBe(behavior);
+    }
+  });
+
+  it('explains the carrier rule through the precedence and MCP strategies, by identity', () => {
+    // The carrier's candidacy rests on the three behaviors its contract row
+    // names — the contained-Hook statement among them, recorded without any
+    // Hook candidate — and is explained by the precedence that resolves the
+    // layers and the MCP configuration that resolves the contained
+    // declarations (codex/relations.ts).
+    const carrier = RULE_RELATIONS['codex.repo.config'];
+    expect(carrier.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'codex.behavior.repo.config',
+      'codex.behavior.repo.hooks',
+      'codex.behavior.repo.mcp',
+    ]);
+    expect(carrier.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual([
+      'codex.config.precedence',
+      'codex.mcp.configuration',
+    ]);
+    for (const strategy of carrier.explainedByStrategies) {
+      expect(RUNTIME_COMPOSITION_STRATEGIES[strategy.strategyId]).toBe(strategy);
+    }
+    for (const behavior of carrier.basedOnBehaviors) {
+      expect(VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId]).toBe(behavior);
+    }
+    // The instruction-fallback graph stays what Phase 15 made it: the
+    // derivation still spans the config and instruction behaviors and both of
+    // their strategies, untouched by the carrier's candidacy.
+    const fallback = RULE_RELATIONS['codex.derived.fallback-basename'];
+    expect(fallback.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual([
+      'codex.config.precedence',
+      'codex.instructions.layering',
+    ]);
+  });
+
+  it('states the contract row reciprocally with the shipped record, in both languages', () => {
+    // The bilingual contract is the normative side and the registry its
+    // implementation counterpart, so a shipped operation the row does not
+    // state — or a row behavior the relation does not consume — fails here
+    // rather than in review.
+    const record = RUNTIME_COMPOSITION_STRATEGIES['codex.mcp.configuration'];
+    const consumed = STRATEGY_RELATIONS['codex.mcp.configuration'].consumesBehaviors.map(
+      (behavior) => behavior.behaviorId,
+    );
+    const cited = record.evidence.map((citation) => citation.sourceId);
+    expect(cited.length).toBeGreaterThan(0);
+    for (const path of [
+      'specs/001-inspect-agent-customizations/contracts/runtime-composition.md',
+      'specs/001-inspect-agent-customizations/contracts/runtime-composition.ja.md',
+    ]) {
+      const row = parseStrategyRow(path, 'codex.mcp.configuration');
+      expect(row.operations, path).toEqual(record.operations);
+      expect(row.consumesBehaviors, path).toEqual(consumed);
+      expect(row.evidence, path).toEqual(cited);
+    }
+  });
+});
+
 describe('the Claude instruction composition strategy (T239)', () => {
   it('ships one operation, which is the whole documented statement', () => {
     // `append` alone, and the absence is the content: every discovered file is
@@ -435,4 +522,208 @@ describe('the Copilot instruction composition strategies (T262)', () => {
       }
     },
   );
+});
+
+describe('the Claude MCP composition strategy (T317, T327)', () => {
+  it('ships the MCP selection pipeline with its exact documented operations', () => {
+    // `select-first`, `replace`, `filter` is the complete documented
+    // pipeline: one entire same-name entry is selected in local, project,
+    // User, plugin, then connector order, the closer scope's entry replaces
+    // the broader one's whole rather than merging fields, and a subagent
+    // filters the inherited tools. Trust, approval, and enablement stay
+    // condition facts rather than operations, and no operation connects
+    // (contracts/runtime-composition.md § claude.mcp.selection).
+    const selection = RUNTIME_COMPOSITION_STRATEGIES['claude.mcp.selection'];
+    expect(selection.tool).toBe('claude');
+    expect(selection.operations).toEqual(['select-first', 'replace', 'filter']);
+    // Partially documented per the canonical index: the exact project-root
+    // selection the project scope rests on is only partially specified.
+    expect(selection.documentationStatus).toBe('partially-documented');
+  });
+
+  it('composes the strategy from every documented scope of its order, by identity', () => {
+    // Only the project carrier is readable; the agent, plugin, User-state,
+    // and installed-plugin statements are listed all the same, because the
+    // strategy describes Claude's runtime and omitting one would misdescribe
+    // the documented scope order. Each is a non-authorizing statement — no
+    // rule reads its surface, so no unresolved reference and no read
+    // authority hides behind the future owner families (T327).
+    const consumed = STRATEGY_RELATIONS['claude.mcp.selection'].consumesBehaviors;
+    expect(consumed.map((behavior) => behavior.behaviorId)).toEqual([
+      'claude.behavior.repo.agents',
+      'claude.behavior.repo.mcp',
+      'claude.behavior.repo.plugin',
+      'claude.behavior.user.mcp-state',
+      'claude.behavior.user.plugins',
+    ]);
+    for (const behavior of consumed) {
+      expect(VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId]).toBe(behavior);
+    }
+  });
+
+  it('explains the carrier rule through the selection strategy, by identity', () => {
+    const carrier = RULE_RELATIONS['claude.repo.mcp'];
+    expect(carrier.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'claude.behavior.repo.mcp',
+    ]);
+    expect(carrier.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual([
+      'claude.mcp.selection',
+    ]);
+    for (const behavior of carrier.basedOnBehaviors) {
+      expect(VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId]).toBe(behavior);
+    }
+    for (const strategy of carrier.explainedByStrategies) {
+      expect(RUNTIME_COMPOSITION_STRATEGIES[strategy.strategyId]).toBe(strategy);
+    }
+  });
+
+  it('grants contained declarations no registry surface of their own (T327)', () => {
+    // Contained MCP metadata will ride already admitted documented owners —
+    // agents, plugin manifests, settings — when their phases admit them; a
+    // skill is never one, and the skill rule's edges stay the skill's — its
+    // selection strategy, its one Repository behavior — with no
+    // contained-MCP rule, behavior, or strategy ID to dangle from. The
+    // owner-gated dispatch is the recognizer's (candidate.ts), asserted by
+    // its own suites; what the registry proves is that every reference the
+    // shipped records make resolves to a currently owned record.
+    const skill = RULE_RELATIONS['claude.repo.skill'];
+    expect(skill.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'claude.behavior.repo.skills',
+    ]);
+    expect(skill.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual([
+      'claude.skills.selection',
+    ]);
+  });
+
+  it('states the contract row reciprocally with the shipped record, in both languages', () => {
+    const record = RUNTIME_COMPOSITION_STRATEGIES['claude.mcp.selection'];
+    const consumed = STRATEGY_RELATIONS['claude.mcp.selection'].consumesBehaviors.map(
+      (behavior) => behavior.behaviorId,
+    );
+    const cited = record.evidence.map((citation) => citation.sourceId);
+    expect(cited.length).toBeGreaterThan(0);
+    for (const path of [
+      'specs/001-inspect-agent-customizations/contracts/runtime-composition.md',
+      'specs/001-inspect-agent-customizations/contracts/runtime-composition.ja.md',
+    ]) {
+      const row = parseStrategyRow(path, 'claude.mcp.selection');
+      expect(row.operations, path).toEqual(record.operations);
+      expect(row.consumesBehaviors, path).toEqual(consumed);
+      expect(row.evidence, path).toEqual(cited);
+    }
+  });
+});
+
+describe('the Copilot VS Code MCP composition strategy (T367)', () => {
+  it('consumes the workspace and User MCP inputs, and deliberately no agent input', () => {
+    // The pipeline spans the documented filesystem inputs whose same-name
+    // winner the 1.118 release note leaves unresolved: the workspace files
+    // and the User configuration. An agent profile is no input — the
+    // custom-agents reference documents its mcp-servers field as not used
+    // in VS Code custom agents — and plugin servers are runtime inputs with
+    // no behavior record to consume.
+    const consumed = STRATEGY_RELATIONS['copilot.vscode.mcp.selection'].consumesBehaviors.map(
+      (behavior) => behavior.behaviorId,
+    );
+    expect(consumed).toEqual(['copilot.behavior.vscode.mcp', 'copilot.behavior.vscode.user.mcp']);
+  });
+
+  it('retains the location conflict and the unknown total order as recorded facts', () => {
+    // The current guide's exhaustive location list and the 1.118 release
+    // note disagree, and no page defines the root file's schema or a total
+    // same-name order — the strategy states that rather than composing an
+    // inferred winner (FR-009).
+    const record = RUNTIME_COMPOSITION_STRATEGIES['copilot.vscode.mcp.selection'];
+    expect(record.documentationStatus).toBe('conflict');
+    expect(record.operations).toEqual(['merge-map', 'replace', 'unknown-order']);
+    const behavior = VENDOR_BEHAVIOR_STATEMENTS['copilot.behavior.vscode.mcp'];
+    expect(behavior.documentationStatus).toBe('conflict');
+    expect(behavior.evidence.map((citation) => citation.sourceId)).toEqual([
+      'vscode.copilot.mcp',
+      'vscode.copilot.mcp.workspace-root-release',
+    ]);
+  });
+
+  it('explains both VS Code rules through the one selection strategy', () => {
+    // Both read-authorizing rules rest on the one workspace behavior — the
+    // dedicated carrier on its guide half, the root provenance on its
+    // release-note half — and the selection strategy explains the documented
+    // outcome neither rule projects (FR-009).
+    for (const ruleId of ['copilot.repo.mcp.vscode', 'copilot.repo.mcp.vscode-root'] as const) {
+      const rule = RULE_RELATIONS[ruleId];
+      expect(
+        rule.basedOnBehaviors.map((behavior) => behavior.behaviorId),
+        ruleId,
+      ).toEqual(['copilot.behavior.vscode.mcp']);
+      expect(
+        rule.explainedByStrategies.map((strategy) => strategy.strategyId),
+        ruleId,
+      ).toEqual(['copilot.vscode.mcp.selection']);
+    }
+  });
+
+  it('states the contract row reciprocally with the shipped record, in both languages', () => {
+    const record = RUNTIME_COMPOSITION_STRATEGIES['copilot.vscode.mcp.selection'];
+    const consumed = STRATEGY_RELATIONS['copilot.vscode.mcp.selection'].consumesBehaviors.map(
+      (behavior) => behavior.behaviorId,
+    );
+    const cited = record.evidence.map((citation) => citation.sourceId);
+    expect(cited.length).toBeGreaterThan(0);
+    for (const path of [
+      'specs/001-inspect-agent-customizations/contracts/runtime-composition.md',
+      'specs/001-inspect-agent-customizations/contracts/runtime-composition.ja.md',
+    ]) {
+      const row = parseStrategyRow(path, 'copilot.vscode.mcp.selection');
+      expect(row.operations, path).toEqual(record.operations);
+      expect(row.consumesBehaviors, path).toEqual(consumed);
+      expect(row.evidence, path).toEqual(cited);
+    }
+  });
+});
+
+describe('the Copilot CLI MCP composition strategy (T347)', () => {
+  it('consumes exactly the workspace and User carrier behaviors', () => {
+    // The one CLI MCP pipeline spans the two declaration sources the vendor
+    // documents on the local filesystem — the workspace files and the User
+    // configuration — and nothing else: session-additional configuration and
+    // plugin-provided servers are runtime inputs with no behavior record to
+    // consume, and the exclusion keeping the User file out of the read
+    // allowlist ships with the Global phase that owns it.
+    const consumed = STRATEGY_RELATIONS['copilot.cli.mcp.selection'].consumesBehaviors.map(
+      (behavior) => behavior.behaviorId,
+    );
+    expect(consumed).toEqual(['copilot.behavior.cli.mcp', 'copilot.behavior.cli.user.mcp']);
+  });
+
+  it('explains the carrier rule through the one selection strategy', () => {
+    // The read-authorizing rule rests on the CLI workspace behavior alone —
+    // admission is not an activation, and the User behavior authorizes no
+    // Repository read — while the selection strategy is what explains a
+    // duplicate's documented outcome (FR-009).
+    const rule = RULE_RELATIONS['copilot.repo.mcp'];
+    expect(rule.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'copilot.behavior.cli.mcp',
+    ]);
+    expect(rule.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual([
+      'copilot.cli.mcp.selection',
+    ]);
+  });
+
+  it('states the contract row reciprocally with the shipped record, in both languages', () => {
+    const record = RUNTIME_COMPOSITION_STRATEGIES['copilot.cli.mcp.selection'];
+    const consumed = STRATEGY_RELATIONS['copilot.cli.mcp.selection'].consumesBehaviors.map(
+      (behavior) => behavior.behaviorId,
+    );
+    const cited = record.evidence.map((citation) => citation.sourceId);
+    expect(cited.length).toBeGreaterThan(0);
+    for (const path of [
+      'specs/001-inspect-agent-customizations/contracts/runtime-composition.md',
+      'specs/001-inspect-agent-customizations/contracts/runtime-composition.ja.md',
+    ]) {
+      const row = parseStrategyRow(path, 'copilot.cli.mcp.selection');
+      expect(row.operations, path).toEqual(record.operations);
+      expect(row.consumesBehaviors, path).toEqual(consumed);
+      expect(row.evidence, path).toEqual(cited);
+    }
+  });
 });

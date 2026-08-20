@@ -34,7 +34,7 @@ import { SessionViewState } from '../../../src/app/session/view-state';
 import { SESSION_RPC_FUNCTIONS } from '../../../src/app/session/api-client';
 import type {
   FileDetailDto,
-  FrontmatterEntryDto,
+  DeclaredEntryDto,
   InspectionDataResult,
   InstructionRecognitionDto,
   SessionSnapshot,
@@ -93,6 +93,7 @@ function snapshotWith(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot
       },
     ],
     skills: [],
+    mcp: [],
     diagnostics: [],
     repositoryGeneration: 0,
     globalGeneration: null,
@@ -128,7 +129,7 @@ function dataResult<Data>(
  */
 function instructionDetail(
   sourceRelativePath: string,
-  frontmatter: readonly FrontmatterEntryDto[] | null = [],
+  frontmatter: readonly DeclaredEntryDto[] | null = [],
   sourceText = `source of ${sourceRelativePath}`,
 ): FileDetailDto {
   return {
@@ -304,7 +305,7 @@ describe('instruction comparison view (T276)', () => {
 
 describe('instruction recognition comparison rows (T276)', () => {
   /** One declared entry with a scalar value. */
-  function scalarEntry(key: string, text: string): FrontmatterEntryDto {
+  function scalarEntry(key: string, text: string): DeclaredEntryDto {
     return { key, keyKind: 'string', value: { kind: 'scalar', text } };
   }
 

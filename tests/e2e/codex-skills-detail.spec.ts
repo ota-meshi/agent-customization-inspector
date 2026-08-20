@@ -177,7 +177,7 @@ test('leads with the skill itself before any file contents', async ({ page }) =>
   // what it declares, and then the instructions it carries.
   await expect(page.locator('.aci-skill-detail h2')).toHaveText('greet');
   // Every key the file declares, led by the two a reader looks for first.
-  await expect(page.locator('.aci-frontmatter-block dt')).toHaveText([
+  await expect(page.locator('.aci-declaration-block dt')).toHaveText([
     'name',
     'description',
     'api_key',
@@ -187,7 +187,7 @@ test('leads with the skill itself before any file contents', async ({ page }) =>
     String.raw`  (key with no visible characters: \u0020\u0020)`,
     'deep',
   ]);
-  await expect(page.locator('.aci-frontmatter-block dd').nth(1)).toContainText(
+  await expect(page.locator('.aci-declaration-block dd').nth(1)).toContainText(
     `deploy with ${FIXTURE_SECRET}`,
   );
   await expect(page.locator('.aci-skill-detail__instructions .aci-source-viewer')).toContainText(
@@ -201,7 +201,7 @@ test('keeps two values that both draw nothing distinguishable', async ({ page })
   // written; the note is added beside it, never in its place. Replacing both
   // with one phrase would report a value the surface publishes as something
   // shorter than it is (FR-025).
-  const values = page.locator('.aci-frontmatter-block dd');
+  const values = page.locator('.aci-declaration-block dd');
   // `textContent`, not `toHaveText`: the matcher normalizes whitespace, which
   // is exactly the difference under test.
   expect(await values.nth(3).locator('.aci-authored-text').textContent()).toBe(' ');
@@ -211,7 +211,7 @@ test('keeps two values that both draw nothing distinguishable', async ({ page })
   await expect(values.nth(3)).toContainText(String.raw`(no visible characters: \u0020)`);
   await expect(values.nth(4)).toContainText(String.raw`(no visible characters: \u0020\u0020)`);
 
-  const keys = page.locator('.aci-frontmatter-block dt');
+  const keys = page.locator('.aci-declaration-block dt');
   expect(await keys.nth(5).textContent()).toBe(
     String.raw` (key with no visible characters: \u0020)`,
   );
@@ -226,10 +226,10 @@ test('stops indenting past the depth cap without overlapping list markers', asyn
   // its marker flows inline instead of being drawn back into a gutter that is
   // no longer there, where it would overlap the first value.
   await openSkill(page, '.agents/skills/greet/SKILL.md');
-  const capped = page.locator('.aci-frontmatter-block__nested--capped').first();
+  const capped = page.locator('.aci-declaration-block__nested--capped').first();
   await expect(capped).toBeVisible();
   const styles = await capped.evaluate((element) => {
-    const block = element.querySelector(':scope > .aci-frontmatter-block');
+    const block = element.querySelector(':scope > .aci-declaration-block');
     const first = block?.firstElementChild;
     if (!(block instanceof Element) || !(first instanceof Element)) {
       throw new Error('capped nested block not rendered');

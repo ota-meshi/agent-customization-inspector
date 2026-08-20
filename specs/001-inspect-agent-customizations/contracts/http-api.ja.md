@@ -54,11 +54,11 @@ customization-selected destination、別machineへの調査content送信は禁�
 3. Static byte servingはdevframe-ownedである。ServeされるSPA shellとassetはNuxt buildがpackaged
    `dist/public`へ出力したものそのままであり、productはstatic-assets manifest、per-asset
    integrity再検証、hand-written routerを一切定義しない。その前段にあるproduct所有の要素は
-   closedなdetail-route rewrite — `/skills/**`と`/instructions/**`、shipped kind detailごとに
-   1 family — だけである: いずれかのroute familyに入るpathの`GET`/`HEAD`を`/`へ
+   closedなdetail-route rewrite — `/skills/**`、`/instructions/**`、`/mcp/**`、shipped kind
+   detailごとに1 family — だけである: これらのroute familyに入るpathの`GET`/`HEAD`を`/`へ
    書き換えてfall throughさせ、extension-guardedなSPA fallbackがfile missとして扱うdetail deep
    linkにも、devframe自身のstatic handlerがpackaged shellをserveする。Rewriteはfilesystemに
-   触れず何もshadowしない — どちらのfamily配下にもpackaged assetは存在しない(§ 必須contract test
+   触れず何もshadowしない — いずれのfamily配下にもpackaged assetは存在しない(§ 必須contract test
    項目5)。Nuxtは
    `app.baseURL: '/'`、CDN URLなしを使うため、shellは全client routeで変更なしに動作する。
    Static servingはpackaged UI output directoryの外へ到達せず、inspected fileへfallbackしない。
@@ -79,9 +79,10 @@ customization-selected destination、別machineへの調査content送信は禁�
    content filterなしで表示または返却する。
 6. 各functionは宣言済みparameterだけをreadし、各functionの節がそのparameterと、
    不一致が生むrejectionを文書化する。宣言済みparameterの検証はresolutionであって、
-   その前に置くshape guardではない: 出荷済みcatalogが宣言するのは`get-file-detail`の
-   commit済みSource-relative Path 1つだけ — commit済みgenerationに対して解決される
-   published identityであってfilesystem operandではない — であり、generationが保持しない
+   その前に置くshape guardではない: 出荷済みcatalogが宣言するparameterの形は1つだけ —
+   `get-file-detail`と`get-mcp-carrier-detail`がそれぞれ取るcommit済みSource-relative
+   Path、すなわちcommit済みgenerationに対して解決されるpublished identityであって
+   filesystem operandではない — であり、invokeされたfunctionがそのresourceを保持しない
    あらゆる値は、別の型の値も含めて、どこにも解決されず`stale-resource` rejectionになる。
    Global functionのpreview、allowlist-version、consentの各parameterも同じ形で自身の
    文書化済みcodeを持つ。汎用のmalformed-argument語彙は存在しない。Resolutionが既に
@@ -97,6 +98,7 @@ customization-selected destination、別machineへの調査content送信は禁�
 |---|---|---|
 | `agent-customization-inspector:get-session` | read | Full `SessionSnapshot` snapshot、またはfence中のcontrol-only `GlobalFenceRecoverySnapshot` |
 | `agent-customization-inspector:get-file-detail` | read | Active-generationの`FileDetail` 1件 |
+| `agent-customization-inspector:get-mcp-carrier-detail` | read | Active-generationの`McpCarrierDetail` 1件: MCPを宣言する1 fileの宣言とfileの事実。sourceは決して含まない |
 | `agent-customization-inspector:rescan-repository` | command | 明示Repository scan command 1件の受理 |
 | `agent-customization-inspector:get-global-consent-preview` | read | Currentまたはfrozenの`GlobalConsentPreview` |
 | `agent-customization-inspector:create-global-consent-preview` | command | Unconsented previewのcaptureとatomicなcreate/replace |
@@ -236,6 +238,14 @@ SessionSnapshot
 │       definitions[] { sourceRelativePath, tool, parseStatus, invocationName,
 │                       diagnosticIds[], companionFiles[] },
 │       sameNameResolutions[] { tool, resolution } — one per tool facing a collision
+├── mcp[]
+│   └── name string | null,
+│       declarations[] { sourceRelativePath, tool, surfaces[], parseStatus,
+│       diagnosticIds[] } —
+│       宣言されたserver名1つにつき1行で、その名前を解決する各宣言を
+│       carrier path順、次にtool順で持ち、各宣言はadmissionが依拠するvendor
+│       surfaceをinstruction fileのrecognitionと同じ形で運ぶ。nullの1行が一覧を閉じ、
+│       named宣言を公開していないcarrierを持つ
 └── diagnostics[] { diagnosticId, code, sourceId string,
     sourceRelativePath string | null — file scope以外はnull }
     （active-generation recordとsession-owned lifecycle record）
@@ -263,8 +273,18 @@ extractionが失敗した場合に限りnullとする: その名前は不在で�
 recordも1件であり（FR-028）、そのfileの失敗した各定義がそれを参照し、fileの`files[]` entryは
 それを1回だけ列挙する。Detailは公開されている場合にpageを所有する定義のinvocation nameを
 row名の傍らに示す（data-model.md § Skillの表示）。値はrowをkeyする同じprojectionから来るため、vendor
-namingがserverとclientの間で乖離することはない。MCP serverはcarrier内の`[mcp_servers.*]`宣言1つであり、admit済みの`.codex/config.toml` 1つは
-宣言したserverの数だけrowを公開する。Instructions rowは1つの適用範囲 — 担当するfile自身のpathが導出するglobであり、Repository rootでは`**`、あるいはfileが自身のために宣言したもの — であり、担当する各fileを列挙する。したがってrootの`AGENTS.md`と`CLAUDE.md`は1 rowを共有し、`packages/api/CLAUDE.md`は自身のrowを持つ（data-model.md § 一覧の単位）。範囲がnullである1つのrowが一覧を閉じる: そのfileのvendorはこのfile名の適用可否を宣言だけから読み、宣言はrowをkeyできるものを何も供給していない — あるいはまったく読めなかった。その理由は各file自身のdiagnosticsが述べるため、rowは「宣言がない」ではなく「既知の範囲がない」と述べる（FR-028）。列挙されるfileはtoolではなくrecognitionを名指す。toolだけでは、productがそのfileをどこから読むのかを言えないためである: GitHub CopilotのeditorとCLIとcloudの各surfaceは、同じ名前のfileに対して異なるlookup baseをdocumentしている。したがってrootの`.github/copilot-instructions.md`は3つのsurfaceすべてが読み、同じ名前でもsubdirectoryにあるものはCLIのcontextだけである。各recognitionの`surfaces`は、そのfileをadmitしたruleが依拠するdocumented behaviorのsurfaceであり、surfaceを名指すことはそのsurfaceがfileをloadしたという主張では決してない（FR-009）。他のkindの単位は、その一覧を出荷するtaskが、そのkind自身の
+namingがserverとclientの間で乖離することはない。MCP rowは宣言されたserver名1つであり、その名前を解決するすべての`[mcp_servers.*]`型宣言 —
+`(carrier, tool)`ごとに1つ — を列挙する。したがってadmit済みの`.codex/config.toml` 1つは宣言した
+serverごとに宣言を1つ寄与し、同じ名前を宣言する第2のcarrierはその名前のrowに合流する。宣言の
+住処はstandalone carrier — Codexのconfiguration layer、Claudeのroot `.mcp.json`、Copilot CLIの
+root `.mcp.json`と`.github/mcp.json`、VS Codeの`.vscode/mcp.json` — か、自身の内容に宣言を含むadmit済みowner fileである。
+後者は文書化されたowner family（agent file、plugin manifest、settings file）のいずれかを
+将来のphaseがadmitしたときのもので、skillは決して含まれない — skillのfrontmatterに文書化された
+`mcpServers` fieldは存在しない。どちらの住処も同一の形でその名前のrowに合流し、各宣言は自身のfileを名指す。2つのproductが
+admitする1つの物理file — root `.mcp.json` — は、宣言する各名前の下でrecognizing toolごとに
+1宣言になる。nameが
+nullである1つのrowがlistを閉じ、現在named宣言を公開していないcarrierを保持する — 宣言blockが
+読めなかったのか何も宣言していないのかは、各宣言自身の`parseStatus`が区別する（FR-028）。Instructions rowは1つの適用範囲 — 担当するfile自身のpathが導出するglobであり、Repository rootでは`**`、あるいはfileが自身のために宣言したもの — であり、担当する各fileを列挙する。したがってrootの`AGENTS.md`と`CLAUDE.md`は1 rowを共有し、`packages/api/CLAUDE.md`は自身のrowを持つ（data-model.md § 一覧の単位）。範囲がnullである1つのrowが一覧を閉じる: そのfileのvendorはこのfile名の適用可否を宣言だけから読み、宣言はrowをkeyできるものを何も供給していない — あるいはまったく読めなかった。その理由は各file自身のdiagnosticsが述べるため、rowは「宣言がない」ではなく「既知の範囲がない」と述べる（FR-028）。列挙されるfileはtoolではなくrecognitionを名指す。toolだけでは、productがそのfileをどこから読むのかを言えないためである: GitHub CopilotのeditorとCLIとcloudの各surfaceは、同じ名前のfileに対して異なるlookup baseをdocumentしている。したがってrootの`.github/copilot-instructions.md`は3つのsurfaceすべてが読み、同じ名前でもsubdirectoryにあるものはCLIのcontextだけである。各recognitionの`surfaces`は、そのfileをadmitしたruleが依拠するdocumented behaviorのsurfaceであり、surfaceを名指すことはそのsurfaceがfileをloadしたという主張では決してない（FR-009）。他のkindの単位は、その一覧を出荷するtaskが、そのkind自身の
 vendor contractから決める。したがって物理fileは
 `files[]`に自身の事実 — path、read結果、size、diagnostic — とともに1度だけ現れ、各kindの一覧は
 `sourceRelativePath`で参照してそれらを繰り返さない。定義が持つrecognition所有のparse事実だけが
@@ -529,7 +549,7 @@ formatであって、この製品ではない。
 keyである — ため、file間で宣言をmatchするclientは`key`単独ではなくこの組でmatchする。
 同じentry形は`keyKind`を含めて、nestした全`mapping` value内へ再帰する。
 
-Readable fileでは`sourceText`を完全なdecoded sourceとし、書かれたとおりに保持する。carrierのdetail variantは`sourceText`を一切持たない: 宣言を公開するためにadmitされたfileはその宣言を示し、自身のbyteは決して示さない（FR-007）。したがって各carrierのフェーズとともに到着するvariantは、fileの事実とその宣言を公開し、surfaceが描画を拒むべき値を運ぶのではなくfieldごと省く。
+Readable fileでは`sourceText`を完全なdecoded sourceとし、書かれたとおりに保持する。standaloneのMCP declaration carrier — MCP kindがrecognizeし、skillもownerのkindもclaimしないfile — は`FileDetail`を一切持たない: 宣言を公開するためにadmitされたfileはその宣言を示し、自身のbyteは決して示さない（FR-007）。authored sourceをserveすることが目的のfunctionは、それを差し控えねばならないvariantを運ばない。この差し控えは、同じpathが運ぶ他のあらゆるrecognitionに優先する: Codexの`project_doc_fallback_filenames` entryが`.mcp.json`を指名するとcarrierはinstructions candidateにもなるが、そのvariantのdetailは完全なbody text — まさにFR-007が差し控えるbyte — であるため、carrierはfallback recognitionの下で答えられるのではなく、差し控えられたままになる。そのようなcarrierのdetailは`get-mcp-carrier-detail`自身のresultであり、そのpathをこのfunctionへrequestすると、このfunctionがdetailを保持しない他のあらゆるpathと同じ`stale-resource` rejectionに解決される。MCP宣言を含むだけのadmit済みowner fileはそのcarrierではない: そのsourceは自身のkindの下で正当に表示されるため、このfunctionはowner自身のdetailをserveし、`get-mcp-carrier-detail`がその傍らで含有宣言をserveする。Owner familyは文書化されたもの — agent file、plugin manifest、settings file — で、どれもまだruleがadmitしていない。Skillは決してownerにならない: Claudeは`mcpServers`というskill-frontmatter fieldを文書化していないため、そのkeyを綴るskillはここでは通常のskill contentである。
 
 Skillの`presentation`は、宣言している内容と指示している内容である。detail surfaceがそれを先頭に
 置くからである。`frontmatter[]`はfileが宣言するすべてのkeyを、fileが書いたkeyそのもの —
@@ -579,9 +599,11 @@ derivationは返さず、file-scopedな`recognition-parse-failed` Diagnostic —
 toolがいくつあっても1 record — がgenerationを`partial`にし、完全なreadable sourceの表示と
 comparison eligibilityは保たれる（FR-028）。1 fileに限定されないfailureは
 attemptをfailさせ、RPC所有の場合はrequestのordinary errorとして公開する。
-Structural metadata comparisonは`(kind, 宣言key)`を使う。宣言はfileのそのkindに対する
+Structural metadata comparisonは`(kind, 宣言key)`を使う。frontmatter宣言はfileのMarkdown kindに対する
 1回のparseであって認識する全toolが共有するため、toolは宣言の座標ではなく、fieldが
-同じでも別kindは衝突しない。tool recognitionはtoolごとに宣言の横で比較する。
+同じでも別kindは衝突しない。tool recognitionはtoolごとに宣言の横で比較する。MCP kindの
+宣言は各recognizing tool自身のreading（data-model.md § Field reading）であり、file間
+metadata comparisonには一切参加しない。
 
 Declared valueは文字を丸ごと運ぶ。astral characterはUTF-16 code unit 2つ、combining markは
 code point 2つだからである。よってextractionとJSON transportを変化なく通過し、Unicode normalizationも
@@ -606,11 +628,60 @@ Documentation status、lifecycle qualifier、evidence assessmentはどのrespons
 registry自身のmaintenance recordである（QR-005）。candidate provenanceが公開するのはどのruleが
 fileをadmitしたかであり、そのruleの文書化の程度ではない。
 
-Outcomes: `FileDetail` result。現在のcommitted generationがそのpathにfileを保持しない場合 —
-一度もscanされていない、後のcommitで除去された、またはdisabled sourceに属する。これらは区別できず
-同じに扱われ、別の型の値も同じ形で解決されるため、独立したmalformed-argument outcomeは
-存在しない — は`stale-resource` rejection。Disable fenceがnon-nullの間は
-`global-disable-pending` conflict rejection。
+Outcomes: `FileDetail` result。現在のcommitted generationがそのpathにこのfunctionのdetailを
+保持しない場合 — 一度もscanされていない、後のcommitで除去された、disabled sourceに属する、
+または`get-mcp-carrier-detail`だけがdetailをserveする純粋なMCP carrierである。別の型の値も
+同じ形で解決されるため、独立したmalformed-argument outcomeは存在しない — は`stale-resource`
+rejection。Disable fenceがnon-nullの間は`global-disable-pending` conflict rejection。
+
+### `agent-customization-inspector:get-mcp-carrier-detail`
+
+Parameters: commit済みSource-relative Pathを1つ、functionの単一positional argumentとして
+渡す。`get-file-detail`が取るのと同じ形で、宣言するfileのidentityである（FR-030）。
+
+```json
+".codex/config.toml"
+```
+
+Active-generationのMCP carrier detailを1件返す: fileが行う宣言と、file自身の
+事実であり、`sourceText` fieldは意図的に一切存在しない。standalone carrierにも、宣言を含む
+admit済みowner file — 文書化されたowner familyで、どれもまだruleがadmitしていない — にも同じ形で答える: 宣言を
+公開するためにadmitされた
+fileはその宣言を示し、自身のbyteは決して示さない（FR-007）。carrierのdetailが`FileDetail`の
+variantではなくこのfunction自身のresultであるのはそのためである — fieldはshapeから不在なの
+であって、surfaceが描画を拒むべき値ではない — し、含有宣言のownerのsourceがresponseへ届く
+のは`get-file-detail`を通じてだけ、owner自身のkindの下でである。
+
+```text
+McpCarrierDetail
+├── file — carrierのcontent-free summary。encodingで判別される:
+│   ├── sourceId, sourceRelativePath, encoding, diagnosticIds[]
+│   ├── readable textはさらにhadLeadingBomとsizeBytesを持つ — sourceTextは決して持たない
+│   └── binaryはさらにsizeBytesを持ち、unknownはこれ以上何も持たない
+├── servers[] — 宣言。parserが解決した順にserverごとに1つで、carrierが何も宣言しなければ
+│   空 — またはextractionがall-or-nothingでfailedになった場合に限りnull（FR-028）。その
+│   Diagnosticは下にある:
+│   └── name, fields[] { key, keyKind, value } — 宣言されたserver名と、宣言が書く全field。
+│       carrierが書いたkeyのままで、`presentation.frontmatter`と同じentry shapeを使う
+└── diagnostics[]
+```
+
+このtreeがresponseのshapeである: clientは正確にこれらのfieldだけに依存できる。宣言は
+carrier自身のものであり — 各recognizing productのdocumented readingを1つのdecoded text上で
+実行し、宣言名で1つのresponseへ統合する（data-model.md § Field reading） —
+すべての値はcarrierのliteralである: environment referenceは書かれた文字のままで、process
+値がそれに代入されることはない（FR-026）。`get-file-detail`と同じinert-rendering、
+single-request、request-token ruleが適用され、`(clientDataEpoch, sourceRelativePath)`の
+captureも同じである。
+
+Outcomes: `McpCarrierDetail` result — parseされたが serverを宣言しないcarrierは空の
+`servers`を持つresultであってrejectionではない。現在のcommitted generationがそのpathにMCP
+recognitionを保持しない場合 — 一度もscanされていない、または後のcommitで除去された。
+別の型の値も同じ形で解決されるため、
+独立したmalformed-argument outcomeは存在しない — は`stale-resource` rejection。Disable
+fenceがnon-nullの間は`global-disable-pending` conflict rejection。含有宣言のownerのpathは
+このfunctionと`get-file-detail`の両方で解決され、それぞれが自身のresourceをserveする。
+このfunction専属なのは純粋なcarrierだけである。
 
 ### `agent-customization-inspector:rescan-repository`
 
@@ -1064,8 +1135,9 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
    correctness/validity/compliance/effectiveness/quality verdict、policy/remediation advice、
    validation、lint、synchronization、conversion、formatting、fixingのfieldまたはbehaviorを
    一切admitしない。
-4. 宣言済みparameterはresolutionで検証される: commit済みgenerationが保持しない`get-file-detail`の
-   argument — 別の型の値も含む — は`stale-resource` rejectionであり、余分なpositional argumentは
+4. 宣言済みparameterはresolutionで検証される: invokeされたfunctionがそのresourceを保持しない
+   `get-file-detail`または`get-mcp-carrier-detail`のargument — 別の型の値や、他方のfunctionの
+   resourceも含む — は`stale-resource` rejectionであり、余分なpositional argumentは
    readされず何も変えず、unknown function nameは登録されずinvokeできない。Contract testは
    request、file、collection、parser、snapshot、detail、result DTOのいずれも、製品定義の数値
    capacity上限を公開またはenforceしないことを証明する。注入した1 fileに限定されないNode.js、
@@ -1078,8 +1150,8 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
 5. Static traversal/encoded traversal attemptがpackaged `dist/public` outputの外へ出ない。Serve
    される全byteがそのpackaged Nuxt outputに由来し、inspected fileを一切serveせず、root、
    `/skills/compare`、`/instructions/compare`、`/global-consent`、`/skills/<tool>/<Source相対パス>`、
-   `/instructions/<Source相対パス>`のclient routeがすべて同じpackaged SPA shell
-   をbootし、そのshellはsession dataをembedしない。
+   `/instructions/<Source相対パス>`、`/mcp/<Source相対パス>`のclient routeがすべて同じ
+   packaged SPA shellをbootし、そのshellはsession dataをembedしない。
 6. Repositoryと各tool-specific Global rescanのqueue order、duplicate rejection、abort、partial
    outcome、fatal failure、pollingがwhole generationだけを公開する。別のSourceの後でqueueした
    scanはowning sequenceのその時点のcurrent generationから開始し、一方のsequenceのcommitは

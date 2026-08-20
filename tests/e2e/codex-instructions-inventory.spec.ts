@@ -7,11 +7,11 @@
 // fixture declares fallback basenames in `.codex/config.toml`, the
 // configuration-read stage turns the declared names into scan targets, and
 // the page lists the on-disk ones as instruction rows beside the static
-// pair. The carrier itself is a configuration input only — this product
-// never publishes or raw-displays `.codex/config.toml`, so no row, tab, or
-// detail names it anywhere. Everything else — the exact admitted set,
-// provenance, the two-stage read order — is proven closer to the code and is
-// asserted here only as far as a user can see it.
+// pair. The carrier itself appears only as the MCP inventory's grouping — its
+// own candidacy is Phase 23's (`codex.repo.config`) — never as an instruction
+// row, and its source text renders nowhere. Everything else — the exact
+// admitted set, provenance, the two-stage read order — is proven closer to
+// the code and is asserted here only as far as a user can see it.
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -103,15 +103,21 @@ test.describe('instruction rows with an admitted carrier', () => {
     expect(text).not.toContain('ABSENT_GUIDE.md');
   });
 
-  test('never shows the carrier: no row, no tab, no mention', async ({ page }) => {
+  test('shows the carrier only under the MCP tab, with no declaration rows', async ({ page }) => {
     await page.goto(host.origin);
     await expect(page.getByRole('tabpanel').locator('.aci-item')).toHaveCount(2);
-    // The configuration input is not part of the inventory: the one kind tab
-    // is Instructions, and the carrier's path appears nowhere on the page.
-    await expect(page.getByRole('tab')).toHaveCount(1);
-    const text = await page.locator('main').innerText();
-    expect(text).not.toContain('.codex/config.toml');
-    expect(text).not.toContain('config.toml');
+    // The carrier's own candidacy (Phase 23, `codex.repo.config`) adds the
+    // MCP tab beside Instructions; the instruction rows still never name it.
+    await expect(page.getByRole('tab')).toHaveCount(2);
+    const instructionsText = await page.getByRole('tabpanel').innerText();
+    expect(instructionsText).not.toContain('config.toml');
+    // Under the MCP tab the carrier is the one grouping, stating that it
+    // declares no server: this fixture's carrier declares fallback basenames
+    // alone, and a group with zero rows is that fact rather than an error.
+    await page.getByRole('tab', { name: /MCP/u }).click();
+    await expect(page.getByRole('tabpanel').locator('.aci-item')).toHaveCount(1);
+    await expect(page.getByRole('tabpanel')).toContainText('.codex/config.toml');
+    await expect(page.getByRole('tabpanel')).toContainText('This file declares no MCP servers.');
   });
 
   test('shows no authored source text', async ({ page }) => {

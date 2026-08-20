@@ -16,7 +16,8 @@
 // Sources and components no shipped phase reads yet, an unsupported
 // instruction location is simply a path no selector reaches, and a symlinked
 // skill needs no exclusion at all because links are read through their targets
-// (FR-024; contracts/vendors/claude-code.md § Known ambiguities item 9). The
+// (FR-024; contracts/vendors/claude-code.md § Known ambiguities and
+// version-sensitive facts, item 9). The
 // registry-wide identifier catalog and its complete gate are owned by T913.
 //
 // Each rule is its own `export const` so a relation can name it directly.
@@ -105,7 +106,7 @@ export const CLAUDE_REPO_INSTRUCTIONS_RULE = {
           ],
           reviewedOn: '2026-08-18',
           establishes:
-            'Project instructions are ./CLAUDE.md or ./.claude/CLAUDE.md and local instructions ./CLAUDE.local.md; the same two filenames are checked in every directory above the working directory and discovered in subdirectories below it, which is the shape this rule admits at the selected root and every descendant. Claude Code reads CLAUDE.md and not AGENTS.md, which is why no selector here names that filename.',
+            'Project instructions are ./CLAUDE.md or ./.claude/CLAUDE.md and local instructions ./CLAUDE.local.md; both filenames are discovered on demand in subdirectories as Claude reads files there — the documented descendant reach that is why this rule admits them at every depth — while the ancestor walk above the working directory contributes only the selected root, the one member every session shares. Claude Code reads CLAUDE.md and not AGENTS.md, which is why no selector here names that filename.',
         },
         {
           sourceId: 'anthropic.claude-code.sdk.setting-sources',
@@ -127,11 +128,13 @@ export const CLAUDE_REPO_INSTRUCTIONS_RULE = {
  * `SKILL.md` literal keeps the admitted file exact.
  *
  * The leading `ANY_DIRECTORIES` is the difference from the anchored Codex
- * program, and it is deliberate: Claude discovers ancestor skill layers at
- * startup *and* nested descendant skill directories on demand, so a
- * `packages/api/.claude/skills` directory is a layer Claude can genuinely load
- * once a file under it is accessed. Broad descendant inventory shows what
- * could matter under another runtime `cwd` or after lazy discovery; it never
+ * program, and what justifies it is the documented descendant discovery
+ * alone: Claude loads nested `.claude/skills` directories on demand when it
+ * reads or edits a file in their subtree, so a
+ * `packages/api/.claude/skills` directory is a location the vendor documents
+ * at that depth. The ancestor startup walk justifies nothing below the root —
+ * its one member every session shares is the selected root, which the
+ * zero-segment case of `ANY_DIRECTORIES` already covers. Admission never
  * claims Claude loaded the file — which layer actually participates stays
  * conditional on `runtime-cwd` and `worked-path`
  * (contracts/vendors/claude-code.md § Repository Inspector matchers).
@@ -185,16 +188,75 @@ export const CLAUDE_REPO_SKILL_RULE = {
           sections: ['Where skills live'],
           reviewedOn: '2026-08-08',
           establishes:
-            'Repository skills live at .claude/skills/<skill-name>/SKILL.md on each layer from the working directory through the repository root, which is why this rule admits that shape at the selected root and every descendant directory.',
+            'Repository skills live at .claude/skills/<skill-name>/SKILL.md, and skills also load from nested .claude/skills directories on demand when Claude reads or edits a file in their subtree — the documented descendant reach that is why this rule admits that shape at every depth, while the ancestor startup walk contributes only the selected root, the one layer every session shares.',
         },
         {
           sourceId: 'anthropic.claude-code.plugins.components-scopes',
           url: 'https://code.claude.com/docs/en/plugins-reference',
           officialHost: 'code.claude.com',
           sections: ['Skills-directory plugins'],
-          reviewedOn: '2026-07-25',
+          reviewedOn: '2026-08-20',
           establishes:
             'A skills directory at the exact launch working directory can also be interpreted as a plugin, a separate documented behavior that differs from plain-skill ancestor and lazy-descendant discovery and grants this rule no manifest authority.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
+ * The `claude.repo.mcp` matcher, authored in the typed segment form the
+ * contract table shows: the one exact program `['.mcp.json']`. Root-exact and
+ * deliberately not recursive: the vendor documents exactly one project MCP
+ * file at the project root, so a `packages/api/.mcp.json` is a path Claude
+ * does not read and this rule must not admit
+ * (contracts/vendors/claude-code.md § Repository Inspector matchers).
+ */
+const CLAUDE_REPO_MCP_MATCHER: StructuredInspectorMatcher = {
+  base: { kind: 'repository' },
+  selectors: [[{ kind: 'literal', value: '.mcp.json' }]],
+};
+
+/**
+ * Claude Repository MCP declarations: the read-authorizing counterpart of
+ * `claude.behavior.repo.mcp`. Admitting the carrier is not asserting Claude
+ * connects anything — whether a declared server is selected stays conditional
+ * on the source root being Claude's project root and on trust and approval,
+ * runtime inputs this tool never observes — and no declared command, URL, or
+ * path gains read or connection authority from the admission.
+ *
+ * The User and local MCP state at `<home>/.claude.json`, plugin-provided
+ * declarations, and managed configuration are different Source boundaries no
+ * Repository rule may read; their statements exist as non-authorizing
+ * behavior records, and the exclusions that name them ship with the Global
+ * phase that owns them (FR-016, FR-018). Declarations contained in an
+ * accepted documented owner file — an agent, a plugin manifest, a settings
+ * file, once their phases admit them — are metadata on that candidate and
+ * create no filesystem matcher here; a skill is never such an owner, because
+ * Claude documents no `mcpServers` skill-frontmatter field.
+ */
+export const CLAUDE_REPO_MCP_RULE = {
+  ruleId: 'claude.repo.mcp',
+  tool: 'claude',
+  discoveryClass: 'static-candidate',
+  kind: 'MCP',
+  sourceKinds: ['repository'],
+  matcher: CLAUDE_REPO_MCP_MATCHER,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.mcp.scopes-precedence',
+          url: 'https://code.claude.com/docs/en/mcp',
+          officialHost: 'code.claude.com',
+          sections: ['MCP installation scopes'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'The project MCP scope is one .mcp.json file at the project root, which is why this rule admits exactly that path at the selected root and nothing below it.',
         },
       ]
     : [],
@@ -203,5 +265,6 @@ export const CLAUDE_REPO_SKILL_RULE = {
 /** Claude's contribution to the inspection-rule registry, keyed by `ruleId` in identifier order. */
 export const CLAUDE_INSPECTION_RULES: Readonly<Record<ClaudeRuleId, InspectionRule>> = {
   [CLAUDE_REPO_INSTRUCTIONS_RULE.ruleId]: CLAUDE_REPO_INSTRUCTIONS_RULE,
+  [CLAUDE_REPO_MCP_RULE.ruleId]: CLAUDE_REPO_MCP_RULE,
   [CLAUDE_REPO_SKILL_RULE.ruleId]: CLAUDE_REPO_SKILL_RULE,
 };

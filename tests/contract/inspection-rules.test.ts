@@ -1,4 +1,4 @@
-// T052/T060/T126/T130/T133/T154/T158/T179/T269: the inspection-rule half of
+// T052/T060/T126/T130/T133/T154/T158/T179/T269/T282: the inspection-rule half of
 // the registry contract gate — the closed matcher grammar, deterministic
 // compilation into the immutable versioned `TraversalPlan`, reciprocal
 // references, the same-name skill statement each rule derives, the unified
@@ -306,15 +306,17 @@ describe('traversal-plan compilation', () => {
 describe('the Claude skill slice of the reference graph (T130, T133)', () => {
   it('ships only read-authorizing Claude records and no exclusion', () => {
     // The phase-local half of the registry catalog check: the shipped Claude
-    // catalog is the instruction and skill rules, both read-authorizing. No
-    // `excluded` or `relationship-only` Claude row ships yet — a symlinked
-    // skill needs none because links are read through their targets (FR-024),
-    // and an unsupported instruction location is simply a path no selector
-    // reaches (T232) — and the eventual complete catalog gate is T913's, not
-    // this suite's.
+    // catalog is the instruction, MCP carrier, and skill rules, all
+    // read-authorizing. No `excluded` or `relationship-only` Claude row ships
+    // yet — a symlinked skill needs none because links are read through their
+    // targets (FR-024), an unsupported instruction location is simply a path
+    // no selector reaches (T232), and the plugin/User exclusions ship with the
+    // phases that own their surfaces (T309) — and the eventual complete
+    // catalog gate is T913's, not this suite's.
     const claudeRules = rules.filter((rule) => rule.tool === 'claude');
     expect(claudeRules.map((rule) => rule.ruleId)).toEqual([
       'claude.repo.instructions',
+      'claude.repo.mcp',
       'claude.repo.skill',
     ]);
     for (const rule of claudeRules) {
@@ -342,10 +344,11 @@ describe('the Claude skill slice of the reference graph (T130, T133)', () => {
 });
 
 describe('the Copilot skill slice of the reference graph (T154, T158)', () => {
-  it('ships the seven instruction candidates, the skill rule, and exactly two exclusions', () => {
+  it('ships the seven instruction candidates, the MCP and skill rules, and exactly two exclusions', () => {
     // The phase-local half of the registry catalog check: the shipped Copilot
-    // catalog is the skill rule plus the seven instruction rules, all
-    // read-authorizing, and the catalog's first two `excluded` records. The
+    // catalog is the skill rule, the CLI MCP carrier rule (T339), the two
+    // VS Code MCP rules (T359), and the seven instruction rules, all
+    // read-authorizing, plus the catalog's first two `excluded` records. The
     // eventual complete catalog gate is T913's, not this suite's.
     //
     // Naming the exclusions is what makes them reviewable: rejecting a
@@ -365,13 +368,16 @@ describe('the Copilot skill slice of the reference graph (T154, T158)', () => {
       'copilot.repo.instructions.path-cli-context',
       'copilot.repo.instructions.repository',
       'copilot.repo.instructions.repository-cli-context',
+      'copilot.repo.mcp',
+      'copilot.repo.mcp.vscode',
+      'copilot.repo.mcp.vscode-root',
       'copilot.repo.skill',
     ]);
     expect(byClass('excluded')).toEqual([
       'copilot.excluded.additional-standard-locations',
       'copilot.excluded.extra-directories',
     ]);
-    expect(rules.filter((rule) => rule.tool === 'copilot')).toHaveLength(10);
+    expect(rules.filter((rule) => rule.tool === 'copilot')).toHaveLength(13);
   });
 
   it('gives an exclusion no matcher, no kind, and no strategy (T251)', () => {
@@ -747,6 +753,120 @@ describe('the unified instruction selector matrix (T269)', () => {
     for (const [path, expected] of RECOGNITION_MATRIX) {
       expect(admittingTools(staticInstructionRules, path), path).toEqual(expected);
     }
+  });
+});
+
+describe('the Codex MCP carrier slice of the reference graph (T282)', () => {
+  it('registers the carrier as its first and only candidacy across the catalog', () => {
+    // "First and only" is a property of the complete registry, not of the
+    // Codex catalog alone: a second rule of any vendor admitting
+    // `.codex/config.toml` would publish the carrier twice with two reads.
+    const admitting = rules.filter(
+      (rule) =>
+        rule.matcher !== null &&
+        rule.matcher.selectors.some((selector) => matches(selector, ['.codex', 'config.toml'])),
+    );
+    expect(admitting.map((rule) => rule.ruleId)).toEqual(['codex.repo.config']);
+    const config = INSPECTION_RULES['codex.repo.config'];
+    expect(config.discoveryClass).toBe('static-candidate');
+    // Admitted for the MCP inventory: the rows are the contained
+    // `[mcp_servers.*]` declarations (data-model.md § Inventory unit).
+    expect(config.kind).toBe('MCP');
+    expect(config.sourceKinds).toEqual(['repository']);
+  });
+
+  it('keeps the fallback derivation Phase 15’s and adds no other Codex row', () => {
+    // The carrier's candidacy does not reshape the derivation: the seed is
+    // still the configuration read, never the admission. The complete Codex
+    // catalog after this phase is three static candidates plus the
+    // derivation — no exclusion, no relationship-only row, and no
+    // plugin/User/managed promotion (every row stays Repository-scoped).
+    const derived = INSPECTION_RULES['codex.derived.fallback-basename'];
+    expect(derived.discoveryClass).toBe('bounded-derived-candidate');
+    expect(derived.kind).toBe('instructions');
+    expect(derived.matcher).toBeNull();
+    const codexRules = rules.filter((rule) => rule.tool === 'codex');
+    expect(codexRules.map((rule) => rule.ruleId)).toEqual([
+      'codex.derived.fallback-basename',
+      'codex.repo.config',
+      'codex.repo.instructions',
+      'codex.repo.skill',
+    ]);
+    for (const rule of codexRules) {
+      expect(rule.sourceKinds, rule.ruleId).toEqual(['repository']);
+    }
+  });
+
+  it('admits each product exactly its own MCP carrier (T306)', () => {
+    // Inline servers are metadata on the admitted carrier; each product's
+    // carrier is its own — Codex's config layer, Claude's exact root
+    // `.mcp.json` — and no rule admits the other product's spelling or a
+    // location its product does not read.
+    const mcpRules = rules.filter((rule) => rule.kind === 'MCP');
+    // Sorted: the aggregate's own order is per-vendor spread order, which is
+    // not what this case is about.
+    expect(mcpRules.map((rule) => rule.ruleId).toSorted()).toEqual([
+      'claude.repo.mcp',
+      'codex.repo.config',
+      'copilot.repo.mcp',
+      'copilot.repo.mcp.vscode',
+      'copilot.repo.mcp.vscode-root',
+    ]);
+    const MCP_MATRIX: readonly (readonly [string, readonly string[]])[] = [
+      ['.codex/config.toml', ['codex']],
+      // A subdirectory carrier is a runtime-chain member no product's rule
+      // reads from the selected root's frame — the Codex config chain, the
+      // Claude project file, and the Copilot CLI workspace walk all admit at
+      // the selected root alone — while the shared root `.mcp.json` is one
+      // candidate two products admit.
+      ['packages/api/.codex/config.toml', []],
+      ['packages/api/.mcp.json', []],
+      ['.mcp.json', ['claude', 'copilot']],
+      ['.github/mcp.json', ['copilot']],
+      ['packages/api/.github/mcp.json', []],
+      ['.mcp.json.bak', []],
+      ['.claude/mcp.json', []],
+      // The User MCP filenames are `<home>` facts, not Repository ones.
+      ['.claude.json', []],
+      ['mcp-config.json', []],
+      // The dedicated VS Code carrier is Copilot's own (T359), and a
+      // subdirectory `.vscode` belongs to a workspace this product does not
+      // select.
+      ['.vscode/mcp.json', ['copilot']],
+      ['packages/api/.vscode/mcp.json', []],
+      ['.vscode/settings.json', []],
+      ['.vscode/mcp.jsonc', []],
+      ['.codex/config.toml.bak', []],
+      ['.codex/hooks.json', []],
+    ];
+    for (const [path, expected] of MCP_MATRIX) {
+      expect(admittingTools(mcpRules, path), path).toEqual(expected);
+    }
+  });
+
+  it('bases the carrier on its three behaviors and grants the contained hooks no candidate', () => {
+    // The reciprocal edges the phase adds, asserted by identity: the edge
+    // must hold the record the registry publishes, not an equal-looking copy.
+    const relations = RULE_RELATIONS['codex.repo.config'];
+    expect(relations.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'codex.behavior.repo.config',
+      'codex.behavior.repo.hooks',
+      'codex.behavior.repo.mcp',
+    ]);
+    for (const behavior of relations.basedOnBehaviors) {
+      expect(VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId]).toBe(behavior);
+    }
+    expect(relations.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual([
+      'codex.config.precedence',
+      'codex.mcp.configuration',
+    ]);
+    for (const strategy of relations.explainedByStrategies) {
+      expect(RUNTIME_COMPOSITION_STRATEGIES[strategy.strategyId]).toBe(strategy);
+    }
+    // The contained-Hook behavior is recorded — the carrier can hold an
+    // inline `[hooks]` table — while no shipped rule recognizes the hook
+    // kind: recording a documented fact is not authorizing a candidate.
+    expect(rules.filter((rule) => rule.kind === 'hook')).toEqual([]);
   });
 });
 

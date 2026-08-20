@@ -33,6 +33,7 @@ function snapshot(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot {
     files: [],
     instructions: [],
     skills: [],
+    mcp: [],
     diagnostics: [],
     repositoryGeneration: 0,
     globalGeneration: null,

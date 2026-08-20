@@ -182,6 +182,7 @@ describe('devframe host definition', () => {
     expect(functions.map((fn) => fn.name)).toEqual([
       'agent-customization-inspector:get-session',
       'agent-customization-inspector:get-file-detail',
+      'agent-customization-inspector:get-mcp-carrier-detail',
       'agent-customization-inspector:rescan-repository',
     ]);
   });

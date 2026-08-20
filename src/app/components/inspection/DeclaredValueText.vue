@@ -9,12 +9,16 @@
 // Every value is rendered through a Vue text binding. Nothing here is markup, a
 // link, or a URI, and no value is masked, shortened, or reflowed into something
 // the file does not contain (FR-025, FR-033).
-import { encodeRootPresentation, rendersNothingVisible } from '../../../shared/entities';
-import type { FrontmatterValueDto } from '../../../shared/api-types';
+import {
+  containsInvisibleCharacters,
+  encodeRootPresentation,
+  rendersNothingVisible,
+} from '../../../shared/entities';
+import type { DeclaredValueDto } from '../../../shared/api-types';
 
 defineProps<{
   /** The value this row declares; never one that opens a block of its own. */
-  value: FrontmatterValueDto;
+  value: DeclaredValueDto;
 }>();
 </script>
 
@@ -39,6 +43,29 @@ defineProps<{
     ><span class="aci-authored-text aci-authored-atomic">{{ value.text }}</span>
     <span class="aci-muted"
       >(no visible characters: {{ encodeRootPresentation(value.text) }})</span
+    ></template
+  >
+  <!-- Text whose visible characters sit beside ones that draw nothing renders
+       as a different value: `a` + U+0000 + `b` and `a` + U+200B + `b` both
+       read as `ab`. The value is rendered as authored and the note beside it
+       carries the spelled-out form, so two declarations differing only
+       invisibly stay two values a reader can tell apart (FR-025). -->
+  <template v-else-if="containsInvisibleCharacters(value.text)"
+    ><span class="aci-authored-text aci-authored-atomic">{{ value.text }}</span>
+    <span class="aci-muted"
+      >(contains invisible characters: {{ encodeRootPresentation(value.text) }})</span
+    ></template
+  >
+  <!-- A lone surrogate — strict JSON's "\uD800" escape resolves to one —
+       draws as the one replacement glyph, so two values differing only in
+       which surrogate they carry would render identically; the note's
+       spelled-out form keeps them apart while the value renders as authored
+       (FR-025). Well-formed astral characters draw as themselves and get no
+       note. -->
+  <template v-else-if="!value.text.isWellFormed()"
+    ><span class="aci-authored-text aci-authored-atomic">{{ value.text }}</span>
+    <span class="aci-muted"
+      >(contains lone surrogates: {{ encodeRootPresentation(value.text) }})</span
     ></template
   >
   <!-- Atomic too: in a sequence this span shares its line with the product's

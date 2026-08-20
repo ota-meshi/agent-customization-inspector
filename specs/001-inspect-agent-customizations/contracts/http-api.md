@@ -61,12 +61,13 @@ another machine remains prohibited.
    the Nuxt build emitted into the packaged `dist/public`; the product defines no
    static-assets manifest, no per-asset integrity re-verification, and no hand-written
    router. The one product-owned piece in front of it is the closed detail-route
-   rewrite — `/skills/**` and `/instructions/**`, one family per shipped kind detail:
-   a `GET`/`HEAD` whose path enters either route family is rewritten to `/` and falls
+   rewrite — `/skills/**`, `/instructions/**`, and `/mcp/**`, one family per shipped
+   kind detail: a `GET`/`HEAD` whose path enters one of these route families is
+   rewritten to `/` and falls
    through, so devframe's own static handler serves the packaged shell for detail deep
    links its extension-guarded SPA fallback would treat as file misses. The rewrite
-   touches no filesystem and shadows nothing — no packaged asset lives under either
-   family (§ Required contract tests, item 5). Nuxt uses `app.baseURL: '/'` and no CDN URL, so
+   touches no filesystem and shadows nothing — no packaged asset lives under any of the
+   families (§ Required contract tests, item 5). Nuxt uses `app.baseURL: '/'` and no CDN URL, so
    the shell works unchanged on every client route. Static serving never reaches outside
    the packaged UI output directory and never falls back to an inspected file.
 4. At startup the host prints the exact `http://localhost:<port>/` URL once to the
@@ -92,10 +93,11 @@ another machine remains prohibited.
 6. Every function reads only its declared parameters, and each function's section
    documents them with the rejection a mismatch produces. A declared parameter is
    validated by resolution, never by a shape guard in front of it: the shipped catalog
-   declares exactly one — `get-file-detail`'s committed Source-relative Path, a published
-   identity resolved against the committed generations and never a filesystem operand —
-   and any value they do not hold, a value of another type included, resolves nowhere and
-   is the `stale-resource` rejection; the Global functions' preview, allowlist-version,
+   declares exactly one parameter shape — the committed Source-relative Path
+   `get-file-detail` and `get-mcp-carrier-detail` each take, a published identity
+   resolved against the committed generations and never a filesystem operand —
+   and any value whose resource the invoked function does not hold, a value of another
+   type included, resolves nowhere and is the `stale-resource` rejection; the Global functions' preview, allowlist-version,
    and consent parameters carry their own documented codes the same way. No generic
    malformed-argument vocabulary exists, because rejecting a shape the resolution already
    cannot match — or an extra positional argument the function never reads — is a runtime
@@ -112,6 +114,7 @@ another machine remains prohibited.
 |---|---|---|
 | `agent-customization-inspector:get-session` | read | Full `SessionSnapshot` snapshot, or the control-only `GlobalFenceRecoverySnapshot` while fenced |
 | `agent-customization-inspector:get-file-detail` | read | One active-generation `FileDetail` |
+| `agent-customization-inspector:get-mcp-carrier-detail` | read | One active-generation `McpCarrierDetail`: one MCP-declaring file's declarations and file facts, never its source |
 | `agent-customization-inspector:rescan-repository` | command | Accept one explicit Repository scan command |
 | `agent-customization-inspector:get-global-consent-preview` | read | Current or frozen `GlobalConsentPreview` |
 | `agent-customization-inspector:create-global-consent-preview` | command | Capture and atomically create or replace the unconsented preview |
@@ -265,6 +268,15 @@ SessionSnapshot
 │       definitions[] { sourceRelativePath, tool, parseStatus, invocationName,
 │                       diagnosticIds[], companionFiles[] },
 │       sameNameResolutions[] { tool, resolution } — one per tool facing a collision
+├── mcp[]
+│   └── name string | null,
+│       declarations[] { sourceRelativePath, tool, surfaces[], parseStatus,
+│       diagnosticIds[] } —
+│       one row per declared server name with each declaration resolving it, in
+│       carrier-path then tool order, each carrying the vendor surfaces its
+│       admissions rest on, exactly as an instruction file's recognitions do;
+│       the one null row closes the list with the
+│       carriers publishing no named declaration
 └── diagnostics[] { diagnosticId, code, sourceId string,
     sourceRelativePath string | null — null except file scope }
     (active-generation records plus session-owned lifecycle records)
@@ -299,8 +311,21 @@ definition's invocation name beside the row name when one is published (data-mod
 § Skill presentation); the values come
 from the one projection that keys the rows, so vendor naming cannot drift between server
 and client. An
-MCP server is one `[mcp_servers.*]` declaration inside its carrier, so one admitted
-`.codex/config.toml` publishes as many rows as it declares servers. An instructions row is one applicability range — the glob the
+MCP row is one declared server name, listing every `[mcp_servers.*]`-style declaration
+that resolves it — one per `(carrier, tool)` — so one admitted `.codex/config.toml`
+contributes one declaration per server it declares and a second carrier declaring the
+same name joins that name's row. A declaration's home is a standalone carrier — the
+Codex configuration layer, the Claude root `.mcp.json`, the Copilot CLI's root
+`.mcp.json` and `.github/mcp.json`, the VS Code `.vscode/mcp.json` — or an already admitted owner
+file whose own content contains declarations, once a phase admits one of the documented
+owner families (an agent file, a plugin manifest, a settings file — never a skill, whose
+frontmatter has no documented `mcpServers` field); both homes join the name's row
+identically, each declaration naming its
+own file, and one physical file two products admit — the root `.mcp.json` — is one
+declaration per recognizing tool under each name it declares. The one row whose name is null closes the list with
+the carriers currently publishing no named declaration, whether their declaration
+block could not be read or declares none, which each declaration's own `parseStatus`
+tells apart (FR-028). An instructions row is one applicability range — the glob the
 governing files' own paths derive, `**` at the Repository root, or the one a file declares
 for itself — listing each file it governs, so the root `AGENTS.md` and `CLAUDE.md` share one
 row and a `packages/api/CLAUDE.md`
@@ -618,10 +643,24 @@ matches by that pair, never by `key` alone. The same entry shape, `keyKind` incl
 recurs inside every nested `mapping` value.
 
 For a readable file, `sourceText` is the complete decoded source, exactly as authored. A
-carrier's detail variant carries no `sourceText` at all: a file admitted so its declarations
-can be published shows those declarations and never its own bytes (FR-007), so the variant
-that arrives with each carrier's phase publishes the file's facts and its declarations, and
-omits the field rather than carrying a value a surface must decline to render.
+standalone MCP declaration carrier — a file the MCP kind recognizes and no skill or
+owner kind claims — has no `FileDetail` at all: a file admitted so its
+declarations can be published shows those declarations and never its own bytes (FR-007),
+and a function whose purpose is serving authored source carries no variant that must
+withhold it. The withholding outranks every other recognition the same path carries: a
+Codex `project_doc_fallback_filenames` entry naming `.mcp.json` makes the carrier an
+instructions candidate too, and that variant's detail is the full body text — exactly
+the bytes FR-007 withholds — so the carrier stays withheld rather than answered under
+the fallback recognition. Such a carrier's detail is `get-mcp-carrier-detail`'s own
+result, and its
+path requested here resolves to the same `stale-resource` rejection as any path this
+function holds no detail for. An admitted owner file that merely contains MCP
+declarations is not that carrier: its source is legitimately displayed under its own
+kind, so this function serves the owner's own detail while `get-mcp-carrier-detail`
+serves the contained declarations beside it. The owner families are the documented
+ones — an agent file, a plugin manifest, a settings file — none of which any rule admits
+yet; a skill is never one, because Claude documents no `mcpServers` skill-frontmatter
+field, so a skill spelling that key is ordinary skill content here.
 
 A skill's `presentation` is what it declares and what it instructs, because that
 is what its detail surface leads with. `frontmatter[]` lists every key the file declares,
@@ -683,10 +722,12 @@ kind — makes the generation `partial` and the complete readable
 source stays displayed and comparison-eligible (FR-028). A failure that is not confined to
 one file fails the attempt and is exposed, when RPC-owned, as the request's ordinary
 error. Structural metadata comparison uses
-`(kind, declared key)` — a declaration is its file's one parse for the kind, shared by
-every recognizing tool, so a tool is not a coordinate of it and two kinds never collide
-merely because their key matches; tool recognition is compared per tool beside the
-declarations.
+`(kind, declared key)` — a frontmatter declaration is its file's one parse for the
+Markdown kind, shared by every recognizing tool, so a tool is not a coordinate of it and
+two kinds never collide merely because their key matches; tool recognition is compared
+per tool beside the declarations. The MCP kind's declarations are each recognizing
+tool's own reading (data-model.md § Field reading) and take part in no cross-file
+metadata comparison.
 
 A declared value carries whole characters — an astral character is two UTF-16 code units
 and a combining mark is two code points — so it survives extraction and JSON transport
@@ -714,11 +755,64 @@ assessment. Those are maintenance records on the registry itself (QR-005); a can
 provenance publishes which rule admitted the file, not how well that rule is documented.
 
 Outcomes: the `FileDetail` result; the `stale-resource` rejection when no current
-committed generation holds a file at the path — never scanned, removed by a later commit,
-or belonging to a disabled source, which are indistinguishable and answered alike, and a
-value of another type resolves the same way, so no separate malformed-argument outcome
-exists; the
+committed generation holds this function's detail at the path — never scanned, removed by
+a later commit, belonging to a disabled source, or a pure MCP carrier's, whose
+detail only `get-mcp-carrier-detail` serves; a value of another type resolves the same
+way, so no separate malformed-argument outcome exists; the
 `global-disable-pending` conflict rejection while the disable fence is non-null.
+
+### `agent-customization-inspector:get-mcp-carrier-detail`
+
+Parameters: one committed Source-relative Path as the function's single positional
+argument, exactly as `get-file-detail` takes one — the declaring file's identity (FR-030).
+
+```json
+".codex/config.toml"
+```
+
+Returns one active-generation MCP carrier detail: the declarations the file makes and
+its own file facts, and deliberately no `sourceText` field at all. It answers for a
+standalone carrier and for an admitted owner file containing declarations — the
+documented owner families, none of which any rule admits yet — alike: a file admitted so its declarations can be
+published shows those declarations and never its own
+bytes (FR-007), which is why the carrier's detail is this function's own result rather
+than a `FileDetail` variant — the field is absent from the shape, not a value a surface
+must decline to render — and a contained-declaration owner's source reaches a response
+only through `get-file-detail`, under the owner's own kind.
+
+```text
+McpCarrierDetail
+├── file — the carrier's content-free summary, discriminated by encoding:
+│   ├── sourceId, sourceRelativePath, encoding, diagnosticIds[]
+│   ├── readable text adds hadLeadingBom and sizeBytes — never sourceText
+│   └── binary adds sizeBytes; unknown adds nothing further
+├── servers[] — the declarations, one per server in the parser's resolved
+│   order, empty when the carrier declares none — or null exactly when
+│   extraction failed all-or-nothing (FR-028), whose Diagnostic is below:
+│   └── name, fields[] { key, keyKind, value } — the declared server name and
+│       every field the declaration writes, by the keys the carrier wrote,
+│       in the same entry shape `presentation.frontmatter` uses
+└── diagnostics[]
+```
+
+This tree is the response shape: a client can rely on exactly these fields and no
+others. The declarations are the carrier's own — each recognizing product's documented
+reading over the one decoded text, merged into one response by declared name
+(data-model.md § Field reading) — and every value is the carrier's literal: an
+environment reference stays the characters that were written, and no process value is
+substituted for it (FR-026). The same inert-rendering, single-request, and request-token
+rules as `get-file-detail` apply, including the `(clientDataEpoch, sourceRelativePath)`
+capture.
+
+Outcomes: the `McpCarrierDetail` result — a parsed carrier declaring no server is a
+result with empty `servers`, not a rejection; the `stale-resource` rejection when no
+current committed generation holds an MCP recognition at the path — never scanned or
+removed by a later commit, and a value
+of another type resolves the same way, so no separate malformed-argument outcome exists;
+the `global-disable-pending` conflict rejection while the disable fence is non-null. A
+contained-declaration owner's path resolves in this function and in `get-file-detail` at
+once, each serving its own resource; only the pure carrier is exclusively this
+function's.
 
 ### `agent-customization-inspector:rescan-repository`
 
@@ -1243,8 +1337,9 @@ the post-acceptance failure's ordinary error. Disable itself never returns
    interpretation or ranking, correctness/validity/compliance/effectiveness/quality verdict,
    policy/remediation advice, validation, lint, synchronization, conversion, formatting, or
    fixing field or behavior is admitted.
-4. A declared parameter validates by resolution: a `get-file-detail` argument the
-   committed generations do not hold — a value of another type included — is the
+4. A declared parameter validates by resolution: a `get-file-detail` or
+   `get-mcp-carrier-detail` argument whose resource the invoked function does not
+   hold — a value of another type, or the other function's resource, included — is the
    `stale-resource` rejection, an extra positional argument is never read and changes
    nothing, and an unknown function name is not registered
    and cannot be invoked. Contract tests prove that no request, file,
@@ -1260,8 +1355,9 @@ the post-acceptance failure's ordinary error. Disable itself never returns
 5. Static traversal and encoded traversal attempts never escape the packaged `dist/public`
    output; every served byte comes from that packaged Nuxt output, no inspected file is
    ever served, and the root, `/skills/compare`, `/instructions/compare`,
-   `/global-consent`, `/skills/<tool>/<source-relative path>`, and
-   `/instructions/<source-relative path>` client
+   `/global-consent`, `/skills/<tool>/<source-relative path>`,
+   `/instructions/<source-relative path>`, and
+   `/mcp/<source-relative path>` client
    routes all boot the same packaged SPA shell, which embeds no session data.
 6. Queue ordering across Repository and each tool-specific Global rescan, duplicate
    rejection, aborts, partial outcomes, fatal failures, and polling expose only

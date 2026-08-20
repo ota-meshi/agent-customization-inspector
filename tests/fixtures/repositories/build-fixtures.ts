@@ -993,6 +993,138 @@ export const NUMEROUS_FALLBACK_BASENAMES: readonly string[] = Array.from(
   (_unused, index) => `TEAM_GUIDE_${index}.md`,
 );
 
+/** One built Codex MCP carrier fixture repository (T280). */
+export interface CodexMcpFixture {
+  /** The absolute fixture root to scan. */
+  readonly root: string;
+  /**
+   * The Source-relative Path of the root `.codex/config.toml` carrier the
+   * `codex.repo.config` rule admits — its first and only candidacy. The same
+   * physical file still seeds the fallback derivation as configuration.
+   */
+  readonly carrierPath: string;
+  /**
+   * The server names the carrier declares as `[mcp_servers.*]` tables, in
+   * authored order — the MCP inventory's rows, one per declaration. A
+   * `mcp_servers` entry that is not a table is deliberately absent: a
+   * malformed declaration is omitted whole.
+   */
+  readonly expectedServerNames: readonly string[];
+  /**
+   * Every Source-relative Path the static `codex.repo.instructions` allowlist
+   * must admit, sorted — the unchanged instruction rows beside the new MCP
+   * recognition.
+   */
+  readonly expectedInstructionPaths: readonly string[];
+  /** The fallback basenames the carrier declares, in authored order. */
+  readonly configuredFallbackBasenames: readonly string[];
+  /** The declared fallback files on disk — the unchanged derived candidates, sorted. */
+  readonly expectedDerivedFallbackPaths: readonly string[];
+  /**
+   * Paths no shipped rule or derivation of any product may admit: the nested
+   * carrier chain Codex walks at runtime — which also re-declares a root
+   * server name, proving nothing merges a duplicate in — and spelling
+   * variants one step from the carrier's literals. The root `.mcp.json` is
+   * deliberately not here: it is Claude's own carrier (T309), admitted by
+   * `claude.repo.mcp` and by no Codex rule.
+   */
+  readonly nearMissPaths: readonly string[];
+}
+
+/**
+ * Builds the canonical Codex MCP carrier fixture repository (T280).
+ *
+ * The one root carrier declares named servers with commands, arguments, URLs,
+ * headers, environment values — a literal credential and a literal environment
+ * reference among them, which must reach no snapshot and never be resolved
+ * (FR-026/FR-027) — plus an inert agent-inheritance reference, an inert plugin
+ * relationship, a malformed non-table `mcp_servers` entry, a malformed
+ * numeric `command`, and the same fallback declaration Phase 15 activates, so
+ * one scan proves the MCP rows, the unchanged instruction/fallback rows, and
+ * the atomic omission of a malformed declaration at once.
+ *
+ * Near misses: the nested carrier chain (which re-declares `context7`, so a
+ * duplicate name in an unadmitted layer provably contributes nothing) and
+ * spelling variants beside the carrier's literals. The root `.mcp.json` is a
+ * Claude candidate instead — not a Codex one — declaring no server, so the
+ * same tree also proves the two products' carriers stay their own.
+ */
+export function buildCodexMcpFixture(
+  prefix = 'inspector-codex-mcp',
+  root = createRepositoryFixtureRoot(prefix),
+): CodexMcpFixture {
+  const configuredFallbackBasenames = ['TEAM_GUIDE.md'];
+  write(
+    root,
+    '.codex/config.toml',
+    [
+      'project_doc_fallback_filenames = ["TEAM_GUIDE.md"]',
+      '',
+      // An inert plugin relationship: a declared path never gains read
+      // authority and creates no candidate.
+      '[plugins]',
+      'marketplace = "./.agents/plugins/marketplace.json"',
+      '',
+      '[mcp_servers]',
+      // Malformed: a `mcp_servers` entry that is not a table declares no
+      // server and is omitted whole.
+      'broken = "not a table"',
+      '',
+      '[mcp_servers.context7]',
+      'command = "npx"',
+      'args = ["-y", "@upstash/context7-mcp"]',
+      // An inert agent-inheritance reference beside the declaration.
+      'agents = ["reviewer"]',
+      '',
+      '[mcp_servers.context7.env]',
+      `API_KEY = "${FIXTURE_SECRET_LITERAL}"`,
+      `ENDPOINT = "${FIXTURE_ENVIRONMENT_REFERENCE}"`,
+      '',
+      '[mcp_servers.docs-http]',
+      'url = "https://docs.example.com/mcp"',
+      '',
+      '[mcp_servers.docs-http.headers]',
+      `Authorization = "Bearer ${FIXTURE_SECRET_LITERAL}"`,
+      '',
+      // Malformed command: still a named declaration this release lists; no
+      // field schema is applied before the detail phase that owns one.
+      '[mcp_servers.odd]',
+      'command = 42',
+      '',
+    ].join('\n'),
+  );
+  // The unchanged static instruction row and the declared fallback beside it.
+  write(root, 'AGENTS.md', '# instructions\n');
+  write(root, 'TEAM_GUIDE.md', '# configured fallback TEAM_GUIDE.md\n');
+
+  // Not a Codex candidate — but Claude's own carrier (T309): the standalone
+  // root MCP file is admitted by `claude.repo.mcp` alone, so this tree also
+  // proves the two products' MCP carriers stay their own. It declares no
+  // server, which is the null-row inventory case.
+  write(root, '.mcp.json', '{ "mcpServers": {} }\n');
+  // Near miss: the nested carrier chain belongs to runtime working
+  // directories this product does not select; it re-declares a root server
+  // name, so a duplicate in an unadmitted layer provably contributes nothing.
+  write(root, 'packages/api/.codex/config.toml', '[mcp_servers.context7]\ncommand = "other"\n');
+  // Near miss: spelling variants one step from the carrier's literals.
+  write(root, '.codex/config.toml.bak', 'backup suffix\n');
+  write(root, '.codex/nested/config.toml', 'wrong depth\n');
+
+  return {
+    root,
+    carrierPath: '.codex/config.toml',
+    expectedServerNames: ['context7', 'docs-http', 'odd'],
+    expectedInstructionPaths: ['AGENTS.md'],
+    configuredFallbackBasenames,
+    expectedDerivedFallbackPaths: ['TEAM_GUIDE.md'],
+    nearMissPaths: [
+      '.codex/config.toml.bak',
+      '.codex/nested/config.toml',
+      'packages/api/.codex/config.toml',
+    ],
+  };
+}
+
 /** One built Claude instruction fixture repository (T226). */
 export interface ClaudeInstructionFixture {
   /** The absolute fixture root to scan. */
@@ -1166,6 +1298,524 @@ export function buildClaudeInstructionFixture(
     malformedInstructionPath: 'docs/CLAUDE.md',
     importTargetPath: 'docs/setup.md',
     secretInstructionPath: 'CLAUDE.md',
+  };
+}
+
+/** One built Claude MCP fixture repository (T304, extended by T324 for the skill-frontmatter negative). */
+export interface ClaudeMcpFixture {
+  /** The absolute fixture root to scan. */
+  readonly root: string;
+  /** The one admitted Claude MCP carrier: the exact root `.mcp.json`. */
+  readonly carrierPath: string;
+  /**
+   * Whether the carrier was materialized as a symbolic link to
+   * {@link linkTargetPath}. Capability-gated like every fixture link: when the
+   * platform cannot create links, the same content is written as a regular
+   * file and the inspection outcome is identical, because a link is read
+   * transparently through its target (FR-024).
+   */
+  readonly carrierLinked: boolean;
+  /**
+   * The link target the carrier resolves to when {@link carrierLinked}. It is
+   * itself a near miss: no rule admits `configs/mcp.json`, so the content is
+   * published once, under the carrier's own path.
+   */
+  readonly linkTargetPath: string;
+  /**
+   * The server names the carrier declares, in authored order. The non-object
+   * `broken` entry is omitted whole, and the malformed-command `odd` entry is
+   * still a named declaration this release lists (no field schema).
+   */
+  readonly expectedCarrierServerNames: readonly string[];
+  /**
+   * An admitted skill whose frontmatter spells `mcpServers` (Phase 27's
+   * negative): Claude documents no such skill field — the documented inline
+   * owners are agents, plugin manifests, and settings — so this file must
+   * gain no MCP recognition however many declarations its frontmatter
+   * carries (user decision, 2026-08-20).
+   */
+  readonly mcpFrontmatterSkillPath: string;
+  /** An admitted skill declaring no MCP servers: it must gain no MCP recognition. */
+  readonly plainSkillPath: string;
+  /**
+   * Files of future owner families that carry MCP declarations but that no
+   * shipped rule admits — a plugin manifest, a settings file, an agent file.
+   * They must produce no candidate, no recognition, and no row: an owner
+   * adapter is dispatched only on an independently admitted owner.
+   */
+  readonly unadmittedOwnerPaths: readonly string[];
+  /**
+   * The file the carrier's relative `command` value names. It exists on disk
+   * precisely so a scan can prove no declared command target is opened.
+   */
+  readonly commandTargetPath: string;
+  /**
+   * Paths one step from the carrier's exact literal that no shipped rule may
+   * admit: the descendant `.mcp.json` no product reads from the selected
+   * root's frame, spelling and location variants, the User-state filename,
+   * and VCS internals.
+   */
+  readonly nearMissPaths: readonly string[];
+}
+
+/**
+ * Builds the canonical Claude MCP fixture repository (T304).
+ *
+ * Positive cases: the exact root `.mcp.json` carrier — materialized as a
+ * symbolic link where the platform allows, to prove a linked carrier is read
+ * transparently through its target (FR-024) — declaring a stdio server with a
+ * relative command, a literal credential, and a literal
+ * environment reference; an HTTP server with a literal bearer header; a
+ * malformed-command declaration that is still listed; and a non-object entry
+ * omitted whole. Plus one admitted skill whose frontmatter spells
+ * `mcpServers` — Claude documents no such skill field, so it must gain no
+ * MCP recognition and its re-declared server name must join no row (user
+ * decision, 2026-08-20).
+ *
+ * Near misses: a descendant `packages/api/.mcp.json` (Claude reads exactly one
+ * project file), spelling and location variants, the User MCP state filename
+ * `.claude.json` at the Repository root, VCS internals, and unadmitted future
+ * owner files (plugin manifest, settings, agent) that carry `mcpServers`
+ * declarations no shipped rule may read.
+ */
+export function buildClaudeMcpFixture(
+  prefix = 'inspector-claude-mcp',
+  root = createRepositoryFixtureRoot(prefix),
+): ClaudeMcpFixture {
+  const carrierText = `${JSON.stringify(
+    {
+      mcpServers: {
+        context7: {
+          // A relative command: published as the literal the file wrote,
+          // never resolved against any base (FR-009).
+          command: './scripts/context7.sh',
+          args: ['--transport', 'stdio'],
+          env: {
+            API_KEY: FIXTURE_SECRET_LITERAL,
+            ENDPOINT: FIXTURE_ENVIRONMENT_REFERENCE,
+          },
+        },
+        'docs-http': {
+          type: 'http',
+          url: 'https://docs.example.com/mcp',
+          headers: { Authorization: `Bearer ${FIXTURE_SECRET_LITERAL}` },
+        },
+        // Malformed command: still a named declaration this release lists; no
+        // field schema is applied.
+        odd: { command: 42 },
+        // Malformed: an entry that is not an object declares no server and is
+        // omitted whole.
+        broken: 'not an object',
+      },
+    },
+    null,
+    2,
+  )}\n`;
+  // The carrier as a symbolic link where the platform allows (FR-024): the
+  // link target itself is a near miss no rule admits, so the declarations are
+  // published once, under the carrier's path.
+  const carrierLinked = tryMaterializeSymlinks(
+    root,
+    () => {
+      write(root, 'configs/mcp.json', carrierText);
+    },
+    () => {
+      symlinkSync(join(root, 'configs/mcp.json'), join(root, '.mcp.json'));
+    },
+    ['.mcp.json'],
+  );
+  if (!carrierLinked) {
+    write(root, '.mcp.json', carrierText);
+  }
+  // The declared command target: exists so a scan can prove it is never
+  // opened (zero connection, FR-025).
+  write(root, 'scripts/context7.sh', '#!/bin/sh\nexit 0\n');
+
+  // Phase 27's negative: an admitted skill whose frontmatter spells
+  // `mcpServers`. Claude documents no such skill field, so no MCP
+  // recognition may attach — the re-declared `context7` provably joins no
+  // row, and the credential below reaches only the skill's own detail
+  // (user decision, 2026-08-20).
+  write(
+    root,
+    '.claude/skills/deploy/SKILL.md',
+    [
+      '---',
+      'name: deploy',
+      'description: Deploy helper with contained MCP declarations',
+      'mcpServers:',
+      '  context7:',
+      '    command: npx',
+      '    args: ["-y", "@upstash/context7-mcp"]',
+      '  deploy-db:',
+      '    url: https://db.example.com/mcp',
+      '    headers:',
+      `      Authorization: Bearer ${FIXTURE_SECRET_LITERAL}`,
+      '  malformed: just a string',
+      '---',
+      '',
+      '# Deploy skill',
+      '',
+    ].join('\n'),
+  );
+  // An admitted skill with no MCP-looking frontmatter at all, beside the
+  // negative above.
+  write(root, '.claude/skills/plain/SKILL.md', '---\nname: plain\n---\n\n# Plain skill\n');
+
+  // Future owner families carrying declarations no shipped rule admits: an
+  // owner adapter grants no read authority, so none of these produces a
+  // candidate, a recognition, or a row.
+  write(
+    root,
+    '.claude-plugin/plugin.json',
+    '{ "name": "fixture-plugin", "mcpServers": { "plugin-server": { "command": "noop" } } }\n',
+  );
+  write(
+    root,
+    '.claude/settings.json',
+    '{ "mcpServers": { "settings-server": { "command": "noop" } } }\n',
+  );
+  write(
+    root,
+    '.claude/agents/reviewer.md',
+    '---\nname: reviewer\nmcpServers:\n  agent-server:\n    command: noop\n---\n\n# Reviewer\n',
+  );
+
+  // Near miss for every product: a subdirectory carrier is a runtime-chain
+  // member no product's rule admits from the selected root's frame; it
+  // re-declares a root server name, so an unadmitted duplicate provably
+  // contributes nothing.
+  write(root, 'packages/api/.mcp.json', '{ "mcpServers": { "context7": { "command": "x" } } }\n');
+  // Near miss: spelling and location variants one step from the literal.
+  write(root, '.mcp.json.bak', 'backup suffix\n');
+  write(root, '.claude/mcp.json', '{ "mcpServers": {} }\n');
+  write(root, 'mcp.json', 'missing dot\n');
+  // Near miss: the User MCP state filename is a `<home>` fact, not a
+  // Repository one; at the Repository root it is admitted by nothing.
+  write(root, '.claude.json', '{ "mcpServers": { "user-server": { "command": "x" } } }\n');
+  // Near miss: VCS internals are excluded from traversal entirely.
+  write(root, '.git/.mcp.json', 'vcs internal\n');
+
+  return {
+    root,
+    carrierPath: '.mcp.json',
+    carrierLinked,
+    linkTargetPath: 'configs/mcp.json',
+    expectedCarrierServerNames: ['context7', 'docs-http', 'odd'],
+    mcpFrontmatterSkillPath: '.claude/skills/deploy/SKILL.md',
+    plainSkillPath: '.claude/skills/plain/SKILL.md',
+    unadmittedOwnerPaths: [
+      '.claude-plugin/plugin.json',
+      '.claude/agents/reviewer.md',
+      '.claude/settings.json',
+    ],
+    commandTargetPath: 'scripts/context7.sh',
+    nearMissPaths: [
+      '.claude.json',
+      '.claude/mcp.json',
+      '.git/.mcp.json',
+      '.mcp.json.bak',
+      'configs/mcp.json',
+      'mcp.json',
+      'packages/api/.mcp.json',
+    ],
+  };
+}
+
+/** One built Copilot CLI MCP fixture repository (T334). */
+export interface CopilotCliMcpFixture {
+  /** The absolute fixture root to scan. */
+  readonly root: string;
+  /**
+   * The root carrier `.mcp.json`. One physical file two products admit:
+   * Claude's exact project rule and the Copilot CLI's exact root rule, so
+   * its declarations appear under both recognitions.
+   */
+  readonly rootCarrierPath: string;
+  /**
+   * The `.github/mcp.json` spelling of the CLI carrier — materialized as a
+   * symbolic link where the platform allows, to prove a linked carrier is
+   * read transparently through its target (FR-024); the same content is a
+   * regular file otherwise, with an identical inspection outcome. Only the
+   * CLI admits this spelling.
+   */
+  readonly githubCarrierPath: string;
+  /** Whether {@link githubCarrierPath} was materialized as a symbolic link. */
+  readonly githubCarrierLinked: boolean;
+  /** The link target for {@link githubCarrierPath}; itself a near miss. */
+  readonly linkTargetPath: string;
+  /** The names the root carrier declares, in authored order. */
+  readonly expectedRootServerNames: readonly string[];
+  /** The names the `.github` carrier declares, in authored order. */
+  readonly expectedGithubServerNames: readonly string[];
+  /**
+   * The name declared by both root-level carriers, so the inventory provably
+   * groups the two spellings' declarations of one name into one row — the
+   * same-name case whose runtime selection stays the strategy's record,
+   * never a projection (FR-009).
+   */
+  readonly duplicateServerName: string;
+  /**
+   * Paths no shipped rule may admit: subdirectory carriers of both spellings
+   * — runtime-chain members no product's rule reads from the selected root's
+   * frame — the general VS Code settings file, the `COPILOT_HOME` User
+   * filename, spelling variants, and VCS internals.
+   */
+  readonly nearMissPaths: readonly string[];
+}
+
+/**
+ * Builds the canonical Copilot CLI MCP fixture repository (T334).
+ *
+ * Positive cases: the root `.mcp.json` (also Claude's project carrier — the
+ * shared physical file), the `.github/mcp.json` spelling — linked where the
+ * platform allows (FR-024) — a duplicate server name across the two
+ * spellings, a literal credential and environment reference in declared
+ * values, a malformed-command declaration that is still listed, and a
+ * non-object entry omitted whole.
+ *
+ * Near misses: subdirectory carriers of both spellings (runtime-chain
+ * members outside the selected root's frame), `.vscode/mcp.json` (the VS
+ * Code carrier arrives with its own phase), the `COPILOT_HOME` filename
+ * `mcp-config.json` at the Repository root, a `mcp.json` outside `.github`,
+ * spelling variants, and VCS internals.
+ */
+export function buildCopilotCliMcpFixture(
+  prefix = 'inspector-copilot-cli-mcp',
+  root = createRepositoryFixtureRoot(prefix),
+): CopilotCliMcpFixture {
+  write(
+    root,
+    '.mcp.json',
+    `${JSON.stringify(
+      {
+        mcpServers: {
+          'shared-tavily': {
+            command: 'npx',
+            args: ['-y', 'tavily-mcp'],
+            env: { API_KEY: FIXTURE_SECRET_LITERAL, ENDPOINT: FIXTURE_ENVIRONMENT_REFERENCE },
+          },
+          // Malformed command: still a named declaration this release lists.
+          odd: { command: 42 },
+          // Malformed: a non-object entry declares no server and is omitted
+          // whole.
+          broken: 'not an object',
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  // The `.github` spelling re-declares the root file's name: both carriers
+  // sit at the selected root, their same-name runtime selection is the
+  // strategy's record, and the inventory groups both declarations under one
+  // row without ordering them. Written in the CLI's bare top-level schema —
+  // each key a server name, no `mcpServers` wrapper — the second documented
+  // form the CLI reading accepts (T341). As a symbolic link where the
+  // platform allows: a linked carrier is read transparently through its
+  // target (FR-024), and the target itself is a near miss no rule admits.
+  const githubCarrierText = `${JSON.stringify(
+    {
+      'gh-actions': { command: 'npx' },
+      'shared-tavily': { command: 'other' },
+    },
+    null,
+    2,
+  )}\n`;
+  const githubCarrierLinked = tryMaterializeSymlinks(
+    root,
+    () => {
+      write(root, 'configs/github-mcp.json', githubCarrierText);
+      mkdirSync(join(root, '.github'), { recursive: true });
+    },
+    () => {
+      symlinkSync(join(root, 'configs/github-mcp.json'), join(root, '.github/mcp.json'));
+    },
+    ['.github/mcp.json'],
+  );
+  if (!githubCarrierLinked) {
+    write(root, '.github/mcp.json', githubCarrierText);
+  }
+
+  // Near misses: subdirectory carriers of both spellings are runtime-chain
+  // members no product's rule reads from the selected root's frame; they
+  // re-declare root server names, so unadmitted duplicates provably
+  // contribute nothing.
+  write(
+    root,
+    'packages/api/.mcp.json',
+    '{ "mcpServers": { "shared-tavily": { "command": "nested" } } }\n',
+  );
+  write(
+    root,
+    'packages/api/.github/mcp.json',
+    '{ "mcpServers": { "gh-actions": { "command": "nested" } } }\n',
+  );
+  // Near miss: the general VS Code settings file beside the dedicated MCP
+  // carrier's location; a documented VS Code settings input the read
+  // allowlist deliberately does not admit.
+  write(root, '.vscode/settings.json', '{ "mcp": { "servers": { "vscode-server": {} } } }\n');
+  // Near miss: the `COPILOT_HOME` User filename is a home fact, not a
+  // Repository one.
+  write(root, 'mcp-config.json', '{ "mcpServers": { "user-server": { "command": "x" } } }\n');
+  // Near miss: spelling variants and VCS internals.
+  write(root, '.mcp.json.bak', 'backup suffix\n');
+  write(root, 'docs/mcp.json', 'bare name outside .github\n');
+  write(root, '.git/.mcp.json', 'vcs internal\n');
+
+  return {
+    root,
+    rootCarrierPath: '.mcp.json',
+    githubCarrierPath: '.github/mcp.json',
+    githubCarrierLinked,
+    linkTargetPath: 'configs/github-mcp.json',
+    expectedRootServerNames: ['shared-tavily', 'odd'],
+    expectedGithubServerNames: ['gh-actions', 'shared-tavily'],
+    duplicateServerName: 'shared-tavily',
+    nearMissPaths: [
+      '.git/.mcp.json',
+      '.mcp.json.bak',
+      '.vscode/settings.json',
+      'configs/github-mcp.json',
+      'docs/mcp.json',
+      'mcp-config.json',
+      'packages/api/.github/mcp.json',
+      'packages/api/.mcp.json',
+    ],
+  };
+}
+
+/** One built Copilot VS Code MCP fixture repository (T354). */
+export interface CopilotVscodeMcpFixture {
+  /** The absolute fixture root to scan. */
+  readonly root: string;
+  /**
+   * The dedicated VS Code carrier `.vscode/mcp.json`, written in the guide's
+   * documented schema — a top-level `servers` map in the editor's JSONC
+   * configuration format, comments and a trailing comma included — with the
+   * `inputs` and `sandbox` sections beside it that declare no server.
+   * Materialized as a symbolic link where the platform allows, to prove a
+   * linked carrier is read transparently through its target (FR-024); the
+   * same content is a regular file otherwise, with an identical outcome.
+   */
+  readonly vscodeCarrierPath: string;
+  /** Whether {@link vscodeCarrierPath} was materialized as a symbolic link. */
+  readonly vscodeCarrierLinked: boolean;
+  /** The link target for {@link vscodeCarrierPath}; itself a near miss. */
+  readonly linkTargetPath: string;
+  /**
+   * The root carrier `.mcp.json` in the CLI's wrapper schema. One physical
+   * file three admissions share: Claude's project rule, the Copilot CLI's
+   * root rule, and the VS Code 1.118+ path/surface provenance — whose
+   * admission adds the VS Code surface without any VS Code-owned reading.
+   */
+  readonly rootCarrierPath: string;
+  /** The names the `.vscode` carrier declares, in authored order. */
+  readonly expectedVscodeServerNames: readonly string[];
+  /** The names the root carrier declares, in authored order. */
+  readonly expectedRootServerNames: readonly string[];
+  /**
+   * The name both carriers declare, so the inventory provably groups the
+   * `.vscode` and root declarations of one name into one row — the same-name
+   * case whose runtime selection stays the strategy's record (FR-009).
+   */
+  readonly duplicateServerName: string;
+  /**
+   * Paths no shipped rule may admit: the subdirectory `.vscode` carrier — a
+   * workspace this product does not select — the general VS Code settings
+   * file, the user-profile filename at the root, spelling variants, and the
+   * link target.
+   */
+  readonly nearMissPaths: readonly string[];
+}
+
+/**
+ * Builds the Copilot VS Code MCP fixture (T354): the dedicated JSONC
+ * `.vscode/mcp.json` carrier beside the shared root `.mcp.json`, near
+ * misses, a linked carrier where the platform allows, credential-shaped
+ * literals, and an environment reference that must never be resolved.
+ */
+export function buildCopilotVscodeMcpFixture(
+  prefix = 'inspector-copilot-vscode-mcp',
+  root = createRepositoryFixtureRoot(prefix),
+): CopilotVscodeMcpFixture {
+  // The documented `servers` schema in the editor's JSONC configuration
+  // format: comments and a trailing comma are the format's own syntax, the
+  // non-mapping entry declares no server and is omitted whole, and the
+  // `inputs` and `sandbox` sections declare nothing.
+  const vscodeCarrierText = `{
+  // Workspace MCP servers, shared through source control.
+  "servers": {
+    "vs-http": {
+      "type": "http",
+      "url": "https://api.example.com/mcp",
+      "headers": { "Authorization": "Bearer ${FIXTURE_SECRET_LITERAL}" }
+    },
+    "vs-local": {
+      "command": "./scripts/vs.sh",
+      "env": { "TOKEN": "${FIXTURE_SECRET_LITERAL}", "ENDPOINT": "${FIXTURE_ENVIRONMENT_REFERENCE}" }
+    },
+    "shared-tavily": { "command": "vscode-owned" },
+    "broken": "not an object",
+  },
+  "inputs": [{ "id": "api-key", "type": "promptString" }],
+  "sandbox": { "network": { "allowedDomains": ["api.example.com"] } }
+}
+`;
+  const vscodeCarrierLinked = tryMaterializeSymlinks(
+    root,
+    () => {
+      write(root, 'configs/vscode-mcp.json', vscodeCarrierText);
+      mkdirSync(join(root, '.vscode'), { recursive: true });
+    },
+    () => {
+      symlinkSync(join(root, 'configs/vscode-mcp.json'), join(root, '.vscode/mcp.json'));
+    },
+    ['.vscode/mcp.json'],
+  );
+  if (!vscodeCarrierLinked) {
+    write(root, '.vscode/mcp.json', vscodeCarrierText);
+  }
+  // The shared root carrier in the CLI's wrapper schema: the VS Code
+  // provenance adds its surface here and nothing else — the declarations are
+  // the CLI reading's.
+  write(
+    root,
+    '.mcp.json',
+    `${JSON.stringify(
+      {
+        mcpServers: {
+          'shared-tavily': { command: 'npx', args: ['-y', 'tavily-mcp'] },
+          'root-only': { url: 'https://root.example.com/mcp' },
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  // Near misses: a subdirectory workspace, the general settings file, the
+  // user-profile filename, and a spelling variant.
+  write(root, 'packages/api/.vscode/mcp.json', '{ "servers": { "nested": {} } }\n');
+  write(root, '.vscode/settings.json', '{ "chat.mcp.enabled": true }\n');
+  write(root, 'mcp.json', '{ "servers": { "user-profile": {} } }\n');
+  write(root, '.vscode/mcp.jsonc', '{ "servers": { "variant": {} } }\n');
+
+  return {
+    root,
+    vscodeCarrierPath: '.vscode/mcp.json',
+    vscodeCarrierLinked,
+    linkTargetPath: 'configs/vscode-mcp.json',
+    rootCarrierPath: '.mcp.json',
+    expectedVscodeServerNames: ['vs-http', 'vs-local', 'shared-tavily'],
+    expectedRootServerNames: ['shared-tavily', 'root-only'],
+    duplicateServerName: 'shared-tavily',
+    nearMissPaths: [
+      '.vscode/mcp.jsonc',
+      '.vscode/settings.json',
+      'configs/vscode-mcp.json',
+      'mcp.json',
+      'packages/api/.vscode/mcp.json',
+    ],
   };
 }
 
@@ -1430,8 +2080,9 @@ export interface AllVendorInstructionFixture {
   readonly expectedDerivedFallbackPaths: readonly string[];
   /**
    * The Source-relative Path of the root `.codex/config.toml` the
-   * configuration-read stage opens as configuration. It is read exactly once
-   * and published nowhere (Phase 15, user decision 2026-08-17).
+   * configuration-read stage opens as configuration, and — since its own
+   * candidacy shipped (`codex.repo.config`, T286) — the walk admits and reads
+   * once more as the published MCP carrier.
    */
   readonly configCarrierPath: string;
   /** The fallback basenames the carrier declares, in authored order. */
@@ -1721,6 +2372,10 @@ export function buildAllVendorInstructionFixture(
     ],
     expectedPublishedPaths: [
       ...new Set([
+        // The carrier's own candidacy (`codex.repo.config`, T286): the same
+        // physical file the configuration stage reads as its seed also
+        // publishes as an admitted candidate of the walk.
+        '.codex/config.toml',
         ...expectedCodexInstructionPaths,
         ...expectedDerivedFallbackPaths,
         ...expectedClaudeInstructionPaths,

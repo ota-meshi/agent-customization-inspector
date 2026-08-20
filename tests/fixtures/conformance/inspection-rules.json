@@ -45,7 +45,7 @@
           "How CLAUDE.md files load"
         ],
         "reviewedOn": "2026-08-18",
-        "establishes": "Project instructions are ./CLAUDE.md or ./.claude/CLAUDE.md and local instructions ./CLAUDE.local.md; the same two filenames are checked in every directory above the working directory and discovered in subdirectories below it, which is the shape this rule admits at the selected root and every descendant. Claude Code reads CLAUDE.md and not AGENTS.md, which is why no selector here names that filename."
+        "establishes": "Project instructions are ./CLAUDE.md or ./.claude/CLAUDE.md and local instructions ./CLAUDE.local.md; both filenames are discovered on demand in subdirectories as Claude reads files there — the documented descendant reach that is why this rule admits them at every depth — while the ancestor walk above the working directory contributes only the selected root, the one member every session shares. Claude Code reads CLAUDE.md and not AGENTS.md, which is why no selector here names that filename."
       },
       {
         "sourceId": "anthropic.claude-code.sdk.setting-sources",
@@ -54,6 +54,40 @@
         "sections": ["CLAUDE.md load locations"],
         "reviewedOn": "2026-08-18",
         "establishes": "The load-location table lists the project root, parent-directory, subdirectory, and local rows separately, and each is gated on a settingSources value — a runtime input this tool never observes, which is why one rule admits every depth and classifies none of them."
+      }
+    ]
+  },
+  {
+    "ruleId": "claude.repo.mcp",
+    "tool": "claude",
+    "discoveryClass": "static-candidate",
+    "kind": "MCP",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".mcp.json"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.mcp.scopes-precedence",
+        "url": "https://code.claude.com/docs/en/mcp",
+        "officialHost": "code.claude.com",
+        "sections": ["MCP installation scopes"],
+        "reviewedOn": "2026-08-20",
+        "establishes": "The project MCP scope is one .mcp.json file at the project root, which is why this rule admits exactly that path at the selected root and nothing below it."
       }
     ]
   },
@@ -102,14 +136,14 @@
         "officialHost": "code.claude.com",
         "sections": ["Where skills live"],
         "reviewedOn": "2026-08-08",
-        "establishes": "Repository skills live at .claude/skills/<skill-name>/SKILL.md on each layer from the working directory through the repository root, which is why this rule admits that shape at the selected root and every descendant directory."
+        "establishes": "Repository skills live at .claude/skills/<skill-name>/SKILL.md, and skills also load from nested .claude/skills directories on demand when Claude reads or edits a file in their subtree — the documented descendant reach that is why this rule admits that shape at every depth, while the ancestor startup walk contributes only the selected root, the one layer every session shares."
       },
       {
         "sourceId": "anthropic.claude-code.plugins.components-scopes",
         "url": "https://code.claude.com/docs/en/plugins-reference",
         "officialHost": "code.claude.com",
         "sections": ["Skills-directory plugins"],
-        "reviewedOn": "2026-07-25",
+        "reviewedOn": "2026-08-20",
         "establishes": "A skills directory at the exact launch working directory can also be interpreted as a plugin, a separate documented behavior that differs from plain-skill ancestor and lazy-descendant discovery and grants this rule no manifest authority."
       }
     ]
@@ -141,6 +175,52 @@
         "sections": ["Codex configuration file"],
         "reviewedOn": "2026-08-17",
         "establishes": "Settings are scoped to a project or subfolder by a .codex/config.toml file in that repository."
+      }
+    ]
+  },
+  {
+    "ruleId": "codex.repo.config",
+    "tool": "codex",
+    "discoveryClass": "static-candidate",
+    "kind": "MCP",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".codex"
+          },
+          {
+            "kind": "literal",
+            "value": "config.toml"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.config-basic",
+        "url": "https://learn.chatgpt.com/docs/config-file/config-basic.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Codex configuration file", "Configuration precedence"],
+        "reviewedOn": "2026-08-17",
+        "establishes": "Project configuration lives in .codex/config.toml, loaded per trusted layer from the project root down to the runtime cwd — the root layer being the one inside the selected Repository boundary."
+      },
+      {
+        "sourceId": "openai.codex.mcp",
+        "url": "https://learn.chatgpt.com/docs/extend/mcp.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Connect Codex to an MCP server"],
+        "reviewedOn": "2026-07-25",
+        "establishes": "MCP servers are declared as named [mcp_servers.*] tables inside that configuration file, which is why the carrier is admitted for the MCP inventory rather than any standalone MCP file."
       }
     ]
   },
@@ -285,7 +365,7 @@
         "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
         "officialHost": "docs.github.com",
         "sections": ["Skill locations"],
-        "reviewedOn": "2026-07-15",
+        "reviewedOn": "2026-08-20",
         "establishes": "The CLI reference documents COPILOT_SKILLS_DIRS adding skill lookup roots, which name directories outside the boundary a scan was authorized for."
       },
       {
@@ -339,7 +419,7 @@
         "officialHost": "docs.github.com",
         "sections": ["Types of custom instructions"],
         "reviewedOn": "2026-08-19",
-        "establishes": "Copilot CLI discovers AGENTS.md in its standard locations, which are directories inside the selected root rather than the root alone."
+        "establishes": "Copilot CLI discovers AGENTS.md in its standard locations, which include the directories on the path of a file it is working on — the documented worked-file reach that puts the filename at every depth below the selected root, while the chain locations contribute only the root itself."
       },
       {
         "sourceId": "github.copilot.cloud.instructions",
@@ -548,7 +628,7 @@
         "officialHost": "docs.github.com",
         "sections": ["Types of custom instructions", "Creating path-specific custom instructions"],
         "reviewedOn": "2026-08-19",
-        "establishes": "Copilot CLI discovers modular instruction files below .github/instructions in its standard locations — excluding the intermediate directories for this filename — and subdirectories may organize them, so which instructions directories exist depends on the context a session runs in rather than on one anchored path."
+        "establishes": "Copilot CLI discovers modular instruction files below .github/instructions in its standard locations — excluding the intermediate directories for this filename — and those locations include the directories on the path of a file it is working on, the documented worked-file reach that is why this rule admits the subtree at every depth; subdirectories inside each instructions directory may organize the files."
       },
       {
         "sourceId": "github.copilot.instructions.support",
@@ -643,7 +723,7 @@
         "officialHost": "docs.github.com",
         "sections": ["Types of custom instructions"],
         "reviewedOn": "2026-08-19",
-        "establishes": "Copilot CLI discovers the repository-wide filename in its standard locations — the repository root, the current working directory, the directories between them, and directories on the path of a file it is working on — which is why every context inside the selected root is inventoried instead of the root alone."
+        "establishes": "Copilot CLI discovers the repository-wide filename in its standard locations, which include the directories on the path of a file it is working on — the documented worked-file reach that is why this rule admits the filename at every depth, since every directory lies on the path of the files under it — while the chain locations (root, working directory, the directories between them) contribute only the selected root, the one member every session shares."
       },
       {
         "sourceId": "github.copilot.instructions.support",
@@ -652,6 +732,138 @@
         "sections": ["Copilot CLI"],
         "reviewedOn": "2026-08-19",
         "establishes": "The support matrix scopes the repository-wide instruction file to the Copilot CLI surface separately from the other two, which is the provenance this rule carries alone."
+      }
+    ]
+  },
+  {
+    "ruleId": "copilot.repo.mcp",
+    "tool": "copilot",
+    "discoveryClass": "static-candidate",
+    "kind": "MCP",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".mcp.json"
+          }
+        ],
+        [
+          {
+            "kind": "literal",
+            "value": ".github"
+          },
+          {
+            "kind": "literal",
+            "value": "mcp.json"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.reference",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["MCP server configuration"],
+        "reviewedOn": "2026-08-20",
+        "establishes": "Workspace MCP servers are .mcp.json and .github/mcp.json files on an upward walk that terminates at the Git root, which is why this rule admits both spellings at the selected root — the one walk member every session shares — and nothing below it."
+      }
+    ]
+  },
+  {
+    "ruleId": "copilot.repo.mcp.vscode",
+    "tool": "copilot",
+    "discoveryClass": "static-candidate",
+    "kind": "MCP",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".vscode"
+          },
+          {
+            "kind": "literal",
+            "value": "mcp.json"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.mcp",
+        "url": "https://code.visualstudio.com/docs/agent-customization/mcp-servers",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Configure the mcp.json file"],
+        "reviewedOn": "2026-08-20",
+        "establishes": "The workspace location for the mcp.json configuration is .vscode/mcp.json in the project, declared with the top-level servers map, which is the exact path and schema this rule admits and reads."
+      },
+      {
+        "sourceId": "github.copilot.cli.reference",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["MCP server configuration"],
+        "reviewedOn": "2026-08-20",
+        "establishes": "The CLI documents its own workspace carriers and schemas apart from this file, which is why the VS Code carrier compiles into its own reading unit instead of sharing the CLI extraction."
+      }
+    ]
+  },
+  {
+    "ruleId": "copilot.repo.mcp.vscode-root",
+    "tool": "copilot",
+    "discoveryClass": "static-candidate",
+    "kind": "MCP",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".mcp.json"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "conflict",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.mcp.workspace-root-release",
+        "url": "https://code.visualstudio.com/updates/v1_118",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Workspace .mcp.json files and server deduplication"],
+        "reviewedOn": "2026-08-20",
+        "establishes": "VS Code 1.118 reads workspace-level .mcp.json files as MCP server declarations, which is the exact root path this provenance admits; the note defines no schema for the file, which is why the admission stays path and surface only."
+      },
+      {
+        "sourceId": "vscode.copilot.mcp",
+        "url": "https://code.visualstudio.com/docs/agent-customization/mcp-servers",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Configure the mcp.json file"],
+        "reviewedOn": "2026-08-20",
+        "establishes": "The current guide names exactly two locations for the mcp.json file and the workspace root is not one of them, which is the conflict with the release note this rule retains rather than resolves."
       }
     ]
   },
@@ -740,7 +952,7 @@
         "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
         "officialHost": "docs.github.com",
         "sections": ["Skill locations"],
-        "reviewedOn": "2026-07-15",
+        "reviewedOn": "2026-08-20",
         "establishes": "The Skill locations table loads project skills from .github/skills, .agents/skills, and .claude/skills at the runtime project and inherits parent-directory .github/skills layers for monorepos — no downward tier, which is why this rule stays anchored at the selected root."
       },
       {

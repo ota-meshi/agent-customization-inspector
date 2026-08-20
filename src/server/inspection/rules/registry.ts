@@ -14,7 +14,7 @@
 // are deliberately not re-checked at runtime (AGENTS.md Implementation
 // simplicity policy). Per-vendor rule catalogs arrive with their inventory
 // phases; this module owns only the shared closed grammar and compilation.
-import type { FrontmatterEntryDto } from '../../../shared/api-types';
+import type { DeclaredEntryDto, McpServerDeclarationDto } from '../../../shared/api-types';
 import type { CustomizationKind, SupportedTool } from '../../../shared/entities';
 import { VENDOR_SURFACE_ORDER } from '../../../shared/registries/behavior-text';
 import type { VendorSurface } from '../../../shared/registries/behavior-types';
@@ -751,18 +751,85 @@ export interface CompiledStaticInstructionRule extends CompiledInspectionRule {
   /** The glob one admitted file governs, or null when it has none; see above. */
   applicabilityRangeOf(
     sourceRelativePath: string,
-    declared: readonly FrontmatterEntryDto[],
+    declared: readonly DeclaredEntryDto[],
   ): string | null;
 }
 
 /**
- * A compiled static rule of a kind whose files govern no range — every kind
- * but `instructions`. It answers nothing about applicability, which is the
- * whole point: a skill rule has no such answer to give.
+ * A compiled rule that admits an MCP declaration carrier, and can therefore
+ * answer which servers one of its admitted files declares — the rows the MCP
+ * inventory publishes, one per declaration (data-model.md § Inventory unit).
+ *
+ * The MCP sibling of {@link CompiledStaticInstructionRule}, and deliberately
+ * not a member of {@link CompiledRule}, for the same reason: how declarations
+ * are read out of a carrier is the admitting vendor's own contract — Codex's
+ * TOML `[mcp_servers.*]` tables, Claude's strict-JSON `mcpServers` map, the
+ * Copilot CLI's two strict-JSON schemas, and VS Code's JSONC `servers` map —
+ * so a skill or instruction rule must not be asked for it.
+ *
+ * The extraction produces the wire declaration shape directly
+ * ({@link McpServerDeclarationDto}): what the one scan-time parse resolved is
+ * what the carrier's detail publishes, so a second internal shape would be a
+ * state able to disagree with it (FR-007).
  */
-export interface CompiledStaticNonInstructionRule extends CompiledInspectionRule {
-  /** Every recognized kind but `instructions`. */
-  readonly kind: Exclude<CustomizationKind, 'instructions'>;
+export interface CompiledStaticMcpReadingRule extends CompiledInspectionRule {
+  /** The recognized kind; an MCP carrier unit compiles MCP records alone. */
+  readonly kind: 'MCP';
+  /**
+   * Discriminant: this unit owns its vendor's documented reading of an
+   * admitted carrier. The recognizer dispatches a group's extraction to the
+   * admission that declares this, never to a provenance-only sibling.
+   */
+  readonly mcpReading: 'own';
+  /**
+   * The server declarations one admitted carrier's complete decoded text
+   * makes, in the parser's resolved order — empty when it declares none, with
+   * a declaration that is not a table omitted whole rather than published
+   * partially. Throws on text the carrier's format cannot parse; the
+   * recognizer's extraction boundary turns the throw into the recognition's
+   * `failed` state (FR-028).
+   */
+  serverDeclarationsOf(sourceText: string): readonly McpServerDeclarationDto[];
+}
+
+/**
+ * A compiled MCP rule whose admission is path/surface provenance only: the
+ * vendor documents the location but not the file's schema, so the rule can
+ * put its surfaces on the carrier's recognition while the declarations stay a
+ * co-admitting reading rule's own extraction. The shipped member is
+ * `copilot.repo.mcp.vscode-root`, whose one exact selector coincides with a
+ * `copilot.repo.mcp` selector by construction — a provenance-only admission
+ * therefore never stands alone on a candidate
+ * (contracts/vendors/github-copilot.md § Inspector Repository matcher rules).
+ *
+ * Its own unit rather than an optional reading on the family: a rule that
+ * cannot answer which servers a carrier declares must not carry the member
+ * that promises to, and the `mcpReading` discriminant is what lets the
+ * recognizer prove which admission can answer without a cast.
+ */
+export interface CompiledStaticMcpProvenanceRule extends CompiledInspectionRule {
+  /** The recognized kind; an MCP carrier unit compiles MCP records alone. */
+  readonly kind: 'MCP';
+  /** Discriminant: no reading — the admission carries provenance alone. */
+  readonly mcpReading: 'none';
+}
+
+/**
+ * A compiled rule that admits an MCP declaration carrier: the closed union of
+ * the unit that owns its vendor's reading and the unit whose admission is
+ * provenance alone, discriminated by `mcpReading`.
+ */
+export type CompiledStaticMcpRule = CompiledStaticMcpReadingRule | CompiledStaticMcpProvenanceRule;
+
+/**
+ * A compiled static rule of every other kind — neither an instruction rule,
+ * whose files govern a range, nor an MCP carrier rule, whose files declare
+ * servers. It answers no per-kind question, which is the whole point: a skill
+ * rule has no such answer to give.
+ */
+export interface CompiledStaticOtherKindRule extends CompiledInspectionRule {
+  /** Every recognized kind but `instructions` and `MCP`. */
+  readonly kind: Exclude<CustomizationKind, 'instructions' | 'MCP'>;
 }
 
 /**
@@ -771,7 +838,7 @@ export interface CompiledStaticNonInstructionRule extends CompiledInspectionRule
  * executes, so a catalog needs no second type beside this one.
  */
 export type CompiledStaticCandidateRule =
-  CompiledStaticInstructionRule | CompiledStaticNonInstructionRule;
+  CompiledStaticInstructionRule | CompiledStaticMcpRule | CompiledStaticOtherKindRule;
 
 /**
  * What a recognizer receives: any rule that can admit a candidate — a static

@@ -35,12 +35,14 @@ export type RecognitionParseStatus =
   | 'failed';
 
 /**
- * One authored frontmatter value, as the detail surfaces — the skill's and
- * the instruction file's — show it (data-model.md § Skill presentation). The
- * shape mirrors what the parser resolved, so a mapping is shown as a mapping
- * and a list as a list rather than as a summary of one.
+ * One declared value as a detail surface shows it — a frontmatter value of a
+ * skill or an instruction file, or a field value of an MCP server declaration
+ * (data-model.md § Skill presentation). One shape for every producing format,
+ * because each parser resolves into the same structure: the shape mirrors
+ * what the parser resolved, so a mapping is shown as a mapping and a list as
+ * a list rather than as a summary of one.
  */
-export type FrontmatterValueDto =
+export type DeclaredValueDto =
   /** A string, number, or boolean the syntax resolved to one value. */
   | {
       /** Selects the scalar variant. */
@@ -64,25 +66,25 @@ export type FrontmatterValueDto =
       /** Selects the sequence variant. */
       readonly kind: 'sequence';
       /** The items in authored order; empty for an authored empty list. */
-      readonly items: readonly FrontmatterValueDto[];
+      readonly items: readonly DeclaredValueDto[];
     }
   /** A nested mapping, each entry a key of its own. */
   | {
       /** Selects the mapping variant. */
       readonly kind: 'mapping';
       /** The entries in authored order; empty for an authored empty mapping. */
-      readonly entries: readonly FrontmatterEntryDto[];
+      readonly entries: readonly DeclaredEntryDto[];
     };
 
 /**
- * The parsed type of a declared frontmatter key under YAML 1.2's core schema
- * (data-model.md § Field reading). Published beside the rendered spelling
- * because one spelling can stand for two keys — an unquoted `1` is a number
- * and `"1"` a string, both rendering as `1` — and a surface matching
- * declarations across files needs the parser's identity, not the spelling
- * alone (FR-011).
+ * The parsed type of a declared key under the producing format's own schema
+ * (data-model.md § Field reading). YAML's core schema is what makes it a
+ * question at all: an unquoted `1` is a number and `"1"` a string, both
+ * rendering as `1`, so a surface matching declarations across files needs the
+ * parser's identity beside the spelling (FR-011). TOML keys are always
+ * strings, so every entry a TOML declaration produces carries `'string'`.
  */
-export type FrontmatterKeyKind =
+export type DeclaredKeyKind =
   /** A string key, quoted or plain. */
   | 'string'
   /** A key the core schema resolves to a number. */
@@ -93,32 +95,33 @@ export type FrontmatterKeyKind =
   | 'null';
 
 /**
- * One parsed frontmatter declaration, as the detail surfaces — the skill's
- * and the instruction file's — show it (data-model.md § Skill presentation):
- * the key and value carry what the parser resolved, while the authored
- * spelling stays in the complete `sourceText` served beside them.
+ * One parsed declaration entry, as the detail surfaces show it — a
+ * frontmatter entry of a skill or an instruction file, or a field of an MCP
+ * server declaration (data-model.md § Skill presentation): the key and value
+ * carry what the parser resolved, while a file's authored spelling stays in
+ * the complete `sourceText` where one is served.
  *
  * The key is the file's own, never a vendor catalog's: this is the reader's
- * frontmatter shown back to them, so a key the product has no opinion about is
+ * declaration shown back to them, so a key the product has no opinion about is
  * listed exactly like one it does.
  */
-export interface FrontmatterEntryDto {
+export interface DeclaredEntryDto {
   /**
-   * The declared key as the parser resolved it under YAML 1.2's core schema
-   * (data-model.md § Field reading). An unquoted `007` is therefore `7`, the
-   * same rule the value on the other side of the colon follows; the authored
-   * spelling stays in the complete `sourceText` the detail surface serves
-   * beside these.
+   * The declared key as the parser resolved it under the producing format's
+   * own schema (data-model.md § Field reading). YAML's unquoted `007` is
+   * therefore `7`, the same rule the value on the other side of the colon
+   * follows; a file's authored spelling stays in the complete `sourceText`
+   * where the detail serves one.
    */
   readonly key: string;
   /**
-   * The parsed type of the declared key ({@link FrontmatterKeyKind}): what
+   * The parsed type of the declared key ({@link DeclaredKeyKind}): what
    * tells apart the two keys one spelling can stand for, since `key` renders
-   * a numeric `1` and a string `"1"` identically.
+   * YAML's numeric `1` and string `"1"` identically.
    */
-  readonly keyKind: FrontmatterKeyKind;
-  /** What the key declares; see {@link FrontmatterValueDto}. */
-  readonly value: FrontmatterValueDto;
+  readonly keyKind: DeclaredKeyKind;
+  /** What the key declares; see {@link DeclaredValueDto}. */
+  readonly value: DeclaredValueDto;
 }
 
 /**
@@ -313,6 +316,78 @@ export interface InstructionRecognitionDto {
   readonly surfaces: readonly VendorSurface[];
 }
 
+/**
+ * One row of the MCP inventory (contracts/http-api.md § get-session `mcp[]`,
+ * data-model.md § Inventory unit): one declared server name, listing every
+ * declaration that resolves it — one per `(carrier, tool)`, the same grouping
+ * a skill row gives its definitions — so a second carrier declaring the same
+ * name joins the name's row rather than starting another.
+ *
+ * The declared values — commands, URLs, headers, environment — are not here:
+ * a declaration's content is served by its carrier's detail, one file at a
+ * time (FR-027), and the carrier's own read outcome, size, and file
+ * diagnostics stay on its `files[]` entry.
+ */
+export interface McpInventoryEntryDto {
+  /**
+   * The declared server name this row is — the `[mcp_servers.*]`-style key,
+   * exactly as the carrier wrote it (FR-007). Null for the one row that
+   * closes the list with the carriers currently publishing no named
+   * declaration: a carrier whose declaration block could not be read, whose
+   * rows are unknown rather than absent, or one that declares none — which
+   * each declaration's own `parseStatus` tells apart (FR-028).
+   */
+  readonly name: string | null;
+  /**
+   * The declarations resolving this name, in carrier-path then closed tool
+   * order — or, on the null row, the carriers publishing no named
+   * declaration, one entry per `(carrier, tool)` either way. Non-empty: a
+   * name exists because a declaration resolved it, and the null row exists
+   * only while a carrier belongs on it.
+   */
+  readonly declarations: readonly McpDeclarationDto[];
+}
+
+/**
+ * One declaration listed under the server name it resolves — or, on the null
+ * row, one carrier publishing no named declaration (contracts/http-api.md
+ * § get-session `mcp[]`).
+ */
+export interface McpDeclarationDto {
+  /**
+   * The Source-relative Path of the carrier this declaration is authored
+   * in — the file's identity (FR-030), which joins to `files[]` and is the
+   * path half of the declaration's own detail route,
+   * `/mcp/<source-relative path>?server=<name>`.
+   */
+  readonly sourceRelativePath: string;
+  /** The tool whose recognition this declaration is (FR-007). */
+  readonly tool: SupportedTool;
+  /**
+   * The vendor surfaces the declaring recognition rests on — the union over
+   * its admissions, exactly as an instruction file's recognitions publish
+   * them (contracts/http-api.md § get-session). Naming a surface never claims
+   * that surface loaded the file (FR-009); it says which documented lookup
+   * the admission rests on — the CLI context for a Copilot workspace carrier,
+   * Claude's shared client surface for its project file.
+   */
+  readonly surfaces: readonly VendorSurface[];
+  /**
+   * The owning carrier recognition's extraction state, republished here
+   * because the declaration is that recognition's (FR-028). Always `parsed`
+   * under a named row — a failed carrier publishes no name — and on the null
+   * row it is what tells "the rows are unknown" (`failed`) apart from "the
+   * carrier declares none" (`parsed`).
+   */
+  readonly parseStatus: RecognitionParseStatus;
+  /**
+   * The kind's extraction-failure reference (FR-028): one extraction per
+   * kind means one record, which the carrier's `files[]` entry lists once and
+   * each of its declarations republishes as its own parse fact.
+   */
+  readonly diagnosticIds: readonly string[];
+}
+
 /** One tool's same-name resolution on a {@link SkillInventoryEntryDto}. */
 export interface SameNameSkillResolutionDto {
   /** The tool the statement belongs to. */
@@ -336,7 +411,7 @@ export interface MarkdownPresentationDto {
    * file's own declarations, shown as declarations rather than buried in the
    * source (FR-007). Empty when the file declares no frontmatter.
    */
-  readonly frontmatter: readonly FrontmatterEntryDto[];
+  readonly frontmatter: readonly DeclaredEntryDto[];
   /**
    * The file with its frontmatter block removed: the instructions the
    * product would read. Separated from the declarations above because they
@@ -405,6 +480,62 @@ export interface InstructionFileDetailDto extends FileDetailBase {
 export interface UnrecognizedFileDetailDto extends FileDetailBase {
   /** Discriminant: no recognition is attached to the file. */
   readonly kind: 'file';
+}
+
+/**
+ * One server declaration of an MCP-declaring file — a standalone carrier or a
+ * contained-declaration owner — as its detail shows it (contracts/http-api.md
+ * § get-mcp-carrier-detail, data-model.md
+ * § Inventory unit): the declared name — the key its inventory row is named
+ * by — and every field the declaration writes, by the keys the file wrote
+ * and in the parser's resolved order (FR-007). The same shape the recognition
+ * extracts, so the wire carries what the one scan-time parse resolved rather
+ * than a second reading.
+ */
+export interface McpServerDeclarationDto {
+  /** The server name exactly as the carrier's key declares it (FR-007). */
+  readonly name: string;
+  /**
+   * Every field the declaration writes — commands, arguments, URLs, headers,
+   * environment values — each as the parser resolved it, in the shared
+   * declaration-entry shape the detail surfaces render. The values are the
+   * carrier's own literals: an environment reference stays the characters
+   * that were written, never a process value (FR-026). TOML and JSON keys are
+   * always strings, so a carrier's entries all have `keyKind: 'string'`; a
+   * future contained declaration read out of an owner's YAML frontmatter
+   * keeps the parsed kind, exactly as `presentation.frontmatter` does.
+   */
+  readonly fields: readonly DeclaredEntryDto[];
+}
+
+/**
+ * The result of `get-mcp-carrier-detail`: one MCP-declaring file's detail
+ * (contracts/http-api.md § get-mcp-carrier-detail) — the file's own facts and
+ * the declarations it makes, and deliberately no `sourceText` field at all.
+ * It answers for a standalone carrier and for an admitted owner file whose
+ * own content contains declarations — one of the documented owner families,
+ * none of which any rule admits yet — alike: a file admitted so its declarations can be published
+ * shows those declarations and never its own bytes (FR-007), which is why
+ * this is its own function's result rather than a {@link FileDetailDto}
+ * variant. A contained-declaration owner's source reaches a response only
+ * through `get-file-detail`, under the owner's own kind.
+ */
+export interface McpCarrierDetailDto {
+  /**
+   * The committed carrier's own facts — path, read outcome, size,
+   * diagnostics — without its source text (FR-007).
+   */
+  readonly file: CustomizationFileSummaryDto;
+  /**
+   * The declarations the carrier makes, one per server in the parser's
+   * resolved order — empty when it declares none — or null exactly when
+   * extraction failed all-or-nothing (FR-028): nothing was parsed, the rows
+   * are unknown rather than absent, and the failure's Diagnostic is in
+   * `diagnostics`.
+   */
+  readonly servers: readonly McpServerDeclarationDto[] | null;
+  /** The file-scoped Diagnostic records the file's own `diagnosticIds` name (FR-028). */
+  readonly diagnostics: readonly SerializedDiagnostic[];
 }
 
 /**
@@ -693,6 +824,13 @@ export interface SessionSnapshot {
    * phase ships rather than widening one shared row shape.
    */
   readonly skills: readonly SkillInventoryEntryDto[];
+  /**
+   * The MCP inventory: one entry per declared server name, in name order,
+   * each listing the declarations that resolve it; the one null-named entry
+   * closes the list with the carriers publishing no named declaration
+   * (data-model.md § Inventory unit).
+   */
+  readonly mcp: readonly McpInventoryEntryDto[];
   /**
    * Active-generation Diagnostic records plus session-owned lifecycle
    * records (contracts/http-api.md § get-session `diagnostics[]`).

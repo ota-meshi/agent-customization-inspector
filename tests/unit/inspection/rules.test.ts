@@ -1,5 +1,5 @@
-// T053/T126/T154/T207/T228: the Codex, Claude, and Copilot SKILL and
-// instruction rules as executed — each authored program compiles once into the
+// T053/T126/T154/T207/T228/T282: the Codex, Claude, and Copilot SKILL,
+// instruction, and MCP-carrier rules as executed — each authored program compiles once into the
 // typed plan, the safe filesystem executes only that plan, and vendor code
 // classifies matches without owning a walker or reinterpreting selectors
 // (FR-003, FR-019, FR-024).
@@ -15,15 +15,23 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import * as fsIo from '../../../src/server/inspection/fs-io';
 import {
   buildClaudeInstructionFixture,
+  buildClaudeMcpFixture,
   buildClaudeSkillFixture,
   buildCodexInstructionFixture,
+  buildCodexMcpFixture,
   buildCodexSkillFixture,
+  buildCopilotCliMcpFixture,
+  buildCopilotVscodeMcpFixture,
   buildCopilotInstructionFixture,
   buildCopilotSkillFixture,
   type ClaudeInstructionFixture,
+  type ClaudeMcpFixture,
   type ClaudeSkillFixture,
   type CodexInstructionFixture,
+  type CodexMcpFixture,
   type CodexSkillFixture,
+  type CopilotCliMcpFixture,
+  type CopilotVscodeMcpFixture,
   type CopilotInstructionFixture,
   type CopilotSkillFixture,
 } from '../../fixtures/repositories/build-fixtures';
@@ -42,7 +50,7 @@ import {
 } from '../../../src/server/inspection/rules/registry';
 import { runTraversalScan } from '../../../src/server/inspection/traversal';
 import { runSourceScan } from '../../../src/server/inspection/scan';
-import type { FrontmatterEntryDto, FrontmatterValueDto } from '../../../src/shared/api-types';
+import type { DeclaredEntryDto, DeclaredValueDto } from '../../../src/shared/api-types';
 
 // Pass-through spies over the inspection module's closed fs surface: the
 // product's calls stay real while the suite asserts exactly which paths were
@@ -83,7 +91,7 @@ async function scanFixture() {
 
 describe('the shipped codex.repo.skill plan', () => {
   it('compiles the authored program once into the immutable typed plan', () => {
-    expect(CODEX_REPOSITORY_RULES).toHaveLength(2);
+    expect(CODEX_REPOSITORY_RULES).toHaveLength(3);
     const compiled = CODEX_REPOSITORY_RULES.find(
       (candidate) => candidate.rule.ruleId === 'codex.repo.skill',
     )!;
@@ -645,8 +653,12 @@ describe('the shipped codex.repo.instructions plan (T207)', () => {
     expect(derived.matcher).toBeNull();
     // The derived rule feeds no static traversal plan: the walked list holds
     // the static rules alone, and the configuration-read stage expands the
-    // derivation into its own per-scan plan.
+    // derivation into its own per-scan plan. The carrier's own candidacy
+    // (`codex.repo.config`, T286) does not change that: the derivation stays
+    // Phase 15's, seeded by the configuration read rather than by the
+    // carrier's admission.
     expect(CODEX_REPOSITORY_RULES.map((candidate) => candidate.rule.ruleId)).toEqual([
+      'codex.repo.config',
       'codex.repo.instructions',
       'codex.repo.skill',
     ]);
@@ -670,17 +682,18 @@ describe('the anchored Codex instruction inventory (T207)', () => {
     return scanWith(instructionFixture.root, CODEX_REPOSITORY_RULES);
   }
 
-  it('admits exactly the root pair, the empty regular file included', async () => {
+  it('admits exactly the root pair and the carrier, the empty regular file included', async () => {
     const result = await scanInstructions();
     // `AGENTS.md` is authored empty and is still an admitted, readable
     // candidate: the vendor's first-non-empty selection is runtime behavior
-    // the inventory does not project (FR-009). The carrier is deliberately
-    // not among the candidates: it is the configuration-read stage's input,
-    // never a published file, and the fallback files it declares enter
-    // through that stage's own plan — the scan suite's claim.
-    expect(result.files.map((file) => file.publicPath)).toEqual([
-      ...instructionFixture.expectedInstructionPaths,
-    ]);
+    // the inventory does not project (FR-009). The carrier is among the
+    // candidates since its own candidacy shipped (`codex.repo.config`,
+    // T286) — its first and only one — while the fallback files it declares
+    // still enter through the configuration-read stage's own plan, which this
+    // bare traversal deliberately does not run.
+    expect(result.files.map((file) => file.publicPath).sort()).toEqual(
+      [instructionFixture.configCarrierPath, ...instructionFixture.expectedInstructionPaths].sort(),
+    );
     const empty = result.files.find((file) => file.publicPath === 'AGENTS.md');
     if (empty?.outcome.kind !== 'readable') {
       throw new Error('expected the empty regular file to be readable');
@@ -713,12 +726,12 @@ describe('the anchored Codex instruction inventory (T207)', () => {
     ]);
   });
 
-  it('walks only the static allowlist: neither the carrier nor derived targets', async () => {
-    // The bare traversal reads exactly the static candidates — the pair. The
-    // carrier and the declared fallback files exist on disk, so a walk that
-    // reached either would show up here; the carrier is read only by the
-    // configuration-read stage, and the fallback files only through the plan
-    // that stage expands (T1090), which the scan suite proves.
+  it('walks only the static allowlist, reading each candidate once and no derived target', async () => {
+    // The bare traversal reads exactly the static candidates — the pair and
+    // the carrier, each once, with no duplicate read (T282). The declared
+    // fallback files exist on disk, so a walk that reached one would show up
+    // here; they enter only through the plan the configuration-read stage
+    // expands (T1090), which the scan suite proves.
     await scanInstructions();
     const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) =>
       String(call[0])
@@ -726,10 +739,174 @@ describe('the anchored Codex instruction inventory (T207)', () => {
         .split(sep)
         .join('/'),
     );
-    expect([...opened].sort()).toEqual([...instructionFixture.expectedInstructionPaths]);
-    expect(opened).not.toContain(instructionFixture.configCarrierPath);
+    expect([...opened].sort()).toEqual(
+      [instructionFixture.configCarrierPath, ...instructionFixture.expectedInstructionPaths].sort(),
+    );
+    expect(new Set(opened).size).toBe(opened.length);
     for (const derivedPath of instructionFixture.expectedDerivedFallbackPaths) {
       expect(opened).not.toContain(derivedPath);
+    }
+  });
+});
+
+describe('the shipped codex.repo.config plan (T282)', () => {
+  it('compiles the exact root carrier pair of literals and nothing wider', () => {
+    const compiled = CODEX_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'codex.repo.config',
+    )!;
+    expect(compiled.tool).toBe('codex');
+    // The carrier is admitted for the MCP inventory: its rows are the
+    // contained `[mcp_servers.*]` declarations (data-model.md § Inventory
+    // unit), and a standalone MCP file gets no Codex candidacy at all.
+    expect(compiled.kind).toBe('MCP');
+    expect(compiled.plan).toEqual(
+      new TraversalPlan(INSPECTION_RULES['codex.repo.config']!.matcher!),
+    );
+    // One exact two-literal program anchored at the Repository root: the
+    // carrier's first and only candidacy, so no second selector — and no
+    // second rule below — can admit or read the same physical file twice.
+    expect(compiled.plan.selectors).toHaveLength(1);
+    expect(compiled.plan.selectors[0]!.remainder).toEqual([
+      { kind: 'literal', value: '.codex' },
+      { kind: 'literal', value: 'config.toml' },
+    ]);
+    expect(compiled.plan.selectionPolicy).toBe('all-matches');
+  });
+
+  it('is explained by the precedence and MCP strategies, by identity', () => {
+    // The registry-wide half of this regression — the carrier candidacy being
+    // unique across every vendor's catalog, and the contained-Hook behavior
+    // granting no candidate — is the contract gate's
+    // (tests/contract/inspection-rules.test.ts); what belongs here is the
+    // compiled unit carrying its own vendor's edges.
+    const compiled = CODEX_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'codex.repo.config',
+    )!;
+    expect(compiled.relations).toBe(RULE_RELATIONS['codex.repo.config']);
+    expect(compiled.relations.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual(
+      ['codex.config.precedence', 'codex.mcp.configuration'],
+    );
+  });
+});
+
+describe('the anchored Codex MCP carrier inventory (T282)', () => {
+  let mcpFixture: CodexMcpFixture;
+
+  beforeAll(() => {
+    mcpFixture = buildCodexMcpFixture('inspector-codex-mcp-rules');
+  });
+
+  afterAll(() => {
+    rmSync(mcpFixture.root, { recursive: true, force: true });
+  });
+
+  it('admits the carrier exactly once, with one read and one admission', async () => {
+    const result = await scanWith(mcpFixture.root, CODEX_REPOSITORY_RULES);
+    const carrier = result.files.find((file) => file.publicPath === mcpFixture.carrierPath);
+    expect(carrier).toBeDefined();
+    // One admission from the one selector of the one rule: no duplicate
+    // candidate, and each admitted file is read exactly once by the walk.
+    expect(carrier!.admissions).toHaveLength(1);
+    const [admitted] = resolveAdmittingRules(CODEX_REPOSITORY_RULES, carrier!.admissions);
+    expect(admitted!.rule.ruleId).toBe('codex.repo.config');
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) =>
+      String(call[0])
+        .slice(mcpFixture.root.length + 1)
+        .split(sep)
+        .join('/'),
+    );
+    expect(opened.filter((path) => path === mcpFixture.carrierPath)).toHaveLength(1);
+  });
+
+  it('admits no standalone MCP file, nested carrier, or spelling variant', async () => {
+    // The standalone `.mcp.json` near miss is the registry decision this
+    // phase records: inline servers are metadata on the admitted carrier and
+    // create no second candidate, and no plugin, User, or managed location is
+    // promoted into the Repository walk.
+    const result = await scanWith(mcpFixture.root, CODEX_REPOSITORY_RULES);
+    const paths = new Set(result.files.map((file) => file.publicPath));
+    for (const nearMiss of mcpFixture.nearMissPaths) {
+      expect(paths.has(nearMiss), nearMiss).toBe(false);
+    }
+  });
+});
+
+describe('the shipped claude.repo.mcp plan (T306)', () => {
+  it('compiles the exact root one-literal program and nothing wider', () => {
+    const compiled = CLAUDE_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'claude.repo.mcp',
+    )!;
+    expect(compiled.tool).toBe('claude');
+    // The carrier is admitted for the MCP inventory: its rows are the named
+    // `mcpServers` declarations (data-model.md § Inventory unit), and the
+    // vendor documents exactly one project MCP file at the project root, so
+    // the program is one literal with no recursive step.
+    expect(compiled.kind).toBe('MCP');
+    expect(compiled.plan).toEqual(new TraversalPlan(INSPECTION_RULES['claude.repo.mcp']!.matcher!));
+    expect(compiled.plan.selectors).toHaveLength(1);
+    expect(compiled.plan.selectors[0]!.remainder).toEqual([
+      { kind: 'literal', value: '.mcp.json' },
+    ]);
+    expect(compiled.plan.selectionPolicy).toBe('all-matches');
+  });
+
+  it('is explained by the MCP selection strategy, by identity', () => {
+    // The registry-wide half — the carrier candidacy staying unique across
+    // every vendor's catalog — is the contract gate's
+    // (tests/contract/inspection-rules.test.ts); what belongs here is the
+    // compiled unit carrying its own vendor's edges.
+    const compiled = CLAUDE_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'claude.repo.mcp',
+    )!;
+    expect(compiled.relations).toBe(RULE_RELATIONS['claude.repo.mcp']);
+    expect(compiled.relations.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual(
+      ['claude.mcp.selection'],
+    );
+  });
+});
+
+describe('the root-exact Claude MCP inventory (T306)', () => {
+  let mcpFixture: ClaudeMcpFixture;
+
+  beforeAll(() => {
+    mcpFixture = buildClaudeMcpFixture('inspector-claude-mcp-rules');
+  });
+
+  afterAll(() => {
+    rmSync(mcpFixture.root, { recursive: true, force: true });
+  });
+
+  it('admits the carrier exactly once, reading a linked carrier through its target', async () => {
+    const result = await scanWith(mcpFixture.root, CLAUDE_REPOSITORY_RULES);
+    const carrier = result.files.find((file) => file.publicPath === mcpFixture.carrierPath);
+    expect(carrier).toBeDefined();
+    // One admission from the one selector of the one rule — whether the
+    // carrier is a regular file or, where the platform allowed it, a symbolic
+    // link the walk reads transparently through its target (FR-024).
+    expect(carrier!.admissions).toHaveLength(1);
+    const [admitted] = resolveAdmittingRules(CLAUDE_REPOSITORY_RULES, carrier!.admissions);
+    expect(admitted!.rule.ruleId).toBe('claude.repo.mcp');
+  });
+
+  it('admits no descendant carrier, User state, unadmitted owner, or spelling variant', async () => {
+    // The registry decision this phase records: Claude reads exactly one
+    // project MCP file, the User `.claude.json` is a `<home>` fact, and a
+    // plugin manifest, settings file, or agent file carrying declarations is
+    // an unadmitted owner no adapter can reach (T309, T325).
+    const result = await scanWith(mcpFixture.root, CLAUDE_REPOSITORY_RULES);
+    const paths = new Set(result.files.map((file) => file.publicPath));
+    for (const nearMiss of [...mcpFixture.nearMissPaths, ...mcpFixture.unadmittedOwnerPaths]) {
+      expect(paths.has(nearMiss), nearMiss).toBe(false);
+    }
+    // The mcpServers-spelling skill and the plain skill are admitted — as
+    // skills, by the skill rule, and as nothing else: a skill frontmatter
+    // spelling `mcpServers` is a field Claude does not document, never a
+    // second candidacy.
+    for (const skillPath of [mcpFixture.mcpFrontmatterSkillPath, mcpFixture.plainSkillPath]) {
+      const skill = result.files.find((file) => file.publicPath === skillPath);
+      expect(skill, skillPath).toBeDefined();
+      const admitted = resolveAdmittingRules(CLAUDE_REPOSITORY_RULES, skill!.admissions);
+      expect(admitted.map((rule) => rule.rule.ruleId)).toEqual(['claude.repo.skill']);
     }
   });
 });
@@ -905,6 +1082,162 @@ describe('the applicability range a Claude instruction rule answers (T1093)', ()
   });
 });
 
+describe('the shipped copilot.repo.mcp plan (T336)', () => {
+  it('compiles the two root-exact CLI carrier programs and nothing wider', () => {
+    const compiled = COPILOT_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'copilot.repo.mcp',
+    )!;
+    expect(compiled.tool).toBe('copilot');
+    // The carriers are admitted for the MCP inventory: their rows are the
+    // named `mcpServers` declarations (data-model.md § Inventory unit). The
+    // Git root is the documented upward walk's one terminal every session
+    // shares — the only chain point the selected root's frame contains — so
+    // both spellings are root-exact and no recursive step exists.
+    expect(compiled.kind).toBe('MCP');
+    expect(compiled.plan).toEqual(
+      new TraversalPlan(INSPECTION_RULES['copilot.repo.mcp']!.matcher!),
+    );
+    expect(compiled.plan.selectors).toHaveLength(2);
+    expect(compiled.plan.selectors.map((selector) => selector.remainder)).toEqual([
+      [{ kind: 'literal', value: '.mcp.json' }],
+      [
+        { kind: 'literal', value: '.github' },
+        { kind: 'literal', value: 'mcp.json' },
+      ],
+    ]);
+    expect(compiled.plan.selectionPolicy).toBe('all-matches');
+  });
+
+  it('is explained by the CLI MCP selection strategy, by identity', () => {
+    const compiled = COPILOT_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'copilot.repo.mcp',
+    )!;
+    expect(compiled.relations).toBe(RULE_RELATIONS['copilot.repo.mcp']);
+    expect(compiled.relations.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual(
+      ['copilot.cli.mcp.selection'],
+    );
+  });
+});
+
+describe('the root-exact Copilot CLI MCP inventory (T336)', () => {
+  let mcpFixture: CopilotCliMcpFixture;
+
+  beforeAll(() => {
+    mcpFixture = buildCopilotCliMcpFixture('inspector-copilot-cli-mcp-rules');
+  });
+
+  afterAll(() => {
+    rmSync(mcpFixture.root, { recursive: true, force: true });
+  });
+
+  it('admits both root spellings once each, links read through targets', async () => {
+    const result = await scanWith(mcpFixture.root, COPILOT_REPOSITORY_RULES);
+    const paths = new Set(result.files.map((file) => file.publicPath));
+    // The root spelling carries the VS Code 1.118+ path/surface provenance
+    // beside the CLI admission (T359) — two provenances of one candidate,
+    // never two files — while the `.github` spelling stays the CLI's alone.
+    const expectedAdmissions: Record<string, readonly string[]> = {
+      [mcpFixture.rootCarrierPath]: ['copilot.repo.mcp', 'copilot.repo.mcp.vscode-root'],
+      [mcpFixture.githubCarrierPath]: ['copilot.repo.mcp'],
+    };
+    for (const carrier of [mcpFixture.rootCarrierPath, mcpFixture.githubCarrierPath]) {
+      expect(paths.has(carrier), carrier).toBe(true);
+      const admitted = resolveAdmittingRules(
+        COPILOT_REPOSITORY_RULES,
+        result.files.find((file) => file.publicPath === carrier)!.admissions,
+      );
+      expect(admitted.map((rule) => rule.rule.ruleId)).toEqual(expectedAdmissions[carrier]);
+    }
+  });
+
+  it('admits no subdirectory carrier, User filename, VS Code carrier, or spelling variant', async () => {
+    // The registry decision this phase records (T339): a subdirectory
+    // carrier is a runtime-chain member outside the selected root's frame,
+    // the `COPILOT_HOME` filename is a home fact, the general VS Code
+    // settings file is a documented input the allowlist does not admit, and
+    // session additions or plugin servers have no path a Repository walk
+    // could reach.
+    const result = await scanWith(mcpFixture.root, COPILOT_REPOSITORY_RULES);
+    const paths = new Set(result.files.map((file) => file.publicPath));
+    for (const nearMiss of mcpFixture.nearMissPaths) {
+      expect(paths.has(nearMiss), nearMiss).toBe(false);
+    }
+  });
+});
+
+describe('the exact Copilot VS Code MCP rules (T356)', () => {
+  let vscodeFixture: CopilotVscodeMcpFixture;
+
+  beforeAll(() => {
+    vscodeFixture = buildCopilotVscodeMcpFixture('inspector-copilot-vscode-mcp-rules');
+  });
+
+  afterAll(() => {
+    rmSync(vscodeFixture.root, { recursive: true, force: true });
+  });
+
+  it('admits the dedicated carrier and merges root provenances on one file', async () => {
+    const result = await scanWith(vscodeFixture.root, COPILOT_REPOSITORY_RULES);
+    // The `.vscode` carrier is one candidate of its own rule — read through
+    // its link where the platform created one (FR-024) — and the root
+    // spelling is one physical file whose CLI and VS Code admissions are two
+    // provenances of one candidate and one read, never two files (T362).
+    const byPath = new Map(result.files.map((file) => [file.publicPath, file]));
+    const vscode = byPath.get(vscodeFixture.vscodeCarrierPath);
+    expect(
+      resolveAdmittingRules(COPILOT_REPOSITORY_RULES, vscode!.admissions).map(
+        (rule) => rule.rule.ruleId,
+      ),
+    ).toEqual(['copilot.repo.mcp.vscode']);
+    const root = byPath.get(vscodeFixture.rootCarrierPath);
+    expect(
+      resolveAdmittingRules(COPILOT_REPOSITORY_RULES, root!.admissions).map(
+        (rule) => rule.rule.ruleId,
+      ),
+    ).toEqual(['copilot.repo.mcp', 'copilot.repo.mcp.vscode-root']);
+    expect(
+      result.files.filter((file) => file.publicPath === vscodeFixture.rootCarrierPath),
+    ).toHaveLength(1);
+  });
+
+  it('admits no nested workspace, general settings, User filename, or variant', async () => {
+    const result = await scanWith(vscodeFixture.root, COPILOT_REPOSITORY_RULES);
+    const paths = new Set(result.files.map((file) => file.publicPath));
+    for (const nearMiss of vscodeFixture.nearMissPaths) {
+      // The link target is legitimately read through the link; it is still
+      // never published as its own candidate.
+      expect(paths.has(nearMiss), nearMiss).toBe(false);
+    }
+  });
+
+  it('compiles the reading and provenance-only units the contract names', () => {
+    // The dedicated carrier owns the guide's JSONC `servers` reading; the
+    // root provenance owns none, which is its unit's whole contract
+    // (registry.ts § CompiledStaticMcpProvenanceRule) — no VS Code extractor
+    // exists for the root file until documentation establishes its schema.
+    const vscode = COPILOT_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'copilot.repo.mcp.vscode',
+    )!;
+    if (vscode.kind !== 'MCP') {
+      throw new Error('expected the compiled VS Code MCP carrier rule');
+    }
+    expect(vscode.mcpReading).toBe('own');
+    const root = COPILOT_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'copilot.repo.mcp.vscode-root',
+    )!;
+    if (root.kind !== 'MCP') {
+      throw new Error('expected the compiled VS Code root MCP provenance rule');
+    }
+    expect(root.mcpReading).toBe('none');
+    // Both are explained by the VS Code selection strategy, by identity.
+    for (const compiled of [vscode, root]) {
+      expect(
+        compiled.relations.explainedByStrategies.map((strategy) => strategy.strategyId),
+      ).toEqual(['copilot.vscode.mcp.selection']);
+    }
+  });
+});
+
 describe('the shipped Copilot instruction plans and their matrix (T247)', () => {
   let copilotInstructions: CopilotInstructionFixture;
 
@@ -930,7 +1263,7 @@ describe('the shipped Copilot instruction plans and their matrix (T247)', () => 
   function rangeOf(
     ruleId: string,
     path: string,
-    declared: readonly FrontmatterEntryDto[] = [],
+    declared: readonly DeclaredEntryDto[] = [],
   ): string | null {
     const compiled = copilotRule(ruleId);
     if (compiled.kind !== 'instructions') {
@@ -940,7 +1273,7 @@ describe('the shipped Copilot instruction plans and their matrix (T247)', () => 
   }
 
   /** One declared frontmatter key, for the declared-range cases below. */
-  function declare(key: string, value: FrontmatterValueDto): FrontmatterEntryDto[] {
+  function declare(key: string, value: DeclaredValueDto): DeclaredEntryDto[] {
     return [{ key, keyKind: 'string', value }];
   }
 
@@ -1054,7 +1387,7 @@ describe('the shipped Copilot instruction plans and their matrix (T247)', () => 
     // The value is published as authored and never escaped: it already is the
     // author's pattern, and escaping would turn it into a directory literally
     // named that.
-    const scalar = (text: string): FrontmatterValueDto => ({ kind: 'scalar', text });
+    const scalar = (text: string): DeclaredValueDto => ({ kind: 'scalar', text });
     expect(
       rangeOf(
         'copilot.repo.instructions.path',

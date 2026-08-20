@@ -22,11 +22,11 @@ const APPROVED_PRODUCTION_DEPENDENCIES: readonly string[] = [
   // SPA fallback skips. The lockfile resolves this caret range to devframe's
   // own h3, so both resolve one module instance (research.md § 3).
   'h3',
-  'jsonc-parser',
   // The product-owned startup browser helper (FR-001, research.md § 3):
   // devframe's bundled opener stays disabled, so this is the one opener.
   'open',
   'smol-toml',
+  'strip-json-comments',
   // Frontmatter delimiter handling, parsed with the `yaml` engine below rather
   // than a second one: a package carrying its own `js-yaml` would give one
   // document two meanings, because js-yaml 3 is YAML 1.1 and `yaml` is 1.2.

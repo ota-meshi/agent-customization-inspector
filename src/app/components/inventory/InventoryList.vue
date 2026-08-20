@@ -7,8 +7,8 @@
 //
 // A row's unit is decided by its kind (data-model.md § Inventory unit), so this
 // component dispatches to the kind's own list and never imposes a shared row
-// type: a skill row is one resolved name with its definitions, while an MCP row
-// will be one server declaration inside a carrier. What stays here is the pair
+// type: a skill row is one resolved name with its definitions, and an MCP row
+// is one declared server name with the declarations resolving it. What stays here is the pair
 // of empty states, which is a fact about the view rather than about any kind.
 //
 // The two empty states are deliberately different. "Nothing matched the
@@ -25,12 +25,14 @@
 // which products and locations the release covers is documentation.
 import { computed } from 'vue';
 import InstructionRow from './rows/InstructionRow.vue';
+import McpRow from './rows/McpRow.vue';
 import SkillRow from './rows/SkillRow.vue';
 import { inventoryPanelId, inventoryTabId } from './panel-ids';
 import { CUSTOMIZATION_KIND_PLURAL_TEXT } from '../../../shared/entities';
 import type {
   CustomizationFileSummaryDto,
   InstructionInventoryEntryDto,
+  McpInventoryEntryDto,
   SerializedDiagnostic,
   SkillInventoryEntryDto,
 } from '../../../shared/api-types';
@@ -43,8 +45,17 @@ const props = defineProps<{
   instructionRows: readonly InstructionInventoryEntryDto[];
   /** The skill rows that passed the active filters, in snapshot order. */
   skillRows: readonly SkillInventoryEntryDto[];
+  /** The MCP name rows that passed the active filters, in snapshot order. */
+  mcpRows: readonly McpInventoryEntryDto[];
   /** Every published file by path, so a row can resolve the files it names. */
   filesByPath: ReadonlyMap<string, CustomizationFileSummaryDto>;
+  /**
+   * Every path with an MCP recognition, from the unfiltered committed
+   * inventory ({@link InventoryFilterView.mcpCarrierPaths}): an instruction
+   * row routes such a file to the carrier's own MCP view, because a
+   * carrier's `FileDetail` is withheld by contract (FR-007).
+   */
+  mcpCarrierPaths: ReadonlySet<string>;
   /** How many rows the committed generation published before filtering. */
   totalCount: number;
   /** The generation's diagnostics, resolved per row. */
@@ -52,15 +63,17 @@ const props = defineProps<{
 }>();
 
 /**
- * How many rows the kind in view has. It decides between the list and the two
- * empty states, and each kind answers from its own inventory.
+ * How many list items the kind in view has. It decides between the list and
+ * the two empty states, and each kind answers from its own inventory.
  */
 const rowCount = computed(() =>
   props.kind === 'instructions'
     ? props.instructionRows.length
     : props.kind === 'skill'
       ? props.skillRows.length
-      : 0,
+      : props.kind === 'MCP'
+        ? props.mcpRows.length
+        : 0,
 );
 </script>
 
@@ -85,6 +98,7 @@ const rowCount = computed(() =>
           :key="entry.applicabilityRange ?? ''"
           :entry="entry"
           :files-by-path="filesByPath"
+          :mcp-carrier-paths="mcpCarrierPaths"
           :diagnostics="diagnostics"
         />
       </template>
@@ -92,6 +106,21 @@ const rowCount = computed(() =>
         <SkillRow
           v-for="entry in skillRows"
           :key="entry.name"
+          :entry="entry"
+          :files-by-path="filesByPath"
+          :diagnostics="diagnostics"
+        />
+      </template>
+      <template v-if="kind === 'MCP'">
+        <!-- Keyed by the row's own name — the row unit is the declared server
+             name, unique in the list by construction — behind a `name:`
+             prefix, so the no-name carriers row's own key can never collide
+             with a declared name: strict JSON accepts `""` as a server name,
+             so the empty spelling is a real row of its own
+             (data-model.md § Inventory unit). -->
+        <McpRow
+          v-for="entry in mcpRows"
+          :key="entry.name === null ? 'carriers' : `name:${entry.name}`"
           :entry="entry"
           :files-by-path="filesByPath"
           :diagnostics="diagnostics"

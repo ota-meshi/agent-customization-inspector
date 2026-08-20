@@ -242,7 +242,7 @@ export const COPILOT_CLI_SKILLS_SELECTION_STRATEGY = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
           officialHost: 'docs.github.com',
           sections: ['Skill locations', 'Commands (alternative skill format)'],
-          reviewedOn: '2026-07-15',
+          reviewedOn: '2026-08-20',
           establishes:
             'The CLI resolves a duplicate skill name to the first found in its documented source order, and a same-name skill has higher priority than a legacy command.',
         },
@@ -271,7 +271,7 @@ export const COPILOT_CLOUD_SKILLS_SELECTION_STRATEGY = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
           officialHost: 'docs.github.com',
           sections: ['Skill locations'],
-          reviewedOn: '2026-07-15',
+          reviewedOn: '2026-08-20',
           establishes:
             'Remote skills are projected alongside local skills via the AHP relay and sit last in the documented source order; that order and its name-based priority are the CLI surface’s, so how the Cloud surface itself resolves a collision stays unestablished.',
         },
@@ -288,13 +288,108 @@ export const COPILOT_CLOUD_SKILLS_SELECTION_STRATEGY = {
     : [],
 } as const satisfies RuntimeCompositionStrategy;
 
+/**
+ * Copilot CLI MCP selection for same-name server declarations.
+ *
+ * The documented outcome for a name declared in several sources is that the
+ * higher-priority source's server is used — session additional configuration,
+ * plugin-provided servers, workspace files, then the User configuration —
+ * `select-first` of whole entries, so a closer source `replace`s a broader
+ * one's rather than merging fields with it. Among the workspace files the
+ * order is documented too: definitions in files closer to the working
+ * directory take precedence, and within one directory `.mcp.json` takes
+ * precedence over `.github/mcp.json`. The Inspector records the documented
+ * edge, never a winner: which source a concrete session selects depends on
+ * runtime state — trust, session flags, installed plugins — this tool never
+ * observes.
+ */
+export const COPILOT_CLI_MCP_SELECTION_STRATEGY = {
+  strategyId: 'copilot.cli.mcp.selection',
+  tool: 'copilot',
+  surfaces: ['copilot-cli'],
+  operations: ['select-first', 'replace'],
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.cli.reference',
+          url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
+          officialHost: 'docs.github.com',
+          sections: ['MCP server configuration'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'Servers from different sources merge in priority order — the --additional-mcp-config option, plugin-provided servers, workspace files, then ~/.copilot/mcp-config.json — and when servers share a name the higher-priority source takes precedence as a whole entry.',
+        },
+        {
+          sourceId: 'github.copilot.cli.mcp',
+          url: 'https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers',
+          officialHost: 'docs.github.com',
+          sections: ['Adding per-repository MCP servers'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'Among the project-level files, same-name definitions in files closer to the working directory take precedence, .mcp.json takes precedence over .github/mcp.json in the same directory, and project-level definitions take precedence over ~/.copilot/mcp-config.json.',
+        },
+      ]
+    : [],
+} as const satisfies RuntimeCompositionStrategy;
+
+/**
+ * Copilot VS Code MCP selection across its documented inputs.
+ *
+ * For `.vscode/mcp.json` the current guide documents the `servers` input the
+ * pipeline merges (`merge-map`), with an enabled same-name server replacing
+ * a disabled duplicate (`replace`). For VS Code 1.118+ root `.mcp.json` the
+ * release note announces most-specific same-name deduplication without
+ * defining that file's schema or a total order across the root, `.vscode`,
+ * User, and plugin inputs — `unknown-order` — so every unresolved winner
+ * stays recorded as the conflict or unknown condition it is rather than
+ * composed into an inferred map. An agent profile is deliberately not an
+ * input here: the custom-agents reference documents its `mcp-servers` field
+ * as not used in VS Code custom agents. The Inspector records the documented
+ * edges, never a winner: trust, enablement, and settings inputs are runtime
+ * state this tool never observes (FR-009).
+ */
+export const COPILOT_VSCODE_MCP_SELECTION_STRATEGY = {
+  strategyId: 'copilot.vscode.mcp.selection',
+  tool: 'copilot',
+  surfaces: ['copilot-vscode'],
+  operations: ['merge-map', 'replace', 'unknown-order'],
+  documentationStatus: 'conflict',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'vscode.copilot.mcp',
+          url: 'https://code.visualstudio.com/docs/agent-customization/mcp-servers',
+          officialHost: 'code.visualstudio.com',
+          sections: ['Configure the mcp.json file', 'MCP server trust'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'The guide composes the workspace .vscode/mcp.json and the user-profile configuration as the two mcp.json inputs, each a servers map merged into the available server set, and gates starting any configured server behind trust.',
+        },
+        {
+          sourceId: 'vscode.copilot.mcp.workspace-root-release',
+          url: 'https://code.visualstudio.com/updates/v1_118',
+          officialHost: 'code.visualstudio.com',
+          sections: ['Workspace .mcp.json files and server deduplication'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'The 1.118 release adds workspace-root .mcp.json input and a most-specific same-name deduplication rule that enables one server and disables its duplicates, without defining a total order across the root, .vscode, User, and plugin inputs - the unknown-order operation this pipeline retains.',
+        },
+      ]
+    : [],
+} as const satisfies RuntimeCompositionStrategy;
+
 /** Copilot's contribution to the strategy registry, keyed by `strategyId`. */
 export const COPILOT_COMPOSITION_STRATEGIES: Readonly<
   Record<CopilotStrategyId, RuntimeCompositionStrategy>
 > = {
   [COPILOT_CLI_INSTRUCTIONS_LAYERING_STRATEGY.strategyId]:
     COPILOT_CLI_INSTRUCTIONS_LAYERING_STRATEGY,
+  [COPILOT_CLI_MCP_SELECTION_STRATEGY.strategyId]: COPILOT_CLI_MCP_SELECTION_STRATEGY,
   [COPILOT_CLI_SKILLS_SELECTION_STRATEGY.strategyId]: COPILOT_CLI_SKILLS_SELECTION_STRATEGY,
+  [COPILOT_VSCODE_MCP_SELECTION_STRATEGY.strategyId]: COPILOT_VSCODE_MCP_SELECTION_STRATEGY,
   [COPILOT_CLOUD_INSTRUCTIONS_LAYERING_STRATEGY.strategyId]:
     COPILOT_CLOUD_INSTRUCTIONS_LAYERING_STRATEGY,
   [COPILOT_CLOUD_SKILLS_SELECTION_STRATEGY.strategyId]: COPILOT_CLOUD_SKILLS_SELECTION_STRATEGY,

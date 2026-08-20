@@ -12,6 +12,12 @@ import { pathPresentationLabel } from '../../../shared/entities';
 /** One file's node: a leaf the reader can open. */
 export class SkillTreeFileNode {
   /**
+   * Discriminant of {@link SkillTreeNode}: the branch renders a node by this
+   * field, never by testing its runtime shape.
+   */
+  public readonly kind = 'file' as const;
+
+  /**
    * The Source-relative Path of the file this node opens — the file's
    * identity (FR-030), and what the branch links to.
    */
@@ -40,6 +46,12 @@ export class SkillTreeFileNode {
  * list as nesting, and reads indentation as nothing at all.
  */
 export class SkillTreeDirectoryNode {
+  /**
+   * Discriminant of {@link SkillTreeNode}: the branch renders a node by this
+   * field, never by testing its runtime shape.
+   */
+  public readonly kind = 'directory' as const;
+
   /** Stable identity for the render: the directory's own path below the root. */
   public readonly id: string;
 
@@ -56,7 +68,7 @@ export class SkillTreeDirectoryNode {
   }
 }
 
-/** One node of the tree: a file to open, or a directory that holds nodes. */
+/** One node of the tree, discriminated by `kind`: a file to open, or a directory that holds nodes. */
 export type SkillTreeNode = SkillTreeFileNode | SkillTreeDirectoryNode;
 
 /**

@@ -99,8 +99,8 @@ builds, tests, and audits against. It does not travel with the published package
 consumer's `npx` resolves those caret ranges against the registry at install time: the audit
 establishes the tree this project ships and verifies, not the tree a later install produces; tsdown bundles project-owned modules and
 shared contracts, not arbitrary transitive packages. The direct production dependencies are
-exactly the nine packages `devframe`, `gunshi`, `h3`, `jsonc-parser`, `open`, `smol-toml`,
-`vfile`, `vfile-matter`, and `yaml` (§ 3).
+exactly the nine packages `devframe`, `gunshi`, `h3`, `open`, `smol-toml`,
+`strip-json-comments`, `vfile`, `vfile-matter`, and `yaml` (§ 3).
 
 Assert the approved direct production dependency set — exactly those nine names and no
 others — from `package.json` and the `pnpm-lock.yaml` closure, so any new production
@@ -202,7 +202,8 @@ create a second dependency baseline.
 | CLI | `gunshi` 0.37.0 | Current zero-runtime-dependency ESM CLI framework; its Node.js `>=22` engine requirement fits the declared range |
 | Browser opener | `open` 11.0.1 | Current stable cross-platform opener behind the startup opener's fallback (FR-001): passes the bound loopback origin to the OS default handler, best-effort, whenever the macOS Chromium tab reuse does not apply or fails (§ 3), with devframe's bundled opener disabled so only the product's opener runs; its vendored POSIX-shell `xdg-open` — used whenever executable on Linux, the system helper otherwise — is the recorded FR-038 closure exception (§ 3) |
 | Host HTTP app | `h3` 2.0.1-rc.22 | The host builds the H3 app devframe mounts onto, carrying the `/skills/**` shell fallback devframe's extension-guarded SPA fallback cannot serve — a skill detail URL ends with the file's own last segment, such as `SKILL.md`, and percent-encoding is no alternative because devframe decodes before its extension test. Declared as a caret range like every other direct dependency, with the lockfile resolving it to devframe's own h3 so both resolve one module instance; the dependency leaves with the host shim once devframe can serve extension-ful client-route misses itself |
-| Parsers | `yaml` 2.9.0, `jsonc-parser` 3.3.1, `smol-toml` 1.7.0 | Current stable inert data parsers |
+| Parsers | `yaml` 2.9.0, `smol-toml` 1.7.0 | Current stable inert data parsers; strict JSON is the platform's `JSON.parse` |
+| JSONC pre-parse | `strip-json-comments` 5.0.3 | Blanks JSONC comments and trailing commas to whitespace so the remainder goes through the same `JSON.parse` as strict JSON — one resolution for the whole JSON family. A lenient parser that builds its own objects is rejected because it cannot hold an authored `__proto__` key as an own property, which would drop a `.vscode/mcp.json` server of that name with no diagnostic |
 | Frontmatter | `vfile-matter` 5.0.1, `vfile` 6.0.3 | Frontmatter delimiter handling. Deciding where a frontmatter block begins and ends means re-deciding BOM handling, line endings, and the closing-fence forms, so it is a parser rather than a regular expression. This one parses the block with the `yaml` engine already listed here; a package carrying its own `js-yaml` would give one document two meanings, because js-yaml 3 is YAML 1.1 and `yaml` is YAML 1.2 |
 | Source view/diff | `monaco-editor` 0.55.1 | Current stable read-only source and diff editor; its own diff engine avoids a duplicate client dependency |
 | Lint | ESLint 10.7.0, `@nuxt/eslint` 1.16.0, `@stylistic/eslint-plugin` 5.10.0 | Current compatible stable releases; `@stylistic` supplies the stylistic rules (e.g. `quotes`) ESLint 10 dropped from core |
@@ -348,7 +349,7 @@ the Node/TypeScript compatibility and closed unknown-option behavior used here.
 The safe-filesystem layer uses only Node's built-in `node:fs/promises`, `node:fs`, and
 `node:path` APIs, so it adds no platform toolchain or runtime package dependency.
 The direct production `dependencies` set is exactly the nine packages `devframe`,
-`gunshi`, `h3`, `jsonc-parser`, `open`, `smol-toml`, `vfile`, `vfile-matter`, and `yaml` (declared as caret ranges,
+`gunshi`, `h3`, `open`, `smol-toml`, `strip-json-comments`, `vfile`, `vfile-matter`, and `yaml` (declared as caret ranges,
 with the lockfile pinning every resolved version; `h3` resolves to devframe's own h3,
 so both resolve one module instance): the CLI and parser packages are
 npm-graph leaves, h3 is already in devframe's transitive host tree recorded above,
@@ -506,10 +507,11 @@ Inspector matcher look like vendor lookup behavior:
   a recursive `**/.github/copilot-instructions.md` falsely suggests nested workspace files.
   Copilot CLI instead has its own documented standard-location traversal from runtime
   context toward its repository boundary, and Cloud/code-review surfaces have another
-  support and composition model. These are separate behavior rows. Inspector matchers may
-  inventory possible descendant contexts only through an explicit leading
-  `ANY_DIRECTORIES` segment, with applicability
-  left conditional; no VS Code row is reused as a CLI or Cloud traversal rule. VS Code MCP
+  support and composition model. These are separate behavior rows. An Inspector matcher carries a leading
+  `ANY_DIRECTORIES` segment only for a location the vendor documents at any depth —
+  a worked-file or descendant anchor — with applicability left conditional; a location
+  documented only on the runtime cwd chain is admitted at the selected root, the
+  chain's one shared member, and no VS Code row is reused as a CLI or Cloud traversal rule. VS Code MCP
   has one deliberate versioned exception to the current-guide view: the 1.118 release note
   adds exact workspace-root `.mcp.json` and announces most-specific same-name deduplication,
   while the current MCP guide still presents `.vscode/mcp.json` and User configuration as
@@ -538,7 +540,7 @@ Inspector matcher look like vendor lookup behavior:
 - **Codex rule recursion is not established.** Current official text documents rule files
   as direct children of the active layer's `.codex/rules/` directory but does not establish
   nested-subdirectory recursion. The Inspector matcher therefore uses a direct-child
-  selector at each inventoried possible layer, not `.codex/rules/**/*.rules`. Project
+  selector at the Repository root's own configuration layer, not `.codex/rules/**/*.rules`. Project
   config, instructions, hooks, MCP, skills, agents, marketplaces, and local-versus-hosted
   surfaces retain their own documented or conditional traversal and trust inputs. Exact
   Repository marketplace roots, layered project config/instruction fallbacks, both local
@@ -860,7 +862,8 @@ policy rather than product code, while browser opening is product-owned through 
 startup opener — the macOS Chromium tab reuse in front of the `open` package's
 helper — with devframe's bundled opener disabled (§ 3), with one closed
 product-owned piece
-in front of static serving: the `/skills/**` and `/instructions/**` `GET`/`HEAD`
+in front of static serving: the `/skills/**`, `/instructions/**`, and `/mcp/**`
+`GET`/`HEAD`
 rewrites to `/`, one route family per shipped kind detail, which let
 devframe's own handler serve the shell for detail deep links its extension-guarded
 fallback cannot (§ 3 h3 row). The same channel carries devframe's own

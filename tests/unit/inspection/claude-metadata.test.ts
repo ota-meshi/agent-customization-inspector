@@ -1,6 +1,7 @@
-// T140: the Claude skill's declared-name reading and its admission-level
-// uncertainty (data-model.md § Field reading, FR-007, FR-009, FR-026,
-// FR-028).
+// T140, T314, T324: the Claude skill's declared-name reading and its
+// admission-level uncertainty, the Claude MCP carrier's whole-entry field
+// reading, and the skill-contained MCP metadata (data-model.md § Field
+// reading, FR-007, FR-009, FR-026, FR-028).
 //
 // Every declared key is read out in the shape the file wrote it — list-valued
 // keys, contained `hooks` and MCP declarations, and credential-shaped keys
@@ -15,7 +16,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { recognizeCandidateForVendors } from '../../../src/server/inspection/recognizers/candidate';
-import { CLAUDE_REPOSITORY_RULES } from '../../../src/server/inspection/rules/claude';
+import {
+  CLAUDE_REPOSITORY_RULES,
+  claudeMcpServersOf,
+} from '../../../src/server/inspection/rules/claude';
+import { CLAUDE_MCP_SELECTION_STRATEGY } from '../../../src/shared/registries/claude/strategies';
+import type { DeclaredEntryDto } from '../../../src/shared/api-types';
 import {
   MALFORMED_SKILL_CONTENT_CASES,
   SKILL_CONTENT_CASES,
@@ -24,6 +30,9 @@ import type { ToolRecognition } from '../../../src/server/inspection/recognizers
 
 const claudeSkillRule = CLAUDE_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'claude.repo.skill',
+)!;
+const claudeMcpRule = CLAUDE_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'claude.repo.mcp',
 )!;
 
 /**
@@ -269,7 +278,7 @@ describe('Claude skill declared name', () => {
     // two keys of one mapping — while both render as the key `1`. The
     // parsed type is published beside the rendering so a surface matching
     // declarations across files can match by the parser's identity rather
-    // than by the spelling alone (api-types.ts § FrontmatterKeyKind,
+    // than by the spelling alone (api-types.ts § DeclaredKeyKind,
     // FR-011).
     const recognition = await recognize('---\n1: number\n"1": string\n---\n');
     if (recognition.details.kind !== 'skill') {
@@ -354,5 +363,190 @@ describe('Claude skill declared name', () => {
       expect(provenance!.discoveryClass).toBe('static-candidate');
       expect(provenance!.matchedPath).toBe(matchedPath);
     }
+  });
+});
+
+describe('Claude MCP-file metadata (T314)', () => {
+  /** Recognizes one authored `.mcp.json` at the exact root carrier path. */
+  async function recognizeCarrier(sourceText: string): Promise<ToolRecognition> {
+    const { recognitions } = await recognizeCandidateForVendors(
+      {
+        matchedPath: '.mcp.json',
+        absolutePath: join(root, '.mcp.json'),
+        sourceRoot: root,
+        admissions: [{ compiled: claudeMcpRule!, origin: { planIndex: 0, selectorIndex: 0 } }],
+        sourceText,
+      },
+      ['claude'],
+    );
+    const [recognition] = recognitions;
+    if (recognition === undefined) {
+      throw new Error('expected one Claude recognition');
+    }
+    return recognition;
+  }
+
+  it('publishes each declaration whole, by the keys the file wrote, in authored order', async () => {
+    // The declaration is the unit (data-model.md § Inventory unit): every
+    // field the entry wrote is published under it as a resolved value, with
+    // nothing captioned, validated, or reordered on the file's behalf
+    // (FR-007). What a same-name entry in another scope would replace is the
+    // selection strategy's record, never a projection here (FR-009).
+    const recognition = await recognizeCarrier(
+      JSON.stringify({
+        mcpServers: {
+          ctx: { type: 'stdio', command: 'npx', args: ['-y', 'pkg'], disabled: false, retries: 2 },
+        },
+      }),
+    );
+    if (recognition.details.kind !== 'MCP') {
+      throw new Error('expected an MCP recognition');
+    }
+    expect(recognition.details.servers).toEqual([
+      {
+        name: 'ctx',
+        fields: [
+          { key: 'type', keyKind: 'string', value: { kind: 'scalar', text: 'stdio' } },
+          { key: 'command', keyKind: 'string', value: { kind: 'scalar', text: 'npx' } },
+          {
+            key: 'args',
+            keyKind: 'string',
+            value: {
+              kind: 'sequence',
+              items: [
+                { kind: 'scalar', text: '-y' },
+                { kind: 'scalar', text: 'pkg' },
+              ],
+            },
+          },
+          { key: 'disabled', keyKind: 'string', value: { kind: 'scalar', text: 'false' } },
+          { key: 'retries', keyKind: 'string', value: { kind: 'scalar', text: '2' } },
+        ],
+      },
+    ]);
+  });
+
+  it('keeps a relative command the literal the file wrote, joined to no base', async () => {
+    // The resolution base for relative command and args values is not
+    // established by current official pages (`claude.behavior.repo.mcp`,
+    // canonical index), which is one more reason nothing here may resolve
+    // one: no base joins the literal, and no declared path is opened
+    // (FR-009).
+    const recognition = await recognizeCarrier(
+      JSON.stringify({ mcpServers: { ctx: { command: './scripts/run.sh', args: ['../up.sh'] } } }),
+    );
+    if (recognition.details.kind !== 'MCP') {
+      throw new Error('expected an MCP recognition');
+    }
+    const serialized = JSON.stringify(recognition.details.servers);
+    expect(serialized).toContain('./scripts/run.sh');
+    expect(serialized).toContain('../up.sh');
+    expect(serialized).not.toContain(root);
+  });
+
+  it('records whole-entry replacement as the strategy, not as a projection', () => {
+    // local → project → User → plugin → connector selection of whole entries
+    // is `claude.mcp.selection`'s documented pipeline: `select-first` of an
+    // entire same-name entry, `replace` rather than field merge, then the
+    // subagent tool `filter`. It lives in the maintained registry record —
+    // the bilingual contract row is gated reciprocally by
+    // tests/contract/runtime-composition.test.ts — and no recognition field
+    // projects a winner (FR-009).
+    expect(CLAUDE_MCP_SELECTION_STRATEGY.operations).toEqual(['select-first', 'replace', 'filter']);
+    expect(CLAUDE_MCP_SELECTION_STRATEGY.tool).toBe('claude');
+  });
+});
+
+describe('the Claude MCP declaration reading and the skill negative (T324)', () => {
+  it('derives declared servers from rendered entries exactly', () => {
+    // The reader is pure over the shared declared-entry shape — the carrier
+    // hands it today, and each documented owner family will hand its own
+    // entries when its phase admits it: named servers with inline fields stay
+    // the values the file wrote, as relationship-shaped text rather than
+    // anything resolved or opened.
+    const declared = [
+      { key: 'name', keyKind: 'string', value: { kind: 'scalar', text: 'deploy' } },
+      {
+        key: 'mcpServers',
+        keyKind: 'string',
+        value: {
+          kind: 'mapping',
+          entries: [
+            {
+              key: 'ctx',
+              keyKind: 'string',
+              value: {
+                kind: 'mapping',
+                entries: [
+                  { key: 'command', keyKind: 'string', value: { kind: 'scalar', text: 'npx' } },
+                ],
+              },
+            },
+            { key: 'named-ref', keyKind: 'string', value: { kind: 'mapping', entries: [] } },
+            { key: 'malformed', keyKind: 'string', value: { kind: 'scalar', text: 'nope' } },
+          ],
+        },
+      },
+    ] as const satisfies readonly DeclaredEntryDto[];
+    expect(claudeMcpServersOf(declared)).toEqual([
+      {
+        name: 'ctx',
+        fields: [{ key: 'command', keyKind: 'string', value: { kind: 'scalar', text: 'npx' } }],
+      },
+      { name: 'named-ref', fields: [] },
+    ]);
+  });
+
+  it('reads nothing from a non-mapping container or a non-string container key', () => {
+    // A `mcpServers` list, scalar, or absent key contains no declaration, and
+    // a numeric key spelling the same text is a different key: the reading is
+    // structural and total, so a future JSON/JSONC owner hands the same
+    // entries and gets the same answer without any format branch.
+    expect(claudeMcpServersOf([])).toEqual([]);
+    expect(
+      claudeMcpServersOf([
+        { key: 'mcpServers', keyKind: 'string', value: { kind: 'scalar', text: 'enabled' } },
+      ]),
+    ).toEqual([]);
+    expect(
+      claudeMcpServersOf([
+        { key: 'mcpServers', keyKind: 'string', value: { kind: 'sequence', items: [] } },
+      ]),
+    ).toEqual([]);
+    expect(
+      claudeMcpServersOf([
+        { key: 'mcpServers', keyKind: 'null', value: { kind: 'mapping', entries: [] } },
+      ]),
+    ).toEqual([]);
+  });
+
+  it('keeps a skill spelling mcpServers a skill, its frontmatter literal and unresolved', async () => {
+    // Claude documents no `mcpServers` skill-frontmatter field, so the
+    // spelling produces no MCP recognition (user decision, 2026-08-20); the
+    // values stay the skill's own frontmatter — literal, with nothing looking
+    // up the process environment on the way (FR-026).
+    const { recognitions } = await recognizeCandidateForVendors(
+      {
+        matchedPath: '.claude/skills/greet/SKILL.md',
+        absolutePath: join(root, '.claude/skills/greet/SKILL.md'),
+        sourceRoot: root,
+        admissions: [{ compiled: claudeSkillRule!, origin: { planIndex: 0, selectorIndex: 0 } }],
+        sourceText: [
+          '---',
+          'name: greet',
+          'mcpServers:',
+          '  ctx:',
+          '    env:',
+          '      API_KEY: $HOME/${TOKEN}',
+          '---',
+          '',
+        ].join('\n'),
+      },
+      ['claude'],
+    );
+    expect(recognitions.map((recognition) => recognition.details.kind)).toEqual(['skill']);
+    const [skill] = recognitions;
+    expect(JSON.stringify(skill)).toContain('$HOME/${TOKEN}');
+    expect(JSON.stringify(skill)).not.toContain(process.env['HOME'] ?? '\0unset');
   });
 });

@@ -16,9 +16,12 @@ import {
   escapeGlobLiteral,
   type CompiledStaticCandidateRule,
   type CompiledStaticInstructionRule,
-  type CompiledStaticNonInstructionRule,
+  type CompiledStaticMcpProvenanceRule,
+  type CompiledStaticMcpReadingRule,
+  type CompiledStaticOtherKindRule,
 } from './registry';
-import type { FrontmatterEntryDto } from '../../../shared/api-types';
+import { ParsedJsoncDocument, ParsedStrictJsonDocument } from '../parsers/json';
+import type { DeclaredEntryDto, McpServerDeclarationDto } from '../../../shared/api-types';
 import type { CustomizationKind } from '../../../shared/entities';
 import { COPILOT_RULE_RELATIONS } from '../../../shared/registries/copilot/relations';
 import { COPILOT_INSPECTION_RULES } from '../../../shared/registries/copilot/rules';
@@ -100,7 +103,7 @@ export class CopilotCompiledInstructionRule
   /** The glob one admitted Copilot instruction file governs, or null; see the class comment. */
   public applicabilityRangeOf(
     sourceRelativePath: string,
-    declared: readonly FrontmatterEntryDto[],
+    declared: readonly DeclaredEntryDto[],
   ): string | null {
     const segments = sourceRelativePath.split('/');
     const directory = segments.slice(0, -1);
@@ -146,22 +149,163 @@ export class CopilotCompiledInstructionRule
 }
 
 /**
+ * A Copilot CLI MCP carrier rule compiled for execution: everything a Copilot
+ * rule is, plus the one question only an MCP rule answers — which servers a
+ * carrier it admitted declares.
+ */
+export class CopilotCompiledMcpCarrierRule
+  extends CopilotCompiledRule
+  implements CompiledStaticMcpReadingRule
+{
+  /** Narrowed to the one kind this unit compiles; the constructor proves it. */
+  declare public readonly kind: 'MCP';
+
+  /** This unit owns the CLI's documented reading (registry.ts § CompiledStaticMcpReadingRule). */
+  public readonly mcpReading: 'own';
+
+  /**
+   * The server declarations one admitted CLI carrier makes, one per named
+   * map entry, in the parser's resolved order (FR-007). The CLI documents
+   * two strict-JSON schemas for a project-level file — the top-level
+   * `mcpServers` object, and the bare top-level format where each key is a
+   * server name (contracts/vendors/github-copilot.md § Repository vendor
+   * behavior, `copilot.behavior.cli.mcp`) — and this reading accepts both,
+   * which is one reason it is this vendor's own contract rather than a
+   * shared one: Claude reads only the wrapper form out of the same root
+   * `.mcp.json`.
+   *
+   * A file declaring a top-level `mcpServers` key is the wrapper form —
+   * the vendor documents that key as the wrapper, so it is never read as a
+   * bare server of that name, and a non-mapping `mcpServers` then declares
+   * none. Classification is structural and total: only a mapping-valued
+   * entry declares a server, and any other entry is omitted whole rather
+   * than published partially. No field is validated, no environment
+   * reference is resolved, and no declared command, URL, or path gains read
+   * or connection authority. Throws on text strict JSON cannot parse; the
+   * recognizer's extraction boundary turns the throw into the recognition's
+   * `failed` state while the carrier stays an admitted candidate (FR-028).
+   */
+  public serverDeclarationsOf(sourceText: string): readonly McpServerDeclarationDto[] {
+    const { entries } = new ParsedStrictJsonDocument(sourceText);
+    const wrapper = entries.find((entry) => entry.key === 'mcpServers');
+    const declared =
+      wrapper !== undefined
+        ? wrapper.value.kind === 'mapping'
+          ? wrapper.value.entries
+          : []
+        : entries;
+    return declared.flatMap((entry) =>
+      entry.value.kind === 'mapping' ? [{ name: entry.key, fields: entry.value.entries }] : [],
+    );
+  }
+
+  /** Compiles one Copilot MCP carrier record, rejecting one of another kind. */
+  public constructor(rule: InspectionRule) {
+    super(rule);
+    if (rule.kind !== 'MCP') {
+      throw new TypeError(`rule ${rule.ruleId} is not a Copilot MCP carrier rule`);
+    }
+    this.mcpReading = 'own';
+  }
+}
+
+/**
+ * The VS Code `.vscode/mcp.json` carrier rule compiled for execution. Its own
+ * unit beside the CLI's because the two schemas are different vendors' —
+ * different surfaces' — contracts: the guide documents a top-level `servers`
+ * map in the editor's JSONC configuration format, while the CLI carriers are
+ * strict JSON with the `mcpServers` wrapper or the bare map (T361, T371).
+ */
+export class CopilotCompiledVscodeMcpCarrierRule
+  extends CopilotCompiledRule
+  implements CompiledStaticMcpReadingRule
+{
+  /** Narrowed to the one kind this unit compiles; the constructor proves it. */
+  declare public readonly kind: 'MCP';
+
+  /** This unit owns the guide's documented reading (registry.ts § CompiledStaticMcpReadingRule). */
+  public readonly mcpReading: 'own';
+
+  /**
+   * The server declarations one admitted `.vscode/mcp.json` makes, one per
+   * named entry of the documented top-level `servers` map, in the parser's
+   * resolved order (FR-007). Read as JSONC — comments and a trailing comma
+   * are the editor configuration format's own syntax — and never leniently
+   * beyond that: a document with any syntax error fails whole (FR-028).
+   * Classification is structural and total, exactly as the CLI reading's: a
+   * non-mapping `servers` declares none, only a mapping-valued entry declares
+   * a server, and any other entry is omitted whole rather than published
+   * partially. There is no bare form here — the guide documents the wrapper
+   * alone — and the `inputs` and `sandbox` sections beside it declare no
+   * server. No field is validated, no environment or input reference is
+   * resolved, and no declared command, URL, or path gains read or connection
+   * authority.
+   */
+  public serverDeclarationsOf(sourceText: string): readonly McpServerDeclarationDto[] {
+    const { entries } = new ParsedJsoncDocument(sourceText);
+    const wrapper = entries.find((entry) => entry.key === 'servers');
+    const declared = wrapper?.value.kind === 'mapping' ? wrapper.value.entries : [];
+    return declared.flatMap((entry) =>
+      entry.value.kind === 'mapping' ? [{ name: entry.key, fields: entry.value.entries }] : [],
+    );
+  }
+
+  /** Compiles the one VS Code MCP carrier record, rejecting one of another kind. */
+  public constructor(rule: InspectionRule) {
+    super(rule);
+    if (rule.kind !== 'MCP') {
+      throw new TypeError(`rule ${rule.ruleId} is not a Copilot MCP carrier rule`);
+    }
+    this.mcpReading = 'own';
+  }
+}
+
+/**
+ * A Copilot MCP rule whose admission is path/surface provenance only
+ * (registry.ts § CompiledStaticMcpProvenanceRule): the shipped record is
+ * `copilot.repo.mcp.vscode-root`, whose one selector coincides with a
+ * `copilot.repo.mcp` selector, so its admission adds the VS Code surface to
+ * the root carrier's one Copilot recognition while the declarations stay the
+ * CLI unit's independently documented extraction. No VS Code-owned extractor
+ * exists until direct documentation establishes the root file's schema.
+ */
+export class CopilotCompiledMcpProvenanceRule
+  extends CopilotCompiledRule
+  implements CompiledStaticMcpProvenanceRule
+{
+  /** Narrowed to the one kind this unit compiles; the constructor proves it. */
+  declare public readonly kind: 'MCP';
+
+  /** No reading: the admission carries provenance alone (see the class doc). */
+  public readonly mcpReading: 'none';
+
+  /** Compiles one provenance-only MCP record, rejecting one of another kind. */
+  public constructor(rule: InspectionRule) {
+    super(rule);
+    if (rule.kind !== 'MCP') {
+      throw new TypeError(`rule ${rule.ruleId} is not a Copilot MCP carrier rule`);
+    }
+    this.mcpReading = 'none';
+  }
+}
+
+/**
  * A Copilot rule of every other kind, compiled for execution. It answers
  * nothing about applicability, which is exactly what a skill rule has to say
  * about it (see `CompiledNonInstructionRule`).
  */
 export class CopilotCompiledOtherKindRule
   extends CopilotCompiledRule
-  implements CompiledStaticNonInstructionRule
+  implements CompiledStaticOtherKindRule
 {
   /** Narrowed to the kinds this unit compiles; the constructor proves it. */
-  declare public readonly kind: Exclude<CustomizationKind, 'instructions'>;
+  declare public readonly kind: Exclude<CustomizationKind, 'instructions' | 'MCP'>;
 
-  /** Compiles one Copilot record of any kind but `instructions`. */
+  /** Compiles one Copilot record of any kind but `instructions` and `MCP`. */
   public constructor(rule: InspectionRule) {
     super(rule);
-    if (rule.kind === 'instructions') {
-      throw new TypeError(`rule ${rule.ruleId} needs the Copilot instruction unit`);
+    if (rule.kind === 'instructions' || rule.kind === 'MCP') {
+      throw new TypeError(`rule ${rule.ruleId} needs a Copilot unit that answers for its kind`);
     }
   }
 }
@@ -169,7 +313,8 @@ export class CopilotCompiledOtherKindRule
 /**
  * The Copilot Repository rules a Repository scan executes, in shipped order.
  * The remaining Copilot rows of the vendor contract arrive with their own
- * inventory phases; the shipped set covers instructions and skills, so a
+ * inventory phases; the shipped set covers instructions, skills, and the MCP
+ * carriers — the CLI's two root spellings and the VS Code pair — so a
  * repository whose only Copilot files are agents or prompts legitimately
  * contributes nothing to the inventory.
  *
@@ -203,10 +348,18 @@ export const COPILOT_REPOSITORY_RULES: readonly CompiledStaticCandidateRule[] = 
 )
   .filter((rule) => rule.discoveryClass === 'static-candidate')
   .map((rule) =>
-    // An instruction record compiles into the unit that can answer what its
-    // files govern; every other kind compiles into the plain one, which is what
-    // keeps a skill rule from carrying an answer it has none of.
+    // Each record compiles into the unit that can answer its kind's question:
+    // an instruction record what its files govern, an MCP record which
+    // servers its carrier declares; every other kind compiles into the plain
+    // one, which is what keeps a skill rule from carrying an answer it has
+    // none of.
     rule.kind === 'instructions'
       ? new CopilotCompiledInstructionRule(rule)
-      : new CopilotCompiledOtherKindRule(rule),
+      : rule.kind === 'MCP'
+        ? rule.ruleId === 'copilot.repo.mcp.vscode'
+          ? new CopilotCompiledVscodeMcpCarrierRule(rule)
+          : rule.ruleId === 'copilot.repo.mcp.vscode-root'
+            ? new CopilotCompiledMcpProvenanceRule(rule)
+            : new CopilotCompiledMcpCarrierRule(rule)
+        : new CopilotCompiledOtherKindRule(rule),
   );

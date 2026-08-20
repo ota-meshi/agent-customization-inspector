@@ -719,7 +719,7 @@ export const COPILOT_CLI_SKILLS_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
           officialHost: 'docs.github.com',
           sections: ['Skill locations'],
-          reviewedOn: '2026-07-15',
+          reviewedOn: '2026-08-20',
           establishes:
             'Copilot CLI loads project skills from .github/skills, .agents/skills, and .claude/skills at the runtime project, inherits parent-directory .github/skills layers for monorepos, and resolves a duplicate name to the first found in its documented source order.',
         },
@@ -777,7 +777,7 @@ export const COPILOT_CLI_COMMANDS_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
           officialHost: 'docs.github.com',
           sections: ['Commands (alternative skill format)'],
-          reviewedOn: '2026-07-15',
+          reviewedOn: '2026-08-20',
           establishes:
             'Copilot CLI documents .claude/commands/*.md as an alternative skill format that a same-name skill outranks, without establishing a complete project anchor or ancestor traversal.',
         },
@@ -906,7 +906,7 @@ export const COPILOT_CLI_USER_SKILLS_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
           officialHost: 'docs.github.com',
           sections: ['Skill locations'],
-          reviewedOn: '2026-07-15',
+          reviewedOn: '2026-08-20',
           establishes:
             'Copilot CLI additionally discovers personal skills in user-home locations, placed below project and inherited skills and above later sources in the documented first-found order.',
         },
@@ -1229,9 +1229,242 @@ export const COPILOT_CLOUD_REMOTE_SKILLS_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
           officialHost: 'docs.github.com',
           sections: ['Skill locations'],
-          reviewedOn: '2026-07-15',
+          reviewedOn: '2026-08-20',
           establishes:
             'Organization- or enterprise-hosted skills are projected into a session via the AHP relay with content fetched on demand, from no repository or user filesystem location; the last-in-order placement and name-based priority it documents are the CLI surface’s, leaving Cloud collision behavior unestablished.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Copilot CLI workspace MCP declarations: `.mcp.json` and `.github/mcp.json`
+ * loaded from the working directory upward to the Git root, provided the
+ * folder is trusted. A project-level file declares its servers in either of
+ * two documented schemas — the top-level `mcpServers` object, or the bare
+ * top-level format where each key is a server name. Session additional
+ * configuration and plugin-provided servers precede workspace servers, and
+ * the User configuration follows — that order, and the workspace files' own
+ * duplicate order, are `copilot.cli.mcp.selection`'s statements, not a walk
+ * of this locator.
+ */
+export const COPILOT_CLI_MCP_BEHAVIOR = {
+  behaviorId: 'copilot.behavior.cli.mcp',
+  tool: 'copilot',
+  surfaces: ['copilot-cli'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'repository',
+        lookupBase: 'runtime-cwd',
+        relativeSelector: '.mcp.json; .github/mcp.json',
+        traversal: 'ancestor-chain-to-repository-root',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.cli.reference',
+          url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
+          officialHost: 'docs.github.com',
+          sections: ['MCP server configuration'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'Workspace MCP servers are .mcp.json and .github/mcp.json files loaded from the working directory upward to the Git root, require the folder to be trusted, and sit below session-additional and plugin-provided servers and above the user configuration in the documented loading priority.',
+        },
+        {
+          sourceId: 'github.copilot.cli.mcp',
+          url: 'https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers',
+          officialHost: 'docs.github.com',
+          sections: ['Adding per-repository MCP servers'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'A project-level file declares its servers in either of two schemas — the top-level mcpServers object, or the bare top-level format where each key is an MCP server name — which is why the CLI carrier reading accepts both forms.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Copilot CLI User MCP configuration at `<COPILOT_HOME>/mcp-config.json` —
+ * the lowest-priority source of the documented loading order. Recorded for
+ * maintenance and for the selection strategy that composes it: it expands no
+ * Global inspection, and the vendor contract's `copilot.excluded.user-runtime`
+ * keeps the surface out of the read allowlist (FR-015, FR-018). That
+ * exclusion ships with the Global phase that needs it, not with this
+ * statement.
+ */
+export const COPILOT_CLI_USER_MCP_BEHAVIOR = {
+  behaviorId: 'copilot.behavior.cli.user.mcp',
+  tool: 'copilot',
+  surfaces: ['copilot-cli'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'user',
+        lookupBase: 'tool-home',
+        relativeSelector: 'mcp-config.json',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.cli.reference',
+          url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
+          officialHost: 'docs.github.com',
+          sections: ['MCP server configuration', 'Environment variables'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'Persistent user servers are configured in ~/.copilot/mcp-config.json — the file the copilot mcp add subcommand writes — and that source is the lowest priority of the documented loading order; COPILOT_HOME overrides the configuration and state directory whose default is $HOME/.copilot, which is the relocation the <COPILOT_HOME> spelling names.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Copilot VS Code custom-agent discovery in the workspace `.github/agents`
+ * and `.claude/agents` directories. Recorded for maintenance and for the
+ * VS Code agent-selection strategy that arrives with the Custom Agent
+ * phases. It is deliberately not an input of the VS Code MCP selection: the
+ * custom-agents reference documents the profile format's `mcp-servers`
+ * field as not used in VS Code custom agents. It authorizes no rule: Custom
+ * Agent files stay outside the read allowlist until their own inventory
+ * phase admits them
+ * (contracts/vendors/github-copilot.md § Repository vendor behavior).
+ */
+export const COPILOT_VSCODE_AGENTS_BEHAVIOR = {
+  behaviorId: 'copilot.behavior.vscode.agents',
+  tool: 'copilot',
+  surfaces: ['copilot-vscode'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'repository',
+        lookupBase: 'workspace-root',
+        relativeSelector: '.github/agents/*.md; .claude/agents/*.md',
+        traversal: 'standard-location-chain',
+      }
+    : null,
+  documentationStatus: 'partially-documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'vscode.copilot.custom-agents',
+          url: 'https://code.visualstudio.com/docs/agent-customization/custom-agents',
+          officialHost: 'code.visualstudio.com',
+          sections: ['Custom agent file locations'],
+          reviewedOn: '2026-07-15',
+          establishes:
+            'VS Code discovers custom agents as Markdown files in the workspace .github/agents and .claude/agents folders, and parent-folder discovery is an opt-in setting rather than part of the default lookup; cross-scope duplicate-name precedence is not established, which is the partially-documented remainder.',
+        },
+        {
+          sourceId: 'vscode.copilot.settings',
+          url: 'https://code.visualstudio.com/docs/agents/reference/ai-settings',
+          officialHost: 'code.visualstudio.com',
+          sections: ['Custom agents settings'],
+          reviewedOn: '2026-08-19',
+          establishes:
+            'Custom-agent discovery locations are setting-controlled, which keeps enablement and any additional configured location a runtime condition rather than part of the documented default lookup.',
+        },
+        {
+          sourceId: 'github.copilot.custom-agents',
+          url: 'https://docs.github.com/en/copilot/reference/custom-agents-configuration',
+          officialHost: 'docs.github.com',
+          sections: ['YAML frontmatter properties'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'The shared profile format scopes a profile to vscode or github-copilot through its target property, and its mcp-servers field is documented as not used in VS Code and other IDE custom agents - which is why this behavior is no input of the local VS Code MCP selection.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Copilot VS Code workspace MCP configuration: the `.vscode/mcp.json` file
+ * the current guide documents with its top-level `servers` schema, and — for
+ * VS Code 1.118+ — a workspace-root `.mcp.json` the release note adds
+ * without defining its schema. The two official pages disagree on the
+ * exhaustive location list, which is what the `conflict` status records: the
+ * read-authorizing rules based on this statement admit both locations, but
+ * the root file carries path/surface provenance only and no VS Code-owned
+ * schema claim, while independently documented CLI extraction of the same
+ * physical file stays the CLI behavior's own
+ * (contracts/vendors/github-copilot.md § Repository vendor behavior).
+ */
+export const COPILOT_VSCODE_MCP_BEHAVIOR = {
+  behaviorId: 'copilot.behavior.vscode.mcp',
+  tool: 'copilot',
+  surfaces: ['copilot-vscode'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'repository',
+        lookupBase: 'workspace-root',
+        relativeSelector: '.vscode/mcp.json; .mcp.json',
+        traversal: 'standard-location-chain',
+      }
+    : null,
+  documentationStatus: 'conflict',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'vscode.copilot.mcp',
+          url: 'https://code.visualstudio.com/docs/agent-customization/mcp-servers',
+          officialHost: 'code.visualstudio.com',
+          sections: ['Configure the mcp.json file', 'MCP server trust'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'The guide names exactly two locations for the mcp.json file - the workspace .vscode/mcp.json and the user-profile configuration - documents the top-level servers map that declares each server by name, and gates starting a configured server behind an explicit trust decision.',
+        },
+        {
+          sourceId: 'vscode.copilot.mcp.workspace-root-release',
+          url: 'https://code.visualstudio.com/updates/v1_118',
+          officialHost: 'code.visualstudio.com',
+          sections: ['Workspace .mcp.json files and server deduplication'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'VS Code 1.118 adds workspace-level .mcp.json files that declare MCP servers, aligning with tools such as the Copilot CLI, and deduplicates same-name servers by enabling only the most-specific one - without defining the root file schema or a total order across the other MCP inputs, which is the conflict this statement retains.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Copilot VS Code User MCP configuration: the profile-owned `mcp.json` the
+ * guide documents beside the workspace file. Recorded for maintenance and
+ * for the selection strategy that composes it — it expands no Global
+ * inspection, and the exclusion that names the User surface ships with the
+ * Global phase that owns it (FR-015, FR-018). Same-name resolution across
+ * the User and workspace scopes is not fully documented, which is the
+ * partially-documented remainder.
+ */
+export const COPILOT_VSCODE_USER_MCP_BEHAVIOR = {
+  behaviorId: 'copilot.behavior.vscode.user.mcp',
+  tool: 'copilot',
+  surfaces: ['copilot-vscode'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'user',
+        lookupBase: 'profile-data',
+        relativeSelector: 'mcp.json',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'partially-documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'vscode.copilot.mcp',
+          url: 'https://code.visualstudio.com/docs/agent-customization/mcp-servers',
+          officialHost: 'code.visualstudio.com',
+          sections: ['Configure the mcp.json file', 'Synchronize MCP configuration across devices'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'The user-profile mcp.json is the second documented location, opened through the MCP: Open User Configuration command, available across workspaces, per-profile, and synchronizable across devices; how a User declaration resolves against a same-name workspace declaration is not established.',
         },
       ]
     : [],
@@ -1254,11 +1487,13 @@ export const COPILOT_BEHAVIOR_STATEMENTS: Readonly<
   [COPILOT_CLI_INSTRUCTIONS_PATH_BEHAVIOR.behaviorId]: COPILOT_CLI_INSTRUCTIONS_PATH_BEHAVIOR,
   [COPILOT_CLI_INSTRUCTIONS_REPOSITORY_BEHAVIOR.behaviorId]:
     COPILOT_CLI_INSTRUCTIONS_REPOSITORY_BEHAVIOR,
+  [COPILOT_CLI_MCP_BEHAVIOR.behaviorId]: COPILOT_CLI_MCP_BEHAVIOR,
   [COPILOT_CLI_SKILLS_BEHAVIOR.behaviorId]: COPILOT_CLI_SKILLS_BEHAVIOR,
   [COPILOT_CLI_USER_INSTRUCTIONS_PATH_BEHAVIOR.behaviorId]:
     COPILOT_CLI_USER_INSTRUCTIONS_PATH_BEHAVIOR,
   [COPILOT_CLI_USER_INSTRUCTIONS_ROOT_BEHAVIOR.behaviorId]:
     COPILOT_CLI_USER_INSTRUCTIONS_ROOT_BEHAVIOR,
+  [COPILOT_CLI_USER_MCP_BEHAVIOR.behaviorId]: COPILOT_CLI_USER_MCP_BEHAVIOR,
   [COPILOT_CLI_USER_SKILLS_BEHAVIOR.behaviorId]: COPILOT_CLI_USER_SKILLS_BEHAVIOR,
   [COPILOT_CLOUD_INSTRUCTIONS_AGENTS_BEHAVIOR.behaviorId]:
     COPILOT_CLOUD_INSTRUCTIONS_AGENTS_BEHAVIOR,
@@ -1271,6 +1506,7 @@ export const COPILOT_BEHAVIOR_STATEMENTS: Readonly<
     COPILOT_CLOUD_ORGANIZATION_INSTRUCTIONS_BEHAVIOR,
   [COPILOT_CLOUD_REMOTE_SKILLS_BEHAVIOR.behaviorId]: COPILOT_CLOUD_REMOTE_SKILLS_BEHAVIOR,
   [COPILOT_CLOUD_SKILLS_BEHAVIOR.behaviorId]: COPILOT_CLOUD_SKILLS_BEHAVIOR,
+  [COPILOT_VSCODE_AGENTS_BEHAVIOR.behaviorId]: COPILOT_VSCODE_AGENTS_BEHAVIOR,
   [COPILOT_VSCODE_INSTRUCTIONS_AGENTS_BEHAVIOR.behaviorId]:
     COPILOT_VSCODE_INSTRUCTIONS_AGENTS_BEHAVIOR,
   [COPILOT_VSCODE_INSTRUCTIONS_CLAUDE_BEHAVIOR.behaviorId]:
@@ -1278,7 +1514,9 @@ export const COPILOT_BEHAVIOR_STATEMENTS: Readonly<
   [COPILOT_VSCODE_INSTRUCTIONS_PATH_BEHAVIOR.behaviorId]: COPILOT_VSCODE_INSTRUCTIONS_PATH_BEHAVIOR,
   [COPILOT_VSCODE_INSTRUCTIONS_REPOSITORY_BEHAVIOR.behaviorId]:
     COPILOT_VSCODE_INSTRUCTIONS_REPOSITORY_BEHAVIOR,
+  [COPILOT_VSCODE_MCP_BEHAVIOR.behaviorId]: COPILOT_VSCODE_MCP_BEHAVIOR,
   [COPILOT_VSCODE_SKILLS_BEHAVIOR.behaviorId]: COPILOT_VSCODE_SKILLS_BEHAVIOR,
+  [COPILOT_VSCODE_USER_MCP_BEHAVIOR.behaviorId]: COPILOT_VSCODE_USER_MCP_BEHAVIOR,
   [COPILOT_VSCODE_USER_CLAUDE_BEHAVIOR.behaviorId]: COPILOT_VSCODE_USER_CLAUDE_BEHAVIOR,
   [COPILOT_VSCODE_USER_INSTRUCTIONS_BEHAVIOR.behaviorId]: COPILOT_VSCODE_USER_INSTRUCTIONS_BEHAVIOR,
   [COPILOT_VSCODE_USER_SKILLS_BEHAVIOR.behaviorId]: COPILOT_VSCODE_USER_SKILLS_BEHAVIOR,

@@ -89,6 +89,7 @@ describe('session snapshot DTO', () => {
       | 'files'
       | 'instructions'
       | 'skills'
+      | 'mcp'
       | 'diagnostics'
       | 'repositoryGeneration'
       | 'globalGeneration'

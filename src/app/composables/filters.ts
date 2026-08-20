@@ -28,6 +28,7 @@ import { computed, type ComputedRef, type Ref } from 'vue';
 import type {
   CustomizationFileSummaryDto,
   InstructionInventoryEntryDto,
+  McpInventoryEntryDto,
   SessionSnapshot,
   SkillInventoryEntryDto,
   SourceDto,
@@ -108,6 +109,16 @@ export class InventoryFilterView {
   public readonly skillRows: ComputedRef<readonly SkillInventoryEntryDto[]>;
 
   /**
+   * The MCP rows that pass every active filter, in snapshot order. A row is
+   * one declared server name (data-model.md § Inventory unit); a filter keeps
+   * the declarations it matches — by their carrier's path and recognizing
+   * tool — and drops a row only when none is left, so a narrowed row states
+   * what still matches rather than everything the name has, exactly as the
+   * skill rows do.
+   */
+  public readonly mcpRows: ComputedRef<readonly McpInventoryEntryDto[]>;
+
+  /**
    * Admitted candidates that pass the filters but appear in no kind's
    * inventory, in snapshot order — a candidate whose bytes were never accepted
    * gains no recognition, so no kind tab can show it. They are listed apart
@@ -142,6 +153,18 @@ export class InventoryFilterView {
   public readonly filesByPath: ComputedRef<ReadonlyMap<string, CustomizationFileSummaryDto>>;
 
   /**
+   * Every path with an MCP recognition in the committed generation, from the
+   * unfiltered inventory — named rows and the no-name row alike. A carrier's
+   * `FileDetail` is withheld by contract (FR-007), so a surface that links a
+   * file to a source-serving detail — an instruction row whose file is also
+   * a carrier, through a Codex configured fallback — routes it to the
+   * carrier's own MCP view instead. Derived from the snapshot rather than
+   * the filtered rows, so a tool or path filter cannot change where a link
+   * points.
+   */
+  public readonly mcpCarrierPaths: ComputedRef<ReadonlySet<string>>;
+
+  /**
    * True while a filter narrows the inventory — drives the "clear" affordance.
    * The kind tab is not a filter and never counts here: clearing the filters
    * must not navigate the user off the kind they are looking at.
@@ -156,6 +179,14 @@ export class InventoryFilterView {
     this.filesByPath = computed(
       () => new Map((snapshot.value?.files ?? []).map((file) => [file.sourceRelativePath, file])),
     );
+    this.mcpCarrierPaths = computed(
+      () =>
+        new Set(
+          (snapshot.value?.mcp ?? []).flatMap((entry) =>
+            entry.declarations.map((declaration) => declaration.sourceRelativePath),
+          ),
+        ),
+    );
 
     this.availableTools = computed(() => {
       const present = new Set([
@@ -164,6 +195,9 @@ export class InventoryFilterView {
         ),
         ...(snapshot.value?.skills ?? []).flatMap((entry) =>
           entry.definitions.map((definition) => definition.tool),
+        ),
+        ...(snapshot.value?.mcp ?? []).flatMap((entry) =>
+          entry.declarations.map((declaration) => declaration.tool),
         ),
       ]);
       return SUPPORTED_TOOL_ORDER.filter((candidate) => present.has(candidate));
@@ -174,6 +208,7 @@ export class InventoryFilterView {
       const present = new Set<CustomizationKind>([
         ...((snapshot.value?.instructions ?? []).length > 0 ? (['instructions'] as const) : []),
         ...((snapshot.value?.skills ?? []).length > 0 ? (['skill'] as const) : []),
+        ...((snapshot.value?.mcp ?? []).length > 0 ? (['MCP'] as const) : []),
       ]);
       return CUSTOMIZATION_KIND_ORDER.filter((candidate) => present.has(candidate));
     });
@@ -298,6 +333,22 @@ export class InventoryFilterView {
       }));
     });
 
+    /**
+     * The MCP name rows that survive every filter, each reduced to the
+     * declarations that matched. A name with no matching declaration is not a
+     * row: showing it would claim a match the inventory does not have.
+     */
+    this.mcpRows = computed<readonly McpInventoryEntryDto[]>(() =>
+      (snapshot.value?.mcp ?? []).flatMap((entry) => {
+        const declarations = entry.declarations.filter(
+          (declaration) =>
+            fileMatches(declaration.sourceRelativePath) &&
+            (effectiveTool.value === null || declaration.tool === effectiveTool.value),
+        );
+        return declarations.length === 0 ? [] : [{ ...entry, declarations }];
+      }),
+    );
+
     this.kindCounts = computed(() => {
       const counts = new Map<CustomizationKind, number>();
       for (const candidate of this.availableKinds.value) {
@@ -309,7 +360,9 @@ export class InventoryFilterView {
             ? this.instructionRows.value.length
             : candidate === 'skill'
               ? this.skillRows.value.length
-              : 0,
+              : candidate === 'MCP'
+                ? this.mcpRows.value.length
+                : 0,
         );
       }
       return counts;
@@ -325,6 +378,9 @@ export class InventoryFilterView {
         ),
         ...(snapshot.value?.skills ?? []).flatMap((entry) =>
           entry.definitions.map((definition) => definition.sourceRelativePath),
+        ),
+        ...(snapshot.value?.mcp ?? []).flatMap((entry) =>
+          entry.declarations.map((declaration) => declaration.sourceRelativePath),
         ),
       ]);
       // A companion belongs to the customization whose directory holds it, and

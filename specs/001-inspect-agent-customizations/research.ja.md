@@ -81,7 +81,7 @@ Lockfileはpublishされたpackageには同行しないため、consumerの`npx`
 registryに対して解決する。Auditが確立するのは、このprojectが出荷し検証するtreeであり、
 後続の任意のinstallが生成するtreeではない。tsdownはproject所有moduleとshared
 contractをbundleし、任意のtransitive packageはbundleしない。Directなproduction dependencyは
-`devframe`、`gunshi`、`h3`、`jsonc-parser`、`open`、`smol-toml`、`vfile`、`vfile-matter`、`yaml`の正確に9つとする（§ 3）。
+`devframe`、`gunshi`、`h3`、`open`、`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`yaml`の正確に9つとする（§ 3）。
 
 承認済みのdirect production dependency set — その9つのnameだけで他は含まない — を`package.json`と
 `pnpm-lock.yaml` closureからassertする。これによりnew production dependencyは§ 3の決定が明示的に
@@ -165,7 +165,8 @@ research、plan、quickstart、task artifactをすべて同期して`/speckit.pl
 | CLI | `gunshi` 0.37.0 | 現行のruntime dependency 0件のESM CLI framework。Node.js `>=22` engine requirementは宣言済みrangeと互換 |
 | Browser opener | `open` 11.0.1 | Startup openerのfallback（FR-001）を担う現行stableなcross-platform opener: macOSのChromium tab再利用が適用されないか失敗した場合に（§ 3）、bind済みloopback originをOS default handlerへbest-effortで渡し、devframeのbundled openerを無効化してproductのopenerだけが動くようにする。VendoredなPOSIX shell `xdg-open` — Linuxでは実行可能な限りそれを使い、そうでなければsystem helper — は記録済みのFR-038 closure例外である（§ 3） |
 | Host HTTP app | `h3` 2.0.1-rc.22 | Hostはdevframeがmountする先のH3 appを自ら構築し、devframeの拡張子guard付きSPA fallbackでは配信できない`/skills/**`のshell fallbackを載せる — skill detail URLは`SKILL.md`のようにfile自身の最終segmentで終わり、devframeは拡張子判定の前にdecodeするためpercent-encodeは代案にならないからである。他の直接依存と同じくcaret rangeで宣言し、lockfileがdevframe自身のh3へresolveするため、両者は1つのmodule instanceへ解決される。devframe自身が拡張子付きclient-route missをserveできるようになれば、この依存はhost shimとともに無くなる |
-| Parser | `yaml` 2.9.0、`jsonc-parser` 3.3.1、`smol-toml` 1.7.0 | 現行stable inert data parser |
+| Parser | `yaml` 2.9.0、`smol-toml` 1.7.0 | 現行stable inert data parser。strict JSONはplatformの`JSON.parse`である |
+| JSONC pre-parse | `strip-json-comments` 5.0.3 | JSONCのcommentとtrailing commaを空白へ置き換え、残りをstrict JSONと同じ`JSON.parse`へ通す — JSON family全体で解決は1つになる。独自にobjectを構築するlenient parserは、authoredな`__proto__` keyをown propertyとして保持できず、その名前の`.vscode/mcp.json` serverを無診断で消すため採らない |
 | Frontmatter | `vfile-matter` 5.0.1、`vfile` 6.0.3 | Frontmatterのdelimiter処理。Frontmatter blockの開始と終了を決めることはBOM処理、改行、閉じfenceの形を決め直すことであり、正規表現ではなくparserの仕事である。これは同表の`yaml` engineでblockをparseする。独自の`js-yaml`を持つpackageは1つのdocumentに2つの意味を与えてしまう。js-yaml 3はYAML 1.1、`yaml`はYAML 1.2だからである |
 | Source view/diff | `monaco-editor` 0.55.1 | 現行stable read-only source/diff editor。固有diff engineによりclient dependency重複を避ける |
 | Lint | ESLint 10.7.0、`@nuxt/eslint` 1.16.0、`@stylistic/eslint-plugin` 5.10.0 | 現行互換stable release。`@stylistic`はESLint 10がcoreから外したstylistic rule（例: `quotes`）を提供する |
@@ -280,7 +281,7 @@ Gunshi公式の[setup requirement](https://gunshi.dev/guide/introduction/setup)�
 Node/TypeScript互換性とclosedなunknown-option behaviorの根拠にする。
 Safe-filesystem layerはNode built-inの`node:fs/promises`、`node:fs`、`node:path` APIだけを使用するため、
 platform toolchainやruntime package dependencyを追加しない。
-Directなproduction `dependencies` setは`devframe`、`gunshi`、`h3`、`jsonc-parser`、`open`、`smol-toml`、`vfile`、`vfile-matter`、`yaml`の
+Directなproduction `dependencies` setは`devframe`、`gunshi`、`h3`、`open`、`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`yaml`の
 正確に9つとする（caret rangeで宣言し、lockfileがexactなresolved versionへpinする。`h3`のresolved versionはdevframe自身のh3と一致し、両者は1つのmodule instanceへ解決される）: CLIとparserのpackageはnpm graph上のleafであり、h3は下記のtransitive host treeに既に含まれ、devframeがそのtreeを
 持ち込み、`open`はhelper検出の小さなtree（`default-browser`、`is-wsl`とそのleaf）をlockfileのpin付きで持ち込む。
 Nuxt/Vue/Vite/tsdown、Monaco、test toolingは必要outputをclosed product assetへassembleするためbuild/development-onlyとする。
@@ -401,9 +402,11 @@ relationshipまたはexcludedのままとする。
   `.github/copilot-instructions.md` locationはworkspace rootのexact pathであり、recursiveな
   `**/.github/copilot-instructions.md`と書くとnested workspace fileを示唆してしまう。Copilot CLIはruntime
   contextからrepository boundaryへ向かう独自の文書化済みstandard-location traversalを持ち、Cloud/code-
-  review surfaceはさらに別のsupport/composition modelを持つ。これらは別behavior rowにする。Inspector matcherが
-  possible descendant contextをinventoryする場合は明示的な先頭`ANY_DIRECTORIES` segmentだけを使い、applicabilityはconditionalのままに
-  する。VS Code rowをCLIまたはCloud traversal ruleとして再利用しない。VS Code MCPにはcurrent-guide viewに対する
+  review surfaceはさらに別のsupport/composition modelを持つ。これらは別behavior rowにする。Inspector matcherが先頭に
+  `ANY_DIRECTORIES` segmentを持てるのは、vendorがあらゆる深さで文書化しているlocation — worked-fileまたは
+  descendant anchorを持つlocation — だけであり、applicabilityはconditionalのままにする。Runtime cwd chain上で
+  しか文書化されていないlocationは、chainの唯一の共有メンバーであるselected rootでadmitする。VS Code rowをCLI
+  またはCloud traversal ruleとして再利用しない。VS Code MCPにはcurrent-guide viewに対する
   意図的なversion付き例外が1つある。1.118 release noteはexact workspace root `.mcp.json`を追加してmost-specific
   same-name deduplicationを告知する一方、current MCP guideは`.vscode/mcp.json`とUser configurationを網羅的location
   として提示し続ける。Specific versioned pathはadmitするがevidence statusを`conflict`とする。選択したofficial
@@ -424,7 +427,7 @@ relationshipまたはexcludedのままとする。
   Skill-tool discovery、strict/bare/managed restrictionをpreload listから推測しない。
 - **Codex ruleのrecursionは確立していない。** Current official textが文書化するのはactive layerの
   `.codex/rules/` directory直下のrule fileであり、nested subdirectory recursionは確立していない。したがって
-  Inspector matcherはinventoried possible layerごとにdirect-child selectorを使い、
+  Inspector matcherはRepository root自身のconfiguration layerでdirect-child selectorを使い、
   `.codex/rules/**/*.rules`を使わない。Project config、instruction、hook、MCP、skill、agent、marketplace、local対
   hosted surfaceは、それぞれ固有のdocumentedまたはconditionalなtraversal/trust inputを保つ。正確なRepository
   marketplace root、layered project config/instruction fallback、local marketplace sourceの両form、default対
@@ -689,7 +692,7 @@ fallback付きstatic配信、RPC channelはproduct codeではなく
 devframeのpolicyであり、browser openingはproductがstartup opener — macOSのChromium tab再利用を
 `open` packageのhelperの前段に置く — を通じて所有し、devframeの
 bundled openerは無効化される（§ 3）。ただしstatic配信の前段にclosedなproduct所有の要素が1つある:
-`/skills/**`と`/instructions/**`の`GET`/`HEAD`を`/`へ書き換えるrewrite（shipped kind detailごとに
+`/skills/**`、`/instructions/**`、`/mcp/**`の`GET`/`HEAD`を`/`へ書き換えるrewrite（shipped kind detailごとに
 1 route family）で、extension-guardedなfallbackがserveできない
 detail deep linkにdevframe自身のhandlerがshellをserveできるようにする(§ 3 h3行)。Session保護はloopback bindingとする: productはper-session tokenも、独自のOrigin/Host分類も、
 hand-written HTTP routerも追加しない。devframeはWebSocket upgradeへ自身のorigin gateを適用して

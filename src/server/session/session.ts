@@ -35,6 +35,10 @@ import type {
   FileDetailDto,
   InspectionDataResult,
   InstructionInventoryEntryDto,
+  McpCarrierDetailDto,
+  McpDeclarationDto,
+  McpServerDeclarationDto,
+  McpInventoryEntryDto,
   SameNameSkillResolutionDto,
   SkillDefinitionDto,
   ScanProgressPhase,
@@ -305,6 +309,139 @@ function projectInstructionInventory(
 }
 
 /**
+ * Projects the MCP inventory from a generation's recognitions
+ * (contracts/http-api.md § get-session `mcp[]`, data-model.md § Inventory
+ * unit): one entry per declared server name, listing every declaration that
+ * resolves it — one per `(carrier, tool)`, the same grouping the skill
+ * inventory gives its definitions — so a second carrier declaring the same
+ * name joins the name's row rather than starting another.
+ *
+ * A carrier that currently publishes no named declaration still appears: the
+ * one null-named entry closes the list with such carriers, where each
+ * declaration's own `parseStatus` tells "the rows are unknown" (a failed
+ * extraction) apart from "the carrier declares none" (FR-028). Entries are in
+ * name order with the null row last, and declarations within an entry in
+ * carrier-path then closed tool order, so two snapshots of one generation
+ * publish the same rows and an opaque ID never decides a visible order.
+ */
+function projectMcpInventory(recognitions: readonly ToolRecognition[]): McpInventoryEntryDto[] {
+  const byName = new Map<string | null, McpDeclarationDto[]>();
+  // Which carriers publish at least one named declaration through any
+  // product's reading. The no-name row is a statement about the file — "this
+  // carrier currently publishes no named declaration" — so a reading that
+  // finds no server in a file another product reads servers out of (the
+  // CLI's bare schema against Claude's wrapper-only reading of one shared
+  // root) must not put that same file under the no-name row beside its own
+  // named rows.
+  const pathsWithNames = new Set(
+    recognitions
+      .filter(isMcpRecognition)
+      .filter(
+        (recognition) =>
+          recognition.parseStatus === 'parsed' && recognition.details.servers.length > 0,
+      )
+      .map((recognition) => recognition.sourceRelativePath),
+  );
+  for (const recognition of recognitions) {
+    if (!isMcpRecognition(recognition)) {
+      continue;
+    }
+    // The surfaces are the union over the recognition's own admissions,
+    // computed here because this is where they are published — the same rule
+    // the instructions inventory applies, and for the same reason: an
+    // admission holds the rule that authorized it, and a stored surface list
+    // would be a second copy of what those records say.
+    const recognizingSurfaces = new Set<VendorSurface>();
+    for (const provenance of recognition.provenances) {
+      for (const surface of provenance.recognizingSurfaces) {
+        recognizingSurfaces.add(surface);
+      }
+    }
+    const declaration: McpDeclarationDto = {
+      sourceRelativePath: recognition.sourceRelativePath,
+      tool: recognition.tool,
+      surfaces: VENDOR_SURFACE_ORDER.filter((surface) => recognizingSurfaces.has(surface)),
+      parseStatus: recognition.parseStatus,
+      diagnosticIds: recognition.diagnosticIds,
+    };
+    // A parsed reading contributes one declaration per name it declares; a
+    // carrier with no named declaration from any reading — failed, or
+    // declaring none — lands on the null row so its state stays a visible
+    // row rather than a file in no kind (FR-028). A reading that finds no
+    // server in a carrier whose names another reading publishes contributes
+    // nothing: the no-name row is the file's statement, and the file does
+    // publish named declarations.
+    const names =
+      recognition.parseStatus === 'parsed' && recognition.details.servers.length > 0
+        ? recognition.details.servers.map((server) => server.name)
+        : pathsWithNames.has(recognition.sourceRelativePath)
+          ? []
+          : [null];
+    for (const name of names) {
+      const declarations = byName.get(name);
+      if (declarations === undefined) {
+        byName.set(name, [declaration]);
+      } else {
+        declarations.push(declaration);
+      }
+    }
+  }
+  return (
+    [...byName.entries()]
+      .map(([name, declarations]): McpInventoryEntryDto => ({
+        name,
+        declarations: declarations.toSorted((left, right) => {
+          const pathDelta = compareStrings(left.sourceRelativePath, right.sourceRelativePath);
+          return pathDelta !== 0
+            ? pathDelta
+            : SUPPORTED_TOOL_ORDER.indexOf(left.tool) - SUPPORTED_TOOL_ORDER.indexOf(right.tool);
+        }),
+      }))
+      // Named rows in name order, and the one no-name row after them all —
+      // nulls-last is the comparator's own rule ({@link compareStrings}).
+      .sort((left, right) => compareStrings(left.name, right.name))
+  );
+}
+
+/**
+ * A recognition narrowed to the MCP kind, so {@link projectMcpInventory}
+ * reads `details.servers` where its guard has already proved the kind instead
+ * of re-narrowing per access.
+ */
+type McpRecognition = ToolRecognition & {
+  readonly details: Extract<RecognitionDetails, { kind: 'MCP' }>;
+};
+
+/** Whether one recognition is the MCP kind, narrowing it for the grouping. */
+function isMcpRecognition(recognition: ToolRecognition): recognition is McpRecognition {
+  return recognition.details.kind === 'MCP';
+}
+
+/**
+ * The union of one carrier's parsed readings, one entry per declared name in
+ * the readings' publish order ({@link InspectionSession.mcpCarrierDetail}).
+ * A shared name is one declaration read twice — every reading of one file
+ * parses the same text, so the first occurrence carries the same fields any
+ * later one would.
+ */
+function unionOfServerReadings(
+  recognitions: readonly McpRecognition[],
+): readonly McpServerDeclarationDto[] {
+  const byName = new Map<string, McpServerDeclarationDto>();
+  for (const recognition of recognitions) {
+    if (recognition.parseStatus !== 'parsed') {
+      continue;
+    }
+    for (const server of recognition.details.servers) {
+      if (!byName.has(server.name)) {
+        byName.set(server.name, server);
+      }
+    }
+  }
+  return [...byName.values()];
+}
+
+/**
  * A recognition narrowed to the skill kind, so {@link projectSkillInventory}
  * reads `details.declaredName` where its guard has already proved the skill
  * kind instead of re-narrowing per access.
@@ -525,8 +662,12 @@ export class InspectionSession {
       // (candidate.ts), so any one of them carries it. A file with neither
       // Markdown kind is the plain variant — a census companion, or a
       // diagnostic-only candidate (contracts/http-api.md § get-file-detail).
-      // No shipped rule recognizes one file as both kinds; the skill lookup
-      // runs first so the order is fixed rather than incidental.
+      // No shipped rule recognizes one file as both Markdown kinds; the skill
+      // lookup runs first so the order is fixed rather than incidental. A
+      // contained-MCP owner — once a phase admits one of the documented
+      // owner families — is deliberately served here under its own kind: its
+      // MCP recognition is metadata on the owner, and the owner's source is
+      // legitimately displayed — only the pure carrier below withholds one.
       const skill = generation.recognitions.find(
         (recognition): recognition is SkillRecognition =>
           recognition.sourceRelativePath === sourceRelativePath && isSkillRecognition(recognition),
@@ -543,6 +684,27 @@ export class InspectionSession {
               : null,
           diagnostics,
         };
+      }
+      // A standalone MCP carrier has no FileDetail at all: its detail is
+      // `mcpCarrierDetail`'s own result, because every variant this function
+      // serves carries the full file, and the carrier's whole admission rests
+      // on its bytes reaching no response (FR-007). Null is the same
+      // stale-resource answer as a path the generations hold nothing at
+      // (contracts/http-api.md § get-file-detail). A contained-MCP owner —
+      // once a phase admits one — never reaches this: its own kind answers
+      // above. Decided before the
+      // instructions variant, which does carry the full body text: a Codex
+      // `project_doc_fallback_filenames` entry naming `.mcp.json` makes the
+      // root carrier an instructions candidate too, and answering that
+      // recognition first would hand out the bytes FR-007 withholds — the
+      // carrier's protection wins over the fallback recognition's detail.
+      if (
+        generation.recognitions.some(
+          (recognition) =>
+            recognition.sourceRelativePath === sourceRelativePath && isMcpRecognition(recognition),
+        )
+      ) {
+        return null;
       }
       const instruction = generation.recognitions.find(
         (recognition): recognition is InstructionRecognition =>
@@ -565,6 +727,77 @@ export class InspectionSession {
         };
       }
       return { kind: 'file', file, diagnostics };
+    }
+    return null;
+  }
+
+  /**
+   * Resolves one MCP-declaring file's declarations — the servers it declares
+   * and its own content-free file facts, never its source text (FR-007;
+   * contracts/http-api.md § get-mcp-carrier-detail). It answers for a pure
+   * carrier and, once a phase admits one of the documented owner families,
+   * for a contained-declaration owner alike: both hold an MCP
+   * recognition, and the response shape withholds source either way — an
+   * owner's source is served by `fileDetail` under its own kind, beside this
+   * result rather than through it. Null when the current committed
+   * generations hold no MCP recognition at the path, which the handler
+   * answers as the `stale-resource` rejection.
+   */
+  public mcpCarrierDetail(sourceRelativePath: string): McpCarrierDetailDto | null {
+    const generations = [
+      this.committedRepositoryGeneration,
+      ...(this.committedGlobalGeneration === null ? [] : [this.committedGlobalGeneration]),
+    ];
+    for (const generation of generations) {
+      // Every MCP recognition at the path, not the first: one physical
+      // carrier can be read by several products, and since the CLI's bare
+      // schema exists their readings can differ — Claude reads no server out
+      // of a bare-form root `.mcp.json` while the Copilot CLI does — so the
+      // file-unit detail answers with the union of the readings rather than
+      // with whichever tool's recognition happens to sit first.
+      const mcpRecognitions = generation.recognitions.filter(
+        (recognition): recognition is McpRecognition =>
+          recognition.sourceRelativePath === sourceRelativePath && isMcpRecognition(recognition),
+      );
+      const [mcp] = mcpRecognitions;
+      if (mcp === undefined) {
+        continue;
+      }
+      const file = generation.files.find(
+        (candidate) => candidate.sourceRelativePath === sourceRelativePath,
+      );
+      if (file === undefined) {
+        // A recognition exists only for a committed file, so the pair cannot
+        // separate within one generation; failing loudly beats serving a
+        // detail whose file facts this commit does not hold.
+        throw new Error('an MCP recognition names a file its generation does not hold');
+      }
+      // The file's own diagnostic references, in the commit's deterministic
+      // order — the same rule `fileDetail` applies (FR-028).
+      const diagnostics = generation.diagnostics.filter((diagnostic) =>
+        file.diagnosticIds.includes(diagnostic.diagnosticId),
+      );
+      return {
+        // The content-free summary: the carrier's facts without its source
+        // text, absent from the shape rather than withheld at render time
+        // (FR-007).
+        file: summarizeFile(file),
+        // Null exactly for a failed extraction: the readings run over the
+        // one source text through the same parser family, so they fail
+        // together, nothing was parsed, the rows are unknown rather than
+        // absent, and the diagnostic above is the failure's record (FR-028).
+        // Otherwise the union of the parsed readings, one entry per declared
+        // name in the readings' own publish order: each recognizing tool runs
+        // its own documented reading over the one decoded text — the CLI's
+        // bare schema exists, so the readings can differ — and a name two
+        // readings both publish is one entry, while which product reads a
+        // given name stays the inventory's per-declaration fact rather than
+        // a field here.
+        servers: mcpRecognitions.every((recognition) => recognition.parseStatus !== 'parsed')
+          ? null
+          : unionOfServerReadings(mcpRecognitions),
+        diagnostics,
+      };
     }
     return null;
   }
@@ -640,6 +873,10 @@ export class InspectionSession {
           ...(this.committedGlobalGeneration?.skillCompanionsByPath ?? new Map()),
         ]),
       ),
+      mcp: projectMcpInventory([
+        ...this.committedRepositoryGeneration.recognitions,
+        ...(this.committedGlobalGeneration?.recognitions ?? []),
+      ]),
       // Semantic emission order (data-model.md § Diagnostic): session-owned
       // lifecycle records (repository, Global tools, published Sources)
       // precede the generations' candidate-owned records.

@@ -205,6 +205,166 @@ export const CLAUDE_USER_INSTRUCTIONS_BEHAVIOR = {
           establishes:
             'User instructions live at ~/.claude/CLAUDE.md and hold personal preferences for all projects, one of the scopes the documented broadest-to-most-specific load order spans.',
         },
+        {
+          sourceId: 'anthropic.claude-code.env-vars',
+          url: 'https://code.claude.com/docs/en/env-vars',
+          officialHost: 'code.claude.com',
+          sections: ['Variables'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'CLAUDE_CONFIG_DIR overrides the configuration directory, ~/.claude by default, with settings, session history, and plugins stored under that path — the relocation the <claude-config-dir> spelling names.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Claude subagent discovery: each `<agent-layer>` from the launch working
+ * directory through the Git repository root carries recursive Markdown agent
+ * files under `.claude/agents/`.
+ *
+ * Recorded now because `claude.mcp.selection` consumes it — a subagent
+ * inherits the selected parent MCP tools and can scope servers to itself — so
+ * shipping the strategy without this statement would leave the dangling edge
+ * the contract gate rejects. It authorizes no read: the agent inventory rule
+ * arrives with its own phase (contracts/vendors/claude-code.md § Repository
+ * vendor behavior).
+ *
+ * `partially-documented` per the canonical index: duplicate-name selection
+ * inside one directory tree has no documented stable winner.
+ */
+export const CLAUDE_REPO_AGENTS_BEHAVIOR = {
+  behaviorId: 'claude.behavior.repo.agents',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'repository',
+        lookupBase: 'runtime-cwd',
+        // Documentation prose, not a matcher: the registry never encodes the
+        // vendor's recursive discovery as a glob token.
+        relativeSelector: 'Markdown files recursively under .claude/agents/',
+        // The layer walk stops at the Git repository root, like the skill
+        // layers; additional directories supplied with `--add-dir` can also
+        // contribute agents, which stays a runtime condition rather than a
+        // second traversal value.
+        traversal: 'ancestor-chain-to-repository-root',
+      }
+    : null,
+  documentationStatus: 'partially-documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.subagents.scope-context',
+          url: 'https://code.claude.com/docs/en/sub-agents',
+          officialHost: 'code.claude.com',
+          sections: ['Choose the subagent scope'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'Project subagents are Markdown files discovered recursively under .claude/agents/ on each layer walked up from the working directory to the repository root, and directories added with --add-dir contribute their agents too; two same-name files under one directory tree load by filesystem read order rather than a documented precedence.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Claude project MCP declarations: the exact `.mcp.json` at `<project-root>`
+ * as Claude Code determines it, whose named `mcpServers` entries are the
+ * project-scope server declarations.
+ *
+ * `partially-documented` per the canonical index: the exact project-root
+ * selection algorithm and the resolution base for relative `command` and
+ * `args` values are not fully specified — the cited pages establish
+ * neither. This product records no base and joins none: a relative value is
+ * published as the literal the file wrote, and no declared path is opened
+ * (FR-009).
+ */
+export const CLAUDE_REPO_MCP_BEHAVIOR = {
+  behaviorId: 'claude.behavior.repo.mcp',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'repository',
+        // `<project-root>` as determined by Claude Code; the vendor documents
+        // the location as the project root without fully specifying how that
+        // root is selected, which is the record's `partially-documented`.
+        lookupBase: 'repository-root',
+        relativeSelector: '.mcp.json',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'partially-documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.mcp.scopes-precedence',
+          url: 'https://code.claude.com/docs/en/mcp',
+          officialHost: 'code.claude.com',
+          sections: ['MCP installation scopes'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'Project-scope MCP servers are declared in a .mcp.json file at the project root, checked into version control as the team-shared scope of the documented installation scopes, while the local and user scopes live in user-level state.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.ide.shared-differences',
+          url: 'https://code.claude.com/docs/en/ide-integrations',
+          officialHost: 'code.claude.com',
+          sections: ['VS Code extension vs. Claude Code CLI'],
+          reviewedOn: '2026-07-25',
+          establishes:
+            'The CLI-versus-extension feature table records MCP server configuration as full on the CLI and partial on the VS Code extension, so which surface is running conditions what the declaration file can do there.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Claude plugin content at an explicitly selected `<plugin-root>`: the
+ * optional `.claude-plugin/plugin.json` manifest plus default or
+ * manifest-declared component locations, MCP declarations among them.
+ *
+ * Recorded now because `claude.mcp.selection` consumes it — plugin-provided
+ * servers occupy one scope of the documented selection order. It authorizes
+ * no read and establishes no path discovery: a plugin root comes only from
+ * installation, a marketplace, `--plugin-dir` / `--plugin-url`, or the
+ * skills-directory plugin mechanism, never from a Repository path existing
+ * (contracts/vendors/claude-code.md § Repository vendor behavior).
+ */
+export const CLAUDE_REPO_PLUGIN_BEHAVIOR = {
+  behaviorId: 'claude.behavior.repo.plugin',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'plugin',
+        // The base is an explicitly selected plugin root — a registration,
+        // not a filesystem walk — so the lookup base is the catalog member
+        // and the traversal is what the registration names.
+        lookupBase: 'registered-catalog',
+        relativeSelector: '.claude-plugin/plugin.json plus component locations',
+        traversal: 'explicit-registration',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.plugins.components-scopes',
+          url: 'https://code.claude.com/docs/en/plugins-reference',
+          officialHost: 'code.claude.com',
+          sections: [
+            'Plugin installation scopes',
+            'Plugin manifest schema',
+            'File locations reference',
+          ],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'A plugin is installed into a settings scope chosen at installation; its manifest is optional, with components — MCP declarations among them — auto-discovered at default locations under the plugin root or redirected by manifest-declared paths.',
+        },
       ]
     : [],
 } as const satisfies VendorBehaviorStatement;
@@ -273,6 +433,104 @@ export const CLAUDE_REPO_SKILLS_BEHAVIOR = {
 } as const satisfies VendorBehaviorStatement;
 
 /**
+ * Claude User and per-project local MCP state at `<home>/.claude.json`.
+ * Recorded for maintenance and for the selection strategy that composes it:
+ * it expands no Global inspection, and the vendor contract's
+ * `claude.excluded.user-runtime` keeps the surface out of the read allowlist
+ * (FR-016, FR-018). That exclusion rule ships with the Global phase that
+ * needs it, not with this statement.
+ */
+export const CLAUDE_USER_MCP_STATE_BEHAVIOR = {
+  behaviorId: 'claude.behavior.user.mcp-state',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'user',
+        // `<home>` itself, not `<claude-config-dir>`: the state file sits
+        // beside the config directory rather than inside it, so the base is
+        // the profile rather than the tool home.
+        lookupBase: 'profile-data',
+        relativeSelector: '.claude.json',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.mcp.scopes-precedence',
+          url: 'https://code.claude.com/docs/en/mcp',
+          officialHost: 'code.claude.com',
+          sections: ['MCP installation scopes'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'User-scope MCP servers — and the local scope private to one project — are stored in user-level state rather than in the project file, two scopes of the documented installation-scope order.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.directory.file-reference',
+          url: 'https://code.claude.com/docs/en/claude-directory',
+          officialHost: 'code.claude.com',
+          sections: ['File reference'],
+          reviewedOn: '2026-07-25',
+          establishes:
+            'The file reference table locates ~/.claude.json global-only at the home directory — beside the ~/.claude configuration directory rather than inside it — holding app state and personal MCP servers.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Claude installed plugin data under `<claude-config-dir>/plugins/`, with
+ * plugin enablement recorded in the User `settings.json`. Recorded for
+ * maintenance and for the selection strategy that composes it — plugin-scope
+ * servers come from installed plugins — while `claude.excluded.user-runtime`
+ * keeps the surface out of the read allowlist (FR-016, FR-018); that
+ * exclusion rule ships with the Global phase that needs it.
+ */
+export const CLAUDE_USER_PLUGINS_BEHAVIOR = {
+  behaviorId: 'claude.behavior.user.plugins',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'user',
+        lookupBase: 'tool-home',
+        relativeSelector: 'plugins/; plugin enablement in settings.json',
+        // Installed, cache, and runtime-managed data: what is under the
+        // directory is decided by installation state, not by a documented
+        // filesystem walk of authored content.
+        traversal: 'none',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.plugins.components-scopes',
+          url: 'https://code.claude.com/docs/en/plugins-reference',
+          officialHost: 'code.claude.com',
+          sections: ['Plugin installation scopes', 'Plugin caching and file resolution'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'Plugin enablement is recorded per installation scope in settings files — the user scope in ~/.claude/settings.json — and marketplace plugins are copied into the local plugin cache at ~/.claude/plugins/cache, which is what makes plugin-provided servers user-side installation state rather than a repository fact.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.env-vars',
+          url: 'https://code.claude.com/docs/en/env-vars',
+          officialHost: 'code.claude.com',
+          sections: ['Variables'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'CLAUDE_CONFIG_DIR overrides the configuration directory, ~/.claude by default, with settings, session history, and plugins stored under that path — the relocation the <claude-config-dir> spelling names.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
  * Claude User skill discovery under `<claude-config-dir>/skills`. Recorded for
  * maintenance only: it expands no Global inspection, and the vendor contract's
  * `claude.excluded.user-runtime` keeps the surface out of the read allowlist
@@ -306,7 +564,16 @@ export const CLAUDE_USER_SKILLS_BEHAVIOR = {
           sections: ['Where skills live'],
           reviewedOn: '2026-08-08',
           establishes:
-            'Claude Code additionally discovers user skills at <claude-config-dir>/skills/<skill-name>/SKILL.md, one of the scopes its same-name selection resolves across.',
+            'Claude Code additionally discovers user skills at ~/.claude/skills/<skill-name>/SKILL.md, one of the scopes its same-name selection resolves across.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.env-vars',
+          url: 'https://code.claude.com/docs/en/env-vars',
+          officialHost: 'code.claude.com',
+          sections: ['Variables'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'CLAUDE_CONFIG_DIR overrides the configuration directory, ~/.claude by default, with settings, session history, and plugins stored under that path — the relocation the <claude-config-dir> spelling names.',
         },
       ]
     : [],
@@ -322,12 +589,17 @@ export const CLAUDE_USER_SKILLS_BEHAVIOR = {
 export const CLAUDE_BEHAVIOR_STATEMENTS: Readonly<
   Record<ClaudeBehaviorId, VendorBehaviorStatement>
 > = {
+  [CLAUDE_REPO_AGENTS_BEHAVIOR.behaviorId]: CLAUDE_REPO_AGENTS_BEHAVIOR,
   [CLAUDE_REPO_INSTRUCTIONS_ANCESTOR_BEHAVIOR.behaviorId]:
     CLAUDE_REPO_INSTRUCTIONS_ANCESTOR_BEHAVIOR,
   [CLAUDE_REPO_INSTRUCTIONS_DESCENDANT_BEHAVIOR.behaviorId]:
     CLAUDE_REPO_INSTRUCTIONS_DESCENDANT_BEHAVIOR,
   [CLAUDE_REPO_INSTRUCTIONS_LAUNCH_BEHAVIOR.behaviorId]: CLAUDE_REPO_INSTRUCTIONS_LAUNCH_BEHAVIOR,
+  [CLAUDE_REPO_MCP_BEHAVIOR.behaviorId]: CLAUDE_REPO_MCP_BEHAVIOR,
+  [CLAUDE_REPO_PLUGIN_BEHAVIOR.behaviorId]: CLAUDE_REPO_PLUGIN_BEHAVIOR,
   [CLAUDE_REPO_SKILLS_BEHAVIOR.behaviorId]: CLAUDE_REPO_SKILLS_BEHAVIOR,
   [CLAUDE_USER_INSTRUCTIONS_BEHAVIOR.behaviorId]: CLAUDE_USER_INSTRUCTIONS_BEHAVIOR,
+  [CLAUDE_USER_MCP_STATE_BEHAVIOR.behaviorId]: CLAUDE_USER_MCP_STATE_BEHAVIOR,
+  [CLAUDE_USER_PLUGINS_BEHAVIOR.behaviorId]: CLAUDE_USER_PLUGINS_BEHAVIOR,
   [CLAUDE_USER_SKILLS_BEHAVIOR.behaviorId]: CLAUDE_USER_SKILLS_BEHAVIOR,
 };

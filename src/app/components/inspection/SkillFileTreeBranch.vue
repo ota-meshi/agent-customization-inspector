@@ -9,7 +9,7 @@
 import { computed } from 'vue';
 import { NuxtLink } from '#components';
 import { skillDetailRoute } from '../skill-detail-route';
-import { SkillTreeFileNode, type SkillTreeNode } from './skill-file-tree-nodes';
+import type { SkillTreeNode } from './skill-file-tree-nodes';
 
 const props = defineProps<{
   /** The nodes at this level, in the order the tree should read them. */
@@ -43,9 +43,11 @@ const indentStep = computed(() => ((props.depth ?? 0) < MAX_INDENTED_DEPTH ? '0.
     <li v-for="node in nodes" :key="node.id">
       <!-- `aria-current` rather than a class alone: which file is open is
            information, not decoration (WCAG 1.4.1). The link's text is exactly
-           the name, so no template indentation renders with it. -->
+           the name, so no template indentation renders with it. The branch is
+           the node's own `kind` — the union's discriminant — never a runtime
+           shape test over a value this surface built itself. -->
       <NuxtLink
-        v-if="node instanceof SkillTreeFileNode"
+        v-if="node.kind === 'file'"
         class="aci-skill-file-tree-branch__file"
         :to="skillDetailRoute(tool, node.sourceRelativePath)"
         :aria-current="node.sourceRelativePath === selectedPath ? 'page' : undefined"

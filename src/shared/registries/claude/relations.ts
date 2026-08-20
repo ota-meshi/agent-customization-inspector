@@ -15,16 +15,26 @@
 // Ordering is by identifier within each array, so two builds of the same
 // contract agree and the materialized fixture is byte-stable.
 import {
+  CLAUDE_REPO_AGENTS_BEHAVIOR,
   CLAUDE_REPO_INSTRUCTIONS_ANCESTOR_BEHAVIOR,
   CLAUDE_REPO_INSTRUCTIONS_DESCENDANT_BEHAVIOR,
   CLAUDE_REPO_INSTRUCTIONS_LAUNCH_BEHAVIOR,
+  CLAUDE_REPO_MCP_BEHAVIOR,
+  CLAUDE_REPO_PLUGIN_BEHAVIOR,
   CLAUDE_REPO_SKILLS_BEHAVIOR,
   CLAUDE_USER_INSTRUCTIONS_BEHAVIOR,
+  CLAUDE_USER_MCP_STATE_BEHAVIOR,
+  CLAUDE_USER_PLUGINS_BEHAVIOR,
   CLAUDE_USER_SKILLS_BEHAVIOR,
 } from './behaviors';
-import { CLAUDE_REPO_INSTRUCTIONS_RULE, CLAUDE_REPO_SKILL_RULE } from './rules';
+import {
+  CLAUDE_REPO_INSTRUCTIONS_RULE,
+  CLAUDE_REPO_MCP_RULE,
+  CLAUDE_REPO_SKILL_RULE,
+} from './rules';
 import {
   CLAUDE_INSTRUCTIONS_LAYERING_STRATEGY,
+  CLAUDE_MCP_SELECTION_STRATEGY,
   CLAUDE_SKILLS_SELECTION_STRATEGY,
 } from './strategies';
 import type { RuleRelations, StrategyRelations } from '../relation-types';
@@ -45,6 +55,24 @@ export const CLAUDE_STRATEGY_RELATIONS: Readonly<Record<ClaudeStrategyId, Strate
       CLAUDE_REPO_INSTRUCTIONS_DESCENDANT_BEHAVIOR,
       CLAUDE_REPO_INSTRUCTIONS_LAUNCH_BEHAVIOR,
       CLAUDE_USER_INSTRUCTIONS_BEHAVIOR,
+    ],
+  },
+  /**
+   * MCP selection composes every documented scope its order spans. Only the
+   * project carrier is readable; the agent, plugin, User-state, and
+   * installed-plugin statements are listed all the same, because the strategy
+   * describes Claude's runtime and omitting them would misdescribe the
+   * documented local/project/User/plugin/connector order as choosing among
+   * project declarations alone (contracts/runtime-composition.md
+   * § claude.mcp.selection).
+   */
+  [CLAUDE_MCP_SELECTION_STRATEGY.strategyId]: {
+    consumesBehaviors: [
+      CLAUDE_REPO_AGENTS_BEHAVIOR,
+      CLAUDE_REPO_MCP_BEHAVIOR,
+      CLAUDE_REPO_PLUGIN_BEHAVIOR,
+      CLAUDE_USER_MCP_STATE_BEHAVIOR,
+      CLAUDE_USER_PLUGINS_BEHAVIOR,
     ],
   },
   /**
@@ -74,6 +102,17 @@ export const CLAUDE_RULE_RELATIONS: Readonly<Record<ClaudeRuleId, RuleRelations>
       CLAUDE_REPO_INSTRUCTIONS_LAUNCH_BEHAVIOR,
     ],
     explainedByStrategies: [CLAUDE_INSTRUCTIONS_LAYERING_STRATEGY],
+  },
+  /**
+   * The Repository MCP rule is based on the project-carrier lookup alone —
+   * the agent, plugin, and User scopes its selection spans are different
+   * boundaries this rule may not read — and is explained by the selection
+   * strategy, which owns the scope order the rule deliberately does not
+   * project (FR-009).
+   */
+  [CLAUDE_REPO_MCP_RULE.ruleId]: {
+    basedOnBehaviors: [CLAUDE_REPO_MCP_BEHAVIOR],
+    explainedByStrategies: [CLAUDE_MCP_SELECTION_STRATEGY],
   },
   /**
    * The Repository skill rule is based on the Repository lookup alone — the

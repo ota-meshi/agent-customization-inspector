@@ -62,9 +62,10 @@ import { useRoute } from 'vue-router';
 import { NuxtLink } from '#components';
 import SkillFileTree from '../../../components/inspection/SkillFileTree.vue';
 import SourceViewer from '../../../components/inspection/SourceViewer.vue';
-import FrontmatterBlock from '../../../components/inspection/FrontmatterBlock.vue';
+import DeclarationBlock from '../../../components/inspection/DeclarationBlock.vue';
 import { nextTabForKey } from '../../../components/tab-navigation';
 import { skillComparisonRouteFor } from '../../../composables/skill-comparison';
+import { usePageOwnership } from '../../../composables/page-ownership';
 import { SESSION_VIEW_STATE } from '../../../session/view-state';
 import type { SkillDefinitionDto, SkillInventoryEntryDto } from '../../../../shared/api-types';
 import { DIAGNOSTIC_REGISTRY } from '../../../../shared/diagnostics';
@@ -622,12 +623,14 @@ let leaving = false;
  * calls it on every selection, and the failed-load branch calls it again as
  * the retry — same inputs, same path.
  */
+const pageOwnership = usePageOwnership();
+
 const requestOpen = (): void => {
   const resolved = owner.value;
   if (resolved === null) {
     return;
   }
-  void sessionViewState.openFileDetail(resolved.definition.sourceRelativePath, openPath.value);
+  void pageOwnership.openFileDetail(resolved.definition.sourceRelativePath, openPath.value);
 };
 
 // One effect owns "which skill and file should be open", so entering the route
@@ -657,7 +660,7 @@ watch(
       // the point: the page shows the recoverable state below, and holding the
       // last skill's source behind it would keep authored content the reader
       // has navigated away from.
-      sessionViewState.closeFileDetail();
+      pageOwnership.close();
       return;
     }
     requestOpen();
@@ -713,7 +716,10 @@ const titleSubject = computed<string | null>(() => {
   return name;
 });
 watchEffect(() => {
-  sessionViewState.pageSubject.value = titleSubject.value;
+  // Reported as this page instance's own, so an outgoing page's unmount
+  // cannot erase what this page just titled the tab with
+  // (`SessionViewState.reportPageSubject`).
+  pageOwnership.reportSubject(titleSubject.value);
 });
 
 /**
@@ -802,10 +808,9 @@ watch(
 
 onBeforeUnmount(() => {
   leaving = true;
-  // Leaving the route drops the authored source this page requested, and the
-  // title subject with it — the next route reports its own or none.
-  sessionViewState.pageSubject.value = null;
-  sessionViewState.closeFileDetail();
+  // The title subject and the open detail are both `usePageOwnership`'s to
+  // drop, after unmount, where the focus guards above are naturally inert
+  // and a replacement page's own report or open stands.
 });
 </script>
 
@@ -971,7 +976,7 @@ onBeforeUnmount(() => {
         <div v-if="skillPresentation" class="aci-skill-detail__declarations">
           <h3>Frontmatter</h3>
           <p v-if="orderedDeclarations.length === 0" class="aci-note">This skill declares none.</p>
-          <FrontmatterBlock v-else :value="declarationBlock" />
+          <DeclarationBlock v-else :value="declarationBlock" />
         </div>
 
         <div v-if="skillPresentation" class="aci-skill-detail__instructions">

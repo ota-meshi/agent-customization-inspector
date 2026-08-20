@@ -33,7 +33,7 @@ import {
 import { SUPPORTED_TOOL_ORDER, type SupportedTool } from '../../../shared/entities';
 import type {
   FileDetailDto,
-  FrontmatterEntryDto,
+  DeclaredEntryDto,
   InstructionRecognitionDto,
 } from '../../../shared/api-types';
 import type { VendorSurface } from '../../../shared/registries/behavior-types';
@@ -221,7 +221,7 @@ export class InstructionRecognitionComparison {
  * One parsed side's declarations. Callers guard on the 'parsed' state, which
  * is derived from the same detail, so the presentation is present here.
  */
-function entriesOf(side: InstructionComparisonSideInput): readonly FrontmatterEntryDto[] {
+function entriesOf(side: InstructionComparisonSideInput): readonly DeclaredEntryDto[] {
   const detail = side.detail;
   return detail.kind === 'instructions' && detail.presentation !== null
     ? detail.presentation.frontmatter

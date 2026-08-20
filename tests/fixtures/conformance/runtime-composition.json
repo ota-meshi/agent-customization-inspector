@@ -26,6 +26,44 @@
     ]
   },
   {
+    "strategyId": "claude.mcp.selection",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "operations": ["select-first", "replace", "filter"],
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.ide.shared-differences",
+        "url": "https://code.claude.com/docs/en/ide-integrations",
+        "officialHost": "code.claude.com",
+        "sections": ["VS Code extension vs. Claude Code CLI"],
+        "reviewedOn": "2026-07-25",
+        "establishes": "The CLI-versus-extension feature table records MCP server configuration as full on the CLI and partial on the VS Code extension, so which surface is running remains a condition of any selection outcome."
+      },
+      {
+        "sourceId": "anthropic.claude-code.mcp.scopes-precedence",
+        "url": "https://code.claude.com/docs/en/mcp",
+        "officialHost": "code.claude.com",
+        "sections": [
+          "MCP installation scopes",
+          "Scope hierarchy and precedence",
+          "Plugin-provided MCP servers"
+        ],
+        "reviewedOn": "2026-08-20",
+        "establishes": "A duplicate is resolved by source order as a whole entry — local, project, user, plugin-provided, then connectors, with no field merging across sources — and what makes a duplicate differs by source: the three scopes match by name, while plugins and connectors match by endpoint, treating one that points at the same URL or command as a server above it as the duplicate."
+      },
+      {
+        "sourceId": "anthropic.claude-code.subagents.scope-context",
+        "url": "https://code.claude.com/docs/en/sub-agents",
+        "officialHost": "code.claude.com",
+        "sections": ["Available tools", "Scope MCP servers to a subagent"],
+        "reviewedOn": "2026-08-20",
+        "establishes": "Subagents inherit the built-in and MCP tools available in the main conversation, narrowed by the documented filters, with the tools and disallowedTools fields restricting the set — the inherit-then-filter step this pipeline records; servers declared inline on an agent are connected when the subagent starts and disconnected when it finishes, while string entries reference servers already configured in the session."
+      }
+    ]
+  },
+  {
     "strategyId": "claude.skills.selection",
     "tool": "claude",
     "surfaces": ["claude-cli-and-ide-clients"],
@@ -55,7 +93,7 @@
         "officialHost": "code.claude.com",
         "sections": ["VS Code extension vs. Claude Code CLI"],
         "reviewedOn": "2026-07-25",
-        "establishes": "The CLI and the IDE integrations share the same configuration while feature availability differs by surface, so which surface is running remains a condition of any selection outcome."
+        "establishes": "The CLI-versus-extension feature table records commands and skills as all available on the CLI and a subset on the extension, so which surface is running remains a condition of any selection outcome."
       }
     ]
   },
@@ -92,6 +130,32 @@
         "sections": ["How Codex discovers guidance", "Customize fallback filenames"],
         "reviewedOn": "2026-08-17",
         "establishes": "Codex selects at most one non-empty instruction file per directory in the documented filename order and concatenates the selections broad to narrow, from the global fallback through the project chain toward the runtime cwd, stopping at the project_doc_max_bytes budget; that budget and the fallback filenames are configuration values resolved outside the instruction files themselves."
+      }
+    ]
+  },
+  {
+    "strategyId": "codex.mcp.configuration",
+    "tool": "codex",
+    "surfaces": ["codex-local-clients"],
+    "operations": ["merge-map", "replace"],
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.config-basic",
+        "url": "https://learn.chatgpt.com/docs/config-file/config-basic.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Codex configuration file", "Configuration precedence"],
+        "reviewedOn": "2026-08-17",
+        "establishes": "MCP declarations resolve through the ordinary config-layer precedence: the active layers merge per key and the closest applicable declaration wins, with project layers applying only when the project is trusted."
+      },
+      {
+        "sourceId": "openai.codex.mcp",
+        "url": "https://learn.chatgpt.com/docs/extend/mcp.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Connect Codex to an MCP server"],
+        "reviewedOn": "2026-07-25",
+        "establishes": "Servers are declared as named [mcp_servers.*] tables in the configuration file — the map whose keys the per-value layer resolution operates over."
       }
     ]
   },
@@ -140,6 +204,32 @@
     ]
   },
   {
+    "strategyId": "copilot.cli.mcp.selection",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "operations": ["select-first", "replace"],
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.reference",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["MCP server configuration"],
+        "reviewedOn": "2026-08-20",
+        "establishes": "Servers from different sources merge in priority order — the --additional-mcp-config option, plugin-provided servers, workspace files, then ~/.copilot/mcp-config.json — and when servers share a name the higher-priority source takes precedence as a whole entry."
+      },
+      {
+        "sourceId": "github.copilot.cli.mcp",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers",
+        "officialHost": "docs.github.com",
+        "sections": ["Adding per-repository MCP servers"],
+        "reviewedOn": "2026-08-20",
+        "establishes": "Among the project-level files, same-name definitions in files closer to the working directory take precedence, .mcp.json takes precedence over .github/mcp.json in the same directory, and project-level definitions take precedence over ~/.copilot/mcp-config.json."
+      }
+    ]
+  },
+  {
     "strategyId": "copilot.cli.skills.selection",
     "tool": "copilot",
     "surfaces": ["copilot-cli"],
@@ -152,7 +242,7 @@
         "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
         "officialHost": "docs.github.com",
         "sections": ["Skill locations", "Commands (alternative skill format)"],
-        "reviewedOn": "2026-07-15",
+        "reviewedOn": "2026-08-20",
         "establishes": "The CLI resolves a duplicate skill name to the first found in its documented source order, and a same-name skill has higher priority than a legacy command."
       }
     ]
@@ -196,7 +286,7 @@
         "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
         "officialHost": "docs.github.com",
         "sections": ["Skill locations"],
-        "reviewedOn": "2026-07-15",
+        "reviewedOn": "2026-08-20",
         "establishes": "Remote skills are projected alongside local skills via the AHP relay and sit last in the documented source order; that order and its name-based priority are the CLI surface’s, so how the Cloud surface itself resolves a collision stays unestablished."
       },
       {
@@ -236,6 +326,32 @@
         "sections": ["Custom instructions settings"],
         "reviewedOn": "2026-08-19",
         "establishes": "Enablement and location settings decide which instruction inputs participate at all, which is the filtering step ahead of the layer order."
+      }
+    ]
+  },
+  {
+    "strategyId": "copilot.vscode.mcp.selection",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "operations": ["merge-map", "replace", "unknown-order"],
+    "documentationStatus": "conflict",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.mcp",
+        "url": "https://code.visualstudio.com/docs/agent-customization/mcp-servers",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Configure the mcp.json file", "MCP server trust"],
+        "reviewedOn": "2026-08-20",
+        "establishes": "The guide composes the workspace .vscode/mcp.json and the user-profile configuration as the two mcp.json inputs, each a servers map merged into the available server set, and gates starting any configured server behind trust."
+      },
+      {
+        "sourceId": "vscode.copilot.mcp.workspace-root-release",
+        "url": "https://code.visualstudio.com/updates/v1_118",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Workspace .mcp.json files and server deduplication"],
+        "reviewedOn": "2026-08-20",
+        "establishes": "The 1.118 release adds workspace-root .mcp.json input and a most-specific same-name deduplication rule that enables one server and disables its duplicates, without defining a total order across the root, .vscode, User, and plugin inputs - the unknown-order operation this pipeline retains."
       }
     ]
   },

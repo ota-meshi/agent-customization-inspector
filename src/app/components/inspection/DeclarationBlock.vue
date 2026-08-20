@@ -1,7 +1,9 @@
 <script setup lang="ts">
-// One parsed frontmatter block: the keys and values as the parser resolved
-// them — an authored `007` arrives as `7` — in the shape the file wrote
-// (FR-007). The authored spelling stays in the source viewer beside this.
+// One parsed declaration block — a skill's or instruction file's frontmatter,
+// or an MCP server declaration's fields: the keys and values as the parser
+// resolved them — YAML's authored `007` arrives as `7` — in the shape the
+// file wrote (FR-007). Where a source viewer stands beside this, the authored
+// spelling stays there.
 //
 // Recursive because the shape is: a key may declare a scalar, a list, or a
 // mapping whose entries declare their own. A nested block is drawn *below* the
@@ -21,24 +23,29 @@
 // link, or a URI, and no value is masked, shortened, or reflowed into something
 // the file does not contain (FR-025, FR-033).
 import { computed } from 'vue';
-import FrontmatterValueText from './FrontmatterValueText.vue';
-import { encodeRootPresentation, rendersNothingVisible } from '../../../shared/entities';
-import { FRONTMATTER_KEY_KIND_TEXT } from '../../../shared/api-text';
+import DeclaredValueText from './DeclaredValueText.vue';
+import {
+  containsInvisibleCharacters,
+  encodeRootPresentation,
+  rendersNothingVisible,
+} from '../../../shared/entities';
+import { DECLARED_KEY_KIND_TEXT } from '../../../shared/api-text';
 import type {
-  FrontmatterEntryDto,
-  FrontmatterKeyKind,
-  FrontmatterValueDto,
+  DeclaredEntryDto,
+  DeclaredKeyKind,
+  DeclaredValueDto,
 } from '../../../shared/api-types';
 
 const props = defineProps<{
   /** The value whose children this block draws; a mapping or a sequence. */
-  value: FrontmatterValueDto;
-  /** How many blocks stand above this one; 0 at the frontmatter's own level. */
+  value: DeclaredValueDto;
+  /** How many blocks stand above this one; 0 at the declaration's own level. */
   depth?: number;
 }>();
 
 /**
- * How many levels of indentation a block can take. YAML nests without limit,
+ * How many levels of indentation a block can take. A declaration nests
+ * without limit,
  * and every level here eats into the key column, which is itself capped: past
  * some depth the keys have nowhere left to go and the list overflows sideways,
  * which is the one thing a narrow viewport must never do (WCAG 1.4.10). Past
@@ -78,11 +85,11 @@ class BlockRow {
   /** Stable identity within this block. */
   public readonly id: string;
 
-  /** The declared key, or `-` for one item of a list, as YAML writes one. */
+  /** The declared key, or this product's `-` marker for one item of a list. */
   public readonly label: string;
 
   /** What that label declares. */
-  public readonly value: FrontmatterValueDto;
+  public readonly value: DeclaredValueDto;
 
   /**
    * Whether the row is one item of a list rather than a declared key. Its
@@ -93,17 +100,17 @@ class BlockRow {
 
   /**
    * The declared key's parsed type, or null for a list item's marker row
-   * (api-types.ts § FrontmatterKeyKind).
+   * (api-types.ts § DeclaredKeyKind).
    */
-  public readonly keyKind: FrontmatterKeyKind | null;
+  public readonly keyKind: DeclaredKeyKind | null;
 
   /** Reached only through the factories, which fix how a row was made. */
   private constructor(
     id: string,
     label: string,
-    value: FrontmatterValueDto,
+    value: DeclaredValueDto,
     fromListItem: boolean,
-    keyKind: FrontmatterKeyKind | null,
+    keyKind: DeclaredKeyKind | null,
   ) {
     this.id = id;
     this.label = label;
@@ -134,6 +141,32 @@ class BlockRow {
   }
 
   /**
+   * Whether the label draws, but not as itself: a character in it draws
+   * nothing — an embedded control or default-ignorable code point — so two
+   * keys differing only in that character would read as one
+   * ({@link containsInvisibleCharacters}). A list marker never carries one,
+   * and a wholly invisible label is {@link labelIsInvisible}'s case.
+   */
+  public get labelHasInvisibleCharacters(): boolean {
+    return !this.fromListItem && !this.labelIsInvisible && containsInvisibleCharacters(this.label);
+  }
+
+  /**
+   * Whether the label carries a lone surrogate, which draws as the one
+   * replacement glyph: two keys differing only in which surrogate they carry
+   * would read as one. A list marker never carries one, and the invisible
+   * cases above answer first so a label never gets two notes.
+   */
+  public get labelHasLoneSurrogates(): boolean {
+    return (
+      !this.fromListItem &&
+      !this.labelIsInvisible &&
+      !containsInvisibleCharacters(this.label) &&
+      !this.label.isWellFormed()
+    );
+  }
+
+  /**
    * Whether the value opens a block of its own rather than filling this row.
    * An empty list or mapping fills its row: it has no children to draw, and a
    * key that opened nothing would read as a missing value rather than an empty
@@ -155,7 +188,7 @@ class BlockRow {
    */
   public get kindNote(): string | null {
     return this.keyKind !== null && this.keyKind !== 'string'
-      ? FRONTMATTER_KEY_KIND_TEXT[this.keyKind]
+      ? DECLARED_KEY_KIND_TEXT[this.keyKind]
       : null;
   }
 
@@ -165,12 +198,12 @@ class BlockRow {
    * string `"1"` are different keys of one mapping — and a repeated render key
    * makes the framework patch the wrong row.
    */
-  public static forEntry(entry: FrontmatterEntryDto, index: number): BlockRow {
+  public static forEntry(entry: DeclaredEntryDto, index: number): BlockRow {
     return new BlockRow(String(index), entry.key, entry.value, false, entry.keyKind);
   }
 
-  /** One item of a list, identified by its position and marked as YAML marks it. */
-  public static forItem(item: FrontmatterValueDto, index: number): BlockRow {
+  /** One item of a list, identified by its position and given the `-` marker. */
+  public static forItem(item: DeclaredValueDto, index: number): BlockRow {
     return new BlockRow(String(index), '-', item, true, null);
   }
 }
@@ -196,9 +229,9 @@ const rows = computed<BlockRow[]>(() => {
        because that is what each one is: a `dl` for a sequence would make every
        item either the description of the term above it or a description with no
        term at all, which is what assistive technology would then announce. -->
-  <dl v-if="value.kind === 'mapping'" class="aci-frontmatter-block">
+  <dl v-if="value.kind === 'mapping'" class="aci-declaration-block">
     <template v-for="row in rows" :key="row.id">
-      <dt class="aci-frontmatter-block__key aci-authored-text">
+      <dt class="aci-declaration-block__key aci-authored-text">
         <!-- A key can draw nothing as easily as a value can — an empty key, or
              one made only of zero-width characters — and a row with no label
              reads as a value belonging to the row above it. The key is still
@@ -214,6 +247,25 @@ const rows = computed<BlockRow[]>(() => {
           ><span class="aci-authored-text aci-authored-atomic">{{ row.label }}</span
           ><span class="aci-muted">{{ row.invisibleLabelText }}</span></template
         >
+        <!-- A key whose visible characters sit beside ones that draw nothing
+             renders as a different key — the embedded character reads as
+             absent — so the spelled-out note keeps two such keys apart, the
+             same way the wholly invisible case above does (FR-025). -->
+        <template v-else-if="row.labelHasInvisibleCharacters"
+          ><span class="aci-authored-text aci-authored-atomic">{{ row.label }}</span>
+          <span class="aci-muted"
+            >(key contains invisible characters: {{ encodeRootPresentation(row.label) }})</span
+          ></template
+        >
+        <!-- A lone surrogate draws as the one replacement glyph, so two keys
+             differing only in which surrogate they carry would read as one;
+             the spelled-out note keeps them apart (FR-025). -->
+        <template v-else-if="row.labelHasLoneSurrogates"
+          ><span class="aci-authored-text aci-authored-atomic">{{ row.label }}</span>
+          <span class="aci-muted"
+            >(key contains lone surrogates: {{ encodeRootPresentation(row.label) }})</span
+          ></template
+        >
         <template v-else>{{ row.label }}</template>
         <!-- A non-string key renders like its string spelling; the type note
              is what keeps them apart (see kindNote). An authored key that
@@ -228,25 +280,25 @@ const rows = computed<BlockRow[]>(() => {
            zero-width characters only — would render as blank, which reads as a
            value that was not shown at all. The label says which it is; the
            value itself is never altered (FR-025). -->
-      <dd v-if="!row.opensBlock" class="aci-frontmatter-block__value">
-        <FrontmatterValueText :value="row.value" />
+      <dd v-if="!row.opensBlock" class="aci-declaration-block__value">
+        <DeclaredValueText :value="row.value" />
       </dd>
       <!-- A key opens its block on the row beneath it, so one level costs one
            fixed step whatever the key above happened to be called. -->
-      <dd v-else class="aci-frontmatter-block__nested" :style="indentStep">
-        <FrontmatterBlock :value="row.value" :depth="(depth ?? 0) + 1" />
+      <dd v-else class="aci-declaration-block__nested" :style="indentStep">
+        <DeclarationBlock :value="row.value" :depth="(depth ?? 0) + 1" />
       </dd>
     </template>
   </dl>
 
   <!-- `role="list"` because the markers are drawn by this component rather than
        by `list-style`, and WebKit drops list semantics from a markerless list. -->
-  <ol v-else-if="value.kind === 'sequence'" class="aci-frontmatter-block" role="list">
-    <li v-for="row in rows" :key="row.id" class="aci-frontmatter-block__item">
+  <ol v-else-if="value.kind === 'sequence'" class="aci-declaration-block" role="list">
+    <li v-for="row in rows" :key="row.id" class="aci-declaration-block__item">
       <template v-if="!row.opensBlock">
-        <span class="aci-frontmatter-block__key">{{ row.label }}</span>
-        <span class="aci-frontmatter-block__value">
-          <FrontmatterValueText :value="row.value" />
+        <span class="aci-declaration-block__key">{{ row.label }}</span>
+        <span class="aci-declaration-block__value">
+          <DeclaredValueText :value="row.value" />
         </span>
       </template>
       <!-- An item that opens a block draws its marker on the block's own first
@@ -254,11 +306,11 @@ const rows = computed<BlockRow[]>(() => {
            with the item's contents on the next. -->
       <div
         v-else
-        class="aci-frontmatter-block__nested aci-frontmatter-block__nested--list-item"
-        :class="{ 'aci-frontmatter-block__nested--capped': !indents }"
+        class="aci-declaration-block__nested aci-declaration-block__nested--list-item"
+        :class="{ 'aci-declaration-block__nested--capped': !indents }"
         :style="indentStep"
       >
-        <FrontmatterBlock :value="row.value" :depth="(depth ?? 0) + 1" />
+        <DeclarationBlock :value="row.value" :depth="(depth ?? 0) + 1" />
       </div>
     </li>
   </ol>
@@ -272,7 +324,7 @@ const rows = computed<BlockRow[]>(() => {
    The root block declares the two tracks every nested block then draws in, so
    the key column is sized over every key at every depth, indentation included,
    and the value column starts where the widest of them ends. */
-ol.aci-frontmatter-block {
+ol.aci-declaration-block {
   /* Markerless: the marker is drawn in the key column so it lines up with the
      keys around it, which `list-style` cannot do. `role="list"` on the element
      keeps the semantics WebKit drops from a markerless list. */
@@ -282,13 +334,13 @@ ol.aci-frontmatter-block {
 
 /* One item draws in the two tracks its list spans, so a list item value lands
    in the same column as a mapping entry's. */
-.aci-frontmatter-block__item {
+.aci-declaration-block__item {
   display: grid;
   grid-column: 1 / -1;
   grid-template-columns: subgrid;
 }
 
-.aci-frontmatter-block {
+.aci-declaration-block {
   display: grid;
   gap: 0.15rem 1rem;
   /* `fit-content`, not `max-content`: the key column takes what its keys need
@@ -310,8 +362,8 @@ ol.aci-frontmatter-block {
    minimum layout unit, which puts the block millions of pixels above the
    viewport and renders it as empty space. Naming the two items that are plain
    boxes keeps every block out of the baseline group. */
-.aci-frontmatter-block__key,
-.aci-frontmatter-block__value {
+.aci-declaration-block__key,
+.aci-declaration-block__value {
   align-self: baseline;
 }
 
@@ -325,11 +377,11 @@ ol.aci-frontmatter-block {
    line box leaves the box its own text baseline, which is the first line's.
    Written as the value's children rather than by naming the shared utility,
    because that class belongs to the global sheet. */
-.aci-frontmatter-block__value > * {
+.aci-declaration-block__value > * {
   vertical-align: top;
 }
 
-.aci-frontmatter-block__key {
+.aci-declaration-block__key {
   color: var(--aci-muted);
   font-family: ui-monospace, monospace;
   font-size: 0.9rem;
@@ -338,7 +390,7 @@ ol.aci-frontmatter-block {
   overflow-wrap: anywhere;
 }
 
-.aci-frontmatter-block__value {
+.aci-declaration-block__value {
   margin: 0;
   min-width: 0;
 }
@@ -353,8 +405,8 @@ ol.aci-frontmatter-block {
    and the list inside it are subgrids — the chain from the root cannot skip a
    level. Indentation is the wrapper's padding, which inserts before the key
    column and leaves the value column where the root put it. */
-.aci-frontmatter-block__nested,
-.aci-frontmatter-block__nested > .aci-frontmatter-block {
+.aci-declaration-block__nested,
+.aci-declaration-block__nested > .aci-declaration-block {
   display: grid;
   grid-column: 1 / -1;
   grid-template-columns: subgrid;
@@ -364,7 +416,7 @@ ol.aci-frontmatter-block {
    the border is drawn through one and a block closing inside four others would
    leave that many rules running down past the last thing they group. The row
    gap already separates the block from what follows. */
-.aci-frontmatter-block__nested {
+.aci-declaration-block__nested {
   border-inline-start: 1px solid var(--aci-border);
   margin-block-start: 0.1rem;
   min-width: 0;
@@ -375,7 +427,7 @@ ol.aci-frontmatter-block {
    item indents past the marker so its later lines start under the first, and the
    marker is drawn back into that gutter from the first line itself — which is
    what puts the two on one baseline, without a second box to align. */
-.aci-frontmatter-block__nested--list-item > .aci-frontmatter-block {
+.aci-declaration-block__nested--list-item > .aci-declaration-block {
   padding-inline-start: 1rem;
 }
 
@@ -385,15 +437,15 @@ ol.aci-frontmatter-block {
    no gutter it flows inline before the first key or value, the way YAML spells
    a deep `- - -` chain on one line, instead of overlapping it from a gutter
    that is no longer there. */
-.aci-frontmatter-block__nested--capped > .aci-frontmatter-block {
+.aci-declaration-block__nested--capped > .aci-declaration-block {
   padding-inline-start: 0;
 }
 
-.aci-frontmatter-block__nested--list-item > .aci-frontmatter-block > :first-child {
+.aci-declaration-block__nested--list-item > .aci-declaration-block > :first-child {
   position: relative;
 }
 
-.aci-frontmatter-block__nested--list-item > .aci-frontmatter-block > :first-child::before {
+.aci-declaration-block__nested--list-item > .aci-declaration-block > :first-child::before {
   color: var(--aci-muted);
   content: '-';
   /* Drawn back into the gutter the item's own padding made. */
@@ -401,7 +453,7 @@ ol.aci-frontmatter-block {
   position: absolute;
 }
 
-.aci-frontmatter-block__nested--capped > .aci-frontmatter-block > :first-child::before {
+.aci-declaration-block__nested--capped > .aci-declaration-block > :first-child::before {
   /* In flow: the capped block has no gutter to draw back into. */
   inset-inline-start: auto;
   margin-inline-end: 0.5ch;

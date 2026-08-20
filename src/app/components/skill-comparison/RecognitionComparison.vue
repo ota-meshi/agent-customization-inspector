@@ -14,15 +14,15 @@
 // literal facts — recognized, not recognized, declared, not declared, same
 // resolved value, different resolved values — and no row ranks, orders, or
 // prefers either file (FR-012).
-import FrontmatterBlock from '../inspection/FrontmatterBlock.vue';
-import FrontmatterValueText from '../inspection/FrontmatterValueText.vue';
+import DeclarationBlock from '../inspection/DeclarationBlock.vue';
+import DeclaredValueText from '../inspection/DeclaredValueText.vue';
 import {
   CUSTOMIZATION_KIND_TEXT,
   SUPPORTED_TOOL_TEXT,
   encodeRootPresentation,
   rendersNothingVisible,
 } from '../../../shared/entities';
-import { FRONTMATTER_KEY_KIND_TEXT } from '../../../shared/api-text';
+import { DECLARED_KEY_KIND_TEXT } from '../../../shared/api-text';
 // The row-drawing rules are the declaration semantics' own (FR-025), shared
 // with every surface that renders a matched declared key, so the two
 // comparison components cannot drift apart in how a key or value reads.
@@ -163,7 +163,7 @@ function declaresNoKeys(comparison: SkillRecognitionComparison): boolean {
                      renders like, here and in every frontmatter block
                      (FR-025). -->
                 <span v-if="row.keyKind !== 'string'" class="aci-muted">
-                  ({{ FRONTMATTER_KEY_KIND_TEXT[row.keyKind] }})
+                  ({{ DECLARED_KEY_KIND_TEXT[row.keyKind] }})
                 </span>
               </th>
               <td
@@ -186,8 +186,8 @@ function declaresNoKeys(comparison: SkillRecognitionComparison): boolean {
                     ? 'no file'
                     : 'not declared'
                 }}</span>
-                <FrontmatterBlock v-else-if="opensBlock(value)" :value="value" />
-                <FrontmatterValueText v-else :value="value" />
+                <DeclarationBlock v-else-if="opensBlock(value)" :value="value" />
+                <DeclaredValueText v-else :value="value" />
               </td>
               <!-- Equality of resolved values, stated as the literal fact it
                    is: no row says which value a product would use (FR-012). -->

@@ -17,20 +17,32 @@
 // `project_doc_fallback_filenames` values, and builds the traversal plan the
 // walk executes for them. The scan composes each vendor's reader exactly like
 // the rule catalogs, so the logic lives with the vendor it belongs to
-// (contracts/vendors/openai-codex.md § Derived Repository rules). The file
-// itself is a configuration input only: it is never published or
-// raw-displayed, so it has no candidate, row, or detail here.
+// (contracts/vendors/openai-codex.md § Derived Repository rules). The file is
+// also a candidate of its own: `codex.repo.config` admits it, its
+// `[mcp_servers.*]` tables are the MCP rows its recognition publishes, and
+// its detail is `get-mcp-carrier-detail`'s — the one thing it never has is a
+// raw source display, on any surface (FR-007). The stage-one read is seeded
+// into the walk so the one physical file is read once per attempt (T282).
 import {
   CompiledDerivedRule,
   CompiledInspectionRule,
   type CompiledStaticCandidateRule,
   type CompiledStaticInstructionRule,
-  type CompiledStaticNonInstructionRule,
-  type ConfiguredDerivedPlan,
+  type CompiledStaticMcpReadingRule,
+  type CompiledStaticOtherKindRule,
 } from './registry';
 import type { CustomizationKind } from '../../../shared/entities';
+import type { McpServerDeclarationDto } from '../../../shared/api-types';
 import { join } from 'node:path';
-import { readCandidate, rethrowIfResourceExhaustion, statThroughLink } from '../traversal';
+import {
+  isVcsInternalPath,
+  readCandidate,
+  rethrowIfResourceExhaustion,
+  statThroughLink,
+  type ConfigurationReadResult,
+  type SeededCandidateRead,
+} from '../traversal';
+import { realpath } from '../fs-io';
 import { RecognitionExtraction } from '../parsers/extraction';
 import { ParsedTomlDocument } from '../parsers/toml';
 import { CODEX_RULE_RELATIONS } from '../../../shared/registries/codex/relations';
@@ -108,22 +120,81 @@ export class CodexCompiledInstructionRule
 }
 
 /**
- * A Codex rule of every other kind, compiled for execution. It answers nothing
- * about applicability, which is exactly what a skill rule has to say about it
- * (see `CompiledNonInstructionRule`).
+ * The Codex MCP carrier rule compiled for execution: everything a Codex rule
+ * is, plus the one question only an MCP carrier rule answers — which servers
+ * an admitted carrier declares. The reading lives here, beside the rule that
+ * owns it, because which file carries declarations and what a declaration
+ * means is this vendor's own contract (contracts/vendors/openai-codex.md
+ * § Normative initial-release presentation allowlist, the `MCP` row); the
+ * TOML parse and the rendering
+ * of resolved values are the format's and stay in `parsers/toml.ts`.
+ */
+export class CodexCompiledMcpCarrierRule
+  extends CodexCompiledRule
+  implements CompiledStaticMcpReadingRule
+{
+  /** Narrowed to the one kind this unit compiles; the constructor proves it. */
+  declare public readonly kind: 'MCP';
+
+  /** This unit owns its vendor's documented reading (registry.ts § CompiledStaticMcpReadingRule). */
+  public readonly mcpReading: 'own';
+
+  /**
+   * The `[mcp_servers.*]` declarations one admitted carrier makes, one per
+   * named server table, in the parser's resolved order (FR-007), read over
+   * the document's rendered entries — a table renders as the `mapping` kind,
+   * so the structural question is the entries' own discriminant.
+   *
+   * Contained-declaration classification is structural and total: only a
+   * table under `mcp_servers` is a server declaration, and a `mcp_servers`
+   * entry that is not a table — a scalar, an array — is omitted whole rather
+   * than published partially, exactly as an absent `mcp_servers` declares
+   * nothing. No field is validated, no environment reference is resolved, and
+   * no declared command, URL, or path gains read or connection authority.
+   * Throws on text TOML cannot parse; the recognizer's extraction boundary
+   * turns the throw into the recognition's `failed` state while the carrier
+   * stays an admitted candidate (FR-028).
+   */
+  public serverDeclarationsOf(sourceText: string): readonly McpServerDeclarationDto[] {
+    const declared = new ParsedTomlDocument(sourceText).entries.find(
+      (entry) => entry.key === 'mcp_servers',
+    );
+    if (declared === undefined || declared.value.kind !== 'mapping') {
+      return [];
+    }
+    return declared.value.entries.flatMap((entry) =>
+      entry.value.kind === 'mapping' ? [{ name: entry.key, fields: entry.value.entries }] : [],
+    );
+  }
+
+  /** Compiles one Codex MCP carrier record, rejecting one of another kind. */
+  public constructor(rule: InspectionRule) {
+    super(rule);
+    if (rule.kind !== 'MCP') {
+      throw new TypeError(`rule ${rule.ruleId} is not a Codex MCP carrier rule`);
+    }
+    this.mcpReading = 'own';
+  }
+}
+
+/**
+ * A Codex rule of every other kind, compiled for execution. It answers no
+ * per-kind question — neither an instruction rule's applicability nor an MCP
+ * carrier's declarations — which is exactly what a skill rule has to say
+ * about either (see `CompiledStaticOtherKindRule`).
  */
 export class CodexCompiledOtherKindRule
   extends CodexCompiledRule
-  implements CompiledStaticNonInstructionRule
+  implements CompiledStaticOtherKindRule
 {
   /** Narrowed to the kinds this unit compiles; the constructor proves it. */
-  declare public readonly kind: Exclude<CustomizationKind, 'instructions'>;
+  declare public readonly kind: Exclude<CustomizationKind, 'instructions' | 'MCP'>;
 
-  /** Compiles one Codex record of any kind but `instructions`. */
+  /** Compiles one Codex record of any kind but `instructions` and `MCP`. */
   public constructor(rule: InspectionRule) {
     super(rule);
-    if (rule.kind === 'instructions') {
-      throw new TypeError(`rule ${rule.ruleId} needs the Codex instruction unit`);
+    if (rule.kind === 'instructions' || rule.kind === 'MCP') {
+      throw new TypeError(`rule ${rule.ruleId} needs a Codex unit that answers for its kind`);
     }
   }
 }
@@ -147,11 +218,15 @@ export const CODEX_REPOSITORY_RULES: readonly CompiledStaticCandidateRule[] = Ob
 )
   .filter((rule) => rule.discoveryClass === 'static-candidate')
   .map((rule) =>
-    // An instruction record compiles into the unit that can answer what its
-    // files govern; every other kind compiles into the plain one.
+    // Each record compiles into the unit that can answer its kind's question:
+    // an instruction record what its files govern, an MCP record which
+    // servers its carrier declares; every other kind compiles into the plain
+    // one.
     rule.kind === 'instructions'
       ? new CodexCompiledInstructionRule(rule)
-      : new CodexCompiledOtherKindRule(rule),
+      : rule.kind === 'MCP'
+        ? new CodexCompiledMcpCarrierRule(rule)
+        : new CodexCompiledOtherKindRule(rule),
   );
 
 /**
@@ -200,20 +275,26 @@ export const CODEX_DERIVED_FALLBACK_RULE = new CodexCompiledDerivedRule(
 );
 
 /**
- * Reads one configuration seed's text for a vendor's configuration-read
- * logic (T1090): probes the exact pinned path, and returns the decoded text
- * of a present, readable seed — through the same single read path as every
- * published file — or null otherwise.
+ * Reads one configuration seed for a vendor's configuration-read logic
+ * (T1090): probes the exact pinned path, and returns the decoded text of a
+ * present, readable seed — through the same single read path as every
+ * published file — beside the read it performed, so the scan can seed the
+ * walk's classification cache with it and the seed's own candidacy
+ * (`codex.repo.config`, T282) reuses this read instead of opening the file
+ * again.
  *
  * An absent seed configures nothing — the probe's failure is the absence
- * fact. An unreadable or binary seed also configures nothing here: the seed
- * is a configuration input only, never a published candidate, so there is no
- * row or diagnostic for it to carry, and null is the whole outcome.
+ * fact — and performed no read to seed. An unreadable or binary seed also
+ * configures nothing here, but its read did happen and is seeded, so the
+ * walk publishes the candidate from the same classification this reader saw.
  */
-async function readConfigurationSeedText(
+async function readConfigurationSeed(
   root: string,
   seedSegments: readonly string[],
-): Promise<string | null> {
+): Promise<{
+  readonly sourceText: string | null;
+  readonly seededRead: SeededCandidateRead | null;
+}> {
   const absolutePath = join(root, ...seedSegments);
   let target;
   try {
@@ -228,7 +309,7 @@ async function readConfigurationSeedText(
     // declares no fallback names" would commit a complete generation missing
     // every configured instruction file.
     rethrowIfResourceExhaustion(error);
-    return null;
+    return { sourceText: null, seededRead: null };
   }
   if (!target.isFile) {
     // A directory, FIFO, socket, or device at the pinned path configures
@@ -236,10 +317,29 @@ async function readConfigurationSeedText(
     // `readFile` below would block indefinitely on a FIFO — the same gate
     // `probeExactTarget` applies to an exact target, and the walk gets from
     // its directory-entry types.
-    return null;
+    return { sourceText: null, seededRead: null };
+  }
+  try {
+    // The walk decides descent on resolved real paths, so a `.codex` entry
+    // that is a symbolic link into `.git` never becomes a candidate
+    // (`isVcsInternalPath`). Configuration must refuse the same spelling:
+    // without this gate, the read that configures the scan would come from
+    // the VCS store the walk itself excludes, and the derived fallback plans
+    // would rest on bytes no candidate can ever publish.
+    if (isVcsInternalPath(await realpath(root), await realpath(absolutePath))) {
+      return { sourceText: null, seededRead: null };
+    }
+  } catch (error) {
+    // The same absence window as the stat above: a seed removed between the
+    // probe and the resolution configures nothing.
+    rethrowIfResourceExhaustion(error);
+    return { sourceText: null, seededRead: null };
   }
   const outcome = await readCandidate(absolutePath);
-  return outcome.kind === 'readable' ? outcome.sourceText : null;
+  return {
+    sourceText: outcome.kind === 'readable' ? outcome.sourceText : null,
+    seededRead: { rawSegments: seedSegments, outcome },
+  };
 }
 
 /**
@@ -247,8 +347,10 @@ async function readConfigurationSeedText(
  * authored order — or null when the field is absent or is not a string array,
  * which both mean the carrier configures nothing. Throws on a document TOML
  * cannot parse; the caller's extraction boundary owns that throw as
- * "configures nothing" too, because the carrier is never published and has no
- * recognition to fail.
+ * "configures nothing", because the stage-one read is configuration input
+ * only — the same document reaches the carrier's own MCP recognition through
+ * the seeded walk, and that recognition's extraction is where a parse
+ * failure gets its diagnostic (FR-028).
  *
  * Retention is complete: every declaration is kept, duplicates included, and
  * no Inspector cap or character grammar edits the list
@@ -261,7 +363,8 @@ async function readConfigurationSeedText(
  */
 export function configuredFallbackBasenamesOf(sourceText: string): readonly string[] | null {
   const declared = new ParsedTomlDocument(sourceText).table['project_doc_fallback_filenames'];
-  return Array.isArray(declared) && declared.every((value) => typeof value === 'string')
+  return Array.isArray(declared) &&
+    declared.every((value): value is string => typeof value === 'string')
     ? declared
     : null;
 }
@@ -272,21 +375,35 @@ export function configuredFallbackBasenamesOf(sourceText: string): readonly stri
  * instruction file, before any candidate is scanned — and expands the
  * declared fallback basenames into the plan the same walk executes under
  * {@link CODEX_DERIVED_FALLBACK_RULE}'s identity. An absent, unreadable,
- * malformed, or invalidly-declaring carrier configures nothing, and the
- * carrier itself is never a candidate.
+ * malformed, or invalidly-declaring carrier configures nothing here; the
+ * carrier's own candidacy is `codex.repo.config`'s, which is why the read
+ * this function performed is returned as a seeded read — the walk classifies
+ * the candidate from this same read instead of opening the file a second
+ * time, so the fallback plan and the published carrier can never disagree
+ * about one generation's bytes (T282).
  */
 export async function readCodexConfiguredFallbackPlans(
   root: string,
-): Promise<readonly ConfiguredDerivedPlan[]> {
-  const seedText = await readConfigurationSeedText(root, ['.codex', 'config.toml']);
-  if (seedText === null) {
-    return [];
+): Promise<ConfigurationReadResult> {
+  const seed = await readConfigurationSeed(root, ['.codex', 'config.toml']);
+  const seededReads = seed.seededRead === null ? [] : [seed.seededRead];
+  if (seed.sourceText === null) {
+    return { plans: [], seededReads };
   }
   // The extraction boundary is the one sanctioned soft-failure seam: a parse
   // throw becomes the `failed` status here instead of a bare catch.
-  const extraction = RecognitionExtraction.run(seedText, configuredFallbackBasenamesOf);
+  const extraction = RecognitionExtraction.run(seed.sourceText, configuredFallbackBasenamesOf);
   const basenames = extraction.extracted ?? null;
-  return basenames !== null && basenames.length > 0
-    ? [{ rule: CODEX_DERIVED_FALLBACK_RULE, plan: CODEX_DERIVED_FALLBACK_RULE.planFor(basenames) }]
-    : [];
+  return {
+    plans:
+      basenames !== null && basenames.length > 0
+        ? [
+            {
+              rule: CODEX_DERIVED_FALLBACK_RULE,
+              plan: CODEX_DERIVED_FALLBACK_RULE.planFor(basenames),
+            },
+          ]
+        : [],
+    seededReads,
+  };
 }

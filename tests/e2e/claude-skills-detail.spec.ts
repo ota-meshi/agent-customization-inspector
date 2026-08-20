@@ -178,7 +178,7 @@ test('leads with the name and description, then the rest of the declarations', a
   );
   // Every key the file declares, by the key the file wrote, led by the two a
   // reader looks for first however the file ordered them.
-  const declarations = page.locator('.aci-skill-detail__declarations > .aci-frontmatter-block');
+  const declarations = page.locator('.aci-skill-detail__declarations > .aci-declaration-block');
   await expect(declarations.locator('> dt')).toHaveText([
     'name',
     'description',
@@ -188,7 +188,7 @@ test('leads with the name and description, then the rest of the declarations', a
     'allowed-tools',
     'hooks',
   ]);
-  await expect(declarations.locator('> dd.aci-frontmatter-block__value')).toHaveText([
+  await expect(declarations.locator('> dd.aci-declaration-block__value')).toHaveText([
     'claude-greet',
     `deploy with ${FIXTURE_SECRET} and ${FIXTURE_ENV_REFERENCE}`,
     'reviewer',
@@ -199,7 +199,7 @@ test('leads with the name and description, then the rest of the declarations', a
   // mapping's keys are the terms of a description list; a list's items are not
   // terms at all, so its markers are asserted separately below.
   await expect(
-    page.locator('.aci-skill-detail__declarations dl.aci-frontmatter-block dt'),
+    page.locator('.aci-skill-detail__declarations dl.aci-declaration-block dt'),
   ).toContainText([
     'name',
     'description',
@@ -215,7 +215,7 @@ test('leads with the name and description, then the rest of the declarations', a
   ]);
   // A sequence is an ordered list, so each item is a list item rather than a
   // description of the term above it.
-  const lists = page.locator('.aci-skill-detail__declarations ol.aci-frontmatter-block');
+  const lists = page.locator('.aci-skill-detail__declarations ol.aci-declaration-block');
   await expect(lists.first()).toHaveAttribute('role', 'list');
   await expect(lists.first().locator('> li')).toHaveCount(2);
 });
@@ -223,12 +223,12 @@ test('leads with the name and description, then the rest of the declarations', a
 test('draws every declared value in one column, however deep it is', async ({ page }) => {
   await openSkill(page, '.claude/skills/greet/SKILL.md');
   const geometry = await page.locator('.aci-skill-detail__declarations').evaluate((region) => ({
-    valueLefts: [...region.querySelectorAll('.aci-frontmatter-block__value')].map(
+    valueLefts: [...region.querySelectorAll('.aci-declaration-block__value')].map(
       (value) => value.getBoundingClientRect().left,
     ),
-    drift: [...region.querySelectorAll('.aci-frontmatter-block__key')].map((key) => {
+    drift: [...region.querySelectorAll('.aci-declaration-block__key')].map((key) => {
       const value = key.nextElementSibling;
-      if (!value?.classList.contains('aci-frontmatter-block__value')) {
+      if (!value?.classList.contains('aci-declaration-block__value')) {
         return 0;
       }
       // A zero-height inline-block sits on the baseline of the line it joins,
@@ -246,7 +246,7 @@ test('draws every declared value in one column, however deep it is', async ({ pa
       };
       return Math.abs(baselineOf(key) - baselineOf(value.firstElementChild ?? value));
     }),
-    offscreen: [...region.querySelectorAll('.aci-frontmatter-block__key')].filter(
+    offscreen: [...region.querySelectorAll('.aci-declaration-block__key')].filter(
       (key) => key.getBoundingClientRect().top < -1000,
     ).length,
   }));

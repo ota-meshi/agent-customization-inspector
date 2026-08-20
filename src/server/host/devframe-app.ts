@@ -17,7 +17,7 @@
 // the product owns best-effort startup browser opening through its startup
 // opener (`./browser-opener`, research.md § 3), adds no asset manifest or
 // per-asset re-verification, and its only routes of its own are the
-// `/skills/**` and `/instructions/**` shell fallbacks in `createHostApp`,
+// `/skills/**`, `/instructions/**`, and `/mcp/**` shell fallbacks in `createHostApp`,
 // which devframe's static handler cannot serve (Constitution Principle I). An unexpected
 // thrown/rejected RPC handler error is serialized as-is by devframe/birpc
 // and the client shows the real error (contracts/http-api.md § Common
@@ -45,6 +45,7 @@ import type {
   DeterministicRejection,
   FileDetailDto,
   InspectionDataResult,
+  McpCarrierDetailDto,
   ScanAdmission,
   SessionSnapshot,
 } from '../../shared/api-types';
@@ -221,16 +222,42 @@ export function createInspectorDevframe(context: InspectorHostContext): Devframe
         ): InspectionDataResult<FileDetailDto> | DeterministicRejection => {
           const detail = context.session.fileDetail(sourceRelativePath);
           if (detail === null) {
-            // The current committed generations hold no file at this path —
-            // never scanned, or removed by the commit that replaced the
-            // snapshot the link came from; the two are indistinguishable and
-            // answered alike (contracts/http-api.md § get-file-detail).
+            // The current committed generations hold no detail of this
+            // function's at the path — never scanned, removed by the commit
+            // that replaced the snapshot the link came from, or an admitted
+            // MCP carrier's, which only the carrier function serves; all are
+            // indistinguishable and answered alike (contracts/http-api.md
+            // § get-file-detail).
             return { error: { code: 'stale-resource' } };
           }
           // Bound in the same synchronous turn as the payload, so the client's
           // epoch and generation guards compare against the state the detail
           // was actually read from — through the O(1) envelope rather than a
           // full snapshot projection built for three scalars.
+          return { ...context.session.dataEnvelope(), data: detail };
+        },
+      });
+      ctx.rpc.register({
+        name: 'agent-customization-inspector:get-mcp-carrier-detail',
+        type: 'query',
+        // The MCP carrier's own detail function (contracts/http-api.md
+        // § get-mcp-carrier-detail): the declarations the carrier makes and
+        // its content-free file facts, with no `sourceText` field at all — a
+        // file admitted so its declarations can be published shows those
+        // declarations and never its own bytes (FR-007), which is why its
+        // detail is not a `get-file-detail` variant. The parameter validates
+        // by resolution exactly as `get-file-detail`'s does.
+        handler: (
+          sourceRelativePath: string,
+        ): InspectionDataResult<McpCarrierDetailDto> | DeterministicRejection => {
+          const detail = context.session.mcpCarrierDetail(sourceRelativePath);
+          if (detail === null) {
+            // No MCP recognition at the path — never scanned, or removed by
+            // a later commit. A parsed carrier declaring no server is not
+            // this case: it holds a recognition and answers with empty
+            // servers (contracts/http-api.md § get-mcp-carrier-detail).
+            return { error: { code: 'stale-resource' } };
+          }
           return { ...context.session.dataEnvelope(), data: detail };
         },
       });
@@ -345,7 +372,8 @@ export async function startInspectorHost(
  * The H3 app devframe mounts onto, carrying the route families devframe's
  * own SPA fallback cannot serve: a detail URL ends with the file's own
  * last segment — `/skills/<tool>/<source-relative path>` with `SKILL.md`,
- * `/instructions/<source-relative path>` with `AGENTS.md` —
+ * `/instructions/<source-relative path>` with `AGENTS.md`,
+ * `/mcp/<source-relative path>` with `config.toml` —
  * and devframe's static handler deliberately skips the `index.html` fallback
  * for a miss that looks like a file (it has an extension). This middleware
  * only rewrites such a request to the root and falls through, so devframe's
@@ -381,5 +409,6 @@ function createHostApp(): H3 {
   // a real 404 into a silent shell boot.
   app.use('/skills/**', rewriteToShell);
   app.use('/instructions/**', rewriteToShell);
+  app.use('/mcp/**', rewriteToShell);
   return app;
 }

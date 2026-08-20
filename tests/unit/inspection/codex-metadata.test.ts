@@ -1,5 +1,6 @@
-// T078: the Codex skill's declared-name reading (data-model.md § Field
-// reading, FR-007, FR-028).
+// T078/T293: the Codex skill's declared-name reading and the Codex MCP
+// carrier's declaration reading (data-model.md § Field reading, FR-007,
+// FR-028).
 //
 // The name is the one authored value recognition uses as identity: the key of
 // a grouped inventory row and the heading a detail page shows. These cases pin
@@ -11,7 +12,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { recognizeCandidateForVendors } from '../../../src/server/inspection/recognizers/candidate';
-import { CODEX_REPOSITORY_RULES } from '../../../src/server/inspection/rules/codex';
+import {
+  CODEX_DERIVED_FALLBACK_RULE,
+  CODEX_REPOSITORY_RULES,
+} from '../../../src/server/inspection/rules/codex';
 import {
   CONTENT_FIXTURE_SECRET,
   MALFORMED_SKILL_CONTENT_CASES,
@@ -138,5 +142,108 @@ describe('Codex skill declared name', () => {
       '$HOME/${TOKEN}',
     );
     expect(JSON.stringify(recognition)).not.toContain(process.env['HOME'] ?? '\0unset');
+  });
+});
+
+// Selected by identity for the carrier cases below.
+const codexConfigRule = CODEX_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'codex.repo.config',
+);
+
+/** Recognizes one authored carrier at its one admitted root path. */
+async function recognizeCarrier(sourceText: string): Promise<readonly ToolRecognition[]> {
+  const matchedPath = '.codex/config.toml';
+  mkdirSync(join(root, '.codex'), { recursive: true });
+  const { recognitions } = await recognizeCandidateForVendors(
+    {
+      matchedPath,
+      absolutePath: join(root, matchedPath),
+      sourceRoot: root,
+      admissions: [{ compiled: codexConfigRule!, origin: { planIndex: 0, selectorIndex: 0 } }],
+      sourceText,
+    },
+    ['codex'],
+  );
+  return recognitions;
+}
+
+describe('Codex MCP carrier reading (T293)', () => {
+  it('reads the active root layer alone, under the carrier admission it came from', async () => {
+    // Active project-config precedence, as the Inspector honestly has it: the
+    // selected root's layer is the one in scope (FR-001), so the declarations
+    // this recognition carries are that layer's own — deeper layers are near
+    // misses the matcher never admits, and no cross-layer merge is projected
+    // because its inputs are runtime this tool never observes (FR-009).
+    const recognitions = await recognizeCarrier('[mcp_servers.rooted]\ncommand = "npx"\n');
+    expect(recognitions).toHaveLength(1);
+    expect(recognitions[0]!.provenances).toHaveLength(1);
+    expect(recognitions[0]!.provenances[0]).toMatchObject({
+      ruleId: 'codex.repo.config',
+      discoveryClass: 'static-candidate',
+      matchedPath: '.codex/config.toml',
+    });
+    expect(
+      recognitions[0]!.details.kind === 'MCP' &&
+        recognitions[0]!.details.servers.map((server) => server.name),
+    ).toEqual(['rooted']);
+  });
+
+  it('fails the whole recognition for duplicate server names, publishing nothing', async () => {
+    // TOML itself rejects a table declared twice, so a duplicate name inside
+    // the one readable layer is a document that cannot be parsed: the
+    // recognition fails all-or-nothing rather than picking a winner the file
+    // does not establish (FR-028).
+    const recognitions = await recognizeCarrier(
+      '[mcp_servers.dup]\ncommand = "a"\n\n[mcp_servers.dup]\ncommand = "b"\n',
+    );
+    expect(recognitions[0]!.parseStatus).toBe('failed');
+    expect(recognitions[0]!.details).toEqual({ kind: 'MCP', servers: [] });
+  });
+
+  it('presents no general configuration: the carrier admission yields MCP alone', async () => {
+    // The carrier declares plenty beside its servers — the fallback list, a
+    // trust-shaped flag — and none of it is published: the file-unit
+    // `settings/config` recognition is a later phase's, so the one
+    // recognition here is the MCP kind and its declarations are the servers
+    // alone.
+    const recognitions = await recognizeCarrier(
+      [
+        'project_doc_fallback_filenames = ["TEAM_GUIDE.md"]',
+        'trust_level = "trusted"',
+        '',
+        '[mcp_servers.only]',
+        'command = "npx"',
+        '',
+      ].join('\n'),
+    );
+    expect(recognitions).toHaveLength(1);
+    expect(recognitions[0]!.details.kind).toBe('MCP');
+    const serialized = JSON.stringify(recognitions);
+    expect(serialized).not.toContain('project_doc_fallback_filenames');
+    expect(serialized).not.toContain('trust_level');
+  });
+
+  it('keeps the activated fallback provenance derived, beside the carrier admission', async () => {
+    // The same physical file both seeds the fallback derivation and carries
+    // the MCP declarations; the two stay two provenances of two records — a
+    // derived instructions admission on the fallback file, a static MCP
+    // admission on the carrier — and neither rewrites the other.
+    const { recognitions } = await recognizeCandidateForVendors(
+      {
+        matchedPath: 'TEAM_GUIDE.md',
+        absolutePath: join(root, 'TEAM_GUIDE.md'),
+        sourceRoot: root,
+        sourceText: '# configured fallback\n',
+        admissions: [
+          { compiled: CODEX_DERIVED_FALLBACK_RULE, origin: { planIndex: 3, selectorIndex: 0 } },
+        ],
+      },
+      ['codex'],
+    );
+    expect(recognitions[0]!.details.kind).toBe('instructions');
+    expect(recognitions[0]!.provenances[0]).toMatchObject({
+      ruleId: 'codex.derived.fallback-basename',
+      discoveryClass: 'bounded-derived-candidate',
+    });
   });
 });
