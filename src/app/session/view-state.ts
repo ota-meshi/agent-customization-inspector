@@ -43,6 +43,7 @@ import { computed, shallowRef, type InjectionKey } from 'vue';
 import { SessionApiClient, type SessionRpcChannel } from './api-client';
 import { ClientDataPurge } from './client-data';
 import { InstructionComparisonState } from '../composables/instruction-comparison';
+import { McpComparisonState } from '../composables/mcp-comparison';
 import { SkillComparisonState } from '../composables/skill-comparison';
 import type {
   FileDetailDto,
@@ -153,6 +154,16 @@ export class SessionViewState {
    * corresponding-file coordinate.
    */
   public readonly instructionComparison: InstructionComparisonState;
+
+  /**
+   * The MCP comparison view state (FR-011), owned here for the same reasons
+   * {@link skillComparison} is. Its own state rather than a widening of the
+   * others, because comparison is kind-specific with no shared module
+   * (spec.md § Clarifications Session 2026-08-14): this kind's model is two
+   * explicit carriers compared by the declarations each wrote, with no
+   * source half at all (FR-007).
+   */
+  public readonly mcpComparison: McpComparisonState;
 
   /** Which surface to render; see {@link SessionView}. */
   public readonly view = shallowRef<SessionView>('booting');
@@ -409,6 +420,17 @@ export class SessionViewState {
         this.view.value = 'ended';
       },
     });
+    // The MCP kind's own comparison state, wired exactly like the two above
+    // and for the same reasons.
+    this.mcpComparison = new McpComparisonState({
+      client: this.#client,
+      clientData: this.#clientData,
+      refreshFreshly: () => this.#refreshFreshly(),
+      reportFatalFailure: (error) => {
+        this.#sessionError.value = error.message;
+        this.view.value = 'ended';
+      },
+    });
   }
 
   /**
@@ -466,6 +488,7 @@ export class SessionViewState {
           this.closeFileDetail();
           this.skillComparison.close();
           this.instructionComparison.close();
+          this.mcpComparison.close();
         }
         this.snapshot.value = outcome.snapshot;
         // A refresh success answers session-level failures only: a retained
@@ -871,8 +894,8 @@ export class SessionViewState {
   }
 
   /**
-   * Requests one MCP-declaring file's declarations — a standalone carrier's
-   * or a contained-declaration owner's — and adopts them, or records why they
+   * Requests one MCP carrier's declarations
+   * and adopts them, or records why they
    * could not be shown — the carrier counterpart of
    * {@link openFileDetail}, through the same request version, epoch capture,
    * and state machine, because the two functions serve the one open detail

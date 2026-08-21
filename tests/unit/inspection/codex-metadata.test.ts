@@ -90,12 +90,20 @@ describe('Codex skill declared name', () => {
       throw new Error('expected a skill recognition');
     }
     expect(recognition.details.frontmatter).toEqual([
-      { key: 'name', keyKind: 'string', value: { kind: 'scalar', text: 'greet' } },
-      { key: 'description', keyKind: 'string', value: { kind: 'scalar', text: 'says hello' } },
+      {
+        key: 'name',
+        keyKind: 'string',
+        value: { kind: 'scalar', scalarKind: 'string', text: 'greet' },
+      },
+      {
+        key: 'description',
+        keyKind: 'string',
+        value: { kind: 'scalar', scalarKind: 'string', text: 'says hello' },
+      },
       {
         key: 'api_key',
         keyKind: 'string',
-        value: { kind: 'scalar', text: CONTENT_FIXTURE_SECRET },
+        value: { kind: 'scalar', scalarKind: 'string', text: CONTENT_FIXTURE_SECRET },
       },
     ]);
     expect(recognition.details.bodyText).toBe('\n# Greet\n');

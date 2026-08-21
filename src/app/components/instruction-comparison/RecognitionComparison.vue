@@ -1,11 +1,12 @@
 <script setup lang="ts">
 // Instruction recognition-metadata comparison (T278; FR-011, FR-012). The
-// data decisions — which tools recognize which side, which declared keys
-// match, what "equal" means — live in `recognition-comparison.ts`; this
+// data decisions — which tools recognize which side, what each side's
+// frontmatter serializes to — live in `recognition-comparison.ts`; this
 // component only draws the comparison it is given, as its two facts: the
-// per-tool recognition rows, and the files' declared metadata compared
-// once — the declarations are the file's one parse for the kind, so no tool
-// captions them (research.md § 7).
+// per-tool recognition rows, and the files' frontmatter serialized to two
+// canonical YAML documents and diffed in Monaco — the declarations are the
+// file's one parse for the kind, so no tool captions them (research.md § 7,
+// frontmatter-yaml.ts).
 //
 // Beside each recognized state this kind draws the typed layering fact its
 // inventory publishes: the surfaces a recognition rests on, stated per side
@@ -15,30 +16,13 @@
 // § InstructionRecognitionDto). It is where a product documents reading the
 // file, never a claim that a session loaded it (FR-009).
 //
-// Every value is rendered through the same value components the instruction
-// detail uses, so a resolved value looks the same wherever it is shown, and
-// through Vue text bindings only: nothing here is markup, a link, or a URI,
-// and no value is masked, shortened, or reflowed (FR-025, FR-033). The rows
-// state literal facts — recognized, not recognized, declared, not declared,
-// same resolved value, different resolved values — and no row ranks,
-// orders, or prefers either file (FR-012).
-import DeclarationBlock from '../inspection/DeclarationBlock.vue';
-import DeclaredValueText from '../inspection/DeclaredValueText.vue';
-import {
-  CUSTOMIZATION_KIND_TEXT,
-  SUPPORTED_TOOL_TEXT,
-  encodeRootPresentation,
-  rendersNothingVisible,
-} from '../../../shared/entities';
-import { DECLARED_KEY_KIND_TEXT } from '../../../shared/api-text';
+// The rows state literal facts — recognized, not recognized — and the diff
+// states the serialized documents exactly: nothing here is markup, a link,
+// or a URI, and no value is masked, shortened, or reflowed (FR-025,
+// FR-033); no row or side ranks, orders, or prefers either file (FR-012).
+import SourceDiff from './SourceDiff.vue';
+import { CUSTOMIZATION_KIND_TEXT, SUPPORTED_TOOL_TEXT } from '../../../shared/entities';
 import { VENDOR_SURFACE_TEXT } from '../../../shared/registries/behavior-text';
-// The row-drawing rules are the declaration semantics' own (FR-025), shared
-// with every surface that renders a matched declared key, so the two
-// comparison components cannot drift apart in how a key or value reads.
-import {
-  declarationRowHeaderLabel as rowHeaderLabel,
-  valueOpensBlock as opensBlock,
-} from '../inspection/declaration-comparison';
 import {
   INSTRUCTION_DECLARATION_SIDE_STATE_TEXT,
   INSTRUCTION_RECOGNITION_SIDE_STATE_TEXT,
@@ -47,8 +31,12 @@ import {
 import type { VendorSurface } from '../../../shared/registries/behavior-types';
 
 defineProps<{
-  /** The built comparison — recognition rows and matched keys; see the data module. */
+  /** The built comparison — recognition rows and diff documents; see the data module. */
   comparison: InstructionRecognitionComparison;
+  /** The first compared file's Source-relative Path: the diff side's label (FR-030). */
+  leftPath: string;
+  /** The second compared file's path; see {@link leftPath}. */
+  rightPath: string;
 }>();
 
 /** The surfaces list's text: each surface by its caption, in inventory order. */
@@ -109,7 +97,7 @@ function surfacesText(surfaces: readonly VendorSurface[]): string {
              are the file's one scan-time parse for the kind (FR-028), so
              they are compared once, under no tool caption (research.md
              § 7). A side without parsed declarations is stated instead of
-             being matched against (FR-028). -->
+             being diffed against (FR-028). -->
         <p
           v-if="INSTRUCTION_DECLARATION_SIDE_STATE_TEXT[comparison.leftDeclarations] !== ''"
           class="aci-note"
@@ -122,92 +110,27 @@ function surfacesText(surfaces: readonly VendorSurface[]): string {
         >
           Second file {{ INSTRUCTION_DECLARATION_SIDE_STATE_TEXT[comparison.rightDeclarations] }}
         </p>
-        <!-- Two parsed sides with nothing declared would otherwise leave the
-             section as a bare heading: the state sentences speak only for
-             unparsed sides, and the table only for matched keys, so this
-             case states itself. -->
-        <p
-          v-if="
-            comparison.leftDeclarations === 'parsed' &&
-            comparison.rightDeclarations === 'parsed' &&
-            comparison.declarations.length === 0
-          "
-          class="aci-note"
-        >
-          No compared file declares a key to compare.
-        </p>
-        <!-- The matched declared keys, one row each, with both resolved values
-             in full (FR-011). A table rather than a grid of divs: the
-             relationship a screen reader needs — this key, this file's value,
-             that file's value — is exactly what table headers state.
-             `tabindex` because the table is its own horizontal scroll
-             container on a wide viewport (WCAG 2.1.1). -->
-        <table
-          v-if="comparison.declarations.length > 0"
-          class="aci-instruction-recognition-comparison__table"
-          tabindex="0"
-        >
-          <thead>
-            <tr>
-              <th scope="col">Declared key</th>
-              <th scope="col">First file</th>
-              <th scope="col">Second file</th>
-              <th scope="col">Resolved values</th>
-            </tr>
-          </thead>
-          <tbody>
-            <!-- Keyed by the parser's key identity — parsed type plus
-                 spelling — because two rows can share one spelling
-                 (see DeclarationComparisonRow). -->
-            <tr v-for="row in comparison.declarations" :key="`${row.keyKind}:${row.key}`">
-              <!-- The key is the parser's resolved spelling — an authored
-                   `007` is `7`, with the authored form kept by the source
-                   comparison beside these rows — shown exactly as the detail
-                   route's declaration list shows it, so one metadata fact
-                   reads the same on every surface; the whitespace-safe
-                   spelling lives in the accessible name ({@link
-                   rowHeaderLabel}). An invisible key gets the note the detail
-                   route shows (FR-025). -->
-              <th scope="row" :aria-label="rowHeaderLabel(row)">
-                <span class="aci-authored-text aci-authored-atomic">{{ row.key }}</span>
-                <!-- The invisible note carries the spelled-out form: a flat
-                     reading collapses whitespace, and two keys made of
-                     different runs of it must not read as one (FR-025). -->
-                <span v-if="row.key === '' || rendersNothingVisible(row.key)" class="aci-muted">
-                  {{
-                    row.key === ''
-                      ? '(empty key)'
-                      : `(key with no visible characters: ${encodeRootPresentation(row.key)})`
-                  }}
-                </span>
-                <!-- A key whose parsed type is not the string default is
-                     captioned with that type — the shared rendering rule that
-                     keeps a numeric `1` apart from the string `"1"` it
-                     renders like, here and in every frontmatter block
-                     (FR-025). -->
-                <span v-if="row.keyKind !== 'string'" class="aci-muted">
-                  ({{ DECLARED_KEY_KIND_TEXT[row.keyKind] }})
-                </span>
-              </th>
-              <td
-                v-for="(value, side) in [row.left, row.right]"
-                :key="side"
-                :data-label="side === 0 ? 'First file' : 'Second file'"
-              >
-                <!-- An authored scalar that spells the state reads like it in
-                     a flat channel; the muted styling tells them apart
-                     visibly, and the source comparison beside these rows
-                     carries the exact truth. -->
-                <span v-if="value === null" class="aci-muted">not declared</span>
-                <DeclarationBlock v-else-if="opensBlock(value)" :value="value" />
-                <DeclaredValueText v-else :value="value" />
-              </td>
-              <!-- Equality of resolved values, stated as the literal fact it
-                   is: no row says which value a product would use (FR-012). -->
-              <td data-label="Resolved values">{{ row.equal ? 'Same' : 'Differs' }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <template v-if="comparison.frontmatterDiff !== null">
+          <!-- What the diff holds, said before it: both sides are the
+               canonical serialization of the frontmatter, not the files'
+               own spellings — those stay in the source comparison above
+               (FR-007). The canonical key order is stated too, because a
+               reader comparing against their own file would otherwise read
+               the order as authored. -->
+          <p class="aci-note">
+            Each side is the file's frontmatter serialized as YAML with its keys in one canonical
+            order; the files' own spelling and key order stay in the source comparison above.
+          </p>
+          <SourceDiff
+            :original-text="comparison.frontmatterDiff.originalText"
+            :original-path="leftPath"
+            :modified-text="comparison.frontmatterDiff.modifiedText"
+            :modified-path="rightPath"
+            content-language="yaml"
+            content-label="frontmatter of"
+            fit-content
+          />
+        </template>
       </section>
     </template>
   </div>

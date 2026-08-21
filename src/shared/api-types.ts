@@ -48,6 +48,15 @@ export type DeclaredValueDto =
       /** Selects the scalar variant. */
       readonly kind: 'scalar';
       /**
+       * The parsed type of the resolved value ({@link DeclaredScalarKind}):
+       * what lets a surface spelling the value back — the serialized YAML
+       * and JSON documents above all — spell it as what it was, an authored
+       * `'7'` string keeping its quotes while a numeric `7` stays bare,
+       * without re-parsing the rendering to guess (data-model.md § Field
+       * reading).
+       */
+      readonly scalarKind: DeclaredScalarKind;
+      /**
        * The value the parser resolved under YAML 1.2's core schema: quoting
        * and escapes resolved, `007` read as `7`. It is the Inspector's one
        * documented reading, not a claim about a vendor's own per-field
@@ -75,6 +84,23 @@ export type DeclaredValueDto =
       /** The entries in authored order; empty for an authored empty mapping. */
       readonly entries: readonly DeclaredEntryDto[];
     };
+
+/**
+ * The parsed type of a resolved scalar value under the producing format's
+ * own schema (data-model.md § Field reading), published beside its rendered
+ * text: the text alone cannot say whether `7` was a number or a quoted
+ * string, and a serialization that guessed by re-parsing the rendering
+ * would misspell the authored string as the number it happens to render
+ * like. A scalar with no primitive type of its own — a TOML datetime — is
+ * published as `string`, because its ISO rendering is its spelling.
+ */
+export type DeclaredScalarKind =
+  /** A string value, quoted or plain. */
+  | 'string'
+  /** A value the format's schema resolves to a number; a TOML 64-bit integer included. */
+  | 'number'
+  /** A value the format's schema resolves to a boolean. */
+  | 'boolean';
 
 /**
  * The parsed type of a declared key under the producing format's own schema
@@ -483,8 +509,8 @@ export interface UnrecognizedFileDetailDto extends FileDetailBase {
 }
 
 /**
- * One server declaration of an MCP-declaring file — a standalone carrier or a
- * contained-declaration owner — as its detail shows it (contracts/http-api.md
+ * One server declaration of an MCP carrier,
+ * as its detail shows it (contracts/http-api.md
  * § get-mcp-carrier-detail, data-model.md
  * § Inventory unit): the declared name — the key its inventory row is named
  * by — and every field the declaration writes, by the keys the file wrote
@@ -501,24 +527,22 @@ export interface McpServerDeclarationDto {
    * declaration-entry shape the detail surfaces render. The values are the
    * carrier's own literals: an environment reference stays the characters
    * that were written, never a process value (FR-026). TOML and JSON keys are
-   * always strings, so a carrier's entries all have `keyKind: 'string'`; a
-   * future contained declaration read out of an owner's YAML frontmatter
-   * keeps the parsed kind, exactly as `presentation.frontmatter` does.
+   * always strings, so a carrier's entries all have `keyKind: 'string'`; the
+   * field stays the shared entry shape's, exactly as
+   * `presentation.frontmatter` publishes it.
    */
   readonly fields: readonly DeclaredEntryDto[];
 }
 
 /**
- * The result of `get-mcp-carrier-detail`: one MCP-declaring file's detail
+ * The result of `get-mcp-carrier-detail`: one MCP carrier's detail
  * (contracts/http-api.md § get-mcp-carrier-detail) — the file's own facts and
- * the declarations it makes, and deliberately no `sourceText` field at all.
- * It answers for a standalone carrier and for an admitted owner file whose
- * own content contains declarations — one of the documented owner families,
- * none of which any rule admits yet — alike: a file admitted so its declarations can be published
+ * the declarations it makes, and deliberately no `sourceText` field at all:
+ * a file admitted so its declarations can be published
  * shows those declarations and never its own bytes (FR-007), which is why
  * this is its own function's result rather than a {@link FileDetailDto}
- * variant. A contained-declaration owner's source reaches a response only
- * through `get-file-detail`, under the owner's own kind.
+ * variant. Only the explicit carriers resolve here: a file of any other kind that spells MCP-looking
+ * configuration shows it as that kind's own detail content instead.
  */
 export interface McpCarrierDetailDto {
   /**

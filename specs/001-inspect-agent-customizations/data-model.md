@@ -1234,7 +1234,7 @@ shipped kinds do not agree on one:
 | Kind | The unit one row shows |
 |---|---|
 | `skill` | One name as one tool resolves it (FR-007): the authored frontmatter `name` — or the skill directory name when the file declares none — which a Claude Code recognition of a nested skill prefixes root-relative. A definition is one recognition — one per `(file, tool)` — so several files resolving to one name are one entry listing each recognition as a definition, and one file whose tools resolve different names defines on each name's entry |
-| `MCP` | One declared server name: every `[mcp_servers.*]`-style declaration resolving that name — one per `(carrier, tool)` — is listed inside the name's row, so one `.codex/config.toml` contributes one declaration per server it declares, and a second carrier declaring the same name joins that name's row. A declaration's home is a standalone carrier or an already admitted owner file whose own content contains declarations — one of the documented owner families (an agent file, a plugin manifest, a settings file), none of which any rule admits yet — and both homes join the name's row identically, each declaration naming its own file. The one row whose name is null closes the list with the carriers currently publishing no named declaration — an unreadable declaration block, whose rows are unknown, or a carrier declaring none |
+| `MCP` | One declared server name: every `[mcp_servers.*]`-style declaration resolving that name — one per `(carrier, tool)` — is listed inside the name's row, so one `.codex/config.toml` contributes one declaration per server it declares, and a second carrier declaring the same name joins that name's row. A declaration's home is an explicit carrier and nothing else: a file of any other kind that spells MCP-looking configuration — a skill's or an agent's frontmatter, a settings file's inline map — is that kind's ordinary content, visible in its own detail, and joins no MCP row. Each declaration names its own file. The one row whose name is null closes the list with the carriers currently publishing no named declaration — an unreadable declaration block, whose rows are unknown, or a carrier declaring none |
 | `instructions` | One applicability range: the glob the governing files' own paths derive, listing each file it governs with that file's recognitions — each one product and the surfaces of the documented behaviors its admitting rules rest on, because a tool alone cannot say where a product reads the file from |
 | `settings/config` | The file itself |
 
@@ -1359,16 +1359,12 @@ A recognition is not an inventory row. The row's unit is the kind's own (§ Inve
 so each kind's inventory is built from these records rather than published as one summary
 per file: a skill's rows group records by the name each tool resolves
 (§ Inventory unit), and an MCP carrier's declarations
-are grouped by declared name, one row per name across every carrier. A contained MCP
-declaration is one more recognition on its already admitted owner file — the same
-`(file, tool, MCP)` record shape, carrying the owner's own admissions as its provenances
-— never a synthetic per-declaration candidate. Its owner families are the documented
-ones — an agent's frontmatter, a plugin manifest, a settings file — none of which any
-rule admits yet, so no shipped recognition is contained today; a skill is never such an
-owner, because Claude documents no `mcpServers` skill-frontmatter field, and a skill
-spelling that key holds its skill recognition alone. Only an owner whose extraction
-produced at least one named declaration will hold the second record
-at all. A file publishes no recognition summary
+are grouped by declared name, one row per name across every carrier. The MCP kind's
+recognitions come from the explicit carrier rules alone: a file of any other kind that
+spells MCP-looking configuration in its own content — a skill's or an agent's
+frontmatter, a settings file's inline map — holds that kind's recognition alone, its
+configuration visible in its own detail as the declarations it wrote, and joins no MCP
+row. A file publishes no recognition summary
 of its own, so nothing has to state how many admissions back a record. An admission says
 which rule authorized the read and where it matched; where the customization would apply,
 and how well the rule is documented, are not on it, because no surface shows either.
@@ -1456,12 +1452,19 @@ boundary, produces no recognition, item, Diagnostic, or generation result from t
 and is reported ordinarily as the failed request's error when a session API boundary owns the trigger.
 
 Recognitions are ordered by the closed tool order `copilot`, `claude`, `codex`, then the
-kind order listed in the table, never by opaque ID. Cross-file metadata comparison uses
-`(kind, declared key)`: a frontmatter declaration is its file's one parse for the
-recognized Markdown kind, so a tool is not a coordinate of it — tool recognition is
-compared per tool beside the declarations — and two kinds never collide merely because a
-declared key matches. The MCP kind's declarations are each recognizing tool's own
-reading (§ Field reading) and take part in no cross-file metadata comparison.
+kind order listed in the table, never by opaque ID. Cross-file declaration comparison is
+one canonical serialized document per side, diffed in Monaco (research.md § 7): a
+frontmatter declaration is its file's one parse for the recognized Markdown kind, so a
+tool is not a coordinate of it — tool recognition is compared per tool in typed rows
+beside the diff — and each side serializes to YAML, the skill comparison leading with
+`name` and `description` and every other key sorted, the instruction comparison sorting
+every key. The MCP kind's declarations are each recognizing tool's own reading
+(§ Field reading), and their comparison surface is the declared server name's own — one
+name's declaration in each of two carriers of its row, serialized to one canonical JSON
+document per side and diffed in Monaco, loaded through two ordinary
+`get-mcp-carrier-detail` reads (§ BrowserState · ComparisonSelection) — while each
+detail renders its declaration content as the same serialized document in the file's own
+key order (FR-007).
 
 ### Field reading
 
@@ -1482,7 +1485,15 @@ None of those is
 refused. A scalar renders through the platform's own string conversion, so a distinction
 that conversion does not spell — a signed zero renders as `0` — is the platform's
 resolution accepted as is, exactly as the platform's integer-like key enumeration order
-is. It is stated as the Inspector's reading, not as the value a vendor's runtime
+is. The parsed kind — string, number, or boolean — is published beside the rendered
+text (`DeclaredScalarKind`), because the rendering alone cannot say whether `7` was a
+number or a quoted string, and the serializing surfaces spell each scalar by it
+(research.md § 7). The kind-plus-text pair is the raw resolved value's JSON-safe
+encoding: the raw value itself cannot ride the JSON wire, because `NaN` and the
+infinities have no JSON value and a TOML 64-bit integer overflows the double type,
+while the pair decodes back exactly — `Number` or `BigInt` over the text — wherever a
+value is needed. A datetime and any other host-object scalar publish as `string`: the
+ISO rendering is their spelling. It is stated as the Inspector's reading, not as the value a vendor's runtime
 holds: a vendor may coerce further per field — Claude Code reads `yes` as true for its
 boolean frontmatter fields, where the core schema leaves the string `yes` — and what a
 product does with a value is runtime this tool never observes (FR-009). The Inspector is
@@ -1540,8 +1551,11 @@ reported as a dead link. A root
 under the authored name, which stays visible as the row's name, and by Claude Code under
 the directory-derived command its own definition's page shows beside it. The published value is
 the projection's, so the client renders vendor naming rather than re-deriving it. Then two tabs — the skill itself and its files. The skill
-tab lists every key the frontmatter declares, led by `name` and `description` however the
-file ordered them, and then the instructions that block was removed from. The files tab
+tab presents every key the frontmatter declares as one YAML document through the
+read-only viewer — led by `name` and `description` however the file ordered them, every
+other key in the file's own order; the block's own language, so a reader compares it
+against their file and copies from it without converting (FR-007) — and then the
+instructions that block was removed from. The files tab
 holds the directory and the open file's complete authored `sourceText`, which is where
 every authored spelling stays readable. Two tabs rather than one column: they are two
 subjects, and stacked, the directory sat below everything the skill declares and
@@ -1791,16 +1805,26 @@ This state is not authoritative and is never persisted.
   range row standing where the skill name's row stands, and derived from the two
   identities because a file governs exactly one range — resolved into zero or two
   readable files: an instruction file is complete in itself, so no side can be a
-  stated absence, and a pair no single row holds is reported rather than compared. A
+  stated absence, and a pair no single row holds is reported rather than compared. The
+  MCP route names one declared server name — the kind's row unit — and two carriers'
+  `sourceRelativePath` identities that name's row of the current generation holds; a
+  selection outside the named row, a name no current row is included, is reported
+  rather than compared. Its pair is loaded through two ordinary
+  `get-mcp-carrier-detail` reads, and what Monaco diffs is each side's declaration for
+  the named server serialized to one canonical JSON document (research.md § 7): the
+  carriers need not share a syntax and no carrier shows its bytes (FR-007), so the
+  serialization is the one spelling both sides can be read in. A
   cross-source comparison always
-  compares each source's last committed state. A pair is loaded through two ordinary
+  compares each source's last committed state. A file pair is loaded through two ordinary
   `FileDetail` requests and a one-sided skill comparison through one — the absence needs
   no request — and Monaco compares the complete `sourceText` values, the absent side
   empty, which renders the present content, line by line, as the difference it is.
   Literal differences, including credential-like strings and environment references,
   remain visible.
 - `EditorModelState`: generation-scoped Monaco models with opaque in-memory URIs and
-  complete authored `sourceText`. The owning editor, subscriptions, and every model are disposed
+  complete authored `sourceText` — or, on the MCP comparison, the canonical JSON
+  serialization of one declaration's parsed entries, which carries the declared values
+  in full and is purged under the same rules. The owning editor, subscriptions, and every model are disposed
   independently on route close, selection replacement, file removal, source disable, or
   the owning sequence's generation change.
 - There is no sensitive-content state of any kind: no acknowledged flag, no notice, and no

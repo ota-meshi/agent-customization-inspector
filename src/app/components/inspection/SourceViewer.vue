@@ -32,6 +32,22 @@ const props = defineProps<{
    * so assistive technology never announces a slice as the complete source.
    */
   readonly contentLabel?: string;
+  /**
+   * The language id the model is created with, set when the shown text is a
+   * canonical serialization rather than the file's own bytes — the MCP
+   * detail shows a declaration as JSON whatever the carrier's extension
+   * would resolve to. Omitted, the language is resolved from the path,
+   * which is the file surfaces' rule (`SourceViewerHandle.showSource`).
+   */
+  readonly contentLanguage?: string;
+  /**
+   * Sizes the viewer to its content instead of the fixed reading box, capped
+   * by this component's stylesheet (`SourceViewerHandle.mount`
+   * § fitContent). Set by surfaces showing a short derived document — an
+   * MCP declaration, a frontmatter block — where a fixed height would be
+   * mostly empty frame.
+   */
+  readonly fitContent?: boolean;
 }>();
 
 /** The element Monaco takes over; empty until the editor is mounted. */
@@ -113,13 +129,15 @@ function disposeViewer(): void {
 async function showCurrentSource(): Promise<void> {
   requestedSource += 1;
   const requested = requestedSource;
-  const { sourceText, sourceRelativePath: path, contentLabel } = props;
+  const { sourceText, sourceRelativePath: path, contentLabel, contentLanguage } = props;
   if (viewer.value === null) {
     const element = host.value;
     if (element === null) {
       return;
     }
-    const mounted = await SourceViewerHandle.mount(element).catch(() => null);
+    const mounted = await SourceViewerHandle.mount(element, {
+      fitContent: props.fitContent === true,
+    }).catch(() => null);
     if (mounted === null) {
       // The editor chunk or its mount failed. The source is not lost — the
       // detail already holds it — so the honest state is a visible failure
@@ -142,7 +160,20 @@ async function showCurrentSource(): Promise<void> {
     }
     viewer.value = mounted;
   }
-  viewer.value.showSource(sourceText, path, contentLabel);
+  try {
+    viewer.value.showSource(sourceText, path, contentLabel, contentLanguage);
+  } catch {
+    // The model swap failed mid-flight (`SourceViewerHandle.showSource`
+    // § rollback): the handle has already disposed what it held, so the
+    // honest state is the editor gone and the failure rendering showing the
+    // current source as inert text — never the previous file's content
+    // under this file's heading (FR-025).
+    disposeViewer();
+    if (!unmounted && requested === requestedSource) {
+      mountError.value = true;
+    }
+    return;
+  }
   // Cleared only once the mount actually succeeded: clearing it up front
   // would unmount the failure state's retry button while the retry is still
   // in flight, and a retry that fails again would strand keyboard focus on
@@ -195,7 +226,12 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div v-show="!mountError" ref="host" class="aci-source-viewer" />
+  <div
+    v-show="!mountError"
+    ref="host"
+    class="aci-source-viewer"
+    :class="{ 'aci-source-viewer--fit': fitContent }"
+  />
   <!-- Stable rather than inserted with the failure it reports, because a
        region that appears together with its message is not reliably read. -->
   <p class="aci-live-region" role="alert" aria-live="assertive" aria-atomic="true">
@@ -229,6 +265,16 @@ onBeforeUnmount(() => {
   border: 1px solid var(--aci-border);
   border-radius: 4px;
   inline-size: 100%;
+}
+
+/* The fit-content variant: the mounted handle writes the content height to
+   the element (`SourceViewerHandle.mount` § fitContent) and this cap keeps a
+   long document from taking the page — past it, the editor scrolls inside
+   its box exactly like the fixed variant. */
+.aci-source-viewer--fit {
+  block-size: auto;
+  max-block-size: 24rem;
+  min-block-size: 3rem;
 }
 
 /* The editor-failure fallback: the same authored text as an inert text node.

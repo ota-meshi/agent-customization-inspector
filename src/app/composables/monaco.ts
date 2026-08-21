@@ -8,10 +8,13 @@
 //
 // The editor core plus every basic language (monaco-languages.ts) is imported;
 // the full `monaco-editor` entry point is not, because it would also pull in
-// the JSON, CSS, HTML, and TypeScript *language services*, each with its own
-// worker. Those services validate and complete, which this product must not do:
-// a squiggle under an inspected file would be the tool judging a customization
-// it has no standing to judge. A basic language only colours text.
+// the JSON, CSS, HTML, and TypeScript *language services* whole, each with its
+// own worker. A service's worker-backed features validate and complete, which
+// this product must not do: a squiggle under an inspected file would be the
+// tool judging a customization it has no standing to judge. A basic language
+// only colours text — JSON included: its colouring is the JSON service's own
+// local tokenizer wired directly to a hand-registered `json` id, with the
+// service contribution and its worker never imported (monaco-languages.ts).
 //
 // Inertness is the configuration, not a sanitizer. The editor is read-only in
 // both the model and the DOM, opens no link, resolves no URI, and loads no
@@ -38,23 +41,19 @@ export interface RegisteredLanguage {
 /**
  * The two formats this product recognizes that Monaco ships no grammar for.
  *
- * JSON has only a *service* (`esm/vs/language/json`), which brings a worker and
- * validation — and validating an inspected file is the one thing this product
- * must not do. TOML has nothing at all. Both are core customization formats
- * here: `.mcp.json`, `settings.json`, `hooks.json`, `plugin.json`, and
- * `marketplace.json` on one side, `.codex/config.toml` and `.codex/agents/*`
- * on the other.
- *
- * So each borrows the nearest grammar that is a pure tokenizer. JSON is a
- * syntactic subset of JavaScript object literals, and JSONC's comments are
- * JavaScript's too; TOML's sections, `key = value` lines, quoted strings, and
- * `#` comments are what the ini grammar colours. The borrowed id is internal —
- * the model URI is opaque and no surface shows a language name — and colouring
- * is presentation over text that is displayed exactly as authored either way.
+ * JSON's own colouring comes from the JSON service's local tokenizer, wired
+ * directly to the `json` id (monaco-languages.ts): that registration claims
+ * `.json` itself, so only the spellings it does not claim are mapped
+ * here. `.jsonc` takes the same `json` tokenizer — its comment support is
+ * the tokenizer's own — and TOML, which Monaco ships nothing for, borrows
+ * the nearest pure tokenizer: its sections, `key = value` lines, quoted
+ * strings, and `#` comments are what the ini grammar colours. The mapped id
+ * is internal — the model URI is opaque and no surface shows a language
+ * name — and colouring is presentation over text that is displayed exactly
+ * as authored either way.
  */
 const BORROWED_GRAMMARS: ReadonlyMap<string, string> = new Map([
-  ['.json', 'javascript'],
-  ['.jsonc', 'javascript'],
+  ['.jsonc', 'json'],
   ['.toml', 'ini'],
 ]);
 
@@ -240,18 +239,27 @@ export class SourceViewerHandle {
    */
   readonly #followDisplay: () => void;
 
+  /**
+   * The content-size listener of a fit-content mount, or null for the fixed
+   * reading box; kept so {@link dispose} unbinds it with the editor
+   * (`SourceViewerHandle.mount` § fitContent).
+   */
+  readonly #fitContent: import('monaco-editor/esm/vs/editor/editor.api.js').IDisposable | null;
+
   /** Binds the handle to the editor it owns and starts following the scheme. */
   public constructor(
     monaco: MonacoApi,
     editor: import('monaco-editor/esm/vs/editor/editor.api.js').editor.IStandaloneCodeEditor,
     colorScheme: MediaQueryList,
     forcedColors: MediaQueryList,
+    fitContent: import('monaco-editor/esm/vs/editor/editor.api.js').IDisposable | null = null,
   ) {
     this.#monaco = monaco;
     this.#editor = editor;
     this.#colorScheme = colorScheme;
     this.#forcedColors = forcedColors;
     this.#followDisplay = followDisplayTheme(monaco, colorScheme, forcedColors);
+    this.#fitContent = fitContent;
   }
 
   /**
@@ -274,17 +282,36 @@ export class SourceViewerHandle {
     sourceText: string,
     sourceRelativePath: string,
     contentLabel = 'Source of',
+    contentLanguage?: string,
   ): void {
     const previous = this.#editor.getModel();
     // An opaque in-memory URI: a model URI is visible to the editor and to
     // anything inspecting it, and a Source-relative Path there would put an
     // inspected file's location into a surface that has no need for it.
-    const model = this.#monaco.editor.createModel(
-      sourceText,
-      resolveSourceLanguage(this.#monaco.languages.getLanguages(), sourceRelativePath),
-      this.#monaco.Uri.parse(`inmemory://source/${createOpaqueId()}`),
-    );
-    this.#editor.setModel(model);
+    // `contentLanguage` overrides the path's claim when the text is a
+    // canonical serialization rather than the file's own bytes — the MCP
+    // detail shows a declaration as JSON whatever the carrier's extension
+    // would resolve to — mirroring `SourceComparisonInput.contentLanguage`.
+    let model: import('monaco-editor/esm/vs/editor/editor.api.js').editor.ITextModel | null = null;
+    try {
+      model = this.#monaco.editor.createModel(
+        sourceText,
+        contentLanguage ??
+          resolveSourceLanguage(this.#monaco.languages.getLanguages(), sourceRelativePath),
+        this.#monaco.Uri.parse(`inmemory://source/${createOpaqueId()}`),
+      );
+      this.#editor.setModel(model);
+    } catch (error) {
+      // The environment-determined failure research.md § 7 names, mid-swap:
+      // nothing may survive it holding authored text past the throw the
+      // owning component's fallback handles (FR-027) — not the half-built
+      // model, and not the previous file's model either, because the
+      // component disposes the editor and shows the fallback next, and the
+      // editor disposes only the model it currently holds.
+      model?.dispose();
+      previous?.dispose();
+      throw error;
+    }
     // Renamed with the model, so assistive technology announces the file
     // that is showing rather than the one this editor was created for. The
     // label says which part of that file: an editor showing the instructions a
@@ -318,6 +345,7 @@ export class SourceViewerHandle {
   public dispose(): void {
     this.#colorScheme.removeEventListener('change', this.#followDisplay);
     this.#forcedColors.removeEventListener('change', this.#followDisplay);
+    this.#fitContent?.dispose();
     const model = this.#editor.getModel();
     this.#editor.dispose();
     // After the editor, because disposing a model an attached editor still
@@ -342,7 +370,20 @@ export class SourceViewerHandle {
    * in Monaco 0.55 it is a diff-editor option, so it belongs to the comparison
    * surface rather than to this single-file view.
    */
-  public static async mount(container: HTMLElement): Promise<SourceViewerHandle> {
+  public static async mount(
+    container: HTMLElement,
+    options?: {
+      /**
+       * Sizes `container` to the shown text instead of leaving its CSS
+       * height alone: the handle writes the editor's content height to the
+       * element on every content-size change, and the caller's stylesheet
+       * caps it (`max-block-size`). For a surface showing a short derived
+       * document — an MCP declaration, a frontmatter block — a fixed
+       * reading-box height would be mostly empty frame.
+       */
+      readonly fitContent?: boolean;
+    },
+  ): Promise<SourceViewerHandle> {
     const monaco = await loadMonaco();
     const colorScheme = globalThis.matchMedia(DARK_SCHEME_QUERY);
     const forcedColors = globalThis.matchMedia(FORCED_COLORS_QUERY);
@@ -403,7 +444,21 @@ export class SourceViewerHandle {
       },
     });
     dropStaleAnnouncementWrappers(announcements);
-    return new SourceViewerHandle(monaco, editor, colorScheme, forcedColors);
+    let fitContent: import('monaco-editor/esm/vs/editor/editor.api.js').IDisposable | null = null;
+    if (options?.fitContent === true) {
+      // The container follows the content: every content-size change — the
+      // first model above all — writes the editor's own height back to the
+      // element, and `automaticLayout` re-lays the editor out to the box the
+      // caller's stylesheet caps. Written as a style, because the cap is the
+      // stylesheet's (`max-block-size`) and an inline height alone decides
+      // nothing past it.
+      const fit = (): void => {
+        container.style.blockSize = `${editor.getContentHeight()}px`;
+      };
+      fitContent = editor.onDidContentSizeChange(fit);
+      fit();
+    }
+    return new SourceViewerHandle(monaco, editor, colorScheme, forcedColors, fitContent);
   }
 }
 
@@ -430,6 +485,26 @@ export interface SourceComparisonInput {
   readonly originalAbsent?: boolean;
   /** Whether the second side names an absent counterpart; see {@link originalAbsent}. */
   readonly modifiedAbsent?: boolean;
+  /**
+   * The language id both models are created with, set when the compared
+   * texts are one canonical serialization rather than the files' own bytes —
+   * the MCP declaration comparison serializes both sides to JSON, so the
+   * carriers' paths, a `.toml` beside a `.json`, must not choose the
+   * colouring (research.md § 7). Omitted, each side's language is resolved
+   * from its own path, which is the file-comparison surfaces' rule.
+   */
+  readonly contentLanguage?: string;
+  /**
+   * What of each file the sides show, spliced into each side's accessible
+   * name — `frontmatter of`, `declaration <name> of` — because a surface
+   * that announced a serialized slice as the whole file would misreport it
+   * (FR-025), the same slice-naming contract as
+   * `SourceViewerHandle.showSource`'s `contentLabel`. Omitted, the sides
+   * are announced as the compared files themselves. An absent side keeps
+   * its no-file phrasing either way: the absence is the file's, whatever of
+   * it the present side shows.
+   */
+  readonly contentLabel?: string;
 }
 
 /**
@@ -454,8 +529,9 @@ export class SourceDiffHandle {
   readonly #followDisplay: () => void;
 
   /**
-   * The two side-label restorers — one per inner editor — unbound by
-   * {@link dispose}; see the relabelling in {@link mount}.
+   * The per-inner-editor subscriptions — the two side-label restorers, plus
+   * a fit-content mount's content-size listeners — unbound by
+   * {@link dispose}; see {@link mount}.
    */
   readonly #relabel: readonly import('monaco-editor/esm/vs/editor/editor.api.js').IDisposable[];
 
@@ -532,6 +608,16 @@ export class SourceDiffHandle {
   public static async mount(
     container: HTMLElement,
     comparison: SourceComparisonInput,
+    mountOptions?: {
+      /**
+       * Sizes `container` to the taller of the two shown documents instead
+       * of leaving its CSS height alone, the caller's stylesheet capping it
+       * (`max-block-size`) — the same contract as the single-file viewer's
+       * fit (`SourceViewerHandle.mount` § fitContent). Set by the
+       * serialized-declaration diffs, whose documents are usually short.
+       */
+      readonly fitContent?: boolean;
+    },
   ): Promise<SourceDiffHandle> {
     const monaco = await loadMonaco();
     const colorScheme = globalThis.matchMedia(DARK_SCHEME_QUERY);
@@ -594,71 +680,112 @@ export class SourceDiffHandle {
       },
     };
     const editor = monaco.editor.createDiffEditor(container, options);
-    // The diff editor constructs two standalone editors, so two fresh
-    // live-region wrappers were appended; only the one Monaco is announcing
-    // through stays.
-    dropStaleAnnouncementWrappers(announcements);
-    // The two sides are named after construction, on the inner editors —
-    // the same post-construction `updateOptions` path the single-file
-    // viewer's label takes — because construction-time `originalAriaLabel`/
-    // `modifiedAriaLabel` do not survive Monaco's initial option
-    // synchronization: verified against the packaged editor, both textboxes
-    // end up carrying only the default accessibility-help hint. Each side is
-    // spelled like every path label (data-model.md § SourceRelativePath),
-    // and an absent side is named as the stated absence it is rather than as
-    // a file that does not exist (FR-025).
-    // The paths ride through the whitespace-safe spelling: an accessible
-    // name is a flat string whose consecutive spaces collapse, and two
-    // paths differing only in them must not name one editor (FR-025).
-    const originalLabel =
-      comparison.originalAbsent === true
-        ? `First side: no file at ${inlinePresentationLabel(comparison.originalPath)}`
-        : `First compared file ${inlinePresentationLabel(comparison.originalPath)}, read-only`;
-    const modifiedLabel =
-      comparison.modifiedAbsent === true
-        ? `Second side: no file at ${inlinePresentationLabel(comparison.modifiedPath)}`
-        : `Second compared file ${inlinePresentationLabel(comparison.modifiedPath)}, read-only`;
-    const applySideLabels = (): void => {
-      editor.getOriginalEditor().updateOptions({ ariaLabel: originalLabel });
-      editor.getModifiedEditor().updateOptions({ ariaLabel: modifiedLabel });
-    };
-    applySideLabels();
-    // Nor do the labels survive the editor's own later option
-    // re-synchronizations: the responsive switch between the side-by-side
-    // and inline layouts reapplies the diff options to the inner editors and
-    // wipes both labels again — verified against the packaged editor by
-    // resizing across the breakpoint. Each inner editor therefore restores
-    // the labels whenever a configuration change touches `ariaLabel`;
-    // restoring an already-correct label is not a change, so the listener
-    // settles instead of looping.
-    const relabel = [
-      editor.getOriginalEditor().onDidChangeConfiguration((event) => {
-        if (event.hasChanged(monaco.editor.EditorOption.ariaLabel)) {
-          applySideLabels();
-        }
-      }),
-      editor.getModifiedEditor().onDidChangeConfiguration((event) => {
-        if (event.hasChanged(monaco.editor.EditorOption.ariaLabel)) {
-          applySideLabels();
-        }
-      }),
-    ];
-    const languages = monaco.languages.getLanguages();
-    // Both sides hold the complete literal `sourceText` (FR-011), each in an
-    // opaque in-memory model: a Source-relative Path in a model URI would put
-    // an inspected file's location into a surface that has no need for it.
-    const original = monaco.editor.createModel(
-      comparison.originalText,
-      resolveSourceLanguage(languages, comparison.originalPath),
-      monaco.Uri.parse(`inmemory://source/${createOpaqueId()}`),
-    );
-    const modified = monaco.editor.createModel(
-      comparison.modifiedText,
-      resolveSourceLanguage(languages, comparison.modifiedPath),
-      monaco.Uri.parse(`inmemory://source/${createOpaqueId()}`),
-    );
-    editor.setModel({ original, modified });
-    return new SourceDiffHandle(monaco, editor, colorScheme, forcedColors, relabel);
+    // Everything after the editor's construction runs under a rollback: a
+    // failure anywhere in it — the environment-determined construction
+    // failure research.md § 7 names — must not strand the editor, a model
+    // holding authored text, or a listener past the throw the caller's
+    // fallback handles, because nothing would ever dispose them and the
+    // purge could not reach the retained text (FR-027).
+    const relabel: import('monaco-editor/esm/vs/editor/editor.api.js').IDisposable[] = [];
+    let original: import('monaco-editor/esm/vs/editor/editor.api.js').editor.ITextModel | null =
+      null;
+    let modified: import('monaco-editor/esm/vs/editor/editor.api.js').editor.ITextModel | null =
+      null;
+    try {
+      // The diff editor constructs two standalone editors, so two fresh
+      // live-region wrappers were appended; only the one Monaco is announcing
+      // through stays.
+      dropStaleAnnouncementWrappers(announcements);
+      // The two sides are named after construction, on the inner editors —
+      // the same post-construction `updateOptions` path the single-file
+      // viewer's label takes — because construction-time `originalAriaLabel`/
+      // `modifiedAriaLabel` do not survive Monaco's initial option
+      // synchronization: verified against the packaged editor, both textboxes
+      // end up carrying only the default accessibility-help hint. Each side is
+      // spelled like every path label (data-model.md § SourceRelativePath),
+      // and an absent side is named as the stated absence it is rather than as
+      // a file that does not exist (FR-025).
+      // The paths ride through the whitespace-safe spelling: an accessible
+      // name is a flat string whose consecutive spaces collapse, and two
+      // paths differing only in them must not name one editor (FR-025).
+      const contentNoun = comparison.contentLabel ?? 'file';
+      const originalLabel =
+        comparison.originalAbsent === true
+          ? `First side: no file at ${inlinePresentationLabel(comparison.originalPath)}`
+          : `First compared ${contentNoun} ${inlinePresentationLabel(comparison.originalPath)}, read-only`;
+      const modifiedLabel =
+        comparison.modifiedAbsent === true
+          ? `Second side: no file at ${inlinePresentationLabel(comparison.modifiedPath)}`
+          : `Second compared ${contentNoun} ${inlinePresentationLabel(comparison.modifiedPath)}, read-only`;
+      const applySideLabels = (): void => {
+        editor.getOriginalEditor().updateOptions({ ariaLabel: originalLabel });
+        editor.getModifiedEditor().updateOptions({ ariaLabel: modifiedLabel });
+      };
+      applySideLabels();
+      // Nor do the labels survive the editor's own later option
+      // re-synchronizations: the responsive switch between the side-by-side
+      // and inline layouts reapplies the diff options to the inner editors and
+      // wipes both labels again — verified against the packaged editor by
+      // resizing across the breakpoint. Each inner editor therefore restores
+      // the labels whenever a configuration change touches `ariaLabel`;
+      // restoring an already-correct label is not a change, so the listener
+      // settles instead of looping.
+      relabel.push(
+        editor.getOriginalEditor().onDidChangeConfiguration((event) => {
+          if (event.hasChanged(monaco.editor.EditorOption.ariaLabel)) {
+            applySideLabels();
+          }
+        }),
+        editor.getModifiedEditor().onDidChangeConfiguration((event) => {
+          if (event.hasChanged(monaco.editor.EditorOption.ariaLabel)) {
+            applySideLabels();
+          }
+        }),
+      );
+      if (mountOptions?.fitContent === true) {
+        // The container follows the taller side, and `automaticLayout` re-lays
+        // the diff out to the box the caller's stylesheet caps — the diff
+        // twin of the single-file fit (`SourceViewerHandle.mount`
+        // § fitContent). Both inner editors report, because either side can
+        // be the taller one.
+        const fit = (): void => {
+          container.style.blockSize = `${Math.max(
+            editor.getOriginalEditor().getContentHeight(),
+            editor.getModifiedEditor().getContentHeight(),
+          )}px`;
+        };
+        relabel.push(
+          editor.getOriginalEditor().onDidContentSizeChange(fit),
+          editor.getModifiedEditor().onDidContentSizeChange(fit),
+        );
+        fit();
+      }
+      const languages = monaco.languages.getLanguages();
+      // Both sides hold the complete literal `sourceText` (FR-011), each in an
+      // opaque in-memory model: a Source-relative Path in a model URI would put
+      // an inspected file's location into a surface that has no need for it.
+      original = monaco.editor.createModel(
+        comparison.originalText,
+        comparison.contentLanguage ?? resolveSourceLanguage(languages, comparison.originalPath),
+        monaco.Uri.parse(`inmemory://source/${createOpaqueId()}`),
+      );
+      modified = monaco.editor.createModel(
+        comparison.modifiedText,
+        comparison.contentLanguage ?? resolveSourceLanguage(languages, comparison.modifiedPath),
+        monaco.Uri.parse(`inmemory://source/${createOpaqueId()}`),
+      );
+      editor.setModel({ original, modified });
+      return new SourceDiffHandle(monaco, editor, colorScheme, forcedColors, relabel);
+    } catch (error) {
+      for (const subscription of relabel) {
+        subscription.dispose();
+      }
+      modified?.dispose();
+      original?.dispose();
+      editor.dispose();
+      clearAnnouncedText();
+      throw error;
+    }
   }
 }
 
@@ -674,9 +801,10 @@ let monacoModule: Promise<MonacoApi> | null = null;
  * Loads the editor core and the tokenizers, and registers the worker factory.
  *
  * The worker is imported inside `getWorker` rather than beside the editor, so
- * it is fetched only if Monaco actually asks for one. With no language service
- * registered it normally does not, and paying for the asset up front would be
- * paying for a case that does not arise.
+ * it is fetched only if Monaco actually asks for one. With no worker-backed
+ * provider registered — JSON is wired to its local tokenizer alone
+ * (monaco-languages.ts) — it normally does not, and paying for the asset up
+ * front would be paying for a case that does not arise.
  *
  * A failed load is uncached before it is reported: the viewer's failure state
  * offers a retry, and a retry that re-awaited the same cached rejection could

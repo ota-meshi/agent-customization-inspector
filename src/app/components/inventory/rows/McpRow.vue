@@ -25,6 +25,7 @@ import { computed } from 'vue';
 import { NuxtLink } from '#components';
 import RowDiagnostics from './RowDiagnostics.vue';
 import { mcpDetailRoute, mcpServerDetailRoute } from '../../mcp-detail-route';
+import { mcpComparisonRouteFor } from '../../../composables/mcp-comparison';
 import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text';
 import {
   SUPPORTED_TOOL_TEXT,
@@ -144,6 +145,32 @@ const carrierRows = computed(() => {
     diagnosticIds: props.filesByPath.get(sourceRelativePath)?.diagnosticIds ?? [],
   }));
 });
+
+/**
+ * The comparison this row links to — this declared name's declarations in
+ * its first two carriers — or null when the name is declared by fewer than
+ * two, where a link would open a comparison with nothing to pair. Every
+ * carrier of a named row is comparison-eligible (FR-025) by the row's own
+ * invariant: its declarations are parsed — a failed carrier publishes no
+ * name, and a binary carrier is diagnostic-only — so its text was read
+ * (api-types.ts § McpDeclarationDto.parseStatus). The compare route's own
+ * pickers take over from there: they hold this row's every carrier, so the
+ * reader steps to any other pair on the comparison itself instead of
+ * composing one here. The no-name row links none: its carriers publish no
+ * declaration a comparison would serialize.
+ */
+const compareRoute = computed(() => {
+  if (props.entry.name === null) {
+    return null;
+  }
+  const name = props.entry.name;
+  const [first, second] = new Set(
+    props.entry.declarations.map((declaration) => declaration.sourceRelativePath),
+  );
+  return first !== undefined && second !== undefined
+    ? mcpComparisonRouteFor(name, first, second)
+    : null;
+});
 </script>
 
 <template>
@@ -198,6 +225,18 @@ const carrierRows = computed(() => {
         <RowDiagnostics :diagnostic-ids="carrier.diagnosticIds" :diagnostics="diagnostics" />
       </li>
     </ul>
+
+    <p v-if="compareRoute !== null" class="aci-mcp-row__compare">
+      <!-- The accessible name carries the row's declared name after the
+           visible phrase: in a links list every comparable row would
+           otherwise announce identically (WCAG 2.4.6; label-in-name keeps
+           the visible phrase as the prefix). -->
+      <NuxtLink
+        :to="compareRoute"
+        :aria-label="`Compare this name's declarations: ${nameAccessibleText ?? ''}`"
+        >Compare this name's declarations</NuxtLink
+      >
+    </p>
   </li>
 </template>
 

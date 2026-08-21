@@ -586,9 +586,10 @@ describe('Codex MCP inspection connects to nothing (T294)', () => {
 
 describe('Claude MCP inspection connects to nothing (T315, T326)', () => {
   // The same closed classification as the Codex case above: every
-  // product-issued request observed during MCP inspection is zero, for the
-  // standalone carrier and the skill-contained owner alike.
-  it('declares file and contained servers without any DNS, socket, HTTP, MCP, auth, or probing request', async () => {
+  // product-issued request observed during MCP inspection is zero — for the
+  // standalone carrier, and for the skill whose frontmatter spells
+  // `mcpServers` as ordinary skill content.
+  it('declares the carrier servers without any DNS, socket, HTTP, MCP, auth, or probing request', async () => {
     const fixture = buildClaudeMcpFixture('inspector-zero-activation-claude-mcp');
     cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
     const observed: string[] = [];
@@ -895,5 +896,82 @@ describe('Copilot VS Code MCP inspection connects to nothing (T365)', () => {
         opened.filter((path) => path === join(fixture.root, ...carrier.split('/'))),
       ).toHaveLength(1);
     }
+  });
+});
+
+describe('unadmitted MCP-spelling files activate nothing (T376)', () => {
+  it('reads no agent, settings, or plugin file and publishes no MCP row for them', async () => {
+    // Only explicit MCP configuration joins the MCP surfaces: an agent profile's `mcp-servers`, a settings file's inline
+    // map, and a plugin manifest's declarations belong to files no shipped
+    // rule admits, so the scan opens none of them, recognizes nothing, and
+    // connects to nothing — and the hosted Cloud sources are registry facts
+    // with no file to read at all.
+    const root = mkdtempSync(join(tmpdir(), 'inspector-zero-activation-unadmitted-mcp-'));
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    mkdirSync(join(root, '.github/agents'), { recursive: true });
+    writeFileSync(
+      join(root, '.github/agents/deploy.md'),
+      [
+        '---',
+        'name: deploy',
+        'description: deploy agent',
+        'mcp-servers:',
+        '  agent-mcp:',
+        "    type: 'local'",
+        "    command: 'curl'",
+        "    args: ['https://mcp.example.invalid']",
+        '---',
+        '',
+        'Prompt body',
+        '',
+      ].join('\n'),
+      'utf8',
+    );
+    mkdirSync(join(root, '.claude-plugin'), { recursive: true });
+    writeFileSync(
+      join(root, '.claude-plugin/plugin.json'),
+      '{ "name": "p", "mcpServers": { "plugin-mcp": { "command": "curl" } } }\n',
+      'utf8',
+    );
+    writeFileSync(join(root, 'AGENTS.md'), '# instructions\n', 'utf8');
+    const observed: string[] = [];
+    const globalScope = globalThis as Record<string, unknown>;
+    const originals = new Map<string, unknown>();
+    for (const name of ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'open']) {
+      originals.set(name, globalScope[name]);
+      globalScope[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during MCP inspection`);
+      };
+    }
+    vi.clearAllMocks();
+    try {
+      const publication = await runSourceScan({
+        sourceId: 'src-1',
+        root,
+        rootFailureOwner: 'repository',
+      });
+      if (publication.kind !== 'publishable') {
+        throw new Error('expected a publishable outcome');
+      }
+      // No MCP recognition exists anywhere in the publication, and neither
+      // unadmitted file was read or published.
+      expect(
+        publication.recognitions.filter((recognition) => recognition.details.kind === 'MCP'),
+      ).toEqual([]);
+      expect(
+        publication.files
+          .map((file) => file.sourceRelativePath)
+          .filter((path) => path.includes('agents/deploy.md') || path.includes('.claude-plugin')),
+      ).toEqual([]);
+    } finally {
+      for (const [name, value] of originals) {
+        globalScope[name] = value;
+      }
+    }
+    expect(observed).toEqual([]);
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) => String(call[0]));
+    expect(opened).not.toContain(join(root, '.github', 'agents', 'deploy.md'));
+    expect(opened).not.toContain(join(root, '.claude-plugin', 'plugin.json'));
   });
 });

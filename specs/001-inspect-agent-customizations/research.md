@@ -783,10 +783,18 @@ chosen few, because which languages a reader meets is decided by whatever a cust
 own directory contains (contracts/inspection-path-allowlist.md § Bounded companion census),
 and each contribution registers a lazy loader whose grammar chunk is fetched only when a
 file of that language is opened. A basic language colours text and nothing more; the
-services — JSON, CSS, HTML, TypeScript — are excluded because each brings a worker and
-validates what it is given, and marking an inspected customization as invalid is a verdict
-this product does not make. JSON and TOML have no basic-language grammar, so each borrows
-the nearest pure tokenizer (JavaScript and ini): the borrowed id is internal, the model URI
+language services' worker-backed features — diagnostics above all, plus completion,
+hover, formatting, symbols — are excluded, because validating what it is given and
+marking an inspected customization as invalid is a verdict this product does not make.
+JSON has no basic-language grammar, so one is built in the registration module: the
+`json` id registers with the extension claims the JSON service's contribution makes, and
+the one feature wired to it is the service's own local tokenizer — a module with no
+worker behind it. The contribution itself is never imported, because its lazily loaded
+mode carries the service's worker into the emitted bundle, and shipping a
+language-service worker is what the package gate forbids. The real `json` colouring
+therefore ships with no validation and no worker, and `.jsonc` maps to the same
+tokenizer, whose comment support is its own. TOML, which Monaco ships nothing for, borrows the nearest pure
+tokenizer (ini): the mapped id is internal, the model URI
 stays opaque, and the text is displayed exactly as authored either way. Models use opaque in-memory URIs, hold
 complete authored source text, and are disposed separately from their editor and
 subscriptions on route close, selection replacement, source disable, or generation
@@ -815,10 +823,41 @@ disabled links, and the client still loads no external worker, blob worker, or e
 string. Diff
 highlighting uses Monaco and browser capacity without a product-defined line or computation-
 time cutoff. If Monaco or the browser reports a recoverable failure, retain the complete
-read-only side-by-side source and a diagnostic. Tool recognition is compared per tool,
-while a file's declared metadata — one parse per kind — is matched by kind and declared
-key and rendered once in Vue rows rather than serialized into Monaco: a tool is not a
-coordinate of a declaration, so no tool captions or repeats the declaration rows. Preserve Monaco's
+read-only side-by-side source and a diagnostic. Tool recognition is compared per tool
+in typed rows, while a file's declared metadata — one parse per kind — is compared once,
+because a tool is not a coordinate of a declaration: each side serializes to one
+canonical document and the two documents diff in Monaco. The Markdown kinds' frontmatter
+serializes to YAML — the block's own language — with the skill comparison leading with
+`name` and `description` and every other key sorted, and the instruction comparison
+sorting every key (frontmatter-yaml.ts). The MCP
+comparison serializes instead of tabulating: its unit is one declared server name — the
+kind's inventory row unit (data-model.md § Inventory unit) — each side is that name's
+declaration in one of the row's carriers, and the surface serializes each declaration's
+parsed entries into one pretty-printed JSON document and diffs the two documents in
+Monaco. JSON rather than a display-only spelling, because the document is the value a
+JSON carrier's entry holds under the server's name, so a reader of such a carrier
+pastes it as their own entry's body — a TOML carrier's reader copies values rather
+than syntax. The comparison's serialization is canonical in
+order and in spelling, so the two sides align line by line and a line difference is a
+field difference: the common declaration keys lead in one fixed reading order — the
+server's kind, how it launches, where it connects, what environment it gets — every
+other key, and every key of a nested mapping, follows sorted, while sequence items keep
+their order, which is the declaration's own data; a scalar spells by the parsed kind
+the wire publishes beside its resolved text (data-model.md § Field reading) — a number
+or boolean rebuilds as its value and spells bare, a number JSON cannot spell (`NaN`, a
+64-bit integer past the double range) keeps its exact text as a JSON string, and a
+string stays a string under `JSON.stringify`'s own escaping, so an authored `'7'` stays
+`"7"` while a numeric `7` stays bare — a newline spells
+`\n`, a control character or lone surrogate its escape — identically on both sides. The
+document is `JSON.stringify(value, null, 2)`'s own pretty-printed output over a tree the
+serializer only reorders, so its property order is the platform's enumeration order — an
+integer-like key lists first — accepted as the platform's own spelling, the same trade as
+`String(-0)` rendering `0`, and deterministic on both sides alike.
+The MCP detail renders each declaration's fields as the same JSON document in the file's
+own key order, the order a detail publishes by (FR-007). The two carriers
+of one name need not share a syntax — a `.codex/config.toml` declares in TOML, a
+`.mcp.json` in JSON — and no carrier shows its bytes (FR-007), so the canonical
+serialization is the one spelling both sides can be read in. Preserve Monaco's
 accessible diff viewer, ARIA labels, keyboard navigation, and narrow-screen inline mode
 for explicit accessibility testing.
 
@@ -826,10 +865,12 @@ for explicit accessibility testing.
 coloring, line navigation, virtualized rendering, search, synchronized scrolling, and a
 well-tested diff surface materially improve inspection. Monaco already computes source
 differences and exposes editor- and environment-dependent computation and accessibility behavior, so a
-second text-diff package would duplicate responsibility. Metadata has domain semantics:
-set-like recognitions, ordered precedence, and fields with stable identities must be
-compared structurally rather than as serialized lines, while literal spelling differences
-remain observable. The official
+second text-diff package would duplicate responsibility. Recognition facts have domain
+semantics — set-like recognitions and their surfaces are compared structurally in typed
+rows, while literal spelling differences remain observable in the source diff. A
+declaration block has no such structure to lose: it is one authored mapping per side
+whose canonical serialization orders the fields identically on both sides, so added,
+removed, and changed fields appear as exactly the lines they are. The official
 [diff editor options](https://microsoft.github.io/monaco-editor/typedoc/interfaces/editor_editor_api.editor.IDiffEditorOptions.html)
 and [Monaco repository](https://github.com/microsoft/monaco-editor) document those editor,
 worker, accessibility, and model-lifecycle capabilities. The lockfile-pinned resolved
@@ -843,8 +884,11 @@ executing, loading, or navigating.
 
 - Adding `diff` beside Monaco was rejected because no current CLI, API, patch export, or
   headless consumer needs a second diff engine.
-- Serializing recognition metadata into Monaco was rejected because property ordering and
-  line changes obscure added, removed, or changed domain fields.
+- Serializing recognition metadata — which tools recognize a side, on which surfaces —
+  into Monaco was rejected because property ordering and line changes obscure added,
+  removed, or changed domain fields. A declaration serialization — the MCP JSON, the
+  frontmatter YAML — is not that case: each side is one authored mapping, and its
+  canonical document orders the fields identically on both sides.
 - A custom `<pre>` source diff was rejected because it would recreate core navigation,
   large-document rendering, synchronization, accessibility, and diff interaction work.
 

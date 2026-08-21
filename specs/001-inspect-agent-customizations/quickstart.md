@@ -141,7 +141,8 @@ under the git-ignored `.tmp/fixtures/` tree and serves it with the same packaged
 pnpm run start:fixture all-instructions --no-open
 ```
 
-The first argument names the fixture (omitted, it is `all-skills`; an unknown name lists
+The first argument names the fixture (omitted, it is `all`, which builds every `all-*`
+tree into one root so one launch serves all three inventories; an unknown name lists
 the available ones), and everything after it is passed to the CLI verbatim. Each launch
 replaces that fixture's previous tree, so edits made while browsing never leak into the
 next one, and the tree stays on disk afterwards for inspection. The launcher selects the

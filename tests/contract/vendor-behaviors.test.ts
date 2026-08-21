@@ -659,3 +659,23 @@ describe('the Copilot skill behaviors and strategies (T158)', () => {
     }
   });
 });
+
+describe('the Copilot Cloud MCP behavior (T378)', () => {
+  it('ships as an origin-file-less fact no rule or exclusion references yet', () => {
+    // The behavior records hosted sources — out-of-box, custom-agent, and
+    // repository-settings MCP — so its locator names no file, and nothing in
+    // the shipped rule catalog is based on it: the future
+    // `shared.excluded.managed-remote-state` exclusion arrives with the
+    // Global phase that owns it and must find this record already here.
+    const behavior = VENDOR_BEHAVIOR_STATEMENTS['copilot.behavior.cloud.mcp'];
+    expect(behavior.locator?.relativeSelector).toBeNull();
+    expect(behavior.locator?.lookupBase).toBe('hosted-state');
+    expect(behavior.documentationStatus).toBe('documented');
+    expect(behavior.evidence.map((citation) => citation.sourceId)).toEqual([
+      'github.copilot.custom-agents',
+    ]);
+    for (const relations of Object.values(RULE_RELATIONS)) {
+      expect(relations.basedOnBehaviors).not.toContain(behavior);
+    }
+  });
+});

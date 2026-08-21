@@ -4,14 +4,13 @@
 // surfaces — is a recognition fact, compared per tool so each recognition
 // stays distinguishable from the physical file (US3 scenario 2). The
 // declared metadata is the file's one scan-time parse for the kind (FR-028),
-// so its declarations are matched by `(kind, declared key)` across the pair
-// and compared once — a tool is not a coordinate of a declaration, and
-// rendering the same file-level rows under each recognizing tool would
-// publish one fact as many. This module is the data half, kept out of the
-// component so the decisions are testable without a single-file-component
-// compiler. What a declared key is and when two resolved values are equal
-// lives in the shared declaration semantics
-// (`../inspection/declaration-comparison.ts`).
+// so it is compared once — a tool is not a coordinate of a declaration, and
+// rendering the same file-level fact under each recognizing tool would
+// publish one fact as many: each side's frontmatter serializes to one
+// canonical YAML document, every key sorted, and the two documents are what
+// Monaco diffs (research.md § 7, frontmatter-yaml.ts). This module is the
+// data half, kept out of the component so the decisions are testable
+// without a single-file-component compiler.
 //
 // The instruction kind's model differs from the skill one in two typed
 // facts, which is why this is its own module rather than a widening
@@ -21,15 +20,12 @@
 // an absent side: an instruction comparison is exactly two committed files.
 //
 // The comparison is literal and descriptive by construction (FR-012): it
-// states which recognitions exist, which surfaces they rest on, and how the
-// files' declarations compare, and its closed shape carries no rank, no
-// winner, and no fabricated rows — relationships in particular, because an
+// states which recognitions exist, which surfaces they rest on, and what
+// each side's frontmatter serializes to, and its closed shape carries no
+// rank, no winner, and no fabricated rows — relationships in particular, because an
 // instruction file never publishes an edge for the wire to carry
 // (api-types.ts § FileDetailDto, tasks.md T217/T238).
-import {
-  matchDeclarations,
-  type DeclarationComparisonRow,
-} from '../inspection/declaration-comparison';
+import { canonicalFrontmatterYamlText } from '../inspection/frontmatter-yaml';
 import { SUPPORTED_TOOL_ORDER, type SupportedTool } from '../../../shared/entities';
 import type {
   FileDetailDto,
@@ -88,12 +84,12 @@ export const INSTRUCTION_RECOGNITION_SIDE_STATE_TEXT: Readonly<
  * only committed instruction files.
  */
 export type InstructionDeclarationSideState =
-  /** An instruction detail with a parsed presentation: its declarations are the rows'. */
+  /** An instruction detail with a parsed presentation: its declarations serialize into the diff. */
   | 'parsed'
   /**
    * A detail without a parsed presentation: the all-or-nothing extraction
    * failed, so the declarations are unknown, not absent (FR-028), and
-   * nothing is matched against them.
+   * this side serializes nothing.
    */
   | 'extraction-failed';
 
@@ -101,12 +97,12 @@ export type InstructionDeclarationSideState =
  * What a side's declaration state reads as after its "First file"/"Second
  * file" label, beside its union so a new member cannot compile without its
  * sentence (AGENTS.md § User-visible copy policy). 'parsed' yields no
- * sentence: the rows are a parsed side's statement.
+ * sentence: the serialized diff is a parsed side's statement.
  */
 export const INSTRUCTION_DECLARATION_SIDE_STATE_TEXT: Readonly<
   Record<InstructionDeclarationSideState, string>
 > = {
-  /** The rows are this side's statement; no sentence stands in for them. */
+  /** The serialized diff is this side's statement; no sentence stands in for it. */
   parsed: '',
   /** The declarations are unknown, not absent (FR-028). */
   'extraction-failed':
@@ -165,9 +161,9 @@ export class InstructionToolRecognitionRow {
 
 /**
  * The recognition-metadata comparison of one instruction pair (FR-011): the
- * per-tool recognition rows, each side's declaration state, and the matched
- * declared keys of the files' parses — built once for the pair, because the
- * declarations are the files' rather than any recognition's.
+ * per-tool recognition rows, each side's declaration state, and the canonical
+ * serialized document each side's parse becomes — built once for the pair,
+ * because the declarations are the files' rather than any recognition's.
  *
  * A class whose constructor derives the whole comparison from the two sides
  * (AGENTS.md § Class and interface policy).
@@ -188,15 +184,20 @@ export class InstructionRecognitionComparison {
   public readonly rightDeclarations: InstructionDeclarationSideState;
 
   /**
-   * The matched declared keys, one row per key identity: the first file's
-   * keys in authored order, then keys only the second file declares, in its
-   * order — see {@link DeclarationComparisonRow}. Empty unless both sides
-   * are 'parsed', because an unparsed side's declarations are unknown and
-   * nothing may be matched against them (FR-028).
+   * The two canonical YAML documents the frontmatter diff mounts — every
+   * key sorted, with no leading identity pair, because an instruction file
+   * declares no identity this product reads — or null unless both sides are
+   * 'parsed': an unparsed side's declarations are unknown, and nothing may
+   * be diffed against them (FR-028).
    */
-  public readonly declarations: readonly DeclarationComparisonRow[];
+  public readonly frontmatterDiff: {
+    /** The first side's canonical document (frontmatter-yaml.ts). */
+    readonly originalText: string;
+    /** The second side's canonical document. */
+    readonly modifiedText: string;
+  } | null;
 
-  /** Derives the pair's recognition rows, declaration states, and matched keys. */
+  /** Derives the pair's recognition rows, declaration states, and diff documents. */
   public constructor(left: InstructionComparisonSideInput, right: InstructionComparisonSideInput) {
     const tools: InstructionToolRecognitionRow[] = [];
     for (const tool of SUPPORTED_TOOL_ORDER) {
@@ -210,10 +211,13 @@ export class InstructionRecognitionComparison {
     this.tools = tools;
     this.leftDeclarations = declarationState(left);
     this.rightDeclarations = declarationState(right);
-    this.declarations =
+    this.frontmatterDiff =
       this.leftDeclarations === 'parsed' && this.rightDeclarations === 'parsed'
-        ? matchDeclarations(entriesOf(left), entriesOf(right))
-        : [];
+        ? {
+            originalText: canonicalFrontmatterYamlText(entriesOf(left), []),
+            modifiedText: canonicalFrontmatterYamlText(entriesOf(right), []),
+          }
+        : null;
   }
 }
 

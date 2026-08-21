@@ -1027,6 +1027,29 @@
     ]
   },
   {
+    "behaviorId": "copilot.behavior.cloud.mcp",
+    "tool": "copilot",
+    "surfaces": ["copilot-cloud"],
+    "locator": {
+      "vendorScope": "hosted-managed",
+      "lookupBase": "hosted-state",
+      "relativeSelector": null,
+      "traversal": "none"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.custom-agents",
+        "url": "https://docs.github.com/en/copilot/reference/custom-agents-configuration",
+        "officialHost": "docs.github.com",
+        "sections": ["MCP server configuration details", "MCP server configurations"],
+        "reviewedOn": "2026-08-20",
+        "establishes": "A custom agent profile declares MCP servers through its mcp-servers property - the YAML representation of the repository MCP configuration format - and the cloud agent processes out-of-the-box configurations first, then the custom agent configuration, then repository settings, each level able to override the previous."
+      }
+    ]
+  },
+  {
     "behaviorId": "copilot.behavior.cloud.organization-instructions",
     "tool": "copilot",
     "surfaces": ["copilot-cloud"],

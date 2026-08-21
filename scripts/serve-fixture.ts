@@ -13,6 +13,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
+  buildAllCustomizationKindFixture,
   buildAllToolSkillFixture,
   buildAllVendorInstructionFixture,
   buildClaudeInstructionFixture,
@@ -24,6 +25,8 @@ import {
   buildCopilotCliMcpFixture,
   buildCopilotInstructionFixture,
   buildCopilotSkillFixture,
+  buildCopilotVscodeMcpFixture,
+  buildPriorityMcpFixture,
 } from '../tests/fixtures/repositories/build-fixtures.ts';
 
 /** The repository root, one directory above this script. */
@@ -52,12 +55,16 @@ const fixtureBuilders: Readonly<Record<string, (prefix?: string, root?: string) 
   'codex-mcp': buildCodexMcpFixture,
   'claude-mcp': buildClaudeMcpFixture,
   'copilot-cli-mcp': buildCopilotCliMcpFixture,
+  'copilot-vscode-mcp': buildCopilotVscodeMcpFixture,
+  'all-mcp': buildPriorityMcpFixture,
   'claude-instructions': buildClaudeInstructionFixture,
   'copilot-instructions': buildCopilotInstructionFixture,
   'all-instructions': buildAllVendorInstructionFixture,
+  // Every `all-*` tree in one root, so one launch shows all three inventories.
+  all: buildAllCustomizationKindFixture,
 };
 
-const requestedName = process.argv[2] ?? 'all-skills';
+const requestedName = process.argv[2] ?? 'all';
 // Everything after the fixture name goes to the CLI verbatim (e.g. --no-open).
 const cliArguments = process.argv.slice(3);
 

@@ -116,6 +116,8 @@ export type CopilotBehaviorId =
   | 'copilot.behavior.cloud.instructions.path'
   /** Copilot cloud agent repository-wide `.github/copilot-instructions.md` at the repository root. */
   | 'copilot.behavior.cloud.instructions.repository'
+  /** Copilot cloud agent hosted MCP configuration: out-of-box, custom-agent, then repository-settings sources; no filesystem locator. */
+  | 'copilot.behavior.cloud.mcp'
   /** Copilot cloud agent's hosted organization instructions; no filesystem locator. */
   | 'copilot.behavior.cloud.organization-instructions'
   /** Copilot cloud agent's hosted remote-skill relay; no filesystem locator. */
@@ -217,7 +219,7 @@ export type GitHubSourceId =
   | 'github.copilot.instructions.support'
   /** The Copilot agent-skills page: cloud skill discovery, usage, and shared skills. */
   | 'github.copilot.skills'
-  /** The custom-agents configuration reference: the shared agent profile format, contained MCP included. */
+  /** The custom-agents configuration reference: the shared agent profile format, its `mcp-servers` field included. */
   | 'github.copilot.custom-agents';
 
 /**
@@ -290,6 +292,8 @@ export type CopilotStrategyId =
   | 'copilot.cli.skills.selection'
   /** Copilot cloud instruction layering, Repository before organization. */
   | 'copilot.cloud.instructions.layering'
+  /** Copilot cloud hosted MCP selection: out-of-box, custom-agent, then repository-settings, later sources overriding. */
+  | 'copilot.cloud.mcp.selection'
   /** Copilot cloud progressive skill loading with unresolved collision behavior. */
   | 'copilot.cloud.skills.selection'
   /** Copilot VS Code MCP selection with the 1.118/current-guide location conflict and unknown total order. */

@@ -98,10 +98,12 @@ test.describe('the complete literal Copilot CLI MCP file detail', () => {
     // Never the process value a same-named variable carries: the reference is
     // authored text, resolved against nothing.
     expect(text).not.toContain(ENVIRONMENT_SENTINEL);
-    // No raw source display (FR-007): the declaration renders as a
-    // declaration, and the carrier's JSON spelling reaches no surface.
+    // No raw source display (FR-007): what renders is the declaration's
+    // own serialized JSON document, never the carrier's source — so the
+    // bare-schema wrapper level is absent: no key spells the declared name,
+    // and no sibling declaration rides along.
     expect(text).not.toContain('"gh-actions"');
-    expect(text).not.toContain('"command"');
+    expect(text).not.toContain('docs-http');
     // No masking, reveal, or connection control anywhere on the page.
     await expect(page.getByRole('button', { name: /mask|reveal|show|hide/iu })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /connect|start|test/iu })).toHaveCount(0);

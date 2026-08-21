@@ -1,35 +1,19 @@
 <script setup lang="ts">
 // Skill recognition-metadata comparison (T198; FR-011, FR-012). The data
-// decisions — which tools recognize which side, which declared keys match,
-// what "equal" means — live in `recognition-comparison.ts`; this component
-// only draws the comparison it is given, as its two facts: the per-tool
-// recognition rows, and the files' declared metadata compared once — the
-// declarations are the file's one parse for the kind, so no tool captions
-// them (research.md § 7).
+// decisions — which tools recognize which side, what each side's frontmatter
+// serializes to — live in `recognition-comparison.ts`; this component only
+// draws the comparison it is given, as its two facts: the per-tool
+// recognition rows, and the files' frontmatter serialized to two canonical
+// YAML documents and diffed in Monaco — the declarations are the file's one
+// parse for the kind, so no tool captions them (research.md § 7,
+// frontmatter-yaml.ts).
 //
-// Every value is rendered through the same value components the skill detail
-// uses, so a resolved value looks the same wherever it is shown, and through
-// Vue text bindings only: nothing here is markup, a link, or a URI, and no
-// value is masked, shortened, or reflowed (FR-025, FR-033). The rows state
-// literal facts — recognized, not recognized, declared, not declared, same
-// resolved value, different resolved values — and no row ranks, orders, or
-// prefers either file (FR-012).
-import DeclarationBlock from '../inspection/DeclarationBlock.vue';
-import DeclaredValueText from '../inspection/DeclaredValueText.vue';
-import {
-  CUSTOMIZATION_KIND_TEXT,
-  SUPPORTED_TOOL_TEXT,
-  encodeRootPresentation,
-  rendersNothingVisible,
-} from '../../../shared/entities';
-import { DECLARED_KEY_KIND_TEXT } from '../../../shared/api-text';
-// The row-drawing rules are the declaration semantics' own (FR-025), shared
-// with every surface that renders a matched declared key, so the two
-// comparison components cannot drift apart in how a key or value reads.
-import {
-  declarationRowHeaderLabel as rowHeaderLabel,
-  valueOpensBlock as opensBlock,
-} from '../inspection/declaration-comparison';
+// The rows state literal facts — recognized, not recognized — and the diff
+// states the serialized documents exactly: nothing here is markup, a link,
+// or a URI, and no value is masked, shortened, or reflowed (FR-025,
+// FR-033); no row or side ranks, orders, or prefers either file (FR-012).
+import SourceDiff from './SourceDiff.vue';
+import { CUSTOMIZATION_KIND_TEXT, SUPPORTED_TOOL_TEXT } from '../../../shared/entities';
 import {
   DECLARATION_SIDE_STATE_TEXT,
   RECOGNITION_SIDE_STATE_TEXT,
@@ -37,24 +21,13 @@ import {
 } from './recognition-comparison';
 
 defineProps<{
-  /** The built comparison — recognition rows and matched keys; see the data module. */
+  /** The built comparison — recognition rows and diff documents; see the data module. */
   comparison: SkillRecognitionComparison;
+  /** The first compared file's Source-relative Path: the diff side's label (FR-030). */
+  leftPath: string;
+  /** The second compared file's path; see {@link leftPath}. */
+  rightPath: string;
 }>();
-
-/**
- * Whether the declaration match ran and found nothing to row: every present
- * side parsed, and no key exists on either. Without this sentence the
- * section would be a bare heading — the state sentences speak only for
- * unparsed or unrecognized sides, and the table only for matched keys.
- */
-function declaresNoKeys(comparison: SkillRecognitionComparison): boolean {
-  const states = [comparison.leftDeclarations, comparison.rightDeclarations];
-  return (
-    comparison.declarations.length === 0 &&
-    states.every((state) => state === 'parsed' || state === 'file-absent') &&
-    states.some((state) => state === 'parsed')
-  );
-}
 </script>
 
 <template>
@@ -102,99 +75,36 @@ function declaresNoKeys(comparison: SkillRecognitionComparison): boolean {
              are the file's one scan-time parse for the kind (FR-028), so
              they are compared once, under no tool caption (research.md
              § 7). A side without parsed declarations is stated instead of
-             being matched against (FR-028). -->
+             being diffed against (FR-028). -->
         <p v-if="DECLARATION_SIDE_STATE_TEXT[comparison.leftDeclarations] !== ''" class="aci-note">
           First file {{ DECLARATION_SIDE_STATE_TEXT[comparison.leftDeclarations] }}
         </p>
         <p v-if="DECLARATION_SIDE_STATE_TEXT[comparison.rightDeclarations] !== ''" class="aci-note">
           Second file {{ DECLARATION_SIDE_STATE_TEXT[comparison.rightDeclarations] }}
         </p>
-        <p v-if="declaresNoKeys(comparison)" class="aci-note">
-          No compared file declares a key to compare.
-        </p>
-        <!-- The matched declared keys, one row each, with both resolved values
-             in full (FR-011). A table rather than a grid of divs: the
-             relationship a screen reader needs — this key, this file's value,
-             that file's value — is exactly what table headers state.
-             `tabindex` because the table is its own horizontal scroll
-             container on a wide viewport (WCAG 2.1.1); see the source
-             fallback's scrollable boxes. -->
-        <table
-          v-if="comparison.declarations.length > 0"
-          class="aci-recognition-comparison__table"
-          tabindex="0"
-        >
-          <thead>
-            <tr>
-              <th scope="col">Declared key</th>
-              <th scope="col">First file</th>
-              <th scope="col">Second file</th>
-              <th scope="col">Resolved values</th>
-            </tr>
-          </thead>
-          <tbody>
-            <!-- Keyed by the parser's key identity — parsed type plus
-                 spelling — because two rows can share one spelling
-                 (see DeclarationComparisonRow). -->
-            <tr v-for="row in comparison.declarations" :key="`${row.keyKind}:${row.key}`">
-              <!-- The key is the parser's resolved spelling — an authored
-                   `007` is `7`, with the authored form kept by the source
-                   comparison beside these rows — shown exactly as the detail
-                   route's declaration list shows it, so one metadata fact
-                   reads the same on every surface; the whitespace-safe
-                   spelling lives in the accessible name ({@link
-                   rowHeaderLabel}). An invisible key gets the note the detail
-                   route shows (FR-025). -->
-              <th scope="row" :aria-label="rowHeaderLabel(row)">
-                <span class="aci-authored-text aci-authored-atomic">{{ row.key }}</span>
-                <!-- The invisible note carries the spelled-out form: a flat
-                     reading collapses whitespace, and two keys made of
-                     different runs of it must not read as one (FR-025). -->
-                <span v-if="row.key === '' || rendersNothingVisible(row.key)" class="aci-muted">
-                  {{
-                    row.key === ''
-                      ? '(empty key)'
-                      : `(key with no visible characters: ${encodeRootPresentation(row.key)})`
-                  }}
-                </span>
-                <!-- A key whose parsed type is not the string default is
-                     captioned with that type — the shared rendering rule that
-                     keeps a numeric `1` apart from the string `"1"` it
-                     renders like, here and in every frontmatter block
-                     (FR-025). -->
-                <span v-if="row.keyKind !== 'string'" class="aci-muted">
-                  ({{ DECLARED_KEY_KIND_TEXT[row.keyKind] }})
-                </span>
-              </th>
-              <td
-                v-for="(value, side) in [row.left, row.right]"
-                :key="side"
-                :data-label="side === 0 ? 'First file' : 'Second file'"
-              >
-                <!-- An absent-file side is not a file that declares nothing,
-                     so its cells say which it is (FR-025). An authored scalar
-                     that spells either state reads like it in a flat channel;
-                     the muted styling tells them apart visibly, and the
-                     source comparison beside these rows carries the exact
-                     truth. Matching this product's own copy against authored
-                     text would turn display wording into load-bearing
-                     syntax, and prefixing every cell with a state phrase
-                     would tax every ordinary row for this corner. -->
-                <span v-if="value === null" class="aci-muted">{{
-                  (side === 0 ? comparison.leftDeclarations : comparison.rightDeclarations) ===
-                  'file-absent'
-                    ? 'no file'
-                    : 'not declared'
-                }}</span>
-                <DeclarationBlock v-else-if="opensBlock(value)" :value="value" />
-                <DeclaredValueText v-else :value="value" />
-              </td>
-              <!-- Equality of resolved values, stated as the literal fact it
-                   is: no row says which value a product would use (FR-012). -->
-              <td data-label="Resolved values">{{ row.equal ? 'Same' : 'Differs' }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <template v-if="comparison.frontmatterDiff !== null">
+          <!-- What the diff holds, said before it: both sides are the
+               canonical serialization of the frontmatter, not the files'
+               own spellings — those stay in the source comparison above
+               (FR-007). The canonical key order is stated too, because a
+               reader comparing against their own file would otherwise read
+               the order as authored. -->
+          <p class="aci-note">
+            Each side is the file's frontmatter serialized as YAML with its keys in one canonical
+            order; the files' own spelling and key order stay in the source comparison above.
+          </p>
+          <SourceDiff
+            :original-text="comparison.frontmatterDiff.originalText"
+            :original-path="leftPath"
+            :modified-text="comparison.frontmatterDiff.modifiedText"
+            :modified-path="rightPath"
+            :original-absent="comparison.frontmatterDiff.originalAbsent"
+            :modified-absent="comparison.frontmatterDiff.modifiedAbsent"
+            content-language="yaml"
+            content-label="frontmatter of"
+            fit-content
+          />
+        </template>
       </section>
     </template>
   </div>

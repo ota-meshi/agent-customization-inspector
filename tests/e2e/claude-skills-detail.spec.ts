@@ -176,99 +176,40 @@ test('leads with the name and description, then the rest of the declarations', a
   await expect(page.locator('.aci-skill-detail__invocation-name')).toHaveText(
     'Invocation name: greet',
   );
-  // Every key the file declares, by the key the file wrote, led by the two a
-  // reader looks for first however the file ordered them.
-  const declarations = page.locator('.aci-skill-detail__declarations > .aci-declaration-block');
-  await expect(declarations.locator('> dt')).toHaveText([
-    'name',
-    'description',
-    'agent',
-    'context',
-    'api_key',
-    'allowed-tools',
-    'hooks',
-  ]);
-  await expect(declarations.locator('> dd.aci-declaration-block__value')).toHaveText([
-    'claude-greet',
-    `deploy with ${FIXTURE_SECRET} and ${FIXTURE_ENV_REFERENCE}`,
-    'reviewer',
-    'fork',
-    FIXTURE_SECRET,
-  ]);
-  // The nested declarations are read out too, by the keys the file wrote. A
-  // mapping's keys are the terms of a description list; a list's items are not
-  // terms at all, so its markers are asserted separately below.
-  await expect(
-    page.locator('.aci-skill-detail__declarations dl.aci-declaration-block dt'),
-  ).toContainText([
-    'name',
-    'description',
-    'agent',
-    'context',
-    'api_key',
-    'allowed-tools',
-    'hooks',
-    'PostToolUse',
-    'matcher',
-    'hooks',
-    'command',
-  ]);
-  // A sequence is an ordered list, so each item is a list item rather than a
-  // description of the term above it.
-  const lists = page.locator('.aci-skill-detail__declarations ol.aci-declaration-block');
-  await expect(lists.first()).toHaveAttribute('role', 'list');
-  await expect(lists.first().locator('> li')).toHaveCount(2);
+  // Every key the file declares, as one YAML document in the read-only
+  // viewer, led by the two a reader looks for first however the file
+  // ordered them (FR-007).
+  const declarations = page.locator('.aci-skill-detail__declarations');
+  await expect(declarations).toContainText('name: claude-greet');
+  await expect(declarations).toContainText(FIXTURE_SECRET);
+  await expect(declarations).toContainText(FIXTURE_ENV_REFERENCE);
+  const text = await declarations.innerText();
+  expect(text.indexOf('name:')).toBeGreaterThan(-1);
+  expect(text.indexOf('name:')).toBeLessThan(text.indexOf('description:'));
+  expect(text.indexOf('description:')).toBeLessThan(text.indexOf('agent:'));
+  // The nested declarations are part of the same document, by the keys the
+  // file wrote — the hooks mapping and the sequence items among them.
+  await expect(declarations).toContainText('PostToolUse');
+  await expect(declarations).toContainText('matcher');
+  await expect(declarations).toContainText('command');
+  await expect(declarations).toContainText('allowed-tools');
 });
 
-test('draws every declared value in one column, however deep it is', async ({ page }) => {
+test('renders the declarations as one YAML document, nothing gridded beside it', async ({
+  page,
+}) => {
   await openSkill(page, '.claude/skills/greet/SKILL.md');
-  const geometry = await page.locator('.aci-skill-detail__declarations').evaluate((region) => ({
-    valueLefts: [...region.querySelectorAll('.aci-declaration-block__value')].map(
-      (value) => value.getBoundingClientRect().left,
-    ),
-    drift: [...region.querySelectorAll('.aci-declaration-block__key')].map((key) => {
-      const value = key.nextElementSibling;
-      if (!value?.classList.contains('aci-declaration-block__value')) {
-        return 0;
-      }
-      // A zero-height inline-block sits on the baseline of the line it joins,
-      // so its bottom edge is that baseline whatever font the line is set in.
-      // The bottom of the text's own rectangle is not: it carries the font's
-      // descent, which differs between the key and the larger value even when
-      // the two are aligned exactly.
-      const baselineOf = (element: Element): number => {
-        const probe = document.createElement('span');
-        probe.style.cssText = 'display:inline-block;width:0;height:0';
-        element.prepend(probe);
-        const bottom = probe.getBoundingClientRect().bottom;
-        probe.remove();
-        return bottom;
-      };
-      return Math.abs(baselineOf(key) - baselineOf(value.firstElementChild ?? value));
-    }),
-    offscreen: [...region.querySelectorAll('.aci-declaration-block__key')].filter(
-      (key) => key.getBoundingClientRect().top < -1000,
-    ).length,
-  }));
-  // One value column for the whole tree. Each block draws in the tracks the
-  // root declared, so a value four levels down starts where a top-level value
-  // starts; a block with tracks of its own would give the reader one value
-  // column per level to follow.
-  expect(geometry.valueLefts.length).toBeGreaterThan(5);
-  expect(new Set(geometry.valueLefts).size).toBe(1);
-  // A key and its value are one statement, so they sit on one line. The key is
-  // set smaller than the value it labels, so anything but a shared baseline
-  // leaves it riding above the value — visible on every row at once, which
-  // reads as the column being crooked rather than as the type sizes differing.
-  for (const drift of geometry.drift) {
-    expect(drift).toBeLessThan(1);
-  }
-  // The baseline is asked for per item, never as a block's `align-items`: a
-  // nested block is a grid item and it is a subgrid, and baseline-aligning one
-  // resolves to an offset near the minimum layout unit — the block lands
-  // millions of pixels above the viewport and reads as empty space, with every
-  // assertion above still passing.
-  expect(geometry.offscreen).toBe(0);
+  // One document in one viewer: the declaration grid is gone, so no second
+  // rendering of a declared value exists on the page (FR-007), and the
+  // nested hooks structure reads as YAML indentation inside the same box.
+  const declarations = page.locator('.aci-skill-detail__declarations');
+  await expect(declarations.locator('.aci-source-viewer')).toHaveCount(1);
+  await expect(declarations.locator('.aci-declaration-block')).toHaveCount(0);
+  await expect(declarations).toContainText('hooks:');
+  const fits = await page.evaluate(
+    () => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1,
+  );
+  expect(fits).toBe(true);
 });
 
 test('opens a nested skill as itself, not as the skill whose census lists it', async ({ page }) => {

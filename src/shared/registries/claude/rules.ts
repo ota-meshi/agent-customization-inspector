@@ -228,11 +228,11 @@ const CLAUDE_REPO_MCP_MATCHER: StructuredInspectorMatcher = {
  * declarations, and managed configuration are different Source boundaries no
  * Repository rule may read; their statements exist as non-authorizing
  * behavior records, and the exclusions that name them ship with the Global
- * phase that owns them (FR-016, FR-018). Declarations contained in an
- * accepted documented owner file — an agent, a plugin manifest, a settings
- * file, once their phases admit them — are metadata on that candidate and
- * create no filesystem matcher here; a skill is never such an owner, because
- * Claude documents no `mcpServers` skill-frontmatter field.
+ * phase that owns them (FR-016, FR-018). Only explicit MCP configuration
+ * joins the MCP surfaces: a file of another
+ * kind that spells MCP-looking configuration — a skill, an agent, a
+ * settings file — is that kind's ordinary content, shown in its own detail,
+ * and creates no filesystem matcher here.
  */
 export const CLAUDE_REPO_MCP_RULE = {
   ruleId: 'claude.repo.mcp',

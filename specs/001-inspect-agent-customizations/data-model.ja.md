@@ -951,7 +951,7 @@ substituteしない。
 | Kind | 1 rowが示す単位 |
 |---|---|
 | `skill` | 1つのtoolが解決した1つの名前（FR-007）: authoredなfrontmatter `name` — fileが宣言しない場合はskill directory名 — であり、nestedなskillのClaude Code recognitionはこれにroot相対のprefixを前置する。定義は1つのrecognition — `(file, tool)`につき1つ — であるため、1つの名前に解決される複数fileは1 entryが各recognitionを定義として列挙し、toolごとに異なる名前へ解決される1つのfileは各名前のentryで定義される |
-| `MCP` | 宣言されたserver名1つ: その名前を解決するすべての`[mcp_servers.*]`型宣言 — `(carrier, tool)`ごとに1つ — がその名前のrowの中に列挙される。したがって1つの`.codex/config.toml`は宣言したserverごとに宣言を1つ寄与し、同じ名前を宣言する第2のcarrierはその名前のrowに合流する。宣言の住処はstandalone carrierか、自身の内容に宣言を含むadmit済みowner file — 文書化されたowner family（agent file、plugin manifest、settings file）のいずれかで、どれもまだruleがadmitしていない — であり、どちらの住処も同一の形でその名前のrowに合流し、各宣言は自身のfileを名指す。nameがnullである1つのrowがlistを閉じ、現在named宣言を公開していないcarrier — rowが不明である読めない宣言block、または何も宣言しないcarrier — を保持する |
+| `MCP` | 宣言されたserver名1つ: その名前を解決するすべての`[mcp_servers.*]`型宣言 — `(carrier, tool)`ごとに1つ — がその名前のrowの中に列挙される。したがって1つの`.codex/config.toml`は宣言したserverごとに宣言を1つ寄与し、同じ名前を宣言する第2のcarrierはその名前のrowに合流する。宣言の住処は明示的なcarrierだけである: 他のkindのfileが自身の内容にMCP風のconfigurationを綴っても — skillやagentのfrontmatter、settings fileのinline map — それはそのkindの通常のcontentであり、そのfile自身のdetailに見えるだけで、MCP rowには合流しない。各宣言は自身のfileを名指す。nameがnullである1つのrowがlistを閉じ、現在named宣言を公開していないcarrier — rowが不明である読めない宣言block、または何も宣言しないcarrier — を保持する |
 | `instructions` | 1つの適用範囲: 担当するfile自身のpathが導出するglobであり、担当する各fileをそのfileのrecognitionとともに列挙する — 各recognitionは1つのproductと、そのfileをadmitしたruleが依拠するdocumented behaviorのsurfaceである。toolだけでは、productがそのfileをどこから読むのかを言えないためである |
 | `settings/config` | File自身 |
 
@@ -1055,7 +1055,7 @@ Instruction recognitionのdetailsは同じ1回のparse — 書かれた順の宣
 
 Recognitionは一覧rowではない。Rowの単位はkind自身のものであり（§ 一覧の単位）、各kindの一覧はfileごとの
 summaryとして公開されるのではなく、これらのrecordから組み立てられる: skillのrowはrecordを各toolが
-解決した名前でgroupingし（§ 一覧の単位）、MCP carrierの宣言は宣言されたserver名でgroupingされ、全carrierを通じて名前ごとに1 rowになる。含有MCP宣言は、すでにadmitされたowner file上のもう1つのrecognitionである — 同じ`(file, tool, MCP)` record shapeで、owner自身のadmissionをprovenanceとして運ぶ — のであって、宣言ごとのsynthetic candidateでは決してない。Owner familyは文書化されたもの — agentのfrontmatter、plugin manifest、settings file — で、どれもまだruleがadmitしておらず、今日containedなrecognitionは1つも出荷されない。Skillは決してownerにならない: Claudeは`mcpServers`というskill-frontmatter fieldを文書化しておらず、そのkeyを綴るskillはskill recognitionだけを持つ。Named宣言を1つ以上extractionが生んだownerだけが、2つ目のrecordをそもそも持つことになる。Fileは自身のrecognition summaryを
+解決した名前でgroupingし（§ 一覧の単位）、MCP carrierの宣言は宣言されたserver名でgroupingされ、全carrierを通じて名前ごとに1 rowになる。MCP kindのrecognitionは明示的なcarrier ruleだけから生まれる: 他のkindのfileが自身の内容にMCP風のconfigurationを綴っても — skillやagentのfrontmatter、settings fileのinline map — そのfileはそのkindのrecognitionだけを持ち、configurationはそのfile自身のdetailに書かれた宣言として見えるだけで、どのMCP rowにも合流しない。Fileは自身のrecognition summaryを
 公開しないため、1 recordを裏づけるadmission数を述べる必要もない。Admissionはどのruleが読み取りを認可し
 どこで一致したかを述べる。カスタマイズがどこに適用されるか、そのruleがどこまで文書化されているかは
 admissionに載せない。どちらもsurfaceが示さないからである。
@@ -1121,7 +1121,7 @@ classify、retry、recoverしない。Triggerを所有するboundaryへpropagate
 generation resultを作らず、session API boundaryがtriggerを所有する場合はfailed requestのerrorとして通常どおり報告する。
 
 Recognitionはclosed tool順`copilot`、`claude`、`codex`、次に表記載のkind順でsortし、opaque IDを使わない。
-File間metadata comparisonは`(kind, 宣言key)`を使う。frontmatter宣言はfileの認識Markdown kindに対する1回のparseであってtoolは宣言の座標ではなく — tool recognitionはtoolごとに宣言の横で比較する — 宣言keyが一致するだけで別kindが衝突することはない。MCP kindの宣言は各recognizing tool自身のreading（§ Field reading）であり、file間metadata comparisonには一切参加しない。
+File間のdeclaration comparisonは、sideごとに1つのcanonical serialized documentをMonacoでdiffする（research.md § 7）。frontmatter宣言はfileの認識Markdown kindに対する1回のparseであってtoolは宣言の座標ではなく — tool recognitionはdiffの横のtypedなrowでtoolごとに比較する — 各sideはYAMLへserializeし、skill comparisonは`name`と`description`を先頭にそれ以外のkeyをsort順で、instruction comparisonは全keyをsort順で並べる。MCP kindの宣言は各recognizing tool自身のreading（§ Field reading）であり、その比較surfaceは宣言済みserver名自身のもの — 1つの名前のdeclarationをその行の2つのcarrierそれぞれから取り、sideごとに1つのcanonical JSON documentへserializeしてMonacoでdiffする — で、通常の`get-mcp-carrier-detail` read 2件を通じてloadされる（§ BrowserState · ComparisonSelection）。いずれのdetailも自身のdeclaration contentを同じserialized documentとして、fileが書いたkey順のまま表示する（FR-007）。
 
 ### Field reading
 
@@ -1137,7 +1137,13 @@ recognitionに失敗する。YAML schemaの下ではさらにaliasが指す先�
 担っていたscalarを残す。いずれも
 拒否しない。scalarはplatform自身のstring変換でrenderするため、その変換が綴らない区別 —
 signed zeroは`0`とrenderされる — はplatformの解決をそのまま受け入れたものであり、platformの
-integer的keyの列挙順の受容とまったく同じである。これはInspector自身のreadingとして述べるのであって、vendorのruntimeが持つ値の主張ではない:
+integer的keyの列挙順の受容とまったく同じである。parsed kind — string、number、boolean — は
+rendered textの横に公開する（`DeclaredScalarKind`）。renderingだけでは`7`がnumberだったのか
+quoted stringだったのか言えず、serializeするsurfaceは各scalarをこのkindで綴るからである
+（research.md § 7）。kindとtextの組はraw解決値のJSON-safeなencodingである: raw値そのものはJSON
+wireに載せられない — `NaN`とinfinityにはJSON値がなく、TOMLの64bit整数はdoubleを溢れる — が、
+この組は値が必要な場所でtextに対する`Number`または`BigInt`で正確にdecodeし戻せる。datetimeなどの
+host-object scalarは`string`として公開する: ISO renderingがそのspellingである。これはInspector自身のreadingとして述べるのであって、vendorのruntimeが持つ値の主張ではない:
 vendorはfieldごとにさらにcoerceし得る — Claude Codeはbooleanなfrontmatter fieldで`yes`をtrueと読むが、
 core schemaは文字列`yes`を残す — し、製品が値をどう扱うかはこのtoolが観測しないruntimeである（FR-009）。
 Inspectorはその間に立つvalidatorでもない。kindがsourceをserveするfile — skill、instruction file、census
@@ -1182,8 +1188,10 @@ authoredな`name`がdirectoryと異なるrootの`.claude` skillは、Copilotに�
 row名として見え続ける — で、Claude Codeには自身の定義のpageがその傍らに示すdirectory由来の
 commandで呼び出される。公開値はprojectionのものであり、
 clientはvendor namingを再導出せず公開値を描画する。
-その下に2つのtab — skill自身と、そのfile — を置く。Skill tabはfrontmatterが宣言する全keyを、fileの記述順に
-かかわらず`name`と`description`を先頭にして列挙し、続いてそのblockを取り除いた指示を置く。File tabは
+その下に2つのtab — skill自身と、そのfile — を置く。Skill tabはfrontmatterが宣言する全keyを1つのYAML documentとしてread-only viewerで提示し —
+fileの記述順にかかわらず`name`と`description`を先頭に、それ以外のkeyはfileの順のまま。
+blockそのものの言語なので、読み手は自分のfileと変換なしに比較し、変換なしにcopyできる
+（FR-007）— 続いてそのblockを取り除いた指示を置く。File tabは
 directoryと、開いているfileの完全なauthored `sourceText`を持ち、そこがすべてのauthored spellingの
 読める場所である。1列ではなく2 tabとするのは、これらが2つの主題だからであり、積み重ねるとdirectoryが
 skillの宣言と指示のすべての下に沈むからである。
@@ -1379,11 +1387,19 @@ readable-directory admissionだけが判定し、後のNode.js/OS rejectionは�
   保持する2つのfileの`sourceRelativePath` identityを名指す — skillの前例が確立した、行が所有するペアであり、
   skill名の行の位置にrange行が立つ。fileはちょうど1つのrangeを統治するため、所有する行は2つのidentityから
   導出される — 。0件またはreadableなfile 2つへ解決される: instruction fileはそれ自体で完結するため、
-  どちらの側も明示された不在にはならず、単一の行が保持しないペアは比較されずに報告される。Cross-source comparisonは常に各sourceの最後に
-  commit済みstateを比較する。ペアは通常の`FileDetail` request 2件で、片側のskill comparisonは1件でloadする — 不在はrequestを
+  どちらの側も明示された不在にはならず、単一の行が保持しないペアは比較されずに報告される。MCP routeは
+  1つの宣言済みserver名 — このkindのrow unit — と、current generationのその名前の行が保持する2つの
+  carrierの`sourceRelativePath` identityを名指す。名指された行の外にあるselectionは — currentなどの行でも
+  ない名前を含めて — 比較されずに報告される。そのペアは通常の`get-mcp-carrier-detail` read 2件でloadし、
+  Monacoがdiffするのは、名指されたserverに対する各sideのdeclarationを1つのcanonical JSON documentへ
+  serializeしたものである（research.md § 7）: carrier同士はsyntaxを共有するとは限らず、carrierはbytesを
+  どこにも表示しない（FR-007）ため、serializationが両sideを読める唯一のspellingである。Cross-source comparisonは常に各sourceの最後に
+  commit済みstateを比較する。fileのペアは通常の`FileDetail` request 2件で、片側のskill comparisonは1件でloadする — 不在はrequestを
   要しない — 。MonacoはcompleteなsourceText同士を比較し、不在側は空として、存在する側の内容を行ごとにそれ自体が
   差分として描画する。Credential-like stringやenvironment referenceを含むliteralな差を表示する。
-- `EditorModelState`: Opaqueなin-memory URIと完全なauthored `sourceText`を持つgeneration-scoped Monaco model。
+- `EditorModelState`: Opaqueなin-memory URIと完全なauthored `sourceText` — MCP comparisonでは、宣言済み
+  値を完全に運び同じruleでpurgeされる、1つのdeclarationのparsed entryのcanonical JSON serialization — を持つ
+  generation-scoped Monaco model。
   所有editor、subscription、全modelはroute close、selection replacement、file removal、source disable、
   所属sequenceのgeneration変更時に個別にdisposeする。
 - Sensitive-contentに関するstateは一切存在しない。acknowledged flagも、注意書きも、`FileDetail` requestや

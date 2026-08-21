@@ -28,6 +28,7 @@ import {
   COPILOT_CLI_USER_MCP_BEHAVIOR,
   COPILOT_CLI_USER_SKILLS_BEHAVIOR,
   COPILOT_CLOUD_INSTRUCTIONS_AGENTS_BEHAVIOR,
+  COPILOT_CLOUD_MCP_BEHAVIOR,
   COPILOT_CLOUD_INSTRUCTIONS_ALTERNATIVES_BEHAVIOR,
   COPILOT_CLOUD_INSTRUCTIONS_PATH_BEHAVIOR,
   COPILOT_CLOUD_INSTRUCTIONS_REPOSITORY_BEHAVIOR,
@@ -65,6 +66,7 @@ import {
   COPILOT_CLI_MCP_SELECTION_STRATEGY,
   COPILOT_CLI_SKILLS_SELECTION_STRATEGY,
   COPILOT_CLOUD_INSTRUCTIONS_LAYERING_STRATEGY,
+  COPILOT_CLOUD_MCP_SELECTION_STRATEGY,
   COPILOT_CLOUD_SKILLS_SELECTION_STRATEGY,
   COPILOT_VSCODE_INSTRUCTIONS_LAYERING_STRATEGY,
   COPILOT_VSCODE_MCP_SELECTION_STRATEGY,
@@ -151,6 +153,15 @@ export const COPILOT_STRATEGY_RELATIONS: Readonly<Record<CopilotStrategyId, Stra
       COPILOT_CLI_SKILLS_BEHAVIOR,
       COPILOT_CLI_USER_SKILLS_BEHAVIOR,
     ],
+  },
+  /**
+   * Cloud MCP selection composes the one hosted behavior: the out-of-box,
+   * custom-agent, and repository-settings sources are that record's own
+   * documented inputs, and none of them is a local file another behavior
+   * could state (contracts/runtime-composition.md).
+   */
+  [COPILOT_CLOUD_MCP_SELECTION_STRATEGY.strategyId]: {
+    consumesBehaviors: [COPILOT_CLOUD_MCP_BEHAVIOR],
   },
   /**
    * Cloud selection composes the repository skills and the hosted remote

@@ -223,13 +223,13 @@ describe('the JSON-family document seams (T371 parsing seam)', () => {
       ['{', '  // stdio server', '  "a": 1,', '  /* block */ "b": [true, null],', '}'].join('\n'),
     );
     expect(document.entries).toEqual([
-      { key: 'a', keyKind: 'string', value: { kind: 'scalar', text: '1' } },
+      { key: 'a', keyKind: 'string', value: { kind: 'scalar', scalarKind: 'number', text: '1' } },
       {
         key: 'b',
         keyKind: 'string',
         value: {
           kind: 'sequence',
-          items: [{ kind: 'scalar', text: 'true' }, { kind: 'absent' }],
+          items: [{ kind: 'scalar', scalarKind: 'boolean', text: 'true' }, { kind: 'absent' }],
         },
       },
     ]);
@@ -247,8 +247,7 @@ describe('the JSON-family document seams (T371 parsing seam)', () => {
   it("renders entries in the parser's resolved order, the platform enumeration included", () => {
     // A plain parsed object enumerates integer-like keys first in numeric
     // order whatever the file's spelling ordered — a JavaScript property of
-    // every parsed object, accepted rather than worked around (user
-    // decision, 2026-08-20; contracts/http-api.md § get-mcp-carrier-detail
+    // every parsed object, accepted rather than worked around (contracts/http-api.md § get-mcp-carrier-detail
     // spells the published order as the parser's). Both classes share the
     // one `JSON.parse` resolution — the JSONC class only blanks the comment
     // syntax first — so this case pins the accepted behavior for both.
@@ -280,7 +279,13 @@ describe('the JSON-family document seams (T371 parsing seam)', () => {
       expect(document.entries.map((entry) => entry.key)).toEqual(['__proto__', 'ok']);
       expect(document.entries[0]!.value).toEqual({
         kind: 'mapping',
-        entries: [{ key: 'command', keyKind: 'string', value: { kind: 'scalar', text: 'x' } }],
+        entries: [
+          {
+            key: 'command',
+            keyKind: 'string',
+            value: { kind: 'scalar', scalarKind: 'string', text: 'x' },
+          },
+        ],
       });
     }
   });
@@ -288,31 +293,31 @@ describe('the JSON-family document seams (T371 parsing seam)', () => {
   it("keeps JSONC's duplicate-key semantics: later value, earlier place", () => {
     const document = new ParsedJsoncDocument('{ "a": 1, "b": 2, "a": 3 }');
     expect(document.entries).toEqual([
-      { key: 'a', keyKind: 'string', value: { kind: 'scalar', text: '3' } },
-      { key: 'b', keyKind: 'string', value: { kind: 'scalar', text: '2' } },
+      { key: 'a', keyKind: 'string', value: { kind: 'scalar', scalarKind: 'number', text: '3' } },
+      { key: 'b', keyKind: 'string', value: { kind: 'scalar', scalarKind: 'number', text: '2' } },
     ]);
   });
 
   it("keeps JSON.parse's duplicate-key semantics: later value, earlier place", () => {
     const document = new ParsedStrictJsonDocument('{ "a": 1, "b": 2, "a": 3 }');
     expect(document.entries).toEqual([
-      { key: 'a', keyKind: 'string', value: { kind: 'scalar', text: '3' } },
-      { key: 'b', keyKind: 'string', value: { kind: 'scalar', text: '2' } },
+      { key: 'a', keyKind: 'string', value: { kind: 'scalar', scalarKind: 'number', text: '3' } },
+      { key: 'b', keyKind: 'string', value: { kind: 'scalar', scalarKind: 'number', text: '2' } },
     ]);
   });
 
   it("renders an authored negative zero as String's 0, in every format", () => {
     // `String(-0)` is `"0"`: the renderings publish the platform's own
-    // resolution as is, with no signed-zero special case (user decision,
-    // 2026-08-20 — the same acceptance as integer-like key enumeration).
+    // resolution as is, with no signed-zero special case — the same
+    // acceptance as the integer-like key enumeration order.
     expect(new ParsedStrictJsonDocument('{ "n": -0 }').entries).toEqual([
-      { key: 'n', keyKind: 'string', value: { kind: 'scalar', text: '0' } },
+      { key: 'n', keyKind: 'string', value: { kind: 'scalar', scalarKind: 'number', text: '0' } },
     ]);
     expect(new ParsedTomlDocument('n = -0.0').entries).toEqual([
-      { key: 'n', keyKind: 'string', value: { kind: 'scalar', text: '0' } },
+      { key: 'n', keyKind: 'string', value: { kind: 'scalar', scalarKind: 'number', text: '0' } },
     ]);
     expect(declarationsOf('---\nn: -0.0\n---\n')).toEqual([
-      { key: 'n', keyKind: 'string', value: { kind: 'scalar', text: '0' } },
+      { key: 'n', keyKind: 'string', value: { kind: 'scalar', scalarKind: 'number', text: '0' } },
     ]);
   });
 

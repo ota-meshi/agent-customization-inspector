@@ -192,11 +192,23 @@ function resolveYamlKey(key: unknown): { text: string; kind: DeclaredKeyKind } {
  * displayed (FR-028).
  */
 function renderYamlValue(value: unknown, ancestors: readonly object[]): DeclaredValueDto {
-  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-    // `String` over the parsed value is the whole rendering: what it shows is
-    // the platform's own resolution — `String(-0)` is `"0"` — accepted as is,
-    // the same rule the JSON and TOML renderings apply.
-    return { kind: 'scalar', text: String(value) };
+  // The parsed kind rides beside the rendered text, because the rendering
+  // alone cannot say whether `7` was a number or a quoted string
+  // (api-types.ts § DeclaredScalarKind); one branch per kind, because
+  // TypeScript types a `typeof` expression as the full tag union whatever
+  // its operand's type is. The same rule the JSON and TOML renderings
+  // apply.
+  if (typeof value === 'string') {
+    return { kind: 'scalar', scalarKind: 'string', text: value };
+  }
+  if (typeof value === 'number') {
+    // `String` over the parsed number is the whole rendering: what it shows
+    // is the platform's own resolution — `String(-0)` is `"0"` — accepted
+    // as is.
+    return { kind: 'scalar', scalarKind: 'number', text: String(value) };
+  }
+  if (typeof value === 'boolean') {
+    return { kind: 'scalar', scalarKind: 'boolean', text: String(value) };
   }
   if (value === null || value === undefined) {
     return { kind: 'absent' };

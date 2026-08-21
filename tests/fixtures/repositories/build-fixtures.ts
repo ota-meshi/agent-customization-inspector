@@ -14,7 +14,7 @@
 // secret-bearing skill holds a literal credential-shaped string precisely so
 // a test can prove it never reaches an inventory summary, and the harness is
 // the only writer — the product must not mutate this tree (FR-023).
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
@@ -1332,7 +1332,7 @@ export interface ClaudeMcpFixture {
    * negative): Claude documents no such skill field — the documented inline
    * owners are agents, plugin manifests, and settings — so this file must
    * gain no MCP recognition however many declarations its frontmatter
-   * carries (user decision, 2026-08-20).
+   * carries.
    */
   readonly mcpFrontmatterSkillPath: string;
   /** An admitted skill declaring no MCP servers: it must gain no MCP recognition. */
@@ -1369,8 +1369,7 @@ export interface ClaudeMcpFixture {
  * malformed-command declaration that is still listed; and a non-object entry
  * omitted whole. Plus one admitted skill whose frontmatter spells
  * `mcpServers` — Claude documents no such skill field, so it must gain no
- * MCP recognition and its re-declared server name must join no row (user
- * decision, 2026-08-20).
+ * MCP recognition and its re-declared server name must join no row.
  *
  * Near misses: a descendant `packages/api/.mcp.json` (Claude reads exactly one
  * project file), spelling and location variants, the User MCP state filename
@@ -1435,7 +1434,7 @@ export function buildClaudeMcpFixture(
   // `mcpServers`. Claude documents no such skill field, so no MCP
   // recognition may attach — the re-declared `context7` provably joins no
   // row, and the credential below reaches only the skill's own detail
-  // (user decision, 2026-08-20).
+  //.
   write(
     root,
     '.claude/skills/deploy/SKILL.md',
@@ -1814,6 +1813,205 @@ export function buildCopilotVscodeMcpFixture(
       '.vscode/settings.json',
       'configs/vscode-mcp.json',
       'mcp.json',
+      'packages/api/.vscode/mcp.json',
+    ],
+  };
+}
+
+/** One built priority cross-vendor MCP fixture repository (T388). */
+export interface PriorityMcpFixture {
+  /** The absolute fixture root to scan. */
+  readonly root: string;
+  /**
+   * The shared root carrier `.mcp.json` in the CLI wrapper schema: one
+   * physical file three admissions share — Claude's project rule, the
+   * Copilot CLI's root rule, and the VS Code 1.118+ path/surface
+   * provenance — read once for all of them.
+   */
+  readonly rootCarrierPath: string;
+  /** The `.github/mcp.json` CLI carrier, in the bare top-level schema. */
+  readonly githubCarrierPath: string;
+  /** The `.vscode/mcp.json` VS Code carrier, in the JSONC `servers` schema. */
+  readonly vscodeCarrierPath: string;
+  /** The `.codex/config.toml` carrier with its `[mcp_servers.*]` tables. */
+  readonly codexCarrierPath: string;
+  /**
+   * The name all four carriers declare — the cross-vendor row this fixture
+   * exists to produce: one row grouping five declarations across every
+   * carrier and every recognizing tool, with no order projected (FR-009).
+   */
+  readonly sharedServerName: string;
+  /**
+   * The name exactly two carriers declare — the root `.mcp.json` and the
+   * Codex configuration file. The smallest row a comparison can be opened
+   * from: with two comparable carriers both already stand on the compare
+   * route's two sides, so it renders no pickers, and the declarations
+   * differ field by field so the diff shows a real difference. The two
+   * sides also walk the canonical serialization's spellings
+   * (mcp-declaration-json.ts): scrambled authored key orders that both
+   * serialize into the one canonical order, numbers and booleans rendered
+   * bare, a `007` string that keeps its quoting, and multiline notes whose
+   * newlines spell their `\n` escapes.
+   */
+  readonly pairedServerName: string;
+  /**
+   * Paths no shipped rule may admit: nested carriers of every spelling —
+   * runtime chains this product does not select — the agent, plugin, and
+   * settings files whose MCP-looking configuration is their own kind's
+   * content, the User filenames, spelling
+   * variants, and VCS internals.
+   */
+  readonly nearMissPaths: readonly string[];
+}
+
+/**
+ * Builds the priority cross-vendor MCP fixture (T388): every explicit
+ * carrier of the priority wave in one tree, one name declared by all four,
+ * one declared by exactly two — the picker-free exact-pair comparison
+ * case — per-carrier names beside them, credential-shaped literals, an
+ * environment reference that must never be resolved, one malformed-command
+ * declaration that still lists, and the complete negative set — nested
+ * carriers, the agent/plugin/settings files whose spellings join no MCP
+ * surface, User filenames, variants, and VCS internals.
+ */
+export function buildPriorityMcpFixture(
+  prefix = 'inspector-priority-mcp',
+  root = createRepositoryFixtureRoot(prefix),
+): PriorityMcpFixture {
+  const sharedServerName = 'shared-everywhere';
+  const pairedServerName = 'shared-pair';
+  // The shared root carrier, wrapper form: Claude and the Copilot CLI read
+  // the same names out of it, and the VS Code 1.118+ admission adds its
+  // surface without a reading of its own.
+  write(
+    root,
+    '.mcp.json',
+    `${JSON.stringify(
+      {
+        mcpServers: {
+          [sharedServerName]: {
+            command: 'npx',
+            env: { API_KEY: FIXTURE_SECRET_LITERAL, ENDPOINT: FIXTURE_ENVIRONMENT_REFERENCE },
+          },
+          // The exact-pair name's root side, authored in a deliberately
+          // scrambled key order the comparison must not show: the canonical
+          // serialization reorders both sides identically. The values walk
+          // the serializer's spellings - a JSON number and boolean render
+          // bare, the `007` string keeps its quoting because its bare
+          // spelling would read as `7`, and the multiline string spells its
+          // newline as the `\n` escape.
+          [pairedServerName]: {
+            env: { API_KEY: FIXTURE_SECRET_LITERAL },
+            version: '007',
+            args: ['-y', 'shared-pair-mcp'],
+            enabled: true,
+            command: 'npx',
+            notes: 'Root-owned launcher.\nSecond line of the note.',
+            startup_timeout_ms: 9000,
+          },
+          'root-only': { url: 'https://root.example.com/mcp' },
+          // Malformed command: still a named declaration this release lists.
+          odd: { command: 42 },
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  // The bare-schema CLI spelling re-declares the shared name.
+  write(
+    root,
+    '.github/mcp.json',
+    `{ "gh-actions": { "command": "npx" }, "${sharedServerName}": { "command": "gh" } }\n`,
+  );
+  // The VS Code JSONC carrier re-declares it too, comments and all.
+  write(
+    root,
+    '.vscode/mcp.json',
+    `{
+  // Workspace MCP servers.
+  "servers": {
+    "vs-docs": { "type": "http", "url": "https://docs.example.com/mcp" },
+    "${sharedServerName}": { "command": "vscode-owned" },
+  }
+}
+`,
+  );
+  // The Codex configuration carrier declares it as a quoted table name.
+  write(
+    root,
+    '.codex/config.toml',
+    [
+      '[mcp_servers.codex-db]',
+      'command = "npx"',
+      '',
+      `[mcp_servers."${sharedServerName}"]`,
+      'command = "codex-owned"',
+      '',
+      // The exact-pair name's Codex side, in another authored key order
+      // and with TOML's own typed values: the integer and boolean render
+      // bare like the root side's JSON ones, the multiline note - a TOML
+      // `\n` escape - spells its newline back as the JSON `\n` escape,
+      // and the environment table adds a variable the root side does not
+      // declare.
+      `[mcp_servers.${pairedServerName}]`,
+      'startup_timeout_ms = 7000',
+      String.raw`notes = "Codex-owned launcher.\nSecond line of the note."`,
+      'command = "codex-owned"',
+      'enabled = true',
+      'version = "007"',
+      '',
+      `[mcp_servers.${pairedServerName}.env]`,
+      `ENDPOINT = "${FIXTURE_ENVIRONMENT_REFERENCE}"`,
+      `API_KEY = "${FIXTURE_SECRET_LITERAL}"`,
+      '',
+    ].join('\n'),
+  );
+
+  // Negatives: nested carriers of every spelling, each re-declaring the
+  // shared name so an unadmitted duplicate provably contributes nothing.
+  write(root, 'packages/api/.mcp.json', `{ "mcpServers": { "${sharedServerName}": {} } }\n`);
+  write(root, 'packages/api/.github/mcp.json', `{ "${sharedServerName}": {} }\n`);
+  write(root, 'packages/api/.vscode/mcp.json', `{ "servers": { "${sharedServerName}": {} } }\n`);
+  write(root, 'packages/api/.codex/config.toml', '[mcp_servers.nested]\ncommand = "x"\n');
+  // MCP-looking configuration in files of other kinds: their own kinds'
+  // content once those kinds ship, never MCP rows.
+  write(
+    root,
+    '.github/agents/deploy.md',
+    '---\nname: deploy\ndescription: d\nmcp-servers:\n  agent-mcp:\n    command: x\n---\n\nBody\n',
+  );
+  write(
+    root,
+    '.claude-plugin/plugin.json',
+    '{ "name": "p", "mcpServers": { "plugin-mcp": { "command": "x" } } }\n',
+  );
+  write(root, '.claude/settings.json', '{ "mcpServers": { "settings-mcp": {} } }\n');
+  // User filenames, spelling variants, and VCS internals.
+  write(root, 'mcp-config.json', '{ "mcpServers": { "user-server": {} } }\n');
+  write(root, 'mcp.json', '{ "servers": { "profile-server": {} } }\n');
+  write(root, '.mcp.json.bak', 'backup suffix\n');
+  write(root, '.git/.mcp.json', 'vcs internal\n');
+
+  return {
+    root,
+    rootCarrierPath: '.mcp.json',
+    githubCarrierPath: '.github/mcp.json',
+    vscodeCarrierPath: '.vscode/mcp.json',
+    codexCarrierPath: '.codex/config.toml',
+    sharedServerName,
+    pairedServerName,
+    nearMissPaths: [
+      '.claude-plugin/plugin.json',
+      '.claude/settings.json',
+      '.git/.mcp.json',
+      '.github/agents/deploy.md',
+      '.mcp.json.bak',
+      'mcp-config.json',
+      'mcp.json',
+      'packages/api/.codex/config.toml',
+      'packages/api/.github/mcp.json',
+      'packages/api/.mcp.json',
       'packages/api/.vscode/mcp.json',
     ],
   };
@@ -2386,4 +2584,53 @@ export function buildAllVendorInstructionFixture(
     secretInstructionPath: 'AGENTS.override.md',
     importTargetPath: 'docs/setup.md',
   };
+}
+
+/** One combined fixture repository holding every customization kind at once. */
+export interface AllCustomizationKindFixture {
+  /** The absolute fixture root to scan. */
+  readonly root: string;
+  /** The all-tool SKILL fixture's own result, built into this root. */
+  readonly skillFixture: AllToolSkillFixture;
+  /** The all-vendor instruction fixture's own result, built into this root. */
+  readonly instructionFixture: AllVendorInstructionFixture;
+  /** The cross-vendor MCP fixture's own result, built into this root. */
+  readonly mcpFixture: PriorityMcpFixture;
+}
+
+/**
+ * Builds every `all-*` fixture into one repository (T1099): the all-tool
+ * SKILL tree, the cross-vendor MCP tree, and the all-vendor instruction tree
+ * share a single root, so one launch exercises all three inventories at once.
+ *
+ * The trees are disjoint except for two files both the MCP and instruction
+ * builders own: the root and nested `.codex/config.toml`. Each of those
+ * builders writes the whole file, so this builder rewrites the shared paths
+ * as the concatenation of both outputs — the instruction builder's top-level
+ * fallback key first, the MCP builder's server tables after it, because a
+ * TOML document requires top-level keys before its first table header.
+ * (`README.md` is also written by two builders, with identical bytes.)
+ *
+ * `root` overrides where the tree is written; the default is a fresh root
+ * under the OS temporary directory. The dev fixture launcher
+ * (`scripts/serve-fixture.ts`) passes a repo-local git-ignored directory.
+ */
+export function buildAllCustomizationKindFixture(
+  prefix = 'inspector-all-kinds',
+  root = createRepositoryFixtureRoot(prefix),
+): AllCustomizationKindFixture {
+  const skillFixture = buildAllToolSkillFixture(prefix, root);
+  const mcpFixture = buildPriorityMcpFixture(prefix, root);
+  // Capture the MCP builder's two Codex configs before the instruction
+  // builder replaces those paths with its fallback declaration.
+  const sharedCodexConfigPaths = ['.codex/config.toml', 'packages/api/.codex/config.toml'];
+  const mcpCodexConfigs = sharedCodexConfigPaths.map((path) =>
+    readFileSync(join(root, path), 'utf8'),
+  );
+  const instructionFixture = buildAllVendorInstructionFixture(prefix, root);
+  for (const [index, path] of sharedCodexConfigPaths.entries()) {
+    const fallbackDeclaration = readFileSync(join(root, path), 'utf8');
+    write(root, path, `${fallbackDeclaration}\n${mcpCodexConfigs[index]!}`);
+  }
+  return { root, skillFixture, instructionFixture, mcpFixture };
 }

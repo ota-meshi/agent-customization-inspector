@@ -121,7 +121,7 @@ local portを選ぶため、実行したままの古いinspectorが接続を奪�
 pnpm run start:fixture all-instructions --no-open
 ```
 
-第1引数はfixture名（省略時は`all-skills`。未知の名前は利用可能な一覧を表示する）で、それ以降は
+第1引数はfixture名（省略時は`all`。これはすべての`all-*` treeを1つのrootに構築し、1回のlaunchで3つのinventory全部を配信する。未知の名前は利用可能な一覧を表示する）で、それ以降は
 すべてCLIへそのまま渡す。Launchごとにそのfixtureの前回treeを置き換えるため、閲覧中の手編集が
 次回へ漏れることはなく、treeはその後もinspection用にdisk上へ残る。Launcherは`--root`でrootを
 選択する。呼び出し`cwd`によるselectionを確認するには、launchが残したtreeへ移動してそこから

@@ -19,7 +19,7 @@ import {
   type CompiledStaticOtherKindRule,
 } from './registry';
 import { ParsedStrictJsonDocument } from '../parsers/json';
-import type { DeclaredEntryDto, McpServerDeclarationDto } from '../../../shared/api-types';
+import type { McpServerDeclarationDto } from '../../../shared/api-types';
 import type { CustomizationKind } from '../../../shared/entities';
 import { CLAUDE_RULE_RELATIONS } from '../../../shared/registries/claude/relations';
 import { CLAUDE_INSPECTION_RULES } from '../../../shared/registries/claude/rules';
@@ -130,18 +130,39 @@ export class ClaudeCompiledMcpCarrierRule
 
   /**
    * The `mcpServers` declarations one admitted `.mcp.json` makes, one per
-   * named map entry, in the parser's resolved order (FR-007) — the
-   * {@link claudeMcpServersOf} reading over the document's rendered entries,
-   * the same one the documented contained owners will hand their own entries
-   * when their phases admit them (contracts/vendors/claude-code.md
+   * named map entry, in the parser's resolved order (FR-007): which key
+   * means "MCP declarations" is Claude's vendor fact, so the reading lives
+   * here, on the vendor's one explicit carrier — only explicit MCP
+   * configuration joins the MCP surfaces, so a file of another kind that
+   * spells the key holds its own kind's recognition alone, its declarations
+   * visible in that file's own detail (contracts/vendors/claude-code.md
    * § Normative initial-release presentation allowlist, MCP row).
+   *
+   * Classification is structural and total: only a mapping under
+   * `mcpServers` declares servers, and an entry whose value is not a
+   * mapping — a scalar, a sequence, an authored `null` — is omitted whole
+   * rather than published partially, exactly as an absent or non-mapping
+   * `mcpServers` declares nothing. No field is validated, no environment
+   * reference is resolved, and no declared command, URL, or path gains read
+   * or connection authority: the output is the file's own declarations,
+   * rendered and nothing more.
    *
    * Throws on text strict JSON cannot parse; the recognizer's extraction
    * boundary turns the throw into the recognition's `failed` state while the
    * carrier stays an admitted candidate (FR-028).
    */
   public serverDeclarationsOf(sourceText: string): readonly McpServerDeclarationDto[] {
-    return claudeMcpServersOf(new ParsedStrictJsonDocument(sourceText).entries);
+    const declared = new ParsedStrictJsonDocument(sourceText).entries;
+    // Strict JSON keys are strings, and the parser resolves a key declared
+    // twice to its later declaration, so the spelling alone identifies the
+    // one possible container entry.
+    const container = declared.find((entry) => entry.key === 'mcpServers');
+    if (container === undefined || container.value.kind !== 'mapping') {
+      return [];
+    }
+    return container.value.entries.flatMap((entry) =>
+      entry.value.kind === 'mapping' ? [{ name: entry.key, fields: entry.value.entries }] : [],
+    );
   }
 
   /** Compiles one Claude MCP carrier record, rejecting one of another kind. */
@@ -173,47 +194,6 @@ export class ClaudeCompiledOtherKindRule
       throw new TypeError(`rule ${rule.ruleId} needs a Claude unit that answers for its kind`);
     }
   }
-}
-
-/**
- * The MCP servers a Claude file's `mcpServers` declarations make, read out of
- * the shared declared-entry shape its parse already rendered (T330): which
- * key means "MCP declarations" is Claude's vendor fact, so the reading lives
- * beside Claude's rules, while the entry shape it reads is format-neutral —
- * one reading for every home the vendor documents (contracts/vendors/
- * claude-code.md § Normative initial-release presentation allowlist, MCP
- * row). The standalone carrier hands its JSON document's rendered entries
- * today, and each documented contained owner — an agent's frontmatter, a
- * plugin manifest's inline declarations, a settings file — hands the entries
- * its own format rendering produces when its phase admits it, so activating
- * a later owner family changes no reading. A skill is not such a home:
- * Claude documents no `mcpServers` skill-frontmatter field (user decision,
- * 2026-08-20).
- *
- * Classification is structural and total: only a mapping under `mcpServers`
- * declares servers, and an entry whose value is not a mapping — a scalar, a
- * sequence, an authored `null` — is omitted whole rather than published
- * partially, exactly as an absent or non-mapping `mcpServers` declares
- * nothing. No field is validated, no environment reference is resolved, and
- * no declared command, URL, or path gains read or connection authority: the
- * input is already-rendered declarations, which is what keeps the
- * contained-owner adapter non-authorizing.
- */
-export function claudeMcpServersOf(
-  declared: readonly DeclaredEntryDto[],
-): readonly McpServerDeclarationDto[] {
-  // The parser resolves a key declared twice to its later declaration, so at
-  // most one `mcpServers` entry exists; a non-string key spelling the same
-  // text is a different key and declares no servers.
-  const container = declared.find(
-    (entry) => entry.keyKind === 'string' && entry.key === 'mcpServers',
-  );
-  if (container === undefined || container.value.kind !== 'mapping') {
-    return [];
-  }
-  return container.value.entries.flatMap((entry) =>
-    entry.value.kind === 'mapping' ? [{ name: entry.key, fields: entry.value.entries }] : [],
-  );
 }
 
 /**

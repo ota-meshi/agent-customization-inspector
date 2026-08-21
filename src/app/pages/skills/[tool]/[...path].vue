@@ -62,7 +62,7 @@ import { useRoute } from 'vue-router';
 import { NuxtLink } from '#components';
 import SkillFileTree from '../../../components/inspection/SkillFileTree.vue';
 import SourceViewer from '../../../components/inspection/SourceViewer.vue';
-import DeclarationBlock from '../../../components/inspection/DeclarationBlock.vue';
+import { frontmatterYamlText } from '../../../components/inspection/frontmatter-yaml';
 import { nextTabForKey } from '../../../components/tab-navigation';
 import { skillComparisonRouteFor } from '../../../composables/skill-comparison';
 import { usePageOwnership } from '../../../composables/page-ownership';
@@ -325,7 +325,7 @@ const skillPresentation = computed(() => {
  * answers before any other, and a reader should not have to find them among
  * the keys a particular file happened to write earlier. Everything else keeps
  * the file's own order, because past those two the file's order is the only
- * one this product has any basis for.
+ * one this product has any basis for (FR-007).
  */
 const LEADING_DECLARATIONS: readonly string[] = ['name', 'description'];
 
@@ -339,6 +339,14 @@ const orderedDeclarations = computed(() => {
     (left, right) => rank(left.key) - rank(right.key),
   );
 });
+
+/**
+ * The frontmatter as the YAML document the detail renders (FR-007,
+ * frontmatter-yaml.ts): the declared keys in the order above, spelled back
+ * in the block's own language, so a reader compares it against their file
+ * without translating and pastes from it without converting.
+ */
+const frontmatterText = computed(() => frontmatterYamlText(orderedDeclarations.value));
 
 /**
  * The two halves of a skill detail, as the tab strip presents them: the skill
@@ -497,10 +505,6 @@ watch(
 );
 
 /** The declarations as one block, so the recursive renderer draws them all. */
-const declarationBlock = computed(
-  () => ({ kind: 'mapping', entries: orderedDeclarations.value }) as const,
-);
-
 /**
  * The entry point's own Source-relative Path. The instructions viewer takes it
  * so the body is highlighted as what the file is — the language comes from the
@@ -975,8 +979,23 @@ onBeforeUnmount(() => {
 
         <div v-if="skillPresentation" class="aci-skill-detail__declarations">
           <h3>Frontmatter</h3>
-          <p v-if="orderedDeclarations.length === 0" class="aci-note">This skill declares none.</p>
-          <DeclarationBlock v-else :value="declarationBlock" />
+          <p v-if="skillPresentation.frontmatter.length === 0" class="aci-note">
+            This skill declares none.
+          </p>
+          <!-- The declared keys as one read-only YAML document in the file's
+               own order (FR-007), through the same viewer the instructions
+               use — sized to the block, because a frontmatter is short
+               (SourceViewer § fitContent). YAML because the block is YAML:
+               nothing here is markup, a link, or a resolved reference
+               (FR-025, FR-026, FR-033). -->
+          <SourceViewer
+            v-else
+            :source-text="frontmatterText"
+            :source-relative-path="entryPath"
+            content-label="Frontmatter of"
+            content-language="yaml"
+            fit-content
+          />
         </div>
 
         <div v-if="skillPresentation" class="aci-skill-detail__instructions">

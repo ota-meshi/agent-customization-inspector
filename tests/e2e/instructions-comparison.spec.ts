@@ -125,8 +125,9 @@ test('opens from an instruction row and shows the complete literal diff', async 
 
   // Both sides' complete literal sources are in the diff — the credentials
   // and the environment reference exactly as authored, unmasked and
-  // unresolved (FR-027, FR-025).
-  const diff = page.locator('.aci-instruction-source-diff');
+  // unresolved (FR-027, FR-025). `.first()`, because the declared-metadata
+  // section below mounts its own diff of the serialized frontmatter.
+  const diff = page.locator('.aci-instruction-source-diff').first();
   await expect(diff).toContainText(AGENTS_SECRET);
   await expect(diff).toContainText(CLAUDE_SECRET);
   await expect(diff).toContainText(ENVIRONMENT_REFERENCE);
@@ -174,18 +175,18 @@ test('renders exact metadata rows and matches declarations by key', async ({ pag
     toolTable.locator('tr', { hasText: 'OpenAI Codex' }).locator('td').nth(1),
   ).toHaveText('Not recognized');
 
-  // The matched declared keys of the files' parses, each exactly once: the
-  // shared key with different resolved values, the key whose authored
-  // spellings resolve to one value, and each side-only key against "not
-  // declared" (FR-011).
-  const scopeRow = metadata.locator('tr', { hasText: 'scope' });
-  await expect(scopeRow).toHaveCount(1);
-  await expect(scopeRow).toContainText('project');
-  await expect(scopeRow).toContainText('workspace');
-  await expect(scopeRow).toContainText('Differs');
-  await expect(metadata.locator('tr', { hasText: 'retries' })).toContainText('Same');
-  await expect(metadata.locator('tr', { hasText: 'token' })).toContainText('not declared');
-  await expect(metadata.locator('tr', { hasText: 'endpoint' })).toContainText('not declared');
+  // The declared metadata is one canonical YAML document per side, every
+  // key sorted, diffed in Monaco under no tool caption
+  // (frontmatter-yaml.ts): the shared key shows both resolved values, the
+  // authored `7`/`007` spellings resolve to the one value both sides spell,
+  // and a side-only key stands on its side alone (FR-011).
+  const metadataDiff = metadata.locator('.aci-instruction-source-diff');
+  await expect(metadataDiff).toHaveCount(1);
+  await expect(metadataDiff).toContainText('scope: project');
+  await expect(metadataDiff).toContainText('scope: workspace');
+  await expect(metadataDiff).toContainText('retries: 7');
+  await expect(metadataDiff).toContainText('token');
+  await expect(metadataDiff).toContainText('endpoint');
 });
 
 test('states the typed layering and fallback differences per side', async ({ page }) => {

@@ -29,6 +29,8 @@ let attachedModel: { value: string; language: string; uri: string; dispose: () =
   null;
 /** The options passed to `updateOptions`, so the surface's name is observable. */
 let updatedOptions: Record<string, unknown> | null = null;
+/** Set to make the next `createModel` throw, for the mid-swap failure case. */
+let failNextCreateModel = false;
 
 vi.mock('monaco-editor/esm/vs/editor/editor.api.js', () => ({
   languages: { getLanguages: () => [] },
@@ -49,6 +51,10 @@ vi.mock('monaco-editor/esm/vs/editor/editor.api.js', () => ({
       };
     },
     createModel(value: string, language: string, uri: string) {
+      if (failNextCreateModel) {
+        failNextCreateModel = false;
+        throw new Error('environment cannot construct a model');
+      }
       createdModels += 1;
       return {
         value,
@@ -79,6 +85,10 @@ const REGISTERED = [
   { id: 'python', extensions: ['.py'] },
   { id: 'ini', extensions: ['.ini', '.properties'], filenames: ['.editorconfig'] },
   { id: 'javascript', extensions: ['.js', '.mjs'] },
+  // The JSON service's contribution registers the `json` language itself
+  // (tokens-only; monaco-languages.ts), so at runtime it is a registered
+  // language like any basic one.
+  { id: 'json', extensions: ['.json'] },
   { id: 'dockerfile', extensions: ['.dockerfile'], filenames: ['Dockerfile'] },
 ];
 
@@ -89,6 +99,7 @@ beforeEach(() => {
   disposedEditors = 0;
   attachedModel = null;
   updatedOptions = null;
+  failNextCreateModel = false;
 });
 
 describe('source language selection', () => {
@@ -108,13 +119,13 @@ describe('source language selection', () => {
     expect(resolveSourceLanguage(REGISTERED, 'skills/g/.editorconfig')).toBe('ini');
   });
 
-  it('borrows a grammar for the two formats Monaco ships none for', () => {
-    // JSON has only a worker-backed service, which would validate an inspected
-    // file — the one thing this product must not do — and TOML has nothing at
-    // all. Both are core customization formats here, so each borrows the
-    // nearest pure tokenizer.
-    expect(resolveSourceLanguage(REGISTERED, '.codex/hooks.json')).toBe('javascript');
-    expect(resolveSourceLanguage(REGISTERED, '.vscode/mcp.jsonc')).toBe('javascript');
+  it('maps the spellings the registered languages do not claim', () => {
+    // `.json` is the `json` language's own registered extension; `.jsonc`
+    // takes the same tokenizer — its comment support is the tokenizer's
+    // own — and TOML, which Monaco ships nothing for, borrows the nearest
+    // pure tokenizer (monaco.ts § BORROWED_GRAMMARS).
+    expect(resolveSourceLanguage(REGISTERED, '.codex/hooks.json')).toBe('json');
+    expect(resolveSourceLanguage(REGISTERED, '.vscode/mcp.jsonc')).toBe('json');
     expect(resolveSourceLanguage(REGISTERED, '.codex/config.toml')).toBe('ini');
   });
 
@@ -162,6 +173,24 @@ describe('the mounted read-only surface', () => {
     expect(attachedModel?.uri).toMatch(/^inmemory:\/\/source\/[A-Za-z0-9_-]{22}$/u);
     expect(attachedModel?.uri).not.toContain('skills');
     expect(attachedModel?.uri).not.toContain('SKILL');
+  });
+
+  it('rolls a failed model swap back, previous file included (FR-027)', async () => {
+    // The environment-determined failure research.md § 7 names, mid-swap:
+    // the previous file's model must not survive it holding authored text —
+    // the owning component disposes the editor and shows the failure
+    // rendering next, and the editor disposes only the model it currently
+    // holds.
+    const viewer = await SourceViewerHandle.mount(document.createElement('div'));
+    viewer.showSource('first', 'skills/g/SKILL.md');
+    expect(disposedModels).toBe(0);
+    failNextCreateModel = true;
+    expect(() => viewer.showSource('second', 'skills/g/scripts/run.sh')).toThrow(
+      'environment cannot construct a model',
+    );
+    // The previous model is disposed with the throw; nothing new was made.
+    expect(createdModels).toBe(1);
+    expect(disposedModels).toBe(1);
   });
 
   it('names the surface after the file it is showing, not the one it mounted with', async () => {

@@ -246,7 +246,7 @@ export type RecognitionDetails =
  * carries no wire identity of its own. A class reached only through its
  * factories, which fix how a record comes to be: one typed factory per kind
  * ({@link recognizeSkill}, {@link recognizeInstructions}, {@link recognizeMcp},
- * {@link recognizeContainedMcp}, {@link recognizeOther}) derives the published
+ * {@link recognizeOther}) derives the published
  * fields from exactly the extraction its kind produces — the kind→payload
  * correlation is each signature's own fact, never a runtime shape test over a
  * kind-erased value — and {@link withDiagnostic} — the one later change a
@@ -413,29 +413,6 @@ export class ToolRecognition {
       { kind: 'MCP', servers: extraction.extracted ?? [] },
       extraction.status,
       admissions,
-    );
-  }
-
-  /**
-   * Builds the contained-MCP recognition an owner-gated adapter attaches to
-   * an already admitted owner file (T330). The status is `parsed` by
-   * construction rather than an extraction outcome of its own: the servers
-   * were read out of the owner's one extraction, which the dispatch verified
-   * parsed before calling — a failed owner attaches nothing, so this record
-   * cannot exist for one (FR-028).
-   */
-  public static recognizeContainedMcp(
-    sourceRelativePath: string,
-    tool: SupportedTool,
-    servers: readonly McpServerDeclarationDto[],
-    ownerAdmissions: readonly RecognitionAdmission[],
-  ): ToolRecognition {
-    return ToolRecognition.#assemble(
-      sourceRelativePath,
-      tool,
-      { kind: 'MCP', servers },
-      'parsed',
-      ownerAdmissions,
     );
   }
 
@@ -679,62 +656,6 @@ class CandidateExtractions {
 }
 
 /**
- * One product's contained-MCP owner contract (T329/T330): which admitted
- * owner kinds carry contained MCP declarations in their own authored
- * content, and how the servers are read out of the entries the owner's
- * extraction already produced.
- *
- * The interface is closed and non-authorizing by construction. Dispatch
- * requires an already admitted owner recognition of a listed kind on the
- * candidate being recognized, so an adapter can never create a candidate, a
- * read, or a recognition of its own: a plugin manifest, settings file, or
- * agent file that no rule admits reaches no adapter however many
- * declarations it carries. A later owner family activates by adding its kind
- * here and handing the same reader the entries its own parsed document
- * publishes (`ParsedStrictJsonDocument`/`ParsedJsoncDocument` `.entries` for a JSON
- * or JSONC owner, `ParsedMarkdownDocument.frontmatterEntries` for a Markdown
- * one) — no MCP matching or connection-safety code changes.
- */
-interface ContainedMcpOwnerAdapter {
-  /**
-   * The admitted owner kinds whose files carry contained MCP declarations.
-   * No member ships — the adapter table below is empty — and the closed list
-   * is the activation gate: the documented owner families — agent files,
-   * plugin manifests, managed settings — join it with the phases that admit
-   * their files. A second member on one adapter also decides how two owner
-   * kinds admitting one file merge; today the question cannot arise.
-   */
-  readonly ownerKinds: readonly CustomizationKind[];
-  /**
-   * Reads the contained server declarations out of the owner's already
-   * extracted entries. Pure over in-memory data: no I/O, no path resolution,
-   * no environment access. An owner containing none reads to the empty list,
-   * which attaches no recognition — an owner without declarations is not an
-   * MCP carrier of any state (T325).
-   */
-  containedServersOf(declared: readonly DeclaredEntryDto[]): readonly McpServerDeclarationDto[];
-}
-
-/**
- * The shipped contained-MCP owner adapters, keyed by the recognizing tool.
- * Deliberately empty: the owner families Claude documents for inline MCP
- * declarations — agent frontmatter `mcpServers`, a plugin manifest's inline
- * declarations, managed settings — are kinds no Repository rule admits yet,
- * so each entry arrives with the phase that admits its owner
- * (contracts/vendors/claude-code.md § Repository Inspector matchers,
- * "contained ... are metadata on that candidate"). A skill is not a member
- * and must not become one: Claude documents no `mcpServers` skill-frontmatter
- * field — the skills page's frontmatter reference and the changelog place
- * that field on agents alone — so a skill spelling the key declares nothing
- * any product reads (user decision, 2026-08-20). Codex has no entry either:
- * its contained declarations live in the carrier its own MCP rule already
- * reads. A tool without an entry dispatches nothing.
- */
-const CONTAINED_MCP_OWNER_ADAPTERS: Readonly<
-  Partial<Record<SupportedTool, ContainedMcpOwnerAdapter>>
-> = {};
-
-/**
  * Produces the dispatched vendors' recognitions of one admitted candidate.
  * Exactly one record exists per `(file, tool, kind)`: admissions that agree
  * on the tool and kind merge their provenances into that single record rather
@@ -834,46 +755,5 @@ export async function recognizeCandidateForVendors(
       return ToolRecognition.recognizeOther(input.matchedPath, tool, kind, group);
     }),
   );
-  // Contained-MCP dispatch (T330), owner-gated by construction: an adapter
-  // runs only over an admission group that already exists for its tool and
-  // one of its owner kinds, so nothing here reads, admits, or synthesizes a
-  // file. The contained recognition is one more `(file, tool, MCP)` record on
-  // the same candidate, carrying the owner's own admissions as its
-  // provenances — the declaration's authority is the owner's admission, which
-  // is exactly what "metadata on that candidate" means
-  // (contracts/vendors/claude-code.md § Repository Inspector matchers).
-  const containedRecognitions = [...byTool.entries()].flatMap(([tool, byKind]) => {
-    const adapter = CONTAINED_MCP_OWNER_ADAPTERS[tool];
-    // A direct MCP admission cannot coexist with a contained one on a single
-    // file — no owner kind's selector names an MCP carrier path — but the
-    // uniqueness of `(file, tool, kind)` is contract, so the gate states it
-    // rather than trusting the selectors to keep it true.
-    if (adapter === undefined || byKind.has('MCP')) {
-      return [];
-    }
-    for (const ownerKind of adapter.ownerKinds) {
-      const owners = byKind.get(ownerKind);
-      if (owners === undefined) {
-        continue;
-      }
-      // The owner's own Markdown extraction, already run and cached in its
-      // typed slot — every shipped owner kind is frontmatter-led, and a
-      // future JSON/JSONC owner arrives with its own typed slot and its own
-      // branch here. A failed owner extraction leaves the contained
-      // declarations unknowable, and the owner recognition's `failed` state
-      // with its diagnostic is that fact's record — a second failed MCP
-      // recognition would report one failure twice (FR-028).
-      const document = extractions.markdown().extracted;
-      if (document === undefined) {
-        continue;
-      }
-      const servers = adapter.containedServersOf(document.frontmatterEntries);
-      if (servers.length === 0) {
-        continue;
-      }
-      return [ToolRecognition.recognizeContainedMcp(input.matchedPath, tool, servers, owners)];
-    }
-    return [];
-  });
-  return { recognitions: [...recognitions, ...containedRecognitions], companions };
+  return { recognitions, companions };
 }

@@ -1105,6 +1105,46 @@ export const COPILOT_CLOUD_INSTRUCTIONS_ALTERNATIVES_BEHAVIOR = {
 } as const satisfies VendorBehaviorStatement;
 
 /**
+ * Copilot cloud agent hosted MCP configuration: the out-of-box servers, a
+ * selected custom agent's `mcp-servers`, and the repository's own MCP
+ * settings, processed in that order with later sources overriding. Recorded
+ * for maintenance and for the selection strategy that composes it — these
+ * are hosted inputs, not local `.mcp.json` files, so the record names no
+ * filesystem locator, authorizes no rule, and reaches no session surface
+ * (FR-009; spec.md § Clarifications: hosted inputs are not represented).
+ */
+export const COPILOT_CLOUD_MCP_BEHAVIOR = {
+  behaviorId: 'copilot.behavior.cloud.mcp',
+  tool: 'copilot',
+  surfaces: ['copilot-cloud'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'hosted-managed',
+        lookupBase: 'hosted-state',
+        // No relative path exists for hosted configuration; null records that
+        // the behavior names no file rather than a file this catalog omitted.
+        relativeSelector: null,
+        traversal: 'none',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.custom-agents',
+          url: 'https://docs.github.com/en/copilot/reference/custom-agents-configuration',
+          officialHost: 'docs.github.com',
+          sections: ['MCP server configuration details', 'MCP server configurations'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'A custom agent profile declares MCP servers through its mcp-servers property - the YAML representation of the repository MCP configuration format - and the cloud agent processes out-of-the-box configurations first, then the custom agent configuration, then repository settings, each level able to override the previous.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
  * Copilot's hosted organization instructions: GitHub-side configuration that
  * applies together with a repository's own instructions, with repository
  * instructions preceding organization ones in the documented layer model. The
@@ -1495,6 +1535,7 @@ export const COPILOT_BEHAVIOR_STATEMENTS: Readonly<
     COPILOT_CLI_USER_INSTRUCTIONS_ROOT_BEHAVIOR,
   [COPILOT_CLI_USER_MCP_BEHAVIOR.behaviorId]: COPILOT_CLI_USER_MCP_BEHAVIOR,
   [COPILOT_CLI_USER_SKILLS_BEHAVIOR.behaviorId]: COPILOT_CLI_USER_SKILLS_BEHAVIOR,
+  [COPILOT_CLOUD_MCP_BEHAVIOR.behaviorId]: COPILOT_CLOUD_MCP_BEHAVIOR,
   [COPILOT_CLOUD_INSTRUCTIONS_AGENTS_BEHAVIOR.behaviorId]:
     COPILOT_CLOUD_INSTRUCTIONS_AGENTS_BEHAVIOR,
   [COPILOT_CLOUD_INSTRUCTIONS_ALTERNATIVES_BEHAVIOR.behaviorId]:

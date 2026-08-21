@@ -32,6 +32,8 @@ interface FakeModel {
 let attachedModel: { original: FakeModel; modified: FakeModel } | null = null;
 /** Set to make the next `createDiffEditor` throw, for the failure case. */
 let failNextCreate = false;
+/** Makes `createModel` throw once this many models were created; null = never. */
+let failCreateModelAfter: number | null = null;
 /** The options applied to each inner editor after construction. */
 let originalEditorOptions: Record<string, unknown> | null = null;
 let modifiedEditorOptions: Record<string, unknown> | null = null;
@@ -101,6 +103,9 @@ vi.mock('monaco-editor/esm/vs/editor/editor.api.js', () => ({
       };
     },
     createModel(value: string, language: string, uri: string) {
+      if (failCreateModelAfter !== null && createdModels >= failCreateModelAfter) {
+        throw new Error('environment cannot construct a model');
+      }
       createdModels += 1;
       return {
         value,
@@ -137,6 +142,7 @@ beforeEach(() => {
   disposedEditors = 0;
   attachedModel = null;
   failNextCreate = false;
+  failCreateModelAfter = null;
   originalEditorOptions = null;
   modifiedEditorOptions = null;
   originalConfigurationListeners.length = 0;
@@ -204,6 +210,24 @@ describe('the mounted read-only comparison surface', () => {
     );
   });
 
+  it('names a serialized slice as what it shows, never as the whole file', async () => {
+    // A comparison of serialized declarations — the frontmatter YAML diff,
+    // the MCP declaration JSON diff — passes a content label, because a
+    // surface that announced the slice as the compared file would misreport
+    // it (FR-025): the same slice-naming contract as the single-file
+    // viewer's `contentLabel`.
+    await SourceDiffHandle.mount(document.createElement('div'), {
+      ...COMPARISON,
+      contentLabel: 'frontmatter of',
+    });
+    expect(originalEditorOptions?.['ariaLabel']).toBe(
+      'First compared frontmatter of .agents/skills/alpha/SKILL.md, read-only',
+    );
+    expect(modifiedEditorOptions?.['ariaLabel']).toBe(
+      'Second compared frontmatter of .agents/skills/beta/SKILL.md, read-only',
+    );
+  });
+
   it('names an absent side as the stated absence, not as a file', async () => {
     // A one-sided comparison passes empty text for the missing counterpart:
     // the empty model is diff arithmetic, and the label must not present it
@@ -219,6 +243,23 @@ describe('the mounted read-only comparison surface', () => {
     expect(modifiedEditorOptions?.['ariaLabel']).toBe(
       'Second side: no file at .agents/skills/beta/SKILL.md',
     );
+  });
+
+  it('rolls the whole construction back when a model fails mid-mount (FR-027)', async () => {
+    // The environment-determined failure research.md § 7 names, landing
+    // between the two model creations: the already-created model holds one
+    // side's authored text, and nothing would ever dispose it past the
+    // throw the caller's fallback handles — so the mount disposes the
+    // model, the editor, and every listener before rethrowing.
+    failCreateModelAfter = 1;
+    await expect(SourceDiffHandle.mount(document.createElement('div'), COMPARISON)).rejects.toThrow(
+      'environment cannot construct a model',
+    );
+    expect(createdModels).toBe(1);
+    expect(disposedModels).toBe(1);
+    expect(disposedEditors).toBe(1);
+    expect(originalConfigurationListeners).toHaveLength(0);
+    expect(modifiedConfigurationListeners).toHaveLength(0);
   });
 
   it('creates two complete literal models with opaque in-memory URIs', async () => {

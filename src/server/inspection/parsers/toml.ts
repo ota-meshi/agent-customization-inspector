@@ -81,16 +81,32 @@ export class ParsedTomlDocument {
  * preserves the authored variant (offset, local, date-only, time-only).
  */
 function renderTomlValue(value: TomlValue): DeclaredValueDto {
-  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-    // `String` over the parsed value is the whole rendering: what it shows is
-    // the platform's own resolution — `String(-0)` is `"0"` — accepted as is.
-    return { kind: 'scalar', text: String(value) };
+  // The parsed kind rides beside the rendered text, because the rendering
+  // alone cannot say whether `7` was a number or a quoted string
+  // (api-types.ts § DeclaredScalarKind); one branch per kind, because
+  // TypeScript types a `typeof` expression as the full tag union whatever
+  // its operand's type is.
+  if (typeof value === 'string') {
+    return { kind: 'scalar', scalarKind: 'string', text: value };
+  }
+  if (typeof value === 'number') {
+    // `String` over the parsed number is the whole rendering: what it shows
+    // is the platform's own resolution — `String(-0)` is `"0"` — accepted
+    // as is.
+    return { kind: 'scalar', scalarKind: 'number', text: String(value) };
+  }
+  if (typeof value === 'boolean') {
+    return { kind: 'scalar', scalarKind: 'boolean', text: String(value) };
   }
   if (typeof value === 'bigint') {
-    return { kind: 'scalar', text: value.toString() };
+    // A 64-bit integer is a number whose exact digits the double type cannot
+    // hold; the kind says number and the text keeps every digit.
+    return { kind: 'scalar', scalarKind: 'number', text: value.toString() };
   }
   if (value instanceof TomlDate) {
-    return { kind: 'scalar', text: value.toISOString() };
+    // A datetime has no primitive type of its own: its ISO rendering is its
+    // spelling (api-types.ts § DeclaredScalarKind).
+    return { kind: 'scalar', scalarKind: 'string', text: value.toISOString() };
   }
   if (Array.isArray(value)) {
     return { kind: 'sequence', items: value.map((item) => renderTomlValue(item)) };

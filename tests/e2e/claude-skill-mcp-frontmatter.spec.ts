@@ -2,7 +2,7 @@
 // spelling. Claude documents no such skill field — the documented inline MCP
 // owners are agents, plugin manifests, and settings, none of which any rule
 // admits yet — so a skill spelling the key declares nothing any product
-// reads (user decision, 2026-08-20): the MCP inventory stays the carrier's
+// reads: the MCP inventory stays the carrier's
 // alone, the skill keeps its own kind's rows and detail — the spelling is
 // ordinary frontmatter there, credential included (FR-027) — and unadmitted
 // future owner files still contribute nothing.

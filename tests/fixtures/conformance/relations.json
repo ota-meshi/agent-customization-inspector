@@ -62,6 +62,9 @@
         "copilot.behavior.cloud.organization-instructions"
       ]
     },
+    "copilot.cloud.mcp.selection": {
+      "consumesBehaviors": ["copilot.behavior.cloud.mcp"]
+    },
     "copilot.cloud.skills.selection": {
       "consumesBehaviors": ["copilot.behavior.cloud.remote-skills", "copilot.behavior.cloud.skills"]
     },

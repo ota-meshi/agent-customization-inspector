@@ -24,8 +24,8 @@
 // the file's spelling ordered. That is a JavaScript property of every plain
 // parsed object, and it is accepted rather than worked around: recovering
 // the authored order would mean parsing the text a second time through a
-// syntax tree, complexity no consumer has asked for (user decision,
-// 2026-08-20; contracts/http-api.md § get-mcp-carrier-detail spells the
+// syntax tree, complexity no consumer has asked for
+// (contracts/http-api.md § get-mcp-carrier-detail spells the
 // order as the parser's). How a JSON value spells itself
 // is the format's own fact, exactly as the TOML rendering in `toml.ts` and
 // the YAML rendering in `markdown.ts` are their formats', so every vendor
@@ -110,8 +110,7 @@ export class ParsedStrictJsonDocument {
  * hold an authored `__proto__` key, so a `.vscode/mcp.json` server of that
  * name would vanish with no diagnostic, and reading its syntax tree instead
  * would mean re-implementing this module's rendering over a second node
- * shape — a hand-built detour around one package's behavior (user decision,
- * 2026-08-20).
+ * shape — a hand-built detour around one package's behavior.
  *
  * Its shipped caller is the Copilot VS Code `.vscode/mcp.json` reading
  * (`CopilotCompiledVscodeMcpCarrierRule`, T371) — the editor configuration
@@ -143,10 +142,22 @@ function isJsonObject(value: JsonValue): value is { readonly [key: string]: Json
  * empty value, the same internal semantic YAML's `null` renders to.
  */
 function renderJsonValue(value: JsonValue): DeclaredValueDto {
-  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-    // `String` over the parsed value is the whole rendering: what it shows is
-    // the platform's own resolution — `String(-0)` is `"0"` — accepted as is.
-    return { kind: 'scalar', text: String(value) };
+  // The parsed kind rides beside the rendered text, because the rendering
+  // alone cannot say whether `7` was a number or a quoted string
+  // (api-types.ts § DeclaredScalarKind); one branch per kind, because
+  // TypeScript types a `typeof` expression as the full tag union whatever
+  // its operand's type is.
+  if (typeof value === 'string') {
+    return { kind: 'scalar', scalarKind: 'string', text: value };
+  }
+  if (typeof value === 'number') {
+    // `String` over the parsed number is the whole rendering: what it shows
+    // is the platform's own resolution — `String(-0)` is `"0"` — accepted
+    // as is.
+    return { kind: 'scalar', scalarKind: 'number', text: String(value) };
+  }
+  if (typeof value === 'boolean') {
+    return { kind: 'scalar', scalarKind: 'boolean', text: String(value) };
   }
   if (value === null) {
     return { kind: 'absent' };

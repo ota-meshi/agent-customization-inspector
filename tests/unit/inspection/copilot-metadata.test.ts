@@ -23,9 +23,13 @@ import { CLAUDE_REPOSITORY_RULES } from '../../../src/server/inspection/rules/cl
 import { COPILOT_REPOSITORY_RULES } from '../../../src/server/inspection/rules/copilot';
 import {
   COPILOT_CLI_MCP_SELECTION_STRATEGY,
+  COPILOT_CLOUD_MCP_SELECTION_STRATEGY,
   COPILOT_VSCODE_MCP_SELECTION_STRATEGY,
 } from '../../../src/shared/registries/copilot/strategies';
-import { COPILOT_VSCODE_MCP_BEHAVIOR } from '../../../src/shared/registries/copilot/behaviors';
+import {
+  COPILOT_CLOUD_MCP_BEHAVIOR,
+  COPILOT_VSCODE_MCP_BEHAVIOR,
+} from '../../../src/shared/registries/copilot/behaviors';
 import {
   CONTENT_FIXTURE_SECRET,
   MALFORMED_SKILL_CONTENT_CASES,
@@ -154,12 +158,20 @@ describe('Copilot skill declared name', () => {
       'kind',
     ]);
     expect(recognition.details.frontmatter).toEqual([
-      { key: 'name', keyKind: 'string', value: { kind: 'scalar', text: 'greet' } },
-      { key: 'description', keyKind: 'string', value: { kind: 'scalar', text: 'says hello' } },
+      {
+        key: 'name',
+        keyKind: 'string',
+        value: { kind: 'scalar', scalarKind: 'string', text: 'greet' },
+      },
+      {
+        key: 'description',
+        keyKind: 'string',
+        value: { kind: 'scalar', scalarKind: 'string', text: 'says hello' },
+      },
       {
         key: 'api_key',
         keyKind: 'string',
-        value: { kind: 'scalar', text: CONTENT_FIXTURE_SECRET },
+        value: { kind: 'scalar', scalarKind: 'string', text: CONTENT_FIXTURE_SECRET },
       },
     ]);
     expect(recognition.details.bodyText).toBe('\n# Greet\n\nSay hello.\n');
@@ -384,10 +396,10 @@ describe('Copilot instruction declarations (T261)', () => {
     // semantics — an unquoted `7` is the number it resolves to — never a
     // slice of the authored line (data-model.md § Field reading).
     expect(recognition.details.frontmatter.map((entry) => entry.value)).toEqual([
-      { kind: 'scalar', text: 'src/frontend/**' },
-      { kind: 'scalar', text: 'copilot-swe-agent' },
-      { kind: 'scalar', text: 'Frontend conventions' },
-      { kind: 'scalar', text: '7' },
+      { kind: 'scalar', scalarKind: 'string', text: 'src/frontend/**' },
+      { kind: 'scalar', scalarKind: 'string', text: 'copilot-swe-agent' },
+      { kind: 'scalar', scalarKind: 'string', text: 'Frontend conventions' },
+      { kind: 'scalar', scalarKind: 'number', text: '7' },
     ]);
     // The body is the file with its declarations removed, which is the other
     // half of the one parse the detail shows.
@@ -497,7 +509,13 @@ describe('the Copilot CLI MCP carrier reading (T344)', () => {
     // server and is omitted whole.
     expect(servers[1]).toEqual({
       name: 'odd',
-      fields: [{ key: 'command', keyKind: 'string', value: { kind: 'scalar', text: '42' } }],
+      fields: [
+        {
+          key: 'command',
+          keyKind: 'string',
+          value: { kind: 'scalar', scalarKind: 'number', text: '42' },
+        },
+      ],
     });
   });
 
@@ -626,5 +644,37 @@ describe('the Copilot VS Code MCP carrier reading (T364)', () => {
       'unknown-order',
     ]);
     expect(COPILOT_VSCODE_MCP_SELECTION_STRATEGY.documentationStatus).toBe('conflict');
+  });
+});
+
+describe('the Copilot Cloud MCP runtime facts (T374)', () => {
+  it('records the hosted sources as origin-file-less maintenance facts', () => {
+    // Out-of-box, custom-agent, and repository-settings MCP are hosted
+    // inputs: the behavior names no filesystem locator — null is "no file
+    // exists", not an omission — authorizes no rule, and reaches no session
+    // surface (spec.md § Clarifications: hosted inputs are not represented).
+    expect(COPILOT_CLOUD_MCP_BEHAVIOR.surfaces).toEqual(['copilot-cloud']);
+    expect(COPILOT_CLOUD_MCP_BEHAVIOR.documentationStatus).toBe('documented');
+    expect(COPILOT_CLOUD_MCP_BEHAVIOR.locator).toEqual({
+      vendorScope: 'hosted-managed',
+      lookupBase: 'hosted-state',
+      relativeSelector: null,
+      traversal: 'none',
+    });
+  });
+
+  it('records the documented later-wins order as the strategy, not a projection', () => {
+    // Out-of-box configurations first, then the custom agent's, then
+    // repository settings, each level able to override settings from the
+    // previous. `replace` alone and partially documented, because that is
+    // all the cited page establishes: neither the override unit — whole
+    // same-name entry or individual setting — nor any cross-level merge
+    // rule is fixed, so no `merge-map` step may be recorded (QR-005). The
+    // statement lives in the maintained registry record, gated reciprocally
+    // against the bilingual contract row, and no session field projects a
+    // winner (FR-009).
+    expect(COPILOT_CLOUD_MCP_SELECTION_STRATEGY.operations).toEqual(['replace']);
+    expect(COPILOT_CLOUD_MCP_SELECTION_STRATEGY.documentationStatus).toBe('partially-documented');
+    expect(COPILOT_CLOUD_MCP_SELECTION_STRATEGY.surfaces).toEqual(['copilot-cloud']);
   });
 });

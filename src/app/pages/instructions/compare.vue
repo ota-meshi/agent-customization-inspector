@@ -331,20 +331,27 @@ const readyView = computed(() => {
   // (FR-030), so no second per-path lookup is built beside it.
   const recognitionsOf = (path: string): readonly InstructionRecognitionDto[] =>
     owningRow.value?.files.find((file) => file.sourceRelativePath === path)?.recognitions ?? [];
+  // Every rendered coordinate is the adopted detail's own path, never the
+  // pending-aware picker coordinate: a pick updates the coordinates one
+  // render before the re-request drops this view, and labelling the old
+  // details with the new paths would put one file's authored source under
+  // another file's name for that frame (FR-025, FR-030).
+  const leftDetailPath = left.file.sourceRelativePath;
+  const rightDetailPath = right.file.sourceRelativePath;
   return {
     sides: [
-      { caption: 'First file', path: currentLeftPath.value, detail: left },
-      { caption: 'Second file', path: currentRightPath.value, detail: right },
+      { caption: 'First file', path: leftDetailPath, detail: left },
+      { caption: 'Second file', path: rightDetailPath, detail: right },
     ] as const,
     diff: {
       originalText: left.file.sourceText,
-      originalPath: currentLeftPath.value,
+      originalPath: leftDetailPath,
       modifiedText: right.file.sourceText,
-      modifiedPath: currentRightPath.value,
+      modifiedPath: rightDetailPath,
     },
     recognition: new InstructionRecognitionComparison(
-      { detail: left, recognitions: recognitionsOf(currentLeftPath.value) },
-      { detail: right, recognitions: recognitionsOf(currentRightPath.value) },
+      { detail: left, recognitions: recognitionsOf(leftDetailPath) },
+      { detail: right, recognitions: recognitionsOf(rightDetailPath) },
     ),
   };
 });
@@ -636,7 +643,11 @@ onBeforeUnmount(() => {
 
       <!-- The component owns its two section headings — tool recognition and
            declared metadata are two facts with two homes (research.md § 7). -->
-      <RecognitionComparison :comparison="readyView.recognition" />
+      <RecognitionComparison
+        :comparison="readyView.recognition"
+        :left-path="readyView.sides[0].path"
+        :right-path="readyView.sides[1].path"
+      />
     </div>
 
     <template v-else-if="status === 'loading'">

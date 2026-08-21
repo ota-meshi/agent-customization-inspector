@@ -176,20 +176,15 @@ test('leads with the skill itself before any file contents', async ({ page }) =>
   // The skill is what the page is about: its name, what it is for, the rest of
   // what it declares, and then the instructions it carries.
   await expect(page.locator('.aci-skill-detail h2')).toHaveText('greet');
-  // Every key the file declares, led by the two a reader looks for first.
-  await expect(page.locator('.aci-declaration-block dt')).toHaveText([
-    'name',
-    'description',
-    'api_key',
-    'one_space',
-    'two_spaces',
-    String.raw` (key with no visible characters: \u0020)`,
-    String.raw`  (key with no visible characters: \u0020\u0020)`,
-    'deep',
-  ]);
-  await expect(page.locator('.aci-declaration-block dd').nth(1)).toContainText(
-    `deploy with ${FIXTURE_SECRET}`,
-  );
+  // Every key the file declares, as one YAML document in the read-only
+  // viewer, led by the two a reader looks for first (FR-007).
+  const declarations = page.locator('.aci-skill-detail__declarations');
+  await expect(declarations).toContainText('name: greet');
+  await expect(declarations).toContainText(`deploy with ${FIXTURE_SECRET}`);
+  const text = await declarations.innerText();
+  expect(text.indexOf('name:')).toBeGreaterThan(-1);
+  expect(text.indexOf('name:')).toBeLessThan(text.indexOf('description:'));
+  expect(text.indexOf('description:')).toBeLessThan(text.indexOf('api_key:'));
   await expect(page.locator('.aci-skill-detail__instructions .aci-source-viewer')).toContainText(
     'Run `scripts/run.sh` first.',
   );
@@ -197,50 +192,34 @@ test('leads with the skill itself before any file contents', async ({ page }) =>
 
 test('keeps two values that both draw nothing distinguishable', async ({ page }) => {
   await openSkill(page, '.agents/skills/greet/SKILL.md');
-  // A value made only of characters that draw nothing is still published as
-  // written; the note is added beside it, never in its place. Replacing both
-  // with one phrase would report a value the surface publishes as something
-  // shorter than it is (FR-025).
-  const values = page.locator('.aci-declaration-block dd');
-  // `textContent`, not `toHaveText`: the matcher normalizes whitespace, which
-  // is exactly the difference under test.
-  expect(await values.nth(3).locator('.aci-authored-text').textContent()).toBe(' ');
-  expect(await values.nth(4).locator('.aci-authored-text').textContent()).toBe('  ');
-  // The note carries the spelled-out form, so the two declarations stay
-  // apart in a flat reading too, where whitespace collapses (FR-025).
-  await expect(values.nth(3)).toContainText(String.raw`(no visible characters: \u0020)`);
-  await expect(values.nth(4)).toContainText(String.raw`(no visible characters: \u0020\u0020)`);
-
-  const keys = page.locator('.aci-declaration-block dt');
-  expect(await keys.nth(5).textContent()).toBe(
-    String.raw` (key with no visible characters: \u0020)`,
+  // A key or value of nothing but whitespace is kept apart by the YAML
+  // document's own quoting (FR-025): the quoted spelling carries the exact
+  // characters, so nothing needs a note beside it. Raw `textContent` rather
+  // than a matcher, because matchers normalize whitespace — exactly the
+  // difference under test — and Monaco renders spaces as no-break spaces.
+  const declarations = page.locator('.aci-skill-detail__declarations');
+  // The viewer mounts asynchronously; wait for the document before reading
+  // its raw text.
+  await expect(declarations).toContainText('one_space');
+  const raw = await declarations.evaluate((region) =>
+    (region.textContent ?? '').replaceAll('\u00a0', ' '),
   );
-  expect(await keys.nth(6).textContent()).toBe(
-    String.raw`  (key with no visible characters: \u0020\u0020)`,
-  );
+  expect(raw).toContain('one_space: " "');
+  expect(raw).toContain('two_spaces: "  "');
+  expect(raw).toContain('" ": first');
+  expect(raw).toContain('"  ": second');
 });
 
-test('stops indenting past the depth cap without overlapping list markers', async ({ page }) => {
-  // Past MAX_INDENTED_DEPTH a nested list adds no padding — kept, the gutter
-  // would keep marching a deep block off a narrow viewport (WCAG 1.4.10) — and
-  // its marker flows inline instead of being drawn back into a gutter that is
-  // no longer there, where it would overlap the first value.
+test('keeps a deep declaration inside the document box', async ({ page }) => {
+  // A sequence nested eight levels deep renders inside the viewer's own
+  // box — scrolling there when it must — rather than marching the page
+  // sideways (WCAG 1.4.10).
   await openSkill(page, '.agents/skills/greet/SKILL.md');
-  const capped = page.locator('.aci-declaration-block__nested--capped').first();
-  await expect(capped).toBeVisible();
-  const styles = await capped.evaluate((element) => {
-    const block = element.querySelector(':scope > .aci-declaration-block');
-    const first = block?.firstElementChild;
-    if (!(block instanceof Element) || !(first instanceof Element)) {
-      throw new Error('capped nested block not rendered');
-    }
-    return {
-      padding: getComputedStyle(block).paddingInlineStart,
-      markerPosition: getComputedStyle(first, '::before').position,
-    };
-  });
-  expect(styles.padding).toBe('0px');
-  expect(styles.markerPosition).toBe('static');
+  await expect(page.locator('.aci-skill-detail__declarations')).toContainText('bottom');
+  const fits = await page.evaluate(
+    () => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1,
+  );
+  expect(fits).toBe(true);
 });
 
 test('leaves an environment reference as the characters that were written', async ({ page }) => {

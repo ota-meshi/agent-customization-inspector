@@ -11,7 +11,7 @@
 // data. `Readonly<Record<Union, string>>` still does the work the policy asks
 // of it wherever the table lives: a new member cannot compile until someone has
 // decided how it reads.
-import type { FileDetailDto, DeclaredKeyKind, ScanProgressPhase } from './api-types';
+import type { FileDetailDto, ScanProgressPhase } from './api-types';
 import { CUSTOMIZATION_KIND_TEXT } from './entities';
 
 /**
@@ -51,22 +51,4 @@ export const FILE_DETAIL_KIND_TEXT: Readonly<Record<FileDetailDto['kind'], strin
   instructions: CUSTOMIZATION_KIND_TEXT.instructions,
   /** Caption for a census-listed or otherwise unrecognized file's detail. */
   file: 'No recognized kind',
-};
-
-/**
- * What a declared key's parsed type reads as
- * (api-types.ts § DeclaredKeyKind). Every surface that draws declared
- * keys captions a key whose parsed type is not the string default — the
- * shared rule that keeps a numeric `1` apart from the string `"1"` it
- * renders like (FR-025).
- */
-export const DECLARED_KEY_KIND_TEXT: Readonly<Record<DeclaredKeyKind, string>> = {
-  /** Caption for a string key. */
-  string: 'string key',
-  /** Caption for a number key. */
-  number: 'number key',
-  /** Caption for a boolean key. */
-  boolean: 'boolean key',
-  /** Caption for a null key. */
-  null: 'null key',
 };

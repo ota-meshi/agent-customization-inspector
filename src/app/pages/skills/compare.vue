@@ -687,8 +687,36 @@ function diffText(detail: FileDetailDto | null): string | null {
  * synchronous disposal through the purge's owner registry; this cache is
  * reachable only through the read that re-derives it.
  */
+/**
+ * Whether a switch has requested coordinates the route has not reflected
+ * yet. Module scope, because {@link readyView} shadows the route computeds
+ * with its own row-composed locals. A pending value equal to the route is
+ * not a newer selection — re-picking the open file replaces the route with
+ * itself, which vue-router answers without a change for the clearing watch
+ * to see — so it does not count as pending here.
+ */
+const pendingDiffersFromRoute = computed(() => {
+  const pending = pendingPair.value;
+  return (
+    pending !== null &&
+    (pending.left !== leftPath.value ||
+      pending.right !== rightPath.value ||
+      pending.file !== requestedFile.value)
+  );
+});
+
 const readyView = computed(() => {
   if (status.value !== 'ready') {
+    return null;
+  }
+  if (pendingDiffersFromRoute.value) {
+    // A switch updates the composed coordinates one render before the
+    // re-request drops this view. The adopted details are still the previous
+    // selection's — and an absent side is encoded as a null detail, so it
+    // cannot vouch for its own coordinate — which would label the old pair's
+    // authored content, or a stated absence, with the new selection's paths
+    // for that frame (FR-025, FR-030). Nothing renders until the route
+    // catches up and the re-request owns the view.
     return null;
   }
   const leftPath = composedLeftPath.value;
@@ -1102,7 +1130,11 @@ onBeforeUnmount(() => {
 
       <!-- The component owns its two section headings — tool recognition and
            declared metadata are two facts with two homes (research.md § 7). -->
-      <RecognitionComparison :comparison="readyView.recognition" />
+      <RecognitionComparison
+        :comparison="readyView.recognition"
+        :left-path="readyView.sides[0].path"
+        :right-path="readyView.sides[1].path"
+      />
     </div>
 
     <template v-else-if="status === 'loading'">

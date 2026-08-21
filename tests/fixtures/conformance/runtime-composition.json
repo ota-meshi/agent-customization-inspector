@@ -274,6 +274,24 @@
     ]
   },
   {
+    "strategyId": "copilot.cloud.mcp.selection",
+    "tool": "copilot",
+    "surfaces": ["copilot-cloud"],
+    "operations": ["replace"],
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.custom-agents",
+        "url": "https://docs.github.com/en/copilot/reference/custom-agents-configuration",
+        "officialHost": "docs.github.com",
+        "sections": ["MCP server configurations"],
+        "reviewedOn": "2026-08-20",
+        "establishes": "The cloud agent processes out-of-the-box MCP configurations first, followed by the custom agent MCP configuration, and finally MCP configurations specified through repository settings, each level able to override settings from the previous one; the page does not fix the override unit or any cross-level merge rule."
+      }
+    ]
+  },
+  {
     "strategyId": "copilot.cloud.skills.selection",
     "tool": "copilot",
     "surfaces": ["copilot-cloud"],

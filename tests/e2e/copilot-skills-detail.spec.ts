@@ -163,15 +163,13 @@ test('leads with the addressed Copilot definition and its authored invocation na
     'Invocation name: github-ship',
   );
   await expect(page.locator('.aci-skill-detail__definition')).toHaveText('GitHub Copilot · Skill');
-  // Every key the file declares, by the key the file wrote, credential-shaped
-  // keys included — nothing captioned, classified, or withheld.
-  const declarations = page.locator('.aci-skill-detail__declarations > .aci-declaration-block');
-  await expect(declarations.locator('> dt')).toHaveText(['name', 'description', 'api_key']);
-  await expect(declarations.locator('> dd.aci-declaration-block__value')).toHaveText([
-    'github-ship',
-    `deploy with ${FIXTURE_SECRET} and ${FIXTURE_ENV_REFERENCE}`,
-    FIXTURE_SECRET,
-  ]);
+  // Every key the file declares, as one YAML document in the read-only
+  // viewer, credential-shaped keys included — nothing captioned,
+  // classified, or withheld (FR-007).
+  const declarations = page.locator('.aci-skill-detail__declarations');
+  await expect(declarations).toContainText('name: github-ship');
+  await expect(declarations).toContainText(`deploy with ${FIXTURE_SECRET}`);
+  await expect(declarations).toContainText(`api_key: ${FIXTURE_SECRET}`);
 });
 
 test('opens a shared .claude file as each product’s own definition', async ({ page }) => {

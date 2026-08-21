@@ -118,12 +118,12 @@ unless a narrower exclusion or Global requirement is stated below.
 | `claude.repo.plugin-manifest` | Repository | `['.claude-plugin', 'plugin.json']` | `exact`; the selected Repository root is treated as the authored plugin root | `static-candidate` | `claude.behavior.repo.plugin` | Inspector authoring policy only. Claude does not auto-discover this path at an arbitrary Repository root, and presence does not establish activation. A nested local manifest is reachable only through `claude.derived.local-plugin-manifest` | `anthropic.claude-code.plugins.components-scopes`; `anthropic.claude-code.marketplaces.catalog-sources` |
 | `claude.repo.marketplace` | Repository | `['.claude-plugin', 'marketplace.json']` | `exact`; the selected Repository root is treated as the authored marketplace root | `static-candidate` | `claude.behavior.repo.marketplace` | Inspector authoring policy only. Claude does not auto-register this catalog from an arbitrary Repository root; explicit registration remains a runtime condition | `anthropic.claude-code.marketplaces.catalog-sources` |
 
-Contained declarations are metadata on the accepted candidate that carries them and do
-not create another filesystem matcher. Each kind's owner set is its own documented one:
-`hooks` fields are contained in an accepted settings, skill, agent, plugin, or marketplace
-file, while inline MCP declarations are contained in an accepted settings, agent, plugin,
-or marketplace file — never a skill, whose frontmatter has no documented `mcpServers`
-field.
+Contained `hooks` declarations are metadata on the accepted candidate that carries them
+and do not create another filesystem matcher; their owner set is the documented one — an
+accepted settings, skill, agent, plugin, or marketplace file. MCP has no contained
+owner: only the explicit carrier joins the MCP surfaces, and a file of another kind
+that spells inline MCP configuration — an agent's frontmatter, a settings file's map —
+shows it as that kind's own declared content in its own detail.
 
 ## User behavior
 
@@ -206,9 +206,11 @@ is required, dependent work stops, every affected English/Japanese design artifa
 synchronized, and `/speckit.plan` and `/speckit.tasks` are rerun before the revised contract
 is consumed.
 
-The rows are exhaustive. `—` means the eligible set is empty. A contained MCP or Hook
-declaration uses the `MCP` or `hook` row on its already admitted owner file; it does not
+The rows are exhaustive. `—` means the eligible set is empty. A contained Hook
+declaration uses the `hook` row on its already admitted owner file; it does not
 gain fields from the owner's other recognition and does not create a synthetic file.
+MCP has no contained row: only the explicit carrier joins the MCP surfaces, and inline
+MCP configuration in a file of another kind is that kind's own declared content.
 A reference the allowlist does not name remains visible only in complete `sourceText`. No allowlist stands between a declaration and its publication: a skill's declarations are the keys its file wrote, and an authored key set is not closed (FR-007). A relationship
 can be emitted only when both its kind is listed here and its origin is covered by the
 appropriate relationship-only rule in the central registry. This allowlist never grants a
@@ -219,13 +221,13 @@ read, connection, execution, import, installation, or activation authority.
 | `instructions` | — | An accepted `CLAUDE.md` or `CLAUDE.local.md`; an authored `@path` token is source text, never an extracted reference |
 | `rule` | — | Each authored `paths` frontmatter scalar in an accepted `.claude/rules/**/*.md`; omitted `paths` emits no metadata |
 | `skill` | `skill-resource`<br>`agent-reference`<br>`context-inheritance` | Exact frontmatter value/item occurrences in an accepted `SKILL.md`; `hooks` declarations are owned by their separate contained recognitions, and no MCP field exists in a skill frontmatter to own |
-| `agent` | `agent-reference`<br>`context-inheritance`<br>`runtime-reference` | Exact frontmatter value/item occurrences in an accepted `.claude/agents/**/*.md`; `hooks` and `mcpServers` are owned by separate contained recognitions |
+| `agent` | `agent-reference`<br>`context-inheritance`<br>`runtime-reference` | Exact frontmatter value/item occurrences in an accepted `.claude/agents/**/*.md`; `hooks` declarations are owned by their separate contained recognitions, while `mcpServers` is the agent's own frontmatter declaration and owns no MCP recognition |
 | `prompt/command` | `agent-reference`<br>`context-inheritance` | Exact frontmatter value/item occurrences in an accepted legacy command Markdown file; namespace and invocation name derived from the matched path remain typed provenance, not declared metadata |
 | `hook` | `runtime-reference` | Event map keys, matcher values, and handler leaf/item values in contained `hooks` declarations on accepted settings, skill, agent, plugin, or marketplace owners |
-| `MCP` | `runtime-reference` | Server-name map keys and exact server leaf/item occurrences in root `.mcp.json` or a contained declaration on an already admitted owner |
-| `settings/config` | `agent-reference`<br>`declared-component`<br>`runtime-reference` | Exact supported leaf/item occurrences in root `.claude/settings.json` or `.claude/settings.local.json`; contained Hook and MCP values belong only to their own recognition rows |
+| `MCP` | `runtime-reference` | Server-name map keys and exact server leaf/item occurrences in the root `.mcp.json` carrier alone; a file of another kind that spells `mcpServers` shows it as its own declared content and owns no MCP recognition |
+| `settings/config` | `agent-reference`<br>`declared-component`<br>`runtime-reference` | Exact supported leaf/item occurrences in root `.claude/settings.json` or `.claude/settings.local.json`; contained Hook values belong only to the `hook` recognition, and settings never own an MCP recognition |
 | `output style` | — | Exact frontmatter values in an accepted direct-child output-style Markdown file |
-| `plugin` | `declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | Exact metadata and component/dependency leaf/item occurrences in an accepted `.claude-plugin/plugin.json`; inline Hook/MCP bodies are projected only by their separate contained recognitions |
+| `plugin` | `declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | Exact metadata and component/dependency leaf/item occurrences in an accepted `.claude-plugin/plugin.json`; inline Hook bodies are projected only by their separate contained recognitions, and inline MCP declarations are the manifest's own declared content |
 | `marketplace` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | Exact catalog and plugin-entry leaf/item occurrences in an accepted `.claude-plugin/marketplace.json`; `marketplace.plugin.source` alone may seed the closed local-manifest derivation |
 
 No Claude recognition uses the shared `skill metadata` kind in the initial release. Typed

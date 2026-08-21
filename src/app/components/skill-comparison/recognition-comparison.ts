@@ -3,25 +3,21 @@
 // about. Which tools recognize each compared file is a recognition fact,
 // compared per tool so each recognition stays distinguishable from the
 // physical file (US3 scenario 2). The declared metadata is the file's one
-// scan-time parse for the kind (FR-028), so its declarations are matched by
-// `(kind, declared key)` across the pair and compared once — a tool is not a
-// coordinate of a declaration, and rendering the same file-level rows under
-// each recognizing tool would publish one fact as many. This module is the
-// data half, kept out of the component so the decisions are testable without
-// a single-file-component compiler. What a declared key is and when two
-// resolved values are equal lives in the shared declaration semantics
-// (`../inspection/declaration-comparison.ts`), because that answer is a
-// property of the parsed value, not of this kind's comparison model.
+// scan-time parse for the kind (FR-028), so it is compared once — a tool is
+// not a coordinate of a declaration, and rendering the same file-level fact
+// under each recognizing tool would publish one fact as many: each side's
+// frontmatter serializes to one canonical YAML document — `name` and
+// `description` leading, every other key sorted — and the two documents are
+// what Monaco diffs (research.md § 7, frontmatter-yaml.ts). This module is
+// the data half, kept out of the component so the decisions are testable
+// without a single-file-component compiler.
 //
 // The comparison is literal and descriptive by construction (FR-012): it
 // states which recognitions exist and how the files' declarations compare,
 // and its closed shape carries no rank, no winner, and no fabricated rows —
 // relationships in particular, because no shipped recognition publishes an
 // edge for the wire to carry (api-types.ts § FileDetailDto).
-import {
-  matchDeclarations,
-  type DeclarationComparisonRow,
-} from '../inspection/declaration-comparison';
+import { canonicalFrontmatterYamlText } from '../inspection/frontmatter-yaml';
 import { SUPPORTED_TOOL_ORDER, type SupportedTool } from '../../../shared/entities';
 import type {
   FileDetailDto,
@@ -75,11 +71,11 @@ export const RECOGNITION_SIDE_STATE_TEXT: Readonly<Record<RecognitionSideState, 
  * kind, or the stated reason no parsed declarations exist to compare.
  */
 export type DeclarationSideState =
-  /** A skill detail with a parsed presentation: its declarations are the rows'. */
+  /** A skill detail with a parsed presentation: its declarations serialize into the diff. */
   | 'parsed'
   /**
    * A skill detail whose all-or-nothing extraction failed: its declarations
-   * are unknown, not absent (FR-028), so nothing is matched against them.
+   * are unknown, not absent (FR-028), so this side serializes nothing.
    */
   | 'extraction-failed'
   /** A present file no skill recognition owns: it publishes no declarations. */
@@ -91,18 +87,19 @@ export type DeclarationSideState =
  * What a side's declaration state reads as after its "First file"/"Second
  * file" label, beside its union so a new member cannot compile without its
  * sentence (AGENTS.md § User-visible copy policy). 'parsed' and 'file-absent'
- * yield no sentence: the rows are a parsed side's statement, and an absent
- * side is stated by the page and by the rows' own "no file" cells.
+ * yield no sentence: the serialized diff is a parsed side's statement, and an
+ * absent side is stated by the diff's own absent side and by the recognition
+ * rows' "no file" cells.
  */
 export const DECLARATION_SIDE_STATE_TEXT: Readonly<Record<DeclarationSideState, string>> = {
-  /** The rows are this side's statement; no sentence stands in for them. */
+  /** The serialized diff is this side's statement; no sentence stands in for it. */
   parsed: '',
   /** The declarations are unknown, not absent (FR-028). */
   'extraction-failed':
     'is recognized as a skill, but its declarations could not be parsed, so they are unknown.',
   /** No skill recognition owns the file, so it has nothing declared here. */
   'not-a-skill': 'is not recognized as a skill, so it has no declared metadata to compare.',
-  /** The one-sided rows' "no file" cells state the absence. */
+  /** The diff's own absent side states the absence. */
   'file-absent': '',
 };
 
@@ -143,9 +140,9 @@ export class ToolRecognitionRow {
 
 /**
  * The recognition-metadata comparison of one compared pair (FR-011): the
- * per-tool recognition rows, each side's declaration state, and the matched
- * declared keys of the files' parses — built once for the pair, because the
- * declarations are the files' rather than any recognition's. A null side is
+ * per-tool recognition rows, each side's declaration state, and the canonical
+ * serialized document each side's parse becomes — built once for the pair,
+ * because the declarations are the files' rather than any recognition's. A null side is
  * the stated absence of a one-sided comparison, whose present side's
  * recognitions and declarations stand alone (T203).
  *
@@ -168,17 +165,25 @@ export class SkillRecognitionComparison {
   public readonly rightDeclarations: DeclarationSideState;
 
   /**
-   * The matched declared keys, one row per key identity: the first file's
-   * keys in authored order, then keys only the second file declares, in its
-   * order — see {@link DeclarationComparisonRow}. Empty unless every present
-   * side is 'parsed' — an absent side contributes no entries, so the present
-   * side's declarations stand alone in the rows (T203), while a present side
-   * without parsed declarations offers nothing to match, and no rows are
-   * invented against it (FR-028).
+   * The two canonical YAML documents the frontmatter diff mounts, or null
+   * when no diff exists to mount: every present side must be 'parsed' — an
+   * unparsed side's declarations are unknown, and nothing may be diffed
+   * against them (FR-028) — and at least one side must be a file. An absent
+   * side is the stated absence: its empty text is diff arithmetic that
+   * renders the present side's document as the difference (T203, FR-025).
    */
-  public readonly declarations: readonly DeclarationComparisonRow[];
+  public readonly frontmatterDiff: {
+    /** The first side's canonical document; empty for a stated absence. */
+    readonly originalText: string;
+    /** The second side's canonical document; empty for a stated absence. */
+    readonly modifiedText: string;
+    /** Whether the first side is the one-sided comparison's stated absence. */
+    readonly originalAbsent: boolean;
+    /** Whether the second side is the stated absence. */
+    readonly modifiedAbsent: boolean;
+  } | null;
 
-  /** Derives the pair's recognition rows, declaration states, and matched keys. */
+  /** Derives the pair's recognition rows, declaration states, and diff documents. */
   public constructor(left: ComparisonSideInput | null, right: ComparisonSideInput | null) {
     const tools: ToolRecognitionRow[] = [];
     for (const tool of SUPPORTED_TOOL_ORDER) {
@@ -196,18 +201,36 @@ export class SkillRecognitionComparison {
       this.leftDeclarations === 'parsed' && left !== null ? entriesOf(left) : null;
     const rightEntries =
       this.rightDeclarations === 'parsed' && right !== null ? entriesOf(right) : null;
-    // An absent side pairs as the empty entry list, so the present side's
-    // declarations become one-sided rows rather than vanishing with the pair
-    // (T203). A present side without parsed declarations still offers
-    // nothing to match, and no rows are invented against it (FR-028).
-    const leftMatchable = leftEntries !== null || this.leftDeclarations === 'file-absent';
-    const rightMatchable = rightEntries !== null || this.rightDeclarations === 'file-absent';
-    this.declarations =
-      leftMatchable && rightMatchable && (leftEntries !== null || rightEntries !== null)
-        ? matchDeclarations(leftEntries ?? [], rightEntries ?? [])
-        : [];
+    // An absent side pairs as the empty diff operand, so the present side's
+    // document renders as the difference rather than vanishing with the pair
+    // (T203). A present side without parsed declarations offers nothing to
+    // diff, and no document is invented against it (FR-028).
+    const leftDiffable = leftEntries !== null || this.leftDeclarations === 'file-absent';
+    const rightDiffable = rightEntries !== null || this.rightDeclarations === 'file-absent';
+    this.frontmatterDiff =
+      leftDiffable && rightDiffable && (leftEntries !== null || rightEntries !== null)
+        ? {
+            originalText:
+              leftEntries === null
+                ? ''
+                : canonicalFrontmatterYamlText(leftEntries, LEADING_FRONTMATTER_KEYS),
+            modifiedText:
+              rightEntries === null
+                ? ''
+                : canonicalFrontmatterYamlText(rightEntries, LEADING_FRONTMATTER_KEYS),
+            originalAbsent: leftEntries === null,
+            modifiedAbsent: rightEntries === null,
+          }
+        : null;
   }
 }
+
+/**
+ * The identity keys the canonical documents lead with, the same pair the
+ * skill detail leads with (FR-007): which skill this is and what it is for
+ * come before whatever else either file declares.
+ */
+const LEADING_FRONTMATTER_KEYS: readonly string[] = ['name', 'description'];
 
 /**
  * One parsed side's declarations. Callers guard on the 'parsed' state, which

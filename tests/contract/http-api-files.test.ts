@@ -285,8 +285,16 @@ describe('get-file-detail', () => {
       'api_key',
     ]);
     const values = new Map(presentation.frontmatter.map((entry) => [entry.key, entry.value]));
-    expect(values.get('endpoint')).toEqual({ kind: 'scalar', text: ENVIRONMENT_REFERENCE });
-    expect(values.get('api_key')).toEqual({ kind: 'scalar', text: SECRET_LITERALS.inOtherKey });
+    expect(values.get('endpoint')).toEqual({
+      kind: 'scalar',
+      scalarKind: 'string',
+      text: ENVIRONMENT_REFERENCE,
+    });
+    expect(values.get('api_key')).toEqual({
+      kind: 'scalar',
+      scalarKind: 'string',
+      text: SECRET_LITERALS.inOtherKey,
+    });
     // The instructions are the body alone, and a reference-looking token in
     // them stays source text: no relationship field of any spelling is in the
     // response (T217; data-model.md § Relationship).
@@ -479,14 +487,23 @@ describe('get-mcp-carrier-detail for the Codex MCP carrier (T295)', () => {
       'agents',
       'env',
     ]);
-    expect(context7!.fields[0]!.value).toEqual({ kind: 'scalar', text: 'npx' });
+    expect(context7!.fields[0]!.value).toEqual({
+      kind: 'scalar',
+      scalarKind: 'string',
+      text: 'npx',
+    });
     expect(docsHttp!.fields.map((field) => field.key)).toEqual(['url', 'headers']);
     expect(docsHttp!.fields[0]!.value).toEqual({
       kind: 'scalar',
+      scalarKind: 'string',
       text: 'https://docs.example.com/mcp',
     });
     expect(odd!.fields).toEqual([
-      { key: 'command', keyKind: 'string', value: { kind: 'scalar', text: '42' } },
+      {
+        key: 'command',
+        keyKind: 'string',
+        value: { kind: 'scalar', scalarKind: 'number', text: '42' },
+      },
     ]);
   });
 
@@ -961,10 +978,18 @@ describe('get-mcp-carrier-detail for Claude declarations (T316)', () => {
     // The relative command is the literal the file wrote — its resolution
     // base is not established by current official pages, and no computed
     // path stands in for it (FR-009).
-    expect(context7!.fields[0]!.value).toEqual({ kind: 'scalar', text: './scripts/context7.sh' });
+    expect(context7!.fields[0]!.value).toEqual({
+      kind: 'scalar',
+      scalarKind: 'string',
+      text: './scripts/context7.sh',
+    });
     expect(docsHttp!.fields.map((field) => field.key)).toEqual(['type', 'url', 'headers']);
     expect(odd!.fields).toEqual([
-      { key: 'command', keyKind: 'string', value: { kind: 'scalar', text: '42' } },
+      {
+        key: 'command',
+        keyKind: 'string',
+        value: { kind: 'scalar', scalarKind: 'number', text: '42' },
+      },
     ]);
     // Source-free and unresolved: no sourceText field exists on the shape,
     // the raw JSON spelling reaches no response, the credential is present

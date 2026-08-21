@@ -1,11 +1,25 @@
-// Every Monaco basic language, registered in one place.
+// Every Monaco language this product colours with, registered in one place.
 //
 // A "basic language" is a Monarch grammar and a language configuration: it
 // colours text and nothing more. That is the whole reason all of them can be
 // registered here — none of them starts a worker, validates anything, or offers
 // a completion, so registering the full set adds no capability this product
 // refuses to have. The *language services* (`esm/vs/language/{json,css,html,
-// typescript}`) are the ones that would, and none of them is imported anywhere.
+// typescript}`) are the ones that would — with one deliberate exception below.
+//
+// JSON has no basic-language grammar, and `.mcp.json` and its siblings are
+// core customization formats here, so this module builds one: it registers
+// the `json` id with the extension claims the service's contribution makes,
+// and wires the service's own local tokenizer (`vs/language/json/
+// tokenization.js`) to it — the exact module the service uses for its
+// `tokens` feature, with no worker behind it. The contribution module
+// itself is deliberately not imported: its lazy mode drags the LSP adapters
+// and the `json.worker` chunk into the emitted bundle, and a shipped
+// language-service worker is what the package gate forbids
+// (tests/package/monaco-assets.test.ts). The result is the real `json`
+// colouring with nothing that validates, completes, or hovers: marking an
+// inspected customization as invalid stays a verdict this product does not
+// make (research.md § 7).
 //
 // Each import below registers an id, its extensions, and a lazy loader; the
 // grammar itself is a separate chunk the browser fetches only when a file of
@@ -17,8 +31,8 @@
 // (contracts/inspection-path-allowlist.md § Bounded companion census) — an
 // open-ended set that no hand-picked list stays correct for.
 //
-// Imported for their side effects only: `registerLanguage` is the export that
-// matters, and it runs on import.
+// The basic languages are imported for their side effects only:
+// `registerLanguage` is the export that matters, and it runs on import.
 
 import 'monaco-editor/esm/vs/basic-languages/abap/abap.contribution.js';
 import 'monaco-editor/esm/vs/basic-languages/apex/apex.contribution.js';
@@ -101,3 +115,19 @@ import 'monaco-editor/esm/vs/basic-languages/vb/vb.contribution.js';
 import 'monaco-editor/esm/vs/basic-languages/wgsl/wgsl.contribution.js';
 import 'monaco-editor/esm/vs/basic-languages/xml/xml.contribution.js';
 import 'monaco-editor/esm/vs/basic-languages/yaml/yaml.contribution.js';
+import { languages } from 'monaco-editor/esm/vs/editor/editor.api.js';
+import { createTokenizationSupport } from 'monaco-editor/esm/vs/language/json/tokenization.js';
+
+// JSON as a basic language, built here (see the module comment above): the
+// id and extension claims mirror the service contribution's own
+// registration, and the one feature wired to the id is the service's local
+// tokenizer. Comment support is on because `.jsonc` borrows this tokenizer
+// (monaco.ts § BORROWED_GRAMMARS), and the tokenizer colours a comment it
+// meets rather than validating it away.
+languages.register({
+  id: 'json',
+  extensions: ['.json', '.bowerrc', '.jshintrc', '.jscsrc', '.eslintrc', '.babelrc', '.har'],
+  aliases: ['JSON', 'json'],
+  mimetypes: ['application/json'],
+});
+languages.setTokensProvider('json', createTokenizationSupport(true));

@@ -22,6 +22,7 @@ import {
   FIXTURE_SECRET_LITERAL,
   NUMEROUS_FALLBACK_BASENAMES,
   NUMEROUS_FALLBACK_DECLARATION_COUNT,
+  buildAllCustomizationKindFixture,
   buildAllToolSkillFixture,
   buildAllVendorInstructionFixture,
   buildClaudeInstructionFixture,
@@ -29,6 +30,7 @@ import {
   buildClaudeSkillFixture,
   buildCopilotCliMcpFixture,
   buildCopilotVscodeMcpFixture,
+  buildPriorityMcpFixture,
   buildCodexInstructionFixture,
   buildCodexMcpFixture,
   buildCodexSkillFixture,
@@ -1924,7 +1926,7 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
     }
   });
 
-  it('groups Claude carrier and skill-contained declarations of one name into one row (T312)', async () => {
+  it('publishes the Claude carrier declarations alone, an mcpServers-spelling skill contributing none (T312)', async () => {
     const fixture = buildClaudeMcpFixture('inspector-scan-claude-mcp');
     cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
     const context = bootstrap(fixture.root);
@@ -2109,6 +2111,117 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
         nearMiss,
       ).toBe(false);
     }
+  });
+
+  it('publishes the whole priority wave as one cross-vendor inventory (T392)', async () => {
+    const fixture = buildPriorityMcpFixture('inspector-scan-priority-mcp');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    vi.clearAllMocks();
+
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+
+    const declaration = (
+      sourceRelativePath: string,
+      tool: 'copilot' | 'claude' | 'codex',
+      surfaces: readonly string[],
+    ) => ({ sourceRelativePath, tool, surfaces, parseStatus: 'parsed', diagnosticIds: [] });
+    const rootCopilot = declaration(fixture.rootCarrierPath, 'copilot', [
+      'copilot-vscode',
+      'copilot-cli',
+    ]);
+    const rootClaude = declaration(fixture.rootCarrierPath, 'claude', [
+      'claude-cli-and-ide-clients',
+    ]);
+    const githubCopilot = declaration(fixture.githubCarrierPath, 'copilot', ['copilot-cli']);
+    const vscodeCopilot = declaration(fixture.vscodeCarrierPath, 'copilot', ['copilot-vscode']);
+    const codexDeclaration = declaration(fixture.codexCarrierPath, 'codex', [
+      'codex-local-clients',
+    ]);
+    // One inventory across all four carriers: name rows in name order, the
+    // shared name grouping five declarations — one per `(carrier, tool)` —
+    // sorted by carrier path then the closed tool order, with no winner or
+    // order projected among them (FR-009). The malformed-command `odd`
+    // declaration still lists: a value is published as resolved, never
+    // validated.
+    expect(snapshot.mcp).toEqual([
+      { name: 'codex-db', declarations: [codexDeclaration] },
+      { name: 'gh-actions', declarations: [githubCopilot] },
+      { name: 'odd', declarations: [rootCopilot, rootClaude] },
+      { name: 'root-only', declarations: [rootCopilot, rootClaude] },
+      {
+        name: fixture.sharedServerName,
+        declarations: [codexDeclaration, githubCopilot, rootCopilot, rootClaude, vscodeCopilot],
+      },
+      // The exact-pair name spans two carriers and three declarations — the
+      // smallest row the comparison surface can be opened from.
+      {
+        name: fixture.pairedServerName,
+        declarations: [codexDeclaration, rootCopilot, rootClaude],
+      },
+      { name: 'vs-docs', declarations: [vscodeCopilot] },
+    ]);
+    // The published files are exactly the four carriers — one physical item
+    // and one read each, the shared root once for its three admissions — and
+    // no near miss, agent, plugin, or settings file joins them. Nothing is diagnosed, and no declared value
+    // reaches the snapshot.
+    expect(snapshot.files.map((file) => file.sourceRelativePath)).toEqual([
+      fixture.codexCarrierPath,
+      fixture.githubCarrierPath,
+      fixture.rootCarrierPath,
+      fixture.vscodeCarrierPath,
+    ]);
+    expect(snapshot.diagnostics).toEqual([]);
+    const serialized = JSON.stringify(snapshot);
+    expect(serialized).not.toContain(FIXTURE_SECRET_LITERAL);
+    expect(serialized).not.toContain(FIXTURE_ENVIRONMENT_REFERENCE);
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) => String(call[0]));
+    for (const carrier of [
+      fixture.rootCarrierPath,
+      fixture.githubCarrierPath,
+      fixture.vscodeCarrierPath,
+      fixture.codexCarrierPath,
+    ]) {
+      expect(
+        opened.filter((path) => path === join(fixture.root, ...carrier.split('/'))),
+        carrier,
+      ).toHaveLength(1);
+    }
+  });
+
+  it('confines one unreadable carrier to its diagnostic while the wave publishes (T392)', async () => {
+    const fixture = buildPriorityMcpFixture('inspector-scan-priority-mcp-partial');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    // The `.vscode` carrier's read fails as a file-confined outcome: the
+    // walk classifies it unreadable, the generation stays publishable as
+    // `partial` with that file's diagnostic, and every other carrier's rows
+    // are untouched — while a failure outside one file is the abort the
+    // FR-030 suite proves and never a diagnostic.
+    const vscodeAbsolute = join(fixture.root, '.vscode', 'mcp.json');
+    chmodSync(vscodeAbsolute, 0o000);
+    cleanups.push(() => chmodSync(vscodeAbsolute, 0o644));
+    const context = bootstrap(fixture.root);
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+    const vscodeFile = snapshot.files.find(
+      (file) => file.sourceRelativePath === fixture.vscodeCarrierPath,
+    );
+    expect(vscodeFile?.encoding).toBe('unknown');
+    expect(vscodeFile?.diagnosticIds).toHaveLength(1);
+    expect(snapshot.diagnostics).toEqual([
+      expect.objectContaining({
+        code: 'file-unreadable',
+        sourceRelativePath: fixture.vscodeCarrierPath,
+      }),
+    ]);
+    // The unreadable carrier holds no recognition, so its names are absent
+    // rather than unknown-with-rows, and every other carrier's rows stand.
+    const names = snapshot.mcp.map((entry) => entry.name);
+    expect(names).not.toContain('vs-docs');
+    expect(names).toContain('codex-db');
+    expect(names).toContain('gh-actions');
+    expect(names).toContain(fixture.sharedServerName);
   });
 
   it('serves a bare-form shared root as its union, with no no-name row', async () => {
@@ -2977,5 +3090,48 @@ describe('the unified instructions inventory (T270)', () => {
       'CLAUDE.md',
       'GEMINI.md',
     ]);
+  });
+});
+
+describe('the combined all-kind fixture serves every inventory from one tree (T1099)', () => {
+  it('publishes skills, instructions, and MCP from one scan of one root', async () => {
+    const fixture = buildAllCustomizationKindFixture('inspector-scan-all-kinds');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+
+    // Each kind's inventory is present in the one snapshot. The per-kind
+    // matrices are owned by the dedicated suites above; this test owns the
+    // composition.
+    expect(snapshot.skills.map((entry) => entry.name)).toContain('orbit');
+    expect(snapshot.mcp.map((entry) => entry.name)).toContain(fixture.mcpFixture.sharedServerName);
+    const rootRow = snapshot.instructions.find((entry) => entry.applicabilityRange === '**')!;
+    const rootPaths = rootRow.files.map((file) => file.sourceRelativePath);
+    expect(rootPaths).toContain('AGENTS.md');
+
+    // The merged root `.codex/config.toml` — the one path two builders own —
+    // feeds both of its readers from one document: the configuration stage
+    // derives the declared fallbacks from its top-level key, and the MCP
+    // stage parses its server tables. Neither read diagnoses it, so the
+    // concatenated file is valid TOML for both.
+    for (const derived of fixture.instructionFixture.expectedDerivedFallbackPaths) {
+      expect(rootPaths).toContain(derived);
+    }
+    const codexRow = snapshot.mcp.find((entry) => entry.name === 'codex-db')!;
+    expect(codexRow.declarations).toEqual([
+      {
+        sourceRelativePath: '.codex/config.toml',
+        tool: 'codex',
+        surfaces: ['codex-local-clients'],
+        parseStatus: 'parsed',
+        diagnosticIds: [],
+      },
+    ]);
+    expect(
+      snapshot.diagnostics.some(
+        (diagnostic) => diagnostic.sourceRelativePath === '.codex/config.toml',
+      ),
+    ).toBe(false);
   });
 });

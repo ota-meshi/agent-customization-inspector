@@ -73,7 +73,11 @@ function fileDetail(): FileDetailDto {
     },
     presentation: {
       frontmatter: [
-        { key: 'name', keyKind: 'string', value: { kind: 'scalar', text: 'secretive' } },
+        {
+          key: 'name',
+          keyKind: 'string',
+          value: { kind: 'scalar', scalarKind: 'string', text: 'secretive' },
+        },
       ],
       bodyText: 'ghp_FIXTURE000\n',
     },
@@ -159,6 +163,9 @@ describe('authored file content in the browser', () => {
       // two ordinary detail loads, with the same guards as the skill one and
       // nothing that masks or reveals either side.
       'instructionComparison',
+      // The MCP comparison view (FR-011): two ordinary carrier-detail loads
+      // of declarations alone — no carrier source exists to reveal (FR-007).
+      'mcpComparison',
       'openCarrierDetail',
       'openCompanion',
       'openFileDetail',

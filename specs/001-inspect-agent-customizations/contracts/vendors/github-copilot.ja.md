@@ -297,8 +297,10 @@ eligible set、source form、extractor applicability、relationship kindをautho
 意味変更してはならない。この種の変更が必要ならdependent workを停止し、影響する英日design artifactをすべて同期し、
 改訂contractを利用する前に`/speckit.plan`と`/speckit.tasks`を再実行する。
 
-各rowは網羅的であり、`—`はeligible setが空であることを意味する。Contained MCPまたはHook declarationは、すでにadmission済みのowner file上で`MCP`または
-`hook` rowを使う。Ownerの別recognitionからfieldを取得せず、synthetic fileも作らない。Allowlistが記載しないreferenceは、
+各rowは網羅的であり、`—`はeligible setが空であることを意味する。Contained Hook declarationは、すでにadmission済みのowner file上で
+`hook` rowを使う。Ownerの別recognitionからfieldを取得せず、synthetic fileも作らない。MCPにcontained rowは
+存在しない: MCP surfaceに合流するのは明示的なcarrierだけで、他のkindのfile内のinline MCP configurationは
+そのkind自身の宣言contentである。Allowlistが記載しないreferenceは、
 完全な`sourceText`だけに残す。宣言とその公開の間にallowlistは立たない: skillの宣言はfileが書いた
 keyであり、authored keyの集合は閉じていない（FR-007）。Relationshipは、そのkindがこの表にあり、かつoriginが中央registryの適切な
 relationship-only ruleでcoverされる場合だけemitできる。このallowlistはread、connection、execution、import、
@@ -308,9 +310,9 @@ installation、activationのauthorityを一切与えない。
 |---|---|---|
 | `instructions` | — | 受理済み`*.instructions.md`、`.github/copilot-instructions.md`、`AGENTS.md`、またはCopilot recognition済み`CLAUDE.md`。Authored CLI `@path` targetはsource textであり、抽出されるreferenceではない。`applyTo`のようなsupported frontmatter valueは、targetではなくそのfileが統べる範囲を宣言する。Path-derived scopeとenablementはtyped factのままとする |
 | `skill` | `skill-resource`<br>`context-inheritance` | 受理済み`SKILL.md`の正確なsupported frontmatter value/item occurrence。Relative resource referenceはrelationshipにできるがreadをauthorizeしない |
-| `MCP` | `runtime-reference` | 受理済みCLI `mcpServers` file、VS Code `.vscode/mcp.json` `servers` file、またはcustom-agent-contained declarationにあるserver-name map keyと正確なsupported server leaf/item occurrence。VS Code 1.118以降のroot `.mcp.json` provenanceはpath/surface-onlyで、direct documentationがschemaを確立するまでVS Code所有extractor fieldを追加しない。同じfileのCLI extractionは独立のまま。Environment/header valueはそのparserが解決した値とし、展開しない |
+| `MCP` | `runtime-reference` | 受理済みCLI `mcpServers` fileまたはVS Code `.vscode/mcp.json` `servers` fileにあるserver-name map keyと正確なsupported server leaf/item occurrence。VS Code 1.118以降のroot `.mcp.json` provenanceはpath/surface-onlyで、direct documentationがschemaを確立するまでVS Code所有extractor fieldを追加しない。同じfileのCLI extractionは独立のまま。Environment/header valueはそのparserが解決した値とし、展開しない |
 | `prompt/command` | `skill-resource`<br>`agent-reference`<br>`runtime-reference` | 受理済みVS Code promptまたはroot direct-child CLI commandの正確なsupported frontmatter value/item occurrence。Matched pathから導出するprompt/command invocation nameはtyped provenanceのままとし、linkまたは`#file` targetはinertに保つ |
-| `agent` | `agent-reference`<br>`skill-resource`<br>`context-inheritance`<br>`runtime-reference` | 受理済み`.github/agents/*.md`または`.claude/agents/*.md`の正確なsupported frontmatter value/item/map-entry occurrence。Body instructionは`sourceText`のまま保持し、`hooks`と`mcp-servers`は別のcontained recognitionが所有する |
+| `agent` | `agent-reference`<br>`skill-resource`<br>`context-inheritance`<br>`runtime-reference` | 受理済み`.github/agents/*.md`または`.claude/agents/*.md`の正確なsupported frontmatter value/item/map-entry occurrence。Body instructionは`sourceText`のまま保持し、`hooks` declarationは別のcontained recognitionが所有し、`mcp-servers`はagent自身のfrontmatter宣言であってMCP recognitionを所有しない |
 | `settings/config` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`runtime-reference` | 正確なsupported Repository/localまたはcross-tool-compatible settings leaf/item/map-entry occurrence。Contained Hook valueは`hook` recognitionだけに属し、settingsはMCP recognitionを所有しない |
 | `marketplace` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | 受理済みmarketplace fileの正確なcatalog/plugin-entry leaf/item occurrence。`marketplace.plugin.source`だけがplain-string sourceまたはobjectの`path` leafを表し、closedなlocal-manifest derivationをseedできる。Inline component bodyはactivateしない |
 | `plugin` | `declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | 受理済みCopilot plugin manifestの正確なmetadata/component-path leaf/item occurrence。Inline Hook/MCP bodyと参照先script/assetはplugin metadata IDを取得せず、component pathはcandidateを作らない |

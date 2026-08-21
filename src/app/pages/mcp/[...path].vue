@@ -8,11 +8,13 @@
 // the declaration set is the carrier's own — one parse, one response — and
 // the path is the wire identity (FR-030).
 //
-// Unlike every other detail this page has no file tab and no source viewer
-// at all: a file admitted so its declarations can be published shows those
-// declarations and never its own bytes, and the wire backs that structurally —
-// the carrier detail is `get-mcp-carrier-detail`'s own result, whose shape
-// carries no `sourceText` field (FR-007).
+// Unlike every other detail this page has no file tab and no viewer of the
+// file's own bytes: a file admitted so its declarations can be published
+// shows those declarations and never its source, and the wire backs that
+// structurally — the carrier detail is `get-mcp-carrier-detail`'s own
+// result, whose shape carries no `sourceText` field (FR-007). The only
+// editors on the page show each declaration serialized as the JSON document
+// a reader can paste into their own carrier (mcp-declaration-json.ts).
 //
 // The declared values render exactly as authored — credentials included, with
 // nothing masked and no control that would uncover a masked value — and no
@@ -33,11 +35,13 @@ import {
 } from 'vue';
 import { useRoute } from 'vue-router';
 import { NuxtLink } from '#components';
-import DeclarationBlock from '../../components/inspection/DeclarationBlock.vue';
+import SourceViewer from '../../components/inspection/SourceViewer.vue';
+import { declarationJsonText } from '../../components/mcp-declaration-json';
 import { decodeMcpServerRouteName, mcpDetailRoute } from '../../components/mcp-detail-route';
 import { usePageOwnership } from '../../composables/page-ownership';
 import { VENDOR_SURFACE_TEXT } from '../../../shared/registries/behavior-text';
 import { SESSION_VIEW_STATE } from '../../session/view-state';
+import { mcpComparisonRouteFor } from '../../composables/mcp-comparison';
 import { DIAGNOSTIC_REGISTRY } from '../../../shared/diagnostics';
 import {
   CUSTOMIZATION_KIND_TEXT,
@@ -136,6 +140,38 @@ const carrierListed = computed(() =>
   (snapshot.value?.mcp ?? []).some((entry) =>
     entry.declarations.some((declaration) => declaration.sourceRelativePath === openPath.value),
   ),
+);
+
+/**
+ * The comparison entry for one of this carrier's declared names (FR-011):
+ * that name's declaration here beside the same name's declaration in the
+ * first other carrier of its row — the comparison never leaves the name's
+ * row, exactly as a skill's entry link stays inside its name's row
+ * (data-model.md § Inventory unit), and every carrier of a named row is
+ * comparison-eligible (FR-025) because its declarations are parsed
+ * (api-types.ts § McpDeclarationDto.parseStatus). Null when the name's row
+ * holds no second carrier; the comparison surface's own pickers take over
+ * from there.
+ */
+function compareRouteForName(name: string): ReturnType<typeof mcpComparisonRouteFor> | null {
+  const row = (snapshot.value?.mcp ?? []).find((entry) => entry.name === name);
+  let counterpart: string | null = null;
+  for (const declaration of row?.declarations ?? []) {
+    if (declaration.sourceRelativePath !== openPath.value) {
+      counterpart = declaration.sourceRelativePath;
+      break;
+    }
+  }
+  return counterpart === null ? null : mcpComparisonRouteFor(name, openPath.value, counterpart);
+}
+
+/**
+ * The declaration view's own comparison entry: the open server name's, or
+ * null on the carrier view — where each server block carries its own link —
+ * and when the name's row holds no counterpart.
+ */
+const openServerCompareRoute = computed(() =>
+  openServerName.value === null ? null : compareRouteForName(openServerName.value),
 );
 
 /** Whether the URL resolves in the committed inventory; see {@link owner}. */
@@ -272,8 +308,17 @@ const serverBlocks = computed(() =>
               .join(', ')})`,
         )
         .join(', '),
-      block: { kind: 'mapping', entries: server.fields } as const,
-      fieldCount: server.fields.length,
+      // The declaration as the pretty-printed JSON a reader can paste into
+      // their own carrier (mcp-declaration-json.ts): the keys the file
+      // wrote, in the file's own order, every value as resolved (FR-007). A
+      // fieldless declaration is the empty object `{}`, an authored fact
+      // shown rather than a blank panel.
+      jsonText: declarationJsonText(server.fields),
+      // The carrier view's per-server comparison entry (FR-011): each name
+      // compares within its own row, so the link is the block's rather than
+      // the page's. The declaration view leaves it null — its one link is
+      // the overview's ({@link openServerCompareRoute}).
+      compareRoute: openServerName.value === null ? compareRouteForName(server.name) : null,
     })),
 );
 
@@ -538,6 +583,13 @@ onBeforeUnmount(() => {
         <p class="aci-mcp-detail__recognition">
           {{ ownerText }} · {{ CUSTOMIZATION_KIND_TEXT.MCP }}
         </p>
+        <!-- The declaration view's comparison entry (FR-011): present
+             exactly when this name's row holds another readable carrier to
+             stand opposite this one. The comparison surface's own pickers
+             take over from there. -->
+        <p v-if="openServerCompareRoute !== null" class="aci-mcp-detail__compare">
+          <NuxtLink :to="openServerCompareRoute">Compare this server's declarations</NuxtLink>
+        </p>
         <!-- The declaration view states its owner-carrier identity — the
              record's own second line, linking to the carrier's file-unit
              view. -->
@@ -583,17 +635,13 @@ onBeforeUnmount(() => {
       </p>
 
       <!-- The declarations: every one for the file-unit view, the selected
-           one alone for a declaration view. Each section shows its fields in
-           the parser's resolved order — commands, URLs, headers,
-           environment values, exactly as authored, resolved against nothing
-           (FR-026).
+           one alone for a declaration view. Each section shows its fields as
+           one JSON document in the parser's resolved order — commands, URLs,
+           headers, environment values, exactly as authored, resolved against
+           nothing (FR-026).
            The declaration view's name already heads the page, so its one
            section repeats no heading. -->
-      <section
-        v-for="server in serverBlocks"
-        :key="server.key"
-        class="aci-mcp-detail__server aci-panel"
-      >
+      <section v-for="server in serverBlocks" :key="server.key" class="aci-mcp-detail__server">
         <h3
           v-if="openServerName === null"
           :class="server.nameIsAuthored ? 'aci-authored-text' : 'aci-muted'"
@@ -606,8 +654,34 @@ onBeforeUnmount(() => {
              carrier view states each server's own readers rather than letting
              the page caption answer for every block (T353). -->
         <p v-if="openServerName === null" class="aci-muted">{{ server.toolsText }}</p>
-        <p v-if="server.fieldCount === 0" class="aci-note">This declaration sets no fields.</p>
-        <DeclarationBlock v-else :value="server.block" />
+        <!-- The carrier view's per-server comparison entry: the accessible
+             name carries the server's name after the visible phrase, because
+             a carrier view lists one such link per declared name and they
+             would otherwise announce identically (WCAG 2.4.6; label-in-name
+             keeps the visible phrase as the prefix). -->
+        <p v-if="server.compareRoute !== null">
+          <NuxtLink
+            :to="server.compareRoute"
+            :aria-label="`Compare this server's declarations: ${server.nameAccessibleText}`"
+            >Compare this server's declarations</NuxtLink
+          >
+        </p>
+        <!-- The declaration's fields as one read-only JSON document in the
+             Monaco viewer — coloured by the `json` tokenizer a `.json`
+             file's model gets (monaco-languages.ts, tokens-only) — in the
+             spelling a reader pastes into their own carrier. JSON's own escaping is what keeps every
+             character visible and transportable: a control character or
+             lone surrogate is its escape, a newline is `\n` (FR-025,
+             FR-026). The accessible name says which declaration of the
+             carrier is showing, because a carrier view mounts one viewer
+             per declared server (WCAG 2.4.6). -->
+        <SourceViewer
+          :source-text="server.jsonText"
+          :source-relative-path="openPath"
+          :content-label="`Declaration ${server.nameAccessibleText} of`"
+          content-language="json"
+          fit-content
+        />
       </section>
     </template>
   </div>
@@ -641,8 +715,11 @@ onBeforeUnmount(() => {
   padding-bottom: 0.5rem;
 }
 
+/* One block per declaration, separated by spacing alone: the declaration
+   document draws its own frame (SourceViewer), and a panel border around it
+   would draw a second one. */
 .aci-mcp-detail__server {
-  margin-block-start: 0.75rem;
+  margin-block-start: 1.25rem;
 }
 
 .aci-mcp-detail__server > h3 {

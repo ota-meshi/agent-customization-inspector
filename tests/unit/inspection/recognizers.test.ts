@@ -544,15 +544,19 @@ describe('Codex MCP recognition (T283)', () => {
       'docs-http',
     ]);
     expect(recognitions[0]!.details.servers[0]!.fields).toEqual([
-      { key: 'command', keyKind: 'string', value: { kind: 'scalar', text: 'npx' } },
+      {
+        key: 'command',
+        keyKind: 'string',
+        value: { kind: 'scalar', scalarKind: 'string', text: 'npx' },
+      },
       {
         key: 'args',
         keyKind: 'string',
         value: {
           kind: 'sequence',
           items: [
-            { kind: 'scalar', text: '-y' },
-            { kind: 'scalar', text: '@upstash/context7-mcp' },
+            { kind: 'scalar', scalarKind: 'string', text: '-y' },
+            { kind: 'scalar', scalarKind: 'string', text: '@upstash/context7-mcp' },
           ],
         },
       },
@@ -649,7 +653,7 @@ describe('Codex MCP recognition (T283)', () => {
               {
                 key: 'API_KEY',
                 keyKind: 'string',
-                value: { kind: 'scalar', text: '$HOME/${TOKEN}' },
+                value: { kind: 'scalar', scalarKind: 'string', text: '$HOME/${TOKEN}' },
               },
             ],
           },
@@ -708,15 +712,19 @@ describe('Claude MCP recognition (T306)', () => {
       'docs-http',
     ]);
     expect(recognitions[0]!.details.servers[0]!.fields).toEqual([
-      { key: 'command', keyKind: 'string', value: { kind: 'scalar', text: 'npx' } },
+      {
+        key: 'command',
+        keyKind: 'string',
+        value: { kind: 'scalar', scalarKind: 'string', text: 'npx' },
+      },
       {
         key: 'args',
         keyKind: 'string',
         value: {
           kind: 'sequence',
           items: [
-            { kind: 'scalar', text: '-y' },
-            { kind: 'scalar', text: '@upstash/context7-mcp' },
+            { kind: 'scalar', scalarKind: 'string', text: '-y' },
+            { kind: 'scalar', scalarKind: 'string', text: '@upstash/context7-mcp' },
           ],
         },
       },
@@ -816,7 +824,7 @@ describe('Claude MCP recognition (T306)', () => {
         {
           key: 'command',
           keyKind: 'string',
-          value: { kind: 'scalar', text: './scripts/run.sh' },
+          value: { kind: 'scalar', scalarKind: 'string', text: './scripts/run.sh' },
         },
         {
           key: 'env',
@@ -827,7 +835,7 @@ describe('Claude MCP recognition (T306)', () => {
               {
                 key: 'API_KEY',
                 keyKind: 'string',
-                value: { kind: 'scalar', text: '$HOME/${TOKEN}' },
+                value: { kind: 'scalar', scalarKind: 'string', text: '$HOME/${TOKEN}' },
               },
             ],
           },
@@ -884,7 +892,7 @@ describe('Copilot CLI MCP recognition (T336)', () => {
           {
             key: 'url',
             keyKind: 'string',
-            value: { kind: 'scalar', text: 'https://db.example.com/mcp' },
+            value: { kind: 'scalar', scalarKind: 'string', text: 'https://db.example.com/mcp' },
           },
         ],
       },
@@ -1023,11 +1031,15 @@ describe('Copilot VS Code MCP recognition (T356, T364)', () => {
       {
         name: 'docs',
         fields: [
-          { key: 'type', keyKind: 'string', value: { kind: 'scalar', text: 'http' } },
+          {
+            key: 'type',
+            keyKind: 'string',
+            value: { kind: 'scalar', scalarKind: 'string', text: 'http' },
+          },
           {
             key: 'url',
             keyKind: 'string',
-            value: { kind: 'scalar', text: 'https://docs.example.com/mcp' },
+            value: { kind: 'scalar', scalarKind: 'string', text: 'https://docs.example.com/mcp' },
           },
         ],
       },
@@ -1099,7 +1111,56 @@ describe('Copilot VS Code MCP recognition (T356, T364)', () => {
   });
 });
 
-describe('the contained-MCP owner gate (T325)', () => {
+describe('the priority recognition matrix (T391)', () => {
+  it('recognizes the three-admission shared root once per tool, by each schema', async () => {
+    // One physical root `.mcp.json` under every admission the shipped
+    // catalog gives it: Claude's project rule, the Copilot CLI rule, and the
+    // VS Code 1.118+ provenance. Exactly two recognitions exist — one per
+    // `(file, tool, kind)` — the Copilot one carrying both admissions as its
+    // provenances in deterministic order, and each tool's declarations are
+    // its own documented reading of the one text: the wrapper form reads
+    // identically for both here, while the schema distinction is pinned by
+    // the bare-form cases above (T341, T362).
+    const { recognitions } = await recognizeCandidateForVendors(
+      {
+        matchedPath: '.mcp.json',
+        absolutePath: join(root, '.mcp.json'),
+        sourceRoot: root,
+        sourceText: JSON.stringify({ mcpServers: { shared: { command: 'npx' } } }),
+        admissions: [
+          { compiled: claudeMcpRule, origin: { planIndex: 0, selectorIndex: 0 } },
+          { compiled: copilotMcpRule, origin: { planIndex: 1, selectorIndex: 0 } },
+          { compiled: copilotVscodeRootMcpRule, origin: { planIndex: 2, selectorIndex: 0 } },
+        ],
+      },
+      ['claude', 'copilot'],
+    );
+    expect(recognitions.map((recognition) => [recognition.tool, recognition.details.kind])).toEqual(
+      [
+        ['claude', 'MCP'],
+        ['copilot', 'MCP'],
+      ],
+    );
+    const [claude, copilot] = recognitions;
+    if (claude?.details.kind !== 'MCP' || copilot?.details.kind !== 'MCP') {
+      throw new Error('expected MCP recognitions for both tools');
+    }
+    expect(claude.details.servers.map((server) => server.name)).toEqual(['shared']);
+    expect(claude.provenances.map((provenance) => provenance.ruleId)).toEqual(['claude.repo.mcp']);
+    expect(copilot.details.servers.map((server) => server.name)).toEqual(['shared']);
+    expect(copilot.provenances.map((provenance) => provenance.ruleId)).toEqual([
+      'copilot.repo.mcp',
+      'copilot.repo.mcp.vscode-root',
+    ]);
+    // No synthetic file and no third record: the declarations live on the
+    // carrier's own path, one recognition per tool.
+    for (const recognition of recognitions) {
+      expect(recognition.sourceRelativePath).toBe('.mcp.json');
+    }
+  });
+});
+
+describe('MCP recognitions come from explicit carriers alone (T325)', () => {
   const skillPath = '.claude/skills/deploy/SKILL.md';
   const mcpSpellingSource = [
     '---',
@@ -1114,13 +1175,12 @@ describe('the contained-MCP owner gate (T325)', () => {
   ].join('\n');
 
   it('attaches no MCP recognition to a skill whose frontmatter spells mcpServers', async () => {
-    // Claude documents no `mcpServers` skill-frontmatter field — the skills
-    // page's frontmatter reference and the changelog place that field on
-    // agents alone — so the spelling is ordinary frontmatter under the
-    // skill's own kind and declares nothing any product reads (user
-    // decision, 2026-08-20). The adapter table ships empty: the documented
-    // owner families — agent frontmatter, plugin manifests, settings — are
-    // kinds no Repository rule admits yet.
+    // Only explicit MCP configuration joins the MCP surfaces: a file of any other kind that spells MCP-looking
+    // configuration holds its own kind's recognition alone, and its
+    // declarations are visible in that file's own detail as the frontmatter
+    // it wrote. No contained-owner machinery exists — an agent file's
+    // `mcp-servers` will be the agent's own declaration once an agents
+    // inventory ships, never an MCP row.
     for (const sourceText of [
       mcpSpellingSource,
       '---\nname: deploy\n---\n\n# Deploy\n',
@@ -1157,12 +1217,11 @@ describe('the contained-MCP owner gate (T325)', () => {
     );
   });
 
-  it('creates no recognition for an unadmitted owner however many declarations it carries', async () => {
-    // The activation gate future owner families will run behind: dispatch
-    // requires an admitted owner recognition, so a settings file, plugin
-    // manifest, or agent file that no rule admits reaches no adapter — those
-    // families stay inert until their phases admit their files and add their
-    // adapter entries.
+  it('creates no recognition for an unadmitted file however many declarations it carries', async () => {
+    // A settings file, plugin manifest, or agent file that no rule admits
+    // produces nothing at all — and when such a kind's own inventory phase
+    // admits it, its configuration stays that kind's detail content rather
+    // than becoming MCP rows.
     const { recognitions } = await recognizeCandidateForVendors(
       {
         matchedPath: '.claude/settings.json',

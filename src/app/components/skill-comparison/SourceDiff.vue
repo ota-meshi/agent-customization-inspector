@@ -47,6 +47,27 @@ const props = defineProps<{
   readonly originalAbsent?: boolean;
   /** Whether the second side names an absent counterpart; see {@link originalAbsent}. */
   readonly modifiedAbsent?: boolean;
+  /**
+   * The language id both models are created with, set when the compared
+   * texts are one canonical serialization rather than the files' own bytes
+   * (`SourceComparisonInput.contentLanguage`). Omitted, each side's language
+   * resolves from its own path.
+   */
+  readonly contentLanguage?: string;
+  /**
+   * Sizes the diff to its taller document instead of the fixed reading box,
+   * capped by this component's stylesheet (`SourceDiffHandle.mount`
+   * § fitContent). Set by the serialized-frontmatter diff, whose documents
+   * are usually short.
+   */
+  readonly fitContent?: boolean;
+  /**
+   * What of each file the sides show, spliced into each side's accessible
+   * name (`SourceComparisonInput.contentLabel`) — `frontmatter of` on the
+   * serialized-frontmatter diff — so a serialized slice is never announced
+   * as the whole file (FR-025). Omitted, the sides are the files.
+   */
+  readonly contentLabel?: string;
 }>();
 
 /** The element Monaco takes over; empty until the editor is mounted. */
@@ -133,14 +154,22 @@ async function showCurrentPair(): Promise<void> {
     return;
   }
   disposeViewer();
-  const mounted = await SourceDiffHandle.mount(element, {
-    originalText: props.originalText,
-    originalPath: props.originalPath,
-    modifiedText: props.modifiedText,
-    modifiedPath: props.modifiedPath,
-    originalAbsent: props.originalAbsent === true,
-    modifiedAbsent: props.modifiedAbsent === true,
-  }).catch(() => null);
+  const mounted = await SourceDiffHandle.mount(
+    element,
+    {
+      originalText: props.originalText,
+      originalPath: props.originalPath,
+      modifiedText: props.modifiedText,
+      modifiedPath: props.modifiedPath,
+      originalAbsent: props.originalAbsent === true,
+      modifiedAbsent: props.modifiedAbsent === true,
+      // Spread conditionally: `exactOptionalPropertyTypes` keeps an absent
+      // language distinct from an undefined one on the mount input.
+      ...(props.contentLanguage === undefined ? {} : { contentLanguage: props.contentLanguage }),
+      ...(props.contentLabel === undefined ? {} : { contentLabel: props.contentLabel }),
+    },
+    { fitContent: props.fitContent === true },
+  ).catch(() => null);
   if (mounted === null) {
     // The editor chunk or its construction failed. Neither source is lost —
     // the fallback below binds both — so the honest state is a visible
@@ -197,7 +226,12 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div v-show="!mountError" ref="host" class="aci-source-diff" />
+  <div
+    v-show="!mountError"
+    ref="host"
+    class="aci-source-diff"
+    :class="{ 'aci-source-diff--fit': fitContent }"
+  />
   <!-- Stable rather than inserted with the failure it reports, because a
        region that appears together with its message is not reliably read. -->
   <p class="aci-live-region" role="alert" aria-live="assertive" aria-atomic="true">
@@ -242,7 +276,7 @@ onBeforeUnmount(() => {
            visibly, and the diff labels carry each side's exact identity. -->
       <h4
         class="aci-source-diff__fallback-caption"
-        :aria-label="`${side.caption} ${inlinePresentationLabel(side.path)}${
+        :aria-label="`${side.caption} ${contentLabel === undefined || side.absent ? '' : `${contentLabel} `}${inlinePresentationLabel(side.path)}${
           side.absent ? ' (no file in this skill directory)' : ''
         }`"
       >
@@ -274,6 +308,16 @@ onBeforeUnmount(() => {
   border: 1px solid var(--aci-border);
   border-radius: 4px;
   inline-size: 100%;
+}
+
+/* The fit-content variant: the mounted handle writes the taller document's
+   height to the element (`SourceDiffHandle.mount` § fitContent) and this cap
+   keeps a long document from taking the page — past it, the diff scrolls
+   inside its box exactly like the fixed variant. */
+.aci-source-diff--fit {
+  block-size: auto;
+  max-block-size: 28rem;
+  min-block-size: 3rem;
 }
 
 /* The two complete sources side by side, stacking on a narrow viewport where

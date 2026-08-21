@@ -124,7 +124,8 @@ another machine remains prohibited.
 
 Comparison views are constructed client-side from at most two `get-file-detail`
 results — one per present side, and a one-sided comparison's stated absent counterpart
-needs none — and there is no separate comparison function. There is also no masking, redaction, reveal, or
+needs none — or, for the MCP declaration comparison, from two `get-mcp-carrier-detail`
+results, and there is no separate comparison function. There is also no masking, redaction, reveal, or
 environment-resolution function anywhere in the catalog, and the host does not enable
 devframe's optional MCP route.
 
@@ -314,13 +315,13 @@ and client. An
 MCP row is one declared server name, listing every `[mcp_servers.*]`-style declaration
 that resolves it — one per `(carrier, tool)` — so one admitted `.codex/config.toml`
 contributes one declaration per server it declares and a second carrier declaring the
-same name joins that name's row. A declaration's home is a standalone carrier — the
+same name joins that name's row. A declaration's home is an explicit carrier — the
 Codex configuration layer, the Claude root `.mcp.json`, the Copilot CLI's root
-`.mcp.json` and `.github/mcp.json`, the VS Code `.vscode/mcp.json` — or an already admitted owner
-file whose own content contains declarations, once a phase admits one of the documented
-owner families (an agent file, a plugin manifest, a settings file — never a skill, whose
-frontmatter has no documented `mcpServers` field); both homes join the name's row
-identically, each declaration naming its
+`.mcp.json` and `.github/mcp.json`, the VS Code `.vscode/mcp.json` — and nothing else:
+a file of any other kind that spells MCP-looking configuration in its own content — a
+skill's or an agent's frontmatter, a settings file's inline map — is that kind's
+ordinary content, visible in its own detail, and joins no MCP row. Each declaration
+names its
 own file, and one physical file two products admit — the root `.mcp.json` — is one
 declaration per recognizing tool under each name it declares. The one row whose name is null closes the list with
 the carriers currently publishing no named declaration, whether their declaration
@@ -595,7 +596,7 @@ FileDetail — kind: 'skill' | 'instructions' | 'file'
 │   ├── presentation — the one scan-time parse, or null exactly when
 │   │   extraction failed all-or-nothing (FR-028):
 │   │   ├── frontmatter[] { key, keyKind, value } — a value is one of
-│   │   │   { kind: 'scalar', text }, { kind: 'absent' },
+│   │   │   { kind: 'scalar', scalarKind, text }, { kind: 'absent' },
 │   │   │   { kind: 'sequence', items[] }, or
 │   │   │   { kind: 'mapping', entries[] { key, keyKind, value } }, recursively
 │   │   └── bodyText
@@ -643,8 +644,8 @@ matches by that pair, never by `key` alone. The same entry shape, `keyKind` incl
 recurs inside every nested `mapping` value.
 
 For a readable file, `sourceText` is the complete decoded source, exactly as authored. A
-standalone MCP declaration carrier — a file the MCP kind recognizes and no skill or
-owner kind claims — has no `FileDetail` at all: a file admitted so its
+standalone MCP declaration carrier — a file the MCP kind recognizes and no skill
+kind claims — has no `FileDetail` at all: a file admitted so its
 declarations can be published shows those declarations and never its own bytes (FR-007),
 and a function whose purpose is serving authored source carries no variant that must
 withhold it. The withholding outranks every other recognition the same path carries: a
@@ -654,13 +655,11 @@ the bytes FR-007 withholds — so the carrier stays withheld rather than answere
 the fallback recognition. Such a carrier's detail is `get-mcp-carrier-detail`'s own
 result, and its
 path requested here resolves to the same `stale-resource` rejection as any path this
-function holds no detail for. An admitted owner file that merely contains MCP
-declarations is not that carrier: its source is legitimately displayed under its own
-kind, so this function serves the owner's own detail while `get-mcp-carrier-detail`
-serves the contained declarations beside it. The owner families are the documented
-ones — an agent file, a plugin manifest, a settings file — none of which any rule admits
-yet; a skill is never one, because Claude documents no `mcpServers` skill-frontmatter
-field, so a skill spelling that key is ordinary skill content here.
+function holds no detail for. Only the explicit carriers hold MCP recognitions: a file
+of any other kind that spells MCP-looking configuration in its own content — a skill's
+or an agent's frontmatter, a settings file's inline map — is that kind's ordinary
+content, served by this function under its own kind with every declared key visible in
+its presentation, and it joins no MCP surface.
 
 A skill's `presentation` is what it declares and what it instructs, because that
 is what its detail surface leads with. `frontmatter[]` lists every key the file declares,
@@ -721,13 +720,17 @@ no metadata, relationships, or derivations while the file-scoped
 kind — makes the generation `partial` and the complete readable
 source stays displayed and comparison-eligible (FR-028). A failure that is not confined to
 one file fails the attempt and is exposed, when RPC-owned, as the request's ordinary
-error. Structural metadata comparison uses
-`(kind, declared key)` — a frontmatter declaration is its file's one parse for the
-Markdown kind, shared by every recognizing tool, so a tool is not a coordinate of it and
-two kinds never collide merely because their key matches; tool recognition is compared
-per tool beside the declarations. The MCP kind's declarations are each recognizing
-tool's own reading (data-model.md § Field reading) and take part in no cross-file
-metadata comparison.
+error. Declaration comparison is one canonical serialized document per side, diffed
+client-side (research.md § 7) — a frontmatter declaration is its file's one parse for
+the Markdown kind, shared by every recognizing tool, so a tool is not a coordinate of it
+and tool recognition is compared per tool beside the diff; each side serializes to YAML,
+the skill comparison leading with `name` and `description` and every other key sorted,
+the instruction comparison sorting every key. The MCP kind's declarations are each
+recognizing tool's own reading (data-model.md § Field reading): their comparison surface
+is the declared server name's own — one name's declaration in each of two carriers of
+its row, serialized to one canonical JSON document per side, loaded through two ordinary
+`get-mcp-carrier-detail` results — and each detail renders its declaration content as
+the same serialized document in the file's own key order (FR-007).
 
 A declared value carries whole characters — an astral character is two UTF-16 code units
 and a combining mark is two code points — so it survives extraction and JSON transport
@@ -771,14 +774,14 @@ argument, exactly as `get-file-detail` takes one — the declaring file's identi
 ```
 
 Returns one active-generation MCP carrier detail: the declarations the file makes and
-its own file facts, and deliberately no `sourceText` field at all. It answers for a
-standalone carrier and for an admitted owner file containing declarations — the
-documented owner families, none of which any rule admits yet — alike: a file admitted so its declarations can be
+its own file facts, and deliberately no `sourceText` field at all. It answers for the
+explicit carriers alone: a file admitted so its declarations can be
 published shows those declarations and never its own
 bytes (FR-007), which is why the carrier's detail is this function's own result rather
 than a `FileDetail` variant — the field is absent from the shape, not a value a surface
-must decline to render — and a contained-declaration owner's source reaches a response
-only through `get-file-detail`, under the owner's own kind.
+must decline to render. A file of any other kind never resolves here, whatever
+MCP-looking configuration its content spells: that configuration is the file's own
+declared content, visible in its `get-file-detail` presentation under its own kind.
 
 ```text
 McpCarrierDetail
@@ -809,10 +812,7 @@ result with empty `servers`, not a rejection; the `stale-resource` rejection whe
 current committed generation holds an MCP recognition at the path — never scanned or
 removed by a later commit, and a value
 of another type resolves the same way, so no separate malformed-argument outcome exists;
-the `global-disable-pending` conflict rejection while the disable fence is non-null. A
-contained-declaration owner's path resolves in this function and in `get-file-detail` at
-once, each serving its own resource; only the pure carrier is exclusively this
-function's.
+the `global-disable-pending` conflict rejection while the disable fence is non-null.
 
 ### `agent-customization-inspector:rescan-repository`
 

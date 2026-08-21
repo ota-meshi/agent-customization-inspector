@@ -29,7 +29,7 @@ const copilotInstructionRules = COPILOT_REPOSITORY_RULES.filter(
 describe('an `applyTo` declaration keys a row and decides nothing else', () => {
   /** One `applyTo` declaration, as the parser resolves it. */
   const declaredApplyTo = (text: string): readonly DeclaredEntryDto[] => [
-    { key: 'applyTo', keyKind: 'string', value: { kind: 'scalar', text } },
+    { key: 'applyTo', keyKind: 'string', value: { kind: 'scalar', scalarKind: 'string', text } },
   ];
 
   it('takes the declared pattern as the row identity without interpreting it', () => {

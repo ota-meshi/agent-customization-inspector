@@ -381,6 +381,40 @@ export const COPILOT_VSCODE_MCP_SELECTION_STRATEGY = {
     : [],
 } as const satisfies RuntimeCompositionStrategy;
 
+/**
+ * Copilot cloud hosted MCP selection: out-of-the-box configurations are
+ * processed first, then a selected custom agent's `mcp-servers`, then the
+ * repository's MCP settings, each level able to override settings from the
+ * previous (`replace`). `partially-documented`, because that is all the page
+ * establishes — it fixes the three-level processing order and the
+ * later-overrides-earlier direction, but not the override's unit — whether a
+ * later level replaces a whole same-name entry or individual settings — nor
+ * any merge rule for non-conflicting servers across levels. The inputs are
+ * hosted rather than local files, so the pipeline composes registry facts
+ * alone and no session surface projects it (FR-009).
+ */
+export const COPILOT_CLOUD_MCP_SELECTION_STRATEGY = {
+  strategyId: 'copilot.cloud.mcp.selection',
+  tool: 'copilot',
+  surfaces: ['copilot-cloud'],
+  operations: ['replace'],
+  documentationStatus: 'partially-documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.custom-agents',
+          url: 'https://docs.github.com/en/copilot/reference/custom-agents-configuration',
+          officialHost: 'docs.github.com',
+          sections: ['MCP server configurations'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'The cloud agent processes out-of-the-box MCP configurations first, followed by the custom agent MCP configuration, and finally MCP configurations specified through repository settings, each level able to override settings from the previous one; the page does not fix the override unit or any cross-level merge rule.',
+        },
+      ]
+    : [],
+} as const satisfies RuntimeCompositionStrategy;
+
 /** Copilot's contribution to the strategy registry, keyed by `strategyId`. */
 export const COPILOT_COMPOSITION_STRATEGIES: Readonly<
   Record<CopilotStrategyId, RuntimeCompositionStrategy>
@@ -389,6 +423,7 @@ export const COPILOT_COMPOSITION_STRATEGIES: Readonly<
     COPILOT_CLI_INSTRUCTIONS_LAYERING_STRATEGY,
   [COPILOT_CLI_MCP_SELECTION_STRATEGY.strategyId]: COPILOT_CLI_MCP_SELECTION_STRATEGY,
   [COPILOT_CLI_SKILLS_SELECTION_STRATEGY.strategyId]: COPILOT_CLI_SKILLS_SELECTION_STRATEGY,
+  [COPILOT_CLOUD_MCP_SELECTION_STRATEGY.strategyId]: COPILOT_CLOUD_MCP_SELECTION_STRATEGY,
   [COPILOT_VSCODE_MCP_SELECTION_STRATEGY.strategyId]: COPILOT_VSCODE_MCP_SELECTION_STRATEGY,
   [COPILOT_CLOUD_INSTRUCTIONS_LAYERING_STRATEGY.strategyId]:
     COPILOT_CLOUD_INSTRUCTIONS_LAYERING_STRATEGY,

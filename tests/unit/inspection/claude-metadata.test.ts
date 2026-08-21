@@ -1,11 +1,11 @@
 // T140, T314, T324: the Claude skill's declared-name reading and its
 // admission-level uncertainty, the Claude MCP carrier's whole-entry field
-// reading, and the skill-contained MCP metadata (data-model.md § Field
-// reading, FR-007, FR-009, FR-026, FR-028).
+// reading, and the skill negative — an `mcpServers`-spelling skill stays a
+// skill (data-model.md § Field reading, FR-007, FR-009, FR-026, FR-028).
 //
 // Every declared key is read out in the shape the file wrote it — list-valued
-// keys, contained `hooks` and MCP declarations, and credential-shaped keys
-// alike — with nothing captioned, classified, or resolved on the file's
+// keys, `hooks`-spelling and MCP-spelling frontmatter, and credential-shaped
+// keys alike — with nothing captioned, classified, or resolved on the file's
 // behalf. The name is only the value the surface leads with, and it is read
 // from a scalar or not at all. Reference-looking values are never promoted to
 // relationships
@@ -18,10 +18,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { recognizeCandidateForVendors } from '../../../src/server/inspection/recognizers/candidate';
 import {
   CLAUDE_REPOSITORY_RULES,
-  claudeMcpServersOf,
+  ClaudeCompiledMcpCarrierRule,
 } from '../../../src/server/inspection/rules/claude';
+import { CLAUDE_INSPECTION_RULES } from '../../../src/shared/registries/claude/rules';
 import { CLAUDE_MCP_SELECTION_STRATEGY } from '../../../src/shared/registries/claude/strategies';
-import type { DeclaredEntryDto } from '../../../src/shared/api-types';
 import {
   MALFORMED_SKILL_CONTENT_CASES,
   SKILL_CONTENT_CASES,
@@ -116,16 +116,24 @@ describe('Claude skill declared name', () => {
       throw new Error('expected a skill recognition');
     }
     expect(recognition.details.frontmatter).toEqual([
-      { key: 'name', keyKind: 'string', value: { kind: 'scalar', text: 'rich' } },
-      { key: 'description', keyKind: 'string', value: { kind: 'scalar', text: 'says hello' } },
+      {
+        key: 'name',
+        keyKind: 'string',
+        value: { kind: 'scalar', scalarKind: 'string', text: 'rich' },
+      },
+      {
+        key: 'description',
+        keyKind: 'string',
+        value: { kind: 'scalar', scalarKind: 'string', text: 'says hello' },
+      },
       {
         key: 'allowed-tools',
         keyKind: 'string',
         value: {
           kind: 'sequence',
           items: [
-            { kind: 'scalar', text: 'Read' },
-            { kind: 'scalar', text: 'Bash' },
+            { kind: 'scalar', scalarKind: 'string', text: 'Read' },
+            { kind: 'scalar', scalarKind: 'string', text: 'Bash' },
           ],
         },
       },
@@ -150,7 +158,7 @@ describe('Claude skill declared name', () => {
                       {
                         key: 'matcher',
                         keyKind: 'string',
-                        value: { kind: 'scalar', text: 'Write' },
+                        value: { kind: 'scalar', scalarKind: 'string', text: 'Write' },
                       },
                     ],
                   },
@@ -167,7 +175,7 @@ describe('Claude skill declared name', () => {
     expect(recognition.details.frontmatter).toContainEqual({
       key: 'description',
       keyKind: 'string',
-      value: { kind: 'scalar', text: 'says hello' },
+      value: { kind: 'scalar', scalarKind: 'string', text: 'says hello' },
     });
     // The instructions are the body alone: the declarations above are not
     // repeated inside it, and the block's fences are gone with the block.
@@ -191,8 +199,8 @@ describe('Claude skill declared name', () => {
         value: {
           kind: 'sequence',
           items: [
-            { kind: 'scalar', text: 'a' },
-            { kind: 'scalar', text: 'b' },
+            { kind: 'scalar', scalarKind: 'string', text: 'a' },
+            { kind: 'scalar', scalarKind: 'string', text: 'b' },
           ],
         },
       },
@@ -285,8 +293,16 @@ describe('Claude skill declared name', () => {
       throw new Error('expected a skill recognition');
     }
     expect(recognition.details.frontmatter).toEqual([
-      { key: '1', keyKind: 'number', value: { kind: 'scalar', text: 'number' } },
-      { key: '1', keyKind: 'string', value: { kind: 'scalar', text: 'string' } },
+      {
+        key: '1',
+        keyKind: 'number',
+        value: { kind: 'scalar', scalarKind: 'string', text: 'number' },
+      },
+      {
+        key: '1',
+        keyKind: 'string',
+        value: { kind: 'scalar', scalarKind: 'string', text: 'string' },
+      },
     ]);
   });
 
@@ -406,21 +422,37 @@ describe('Claude MCP-file metadata (T314)', () => {
       {
         name: 'ctx',
         fields: [
-          { key: 'type', keyKind: 'string', value: { kind: 'scalar', text: 'stdio' } },
-          { key: 'command', keyKind: 'string', value: { kind: 'scalar', text: 'npx' } },
+          {
+            key: 'type',
+            keyKind: 'string',
+            value: { kind: 'scalar', scalarKind: 'string', text: 'stdio' },
+          },
+          {
+            key: 'command',
+            keyKind: 'string',
+            value: { kind: 'scalar', scalarKind: 'string', text: 'npx' },
+          },
           {
             key: 'args',
             keyKind: 'string',
             value: {
               kind: 'sequence',
               items: [
-                { kind: 'scalar', text: '-y' },
-                { kind: 'scalar', text: 'pkg' },
+                { kind: 'scalar', scalarKind: 'string', text: '-y' },
+                { kind: 'scalar', scalarKind: 'string', text: 'pkg' },
               ],
             },
           },
-          { key: 'disabled', keyKind: 'string', value: { kind: 'scalar', text: 'false' } },
-          { key: 'retries', keyKind: 'string', value: { kind: 'scalar', text: '2' } },
+          {
+            key: 'disabled',
+            keyKind: 'string',
+            value: { kind: 'scalar', scalarKind: 'boolean', text: 'false' },
+          },
+          {
+            key: 'retries',
+            keyKind: 'string',
+            value: { kind: 'scalar', scalarKind: 'number', text: '2' },
+          },
         ],
       },
     ]);
@@ -458,71 +490,53 @@ describe('Claude MCP-file metadata (T314)', () => {
 });
 
 describe('the Claude MCP declaration reading and the skill negative (T324)', () => {
-  it('derives declared servers from rendered entries exactly', () => {
-    // The reader is pure over the shared declared-entry shape — the carrier
-    // hands it today, and each documented owner family will hand its own
-    // entries when its phase admits it: named servers with inline fields stay
-    // the values the file wrote, as relationship-shaped text rather than
-    // anything resolved or opened.
-    const declared = [
-      { key: 'name', keyKind: 'string', value: { kind: 'scalar', text: 'deploy' } },
-      {
-        key: 'mcpServers',
-        keyKind: 'string',
-        value: {
-          kind: 'mapping',
-          entries: [
-            {
-              key: 'ctx',
-              keyKind: 'string',
-              value: {
-                kind: 'mapping',
-                entries: [
-                  { key: 'command', keyKind: 'string', value: { kind: 'scalar', text: 'npx' } },
-                ],
-              },
-            },
-            { key: 'named-ref', keyKind: 'string', value: { kind: 'mapping', entries: [] } },
-            { key: 'malformed', keyKind: 'string', value: { kind: 'scalar', text: 'nope' } },
-          ],
-        },
-      },
-    ] as const satisfies readonly DeclaredEntryDto[];
-    expect(claudeMcpServersOf(declared)).toEqual([
+  /** The one compiled carrier unit whose reading is under test. */
+  const carrier = new ClaudeCompiledMcpCarrierRule(CLAUDE_INSPECTION_RULES['claude.repo.mcp']);
+
+  it('derives declared servers from the carrier source exactly', () => {
+    // The compiled rule's own reading over the authored carrier text — the
+    // one production path a declaration takes: named servers with inline
+    // fields stay the values the file wrote, as relationship-shaped text
+    // rather than anything resolved or opened, and a non-mapping entry is
+    // omitted whole rather than published partially.
+    expect(
+      carrier.serverDeclarationsOf(
+        JSON.stringify({
+          unrelated: 'kept out',
+          mcpServers: { ctx: { command: 'npx' }, 'named-ref': {}, malformed: 'nope' },
+        }),
+      ),
+    ).toEqual([
       {
         name: 'ctx',
-        fields: [{ key: 'command', keyKind: 'string', value: { kind: 'scalar', text: 'npx' } }],
+        fields: [
+          {
+            key: 'command',
+            keyKind: 'string',
+            value: { kind: 'scalar', scalarKind: 'string', text: 'npx' },
+          },
+        ],
       },
       { name: 'named-ref', fields: [] },
     ]);
   });
 
-  it('reads nothing from a non-mapping container or a non-string container key', () => {
-    // A `mcpServers` list, scalar, or absent key contains no declaration, and
-    // a numeric key spelling the same text is a different key: the reading is
-    // structural and total, so a future JSON/JSONC owner hands the same
-    // entries and gets the same answer without any format branch.
-    expect(claudeMcpServersOf([])).toEqual([]);
+  it('reads nothing from an absent or non-mapping container', () => {
+    // A `mcpServers` list, scalar, or absent key contains no declaration:
+    // the classification is structural and total over what strict JSON can
+    // author — every key a string, a duplicate key resolved to its later
+    // declaration by the parser, so the later container is the one read.
+    expect(carrier.serverDeclarationsOf('{}')).toEqual([]);
+    expect(carrier.serverDeclarationsOf('{ "mcpServers": "enabled" }')).toEqual([]);
+    expect(carrier.serverDeclarationsOf('{ "mcpServers": [] }')).toEqual([]);
     expect(
-      claudeMcpServersOf([
-        { key: 'mcpServers', keyKind: 'string', value: { kind: 'scalar', text: 'enabled' } },
-      ]),
-    ).toEqual([]);
-    expect(
-      claudeMcpServersOf([
-        { key: 'mcpServers', keyKind: 'string', value: { kind: 'sequence', items: [] } },
-      ]),
-    ).toEqual([]);
-    expect(
-      claudeMcpServersOf([
-        { key: 'mcpServers', keyKind: 'null', value: { kind: 'mapping', entries: [] } },
-      ]),
-    ).toEqual([]);
+      carrier.serverDeclarationsOf('{ "mcpServers": "first", "mcpServers": { "late": {} } }'),
+    ).toEqual([{ name: 'late', fields: [] }]);
   });
 
   it('keeps a skill spelling mcpServers a skill, its frontmatter literal and unresolved', async () => {
     // Claude documents no `mcpServers` skill-frontmatter field, so the
-    // spelling produces no MCP recognition (user decision, 2026-08-20); the
+    // spelling produces no MCP recognition; the
     // values stay the skill's own frontmatter — literal, with nothing looking
     // up the process environment on the way (FR-026).
     const { recognitions } = await recognizeCandidateForVendors(

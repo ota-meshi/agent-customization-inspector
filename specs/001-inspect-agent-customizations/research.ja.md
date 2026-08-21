@@ -622,10 +622,16 @@ importし、Nuxt/Viteにsame-origin assetとして出力させ、language-servic
 選抜ではなく全basic-language setとするのは、読み手が出会う言語がcustomization自身のdirectoryの中身で
 決まるためであり（contracts/inspection-path-allowlist.md § Bounded companion census）、各contributionは
 lazy loaderを登録するだけで、grammar chunkはその言語のfileを開いたときにだけ取得される。Basic language
-はtextに色を付けるだけである。ServiceはJSON、CSS、HTML、TypeScriptのいずれもworkerを伴い、与えられた
-ものをvalidateするため除外する。調査対象のcustomizationをinvalidと示すのは、この productが下さない
-verdictだからである。JSONとTOMLにはbasic-language grammarが無いため、それぞれ最も近い純粋なtokenizer
-（JavaScriptとini）を借りる。借りたidはinternalで、model URIはopaqueのままであり、textはいずれにせよ
+はtextに色を付けるだけである。Language serviceのworker-backedな機能 — 何よりdiagnostics、そして
+completion、hover、formatting、symbols — は除外する。与えられたものをvalidateし、調査対象の
+customizationをinvalidと示すのは、この productが下さないverdictだからである。JSONにはbasic-language
+grammarが無いため、登録moduleの中で1つ組み立てる: `json` idをJSON serviceのcontributionが行うのと同じ
+extension claimで登録し、そのidに配線する唯一の機能はservice自身のlocal tokenizer — workerを持たない
+module — である。contribution自体は決してimportしない。そのlazyにloadされるmodeがserviceのworkerを
+emitされるbundleへ引き込み、language-service workerの出荷はpackage gateが禁じるものだからである。
+したがって本物の`json` coloringがvalidationもworkerもなしで出荷され、`.jsonc`は同じtokenizerへmapされる
+（comment対応はtokenizer自身のもの）。Monacoが何も持たないTOMLは最も近い純粋なtokenizer（ini）を借りる。mapされた
+idはinternalで、model URIはopaqueのままであり、textはいずれにせよ
 記述されたとおりに表示される。
 Modelはopaqueなin-memory URIと完全な記述済みsource textを保持し、route close、selection replacement、source
 disable、generation replacement時にeditor/subscriptionとは別にdisposeする。Monacoのtext modelはdocumentごとに
@@ -649,19 +655,43 @@ devframe hostがNuxt outputを直接配信するため（§ 8）、product-assem
 表示のinert性はread-onlyなeditor設定、Vue text binding、無効なlinkによって成立し、clientは引き続き
 external worker、blob worker、evaluated stringをloadしない。Diff highlightはproduct独自のline数/computation-time cutoffを設けず、Monacoとbrowserの
 capacityに従う。Monacoまたはbrowserがrecoverable failureを報告した場合もcomplete read-only side-by-side sourceと
-diagnosticを残す。Tool recognitionはtoolごとに比較し、fileの宣言済みmetadata — kindごとに
-1回のparse — はkindと宣言keyで対応付けて、各宣言の解決済み値をVueのrowで1回だけ
-比較・表示し、Monacoへはserializeしない。toolは宣言の座標ではないため、どのtoolも
-宣言rowをcaptionしたり繰り返したりしない。
+diagnosticを残す。Tool recognitionはtypedなrowでtoolごとに比較し、fileの宣言済みmetadata —
+kindごとに1回のparse — は1回だけ比較する。toolは宣言の座標ではないからである: 各sideを1つの
+canonical documentへserializeし、2つのdocumentをMonacoでdiffする。Markdown系kindのfrontmatterは
+YAML — blockそのものの言語 — へserializeし、skill comparisonは`name`と`description`を先頭に
+それ以外のkeyをsort順で、instruction comparisonは全keyをsort順で並べる（frontmatter-yaml.ts）。MCP comparisonは表ではなくserializationで比較する:
+その単位はkindのinventory row unitである1つの宣言済みserver名（data-model.md § Inventory unit）で、
+各sideはそのrowのcarrierの1つにあるその名前のdeclarationであり、surfaceは各declarationのparsed
+entryを1つのpretty-printed JSON documentへserializeし、2つのdocumentをMonacoでdiffする。
+表示専用のspellingではなくJSONなのは、このdocumentがJSON carrierのentryがserver名の下に持つ
+valueそのものであり、そのcarrierの読み手は自分のentryの本体としてpasteできるからである — TOML
+carrierの読み手はsyntaxではなくvalueをcopyする。comparisonのserializationは順序もspellingもcanonicalなので、
+両sideはlineごとに揃い、lineの差はfieldの差である:
+共通のdeclaration keyが1つの固定された読み順 — serverの種別、起動方法、接続先、与える環境 — で先頭に
+立ち、それ以外のkeyとnested mappingのすべてのkeyはsort順で続き、sequenceのitemは宣言自身のdataである
+自分の順序を保つ。scalarはwireがtextの横に公開するparsed kind（data-model.md § Field reading）で
+綴られる — numberとbooleanは値として再構築されbareで綴り、JSONが綴れないnumber（`NaN`、doubleの
+範囲を超える64bit整数）は正確なtextをJSON stringとして保ち、stringはstringのまま
+`JSON.stringify`自身のescapingを受ける。authoredな`'7'`は`"7"`のまま、数値の`7`はbareのまま — 改行は
+`\n`と綴られ、制御文字やlone surrogateはそのescapeになる — 両side同一に。documentはserializerが
+並べ替えたtreeに対する`JSON.stringify(value, null, 2)`自身のpretty-printed outputなので、property順は
+platformの列挙順である — 整数風keyが先頭に並ぶ。これは`String(-0)`が`0`を表示するのと同じtradeとして
+platform自身のspellingとして受け入れ、両sideで同一に決定的である。
+MCP detailは各declarationのfieldを同じJSON documentとして、fileが書いたkey順のまま表示する
+（detailが公開する順序はFR-007のもの）。1つの名前の2つのcarrierはsyntaxを共有するとは
+限らず（`.codex/config.toml`はTOML、`.mcp.json`はJSONで宣言する）、carrierはbytesをどこにも
+表示しない（FR-007）ため、canonical serializationが両sideを読める唯一のspellingである。
 Monacoのaccessible diff viewer、ARIA label、keyboard navigation、narrow-screen inline modeを維持し、
 明示的なaccessibility test対象にする。
 
 **理由**: Source fileにはMarkdownとstructured configurationがあり、syntax coloring、line navigation、
 virtualized rendering、search、synchronized scroll、実績のあるdiff surfaceがinspectionを明確に改善する。
 Monacoはsource差分を計算し、editor/環境依存のcomputation動作とaccessibility controlを提供するため、別の
-text-diff packageは責務を重複させる。Metadataにはset-like recognition、ordered precedence、stable
-identity付きfieldというdomain semanticsがあり、serialized lineではなくstructureとして比較しつつliteral spellingの差を
-観測可能にする必要がある。公式[diff editor options](https://microsoft.github.io/monaco-editor/typedoc/interfaces/editor_editor_api.editor.IDiffEditorOptions.html)と
+text-diff packageは責務を重複させる。Recognition factにはdomain semanticsがある —
+set-like recognitionとそのsurfaceはtypedなrowでstructureとして比較し、literal spellingの差は
+source diffで観測可能に保つ。declaration blockには失われるstructureがない:
+sideごとに1つのauthored mappingであり、canonical serializationがfieldを両sideで同一に並べるため、
+added/removed/changedなfieldはまさにそのlineとして現れる。公式[diff editor options](https://microsoft.github.io/monaco-editor/typedoc/interfaces/editor_editor_api.editor.IDiffEditorOptions.html)と
 [Monaco repository](https://github.com/microsoft/monaco-editor)がeditor、worker、accessibility、model
 lifecycle capabilityを文書化している。意図的に狭いESM importはlockfileがpinするresolved versionと
 packaged browser testでupgrade時に保護する。
@@ -672,8 +702,10 @@ inert renderingによってcontent自体の実行、load、navigateを防ぐ。
 
 - Monacoと併せた`diff`追加は、現時点でCLI、API、patch export、headless consumerが第2のdiff engineを
   必要としないため不採用。
-- Recognition metadataのMonaco向けserializeはproperty orderとline changeがdomain fieldの
-  added/removed/changedを不明瞭にするため不採用。
+- Recognition metadata — どのtoolがどのsurfaceでsideを認識するか — のMonaco向けserializeは
+  property orderとline changeがdomain fieldのadded/removed/changedを不明瞭にするため不採用。
+  declarationのserialization — MCPのJSON、frontmatterのYAML — はこのcaseではない:
+  各sideは1つのauthored mappingで、そのcanonical documentはfieldを両sideで同一に並べる。
 - Custom `<pre>` source diffはnavigation、large-document rendering、synchronization、accessibility、
   diff interactionを再実装するため不採用。
 

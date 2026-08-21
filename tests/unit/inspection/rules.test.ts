@@ -22,6 +22,7 @@ import {
   buildCodexSkillFixture,
   buildCopilotCliMcpFixture,
   buildCopilotVscodeMcpFixture,
+  buildPriorityMcpFixture,
   buildCopilotInstructionFixture,
   buildCopilotSkillFixture,
   type ClaudeInstructionFixture,
@@ -32,6 +33,7 @@ import {
   type CodexSkillFixture,
   type CopilotCliMcpFixture,
   type CopilotVscodeMcpFixture,
+  type PriorityMcpFixture,
   type CopilotInstructionFixture,
   type CopilotSkillFixture,
 } from '../../fixtures/repositories/build-fixtures';
@@ -1238,6 +1240,77 @@ describe('the exact Copilot VS Code MCP rules (T356)', () => {
   });
 });
 
+describe('the priority cross-vendor MCP matcher matrix (T390)', () => {
+  let priority: PriorityMcpFixture;
+
+  beforeAll(() => {
+    priority = buildPriorityMcpFixture('inspector-priority-mcp-rules');
+  });
+
+  afterAll(() => {
+    rmSync(priority.root, { recursive: true, force: true });
+  });
+
+  it('admits each explicit carrier under exactly its own rules, in one combined walk', async () => {
+    // The whole priority wave in one catalog: the shared root carries three
+    // admissions of one physical file, every other carrier exactly its own
+    // rule's, and the Codex configuration carrier its config rule's.
+    const rules = [
+      ...CLAUDE_REPOSITORY_RULES,
+      ...COPILOT_REPOSITORY_RULES,
+      ...CODEX_REPOSITORY_RULES,
+    ];
+    const result = await scanWith(priority.root, rules);
+    const byPath = new Map(result.files.map((file) => [file.publicPath, file]));
+    const admittedIds = (path: string): string[] =>
+      resolveAdmittingRules(rules, byPath.get(path)!.admissions).map(
+        (compiled) => compiled.rule.ruleId,
+      );
+    expect(admittedIds(priority.rootCarrierPath).toSorted()).toEqual([
+      'claude.repo.mcp',
+      'copilot.repo.mcp',
+      'copilot.repo.mcp.vscode-root',
+    ]);
+    expect(admittedIds(priority.githubCarrierPath)).toEqual(['copilot.repo.mcp']);
+    expect(admittedIds(priority.vscodeCarrierPath)).toEqual(['copilot.repo.mcp.vscode']);
+    expect(admittedIds(priority.codexCarrierPath)).toEqual(['codex.repo.config']);
+    // One physical file, one read: the shared root appears once however many
+    // admissions it carries.
+    expect(
+      result.files.filter((file) => file.publicPath === priority.rootCarrierPath),
+    ).toHaveLength(1);
+    // The negatives — nested carriers of every spelling, the agent, plugin,
+    // and settings files whose MCP-looking configuration is their own
+    // kind's content, User filenames, variants,
+    // and VCS internals — are admitted by nothing.
+    for (const nearMiss of priority.nearMissPaths) {
+      expect(byPath.has(nearMiss), nearMiss).toBe(false);
+    }
+  });
+
+  it('ships MCP candidacy only through the five explicit carrier rules', () => {
+    // Zero candidate rules from contained or runtime MCP facts: the closed
+    // MCP rule set is the explicit carriers', and no rule of the agent kind
+    // exists to smuggle a contained reading in.
+    const mcpRuleIds = Object.values(INSPECTION_RULES)
+      .filter((rule) => rule.kind === 'MCP' && rule.discoveryClass === 'static-candidate')
+      .map((rule) => rule.ruleId)
+      .toSorted();
+    expect(mcpRuleIds).toEqual([
+      'claude.repo.mcp',
+      'codex.repo.config',
+      'copilot.repo.mcp',
+      'copilot.repo.mcp.vscode',
+      'copilot.repo.mcp.vscode-root',
+    ]);
+    expect(
+      Object.values(INSPECTION_RULES).filter(
+        (rule) => rule.kind === 'agent' && rule.discoveryClass !== 'excluded',
+      ),
+    ).toEqual([]);
+  });
+});
+
 describe('the shipped Copilot instruction plans and their matrix (T247)', () => {
   let copilotInstructions: CopilotInstructionFixture;
 
@@ -1387,7 +1460,11 @@ describe('the shipped Copilot instruction plans and their matrix (T247)', () => 
     // The value is published as authored and never escaped: it already is the
     // author's pattern, and escaping would turn it into a directory literally
     // named that.
-    const scalar = (text: string): DeclaredValueDto => ({ kind: 'scalar', text });
+    const scalar = (text: string): DeclaredValueDto => ({
+      kind: 'scalar',
+      scalarKind: 'string',
+      text,
+    });
     expect(
       rangeOf(
         'copilot.repo.instructions.path',
@@ -1446,7 +1523,7 @@ describe('the shipped Copilot instruction plans and their matrix (T247)', () => 
       rangeOf(
         'copilot.repo.instructions.path',
         path,
-        declare('applyTo', { kind: 'scalar', text: '' }),
+        declare('applyTo', { kind: 'scalar', scalarKind: 'string', text: '' }),
       ),
     ).toBeNull();
     expect(
@@ -1462,7 +1539,7 @@ describe('the shipped Copilot instruction plans and their matrix (T247)', () => 
       rangeOf(
         'copilot.repo.instructions.agents',
         'packages/api/AGENTS.md',
-        declare('applyTo', { kind: 'scalar', text: 'src/**' }),
+        declare('applyTo', { kind: 'scalar', scalarKind: 'string', text: 'src/**' }),
       ),
     ).toBe('packages/api/**');
   });

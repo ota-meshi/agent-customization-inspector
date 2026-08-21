@@ -106,7 +106,8 @@ customization-selected destination、別machineへの調査content送信は禁�
 | `agent-customization-inspector:rescan-global` | command | Enabled Global Source 1件のscan command受理 |
 | `agent-customization-inspector:disable-global` | command | Priority Global-disable barrier |
 
-Comparison viewは最大2件の`get-file-detail` resultからclient側で構築する — 存在する側ごとに1件で、
+Comparison viewは最大2件の`get-file-detail` resultから — MCP declaration comparisonでは
+2件の`get-mcp-carrier-detail` resultから — client側で構築する — 存在する側ごとに1件で、
 片側comparisonの明示された不在の対応物はrequestを要しない — 。独立したcomparison functionは存在しない。Catalogのどこにもmasking、redaction、reveal、environment-resolution
 functionは存在せず、hostはdevframeのoptional MCP routeをenableしない。
 
@@ -276,11 +277,11 @@ row名の傍らに示す（data-model.md § Skillの表示）。値はrowをkey�
 namingがserverとclientの間で乖離することはない。MCP rowは宣言されたserver名1つであり、その名前を解決するすべての`[mcp_servers.*]`型宣言 —
 `(carrier, tool)`ごとに1つ — を列挙する。したがってadmit済みの`.codex/config.toml` 1つは宣言した
 serverごとに宣言を1つ寄与し、同じ名前を宣言する第2のcarrierはその名前のrowに合流する。宣言の
-住処はstandalone carrier — Codexのconfiguration layer、Claudeのroot `.mcp.json`、Copilot CLIの
-root `.mcp.json`と`.github/mcp.json`、VS Codeの`.vscode/mcp.json` — か、自身の内容に宣言を含むadmit済みowner fileである。
-後者は文書化されたowner family（agent file、plugin manifest、settings file）のいずれかを
-将来のphaseがadmitしたときのもので、skillは決して含まれない — skillのfrontmatterに文書化された
-`mcpServers` fieldは存在しない。どちらの住処も同一の形でその名前のrowに合流し、各宣言は自身のfileを名指す。2つのproductが
+住処は明示的なcarrier — Codexのconfiguration layer、Claudeのroot `.mcp.json`、Copilot CLIの
+root `.mcp.json`と`.github/mcp.json`、VS Codeの`.vscode/mcp.json` — だけである:
+他のkindのfileが自身の内容にMCP風のconfigurationを綴っても — skillやagentのfrontmatter、
+settings fileのinline map — それはそのkindの通常のcontentであり、そのfile自身のdetailに
+見えるだけで、MCP rowには合流しない。各宣言は自身のfileを名指す。2つのproductが
 admitする1つの物理file — root `.mcp.json` — は、宣言する各名前の下でrecognizing toolごとに
 1宣言になる。nameが
 nullである1つのrowがlistを閉じ、現在named宣言を公開していないcarrierを保持する — 宣言blockが
@@ -505,7 +506,7 @@ FileDetail — kind: 'skill' | 'instructions' | 'file'
 │   ├── presentation — scan時の1回のparse。extractionがall-or-nothingで
 │   │   失敗したときは正確にnull（FR-028）:
 │   │   ├── frontmatter[] { key, keyKind, value } — valueは
-│   │   │   { kind: 'scalar', text }、{ kind: 'absent' }、
+│   │   │   { kind: 'scalar', scalarKind, text }、{ kind: 'absent' }、
 │   │   │   { kind: 'sequence', items[] }、
 │   │   │   { kind: 'mapping', entries[] { key, keyKind, value } }のいずれかで、再帰する
 │   │   └── bodyText
@@ -549,7 +550,7 @@ formatであって、この製品ではない。
 keyである — ため、file間で宣言をmatchするclientは`key`単独ではなくこの組でmatchする。
 同じentry形は`keyKind`を含めて、nestした全`mapping` value内へ再帰する。
 
-Readable fileでは`sourceText`を完全なdecoded sourceとし、書かれたとおりに保持する。standaloneのMCP declaration carrier — MCP kindがrecognizeし、skillもownerのkindもclaimしないfile — は`FileDetail`を一切持たない: 宣言を公開するためにadmitされたfileはその宣言を示し、自身のbyteは決して示さない（FR-007）。authored sourceをserveすることが目的のfunctionは、それを差し控えねばならないvariantを運ばない。この差し控えは、同じpathが運ぶ他のあらゆるrecognitionに優先する: Codexの`project_doc_fallback_filenames` entryが`.mcp.json`を指名するとcarrierはinstructions candidateにもなるが、そのvariantのdetailは完全なbody text — まさにFR-007が差し控えるbyte — であるため、carrierはfallback recognitionの下で答えられるのではなく、差し控えられたままになる。そのようなcarrierのdetailは`get-mcp-carrier-detail`自身のresultであり、そのpathをこのfunctionへrequestすると、このfunctionがdetailを保持しない他のあらゆるpathと同じ`stale-resource` rejectionに解決される。MCP宣言を含むだけのadmit済みowner fileはそのcarrierではない: そのsourceは自身のkindの下で正当に表示されるため、このfunctionはowner自身のdetailをserveし、`get-mcp-carrier-detail`がその傍らで含有宣言をserveする。Owner familyは文書化されたもの — agent file、plugin manifest、settings file — で、どれもまだruleがadmitしていない。Skillは決してownerにならない: Claudeは`mcpServers`というskill-frontmatter fieldを文書化していないため、そのkeyを綴るskillはここでは通常のskill contentである。
+Readable fileでは`sourceText`を完全なdecoded sourceとし、書かれたとおりに保持する。standaloneのMCP declaration carrier — MCP kindがrecognizeし、skill kindがclaimしないfile — は`FileDetail`を一切持たない: 宣言を公開するためにadmitされたfileはその宣言を示し、自身のbyteは決して示さない（FR-007）。authored sourceをserveすることが目的のfunctionは、それを差し控えねばならないvariantを運ばない。この差し控えは、同じpathが運ぶ他のあらゆるrecognitionに優先する: Codexの`project_doc_fallback_filenames` entryが`.mcp.json`を指名するとcarrierはinstructions candidateにもなるが、そのvariantのdetailは完全なbody text — まさにFR-007が差し控えるbyte — であるため、carrierはfallback recognitionの下で答えられるのではなく、差し控えられたままになる。そのようなcarrierのdetailは`get-mcp-carrier-detail`自身のresultであり、そのpathをこのfunctionへrequestすると、このfunctionがdetailを保持しない他のあらゆるpathと同じ`stale-resource` rejectionに解決される。MCP recognitionを持つのは明示的なcarrierだけである: 他のkindのfileが自身の内容にMCP風のconfigurationを綴っても — skillやagentのfrontmatter、settings fileのinline map — それはそのkindの通常のcontentであり、このfunctionが自身のkindの下でserveするpresentationに宣言済みkeyとして見えるだけで、どのMCP surfaceにも合流しない。
 
 Skillの`presentation`は、宣言している内容と指示している内容である。detail surfaceがそれを先頭に
 置くからである。`frontmatter[]`はfileが宣言するすべてのkeyを、fileが書いたkeyそのもの —
@@ -599,11 +600,16 @@ derivationは返さず、file-scopedな`recognition-parse-failed` Diagnostic —
 toolがいくつあっても1 record — がgenerationを`partial`にし、完全なreadable sourceの表示と
 comparison eligibilityは保たれる（FR-028）。1 fileに限定されないfailureは
 attemptをfailさせ、RPC所有の場合はrequestのordinary errorとして公開する。
-Structural metadata comparisonは`(kind, 宣言key)`を使う。frontmatter宣言はfileのMarkdown kindに対する
-1回のparseであって認識する全toolが共有するため、toolは宣言の座標ではなく、fieldが
-同じでも別kindは衝突しない。tool recognitionはtoolごとに宣言の横で比較する。MCP kindの
-宣言は各recognizing tool自身のreading（data-model.md § Field reading）であり、file間
-metadata comparisonには一切参加しない。
+Declaration comparisonは、sideごとに1つのcanonical serialized documentをclient側でdiffする
+（research.md § 7）。frontmatter宣言はfileのMarkdown kindに対する1回のparseであって認識する
+全toolが共有するため、toolは宣言の座標ではなく、tool recognitionはdiffの横でtoolごとに比較する。
+各sideはYAMLへserializeし、skill comparisonは`name`と`description`を先頭にそれ以外のkeyを
+sort順で、instruction comparisonは全keyをsort順で並べる。MCP kindの宣言は各recognizing tool
+自身のreading（data-model.md § Field reading）であり、その比較surfaceは宣言済みserver名自身の
+もの — 1つの名前のdeclarationをその行の2つのcarrierそれぞれから取り、sideごとに1つの
+canonical JSON documentへserializeする — で、通常の`get-mcp-carrier-detail` result 2件を通じて
+loadされる。いずれのdetailも自身のdeclaration contentを同じserialized documentとして、
+fileが書いたkey順のまま表示する（FR-007）。
 
 Declared valueは文字を丸ごと運ぶ。astral characterはUTF-16 code unit 2つ、combining markは
 code point 2つだからである。よってextractionとJSON transportを変化なく通過し、Unicode normalizationも
@@ -644,13 +650,13 @@ Parameters: commit済みSource-relative Pathを1つ、functionの単一positiona
 ```
 
 Active-generationのMCP carrier detailを1件返す: fileが行う宣言と、file自身の
-事実であり、`sourceText` fieldは意図的に一切存在しない。standalone carrierにも、宣言を含む
-admit済みowner file — 文書化されたowner familyで、どれもまだruleがadmitしていない — にも同じ形で答える: 宣言を
+事実であり、`sourceText` fieldは意図的に一切存在しない。答えるのは明示的なcarrierだけである: 宣言を
 公開するためにadmitされた
 fileはその宣言を示し、自身のbyteは決して示さない（FR-007）。carrierのdetailが`FileDetail`の
 variantではなくこのfunction自身のresultであるのはそのためである — fieldはshapeから不在なの
-であって、surfaceが描画を拒むべき値ではない — し、含有宣言のownerのsourceがresponseへ届く
-のは`get-file-detail`を通じてだけ、owner自身のkindの下でである。
+であって、surfaceが描画を拒むべき値ではない。他のkindのfileは、内容にどんなMCP風の
+configurationを綴っていてもここでは決して解決されない: そのconfigurationはそのfile自身の
+宣言contentであり、file自身のkindの下の`get-file-detail` presentationに見える。
 
 ```text
 McpCarrierDetail
@@ -679,9 +685,7 @@ Outcomes: `McpCarrierDetail` result — parseされたが serverを宣言しな�
 recognitionを保持しない場合 — 一度もscanされていない、または後のcommitで除去された。
 別の型の値も同じ形で解決されるため、
 独立したmalformed-argument outcomeは存在しない — は`stale-resource` rejection。Disable
-fenceがnon-nullの間は`global-disable-pending` conflict rejection。含有宣言のownerのpathは
-このfunctionと`get-file-detail`の両方で解決され、それぞれが自身のresourceをserveする。
-このfunction専属なのは純粋なcarrierだけである。
+fenceがnon-nullの間は`global-disable-pending` conflict rejection。
 
 ### `agent-customization-inspector:rescan-repository`
 

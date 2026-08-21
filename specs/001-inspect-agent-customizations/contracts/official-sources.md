@@ -170,8 +170,8 @@ No heading, prose, blank line, or line after that contiguous table is hashed.
 
 | Vendor | English table SHA-256 | Japanese table SHA-256 |
 |---|---|---|
-| GitHub Copilot | `76c5b11c8f6218e4caf3389b141ff80156a473700b81320bbf60487dbdee3801` | `d56d328eb05bd49244906f151770151f9b68a97ee60c7c6c281cfc0145f9714d` |
-| Claude Code | `ca5d4634e6b96b746cf16344a0a362136511751fb7d671ee755995b5b8583c8b` | `f2119c187e6da3954b0b8c8b0cb48125b1653f15fa3de296c74d41bef8754302` |
+| GitHub Copilot | `3985d4c947f3bd8314e565a9ea28e55ce1df6341a764fa86e384c63907d5e40f` | `0d55ffc042eb6e41f89b4918ce09d30d4ab2e1b885781dcfffb5b7798326e538` |
+| Claude Code | `68ba8cfa6b4501c8dd022673a8e3acc95c3357bb944bd532238c2428d2abfc06` | `81f74fb9edb4a164a054bb54222a7889a1ca12a2dd1c082743d514521041c69a` |
 | OpenAI Codex | `626905f3b2a0953b7361e1cc870fbba539e2c4512945fc4ef1c8fb28f39c5346` | `0043b0b1d7d7dd4084f0064a95bbf9cf84631d60ecad73ad931f2be9abd87174` |
 
 The implementation freeze test must recompute all six inputs exactly, require one and only
@@ -200,7 +200,7 @@ the current task set, but they must not be used to bypass this stop-and-regenera
 | `github.copilot.cli.custom-agents` | <https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/create-custom-agents-for-cli> | `docs.github.com` | `Creating a custom agent`; `Using a custom agent` | `2026-07-15` |
 | `github.copilot.cli.plugins` | <https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference> | `docs.github.com` | `CLI commands`; `plugin.json`; `marketplace.json`; `File locations`; `Loading order and precedence` | `2026-07-15` |
 | `github.copilot.hooks` | <https://docs.github.com/en/copilot/reference/hooks-reference> | `docs.github.com` | `Hooks locations`; `Cloud agent execution environment`; `Hook configuration format`; `Disable all hooks` | `2026-07-15` |
-| `github.copilot.custom-agents` | <https://docs.github.com/en/copilot/reference/custom-agents-configuration> | `docs.github.com` | `YAML frontmatter properties`; `MCP server configuration details`; `Example agent profile configurations` | `2026-08-20` |
+| `github.copilot.custom-agents` | <https://docs.github.com/en/copilot/reference/custom-agents-configuration> | `docs.github.com` | `YAML frontmatter properties`; `MCP server configuration details`; `Example agent profile configurations`; `MCP server configurations` | `2026-08-20` |
 | `github.copilot.skills` | <https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/add-skills> | `docs.github.com` | `Creating and adding a skill`; `Adding a skill that someone else has created`; `How Copilot uses agent skills`; `Skills versus custom instructions` | `2026-07-15` |
 | `github.copilot.plugins` | <https://docs.github.com/en/copilot/concepts/agents/about-plugins> | `docs.github.com` | `What plugins contain`; `How plugins are structured`; `Where can I get plugins?`; `How plugin marketplaces work`; `Plugins compared with manual configuration` | `2026-07-15` |
 | `github.copilot.cli.lsp` | <https://docs.github.com/en/copilot/concepts/agents/copilot-cli/lsp-servers> | `docs.github.com` | `How to add an LSP server`; `How LSP servers are loaded` | `2026-07-15` |

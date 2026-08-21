@@ -11,10 +11,17 @@
 // shipped record ships. A strategy explains a documented runtime edge and
 // never creates one: no operation here authorizes a read, projects a winner,
 // or emits a relationship (T217, T221).
+//
+// One gate here is contract-wide rather than instruction-scoped: the
+// canonical evidence-assessment index is normative for every subject this
+// contract owns, and the shipped `documentationStatus` and
+// `lifecycleQualifiers` fields (T028) are its expansion, so this is where
+// that expansion is checked against both language versions (QR-005).
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import { RUNTIME_COMPOSITION_STRATEGIES } from '../../src/shared/registries/runtime-composition';
+import { INSPECTION_RULES } from '../../src/shared/registries/inspection-rules';
 import { VENDOR_BEHAVIOR_STATEMENTS } from '../../src/shared/registries/vendor-behaviors';
 import { RULE_RELATIONS, STRATEGY_RELATIONS } from '../../src/shared/registries/relations';
 
@@ -73,6 +80,80 @@ function parseStrategyRow(path: string, strategyId: string): ContractStrategyRow
   }
   throw new Error(`no normative ${strategyId} row in ${path}`);
 }
+
+/** How many cells an evidence-assessment exception row has; see {@link parseAssessmentExceptions}. */
+const ASSESSMENT_ROW_CELLS = 4;
+
+/**
+ * Parses the canonical evidence-assessment index out of a runtime-composition
+ * contract file: every subject the exception table lists, mapped to its
+ * documentation status and its lifecycle qualifiers.
+ *
+ * The index is a closed subject-by-subject mapping whose unlisted subjects
+ * take the defaults, and the contract states that the typed registry expands
+ * that default-plus-exception table to one record per subject. This parser is
+ * what lets the expansion be checked rather than assumed: a strategy that
+ * gains a non-default status in the registry without joining the table would
+ * otherwise be `documented` in the normative contract and something else in
+ * the shipped record, with no gate between them.
+ *
+ * The exception rows are told from the strategy rows by their cell count, the
+ * way {@link parseStrategyRow} tells them apart from the other side.
+ */
+function parseAssessmentExceptions(path: string): Map<string, [string, string[]]> {
+  const exceptions = new Map<string, [string, string[]]>();
+  for (const line of readFileSync(path, 'utf8').split('\n')) {
+    if (!line.startsWith('| `')) {
+      continue;
+    }
+    const cells = line.replace(/^\| /u, '').replace(/ \|$/u, '').split(' | ');
+    if (cells.length !== ASSESSMENT_ROW_CELLS) {
+      continue;
+    }
+    const tokens = (cell: string | undefined): string[] =>
+      [...(cell ?? '').matchAll(/`([^`]+)`/gu)].map((match) => match[1]!);
+    const [subject] = tokens(cells[0]);
+    const [status] = tokens(cells[1]);
+    if (subject === undefined || status === undefined) {
+      continue;
+    }
+    // The qualifier cell is one backticked array literal — `[]`, or
+    // `[preview]` — rather than one token per qualifier, so the members are
+    // read out of the brackets. The English `, ` and Japanese `、`
+    // separators are both accepted, as in the strategy rows.
+    const [literal = '[]'] = tokens(cells[2]);
+    const qualifiers = literal
+      .replace(/^\[/u, '')
+      .replace(/\]$/u, '')
+      .split(/,\s*|、/u)
+      .filter((qualifier) => qualifier !== '');
+    exceptions.set(subject, [status, qualifiers]);
+  }
+  return exceptions;
+}
+
+describe('the canonical evidence-assessment index (QR-005)', () => {
+  it('expands to every shipped strategy record, in both languages', () => {
+    // Exhaustive rather than sampled, and driven from the registry rather
+    // than from the table: the failure this catches is a subject whose
+    // record carries a non-default assessment while the table still leaves
+    // it to the defaults, which reads as `documented` in the one artifact
+    // that is normative for it. Only this direction is checked, because the
+    // table also carries the assessments of subjects whose records ship in
+    // later phases — an unmatched exception row is pending work, not drift.
+    for (const path of [
+      'specs/001-inspect-agent-customizations/contracts/runtime-composition.md',
+      'specs/001-inspect-agent-customizations/contracts/runtime-composition.ja.md',
+    ]) {
+      const exceptions = parseAssessmentExceptions(path);
+      for (const [strategyId, record] of Object.entries(RUNTIME_COMPOSITION_STRATEGIES)) {
+        const [status, qualifiers] = exceptions.get(strategyId) ?? ['documented', []];
+        expect(record.documentationStatus, `${strategyId} in ${path}`).toBe(status);
+        expect(record.lifecycleQualifiers, `${strategyId} in ${path}`).toEqual(qualifiers);
+      }
+    }
+  });
+});
 
 describe('the Codex instruction composition strategies (T219)', () => {
   it('ships the layering pipeline with its exact documented operations', () => {
@@ -577,15 +658,15 @@ describe('the Claude MCP composition strategy (T317, T327)', () => {
     }
   });
 
-  it('grants contained declarations no registry surface of their own (T327)', () => {
-    // Contained MCP metadata will ride already admitted documented owners —
-    // agents, plugin manifests, settings — when their phases admit them; a
-    // skill is never one, and the skill rule's edges stay the skill's — its
-    // selection strategy, its one Repository behavior — with no
-    // contained-MCP rule, behavior, or strategy ID to dangle from. The
-    // owner-gated dispatch is the recognizer's (candidate.ts), asserted by
-    // its own suites; what the registry proves is that every reference the
-    // shipped records make resolves to a currently owned record.
+  it('grants MCP-looking spellings in files of other kinds no registry surface (T327)', () => {
+    // Only explicit MCP configuration joins the MCP surfaces: a file of
+    // another kind that spells MCP configuration — a skill's or an agent's
+    // frontmatter, a settings file's inline map — is that kind's ordinary
+    // content, so the skill rule's edges stay the skill's — its selection
+    // strategy, its one Repository behavior — with no contained-MCP rule,
+    // behavior, or strategy ID to dangle from. What the registry proves is
+    // that every reference the shipped records make resolves to a currently
+    // owned record.
     const skill = RULE_RELATIONS['claude.repo.skill'];
     expect(skill.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
       'claude.behavior.repo.skills',
@@ -607,6 +688,49 @@ describe('the Claude MCP composition strategy (T317, T327)', () => {
       'specs/001-inspect-agent-customizations/contracts/runtime-composition.ja.md',
     ]) {
       const row = parseStrategyRow(path, 'claude.mcp.selection');
+      expect(row.operations, path).toEqual(record.operations);
+      expect(row.consumesBehaviors, path).toEqual(consumed);
+      expect(row.evidence, path).toEqual(cited);
+    }
+  });
+});
+
+describe('the Copilot Cloud MCP composition strategy (T379)', () => {
+  it('consumes the one hosted behavior and adds no candidate rule', () => {
+    // The pipeline's three inputs — out-of-box, custom-agent, and
+    // repository-settings MCP — are the hosted behavior's own documented
+    // sources; none is a local file, so no rule of the MCP or agent kind
+    // joins the catalog with it, and nothing about a custom agent is
+    // referenced before its own inventory wave.
+    const consumed = STRATEGY_RELATIONS['copilot.cloud.mcp.selection'].consumesBehaviors.map(
+      (behavior) => behavior.behaviorId,
+    );
+    expect(consumed).toEqual(['copilot.behavior.cloud.mcp']);
+    expect(
+      Object.values(INSPECTION_RULES).filter(
+        (rule) => rule.kind === 'agent' && rule.discoveryClass !== 'excluded',
+      ),
+    ).toEqual([]);
+  });
+
+  it('states the contract row reciprocally with the shipped record, in both languages', () => {
+    const record = RUNTIME_COMPOSITION_STRATEGIES['copilot.cloud.mcp.selection'];
+    // `replace` alone, partially documented: the cited page fixes the
+    // three-level processing order and the later-overrides-earlier
+    // direction, but neither the override unit nor any cross-level merge
+    // rule, so no `merge-map` step may be recorded from it (QR-005).
+    expect(record.operations).toEqual(['replace']);
+    expect(record.documentationStatus).toBe('partially-documented');
+    const consumed = STRATEGY_RELATIONS['copilot.cloud.mcp.selection'].consumesBehaviors.map(
+      (behavior) => behavior.behaviorId,
+    );
+    const cited = record.evidence.map((citation) => citation.sourceId);
+    expect(cited.length).toBeGreaterThan(0);
+    for (const path of [
+      'specs/001-inspect-agent-customizations/contracts/runtime-composition.md',
+      'specs/001-inspect-agent-customizations/contracts/runtime-composition.ja.md',
+    ]) {
+      const row = parseStrategyRow(path, 'copilot.cloud.mcp.selection');
       expect(row.operations, path).toEqual(record.operations);
       expect(row.consumesBehaviors, path).toEqual(consumed);
       expect(row.evidence, path).toEqual(cited);

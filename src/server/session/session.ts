@@ -663,11 +663,10 @@ export class InspectionSession {
       // Markdown kind is the plain variant — a census companion, or a
       // diagnostic-only candidate (contracts/http-api.md § get-file-detail).
       // No shipped rule recognizes one file as both Markdown kinds; the skill
-      // lookup runs first so the order is fixed rather than incidental. A
-      // contained-MCP owner — once a phase admits one of the documented
-      // owner families — is deliberately served here under its own kind: its
-      // MCP recognition is metadata on the owner, and the owner's source is
-      // legitimately displayed — only the pure carrier below withholds one.
+      // lookup runs first so the order is fixed rather than incidental. Only
+      // the explicit carriers hold MCP recognitions: a file of another kind that spells MCP-looking
+      // configuration is that kind's ordinary content, served here under its
+      // own kind with every declared key visible in its presentation.
       const skill = generation.recognitions.find(
         (recognition): recognition is SkillRecognition =>
           recognition.sourceRelativePath === sourceRelativePath && isSkillRecognition(recognition),
@@ -690,9 +689,7 @@ export class InspectionSession {
       // serves carries the full file, and the carrier's whole admission rests
       // on its bytes reaching no response (FR-007). Null is the same
       // stale-resource answer as a path the generations hold nothing at
-      // (contracts/http-api.md § get-file-detail). A contained-MCP owner —
-      // once a phase admits one — never reaches this: its own kind answers
-      // above. Decided before the
+      // (contracts/http-api.md § get-file-detail). Decided before the
       // instructions variant, which does carry the full body text: a Codex
       // `project_doc_fallback_filenames` entry naming `.mcp.json` makes the
       // root carrier an instructions candidate too, and answering that
@@ -732,16 +729,14 @@ export class InspectionSession {
   }
 
   /**
-   * Resolves one MCP-declaring file's declarations — the servers it declares
-   * and its own content-free file facts, never its source text (FR-007;
-   * contracts/http-api.md § get-mcp-carrier-detail). It answers for a pure
-   * carrier and, once a phase admits one of the documented owner families,
-   * for a contained-declaration owner alike: both hold an MCP
-   * recognition, and the response shape withholds source either way — an
-   * owner's source is served by `fileDetail` under its own kind, beside this
-   * result rather than through it. Null when the current committed
-   * generations hold no MCP recognition at the path, which the handler
-   * answers as the `stale-resource` rejection.
+   * Resolves one MCP carrier's declarations — the servers it declares and
+   * its own content-free file facts, never its source text (FR-007;
+   * contracts/http-api.md § get-mcp-carrier-detail). Only the explicit
+   * carriers hold MCP recognitions: a file of
+   * any other kind that spells MCP-looking configuration never resolves
+   * here — its configuration is that kind's own detail content. Null when
+   * the current committed generations hold no MCP recognition at the path,
+   * which the handler answers as the `stale-resource` rejection.
    */
   public mcpCarrierDetail(sourceRelativePath: string): McpCarrierDetailDto | null {
     const generations = [

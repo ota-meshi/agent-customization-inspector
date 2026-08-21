@@ -42,7 +42,7 @@ import {
 import { useRoute } from 'vue-router';
 import { NuxtLink } from '#components';
 import SourceViewer from '../../components/inspection/SourceViewer.vue';
-import DeclarationBlock from '../../components/inspection/DeclarationBlock.vue';
+import { frontmatterYamlText } from '../../components/inspection/frontmatter-yaml';
 import { nextTabForKey } from '../../components/tab-navigation';
 import { instructionComparisonRouteFor } from '../../composables/instruction-comparison';
 import { usePageOwnership } from '../../composables/page-ownership';
@@ -202,13 +202,12 @@ const presentation = computed(() => {
 });
 
 /**
- * The declarations in authored order, exactly as published. Unlike a skill,
- * no key leads: an instruction file declares no identity this product reads,
- * so the file's own order is the only one there is (FR-007).
+ * The frontmatter as the YAML document the detail renders (FR-007,
+ * frontmatter-yaml.ts): every declared key in the file's own order, spelled
+ * back in the block's own language, so a reader compares it against their
+ * file without translating and pastes from it without converting.
  */
-const declarationBlock = computed(
-  () => ({ kind: 'mapping', entries: presentation.value?.frontmatter ?? [] }) as const,
-);
+const frontmatterText = computed(() => frontmatterYamlText(presentation.value?.frontmatter ?? []));
 
 /**
  * Whether the file left no instructions at all. Only an empty string counts:
@@ -611,7 +610,20 @@ onBeforeUnmount(() => {
           <p v-if="presentation.frontmatter.length === 0" class="aci-note">
             This file declares none.
           </p>
-          <DeclarationBlock v-else :value="declarationBlock" />
+          <!-- The declared keys as one read-only YAML document in the file's
+               own order (FR-007), through the same viewer the instructions
+               use — sized to the block, because a frontmatter is short
+               (SourceViewer § fitContent). YAML because the block is YAML:
+               nothing here is markup, a link, or a resolved reference
+               (FR-025, FR-026, FR-033). -->
+          <SourceViewer
+            v-else
+            :source-text="frontmatterText"
+            :source-relative-path="openPath"
+            content-label="Frontmatter of"
+            content-language="yaml"
+            fit-content
+          />
         </div>
 
         <div v-if="presentation" class="aci-instruction-detail__instructions">
