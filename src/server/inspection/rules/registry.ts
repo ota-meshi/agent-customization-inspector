@@ -822,14 +822,65 @@ export interface CompiledStaticMcpProvenanceRule extends CompiledInspectionRule 
 export type CompiledStaticMcpRule = CompiledStaticMcpReadingRule | CompiledStaticMcpProvenanceRule;
 
 /**
+ * A compiled rule that admits a file declaring a permission policy inside a
+ * larger document, and reads the block out of it. Which key holds the policy,
+ * and which format the document is, is the admitting vendor's own contract —
+ * Claude's strict-JSON `permissions` object — so a rule of another kind must
+ * not be asked for it.
+ *
+ * Its own unit rather than an optional member on the permissions family: a
+ * vendor whose whole file is the policy has no block to read, and a unit that
+ * cannot answer must not carry the member that promises to. The
+ * `permissionsReading` discriminant is what lets the recognizer prove which
+ * admission can answer without a cast.
+ */
+export interface CompiledStaticPermissionsCarrierRule extends CompiledInspectionRule {
+  /** The recognized kind; a carrier unit compiles permission-policy records alone. */
+  readonly kind: 'permissions';
+  /** Discriminant: this unit reads a block out of the document it admits. */
+  readonly permissionsReading: 'declared-block';
+  /**
+   * The entries of the policy block one admitted carrier's complete decoded
+   * text declares, in the parser's resolved order, or null when the document
+   * declares no such block — which is not an empty policy but no policy at
+   * all, and the recognizer publishes no recognition for it. Throws on text
+   * the carrier's format cannot parse; the recognizer's extraction boundary
+   * turns the throw into the recognition's `failed` state (FR-028).
+   */
+  declaredPolicyOf(sourceText: string): readonly DeclaredEntryDto[] | null;
+}
+
+/**
+ * A compiled rule whose admitted file is itself the whole permission policy,
+ * so nothing is read out of it: a Codex `.codex/rules/*.rules` file is the
+ * policy its author wrote, and its detail serves that document.
+ */
+export interface CompiledStaticPermissionsDocumentRule extends CompiledInspectionRule {
+  /** The recognized kind; a permissions unit compiles permission-policy records alone. */
+  readonly kind: 'permissions';
+  /** Discriminant: no reading — the admitted document is the policy. */
+  readonly permissionsReading: 'whole-document';
+}
+
+/**
+ * A compiled rule that admits a permission policy: the closed union of the
+ * unit that reads a declared block and the unit whose file is the policy,
+ * discriminated by `permissionsReading`.
+ */
+export type CompiledStaticPermissionsRule =
+  CompiledStaticPermissionsCarrierRule | CompiledStaticPermissionsDocumentRule;
+
+/**
  * A compiled static rule of every other kind — neither an instruction rule,
  * whose files govern a range, nor an MCP carrier rule, whose files declare
  * servers. It answers no per-kind question, which is the whole point: a skill
- * rule has no such answer to give.
+ * rule has no such answer to give, and neither does a rule-file rule — a rule
+ * file is published as the one Markdown or Starlark document its author
+ * wrote, so nothing is read out of it for a caller to ask about.
  */
 export interface CompiledStaticOtherKindRule extends CompiledInspectionRule {
-  /** Every recognized kind but `instructions` and `MCP`. */
-  readonly kind: Exclude<CustomizationKind, 'instructions' | 'MCP'>;
+  /** Every recognized kind but `instructions`, `MCP`, and `permissions`. */
+  readonly kind: Exclude<CustomizationKind, 'instructions' | 'MCP' | 'permissions'>;
 }
 
 /**
@@ -838,7 +889,10 @@ export interface CompiledStaticOtherKindRule extends CompiledInspectionRule {
  * executes, so a catalog needs no second type beside this one.
  */
 export type CompiledStaticCandidateRule =
-  CompiledStaticInstructionRule | CompiledStaticMcpRule | CompiledStaticOtherKindRule;
+  | CompiledStaticInstructionRule
+  | CompiledStaticMcpRule
+  | CompiledStaticPermissionsRule
+  | CompiledStaticOtherKindRule;
 
 /**
  * What a recognizer receives: any rule that can admit a candidate — a static

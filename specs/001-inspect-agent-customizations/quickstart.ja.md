@@ -81,7 +81,7 @@ pnpm run build
   `open` packageのvendoredなPOSIX shell `xdg-open`はpayload内の唯一の例外である
   （spec.md FR-038）: Linux hostでは、package自身の選択policyがvendored copyを実行可能である限り使い、
   そうでないときにsystemの`xdg-open`へfallbackする。生成HTML shell、CSS、JSON file、必須documentation/license fileはdeclarativeかつnon-executableなartifactとする。Directなproduction dependencyは正確に9件、`devframe`、`gunshi`、`h3`、
-  `open`、`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`yaml`とする。devframeと`open`のtransitive treeはそれぞれのpackageとlockfileが所有する。
+  `open`、`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`which`、`yaml`、`yaml`とする。devframeと`open`のtransitive treeはそれぞれのpackageとlockfileが所有する。
 - Build outputにfixture、raw customization text、Global content、cache、inspected machineを公開する
   source-map pathが含まれない。
 
@@ -179,7 +179,7 @@ macOSではまず、起動中のChromium系browserが既に表示originを開い
 （固定のprocess一覧probeと、OSの`osascript` automation hostで実行する固定のtab再利用script）、
 それ以外の場合は表示origin付きで`open`の固定OS helperをspawnし、devframeのbundled openerは
 無効化されてproductのopenerだけが動く。このfixed startup openingがinitial releaseで
-許可する唯一のproductのchild-process surfaceであり、spawnされるどのprocessも固定の引数と表示origin
+readerが明示的に要求するopen-in-editorと並ぶ、許可するproductのchild-process surfaceであり、spawnされるどのprocessも固定の引数と表示origin
 だけを受け取り、inspection由来のcontent、path、authored value、
 user-supplied commandを受け取らず、launch environmentを変更なしで継承する — productはそこへ
 inspection由来の値を書き込まず、user自身の`$BROWSER`を尊重するplatform helperはuser preferenceを
@@ -260,7 +260,7 @@ pnpm run test:e2e
   installed package linkもinvokeしない。T917が、isolated fixtureへpack/installし、working treeまたは
   runtime downloadへ依存せず`npx --no-install`でlaunchするfinal-release testを所有する。
   Production-graph testは承認済みのdirect dependency 9 件、すなわち
-  `devframe`、`gunshi`、`h3`、`open`、`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`yaml`を正確にassertし（resolved versionとintegrity hashは
+  `devframe`、`env-editor`、`gunshi`、`h3`、`open`、`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`which`、`yaml`、`yaml`を正確にassertし（resolved versionとintegrity hashは
   commit済み`pnpm-lock.yaml`が所有し続ける）、negative packaging fixtureは、
   missingまたはnon-regularなrequired entry pointがpublish前に`verify:package`をfailさせることを証明する。
 - Performance suiteはpackaged CLI（先にbuildする）に対してT183のSC-002 smoke passを実行する。
@@ -791,7 +791,8 @@ distribution、digestの変更は両resultを無効にし、final pairがvalid e
   limitationとして別に記録する。
   Privacy-safeでexactなtarget classifier `targetClass`を使い、closed literalを
   `static-manifested-asset | static-spa-shell | static-client-route-fallback | connection-discovery-metadata |
-  rpc-channel-upgrade | rpc-get-session | rpc-get-file-detail | rpc-rescan-repository |
+  rpc-channel-upgrade | rpc-get-session | rpc-get-file-detail | rpc-get-mcp-carrier-detail |
+rpc-get-permission-policy-detail | rpc-open-file | rpc-rescan-repository |
   rpc-get-global-consent-preview | rpc-create-global-consent-preview | rpc-enable-global | rpc-rescan-global |
   rpc-disable-global | rpc-devframe-framework | other-loopback | remote | mcp | unclassifiable | not-applicable`とする。Authority、target、method、origin、same-host、attribution、request class、
   prohibited statusにまたがるcontractのclosed truth tableを使う。Session channelのRPC invocationはInspector-sideのdispatch境界で
@@ -1121,7 +1122,7 @@ exact `package.json.files` entryの`dist`、`README.md`、`README.ja.md`、`LICE
 product manifestで再列挙しない。Exact `bin` mappingと
 `main`/`module`/`exports`不在、license notice、保持されたexact shebang、
 公開README pairを確認する。Directなproduction dependencyは正確に9件、`devframe`、`gunshi`、`h3`、
-`open`、`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`yaml`とする。devframeと`open`のtransitive treeはそれぞれのpackageと
+`open`、`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`which`、`yaml`、`yaml`とする。devframeと`open`のtransitive treeはそれぞれのpackageと
 lockfileが所有する。
 
 再実行すべきhost-securityやHTTP-API-router contract stepは存在しない。devframeがhosting policy
@@ -1137,7 +1138,7 @@ initial baselineをno impactとして記録する。それ以外では必要なc
 rollback/support pathを記録する。Evidenceが欠落するか一方の言語だけならrelease gateをfailureとする。
 
 承認済みproduction dependency setを`package.json`と`pnpm-lock.yaml` closureからassertする。すなわちdirect
-dependency 9 件、`devframe`、`gunshi`、`h3`、`open`、`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`yaml`を正確にassertし、graph変更は
+dependency 9 件、`devframe`、`env-editor`、`gunshi`、`h3`、`open`、`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`which`、`yaml`、`yaml`を正確にassertし、graph変更は
 dependency決定が明示的に見直されるまでgateをfailさせる。各resolved versionとそのintegrity hashはcommit済み
 lockfileが所有し、全production packageのpayload byteをpinするのはこのlockfileである。
 Exactな宣言済み

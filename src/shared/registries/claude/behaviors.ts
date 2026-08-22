@@ -586,6 +586,254 @@ export const CLAUDE_USER_SKILLS_BEHAVIOR = {
  * `claude.instructions.layering` all four instruction ones — because shipping
  * one alone would leave the dangling edge the contract gate rejects.
  */
+/**
+ * Claude project rule discovery: every `.md` file found recursively under a
+ * rule layer's `.claude/rules/` directory, one layer per documented rule
+ * layer from the launch working directory through its parents.
+ *
+ * The directory is discovered recursively — the page shows `frontend/` and
+ * `backend/` subdirectories under one `rules/` — and a nested
+ * `.claude/rules/` below the working directory loads on demand rather than at
+ * launch. That on-demand trigger, and the base an ancestor layer's `paths`
+ * globs are resolved against, are what the page leaves open, which is why the
+ * statement is `partially-documented`
+ * (contracts/vendors/claude-code.md § Documented Repository behavior).
+ *
+ * A rule without `paths` loads at launch with the same priority as
+ * `.claude/CLAUDE.md`; one with `paths` applies only while Claude works with
+ * a matching file. Recording that grants nothing: this product evaluates no
+ * glob against a filesystem path and observes no session (FR-009).
+ */
+export const CLAUDE_REPO_RULES_BEHAVIOR = {
+  behaviorId: 'claude.behavior.repo.rules',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'repository',
+        lookupBase: 'runtime-cwd',
+        // The directory, not a glob: a vendor locator is documentation rather
+        // than an Inspector selector, so the recursion is the `traversal`
+        // field's to state (contracts/inspection-path-allowlist.md § "Vendor
+        // locators are not Inspector matchers").
+        relativeSelector: '.claude/rules/',
+        // Everything below that directory, which is the recursion the page
+        // states plainly. The layer chain this directory is looked for on,
+        // and the on-demand reach into a nested `.claude/rules/`, are the two
+        // walks one field cannot also carry; they are what leaves the record
+        // `partially-documented`, and what the Inspector's own rule expresses
+        // through its two recursive steps (FR-003).
+        traversal: 'recursive-under-base',
+      }
+    : null,
+  documentationStatus: 'partially-documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.memory.locations-load',
+          url: 'https://code.claude.com/docs/en/memory',
+          officialHost: 'code.claude.com',
+          sections: ['Organize rules with .claude/rules/'],
+          reviewedOn: '2026-08-18',
+          establishes:
+            "Markdown files placed in a project's .claude/rules/ directory are all discovered recursively, so rules may be organized into subdirectories; a rule without paths frontmatter loads at launch with the same priority as .claude/CLAUDE.md, while a rule with paths applies only when Claude works with a file matching one of its glob patterns. The section states neither the trigger that loads a nested .claude/rules/ directory on demand nor the base an ancestor layer resolves its paths globs against.",
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Claude shared project settings: the file a project's own `.claude/` holds
+ * and a team checks into source control, whose keys include the permission
+ * policy this product recognizes as its own kind.
+ *
+ * The exact launch directory: the page names `.claude/settings.json` as the
+ * project folder's file and documents no ancestor walk for it, so the locator
+ * is `exact` like the MCP carrier's and unlike the instruction lookups this
+ * vendor also documents.
+ *
+ * `documented`: where the file lives, and what committing it reaches, are both
+ * stated. What a session does with it is runtime this tool never observes
+ * (FR-009).
+ */
+export const CLAUDE_REPO_SHARED_SETTINGS_BEHAVIOR = {
+  behaviorId: 'claude.behavior.repo.settings.shared',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'repository',
+        lookupBase: 'runtime-cwd',
+        relativeSelector: './.claude/settings.json',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.settings.scopes-precedence',
+          url: 'https://code.claude.com/docs/en/settings',
+          officialHost: 'code.claude.com',
+          sections: [
+            'Settings files and who they affect',
+            'Compare the scope of each settings file',
+          ],
+          reviewedOn: '2026-08-22',
+          establishes:
+            "A project's shared settings are .claude/settings.json in the project folder, which a team checks into source control; a teammate's clone and a cloud session have the file only once it is committed, as that checkout's own copy rather than as this machine's file being read from elsewhere.",
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Claude personal project settings: the file that stays out of the
+ * repository's commits, and which carries the permission rules a reader
+ * approved permanently.
+ *
+ * Its own statement rather than the shared file's second selector, because
+ * the two differ in the one thing a locator says: where the file is. Claude
+ * Code keeps this one at the git repository root resolved through worktrees,
+ * so a session started in a subdirectory writes and reads it above the
+ * launch directory.
+ *
+ * `partially-documented`: the exceptions that keep the file in the starting
+ * directory — outside a repository, a repository root that is the home
+ * directory, Windows, and a root whose `.git` or `.claude` entry another user
+ * owns — turn on runtime and host facts this tool never observes (FR-009).
+ * The Inspector reads the launch directory's copy, which is the one it can
+ * name from a path.
+ */
+export const CLAUDE_REPO_LOCAL_SETTINGS_BEHAVIOR = {
+  behaviorId: 'claude.behavior.repo.settings.local',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        // The repository root, because that is where the vendor keeps this
+        // file — a locator states the vendor's own lookup, not where this
+        // product reads (contracts/inspection-path-allowlist.md § "Vendor
+        // locators are not Inspector matchers"). The documented exceptions
+        // that put it in the starting directory instead are what keeps the
+        // record `partially-documented`; the Inspector's own matcher admits
+        // the launch directory's copy, which is the one it can name.
+        vendorScope: 'repository',
+        lookupBase: 'repository-root',
+        relativeSelector: './.claude/settings.local.json',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'partially-documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.settings.scopes-precedence',
+          url: 'https://code.claude.com/docs/en/settings',
+          officialHost: 'code.claude.com',
+          sections: [
+            'Compare the scope of each settings file',
+            'Where Claude Code keeps the local file in a git repository',
+          ],
+          reviewedOn: '2026-08-22',
+          establishes:
+            "A project's personal settings are .claude/settings.local.json, which is that project's alone and which Claude Code keeps at the git repository root resolved through worktrees — staying in the starting directory outside a repository, when the repository root is the home directory, on Windows, and when the root or its .git or .claude entry is not owned by the user — while a permission rule in it keeps resolving from the directory Claude Code was started in.",
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Claude User settings: the configuration directory's own `settings.json`,
+ * which applies to every project.
+ *
+ * Recorded for maintenance and for the precedence strategy that composes it;
+ * it expands no Global inspection, and `claude.excluded.user-runtime` keeps
+ * the surface out of the read allowlist (contracts/vendors/claude-code.md
+ * § Documented User behavior).
+ */
+export const CLAUDE_USER_SETTINGS_BEHAVIOR = {
+  behaviorId: 'claude.behavior.user.settings',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'user',
+        lookupBase: 'tool-home',
+        relativeSelector: './settings.json',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.settings.scopes-precedence',
+          url: 'https://code.claude.com/docs/en/settings',
+          officialHost: 'code.claude.com',
+          sections: ['Compare the scope of each settings file'],
+          reviewedOn: '2026-08-22',
+          establishes:
+            'User settings live at ~/.claude/settings.json and apply to every project on the machine, and to nothing on a teammate machine or in a cloud session.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Claude User rules: the `rules/` directory of the Claude configuration
+ * directory, loaded before the project layers.
+ *
+ * `partially-documented`, and the direct children alone: the page's recursion
+ * sentence — "All `.md` files are discovered recursively" — is written about a
+ * project's `.claude/rules/`, while the User-level section names the directory,
+ * states that its rules apply to every project and load before project rules,
+ * and shows a flat pair of files. Whether a nested subdirectory of the user
+ * directory is discovered is left unstated, so this record claims the depth the
+ * page shows rather than carrying the project statement's recursion across
+ * scopes — the same reading `codex.behavior.user.rules` takes of its own
+ * vendor's one-sentence user statement.
+ *
+ * Recorded for maintenance and for the layering strategy that composes it; it
+ * expands no Global inspection, and `claude.excluded.user-runtime` keeps the
+ * surface out of the read allowlist (contracts/vendors/claude-code.md
+ * § Documented User behavior).
+ */
+export const CLAUDE_USER_RULES_BEHAVIOR = {
+  behaviorId: 'claude.behavior.user.rules',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'user',
+        lookupBase: 'tool-home',
+        // The direct children the User-level section's own example shows; the
+        // project statement's recursion is not written about this scope.
+        relativeSelector: 'rules/*.md',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'partially-documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.memory.locations-load',
+          url: 'https://code.claude.com/docs/en/memory',
+          officialHost: 'code.claude.com',
+          sections: ['Organize rules with .claude/rules/'],
+          reviewedOn: '2026-08-18',
+          establishes:
+            'Personal rules in ~/.claude/rules/ apply to every project on the machine and are loaded before project rules, which gives project rules the higher priority.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
 export const CLAUDE_BEHAVIOR_STATEMENTS: Readonly<
   Record<ClaudeBehaviorId, VendorBehaviorStatement>
 > = {
@@ -597,9 +845,14 @@ export const CLAUDE_BEHAVIOR_STATEMENTS: Readonly<
   [CLAUDE_REPO_INSTRUCTIONS_LAUNCH_BEHAVIOR.behaviorId]: CLAUDE_REPO_INSTRUCTIONS_LAUNCH_BEHAVIOR,
   [CLAUDE_REPO_MCP_BEHAVIOR.behaviorId]: CLAUDE_REPO_MCP_BEHAVIOR,
   [CLAUDE_REPO_PLUGIN_BEHAVIOR.behaviorId]: CLAUDE_REPO_PLUGIN_BEHAVIOR,
+  [CLAUDE_REPO_RULES_BEHAVIOR.behaviorId]: CLAUDE_REPO_RULES_BEHAVIOR,
+  [CLAUDE_REPO_LOCAL_SETTINGS_BEHAVIOR.behaviorId]: CLAUDE_REPO_LOCAL_SETTINGS_BEHAVIOR,
+  [CLAUDE_REPO_SHARED_SETTINGS_BEHAVIOR.behaviorId]: CLAUDE_REPO_SHARED_SETTINGS_BEHAVIOR,
   [CLAUDE_REPO_SKILLS_BEHAVIOR.behaviorId]: CLAUDE_REPO_SKILLS_BEHAVIOR,
   [CLAUDE_USER_INSTRUCTIONS_BEHAVIOR.behaviorId]: CLAUDE_USER_INSTRUCTIONS_BEHAVIOR,
   [CLAUDE_USER_MCP_STATE_BEHAVIOR.behaviorId]: CLAUDE_USER_MCP_STATE_BEHAVIOR,
   [CLAUDE_USER_PLUGINS_BEHAVIOR.behaviorId]: CLAUDE_USER_PLUGINS_BEHAVIOR,
+  [CLAUDE_USER_RULES_BEHAVIOR.behaviorId]: CLAUDE_USER_RULES_BEHAVIOR,
+  [CLAUDE_USER_SETTINGS_BEHAVIOR.behaviorId]: CLAUDE_USER_SETTINGS_BEHAVIOR,
   [CLAUDE_USER_SKILLS_BEHAVIOR.behaviorId]: CLAUDE_USER_SKILLS_BEHAVIOR,
 };

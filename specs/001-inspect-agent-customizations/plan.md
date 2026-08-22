@@ -1029,7 +1029,7 @@ create, rename, delete, link, mode/ownership/time/xattr/ACL change, or equivalen
 mutation. Tests instrument those calls and compare content, length, identity/link state,
 mode, mtime, ctime, and observable xattrs/ACLs; an OS-only read-side atime update is recorded
 separately and is neither a failure nor proof of mutation. The separately constrained startup
-launcher owns the only permitted product-initiated child-process surface: on macOS the
+launcher owns one of the two permitted product-initiated child-process surfaces — the other is the reader's own explicit open-in-editor request (FR-022) — and on macOS the
 fixed process-list probe and fixed tab-reuse script through the OS `osascript` automation
 host, otherwise its fixed OS browser helper.
 Every spawned process receives only fixed arguments and the printed loopback origin — no
@@ -1332,7 +1332,7 @@ specs/001-inspect-agent-customizations/
 src/
 ├── app/
 │   ├── App.vue
-│   ├── router.options.ts   # router scroll behavior sharing the shell's page-identity rule
+│   ├── router.options.ts   # page identity, page-change scroll, and the inventory return point
 │   ├── worker-modules.d.ts
 │   ├── components/
 │   │   ├── inventory/
@@ -1649,7 +1649,7 @@ proves the Nuxt assets, CLI, and inspection layer resolve from their built locat
 not prove the packed tarball: installing one into an isolated fixture and launching it
 through `npx --no-install` is T917, which the release gate owns.
 
-The package gate asserts the approved direct production dependency set — exactly those nine
+The package gate asserts the approved direct production dependency set — exactly those eleven
 names and no others — from `package.json` and the `pnpm-lock.yaml` closure, so any new
 production dependency fails until the research.md § 3 decision is explicitly revisited. The
 committed lockfile owns each resolved version and its integrity hash, which is what keeps

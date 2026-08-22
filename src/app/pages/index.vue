@@ -16,7 +16,7 @@
 // one RPC connection and the one adopted snapshot, and a second view state
 // would race the first for the same request tokens.
 import { computed, inject, nextTick, ref, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import DiagnosticList from '../components/diagnostics/DiagnosticList.vue';
 import InventoryFilters from '../components/inventory/InventoryFilters.vue';
 import InventoryKindTabs from '../components/inventory/InventoryKindTabs.vue';
@@ -24,10 +24,12 @@ import InventoryList from '../components/inventory/InventoryList.vue';
 import UnclassifiedList from '../components/inventory/UnclassifiedList.vue';
 import ScanProgress from '../components/inventory/ScanProgress.vue';
 import { SESSION_VIEW_STATE } from '../session/view-state';
+import { recordInventoryReturnPoint } from '../router.options';
 import { useInventoryFilters } from '../composables/filters';
 import {
   SOURCE_BOUNDARY_ORIGIN_TEXT,
   isCustomizationKind,
+  isSupportedTool,
   type CustomizationKind,
   type SupportedTool,
 } from '../../shared/entities';
@@ -42,12 +44,6 @@ if (sessionViewState === undefined) {
 
 const snapshot = sessionViewState.snapshot;
 
-// The filter fields are this page's own state, so the template binds them with
-// `v-model` directly and the composable returns only what it derives.
-const sourceId = ref<string | null>(null);
-const tool = ref<SupportedTool | null>(null);
-const pathQuery = ref('');
-
 const route = useRoute();
 const router = useRouter();
 
@@ -60,28 +56,69 @@ function kindFromQuery(value: unknown): CustomizationKind | null {
   return isCustomizationKind(value) ? value : null;
 }
 
-// Kind is navigation, and navigation belongs in the URL: the tab is
-// initialized from `?kind=` and every explicit tab selection is written back,
-// so a detail page's back link and the browser's own Back both restore the
-// tab the user actually left — the kind order's default would otherwise
-// swallow it. `replace` rather than `push`: switching tabs must not stack
-// history entries the Back button then has to unwind.
+/**
+ * The tool read out of `?tool=`, or null for anything the closed catalog does
+ * not name — the same rule as {@link kindFromQuery}, for the same reason.
+ */
+function toolFromQuery(value: unknown): SupportedTool | null {
+  return isSupportedTool(value) ? value : null;
+}
+
+/**
+ * The text a query parameter carries, or null when it is absent, empty, or
+ * repeated. None of the three is a selection the controls can make, and the
+ * fields already start at the neutral value an empty one would set.
+ */
+function queryText(value: unknown): string | null {
+  return typeof value === 'string' && value !== '' ? value : null;
+}
+
+// What the reader has narrowed the inventory to is navigation, and navigation
+// belongs in the URL: every selection is initialized from the query and
+// written back to it, so a detail page's back link, the browser's own Back, a
+// reload, and a pasted link all render the list that was being read rather
+// than the whole inventory. `replace` rather than `push`: narrowing must not
+// stack history entries the Back button then has to unwind, and the path field
+// would stack one per keystroke.
 //
-// What the query holds is this selection, never `filters.activeKind`. The two
-// differ on purpose: a kind the current inventory does not offer stays the
-// reader's choice while the view falls back to the first available one, so
-// the choice returns by itself when a later commit offers that kind again
-// (`filters.ts`). Writing the fallback here would put a derived value in the
-// selection's own storage, where the two could then disagree — and a reader
-// who has chosen nothing has chosen nothing, so the query stays absent and
-// the default is resolved against whatever inventory is committed then.
+// What the query holds is these selections, never the values the view falls
+// back to (`filters.activeKind`, `filters.effectiveSourceId`,
+// `filters.effectiveTool`). The two differ on purpose: a kind, Source, or tool
+// the current inventory does not offer stays the reader's choice while the
+// view falls back, so the choice returns by itself when a later commit offers
+// it again (`filters.ts`). Writing the fallback here would put a derived value
+// in the selection's own storage, where the two could then disagree — and a
+// reader who has chosen nothing has chosen nothing, so the parameter stays
+// absent and the default is resolved against whatever inventory is committed
+// then.
+const sourceId = ref<string | null>(queryText(route.query.source));
+const tool = ref<SupportedTool | null>(toolFromQuery(route.query.tool));
+const pathQuery = ref(queryText(route.query.path) ?? '');
 const kind = ref<CustomizationKind | null>(kindFromQuery(route.query.kind));
 
-/** Selects a kind tab: the page state and the URL move together. */
-function selectKind(selected: CustomizationKind): void {
-  kind.value = selected;
-  void router.replace({ query: { ...route.query, kind: selected } });
-}
+watch([sourceId, tool, pathQuery, kind], () => {
+  void router.replace({
+    query: {
+      ...route.query,
+      source: sourceId.value ?? undefined,
+      tool: tool.value ?? undefined,
+      path: pathQuery.value === '' ? undefined : pathQuery.value,
+      kind: kind.value ?? undefined,
+    },
+  });
+});
+
+// Where the reader is when they leave, so that coming back puts them there
+// rather than at the top of a list they would have to find their place in
+// again. A leave guard runs before anything moves: the row they followed is
+// still rendered and the document is still scrolled where they left it, and
+// the route being navigated to is what names that row's link. Restoring the
+// point is the router's, together with the focus that belongs beside it
+// (router.options.ts).
+onBeforeRouteLeave((to) => {
+  recordInventoryReturnPoint(to.fullPath);
+});
+
 const filters = useInventoryFilters(snapshot, { sourceId, tool, kind, pathQuery });
 
 // What the two selects display is the selection actually applied, while what
@@ -141,6 +178,10 @@ const totalRowCount = computed(() => {
   switch (filters.activeKind.value) {
     case 'instructions':
       return snapshot.value?.instructions.length ?? 0;
+    case 'rule':
+      return snapshot.value?.rules.length ?? 0;
+    case 'permissions':
+      return snapshot.value?.permissions.length ?? 0;
     case 'skill':
       return snapshot.value?.skills.length ?? 0;
     case 'MCP':
@@ -223,11 +264,13 @@ const staleFailureMessage = computed(() =>
       :kinds="filters.availableKinds.value"
       :active-kind="filters.activeKind.value"
       :counts="filters.kindCounts.value"
-      @select="selectKind($event)"
+      @select="kind = $event"
     />
     <InventoryList
       :kind="filters.activeKind.value"
       :instruction-rows="filters.instructionRows.value"
+      :rule-rows="filters.ruleRows.value"
+      :permissions-rows="filters.permissionsRows.value"
       :skill-rows="filters.skillRows.value"
       :mcp-rows="filters.mcpRows.value"
       :files-by-path="filters.filesByPath.value"
@@ -239,11 +282,12 @@ const staleFailureMessage = computed(() =>
     <template v-if="filters.unrecognizedRows.value.length > 0">
       <h3>Files in no kind</h3>
       <p class="aci-note">
-        Files an inspection rule admitted whose bytes this scan could not use, so no kind tab can
-        list them. Each row states what happened — a read that failed outright, or bytes that were
-        read and turned out to be binary. A file that only ships inside a customization's own
-        directory is not here: it belongs to that customization's row, and its own row above says
-        what happened to it.
+        Files an inspection rule admitted that no kind tab lists. Each row states what happened —
+        bytes this scan could not use, a read that failed outright, or bytes that were read and
+        turned out to be binary — and a file whose content held nothing the kind that admitted it
+        publishes is here too, read and recognized as nothing. A file that only ships inside a
+        customization's own directory is not here: it belongs to that customization's row, and its
+        own row above says what happened to it.
       </p>
       <!-- Outside every kind tab: these files are in no kind's inventory, so
            no kind presentation applies to them. -->

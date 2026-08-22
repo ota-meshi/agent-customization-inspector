@@ -61,7 +61,7 @@ another machine remains prohibited.
    the Nuxt build emitted into the packaged `dist/public`; the product defines no
    static-assets manifest, no per-asset integrity re-verification, and no hand-written
    router. The one product-owned piece in front of it is the closed detail-route
-   rewrite — `/skills/**`, `/instructions/**`, and `/mcp/**`, one family per shipped
+   rewrite — `/skills/**`, `/instructions/**`, `/mcp/**`, `/rules/**`, and `/permissions/**`, one family per shipped
    kind detail: a `GET`/`HEAD` whose path enters one of these route families is
    rewritten to `/` and falls
    through, so devframe's own static handler serves the packaged shell for detail deep
@@ -94,7 +94,8 @@ another machine remains prohibited.
    documents them with the rejection a mismatch produces. A declared parameter is
    validated by resolution, never by a shape guard in front of it: the shipped catalog
    declares exactly one parameter shape — the committed Source-relative Path
-   `get-file-detail` and `get-mcp-carrier-detail` each take, a published identity
+   `get-file-detail`, `get-mcp-carrier-detail`, and `get-permission-policy-detail` each
+   take, a published identity
    resolved against the committed generations and never a filesystem operand —
    and any value whose resource the invoked function does not hold, a value of another
    type included, resolves nowhere and is the `stale-resource` rejection; the Global functions' preview, allowlist-version,
@@ -115,7 +116,9 @@ another machine remains prohibited.
 | `agent-customization-inspector:get-session` | read | Full `SessionSnapshot` snapshot, or the control-only `GlobalFenceRecoverySnapshot` while fenced |
 | `agent-customization-inspector:get-file-detail` | read | One active-generation `FileDetail` |
 | `agent-customization-inspector:get-mcp-carrier-detail` | read | One active-generation `McpCarrierDetail`: one MCP-declaring file's declarations and file facts, never its source |
+| `agent-customization-inspector:get-permission-policy-detail` | read | One active-generation `PermissionPolicyDetail`: one declared permission policy, whole document or declared block |
 | `agent-customization-inspector:rescan-repository` | command | Accept one explicit Repository scan command |
+| `agent-customization-inspector:open-file` | command | Open one committed file in an application on the reader's own machine |
 | `agent-customization-inspector:get-global-consent-preview` | read | Current or frozen `GlobalConsentPreview` |
 | `agent-customization-inspector:create-global-consent-preview` | command | Capture and atomically create or replace the unconsented preview |
 | `agent-customization-inspector:enable-global` | command | Confirm the session-wide consent; initial enable and active-consent retry |
@@ -136,7 +139,9 @@ agent tools or resources), `devframe:rpc:server-state:subscribe` / `get` / `set`
 `patch` (unused — the product shares no server state), and `devframe:streaming:*`
 (unused — the product declares no streaming channel). The editor and finder helpers
 (`devframe:open-in-editor`, `devframe:open-in-finder`) are opt-in recipes this product
-does not import, so they are not registered.
+does not import, so they are not registered: each opens whatever path its caller sends,
+while § open-file resolves the path against the committed generations first, so the only
+absolute path a launch can receive is one this session published (FR-022).
 
 ## Common results and errors
 
@@ -240,6 +245,11 @@ Result data:
 
 ```text
 SessionSnapshot
+├── fileOpenTargets[] — the applications this host can hand a committed file
+│   to, in the order a detail surface offers them and with the one a plain
+│   click uses first: each editor the host resolved on this machine, then
+│   `default-application` and `containing-folder`, which every machine
+│   satisfies through its own handlers (see § open-file)
 ├── sessionId, createdAt, repositoryGeneration, globalGeneration, snapshotState, globalContentEpoch,
 │   staleFailures[] { sourceId, failureRef, failedAt, baseGeneration },
 │   globalEnableInProgress null | { kind, operationId, previewId },
@@ -264,10 +274,21 @@ SessionSnapshot
 │       recognitions in the closed tool order, and each recognition's product
 │       surfaces in the closed surface order; the one null row closes the
 │       list with the files whose range is not known
+├── rules[]
+│   └── sourceRelativePath, recognitions[] { tool, surfaces[] } —
+│       one row per recognized rule file, with each recognition in the closed
+│       tool order and each recognition's product surfaces in the closed
+│       surface order
+├── permissions[]
+│   └── sourceRelativePath, recognitions[] { tool, surfaces[] },
+│       diagnosticIds[] —
+│       one row per declared permission policy, named by the path of the
+│       file that declares it; a carrier declaring none is recognized as
+│       whatever owns the rest of it, and is no row here
 ├── skills[]
 │   └── name string,
-│       definitions[] { sourceRelativePath, tool, parseStatus, invocationName,
-│                       diagnosticIds[], companionFiles[] },
+│       definitions[] { sourceRelativePath, tool, surfaces[], parseStatus,
+│                       invocationName, diagnosticIds[], companionFiles[] },
 │       sameNameResolutions[] { tool, resolution } — one per tool facing a collision
 ├── mcp[]
 │   └── name string | null,
@@ -340,7 +361,28 @@ Copilot's editor, CLI, and cloud surfaces document different lookup bases for th
 filenames, so a root `.github/copilot-instructions.md` is read by all three while the same
 filename in a subdirectory is a CLI context alone. Each recognition's `surfaces` are the
 surfaces of the documented behaviors its admitting rules rest on, and naming one is never
-a claim that the surface loaded the file (FR-009). Every other kind's unit is settled by the task that ships its inventory,
+a claim that the surface loaded the file (FR-009). A skill definition states them too, and
+for the same reason: a definition is one recognition under a name, and FR-009 states the
+surfaces beside every recognition however many the product has. A rules row is one rule file, and a permissions row one declared permission policy named by
+the path of the file that declares it: neither
+declares a name a row could be keyed by nor governs a range it could be grouped under, so a
+Source-relative Path is the row's identity, and a file two products recognize is one row
+with two recognitions, named the same way an instruction file's are (data-model.md
+§ Inventory unit). They are two kinds because the subject differs — a permission policy
+decides which commands or tools a product may run, where a rule is guidance the product
+reads — and both vendors happen to call their directory `rules`, so grouping by that shared
+word would put two unrelated subjects in one list. A permissions row exists exactly where a
+policy is declared: a file whose whole content is the policy is one row, a file carrying the
+policy in one block of a larger document is one row, and a carrier declaring no such block is
+neither — the rest of that document belongs to the recognition that owns it, and a row would
+state a policy its author never wrote. A permissions row is the one kind's row that carries
+`diagnosticIds[]`, and the exception is what the kind reads: a declared block is read out of a
+document its parser can reject, so the extraction's own record — one per file, since the block is
+read once — is what tells a reader why a row they can see publishes nothing. Every other kind's
+row repeats no file fact, because no other kind's row has one of its own to state. A row is never a
+claim that a product
+loaded or enforced the file: whether a rule is in context, or a permission rule in force,
+depends on runtime this tool never observes (FR-009). Every other kind's unit is settled by the task that ships its inventory,
 from that kind's own vendor contract. A physical file therefore appears once in `files[]` with its own facts —
 path, read outcome, size, diagnostics — and each kind's inventory refers to it by
 `sourceRelativePath` and repeats none of them; a definition's recognition-owned parse
@@ -587,7 +629,7 @@ Returns one active-generation file detail, discriminated by whether a recognitio
 the file:
 
 ```text
-FileDetail — kind: 'skill' | 'instructions' | 'file'
+FileDetail — kind: 'skill' | 'instructions' | 'rule' | 'file'
 ├── kind 'skill' — the file is a recognized skill entry point:
 │   ├── file — one CustomizationFile, discriminated by encoding:
 │   │   ├── sourceId, sourceRelativePath, encoding, diagnosticIds[]
@@ -606,14 +648,39 @@ FileDetail — kind: 'skill' | 'instructions' | 'file'
 │   ├── presentation — as the skill variant: the same one scan-time parse,
 │   │   with the same null-on-failure rule (FR-028)
 │   └── diagnostics[]
+├── kind 'rule' — the file is a recognized rule file:
+│   ├── file — as above
+│   └── diagnostics[]
 └── kind 'file' — no recognition owns the file (a file only the census
     lists, or a diagnostic-only candidate):
     ├── file — as above
     └── diagnostics[]
 ```
 
+No variant carries a locator for the file outside this product. Opening it in an
+application on the reader's machine is § open-file's, which resolves the same
+Source-relative Path against the same committed generations: the absolute path is the
+host's, the client receives a Source's root only as the one-way `displayRoot` escaping
+(data-model.md § SourceBoundary), and a detail response therefore hands the page nothing
+it could open.
+
 This tree is the response shape: a client can rely on exactly these fields and no
-others. The parse is the file's, not a recognizing tool's — every shipped vendor reads
+others. The `rule` variant carries no `presentation`: such a file is
+published as the one document its author wrote, so nothing is read out of it. A Claude
+`.claude/rules/**` file
+reaches the response whole, frontmatter block included, because splitting a rule into
+declarations and a body would show the reader two halves of one file. With nothing read
+out, nothing can fail to be read: the kind produces no extraction diagnostic, and a
+declared `paths` glob is authored text this product never evaluates against a filesystem
+path. The variant is its own rather than the unrecognized one, because a recognition does
+own the file and its inventory row says so.
+
+A permission policy is not among these variants. What a permissions row names is a policy,
+not a file — one vendor's policy is a document of its own and another's is a block of a
+settings file whose other keys belong to a different recognition — so it is
+`get-permission-policy-detail`'s result rather than a shape here that would have to answer
+for a file it is not about.
+The parse the other recognized kinds show is the file's, not a recognizing tool's — every shipped vendor reads
 the same fixed YAML semantics, so the extraction runs once per `(file, kind)` — and the
 response publishes it once as `presentation`. There is no per-tool recognition list:
 which tools recognize the file, each tool's invocation name, and its parse state are the
@@ -660,6 +727,14 @@ of any other kind that spells MCP-looking configuration in its own content — a
 or an agent's frontmatter, a settings file's inline map — is that kind's ordinary
 content, served by this function under its own kind with every declared key visible in
 its presentation, and it joins no MCP surface.
+
+A permission policy is withheld here on the same terms, in both its forms. A carrier
+declaring a policy block is a file admitted so that block can be published, so the bytes
+around it are never served, and a file whose whole content is the policy is a policy
+rather than a file this function has anything of its own to say about: what a permissions
+row names is the policy (data-model.md § Inventory unit). Either path requested here
+resolves to the `stale-resource` rejection, and `get-permission-policy-detail` is where
+the policy is served.
 
 A skill's `presentation` is what it declares and what it instructs, because that
 is what its detail surface leads with. `frontmatter[]` lists every key the file declares,
@@ -759,8 +834,9 @@ provenance publishes which rule admitted the file, not how well that rule is doc
 
 Outcomes: the `FileDetail` result; the `stale-resource` rejection when no current
 committed generation holds this function's detail at the path — never scanned, removed by
-a later commit, belonging to a disabled source, or a pure MCP carrier's, whose
-detail only `get-mcp-carrier-detail` serves; a value of another type resolves the same
+a later commit, belonging to a disabled source, a pure MCP carrier's, whose
+detail only `get-mcp-carrier-detail` serves, or a declared permission policy's, whose
+detail only `get-permission-policy-detail` serves; a value of another type resolves the same
 way, so no separate malformed-argument outcome exists; the
 `global-disable-pending` conflict rejection while the disable fence is non-null.
 
@@ -814,6 +890,70 @@ removed by a later commit, and a value
 of another type resolves the same way, so no separate malformed-argument outcome exists;
 the `global-disable-pending` conflict rejection while the disable fence is non-null.
 
+### `agent-customization-inspector:get-permission-policy-detail`
+
+Parameters: one committed Source-relative Path as the function's single positional
+argument, exactly as `get-file-detail` takes one — the path of the file that declares the
+policy, which is the permissions row's identity (FR-030).
+
+```json
+".codex/rules/deploy.rules"
+```
+
+Returns one active-generation permission policy, published in the form the declaring
+product spells it. What a permissions row names is a policy rather than a file, so its
+detail is this function's own result: one vendor writes the policy as a document of its
+own, and another declares it inside a settings file whose remaining keys are a different
+recognition's content, and a single file-shaped result would have to answer for a file it
+is not about.
+
+```text
+PermissionPolicyDetail — form: 'whole-document' | 'declared-block'
+├── form 'whole-document' — the declaring file's whole content is the policy:
+│   ├── file — one CustomizationFile, discriminated by encoding, exactly as
+│   │   `get-file-detail` publishes one: readable text carries sourceText
+│   └── diagnostics[]
+└── form 'declared-block' — the policy is one block of a carrier whose other
+    keys belong to another recognition:
+    ├── file — the carrier's content-free summary, discriminated by encoding,
+    │   exactly as `get-mcp-carrier-detail` publishes one — never sourceText
+    ├── declaredPolicy[] { key, keyKind, value } — the declared block's own
+    │   entries in the parser's resolved order, in the same entry shape
+    │   `presentation.frontmatter` uses, or null exactly when extraction
+    │   failed all-or-nothing (FR-028), whose Diagnostic is below
+    └── diagnostics[]
+```
+
+This tree is the response shape: a client can rely on exactly these fields and no
+others.
+
+A `whole-document` policy is served as the one document its author wrote and
+nothing is read out of it: a Codex `.rules` file's vendor contract admits only
+`runtime-reference` relationships out of Starlark while leaving comments and unlisted
+expressions as source text (contracts/vendors/openai-codex.md § Normative initial-release
+presentation allowlist), and no shipped recognition produces an edge. With nothing read
+out, nothing can fail to be read, so that form produces no extraction diagnostic.
+
+A `declared-block` policy is the same principle from the other side. The file is a carrier
+admitted so one block of it can be published, so it publishes that block and never its own
+bytes, exactly as an MCP carrier does (FR-007) — the other keys of a Claude settings file
+are the `settings/config` recognition's content and reach no permissions response. The
+block is published whole, every entry its authored object holds in the parser's resolved
+order, because an allowlist of some of its keys would drop authored policy without being
+able to say which was dropped (FR-028). Rule strings ride as the text their author wrote:
+a tool name with an optional specifier, never resolved to a file, a command, or a domain
+(contracts/vendors/claude-code.md § Normative initial-release presentation allowlist), and
+never evaluated against anything (FR-019). The same inert-rendering, single-request, and
+request-token rules as `get-file-detail` apply, including the
+`(clientDataEpoch, sourceRelativePath)` capture.
+
+Outcomes: the `PermissionPolicyDetail` result; the `stale-resource` rejection when no
+current committed generation holds a permissions recognition at the path — never scanned,
+removed by a later commit, or a carrier whose declared block was withdrawn between
+generations, and a value of another type resolves the same way, so no separate
+malformed-argument outcome exists; the `global-disable-pending` conflict rejection while
+the disable fence is non-null.
+
 ### `agent-customization-inspector:rescan-repository`
 
 Parameters: none.
@@ -849,6 +989,61 @@ Outcomes: the acceptance result with the request ID and updated source summary; 
 `scan-in-progress` conflict rejection only for a duplicate running/queued Repository
 command; or the `global-disable-pending` conflict rejection while the disable fence is
 non-null.
+
+### `agent-customization-inspector:open-file`
+
+Parameters, in order:
+
+```json
+[".claude/skills/deploy/SKILL.md", "visual-studio-code"]
+```
+
+The Source-relative Path of the file to open, and one member of the closed target set
+`visual-studio-code | sublime-text | terminal-editor | default-application | containing-folder`.
+
+Opens the named file in the named application on the machine the host runs on. The host
+performs the launch because the absolute path is the host's: the client receives a
+Source's root only as the one-way `displayRoot` escaping (data-model.md
+§ SourceBoundary), so the page sends the same identity it addresses every other request
+with and holds no path of its own. The path is resolved against the current committed
+generations before anything is launched, so the only absolute path a launch can receive
+is one this session published (FR-022).
+
+What each target reaches:
+
+- `visual-studio-code` and `sublime-text` run the editor launcher the host resolved for
+  this machine before it bound its port — the editor's command on `PATH`, or the
+  launcher inside a known installation location when the command is not on `PATH`.
+- `terminal-editor` opens a terminal window running the editor `$EDITOR` or `$VISUAL`
+  names. When neither names a terminal editor — neither is set, or the one that is
+  brings its own window — it runs `vi`, the editor POSIX makes the default, since
+  nothing on a macOS install sets those variables. It appears only where the host can
+  open that window — macOS, through the operating system's `osascript` automation
+  host — and only when the editor's command resolves there.
+  A terminal hosts a program by running a command line, so this is the one launch whose
+  argument reaches a shell: the path is handed to a fixed script as an argument and put
+  into that command line by the automation host's own POSIX-shell quoting, so an authored
+  name holding shell metacharacters is still one literal argument. The wait on that host
+  is bounded, because macOS gates the first such request behind a one-time consent dialog
+  a reader may never answer.
+- `default-application` hands the file to whatever this machine has registered for that
+  kind of file.
+- `containing-folder` hands the file's directory to the same registered handler, which
+  is how each platform opens a folder in its own file manager. Nothing is selected
+  inside it: what the reader asked for is the folder.
+
+`fileOpenTargets` in the `get-session` snapshot is exactly the set this function accepts
+on this machine, in the order a surface offers them, and an editor the host did not
+resolve is absent from it — so a surface offers no application the host could not launch.
+The result carries no payload: it reports that the launch was requested, and says nothing
+about what the machine did with the file, which is that machine's business.
+
+Outcomes: the command result with a null payload; or the `stale-resource` rejection when
+the current committed generations hold no file at the path — never scanned, or removed by
+the commit that replaced the snapshot the page was rendered from, which are
+indistinguishable and answered alike. A target outside the closed set is a client this
+product did not ship, and propagates as an ordinary error rather than a declared
+functional outcome.
 
 ### `agent-customization-inspector:get-global-consent-preview`
 
@@ -1337,9 +1532,10 @@ the post-acceptance failure's ordinary error. Disable itself never returns
    interpretation or ranking, correctness/validity/compliance/effectiveness/quality verdict,
    policy/remediation advice, validation, lint, synchronization, conversion, formatting, or
    fixing field or behavior is admitted.
-4. A declared parameter validates by resolution: a `get-file-detail` or
-   `get-mcp-carrier-detail` argument whose resource the invoked function does not
-   hold — a value of another type, or the other function's resource, included — is the
+4. A declared parameter validates by resolution: a `get-file-detail`,
+   `get-mcp-carrier-detail`, or `get-permission-policy-detail` argument whose resource the
+   invoked function does not hold — a value of another type, or another of those
+   functions' resource, included — is the
    `stale-resource` rejection, an extra positional argument is never read and changes
    nothing, and an unknown function name is not registered
    and cannot be invoked. Contract tests prove that no request, file,
@@ -1356,8 +1552,8 @@ the post-acceptance failure's ordinary error. Disable itself never returns
    output; every served byte comes from that packaged Nuxt output, no inspected file is
    ever served, and the root, `/skills/compare`, `/instructions/compare`,
    `/global-consent`, `/skills/<tool>/<source-relative path>`,
-   `/instructions/<source-relative path>`, and
-   `/mcp/<source-relative path>` client
+   `/instructions/<source-relative path>`, `/mcp/<source-relative path>`,
+   `/rules/<source-relative path>`, and `/permissions/<source-relative path>` client
    routes all boot the same packaged SPA shell, which embeds no session data.
 6. Queue ordering across Repository and each tool-specific Global rescan, duplicate
    rejection, aborts, partial outcomes, fatal failures, and polling expose only

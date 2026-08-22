@@ -36,8 +36,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import * as fsIo from '../../../src/server/inspection/fs-io';
 import {
+  FIXTURE_ENVIRONMENT_REFERENCE,
+  FIXTURE_SECRET_LITERAL,
   buildClaudeMcpFixture,
+  buildClaudeRuleFixture,
   buildCodexMcpFixture,
+  buildClaudePermissionsFixture,
+  buildCodexRuleFixture,
   buildCodexSkillFixture,
   buildCopilotCliMcpFixture,
   buildCopilotVscodeMcpFixture,
@@ -51,6 +56,7 @@ import { buildSecretFixture } from '../../fixtures/secrets/build-fixtures';
 import { runSourceScan } from '../../../src/server/inspection/scan';
 import { executeRepositoryScan } from '../../../src/server/host/devframe-app';
 import { SessionCoordinator, InspectionSession } from '../../../src/server/session/session';
+import { RecordingFileOpener } from '../../fixtures/file-opener';
 
 vi.mock('../../../src/server/inspection/fs-io', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../src/server/inspection/fs-io')>();
@@ -440,6 +446,7 @@ describe('parsing, extraction, and detail activate nothing (T085)', () => {
     const session = new InspectionSession({
       invocationCwd: fixture.root,
       rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
     });
     const context = { session, coordinator: new SessionCoordinator(session) };
     const repository = session.snapshot().sources[0]!;
@@ -553,6 +560,7 @@ describe('Codex MCP inspection connects to nothing (T294)', () => {
     const session = new InspectionSession({
       invocationCwd: fixture.root,
       rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
     });
     const context = { session, coordinator: new SessionCoordinator(session) };
     const repository = session.snapshot().sources[0]!;
@@ -578,6 +586,269 @@ describe('Codex MCP inspection connects to nothing (T294)', () => {
     // response while nothing connects, resolves, executes, or reads — the
     // declared URL and command are inert values on the wire (FR-022).
     expect(detail?.servers?.map((server) => server.name)).toEqual([...fixture.expectedServerNames]);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(vi.mocked(fsIo.readFile).mock.calls).toEqual([]);
+    expect(vi.mocked(fsIo.readdir).mock.calls).toEqual([]);
+  });
+});
+
+describe('Claude rule inspection evaluates no glob (T430)', () => {
+  // A Claude rule declares `paths` globs scoping it to the files a session
+  // works with. Inspecting one must prove more than "no network": the globs
+  // stay authored text inside the published document and are never run
+  // against the filesystem, so no directory is enumerated and no file is
+  // opened on a rule's account.
+  it('keeps declared globs in the file, matching, executing, and connecting to nothing', async () => {
+    const fixture = buildClaudeRuleFixture('inspector-zero-activation-claude-rules');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const observed: string[] = [];
+    const globalScope = globalThis as Record<string, unknown>;
+    const originals = new Map<string, unknown>();
+    for (const name of ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'open']) {
+      originals.set(name, globalScope[name]);
+      globalScope[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during rule inspection`);
+      };
+    }
+    const nodeSurfaces: [Record<string, unknown>, string][] = [
+      [net as unknown as Record<string, unknown>, 'createConnection'],
+      [tls as unknown as Record<string, unknown>, 'connect'],
+      [dns as unknown as Record<string, unknown>, 'lookup'],
+      [childProcess as unknown as Record<string, unknown>, 'spawn'],
+      [childProcess as unknown as Record<string, unknown>, 'exec'],
+      [childProcess as unknown as Record<string, unknown>, 'execFile'],
+      [http as unknown as Record<string, unknown>, 'request'],
+      [https as unknown as Record<string, unknown>, 'request'],
+      [dgram as unknown as Record<string, unknown>, 'createSocket'],
+    ];
+    const nodeOriginals = nodeSurfaces.map(([host, name]) => {
+      const original = host[name];
+      host[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during rule inspection`);
+      };
+      return { host, name, original } as const;
+    });
+    vi.clearAllMocks();
+    let publication;
+    try {
+      publication = await runSourceScan({
+        sourceId: 'src-1',
+        root: fixture.root,
+        rootFailureOwner: 'repository',
+      });
+      expect(publication.kind).toBe('publishable');
+    } finally {
+      for (const [name, value] of originals) {
+        globalScope[name] = value;
+      }
+      for (const { host, name, original } of nodeOriginals) {
+        host[name] = original;
+      }
+    }
+    expect(observed).toEqual([]);
+    // The `paths` globs of the fixture's path-scoped rule name `src/api/**`
+    // and `src/**`; no such directory exists in the tree and none is created
+    // or enumerated, because a declared glob is a value this product reads
+    // out and never a selector it runs (FR-019).
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) => String(call[0]));
+    const enumerated = vi.mocked(fsIo.readdir).mock.calls.map((call) => String(call[0]));
+    for (const path of [...opened, ...enumerated]) {
+      expect(path).not.toContain(join(fixture.root, 'src'));
+    }
+    for (const forbidden of fixture.nearMissPaths) {
+      expect(opened).not.toContain(join(fixture.root, ...forbidden.split('/')));
+    }
+    // The globs stay in the file: the rule is recognized from its path alone
+    // and nothing is read out of it, so no declared value rides the record
+    // and the complete document is the detail's (FR-027).
+    if (publication.kind !== 'publishable') {
+      throw new Error('expected a publishable scan');
+    }
+    const scoped = publication.recognitions.find(
+      (recognition) =>
+        recognition.details.kind === 'rule' &&
+        recognition.sourceRelativePath === fixture.pathScopedRulePath,
+    );
+    expect(scoped?.details).toEqual({ kind: 'rule' });
+    expect(JSON.stringify(scoped)).not.toContain(fixture.declaredPaths[0]!);
+    // The file the globs were written in is published whole, so a reader sees
+    // them exactly as authored.
+    const published = publication.files.find(
+      (file) => file.sourceRelativePath === fixture.pathScopedRulePath,
+    );
+    expect(published?.encoding === 'utf-8' && published.sourceText).toContain(
+      fixture.declaredPaths[0]!,
+    );
+  });
+
+  it('assembles the rule detail without any request or read', async () => {
+    const fixture = buildClaudeRuleFixture('inspector-zero-activation-claude-rules-detail');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const session = new InspectionSession({
+      invocationCwd: fixture.root,
+      rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
+    });
+    const context = { session, coordinator: new SessionCoordinator(session) };
+    const repository = session.snapshot().sources[0]!;
+    const admission = context.coordinator.admitScan(repository.sourceId, {
+      kind: 'startup',
+      operationId: null,
+    });
+    if (admission.kind !== 'admitted') {
+      throw new Error('the first scan was not admitted');
+    }
+    await executeRepositoryScan(
+      context,
+      admission.scanRequestId,
+      repository.sourceId,
+      'repository',
+    );
+
+    vi.clearAllMocks();
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const detail = session.fileDetail(fixture.secretRulePath);
+
+    // Served from the committed generation: the credential and the
+    // environment reference reach the response exactly as authored, neither
+    // masked nor resolved (FR-025, FR-026), while nothing connects or reads.
+    expect(detail?.kind).toBe('rule');
+    const source = detail !== null && detail.file.encoding === 'utf-8' && detail.file.sourceText;
+    expect(source).toContain(FIXTURE_SECRET_LITERAL);
+    expect(source).toContain(FIXTURE_ENVIRONMENT_REFERENCE);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(vi.mocked(fsIo.readFile).mock.calls).toEqual([]);
+    expect(vi.mocked(fsIo.readdir).mock.calls).toEqual([]);
+  });
+});
+
+describe('Codex rule inspection enforces nothing (T412)', () => {
+  // A rule file is the one customization whose content is about running
+  // commands: its `pattern` names a command prefix and its `decision` says
+  // whether that command may run outside the sandbox. Inspecting one must
+  // therefore prove more than "no network" — it must prove that the decision
+  // is never applied, the pattern is never executed, and the paths and URLs a
+  // rule names are never opened. The classification is the same closed one
+  // the MCP cases use: every product-issued request observed here is zero.
+  it('reads rule files without executing, resolving, connecting, or opening what they name', async () => {
+    const fixture = buildCodexRuleFixture('inspector-zero-activation-rules');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const observed: string[] = [];
+    const globalScope = globalThis as Record<string, unknown>;
+    const originals = new Map<string, unknown>();
+    for (const name of ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'open']) {
+      originals.set(name, globalScope[name]);
+      globalScope[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during rule inspection`);
+      };
+    }
+    // `child_process` carries the weight here: a rule's `pattern` is a
+    // command argument list, and running one would need exactly these.
+    const nodeSurfaces: [Record<string, unknown>, string][] = [
+      [net as unknown as Record<string, unknown>, 'createConnection'],
+      [net as unknown as Record<string, unknown>, 'connect'],
+      [tls as unknown as Record<string, unknown>, 'connect'],
+      [dns as unknown as Record<string, unknown>, 'lookup'],
+      [dns as unknown as Record<string, unknown>, 'resolve'],
+      [childProcess as unknown as Record<string, unknown>, 'spawn'],
+      [childProcess as unknown as Record<string, unknown>, 'exec'],
+      [childProcess as unknown as Record<string, unknown>, 'execFile'],
+      [childProcess as unknown as Record<string, unknown>, 'fork'],
+      [http as unknown as Record<string, unknown>, 'request'],
+      [https as unknown as Record<string, unknown>, 'request'],
+      [dgram as unknown as Record<string, unknown>, 'createSocket'],
+    ];
+    const nodeOriginals = nodeSurfaces.map(([host, name]) => {
+      const original = host[name];
+      host[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during rule inspection`);
+      };
+      return { host, name, original } as const;
+    });
+    vi.clearAllMocks();
+    try {
+      const publication = await runSourceScan({
+        sourceId: 'src-1',
+        root: fixture.root,
+        rootFailureOwner: 'repository',
+      });
+      expect(publication.kind).toBe('publishable');
+    } finally {
+      for (const [name, value] of originals) {
+        globalScope[name] = value;
+      }
+      for (const { host, name, original } of nodeOriginals) {
+        host[name] = original;
+      }
+    }
+    expect(observed).toEqual([]);
+    // No referenced target is opened either: the deploy rule names
+    // `./scripts/deploy.sh` and the restrictive one names a URL, and neither
+    // becomes a read. The near misses stay unread for the same reason they
+    // stay unlisted — no selector reaches them.
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) => String(call[0]));
+    for (const forbidden of fixture.nearMissPaths) {
+      expect(opened).not.toContain(join(fixture.root, ...forbidden.split('/')));
+    }
+    expect(opened).not.toContain(join(fixture.root, 'scripts', 'deploy.sh'));
+    // Each admitted rule file is read exactly once, and a restrictive
+    // decision changes nothing about that: a `forbidden` rule is text.
+    for (const admitted of fixture.expectedRulePaths) {
+      const absolute = join(fixture.root, ...admitted.split('/'));
+      expect(opened.filter((path) => path === absolute).length, admitted).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('assembles the rule detail without any request or read', async () => {
+    const fixture = buildCodexRuleFixture('inspector-zero-activation-rules-detail');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const session = new InspectionSession({
+      invocationCwd: fixture.root,
+      rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
+    });
+    const context = { session, coordinator: new SessionCoordinator(session) };
+    const repository = session.snapshot().sources[0]!;
+    const admission = context.coordinator.admitScan(repository.sourceId, {
+      kind: 'startup',
+      operationId: null,
+    });
+    if (admission.kind !== 'admitted') {
+      throw new Error('the first scan was not admitted');
+    }
+    await executeRepositoryScan(
+      context,
+      admission.scanRequestId,
+      repository.sourceId,
+      'repository',
+    );
+
+    vi.clearAllMocks();
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const detail = session.permissionPolicyDetail(fixture.secretRulePath);
+
+    // Served from the committed generation: the policy's complete authored
+    // source reaches the response — the credential and the environment
+    // reference exactly as written, neither masked nor resolved (FR-025,
+    // FR-026) — while nothing connects, executes, or reads. Asked of the
+    // policy's own function, because a permissions row names a policy rather
+    // than a file, so the file function holds nothing at the path
+    // (contracts/http-api.md § get-permission-policy-detail).
+    expect(session.fileDetail(fixture.secretRulePath)).toBeNull();
+    expect(
+      detail?.form === 'whole-document' &&
+        detail.file.encoding === 'utf-8' &&
+        detail.file.sourceText,
+    ).toContain(FIXTURE_SECRET_LITERAL);
+    expect(
+      detail?.form === 'whole-document' &&
+        detail.file.encoding === 'utf-8' &&
+        detail.file.sourceText,
+    ).toContain(FIXTURE_ENVIRONMENT_REFERENCE);
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(vi.mocked(fsIo.readFile).mock.calls).toEqual([]);
     expect(vi.mocked(fsIo.readdir).mock.calls).toEqual([]);
@@ -671,6 +942,7 @@ describe('Claude MCP inspection connects to nothing (T315, T326)', () => {
     const session = new InspectionSession({
       invocationCwd: fixture.root,
       rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
     });
     const context = { session, coordinator: new SessionCoordinator(session) };
     const repository = session.snapshot().sources[0]!;
@@ -787,6 +1059,7 @@ describe('Copilot CLI MCP inspection connects to nothing (T345)', () => {
     const session = new InspectionSession({
       invocationCwd: fixture.root,
       rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
     });
     const context = { session, coordinator: new SessionCoordinator(session) };
     const repository = session.snapshot().sources[0]!;
@@ -973,5 +1246,57 @@ describe('unadmitted MCP-spelling files activate nothing (T376)', () => {
     const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) => String(call[0]));
     expect(opened).not.toContain(join(root, '.github', 'agents', 'deploy.md'));
     expect(opened).not.toContain(join(root, '.claude-plugin', 'plugin.json'));
+  });
+});
+
+describe('Claude permission-policy inspection enforces nothing (T1109)', () => {
+  it('publishes the declared block as written and resolves no rule it names', async () => {
+    const fixture = buildClaudePermissionsFixture('inspector-zero-activation-permissions');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    cleanups.push(() => rmSync(fixture.policylessRoot, { recursive: true, force: true }));
+    cleanups.push(() => rmSync(fixture.malformedRoot, { recursive: true, force: true }));
+    const session = new InspectionSession({
+      invocationCwd: fixture.root,
+      rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
+    });
+    const context = { session, coordinator: new SessionCoordinator(session) };
+    const repository = session.snapshot().sources[0]!;
+    const admission = context.coordinator.admitScan(repository.sourceId, {
+      kind: 'startup',
+      operationId: null,
+    });
+    if (admission.kind !== 'admitted') {
+      throw new Error('the first scan was not admitted');
+    }
+    await executeRepositoryScan(
+      context,
+      admission.scanRequestId,
+      repository.sourceId,
+      'repository',
+    );
+
+    vi.clearAllMocks();
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const detail = session.permissionPolicyDetail(fixture.declaringCarrierPath);
+    if (detail?.form !== 'declared-block') {
+      throw new Error('the carrier published no declared block');
+    }
+    // The block reaches the response as the author wrote it: every rule string
+    // is its own characters, with no tool, command, path, or domain resolved
+    // and nothing evaluated against a filesystem (FR-019, FR-025).
+    const serialized = JSON.stringify(detail.declaredPolicy);
+    for (const rule of fixture.allowRules) {
+      expect(serialized).toContain(rule);
+    }
+    expect(serialized).toContain(FIXTURE_SECRET_LITERAL);
+    // The carrier's own bytes are absent from the shape, so the settings keys
+    // around the block never reach this response (FR-007).
+    expect(JSON.stringify(detail)).not.toContain(fixture.unrelatedSettingsMarker);
+    expect(JSON.stringify(detail)).not.toContain(FIXTURE_ENVIRONMENT_REFERENCE);
+    // Nothing connected, executed, or read while the policy was assembled.
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(vi.mocked(fsIo.readFile).mock.calls).toEqual([]);
+    expect(vi.mocked(fsIo.readdir).mock.calls).toEqual([]);
   });
 });

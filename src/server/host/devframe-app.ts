@@ -17,7 +17,7 @@
 // the product owns best-effort startup browser opening through its startup
 // opener (`./browser-opener`, research.md § 3), adds no asset manifest or
 // per-asset re-verification, and its only routes of its own are the
-// `/skills/**`, `/instructions/**`, and `/mcp/**` shell fallbacks in `createHostApp`,
+// `/skills/**`, `/instructions/**`, `/mcp/**`, `/rules/**`, and `/permissions/**` shell fallbacks in `createHostApp`,
 // which devframe's static handler cannot serve (Constitution Principle I). An unexpected
 // thrown/rejected RPC handler error is serialized as-is by devframe/birpc
 // and the client shows the real error (contracts/http-api.md § Common
@@ -44,8 +44,10 @@ import type {
   CommandResult,
   DeterministicRejection,
   FileDetailDto,
+  FileOpenTarget,
   InspectionDataResult,
   McpCarrierDetailDto,
+  PermissionPolicyDetailDto,
   ScanAdmission,
   SessionSnapshot,
 } from '../../shared/api-types';
@@ -262,6 +264,31 @@ export function createInspectorDevframe(context: InspectorHostContext): Devframe
         },
       });
       ctx.rpc.register({
+        name: 'agent-customization-inspector:get-permission-policy-detail',
+        type: 'query',
+        // The permission policy's own detail function (contracts/http-api.md
+        // § get-permission-policy-detail). Not a `get-file-detail` variant
+        // because a permissions row names a policy rather than a file
+        // (data-model.md § Inventory unit): one vendor writes the policy as a
+        // document of its own, and another declares it inside a settings file
+        // whose remaining keys are a different recognition's content, so one
+        // file-shaped result would have to answer for a file it is not about.
+        // The parameter validates by resolution exactly as `get-file-detail`'s
+        // does.
+        handler: (
+          sourceRelativePath: string,
+        ): InspectionDataResult<PermissionPolicyDetailDto> | DeterministicRejection => {
+          const detail = context.session.permissionPolicyDetail(sourceRelativePath);
+          if (detail === null) {
+            // No permissions recognition at the path — never scanned, or
+            // removed by a later commit (contracts/http-api.md
+            // § get-permission-policy-detail).
+            return { error: { code: 'stale-resource' } };
+          }
+          return { ...context.session.dataEnvelope(), data: detail };
+        },
+      });
+      ctx.rpc.register({
         name: 'agent-customization-inspector:rescan-repository',
         type: 'action',
         handler: async (): Promise<CommandResult<ScanAdmission> | DeterministicRejection> => {
@@ -306,6 +333,45 @@ export function createInspectorDevframe(context: InspectorHostContext): Devframe
           return {
             globalContentEpoch: snapshot.globalContentEpoch,
             data: { scanRequestId: admission.scanRequestId, source: updated ?? repository },
+          };
+        },
+      });
+      ctx.rpc.register({
+        name: 'agent-customization-inspector:open-file',
+        type: 'action',
+        // The reader's own request to open the file a detail page is showing,
+        // in one of the applications the snapshot published
+        // (contracts/http-api.md § open-file). The host performs it because
+        // the absolute path is the host's, and the page never holds one.
+        //
+        // Both parameters validate by resolution, with no shape guard in front
+        // of them (contracts/http-api.md § Host requirements 6): the path is
+        // compared against committed paths and never used as a filesystem
+        // operand, so a value they do not hold takes the `stale-resource`
+        // rejection below, and the target is compared against the launchers
+        // the host resolved for this machine, so a value outside the closed
+        // set reaches none and throws there. A guard here would be the same
+        // closed set written twice, free to fall behind the set it copies.
+        handler: async (
+          sourceRelativePath: string,
+          target: FileOpenTarget,
+        ): Promise<CommandResult<null> | DeterministicRejection> => {
+          const opened = await context.session.openCommittedFile(sourceRelativePath, target);
+          if (!opened) {
+            // The committed generations hold no file at the path — never
+            // scanned, or removed by the commit that replaced the snapshot the
+            // page was rendered from, which are indistinguishable and answered
+            // alike (contracts/http-api.md § open-file).
+            return { error: { code: 'stale-resource' } };
+          }
+          // The launch carries no payload: what a machine does with a file it
+          // was handed is that machine's business, so the result reports that
+          // the request was made and nothing about what answered it. The epoch
+          // comes from the O(1) envelope rather than a full snapshot
+          // projection built for one scalar.
+          return {
+            globalContentEpoch: context.session.dataEnvelope().globalContentEpoch,
+            data: null,
           };
         },
       });
@@ -373,7 +439,9 @@ export async function startInspectorHost(
  * own SPA fallback cannot serve: a detail URL ends with the file's own
  * last segment — `/skills/<tool>/<source-relative path>` with `SKILL.md`,
  * `/instructions/<source-relative path>` with `AGENTS.md`,
- * `/mcp/<source-relative path>` with `config.toml` —
+ * `/mcp/<source-relative path>` with `config.toml`,
+ * `/rules/<source-relative path>` with `style.md`,
+ * `/permissions/<source-relative path>` with `default.rules` —
  * and devframe's static handler deliberately skips the `index.html` fallback
  * for a miss that looks like a file (it has an extension). This middleware
  * only rewrites such a request to the root and falls through, so devframe's
@@ -410,5 +478,7 @@ function createHostApp(): H3 {
   app.use('/skills/**', rewriteToShell);
   app.use('/instructions/**', rewriteToShell);
   app.use('/mcp/**', rewriteToShell);
+  app.use('/rules/**', rewriteToShell);
+  app.use('/permissions/**', rewriteToShell);
   return app;
 }

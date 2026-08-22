@@ -40,14 +40,17 @@
 // do was make every file take two interactions to read. The detail route says
 // what it is showing instead.
 import { computed, shallowRef, type InjectionKey } from 'vue';
-import { SessionApiClient, type SessionRpcChannel } from './api-client';
+import { SessionApiClient, type FileOpenOutcome, type SessionRpcChannel } from './api-client';
 import { ClientDataPurge } from './client-data';
+import { clearInventoryReturnPoint } from '../router.options';
 import { InstructionComparisonState } from '../composables/instruction-comparison';
 import { McpComparisonState } from '../composables/mcp-comparison';
 import { SkillComparisonState } from '../composables/skill-comparison';
 import type {
   FileDetailDto,
+  FileOpenTarget,
   McpCarrierDetailDto,
+  PermissionPolicyDetailDto,
   RejectionCode,
   SessionSnapshot,
 } from '../../shared/api-types';
@@ -221,8 +224,8 @@ export class SessionViewState {
 
   /**
    * The open customization's own file — a skill's `SKILL.md` entry point, or
-   * an instruction file itself — whose recognitions say what the open
-   * customization is.
+   * a file that is itself the customization, an instruction file or a rule
+   * file — whose recognitions say what the open customization is.
    *
    * Set as soon as {@link openFileDetail} owns it, which is before the page is
    * 'ready': a direct link to a skill's companion fetches the entry first, and
@@ -250,6 +253,16 @@ export class SessionViewState {
    * are one open detail, so at most one is non-null.
    */
   public readonly carrierDetail = shallowRef<McpCarrierDetailDto | null>(null);
+
+  /**
+   * The open permission policy, or null while none is. Its own slot beside
+   * {@link entryDetail} for the reason {@link carrierDetail} has one: it is
+   * another function's result about another subject — a permissions row names
+   * a policy rather than a file (contracts/http-api.md
+   * § get-permission-policy-detail) — while the request version, state
+   * machine, and purge path below are shared, so at most one slot is non-null.
+   */
+  public readonly policyDetail = shallowRef<PermissionPolicyDetailDto | null>(null);
 
   /** Where the open detail stands; see {@link FileDetailState}. */
   public readonly fileDetailState = shallowRef<FileDetailState>('idle');
@@ -363,6 +376,11 @@ export class SessionViewState {
 
     // Requests are superseded before the state they would populate is cleared,
     // so a settlement that lands mid-purge cannot repopulate anything.
+    // The inventory's return point is client data too: its href and viewport
+    // offset describe the purged session's own Source, so a fresh session that
+    // renders the same path must not inherit the old session's position and
+    // focus (`router.options.ts`).
+    this.#clientData.register(clearInventoryReturnPoint);
     this.#clientData.register(() => {
       this.#client.abortOutstandingRequests();
       // Session identity, Global epoch, and sequence generations belong to the
@@ -668,6 +686,30 @@ export class SessionViewState {
   }
 
   /**
+   * Asks the host to open one committed file in the chosen application
+   * (contracts/http-api.md § open-file), and hands the outcome back to the
+   * control that asked, which is where the reader is looking.
+   *
+   * The outcome is returned rather than written to shared state because it
+   * belongs to one control on one page: several detail surfaces render an
+   * open control, and a shared error ref would put one file's failure beside
+   * another file's button. A lost channel is the exception, and is handled
+   * here for every caller: it ends the session exactly as a failed refresh or
+   * rescan does.
+   */
+  public async openFile(
+    sourceRelativePath: string,
+    target: FileOpenTarget,
+  ): Promise<FileOpenOutcome> {
+    const outcome = await this.#client.openFile(sourceRelativePath, target);
+    if (outcome.kind === 'failed' && outcome.fatal) {
+      this.#sessionError.value = outcome.error.message;
+      this.view.value = 'ended';
+    }
+    return outcome;
+  }
+
+  /**
    * Drops the open detail and the authored source it holds, and invalidates
    * any request still in flight for it.
    *
@@ -701,6 +743,7 @@ export class SessionViewState {
     this.entryDetail.value = null;
     this.openCompanion.value = null;
     this.carrierDetail.value = null;
+    this.policyDetail.value = null;
     this.fileDetailState.value = 'idle';
     for (const disposer of this.#openContentOwners) {
       disposer();
@@ -711,8 +754,9 @@ export class SessionViewState {
   }
 
   /**
-   * Requests one customization's own file — a skill's entry point, or an
-   * instruction file itself — and the file being read from it, and adopts
+   * Requests one customization's own file — a skill's entry point, or a file
+   * that is itself the customization, an instruction file or a rule file —
+   * and the file being read from it, and adopts
    * both, or records why the detail could not be shown. A kind with no
    * companion files opens its one file as both arguments.
    *
@@ -774,6 +818,7 @@ export class SessionViewState {
       this.entryDetail.value = null;
       this.openCompanion.value = null;
       this.carrierDetail.value = null;
+      this.policyDetail.value = null;
     }
     /**
      * Fetches one detail and settles every non-detail outcome, so the entry
@@ -926,6 +971,7 @@ export class SessionViewState {
     this.entryDetail.value = null;
     this.openCompanion.value = null;
     this.carrierDetail.value = null;
+    this.policyDetail.value = null;
     const outcome = await this.#client.fetchMcpCarrierDetail(sourceRelativePath);
     switch (outcome.kind) {
       case 'adopted':
@@ -962,6 +1008,85 @@ export class SessionViewState {
           await this.#refreshFreshly();
           if (owns()) {
             this.carrierDetail.value = null;
+            this.fileDetailState.value = 'idle';
+          }
+        }
+        return;
+      case 'purged':
+        // The disposer already cleared the detail along with the view.
+        return;
+      case 'discarded':
+        // A newer selection superseded this request and owns the state now.
+        return;
+    }
+  }
+
+  /**
+   * Requests one declared permission policy and adopts it, or records why it
+   * could not be shown — the policy counterpart of {@link openFileDetail},
+   * through the same request version, epoch capture, and state machine,
+   * because the detail functions serve the one open detail
+   * (contracts/http-api.md § get-permission-policy-detail). There is no
+   * companion half: a policy is one response.
+   */
+  public async openPolicyDetail(sourceRelativePath: string, owner?: symbol): Promise<void> {
+    this.#detailOwner = owner ?? null;
+    this.#detailRequestVersion += 1;
+    const requested = this.#detailRequestVersion;
+    this.#detailError.value = null;
+    const capturedEpoch = this.#clientData.epoch();
+    const owns = (): boolean =>
+      requested === this.#detailRequestVersion && this.#clientData.epoch() === capturedEpoch;
+    if (this.policyDetail.value?.file.sourceRelativePath === sourceRelativePath) {
+      // Already the open policy: a re-entry under the same generation asks
+      // for what is on screen, so nothing is refetched.
+      this.fileDetailState.value = 'ready';
+      return;
+    }
+    this.fileDetailState.value = 'loading';
+    // Every other slot is dropped before the next detail is asked for, so a
+    // slow request never leaves one subject's content on screen under
+    // another's heading.
+    this.entryDetail.value = null;
+    this.openCompanion.value = null;
+    this.carrierDetail.value = null;
+    this.policyDetail.value = null;
+    const outcome = await this.#client.fetchPermissionPolicyDetail(sourceRelativePath);
+    switch (outcome.kind) {
+      case 'adopted':
+        if (owns()) {
+          this.policyDetail.value = outcome.detail;
+          this.fileDetailState.value = 'ready';
+          this.#detailError.value = null;
+        }
+        return;
+      case 'rejected':
+        // No current generation holds a permissions recognition at the path —
+        // the same declared outcome, shown as the same stale state, as a file
+        // detail's (contracts/http-api.md § get-permission-policy-detail).
+        if (owns()) {
+          this.policyDetail.value = null;
+          this.fileDetailState.value = 'stale';
+          void this.refresh();
+        }
+        return;
+      case 'failed':
+        if (outcome.fatal) {
+          this.#sessionError.value = outcome.error.message;
+          this.view.value = 'ended';
+        } else if (owns()) {
+          this.policyDetail.value = null;
+          this.fileDetailState.value = 'idle';
+          this.#detailError.value = outcome.error.message;
+        }
+        return;
+      case 'newer-generation':
+        // Same recovery as the file detail's: adopt the newer snapshot, and
+        // the route's own open effect re-requests the path under it.
+        if (owns()) {
+          await this.#refreshFreshly();
+          if (owns()) {
+            this.policyDetail.value = null;
             this.fileDetailState.value = 'idle';
           }
         }

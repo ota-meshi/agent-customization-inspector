@@ -17,6 +17,16 @@
         "claude.behavior.user.plugins"
       ]
     },
+    "claude.rules.layering": {
+      "consumesBehaviors": ["claude.behavior.repo.rules", "claude.behavior.user.rules"]
+    },
+    "claude.settings.precedence": {
+      "consumesBehaviors": [
+        "claude.behavior.repo.settings.local",
+        "claude.behavior.repo.settings.shared",
+        "claude.behavior.user.settings"
+      ]
+    },
     "claude.skills.selection": {
       "consumesBehaviors": ["claude.behavior.repo.skills", "claude.behavior.user.skills"]
     },
@@ -28,6 +38,9 @@
     },
     "codex.mcp.configuration": {
       "consumesBehaviors": ["codex.behavior.repo.mcp", "codex.behavior.user.config"]
+    },
+    "codex.rules.resolution": {
+      "consumesBehaviors": ["codex.behavior.repo.rules", "codex.behavior.user.rules"]
     },
     "codex.skills.discovery": {
       "consumesBehaviors": ["codex.behavior.repo.skills", "codex.behavior.user.skills"]
@@ -98,6 +111,17 @@
       "basedOnBehaviors": ["claude.behavior.repo.mcp"],
       "explainedByStrategies": ["claude.mcp.selection"]
     },
+    "claude.repo.permissions": {
+      "basedOnBehaviors": [
+        "claude.behavior.repo.settings.local",
+        "claude.behavior.repo.settings.shared"
+      ],
+      "explainedByStrategies": ["claude.settings.precedence"]
+    },
+    "claude.repo.rules": {
+      "basedOnBehaviors": ["claude.behavior.repo.rules"],
+      "explainedByStrategies": ["claude.rules.layering"]
+    },
     "claude.repo.skill": {
       "basedOnBehaviors": ["claude.behavior.repo.skills"],
       "explainedByStrategies": ["claude.skills.selection"]
@@ -117,6 +141,10 @@
     "codex.repo.instructions": {
       "basedOnBehaviors": ["codex.behavior.repo.instructions"],
       "explainedByStrategies": ["codex.instructions.layering"]
+    },
+    "codex.repo.rules": {
+      "basedOnBehaviors": ["codex.behavior.repo.rules"],
+      "explainedByStrategies": ["codex.rules.resolution"]
     },
     "codex.repo.skill": {
       "basedOnBehaviors": ["codex.behavior.repo.skills"],

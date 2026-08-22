@@ -31,7 +31,7 @@ status、Inspector status列はrationaleまたはInspector scope stateであり�
 |---|---|---|---|
 | `codex.behavior.repo.agents` | `partially-documented` | `[]` | Completeなproject directory searchが未指定 |
 | `codex.behavior.repo.rules` | `partially-documented` | `[experimental]` | Nested recursionは未指定でrules featureはexperimental |
-| `codex.behavior.user.rules` | `documented` | `[experimental]` | 文書化済みUser rules surfaceはexperimental |
+| `codex.behavior.user.rules` | `partially-documented` | `[experimental]` | `rules/`のstartup scanをuser layerとproject layerについて1つの文が同じに述べるため、nested recursionはどちらも未指定であり、rules featureはexperimental |
 | `codex.behavior.user.prompts` | `documented` | `[deprecated]` | 文書化済みcustom-prompt surfaceはdeprecated |
 | `codex.repo.agent` | `partially-documented` | `[]` | Rootの`.codex/agents/`は文書化されているが、完全なproject directory searchは十分に指定されていない |
 | `codex.repo.rules` | `documented` | `[experimental]` | Inspector ruleは文書化済みdirect childだけをadmitし、未確立のnestingを除外する |
@@ -70,7 +70,7 @@ FR-005、FR-024、QR-001、QR-004、QR-005である。
 | `codex.repo.agent` | Repository | `['.codex', 'agents', /\.toml$/u]` | Repository rootの`.codex/agents/`の`direct-child`。ページはproject scopeとして`.codex/agents/`を挙げ、nested searchは文書化していない | `static-candidate` | `codex.behavior.repo.agents` | Partially documented | `openai.codex.subagents` |
 | `codex.repo.config` | Repository | `['.codex', 'config.toml']` | Repository rootでの`exact`。ページはproject config layerをproject rootからruntime `cwd`へ読み込む | `static-candidate` | `codex.behavior.repo.config`, `codex.behavior.repo.mcp`, `codex.behavior.repo.hooks` | Documented。Trust/runtime chainはconditional | `openai.codex.config-basic`, `openai.codex.mcp` |
 | `codex.repo.hooks` | Repository | `['.codex', 'hooks.json']` | Repository rootでの`exact`。ページはproject locationとして`<repo>/.codex/hooks.json`を挙げる | `static-candidate` | `codex.behavior.repo.hooks` | Documented。Trust/hook reviewはconditional | `openai.codex.hooks` |
-| `codex.repo.rules` | Repository | `['.codex', 'rules', /\.rules$/u]` | Repository rootの`rules/` directoryの`direct-child`。ページは`<repo>/.codex/rules/`を挙げ、nested recursionは文書化していない | `static-candidate` | `codex.behavior.repo.rules` | Experimental。Nested rule directoryはexcluded | `openai.codex.rules` |
+| `codex.repo.rules` | Repository | `['.codex', 'rules', /\.rules$/u]` | Repository rootの`rules/` directoryの`direct-child`。ページは`<repo>/.codex/rules/`を挙げ、nested recursionは文書化していない。`permissions`として認識する: このfileはsandbox外でどのcommandを実行してよいかを決めるものであり、Claudeが自身の`rules/`に置くinstruction fileとは主題が異なる | `static-candidate` | `codex.behavior.repo.rules` | Experimental。Nested rule directoryはexcluded | `openai.codex.rules` |
 | `codex.repo.plugin-manifest` | Repository | `['.codex-plugin', 'plugin.json']` | `exact`。Selected Repository rootをauthored plugin rootとして扱う | `static-candidate` | `codex.behavior.plugin.manifest` | Inspectorのauthored-project policyだけ。Codex plugin discovery/activationではない | `openai.codex.plugins` |
 | `codex.repo.marketplace` | Repository | `['.agents', 'plugins', 'marketplace.json']`、`['.claude-plugin', 'marketplace.json']` | `exact` | `static-candidate` | `codex.behavior.repo.marketplace` | 正確なRepository-root location | `openai.codex.plugins` |
 
@@ -193,7 +193,7 @@ connection、execution、import、installation、activationのauthorityを一切
 | `ToolRecognition.kind` | Eligibleな`Relationship.kind` value | Initial-release source form |
 |---|---|---|
 | `instructions` | — | 受理済みstatic、configured-fallback、またはGlobal instruction file。Authored reference状のtokenはsource textであり、抽出されるreferenceではない。Path-derived scope/orderとbyte-budget factはtyped stateでありmetadataではない |
-| `rule` | `runtime-reference` | 受理済みdirect-child `.rules` fileの正確なargument/value/item occurrence。Commentと未列挙Starlark expressionはsource textだけに残す |
+| `permissions` | `runtime-reference` | 受理済みdirect-child `.rules` fileの正確なargument/value/item occurrence。Commentと未列挙Starlark expressionはsource textだけに残す |
 | `skill` | `skill-resource`<br>`runtime-reference` | 受理済み`SKILL.md`の正確な`name`と`description` frontmatter value。Resource/script/reference targetはrelationshipになり得るが、そのedgeを通じてreadしない |
 | `agent` | `agent-reference`<br>`skill-resource`<br>`context-inheritance`<br>`runtime-reference` | 受理済み`.codex/agents/*.toml`の正確なsupported TOML value/item/map-key occurrence。MCPはinherited/carrier relationshipのままで、agent所有のMCP recognitionにはならない |
 | `hook` | `runtime-reference` | 受理済みstandalone `hooks.json`またはinline `[hooks]`のevent map key、matcher value、handler leaf。同じlayerのstandalone occurrenceとinline occurrenceは別provenanceのままとする |

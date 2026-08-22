@@ -37,7 +37,7 @@ columns are rationale or Inspector-scope state, not serialized status scalars.
 |---|---|---|---|
 | `codex.behavior.repo.agents` | `partially-documented` | `[]` | The complete project directory search is not specified |
 | `codex.behavior.repo.rules` | `partially-documented` | `[experimental]` | Nested recursion is unspecified and the rules feature is experimental |
-| `codex.behavior.user.rules` | `documented` | `[experimental]` | The documented User rules surface is experimental |
+| `codex.behavior.user.rules` | `partially-documented` | `[experimental]` | One sentence describes the startup scan of `rules/` for the user layer and the project layers alike, so nested recursion is unspecified for both, and the rules feature is experimental |
 | `codex.behavior.user.prompts` | `documented` | `[deprecated]` | The documented custom-prompt surface is deprecated |
 | `codex.repo.agent` | `partially-documented` | `[]` | The root's `.codex/agents/` is documented, but the complete project directory search is not fully specified |
 | `codex.repo.rules` | `documented` | `[experimental]` | The Inspector rule admits only documented direct children and excludes unestablished nesting |
@@ -79,7 +79,7 @@ Global requirement is stated below.
 | `codex.repo.agent` | Repository | `['.codex', 'agents', /\.toml$/u]` | `direct-child` of the Repository root's `.codex/agents/`; the page names `.codex/agents/` for project scope and documents no nested search | `static-candidate` | `codex.behavior.repo.agents` | Partially documented | `openai.codex.subagents` |
 | `codex.repo.config` | Repository | `['.codex', 'config.toml']` | `exact` at the Repository root; the page loads project config layers from the project root down to the runtime `cwd` | `static-candidate` | `codex.behavior.repo.config`, `codex.behavior.repo.mcp`, `codex.behavior.repo.hooks` | Documented; trust and runtime chain conditional | `openai.codex.config-basic`, `openai.codex.mcp` |
 | `codex.repo.hooks` | Repository | `['.codex', 'hooks.json']` | `exact` at the Repository root; the page names `<repo>/.codex/hooks.json` as the project location | `static-candidate` | `codex.behavior.repo.hooks` | Documented; trust and hook review conditional | `openai.codex.hooks` |
-| `codex.repo.rules` | Repository | `['.codex', 'rules', /\.rules$/u]` | `direct-child` of the Repository root's `rules/` directory; the page names `<repo>/.codex/rules/` and documents no nested recursion | `static-candidate` | `codex.behavior.repo.rules` | Experimental; nested rule directories excluded | `openai.codex.rules` |
+| `codex.repo.rules` | Repository | `['.codex', 'rules', /\.rules$/u]` | `direct-child` of the Repository root's `rules/` directory; the page names `<repo>/.codex/rules/` and documents no nested recursion. Recognized as `permissions`: the file decides which commands may run outside the sandbox, which is a different subject from the instruction files Claude keeps under its own `rules/` | `static-candidate` | `codex.behavior.repo.rules` | Experimental; nested rule directories excluded | `openai.codex.rules` |
 | `codex.repo.plugin-manifest` | Repository | `['.codex-plugin', 'plugin.json']` | `exact`; the selected Repository root is treated as the authored plugin root | `static-candidate` | `codex.behavior.plugin.manifest` | Inspector authored-project policy only; not Codex plugin discovery or activation | `openai.codex.plugins` |
 | `codex.repo.marketplace` | Repository | `['.agents', 'plugins', 'marketplace.json']`; `['.claude-plugin', 'marketplace.json']` | `exact` | `static-candidate` | `codex.behavior.repo.marketplace` | Exact Repository-root locations | `openai.codex.plugins` |
 
@@ -224,7 +224,7 @@ authority.
 | `ToolRecognition.kind` | Eligible `Relationship.kind` values | Initial-release source forms |
 |---|---|---|
 | `instructions` | — | An accepted static, configured-fallback, or Global instruction file; an authored reference-looking token is source text, never an extracted reference. Path-derived scope/order and byte-budget facts are typed state, not metadata |
-| `rule` | `runtime-reference` | Exact argument/value/item occurrences in accepted direct-child `.rules` files; comments and unlisted Starlark expressions remain source text only |
+| `permissions` | `runtime-reference` | Exact argument/value/item occurrences in accepted direct-child `.rules` files; comments and unlisted Starlark expressions remain source text only |
 | `skill` | `skill-resource`<br>`runtime-reference` | Exact `name` and `description` frontmatter values in an accepted `SKILL.md`; resource/script/reference targets can be relationships but are never read through those edges |
 | `agent` | `agent-reference`<br>`skill-resource`<br>`context-inheritance`<br>`runtime-reference` | Exact supported TOML value/item/map-key occurrences in an accepted `.codex/agents/*.toml`; MCP remains an inherited/carrier relationship and never becomes an agent-owned MCP recognition |
 | `hook` | `runtime-reference` | Event map keys, matcher values, and handler leaves in accepted standalone `hooks.json` or inline `[hooks]`; same-layer standalone and inline occurrences remain distinct provenances |

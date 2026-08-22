@@ -56,6 +56,14 @@ export class PageOwnership {
   }
 
   /**
+   * Opens one declared permission policy as this page's own request
+   * ({@link SessionViewState.openPolicyDetail}).
+   */
+  public async openPolicyDetail(sourceRelativePath: string): Promise<void> {
+    await this.#viewState.openPolicyDetail(sourceRelativePath, this.#owner);
+  }
+
+  /**
    * Drops the open detail if this page instance still owns it, and does
    * nothing once a replacement page has opened its own — the unmount-order
    * case this class exists for.

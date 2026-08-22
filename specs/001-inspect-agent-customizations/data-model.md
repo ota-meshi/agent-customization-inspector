@@ -1233,9 +1233,11 @@ shipped kinds do not agree on one:
 
 | Kind | The unit one row shows |
 |---|---|
-| `skill` | One name as one tool resolves it (FR-007): the authored frontmatter `name` — or the skill directory name when the file declares none — which a Claude Code recognition of a nested skill prefixes root-relative. A definition is one recognition — one per `(file, tool)` — so several files resolving to one name are one entry listing each recognition as a definition, and one file whose tools resolve different names defines on each name's entry |
+| `skill` | One name as one tool resolves it (FR-007): the authored frontmatter `name` — or the skill directory name when the file declares none — which a Claude Code recognition of a nested skill prefixes root-relative. A definition is one recognition — one per `(file, tool)` — so several files resolving to one name are one entry listing each recognition as a definition, and one file whose tools resolve different names defines on each name's entry. Being a recognition, a definition states the surfaces of the documented behaviors its admitting rules rest on, exactly as a path-identified row's recognitions do (FR-009) |
 | `MCP` | One declared server name: every `[mcp_servers.*]`-style declaration resolving that name — one per `(carrier, tool)` — is listed inside the name's row, so one `.codex/config.toml` contributes one declaration per server it declares, and a second carrier declaring the same name joins that name's row. A declaration's home is an explicit carrier and nothing else: a file of any other kind that spells MCP-looking configuration — a skill's or an agent's frontmatter, a settings file's inline map — is that kind's ordinary content, visible in its own detail, and joins no MCP row. Each declaration names its own file. The one row whose name is null closes the list with the carriers currently publishing no named declaration — an unreadable declaration block, whose rows are unknown, or a carrier declaring none |
 | `instructions` | One applicability range: the glob the governing files' own paths derive, listing each file it governs with that file's recognitions — each one product and the surfaces of the documented behaviors its admitting rules rest on, because a tool alone cannot say where a product reads the file from |
+| `rule` | The file itself: a rule file is modular instructions a product loads into context, and it declares no name a row could be keyed by nor governs a range it could be grouped under, so its Source-relative Path is the row's identity, and two products recognizing one file are two recognitions on one row, each naming its product and the surfaces of the documented behaviors its admitting rules rest on |
+| `permissions` | The file that declares the policy, on the same terms as a `rule` row. A separate kind because the subject differs: a permission policy decides which commands or tools a product may run, where a rule is guidance the product reads. Codex spells its policy in `.codex/rules/*.rules` and Claude calls its own modular instructions `rules` too, so grouping by the vendors' shared word would put two unrelated subjects in one list. A file whose whole content is the policy and a file carrying the policy in one block of a larger document are one row each: what differs is what the detail publishes, not what the row is. A carrier that declares no policy is no row at all — the rest of the document is the recognition that owns it, and a row would state a policy its author never wrote |
 | `settings/config` | The file itself |
 
 A CustomizationFile therefore publishes its own facts once — Source-relative Path, read
@@ -1247,6 +1249,10 @@ of the files that made the generation partial, and the row of the customization 
 is the only place an inventory can say so (FR-028). One shared row shape cannot express either of the first two units: grouping
 by name would break the one recognition per `(file, tool, kind)` rule that ToolRecognition
 rests on, and a file-shaped row cannot become the N rows one carrier's declarations need.
+Two units that happen to coincide in shape are still two: a rule row is a file and a
+permissions row is a policy, so one type standing for both would say two subjects are one,
+and the first fact either needs that the other cannot answer would be added to a row it is
+not about.
 
 An instruction row's applicability range is, for most files, derived from the file's Source-relative Path,
 never from the vendor's runtime: the range is the directory the file sits in, spelled as a
@@ -1351,9 +1357,13 @@ nested Claude Code recognition's row prefixes root-relative (FR-007, FR-027) —
 never empty, when the file declares none; a row whose file declares none, or declares it
 empty, is named by its skill directory instead. An instruction recognition's details
 carry the same one parse — the declared keys in authored order and the body the block
-was removed from — and deliberately no name: the kind's inventory unit is the file
-itself, so the Source-relative Path the recognition already carries is the whole
-identity.
+was removed from — and deliberately no name: what identifies the recognition is the file
+it was found in, so the Source-relative Path it already carries is the whole identity.
+That is the recognition's identity and not the row's unit — the instructions inventory
+groups these records by the applicability range they carry (§ Inventory unit) — and the
+two stay separate questions: the range is derived once by the admitting rule, which is the
+only unit that knows where its vendor reads that filename from, and the record carries it
+so the projection groups rather than re-derives it.
 
 A recognition is not an inventory row. The row's unit is the kind's own (§ Inventory unit),
 so each kind's inventory is built from these records rather than published as one summary
@@ -1452,7 +1462,7 @@ boundary, produces no recognition, item, Diagnostic, or generation result from t
 and is reported ordinarily as the failed request's error when a session API boundary owns the trigger.
 
 Recognitions are ordered by the closed tool order `copilot`, `claude`, `codex`, then the
-kind order listed in the table, never by opaque ID. Cross-file declaration comparison is
+closed kind order, never by opaque ID. Cross-file declaration comparison is
 one canonical serialized document per side, diffed in Monaco (research.md § 7): a
 frontmatter declaration is its file's one parse for the recognized Markdown kind, so a
 tool is not a coordinate of it — tool recognition is compared per tool in typed rows
@@ -1471,7 +1481,8 @@ key order (FR-007).
 An extractor reports what its format's parser resolves a declaration to — one
 documented, deterministic reading per admitted source form: YAML 1.2's core schema for a
 Markdown file's frontmatter, strict JSON (`JSON.parse`) for the `.mcp.json` and
-`.github/mcp.json` carriers, JSONC for the `.vscode/mcp.json` carrier — comments and a
+`.github/mcp.json` MCP carriers and for the `.claude/settings.json` and
+`.claude/settings.local.json` permission-policy carriers, JSONC for the `.vscode/mcp.json` carrier — comments and a
 trailing comma are the editor configuration format's own syntax, and any other syntax
 error still fails the document whole — and TOML 1.0 for the `.codex/config.toml`
 carrier. In every
@@ -1501,7 +1512,10 @@ not a validator standing between the two either. For a file whose kind serves so
 skill, an instruction file, a census companion — the complete decoded source is on the
 same detail response as `sourceText` for any reader who needs the spelling; an MCP
 carrier's detail deliberately carries none (FR-007), so its declarations are the reading's
-whole publication.
+whole publication. A permission-policy carrier is read on the same terms: the declared
+`permissions` block is that reading's whole publication, and the document holding it is not
+served through the permissions detail, because the rest of it is another recognition's
+content and the block is what this row is about.
 
 A recognition is refused when the file offers nothing this surface can show as the file
 wrote it: a document its format's parser cannot parse at all — a malformed frontmatter
@@ -3127,7 +3141,7 @@ The closed observation-class fields are:
 | `actorClass` | `inspector \| bundled-spa \| browser-extension \| other-host-process \| operating-system \| participant \| unknown` |
 | `authorityClass` | `exact-issued \| other-loopback \| remote \| unclassifiable \| not-applicable` |
 | `requestClass` | `authorized-static \| authorized-rpc \| prohibited \| unrelated \| os-mediated \| unclassifiable \| not-applicable` |
-| `targetClass` | `static-manifested-asset \| static-spa-shell \| static-client-route-fallback \| connection-discovery-metadata \| rpc-channel-upgrade \| rpc-get-session \| rpc-get-file-detail \| rpc-rescan-repository \| rpc-get-global-consent-preview \| rpc-create-global-consent-preview \| rpc-enable-global \| rpc-rescan-global \| rpc-disable-global \| rpc-devframe-framework \| other-loopback \| remote \| mcp \| unclassifiable \| not-applicable` |
+| `targetClass` | `static-manifested-asset \| static-spa-shell \| static-client-route-fallback \| connection-discovery-metadata \| rpc-channel-upgrade \| rpc-get-session \| rpc-get-file-detail \| rpc-get-mcp-carrier-detail \| rpc-get-permission-policy-detail \| rpc-open-file \| rpc-rescan-repository \| rpc-get-global-consent-preview \| rpc-create-global-consent-preview \| rpc-enable-global \| rpc-rescan-global \| rpc-disable-global \| rpc-devframe-framework \| other-loopback \| remote \| mcp \| unclassifiable \| not-applicable` |
 | `methodClass` | `get \| head \| post \| other \| unclassifiable \| not-applicable` |
 | `originClass` | `exact-same-origin \| missing \| mismatched \| unclassifiable \| not-applicable` |
 | `effectClass` | `none \| unauthorized-request \| command-or-code-execution \| child-process \| mcp-connection \| prohibited-outbound-request \| inspected-source-mutation \| cross-machine-content-exposure \| workflow-blocker` |
@@ -3171,6 +3185,8 @@ and `targetClass` exactly per dispatched function
 |---|---|
 | `rpc-get-session` | `agent-customization-inspector:get-session` |
 | `rpc-get-file-detail` | `agent-customization-inspector:get-file-detail` |
+| `rpc-get-mcp-carrier-detail` | `agent-customization-inspector:get-mcp-carrier-detail` |
+| `rpc-get-permission-policy-detail` | `agent-customization-inspector:get-permission-policy-detail` |
 | `rpc-rescan-repository` | `agent-customization-inspector:rescan-repository` |
 | `rpc-get-global-consent-preview` | `agent-customization-inspector:get-global-consent-preview` |
 | `rpc-create-global-consent-preview` | `agent-customization-inspector:create-global-consent-preview` |

@@ -19,6 +19,7 @@
 // edge for the wire to carry (api-types.ts § FileDetailDto).
 import { canonicalFrontmatterYamlText } from '../inspection/frontmatter-yaml';
 import { SUPPORTED_TOOL_ORDER, type SupportedTool } from '../../../shared/entities';
+import type { VendorSurface } from '../../../shared/registries/behavior-types';
 import type {
   FileDetailDto,
   DeclaredEntryDto,
@@ -125,7 +126,20 @@ export class ToolRecognitionRow {
   /** What the second file holds of this tool's recognition. */
   public readonly right: RecognitionSideState;
 
-  /** Derives one tool's two side states from the compared sides. */
+  /**
+   * The surfaces of the documented behaviors the first side's admitting rules
+   * rest on, in the closed surface order, or empty when that side holds no
+   * recognition of this tool. Stated beside the recognition because FR-009
+   * states them beside every recognition, however many the product has:
+   * without them this surface would be the one place a recognition appears
+   * without the surfaces that narrow what reads the file.
+   */
+  public readonly leftSurfaces: readonly VendorSurface[];
+
+  /** The second side's surfaces; see {@link leftSurfaces}. */
+  public readonly rightSurfaces: readonly VendorSurface[];
+
+  /** Derives one tool's two side states and their surfaces from the compared sides. */
   public constructor(
     tool: SupportedTool,
     left: ComparisonSideInput | null,
@@ -135,6 +149,8 @@ export class ToolRecognitionRow {
     this.kind = 'skill';
     this.left = recognitionState(left, tool);
     this.right = recognitionState(right, tool);
+    this.leftSurfaces = recognitionSurfaces(left, tool);
+    this.rightSurfaces = recognitionSurfaces(right, tool);
   }
 }
 
@@ -254,6 +270,20 @@ function recognitionState(
   return side.definitions.some((definition) => definition.tool === tool)
     ? 'recognized'
     : 'not-recognized';
+}
+
+/**
+ * The surfaces one side's definition of this tool carries, in the closed
+ * surface order, or empty when the side holds no such definition. Read off
+ * the definition rather than recomputed: a definition is one recognition, and
+ * the surfaces it publishes are the ones its own admissions rest on (FR-009).
+ */
+function recognitionSurfaces(
+  side: ComparisonSideInput | null,
+  tool: SupportedTool,
+): readonly VendorSurface[] {
+  const definition = side?.definitions.find((candidate) => candidate.tool === tool);
+  return definition?.surfaces ?? [];
 }
 
 /**

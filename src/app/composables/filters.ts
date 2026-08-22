@@ -29,6 +29,8 @@ import type {
   CustomizationFileSummaryDto,
   InstructionInventoryEntryDto,
   McpInventoryEntryDto,
+  PermissionsInventoryEntryDto,
+  RuleInventoryEntryDto,
   SessionSnapshot,
   SkillInventoryEntryDto,
   SourceDto,
@@ -99,6 +101,22 @@ export class InventoryFilterView {
    * none is left, so a narrowed row states what still matches.
    */
   public readonly instructionRows: ComputedRef<readonly InstructionInventoryEntryDto[]>;
+
+  /**
+   * The rule rows that pass every active filter, in snapshot order. A row is
+   * one recognized rule file (data-model.md § Inventory unit); a tool filter
+   * keeps the recognizing tools it matches and drops the row only when none
+   * is left, so a narrowed row states what still matches.
+   */
+  public readonly ruleRows: ComputedRef<readonly RuleInventoryEntryDto[]>;
+
+  /**
+   * The permission-policy rows that pass every active filter, in snapshot
+   * order. A row is one declared policy, named by the path of the file that
+   * declares it (data-model.md § Inventory unit), and the tool filter narrows
+   * it by the same rule the other path-identified rows follow.
+   */
+  public readonly permissionsRows: ComputedRef<readonly PermissionsInventoryEntryDto[]>;
 
   /**
    * The skill rows that pass every active filter, in snapshot order. A row is
@@ -199,6 +217,12 @@ export class InventoryFilterView {
         ...(snapshot.value?.mcp ?? []).flatMap((entry) =>
           entry.declarations.map((declaration) => declaration.tool),
         ),
+        ...(snapshot.value?.rules ?? []).flatMap((entry) =>
+          entry.recognitions.map((recognition) => recognition.tool),
+        ),
+        ...(snapshot.value?.permissions ?? []).flatMap((entry) =>
+          entry.recognitions.map((recognition) => recognition.tool),
+        ),
       ]);
       return SUPPORTED_TOOL_ORDER.filter((candidate) => present.has(candidate));
     });
@@ -207,6 +231,8 @@ export class InventoryFilterView {
       // only once its recognizer phase ships an inventory of its own.
       const present = new Set<CustomizationKind>([
         ...((snapshot.value?.instructions ?? []).length > 0 ? (['instructions'] as const) : []),
+        ...((snapshot.value?.rules ?? []).length > 0 ? (['rule'] as const) : []),
+        ...((snapshot.value?.permissions ?? []).length > 0 ? (['permissions'] as const) : []),
         ...((snapshot.value?.skills ?? []).length > 0 ? (['skill'] as const) : []),
         ...((snapshot.value?.mcp ?? []).length > 0 ? (['MCP'] as const) : []),
       ]);
@@ -299,6 +325,52 @@ export class InventoryFilterView {
     );
 
     /**
+     * The rule files that survive every filter, each reduced to the
+     * recognitions that matched. A file with no matching recognition is not a
+     * row: showing it would claim a match the inventory does not have.
+     *
+     * A recognition is kept or dropped whole, surfaces included, exactly as
+     * an instruction file's are: the tool filter selects a product, and a
+     * product's recognition of a file is one fact however many of its
+     * surfaces read the file.
+     */
+    this.ruleRows = computed(() =>
+      (snapshot.value?.rules ?? []).flatMap((entry) => {
+        if (!fileMatches(entry.sourceRelativePath)) {
+          return [];
+        }
+        const recognitions =
+          effectiveTool.value === null
+            ? entry.recognitions
+            : entry.recognitions.filter((recognition) => recognition.tool === effectiveTool.value);
+        return recognitions.length === 0 ? [] : [{ ...entry, recognitions }];
+      }),
+    );
+
+    /**
+     * The declared policies that survive every filter, each reduced to the
+     * recognitions that matched, by the same two questions the rules filter
+     * asks of its own rows.
+     *
+     * Written out rather than shared with the rules filter above: the two rows
+     * are different subjects — a rule file, and a policy a file declares — so
+     * the first fact one of them gains that the other has no answer for would
+     * break a shared filter, and the duplication is four lines.
+     */
+    this.permissionsRows = computed(() =>
+      (snapshot.value?.permissions ?? []).flatMap((entry) => {
+        if (!fileMatches(entry.sourceRelativePath)) {
+          return [];
+        }
+        const recognitions =
+          effectiveTool.value === null
+            ? entry.recognitions
+            : entry.recognitions.filter((recognition) => recognition.tool === effectiveTool.value);
+        return recognitions.length === 0 ? [] : [{ ...entry, recognitions }];
+      }),
+    );
+
+    /**
      * The skill entries that survive every filter, each reduced to the
      * definitions that matched. A name with no matching definition is not a row:
      * showing it would claim a match the inventory does not have.
@@ -358,11 +430,15 @@ export class InventoryFilterView {
           candidate,
           candidate === 'instructions'
             ? this.instructionRows.value.length
-            : candidate === 'skill'
-              ? this.skillRows.value.length
-              : candidate === 'MCP'
-                ? this.mcpRows.value.length
-                : 0,
+            : candidate === 'rule'
+              ? this.ruleRows.value.length
+              : candidate === 'permissions'
+                ? this.permissionsRows.value.length
+                : candidate === 'skill'
+                  ? this.skillRows.value.length
+                  : candidate === 'MCP'
+                    ? this.mcpRows.value.length
+                    : 0,
         );
       }
       return counts;
@@ -376,6 +452,8 @@ export class InventoryFilterView {
         ...(snapshot.value?.instructions ?? []).flatMap((entry) =>
           entry.files.map((file) => file.sourceRelativePath),
         ),
+        ...(snapshot.value?.rules ?? []).map((entry) => entry.sourceRelativePath),
+        ...(snapshot.value?.permissions ?? []).map((entry) => entry.sourceRelativePath),
         ...(snapshot.value?.skills ?? []).flatMap((entry) =>
           entry.definitions.map((definition) => definition.sourceRelativePath),
         ),

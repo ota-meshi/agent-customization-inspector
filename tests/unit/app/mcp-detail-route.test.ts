@@ -7,16 +7,18 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  decodeMcpServerRouteName,
-  encodeMcpServerRouteName,
-  mcpDetailRoute,
-  mcpServerDetailRoute,
-} from '../../../src/app/components/mcp-detail-route';
+  decodeDetailRoutePath,
+  detailRoute,
+  encodeDetailRoutePath,
+  toJsonStringBody,
+  fromJsonStringBody,
+} from '../../../src/app/components/detail-route';
+import { mcpServerDetailRoute } from '../../../src/app/components/mcp-detail-route';
 
 describe('the MCP detail routes', () => {
   it('percent-encodes each path segment and the declared name', () => {
-    expect(mcpDetailRoute('.mcp.json')).toBe('/mcp/.mcp.json');
-    expect(mcpDetailRoute('packages/a b/#x.json')).toBe('/mcp/packages/a%20b/%23x.json');
+    expect(detailRoute('MCP', '.mcp.json')).toBe('/mcp/.mcp.json');
+    expect(detailRoute('MCP', 'packages/a b/#x.json')).toBe('/mcp/packages/a%20b/%23x.json');
     expect(mcpServerDetailRoute('.mcp.json', 'context7')).toBe('/mcp/.mcp.json?server=context7');
     // Separators and query characters in a declared name are authored text.
     expect(mcpServerDetailRoute('.mcp.json', 'a/b&c=d')).toBe(
@@ -40,9 +42,9 @@ describe('the MCP detail routes', () => {
       '\u{1F600}',
       'plain',
     ]) {
-      const encoded = encodeMcpServerRouteName(name);
+      const encoded = toJsonStringBody(name);
       expect(encoded.isWellFormed()).toBe(true);
-      expect(decodeMcpServerRouteName(encoded)).toBe(name);
+      expect(fromJsonStringBody(encoded)).toBe(name);
       expect(() => mcpServerDetailRoute('.mcp.json', name)).not.toThrow();
     }
     // A well-formed name with no backslash keeps its plain spelling, so the
@@ -50,5 +52,39 @@ describe('the MCP detail routes', () => {
     expect(mcpServerDetailRoute('.mcp.json', '\u{1F600}')).toBe(
       `/mcp/.mcp.json?server=${encodeURIComponent('\u{1F600}')}`,
     );
+  });
+});
+
+describe('the JSON-string-body route codec (T1102)', () => {
+  it('round-trips a path segment holding a lone surrogate', () => {
+    // `fs` returns whatever the platform's name decodes to, and the model says
+    // a stored path may hold a lone surrogate (data-model.md
+    // § SourceRelativePath). `encodeURIComponent` throws `URIError` on one, so
+    // the escape runs first and the route survives the name.
+    const authored = '.claude/rules/lone\uD800.md';
+    const encoded = encodeDetailRoutePath(authored);
+    expect(() => new URL(`/rules/${encoded}`, 'http://localhost')).not.toThrow();
+    expect(decodeDetailRoutePath(encoded.split('/').map(decodeURIComponent))).toBe(authored);
+  });
+
+  it('round-trips a backslash the escape uses as its own introducer', () => {
+    const authored = String.raw`dirA/name\\.md`;
+    const encoded = encodeDetailRoutePath(authored);
+    expect(decodeDetailRoutePath(encoded.split('/').map(decodeURIComponent))).toBe(authored);
+  });
+});
+
+describe('the JSON string body a route carries', () => {
+  it('returns text no JSON string can hold unchanged rather than throwing', () => {
+    // The caller is a route resolving a URL: a hand-authored or truncated one
+    // is a link that resolves to nothing, which the page reports as a path
+    // this scan holds nothing at. Throwing would take the page down instead.
+    expect(fromJsonStringBody(String.raw`a\q`)).toBe(String.raw`a\q`);
+    expect(fromJsonStringBody('trailing\\')).toBe('trailing\\');
+  });
+
+  it('leaves an ordinary path readable in the address bar', () => {
+    // Only what JSON escapes is escaped, so an ordinary name is its own text.
+    expect(toJsonStringBody('.claude/rules/style.md')).toBe('.claude/rules/style.md');
   });
 });

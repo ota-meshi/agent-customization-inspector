@@ -92,6 +92,113 @@
     ]
   },
   {
+    "ruleId": "claude.repo.permissions",
+    "tool": "claude",
+    "discoveryClass": "static-candidate",
+    "kind": "permissions",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".claude"
+          },
+          {
+            "kind": "literal",
+            "value": "settings.json"
+          }
+        ],
+        [
+          {
+            "kind": "literal",
+            "value": ".claude"
+          },
+          {
+            "kind": "literal",
+            "value": "settings.local.json"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-007", "FR-019", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.settings.scopes-precedence",
+        "url": "https://code.claude.com/docs/en/settings",
+        "officialHost": "code.claude.com",
+        "sections": [
+          "Settings files and who they affect",
+          "Compare the scope of each settings file"
+        ],
+        "reviewedOn": "2026-08-22",
+        "establishes": "A project's .claude/settings.json and .claude/settings.local.json — the exact locations this rule admits — are the project scope's own settings files."
+      },
+      {
+        "sourceId": "anthropic.claude-code.permissions.rule-syntax",
+        "url": "https://code.claude.com/docs/en/permissions",
+        "officialHost": "code.claude.com",
+        "sections": ["Permission rule syntax", "Wildcard patterns"],
+        "reviewedOn": "2026-08-22",
+        "establishes": "A permissions object in a settings file holds allow and deny arrays of rules written Tool or Tool(specifier), where a specifier may carry glob wildcards; the rules are the policy this kind recognizes."
+      }
+    ]
+  },
+  {
+    "ruleId": "claude.repo.rules",
+    "tool": "claude",
+    "discoveryClass": "static-candidate",
+    "kind": "rule",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "recursive-directories"
+          },
+          {
+            "kind": "literal",
+            "value": ".claude"
+          },
+          {
+            "kind": "literal",
+            "value": "rules"
+          },
+          {
+            "kind": "recursive-directories"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/\\.md$/u"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.memory.locations-load",
+        "url": "https://code.claude.com/docs/en/memory",
+        "officialHost": "code.claude.com",
+        "sections": ["Organize rules with .claude/rules/"],
+        "reviewedOn": "2026-08-18",
+        "establishes": "Project rules are the .md files of a project's .claude/rules/ directory, all discovered recursively so they may be organized into subdirectories, and a nested .claude/rules/ directory loads on demand — the exact locations this rule admits. The personal rules the same section places in ~/.claude/rules/ are a different Source boundary this rule may not read."
+      }
+    ]
+  },
+  {
     "ruleId": "claude.repo.skill",
     "tool": "claude",
     "discoveryClass": "static-candidate",
@@ -261,6 +368,48 @@
         "sections": ["How Codex discovers guidance"],
         "reviewedOn": "2026-08-17",
         "establishes": "AGENTS.override.md and AGENTS.md are the static per-directory instruction filenames, consulted in that order, and the chain walks the project root down to the runtime cwd and stops there."
+      }
+    ]
+  },
+  {
+    "ruleId": "codex.repo.rules",
+    "tool": "codex",
+    "discoveryClass": "static-candidate",
+    "kind": "permissions",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".codex"
+          },
+          {
+            "kind": "literal",
+            "value": "rules"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/\\.rules$/u"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": ["experimental"],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.rules",
+        "url": "https://learn.chatgpt.com/docs/agent-configuration/rules.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Create a rules file"],
+        "reviewedOn": "2026-08-22",
+        "establishes": "A rule file is a .rules file in a rules/ folder next to an active config layer, the project layer being <repo>/.codex/rules/ — the exact location this rule admits — and the page documents no nested subdirectory below it; the User layer at ~/.codex/rules/ that the same scan reads is a different Source boundary this rule may not read."
       }
     ]
   },

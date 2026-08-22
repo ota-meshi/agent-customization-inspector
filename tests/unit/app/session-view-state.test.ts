@@ -22,6 +22,7 @@ import {
 import type {
   FileDetailDto,
   McpCarrierDetailDto,
+  PermissionPolicyDetailDto,
   InspectionDataResult,
   SessionSnapshot,
 } from '../../../src/shared/api-types';
@@ -31,6 +32,7 @@ function bootstrapSnapshot(overrides: Partial<SessionSnapshot> = {}): SessionSna
   return {
     sessionId: 'session-a',
     createdAt: '2026-07-24T00:00:00.000Z',
+    fileOpenTargets: ['visual-studio-code', 'default-application'],
     sources: [
       {
         sourceId: 'source-repository',
@@ -47,6 +49,8 @@ function bootstrapSnapshot(overrides: Partial<SessionSnapshot> = {}): SessionSna
     ],
     files: [],
     instructions: [],
+    rules: [],
+    permissions: [],
     skills: [],
     mcp: [],
     diagnostics: [],
@@ -444,7 +448,50 @@ describe('session view state — detail ownership across page instances', () => 
     expect(state.carrierDetail.value).toBeNull();
     expect(state.fileDetailState.value).toBe('ready');
   });
+
+  it('drops a held policy when a file detail opens over it', async () => {
+    // The same one-open-detail rule the carrier slot follows: a permission
+    // policy is its own function's result about its own subject, so opening a
+    // file detail over it must clear the policy slot rather than leave the
+    // state holding two.
+    const scripted = channelFrom([
+      sessionResult(bootstrapSnapshot()),
+      policyFor('.codex/rules/deploy.rules'),
+      detailFor('entry-1'),
+    ]);
+    const state = new SessionViewState({ channel: scripted.channel });
+    await state.start();
+    await state.openPolicyDetail('.codex/rules/deploy.rules');
+    expect(state.policyDetail.value?.file.sourceRelativePath).toBe('.codex/rules/deploy.rules');
+
+    await state.openFileDetail(pathFor('entry-1'), pathFor('entry-1'));
+    expect(state.entryDetail.value?.file.sourceRelativePath).toBe(pathFor('entry-1'));
+    expect(state.policyDetail.value).toBeNull();
+    expect(state.fileDetailState.value).toBe('ready');
+  });
 });
+
+/** One committed permission policy, keyed by the path of the file declaring it. */
+function policyFor(sourceRelativePath: string): InspectionDataResult<PermissionPolicyDetailDto> {
+  return {
+    globalContentEpoch: 0,
+    repositoryGeneration: 0,
+    globalGeneration: null,
+    data: {
+      form: 'whole-document',
+      file: {
+        sourceId: 'source-repository',
+        sourceRelativePath,
+        encoding: 'utf-8',
+        hadLeadingBom: false,
+        sizeBytes: 24,
+        sourceText: 'prefix_rule(pattern = ["git", "status"], action = "allow")\n',
+        diagnosticIds: [],
+      },
+      diagnostics: [],
+    },
+  };
+}
 
 /** One committed MCP carrier's source-free detail, keyed by its path. */
 function carrierFor(sourceRelativePath: string): InspectionDataResult<McpCarrierDetailDto> {

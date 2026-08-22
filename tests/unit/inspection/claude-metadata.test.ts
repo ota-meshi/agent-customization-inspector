@@ -1,4 +1,4 @@
-// T140, T314, T324: the Claude skill's declared-name reading and its
+// T140, T314, T324, T429: the Claude skill's declared-name reading and its
 // admission-level uncertainty, the Claude MCP carrier's whole-entry field
 // reading, and the skill negative — an `mcpServers`-spelling skill stays a
 // skill (data-model.md § Field reading, FR-007, FR-009, FR-026, FR-028).
@@ -23,6 +23,7 @@ import {
 import { CLAUDE_INSPECTION_RULES } from '../../../src/shared/registries/claude/rules';
 import { CLAUDE_MCP_SELECTION_STRATEGY } from '../../../src/shared/registries/claude/strategies';
 import {
+  CONTENT_FIXTURE_SECRET,
   MALFORMED_SKILL_CONTENT_CASES,
   SKILL_CONTENT_CASES,
 } from '../../fixtures/content/build-fixtures';
@@ -31,8 +32,16 @@ import type { ToolRecognition } from '../../../src/server/inspection/recognizers
 const claudeSkillRule = CLAUDE_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'claude.repo.skill',
 )!;
+const claudeRulesRule = CLAUDE_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'claude.repo.rules',
+);
+
 const claudeMcpRule = CLAUDE_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'claude.repo.mcp',
+)!;
+
+const claudePermissionsRule = CLAUDE_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'claude.repo.permissions',
 )!;
 
 /**
@@ -382,6 +391,64 @@ describe('Claude skill declared name', () => {
   });
 });
 
+describe('Claude rule reading (T429)', () => {
+  /** Recognizes one authored rule file at a `.claude/rules/` path. */
+  async function recognizeRule(sourceText: string): Promise<ToolRecognition> {
+    const matchedPath = '.claude/rules/api.md';
+    const { recognitions } = await recognizeCandidateForVendors(
+      {
+        matchedPath,
+        absolutePath: join(root, matchedPath),
+        sourceRoot: root,
+        admissions: [{ compiled: claudeRulesRule!, origin: { planIndex: 0, selectorIndex: 0 } }],
+        sourceText,
+      },
+      ['claude'],
+    );
+    const [recognition] = recognitions;
+    if (recognition === undefined) {
+      throw new Error('expected one Claude rule recognition');
+    }
+    return recognition;
+  }
+
+  it('reads nothing out of the file, `paths` frontmatter included', async () => {
+    // A rule is published as the one document its author wrote: the
+    // frontmatter block stays part of it rather than becoming declarations
+    // beside it, so the recognition lifts out no value at all and
+    // `not-attempted` is the honest status.
+    const recognition = await recognizeRule(
+      ['---', 'paths:', '  - "src/api/**/*.ts"', '---', '', '# API', ''].join('\n'),
+    );
+    expect(recognition.details).toEqual({ kind: 'rule' });
+    expect(recognition.parseStatus).toBe('not-attempted');
+    expect(JSON.stringify(recognition)).not.toContain('src/api/**/*.ts');
+  });
+
+  it('treats a malformed frontmatter block exactly like a well-formed one', async () => {
+    // There is no parse to fail, so no extraction diagnostic exists for the
+    // kind: the complete document reaches the detail either way, and calling
+    // the file invalid would be a verdict this product does not make
+    // (FR-032).
+    const malformed = await recognizeRule('---\npaths: [src/**\n---\n\n# Broken\n');
+    const wellFormed = await recognizeRule('---\npaths: []\n---\n\n# Fine\n');
+    expect(malformed.details).toEqual(wellFormed.details);
+    expect(malformed.parseStatus).toBe(wellFormed.parseStatus);
+    expect(malformed.diagnosticIds).toEqual([]);
+  });
+
+  it('carries no part of the rule text, credential-shaped values included', async () => {
+    // The reader's own file is served by the detail, one file at a time
+    // (FR-027); nothing of it rides the recognition.
+    const recognition = await recognizeRule(
+      `---\ntoken: ${CONTENT_FIXTURE_SECRET}\nendpoint: \${DEPLOY_ENDPOINT}\n---\n\n# Deploy\n`,
+    );
+    const serialized = JSON.stringify(recognition);
+    expect(serialized).not.toContain(CONTENT_FIXTURE_SECRET);
+    expect(serialized).not.toContain('${DEPLOY_ENDPOINT}');
+  });
+});
+
 describe('Claude MCP-file metadata (T314)', () => {
   /** Recognizes one authored `.mcp.json` at the exact root carrier path. */
   async function recognizeCarrier(sourceText: string): Promise<ToolRecognition> {
@@ -562,5 +629,108 @@ describe('the Claude MCP declaration reading and the skill negative (T324)', () 
     const [skill] = recognitions;
     expect(JSON.stringify(skill)).toContain('$HOME/${TOKEN}');
     expect(JSON.stringify(skill)).not.toContain(process.env['HOME'] ?? '\0unset');
+  });
+});
+
+describe('the Claude permission-policy carrier reading (T1108)', () => {
+  /** Recognizes one settings carrier's text through the shipped permissions rule. */
+  async function recognizeSettings(sourceText: string): Promise<readonly ToolRecognition[]> {
+    const { recognitions } = await recognizeCandidateForVendors(
+      {
+        matchedPath: '.claude/settings.json',
+        absolutePath: join(root, '.claude/settings.json'),
+        sourceRoot: root,
+        admissions: [
+          { compiled: claudePermissionsRule, origin: { planIndex: 0, selectorIndex: 0 } },
+        ],
+        sourceText,
+      },
+      ['claude'],
+    );
+    return recognitions;
+  }
+
+  it('publishes every entry of the declared block, in the parser resolved order', async () => {
+    // The whole object, not an allowlist of its keys: dropping some of them
+    // would drop authored policy without being able to say which
+    // (contracts/vendors/claude-code.md § Normative initial-release
+    // presentation allowlist).
+    const recognitions = await recognizeSettings(
+      `${JSON.stringify({
+        model: 'opus',
+        permissions: {
+          allow: ['Bash(npm run test:*)', 'Read(~/.zshrc)'],
+          deny: ['WebFetch(domain:example.com)'],
+          defaultMode: 'acceptEdits',
+          additionalDirectories: ['../docs/'],
+        },
+      })}\n`,
+    );
+    expect(recognitions).toHaveLength(1);
+    const [policy] = recognitions;
+    expect(policy!.parseStatus).toBe('parsed');
+    const details = policy!.details;
+    if (details.kind !== 'permissions' || !('declaredPolicy' in details)) {
+      throw new Error('the carrier published no declared policy');
+    }
+    expect(details.declaredPolicy.map((entry) => entry.key)).toEqual([
+      'allow',
+      'deny',
+      'defaultMode',
+      'additionalDirectories',
+    ]);
+    // Nested values recursively, in the shape the file wrote them: a rule
+    // string is a scalar item of a sequence and stays the characters the
+    // author typed (FR-019, FR-025).
+    const [allow] = details.declaredPolicy;
+    if (allow?.value.kind !== 'sequence') {
+      throw new Error('the allow entry is not a sequence');
+    }
+    expect(allow.value.items.map((item) => (item.kind === 'scalar' ? item.text : null))).toEqual([
+      'Bash(npm run test:*)',
+      'Read(~/.zshrc)',
+    ]);
+    // No settings key outside the block reaches the recognition.
+    expect(JSON.stringify(policy)).not.toContain('opus');
+  });
+
+  it('publishes no recognition for a settings file that declares no policy', async () => {
+    // No policy is not an empty policy: a row would state one its author never
+    // wrote, so the carrier stays an admitted, readable candidate with nothing
+    // recognized on it.
+    expect(await recognizeSettings('{ "model": "opus" }\n')).toEqual([]);
+    // A `permissions` key that is not an object declares no block either.
+    expect(await recognizeSettings('{ "permissions": "deny-all" }\n')).toEqual([]);
+  });
+
+  it('fails the extraction all-or-nothing on text strict JSON rejects', async () => {
+    // The block is unknown rather than absent, so the recognition exists and
+    // says so; the file stays admitted and readable (FR-028).
+    const recognitions = await recognizeSettings('{ "permissions": { "allow": [ }\n');
+    expect(recognitions).toHaveLength(1);
+    const [policy] = recognitions;
+    expect(policy!.parseStatus).toBe('failed');
+    const details = policy!.details;
+    if (details.kind !== 'permissions' || !('declaredPolicy' in details)) {
+      throw new Error('the carrier published no declared-policy record');
+    }
+    expect(details.declaredPolicy).toEqual([]);
+  });
+
+  it('resolves a key declared twice to its later declaration', async () => {
+    // Strict JSON's own resolution, accepted as the one documented reading
+    // (data-model.md § Field reading).
+    const recognitions = await recognizeSettings(
+      '{ "permissions": { "allow": ["first"] }, "permissions": { "allow": ["second"] } }\n',
+    );
+    const details = recognitions[0]!.details;
+    if (details.kind !== 'permissions' || !('declaredPolicy' in details)) {
+      throw new Error('the carrier published no declared policy');
+    }
+    const [allow] = details.declaredPolicy;
+    expect(allow?.value.kind === 'sequence' && allow.value.items[0]).toMatchObject({
+      kind: 'scalar',
+      text: 'second',
+    });
   });
 });

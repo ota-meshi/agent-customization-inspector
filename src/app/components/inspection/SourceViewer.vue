@@ -33,13 +33,22 @@ const props = defineProps<{
    */
   readonly contentLabel?: string;
   /**
-   * The language id the model is created with, set when the shown text is a
-   * canonical serialization rather than the file's own bytes — the MCP
-   * detail shows a declaration as JSON whatever the carrier's extension
-   * would resolve to. Omitted, the language is resolved from the path,
-   * which is the file surfaces' rule (`SourceViewerHandle.showSource`).
+   * The language id the model is created with, set by a caller that knows the
+   * text's syntax where the path does not say it. Two callers do: one showing
+   * a canonical serialization rather than the file's own bytes — the MCP
+   * detail shows a declaration as JSON whatever the carrier's extension would
+   * resolve to — and one showing a file whose vendor fixes a syntax its
+   * suffix does not, which is the permission policy detail naming Starlark's
+   * grammar for a Codex `.rules` file. Omitted, the language is resolved from
+   * the path, which is the file surfaces' rule
+   * (`SourceViewerHandle.showSource`).
+   *
+   * Explicitly `| undefined`, because a caller decides per file whether it
+   * knows the syntax: the policy detail names a grammar for a Codex policy
+   * file and the rule detail passes nothing for a Claude rule, whose Markdown
+   * suffix already claims one (`exactOptionalPropertyTypes`).
    */
-  readonly contentLanguage?: string;
+  readonly contentLanguage?: string | undefined;
   /**
    * Sizes the viewer to its content instead of the fixed reading box, capped
    * by this component's stylesheet (`SourceViewerHandle.mount`

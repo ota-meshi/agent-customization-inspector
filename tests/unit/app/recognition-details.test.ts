@@ -17,7 +17,7 @@
 import { describe, expect, it } from 'vitest';
 import { ref, shallowRef, type Ref } from 'vue';
 
-import { instructionDetailRoute } from '../../../src/app/components/instruction-detail-route';
+import { detailRoute } from '../../../src/app/components/detail-route';
 import { skillDetailRoute } from '../../../src/app/components/skill-detail-route';
 import { useInventoryFilters } from '../../../src/app/composables/filters';
 import { pathPresentationLabel } from '../../../src/shared/entities';
@@ -64,6 +64,7 @@ function definition(tool: SupportedTool, path: string, invocationName: string): 
   return {
     sourceRelativePath: path,
     tool,
+    surfaces: [],
     parseStatus: 'parsed',
     invocationName,
     diagnosticIds: [],
@@ -98,9 +99,12 @@ function snapshotWith(
   return {
     sessionId: 'session-1',
     createdAt: '2026-07-25T00:00:00.000Z',
+    fileOpenTargets: ['visual-studio-code', 'default-application'],
     sources: [REPOSITORY_SOURCE],
     files,
     instructions,
+    rules: [],
+    permissions: [],
     skills,
     mcp: [],
     diagnostics: [],
@@ -215,12 +219,14 @@ describe('an instruction row addresses the file’s own detail route (T218)', ()
     // The kind's unit is the file (data-model.md § Inventory unit), so the
     // route carries no tool segment: however many products recognize the
     // file, they name one page, and the path is the whole identity (FR-030).
-    expect(instructionDetailRoute('AGENTS.md')).toBe('/instructions/AGENTS.md');
+    expect(detailRoute('instructions', 'AGENTS.md')).toBe('/instructions/AGENTS.md');
     // Each segment is percent-encoded so an authored entry name cannot
     // smuggle a separator or a query into the URL, while `/` separators stay
     // separators for the catch-all route to split on.
-    expect(instructionDetailRoute('docs/team guide.md')).toBe('/instructions/docs/team%20guide.md');
-    expect(instructionDetailRoute('a?b/c#d.md')).toBe('/instructions/a%3Fb/c%23d.md');
+    expect(detailRoute('instructions', 'docs/team guide.md')).toBe(
+      '/instructions/docs/team%20guide.md',
+    );
+    expect(detailRoute('instructions', 'a?b/c#d.md')).toBe('/instructions/a%3Fb/c%23d.md');
   });
 
   it('narrows a row’s recognizing tools without changing the row’s identity', () => {
@@ -256,7 +262,7 @@ describe('an instruction row addresses the file’s own detail route (T218)', ()
       },
     ]);
     expect(
-      instructionDetailRoute(view.instructionRows.value[0]!.files[0]!.sourceRelativePath),
+      detailRoute('instructions', view.instructionRows.value[0]!.files[0]!.sourceRelativePath),
     ).toBe('/instructions/AGENTS.md');
   });
 

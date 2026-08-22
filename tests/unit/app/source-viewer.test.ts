@@ -137,6 +137,13 @@ describe('source language selection', () => {
     // A leading dot is a name, not an extension: `.gitignore` has no suffix to
     // match, and treating `gitignore` as one would match by accident.
     expect(resolveSourceLanguage(REGISTERED, 'skills/g/.gitignore')).toBe('plaintext');
+    // A suffix several unrelated tools use is not evidence of a syntax, so it
+    // borrows no grammar: `.rules` is a spelling other products give files of
+    // their own. Where a syntax is known the surface names it instead — the
+    // rule detail passes Starlark's grammar for a file Codex recognizes —
+    // which is why resolution by path alone answers plain text here
+    // (monaco.ts § BORROWED_GRAMMARS).
+    expect(resolveSourceLanguage(REGISTERED, '.codex/rules/default.rules')).toBe('plaintext');
   });
 });
 

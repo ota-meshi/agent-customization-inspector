@@ -30,6 +30,7 @@
 // Construction performs no I/O, and the state is owned by the one
 // `SessionViewState`: a second instance would race the first for the same
 // request tokens.
+import { toJsonStringBody } from '../components/detail-route';
 import { shallowRef } from 'vue';
 import type { SessionApiClient } from '../session/api-client';
 import type { ClientDataPurge } from '../session/client-data';
@@ -81,7 +82,14 @@ export function instructionComparisonRouteFor(
   readonly path: string;
   readonly query: { readonly left: string; readonly right: string };
 } {
-  return { path: '/instructions/compare', query: { left, right } };
+  // Each path rides as its JSON string body, the spelling every route in this
+  // product uses: a raw entry name can hold a lone surrogate (data-model.md
+  // § SourceRelativePath), which the router's own query encoding rejects with
+  // a `URIError` while the row's link renders (`detail-route.ts`).
+  return {
+    path: '/instructions/compare',
+    query: { left: toJsonStringBody(left), right: toJsonStringBody(right) },
+  };
 }
 
 /** Construction inputs for {@link InstructionComparisonState}. */

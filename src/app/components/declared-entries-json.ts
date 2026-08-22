@@ -1,5 +1,6 @@
-// The MCP declaration serialization (T400; FR-011, research.md § 7): one
-// declared server name's fields as one pretty-printed JSON document — the
+// The declared-entry serialization (T400; FR-011, research.md § 7): a block of
+// declared entries as one pretty-printed JSON document — an MCP declaration's
+// fields, or the policy block a Claude settings carrier declares — the
 // value a JSON carrier's entry holds under the server's name, so a reader
 // of such a carrier can paste it as their own entry's body, while a TOML
 // carrier's reader copies values rather than syntax. Two surfaces
@@ -138,7 +139,7 @@ function objectOf(entries: readonly DeclaredEntryDto[], sortNested: boolean): ob
  * value as resolved (FR-007). A declaration with no fields serializes as
  * the empty object `{}`, an authored fact shown rather than an empty panel.
  */
-export function declarationJsonText(fields: readonly DeclaredEntryDto[]): string {
+export function declaredEntriesJsonText(fields: readonly DeclaredEntryDto[]): string {
   return JSON.stringify(objectOf(fields, false), null, 2);
 }
 
@@ -148,7 +149,7 @@ export function declarationJsonText(fields: readonly DeclaredEntryDto[]): string
  * keys first in the fixed reading order, every other key — and every nested
  * mapping's keys — sorted, so both sides align line by line.
  */
-export function canonicalDeclarationJsonText(fields: readonly DeclaredEntryDto[]): string {
+export function canonicalDeclaredEntriesJsonText(fields: readonly DeclaredEntryDto[]): string {
   const rank = (key: string): number => {
     const index = DECLARATION_KEY_ORDER.indexOf(key);
     return index === -1 ? DECLARATION_KEY_ORDER.length : index;

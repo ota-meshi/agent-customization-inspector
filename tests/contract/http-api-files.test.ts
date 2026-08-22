@@ -46,6 +46,7 @@ import type {
   InspectionDataResult,
   McpCarrierDetailDto,
 } from '../../src/shared/api-types';
+import { RecordingFileOpener } from '../fixtures/file-opener';
 
 /** One registered RPC function as captured from the definition's `setup`. */
 interface CapturedRpcFunction {
@@ -87,6 +88,7 @@ async function scannedFixture(): Promise<{
   const session = new InspectionSession({
     invocationCwd: fixture.root,
     rootOptionValue: null,
+    fileOpener: new RecordingFileOpener(),
   });
   const context: InspectorHostContext = { session, coordinator: new SessionCoordinator(session) };
   const repository = session.snapshot().sources[0]!;
@@ -304,6 +306,8 @@ describe('get-file-detail', () => {
     expect(JSON.stringify(result.data)).not.toContain('relationship');
     expect(Object.keys(result.data).toSorted()).toEqual([
       'diagnostics',
+      // The `vscode://` link the server builds, because the absolute path is
+      // the server's alone (data-model.md § SourceBoundary).
       'file',
       'kind',
       'presentation',
@@ -405,6 +409,8 @@ describe('get-file-detail', () => {
     // session response carries (contracts/http-api.md § get-file-detail).
     expect(Object.keys(result.data).toSorted()).toEqual([
       'diagnostics',
+      // The `vscode://` link the server builds, because the absolute path is
+      // the server's alone (data-model.md § SourceBoundary).
       'file',
       'kind',
       'presentation',
@@ -441,6 +447,7 @@ describe('get-mcp-carrier-detail for the Codex MCP carrier (T295)', () => {
     const session = new InspectionSession({
       invocationCwd: fixture.root,
       rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
     });
     const context: InspectorHostContext = {
       session,
@@ -550,7 +557,11 @@ describe('get-mcp-carrier-detail for the Codex MCP carrier (T295)', () => {
     cleanups.push(() => rmSync(root, { recursive: true, force: true }));
     mkdirSync(join(root, '.codex'), { recursive: true });
     writeFileSync(join(root, '.codex/config.toml'), '[mcp_servers.broken\n', 'utf8');
-    const session = new InspectionSession({ invocationCwd: root, rootOptionValue: null });
+    const session = new InspectionSession({
+      invocationCwd: root,
+      rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
+    });
     const context: InspectorHostContext = {
       session,
       coordinator: new SessionCoordinator(session),
@@ -603,7 +614,11 @@ describe('get-mcp-carrier-detail for the Codex MCP carrier (T295)', () => {
       `{ "mcpServers": { "db": { "env": { "TOKEN": "${FIXTURE_SECRET_LITERAL}" } } } }\n`,
       'utf8',
     );
-    const session = new InspectionSession({ invocationCwd: root, rootOptionValue: null });
+    const session = new InspectionSession({
+      invocationCwd: root,
+      rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
+    });
     const context: InspectorHostContext = {
       session,
       coordinator: new SessionCoordinator(session),
@@ -676,6 +691,7 @@ describe('get-mcp-carrier-detail for the Copilot CLI carriers (T346)', () => {
     const session = new InspectionSession({
       invocationCwd: fixture.root,
       rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
     });
     const context: InspectorHostContext = {
       session,
@@ -761,7 +777,11 @@ describe('get-mcp-carrier-detail for the Copilot CLI carriers (T346)', () => {
     cleanups.push(() => rmSync(root, { recursive: true, force: true }));
     mkdirSync(join(root, '.github'), { recursive: true });
     writeFileSync(join(root, '.github/mcp.json'), '{ "gh-actions": { broken\n', 'utf8');
-    const session = new InspectionSession({ invocationCwd: root, rootOptionValue: null });
+    const session = new InspectionSession({
+      invocationCwd: root,
+      rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
+    });
     const context: InspectorHostContext = {
       session,
       coordinator: new SessionCoordinator(session),
@@ -806,6 +826,7 @@ describe('get-mcp-carrier-detail for the Copilot VS Code carriers (T366)', () =>
     const session = new InspectionSession({
       invocationCwd: fixture.root,
       rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
     });
     const context: InspectorHostContext = {
       session,
@@ -891,7 +912,11 @@ describe('get-mcp-carrier-detail for the Copilot VS Code carriers (T366)', () =>
     cleanups.push(() => rmSync(root, { recursive: true, force: true }));
     mkdirSync(join(root, '.vscode'), { recursive: true });
     writeFileSync(join(root, '.vscode/mcp.json'), '{ "servers": { "gh": { broken\n', 'utf8');
-    const session = new InspectionSession({ invocationCwd: root, rootOptionValue: null });
+    const session = new InspectionSession({
+      invocationCwd: root,
+      rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
+    });
     const context: InspectorHostContext = {
       session,
       coordinator: new SessionCoordinator(session),
@@ -936,6 +961,7 @@ describe('get-mcp-carrier-detail for Claude declarations (T316)', () => {
     const session = new InspectionSession({
       invocationCwd: fixture.root,
       rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
     });
     const context: InspectorHostContext = {
       session,
@@ -1032,7 +1058,11 @@ describe('get-mcp-carrier-detail for Claude declarations (T316)', () => {
     const root = createRepositoryFixtureRoot('inspector-claude-mcp-detail-malformed');
     cleanups.push(() => rmSync(root, { recursive: true, force: true }));
     writeFileSync(join(root, '.mcp.json'), '{ "mcpServers": { broken\n', 'utf8');
-    const session = new InspectionSession({ invocationCwd: root, rootOptionValue: null });
+    const session = new InspectionSession({
+      invocationCwd: root,
+      rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
+    });
     const context: InspectorHostContext = {
       session,
       coordinator: new SessionCoordinator(session),

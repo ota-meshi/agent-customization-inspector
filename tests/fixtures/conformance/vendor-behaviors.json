@@ -174,6 +174,81 @@
     ]
   },
   {
+    "behaviorId": "claude.behavior.repo.rules",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "runtime-cwd",
+      "relativeSelector": ".claude/rules/",
+      "traversal": "recursive-under-base"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.memory.locations-load",
+        "url": "https://code.claude.com/docs/en/memory",
+        "officialHost": "code.claude.com",
+        "sections": ["Organize rules with .claude/rules/"],
+        "reviewedOn": "2026-08-18",
+        "establishes": "Markdown files placed in a project's .claude/rules/ directory are all discovered recursively, so rules may be organized into subdirectories; a rule without paths frontmatter loads at launch with the same priority as .claude/CLAUDE.md, while a rule with paths applies only when Claude works with a file matching one of its glob patterns. The section states neither the trigger that loads a nested .claude/rules/ directory on demand nor the base an ancestor layer resolves its paths globs against."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.repo.settings.local",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "repository-root",
+      "relativeSelector": "./.claude/settings.local.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.settings.scopes-precedence",
+        "url": "https://code.claude.com/docs/en/settings",
+        "officialHost": "code.claude.com",
+        "sections": [
+          "Compare the scope of each settings file",
+          "Where Claude Code keeps the local file in a git repository"
+        ],
+        "reviewedOn": "2026-08-22",
+        "establishes": "A project's personal settings are .claude/settings.local.json, which is that project's alone and which Claude Code keeps at the git repository root resolved through worktrees — staying in the starting directory outside a repository, when the repository root is the home directory, on Windows, and when the root or its .git or .claude entry is not owned by the user — while a permission rule in it keeps resolving from the directory Claude Code was started in."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.repo.settings.shared",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "runtime-cwd",
+      "relativeSelector": "./.claude/settings.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.settings.scopes-precedence",
+        "url": "https://code.claude.com/docs/en/settings",
+        "officialHost": "code.claude.com",
+        "sections": [
+          "Settings files and who they affect",
+          "Compare the scope of each settings file"
+        ],
+        "reviewedOn": "2026-08-22",
+        "establishes": "A project's shared settings are .claude/settings.json in the project folder, which a team checks into source control; a teammate's clone and a cloud session have the file only once it is committed, as that checkout's own copy rather than as this machine's file being read from elsewhere."
+      }
+    ]
+  },
+  {
     "behaviorId": "claude.behavior.repo.skills",
     "tool": "claude",
     "surfaces": ["claude-cli-and-ide-clients"],
@@ -302,6 +377,52 @@
         "sections": ["Variables"],
         "reviewedOn": "2026-08-20",
         "establishes": "CLAUDE_CONFIG_DIR overrides the configuration directory, ~/.claude by default, with settings, session history, and plugins stored under that path — the relocation the <claude-config-dir> spelling names."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.user.rules",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "rules/*.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.memory.locations-load",
+        "url": "https://code.claude.com/docs/en/memory",
+        "officialHost": "code.claude.com",
+        "sections": ["Organize rules with .claude/rules/"],
+        "reviewedOn": "2026-08-18",
+        "establishes": "Personal rules in ~/.claude/rules/ apply to every project on the machine and are loaded before project rules, which gives project rules the higher priority."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.user.settings",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "./settings.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.settings.scopes-precedence",
+        "url": "https://code.claude.com/docs/en/settings",
+        "officialHost": "code.claude.com",
+        "sections": ["Compare the scope of each settings file"],
+        "reviewedOn": "2026-08-22",
+        "establishes": "User settings live at ~/.claude/settings.json and apply to every project on the machine, and to nothing on a teammate machine or in a cloud session."
       }
     ]
   },
@@ -445,6 +566,29 @@
     ]
   },
   {
+    "behaviorId": "codex.behavior.repo.rules",
+    "tool": "codex",
+    "surfaces": ["codex-local-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "active-config-layer",
+      "relativeSelector": "rules/*.rules",
+      "traversal": "none"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": ["experimental"],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.rules",
+        "url": "https://learn.chatgpt.com/docs/agent-configuration/rules.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Rules", "Create a rules file"],
+        "reviewedOn": "2026-08-22",
+        "establishes": "The page's own preamble states the feature is experimental and may change. Codex scans rules/ under every active config layer at startup, a project layer's rules under <repo>/.codex/rules/ loading only when that .codex/ layer is trusted; the page names the layer's own rules/ directory and establishes no nested-subdirectory recursion."
+      }
+    ]
+  },
+  {
     "behaviorId": "codex.behavior.repo.skills",
     "tool": "codex",
     "surfaces": ["codex-local-clients"],
@@ -510,6 +654,29 @@
         "sections": ["How Codex discovers guidance"],
         "reviewedOn": "2026-08-17",
         "establishes": "Local Codex clients read a global instruction fallback at <CODEX_HOME>/AGENTS.override.md, otherwise <CODEX_HOME>/AGENTS.md, and the first non-empty global candidate precedes the project chain."
+      }
+    ]
+  },
+  {
+    "behaviorId": "codex.behavior.user.rules",
+    "tool": "codex",
+    "surfaces": ["codex-local-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "rules/*.rules",
+      "traversal": "exact"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": ["experimental"],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.rules",
+        "url": "https://learn.chatgpt.com/docs/agent-configuration/rules.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Rules", "Create a rules file"],
+        "reviewedOn": "2026-08-22",
+        "establishes": "The page's own preamble states the feature is experimental and may change. The user layer at ~/.codex/rules/ is one of the active config layers the startup scan reads, and the TUI allow-list flow writes to ~/.codex/rules/default.rules."
       }
     ]
   },

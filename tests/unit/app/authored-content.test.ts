@@ -38,9 +38,12 @@ function bootstrapSnapshot(overrides: Partial<SessionSnapshot> = {}): SessionSna
   return {
     sessionId: 'session-a',
     createdAt: '2026-07-24T00:00:00.000Z',
+    fileOpenTargets: ['visual-studio-code', 'default-application'],
     sources: [],
     files: [],
     instructions: [],
+    rules: [],
+    permissions: [],
     skills: [],
     mcp: [],
     diagnostics: [],
@@ -168,10 +171,20 @@ describe('authored file content in the browser', () => {
       'mcpComparison',
       'openCarrierDetail',
       'openCompanion',
+      // Asks the host to hand one committed file to an application on the
+      // reader's own machine (FR-022). It uncovers nothing this product hid:
+      // the file opens exactly as it would from the reader's own file
+      // browser, and the command carries no content in either direction.
+      'openFile',
       'openFileDetail',
+      // One declared permission policy's own load: a permissions row names a
+      // policy rather than a file, so it is its own function's result and its
+      // own slot, with the same guards and nothing that masks or reveals it.
+      'openPolicyDetail',
       // The active route's title subject — a display name the page already
       // renders as its heading, never authored content.
       'pageSubject',
+      'policyDetail',
       'refresh',
       // Lets a component register its Monaco model for synchronous disposal
       // on purge and on generation replacement — the opposite of a reveal.

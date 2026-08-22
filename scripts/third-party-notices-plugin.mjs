@@ -46,6 +46,20 @@ const NOTICE_FILE_PATTERN =
 const NOTICE_DIRECTORIES = ['.', 'dist', 'licenses', 'license'];
 
 /**
+ * Where this repository keeps the notice text of a bundled package that ships
+ * none of its own, named after that package: `licenses/<package name>.txt`.
+ *
+ * Nothing here is a hand-maintained *list* — which package needs a text is
+ * still decided by the bundle, and a package with neither its own notice nor
+ * one here still stops the build. What this covers is the case the derivation
+ * cannot reach: `@iconify-json/lucide` carries the icon artwork whose paths
+ * are inlined into the bundle, declares its license in its manifest, and ships
+ * no file holding that license's text, so the text can only come from
+ * upstream. It is copied verbatim from the icon set's own `LICENSE`.
+ */
+const VENDORED_NOTICE_DIRECTORY = 'licenses';
+
+/**
  * Module ids the bundler injects, mapped to the package whose code they are.
  *
  * These carry no path to read a package name from: Vite's preload helper and
@@ -62,6 +76,13 @@ const INJECTED_MODULE_PACKAGES = [
   { prefix: 'vite/', name: 'vite' },
   { prefix: 'plugin-vue:', name: '@vitejs/plugin-vue' },
   { prefix: 'virtual:nuxt:', name: 'nuxt' },
+  // unplugin-icons compiles `~icons/<collection>/<name>` into a component
+  // carrying that icon's SVG data, which is the icon collection's own artwork
+  // rather than the plugin's code. Each prefix names one collection so no
+  // collection can be attributed to another's package: an unlisted one reaches
+  // the throw below, which is the point of keeping this table exact.
+  { prefix: '~icons/lucide/', name: '@iconify-json/lucide' },
+  { prefix: '~icons/simple-icons/', name: '@iconify-json/simple-icons' },
 ];
 
 /**
@@ -217,6 +238,17 @@ function noticeFor(target) {
       } catch (cause) {
         throw new Error(`cannot read ${entry} of the bundled package ${target.name}`, { cause });
       }
+    }
+  }
+  if (texts.length === 0) {
+    // The package ships no notice of its own; this repository may hold the
+    // upstream text for it (see {@link VENDORED_NOTICE_DIRECTORY}). A package
+    // with neither still reaches the build-stopping check in `generateBundle`.
+    const vendored = join(PROJECT_ROOT, VENDORED_NOTICE_DIRECTORY, `${target.name}.txt`);
+    try {
+      texts.push(readFileSync(vendored, 'utf8').trimEnd());
+    } catch {
+      // No vendored text for this package either.
     }
   }
   return {

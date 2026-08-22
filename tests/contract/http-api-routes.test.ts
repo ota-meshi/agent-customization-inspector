@@ -22,6 +22,7 @@ import {
 } from '../../src/server/host/devframe-app';
 import { InspectionSession, SessionCoordinator } from '../../src/server/session/session';
 import { SESSION_RPC_FUNCTIONS } from '../../src/app/session/api-client';
+import { RecordingFileOpener } from '../fixtures/file-opener';
 
 /** One registered RPC function as captured from the definition's `setup`. */
 interface CapturedRpcFunction {
@@ -34,6 +35,7 @@ function hostContext(): InspectorHostContext {
   const session = new InspectionSession({
     invocationCwd: '/repo',
     rootOptionValue: null,
+    fileOpener: new RecordingFileOpener(),
   });
   return { session, coordinator: new SessionCoordinator(session) };
 }
@@ -71,7 +73,9 @@ describe('the registered session RPC catalog', () => {
     expect([...registerFunctions().keys()].toSorted()).toEqual([
       'agent-customization-inspector:get-file-detail',
       'agent-customization-inspector:get-mcp-carrier-detail',
+      'agent-customization-inspector:get-permission-policy-detail',
       'agent-customization-inspector:get-session',
+      'agent-customization-inspector:open-file',
       'agent-customization-inspector:rescan-repository',
     ]);
   });

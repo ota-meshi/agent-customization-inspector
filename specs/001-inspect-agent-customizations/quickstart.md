@@ -96,8 +96,8 @@ Expected:
   `xdg-open` is the one in-payload exception (spec.md FR-038): on a Linux host the
   package's own selection policy uses that vendored copy whenever it is executable and
   falls back to the system `xdg-open` otherwise. The generated HTML shell, CSS, JSON files, and required
-  documentation/license files are declarative, non-executable artifacts. The direct production dependencies are exactly the nine
-  packages `devframe`, `gunshi`, `h3`, `open`, `smol-toml`, `strip-json-comments`, `vfile`, `vfile-matter`, and
+  documentation/license files are declarative, non-executable artifacts. The direct production dependencies are exactly the eleven
+  packages `devframe`, `env-editor`, `gunshi`, `h3`, `open`, `smol-toml`, `strip-json-comments`, `vfile`, `vfile-matter`, and
   `yaml`; devframe's and `open`'s transitive trees are owned by those packages
   and the lockfile.
 - Build output contains no fixture, raw customization text, Global content, cache, or
@@ -211,7 +211,7 @@ host first tries to focus a session tab a running Chromium-family browser alread
 the fixed process-list probe and the fixed tab-reuse script through the OS `osascript`
 automation host — and otherwise spawns `open`'s fixed OS helper with the printed origin,
 with devframe's bundled opener disabled so only the product's opener runs. That fixed
-startup opening is the only product-initiated child-process surface permitted in the
+startup opening and the reader's own explicit open-in-editor request are the product-initiated child-process surfaces permitted in the
 initial release; every spawned process receives only fixed arguments and the printed
 origin — no inspection-derived content or path, authored value, or
 user-supplied command — and inherits the launch environment unchanged, into which the
@@ -311,8 +311,8 @@ Expected:
   the current gate neither installs a tarball nor invokes an installed package link. T917 owns
   the final-release test that packs and installs into an isolated fixture and launches
   `npx --no-install` without relying on the working tree or a runtime download.
-  The production-graph tests assert exactly the nine approved direct dependencies
-  `devframe`, `gunshi`, `h3`, `open`, `smol-toml`, `strip-json-comments`, `vfile`, `vfile-matter`, and `yaml` — their resolved versions
+  The production-graph tests assert exactly the eleven approved direct dependencies
+  `devframe`, `env-editor`, `gunshi`, `h3`, `open`, `smol-toml`, `strip-json-comments`, `vfile`, `vfile-matter`, and `yaml` — their resolved versions
   and integrity hashes stay owned by the committed
   `pnpm-lock.yaml` — and negative packaging fixtures prove that a missing or non-regular
   required entry point fails `verify:package` before publish.
@@ -1143,7 +1143,8 @@ unless the final pair exactly matches valid evidence.
   observable OS-mediated mounted/mapped-source traffic separately as the FR-022 limitation.
   Use exact privacy-safe target classifier `targetClass` with closed literals
   `static-manifested-asset | static-spa-shell | static-client-route-fallback |
-  connection-discovery-metadata | rpc-channel-upgrade | rpc-get-session | rpc-get-file-detail |
+  connection-discovery-metadata | rpc-channel-upgrade | rpc-get-session | rpc-get-file-detail | rpc-get-mcp-carrier-detail |
+rpc-get-permission-policy-detail | rpc-open-file |
   rpc-rescan-repository | rpc-get-global-consent-preview | rpc-create-global-consent-preview |
   rpc-enable-global | rpc-rescan-global | rpc-disable-global | rpc-devframe-framework |
   other-loopback | remote | mcp |
@@ -1685,7 +1686,7 @@ the exact `package.json.files` entries `dist`, `README.md`, `README.ja.md`, and
 the remaining `dist` contents are Nuxt/tsdown build output and are not re-enumerated by a
 product manifest. Inspect the exact `bin` mapping and absence of `main`/`module`/`exports`,
 license notices, exact shebang/executable mode, and the published README pair. The direct
-production dependencies are exactly the nine packages `devframe`, `gunshi`, `h3`, `open`,
+production dependencies are exactly the eleven packages `devframe`, `env-editor`, `gunshi`, `h3`, `open`,
 `smol-toml`, `strip-json-comments`, `vfile`, `vfile-matter`, and `yaml`; devframe's and `open`'s transitive
 trees are owned by those packages and the lockfile.
 
@@ -1707,7 +1708,7 @@ window, and rollback/support path. Missing or one-language-only evidence fails t
 gate.
 
 Assert the approved production dependency set from `package.json` and the `pnpm-lock.yaml`
-closure: exactly the nine direct dependencies `devframe`, `gunshi`, `h3`, `open`,
+closure: exactly the eleven direct dependencies `devframe`, `env-editor`, `gunshi`, `h3`, `open`,
 `smol-toml`, `strip-json-comments`, `vfile`, `vfile-matter`, and `yaml`, so a graph change fails the gate until the dependency decision is
 explicitly revisited. The committed lockfile owns each resolved version and its integrity
 hash, which is what pins every production package's payload bytes. Only generated

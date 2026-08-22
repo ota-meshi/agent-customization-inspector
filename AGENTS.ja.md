@@ -96,6 +96,10 @@
 - 一覧のrowの単位は、列挙される対象自身のものであり、それが見つかった入れ物のものではありません。ある領域の2つの要素が異なる数え方をされるとき — fileごとに1 row、file内の宣言ごとに1 row、複数fileが共有する名前ごとに1 row — それらはrow型を共有しません。1つの形をoptional fieldで広げて全部に合わせると、どの要素についても不変条件が成り立たない型ができます。例: inventoryはfile自身の事実を1度だけ公開し、kindごとに別々の一覧を公開します。Skillのrowは1つのtoolが解決した名前1つ、MCPのrowは宣言されたserver名1つで、その名前を解決する宣言 — `(carrier, tool)`につき1つ — をrow内に列挙するものだからです。
 - 公開するのは1つの事実だけにし、事実とそこから導けるものを併せて公開しないでください。2つの状態は食い違いえますが、1つなら食い違えません。導出値は表示する場所で計算し、walkに必要な境界は成り立つことを期待せず境界として表現してください。例: skillのcompanion censusはsort済みのfile listを公開し、rowが`length`を描画します。File件数を独立したfieldにはしません。
 - 2つの状態の食い違いを検出するだけのgateは、同じ規則を持つ3つ目の場所です。ある値が別の値からどう導かれるかをcheckが符号化しなければならないなら、その対応こそが導出です。対応をtestに費やして手書きの値を残すのではなく、導出として1度だけ書き、手書きの値を削除してください。規則をtestへ移すことは単純化ではありません。例: 製品の同名skillに関する文は、その製品のskill ruleが名指すstrategyの`operations`から導出します。したがって製品ごとのtableは存在せず、それらから乖離することも、整合gateも不要です。導出が正直であるのは、導出が何も発明しない場合だけです。結果を確立しない形は文を生まず、それが何を意味するかの決定はenumに対する演算ではなくevidence reviewの仕事です。
+- Release gateのtask件数・phase件数・trace row件数は、上の規則に対する意図的な例外です。これらは導出
+  ではなくfreezeです。誰も変えるつもりのなかった件数が気づかれずに変わらないようにすることが目的で
+  あり、vendor contract表が記録済みdigestを持つのと同じ理由です。両言語の件数を更新せずにphaseやtask
+  を追加した変更は未完了であり、件数はそれを追加する変更の一部です。
 - 同等のものを手で書く前に、platform自身の語彙に手を伸ばしてください。適用できそうに見えるplatform構成要素が適合しない場合は、その理由をコメントに書き、次の読み手が再提案しなくて済むようにします。例: client-dataのpurgeは、なぜ`DisposableStack`ではないのかを記録しています。あれは逆順に1度だけdisposeしunregisterを持たない一方、このpurgeは出入りするownerに対して登録順で繰り返し実行されるからです。
 - 不変性の機構は`readonly`型で全部です。Compile済み・出荷済みのdataをruntimeで再凍結しないでください。このcodebaseが生成し消費するdataに対する`Object.freeze`は、userが経験する何も守りません。そのdataを辿るdeep freezeは、プログラムを自分自身から守るために書かれたtraversalです。例: `TraversalPlan`のconstructorはplanを記述どおりに返します。それが不変の出荷dataであることは型の性質であり、runtimeのpassではありません。
 - Iterableが既に持っている挙動に到達するために、それをmaterializeしないでください。配列の分割代入、`for...of`、呼び出しへのspreadは、いずれもiterator protocolを直接消費します。したがってそれらの手前に置く`[...set]`は何も得ないコピーです。`const [first, ...rest] = set`が言語のできることそのものです。コピーするのは、元が本当に持っていないものを得る場合だけにしてください — 元が変化する間も保持したい配列、またはpushするアルゴリズムのための可変配列です。
@@ -111,6 +115,23 @@
 ## 依存versionの方針
 
 - `package.json`の全dependencyはcaret rangeで宣言し、exact pinは使いません。Prerelease（`^2.0.1-rc.22`）も同様です。exactなresolved versionとintegrityはcommit済みlockfileが所有し、manifestにexact specifierを書くと同じpinを2箇所で管理することになります。ある解決が別のpackageの解決と一致しなければならない場合 — `h3`とdevframe自身のh3 — その一致が住む場所はlockfileであり、決定を記録するdocumentはそう書きます。
+
+## Iconの方針
+
+- IconはIconifyのcollectionから取り、`unplugin-icons`がbuild時にbundleへcompileする:
+  `import ExternalLinkIcon from '~icons/lucide/external-link'`は、そのicon自身のSVGを持つ
+  componentになる。Icon runtimeもiconのfetchも同梱されない。これはoutbound requestを一切
+  発行しないproductにFR-022が要求する形であり、IconifyのAPI前提のruntimeを — APIを無効に
+  してもなお — 使わない理由でもある。
+- Bundleがまだ運んでいないcollectionからiconを取ることは、1つの変更の中の3つの編集である:
+  `@iconify-json/*`のdevDependency、`scripts/third-party-notices-plugin.mjs`における
+  そのcollectionの`~icons/<collection>/`行、そして — これらの生成packageはicon dataを配布
+  しながら自身のlicense fileを持たないため — そのcollectionのupstream license textを
+  `licenses/<package name>.txt`へ置くこと。Notice buildは、公開すべきtextの無いbundled
+  packageで大きな音を立てて失敗するため、抜けが黙って通ることはない。
+- `currentColor`を継承する単色のmarkを優先する。周囲のtextとともに暗くも明るくもなるためで
+  ある。色が固定されたbrand logoは、muteされたcontrolの中で明るいままになる。Editorを
+  full-colorのlogoではなく単色のbrand glyphで示しているのはそのためである。
 
 ## Formattingの方針
 

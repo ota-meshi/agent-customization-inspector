@@ -6,7 +6,7 @@
 // disable). The coordinator serializes scans, keeps one request ID across a
 // scan lifecycle, commits atomic N+1 replacements per sequence, and retains
 // explicit-rescan stale state.
-import { isAbsolute, resolve } from 'node:path';
+import { isAbsolute, join, resolve } from 'node:path';
 import {
   SUPPORTED_TOOL_ORDER,
   createOpaqueId,
@@ -27,18 +27,25 @@ import {
   type GlobalScanGeneration,
   type RepositoryScanGeneration,
 } from './scan-generation';
+import type { FileOpener } from '../host/file-opener';
 import { clearStaleFailures, deriveSnapshotState, upsertStaleFailure } from './stale-failures';
 import type { SourceBoundaryDto, SupportedTool } from '../../shared/entities';
 import type {
   CustomizationFileDto,
   CustomizationFileSummaryDto,
+  DeclaredEntryDto,
   FileDetailDto,
+  FileOpenTarget,
+  FileRecognitionDto,
   InspectionDataResult,
   InstructionInventoryEntryDto,
   McpCarrierDetailDto,
   McpDeclarationDto,
   McpServerDeclarationDto,
   McpInventoryEntryDto,
+  PermissionPolicyDetailDto,
+  PermissionsInventoryEntryDto,
+  RuleInventoryEntryDto,
   SameNameSkillResolutionDto,
   SkillDefinitionDto,
   ScanProgressPhase,
@@ -57,6 +64,13 @@ export interface SessionBootstrapInput {
   readonly invocationCwd: string;
   /** The validated `--root` value; null when the option was omitted. */
   readonly rootOptionValue: string | null;
+  /**
+   * The applications this machine can open a committed file in, probed once
+   * before the host binds. Held rather than copied: the snapshot derives the
+   * offered targets from it, so what a page offers and what an open request
+   * can launch are one fact (contracts/http-api.md § open-file).
+   */
+  readonly fileOpener: FileOpener;
 }
 
 /**
@@ -179,6 +193,10 @@ function projectSkillInventory(
     entry.definitions.push({
       sourceRelativePath: path,
       tool: recognition.tool,
+      // The surfaces this one recognition's admissions rest on, derived the
+      // same way every other kind's row derives them (FR-009): a definition is
+      // a recognition, so it states them too.
+      surfaces: surfacesOf(recognition),
       parseStatus: recognition.parseStatus,
       invocationName:
         recognition.parseStatus === 'failed'
@@ -223,6 +241,57 @@ function projectSkillInventory(
 }
 
 /**
+ * One recognition's surfaces, in the closed surface order: the union over its
+ * own admissions, derived where they are published rather than stored — an
+ * admission holds the rule that authorized it, and a rule already names the
+ * behaviors it rests on, so a stored list would be a second copy of what those
+ * records say. The union is what makes a root
+ * `.github/copilot-instructions.md` name all three Copilot surfaces while the
+ * same filename in a subdirectory names the CLI's alone — two admissions of
+ * one file against one.
+ *
+ * Every publication of a recognition states them, whatever the kind's row unit
+ * is (FR-009): a file-unit row's `recognitions[]`, and a skill definition,
+ * which is one recognition under a name.
+ *
+ * Naming a surface is never a claim that the surface loaded the file
+ * (FR-009).
+ */
+function surfacesOf(recognition: ToolRecognition): VendorSurface[] {
+  const surfaces = new Set<VendorSurface>();
+  for (const provenance of recognition.provenances) {
+    for (const surface of provenance.recognizingSurfaces) {
+      surfaces.add(surface);
+    }
+  }
+  return VENDOR_SURFACE_ORDER.filter((surface) => surfaces.has(surface));
+}
+
+/**
+ * The recognitions of one file, in the closed tool order with each product's
+ * surfaces in the closed surface order — the wire shape every kind whose row
+ * is addressed by a path publishes ({@link FileRecognitionDto}), the
+ * instructions rows, the rule rows, and the permissions rows among them.
+ *
+ * One entry per tool, so a tool that recognized the file through more than one
+ * rule states the union of those admissions' surfaces
+ * ({@link surfacesOf} answers for one recognition; this merges by tool).
+ */
+function fileRecognitionsOf(recognitions: readonly ToolRecognition[]): FileRecognitionDto[] {
+  const byTool = new Map<SupportedTool, VendorSurface[]>();
+  for (const recognition of recognitions) {
+    byTool.set(recognition.tool, [
+      ...(byTool.get(recognition.tool) ?? []),
+      ...surfacesOf(recognition),
+    ]);
+  }
+  return SUPPORTED_TOOL_ORDER.filter((tool) => byTool.has(tool)).map((tool) => {
+    const surfaces = new Set(byTool.get(tool));
+    return { tool, surfaces: VENDOR_SURFACE_ORDER.filter((surface) => surfaces.has(surface)) };
+  });
+}
+
+/**
  * Projects the instructions inventory from a generation's recognitions
  * (contracts/http-api.md § get-session, data-model.md § Inventory unit): one
  * entry per applicability range, listing each file that range governs with the
@@ -258,47 +327,32 @@ function projectSkillInventory(
 function projectInstructionInventory(
   recognitions: readonly ToolRecognition[],
 ): InstructionInventoryEntryDto[] {
-  const surfacesByRangeAndPath = new Map<
-    string | null,
-    Map<string, Map<SupportedTool, Set<VendorSurface>>>
-  >();
+  const byRangeAndPath = new Map<string | null, Map<string, ToolRecognition[]>>();
   for (const recognition of recognitions) {
     if (recognition.details.kind !== 'instructions') {
       continue;
     }
     const range = recognition.details.applicabilityRange;
-    let byPath = surfacesByRangeAndPath.get(range);
+    let byPath = byRangeAndPath.get(range);
     if (byPath === undefined) {
       byPath = new Map();
-      surfacesByRangeAndPath.set(range, byPath);
+      byRangeAndPath.set(range, byPath);
     }
-    let byTool = byPath.get(recognition.sourceRelativePath);
-    if (byTool === undefined) {
-      byTool = new Map();
-      byPath.set(recognition.sourceRelativePath, byTool);
-    }
-    let surfaces = byTool.get(recognition.tool);
-    if (surfaces === undefined) {
-      surfaces = new Set();
-      byTool.set(recognition.tool, surfaces);
-    }
-    for (const provenance of recognition.provenances) {
-      for (const surface of provenance.recognizingSurfaces) {
-        surfaces.add(surface);
-      }
+    const group = byPath.get(recognition.sourceRelativePath);
+    if (group === undefined) {
+      byPath.set(recognition.sourceRelativePath, [recognition]);
+    } else {
+      group.push(recognition);
     }
   }
   return (
-    [...surfacesByRangeAndPath.entries()]
+    [...byRangeAndPath.entries()]
       .map(([applicabilityRange, byPath]) => ({
         applicabilityRange,
         files: [...byPath.entries()]
-          .map(([sourceRelativePath, byTool]) => ({
+          .map(([sourceRelativePath, group]) => ({
             sourceRelativePath,
-            recognitions: SUPPORTED_TOOL_ORDER.filter((tool) => byTool.has(tool)).map((tool) => ({
-              tool,
-              surfaces: VENDOR_SURFACE_ORDER.filter((surface) => byTool.get(tool)!.has(surface)),
-            })),
+            recognitions: fileRecognitionsOf(group),
           }))
           .sort((left, right) => compareStrings(left.sourceRelativePath, right.sourceRelativePath)),
       }))
@@ -306,6 +360,77 @@ function projectInstructionInventory(
       // nulls-last is the comparator's own rule ({@link compareStrings}).
       .sort((left, right) => compareStrings(left.applicabilityRange, right.applicabilityRange))
   );
+}
+
+/**
+ * Projects the rules inventory from a generation's recognitions
+ * (contracts/http-api.md § get-session `rules[]`, data-model.md § Inventory
+ * unit): one row per recognized rule file — the unit is the file — listing the
+ * products that recognized it in the closed tool order, so two products
+ * recognizing one file is two recognitions on one row.
+ *
+ * Rows are in Source-relative Path order, so two snapshots of one generation
+ * publish the same rows and an opaque ID never decides a visible order.
+ */
+function projectRuleInventory(recognitions: readonly ToolRecognition[]): RuleInventoryEntryDto[] {
+  const byPath = new Map<string, ToolRecognition[]>();
+  for (const recognition of recognitions) {
+    if (recognition.details.kind !== 'rule') {
+      continue;
+    }
+    const group = byPath.get(recognition.sourceRelativePath);
+    if (group === undefined) {
+      byPath.set(recognition.sourceRelativePath, [recognition]);
+    } else {
+      group.push(recognition);
+    }
+  }
+  return [...byPath.entries()]
+    .map(([sourceRelativePath, group]) => ({
+      sourceRelativePath,
+      recognitions: fileRecognitionsOf(group),
+    }))
+    .sort((left, right) => compareStrings(left.sourceRelativePath, right.sourceRelativePath));
+}
+
+/**
+ * Projects the permissions inventory from a generation's recognitions
+ * (contracts/http-api.md § get-session `permissions[]`, data-model.md
+ * § Inventory unit): one row per declared permission policy, named by the path
+ * of the file that declares it. A recognition of this kind is what "declares a
+ * policy" means, so every recognized path is a row and a file that declares
+ * none never reaches here.
+ *
+ * Written out rather than shared with {@link projectRuleInventory}: the two
+ * rows are different subjects, so the first fact a policy row gains that a rule
+ * row has no answer for would break a shared projection, and what they have in
+ * common today is a grouping loop.
+ */
+function projectPermissionsInventory(
+  recognitions: readonly ToolRecognition[],
+): PermissionsInventoryEntryDto[] {
+  const byPath = new Map<string, ToolRecognition[]>();
+  for (const recognition of recognitions) {
+    if (recognition.details.kind !== 'permissions') {
+      continue;
+    }
+    const group = byPath.get(recognition.sourceRelativePath);
+    if (group === undefined) {
+      byPath.set(recognition.sourceRelativePath, [recognition]);
+    } else {
+      group.push(recognition);
+    }
+  }
+  return [...byPath.entries()]
+    .map(([sourceRelativePath, group]) => ({
+      sourceRelativePath,
+      recognitions: fileRecognitionsOf(group),
+      // The extraction diagnostics the recognitions reference, deduplicated:
+      // the block is read once per file, so every recognition of it points at
+      // the one record (FR-028).
+      diagnosticIds: [...new Set(group.flatMap((recognition) => recognition.diagnosticIds))],
+    }))
+    .sort((left, right) => compareStrings(left.sourceRelativePath, right.sourceRelativePath));
 }
 
 /**
@@ -567,6 +692,14 @@ export class InspectionSession {
   /** The selected Repository root later scans traverse (FR-001); never serialized. */
   public readonly selectedRepositoryRoot: string;
 
+  /**
+   * The applications this machine can open a committed file in. Private
+   * because nothing outside reads it: the snapshot derives the offered
+   * targets from it and {@link openCommittedFile} performs the launch, so
+   * what is offered and what can be launched cannot disagree.
+   */
+  readonly #fileOpener: FileOpener;
+
   /** Last committed Repository generation (never null after bootstrap); written by the coordinator's commit. */
   public committedRepositoryGeneration: RepositoryScanGeneration;
 
@@ -603,6 +736,7 @@ export class InspectionSession {
     this.repositorySourceId = createOpaqueId();
     this.invocationCwd = input.invocationCwd;
     this.rootOptionValue = input.rootOptionValue;
+    this.#fileOpener = input.fileOpener;
     // Resolved lexically (FR-001): the captured invocation directory when
     // `--root` was omitted, the option value unchanged when it is absolute,
     // and the option resolved against the captured directory when it is
@@ -637,6 +771,40 @@ export class InspectionSession {
    * Source, and the shipped milestone has one Source — the Global tasks add
    * the Source dimension when a second one can hold the same path.
    */
+  /**
+   * Hands one committed file to an application on the reader's machine
+   * (contracts/http-api.md § open-file), answering whether there was a file
+   * to hand over. `false` means the current committed generations hold
+   * nothing at that path — the same staleness every detail function answers
+   * with, from the same causes: never scanned, or removed by the commit that
+   * replaced the snapshot the page was rendered from.
+   *
+   * The path is resolved against the committed generations rather than
+   * trusted, so the only absolute path a launch can ever receive is one this
+   * session published (FR-022). Only the Repository generation has a root on
+   * this session today; a Global generation's own root arrives with the phase
+   * that enables one, and until then its files answer `false` instead of
+   * being opened from the wrong root.
+   */
+  public async openCommittedFile(
+    sourceRelativePath: string,
+    target: FileOpenTarget,
+  ): Promise<boolean> {
+    const committed = this.committedRepositoryGeneration.files.some(
+      (candidate) => candidate.sourceRelativePath === sourceRelativePath,
+    );
+    if (!committed) {
+      return false;
+    }
+    // The Source-relative Path is the file's identity and is always spelled
+    // with `/`; the platform's own separator is what `join` supplies.
+    await this.#fileOpener.openFile(
+      join(this.selectedRepositoryRoot, ...sourceRelativePath.split('/')),
+      target,
+    );
+    return true;
+  }
+
   public fileDetail(sourceRelativePath: string): FileDetailDto | null {
     const generations = [
       this.committedRepositoryGeneration,
@@ -659,11 +827,17 @@ export class InspectionSession {
       );
       // The parse the detail shows is the file's, not a recognizing tool's:
       // every recognition of the file's kind shares the one extraction
-      // (candidate.ts), so any one of them carries it. A file with neither
-      // Markdown kind is the plain variant — a census companion, or a
+      // (candidate.ts), so any one of them carries it. The variants are tried
+      // in a fixed order — the two Markdown kinds, then the rule kind — and a
+      // file no recognition owns is the plain one: a census companion, or a
       // diagnostic-only candidate (contracts/http-api.md § get-file-detail).
-      // No shipped rule recognizes one file as both Markdown kinds; the skill
-      // lookup runs first so the order is fixed rather than incidental. Only
+      // One file can hold two of these kinds: `CLAUDE.md` is a Claude
+      // instruction file at every depth, so a `.claude/rules/CLAUDE.md` is
+      // also a Claude rule and is a row in both inventories. A detail is
+      // addressed by the path alone, so both rows open the one answer this
+      // order settles on — which is why neither page requires its own kind of
+      // what arrives; what each renders is the document, and every variant
+      // carries it the same way. Only
       // the explicit carriers hold MCP recognitions: a file of another kind that spells MCP-looking
       // configuration is that kind's ordinary content, served here under its
       // own kind with every declared key visible in its presentation.
@@ -723,7 +897,134 @@ export class InspectionSession {
           diagnostics,
         };
       }
-      return { kind: 'file', file, diagnostics };
+      // A declared permission policy has no FileDetail at all, the same way a
+      // standalone MCP carrier has none: what a permissions row names is a
+      // policy rather than a file (data-model.md § Inventory unit), so it is
+      // `permissionPolicyDetail`'s resource, and answering here would publish
+      // it as a file — as "no recognition owns this", for a path whose own
+      // inventory row says one does. Null is the same stale-resource answer
+      // as a path the generations hold nothing at (contracts/http-api.md
+      // § get-file-detail).
+      if (
+        generation.recognitions.some(
+          (recognition) =>
+            recognition.sourceRelativePath === sourceRelativePath &&
+            recognition.details.kind === 'permissions',
+        )
+      ) {
+        return null;
+      }
+      // A recognized rule file: the file, and nothing read out of it. A rule
+      // is published as the one document its author wrote — a Claude rule
+      // whole, frontmatter block included — so the variant carries no
+      // presentation (contracts/http-api.md § get-file-detail). Decided after
+      // the two Markdown kinds because one file can hold two of these kinds —
+      // a `.claude/rules/CLAUDE.md` is a Claude rule by its directory and a
+      // Claude instruction file by its name — and a detail is addressed by
+      // the path alone, so this fixed order is what settles which variant
+      // both rows open.
+      if (
+        generation.recognitions.some(
+          (recognition) =>
+            recognition.sourceRelativePath === sourceRelativePath &&
+            recognition.details.kind === 'rule',
+        )
+      ) {
+        return {
+          kind: 'rule',
+          file,
+          diagnostics,
+        };
+      }
+      return {
+        kind: 'file',
+        file,
+        diagnostics,
+      };
+    }
+    return null;
+  }
+
+  /**
+   * Resolves one declared permission policy — the whole document its author
+   * wrote, with the declaring file's own facts and diagnostics
+   * (contracts/http-api.md § get-permission-policy-detail).
+   *
+   * Its own resolver rather than a `fileDetail` branch because a permissions
+   * row names a policy, not a file (data-model.md § Inventory unit): the row's
+   * identity is the declaring file's path, which is what this takes, and the
+   * shipped policy happens to be the whole document while the form a carrier
+   * declares as one block arrives with the phase that recognizes one.
+   *
+   * Null when the current committed generations hold no permissions
+   * recognition at the path, which the handler answers as the
+   * `stale-resource` rejection.
+   */
+  public permissionPolicyDetail(sourceRelativePath: string): PermissionPolicyDetailDto | null {
+    const generations = [
+      this.committedRepositoryGeneration,
+      ...(this.committedGlobalGeneration === null ? [] : [this.committedGlobalGeneration]),
+    ];
+    for (const generation of generations) {
+      // The recognition itself decides the form: a carrier's reading published
+      // the block it declared, and a file that is the policy carries no such
+      // reading. Narrowed by the compiler's own control flow over the kind and
+      // the field the two members differ in — a loop rather than `find`,
+      // because a callback's narrowing does not reach the caller without a
+      // hand-authored predicate (data-model.md § ToolRecognition).
+      let policy: readonly DeclaredEntryDto[] | null | undefined;
+      let declared = false;
+      for (const recognition of generation.recognitions) {
+        if (
+          recognition.sourceRelativePath !== sourceRelativePath ||
+          recognition.details.kind !== 'permissions'
+        ) {
+          continue;
+        }
+        declared = true;
+        if ('declaredPolicy' in recognition.details) {
+          // Null exactly for a failed extraction, whose Diagnostic the file
+          // already carries: the block is unknown rather than absent (FR-028).
+          policy = recognition.parseStatus === 'failed' ? null : recognition.details.declaredPolicy;
+          break;
+        }
+      }
+      if (!declared) {
+        continue;
+      }
+      const file = generation.files.find(
+        (candidate) => candidate.sourceRelativePath === sourceRelativePath,
+      );
+      if (file === undefined) {
+        // A recognition exists only for a committed file, so the pair cannot
+        // separate within one generation; failing loudly beats serving a
+        // policy whose file facts this commit does not hold.
+        throw new Error('a permissions recognition names a file its generation does not hold');
+      }
+      // The declaring file's own diagnostic references, in the commit's
+      // deterministic order — the same rule `fileDetail` applies (FR-028).
+      const diagnostics = generation.diagnostics.filter((diagnostic) =>
+        file.diagnosticIds.includes(diagnostic.diagnosticId),
+      );
+      // Returned per branch rather than through one literal carrying a union
+      // `form`: each form is its own member of the result, and building one
+      // object from a widened discriminant would need a cast to prove what the
+      // branch already knows.
+      return policy === undefined
+        ? {
+            form: 'whole-document',
+            file,
+            diagnostics,
+          }
+        : {
+            form: 'declared-block',
+            // The content-free summary: the carrier's facts without its source
+            // text, absent from the shape rather than withheld at render time
+            // (FR-007).
+            file: summarizeFile(file),
+            declaredPolicy: policy,
+            diagnostics,
+          };
     }
     return null;
   }
@@ -831,6 +1132,7 @@ export class InspectionSession {
     return {
       sessionId: this.sessionId,
       createdAt: this.createdAt,
+      fileOpenTargets: this.#fileOpener.targets,
       sources: [
         {
           sourceId: this.repositorySourceId,
@@ -853,6 +1155,14 @@ export class InspectionSession {
         new Map([[this.repositorySourceId, 0]]),
       ),
       instructions: projectInstructionInventory([
+        ...this.committedRepositoryGeneration.recognitions,
+        ...(this.committedGlobalGeneration?.recognitions ?? []),
+      ]),
+      rules: projectRuleInventory([
+        ...this.committedRepositoryGeneration.recognitions,
+        ...(this.committedGlobalGeneration?.recognitions ?? []),
+      ]),
+      permissions: projectPermissionsInventory([
         ...this.committedRepositoryGeneration.recognitions,
         ...(this.committedGlobalGeneration?.recognitions ?? []),
       ]),

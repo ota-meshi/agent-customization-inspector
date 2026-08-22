@@ -16,20 +16,27 @@ import * as fsIo from '../../../src/server/inspection/fs-io';
 import {
   buildClaudeInstructionFixture,
   buildClaudeMcpFixture,
+  buildClaudePermissionsFixture,
+  buildClaudeRuleFixture,
   buildClaudeSkillFixture,
   buildCodexInstructionFixture,
   buildCodexMcpFixture,
+  buildCodexRuleFixture,
   buildCodexSkillFixture,
   buildCopilotCliMcpFixture,
   buildCopilotVscodeMcpFixture,
   buildPriorityMcpFixture,
   buildCopilotInstructionFixture,
   buildCopilotSkillFixture,
+  FIXTURE_SECRET_LITERAL,
   type ClaudeInstructionFixture,
   type ClaudeMcpFixture,
+  type ClaudeRuleFixture,
   type ClaudeSkillFixture,
   type CodexInstructionFixture,
   type CodexMcpFixture,
+  type CodexRuleFixture,
+  type ClaudePermissionsFixture,
   type CodexSkillFixture,
   type CopilotCliMcpFixture,
   type CopilotVscodeMcpFixture,
@@ -93,7 +100,7 @@ async function scanFixture() {
 
 describe('the shipped codex.repo.skill plan', () => {
   it('compiles the authored program once into the immutable typed plan', () => {
-    expect(CODEX_REPOSITORY_RULES).toHaveLength(3);
+    expect(CODEX_REPOSITORY_RULES).toHaveLength(4);
     const compiled = CODEX_REPOSITORY_RULES.find(
       (candidate) => candidate.rule.ruleId === 'codex.repo.skill',
     )!;
@@ -662,6 +669,7 @@ describe('the shipped codex.repo.instructions plan (T207)', () => {
     expect(CODEX_REPOSITORY_RULES.map((candidate) => candidate.rule.ruleId)).toEqual([
       'codex.repo.config',
       'codex.repo.instructions',
+      'codex.repo.rules',
       'codex.repo.skill',
     ]);
     expect(CODEX_DERIVED_FALLBACK_RULE.rule).toBe(derived);
@@ -833,6 +841,180 @@ describe('the anchored Codex MCP carrier inventory (T282)', () => {
   });
 });
 
+describe('the shipped codex.repo.rules plan (T407)', () => {
+  it('compiles the direct-child program and nothing wider', () => {
+    const compiled = CODEX_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'codex.repo.rules',
+    )!;
+    expect(compiled.tool).toBe('codex');
+    // The file decides which commands may run outside the sandbox, which is
+    // the `permissions` kind rather than the `rule` kind Claude's modular
+    // instructions take; the row unit is the file itself, so the rule answers
+    // no per-kind question of its own (registry.ts
+    // § CompiledStaticOtherKindRule).
+    expect(compiled.kind).toBe('permissions');
+    expect(compiled.plan).toEqual(
+      new TraversalPlan(INSPECTION_RULES['codex.repo.rules']!.matcher!),
+    );
+    // Two literals then one dynamic name step: the container is exact and the
+    // extension is the vendor's, so the program cannot reach a second
+    // directory level. No recursive token appears anywhere in it — the page
+    // establishes no recursion under a layer's `rules/`, and a `**` here would
+    // read files on the strength of a documented behavior that does not exist.
+    expect(compiled.plan.selectors).toHaveLength(1);
+    expect(compiled.plan.selectors[0]!.remainder).toEqual([
+      { kind: 'literal', value: '.codex' },
+      { kind: 'literal', value: 'rules' },
+      { kind: 'regex', pattern: /\.rules$/u },
+    ]);
+    expect(compiled.plan.selectionPolicy).toBe('all-matches');
+  });
+
+  it('is explained by the resolution strategy, by identity', () => {
+    const compiled = CODEX_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'codex.repo.rules',
+    )!;
+    expect(compiled.relations).toBe(RULE_RELATIONS['codex.repo.rules']);
+    // The restrictive combination across layers is the strategy's, never the
+    // rule's: the rule says what may be read, and nothing it publishes states
+    // a decision (FR-009).
+    expect(compiled.relations.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual(
+      ['codex.rules.resolution'],
+    );
+    // The User layer the same startup scan reads is a Source boundary this
+    // rule may not open, so it is not among the behaviors the rule rests on.
+    expect(compiled.relations.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'codex.behavior.repo.rules',
+    ]);
+  });
+});
+
+describe('the direct-child Codex rule inventory (T409)', () => {
+  let ruleFixture: CodexRuleFixture;
+
+  beforeAll(() => {
+    ruleFixture = buildCodexRuleFixture('inspector-codex-rule-files-rules');
+  });
+
+  afterAll(() => {
+    rmSync(ruleFixture.root, { recursive: true, force: true });
+  });
+
+  it('admits exactly the root layer\u2019s direct `.rules` children', async () => {
+    const result = await scanWith(ruleFixture.root, CODEX_REPOSITORY_RULES);
+    const admitted = result.files
+      .filter((file) =>
+        resolveAdmittingRules(CODEX_REPOSITORY_RULES, file.admissions).some(
+          (rule) => rule.rule.ruleId === 'codex.repo.rules',
+        ),
+      )
+      .map((file) => file.publicPath)
+      .sort();
+    expect(admitted).toEqual([...ruleFixture.expectedRulePaths]);
+    // One admission per file from the one selector of the one rule: no rule
+    // file is a candidate twice, and no other Codex rule reaches it.
+    for (const file of result.files.filter((candidate) =>
+      ruleFixture.expectedRulePaths.includes(candidate.publicPath),
+    )) {
+      expect(file.admissions, file.publicPath).toHaveLength(1);
+    }
+  });
+
+  it('admits no nested subdirectory, descendant layer, or spelling variant', async () => {
+    const result = await scanWith(ruleFixture.root, CODEX_REPOSITORY_RULES);
+    const paths = new Set(result.files.map((file) => file.publicPath));
+    for (const nearMiss of ruleFixture.nearMissPaths) {
+      expect(paths.has(nearMiss), nearMiss).toBe(false);
+    }
+  });
+
+  it('reads a symlinked rule file through its target and diagnoses a dangling one', async () => {
+    if (!ruleFixture.capabilities.symlinks) {
+      return;
+    }
+    const result = await scanWith(ruleFixture.root, CODEX_REPOSITORY_RULES);
+    // A symbolic link is read transparently: Codex loading the same path
+    // would resolve it too (FR-024; spec.md § Clarifications).
+    const linked = result.files.find((file) => file.publicPath === '.codex/rules/linked.rules');
+    expect(linked?.outcome).toMatchObject({
+      kind: 'readable',
+      sourceText: 'prefix_rule(pattern = ["ls"])\n',
+    });
+    // A link whose target is missing is that candidate's own unreadable
+    // outcome, not an absent file: it stays admitted, and the scan turns the
+    // outcome into its `file-unreadable` Diagnostic (FR-028).
+    const broken = result.files.find((file) => file.publicPath === '.codex/rules/broken.rules');
+    expect(broken?.outcome).toEqual({ kind: 'unreadable' });
+  });
+
+  it('recognizes a malformed rule file exactly like a well-formed one', async () => {
+    // This release runs no extractor over a rule file, so a file whose
+    // Starlark the vendor could not load is still a rule file the inventory
+    // lists: nothing here judges vendor validity, and `not-attempted` says no
+    // allowlisted extractor applies rather than that parsing succeeded.
+    const publication = await runSourceScan({
+      sourceId: 'src-rules',
+      root: ruleFixture.root,
+      rootFailureOwner: 'repository',
+    });
+    if (publication.kind !== 'publishable') {
+      throw new Error(`expected a publishable scan, got ${publication.kind}`);
+    }
+    const ruleRecognitions = publication.recognitions.filter(
+      (recognition) => recognition.details.kind === 'permissions',
+    );
+    expect(ruleRecognitions.map((recognition) => recognition.sourceRelativePath).sort()).toEqual(
+      // The dangling link is admitted but never read, so it gains no
+      // recognition and belongs to no kind (FR-028).
+      [...ruleFixture.expectedRulePaths].filter((path) => !path.endsWith('broken.rules')).sort(),
+    );
+    for (const recognition of ruleRecognitions) {
+      expect(recognition.parseStatus, recognition.sourceRelativePath).toBe('not-attempted');
+      expect(recognition.diagnosticIds, recognition.sourceRelativePath).toEqual([]);
+    }
+    expect(
+      ruleRecognitions.some(
+        (recognition) => recognition.sourceRelativePath === ruleFixture.malformedRulePath,
+      ),
+    ).toBe(true);
+    // The credential the secret-bearing file declares was read — the file is
+    // published with its own facts — and reaches no recognition: a rule's
+    // content is the detail's, one file at a time (FR-026, FR-027).
+    const secret = ruleRecognitions.find(
+      (recognition) => recognition.sourceRelativePath === ruleFixture.secretRulePath,
+    );
+    expect(secret).toBeDefined();
+    expect(JSON.stringify(secret)).not.toContain(FIXTURE_SECRET_LITERAL);
+  });
+
+  it('keeps the rule files and the other products\u2019 files apart', async () => {
+    // The location is Codex's own: no Claude or Copilot selector reaches
+    // `.codex/rules/`, so a shared candidate cannot appear here by accident.
+    for (const rules of [CLAUDE_REPOSITORY_RULES, COPILOT_REPOSITORY_RULES]) {
+      const result = await scanWith(ruleFixture.root, rules);
+      const paths = new Set(result.files.map((file) => file.publicPath));
+      for (const admitted of ruleFixture.expectedRulePaths) {
+        expect(paths.has(admitted), admitted).toBe(false);
+      }
+    }
+    // And the other direction: the files those products own are admitted by
+    // their own rules and by no Codex one, so an unrelated Claude or Copilot
+    // customization never becomes a Codex rule.
+    const claude = await scanWith(ruleFixture.root, CLAUDE_REPOSITORY_RULES);
+    const copilot = await scanWith(ruleFixture.root, COPILOT_REPOSITORY_RULES);
+    const owned = new Set([
+      ...claude.files.map((file) => file.publicPath),
+      ...copilot.files.map((file) => file.publicPath),
+    ]);
+    const codex = await scanWith(ruleFixture.root, CODEX_REPOSITORY_RULES);
+    const codexPaths = new Set(codex.files.map((file) => file.publicPath));
+    for (const path of ruleFixture.otherVendorPaths) {
+      expect(owned.has(path), path).toBe(true);
+      expect(codexPaths.has(path), path).toBe(false);
+    }
+  });
+});
+
 describe('the shipped claude.repo.mcp plan (T306)', () => {
   it('compiles the exact root one-literal program and nothing wider', () => {
     const compiled = CLAUDE_REPOSITORY_RULES.find(
@@ -900,6 +1082,18 @@ describe('the root-exact Claude MCP inventory (T306)', () => {
     for (const nearMiss of [...mcpFixture.nearMissPaths, ...mcpFixture.unadmittedOwnerPaths]) {
       expect(paths.has(nearMiss), nearMiss).toBe(false);
     }
+    // The settings file is the one owner a later phase gave a candidacy of its
+    // own: `claude.repo.permissions` admits it for the policy it may declare.
+    // Its `mcpServers` spelling still reaches no MCP surface — the admission
+    // is a permission-policy one — and this fixture's copy declares no
+    // `permissions` object, so it carries no recognition at all.
+    const settings = result.files.find((file) => file.publicPath === '.claude/settings.json');
+    expect(settings, '.claude/settings.json').toBeDefined();
+    expect(
+      resolveAdmittingRules(CLAUDE_REPOSITORY_RULES, settings!.admissions).map(
+        (admission) => admission.rule.ruleId,
+      ),
+    ).toEqual(['claude.repo.permissions']);
     // The mcpServers-spelling skill and the plain skill are admitted — as
     // skills, by the skill rule, and as nothing else: a skill frontmatter
     // spelling `mcpServers` is a field Claude does not document, never a
@@ -909,6 +1103,175 @@ describe('the root-exact Claude MCP inventory (T306)', () => {
       expect(skill, skillPath).toBeDefined();
       const admitted = resolveAdmittingRules(CLAUDE_REPOSITORY_RULES, skill!.admissions);
       expect(admitted.map((rule) => rule.rule.ruleId)).toEqual(['claude.repo.skill']);
+    }
+  });
+});
+
+describe('the shipped claude.repo.rules plan (T424)', () => {
+  it('compiles the two recursive steps the contract row shows', () => {
+    const compiled = CLAUDE_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'claude.repo.rules',
+    )!;
+    expect(compiled.tool).toBe('claude');
+    expect(compiled.kind).toBe('rule');
+    expect(compiled.plan).toEqual(
+      new TraversalPlan(INSPECTION_RULES['claude.repo.rules']!.matcher!),
+    );
+    // Two recursive steps, each a different documented fact: the leading one
+    // reaches every `.claude/rules/` in the tree because a nested one loads
+    // on demand, and the trailing one reaches every depth inside one rules
+    // directory because all `.md` files there are discovered recursively.
+    expect(compiled.plan.selectors).toHaveLength(1);
+    expect(compiled.plan.selectors[0]!.remainder).toEqual([
+      { kind: 'recursive-directories' },
+      { kind: 'literal', value: '.claude' },
+      { kind: 'literal', value: 'rules' },
+      { kind: 'recursive-directories' },
+      { kind: 'regex', pattern: /\.md$/u },
+    ]);
+    expect(compiled.plan.selectionPolicy).toBe('all-matches');
+  });
+
+  it('is explained by the layering strategy, by identity', () => {
+    const compiled = CLAUDE_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'claude.repo.rules',
+    )!;
+    expect(compiled.relations).toBe(RULE_RELATIONS['claude.repo.rules']);
+    // The User-before-project order and the `paths` activation are the
+    // strategy's; the rule says only what may be read (FR-009).
+    expect(compiled.relations.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual(
+      ['claude.rules.layering'],
+    );
+    expect(compiled.relations.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'claude.behavior.repo.rules',
+    ]);
+  });
+});
+
+describe('the recursive Claude rule inventory (T426)', () => {
+  let ruleFixture: ClaudeRuleFixture;
+
+  beforeAll(() => {
+    ruleFixture = buildClaudeRuleFixture('inspector-claude-rule-files');
+  });
+
+  afterAll(() => {
+    rmSync(ruleFixture.root, { recursive: true, force: true });
+  });
+
+  it('admits every `.md` under any `.claude/rules/` subtree, at both recursions', async () => {
+    const result = await scanWith(ruleFixture.root, CLAUDE_REPOSITORY_RULES);
+    const admitted = result.files
+      .filter((file) =>
+        resolveAdmittingRules(CLAUDE_REPOSITORY_RULES, file.admissions).some(
+          (rule) => rule.rule.ruleId === 'claude.repo.rules',
+        ),
+      )
+      .map((file) => file.publicPath)
+      .sort();
+    expect(admitted).toEqual([...ruleFixture.expectedRulePaths]);
+    // A nested rules directory and a subdirectory inside one are two separate
+    // documented reaches, and both are in the set above.
+    expect(admitted).toContain('.claude/rules/frontend/components.md');
+    expect(admitted).toContain('packages/api/.claude/rules/deep/nested/timeouts.md');
+  });
+
+  it('admits no spelling variant, VCS internal, or installed dependency', async () => {
+    const result = await scanWith(ruleFixture.root, CLAUDE_REPOSITORY_RULES);
+    const paths = new Set(result.files.map((file) => file.publicPath));
+    for (const nearMiss of ruleFixture.nearMissPaths) {
+      expect(paths.has(nearMiss), nearMiss).toBe(false);
+    }
+  });
+
+  it('reads a linked rule file and directory through their targets', async () => {
+    if (!ruleFixture.capabilities.symlinks) {
+      return;
+    }
+    // The vendor documents `.claude/rules/` supporting symbolic links for a
+    // shared rule set, and a link is read through its target here like every
+    // other read (FR-024).
+    const result = await scanWith(ruleFixture.root, CLAUDE_REPOSITORY_RULES);
+    const linked = result.files.find((file) => file.publicPath === '.claude/rules/security.md');
+    expect(linked?.outcome).toMatchObject({ kind: 'readable', sourceText: '# shared rule\n' });
+    const throughDirectory = result.files.find(
+      (file) => file.publicPath === '.claude/rules/shared/security.md',
+    );
+    expect(throughDirectory?.outcome).toMatchObject({
+      kind: 'readable',
+      sourceText: '# shared security rule\n',
+    });
+    // A link whose target is missing stays admitted as its own unreadable
+    // outcome (FR-028).
+    const broken = result.files.find((file) => file.publicPath === '.claude/rules/broken-link.md');
+    expect(broken?.outcome).toEqual({ kind: 'unreadable' });
+  });
+
+  it('recognizes a malformed rule file exactly like a well-formed one', async () => {
+    // Nothing is read out of a rule file, so nothing can fail to be read: a
+    // file whose frontmatter its vendor could not load is still a rule file
+    // the inventory lists and the detail serves whole, and calling it invalid
+    // would be a verdict this product does not make (FR-032).
+    const publication = await runSourceScan({
+      sourceId: 'src-claude-rules',
+      root: ruleFixture.root,
+      rootFailureOwner: 'repository',
+    });
+    if (publication.kind !== 'publishable') {
+      throw new Error(`expected a publishable scan, got ${publication.kind}`);
+    }
+    const ruleRecognitions = publication.recognitions.filter(
+      (recognition) => recognition.details.kind === 'rule',
+    );
+    const malformed = ruleRecognitions.find(
+      (recognition) => recognition.sourceRelativePath === ruleFixture.malformedRulePath,
+    );
+    expect(malformed).toBeDefined();
+    for (const recognition of ruleRecognitions) {
+      expect(recognition.parseStatus, recognition.sourceRelativePath).toBe('not-attempted');
+      expect(recognition.diagnosticIds, recognition.sourceRelativePath).toEqual([]);
+    }
+    // The credential the secret-bearing rule declares was read — the file is
+    // published with its own facts — and reaches no recognition (FR-026).
+    const secret = ruleRecognitions.find(
+      (recognition) => recognition.sourceRelativePath === ruleFixture.secretRulePath,
+    );
+    expect(JSON.stringify(secret)).not.toContain(FIXTURE_SECRET_LITERAL);
+  });
+
+  it('gives a Claude rule file no Copilot recognition, and keeps each vendor its own', async () => {
+    // The `.claude` locations Copilot documents are the ones this release
+    // leaves out (`copilot.excluded.additional-standard-locations`), so no
+    // Copilot rule reaches these files for being rules. The one path where the
+    // two vendors' selectors do meet is a filename rather than a location: an
+    // `AGENTS.md` written inside a `.claude/rules/` directory is a Copilot
+    // instruction file at that depth like any other, and a Claude rule by where
+    // it sits, so it carries both recognitions and this fixture keeps that case
+    // out of the paths asserted below.
+    const copilot = await scanWith(ruleFixture.root, COPILOT_REPOSITORY_RULES);
+    const copilotPaths = new Set(copilot.files.map((file) => file.publicPath));
+    for (const admitted of ruleFixture.expectedRulePaths) {
+      expect(copilotPaths.has(admitted), admitted).toBe(false);
+    }
+    // And the other direction: the files those products own are admitted by
+    // their own rules, and by no Claude rule one.
+    const claude = await scanWith(ruleFixture.root, CLAUDE_REPOSITORY_RULES);
+    const asRule = new Set(
+      claude.files
+        .filter((file) =>
+          resolveAdmittingRules(CLAUDE_REPOSITORY_RULES, file.admissions).some(
+            (rule) => rule.rule.ruleId === 'claude.repo.rules',
+          ),
+        )
+        .map((file) => file.publicPath),
+    );
+    const owned = new Set([
+      ...claude.files.map((file) => file.publicPath),
+      ...copilot.files.map((file) => file.publicPath),
+    ]);
+    for (const path of ruleFixture.otherVendorPaths) {
+      expect(owned.has(path), path).toBe(true);
+      expect(asRule.has(path), path).toBe(false);
     }
   });
 });
@@ -1575,5 +1938,80 @@ describe('the shipped Copilot instruction plans and their matrix (T247)', () => 
     // The hosted organization instructions name no local path, so nothing in
     // the tree can stand for them and no candidate exists for them.
     expect(toolsFor('packages/api/GEMINI.md')).toEqual([]);
+  });
+});
+
+describe('the root Claude permission-policy inventory (T1107)', () => {
+  let permissionsFixture: ClaudePermissionsFixture;
+
+  beforeAll(() => {
+    permissionsFixture = buildClaudePermissionsFixture();
+  });
+
+  afterAll(() => {
+    for (const root of [
+      permissionsFixture.root,
+      permissionsFixture.policylessRoot,
+      permissionsFixture.malformedRoot,
+    ]) {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  /** Publishes one fixture root's scan, as the coordinator would. */
+  async function publish(root: string) {
+    const publication = await runSourceScan({
+      sourceId: 'src-permissions',
+      root,
+      rootFailureOwner: 'repository',
+    });
+    if (publication.kind !== 'publishable') {
+      throw new Error(`expected a publishable scan, got ${publication.kind}`);
+    }
+    return publication;
+  }
+
+  it('admits the two root settings files and nothing below the root', async () => {
+    // The project scope the page names is the launch directory's own
+    // `.claude/`, so a subdirectory copy is a path no selector reaches.
+    const result = await scanWith(permissionsFixture.root, CLAUDE_REPOSITORY_RULES);
+    const byPath = new Map(result.files.map((file) => [file.publicPath, file]));
+    for (const admitted of [
+      permissionsFixture.declaringCarrierPath,
+      permissionsFixture.localCarrierPath,
+    ]) {
+      const rules = resolveAdmittingRules(
+        CLAUDE_REPOSITORY_RULES,
+        byPath.get(admitted)!.admissions,
+      ).map((admission) => admission.rule.ruleId);
+      expect(rules, admitted).toEqual(['claude.repo.permissions']);
+    }
+    expect(byPath.has(permissionsFixture.nestedSettingsPath)).toBe(false);
+  });
+
+  it('gives a declaring carrier one permissions recognition and no other tool one', async () => {
+    const claude = await publish(permissionsFixture.root);
+    const declaring = claude.recognitions.filter(
+      (recognition) => recognition.sourceRelativePath === permissionsFixture.declaringCarrierPath,
+    );
+    expect(declaring.map((recognition) => recognition.details.kind)).toEqual(['permissions']);
+    // No Codex or Copilot rule reaches a Claude settings file.
+    for (const rules of [CODEX_REPOSITORY_RULES, COPILOT_REPOSITORY_RULES]) {
+      const other = await scanWith(permissionsFixture.root, rules);
+      expect(other.files.map((file) => file.publicPath)).not.toContain(
+        permissionsFixture.declaringCarrierPath,
+      );
+    }
+  });
+
+  it('leaves a settings file that declares no policy admitted and unrecognized', async () => {
+    const claude = await publish(permissionsFixture.policylessRoot);
+    // Admitted and read — the file is published with its own facts — and
+    // recognized as nothing, so it reaches no permissions row.
+    expect(claude.files.map((file) => file.sourceRelativePath)).toEqual([
+      '.claude/settings.json',
+      '.claude/settings.local.json',
+    ]);
+    expect(claude.recognitions).toEqual([]);
   });
 });

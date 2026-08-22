@@ -13,7 +13,7 @@
 // so a difference — a root file all three Copilot surfaces read against a
 // nested one the CLI alone does — is visible as the typed rows it is,
 // separate from the literal source diff (api-types.ts
-// § InstructionRecognitionDto). It is where a product documents reading the
+// § FileRecognitionDto). It is where a product documents reading the
 // file, never a claim that a session loaded it (FR-009).
 //
 // The rows state literal facts — recognized, not recognized — and the diff

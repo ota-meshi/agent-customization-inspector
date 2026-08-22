@@ -30,6 +30,7 @@ import {
   type CompiledStaticInstructionRule,
   type CompiledStaticMcpReadingRule,
   type CompiledStaticOtherKindRule,
+  type CompiledStaticPermissionsDocumentRule,
 } from './registry';
 import type { CustomizationKind } from '../../../shared/entities';
 import type { McpServerDeclarationDto } from '../../../shared/api-types';
@@ -188,23 +189,57 @@ export class CodexCompiledOtherKindRule
   implements CompiledStaticOtherKindRule
 {
   /** Narrowed to the kinds this unit compiles; the constructor proves it. */
-  declare public readonly kind: Exclude<CustomizationKind, 'instructions' | 'MCP'>;
+  declare public readonly kind: Exclude<CustomizationKind, 'instructions' | 'MCP' | 'permissions'>;
 
-  /** Compiles one Codex record of any kind but `instructions` and `MCP`. */
+  /** Compiles one Codex record of any kind but `instructions`, `MCP`, and `permissions`. */
   public constructor(rule: InspectionRule) {
     super(rule);
-    if (rule.kind === 'instructions' || rule.kind === 'MCP') {
+    if (rule.kind === 'instructions' || rule.kind === 'MCP' || rule.kind === 'permissions') {
       throw new TypeError(`rule ${rule.ruleId} needs a Codex unit that answers for its kind`);
     }
   }
 }
 
 /**
+ * A Codex permission-policy rule compiled for execution: the admitted file is
+ * itself the whole policy, so this unit reads nothing out of it. A
+ * `.codex/rules/*.rules` file is the Starlark document its author wrote, and
+ * its detail serves that document (contracts/http-api.md
+ * § get-permission-policy-detail).
+ */
+export class CodexCompiledPermissionsDocumentRule
+  extends CodexCompiledRule
+  implements CompiledStaticPermissionsDocumentRule
+{
+  /** Narrowed to the one kind this unit compiles; the constructor proves it. */
+  declare public readonly kind: 'permissions';
+
+  /** This unit reads nothing: the admitted document is the policy (registry.ts § CompiledStaticPermissionsDocumentRule). */
+  public readonly permissionsReading: 'whole-document';
+
+  /** Compiles one Codex permission-policy record, rejecting one of another kind. */
+  public constructor(rule: InspectionRule) {
+    super(rule);
+    if (rule.kind !== 'permissions') {
+      throw new TypeError(`rule ${rule.ruleId} is not a Codex permission-policy rule`);
+    }
+    this.permissionsReading = 'whole-document';
+  }
+}
+
+/**
+ * A Codex derived rule compiled for execution: the shared derivation from the
+ * base, plus what is Codex's own — the same two things a static Codex rule
+ * fixes, for the same reasons. A derived candidate is recognized and rendered
+ * exactly like a static one, so it has to answer the same questions: which
+ * product recognized it, and which documented behavior its rule rests on.
+ */
+/**
  * The Codex Repository rules a Repository scan executes, in shipped order.
  * The remaining Codex rows of the vendor contract arrive with their own
- * inventory phases; the shipped set covers static instructions and skills,
- * with the configured instruction fallbacks reaching the same walk through
- * the derived rule below.
+ * inventory phases; the shipped set covers static instructions, skills, the
+ * MCP carrier, and rule files, with the configured instruction fallbacks
+ * reaching the same walk through the derived rule below.
  *
  * The catalog now carries both discovery classes, and each compiles through
  * its own gate: the static rules below feed the traversal, while the derived
@@ -226,16 +261,11 @@ export const CODEX_REPOSITORY_RULES: readonly CompiledStaticCandidateRule[] = Ob
       ? new CodexCompiledInstructionRule(rule)
       : rule.kind === 'MCP'
         ? new CodexCompiledMcpCarrierRule(rule)
-        : new CodexCompiledOtherKindRule(rule),
+        : rule.kind === 'permissions'
+          ? new CodexCompiledPermissionsDocumentRule(rule)
+          : new CodexCompiledOtherKindRule(rule),
   );
 
-/**
- * A Codex derived rule compiled for execution: the shared derivation from the
- * base, plus what is Codex's own — the same two things a static Codex rule
- * fixes, for the same reasons. A derived candidate is recognized and rendered
- * exactly like a static one, so it has to answer the same questions: which
- * product recognized it, and which documented behavior its rule rests on.
- */
 export class CodexCompiledDerivedRule extends CompiledDerivedRule {
   /** Always `codex`; the discriminant a mixed vendor list narrows on. */
   public override readonly tool: 'codex';

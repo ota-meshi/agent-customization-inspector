@@ -18,9 +18,11 @@ import {
   buildAllVendorInstructionFixture,
   buildClaudeInstructionFixture,
   buildClaudeMcpFixture,
+  buildClaudeRuleFixture,
   buildClaudeSkillFixture,
   buildCodexInstructionFixture,
   buildCodexMcpFixture,
+  buildCodexRuleFixture,
   buildCodexSkillFixture,
   buildCopilotCliMcpFixture,
   buildCopilotInstructionFixture,
@@ -52,6 +54,8 @@ const fixtureBuilders: Readonly<Record<string, (prefix?: string, root?: string) 
   'copilot-skills': buildCopilotSkillFixture,
   'all-skills': buildAllToolSkillFixture,
   'codex-instructions': buildCodexInstructionFixture,
+  'codex-permissions': buildCodexRuleFixture,
+  'claude-rules': buildClaudeRuleFixture,
   'codex-mcp': buildCodexMcpFixture,
   'claude-mcp': buildClaudeMcpFixture,
   'copilot-cli-mcp': buildCopilotCliMcpFixture,
@@ -60,7 +64,8 @@ const fixtureBuilders: Readonly<Record<string, (prefix?: string, root?: string) 
   'claude-instructions': buildClaudeInstructionFixture,
   'copilot-instructions': buildCopilotInstructionFixture,
   'all-instructions': buildAllVendorInstructionFixture,
-  // Every `all-*` tree in one root, so one launch shows all three inventories.
+  // Every `all-*` tree plus the rule tree in one root, so one launch shows
+  // every inventory this release publishes.
   all: buildAllCustomizationKindFixture,
 };
 

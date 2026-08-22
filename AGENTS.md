@@ -153,6 +153,11 @@ Above Expediency) to day-to-day coding decisions:
   drift from them and no agreement gate is needed. Deriving is only honest when the
   derivation invents nothing: a shape that establishes no outcome yields no statement,
   which is a decision for evidence review rather than for arithmetic over an enum.
+- The release gate's task, phase, and trace-row counts are the deliberate exception to the
+  rule above: they are a freeze, not a derivation. Their point is that a count nobody
+  intended to change cannot change unnoticed, which is the same reason the vendor contract
+  tables carry recorded digests. A phase or task added without updating both languages'
+  counts is an unfinished change, and the counts are part of the change that adds it.
 - Reach for the platform's own vocabulary before writing an equivalent by hand. When a
   platform construct looks applicable but does not fit, the comment says why, so the next
   reader does not re-propose it. Example: the client-data purge records why it is not a
@@ -184,6 +189,24 @@ Above Expediency) to day-to-day coding decisions:
   the same pin in two places. When one resolution must coincide with another package's —
   `h3` with devframe's own — the lockfile is where that coincidence lives, and the
   documents that record the decision say so.
+
+## Icon policy
+
+- Icons come from Iconify collections and are compiled into the bundle at build time by
+  `unplugin-icons`: `import ExternalLinkIcon from '~icons/lucide/external-link'` becomes a
+  component carrying that icon's own SVG. No icon runtime and no icon fetch ships, which
+  is what FR-022 requires of a product that issues no outbound request — and the reason
+  Iconify's API-backed runtime is not used, even with its API disabled.
+- Taking an icon from a collection the bundle does not already carry is three edits in one
+  change: the `@iconify-json/*` devDependency, the collection's `~icons/<collection>/` row
+  in `scripts/third-party-notices-plugin.mjs`, and — because these generated packages ship
+  their icon data with no license file of their own — that collection's upstream license
+  text at `licenses/<package name>.txt`. The notice build fails loudly on a bundled package
+  with no text to publish, so a missing step is never silent.
+- Prefer a single-colour mark that inherits `currentColor`, so an icon dims and brightens
+  with the text around it. A fixed-colour brand logo stays bright inside a muted control,
+  which is why the editors are named by their single-colour brand glyphs rather than their
+  full-colour logos.
 
 ## Formatting policy
 

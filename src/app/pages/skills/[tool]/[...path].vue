@@ -61,8 +61,11 @@ import {
 import { useRoute } from 'vue-router';
 import { NuxtLink } from '#components';
 import SkillFileTree from '../../../components/inspection/SkillFileTree.vue';
+import OpenFileButton from '../../../components/inspection/OpenFileButton.vue';
 import SourceViewer from '../../../components/inspection/SourceViewer.vue';
 import { frontmatterYamlText } from '../../../components/inspection/frontmatter-yaml';
+import { decodeDetailRoutePath } from '../../../components/detail-route';
+import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text';
 import { nextTabForKey } from '../../../components/tab-navigation';
 import { skillComparisonRouteFor } from '../../../composables/skill-comparison';
 import { usePageOwnership } from '../../../composables/page-ownership';
@@ -108,7 +111,11 @@ const openTool = computed((): string => {
  */
 const openPath = computed((): string => {
   const parameter = route.params['path'];
-  return typeof parameter === 'string' ? parameter : (parameter?.join('/') ?? '');
+  // Each segment arrives percent-decoded but still spelled as the well-formed
+  // text the link carried, so the escape the encoder applied is undone here:
+  // a lone surrogate in an authored entry name round-trips to the path the
+  // inventory published (`detail-route.ts`).
+  return decodeDetailRoutePath(typeof parameter === 'string' ? [parameter] : (parameter ?? []));
 });
 
 /**
@@ -900,11 +907,17 @@ onBeforeUnmount(() => {
         <p class="aci-path aci-authored-text">{{ escapeControlCharacters(treeDirectory) }}</p>
 
         <!-- Which definition this page is: the route's tool, rendered
-             through its closed-union caption (FR-007). The recognizing-tools
-             matrix of the file is the inventory's to show; this page is one
-             definition of it, and selecting a companion never changes it. -->
+             through its closed-union caption, with the surfaces of the
+             documented behaviors its admitting rules rest on beside it
+             (FR-007, FR-009) — a definition is one recognition, and every
+             recognition states them. Naming a surface is never a claim that it
+             loaded the skill. The recognizing-tools matrix of the file is the
+             inventory's to show; this page is one definition of it, and
+             selecting a companion never changes it. -->
         <p v-if="owner !== null" class="aci-skill-detail__definition">
-          {{ SUPPORTED_TOOL_TEXT[owner.definition.tool] }} ·
+          {{ SUPPORTED_TOOL_TEXT[owner.definition.tool] }} ({{
+            owner.definition.surfaces.map((surface) => VENDOR_SURFACE_TEXT[surface]).join(', ')
+          }}) ·
           {{ CUSTOMIZATION_KIND_TEXT.skill }}
         </p>
 
@@ -1065,7 +1078,20 @@ onBeforeUnmount(() => {
                selection. -->
             <p v-else-if="openFile === null" class="aci-note">Loading this file…</p>
             <template v-else>
-              <h3 class="aci-path aci-authored-text">{{ openFilePathText }}</h3>
+              <div class="aci-skill-detail__file-title">
+                <!-- The authored run is the heading's whole content: it renders
+                     its own whitespace (`aci-authored-text`), so anything else
+                     inside it would draw this template's indentation, and the
+                     heading's accessible name would carry an action beside the
+                     file it names. -->
+                <h3 class="aci-path aci-authored-text">{{ openFilePathText }}</h3>
+                <!-- Beside the file's own path: this panel is the one place a
+                     skill's page names a single file. -->
+                <OpenFileButton
+                  v-if="openFile !== null"
+                  :source-relative-path="openFile.sourceRelativePath"
+                />
+              </div>
 
               <!-- What the read produced, and nothing else. The file below is the
                file; a viewer that narrated what a file might contain, or where
@@ -1113,6 +1139,14 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+/* The file's path and the link that opens it on one line, wrapping together
+   when the path is long. */
+.aci-skill-detail__file-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+}
+
 /* The detail route's bypass mechanism (WCAG 2.4.1): out of the way until it is
    focused, then a normal visible link. Not `display: none`, which would take it
    out of the tab order and leave nothing to bypass with. */

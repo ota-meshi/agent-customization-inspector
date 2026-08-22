@@ -46,6 +46,7 @@ import {
 import { COPILOT_REPOSITORY_RULES } from '../../src/server/inspection/rules/copilot';
 import { REPOSITORY_INSPECTION_RULES, runSourceScan } from '../../src/server/inspection/scan';
 import { InspectionSession, SessionCoordinator } from '../../src/server/session/session';
+import { RecordingFileOpener } from '../fixtures/file-opener';
 
 // Pass-through spies over the closed fs surface, so the suite can prove which
 // root was actually read (contracts/inspection-path-allowlist.md § Symlink and read invariants).
@@ -72,6 +73,7 @@ function bootstrap(root: string) {
   const session = new InspectionSession({
     invocationCwd: root,
     rootOptionValue: null,
+    fileOpener: new RecordingFileOpener(),
   });
   return { session, coordinator: new SessionCoordinator(session) };
 }
@@ -377,6 +379,11 @@ describe('recognition is atomic per admitted candidate (FR-005)', () => {
         {
           sourceRelativePath: '.agents/skills/greet/SKILL.md',
           tool: 'copilot',
+          // The surfaces the admitting rules rest on, stated beside this
+          // definition exactly as beside any other recognition (FR-009): one
+          // shared `.agents/skills/` location all three Copilot surfaces
+          // document.
+          surfaces: ['copilot-vscode', 'copilot-cli', 'copilot-cloud'],
           parseStatus: 'parsed',
           invocationName: 'greet',
           diagnosticIds: [],
@@ -385,6 +392,7 @@ describe('recognition is atomic per admitted candidate (FR-005)', () => {
         {
           sourceRelativePath: '.agents/skills/greet/SKILL.md',
           tool: 'codex',
+          surfaces: ['codex-local-clients'],
           parseStatus: 'parsed',
           invocationName: 'greet',
           diagnosticIds: [],
@@ -731,6 +739,9 @@ describe('the inventory unit is the kind, not the file (T1078)', () => {
       'invocationName',
       'parseStatus',
       'sourceRelativePath',
+      // The surfaces this recognition's admissions rest on: a definition is a
+      // recognition, and FR-009 states them beside every one.
+      'surfaces',
       'tool',
     ]);
     expect(
@@ -2162,16 +2173,21 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
       },
       { name: 'vs-docs', declarations: [vscodeCopilot] },
     ]);
-    // The published files are exactly the four carriers — one physical item
-    // and one read each, the shared root once for its three admissions — and
-    // no near miss, agent, plugin, or settings file joins them. Nothing is diagnosed, and no declared value
-    // reaches the snapshot.
+    // The published files are the four carriers — one physical item and one
+    // read each, the shared root once for its three admissions — beside the
+    // settings file, which `claude.repo.permissions` admits for the policy it
+    // may declare; no near miss, agent, or plugin file joins them. The settings
+    // file declares no `permissions` object, so it carries no recognition and
+    // reaches no row, and its `mcpServers` spelling joins no MCP name above.
+    // Nothing is diagnosed, and no declared value reaches the snapshot.
     expect(snapshot.files.map((file) => file.sourceRelativePath)).toEqual([
+      '.claude/settings.json',
       fixture.codexCarrierPath,
       fixture.githubCarrierPath,
       fixture.rootCarrierPath,
       fixture.vscodeCarrierPath,
     ]);
+    expect(snapshot.permissions).toEqual([]);
     expect(snapshot.diagnostics).toEqual([]);
     const serialized = JSON.stringify(snapshot);
     expect(serialized).not.toContain(FIXTURE_SECRET_LITERAL);
@@ -2716,13 +2732,17 @@ describe('the committed Copilot instructions inventory (T248)', () => {
           ...Object.values(fixture.expectedCopilotInstructionPaths).flat(),
           ...fixture.expectedClaudeInstructionPaths,
           ...fixture.expectedCodexInstructionPaths,
+          // A Claude rule file is read too: no Copilot rule reaches
+          // `.claude/rules/`, and `claude.repo.rules` admits it.
+          ...fixture.expectedClaudeRulePaths,
         ]),
       ].sort(),
     );
     for (const nearMiss of fixture.copilotNearMissPaths) {
       if (
         fixture.expectedClaudeInstructionPaths.includes(nearMiss) ||
-        fixture.expectedCodexInstructionPaths.includes(nearMiss)
+        fixture.expectedCodexInstructionPaths.includes(nearMiss) ||
+        fixture.expectedClaudeRulePaths.includes(nearMiss)
       ) {
         // Another product admits it; what the Copilot near-miss list states is
         // that no Copilot rule does, which the rows above assert.
@@ -3094,7 +3114,7 @@ describe('the unified instructions inventory (T270)', () => {
 });
 
 describe('the combined all-kind fixture serves every inventory from one tree (T1099)', () => {
-  it('publishes skills, instructions, and MCP from one scan of one root', async () => {
+  it('publishes skills, rules, permissions, instructions, and MCP from one scan', async () => {
     const fixture = buildAllCustomizationKindFixture('inspector-scan-all-kinds');
     cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
     const context = bootstrap(fixture.root);
@@ -3106,6 +3126,33 @@ describe('the combined all-kind fixture serves every inventory from one tree (T1
     // composition.
     expect(snapshot.skills.map((entry) => entry.name)).toContain('orbit');
     expect(snapshot.mcp.map((entry) => entry.name)).toContain(fixture.mcpFixture.sharedServerName);
+    // The rule tree's readable files: the dangling link the fixture also
+    // writes is admitted but never read, so it gains no recognition and
+    // belongs to no kind (FR-028).
+    // Two kinds, because the two vendors' same-named files are different
+    // things: Claude's `.claude/rules/**` are modular instructions, and
+    // Codex's `.codex/rules/*.rules` decide which commands may run outside
+    // the sandbox. A dangling link is admitted but never read, so it gains no
+    // recognition and belongs to no kind (FR-028).
+    expect(snapshot.rules.map((entry) => entry.sourceRelativePath)).toEqual(
+      [
+        ...fixture.claudeRuleFixture.expectedRulePaths.filter(
+          (path) => !path.endsWith('broken-link.md'),
+        ),
+        ...fixture.instructionFixture.expectedClaudeRulePaths,
+      ].sort(),
+    );
+    // Both vendors' policies in one list: Codex's whole-document `.rules`
+    // files and the two Claude settings files that declare a `permissions`
+    // block. The dangling link is admitted but never read, so it gains no
+    // recognition and no row.
+    expect(snapshot.permissions.map((entry) => entry.sourceRelativePath)).toEqual(
+      [
+        ...fixture.ruleFixture.expectedRulePaths.filter((path) => !path.endsWith('broken.rules')),
+        fixture.claudePermissionsFixture.declaringCarrierPath,
+        fixture.claudePermissionsFixture.localCarrierPath,
+      ].sort(),
+    );
     const rootRow = snapshot.instructions.find((entry) => entry.applicabilityRange === '**')!;
     const rootPaths = rootRow.files.map((file) => file.sourceRelativePath);
     expect(rootPaths).toContain('AGENTS.md');

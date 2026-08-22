@@ -38,7 +38,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { connectDevframe, isCallableStatus } from 'devframe/client';
 import { pageKey } from './router.options';
 import { SESSION_VIEW_STATE, SessionViewState, type SessionView } from './session/view-state';
-import { escapeControlCharacters } from '../shared/entities';
+import { CUSTOMIZATION_KIND_TEXT, escapeControlCharacters } from '../shared/entities';
 import './styles/main.css';
 
 /** The product name, used for both the page heading and the document title. */
@@ -69,7 +69,10 @@ const route = useRoute();
 // Following a link in an SPA moves no focus by itself, so a navigation leaves a
 // keyboard or screen-reader user wherever the previous page had them. The shell
 // places it at its own heading on every navigation, and a route that has a
-// better target — a detail page's subject — moves it again when it mounts.
+// better target — a detail page's subject — moves it again when it mounts. A
+// return to the inventory has a better target too: the row the reader followed
+// out of the list, which the router's scroll behavior focuses together with the
+// viewport it restores (router.options.ts).
 // Boot is deliberately not a navigation: content arriving asynchronously must
 // not yank focus off the heading the user is already on.
 useRouter().afterEach((to, from, failure) => {
@@ -92,12 +95,16 @@ useRouter().afterEach((to, from, failure) => {
  */
 const routeTitle = computed(() =>
   route.path.startsWith('/skills/')
-    ? 'Skill'
+    ? CUSTOMIZATION_KIND_TEXT.skill
     : route.path.startsWith('/instructions')
-      ? 'Instructions'
+      ? CUSTOMIZATION_KIND_TEXT.instructions
       : route.path.startsWith('/mcp')
-        ? 'MCP'
-        : 'Inspection',
+        ? CUSTOMIZATION_KIND_TEXT.MCP
+        : route.path.startsWith('/rules')
+          ? CUSTOMIZATION_KIND_TEXT.rule
+          : route.path.startsWith('/permissions')
+            ? CUSTOMIZATION_KIND_TEXT.permissions
+            : 'Inspection',
 );
 
 const startupErrorMessage = shallowRef<string | null>(null);
@@ -270,7 +277,7 @@ onBeforeUnmount(() => {
     <p v-if="route.path === '/'" class="aci-app__tagline">
       Browse the customization files AI coding agents look for in this repository. Being listed is
       not being loaded: whether a product actually uses one depends on runtime conditions this tool
-      does not evaluate. Nothing is executed, connected to, or modified.
+      does not evaluate.
     </p>
     <p class="aci-live-region" role="status" aria-live="polite" aria-atomic="true">
       {{ statusAnnouncement }}

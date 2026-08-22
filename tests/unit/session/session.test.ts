@@ -8,6 +8,7 @@ import { describe, expect, it, vi } from 'vitest';
 import * as fsIo from '../../../src/server/inspection/fs-io';
 import { DiagnosticRecord } from '../../../src/shared/diagnostics';
 import { InspectionSession, SessionCoordinator } from '../../../src/server/session/session';
+import { RecordingFileOpener } from '../../fixtures/file-opener';
 
 // Pass-through spies over the inspection module's closed fs surface so the
 // bootstrap zero-I/O invariant is observed, not assumed (FR-002).
@@ -25,6 +26,7 @@ function bootstrapSession() {
   return new InspectionSession({
     invocationCwd: '/repo',
     rootOptionValue: null,
+    fileOpener: new RecordingFileOpener(),
   });
 }
 
@@ -53,6 +55,7 @@ describe('session bootstrap (generation 0)', () => {
     const session = new InspectionSession({
       invocationCwd: '/elsewhere',
       rootOptionValue: '/repo',
+      fileOpener: new RecordingFileOpener(),
     });
     expect(session.snapshot().sources[0]!.boundary.origin).toBe('root-option');
   });
@@ -61,6 +64,7 @@ describe('session bootstrap (generation 0)', () => {
     const session = new InspectionSession({
       invocationCwd: '/repo with space',
       rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
     });
     const boundary = session.snapshot().sources[0]!.boundary;
     expect(boundary.displayRoot).toBe('/repo\\u0020with\\u0020space');

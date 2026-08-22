@@ -43,8 +43,6 @@ export const SUPPORTED_TOOL_ORDER: readonly SupportedTool[] = [
 export type CustomizationKind =
   /** An agent instruction file such as `AGENTS.md`. */
   | 'instructions'
-  /** One authored rule file. */
-  | 'rule'
   /** A skill entry point such as `SKILL.md`. */
   | 'skill'
   /** A custom-agent definition. */
@@ -55,8 +53,12 @@ export type CustomizationKind =
   | 'hook'
   /** An MCP server declaration carrier. */
   | 'MCP'
+  /** One authored rule file: modular instructions a product loads into context. */
+  | 'rule'
   /** A settings or configuration carrier. */
   | 'settings/config'
+  /** A policy deciding which commands or tools a product may run. */
+  | 'permissions'
   /** An output-style definition. */
   | 'output style'
   /** A plugin manifest. */
@@ -67,16 +69,20 @@ export type CustomizationKind =
   | 'skill metadata';
 
 /**
- * The closed presentation order of {@link CustomizationKind}, exactly as the
- * kind catalog is listed in data-model.md § ToolRecognition. It is the
- * secondary recognition sort key after {@link SUPPORTED_TOOL_ORDER}.
+ * The closed presentation order of {@link CustomizationKind}: the order the
+ * kind tabs are laid out in, and the secondary recognition sort key after
+ * {@link SUPPORTED_TOOL_ORDER} (data-model.md § ToolRecognition requires a
+ * closed kind order and forbids sorting by opaque ID; which order it is, is
+ * this constant's own decision).
+ *
+ * It is a reading order rather than a derived one — no rule turns a kind into
+ * a rank — so it is authored here once and {@link CustomizationKind} is
+ * declared in the same order, leaving no second sequence to disagree with it.
  */
 export const CUSTOMIZATION_KIND_ORDER: readonly CustomizationKind[] = [
   /** Instruction files sort first. */
   'instructions',
-  /** Rule files follow instructions. */
-  'rule',
-  /** Skills follow rules. */
+  /** Skills follow instructions. */
   'skill',
   /** Custom agents follow skills. */
   'agent',
@@ -86,9 +92,13 @@ export const CUSTOMIZATION_KIND_ORDER: readonly CustomizationKind[] = [
   'hook',
   /** MCP carriers follow hooks. */
   'MCP',
-  /** Settings and config carriers follow MCP. */
+  /** Rule files follow MCP carriers. */
+  'rule',
+  /** Settings and config carriers follow rule files. */
   'settings/config',
-  /** Output styles follow settings and config. */
+  /** Permission policies follow the settings that can carry them. */
+  'permissions',
+  /** Output styles follow permission policies. */
   'output style',
   /** Plugin manifests follow output styles. */
   'plugin',
@@ -146,6 +156,8 @@ export const CUSTOMIZATION_KIND_PLURAL_TEXT: Readonly<Record<CustomizationKind, 
   MCP: 'MCP servers',
   /** A settings or configuration row is the carrier file. */
   'settings/config': 'settings and configuration files',
+  /** A permissions row is the file declaring the policy. */
+  permissions: 'permission policies',
   /** An output-style row is one definition. */
   'output style': 'output styles',
   /** A plugin row is one manifest. */
@@ -174,6 +186,8 @@ export const CUSTOMIZATION_KIND_TEXT: Readonly<Record<CustomizationKind, string>
   MCP: 'MCP',
   /** Label for a settings or configuration carrier. */
   'settings/config': 'Settings / config',
+  /** Label for a policy deciding which commands or tools may run. */
+  permissions: 'Permissions',
   /** Label for an output-style definition. */
   'output style': 'Output style',
   /** Label for a plugin manifest. */

@@ -19,21 +19,25 @@ import {
   CODEX_REPO_HOOKS_BEHAVIOR,
   CODEX_REPO_INSTRUCTIONS_BEHAVIOR,
   CODEX_REPO_MCP_BEHAVIOR,
+  CODEX_REPO_RULES_BEHAVIOR,
   CODEX_REPO_SKILLS_BEHAVIOR,
   CODEX_USER_CONFIG_BEHAVIOR,
   CODEX_USER_INSTRUCTIONS_BEHAVIOR,
+  CODEX_USER_RULES_BEHAVIOR,
   CODEX_USER_SKILLS_BEHAVIOR,
 } from './behaviors';
 import {
   CODEX_DERIVED_FALLBACK_BASENAME_RULE,
   CODEX_REPO_CONFIG_RULE,
   CODEX_REPO_INSTRUCTIONS_RULE,
+  CODEX_REPO_RULES_RULE,
   CODEX_REPO_SKILL_RULE,
 } from './rules';
 import {
   CODEX_CONFIG_PRECEDENCE_STRATEGY,
   CODEX_INSTRUCTIONS_LAYERING_STRATEGY,
   CODEX_MCP_CONFIGURATION_STRATEGY,
+  CODEX_RULES_RESOLUTION_STRATEGY,
   CODEX_SKILLS_DISCOVERY_STRATEGY,
 } from './strategies';
 import type { RuleRelations, StrategyRelations } from '../relation-types';
@@ -69,6 +73,16 @@ export const CODEX_STRATEGY_RELATIONS: Readonly<Record<CodexStrategyId, Strategy
    */
   [CODEX_MCP_CONFIGURATION_STRATEGY.strategyId]: {
     consumesBehaviors: [CODEX_REPO_MCP_BEHAVIOR, CODEX_USER_CONFIG_BEHAVIOR],
+  },
+  /**
+   * Rule resolution composes both documented rule scopes: the project layers
+   * this product can read and the User layer it may not. Both are listed
+   * because the strategy describes Codex's runtime — the restrictive decision
+   * is taken across every active layer at once, so omitting the User layer
+   * would describe a combination over the repository alone.
+   */
+  [CODEX_RULES_RESOLUTION_STRATEGY.strategyId]: {
+    consumesBehaviors: [CODEX_REPO_RULES_BEHAVIOR, CODEX_USER_RULES_BEHAVIOR],
   },
   /**
    * Skill discovery composes both documented skill scopes. Both are listed
@@ -123,6 +137,17 @@ export const CODEX_RULE_RELATIONS: Readonly<Record<CodexRuleId, RuleRelations>> 
   [CODEX_REPO_INSTRUCTIONS_RULE.ruleId]: {
     basedOnBehaviors: [CODEX_REPO_INSTRUCTIONS_BEHAVIOR],
     explainedByStrategies: [CODEX_INSTRUCTIONS_LAYERING_STRATEGY],
+  },
+  /**
+   * The Repository rule-file rule is based on the project rule lookup alone —
+   * the User layer the same startup scan reads is a different Source boundary
+   * this rule may not read — and is explained by the resolution strategy,
+   * which owns the restrictive combination across layers the rule itself
+   * deliberately does not project (FR-009).
+   */
+  [CODEX_REPO_RULES_RULE.ruleId]: {
+    basedOnBehaviors: [CODEX_REPO_RULES_BEHAVIOR],
+    explainedByStrategies: [CODEX_RULES_RESOLUTION_STRATEGY],
   },
   /**
    * The Repository skill rule is based on the Repository lookup alone — the

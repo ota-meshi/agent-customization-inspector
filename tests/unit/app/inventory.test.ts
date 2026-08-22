@@ -76,6 +76,7 @@ function skillWithCompanions(
     definitions: paths.map((path) => ({
       sourceRelativePath: path,
       tool: 'codex' as const,
+      surfaces: [],
       parseStatus: 'parsed' as const,
       invocationName: name,
       diagnosticIds: [],
@@ -124,9 +125,12 @@ function snapshotWith(
   return {
     sessionId: 'session-1',
     createdAt: '2026-07-25T00:00:00.000Z',
+    fileOpenTargets: ['visual-studio-code', 'default-application'],
     sources: [REPOSITORY_SOURCE],
     files,
     instructions: [],
+    rules: [],
+    permissions: [],
     skills,
     mcp: [],
     diagnostics: [],
@@ -395,6 +399,7 @@ describe('same-name resolutions in the filtered view', () => {
       definitions: paths.map((path) => ({
         sourceRelativePath: path,
         tool: 'claude' as const,
+        surfaces: [],
         parseStatus: 'parsed' as const,
         invocationName: 'wave',
         diagnosticIds: [],
@@ -432,6 +437,7 @@ describe('same-name resolutions in the filtered view', () => {
         {
           sourceRelativePath: path,
           tool: 'claude' as const,
+          surfaces: [],
           parseStatus: 'parsed' as const,
           invocationName: name,
           diagnosticIds: [],
@@ -665,6 +671,7 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
     ): SkillInventoryEntryDto['definitions'][number] => ({
       sourceRelativePath: path,
       tool,
+      surfaces: [],
       parseStatus: 'parsed',
       invocationName,
       diagnosticIds: [],
@@ -845,6 +852,7 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
           'invocationName',
           'parseStatus',
           'sourceRelativePath',
+          'surfaces',
           'tool',
         ]);
       }

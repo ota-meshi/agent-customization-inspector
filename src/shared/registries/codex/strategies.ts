@@ -145,6 +145,49 @@ export const CODEX_MCP_CONFIGURATION_STRATEGY = {
 } as const satisfies RuntimeCompositionStrategy;
 
 /**
+ * Codex rule resolution: keep the `.rules` files of the layers actually in
+ * play — the active User and Team Config layers and the project layers whose
+ * `.codex/` is trusted (`filter`) — and, when several rules match one
+ * command, take the most restrictive decision the documented severity order
+ * gives, `forbidden` over `prompt` over `allow` (`select-first`).
+ *
+ * `select-first` over a fixed severity order rather than over a layer order:
+ * the page establishes no precedence between layers at all, and what it does
+ * establish is that the strongest matching decision is the one applied. A
+ * layer-ordered reading would invent the very thing the page leaves open.
+ *
+ * `partially-documented`: the page documents no nested-subdirectory
+ * recursion under a layer’s `rules/`. The `[experimental]` qualifier is the
+ * contract's canonical assessment rather than a claim of the citation below:
+ * the page states it in its preamble, under no heading a citation can name.
+ * Whether a rule is in force at all depends on trust, approval mode, and
+ * feature state — runtime this tool never observes, so the Inspector records
+ * the documented edge and never a decision
+ * (contracts/runtime-composition.md § codex.rules.resolution).
+ */
+export const CODEX_RULES_RESOLUTION_STRATEGY = {
+  strategyId: 'codex.rules.resolution',
+  tool: 'codex',
+  surfaces: ['codex-local-clients'],
+  operations: ['filter', 'select-first'],
+  documentationStatus: 'partially-documented',
+  lifecycleQualifiers: ['experimental'],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'openai.codex.rules',
+          url: 'https://learn.chatgpt.com/docs/agent-configuration/rules.md',
+          officialHost: 'learn.chatgpt.com',
+          sections: ['Create a rules file', 'Understand rule fields'],
+          reviewedOn: '2026-08-22',
+          establishes:
+            'Rule files are read from every active config layer at startup — the user layer, Team Config locations, and project layers whose .codex/ is trusted — and when more than one rule matches a command Codex applies the most restrictive decision, forbidden over prompt over allow; no precedence among the layers themselves is established.',
+        },
+      ]
+    : [],
+} as const satisfies RuntimeCompositionStrategy;
+
+/**
  * Codex skill discovery across Repository, User, admin, and system scopes.
  *
  * The documented outcome for a name collision is that nothing is resolved:
@@ -184,5 +227,6 @@ export const CODEX_COMPOSITION_STRATEGIES: Readonly<
   [CODEX_CONFIG_PRECEDENCE_STRATEGY.strategyId]: CODEX_CONFIG_PRECEDENCE_STRATEGY,
   [CODEX_INSTRUCTIONS_LAYERING_STRATEGY.strategyId]: CODEX_INSTRUCTIONS_LAYERING_STRATEGY,
   [CODEX_MCP_CONFIGURATION_STRATEGY.strategyId]: CODEX_MCP_CONFIGURATION_STRATEGY,
+  [CODEX_RULES_RESOLUTION_STRATEGY.strategyId]: CODEX_RULES_RESOLUTION_STRATEGY,
   [CODEX_SKILLS_DISCOVERY_STRATEGY.strategyId]: CODEX_SKILLS_DISCOVERY_STRATEGY,
 };

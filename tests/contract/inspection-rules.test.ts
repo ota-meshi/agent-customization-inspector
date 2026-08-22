@@ -317,6 +317,8 @@ describe('the Claude skill slice of the reference graph (T130, T133)', () => {
     expect(claudeRules.map((rule) => rule.ruleId)).toEqual([
       'claude.repo.instructions',
       'claude.repo.mcp',
+      'claude.repo.permissions',
+      'claude.repo.rules',
       'claude.repo.skill',
     ]);
     for (const rule of claudeRules) {
@@ -778,9 +780,11 @@ describe('the Codex MCP carrier slice of the reference graph (T282)', () => {
   it('keeps the fallback derivation Phase 15’s and adds no other Codex row', () => {
     // The carrier's candidacy does not reshape the derivation: the seed is
     // still the configuration read, never the admission. The complete Codex
-    // catalog after this phase is three static candidates plus the
-    // derivation — no exclusion, no relationship-only row, and no
-    // plugin/User/managed promotion (every row stays Repository-scoped).
+    // catalog is static candidates plus that one derivation — no exclusion,
+    // no relationship-only row, and no plugin/User/managed promotion (every
+    // row stays Repository-scoped). A later inventory phase adds its own
+    // static candidate here; what this list holds fixed is that nothing else
+    // arrives with it.
     const derived = INSPECTION_RULES['codex.derived.fallback-basename'];
     expect(derived.discoveryClass).toBe('bounded-derived-candidate');
     expect(derived.kind).toBe('instructions');
@@ -790,6 +794,7 @@ describe('the Codex MCP carrier slice of the reference graph (T282)', () => {
       'codex.derived.fallback-basename',
       'codex.repo.config',
       'codex.repo.instructions',
+      'codex.repo.rules',
       'codex.repo.skill',
     ]);
     for (const rule of codexRules) {

@@ -31,6 +31,7 @@
 // the comparison state owns: leaving the route closes it, a client-data
 // purge clears it, and a commit drops the previous generation's view while
 // this page re-requests the same pair under the new snapshot (FR-030).
+import { fromJsonStringBody } from '../../components/detail-route';
 import {
   computed,
   inject,
@@ -86,10 +87,15 @@ const router = useRouter();
  */
 function queryPath(name: string): string {
   const parameter = route.query[name];
+  // Decoded through the spelling the link was built with, so a path holding
+  // any character a file name can reaches the comparison as it was published
+  // (`detail-route.ts`).
   if (typeof parameter === 'string') {
-    return parameter;
+    return fromJsonStringBody(parameter);
   }
-  return Array.isArray(parameter) && typeof parameter[0] === 'string' ? parameter[0] : '';
+  return Array.isArray(parameter) && typeof parameter[0] === 'string'
+    ? fromJsonStringBody(parameter[0])
+    : '';
 }
 
 /** The first copy's identity: its entry file's Source-relative Path (FR-030). */

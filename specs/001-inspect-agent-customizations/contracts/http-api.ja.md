@@ -54,7 +54,7 @@ customization-selected destination、別machineへの調査content送信は禁�
 3. Static byte servingはdevframe-ownedである。ServeされるSPA shellとassetはNuxt buildがpackaged
    `dist/public`へ出力したものそのままであり、productはstatic-assets manifest、per-asset
    integrity再検証、hand-written routerを一切定義しない。その前段にあるproduct所有の要素は
-   closedなdetail-route rewrite — `/skills/**`、`/instructions/**`、`/mcp/**`、shipped kind
+   closedなdetail-route rewrite — `/skills/**`、`/instructions/**`、`/mcp/**`、`/rules/**`、`/permissions/**`、shipped kind
    detailごとに1 family — だけである: これらのroute familyに入るpathの`GET`/`HEAD`を`/`へ
    書き換えてfall throughさせ、extension-guardedなSPA fallbackがfile missとして扱うdetail deep
    linkにも、devframe自身のstatic handlerがpackaged shellをserveする。Rewriteはfilesystemに
@@ -80,8 +80,9 @@ customization-selected destination、別machineへの調査content送信は禁�
 6. 各functionは宣言済みparameterだけをreadし、各functionの節がそのparameterと、
    不一致が生むrejectionを文書化する。宣言済みparameterの検証はresolutionであって、
    その前に置くshape guardではない: 出荷済みcatalogが宣言するparameterの形は1つだけ —
-   `get-file-detail`と`get-mcp-carrier-detail`がそれぞれ取るcommit済みSource-relative
-   Path、すなわちcommit済みgenerationに対して解決されるpublished identityであって
+   `get-file-detail`、`get-mcp-carrier-detail`、`get-permission-policy-detail`がそれぞれ
+   取るcommit済みSource-relative Path、すなわちcommit済みgenerationに対して解決される
+   published identityであって
    filesystem operandではない — であり、invokeされたfunctionがそのresourceを保持しない
    あらゆる値は、別の型の値も含めて、どこにも解決されず`stale-resource` rejectionになる。
    Global functionのpreview、allowlist-version、consentの各parameterも同じ形で自身の
@@ -99,7 +100,9 @@ customization-selected destination、別machineへの調査content送信は禁�
 | `agent-customization-inspector:get-session` | read | Full `SessionSnapshot` snapshot、またはfence中のcontrol-only `GlobalFenceRecoverySnapshot` |
 | `agent-customization-inspector:get-file-detail` | read | Active-generationの`FileDetail` 1件 |
 | `agent-customization-inspector:get-mcp-carrier-detail` | read | Active-generationの`McpCarrierDetail` 1件: MCPを宣言する1 fileの宣言とfileの事実。sourceは決して含まない |
+| `agent-customization-inspector:get-permission-policy-detail` | read | Active-generationの`PermissionPolicyDetail` 1件: 宣言された1つのpermission policyを、document全体またはblockとして |
 | `agent-customization-inspector:rescan-repository` | command | 明示Repository scan command 1件の受理 |
+| `agent-customization-inspector:open-file` | command | Commit済みfile 1件をreader自身のmachine上のapplicationで開く |
 | `agent-customization-inspector:get-global-consent-preview` | read | Currentまたはfrozenの`GlobalConsentPreview` |
 | `agent-customization-inspector:create-global-consent-preview` | command | Unconsented previewのcaptureとatomicなcreate/replace |
 | `agent-customization-inspector:enable-global` | command | Session-wide consentの確認。Initial enableとactive-consent retry |
@@ -116,7 +119,10 @@ functionは存在せず、hostはdevframeのoptional MCP routeをenableしない
 productはagent toolもresourceも登録しない）、`devframe:rpc:server-state:subscribe` / `get` /
 `set` / `patch`（未使用 — productはserver stateを共有しない）、`devframe:streaming:*`（未使用 —
 productはstreaming channelを宣言しない）。Editor/finder helper（`devframe:open-in-editor`、
-`devframe:open-in-finder`）はこのproductがimportしないopt-in recipeであり、登録されない。
+`devframe:open-in-finder`）はこのproductがimportしないopt-in recipeであり、登録されない:
+どちらもcallerが送ったpathをそのまま開くのに対し、§ open-fileは先にpathをcommit済み
+generationへ解決するため、launchが受け取り得る絶対pathはこのsessionが公開したものだけになる
+（FR-022）。
 
 ## 共通resultとerror
 
@@ -210,6 +216,10 @@ Result data:
 
 ```text
 SessionSnapshot
+├── fileOpenTargets[] — このhostがcommit済みfileを渡せるapplication。detail surfaceが
+│   提示する順で、通常のclickが使うものが先頭: このmachineでhostが解決したeditorが並び、
+│   続いてどのmachineも自身のhandlerで満たす`default-application`と
+│   `containing-folder`（§ open-fileを参照）
 ├── sessionId, createdAt, repositoryGeneration, globalGeneration, snapshotState, globalContentEpoch,
 │   staleFailures[] { sourceId, failureRef, failedAt, baseGeneration },
 │   globalEnableInProgress null | { kind, operationId, previewId },
@@ -234,10 +244,20 @@ SessionSnapshot
 │       recognition を closed tool order で、各 recognition の product surface を
 │       closed surface order で持つ。null の1行が一覧を閉じ、既知の範囲を
 │       持たない file を持つ
+├── rules[]
+│   └── sourceRelativePath, recognitions[] { tool, surfaces[] } —
+│       認識された rule file 1つにつき1行、その recognition を closed tool order
+│       で、各 recognition の product surface を closed surface order で持つ
+├── permissions[]
+│   └── sourceRelativePath, recognitions[] { tool, surfaces[] },
+│       diagnosticIds[] —
+│       宣言された permission policy 1つにつき1行。宣言する file の path で
+│       名指す。宣言しない carrier は残りを所有する kind として認識され、
+│       ここには row を持たない
 ├── skills[]
 │   └── name string,
-│       definitions[] { sourceRelativePath, tool, parseStatus, invocationName,
-│                       diagnosticIds[], companionFiles[] },
+│       definitions[] { sourceRelativePath, tool, surfaces[], parseStatus,
+│                       invocationName, diagnosticIds[], companionFiles[] },
 │       sameNameResolutions[] { tool, resolution } — one per tool facing a collision
 ├── mcp[]
 │   └── name string | null,
@@ -285,7 +305,7 @@ settings fileのinline map — それはそのkindの通常のcontentであり�
 admitする1つの物理file — root `.mcp.json` — は、宣言する各名前の下でrecognizing toolごとに
 1宣言になる。nameが
 nullである1つのrowがlistを閉じ、現在named宣言を公開していないcarrierを保持する — 宣言blockが
-読めなかったのか何も宣言していないのかは、各宣言自身の`parseStatus`が区別する（FR-028）。Instructions rowは1つの適用範囲 — 担当するfile自身のpathが導出するglobであり、Repository rootでは`**`、あるいはfileが自身のために宣言したもの — であり、担当する各fileを列挙する。したがってrootの`AGENTS.md`と`CLAUDE.md`は1 rowを共有し、`packages/api/CLAUDE.md`は自身のrowを持つ（data-model.md § 一覧の単位）。範囲がnullである1つのrowが一覧を閉じる: そのfileのvendorはこのfile名の適用可否を宣言だけから読み、宣言はrowをkeyできるものを何も供給していない — あるいはまったく読めなかった。その理由は各file自身のdiagnosticsが述べるため、rowは「宣言がない」ではなく「既知の範囲がない」と述べる（FR-028）。列挙されるfileはtoolではなくrecognitionを名指す。toolだけでは、productがそのfileをどこから読むのかを言えないためである: GitHub CopilotのeditorとCLIとcloudの各surfaceは、同じ名前のfileに対して異なるlookup baseをdocumentしている。したがってrootの`.github/copilot-instructions.md`は3つのsurfaceすべてが読み、同じ名前でもsubdirectoryにあるものはCLIのcontextだけである。各recognitionの`surfaces`は、そのfileをadmitしたruleが依拠するdocumented behaviorのsurfaceであり、surfaceを名指すことはそのsurfaceがfileをloadしたという主張では決してない（FR-009）。他のkindの単位は、その一覧を出荷するtaskが、そのkind自身の
+読めなかったのか何も宣言していないのかは、各宣言自身の`parseStatus`が区別する（FR-028）。Instructions rowは1つの適用範囲 — 担当するfile自身のpathが導出するglobであり、Repository rootでは`**`、あるいはfileが自身のために宣言したもの — であり、担当する各fileを列挙する。したがってrootの`AGENTS.md`と`CLAUDE.md`は1 rowを共有し、`packages/api/CLAUDE.md`は自身のrowを持つ（data-model.md § 一覧の単位）。範囲がnullである1つのrowが一覧を閉じる: そのfileのvendorはこのfile名の適用可否を宣言だけから読み、宣言はrowをkeyできるものを何も供給していない — あるいはまったく読めなかった。その理由は各file自身のdiagnosticsが述べるため、rowは「宣言がない」ではなく「既知の範囲がない」と述べる（FR-028）。列挙されるfileはtoolではなくrecognitionを名指す。toolだけでは、productがそのfileをどこから読むのかを言えないためである: GitHub CopilotのeditorとCLIとcloudの各surfaceは、同じ名前のfileに対して異なるlookup baseをdocumentしている。したがってrootの`.github/copilot-instructions.md`は3つのsurfaceすべてが読み、同じ名前でもsubdirectoryにあるものはCLIのcontextだけである。各recognitionの`surfaces`は、そのfileをadmitしたruleが依拠するdocumented behaviorのsurfaceであり、surfaceを名指すことはそのsurfaceがfileをloadしたという主張では決してない（FR-009）。Skillのdefinitionも同じ理由でこれを述べる: definitionは名前の下にある1つのrecognitionであり、FR-009はproductがいくつsurfaceを持つかによらず、すべてのrecognitionの隣にsurfaceを述べるよう定めている。Rules rowはrule file 1つ、permissions rowは宣言されたpermission policy 1つであり、宣言するfileのpathで名指す: どちらもrowのkeyにできる名前を宣言せず、groupingできる範囲も担当しないため、Source相対Pathがrowの同一性であり、2つのproductが認識するfileは2つのrecognitionを持つ1 rowになる。名指し方はinstruction fileのrecognitionと同じである（data-model.md § 一覧の単位）。2つのkindである理由は主題が違うことにある — permission policyはproductがどのcommandやtoolを実行してよいかを決め、ruleはproductが読む指針である — うえ、両vendorがたまたま自身のdirectoryを`rules`と呼ぶため、その共有された語でまとめると無関係な2つの主題が1つのlistに並ぶ。Permissions rowはpolicyが宣言されている場所にちょうど存在する: file全体がpolicyであるfileは1 row、より大きなdocumentの1 blockとしてpolicyを運ぶfileも1 row、そのblockを宣言しないcarrierはどちらでもない — そのdocumentの残りはそれを所有するrecognitionのものであり、rowにすれば作者が書いていないpolicyを述べることになる。Permissions rowは`diagnosticIds[]`を運ぶ唯一のkindのrowであり、その例外はこのkindが何を読むかに由来する: 宣言されたblockはparserが拒み得るdocumentから読み出されるため、extraction自身のrecord — blockは1度だけ読むので、fileごとに1件 — が、見えているrowが何も公開しない理由を読み手に伝えるものである。他のどのkindのrowもfileの事実を繰り返さない。述べるべき自身の事実を持たないからである。Rowはproductがそのfileをloadまたは強制しているという主張では決してない: ruleがcontextにあるか、permission ruleが有効かは、このtoolが観測しないruntimeに依存する（FR-009）。他のkindの単位は、その一覧を出荷するtaskが、そのkind自身の
 vendor contractから決める。したがって物理fileは
 `files[]`に自身の事実 — path、read結果、size、diagnostic — とともに1度だけ現れ、各kindの一覧は
 `sourceRelativePath`で参照してそれらを繰り返さない。定義が持つrecognition所有のparse事実だけが
@@ -497,7 +517,7 @@ phaseで、Global taskがこのfunctionとdetail/comparison routeへSource quali
 Active-generation file detailを1件返す。fileをrecognitionが所有するかどうかで判別される。
 
 ```text
-FileDetail — kind: 'skill' | 'instructions' | 'file'
+FileDetail — kind: 'skill' | 'instructions' | 'rule' | 'file'
 ├── kind 'skill' — fileは認識されたskillのentry point:
 │   ├── file — encodingで判別されるCustomizationFile 1件:
 │   │   ├── sourceId, sourceRelativePath, encoding, diagnosticIds[]
@@ -516,14 +536,37 @@ FileDetail — kind: 'skill' | 'instructions' | 'file'
 │   ├── presentation — skill variantと同じ: 同じscan時の1回のparseで、
 │   │   失敗時nullの規則も同じ（FR-028）
 │   └── diagnostics[]
+├── kind 'rule' — fileは認識されたrule file:
+│   ├── file — 上と同じ
+│   └── diagnostics[]
 └── kind 'file' — fileを所有するrecognitionが無い（censusだけが列挙したfile、
     またはdiagnostic-onlyのcandidate）:
     ├── file — 上と同じ
     └── diagnostics[]
 ```
 
+どのvariantも、このproductの外でfileを指すlocatorを持たない。Reader自身のmachine上の
+applicationで開くのは§ open-fileの役目であり、同じSource-relative Pathを同じcommit済み
+generationへ解決する: 絶対pathはhostのものであり、clientがSourceのrootとして受け取るのは
+一方向の`displayRoot` escapingだけである（data-model.md § SourceBoundary）。したがって
+detail responseは、pageが開けるものを何も渡さない。
+
 この木がresponseの形そのものである: clientは正確にこのfieldだけに依存できる。
-Parseはfileの事実であって認識toolのものではない — shippedな全vendorが同じ固定YAML
+`rule` variantは`presentation`を持たない: これらのfileはauthorが書いた
+1つのdocumentとして公開され、そこから何も読み出さないためである。Claudeの`.claude/rules/**` fileは
+frontmatter blockを含めて丸ごとresponseへ届く — ruleをdeclarationとbodyへ割ると、1つの
+fileとして書かれたものを2つの半分として読者に見せることになる。何も読み出さない以上、読み出しに
+失敗することもない: このkindはextraction diagnosticを生じず、宣言された`paths` globは
+本productがfilesystem pathに対して評価することのないauthored textである。それでも独自の
+variantであるのは、recognitionがこのfileを所有しており、そのinventory rowがそう述べて
+いるからである。
+
+Permission policyはこれらのvariantに含まれない。Permissions rowが名指すのはfileではなくpolicyで
+あり — あるvendorのpolicyはそれ自体が1つのdocumentであり、別のvendorのそれは、他のkeyが別の
+recognitionに属するsettings fileの1 blockである — したがってpolicyは
+`get-permission-policy-detail`のresultであって、対象ではないfileについて答えねばならなくなる
+ここでのshapeではない。
+他の認識kindが示すparseはfileの事実であって認識toolのものではない — shippedな全vendorが同じ固定YAML
 semanticsを読むため、extractionは`(file, kind)`ごとに1回実行される — ので、responseは
 それを`presentation`として1回だけ公開する。Toolごとのrecognition一覧は存在しない:
 どのtoolがこのfileを認識するか、各toolのinvocation name、そのparse stateはinventoryの
@@ -551,6 +594,8 @@ keyである — ため、file間で宣言をmatchするclientは`key`単独で�
 同じentry形は`keyKind`を含めて、nestした全`mapping` value内へ再帰する。
 
 Readable fileでは`sourceText`を完全なdecoded sourceとし、書かれたとおりに保持する。standaloneのMCP declaration carrier — MCP kindがrecognizeし、skill kindがclaimしないfile — は`FileDetail`を一切持たない: 宣言を公開するためにadmitされたfileはその宣言を示し、自身のbyteは決して示さない（FR-007）。authored sourceをserveすることが目的のfunctionは、それを差し控えねばならないvariantを運ばない。この差し控えは、同じpathが運ぶ他のあらゆるrecognitionに優先する: Codexの`project_doc_fallback_filenames` entryが`.mcp.json`を指名するとcarrierはinstructions candidateにもなるが、そのvariantのdetailは完全なbody text — まさにFR-007が差し控えるbyte — であるため、carrierはfallback recognitionの下で答えられるのではなく、差し控えられたままになる。そのようなcarrierのdetailは`get-mcp-carrier-detail`自身のresultであり、そのpathをこのfunctionへrequestすると、このfunctionがdetailを保持しない他のあらゆるpathと同じ`stale-resource` rejectionに解決される。MCP recognitionを持つのは明示的なcarrierだけである: 他のkindのfileが自身の内容にMCP風のconfigurationを綴っても — skillやagentのfrontmatter、settings fileのinline map — それはそのkindの通常のcontentであり、このfunctionが自身のkindの下でserveするpresentationに宣言済みkeyとして見えるだけで、どのMCP surfaceにも合流しない。
+
+Permission policyも同じ条件で、2つのformのいずれもここでは差し控える。Policy blockを宣言するcarrierは、そのblockを公開するためにadmitされたfileであるため、その周囲のbyteは決してserveしない。またfile全体の内容がpolicyであるfileは、このfunctionが自身として述べることを何も持たないfileではなくpolicyである: permissions rowが名指すのはpolicyだからである（data-model.md § 一覧の単位）。どちらのpathもここへrequestすると`stale-resource` rejectionに解決し、policyをserveするのは`get-permission-policy-detail`である。
 
 Skillの`presentation`は、宣言している内容と指示している内容である。detail surfaceがそれを先頭に
 置くからである。`frontmatter[]`はfileが宣言するすべてのkeyを、fileが書いたkeyそのもの —
@@ -636,7 +681,8 @@ fileをadmitしたかであり、そのruleの文書化の程度ではない。
 
 Outcomes: `FileDetail` result。現在のcommitted generationがそのpathにこのfunctionのdetailを
 保持しない場合 — 一度もscanされていない、後のcommitで除去された、disabled sourceに属する、
-または`get-mcp-carrier-detail`だけがdetailをserveする純粋なMCP carrierである。別の型の値も
+`get-mcp-carrier-detail`だけがdetailをserveする純粋なMCP carrierである、または
+`get-permission-policy-detail`だけがdetailをserveする宣言されたpermission policyである。別の型の値も
 同じ形で解決されるため、独立したmalformed-argument outcomeは存在しない — は`stale-resource`
 rejection。Disable fenceがnon-nullの間は`global-disable-pending` conflict rejection。
 
@@ -687,6 +733,66 @@ recognitionを保持しない場合 — 一度もscanされていない、また
 独立したmalformed-argument outcomeは存在しない — は`stale-resource` rejection。Disable
 fenceがnon-nullの間は`global-disable-pending` conflict rejection。
 
+### `agent-customization-inspector:get-permission-policy-detail`
+
+Parameters: `get-file-detail`とまったく同じく、commit済みSource相対Pathを1つ、functionの
+唯一のpositional argumentとして取る — policyを宣言するfileのpathであり、これがpermissions row
+の同一性である（FR-030）。
+
+```json
+".codex/rules/deploy.rules"
+```
+
+Active-generationのpermission policyを1件、宣言するproductが綴る形で返す。Permissions rowが
+名指すのはfileではなくpolicyであるため、そのdetailはこのfunction自身のresultである: ある
+vendorはpolicyをそれ自体1つのdocumentとして書き、別のvendorは、残りのkeyが別のrecognitionの
+内容であるsettings fileの中で宣言する。file形のresult 1つでは、対象ではないfileについて
+答えねばならなくなる。
+
+```text
+PermissionPolicyDetail — form: 'whole-document' | 'declared-block'
+├── form 'whole-document' — 宣言するfile全体の内容がpolicyである:
+│   ├── file — encodingで判別する1つのCustomizationFile。`get-file-detail`が
+│   │   公開するものとまったく同じで、readable textはsourceTextを持つ
+│   └── diagnostics[]
+└── form 'declared-block' — policyはcarrierの1 blockであり、その他のkeyは別の
+    recognitionに属する:
+    ├── file — encodingで判別するcarrierのcontent-free summary。
+    │   `get-mcp-carrier-detail`が公開するものとまったく同じで、sourceTextは持たない
+    ├── declaredPolicy[] { key, keyKind, value } — 宣言されたblock自身のentryを
+    │   parserの解決順で。`presentation.frontmatter`が使うのと同じentry shapeで
+    │   あり、extractionがall-or-nothingで失敗したときにちょうどnull（FR-028）。
+    │   そのDiagnosticは下にある
+    └── diagnostics[]
+```
+
+この木がresponseの形そのものである: clientは正確にこのfieldだけに依存できる。
+
+`whole-document`のpolicyは、authorが書いた1つのdocumentとしてserveし、そこから何も読み出さない:
+Codexの`.rules` fileのvendor contractはStarlarkから`runtime-reference` relationshipだけを認め、
+commentと未収載の式をsource textのままに残す（contracts/vendors/openai-codex.md § Normative
+initial-release presentation allowlist）うえ、edgeを生成するshipped recognitionも存在しない。
+何も読み出さない以上、読み出しに失敗することもないため、このformはextraction diagnosticを
+生じない。
+
+`declared-block`のpolicyは同じ原則を反対側から見たものである。このfileは1つのblockを公開する
+ためにadmitされたcarrierなので、そのblockを公開し、自身のbytesは決して公開しない。MCP carrier
+とまったく同じである（FR-007） — Claude settings fileのその他のkeyは`settings/config`
+recognitionの内容であり、permissions responseには届かない。Blockは丸ごと公開する。authoredな
+objectが持つ全entryをparserの解決順で公開するのであり、一部のkeyだけをallowlistすると、どの
+authored policyを落としたか言えないまま落とすことになるからである（FR-028）。Rule文字列は
+authorが書いたtextのまま運ぶ: tool名と任意のspecifierであって、file・command・domainへ解決する
+ことはなく（contracts/vendors/claude-code.md § Normative initial-release presentation
+allowlist）、何かに対して評価することもない（FR-019）。inert rendering、single request、
+request tokenの規則は`get-file-detail`と同じで、`(clientDataEpoch, sourceRelativePath)`の
+captureも含む。
+
+Outcome: `PermissionPolicyDetail` result。現在のcommit済みgenerationがそのpathにpermissions
+recognitionを保持しないときは`stale-resource` rejection — 走査されたことがない、後続のcommitで
+削除された、あるいはgeneration間で宣言blockが取り下げられたcarrierである。別の型の値も同じ経路
+で解決するため、malformed-argumentの独立したoutcomeは存在しない。Disable fenceがnon-nullである
+間は`global-disable-pending` conflict rejection。
+
 ### `agent-customization-inspector:rescan-repository`
 
 Parameters: なし。
@@ -717,6 +823,55 @@ commit前にfailureとなった場合、provisional partial resultを含む全un
 Outcomes: Request IDとupdated source summary付きacceptance result。Duplicate running/queued
 Repository commandだけ`scan-in-progress` conflict rejection。Disable fenceがnon-nullの間は
 `global-disable-pending` conflict rejection。
+
+### `agent-customization-inspector:open-file`
+
+Parameters（順に）:
+
+```json
+[".claude/skills/deploy/SKILL.md", "visual-studio-code"]
+```
+
+開くfileのSource-relative Pathと、閉じたtarget集合
+`visual-studio-code | sublime-text | terminal-editor | default-application | containing-folder`の1メンバー。
+
+名指されたfileを、hostが動いているmachine上の名指されたapplicationで開く。絶対pathはhostの
+ものであるためhostがlaunchを行う: clientがSourceのrootとして受け取るのは一方向の
+`displayRoot` escapingだけであり（data-model.md § SourceBoundary）、pageは他のrequestと同じ
+identityを送るだけで、自らpathを保持しない。Pathは何かをlaunchする前にcurrentのcommit済み
+generationへ解決されるため、launchが受け取り得る絶対pathはこのsessionが公開したものだけである
+（FR-022）。
+
+各targetが届く先:
+
+- `visual-studio-code`と`sublime-text`は、hostがportをbindする前にこのmachineで解決した
+  editor launcherを実行する — `PATH`上のeditor command、またはcommandが`PATH`に無いときは
+  既知のinstall場所にあるlauncher。
+- `terminal-editor`は、`$EDITOR`または`$VISUAL`が指すeditorを実行するterminal windowを開く。
+  どちらもterminal editorを指していないとき — 未設定であるか、指されたeditorが自前のwindowを
+  持つとき — はPOSIXが既定とする`vi`を実行する。macOSのinstallはそれらの変数を設定しないためである。
+  これはhostがそのwindowを開ける場所 — macOSで、OSの`osascript` automation hostを通じて — にだけ現れ、
+  そこでeditorのcommandが解決できるときにだけ現れる。Terminalはcommand行を実行することでprogramを載せるため、
+  これはargumentがshellへ到達する唯一のlaunchである: pathは固定scriptへargumentとして渡し、
+  command行への挿入はautomation host自身のPOSIX shell用quotingが行うため、shellのmetacharacterを
+  含むauthoredな名前も1つのliteralなargumentのままである。macOSは最初のrequestを一度きりの同意dialogで
+  gateし、readerがそれに応じないこともあるため、そのhostへの待ちには上限がある。
+- `default-application`は、そのkindのfileに対してこのmachineが登録しているhandlerへfileを渡す。
+- `containing-folder`は、fileのdirectoryを同じ登録済みhandlerへ渡す。これが各platformで
+  folderを自身のfile managerで開く方法である。その中で何かが選択されることはない: readerが
+  求めたのはfolderだからである。
+
+`get-session` snapshotの`fileOpenTargets`は、このmachineでこのfunctionが受理する集合そのもので
+あり、surfaceが提示する順に並ぶ。Hostが解決しなかったeditorはそこに存在しない — したがって
+surfaceは、hostがlaunchできないapplicationを提示しない。Resultはpayloadを持たない: launchを
+要求したことだけを報告し、machineがそのfileをどう扱ったかについては何も述べない。それはその
+machineの領分である。
+
+Outcome: payloadがnullのcommand result。あるいは、currentのcommit済みgenerationがそのpathに
+fileを保持しないときの`stale-resource` rejection — scanされたことがない場合と、pageが描画された
+snapshotを置き換えたcommitで削除された場合は区別できず、同じように応答する。閉じた集合の外の
+targetは、このproductが出荷していないclientであり、宣言されたfunctional outcomeではなく通常の
+errorとして伝播する。
 
 ### `agent-customization-inspector:get-global-consent-preview`
 
@@ -1140,8 +1295,8 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
    validation、lint、synchronization、conversion、formatting、fixingのfieldまたはbehaviorを
    一切admitしない。
 4. 宣言済みparameterはresolutionで検証される: invokeされたfunctionがそのresourceを保持しない
-   `get-file-detail`または`get-mcp-carrier-detail`のargument — 別の型の値や、他方のfunctionの
-   resourceも含む — は`stale-resource` rejectionであり、余分なpositional argumentは
+   `get-file-detail`、`get-mcp-carrier-detail`、`get-permission-policy-detail`のargument —
+   別の型の値や、他のfunctionのresourceも含む — は`stale-resource` rejectionであり、余分なpositional argumentは
    readされず何も変えず、unknown function nameは登録されずinvokeできない。Contract testは
    request、file、collection、parser、snapshot、detail、result DTOのいずれも、製品定義の数値
    capacity上限を公開またはenforceしないことを証明する。注入した1 fileに限定されないNode.js、
@@ -1154,8 +1309,9 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
 5. Static traversal/encoded traversal attemptがpackaged `dist/public` outputの外へ出ない。Serve
    される全byteがそのpackaged Nuxt outputに由来し、inspected fileを一切serveせず、root、
    `/skills/compare`、`/instructions/compare`、`/global-consent`、`/skills/<tool>/<Source相対パス>`、
-   `/instructions/<Source相対パス>`、`/mcp/<Source相対パス>`のclient routeがすべて同じ
-   packaged SPA shellをbootし、そのshellはsession dataをembedしない。
+   `/instructions/<Source相対パス>`、`/mcp/<Source相対パス>`、`/rules/<Source相対パス>`、
+   `/permissions/<Source相対パス>`のclient routeがすべて同じpackaged SPA shellをbootし、
+   そのshellはsession dataをembedしない。
 6. Repositoryと各tool-specific Global rescanのqueue order、duplicate rejection、abort、partial
    outcome、fatal failure、pollingがwhole generationだけを公開する。別のSourceの後でqueueした
    scanはowning sequenceのその時点のcurrent generationから開始し、一方のsequenceのcommitは

@@ -32,6 +32,7 @@ function snapshotWith(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot
   return {
     sessionId: 'session-a',
     createdAt: '2026-08-13T00:00:00.000Z',
+    fileOpenTargets: ['visual-studio-code', 'default-application'],
     sources: [
       {
         sourceId: 'source-repository',
@@ -55,6 +56,8 @@ function snapshotWith(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot
       sizeBytes: 10,
     })),
     instructions: [],
+    rules: [],
+    permissions: [],
     skills: [],
     mcp: [],
     diagnostics: [],

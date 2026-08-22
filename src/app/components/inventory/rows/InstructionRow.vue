@@ -34,8 +34,7 @@
 import { computed } from 'vue';
 import { NuxtLink } from '#components';
 import RowDiagnostics from './RowDiagnostics.vue';
-import { instructionDetailRoute } from '../../instruction-detail-route';
-import { mcpDetailRoute } from '../../mcp-detail-route';
+import { detailRoute } from '../../detail-route';
 import { instructionComparisonRouteFor } from '../../../composables/instruction-comparison';
 import {
   SUPPORTED_TOOL_TEXT,
@@ -117,8 +116,8 @@ const rowFiles = computed(() =>
     key: file.sourceRelativePath,
     pathText: pathPresentationLabel(file.sourceRelativePath),
     detailRoute: props.mcpCarrierPaths.has(file.sourceRelativePath)
-      ? mcpDetailRoute(file.sourceRelativePath)
-      : instructionDetailRoute(file.sourceRelativePath),
+      ? detailRoute('MCP', file.sourceRelativePath)
+      : detailRoute('instructions', file.sourceRelativePath),
     recognitions: file.recognitions.map((recognition) => ({
       tool: recognition.tool,
       toolText: SUPPORTED_TOOL_TEXT[recognition.tool],

@@ -593,7 +593,7 @@ filesystem、DNS、SMB callより前にrejectする。Inspected-source I/O bound
 write、truncate、create、rename、delete、link、mode/ownership/time/xattr/ACL変更、または同等のplatform mutationを
 一切requestしない。Testではこれらのcallをinstrumentし、content、length、identity/link state、mode、mtime、ctime、
 観測可能なxattr/ACLを比較する。OSのread semanticsだけによるatime更新は別に記録し、failureともmutationの証明とも
-しない。別途制約されたstartup launcherは、許可するproductのchild-process surfaceを唯一所有し、
+しない。別途制約されたstartup launcherは、許可する2つのproduct child-process surfaceの一方を所有し — もう一方はreader自身が明示的に要求するopen-in-editorである（FR-022） — 、
 その対象はmacOSでは固定のprocess一覧probeと、OSの`osascript` automation hostで実行する固定のtab再利用script、それ以外では固定OS browser helperとする。spawnされるどのprocessも固定の引数と表示済みloopback originだけを受け取り、inspection由来のcontent/path、
 authored value、user-supplied commandを受け取らない。各childはlaunch environmentを変更なしで継承する:
 productはどの環境変数にもinspection由来の値を書き込まず、`xdg-open`が`$BROWSER`を参照するように
@@ -816,7 +816,7 @@ specs/001-inspect-agent-customizations/
 src/
 ├── app/
 │   ├── App.vue
-│   ├── router.options.ts   # shellのpage-identity ruleを共有するrouter scroll behavior
+│   ├── router.options.ts   # page identity、ページ変更時のscroll、一覧のreturn point
 │   ├── worker-modules.d.ts
 │   ├── components/
 │   │   ├── inventory/
@@ -1066,9 +1066,9 @@ buildまたはpackage quality gateを配置しない。
 したがってSetupでは、package command、tsdown entry、CI quality gateを設定または実行する前にformatterを
 設定し、CLI entryと参照される全assembly scriptをscaffoldする。それらのpathが存在するまでSetup stageを
 runnableとみなさない。
-Production `dependencies`はcaret宣言のdirect set `devframe`、`gunshi`、`h3`、`open`、
-`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`yaml`とし、`tests/package/production-graph.test.ts`が`pnpm-lock.yaml`から直接assertする。
-devframeと`open`のtransitiveはlockfileが所有する。Nuxt/Vue/Vite/tsdown、Monaco、Playwright、その他
+Production `dependencies`はcaret宣言のdirect set `devframe`、`env-editor`、`gunshi`、`h3`、`open`、
+`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`which`、`yaml`、`which`、`yaml`とし、`tests/package/production-graph.test.ts`が`pnpm-lock.yaml`から直接assertする。
+devframe、`open`、`which`のtransitiveはlockfileが所有する。Nuxt/Vue/Vite/tsdown、Monaco、Playwright、その他
 build/test toolingはdevelopment-onlyとする。
 
 Cross-platform CIはmacOS、Linux、Windowsで同じpure Node.js inspection-filesystem integration suiteを

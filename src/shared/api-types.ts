@@ -175,6 +175,18 @@ export interface SkillDefinitionDto {
    */
   readonly tool: SupportedTool;
   /**
+   * That tool's surfaces whose documented behavior the admitting rules rest
+   * on, deduplicated and in the closed surface order — the same statement
+   * {@link FileRecognitionDto} carries, because a definition is a recognition
+   * and FR-009 states the surfaces beside every recognition, however many the
+   * product has. Non-empty: every rule is based on at least one behavior
+   * statement, and a statement names at least one surface.
+   *
+   * Never a claim that a surface loaded the skill: an admission is not an
+   * activation (FR-009).
+   */
+  readonly surfaces: readonly VendorSurface[];
+  /**
    * This definition's extraction state — the owning recognition's own
    * `parseStatus`, republished here because the definition is that
    * recognition (FR-028). `failed` is what keeps a surface from reading the
@@ -313,11 +325,14 @@ export interface InstructionInventoryFileDto {
    * tool, in the closed tool order (FR-004). Non-empty: a file nothing
    * recognizes is listed under no range.
    */
-  readonly recognitions: readonly InstructionRecognitionDto[];
+  readonly recognitions: readonly FileRecognitionDto[];
 }
 
 /**
- * One tool's recognition of an instruction file, on the row that lists it.
+ * One tool's recognition of one file, on the inventory row that lists it —
+ * shared by the kinds whose rows name files: a rule row is one file, and an
+ * instructions row is one applicability range listing the files it governs
+ * (data-model.md § Inventory unit).
  *
  * The tool alone cannot say where the file is read from: GitHub Copilot's
  * editor, CLI, and cloud surfaces document different lookup bases for the same
@@ -326,8 +341,19 @@ export interface InstructionInventoryFileDto {
  * (contracts/vendors/github-copilot.md § Surface boundary). The surfaces are
  * therefore published beside the tool rather than left to a reader to infer
  * from the path.
+ *
+ * Kind-neutral because the fact is: which product recognized this file, and
+ * which documented lookups its admissions rest on. A per-kind copy of the
+ * pair would be two spellings of one answer, free to drift.
+ *
+ * The surfaces are stated beside every recognition, however many a product
+ * has (FR-009): a surface set narrows what reads the file even when it holds
+ * one member — Codex's local clients exclude the hosted service that reads no
+ * local file — so stating it only where it varies would leave a reader unable
+ * to tell a one-surface product from a kind that states none. It is never a
+ * claim that a surface loaded the file.
  */
-export interface InstructionRecognitionDto {
+export interface FileRecognitionDto {
   /** The tool that recognized the file. */
   readonly tool: SupportedTool;
   /**
@@ -340,6 +366,81 @@ export interface InstructionRecognitionDto {
    * activation (FR-009).
    */
   readonly surfaces: readonly VendorSurface[];
+}
+
+/**
+ * One row of the rules inventory (contracts/http-api.md § get-session
+ * `rules[]`, data-model.md § Inventory unit): one recognized rule file,
+ * listing the products that recognized it.
+ *
+ * The unit is the file. A rule file is modular instructions a product loads
+ * into context: it declares no name a row could be keyed by and governs no
+ * range it could be grouped under, so its Source-relative Path is the row's
+ * identity, and two products recognizing one file is one row with two
+ * recognitions.
+ *
+ * What the file declares is not here: its content is served by the detail
+ * route, one file at a time (FR-027), and the file's own read outcome, size,
+ * and diagnostics stay on its `files[]` entry.
+ *
+ * A row is never a claim that a product loaded the file: whether a rule is in
+ * context depends on runtime this tool never observes (FR-009).
+ */
+export interface RuleInventoryEntryDto {
+  /**
+   * The Source-relative Path of the rule file — the row's identity (FR-030),
+   * which joins to `files[]`.
+   */
+  readonly sourceRelativePath: string;
+  /**
+   * What recognized this file — one entry per recognizing tool, in the closed
+   * tool order (FR-004). Non-empty: a file nothing recognizes is no row.
+   */
+  readonly recognitions: readonly FileRecognitionDto[];
+}
+
+/**
+ * One row of the permissions inventory (contracts/http-api.md § get-session
+ * `permissions[]`, data-model.md § Inventory unit): one declared permission
+ * policy, named by the path of the file that declares it.
+ *
+ * The unit is the policy, not the file, which is why this is not
+ * {@link RuleInventoryEntryDto} under another name. A rule row is a file; a
+ * permissions row is a policy that a file declares — a document of its own
+ * where one vendor writes it that way, and one block of a settings file whose
+ * remaining keys are another recognition's content where another does. A file
+ * declaring no policy is no row here whatever else it is recognized as. Two
+ * units that coincide in shape are still two: one type standing for both
+ * would say two subjects are one (data-model.md § Inventory unit).
+ *
+ * What the policy declares is not here: it is served by
+ * `get-permission-policy-detail`, one at a time (FR-027), and the declaring
+ * file's own read outcome, size, and diagnostics stay on its `files[]` entry.
+ *
+ * A row is never a claim that a product enforced the policy: whether a
+ * permission rule is in force depends on runtime this tool never observes
+ * (FR-009).
+ */
+export interface PermissionsInventoryEntryDto {
+  /**
+   * The Source-relative Path of the file that declares the policy — the row's
+   * identity (FR-030), which joins to `files[]`.
+   */
+  readonly sourceRelativePath: string;
+  /**
+   * What recognized this policy — one entry per recognizing tool, in the
+   * closed tool order (FR-004). Non-empty: a policy nothing recognizes is no
+   * row.
+   */
+  readonly recognitions: readonly FileRecognitionDto[];
+  /**
+   * The extraction diagnostics the recognitions of this policy reference —
+   * the kind's one shared record per file, since the block is read once
+   * (FR-028). A rules row has no counterpart: nothing is read out of a rule
+   * file, so nothing can fail to be read, while a declared block is read out
+   * of a document a parser can reject.
+   */
+  readonly diagnosticIds: readonly string[];
 }
 
 /**
@@ -447,7 +548,7 @@ export interface MarkdownPresentationDto {
   readonly bodyText: string;
 }
 
-/** Fields both detail variants carry; see {@link FileDetailDto}. */
+/** Fields every detail variant carries; see {@link FileDetailDto}. */
 interface FileDetailBase {
   /** The committed file, including its complete authored source when readable. */
   readonly file: CustomizationFileDto;
@@ -494,6 +595,30 @@ export interface InstructionFileDetailDto extends FileDetailBase {
    * complete source stays readable.
    */
   readonly presentation: MarkdownPresentationDto | null;
+}
+
+/**
+ * Detail of a recognized rule file: the file, and nothing derived from it
+ * (contracts/http-api.md § get-file-detail).
+ *
+ * No `presentation`: a rule file is published as the one document its author
+ * wrote, so nothing is read out of it to set beside the file. A Claude rule
+ * is Markdown and reaches the page whole, frontmatter block included, because
+ * splitting a rule into declarations and a body would show the reader two
+ * halves of a file they wrote as one — and with nothing read out, nothing can
+ * fail to be read either, so the kind produces no extraction diagnostic. The
+ * kind is Claude's alone in this release: a Codex `.codex/rules/*.rules` file
+ * is a permission policy rather than a rule, and its detail is
+ * {@link PermissionPolicyDetailDto}.
+ *
+ * Its own variant rather than the unrecognized one, because a recognition
+ * does own this file: the page it opens is headed as a rule, returns to the
+ * rule tab, and states the products that recognized it. Publishing it as
+ * "no recognition owns the file" would contradict its own inventory row.
+ */
+export interface RuleFileDetailDto extends FileDetailBase {
+  /** Discriminant: the file is a recognized rule file. */
+  readonly kind: 'rule';
 }
 
 /**
@@ -563,6 +688,73 @@ export interface McpCarrierDetailDto {
 }
 
 /**
+ * The result of `get-permission-policy-detail`: one declared permission
+ * policy, in the form the declaring product spells it
+ * (contracts/http-api.md § get-permission-policy-detail).
+ *
+ * Its own function's result rather than a {@link FileDetailDto} variant
+ * because a permissions row names a policy, not a file (data-model.md
+ * § Inventory unit): one vendor writes the policy as a document of its own,
+ * and another declares it inside a settings file whose remaining keys are a
+ * different recognition's content, so a file-shaped result would have to
+ * answer for a file it is not about. The declaring file's path is how the
+ * policy is addressed, exactly as the row names it.
+ */
+export type PermissionPolicyDetailDto =
+  PermissionPolicyDocumentDetailDto | PermissionPolicyBlockDetailDto;
+
+/** What a permission-policy detail carries whichever form its policy takes. */
+interface PermissionPolicyDetailBase {
+  /** The file-scoped Diagnostic records the declaring file's `diagnosticIds` name (FR-028). */
+  readonly diagnostics: readonly SerializedDiagnostic[];
+}
+
+/**
+ * A policy whose declaring file is the policy: a Codex
+ * `.codex/rules/*.rules` file is the whole document its author wrote, and
+ * nothing is read out of it — enumerating its `prefix_rule()` entries would
+ * need a Starlark parser this product does not carry, and the document shows
+ * every entry anyway — so there is no extraction and no extraction diagnostic.
+ */
+export interface PermissionPolicyDocumentDetailDto extends PermissionPolicyDetailBase {
+  /** Discriminant: the declaring file's whole content is the policy. */
+  readonly form: 'whole-document';
+  /**
+   * The committed file that is the policy, with its complete authored source.
+   */
+  readonly file: CustomizationFileDto;
+}
+
+/**
+ * A policy one block of a larger document declares: a Claude settings file's
+ * `permissions` object, whose remaining keys are the `settings/config`
+ * recognition's content and reach no permissions response.
+ *
+ * The file's own bytes are absent from the shape rather than withheld at
+ * render time (FR-007), which is why the file arrives as the content-free
+ * summary an MCP carrier's detail also carries.
+ */
+export interface PermissionPolicyBlockDetailDto extends PermissionPolicyDetailBase {
+  /** Discriminant: the policy is one block of a carrier. */
+  readonly form: 'declared-block';
+  /**
+   * The committed carrier's own facts — path, read outcome, size,
+   * diagnostics — without its source text (FR-007).
+   */
+  readonly file: CustomizationFileSummaryDto;
+  /**
+   * The declared block's own entries, in the parser's resolved order — every
+   * key the authored object holds, because an allowlist of some of them would
+   * drop authored policy without being able to say which — or null exactly
+   * when extraction failed all-or-nothing (FR-028): nothing was parsed, the
+   * block is unknown rather than absent, and the failure's Diagnostic is in
+   * `diagnostics`. A carrier declaring no block is no row and no detail at
+   * all, so null never means "declares none".
+   */
+  readonly declaredPolicy: readonly DeclaredEntryDto[] | null;
+}
+
+/**
  * One file's complete detail result
  * (contracts/http-api.md § get-file-detail), discriminated by whether a
  * recognition owns the file. It is the one result that carries authored
@@ -594,7 +786,7 @@ export interface McpCarrierDetailDto {
  * admits; the vendor rule modules say why they get no rule of their own.
  */
 export type FileDetailDto =
-  SkillFileDetailDto | InstructionFileDetailDto | UnrecognizedFileDetailDto;
+  SkillFileDetailDto | InstructionFileDetailDto | RuleFileDetailDto | UnrecognizedFileDetailDto;
 
 /** Fields every discovered file carries regardless of its read outcome. */
 interface CustomizationFileBase {
@@ -815,6 +1007,33 @@ export interface StaleSourceFailure {
 }
 
 /**
+ * An application a detail surface can hand its file to
+ * (contracts/http-api.md § open-file). The host performs the launch, so the
+ * member names what the reader chose rather than how it is carried out.
+ */
+export type FileOpenTarget =
+  /** The Visual Studio Code installation the host resolved on this machine. */
+  | 'visual-studio-code'
+  /** The Sublime Text installation the host resolved on this machine. */
+  | 'sublime-text'
+  /**
+   * The editor `$EDITOR` or `$VISUAL` names, in a terminal window the host
+   * opens for it. Offered only where the host can open that window and the
+   * named editor is one that needs it.
+   */
+  | 'terminal-editor'
+  /** Whatever the reader's machine has registered for that kind of file. */
+  | 'default-application'
+  /**
+   * The directory the file is in, in the machine's own file manager. The one
+   * target that opens something other than the file, which is why it is a
+   * target rather than a second command: a reader choosing where to open the
+   * file they are looking at is choosing between applications, and this is one
+   * of them.
+   */
+  | 'containing-folder';
+
+/**
  * The complete public session state served over the session API —
  * rebuilt from internal state on every call
  * (data-model.md § InspectionSession, contracts/http-api.md § get-session).
@@ -824,6 +1043,15 @@ export interface SessionSnapshot {
   readonly sessionId: string;
   /** UTC timestamp of session bootstrap. */
   readonly createdAt: string;
+  /**
+   * The applications this host can hand a committed file to, in the order a
+   * detail surface offers them, the one a plain click uses first
+   * (contracts/http-api.md § open-file). A target the host could not launch
+   * is absent rather than offered and left to fail, which is why the list is
+   * the host's to publish: the page holds no absolute path and cannot probe
+   * the machine for itself.
+   */
+  readonly fileOpenTargets: readonly FileOpenTarget[];
   /** Every Source's public projection. */
   readonly sources: readonly SourceDto[];
   /**
@@ -841,6 +1069,19 @@ export interface SessionSnapshot {
    * it governs in Source-relative Path order.
    */
   readonly instructions: readonly InstructionInventoryEntryDto[];
+  /**
+   * The rules inventory: one entry per recognized rule file — modular
+   * instructions a product loads into context — in Source-relative Path
+   * order (data-model.md § Inventory unit).
+   */
+  readonly rules: readonly RuleInventoryEntryDto[];
+  /**
+   * The permissions inventory: one entry per declared permission policy — a
+   * policy deciding which commands or tools a product may run — named by the
+   * path of the file that declares it, in Source-relative Path order
+   * (data-model.md § Inventory unit).
+   */
+  readonly permissions: readonly PermissionsInventoryEntryDto[];
   /**
    * The skill inventory: one entry per name as one tool resolves it
    * (data-model.md § Inventory unit). A row's unit is decided by the kind, not

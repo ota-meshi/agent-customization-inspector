@@ -35,6 +35,9 @@ const codexInstructionsRule = CODEX_REPOSITORY_RULES.find(
 const codexConfigRule = CODEX_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'codex.repo.config',
 )!;
+const codexRulesRule = CODEX_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'codex.repo.rules',
+)!;
 const claudeSkillRule = CLAUDE_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'claude.repo.skill',
 )!;
@@ -43,6 +46,9 @@ const claudeMcpRule = CLAUDE_REPOSITORY_RULES.find(
 )!;
 const claudeInstructionsRule = CLAUDE_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'claude.repo.instructions',
+)!;
+const claudeRulesRule = CLAUDE_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'claude.repo.rules',
 )!;
 const copilotSkillRule = COPILOT_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'copilot.repo.skill',
@@ -673,6 +679,140 @@ describe('Codex MCP recognition (T283)', () => {
     expect(recognitions).toHaveLength(1);
     const other = await recognizeWith('claude', carrierPath, [codexConfigRule]);
     expect(other.recognitions).toEqual([]);
+  });
+});
+
+describe('Codex permission-policy recognition (T409)', () => {
+  /** A rule file's authored text, credential and all. */
+  const RULE_SOURCE = [
+    'prefix_rule(',
+    '    pattern = ["curl", "-H", "Authorization: Bearer ghp_EXAMPLE0000000000000000000000000000"],',
+    '    decision = "forbidden",',
+    ')',
+    '',
+  ].join('\n');
+
+  it('recognizes the admitted file as the rule kind from its path alone', async () => {
+    const recognitions = await recognize(
+      '.codex/rules/default.rules',
+      [codexRulesRule],
+      RULE_SOURCE,
+    );
+    expect(recognitions).toHaveLength(1);
+    expect(recognitions[0]).toMatchObject({
+      sourceRelativePath: '.codex/rules/default.rules',
+      tool: 'codex',
+      details: { kind: 'permissions' },
+      // `not-attempted`, not `parsed`: no allowlisted extractor applies to the
+      // permissions kind in this release, which is a different claim from "parsing
+      // succeeded and found nothing". The file's own text is the detail's,
+      // one file at a time (FR-027).
+      parseStatus: 'not-attempted',
+      diagnosticIds: [],
+    });
+  });
+
+  it('carries no part of the rule text, credential-shaped values included', async () => {
+    const [recognition] = await recognize(
+      '.codex/rules/secrets.rules',
+      [codexRulesRule],
+      RULE_SOURCE,
+    );
+    // The row unit is the file, so the recognition's whole payload is its
+    // kind: nothing a rule declares — a matched command prefix, a decision, a
+    // justification, a credential inside one — reaches the inventory
+    // (FR-026, FR-027).
+    expect(recognition!.details).toEqual({ kind: 'permissions' });
+    const serialized = JSON.stringify(recognition);
+    expect(serialized).not.toContain('ghp_EXAMPLE');
+    expect(serialized).not.toContain('prefix_rule');
+  });
+
+  it('derives its provenance from the admitted path and the admitting rule', async () => {
+    const [recognition] = await recognize('.codex/rules/deploy.rules', [codexRulesRule]);
+    expect(recognition!.provenances).toHaveLength(1);
+    expect(recognition!.provenances[0]).toMatchObject({
+      ruleId: 'codex.repo.rules',
+      matchedPath: '.codex/rules/deploy.rules',
+    });
+  });
+
+  it('enumerates no companion directory for a rule file', async () => {
+    // The census belongs to a directory-shaped kind, which is `skill` alone
+    // (contracts/inspection-path-allowlist.md § Bounded companion census). A
+    // rule file is one file, so its siblings under `.codex/rules/` are
+    // candidates or near misses on their own and never this file's
+    // companions.
+    expect(await censusOf('codex', '.codex/rules/default.rules', [codexRulesRule])).toEqual([]);
+  });
+
+  it('produces nothing for another product asked about the same path', async () => {
+    // `.codex/rules/` is Codex's own location: no Claude or Copilot rule
+    // admits it, so no other product can be handed the admission at all — and
+    // a pass for another tool over a Codex-owned admission fabricates
+    // nothing.
+    expect(
+      (await recognizeWith('claude', '.codex/rules/default.rules', [codexRulesRule])).recognitions,
+    ).toEqual([]);
+    expect(
+      (await recognizeWith('copilot', '.codex/rules/default.rules', [codexRulesRule])).recognitions,
+    ).toEqual([]);
+  });
+});
+
+describe('Claude rule recognition (T426)', () => {
+  /** Recognizes one authored `.claude/rules/**` file for Claude. */
+  async function recognizeClaudeRule(matchedPath: string, sourceText = '') {
+    return (await recognizeWith('claude', matchedPath, [claudeRulesRule], sourceText)).recognitions;
+  }
+
+  it('recognizes the admitted file as the rule kind from its path alone', async () => {
+    // A rule is published as the one document its author wrote, so nothing is
+    // read out of it — the frontmatter block included — and `not-attempted`
+    // is the honest status for a kind no allowlisted extractor applies to.
+    const recognitions = await recognizeClaudeRule(
+      '.claude/rules/api.md',
+      '---\npaths:\n  - "src/api/**/*.ts"\n---\n\n# API\n',
+    );
+    expect(recognitions).toHaveLength(1);
+    expect(recognitions[0]).toMatchObject({
+      sourceRelativePath: '.claude/rules/api.md',
+      tool: 'claude',
+      details: { kind: 'rule' },
+      parseStatus: 'not-attempted',
+      diagnosticIds: [],
+    });
+    // The declared glob stays in the file, never in the record, and is never
+    // evaluated against a filesystem path (FR-019).
+    expect(JSON.stringify(recognitions)).not.toContain('src/api/**/*.ts');
+  });
+
+  it('derives its provenance from the admitted path and the admitting rule', async () => {
+    const recognitions = await recognizeClaudeRule(
+      'packages/api/.claude/rules/deep/nested/timeouts.md',
+    );
+    expect(recognitions[0]!.provenances).toHaveLength(1);
+    expect(recognitions[0]!.provenances[0]).toMatchObject({
+      ruleId: 'claude.repo.rules',
+      matchedPath: 'packages/api/.claude/rules/deep/nested/timeouts.md',
+    });
+  });
+
+  it('produces nothing for another product asked about the same path', async () => {
+    // The `.claude` locations Copilot documents are the ones this release
+    // leaves out, so no Copilot pass can be handed a Claude rule admission
+    // and fabricate a recognition from it.
+    expect(
+      (await recognizeWith('copilot', '.claude/rules/api.md', [claudeRulesRule])).recognitions,
+    ).toEqual([]);
+    expect(
+      (await recognizeWith('codex', '.claude/rules/api.md', [claudeRulesRule])).recognitions,
+    ).toEqual([]);
+  });
+
+  it('enumerates no companion directory beside a rule file', async () => {
+    // The census belongs to a directory-shaped kind, which is `skill` alone.
+    expect(await censusOf('claude', '.claude/rules/api.md', [claudeRulesRule])).toEqual([]);
   });
 });
 

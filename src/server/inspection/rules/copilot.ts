@@ -299,12 +299,12 @@ export class CopilotCompiledOtherKindRule
   implements CompiledStaticOtherKindRule
 {
   /** Narrowed to the kinds this unit compiles; the constructor proves it. */
-  declare public readonly kind: Exclude<CustomizationKind, 'instructions' | 'MCP'>;
+  declare public readonly kind: Exclude<CustomizationKind, 'instructions' | 'MCP' | 'permissions'>;
 
-  /** Compiles one Copilot record of any kind but `instructions` and `MCP`. */
+  /** Compiles one Copilot record of any kind but `instructions`, `MCP`, and `permissions`. */
   public constructor(rule: InspectionRule) {
     super(rule);
-    if (rule.kind === 'instructions' || rule.kind === 'MCP') {
+    if (rule.kind === 'instructions' || rule.kind === 'MCP' || rule.kind === 'permissions') {
       throw new TypeError(`rule ${rule.ruleId} needs a Copilot unit that answers for its kind`);
     }
   }

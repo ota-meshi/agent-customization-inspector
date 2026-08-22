@@ -225,6 +225,89 @@ export const CODEX_REPO_CONFIG_RULE = {
 } as const satisfies InspectionRule;
 
 /**
+ * The `codex.repo.rules` matcher, authored in the typed segment form the
+ * contract table shows: the `.rules` files that are direct children of the
+ * Repository root's own `.codex/rules/` directory. The terminal step is a
+ * dynamic single-name regex, because the vendor fixes the extension and
+ * leaves the basename to the author.
+ *
+ * Direct children only. Codex documents scanning the layer's `rules/`
+ * directory and establishes no nested-subdirectory recursion, so a
+ * `.codex/rules/team/deploy.rules` is a near miss rather than a candidate:
+ * admitting it would read a file on the strength of a recursion the page does
+ * not state (contracts/vendors/openai-codex.md § Known uncertainties, item 2).
+ *
+ * Root-anchored for the reason every Codex row is. The scan reads one config
+ * layer's `rules/` because the selected root is the project root (FR-001); a
+ * `packages/api/.codex/rules/` belongs to a runtime working directory this
+ * product never selects, so it stays a near miss at every later phase too —
+ * the same decision `AGENTS.md` and `.codex/config.toml` already carry.
+ */
+const CODEX_REPO_RULES_MATCHER: StructuredInspectorMatcher = {
+  base: { kind: 'repository' },
+  selectors: [
+    [
+      { kind: 'literal', value: '.codex' },
+      { kind: 'literal', value: 'rules' },
+      { kind: 'regex', pattern: /\.rules$/u },
+    ],
+  ],
+};
+
+/**
+ * Codex Repository rule files: the read-authorizing counterpart of
+ * `codex.behavior.repo.rules`. A rule file declares `prefix_rule()` entries
+ * deciding whether a matching command may run outside the sandbox; admitting
+ * one authorizes reading its bytes and nothing else. This product evaluates no
+ * pattern, applies no decision, and runs no command a rule names.
+ *
+ * The kind is `permissions`, not `rule`, though the vendor calls the files
+ * rules: what one decides is which commands may run, where Claude's own
+ * `rules` are guidance a product reads, and grouping by the vendors' shared
+ * word would put two unrelated subjects in one list (data-model.md
+ * § Inventory unit). Its detail is `get-permission-policy-detail`'s result.
+ *
+ * Admitting a file is not asserting Codex enforces it: project layers apply
+ * only to trusted projects, the User and Team Config layers the same scan
+ * reads lie outside this Source, and the most restrictive decision across all
+ * of them is a runtime outcome this tool never observes (FR-009).
+ *
+ * `documented` with an `[experimental]` qualifier: the location this rule
+ * admits is exactly the one the page names, so the admission itself rests on
+ * documented text, while the feature it belongs to is documented as
+ * experimental (contracts/vendors/openai-codex.md § Documentation status and
+ * lifecycle index). The nesting the behavior statement leaves
+ * `partially-documented` is precisely what this matcher declines to admit.
+ */
+export const CODEX_REPO_RULES_RULE = {
+  ruleId: 'codex.repo.rules',
+  tool: 'codex',
+  discoveryClass: 'static-candidate',
+  kind: 'permissions',
+  sourceKinds: ['repository'],
+  matcher: CODEX_REPO_RULES_MATCHER,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: ['experimental'],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'openai.codex.rules',
+          url: 'https://learn.chatgpt.com/docs/agent-configuration/rules.md',
+          officialHost: 'learn.chatgpt.com',
+          sections: ['Create a rules file'],
+          reviewedOn: '2026-08-22',
+          establishes:
+            'A rule file is a .rules file in a rules/ folder next to an active config layer, the project layer being <repo>/.codex/rules/ — the exact location this rule admits — and the page documents no nested subdirectory below it; the User layer at ~/.codex/rules/ that the same scan reads is a different Source boundary this rule may not read.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
  * The `codex.repo.skill` matcher, authored in the typed segment form the
  * contract table shows: `.agents/skills/<name>/SKILL.md` directly below the
  * Repository root. `ANY_NAME` is the one direct skill-name child and the
@@ -305,5 +388,6 @@ export const CODEX_INSPECTION_RULES: Readonly<Record<CodexRuleId, InspectionRule
   [CODEX_DERIVED_FALLBACK_BASENAME_RULE.ruleId]: CODEX_DERIVED_FALLBACK_BASENAME_RULE,
   [CODEX_REPO_CONFIG_RULE.ruleId]: CODEX_REPO_CONFIG_RULE,
   [CODEX_REPO_INSTRUCTIONS_RULE.ruleId]: CODEX_REPO_INSTRUCTIONS_RULE,
+  [CODEX_REPO_RULES_RULE.ruleId]: CODEX_REPO_RULES_RULE,
   [CODEX_REPO_SKILL_RULE.ruleId]: CODEX_REPO_SKILL_RULE,
 };

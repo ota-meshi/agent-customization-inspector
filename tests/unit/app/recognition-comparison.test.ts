@@ -72,6 +72,7 @@ function definition(
   return {
     sourceRelativePath: path,
     tool,
+    surfaces: [],
     parseStatus,
     invocationName: parseStatus === 'parsed' ? 'greet' : null,
     diagnosticIds: [],
@@ -280,7 +281,16 @@ describe('recognition and declared-metadata comparison', () => {
       'tools',
     ]);
     for (const row of comparison.tools) {
-      expect(Object.keys(row).toSorted()).toEqual(['kind', 'left', 'right', 'tool']);
+      // The surfaces each recognizing side states beside its recognition
+      // (FR-009); nothing else joins the row.
+      expect(Object.keys(row).toSorted()).toEqual([
+        'kind',
+        'left',
+        'leftSurfaces',
+        'right',
+        'rightSurfaces',
+        'tool',
+      ]);
     }
     expect(Object.keys(comparison.frontmatterDiff ?? {}).toSorted()).toEqual([
       'modifiedAbsent',

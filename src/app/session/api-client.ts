@@ -12,14 +12,19 @@
 // a fence or epoch change is discovered by the next request either way
 // (contracts/http-api.md § Concurrency and lifecycle).
 //
-// The client performs no persistence of any kind: no browser storage, no
-// service worker, and no response cache holds inspected content. It also
-// calls nothing outside the closed function catalog below.
+// No inspected content is persisted anywhere: no browser storage, no service
+// worker, and no response cache holds it (FR-027). The one value this
+// application does store is the reader's choice of which application to open
+// a file in, which is a preference about their own machine and carries
+// nothing that was inspected (`components/inspection/open-target-preference.ts`).
+// This client also calls nothing outside the closed function catalog below.
 import type {
   CommandResult,
   FileDetailDto,
+  FileOpenTarget,
   InspectionDataResult,
   McpCarrierDetailDto,
+  PermissionPolicyDetailDto,
   ScanAdmission,
   SessionSnapshot,
   SourceDto,
@@ -42,8 +47,12 @@ export const SESSION_RPC_FUNCTIONS = {
   getFileDetail: 'agent-customization-inspector:get-file-detail',
   /** One MCP-declaring file's declarations and file facts, never its source (FR-007). */
   getMcpCarrierDetail: 'agent-customization-inspector:get-mcp-carrier-detail',
+  /** One declared permission policy, addressed by the path of the file that declares it. */
+  getPermissionPolicyDetail: 'agent-customization-inspector:get-permission-policy-detail',
   /** Accept one explicit Repository scan command. */
   rescanRepository: 'agent-customization-inspector:rescan-repository',
+  /** Open one committed file in an application on the reader's own machine. */
+  openFile: 'agent-customization-inspector:open-file',
 } as const;
 
 /** One member of the closed {@link SESSION_RPC_FUNCTIONS} catalog. */
@@ -222,6 +231,14 @@ export type FileDetailOutcome = DetailFetchOutcome<FileDetailDto>;
 export type McpCarrierDetailOutcome = DetailFetchOutcome<McpCarrierDetailDto>;
 
 /**
+ * The outcome of one guarded `get-permission-policy-detail` request: the
+ * shared detail outcome carrying one declared permission policy. Its own
+ * outcome because a permissions row names a policy rather than a file
+ * (data-model.md § Inventory unit), so the result is that function's own.
+ */
+export type PermissionPolicyDetailOutcome = DetailFetchOutcome<PermissionPolicyDetailDto>;
+
+/**
  * The outcome of one guarded `rescan-repository` command. A rescan is a
  * command, not an inspection-data read: its success carries the admitted
  * request ID and the updated Source summary, and never a generation snapshot
@@ -253,6 +270,36 @@ export type RescanOutcome =
       readonly kind: 'purged';
       /** Which documented trigger ran the purge; see {@link PurgeReason}. */
       readonly reason: PurgeReason;
+    }
+  | {
+      /** The call failed; see {@link fatal} for whether the session survived. */
+      readonly kind: 'failed';
+      /** The real transport error, or the fixed unsupported-protocol error. */
+      readonly error: Error;
+      /** True when the channel is gone or the protocol was unsupported. */
+      readonly fatal: boolean;
+    };
+
+/**
+ * The outcome of one `open-file` command. It carries no payload and no
+ * generation fields: the host reports that the launch was requested, and what
+ * the machine does with the file it was handed is that machine's business
+ * (contracts/http-api.md § open-file).
+ *
+ * There is no `discarded` variant, because nothing here is superseded: an
+ * open request is one reader action on one file, so a second one is a second
+ * launch rather than a newer view of the same state.
+ */
+export type FileOpenOutcome =
+  | {
+      /** The host launched the chosen application for the file. */
+      readonly kind: 'opened';
+    }
+  | {
+      /** A declared closed functional rejection; `stale-resource` is the one this command can take. */
+      readonly kind: 'rejected';
+      /** The fixed contract code; see {@link RejectionCode}. */
+      readonly code: RejectionCode;
     }
   | {
       /** The call failed; see {@link fatal} for whether the session survived. */
@@ -650,6 +697,22 @@ export class SessionApiClient {
   }
 
   /**
+   * Issues one guarded permission-policy request through the same guards,
+   * token family, and adoption rules as {@link fetchFileDetail}: the detail
+   * functions serve the one open detail, so a newer request of any of them
+   * supersedes an older of another (contracts/http-api.md
+   * § get-permission-policy-detail).
+   */
+  public fetchPermissionPolicyDetail(
+    sourceRelativePath: string,
+  ): Promise<PermissionPolicyDetailOutcome> {
+    return this.#fetchDetail<PermissionPolicyDetailDto>(
+      SESSION_RPC_FUNCTIONS.getPermissionPolicyDetail,
+      sourceRelativePath,
+    );
+  }
+
+  /**
    * The one guarded detail fetch both detail functions share. `Detail` is the
    * invoked function's declared result payload; the cast below is the same
    * wire-boundary typing every guarded fetch performs on its own settled
@@ -733,5 +796,43 @@ export class SessionApiClient {
       return { kind: 'newer-generation' };
     }
     return { kind: 'adopted', detail: result.data };
+  }
+
+  /**
+   * Asks the host to open one committed file in one of the applications the
+   * snapshot published (contracts/http-api.md § open-file).
+   *
+   * None of the staleness guards the read paths carry apply: the command
+   * renders nothing, so there is no state a late settlement could put on
+   * screen, and no epoch or generation comparison can make a launch that
+   * already happened un-happen. What remains is the failure handling every
+   * call shares, so a lost channel still ends the session exactly once.
+   */
+  public async openFile(
+    sourceRelativePath: string,
+    target: FileOpenTarget,
+  ): Promise<FileOpenOutcome> {
+    let settled: unknown;
+    try {
+      settled = await this.#channel.call(
+        SESSION_RPC_FUNCTIONS.openFile,
+        sourceRelativePath,
+        target,
+      );
+    } catch (cause: unknown) {
+      return this.#failureOutcome(cause);
+    }
+    const rejection = asRejectionCode(settled);
+    if (rejection !== null) {
+      return { kind: 'rejected', code: rejection };
+    }
+    if (hasErrorEnvelope(settled)) {
+      const error = new Error(
+        'The local session returned an unsupported rejection. Restart the inspector and reload this page.',
+      );
+      this.#clientData.purge('channel-failure');
+      return { kind: 'failed', error, fatal: true };
+    }
+    return { kind: 'opened' };
   }
 }

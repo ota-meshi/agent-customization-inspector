@@ -24,7 +24,8 @@
 import { computed } from 'vue';
 import { NuxtLink } from '#components';
 import RowDiagnostics from './RowDiagnostics.vue';
-import { mcpDetailRoute, mcpServerDetailRoute } from '../../mcp-detail-route';
+import { detailRoute } from '../../detail-route';
+import { mcpServerDetailRoute } from '../../mcp-detail-route';
 import { mcpComparisonRouteFor } from '../../../composables/mcp-comparison';
 import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text';
 import {
@@ -129,7 +130,7 @@ const carrierRows = computed(() => {
     })),
     detailRoute:
       props.entry.name === null
-        ? mcpDetailRoute(sourceRelativePath)
+        ? detailRoute('MCP', sourceRelativePath)
         : mcpServerDetailRoute(sourceRelativePath, props.entry.name),
     // The no-name row's members tell their two states apart (FR-028): a
     // failed extraction leaves the rows unknown, a parsed carrier with no

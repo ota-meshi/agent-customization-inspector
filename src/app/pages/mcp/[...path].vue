@@ -14,7 +14,7 @@
 // structurally — the carrier detail is `get-mcp-carrier-detail`'s own
 // result, whose shape carries no `sourceText` field (FR-007). The only
 // editors on the page show each declaration serialized as the JSON document
-// a reader can paste into their own carrier (mcp-declaration-json.ts).
+// a reader can paste into their own carrier (declared-entries-json.ts).
 //
 // The declared values render exactly as authored — credentials included, with
 // nothing masked and no control that would uncover a masked value — and no
@@ -35,9 +35,14 @@ import {
 } from 'vue';
 import { useRoute } from 'vue-router';
 import { NuxtLink } from '#components';
+import OpenFileButton from '../../components/inspection/OpenFileButton.vue';
 import SourceViewer from '../../components/inspection/SourceViewer.vue';
-import { declarationJsonText } from '../../components/mcp-declaration-json';
-import { decodeMcpServerRouteName, mcpDetailRoute } from '../../components/mcp-detail-route';
+import { declaredEntriesJsonText } from '../../components/declared-entries-json';
+import {
+  decodeDetailRoutePath,
+  detailRoute,
+  fromJsonStringBody,
+} from '../../components/detail-route';
 import { usePageOwnership } from '../../composables/page-ownership';
 import { VENDOR_SURFACE_TEXT } from '../../../shared/registries/behavior-text';
 import { SESSION_VIEW_STATE } from '../../session/view-state';
@@ -71,7 +76,11 @@ const route = useRoute();
  */
 const openPath = computed((): string => {
   const parameter = route.params['path'];
-  return typeof parameter === 'string' ? parameter : (parameter?.join('/') ?? '');
+  // Each segment arrives percent-decoded but still spelled as the well-formed
+  // text the link carried, so the escape the encoder applied is undone here:
+  // a lone surrogate in an authored entry name round-trips to the path the
+  // inventory published (`detail-route.ts`).
+  return decodeDetailRoutePath(typeof parameter === 'string' ? [parameter] : (parameter ?? []));
 });
 
 /**
@@ -83,10 +92,10 @@ const openPath = computed((): string => {
  */
 const openServerName = computed((): string | null => {
   const parameter = route.query['server'];
-  // The query spelling is `encodeMcpServerRouteName`'s: decoding it here is
+  // The query spelling is `toJsonStringBody`'s: decoding it here is
   // what lets a name the URL cannot carry raw — a lone surrogate strict JSON
   // resolves from an authored escape — select its own declaration.
-  return typeof parameter === 'string' ? decodeMcpServerRouteName(parameter) : null;
+  return typeof parameter === 'string' ? fromJsonStringBody(parameter) : null;
 });
 
 const carrierDetail = sessionViewState.carrierDetail;
@@ -194,7 +203,7 @@ const pathIsSpelledOut = computed(() => pathText.value !== escapeControlCharacte
  * The carrier's file-unit route, which the declaration view's owner line
  * links to — the same destination the record's carrier line offers.
  */
-const carrierRoute = computed(() => mcpDetailRoute(openPath.value));
+const carrierRoute = computed(() => detailRoute('MCP', openPath.value));
 
 /**
  * The selected declaration's name as the heading shows it, through the same
@@ -309,11 +318,11 @@ const serverBlocks = computed(() =>
         )
         .join(', '),
       // The declaration as the pretty-printed JSON a reader can paste into
-      // their own carrier (mcp-declaration-json.ts): the keys the file
+      // their own carrier (declared-entries-json.ts): the keys the file
       // wrote, in the file's own order, every value as resolved (FR-007). A
       // fieldless declaration is the empty object `{}`, an authored fact
       // shown rather than a blank panel.
-      jsonText: declarationJsonText(server.fields),
+      jsonText: declaredEntriesJsonText(server.fields),
       // The carrier view's per-server comparison entry (FR-011): each name
       // compares within its own row, so the link is the block's rather than
       // the page's. The declaration view leaves it null — its one link is
@@ -519,22 +528,32 @@ onBeforeUnmount(() => {
          rather than the kind order's default tab. -->
     <p><NuxtLink to="/?kind=MCP">Back to the inventory</NuxtLink></p>
 
-    <h2 ref="heading" tabindex="-1" :aria-label="headingAccessibleText">
-      <!-- The record's own identity heads the page: the declared server name
-           for a declaration view — the same spelling its inventory record
-           shows — and the carrier's path for the file-unit view; either is
-           escaped for presentation, never a locator anything can open
-           (FR-024, FR-030). -->
-      <template v-if="openPath === ''">{{ CUSTOMIZATION_KIND_TEXT.MCP }}</template>
-      <span
-        v-else-if="serverNameText !== null"
-        :class="{ 'aci-authored-text': !serverNameIsSpelledOut }"
-        >{{ serverNameText }}</span
-      >
-      <span v-else class="aci-path" :class="{ 'aci-authored-text': !pathIsSpelledOut }">{{
-        pathText
-      }}</span>
-    </h2>
+    <div class="aci-mcp-detail__title">
+      <h2 ref="heading" tabindex="-1" :aria-label="headingAccessibleText">
+        <!-- The record's own identity heads the page: the declared server name
+             for a declaration view — the same spelling its inventory record
+             shows — and the carrier's path for the file-unit view; either is
+             escaped for presentation, never a locator anything can open
+             (FR-024, FR-030). -->
+        <template v-if="openPath === ''">{{ CUSTOMIZATION_KIND_TEXT.MCP }}</template>
+        <span
+          v-else-if="serverNameText !== null"
+          :class="{ 'aci-authored-text': !serverNameIsSpelledOut }"
+          >{{ serverNameText }}</span
+        >
+        <span v-else class="aci-path" :class="{ 'aci-authored-text': !pathIsSpelledOut }">{{
+          pathText
+        }}</span>
+      </h2>
+      <!-- The carrier view heads itself with the carrier's path, so the link
+           that opens it belongs on that line. A declaration view is headed by
+           a server name and carries the link beside its "Declared in" path
+           below instead. -->
+      <OpenFileButton
+        v-if="openDetail !== null && openServerName === null"
+        :source-relative-path="openDetail.file.sourceRelativePath"
+      />
+    </div>
 
     <!-- Stable rather than inserted with the state it reports, because a
          region that appears together with its message is not reliably read. -->
@@ -596,6 +615,9 @@ onBeforeUnmount(() => {
         <p v-if="openServerName !== null">
           Declared in
           <NuxtLink :to="carrierRoute" class="aci-path aci-authored-text">{{ pathText }}</NuxtLink>
+          <!-- Beside the carrier's path, because that is the file it opens —
+               the declaration this page is about lives inside it. -->
+          <OpenFileButton :source-relative-path="openDetail.file.sourceRelativePath" />
         </p>
         <!-- Both views add what the read produced, and nothing else: the
              carrier's own file facts. Its source text is deliberately not on
@@ -731,8 +753,17 @@ onBeforeUnmount(() => {
    block is chrome; the authored path may have no break opportunities of its
    own, and without the wrap a long one forces sideways scrolling at narrow
    widths and 200% zoom (WCAG 1.4.10). */
+/* The heading and the link that opens the file it names on one line, wrapping
+   together when the path is long. */
+.aci-mcp-detail__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  margin-block-end: 0.5rem;
+}
+
 .aci-mcp-detail h2 {
-  margin: 0.25rem 0 0.5rem;
+  margin: 0.25rem 0 0;
   overflow-wrap: anywhere;
 }
 </style>

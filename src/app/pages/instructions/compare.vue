@@ -33,6 +33,7 @@
 // the comparison state owns: leaving the route closes it, a client-data
 // purge clears it, and a commit drops the previous generation's view while
 // this page re-requests the same pair under the new snapshot (FR-030).
+import { fromJsonStringBody } from '../../components/detail-route';
 import {
   computed,
   inject,
@@ -61,7 +62,7 @@ import { FILE_DETAIL_KIND_TEXT } from '../../../shared/api-text';
 import type {
   FileDetailDto,
   InstructionInventoryEntryDto,
-  InstructionRecognitionDto,
+  FileRecognitionDto,
 } from '../../../shared/api-types';
 
 const sessionViewState = inject(SESSION_VIEW_STATE);
@@ -88,10 +89,15 @@ const router = useRouter();
  */
 function queryPath(name: string): string {
   const parameter = route.query[name];
+  // Decoded through the spelling the link was built with, so a path holding
+  // any character a file name can reaches the comparison as it was published
+  // (`detail-route.ts`).
   if (typeof parameter === 'string') {
-    return parameter;
+    return fromJsonStringBody(parameter);
   }
-  return Array.isArray(parameter) && typeof parameter[0] === 'string' ? parameter[0] : '';
+  return Array.isArray(parameter) && typeof parameter[0] === 'string'
+    ? fromJsonStringBody(parameter[0])
+    : '';
 }
 
 /** The first compared file's Source-relative Path (FR-030). */
@@ -329,7 +335,7 @@ const readyView = computed(() => {
   // The inventory's recognitions of one compared file, resolved from the
   // owning row the pair already stands on: the row is where the facts live
   // (FR-030), so no second per-path lookup is built beside it.
-  const recognitionsOf = (path: string): readonly InstructionRecognitionDto[] =>
+  const recognitionsOf = (path: string): readonly FileRecognitionDto[] =>
     owningRow.value?.files.find((file) => file.sourceRelativePath === path)?.recognitions ?? [];
   // Every rendered coordinate is the adopted detail's own path, never the
   // pending-aware picker coordinate: a pick updates the coordinates one

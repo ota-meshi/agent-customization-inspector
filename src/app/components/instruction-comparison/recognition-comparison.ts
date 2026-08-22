@@ -16,7 +16,7 @@
 // facts, which is why this is its own module rather than a widening
 // (spec.md § Clarifications Session 2026-08-14): a recognition carries the
 // surfaces its admitting rules rest on — the layering fact the inventory
-// publishes (api-types.ts § InstructionRecognitionDto) — and there is never
+// publishes (api-types.ts § FileRecognitionDto) — and there is never
 // an absent side: an instruction comparison is exactly two committed files.
 //
 // The comparison is literal and descriptive by construction (FR-012): it
@@ -30,7 +30,7 @@ import { SUPPORTED_TOOL_ORDER, type SupportedTool } from '../../../shared/entiti
 import type {
   FileDetailDto,
   DeclaredEntryDto,
-  InstructionRecognitionDto,
+  FileRecognitionDto,
 } from '../../../shared/api-types';
 import type { VendorSurface } from '../../../shared/registries/behavior-types';
 
@@ -45,7 +45,7 @@ export interface InstructionComparisonSideInput {
   /** The compared file's detail, exactly as adopted. */
   readonly detail: FileDetailDto;
   /** The inventory's recognitions of this file, one per recognizing tool. */
-  readonly recognitions: readonly InstructionRecognitionDto[];
+  readonly recognitions: readonly FileRecognitionDto[];
 }
 
 /**
@@ -135,7 +135,7 @@ export class InstructionToolRecognitionRow {
    * The surfaces the first file's recognition rests on, in the inventory's
    * closed surface order — the typed layering fact of this kind, published
    * beside the tool because the tool alone does not say where the file is
-   * read from (api-types.ts § InstructionRecognitionDto). Empty exactly when
+   * read from (api-types.ts § FileRecognitionDto). Empty exactly when
    * the side is 'not-recognized'; never a claim that a surface loaded the
    * file (FR-009).
    */

@@ -1125,6 +1125,523 @@ export function buildCodexMcpFixture(
   };
 }
 
+/** One built Claude permission-policy fixture repository (T1105). */
+export interface ClaudePermissionsFixture {
+  /** The absolute fixture root to scan. */
+  readonly root: string;
+  /**
+   * The shared project settings file, which declares a `permissions` object:
+   * one permissions row, whose detail publishes the block and never the keys
+   * around it.
+   */
+  readonly declaringCarrierPath: string;
+  /**
+   * The personal settings file, which declares its own `permissions` object —
+   * a second row, because the row's identity is the declaring file's path.
+   */
+  readonly localCarrierPath: string;
+  /**
+   * A second fixture root whose shared settings file strict JSON cannot parse:
+   * its extraction fails all-or-nothing, so the block is unknown rather than
+   * absent (FR-028). Its own root because the two admitted filenames of one
+   * root are already the declaring cases.
+   */
+  readonly malformedRoot: string;
+  /** The rule strings the shared file's `allow` array declares, in authored order. */
+  readonly allowRules: readonly string[];
+  /**
+   * A marker the shared file declares beside `permissions`, in a settings key
+   * of its own: no permissions surface may show it, because the keys around
+   * the block are the settings recognition's content (FR-007).
+   */
+  readonly unrelatedSettingsMarker: string;
+  /**
+   * A settings file in a subdirectory: the vendor documents the project scope
+   * at the launch directory alone, so no selector reaches this one.
+   */
+  readonly nestedSettingsPath: string;
+  /**
+   * A third fixture root whose two settings files declare no `permissions`
+   * object at all: admitted, readable candidates that gain no recognition and
+   * reach no row.
+   */
+  readonly policylessRoot: string;
+  /** One of that root's files, for a test that names a path rather than a set. */
+  readonly policylessCarrierPath: string;
+}
+
+/** One built Claude rule fixture repository (T419). */
+export interface ClaudeRuleFixture {
+  /** The absolute fixture root to scan. */
+  readonly root: string;
+  /** Which capability-gated cases exist; see {@link RepositoryFixtureCapabilities}. */
+  readonly capabilities: RepositoryFixtureCapabilities;
+  /**
+   * Every Source-relative Path the `claude.repo.rules` allowlist must admit,
+   * sorted exactly as the scan publishes them. Capability-gated members are
+   * present only when the corresponding capability is.
+   */
+  readonly expectedRulePaths: readonly string[];
+  /** The rule file whose frontmatter declares `paths` globs, and the globs it declares. */
+  readonly pathScopedRulePath: string;
+  /** The `paths` values that file declares, in authored order. */
+  readonly declaredPaths: readonly string[];
+  /**
+   * The rule file whose frontmatter is malformed YAML: its extraction fails
+   * all-or-nothing while the complete source stays displayed (FR-028).
+   */
+  readonly malformedRulePath: string;
+  /**
+   * The rule file whose body holds a literal credential and an environment
+   * reference, so a test can prove neither reaches the inventory and neither
+   * is resolved (FR-026, FR-027).
+   */
+  readonly secretRulePath: string;
+  /**
+   * Paths no shipped rule of any product may admit: the `.claude` locations
+   * this release leaves out, the spelling variants one step from the
+   * selector's literals, and VCS internals.
+   */
+  readonly nearMissPaths: readonly string[];
+  /**
+   * Files another product owns and this one recognizes, listed apart from
+   * {@link nearMissPaths} because a shipped rule does admit them — just not
+   * the Claude rule one. They are what makes "a Claude rule file acquires no
+   * Copilot recognition, and a Copilot file no rule one" a positive case in
+   * the tree.
+   */
+  readonly otherVendorPaths: readonly string[];
+}
+
+/**
+ * Builds the canonical Claude rule fixture repository (T419).
+ *
+ * The admitted set is every `.md` file under any `.claude/rules/` subtree,
+ * which is two documented recursions at once: nested `.claude/rules/`
+ * directories load on demand, and all `.md` files inside one rules directory
+ * are discovered recursively. The tree exercises both — a root rules
+ * directory with a subdirectory, and a `packages/api/.claude/rules/` with one
+ * of its own — beside the near misses one segment away from each.
+ *
+ * The admitted files carry what a Claude rule carries: a `paths` frontmatter
+ * scoping a rule to globs this product never evaluates, a rule with no
+ * frontmatter at all, malformed YAML whose extraction fails while the source
+ * stays displayed, and a literal credential and environment reference that
+ * must reach no inventory and never be resolved.
+ *
+ * Copilot compatibility is proved by absence: the `.claude` instruction
+ * locations Copilot documents are the ones this release leaves out, so the
+ * tree holds Copilot's own files and the Claude rule files, and no file is
+ * recognized as both.
+ */
+/**
+ * Builds a Claude permission-policy fixture (T1105): the two root settings
+ * files that declare a policy, one that declares none, one strict JSON
+ * rejects, and a subdirectory copy no selector reaches.
+ *
+ * The declared blocks carry a literal credential and an environment reference
+ * so a test can prove both are shown exactly as authored and neither is
+ * resolved (FR-025, FR-026), and rule strings that name tools, commands,
+ * paths, and a domain so a test can prove none of them is resolved or
+ * evaluated (FR-019).
+ */
+export function buildClaudePermissionsFixture(
+  prefix = 'inspector-claude-permissions',
+  root = createRepositoryFixtureRoot(prefix),
+): ClaudePermissionsFixture {
+  const allowRules = ['Bash(npm run test:*)', 'Read(./src/**)', 'WebFetch(domain:example.com)'];
+  // The shared project file: a declared policy beside settings keys that are
+  // the `settings/config` recognition's content and reach no permissions
+  // surface.
+  write(
+    root,
+    '.claude/settings.json',
+    `${JSON.stringify(
+      {
+        $schema: 'https://json.schemastore.org/claude-code-settings.json',
+        permissions: {
+          allow: allowRules,
+          deny: [`Read(./${FIXTURE_SECRET_LITERAL}.env)`],
+          ask: ['Bash(git push *)'],
+          defaultMode: 'acceptEdits',
+          additionalDirectories: ['../docs/'],
+        },
+        env: { CLAUDE_FIXTURE_ENDPOINT: FIXTURE_ENVIRONMENT_REFERENCE },
+        companyAnnouncements: ['fixture-unrelated-settings-marker'],
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  // The personal file: its own policy, so the two files are two rows.
+  write(
+    root,
+    '.claude/settings.local.json',
+    `${JSON.stringify({ permissions: { allow: ['Bash(git status)'] } }, null, 2)}\n`,
+  );
+  // A near miss: the project scope is the launch directory's own `.claude/`.
+  write(root, 'packages/api/.claude/settings.json', '{ "permissions": { "allow": [] } }\n');
+  // Two more roots, because one root has only two admitted filenames and both
+  // are the declaring cases above: a settings file that declares no policy —
+  // admitted, readable, and no row — and one strict JSON cannot parse.
+  const policylessRoot = createRepositoryFixtureRoot(`${prefix}-policyless`);
+  write(policylessRoot, '.claude/settings.json', '{ "model": "opus" }\n');
+  write(policylessRoot, '.claude/settings.local.json', '{ "env": { "A": "1" } }\n');
+  const malformedRoot = createRepositoryFixtureRoot(`${prefix}-malformed`);
+  write(malformedRoot, '.claude/settings.json', '{ "permissions": { "allow": [ }\n');
+  return {
+    root,
+    declaringCarrierPath: '.claude/settings.json',
+    localCarrierPath: '.claude/settings.local.json',
+    malformedRoot,
+    allowRules,
+    unrelatedSettingsMarker: 'fixture-unrelated-settings-marker',
+    nestedSettingsPath: 'packages/api/.claude/settings.json',
+    policylessRoot,
+    policylessCarrierPath: '.claude/settings.local.json',
+  };
+}
+
+export function buildClaudeRuleFixture(
+  prefix = 'inspector-claude-rules',
+  root = createRepositoryFixtureRoot(prefix),
+): ClaudeRuleFixture {
+  const declaredPaths = ['src/api/**/*.ts', 'src/**/*.{ts,tsx}'];
+  // A path-scoped rule: the globs are declared values this product publishes
+  // and never runs against the filesystem.
+  write(
+    root,
+    '.claude/rules/api.md',
+    [
+      '---',
+      'paths:',
+      ...declaredPaths.map((glob) => `  - "${glob}"`),
+      '---',
+      '',
+      '# API Development Rules',
+      '',
+      '- All API endpoints must include input validation',
+      '',
+    ].join('\n'),
+  );
+  // A rule with no frontmatter: the vendor loads it unconditionally, and this
+  // product publishes it with no declarations.
+  write(root, '.claude/rules/code-style.md', '# Code style\n\n- Two spaces.\n');
+  // Recursive inside one rules directory: the page shows `frontend/` and
+  // `backend/` subdirectories doing exactly this.
+  write(root, '.claude/rules/frontend/components.md', '# Components\n\n- One per file.\n');
+  // Malformed YAML frontmatter: extraction fails all-or-nothing while the
+  // complete source stays displayed (FR-028).
+  write(root, '.claude/rules/broken.md', '---\npaths: [src/**\n---\n\n# Broken\n');
+  // The credential and environment-reference case: both are authored text a
+  // rule file happens to contain, and neither may reach an inventory row or
+  // be resolved against the process environment (FR-026, FR-027).
+  write(
+    root,
+    '.claude/rules/secrets.md',
+    [
+      '# Deployment',
+      '',
+      `- Never commit ${FIXTURE_SECRET_LITERAL}.`,
+      `- The endpoint is ${FIXTURE_ENVIRONMENT_REFERENCE}.`,
+      '',
+    ].join('\n'),
+  );
+  // A nested rules directory, which the page documents as loading on demand:
+  // a descendant inventory rather than a guess at a session's working
+  // directory.
+  write(root, 'packages/api/.claude/rules/http.md', '# HTTP\n\n- Prefer 204.\n');
+  write(root, 'packages/api/.claude/rules/deep/nested/timeouts.md', '# Timeouts\n');
+
+  // Near miss: the container literals are exact.
+  write(root, '.claude/rule/code-style.md', 'singular rules dir\n');
+  write(root, 'claude/rules/code-style.md', 'no leading dot\n');
+  write(root, 'rules/code-style.md', 'no .claude above it\n');
+  // Near miss: the terminal step is the extension, in its own directory so a
+  // case-insensitive filesystem cannot collide it with an admitted file.
+  write(root, '.claude/rules/uppercase/STYLE.MD', 'wrong case\n');
+  write(root, '.claude/rules/notes.md.bak', 'backup suffix\n');
+  write(root, '.claude/rules/script.sh', 'echo not markdown\n');
+  // Near miss: VCS internals are excluded from traversal entirely, which the
+  // leading recursive step would otherwise reach.
+  write(root, '.git/.claude/rules/hidden.md', 'vcs internal\n');
+  // Near miss: an installed dependency tree is never entered.
+  write(root, 'node_modules/pkg/.claude/rules/vendored.md', 'installed package\n');
+  // An unrelated file sharing no segment with the selector.
+  write(root, 'README.md', 'unrelated\n');
+
+  // Other products' own customizations, admitted by their own rules and by no
+  // Claude rule one. The `.claude/CLAUDE.md` beside the rules directory is the
+  // sharpest case: it is a Claude instruction file, not a rule.
+  write(root, '.claude/CLAUDE.md', '# Directory-form project instructions\n');
+  write(root, '.github/copilot-instructions.md', '# Repository-wide instructions\n');
+
+  const expectedRulePaths = [
+    '.claude/rules/api.md',
+    '.claude/rules/broken.md',
+    '.claude/rules/code-style.md',
+    '.claude/rules/frontend/components.md',
+    '.claude/rules/secrets.md',
+    'packages/api/.claude/rules/deep/nested/timeouts.md',
+    'packages/api/.claude/rules/http.md',
+  ];
+  const nearMissPaths = [
+    '.claude/rule/code-style.md',
+    '.claude/rules/notes.md.bak',
+    '.claude/rules/script.sh',
+    '.claude/rules/uppercase/STYLE.MD',
+    '.git/.claude/rules/hidden.md',
+    'claude/rules/code-style.md',
+    'claude-rules-linked-target.md',
+    'node_modules/pkg/.claude/rules/vendored.md',
+    'rules/code-style.md',
+    'shared-claude-rules/security.md',
+  ];
+
+  // Linked cases are capability-gated; see {@link buildCodexSkillFixture}. The
+  // vendor documents `.claude/rules/` supporting symbolic links explicitly,
+  // both for a linked directory and for a linked file.
+  const symlinks = tryMaterializeSymlinks(
+    root,
+    () => {
+      write(root, 'claude-rules-linked-target.md', '# shared rule\n');
+      write(root, 'shared-claude-rules/security.md', '# shared security rule\n');
+    },
+    () => {
+      symlinkSync(
+        join(root, 'claude-rules-linked-target.md'),
+        join(root, '.claude/rules/security.md'),
+      );
+      symlinkSync(join(root, 'shared-claude-rules'), join(root, '.claude/rules/shared'));
+      // A link whose target is missing is that candidate's `file-unreadable`
+      // Diagnostic, not an absent file.
+      symlinkSync(join(root, 'no-such-rule.md'), join(root, '.claude/rules/broken-link.md'));
+    },
+    ['.claude/rules/security.md', '.claude/rules/shared', '.claude/rules/broken-link.md'],
+  );
+  if (symlinks) {
+    expectedRulePaths.push(
+      '.claude/rules/broken-link.md',
+      '.claude/rules/security.md',
+      '.claude/rules/shared/security.md',
+    );
+  }
+
+  expectedRulePaths.sort();
+  nearMissPaths.sort();
+
+  return {
+    root,
+    capabilities: { symlinks },
+    expectedRulePaths,
+    pathScopedRulePath: '.claude/rules/api.md',
+    declaredPaths,
+    malformedRulePath: '.claude/rules/broken.md',
+    secretRulePath: '.claude/rules/secrets.md',
+    nearMissPaths,
+    otherVendorPaths: ['.claude/CLAUDE.md', '.github/copilot-instructions.md'],
+  };
+}
+
+/** One built Codex rule fixture repository (T402). */
+export interface CodexRuleFixture {
+  /** The absolute fixture root to scan. */
+  readonly root: string;
+  /** Which capability-gated cases exist; see {@link RepositoryFixtureCapabilities}. */
+  readonly capabilities: RepositoryFixtureCapabilities;
+  /**
+   * Every Source-relative Path the `codex.repo.rules` allowlist must admit,
+   * sorted exactly as the scan publishes them. Capability-gated members are
+   * present only when the corresponding capability is.
+   */
+  readonly expectedRulePaths: readonly string[];
+  /**
+   * The Source-relative Path of the rule file whose `prefix_rule()` holds a
+   * literal credential and an environment reference, so a test can prove
+   * neither reaches the inventory: a rule's content is the detail's, one file
+   * at a time (FR-026, FR-027).
+   */
+  readonly secretRulePath: string;
+  /**
+   * The Source-relative Path of the rule file whose Starlark is malformed. It
+   * is admitted and published like any other: this phase attempts no
+   * extraction for the `rule` kind, so a file the vendor could not load is
+   * still a rule file the inventory lists.
+   */
+  readonly malformedRulePath: string;
+  /**
+   * Paths no shipped rule of any product may admit: the descendant `.codex`
+   * layer, the nested subdirectory the page establishes no recursion for, and
+   * the spelling variants one step from the selector's literals.
+   */
+  readonly nearMissPaths: readonly string[];
+  /**
+   * Files another product owns and this one recognizes, listed apart from
+   * {@link nearMissPaths} because a shipped rule does admit them — just not a
+   * Codex one. They are what makes "no unrelated Claude or Copilot file
+   * becomes a Codex rule" a positive case in the tree rather than an
+   * assumption about the selector.
+   */
+  readonly otherVendorPaths: readonly string[];
+}
+
+/**
+ * Builds the canonical Codex rule fixture repository (T402).
+ *
+ * The admitted set is the direct `.rules` children of the Repository root's
+ * own `.codex/rules/`, and every other case in the tree sits one segment away
+ * from it: the nested subdirectory the page documents no recursion for, the
+ * descendant `.codex/rules/` belonging to a runtime working directory this
+ * product never selects, the singular and dotless directory spellings, a
+ * wrong-case extension, and a root `rules/` with no `.codex` above it.
+ *
+ * The admitted files carry what a rule file carries: a literal credential and
+ * an environment reference that must reach no inventory and must never be
+ * resolved, an inert command reference and an inert path reference that grant
+ * no read or execution authority, and one file whose Starlark is malformed.
+ * A rule declaring `forbidden` sits beside one declaring `allow`, so a tree
+ * that proves nothing is enforced also contains a decision worth enforcing.
+ *
+ * Trust is deliberately not modelled by a file: whether the project `.codex/`
+ * layer is trusted is a runtime input this product never observes, so the
+ * fixture's job is to make the inventory state it nowhere (FR-009).
+ */
+export function buildCodexRuleFixture(
+  prefix = 'inspector-codex-rule-files',
+  root = createRepositoryFixtureRoot(prefix),
+): CodexRuleFixture {
+  // A plain rule at the root layer, with an inert command reference: a
+  // pattern names a command and never runs one.
+  write(
+    root,
+    '.codex/rules/default.rules',
+    [
+      'prefix_rule(',
+      '    pattern = ["gh", "pr", "view"],',
+      '    decision = "prompt",',
+      '    justification = "Viewing PRs is allowed with approval",',
+      ')',
+      '',
+    ].join('\n'),
+  );
+  // A restrictive rule beside it: a `forbidden` decision is inert here too.
+  write(
+    root,
+    '.codex/rules/deploy.rules',
+    [
+      '# Blocks the deploy script outside the sandbox.',
+      'prefix_rule(',
+      '    pattern = ["./scripts/deploy.sh"],',
+      '    decision = "forbidden",',
+      '    justification = "Use the release workflow instead.",',
+      ')',
+      '',
+    ].join('\n'),
+  );
+  // The credential and environment-reference case: both are authored text a
+  // rule file happens to contain, and neither may reach an inventory row or
+  // be resolved against the process environment (FR-026, FR-027).
+  write(
+    root,
+    '.codex/rules/secrets.rules',
+    [
+      'prefix_rule(',
+      `    pattern = ["curl", "-H", "Authorization: Bearer ${FIXTURE_SECRET_LITERAL}"],`,
+      '    decision = "forbidden",',
+      `    justification = "Endpoint ${FIXTURE_ENVIRONMENT_REFERENCE} is not reachable from a sandbox.",`,
+      ')',
+      '',
+    ].join('\n'),
+  );
+  // Malformed Starlark: the vendor could not load this file, and this release
+  // extracts nothing from a rule file, so it is admitted and listed like any
+  // other rule.
+  write(root, '.codex/rules/malformed.rules', 'prefix_rule(\n    pattern = ["gh"\n');
+
+  // Near miss: the page documents no recursion under a layer's `rules/`, so a
+  // subdirectory below it is not admitted.
+  write(root, '.codex/rules/team/review.rules', 'nested subdirectory\n');
+  // Near miss: a descendant `.codex` layer belongs to a runtime working
+  // directory this product never selects, exactly as the nested
+  // `config.toml` and `AGENTS.md` do.
+  write(root, 'packages/api/.codex/rules/default.rules', 'descendant layer\n');
+  // Near miss: the extension is the selector's own step.
+  write(root, '.codex/rules/notes.rules.bak', 'backup suffix\n');
+  write(root, '.codex/rules/README.md', 'sibling of another kind\n');
+  // Near miss: the terminal step is case-sensitive, in its own directory so a
+  // case-insensitive filesystem cannot collide it with an admitted file.
+  write(root, '.codex/uppercase/deploy.RULES', 'wrong case\n');
+  // Near miss: the container literals are exact.
+  write(root, '.codex/rule/default.rules', 'singular rules dir\n');
+  write(root, 'codex/rules/default.rules', 'no leading dot\n');
+  write(root, 'rules/default.rules', 'no .codex above it\n');
+  // Near miss: VCS internals are excluded from traversal entirely.
+  write(root, '.git/.codex/rules/hidden.rules', 'vcs internal\n');
+  // The User layer this rule may never read, spelled inside the repository so
+  // a test can prove the path is a near miss rather than a Source.
+  write(root, 'home/.codex/rules/user.rules', 'user layer\n');
+  // An unrelated file sharing no segment with the selector.
+  write(root, 'README.md', 'unrelated\n');
+  // Other products' own customizations, admitted by their own rules and by no
+  // Codex one: the Codex program starts at `.codex`, so neither can arrive in
+  // the rule inventory.
+  write(root, '.claude/CLAUDE.md', '# claude instructions\n');
+  write(root, '.github/copilot-instructions.md', '# copilot instructions\n');
+
+  const expectedRulePaths = [
+    '.codex/rules/default.rules',
+    '.codex/rules/deploy.rules',
+    '.codex/rules/malformed.rules',
+    '.codex/rules/secrets.rules',
+  ];
+  const nearMissPaths = [
+    '.codex/rule/default.rules',
+    '.codex/rules/README.md',
+    '.codex/rules/notes.rules.bak',
+    '.codex/rules/team/review.rules',
+    '.codex/uppercase/deploy.RULES',
+    '.git/.codex/rules/hidden.rules',
+    'README.md',
+    'codex-linked-target.rules',
+    'codex/rules/default.rules',
+    'home/.codex/rules/user.rules',
+    'packages/api/.codex/rules/default.rules',
+    'rules/default.rules',
+  ];
+
+  // Linked cases are capability-gated; see {@link buildCodexSkillFixture}.
+  const symlinks = tryMaterializeSymlinks(
+    root,
+    () => {
+      write(root, 'codex-linked-target.rules', 'prefix_rule(pattern = ["ls"])\n');
+    },
+    () => {
+      // A symlinked rule file is read transparently through its target,
+      // because Codex loading the same path would resolve it too (FR-024).
+      symlinkSync(join(root, 'codex-linked-target.rules'), join(root, '.codex/rules/linked.rules'));
+      // A link whose target is missing is that candidate's `file-unreadable`
+      // Diagnostic, not an absent file.
+      symlinkSync(join(root, 'no-such-target.rules'), join(root, '.codex/rules/broken.rules'));
+    },
+    ['.codex/rules/linked.rules', '.codex/rules/broken.rules'],
+  );
+  if (symlinks) {
+    expectedRulePaths.push('.codex/rules/broken.rules', '.codex/rules/linked.rules');
+  }
+
+  expectedRulePaths.sort();
+
+  return {
+    root,
+    capabilities: { symlinks },
+    expectedRulePaths,
+    secretRulePath: '.codex/rules/secrets.rules',
+    malformedRulePath: '.codex/rules/malformed.rules',
+    nearMissPaths,
+    otherVendorPaths: ['.claude/CLAUDE.md', '.github/copilot-instructions.md'],
+  };
+}
+
 /** One built Claude instruction fixture repository (T226). */
 export interface ClaudeInstructionFixture {
   /** The absolute fixture root to scan. */
@@ -1339,9 +1856,12 @@ export interface ClaudeMcpFixture {
   readonly plainSkillPath: string;
   /**
    * Files of future owner families that carry MCP declarations but that no
-   * shipped rule admits — a plugin manifest, a settings file, an agent file.
-   * They must produce no candidate, no recognition, and no row: an owner
-   * adapter is dispatched only on an independently admitted owner.
+   * shipped rule admits — a plugin manifest, an agent file. They must produce
+   * no candidate, no recognition, and no row: an owner adapter is dispatched
+   * only on an independently admitted owner. The settings file this fixture
+   * also writes is not among them any more: `claude.repo.permissions` admits
+   * it for the policy it may declare, which is a candidacy of its own kind and
+   * still no MCP one.
    */
   readonly unadmittedOwnerPaths: readonly string[];
   /**
@@ -1503,11 +2023,7 @@ export function buildClaudeMcpFixture(
     expectedCarrierServerNames: ['context7', 'docs-http', 'odd'],
     mcpFrontmatterSkillPath: '.claude/skills/deploy/SKILL.md',
     plainSkillPath: '.claude/skills/plain/SKILL.md',
-    unadmittedOwnerPaths: [
-      '.claude-plugin/plugin.json',
-      '.claude/agents/reviewer.md',
-      '.claude/settings.json',
-    ],
+    unadmittedOwnerPaths: ['.claude-plugin/plugin.json', '.claude/agents/reviewer.md'],
     commandTargetPath: 'scripts/context7.sh',
     nearMissPaths: [
       '.claude.json',
@@ -1848,7 +2364,7 @@ export interface PriorityMcpFixture {
    * route's two sides, so it renders no pickers, and the declarations
    * differ field by field so the diff shows a real difference. The two
    * sides also walk the canonical serialization's spellings
-   * (mcp-declaration-json.ts): scrambled authored key orders that both
+   * (declared-entries-json.ts): scrambled authored key orders that both
    * serialize into the one canonical order, numbers and booleans rendered
    * bare, a `007` string that keeps its quoting, and multiline notes whose
    * newlines spell their `\n` escapes.
@@ -2003,7 +2519,9 @@ export function buildPriorityMcpFixture(
     pairedServerName,
     nearMissPaths: [
       '.claude-plugin/plugin.json',
-      '.claude/settings.json',
+      // `.claude/settings.json` is not here: `claude.repo.permissions` admits
+      // it for the policy it may declare, so it is a candidate of its own kind
+      // — and still no MCP one, which the MCP rows this fixture asserts show.
       '.git/.mcp.json',
       '.github/agents/deploy.md',
       '.mcp.json.bak',
@@ -2052,6 +2570,12 @@ export interface CopilotInstructionFixture {
    * that no *Copilot* rule admits them.
    */
   readonly copilotNearMissPaths: readonly string[];
+  /**
+   * The Claude rule files this tree holds. They are Copilot near misses and
+   * Claude candidates at once: `claude.repo.rules` admits them, so a scan
+   * reads them, while no Copilot rule reaches `.claude/rules/` at all.
+   */
+  readonly expectedClaudeRulePaths: readonly string[];
   /**
    * The admitted path-instruction file declaring `applyTo`. Its declaration
    * is what it really governs, and nothing in this phase reads it: the row's
@@ -2235,6 +2759,7 @@ export function buildCopilotInstructionFixture(
       'packages/api/CLAUDE.md',
     ],
     expectedCodexInstructionPaths: ['AGENTS.md'],
+    expectedClaudeRulePaths: ['.claude/rules/style.md'],
     copilotNearMissPaths: [
       '.claude/CLAUDE.md',
       '.claude/rules/style.md',
@@ -2322,6 +2847,13 @@ export interface AllVendorInstructionFixture {
    * published (FR-028) — the other deterministic file-confined outcome.
    */
   readonly malformedInstructionPath: string;
+  /**
+   * The Claude rule files this tree holds. They are near misses for every
+   * instruction rule and candidates of `claude.repo.rules` at once, so a scan
+   * reads them and they are listed here rather than among the paths nothing
+   * admits.
+   */
+  readonly expectedClaudeRulePaths: readonly string[];
   /**
    * Paths one step away from an admitted file that no shipped rule or
    * derivation of any product may admit; see
@@ -2468,11 +3000,14 @@ export function buildAllVendorInstructionFixture(
 
   // Near miss: the target of the authored import. No scan may open it.
   write(root, 'docs/setup.md', '# setup\n');
+  // A Claude rule file, which no instruction rule of any product admits and
+  // `claude.repo.rules` does — the case that keeps "excluded from Copilot's
+  // instruction scope" distinct from "in no inventory at all".
+  write(root, '.claude/rules/style.md', '# Claude-compatible rule\n');
   // Excluded by initial Copilot scope, written so their absence from every
-  // product's inventory except Claude's is observable
+  // product's inventory is observable
   // (`copilot.excluded.additional-standard-locations`,
   // `copilot.excluded.extra-directories`).
-  write(root, '.claude/rules/style.md', '# Claude-compatible rule\n');
   write(root, 'packages/api/GEMINI.md', '# Nested Gemini instructions\n');
   write(root, '.copilot/instructions/personal.instructions.md', '# Configured location\n');
   write(root, 'custom-instructions/team.instructions.md', '# Configured location\n');
@@ -2545,8 +3080,8 @@ export function buildAllVendorInstructionFixture(
     expectedCopilotInstructionPaths,
     diagnosticOnlyPaths: ['packages/web/CLAUDE.md'],
     malformedInstructionPath: 'docs/CLAUDE.md',
+    expectedClaudeRulePaths: ['.claude/rules/style.md'],
     nearMissPaths: [
-      '.claude/rules/style.md',
       '.copilot/instructions/personal.instructions.md',
       '.git/AGENTS.md',
       '.git/CLAUDE.md',
@@ -2578,6 +3113,9 @@ export function buildAllVendorInstructionFixture(
         ...expectedDerivedFallbackPaths,
         ...expectedClaudeInstructionPaths,
         ...Object.values(expectedCopilotInstructionPaths).flat(),
+        // The Claude rule file the tree holds: no instruction rule admits it,
+        // and `claude.repo.rules` does.
+        '.claude/rules/style.md',
       ]),
     ].sort(),
     injectionTargetPath: 'AGENTS.md',
@@ -2596,12 +3134,19 @@ export interface AllCustomizationKindFixture {
   readonly instructionFixture: AllVendorInstructionFixture;
   /** The cross-vendor MCP fixture's own result, built into this root. */
   readonly mcpFixture: PriorityMcpFixture;
+  /** The Codex rule fixture's own result, built into this root. */
+  readonly ruleFixture: CodexRuleFixture;
+  /** The Claude rule fixture's own result, built into this root. */
+  readonly claudeRuleFixture: ClaudeRuleFixture;
+  /** The Claude permission-policy fixture's own result, built into this root. */
+  readonly claudePermissionsFixture: ClaudePermissionsFixture;
 }
 
 /**
- * Builds every `all-*` fixture into one repository (T1099): the all-tool
- * SKILL tree, the cross-vendor MCP tree, and the all-vendor instruction tree
- * share a single root, so one launch exercises all three inventories at once.
+ * Builds every kind's fixture into one repository (T1099): the all-tool SKILL
+ * tree, both vendors' rule trees, the cross-vendor MCP tree, and the
+ * all-vendor instruction tree share a single root, so one launch exercises
+ * every inventory this release publishes at once.
  *
  * The trees are disjoint except for two files both the MCP and instruction
  * builders own: the root and nested `.codex/config.toml`. Each of those
@@ -2609,7 +3154,15 @@ export interface AllCustomizationKindFixture {
  * as the concatenation of both outputs — the instruction builder's top-level
  * fallback key first, the MCP builder's server tables after it, because a
  * TOML document requires top-level keys before its first table header.
- * (`README.md` is also written by two builders, with identical bytes.)
+ *
+ * Three more paths are written twice with the later write winning, which is
+ * why the rule tree is built before the instruction tree: `README.md` is the
+ * same `unrelated` placeholder in every builder, while the rule tree's
+ * `.claude/CLAUDE.md` and `.github/copilot-instructions.md` stand in for
+ * another product's customization and the instruction tree owns the real
+ * ones. What the rule fixture claims about those two paths — that another
+ * product's rule admits them and no Codex one does — holds for either
+ * builder's bytes, because both write an instruction file of that product.
  *
  * `root` overrides where the tree is written; the default is a fresh root
  * under the OS temporary directory. The dev fixture launcher
@@ -2620,7 +3173,14 @@ export function buildAllCustomizationKindFixture(
   root = createRepositoryFixtureRoot(prefix),
 ): AllCustomizationKindFixture {
   const skillFixture = buildAllToolSkillFixture(prefix, root);
+  const ruleFixture = buildCodexRuleFixture(prefix, root);
+  const claudeRuleFixture = buildClaudeRuleFixture(prefix, root);
   const mcpFixture = buildPriorityMcpFixture(prefix, root);
+  // After the MCP builder, which writes its own `.claude/settings.json` as an
+  // unadmitted MCP owner: here that path is a permission-policy carrier, and
+  // the later write is the one this tree shows. Its `mcpServers` spelling
+  // still joins no MCP row, which is what the MCP builder's copy was for.
+  const claudePermissionsFixture = buildClaudePermissionsFixture(prefix, root);
   // Capture the MCP builder's two Codex configs before the instruction
   // builder replaces those paths with its fallback declaration.
   const sharedCodexConfigPaths = ['.codex/config.toml', 'packages/api/.codex/config.toml'];
@@ -2632,5 +3192,13 @@ export function buildAllCustomizationKindFixture(
     const fallbackDeclaration = readFileSync(join(root, path), 'utf8');
     write(root, path, `${fallbackDeclaration}\n${mcpCodexConfigs[index]!}`);
   }
-  return { root, skillFixture, instructionFixture, mcpFixture };
+  return {
+    root,
+    skillFixture,
+    instructionFixture,
+    mcpFixture,
+    ruleFixture,
+    claudeRuleFixture,
+    claudePermissionsFixture,
+  };
 }

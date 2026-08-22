@@ -150,8 +150,8 @@ digest inputとする。Heading、prose、blank line、連続table後のlineはh
 | Vendor | 英語table SHA-256 | 日本語table SHA-256 |
 |---|---|---|
 | GitHub Copilot | `3985d4c947f3bd8314e565a9ea28e55ce1df6341a764fa86e384c63907d5e40f` | `0d55ffc042eb6e41f89b4918ce09d30d4ab2e1b885781dcfffb5b7798326e538` |
-| Claude Code | `68ba8cfa6b4501c8dd022673a8e3acc95c3357bb944bd532238c2428d2abfc06` | `81f74fb9edb4a164a054bb54222a7889a1ca12a2dd1c082743d514521041c69a` |
-| OpenAI Codex | `626905f3b2a0953b7361e1cc870fbba539e2c4512945fc4ef1c8fb28f39c5346` | `0043b0b1d7d7dd4084f0064a95bbf9cf84631d60ecad73ad931f2be9abd87174` |
+| Claude Code | `36251f187c6bcd1017331129753247c3cb2dd5c52f5f4fad31bcd4efa798067e` | `c53ae8da79a2fd500400ad07b7272ce43191fc752caed88124f71a19ce118258` |
+| OpenAI Codex | `e9f9c260192a00ac1c1d8446546a2290bdc9e1b584b480ca4eb3ca6f26d9dbbc` | `8acd37b9cfc8ee7d532360db07a73151f0e7371849a54f7810a8d48bff565bdb` |
 
 Implementation freeze testは6 inputすべてを正確に再計算し、fileごとにmatching headingと連続tableが正確に1つだけ
 存在することを要求し、全digestをconstant timeで比較し、row IDと英日semantic parityを別に検証しなければならない。
@@ -216,7 +216,8 @@ conflictとして保持し、未登録のsource repositoryやissueを代替evide
 | `anthropic.claude-code.memory.locations-load` | <https://code.claude.com/docs/en/memory> | `code.claude.com` | `Choose where to put CLAUDE.md files`; `AGENTS.md`; `How CLAUDE.md files load`; `Organize rules with .claude/rules/`; `Auto memory` | `2026-08-18` |
 | `anthropic.claude-code.large-codebases.start-directory` | <https://code.claude.com/docs/en/large-codebases> | `code.claude.com` | `Choose where to start Claude`; `Layer CLAUDE.md files by directory`; `Add per-directory skills` | `2026-07-25` |
 | `anthropic.claude-code.sdk.setting-sources` | <https://code.claude.com/docs/en/agent-sdk/claude-code-features> | `code.claude.com` | `Control filesystem settings with settingSources`; `CLAUDE.md load locations` | `2026-08-18` |
-| `anthropic.claude-code.settings.scopes-precedence` | <https://code.claude.com/docs/en/settings> | `code.claude.com` | `Configuration scopes`; `Settings precedence`; `Plugin configuration` | `2026-07-25` |
+| `anthropic.claude-code.settings.scopes-precedence` | <https://code.claude.com/docs/en/settings> | `code.claude.com` | `Settings files and who they affect`、`Compare the scope of each settings file`、`Where Claude Code keeps the local file in a git repository`、`Settings precedence`、`Lists merge instead of overriding` | `2026-08-22` |
+| `anthropic.claude-code.permissions.rule-syntax` | <https://code.claude.com/docs/en/permissions> | `code.claude.com` | `Permission rule syntax`、`Wildcard patterns` | `2026-08-22` |
 | `anthropic.claude-code.skills.locations-discovery` | <https://code.claude.com/docs/en/skills> | `code.claude.com` | `Where skills live`; `How a skill gets its command name` | `2026-08-08` |
 | `anthropic.claude-code.subagents.scope-context` | <https://code.claude.com/docs/en/sub-agents> | `code.claude.com` | `Choose the subagent scope`; `Available tools`; `Scope MCP servers to a subagent`; `Preload skills into subagents`; `Enable persistent memory`; `What loads at startup`; `Let subagents spawn their own subagents` | `2026-08-20` |
 | `anthropic.claude-code.hooks.locations-resolution` | <https://code.claude.com/docs/en/hooks> | `code.claude.com` | `Hook locations`; `The /hooks menu` | `2026-07-25` |
@@ -253,7 +254,7 @@ reconciliationは`reviewedOn`を進めず、2つのfingerprintも当時のまま
 | `openai.codex.mcp` | <https://learn.chatgpt.com/docs/extend/mcp.md> | `learn.chatgpt.com` | `Connect Codex to an MCP server` | `2026-07-25` |
 | `openai.codex.memories` | <https://learn.chatgpt.com/docs/customization/memories.md> | `learn.chatgpt.com` | `How local Codex memories work`; `Local memory storage`; `Configure local memories` | `2026-07-25` |
 | `openai.codex.plugins` | <https://developers.openai.com/plugins/build/plugins.md> | `developers.openai.com` | `Build your own curated plugin list`; `Add a marketplace from the CLI`; `Create a plugin manually`; `Marketplace metadata`; `How local marketplaces work`; `Plugin structure` | `2026-07-25` |
-| `openai.codex.rules` | <https://learn.chatgpt.com/docs/agent-configuration/rules.md> | `learn.chatgpt.com` | `Create a rules file` | `2026-07-25` |
+| `openai.codex.rules` | <https://learn.chatgpt.com/docs/agent-configuration/rules.md> | `learn.chatgpt.com` | `Rules`; `Create a rules file`; `Understand rule fields`; `Understand the rules language` | `2026-08-22` |
 | `openai.codex.skills` | <https://learn.chatgpt.com/docs/build-skills.md> | `learn.chatgpt.com` | `How ChatGPT and Codex use skills`; `Where Codex loads local skills`; `Distribute skills with plugins`; `Optional metadata` | `2026-07-25` |
 | `openai.codex.subagents` | <https://learn.chatgpt.com/docs/agent-configuration/subagents.md> | `learn.chatgpt.com` | `Orchestration and thread controls`; `Custom agents` | `2026-07-25` |
 

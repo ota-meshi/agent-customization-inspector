@@ -222,6 +222,56 @@ export const CODEX_REPO_MCP_BEHAVIOR = {
 } as const satisfies VendorBehaviorStatement;
 
 /**
+ * Codex rule files: every active trusted project config layer contributes the
+ * `.rules` files in its own `rules/` directory, scanned at startup.
+ *
+ * A rule declares a `prefix_rule()` deciding whether a matching command may
+ * run outside the sandbox. Recording where Codex looks for one grants no
+ * execution, approval, or sandbox authority: this product reads a rule file as
+ * text and evaluates nothing it declares.
+ *
+ * `partially-documented`: the page names the layer's `rules/` directory but
+ * establishes no nested-subdirectory recursion
+ * (contracts/vendors/openai-codex.md § Known uncertainties, item 2). The
+ * `[experimental]` qualifier rests on the page's own words: the statement is
+ * in the preamble under the page title, which is why the citation names that
+ * title beside the section the lookup rests on.
+ *
+ * The base is the already-active config layer rather than a directory walk of
+ * its own, exactly as the hook and MCP statements record it: which layers are
+ * active is `codex.behavior.repo.config`'s chain, and a project layer applies
+ * only when the project is trusted.
+ */
+export const CODEX_REPO_RULES_BEHAVIOR = {
+  behaviorId: 'codex.behavior.repo.rules',
+  tool: 'codex',
+  surfaces: ['codex-local-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'repository',
+        lookupBase: 'active-config-layer',
+        relativeSelector: 'rules/*.rules',
+        traversal: 'none',
+      }
+    : null,
+  documentationStatus: 'partially-documented',
+  lifecycleQualifiers: ['experimental'],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'openai.codex.rules',
+          url: 'https://learn.chatgpt.com/docs/agent-configuration/rules.md',
+          officialHost: 'learn.chatgpt.com',
+          sections: ['Rules', 'Create a rules file'],
+          reviewedOn: '2026-08-22',
+          establishes:
+            "The page's own preamble states the feature is experimental and may change. Codex scans rules/ under every active config layer at startup, a project layer's rules under <repo>/.codex/rules/ loading only when that .codex/ layer is trusted; the page names the layer's own rules/ directory and establishes no nested-subdirectory recursion.",
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
  * Codex User configuration: `<CODEX_HOME>/config.toml` and profile files,
  * shared by every local client and resolved through the same precedence as
  * the project layers.
@@ -294,6 +344,52 @@ export const CODEX_USER_INSTRUCTIONS_BEHAVIOR = {
           reviewedOn: '2026-08-17',
           establishes:
             'Local Codex clients read a global instruction fallback at <CODEX_HOME>/AGENTS.override.md, otherwise <CODEX_HOME>/AGENTS.md, and the first non-empty global candidate precedes the project chain.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Codex User rule files: the user config layer at `<CODEX_HOME>/rules/`, which
+ * the same startup scan reads as an active layer.
+ *
+ * Recorded for maintenance and for the resolution strategy that composes it;
+ * it expands no Global inspection, and `codex.excluded.user-runtime` keeps the
+ * surface out of the read allowlist (contracts/vendors/openai-codex.md
+ * § Documented User behavior).
+ *
+ * `partially-documented` for the same reason the project statement is: one
+ * sentence describes the startup scan of `rules/` for the user layer and the
+ * project layers alike, so it leaves nested-subdirectory recursion
+ * unspecified for both, and this record's `rules/*.rules` claims the direct
+ * children the sentence names. The `[experimental]` qualifier is the
+ * page's own, stated in the preamble under the page title, which the citation
+ * names beside the section the lookup rests on.
+ */
+export const CODEX_USER_RULES_BEHAVIOR = {
+  behaviorId: 'codex.behavior.user.rules',
+  tool: 'codex',
+  surfaces: ['codex-local-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'user',
+        lookupBase: 'tool-home',
+        relativeSelector: 'rules/*.rules',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'partially-documented',
+  lifecycleQualifiers: ['experimental'],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'openai.codex.rules',
+          url: 'https://learn.chatgpt.com/docs/agent-configuration/rules.md',
+          officialHost: 'learn.chatgpt.com',
+          sections: ['Rules', 'Create a rules file'],
+          reviewedOn: '2026-08-22',
+          establishes:
+            "The page's own preamble states the feature is experimental and may change. The user layer at ~/.codex/rules/ is one of the active config layers the startup scan reads, and the TUI allow-list flow writes to ~/.codex/rules/default.rules.",
         },
       ]
     : [],
@@ -399,8 +495,10 @@ export const CODEX_BEHAVIOR_STATEMENTS: Readonly<Record<CodexBehaviorId, VendorB
     [CODEX_REPO_HOOKS_BEHAVIOR.behaviorId]: CODEX_REPO_HOOKS_BEHAVIOR,
     [CODEX_REPO_INSTRUCTIONS_BEHAVIOR.behaviorId]: CODEX_REPO_INSTRUCTIONS_BEHAVIOR,
     [CODEX_REPO_MCP_BEHAVIOR.behaviorId]: CODEX_REPO_MCP_BEHAVIOR,
+    [CODEX_REPO_RULES_BEHAVIOR.behaviorId]: CODEX_REPO_RULES_BEHAVIOR,
     [CODEX_REPO_SKILLS_BEHAVIOR.behaviorId]: CODEX_REPO_SKILLS_BEHAVIOR,
     [CODEX_USER_CONFIG_BEHAVIOR.behaviorId]: CODEX_USER_CONFIG_BEHAVIOR,
     [CODEX_USER_INSTRUCTIONS_BEHAVIOR.behaviorId]: CODEX_USER_INSTRUCTIONS_BEHAVIOR,
+    [CODEX_USER_RULES_BEHAVIOR.behaviorId]: CODEX_USER_RULES_BEHAVIOR,
     [CODEX_USER_SKILLS_BEHAVIOR.behaviorId]: CODEX_USER_SKILLS_BEHAVIOR,
   };

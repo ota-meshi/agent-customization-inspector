@@ -6,6 +6,7 @@
 // resolves against whatever the current scan holds at it: the same file
 // wherever the launch selected the same root (FR-001), and that root's own
 // file otherwise. The origin half of a bookmark is devframe's port selection.
+import { encodeDetailRoutePath } from './detail-route';
 
 /**
  * The detail route for one definition. Each path segment is percent-encoded
@@ -14,6 +15,5 @@
  * split on.
  */
 export function skillDetailRoute(tool: string, sourceRelativePath: string): string {
-  const encoded = sourceRelativePath.split('/').map(encodeURIComponent).join('/');
-  return `/skills/${tool}/${encoded}`;
+  return `/skills/${tool}/${encodeDetailRoutePath(sourceRelativePath)}`;
 }

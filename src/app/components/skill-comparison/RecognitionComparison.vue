@@ -14,6 +14,7 @@
 // FR-033); no row or side ranks, orders, or prefers either file (FR-012).
 import SourceDiff from './SourceDiff.vue';
 import { CUSTOMIZATION_KIND_TEXT, SUPPORTED_TOOL_TEXT } from '../../../shared/entities';
+import { VENDOR_SURFACE_TEXT } from '../../../shared/registries/behavior-text';
 import {
   DECLARATION_SIDE_STATE_TEXT,
   RECOGNITION_SIDE_STATE_TEXT,
@@ -63,8 +64,25 @@ defineProps<{
               <th scope="row">
                 {{ SUPPORTED_TOOL_TEXT[row.tool] }} · {{ CUSTOMIZATION_KIND_TEXT[row.kind] }}
               </th>
-              <td data-label="First file">{{ RECOGNITION_SIDE_STATE_TEXT[row.left] }}</td>
-              <td data-label="Second file">{{ RECOGNITION_SIDE_STATE_TEXT[row.right] }}</td>
+              <!-- The recognition, and the surfaces of the documented
+                   behaviors its admitting rules rest on: FR-009 states them
+                   beside every recognition, so a side that recognizes the file
+                   says on which surfaces it is documented to be read. A side
+                   with no recognition has none to state. -->
+              <td data-label="First file">
+                {{ RECOGNITION_SIDE_STATE_TEXT[row.left] }}
+                <span v-if="row.leftSurfaces.length > 0" class="aci-muted">
+                  ({{ row.leftSurfaces.map((surface) => VENDOR_SURFACE_TEXT[surface]).join(', ') }})
+                </span>
+              </td>
+              <td data-label="Second file">
+                {{ RECOGNITION_SIDE_STATE_TEXT[row.right] }}
+                <span v-if="row.rightSurfaces.length > 0" class="aci-muted">
+                  ({{
+                    row.rightSurfaces.map((surface) => VENDOR_SURFACE_TEXT[surface]).join(', ')
+                  }})
+                </span>
+              </td>
             </tr>
           </tbody>
         </table>

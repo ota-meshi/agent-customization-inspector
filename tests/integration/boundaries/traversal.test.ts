@@ -37,6 +37,7 @@ import { ToolRecognition } from '../../../src/server/inspection/recognizers/cand
 import { DiagnosticRecord } from '../../../src/shared/diagnostics';
 import { SessionCoordinator, InspectionSession } from '../../../src/server/session/session';
 import { prepareNextRepositoryGeneration } from '../../../src/server/session/scan-generation';
+import { RecordingFileOpener } from '../../fixtures/file-opener';
 
 // Pass-through spies over the inspection module's closed fs surface —
 // production-call instrumentation for the external-mutation case
@@ -123,6 +124,7 @@ function bootstrapSession(root: string) {
   const session = new InspectionSession({
     invocationCwd: root,
     rootOptionValue: null,
+    fileOpener: new RecordingFileOpener(),
   });
   return { session, coordinator: new SessionCoordinator(session) };
 }

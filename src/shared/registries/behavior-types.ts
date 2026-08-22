@@ -24,6 +24,12 @@ export type VendorSurface =
    * § Repository vendor behavior, "CLI full; IDE subset"). Which surface is
    * running stays a `surface` condition; this member never claims feature
    * parity across the clients it names.
+   *
+   * A hosted Claude session is deliberately not part of this surface, for the
+   * reason `codex-local-clients` excludes hosted ChatGPT Work: it reads no
+   * file on this machine. A committed settings file reaches such a session as
+   * its own checkout's copy, which is version control rather than a second
+   * surface reading the reader's file.
    */
   | 'claude-cli-and-ide-clients'
   /**

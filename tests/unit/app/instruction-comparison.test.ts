@@ -36,7 +36,7 @@ import type {
   FileDetailDto,
   DeclaredEntryDto,
   InspectionDataResult,
-  InstructionRecognitionDto,
+  FileRecognitionDto,
   SessionSnapshot,
 } from '../../../src/shared/api-types';
 
@@ -49,6 +49,7 @@ function snapshotWith(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot
   return {
     sessionId: 'session-a',
     createdAt: '2026-08-19T00:00:00.000Z',
+    fileOpenTargets: ['visual-studio-code', 'default-application'],
     sources: [
       {
         sourceId: 'source-repository',
@@ -92,6 +93,8 @@ function snapshotWith(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot
         ],
       },
     ],
+    rules: [],
+    permissions: [],
     skills: [],
     mcp: [],
     diagnostics: [],
@@ -316,21 +319,21 @@ describe('instruction recognition comparison rows (T276)', () => {
   /** One side input from a detail and the inventory's recognitions of it. */
   function side(
     detail: FileDetailDto,
-    recognitions: readonly InstructionRecognitionDto[],
+    recognitions: readonly FileRecognitionDto[],
   ): InstructionComparisonSideInput {
     return { detail, recognitions };
   }
 
-  const CODEX: InstructionRecognitionDto = { tool: 'codex', surfaces: ['codex-local-clients'] };
-  const CLAUDE: InstructionRecognitionDto = {
+  const CODEX: FileRecognitionDto = { tool: 'codex', surfaces: ['codex-local-clients'] };
+  const CLAUDE: FileRecognitionDto = {
     tool: 'claude',
     surfaces: ['claude-cli-and-ide-clients'],
   };
-  const COPILOT_ALL: InstructionRecognitionDto = {
+  const COPILOT_ALL: FileRecognitionDto = {
     tool: 'copilot',
     surfaces: ['copilot-vscode', 'copilot-cli', 'copilot-cloud'],
   };
-  const COPILOT_CLI: InstructionRecognitionDto = { tool: 'copilot', surfaces: ['copilot-cli'] };
+  const COPILOT_CLI: FileRecognitionDto = { tool: 'copilot', surfaces: ['copilot-cli'] };
 
   it('serializes both parsed sides to canonical YAML documents for the diff', () => {
     const comparison = new InstructionRecognitionComparison(

@@ -17,9 +17,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  canonicalDeclarationJsonText,
-  declarationJsonText,
-} from '../../../src/app/components/mcp-declaration-json';
+  canonicalDeclaredEntriesJsonText,
+  declaredEntriesJsonText,
+} from '../../../src/app/components/declared-entries-json';
 import { mcpComparisonRouteFor } from '../../../src/app/composables/mcp-comparison';
 import { SessionViewState } from '../../../src/app/session/view-state';
 import { SESSION_RPC_FUNCTIONS } from '../../../src/app/session/api-client';
@@ -50,6 +50,7 @@ function snapshotWith(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot
   return {
     sessionId: 'session-a',
     createdAt: '2026-08-19T00:00:00.000Z',
+    fileOpenTargets: ['visual-studio-code', 'default-application'],
     sources: [
       {
         sourceId: 'source-repository',
@@ -73,6 +74,8 @@ function snapshotWith(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot
       sizeBytes: 10,
     })),
     instructions: [],
+    rules: [],
+    permissions: [],
     skills: [],
     mcp: [
       {
@@ -189,9 +192,11 @@ describe('MCP comparison view (T397)', () => {
     // A declared name that is not well-formed UTF-16 — strict JSON resolves
     // an authored `"\uD800"` escape to a lone surrogate — rides the query
     // through the same reversible spelling the declaration detail uses
-    // (`encodeMcpServerRouteName`): raw, the router's own query encoding
-    // would throw `URIError` while the row's link renders.
-    expect(mcpComparisonRouteFor('\uD800', LEFT_PATH, RIGHT_PATH).query.name).toBe('\\uD800');
+    // (`toJsonStringBody`): raw, the router's own query encoding
+    // would throw `URIError` while the row's link renders. The escape is
+    // `JSON.stringify`'s own, lowercase hex included — the spelling is the
+    // platform's, and `JSON.parse` reads either case back.
+    expect(mcpComparisonRouteFor('\uD800', LEFT_PATH, RIGHT_PATH).query.name).toBe('\\ud800');
   });
 
   it('loads exactly two carrier details and adopts both, with no compare API', async () => {
@@ -293,7 +298,7 @@ describe('MCP declaration JSON serialization (T397)', () => {
     // literal credential and an environment reference among them — are
     // serialized as the characters the carrier wrote, with nothing masked
     // and nothing resolved.
-    const text = canonicalDeclarationJsonText([
+    const text = canonicalDeclaredEntriesJsonText([
       entry('env', {
         kind: 'mapping',
         entries: [
@@ -338,7 +343,7 @@ describe('MCP declaration JSON serialization (T397)', () => {
     // the file's own order — nested mappings included — so its document is
     // serialized without the comparison's canonical reordering.
     expect(
-      declarationJsonText([
+      declaredEntriesJsonText([
         entry('env', {
           kind: 'mapping',
           entries: [
@@ -385,7 +390,7 @@ describe('MCP declaration JSON serialization (T397)', () => {
       }),
       entry('notanumber', { kind: 'scalar', scalarKind: 'number', text: 'NaN' }),
     ];
-    const text = canonicalDeclarationJsonText(fields);
+    const text = canonicalDeclaredEntriesJsonText(fields);
     expect(text).toBe(
       [
         '{',
@@ -401,7 +406,7 @@ describe('MCP declaration JSON serialization (T397)', () => {
         '}',
       ].join('\n'),
     );
-    expect(canonicalDeclarationJsonText(fields)).toBe(text);
+    expect(canonicalDeclaredEntriesJsonText(fields)).toBe(text);
   });
 
   it('escapes what a JSON string cannot carry raw, keeping every character visible', () => {
@@ -409,12 +414,12 @@ describe('MCP declaration JSON serialization (T397)', () => {
     // multiline value pastes back as authored, and a control character or
     // lone surrogate becomes its escape instead of an invisible byte.
     expect(
-      declarationJsonText([
+      declaredEntriesJsonText([
         entry('notes', { kind: 'scalar', scalarKind: 'string', text: 'line1\nline2' }),
       ]),
     ).toBe(['{', '  "notes": "line1\\nline2"', '}'].join('\n'));
     expect(
-      declarationJsonText([
+      declaredEntriesJsonText([
         entry('odd', { kind: 'scalar', scalarKind: 'string', text: 'a\u0000b' }),
       ]),
     ).toBe(['{', '  "odd": "a\\u0000b"', '}'].join('\n'));
@@ -422,11 +427,11 @@ describe('MCP declaration JSON serialization (T397)', () => {
 
   it('serializes a fieldless declaration as the empty object', () => {
     // An authored `{}` is a declared fact, shown rather than an empty panel.
-    expect(declarationJsonText([])).toBe('{}');
+    expect(declaredEntriesJsonText([])).toBe('{}');
     // Empty containers inside a declaration keep their authored shape too,
     // in the canonical key order.
     expect(
-      canonicalDeclarationJsonText([
+      canonicalDeclaredEntriesJsonText([
         entry('env', { kind: 'mapping', entries: [] }),
         entry('args', { kind: 'sequence', items: [] }),
       ]),

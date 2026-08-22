@@ -51,6 +51,15 @@ export interface RegisteredLanguage {
  * is internal — the model URI is opaque and no surface shows a language
  * name — and colouring is presentation over text that is displayed exactly
  * as authored either way.
+ *
+ * Both entries are extensions that name one format. A suffix several
+ * unrelated tools use is not evidence of a syntax and gets no entry: `.rules`
+ * is a spelling other products give files of their own, so borrowing a
+ * grammar for the suffix would colour those as something they are not. Where
+ * a syntax is known it is the surface that knows it — the `.rules` format is
+ * Starlark because Codex's own rules page says so, not because of how the
+ * file is spelled — and the surface names the language itself
+ * (`SourceViewerHandle.showSource` § contentLanguage).
  */
 const BORROWED_GRAMMARS: ReadonlyMap<string, string> = new Map([
   ['.jsonc', 'json'],
@@ -288,10 +297,12 @@ export class SourceViewerHandle {
     // An opaque in-memory URI: a model URI is visible to the editor and to
     // anything inspecting it, and a Source-relative Path there would put an
     // inspected file's location into a surface that has no need for it.
-    // `contentLanguage` overrides the path's claim when the text is a
-    // canonical serialization rather than the file's own bytes — the MCP
-    // detail shows a declaration as JSON whatever the carrier's extension
-    // would resolve to — mirroring `SourceComparisonInput.contentLanguage`.
+    // `contentLanguage` overrides the path's claim when the caller knows the
+    // text's syntax and the path does not say it: a canonical serialization
+    // rather than the file's own bytes — the MCP detail shows a declaration
+    // as JSON whatever the carrier's extension would resolve to — or a file
+    // whose vendor fixes a syntax its suffix does not. Mirrors
+    // `SourceComparisonInput.contentLanguage`.
     let model: import('monaco-editor/esm/vs/editor/editor.api.js').editor.ITextModel | null = null;
     try {
       model = this.#monaco.editor.createModel(

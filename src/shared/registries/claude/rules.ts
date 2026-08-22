@@ -262,9 +262,194 @@ export const CLAUDE_REPO_MCP_RULE = {
     : [],
 } as const satisfies InspectionRule;
 
+/**
+ * The `claude.repo.rules` matcher, authored in the typed segment form the
+ * contract table shows: `[ANY_DIRECTORIES, '.claude', 'rules',
+ * ANY_DIRECTORIES, /\.md$/u]`.
+ *
+ * Two recursive steps, and each one is a different documented fact. The
+ * leading one reaches every `.claude/rules/` in the tree, because a nested
+ * one below the working directory is documented to load on demand — a
+ * descendant inventory, not a guess at which directory a session launches
+ * from. The trailing one reaches every depth *inside* one rules directory,
+ * because the page states that all `.md` files there are discovered
+ * recursively and shows `frontend/` and `backend/` subdirectories doing it.
+ *
+ * `ANY_DIRECTORIES` includes zero segments, so the root's own
+ * `.claude/rules/style.md` is reached by the same program as
+ * `packages/api/.claude/rules/http/headers.md`, and no second selector is
+ * needed for either (contracts/vendors/claude-code.md § Repository Inspector
+ * matchers).
+ */
+const CLAUDE_REPO_RULES_MATCHER: StructuredInspectorMatcher = {
+  base: { kind: 'repository' },
+  selectors: [
+    [
+      ANY_DIRECTORIES,
+      { kind: 'literal', value: '.claude' },
+      { kind: 'literal', value: 'rules' },
+      ANY_DIRECTORIES,
+      { kind: 'regex', pattern: /\.md$/u },
+    ],
+  ],
+};
+
+/**
+ * Claude Repository rules: the read-authorizing counterpart of
+ * `claude.behavior.repo.rules`. A rule file is Markdown whose frontmatter may
+ * declare `paths` globs scoping it to the files Claude works with; admitting
+ * one authorizes reading its bytes and nothing else. Nothing is read out of
+ * the file at all — the detail serves the one document its author wrote,
+ * frontmatter block included — so a `paths` value is text on that page like
+ * every other line, never a value this product republishes and never a
+ * selector this scan runs (FR-019).
+ *
+ * Admitting a file is not asserting Claude loads it: whether a path-scoped
+ * rule applies turns on the files a session reads, whether a nested rules
+ * directory loads turns on an on-demand trigger the page leaves open, and
+ * project rules are skipped entirely when `project` is excluded from the
+ * runtime's setting sources — none of which this tool observes (FR-009).
+ *
+ * `partially-documented` for the two gaps the behavior statement carries: the
+ * on-demand load trigger for a nested rules directory, and the base an
+ * ancestor layer's `paths` globs resolve against
+ * (contracts/vendors/claude-code.md § Documentation status and lifecycle
+ * index).
+ *
+ * The User scope the same page documents — `<claude-config-dir>/rules/` — is a
+ * different Source boundary this rule may not read.
+ *
+ * Copilot reaches these files through no rule of its own: the locations
+ * Copilot documents under `.claude` are the ones
+ * `copilot.excluded.additional-standard-locations` leaves out of this release.
+ * One filename is the exception, and it is not this selector's doing:
+ * `copilot.repo.instructions.agents` admits an `AGENTS.md` at every depth, so
+ * an `AGENTS.md` written inside a `.claude/rules/` directory is a Copilot
+ * instruction file exactly as it would be in any other directory, and the same
+ * file is a Claude rule by where it sits. Two products documenting a read of
+ * one path is two recognitions of it — what each inventory row states — rather
+ * than a collision this rule should resolve away (FR-004).
+ */
+export const CLAUDE_REPO_RULES_RULE = {
+  ruleId: 'claude.repo.rules',
+  tool: 'claude',
+  discoveryClass: 'static-candidate',
+  kind: 'rule',
+  sourceKinds: ['repository'],
+  matcher: CLAUDE_REPO_RULES_MATCHER,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'partially-documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.memory.locations-load',
+          url: 'https://code.claude.com/docs/en/memory',
+          officialHost: 'code.claude.com',
+          sections: ['Organize rules with .claude/rules/'],
+          reviewedOn: '2026-08-18',
+          establishes:
+            "Project rules are the .md files of a project's .claude/rules/ directory, all discovered recursively so they may be organized into subdirectories, and a nested .claude/rules/ directory loads on demand — the exact locations this rule admits. The personal rules the same section places in ~/.claude/rules/ are a different Source boundary this rule may not read.",
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
+ * The `claude.repo.permissions` matcher, authored in the typed segment form
+ * the contract table shows: `['.claude', 'settings.json']` and
+ * `['.claude', 'settings.local.json']`. Two programs rather than one dynamic
+ * step, so each admission carries which authored filename matched.
+ *
+ * Root-anchored with no `ANY_DIRECTORIES`: the page names these two files as
+ * the project scope's own, and a `.claude/settings.json` in a subdirectory is
+ * a file the vendor documents no read of.
+ */
+const CLAUDE_REPO_PERMISSIONS_MATCHER: StructuredInspectorMatcher = {
+  base: { kind: 'repository' },
+  selectors: [
+    [
+      { kind: 'literal', value: '.claude' },
+      { kind: 'literal', value: 'settings.json' },
+    ],
+    [
+      { kind: 'literal', value: '.claude' },
+      { kind: 'literal', value: 'settings.local.json' },
+    ],
+  ],
+};
+
+/**
+ * Claude Repository permission policy: the `permissions` object the project's
+ * settings files declare, recognized as the `permissions` kind.
+ *
+ * The kind is the policy, not the file: the row a reader sees is the declared
+ * policy, and the detail publishes that block and never the bytes around it,
+ * which are the settings file's other keys (data-model.md § Inventory unit,
+ * contracts/http-api.md § get-permission-policy-detail). A settings file that
+ * declares no `permissions` object holds no recognition of this kind at all —
+ * the extraction is what decides it — so it is no row rather than an empty
+ * one.
+ *
+ * Admitting a file is not asserting Claude enforces what it declares: the
+ * decision is combined with the User scope and the managed locations this
+ * product never reads, under trust and approval state that turns on runtime
+ * this tool does not observe (FR-009). No rule string is resolved to a tool, a
+ * command, a path, or a domain, and nothing is evaluated against a filesystem
+ * (FR-019).
+ *
+ * `partially-documented`, from the behavior statement it rests on: which
+ * directory the personal file is read from turns on the session's repository
+ * and host, which this tool cannot see.
+ */
+export const CLAUDE_REPO_PERMISSIONS_RULE = {
+  ruleId: 'claude.repo.permissions',
+  tool: 'claude',
+  discoveryClass: 'static-candidate',
+  kind: 'permissions',
+  sourceKinds: ['repository'],
+  matcher: CLAUDE_REPO_PERMISSIONS_MATCHER,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-003', 'FR-004', 'FR-007', 'FR-019', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'partially-documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.settings.scopes-precedence',
+          url: 'https://code.claude.com/docs/en/settings',
+          officialHost: 'code.claude.com',
+          sections: [
+            'Settings files and who they affect',
+            'Compare the scope of each settings file',
+          ],
+          reviewedOn: '2026-08-22',
+          establishes:
+            "A project's .claude/settings.json and .claude/settings.local.json — the exact locations this rule admits — are the project scope's own settings files.",
+        },
+        {
+          sourceId: 'anthropic.claude-code.permissions.rule-syntax',
+          url: 'https://code.claude.com/docs/en/permissions',
+          officialHost: 'code.claude.com',
+          sections: ['Permission rule syntax', 'Wildcard patterns'],
+          reviewedOn: '2026-08-22',
+          establishes:
+            'A permissions object in a settings file holds allow and deny arrays of rules written Tool or Tool(specifier), where a specifier may carry glob wildcards; the rules are the policy this kind recognizes.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
 /** Claude's contribution to the inspection-rule registry, keyed by `ruleId` in identifier order. */
 export const CLAUDE_INSPECTION_RULES: Readonly<Record<ClaudeRuleId, InspectionRule>> = {
   [CLAUDE_REPO_INSTRUCTIONS_RULE.ruleId]: CLAUDE_REPO_INSTRUCTIONS_RULE,
   [CLAUDE_REPO_MCP_RULE.ruleId]: CLAUDE_REPO_MCP_RULE,
+  [CLAUDE_REPO_PERMISSIONS_RULE.ruleId]: CLAUDE_REPO_PERMISSIONS_RULE,
+  [CLAUDE_REPO_RULES_RULE.ruleId]: CLAUDE_REPO_RULES_RULE,
   [CLAUDE_REPO_SKILL_RULE.ruleId]: CLAUDE_REPO_SKILL_RULE,
 };

@@ -21,20 +21,29 @@ import {
   CLAUDE_REPO_INSTRUCTIONS_LAUNCH_BEHAVIOR,
   CLAUDE_REPO_MCP_BEHAVIOR,
   CLAUDE_REPO_PLUGIN_BEHAVIOR,
+  CLAUDE_REPO_RULES_BEHAVIOR,
+  CLAUDE_REPO_LOCAL_SETTINGS_BEHAVIOR,
+  CLAUDE_REPO_SHARED_SETTINGS_BEHAVIOR,
   CLAUDE_REPO_SKILLS_BEHAVIOR,
   CLAUDE_USER_INSTRUCTIONS_BEHAVIOR,
   CLAUDE_USER_MCP_STATE_BEHAVIOR,
   CLAUDE_USER_PLUGINS_BEHAVIOR,
+  CLAUDE_USER_RULES_BEHAVIOR,
+  CLAUDE_USER_SETTINGS_BEHAVIOR,
   CLAUDE_USER_SKILLS_BEHAVIOR,
 } from './behaviors';
 import {
   CLAUDE_REPO_INSTRUCTIONS_RULE,
   CLAUDE_REPO_MCP_RULE,
+  CLAUDE_REPO_PERMISSIONS_RULE,
+  CLAUDE_REPO_RULES_RULE,
   CLAUDE_REPO_SKILL_RULE,
 } from './rules';
 import {
   CLAUDE_INSTRUCTIONS_LAYERING_STRATEGY,
   CLAUDE_MCP_SELECTION_STRATEGY,
+  CLAUDE_RULES_LAYERING_STRATEGY,
+  CLAUDE_SETTINGS_PRECEDENCE_STRATEGY,
   CLAUDE_SKILLS_SELECTION_STRATEGY,
 } from './strategies';
 import type { RuleRelations, StrategyRelations } from '../relation-types';
@@ -76,6 +85,15 @@ export const CLAUDE_STRATEGY_RELATIONS: Readonly<Record<ClaudeStrategyId, Strate
     ],
   },
   /**
+   * Rule layering composes both documented rule scopes. Both are listed even
+   * though only the project layers are readable: user rules load before
+   * project rules, and omitting them would describe the layering as starting
+   * at the repository.
+   */
+  [CLAUDE_RULES_LAYERING_STRATEGY.strategyId]: {
+    consumesBehaviors: [CLAUDE_REPO_RULES_BEHAVIOR, CLAUDE_USER_RULES_BEHAVIOR],
+  },
+  /**
    * Skill selection composes both documented skill scopes. Both are listed
    * even though only the Repository scope is readable: the strategy describes
    * Claude's runtime, and omitting the User scope would misdescribe the
@@ -84,6 +102,19 @@ export const CLAUDE_STRATEGY_RELATIONS: Readonly<Record<ClaudeStrategyId, Strate
    */
   [CLAUDE_SKILLS_SELECTION_STRATEGY.strategyId]: {
     consumesBehaviors: [CLAUDE_REPO_SKILLS_BEHAVIOR, CLAUDE_USER_SKILLS_BEHAVIOR],
+  },
+  /**
+   * Settings precedence composes the project scope this product reads and the
+   * User scope it does not: the order the page documents starts above the
+   * project files, and leaving the User scope out would describe a precedence
+   * that begins where this product's read authority happens to begin.
+   */
+  [CLAUDE_SETTINGS_PRECEDENCE_STRATEGY.strategyId]: {
+    consumesBehaviors: [
+      CLAUDE_REPO_LOCAL_SETTINGS_BEHAVIOR,
+      CLAUDE_REPO_SHARED_SETTINGS_BEHAVIOR,
+      CLAUDE_USER_SETTINGS_BEHAVIOR,
+    ],
   },
 };
 
@@ -113,6 +144,28 @@ export const CLAUDE_RULE_RELATIONS: Readonly<Record<ClaudeRuleId, RuleRelations>
   [CLAUDE_REPO_MCP_RULE.ruleId]: {
     basedOnBehaviors: [CLAUDE_REPO_MCP_BEHAVIOR],
     explainedByStrategies: [CLAUDE_MCP_SELECTION_STRATEGY],
+  },
+  /**
+   * The permission-policy rule is based on the project settings lookup alone —
+   * the User scope its precedence spans is a different boundary this rule may
+   * not read — and is explained by the precedence strategy, which owns the
+   * scope order and the array merge the rule deliberately does not project
+   * (FR-009).
+   */
+  [CLAUDE_REPO_PERMISSIONS_RULE.ruleId]: {
+    basedOnBehaviors: [CLAUDE_REPO_LOCAL_SETTINGS_BEHAVIOR, CLAUDE_REPO_SHARED_SETTINGS_BEHAVIOR],
+    explainedByStrategies: [CLAUDE_SETTINGS_PRECEDENCE_STRATEGY],
+  },
+  /**
+   * The Repository rule-file rule is based on the project rule lookup alone —
+   * the User `rules/` directory the same section documents is a different
+   * Source boundary this rule may not read — and is explained by the layering
+   * strategy, which owns the User-before-project order and the `paths`
+   * activation the rule deliberately does not project (FR-009).
+   */
+  [CLAUDE_REPO_RULES_RULE.ruleId]: {
+    basedOnBehaviors: [CLAUDE_REPO_RULES_BEHAVIOR],
+    explainedByStrategies: [CLAUDE_RULES_LAYERING_STRATEGY],
   },
   /**
    * The Repository skill rule is based on the Repository lookup alone — the

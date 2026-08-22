@@ -1,6 +1,6 @@
-// T078/T293: the Codex skill's declared-name reading and the Codex MCP
-// carrier's declaration reading (data-model.md § Field reading, FR-007,
-// FR-028).
+// T078/T293/T411: the Codex skill's declared-name reading, the Codex MCP
+// carrier's declaration reading, and what a Codex rule file publishes
+// (data-model.md § Field reading, FR-007, FR-028).
 //
 // The name is the one authored value recognition uses as identity: the key of
 // a grouped inventory row and the heading a detail page shows. These cases pin
@@ -153,7 +153,11 @@ describe('Codex skill declared name', () => {
   });
 });
 
-// Selected by identity for the carrier cases below.
+// Selected by identity for the rule and carrier cases below.
+const codexRulesRule = CODEX_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'codex.repo.rules',
+);
+
 const codexConfigRule = CODEX_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'codex.repo.config',
 );
@@ -174,6 +178,98 @@ async function recognizeCarrier(sourceText: string): Promise<readonly ToolRecogn
   );
   return recognitions;
 }
+
+describe('Codex permission-policy reading (T411)', () => {
+  /** Recognizes one authored `.rules` file at the root layer. */
+  async function recognizeRule(sourceText: string): Promise<readonly ToolRecognition[]> {
+    const matchedPath = '.codex/rules/default.rules';
+    const { recognitions } = await recognizeCandidateForVendors(
+      {
+        matchedPath,
+        absolutePath: join(root, matchedPath),
+        sourceRoot: root,
+        admissions: [{ compiled: codexRulesRule!, origin: { planIndex: 0, selectorIndex: 0 } }],
+        sourceText,
+      },
+      ['codex'],
+    );
+    return recognitions;
+  }
+
+  it('publishes the kind with nothing read out, and no extraction attempted', async () => {
+    // No allowlisted extractor applies to a Codex rule file: the vendor
+    // contract admits only `runtime-reference` relationships out of Starlark
+    // and leaves comments and unlisted expressions as source text, and no
+    // shipped recognition can produce an edge
+    // (contracts/vendors/openai-codex.md § Normative initial-release
+    // presentation allowlist; contracts/http-api.md § get-file-detail). So
+    // `not-attempted` is the honest state — a different claim from "parsing
+    // succeeded and found nothing".
+    const recognitions = await recognizeRule(
+      'prefix_rule(\n    pattern = ["gh", "pr", "view"],\n    decision = "prompt",\n)\n',
+    );
+    expect(recognitions).toHaveLength(1);
+    expect(recognitions[0]!.details).toEqual({ kind: 'permissions' });
+    expect(recognitions[0]!.parseStatus).toBe('not-attempted');
+    expect(recognitions[0]!.provenances[0]).toMatchObject({
+      ruleId: 'codex.repo.rules',
+      discoveryClass: 'static-candidate',
+      matchedPath: '.codex/rules/default.rules',
+    });
+  });
+
+  it('lifts no declared value out of the file, credential-shaped ones included', async () => {
+    // A rule's arguments are the file's own text and reach no recognition: a
+    // matched command prefix, a decision, a justification, and a credential
+    // inside one all stay in the complete `sourceText` the detail serves one
+    // file at a time (FR-026, FR-027).
+    const recognitions = await recognizeRule(
+      [
+        'prefix_rule(',
+        `    pattern = ["curl", "-H", "Authorization: Bearer ${CONTENT_FIXTURE_SECRET}"],`,
+        '    decision = "forbidden",',
+        '    justification = "Endpoint ${CODEX_RULE_ENDPOINT} is unreachable.",',
+        ')',
+        '',
+      ].join('\n'),
+    );
+    const serialized = JSON.stringify(recognitions);
+    expect(serialized).not.toContain(CONTENT_FIXTURE_SECRET);
+    expect(serialized).not.toContain('${CODEX_RULE_ENDPOINT}');
+    expect(serialized).not.toContain('prefix_rule');
+    expect(serialized).not.toContain('forbidden');
+  });
+
+  it('recognizes a file whose Starlark is malformed exactly like a well-formed one', async () => {
+    // There is no parse to fail: this release runs no extractor over a rule
+    // file, so a document the vendor could not load is still a rule file the
+    // inventory lists and the detail serves. Nothing here judges vendor
+    // validity (FR-009).
+    const malformed = await recognizeRule('prefix_rule(\n    pattern = ["gh"\n');
+    const wellFormed = await recognizeRule('prefix_rule(pattern = ["gh"])\n');
+    expect(malformed[0]!.details).toEqual(wellFormed[0]!.details);
+    expect(malformed[0]!.parseStatus).toBe(wellFormed[0]!.parseStatus);
+    expect(malformed[0]!.diagnosticIds).toEqual([]);
+  });
+
+  it('enumerates no companion directory beside a rule file', async () => {
+    // The census belongs to a directory-shaped kind, which is `skill` alone
+    // (contracts/inspection-path-allowlist.md § Bounded companion census). A
+    // rule file is one file, so nothing beside it is read on its account.
+    const matchedPath = '.codex/rules/default.rules';
+    const { companions } = await recognizeCandidateForVendors(
+      {
+        matchedPath,
+        absolutePath: join(root, matchedPath),
+        sourceRoot: root,
+        admissions: [{ compiled: codexRulesRule!, origin: { planIndex: 0, selectorIndex: 0 } }],
+        sourceText: 'prefix_rule()\n',
+      },
+      ['codex'],
+    );
+    expect(companions).toEqual([]);
+  });
+});
 
 describe('Codex MCP carrier reading (T293)', () => {
   it('reads the active root layer alone, under the carrier admission it came from', async () => {

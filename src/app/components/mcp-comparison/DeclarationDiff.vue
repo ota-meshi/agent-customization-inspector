@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The MCP declaration comparison surface (T400; research.md § 7, FR-011,
 // FR-027): one declared server name's two declarations, each serialized to
-// canonical JSON (mcp-declaration-json.ts), diffed read-only in Monaco. The
+// canonical JSON (declared-entries-json.ts), diffed read-only in Monaco. The
 // texts are serializations, not the carriers' bytes — no carrier shows its
 // source anywhere (FR-007) — so both models are created as `json` whatever
 // the carriers' own syntaxes are (`SourceComparisonInput.contentLanguage`).
@@ -24,7 +24,7 @@ import { SESSION_VIEW_STATE } from '../../session/view-state';
 import { escapeControlCharacters, inlinePresentationLabel } from '../../../shared/entities';
 
 const props = defineProps<{
-  /** The first side's complete serialized declaration (mcp-declaration-json.ts). */
+  /** The first side's complete serialized declaration (declared-entries-json.ts). */
   readonly originalText: string;
   /** The first side's carrier Source-relative Path: the side's label (FR-030). */
   readonly originalPath: string;

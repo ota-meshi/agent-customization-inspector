@@ -950,9 +950,11 @@ substituteしない。
 
 | Kind | 1 rowが示す単位 |
 |---|---|
-| `skill` | 1つのtoolが解決した1つの名前（FR-007）: authoredなfrontmatter `name` — fileが宣言しない場合はskill directory名 — であり、nestedなskillのClaude Code recognitionはこれにroot相対のprefixを前置する。定義は1つのrecognition — `(file, tool)`につき1つ — であるため、1つの名前に解決される複数fileは1 entryが各recognitionを定義として列挙し、toolごとに異なる名前へ解決される1つのfileは各名前のentryで定義される |
+| `skill` | 1つのtoolが解決した1つの名前（FR-007）: authoredなfrontmatter `name` — fileが宣言しない場合はskill directory名 — であり、nestedなskillのClaude Code recognitionはこれにroot相対のprefixを前置する。定義は1つのrecognition — `(file, tool)`につき1つ — であるため、1つの名前に解決される複数fileは1 entryが各recognitionを定義として列挙し、toolごとに異なる名前へ解決される1つのfileは各名前のentryで定義される。definitionはrecognitionであるため、pathで識別されるrowのrecognitionとまったく同じく、admitしたruleが依拠するdocumented behaviorのsurfaceを述べる（FR-009） |
 | `MCP` | 宣言されたserver名1つ: その名前を解決するすべての`[mcp_servers.*]`型宣言 — `(carrier, tool)`ごとに1つ — がその名前のrowの中に列挙される。したがって1つの`.codex/config.toml`は宣言したserverごとに宣言を1つ寄与し、同じ名前を宣言する第2のcarrierはその名前のrowに合流する。宣言の住処は明示的なcarrierだけである: 他のkindのfileが自身の内容にMCP風のconfigurationを綴っても — skillやagentのfrontmatter、settings fileのinline map — それはそのkindの通常のcontentであり、そのfile自身のdetailに見えるだけで、MCP rowには合流しない。各宣言は自身のfileを名指す。nameがnullである1つのrowがlistを閉じ、現在named宣言を公開していないcarrier — rowが不明である読めない宣言block、または何も宣言しないcarrier — を保持する |
 | `instructions` | 1つの適用範囲: 担当するfile自身のpathが導出するglobであり、担当する各fileをそのfileのrecognitionとともに列挙する — 各recognitionは1つのproductと、そのfileをadmitしたruleが依拠するdocumented behaviorのsurfaceである。toolだけでは、productがそのfileをどこから読むのかを言えないためである |
+| `rule` | File自身: rule fileはproductがcontextへ読み込むmodularなinstructionであり、rowのkeyにできる名前も、groupingできる範囲も持たないため、そのSource相対Pathがrowの同一性である。1つのfileを2つのproductが認識する場合は1 rowに2つのrecognitionが並び、各recognitionは1つのproductと、そのfileをadmitしたruleが依拠するdocumented behaviorのsurfaceを名指す |
+| `permissions` | Policyを宣言するfile自身。条件は`rule` rowと同じ。別kindである理由は主題が違うことにある: permission policyはproductがどのcommandやtoolを実行してよいかを決めるものであり、ruleはproductが読む指針である。Codexは自身のpolicyを`.codex/rules/*.rules`に綴り、Claudeは自身のmodular instructionもまた`rules`と呼ぶため、vendorが共有する語でまとめると無関係な2つの主題が1つのlistに並ぶことになる。File全体がpolicyであるfileと、より大きなdocumentの1 blockとしてpolicyを運ぶfileは、どちらも1 rowである: 違うのはdetailが公開するものであって、rowが何であるかではない。Policyを宣言しないcarrierはrowにならない — documentの残りはそれを所有するrecognitionであり、rowにすれば作者が書いていないpolicyを述べることになる |
 | `settings/config` | File自身 |
 
 したがってCustomizationFileは自身の事実 — Source相対Path、read結果、size、diagnostic — を1度だけ
@@ -962,6 +964,9 @@ pathで名指して述べる: customizationのdirectory内で失敗したreadは
 1つであり、一覧の中でそれを言えるのはそのcustomizationのrowだけである（FR-028）。共有された1つのrow形では最初の2つの単位を
 表現できない: 名前でgroupingするとToolRecognitionが依拠する`(file, tool, kind)`ごとに1 recognitionと
 いう規定を壊し、file形のrowは1 carrierの宣言が必要とするN行になりようがない。
+形がたまたま一致する2つの単位も、やはり2つである: rule rowはfileであり、permissions rowはpolicyで
+あるため、1つの型で両方を表すと異なる2つの主題を1つだと述べることになり、他方が答えられない事実が
+最初に必要になった時点で、それを対象としないrowへ追加することになる。
 
 Instruction rowの適用範囲は、ほとんどのfileでは、fileのSource相対Pathから導出するのであって、vendorのruntimeからでは
 ない: 範囲はfileが置かれたdirectoryであり、認識した製品がinstruction fileを置くためのdirectoryを
@@ -1050,8 +1055,12 @@ optional fieldには収まらないからである: skillは単一の`name`を�
 元となるidentityである（FR-007、FR-027）。Fileが宣言していない場合、名前はemptyではなく
 absentとする。Fileが宣言しないか空で宣言するrowは、代わりにそのskill directory名で名付けられる。
 Instruction recognitionのdetailsは同じ1回のparse — 書かれた順の宣言済みkeyとblockを
-除いたbody — を運び、名前は意図的に持たない: このkindの一覧の単位はfileそのものである
-ため、recognitionが既に運ぶSource-relative Pathがidentityの全体である。
+除いたbody — を運び、名前は意図的に持たない: recognitionを識別するのはそれが見つかったfile
+であるため、recognitionが既に運ぶSource-relative Pathがidentityの全体である。これは
+recognitionのidentityであってrowの単位ではない — instructions一覧はこれらのrecordが運ぶ適用範囲で
+groupingする（§ 一覧の単位） — 。2つは別の問いのままである: 範囲を導出するのはadmitしたruleで1度きり
+であり、そのvendorがそのfile名をどこから読むかを知るのはその単位だけだからである。Recordが範囲を
+運ぶので、projectionは導出ではなくgroupingを行う。
 
 Recognitionは一覧rowではない。Rowの単位はkind自身のものであり（§ 一覧の単位）、各kindの一覧はfileごとの
 summaryとして公開されるのではなく、これらのrecordから組み立てられる: skillのrowはrecordを各toolが
@@ -1120,14 +1129,14 @@ metadata/relationship/derivation result全体を破棄してsafe diagnosticを�
 classify、retry、recoverしない。Triggerを所有するboundaryへpropagateし、そのattempt由来のrecognition、item、Diagnostic、
 generation resultを作らず、session API boundaryがtriggerを所有する場合はfailed requestのerrorとして通常どおり報告する。
 
-Recognitionはclosed tool順`copilot`、`claude`、`codex`、次に表記載のkind順でsortし、opaque IDを使わない。
+Recognitionはclosed tool順`copilot`、`claude`、`codex`、次にclosed kind順でsortし、opaque IDを使わない。
 File間のdeclaration comparisonは、sideごとに1つのcanonical serialized documentをMonacoでdiffする（research.md § 7）。frontmatter宣言はfileの認識Markdown kindに対する1回のparseであってtoolは宣言の座標ではなく — tool recognitionはdiffの横のtypedなrowでtoolごとに比較する — 各sideはYAMLへserializeし、skill comparisonは`name`と`description`を先頭にそれ以外のkeyをsort順で、instruction comparisonは全keyをsort順で並べる。MCP kindの宣言は各recognizing tool自身のreading（§ Field reading）であり、その比較surfaceは宣言済みserver名自身のもの — 1つの名前のdeclarationをその行の2つのcarrierそれぞれから取り、sideごとに1つのcanonical JSON documentへserializeしてMonacoでdiffする — で、通常の`get-mcp-carrier-detail` read 2件を通じてloadされる（§ BrowserState · ComparisonSelection）。いずれのdetailも自身のdeclaration contentを同じserialized documentとして、fileが書いたkey順のまま表示する（FR-007）。
 
 ### Field reading
 
 Extractorは、認識したkindが公開する宣言を、そのformatのparserが解決した結果 — admit済みsource formごとに
 文書化された決定的なreading 1つ — として報告する: Markdown fileのfrontmatterはYAML 1.2 core schema、
-`.mcp.json`と`.github/mcp.json`のcarrierはstrict JSON（`JSON.parse`）、`.vscode/mcp.json`のcarrierは
+`.mcp.json`と`.github/mcp.json`のMCP carrier、および`.claude/settings.json`と`.claude/settings.local.json`のpermission policy carrierはstrict JSON（`JSON.parse`）、`.vscode/mcp.json`のcarrierは
 JSONC — commentとtrailing commaはeditor configuration format自身のsyntaxであり、それ以外のsyntax errorは
 依然としてdocument全体を失敗させる — であり、`.codex/config.toml`のcarrierは
 TOML 1.0である。どのformatでもquoteとescapeは1度だけ解決される。2回宣言されたkeyは、formatのparserが
@@ -1149,6 +1158,9 @@ core schemaは文字列`yes`を残す — し、製品が値をどう扱うか�
 Inspectorはその間に立つvalidatorでもない。kindがsourceをserveするfile — skill、instruction file、census
 companion — では、綴りが必要なreaderのために完全なdecoded sourceが同じdetail responseの`sourceText`として
 同席する。MCP carrierのdetailは意図的にそれを運ばない（FR-007）ため、その宣言がreadingの公開のすべてである。
+Permission policy carrierも同じ条件で読む: 宣言された`permissions` blockがそのreadingの公開のすべてであり、
+それを運ぶdocumentはpermissions detailからserveしない。documentの残りは別のrecognitionの内容であり、
+このrowの主題はblockだからである。
 
 Fileがfileの書いたとおりに見せられるものを何も提供しないとき、recognitionを拒否する。そのformatのparserが
 まったくparseできないdocument — malformedなfrontmatter block、carrierのparserが拒むstrict JSONまたは
@@ -2394,7 +2406,7 @@ Closed observation-class fieldは次のとおり。
 | `actorClass` | `inspector \| bundled-spa \| browser-extension \| other-host-process \| operating-system \| participant \| unknown` |
 | `authorityClass` | `exact-issued \| other-loopback \| remote \| unclassifiable \| not-applicable` |
 | `requestClass` | `authorized-static \| authorized-rpc \| prohibited \| unrelated \| os-mediated \| unclassifiable \| not-applicable` |
-| `targetClass` | `static-manifested-asset \| static-spa-shell \| static-client-route-fallback \| connection-discovery-metadata \| rpc-channel-upgrade \| rpc-get-session \| rpc-get-file-detail \| rpc-rescan-repository \| rpc-get-global-consent-preview \| rpc-create-global-consent-preview \| rpc-enable-global \| rpc-rescan-global \| rpc-disable-global \| rpc-devframe-framework \| other-loopback \| remote \| mcp \| unclassifiable \| not-applicable` |
+| `targetClass` | `static-manifested-asset \| static-spa-shell \| static-client-route-fallback \| connection-discovery-metadata \| rpc-channel-upgrade \| rpc-get-session \| rpc-get-file-detail \| rpc-get-mcp-carrier-detail \| rpc-get-permission-policy-detail \| rpc-open-file \| rpc-rescan-repository \| rpc-get-global-consent-preview \| rpc-create-global-consent-preview \| rpc-enable-global \| rpc-rescan-global \| rpc-disable-global \| rpc-devframe-framework \| other-loopback \| remote \| mcp \| unclassifiable \| not-applicable` |
 | `methodClass` | `get \| head \| post \| other \| unclassifiable \| not-applicable` |
 | `originClass` | `exact-same-origin \| missing \| mismatched \| unclassifiable \| not-applicable` |
 | `effectClass` | `none \| unauthorized-request \| command-or-code-execution \| child-process \| mcp-connection \| prohibited-outbound-request \| inspected-source-mutation \| cross-machine-content-exposure \| workflow-blocker` |
@@ -2433,6 +2445,8 @@ exact 1件とする(`contracts/http-api.ja.md` § RPC function一覧):
 |---|---|
 | `rpc-get-session` | `agent-customization-inspector:get-session` |
 | `rpc-get-file-detail` | `agent-customization-inspector:get-file-detail` |
+| `rpc-get-mcp-carrier-detail` | `agent-customization-inspector:get-mcp-carrier-detail` |
+| `rpc-get-permission-policy-detail` | `agent-customization-inspector:get-permission-policy-detail` |
 | `rpc-rescan-repository` | `agent-customization-inspector:rescan-repository` |
 | `rpc-get-global-consent-preview` | `agent-customization-inspector:get-global-consent-preview` |
 | `rpc-create-global-consent-preview` | `agent-customization-inspector:create-global-consent-preview` |

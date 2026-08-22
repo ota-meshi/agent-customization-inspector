@@ -38,6 +38,12 @@ export type ClaudeBehaviorId =
   | 'claude.behavior.repo.mcp'
   /** Claude plugin content at an explicitly selected `<plugin-root>`; a non-authorizing MCP-selection input. */
   | 'claude.behavior.repo.plugin'
+  /** Claude project rule discovery: Markdown found recursively under each layer's `.claude/rules/`. */
+  | 'claude.behavior.repo.rules'
+  /** Claude shared project settings at `<launch-cwd>/.claude/settings.json`, the permission policy among their keys. */
+  | 'claude.behavior.repo.settings.shared'
+  /** Claude personal project settings at `.claude/settings.local.json`, kept at the repository root with documented exceptions. */
+  | 'claude.behavior.repo.settings.local'
   /** Claude Repository skill discovery under `.claude/skills/<skill-name>/SKILL.md`. */
   | 'claude.behavior.repo.skills'
   /** Claude User instructions at `<claude-config-dir>/CLAUDE.md`. */
@@ -46,6 +52,10 @@ export type ClaudeBehaviorId =
   | 'claude.behavior.user.mcp-state'
   /** Claude installed plugin data under `<claude-config-dir>/plugins/`; a non-authorizing fact. */
   | 'claude.behavior.user.plugins'
+  /** Claude User rules under `<claude-config-dir>/rules/`; a non-authorizing fact. */
+  | 'claude.behavior.user.rules'
+  /** Claude User settings at `<claude-config-dir>/settings.json`; a non-authorizing fact. */
+  | 'claude.behavior.user.settings'
   /** Claude User skill discovery under `<claude-config-dir>/skills/<skill-name>/SKILL.md`. */
   | 'claude.behavior.user.skills';
 
@@ -63,12 +73,16 @@ export type CodexBehaviorId =
   | 'codex.behavior.repo.instructions'
   /** Codex MCP server declarations: `[mcp_servers.*]` inside active `.codex/config.toml` layers. */
   | 'codex.behavior.repo.mcp'
+  /** Codex rule files in every active trusted project config layer: `.codex/rules/*.rules`. */
+  | 'codex.behavior.repo.rules'
   /** Codex Repository skill discovery under `.agents/skills/<name>/SKILL.md`. */
   | 'codex.behavior.repo.skills'
   /** Codex User configuration at `<CODEX_HOME>/config.toml`; a non-authorizing carrier fact. */
   | 'codex.behavior.user.config'
   /** Codex User instruction fallback at `<CODEX_HOME>/AGENTS.override.md` then `AGENTS.md`. */
   | 'codex.behavior.user.instructions'
+  /** Codex User rule files at `<CODEX_HOME>/rules/*.rules`; a non-authorizing fact. */
+  | 'codex.behavior.user.rules'
   /** Codex User skill discovery under `$HOME/.agents/skills/<name>/SKILL.md`. */
   | 'codex.behavior.user.skills';
 
@@ -177,6 +191,10 @@ export type AnthropicSourceId =
   | 'anthropic.claude-code.large-codebases.start-directory'
   /** The IDE-integrations page: shared configuration and per-surface differences. */
   | 'anthropic.claude-code.ide.shared-differences'
+  /** The settings page: which settings file reaches what, where each one lives, and their precedence. */
+  | 'anthropic.claude-code.settings.scopes-precedence'
+  /** The permissions page: the rule syntax a declared policy is written in, and how the rules are evaluated. */
+  | 'anthropic.claude-code.permissions.rule-syntax'
   /** The plugins reference: component scopes and skills-directory plugins. */
   | 'anthropic.claude-code.plugins.components-scopes'
   /**
@@ -199,6 +217,8 @@ export type OpenAiSourceId =
   | 'openai.codex.hooks'
   /** The Codex MCP page: how MCP servers are declared and connected. */
   | 'openai.codex.mcp'
+  /** The Codex rules page: where rule files live and what a `prefix_rule()` declares. */
+  | 'openai.codex.rules'
   /** The Codex skills page: where Codex loads local skills, and their metadata. */
   | 'openai.codex.skills';
 
@@ -260,6 +280,10 @@ export type ClaudeStrategyId =
   | 'claude.instructions.layering'
   /** Claude MCP selection: whole same-name server entries in local, project, User, plugin, connector order. */
   | 'claude.mcp.selection'
+  /** Claude rule layering: User then project rule layers, a `paths` rule activating on a matching read. */
+  | 'claude.rules.layering'
+  /** Claude settings precedence: managed, then command-line, then local, project, and User scopes, with permission rules of the two project-local files both in effect. */
+  | 'claude.settings.precedence'
   /** Claude skill selection across enterprise, User, project, and bundled scopes. */
   | 'claude.skills.selection';
 
@@ -274,6 +298,8 @@ export type CodexStrategyId =
   | 'codex.instructions.layering'
   /** Codex MCP configuration: `[mcp_servers.*]` resolved through the config-layer precedence. */
   | 'codex.mcp.configuration'
+  /** Codex rule resolution: direct `.rules` files of the active layers, combined restrictively. */
+  | 'codex.rules.resolution'
   /** Codex skill selection across Repository, User, admin, and system scopes. */
   | 'codex.skills.discovery';
 
@@ -319,6 +345,10 @@ export type ClaudeRuleId =
   | 'claude.repo.instructions'
   /** The exact root `.mcp.json` MCP declaration carrier; read-authorizing `static-candidate`. */
   | 'claude.repo.mcp'
+  /** The permission policy the root Claude settings files declare; read-authorizing `static-candidate`. */
+  | 'claude.repo.permissions'
+  /** Repository Claude rule files under any `.claude/rules/` subtree; read-authorizing `static-candidate`. */
+  | 'claude.repo.rules'
   /** Repository Claude skills; read-authorizing `static-candidate`. */
   | 'claude.repo.skill';
 
@@ -334,6 +364,8 @@ export type CodexRuleId =
   | 'codex.repo.config'
   /** Repository Codex instructions at the exact root override/regular pair; read-authorizing `static-candidate`. */
   | 'codex.repo.instructions'
+  /** Repository Codex rule files as direct children of the root layer's `.codex/rules/`; read-authorizing `static-candidate`. */
+  | 'codex.repo.rules'
   /** Repository Codex skills; read-authorizing `static-candidate`. */
   | 'codex.repo.skill';
 

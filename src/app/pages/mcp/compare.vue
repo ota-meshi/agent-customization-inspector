@@ -47,8 +47,8 @@ import {
 import { useRoute, useRouter } from 'vue-router';
 import { NuxtLink } from '#components';
 import DeclarationDiff from '../../components/mcp-comparison/DeclarationDiff.vue';
-import { canonicalDeclarationJsonText } from '../../components/mcp-declaration-json';
-import { decodeMcpServerRouteName } from '../../components/mcp-detail-route';
+import { canonicalDeclaredEntriesJsonText } from '../../components/declared-entries-json';
+import { fromJsonStringBody } from '../../components/detail-route';
 import { mcpComparisonRouteFor } from '../../composables/mcp-comparison';
 import { SESSION_VIEW_STATE } from '../../session/view-state';
 import { usePageOwnership } from '../../composables/page-ownership';
@@ -97,19 +97,30 @@ function queryParameter(name: string): string | null {
 
 /**
  * The declared server name whose row owns this comparison (FR-007). The
- * query spelling is `encodeMcpServerRouteName`'s, the same layer the
+ * query spelling is `toJsonStringBody`'s, the same layer the
  * declaration detail's `?server=` rides: decoding here is what lets a name
  * the URL cannot carry raw — a lone surrogate strict JSON resolves from an
  * authored escape — own its comparison too (`mcpComparisonRouteFor`).
  */
 const subjectName = computed(() => {
   const parameter = queryParameter('name');
-  return parameter === null ? null : decodeMcpServerRouteName(parameter);
+  return parameter === null ? null : fromJsonStringBody(parameter);
 });
-/** The first compared carrier's Source-relative Path (FR-030). */
-const leftPath = computed(() => queryParameter('left') ?? '');
+/**
+ * The first compared carrier's Source-relative Path (FR-030), decoded through
+ * the spelling its link was built with: a carrier path rides the query the
+ * same way the name above does, because a raw entry name can hold a character
+ * the URL cannot carry raw (`detail-route.ts`).
+ */
+const leftPath = computed(() => {
+  const parameter = queryParameter('left');
+  return parameter === null ? '' : fromJsonStringBody(parameter);
+});
 /** The second compared carrier's Source-relative Path (FR-030). */
-const rightPath = computed(() => queryParameter('right') ?? '');
+const rightPath = computed(() => {
+  const parameter = queryParameter('right');
+  return parameter === null ? '' : fromJsonStringBody(parameter);
+});
 
 /**
  * Whether the URL names a selection at all; without a name and two paths
@@ -338,7 +349,7 @@ function attributionText(path: string): string {
 /**
  * The whole ready view as one derivation, null outside 'ready': the two
  * identity sides and each side's declaration serialized to the JSON the
- * diff mounts (mcp-declaration-json.ts). One computed rather than one per
+ * diff mounts (declared-entries-json.ts). One computed rather than one per
  * projection, for the same release-on-next-read reason the instruction
  * compare route documents (FR-027). The name's declaration is looked up in
  * each adopted detail; a detail without it is a torn frame between a
@@ -387,8 +398,8 @@ const readyView = computed(() => {
     ] as const,
     leftPath,
     rightPath,
-    leftText: canonicalDeclarationJsonText(leftDeclaration.fields),
-    rightText: canonicalDeclarationJsonText(rightDeclaration.fields),
+    leftText: canonicalDeclaredEntriesJsonText(leftDeclaration.fields),
+    rightText: canonicalDeclaredEntriesJsonText(rightDeclaration.fields),
   };
 });
 

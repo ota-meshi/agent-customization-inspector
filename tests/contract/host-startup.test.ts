@@ -21,6 +21,7 @@ import { createDevServer } from 'devframe/adapters/dev';
 import { InspectionSession, SessionCoordinator } from '../../src/server/session/session';
 import { runTraversalScan } from '../../src/server/inspection/traversal';
 import type { InspectionDataResult, SessionSnapshot } from '../../src/shared/api-types';
+import { RecordingFileOpener } from '../fixtures/file-opener';
 
 // Only the walk is stubbed. The rest of the module is the real thing, because
 // the scan's configuration-read stage reads the carrier through the same
@@ -65,10 +66,12 @@ describe('host startup', () => {
     expect(definition.id).toBe(createInspectorDevframe(context).id);
     expect(typeof definition.setup).toBe('function');
     // Besides the composed onReady, the host always hands devframe the H3
-    // app carrying the `/skills/**` and `/instructions/**` shell fallbacks —
-    // the route families devframe's extension-guarded SPA fallback cannot
-    // serve; the served behavior itself is proven in the browser suites'
-    // fresh deep-link loads.
+    // app carrying the detail families' shell fallbacks — one per kind that
+    // ships a detail route, which devframe's extension-guarded SPA fallback
+    // cannot serve. Which families those are is `createHostApp`'s own list,
+    // growing with each detail phase, so it is not restated here; the served
+    // behavior itself is proven in the browser suites' fresh deep-link
+    // loads.
     expect(options?.app).toBeDefined();
     expect(options?.openBrowser).toBe(false);
     expect(typeof options?.onReady).toBe('function');
@@ -126,6 +129,7 @@ function hostContext(): InspectorHostContext {
   const session = new InspectionSession({
     invocationCwd: '/repo',
     rootOptionValue: null,
+    fileOpener: new RecordingFileOpener(),
   });
   return { session, coordinator: new SessionCoordinator(session) };
 }
@@ -183,7 +187,9 @@ describe('devframe host definition', () => {
       'agent-customization-inspector:get-session',
       'agent-customization-inspector:get-file-detail',
       'agent-customization-inspector:get-mcp-carrier-detail',
+      'agent-customization-inspector:get-permission-policy-detail',
       'agent-customization-inspector:rescan-repository',
+      'agent-customization-inspector:open-file',
     ]);
   });
 

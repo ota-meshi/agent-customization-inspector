@@ -34,7 +34,7 @@
 // `SessionViewState`: a second instance would race the first for the same
 // request tokens.
 import { shallowRef } from 'vue';
-import { encodeMcpServerRouteName } from '../components/mcp-detail-route';
+import { toJsonStringBody } from '../components/detail-route';
 import type { SessionApiClient } from '../session/api-client';
 import type { ClientDataPurge } from '../session/client-data';
 import type { McpCarrierDetailDto } from '../../shared/api-types';
@@ -76,13 +76,13 @@ export type McpComparisonViewStatus =
  * surface that builds the link — the inventory row's and detail page's
  * entry links, and the compare route's own pickers — builds the same URL.
  *
- * The name passes through {@link encodeMcpServerRouteName}, exactly as the
+ * The name passes through {@link toJsonStringBody}, exactly as the
  * declaration detail's `?server=` does: a declared name is not always
  * well-formed UTF-16 — strict JSON resolves an authored `"\uD800"` escape
  * to a lone surrogate — and the router's own query encoding throws
  * `URIError` on one, which would surface inside the row computed that
  * builds these links. The compare route decodes with
- * `decodeMcpServerRouteName`, so every declared name round-trips.
+ * `fromJsonStringBody`, so every declared name round-trips.
  */
 export function mcpComparisonRouteFor(
   name: string,
@@ -92,7 +92,17 @@ export function mcpComparisonRouteFor(
   readonly path: string;
   readonly query: { readonly name: string; readonly left: string; readonly right: string };
 } {
-  return { path: '/mcp/compare', query: { name: encodeMcpServerRouteName(name), left, right } };
+  // The carrier paths ride the same way the name does, and for the same
+  // reason: a raw entry name can hold a lone surrogate the router's own query
+  // encoding rejects (`detail-route.ts`).
+  return {
+    path: '/mcp/compare',
+    query: {
+      name: toJsonStringBody(name),
+      left: toJsonStringBody(left),
+      right: toJsonStringBody(right),
+    },
+  };
 }
 
 /** Construction inputs for {@link McpComparisonState}. */

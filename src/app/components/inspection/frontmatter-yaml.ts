@@ -17,7 +17,7 @@
 // FR-007 fact (the skill detail leads with `name` and `description` and
 // keeps the file's order past them, the instruction detail is the file's
 // order whole) — while the comparison serializer is canonical, like the MCP
-// comparison's (mcp-declaration-json.ts): the caller's leading keys first,
+// comparison's (declared-entries-json.ts): the caller's leading keys first,
 // every other key and every nested mapping's keys sorted, sequence items as
 // given, so the two sides align line by line.
 //

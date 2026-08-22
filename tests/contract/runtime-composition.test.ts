@@ -256,6 +256,123 @@ describe('the Codex instruction composition strategies (T219)', () => {
   );
 });
 
+describe('the Claude rule composition strategy (T431)', () => {
+  it('ships the rule layering pipeline with its exact documented operations', () => {
+    // `filter`, `append` is the complete documented pipeline: a `paths` rule
+    // is kept out of context until Claude reads a file its glob matches, and
+    // the applicable layers are added rather than made to override each
+    // other. The page states no order among same-layer rules, and none is
+    // claimed (contracts/runtime-composition.md § claude.rules.layering).
+    const layering = RUNTIME_COMPOSITION_STRATEGIES['claude.rules.layering'];
+    expect(layering.tool).toBe('claude');
+    expect(layering.operations).toEqual(['filter', 'append']);
+    // The on-demand trigger for a nested rules directory and the base an
+    // ancestor layer resolves its `paths` globs against are what the page
+    // leaves open (contracts/runtime-composition.md § Canonical
+    // evidence-assessment index).
+    expect(layering.documentationStatus).toBe('partially-documented');
+    expect(layering.lifecycleQualifiers).toEqual([]);
+  });
+
+  it('composes the strategy from both documented rule scopes, by identity', () => {
+    // User rules load before project rules, which is what gives project rules
+    // the higher priority; omitting the User half would describe the layering
+    // as starting at the repository.
+    const consumed = STRATEGY_RELATIONS['claude.rules.layering'].consumesBehaviors;
+    expect(consumed.map((behavior) => behavior.behaviorId)).toEqual([
+      'claude.behavior.repo.rules',
+      'claude.behavior.user.rules',
+    ]);
+    for (const behavior of consumed) {
+      expect(VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId]).toBe(behavior);
+    }
+  });
+
+  it('explains the rule-file rule through the layering strategy alone, by identity', () => {
+    const rule = RULE_RELATIONS['claude.repo.rules'];
+    expect(rule.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'claude.behavior.repo.rules',
+    ]);
+    expect(rule.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual([
+      'claude.rules.layering',
+    ]);
+    for (const behavior of rule.basedOnBehaviors) {
+      expect(VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId]).toBe(behavior);
+    }
+    for (const strategy of rule.explainedByStrategies) {
+      expect(RUNTIME_COMPOSITION_STRATEGIES[strategy.strategyId]).toBe(strategy);
+    }
+    // The admitting record is a read authorization and nothing more: it
+    // recognizes the `rule` kind and projects no activation of a `paths`
+    // glob (FR-009, FR-019).
+    expect(INSPECTION_RULES['claude.repo.rules'].kind).toBe('rule');
+    expect(INSPECTION_RULES['claude.repo.rules'].precedenceGroup).toBeNull();
+  });
+});
+
+describe('the Codex rule composition strategy (T413)', () => {
+  it('ships the rule resolution pipeline with its exact documented operations', () => {
+    // `filter`, `select-first` is the complete documented pipeline: the
+    // layers actually in play are kept — the active User and Team Config
+    // layers and the project layers whose `.codex/` is trusted — and when
+    // several rules match one command the most restrictive decision applies,
+    // `forbidden` over `prompt` over `allow`. `select-first` is over that
+    // fixed severity order rather than over a layer order, because the page
+    // establishes no precedence between layers at all
+    // (contracts/runtime-composition.md § codex.rules.resolution).
+    const resolution = RUNTIME_COMPOSITION_STRATEGIES['codex.rules.resolution'];
+    expect(resolution.tool).toBe('codex');
+    expect(resolution.operations).toEqual(['filter', 'select-first']);
+    // Nested recursion under a layer's `rules/` is unspecified and the
+    // feature is documented as experimental, which is what keeps the record
+    // short of `documented` (contracts/runtime-composition.md § Canonical
+    // evidence-assessment index).
+    expect(resolution.documentationStatus).toBe('partially-documented');
+    expect(resolution.lifecycleQualifiers).toEqual(['experimental']);
+  });
+
+  it('composes the strategy from both documented rule scopes, by identity', () => {
+    // The User half is listed even though only the project layers are
+    // readable: the restrictive decision is taken across every active layer
+    // at once, so omitting it would describe a combination over the
+    // repository alone.
+    const consumed = STRATEGY_RELATIONS['codex.rules.resolution'].consumesBehaviors;
+    expect(consumed.map((behavior) => behavior.behaviorId)).toEqual([
+      'codex.behavior.repo.rules',
+      'codex.behavior.user.rules',
+    ]);
+    for (const behavior of consumed) {
+      expect(VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId]).toBe(behavior);
+    }
+  });
+
+  it('explains the rule-file rule through the resolution strategy alone, by identity', () => {
+    // The rule's own candidacy rests on the project rule lookup alone — the
+    // User layer the same startup scan reads is a Source boundary it may not
+    // open — while the restrictive combination across layers stays the
+    // strategy's, never something the rule projects (FR-009;
+    // codex/relations.ts).
+    const rule = RULE_RELATIONS['codex.repo.rules'];
+    expect(rule.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'codex.behavior.repo.rules',
+    ]);
+    expect(rule.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual([
+      'codex.rules.resolution',
+    ]);
+    for (const behavior of rule.basedOnBehaviors) {
+      expect(VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId]).toBe(behavior);
+    }
+    for (const strategy of rule.explainedByStrategies) {
+      expect(RUNTIME_COMPOSITION_STRATEGIES[strategy.strategyId]).toBe(strategy);
+    }
+    // The admitting record is a read authorization and nothing more: it
+    // recognizes the `permissions` kind — the file decides which commands may
+    // run outside the sandbox — and carries no projection of a decision.
+    expect(INSPECTION_RULES['codex.repo.rules'].kind).toBe('permissions');
+    expect(INSPECTION_RULES['codex.repo.rules'].precedenceGroup).toBeNull();
+  });
+});
+
 describe('the Codex MCP composition strategy (T296)', () => {
   it('ships the MCP configuration pipeline with its exact documented operations', () => {
     // `merge-map`, `replace` is the complete documented pipeline: the
@@ -848,6 +965,60 @@ describe('the Copilot CLI MCP composition strategy (T347)', () => {
       expect(row.operations, path).toEqual(record.operations);
       expect(row.consumesBehaviors, path).toEqual(consumed);
       expect(row.evidence, path).toEqual(cited);
+    }
+  });
+});
+
+describe('the Claude settings precedence strategy (T1110)', () => {
+  it('ships the precedence pipeline with its exact documented operations', () => {
+    // `replace` for a scalar key the higher scope sets, `merge-map` because a
+    // key the higher scope omits keeps the lower scope's value, and
+    // `concatenate` then `deduplicate` for an array-valued key such as
+    // `permissions.allow`, which the page states merges across scopes rather
+    // than being replaced (contracts/runtime-composition.md
+    // § claude.settings.precedence).
+    const precedence = RUNTIME_COMPOSITION_STRATEGIES['claude.settings.precedence'];
+    expect(precedence.tool).toBe('claude');
+    expect(precedence.operations).toEqual(['replace', 'merge-map', 'concatenate', 'deduplicate']);
+    // Two array keys are excepted from the merge and a security-sensitive tier
+    // does not follow the order in either direction, so what a concrete key
+    // does is not settled by the order alone.
+    expect(precedence.documentationStatus).toBe('partially-documented');
+    expect(precedence.lifecycleQualifiers).toEqual([]);
+  });
+
+  it('composes the strategy from both documented settings scopes, by identity', () => {
+    // The documented order starts above the project files, so leaving the User
+    // scope out would describe a precedence that begins where this product's
+    // read authority happens to begin.
+    const consumed = STRATEGY_RELATIONS['claude.settings.precedence'].consumesBehaviors;
+    expect(consumed.map((behavior) => behavior.behaviorId)).toEqual([
+      'claude.behavior.repo.settings.local',
+      'claude.behavior.repo.settings.shared',
+      'claude.behavior.user.settings',
+    ]);
+    for (const behavior of consumed) {
+      expect(VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId]).toBe(behavior);
+    }
+  });
+
+  it('explains the permission-policy rule through the precedence strategy alone, by identity', () => {
+    const rule = RULE_RELATIONS['claude.repo.permissions'];
+    // Both project files, because the rule admits both and they are two
+    // statements: the shared file stays in the project folder, the personal one
+    // moves to the repository root with documented exceptions.
+    expect(rule.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'claude.behavior.repo.settings.local',
+      'claude.behavior.repo.settings.shared',
+    ]);
+    expect(rule.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual([
+      'claude.settings.precedence',
+    ]);
+    for (const behavior of rule.basedOnBehaviors) {
+      expect(VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId]).toBe(behavior);
+    }
+    for (const strategy of rule.explainedByStrategies) {
+      expect(RUNTIME_COMPOSITION_STRATEGIES[strategy.strategyId]).toBe(strategy);
     }
   });
 });

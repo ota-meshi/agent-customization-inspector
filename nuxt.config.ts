@@ -4,6 +4,7 @@
 // /skills/<tool>/<source-relative path>. Auto-imports and implicit components are disabled so every
 // dependency of the security-reviewed client code is an explicit import.
 import { defineNuxtConfig } from 'nuxt/config';
+import Icons from 'unplugin-icons/vite';
 import { thirdPartyNoticesPlugin } from './scripts/third-party-notices-plugin.mjs';
 
 export default defineNuxtConfig({
@@ -29,12 +30,22 @@ export default defineNuxtConfig({
     },
   },
   vite: {
-    // The client bundle inlines third-party code — Monaco, Vue, the Nuxt
-    // runtime, the devframe client — so their license notices have to ship
-    // with it. The plugin derives the list from the finished module graph, so
-    // no hand-maintained list can fall behind a dependency change
-    // (FR-043).
-    plugins: [thirdPartyNoticesPlugin()],
+    plugins: [
+      // Each `~icons/<collection>/<name>` import becomes a Vue component whose
+      // template is that icon's own SVG, resolved from the installed
+      // `@iconify-json/*` collection while the bundle is built. The icon data
+      // is in the emitted bytes, so the page fetches nothing and no icon
+      // runtime ships — the arrangement FR-022 requires, and the reason the
+      // Iconify API-backed runtime is not used. Components stay explicitly
+      // imported like every other dependency of this application.
+      Icons({ compiler: 'vue3' }),
+      // The client bundle inlines third-party code — Monaco, Vue, the Nuxt
+      // runtime, the devframe client, the icon data above — so their license
+      // notices have to ship with it. The plugin derives the list from the
+      // finished module graph, so no hand-maintained list can fall behind a
+      // dependency change (FR-043).
+      thirdPartyNoticesPlugin(),
+    ],
   },
   imports: {
     autoImport: false,

@@ -31,6 +31,7 @@
 import { cli, define } from 'gunshi';
 import packageJson from '../../package.json' with { type: 'json' };
 import { executeRepositoryScan, startInspectorHost } from './host/devframe-app';
+import { DetectedFileOpener } from './host/file-opener';
 import { InspectionSession, SessionCoordinator } from './session/session';
 
 // The one capture of the invocation working directory (FR-001), taken at
@@ -97,7 +98,11 @@ const command = define({
       process.exitCode = 1;
       return;
     }
-    const session = new InspectionSession({ invocationCwd, rootOptionValue });
+    // Probed once, before the session exists: which applications this machine
+    // can open a file in is a fact about the machine, and the snapshot offers
+    // exactly what this opener can launch (contracts/http-api.md § open-file).
+    const fileOpener = await DetectedFileOpener.probe();
+    const session = new InspectionSession({ invocationCwd, rootOptionValue, fileOpener });
     const coordinator = new SessionCoordinator(session);
     const context = { session, coordinator };
     // Automatic first Repository scan (FR-002), owned by the ownerless

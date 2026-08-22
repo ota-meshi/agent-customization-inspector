@@ -6,6 +6,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { InspectionSession, SessionCoordinator } from '../../../src/server/session/session';
+import { RecordingFileOpener } from '../../fixtures/file-opener';
 
 // Force the generation preparation to throw so completeScan rejects after
 // admission; createBootstrapGeneration stays real so the session still
@@ -25,6 +26,7 @@ function bootstrapSession() {
   return new InspectionSession({
     invocationCwd: '/repo',
     rootOptionValue: null,
+    fileOpener: new RecordingFileOpener(),
   });
 }
 

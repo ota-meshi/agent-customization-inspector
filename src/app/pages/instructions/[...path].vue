@@ -41,8 +41,10 @@ import {
 } from 'vue';
 import { useRoute } from 'vue-router';
 import { NuxtLink } from '#components';
+import OpenFileButton from '../../components/inspection/OpenFileButton.vue';
 import SourceViewer from '../../components/inspection/SourceViewer.vue';
 import { frontmatterYamlText } from '../../components/inspection/frontmatter-yaml';
+import { decodeDetailRoutePath } from '../../components/detail-route';
 import { nextTabForKey } from '../../components/tab-navigation';
 import { instructionComparisonRouteFor } from '../../composables/instruction-comparison';
 import { usePageOwnership } from '../../composables/page-ownership';
@@ -76,7 +78,11 @@ const route = useRoute();
  */
 const openPath = computed((): string => {
   const parameter = route.params['path'];
-  return typeof parameter === 'string' ? parameter : (parameter?.join('/') ?? '');
+  // Each segment arrives percent-decoded but still spelled as the well-formed
+  // text the link carried, so the escape the encoder applied is undone here:
+  // a lone surrogate in an authored entry name round-trips to the path the
+  // inventory published (`detail-route.ts`).
+  return decodeDetailRoutePath(typeof parameter === 'string' ? [parameter] : (parameter ?? []));
 });
 
 const entryDetail = sessionViewState.entryDetail;
@@ -493,8 +499,9 @@ onBeforeUnmount(() => {
          instructions list rather than the kind order's default tab. -->
     <p><NuxtLink to="/?kind=instructions">Back to the inventory</NuxtLink></p>
 
-    <h2 ref="heading" tabindex="-1">
-      <!-- The file's path heads the page — the row's own identity, in the
+    <div class="aci-instruction-detail__title">
+      <h2 ref="heading" tabindex="-1">
+        <!-- The file's path heads the page — the row's own identity, in the
            same spelling the inventory lists: escaped for presentation, never
            a locator anything can open (FR-024, FR-030). A path whose escaped
            spelling draws nothing is spelled out in full instead — a spelled
@@ -502,11 +509,20 @@ onBeforeUnmount(() => {
            treatment (data-model.md § SourceRelativePath) — and a URL with no
            path segments at all is headed by the kind, so the heading always
            describes the page (WCAG 2.4.6). -->
-      <template v-if="openPath === ''">{{ CUSTOMIZATION_KIND_TEXT.instructions }}</template>
-      <span v-else class="aci-path" :class="{ 'aci-authored-text': !pathIsSpelledOut }">{{
-        pathText
-      }}</span>
-    </h2>
+        <template v-if="openPath === ''">{{ CUSTOMIZATION_KIND_TEXT.instructions }}</template>
+        <span v-else class="aci-path" :class="{ 'aci-authored-text': !pathIsSpelledOut }">{{
+          pathText
+        }}</span>
+      </h2>
+      <!-- Beside the path, because the path is what it opens. Outside the
+         heading so it does not join the heading's accessible name: a reader
+         hearing the page's landmarks should hear the file, not an action on
+         it (WCAG 2.4.6). -->
+      <OpenFileButton
+        v-if="openDetail !== null"
+        :source-relative-path="openDetail.file.sourceRelativePath"
+      />
+    </div>
 
     <!-- Stable rather than inserted with the state it reports, because a
          region that appears together with its message is not reliably read. -->
@@ -729,8 +745,17 @@ onBeforeUnmount(() => {
    block is chrome; the authored path may have no break opportunities of its
    own, and without the wrap a long one forces sideways scrolling at narrow
    widths and 200% zoom (WCAG 1.4.10). */
+/* The path and the link that opens it on one line, wrapping together when the
+   path is long. */
+.aci-instruction-detail__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  margin-block-end: 0.5rem;
+}
+
 .aci-instruction-detail h2 {
-  margin: 0.25rem 0 0.5rem;
+  margin: 0.25rem 0 0;
   overflow-wrap: anywhere;
 }
 </style>

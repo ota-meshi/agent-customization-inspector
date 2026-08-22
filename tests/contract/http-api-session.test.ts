@@ -24,6 +24,7 @@ import type {
   ScanAdmission,
   SessionSnapshot,
 } from '../../src/shared/api-types';
+import { RecordingFileOpener } from '../fixtures/file-opener';
 
 vi.mock('../../src/server/inspection/scan', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../src/server/inspection/scan')>();
@@ -41,6 +42,7 @@ function hostContext(rootOptionValue: string | null = null): InspectorHostContex
   const session = new InspectionSession({
     invocationCwd: '/repo',
     rootOptionValue,
+    fileOpener: new RecordingFileOpener(),
   });
   return { session, coordinator: new SessionCoordinator(session) };
 }

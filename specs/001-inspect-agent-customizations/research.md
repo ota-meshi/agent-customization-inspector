@@ -99,10 +99,10 @@ builds, tests, and audits against. It does not travel with the published package
 consumer's `npx` resolves those caret ranges against the registry at install time: the audit
 establishes the tree this project ships and verifies, not the tree a later install produces; tsdown bundles project-owned modules and
 shared contracts, not arbitrary transitive packages. The direct production dependencies are
-exactly the nine packages `devframe`, `gunshi`, `h3`, `open`, `smol-toml`,
-`strip-json-comments`, `vfile`, `vfile-matter`, and `yaml` (§ 3).
+exactly the eleven packages `devframe`, `env-editor`, `gunshi`, `h3`, `open`, `smol-toml`,
+`strip-json-comments`, `vfile`, `vfile-matter`, `which`, and `yaml` (§ 3).
 
-Assert the approved direct production dependency set — exactly those nine names and no
+Assert the approved direct production dependency set — exactly those eleven names and no
 others — from `package.json` and the `pnpm-lock.yaml` closure, so any new production
 dependency fails until the § 3 decision is explicitly revisited. Payload content scans — `os`/`cpu`/`libc` selectors, bundled/optional native
    packages, native/binary/Wasm magic or ELF/Mach-O/PE magic, `binding.gyp`, Rust/C/C++
@@ -201,10 +201,12 @@ create a second dependency baseline.
 | Local host | `devframe` 0.7.5 | Local-tool host framework behind `@eslint/config-inspector`; serves the packaged SPA from `cli.distDir` and carries the session API as its RPC channel with authentication disabled; owns port/host resolution (§ 8), while its bundled opener stays disabled because the product owns browser opening through `open` (§ 3); pre-1.0, so the committed lockfile pins the reviewed baseline and the manifest's caret range stays within 0.7.x |
 | CLI | `gunshi` 0.37.0 | Current zero-runtime-dependency ESM CLI framework; its Node.js `>=22` engine requirement fits the declared range |
 | Browser opener | `open` 11.0.1 | Current stable cross-platform opener behind the startup opener's fallback (FR-001): passes the bound loopback origin to the OS default handler, best-effort, whenever the macOS Chromium tab reuse does not apply or fails (§ 3), with devframe's bundled opener disabled so only the product's opener runs; its vendored POSIX-shell `xdg-open` — used whenever executable on Linux, the system helper otherwise — is the recorded FR-038 closure exception (§ 3) |
-| Host HTTP app | `h3` 2.0.1-rc.22 | The host builds the H3 app devframe mounts onto, carrying the `/skills/**` shell fallback devframe's extension-guarded SPA fallback cannot serve — a skill detail URL ends with the file's own last segment, such as `SKILL.md`, and percent-encoding is no alternative because devframe decodes before its extension test. Declared as a caret range like every other direct dependency, with the lockfile resolving it to devframe's own h3 so both resolve one module instance; the dependency leaves with the host shim once devframe can serve extension-ful client-route misses itself |
+| Host HTTP app | `h3` 2.0.1-rc.22 | The host builds the H3 app devframe mounts onto, carrying the detail families' shell fallbacks devframe's extension-guarded SPA fallback cannot serve — one family per shipped kind detail (§ 3), each detail URL ending with the file's own last segment, such as `SKILL.md`, and percent-encoding is no alternative because devframe decodes before its extension test. Declared as a caret range like every other direct dependency, with the lockfile resolving it to devframe's own h3 so both resolve one module instance; the dependency leaves with the host shim once devframe can serve extension-ful client-route misses itself |
 | Parsers | `yaml` 2.9.0, `smol-toml` 1.7.0 | Current stable inert data parsers; strict JSON is the platform's `JSON.parse` |
 | JSONC pre-parse | `strip-json-comments` 5.0.3 | Blanks JSONC comments and trailing commas to whitespace so the remainder goes through the same `JSON.parse` as strict JSON — one resolution for the whole JSON family. A lenient parser that builds its own objects is rejected because it cannot hold an authored `__proto__` key as an own property, which would drop a `.vscode/mcp.json` server of that name with no diagnostic |
 | Frontmatter | `vfile-matter` 5.0.1, `vfile` 6.0.3 | Frontmatter delimiter handling. Deciding where a frontmatter block begins and ends means re-deciding BOM handling, line endings, and the closing-fence forms, so it is a parser rather than a regular expression. This one parses the block with the `yaml` engine already listed here; a package carrying its own `js-yaml` would give one document two meanings, because js-yaml 3 is YAML 1.1 and `yaml` is YAML 1.2 |
+| File opening | `which` 6.0.1, `env-editor` 1.3.0 | The detail surfaces' open control (FR-022). `which` resolves the editor command a launch would run, so what the host offers and what it can start are one fact rather than two that can disagree; `env-editor` supplies where an installation puts that command when it is not on `PATH`, keeping those locations a maintained third-party fact instead of a table this repository would have to follow each editor's packaging with. `which` stays on 6.x because 7.0.0 declares `^24.15.0`, which excludes part of this project's own supported Node range; the launch itself reuses `open`, already listed above. A package that finds installed applications generally (`locate-app`) is rejected: it is CommonJS-only and pulls a prompt-engineering package and `crypto-js` into a production closure this project audits |
+| Icons | `unplugin-icons` 23.0.1, `@iconify-json/lucide` 1.2.124, `@iconify-json/simple-icons` 1.2.93 | Build-time icon compilation: each `~icons/<collection>/<name>` import becomes a component carrying that icon's own SVG, so the page fetches nothing and no icon runtime ships — the arrangement FR-022 requires, and the reason Iconify's API-backed runtime (`@nuxt/icon`, `@iconify/vue`) is rejected. Both collections ship their icon data with no license file of their own, so this repository carries each set's upstream text under `licenses/` for the notice document to read (FR-043) |
 | Source view/diff | `monaco-editor` 0.55.1 | Current stable read-only source and diff editor; its own diff engine avoids a duplicate client dependency |
 | Lint | ESLint 10.7.0, `@nuxt/eslint` 1.16.0, `@stylistic/eslint-plugin` 5.10.0 | Current compatible stable releases; `@stylistic` supplies the stylistic rules (e.g. `quotes`) ESLint 10 dropped from core |
 | Unit/integration | Vitest and coverage-v8 4.1.10, Nuxt Test Utils 4.0.3 | Exact matching Vitest/coverage versions; Nuxt-supported test harness |
@@ -291,7 +293,7 @@ hash — identical across OSes — so the payload bytes are fixed at dependency 
 devframe's own tarball payload is JavaScript/TypeScript text only, so the Node-only package gate holds. devframe is
 pre-1.0: 0.x minors may migrate APIs, so the caret range excludes them, the committed
 lockfile pins the resolved version, and any bump is a § 3 planning-gate change.
-`tests/package/production-graph.test.ts` asserts exactly the nine approved direct
+`tests/package/production-graph.test.ts` asserts exactly the eleven approved direct
 dependencies; their versions and integrity stay owned by the lockfile.
 
 ### Finite release-certification matrix
@@ -348,8 +350,8 @@ Gunshi's official [setup requirements](https://gunshi.dev/guide/introduction/set
 the Node/TypeScript compatibility and closed unknown-option behavior used here.
 The safe-filesystem layer uses only Node's built-in `node:fs/promises`, `node:fs`, and
 `node:path` APIs, so it adds no platform toolchain or runtime package dependency.
-The direct production `dependencies` set is exactly the nine packages `devframe`,
-`gunshi`, `h3`, `open`, `smol-toml`, `strip-json-comments`, `vfile`, `vfile-matter`, and `yaml` (declared as caret ranges,
+The direct production `dependencies` set is exactly the eleven packages `devframe`,
+`env-editor`, `gunshi`, `h3`, `open`, `smol-toml`, `strip-json-comments`, `vfile`, `vfile-matter`, `which`, and `yaml` (declared as caret ranges,
 with the lockfile pinning every resolved version; `h3` resolves to devframe's own h3,
 so both resolve one module instance): the CLI and parser packages are
 npm-graph leaves, h3 is already in devframe's transitive host tree recorded above,
@@ -906,7 +908,7 @@ policy rather than product code, while browser opening is product-owned through 
 startup opener — the macOS Chromium tab reuse in front of the `open` package's
 helper — with devframe's bundled opener disabled (§ 3), with one closed
 product-owned piece
-in front of static serving: the `/skills/**`, `/instructions/**`, and `/mcp/**`
+in front of static serving: the `/skills/**`, `/instructions/**`, `/mcp/**`, `/rules/**`, and `/permissions/**`
 `GET`/`HEAD`
 rewrites to `/`, one route family per shipped kind detail, which let
 devframe's own handler serve the shell for detail deep links its extension-guarded
@@ -1701,7 +1703,8 @@ messages. Only fixed codes, protocol-owner-generated opaque
 IDs, booleans/enums, safe integers, and evidence digests enter canonical safe-payload bytes.
 Each request additionally uses the exact privacy-safe target classifier `targetClass`:
 `static-manifested-asset | static-spa-shell | static-client-route-fallback |
-connection-discovery-metadata | rpc-channel-upgrade | rpc-get-session | rpc-get-file-detail |
+connection-discovery-metadata | rpc-channel-upgrade | rpc-get-session | rpc-get-file-detail | rpc-get-mcp-carrier-detail |
+rpc-get-permission-policy-detail | rpc-open-file |
 rpc-rescan-repository | rpc-get-global-consent-preview | rpc-create-global-consent-preview |
 rpc-enable-global | rpc-rescan-global | rpc-disable-global | rpc-devframe-framework |
 other-loopback | remote | mcp |
@@ -2030,8 +2033,9 @@ read-only, local, non-executing boundary.
 
 **Decision**: Carry the final analysis remediations into planning and implementation:
 
-1. Startup browser opening is the only permitted product-initiated child-process
-   surface: on macOS the fixed process-list probe and fixed tab-reuse script through the
+1. Startup browser opening is one of the two permitted product-initiated child-process
+   surfaces — the other is the reader's own explicit open-in-editor request: on macOS the
+   fixed process-list probe and fixed tab-reuse script through the
    OS `osascript` automation host, otherwise the fixed startup OS browser helper (§ 3).
    Every spawned process receives only fixed arguments and the printed loopback origin —
    no inspection-derived content or path, authored value, or user-supplied command — and

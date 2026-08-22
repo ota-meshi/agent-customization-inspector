@@ -17,9 +17,10 @@ import {
   type CompiledStaticInstructionRule,
   type CompiledStaticMcpReadingRule,
   type CompiledStaticOtherKindRule,
+  type CompiledStaticPermissionsCarrierRule,
 } from './registry';
 import { ParsedStrictJsonDocument } from '../parsers/json';
-import type { McpServerDeclarationDto } from '../../../shared/api-types';
+import type { DeclaredEntryDto, McpServerDeclarationDto } from '../../../shared/api-types';
 import type { CustomizationKind } from '../../../shared/entities';
 import { CLAUDE_RULE_RELATIONS } from '../../../shared/registries/claude/relations';
 import { CLAUDE_INSPECTION_RULES } from '../../../shared/registries/claude/rules';
@@ -176,6 +177,63 @@ export class ClaudeCompiledMcpCarrierRule
 }
 
 /**
+ * A Claude permission-policy carrier rule compiled for execution: everything a
+ * Claude rule is, plus the one question only this kind's carrier unit answers —
+ * which policy block a settings file it admitted declares.
+ */
+export class ClaudeCompiledPermissionsCarrierRule
+  extends ClaudeCompiledRule
+  implements CompiledStaticPermissionsCarrierRule
+{
+  /** Narrowed to the one kind this unit compiles; the constructor proves it. */
+  declare public readonly kind: 'permissions';
+
+  /** This unit reads a block out of the document it admits (registry.ts § CompiledStaticPermissionsCarrierRule). */
+  public readonly permissionsReading: 'declared-block';
+
+  /**
+   * The entries of the `permissions` object one admitted settings file
+   * declares, in the parser's resolved order (FR-007), or null when the file
+   * declares no such object — which is no policy rather than an empty one, so
+   * the recognizer publishes no recognition and the file reaches no
+   * permissions row.
+   *
+   * The whole object, every key it holds: an allowlist of some of its keys
+   * would drop authored policy without being able to say which was dropped
+   * (contracts/vendors/claude-code.md § Normative initial-release presentation
+   * allowlist). A `permissions` key whose value is not a mapping declares no
+   * policy either — there is no block to publish — which is the same null.
+   *
+   * No rule string is resolved to a tool, a command, a path, or a domain, and
+   * nothing is evaluated against a filesystem: the output is the block the
+   * author wrote (FR-019, FR-026).
+   *
+   * Throws on text strict JSON cannot parse; the recognizer's extraction
+   * boundary turns the throw into the recognition's `failed` state while the
+   * file stays an admitted candidate (FR-028).
+   */
+  public declaredPolicyOf(sourceText: string): readonly DeclaredEntryDto[] | null {
+    const declared = new ParsedStrictJsonDocument(sourceText).entries;
+    // Strict JSON keys are strings, and the parser resolves a key declared
+    // twice to its later declaration, so the spelling alone identifies the
+    // one possible policy entry.
+    const container = declared.find((entry) => entry.key === 'permissions');
+    return container === undefined || container.value.kind !== 'mapping'
+      ? null
+      : container.value.entries;
+  }
+
+  /** Compiles one Claude permission-policy carrier record, rejecting one of another kind. */
+  public constructor(rule: InspectionRule) {
+    super(rule);
+    if (rule.kind !== 'permissions') {
+      throw new TypeError(`rule ${rule.ruleId} is not a Claude permission-policy carrier rule`);
+    }
+    this.permissionsReading = 'declared-block';
+  }
+}
+
+/**
  * A Claude rule of every other kind, compiled for execution. It answers
  * nothing about applicability, which is exactly what a skill rule has to say
  * about it (see `CompiledNonInstructionRule`).
@@ -185,12 +243,12 @@ export class ClaudeCompiledOtherKindRule
   implements CompiledStaticOtherKindRule
 {
   /** Narrowed to the kinds this unit compiles; the constructor proves it. */
-  declare public readonly kind: Exclude<CustomizationKind, 'instructions' | 'MCP'>;
+  declare public readonly kind: Exclude<CustomizationKind, 'instructions' | 'MCP' | 'permissions'>;
 
-  /** Compiles one Claude record of any kind but `instructions` and `MCP`. */
+  /** Compiles one Claude record of any kind but `instructions`, `MCP`, and `permissions`. */
   public constructor(rule: InspectionRule) {
     super(rule);
-    if (rule.kind === 'instructions' || rule.kind === 'MCP') {
+    if (rule.kind === 'instructions' || rule.kind === 'MCP' || rule.kind === 'permissions') {
       throw new TypeError(`rule ${rule.ruleId} needs a Claude unit that answers for its kind`);
     }
   }
@@ -221,5 +279,7 @@ export const CLAUDE_REPOSITORY_RULES: readonly CompiledStaticCandidateRule[] = O
     ? new ClaudeCompiledInstructionRule(rule)
     : rule.kind === 'MCP'
       ? new ClaudeCompiledMcpCarrierRule(rule)
-      : new ClaudeCompiledOtherKindRule(rule),
+      : rule.kind === 'permissions'
+        ? new ClaudeCompiledPermissionsCarrierRule(rule)
+        : new ClaudeCompiledOtherKindRule(rule),
 );

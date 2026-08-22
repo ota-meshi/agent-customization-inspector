@@ -26,6 +26,8 @@
 import { computed } from 'vue';
 import InstructionRow from './rows/InstructionRow.vue';
 import McpRow from './rows/McpRow.vue';
+import PermissionsRow from './rows/PermissionsRow.vue';
+import RuleRow from './rows/RuleRow.vue';
 import SkillRow from './rows/SkillRow.vue';
 import { inventoryPanelId, inventoryTabId } from './panel-ids';
 import { CUSTOMIZATION_KIND_PLURAL_TEXT } from '../../../shared/entities';
@@ -33,6 +35,8 @@ import type {
   CustomizationFileSummaryDto,
   InstructionInventoryEntryDto,
   McpInventoryEntryDto,
+  PermissionsInventoryEntryDto,
+  RuleInventoryEntryDto,
   SerializedDiagnostic,
   SkillInventoryEntryDto,
 } from '../../../shared/api-types';
@@ -43,6 +47,10 @@ const props = defineProps<{
   kind: CustomizationKind | null;
   /** The instruction rows that passed the active filters, in snapshot order. */
   instructionRows: readonly InstructionInventoryEntryDto[];
+  /** The rule rows that passed the active filters, in snapshot order. */
+  ruleRows: readonly RuleInventoryEntryDto[];
+  /** The permission-policy rows that passed the active filters, in snapshot order. */
+  permissionsRows: readonly PermissionsInventoryEntryDto[];
   /** The skill rows that passed the active filters, in snapshot order. */
   skillRows: readonly SkillInventoryEntryDto[];
   /** The MCP name rows that passed the active filters, in snapshot order. */
@@ -69,11 +77,15 @@ const props = defineProps<{
 const rowCount = computed(() =>
   props.kind === 'instructions'
     ? props.instructionRows.length
-    : props.kind === 'skill'
-      ? props.skillRows.length
-      : props.kind === 'MCP'
-        ? props.mcpRows.length
-        : 0,
+    : props.kind === 'rule'
+      ? props.ruleRows.length
+      : props.kind === 'permissions'
+        ? props.permissionsRows.length
+        : props.kind === 'skill'
+          ? props.skillRows.length
+          : props.kind === 'MCP'
+            ? props.mcpRows.length
+            : 0,
 );
 </script>
 
@@ -99,6 +111,22 @@ const rowCount = computed(() =>
           :entry="entry"
           :files-by-path="filesByPath"
           :mcp-carrier-paths="mcpCarrierPaths"
+          :diagnostics="diagnostics"
+        />
+      </template>
+      <template v-if="kind === 'rule'">
+        <!-- Keyed by the row's own path: the unit is the file, and a path is
+             unique within a Source (FR-030). -->
+        <RuleRow v-for="entry in ruleRows" :key="entry.sourceRelativePath" :entry="entry" />
+      </template>
+      <template v-if="kind === 'permissions'">
+        <!-- Its own row component rather than the rules one: a permissions row
+             is a declared policy, keyed by the path of the file that declares
+             it (data-model.md § Inventory unit). -->
+        <PermissionsRow
+          v-for="entry in permissionsRows"
+          :key="entry.sourceRelativePath"
+          :entry="entry"
           :diagnostics="diagnostics"
         />
       </template>

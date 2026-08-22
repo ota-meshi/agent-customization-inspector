@@ -37,6 +37,7 @@ import {
   isReadableFile,
   rendersNothingVisible,
 } from '../../../../shared/entities';
+import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text';
 import type {
   CustomizationFileSummaryDto,
   SerializedDiagnostic,
@@ -205,6 +206,15 @@ function affectedCompanions(
               )}`"
               >{{ SUPPORTED_TOOL_TEXT[definition.tool] }}</NuxtLink
             >
+            <!-- The surfaces of the documented behaviors this definition's
+                 admitting rules rest on, beside the product exactly as an
+                 instruction file's or a policy's row states them: a definition
+                 is one recognition, and a surface set narrows what reads the
+                 file even when it holds one member (FR-009). Naming one is
+                 never a claim that the surface loaded the skill. -->
+            <span class="aci-skill-row__surfaces aci-muted">{{
+              definition.surfaces.map((surface) => VENDOR_SURFACE_TEXT[surface]).join(', ')
+            }}</span>
             <!-- The definition's own extraction diagnostics — its recognition's
                  reference to the kind's one shared failure record, not the
                  file's aggregate, so a definition reports its own kind's
@@ -265,6 +275,18 @@ function affectedCompanions(
 </template>
 
 <style scoped>
+/* The surfaces trail the product on the same line, set apart by a separator
+   rather than by punctuation inside the text: the product is what recognized
+   the file, and the surfaces qualify it. */
+.aci-skill-row__surfaces {
+  margin-inline-start: 0.4rem;
+}
+
+.aci-skill-row__surfaces::before {
+  content: '·';
+  margin-inline-end: 0.4rem;
+}
+
 .aci-skill-row__files,
 .aci-skill-row__definitions,
 .aci-skill-row__resolutions {

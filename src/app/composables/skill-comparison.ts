@@ -33,6 +33,7 @@
 // Construction performs no I/O, and the state is owned by the one
 // `SessionViewState`: a second instance would race the first for the same
 // request tokens.
+import { toJsonStringBody } from '../components/detail-route';
 import { shallowRef } from 'vue';
 import type { SessionApiClient } from '../session/api-client';
 import type { ClientDataPurge } from '../session/client-data';
@@ -92,9 +93,17 @@ export function skillComparisonRouteFor(
   readonly path: string;
   readonly query: { readonly left: string; readonly right: string; readonly file?: string };
 } {
+  // Each path rides as its JSON string body, the spelling every route in this
+  // product uses: a raw entry name can hold a lone surrogate (data-model.md
+  // § SourceRelativePath), which the router's own query encoding rejects with
+  // a `URIError` while the row's link renders (`detail-route.ts`).
   return {
     path: '/skills/compare',
-    query: { left, right, ...(comparedFile === undefined ? {} : { file: comparedFile }) },
+    query: {
+      left: toJsonStringBody(left),
+      right: toJsonStringBody(right),
+      ...(comparedFile === undefined ? {} : { file: toJsonStringBody(comparedFile) }),
+    },
   };
 }
 

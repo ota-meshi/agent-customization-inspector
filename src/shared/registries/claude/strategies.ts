@@ -186,10 +186,87 @@ export const CLAUDE_MCP_SELECTION_STRATEGY = {
 } as const satisfies RuntimeCompositionStrategy;
 
 /** Claude's contribution to the strategy registry, keyed by `strategyId` in identifier order. */
+/**
+ * Claude rule layering: add the applicable User and project rule layers
+ * (`append`), and keep a `paths` rule out of context until Claude works with
+ * a file its glob matches (`filter`). User rules load before project rules,
+ * which is what gives project rules the higher priority.
+ *
+ * `partially-documented`: the page states neither the trigger that loads a
+ * nested `.claude/rules/` directory on demand nor the base an ancestor
+ * layer's `paths` globs are resolved against
+ * (contracts/runtime-composition.md § claude.rules.layering). Which rules a
+ * concrete session holds turns on the working directory and the files it
+ * reads — runtime this tool never observes — so the Inspector records the
+ * documented edge and evaluates no glob against a filesystem path (FR-009).
+ */
+export const CLAUDE_RULES_LAYERING_STRATEGY = {
+  strategyId: 'claude.rules.layering',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  operations: ['filter', 'append'],
+  documentationStatus: 'partially-documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.memory.locations-load',
+          url: 'https://code.claude.com/docs/en/memory',
+          officialHost: 'code.claude.com',
+          sections: ['Organize rules with .claude/rules/'],
+          reviewedOn: '2026-08-18',
+          establishes:
+            'Rules without paths frontmatter load at launch with the same priority as .claude/CLAUDE.md, path-scoped rules trigger when Claude reads a file matching one of their patterns rather than on every tool use, and user-level rules load before project rules so project rules take the higher priority.',
+        },
+      ]
+    : [],
+} as const satisfies RuntimeCompositionStrategy;
+
+/**
+ * Claude settings precedence: what the vendor documents about combining the
+ * settings scopes, including the permission policy this product recognizes.
+ *
+ * `replace` for a scalar key — the higher scope's value stands — and
+ * `concatenate` then `deduplicate` for an array-valued key such as
+ * `permissions.allow`, which the page states merges across scopes rather than
+ * being replaced. `merge-map` because a key omitted at a higher scope keeps
+ * the lower scope's value rather than clearing it.
+ *
+ * `partially-documented`: two array keys are documented as exceptions to the
+ * merge, and a tier of security-sensitive keys is documented as not following
+ * the order in either direction, so what a concrete key does is not settled by
+ * the order alone. Nothing here decides a file this product shows: a
+ * composition record explains the vendor's own reading and grants no
+ * authority (FR-009).
+ */
+export const CLAUDE_SETTINGS_PRECEDENCE_STRATEGY = {
+  strategyId: 'claude.settings.precedence',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  operations: ['replace', 'merge-map', 'concatenate', 'deduplicate'],
+  documentationStatus: 'partially-documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.settings.scopes-precedence',
+          url: 'https://code.claude.com/docs/en/settings',
+          officialHost: 'code.claude.com',
+          sections: ['Settings precedence', 'Lists merge instead of overriding'],
+          reviewedOn: '2026-08-22',
+          establishes:
+            'Settings are read highest precedence first as managed settings, command line arguments, local project settings, shared project settings, then user settings; a key set at a higher level overrides the same key, a list key such as permissions.allow is combined across files instead of one replacing another — fallbackModel and availableModels excepted — and for a few security-sensitive keys a stricter lower-level value is honored over a managed one.',
+        },
+      ]
+    : [],
+} as const satisfies RuntimeCompositionStrategy;
+
 export const CLAUDE_COMPOSITION_STRATEGIES: Readonly<
   Record<ClaudeStrategyId, RuntimeCompositionStrategy>
 > = {
   [CLAUDE_INSTRUCTIONS_LAYERING_STRATEGY.strategyId]: CLAUDE_INSTRUCTIONS_LAYERING_STRATEGY,
   [CLAUDE_MCP_SELECTION_STRATEGY.strategyId]: CLAUDE_MCP_SELECTION_STRATEGY,
+  [CLAUDE_RULES_LAYERING_STRATEGY.strategyId]: CLAUDE_RULES_LAYERING_STRATEGY,
+  [CLAUDE_SETTINGS_PRECEDENCE_STRATEGY.strategyId]: CLAUDE_SETTINGS_PRECEDENCE_STRATEGY,
   [CLAUDE_SKILLS_SELECTION_STRATEGY.strategyId]: CLAUDE_SKILLS_SELECTION_STRATEGY,
 };

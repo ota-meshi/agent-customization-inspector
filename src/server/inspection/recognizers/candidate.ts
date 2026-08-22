@@ -48,6 +48,7 @@
 import type {
   CompiledCandidateRule,
   CompiledStaticMcpReadingRule,
+  CompiledStaticPermissionsCarrierRule,
   SelectorOrigin,
 } from '../rules/registry';
 import { RecognitionExtraction } from '../parsers/extraction';
@@ -224,8 +225,34 @@ export type RecognitionDetails =
       readonly servers: readonly McpServerDeclarationDto[];
     }
   /**
+   * A permission policy a carrier declares as one block of a larger document:
+   * the entries of that block, in the parser's resolved order. The kind's
+   * other form — a file that is itself the whole policy — carries no
+   * extraction and is the plain record below, which is why this member exists
+   * rather than an optional field on it (contracts/http-api.md
+   * § get-permission-policy-detail).
+   */
+  | {
+      /** The recognized customization kind. */
+      readonly kind: 'permissions';
+      /**
+       * The declared block's own entries. Empty exactly for a failed
+       * extraction, which publishes nothing while the carrier stays an
+       * admitted candidate (FR-028); a document declaring no block yields no
+       * recognition at all rather than an empty one.
+       */
+      readonly declaredPolicy: readonly DeclaredEntryDto[];
+    }
+  /**
    * Every other kind. An identity or presentation arrives with the recognizer
    * phase that needs one; until then the kind alone is the record.
+   *
+   * A rule file and a whole-document permission policy are here on purpose
+   * rather than pending an identity: each detail publishes the one document
+   * its author wrote rather than a reading taken out of it — a Claude rule the
+   * complete Markdown, frontmatter block included (contracts/http-api.md
+   * § get-file-detail), and a Codex policy the complete Starlark
+   * (§ get-permission-policy-detail).
    */
   | {
       /** The recognized customization kind. */
@@ -411,6 +438,29 @@ export class ToolRecognition {
       sourceRelativePath,
       tool,
       { kind: 'MCP', servers: extraction.extracted ?? [] },
+      extraction.status,
+      admissions,
+    );
+  }
+
+  /**
+   * Builds one declared-block permission-policy recognition from the carrier
+   * rule's own extraction. `declaredPolicy` is empty for a failed extraction,
+   * which publishes nothing while the carrier stays an admitted candidate
+   * (FR-028). A document that declares no block never reaches here: its
+   * caller publishes no recognition, because a policy nobody wrote is not an
+   * empty policy.
+   */
+  public static recognizePermissionsBlock(
+    sourceRelativePath: string,
+    tool: SupportedTool,
+    extraction: RecognitionExtraction<readonly DeclaredEntryDto[] | null>,
+    admissions: readonly RecognitionAdmission[],
+  ): ToolRecognition {
+    return ToolRecognition.#assemble(
+      sourceRelativePath,
+      tool,
+      { kind: 'permissions', declaredPolicy: extraction.extracted ?? [] },
       extraction.status,
       admissions,
     );
@@ -608,6 +658,12 @@ class CandidateExtractions {
   /** The per-tool MCP declaration readings, each run on its first request. */
   #mcp = new Map<SupportedTool, RecognitionExtraction<readonly McpServerDeclarationDto[]>>();
 
+  /** The per-tool declared-policy readings, each run on its first request. */
+  #declaredPolicy = new Map<
+    SupportedTool,
+    RecognitionExtraction<readonly DeclaredEntryDto[] | null>
+  >();
+
   /** Binds the slots to the one text they extract from. */
   public constructor(sourceText: string) {
     this.#sourceText = sourceText;
@@ -651,6 +707,28 @@ class CandidateExtractions {
       carrier.serverDeclarationsOf(text),
     );
     this.#mcp.set(carrier.tool, extraction);
+    return extraction;
+  }
+
+  /**
+   * The declared permission-policy extraction, read by the admitting carrier
+   * rule's own contract — which key holds the policy, and which format the
+   * document is, is that vendor's fact. Keyed by the tool for the reason the
+   * MCP slot is: one physical file can be two vendors' carrier, and each
+   * publishes exactly its own vendor's reading. Within one tool the reading
+   * runs once, whichever of its admissions asks first.
+   */
+  public declaredPolicy(
+    carrier: CompiledStaticPermissionsCarrierRule,
+  ): RecognitionExtraction<readonly DeclaredEntryDto[] | null> {
+    const existing = this.#declaredPolicy.get(carrier.tool);
+    if (existing !== undefined) {
+      return existing;
+    }
+    const extraction = RecognitionExtraction.run(this.#sourceText, (text) =>
+      carrier.declaredPolicyOf(text),
+    );
+    this.#declaredPolicy.set(carrier.tool, extraction);
     return extraction;
   }
 }
@@ -752,8 +830,33 @@ export async function recognizeCandidateForVendors(
         }
         throw new TypeError('an MCP recognition has no rule that can read its declarations');
       }
+      if (kind === 'permissions') {
+        // Dispatched the way the MCP reading is, over the `kind` and
+        // `permissionsReading` discriminants: a carrier unit reads a block out
+        // of a larger document, while a vendor whose file is itself the policy
+        // has nothing to read and falls through to the plain record below.
+        for (const { compiled } of group) {
+          if (compiled.kind === 'permissions' && compiled.permissionsReading === 'declared-block') {
+            const extraction = extractions.declaredPolicy(compiled);
+            // A document that declares no policy is no permissions row: the
+            // extraction says so by resolving to null, and publishing an empty
+            // recognition would put a policy on screen that nobody wrote. A
+            // failed extraction is not this case — the block is unknown rather
+            // than absent — so it stays a recognition whose diagnostic says
+            // what happened (FR-028).
+            return extraction.status === 'parsed' && extraction.extracted === null
+              ? null
+              : ToolRecognition.recognizePermissionsBlock(
+                  input.matchedPath,
+                  tool,
+                  extraction,
+                  group,
+                );
+          }
+        }
+      }
       return ToolRecognition.recognizeOther(input.matchedPath, tool, kind, group);
     }),
   );
-  return { recognitions, companions };
+  return { recognitions: recognitions.filter((recognition) => recognition !== null), companions };
 }

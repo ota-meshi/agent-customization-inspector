@@ -29,9 +29,12 @@ function snapshot(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot {
   return {
     sessionId: 'session-a',
     createdAt: '2026-07-24T00:00:00.000Z',
+    fileOpenTargets: ['visual-studio-code', 'default-application'],
     sources: [],
     files: [],
     instructions: [],
+    rules: [],
+    permissions: [],
     skills: [],
     mcp: [],
     diagnostics: [],

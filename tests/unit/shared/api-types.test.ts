@@ -85,9 +85,12 @@ describe('session snapshot DTO', () => {
     expectTypeOf<keyof SessionSnapshot>().toEqualTypeOf<
       | 'sessionId'
       | 'createdAt'
+      | 'fileOpenTargets'
       | 'sources'
       | 'files'
       | 'instructions'
+      | 'rules'
+      | 'permissions'
       | 'skills'
       | 'mcp'
       | 'diagnostics'
