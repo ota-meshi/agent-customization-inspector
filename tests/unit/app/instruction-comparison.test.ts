@@ -94,6 +94,7 @@ function snapshotWith(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot
       },
     ],
     rules: [],
+    prompts: [],
     permissions: [],
     skills: [],
     mcp: [],
@@ -423,6 +424,36 @@ describe('instruction recognition comparison rows (T276)', () => {
     expect(comparison.leftDeclarations).toBe('extraction-failed');
     expect(comparison.rightDeclarations).toBe('parsed');
     expect(comparison.frontmatterDiff).toBeNull();
+  });
+
+  it('reads the parse off whatever Markdown variant the path answered with', () => {
+    // One file can hold two Markdown kinds, and `get-file-detail` is
+    // addressed by the path alone: it answers with the first variant its
+    // fixed order reaches, which for a file the skill kind also recognizes is
+    // the skill variant (session.ts § fileDetail). Every parse-carrying
+    // variant holds the same parse for the same bytes, so requiring this
+    // kind's own variant here would state a parsed file's declarations as
+    // unknown and suppress the frontmatter diff.
+    const asInstructions = instructionDetail(LEFT_PATH, [scalarEntry('scope', 'project')]);
+    if (asInstructions.kind !== 'instructions') {
+      throw new Error('expected this kind’s variant from the helper');
+    }
+    const otherVariant: FileDetailDto = {
+      kind: 'skill',
+      file: asInstructions.file,
+      presentation: asInstructions.presentation,
+      diagnostics: asInstructions.diagnostics,
+    };
+    const comparison = new InstructionRecognitionComparison(
+      side(otherVariant, [CODEX]),
+      side(instructionDetail(RIGHT_PATH, [scalarEntry('scope', 'workspace')]), [CODEX]),
+    );
+    expect(comparison.leftDeclarations).toBe('parsed');
+    expect(comparison.rightDeclarations).toBe('parsed');
+    expect(comparison.frontmatterDiff).toEqual({
+      originalText: 'scope: project\n',
+      modifiedText: 'scope: workspace\n',
+    });
   });
 
   it('publishes descriptive rows only — no rank, no winner, no fabricated relationships', () => {

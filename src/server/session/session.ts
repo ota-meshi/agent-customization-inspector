@@ -44,6 +44,8 @@ import type {
   McpServerDeclarationDto,
   McpInventoryEntryDto,
   PermissionPolicyDetailDto,
+  PromptDefinitionDto,
+  PromptInventoryEntryDto,
   PermissionsInventoryEntryDto,
   RuleInventoryEntryDto,
   SameNameSkillResolutionDto,
@@ -278,15 +280,9 @@ function surfacesOf(recognition: ToolRecognition): VendorSurface[] {
  * ({@link surfacesOf} answers for one recognition; this merges by tool).
  */
 function fileRecognitionsOf(recognitions: readonly ToolRecognition[]): FileRecognitionDto[] {
-  const byTool = new Map<SupportedTool, VendorSurface[]>();
-  for (const recognition of recognitions) {
-    byTool.set(recognition.tool, [
-      ...(byTool.get(recognition.tool) ?? []),
-      ...surfacesOf(recognition),
-    ]);
-  }
+  const byTool = Map.groupBy(recognitions, (recognition) => recognition.tool);
   return SUPPORTED_TOOL_ORDER.filter((tool) => byTool.has(tool)).map((tool) => {
-    const surfaces = new Set(byTool.get(tool));
+    const surfaces = new Set(byTool.get(tool)?.flatMap((recognition) => surfacesOf(recognition)));
     return { tool, surfaces: VENDOR_SURFACE_ORDER.filter((surface) => surfaces.has(surface)) };
   });
 }
@@ -373,24 +369,75 @@ function projectInstructionInventory(
  * publish the same rows and an opaque ID never decides a visible order.
  */
 function projectRuleInventory(recognitions: readonly ToolRecognition[]): RuleInventoryEntryDto[] {
-  const byPath = new Map<string, ToolRecognition[]>();
-  for (const recognition of recognitions) {
-    if (recognition.details.kind !== 'rule') {
-      continue;
-    }
-    const group = byPath.get(recognition.sourceRelativePath);
-    if (group === undefined) {
-      byPath.set(recognition.sourceRelativePath, [recognition]);
-    } else {
-      group.push(recognition);
-    }
-  }
+  const byPath = Map.groupBy(
+    recognitions.filter((recognition) => recognition.details.kind === 'rule'),
+    (recognition) => recognition.sourceRelativePath,
+  );
   return [...byPath.entries()]
     .map(([sourceRelativePath, group]) => ({
       sourceRelativePath,
       recognitions: fileRecognitionsOf(group),
     }))
     .sort((left, right) => compareStrings(left.sourceRelativePath, right.sourceRelativePath));
+}
+
+/**
+ * Projects the prompts-and-commands inventory from a generation's recognitions
+ * (contracts/http-api.md § get-session `prompts[]`, data-model.md § Inventory
+ * unit): one entry per name a reader invokes, each listing every prompt or
+ * command file a recognizing tool invokes it by.
+ *
+ * The name is the recognition's own — the admitting rule derived it from the
+ * path when the file was recognized (`registry.ts`
+ * § CompiledStaticPromptRule) — so this projection groups by it rather than
+ * deriving it a second time where the two could disagree.
+ *
+ * Grouped like the skill inventory and not like the rules one, because the
+ * unit is the same shape: a name, and the recognitions that resolve it. What
+ * differs is where the name comes from — a skill declares one and a command
+ * never does — which is why a command definition publishes no authored-name
+ * parse state (data-model.md § Inventory unit).
+ */
+function projectPromptInventory(
+  recognitions: readonly ToolRecognition[],
+): PromptInventoryEntryDto[] {
+  const byName = new Map<string, PromptDefinitionDto[]>();
+  for (const recognition of recognitions) {
+    if (recognition.details.kind !== 'prompt/command') {
+      continue;
+    }
+    const definitions = byName.get(recognition.details.invocationName);
+    const definition: PromptDefinitionDto = {
+      sourceRelativePath: recognition.sourceRelativePath,
+      tool: recognition.tool,
+      // The surfaces this one recognition's admissions rest on, derived the
+      // same way every other kind's row derives them (FR-009).
+      surfaces: surfacesOf(recognition),
+      diagnosticIds: recognition.diagnosticIds,
+    };
+    if (definitions === undefined) {
+      byName.set(recognition.details.invocationName, [definition]);
+    } else {
+      definitions.push(definition);
+    }
+  }
+  return (
+    [...byName.entries()]
+      .map(([name, definitions]) => ({
+        name,
+        // Files in Source-relative Path order, then the contracted tool order
+        // within one file, so two snapshots of one generation publish the same
+        // rows and an opaque ID never decides a visible order.
+        definitions: definitions.toSorted((left, right) => {
+          const pathDelta = compareStrings(left.sourceRelativePath, right.sourceRelativePath);
+          return pathDelta !== 0
+            ? pathDelta
+            : SUPPORTED_TOOL_ORDER.indexOf(left.tool) - SUPPORTED_TOOL_ORDER.indexOf(right.tool);
+        }),
+      }))
+      // Entries in name order: the row's own key sorts it.
+      .sort((left, right) => compareStrings(left.name, right.name))
+  );
 }
 
 /**
@@ -409,18 +456,10 @@ function projectRuleInventory(recognitions: readonly ToolRecognition[]): RuleInv
 function projectPermissionsInventory(
   recognitions: readonly ToolRecognition[],
 ): PermissionsInventoryEntryDto[] {
-  const byPath = new Map<string, ToolRecognition[]>();
-  for (const recognition of recognitions) {
-    if (recognition.details.kind !== 'permissions') {
-      continue;
-    }
-    const group = byPath.get(recognition.sourceRelativePath);
-    if (group === undefined) {
-      byPath.set(recognition.sourceRelativePath, [recognition]);
-    } else {
-      group.push(recognition);
-    }
-  }
+  const byPath = Map.groupBy(
+    recognitions.filter((recognition) => recognition.details.kind === 'permissions'),
+    (recognition) => recognition.sourceRelativePath,
+  );
   return [...byPath.entries()]
     .map(([sourceRelativePath, group]) => ({
       sourceRelativePath,
@@ -828,7 +867,7 @@ export class InspectionSession {
       // The parse the detail shows is the file's, not a recognizing tool's:
       // every recognition of the file's kind shares the one extraction
       // (candidate.ts), so any one of them carries it. The variants are tried
-      // in a fixed order — the two Markdown kinds, then the rule kind — and a
+      // in a fixed order — the three Markdown kinds, then the rule kind — and a
       // file no recognition owns is the plain one: a census companion, or a
       // diagnostic-only candidate (contracts/http-api.md § get-file-detail).
       // One file can hold two of these kinds: `CLAUDE.md` is a Claude
@@ -892,6 +931,40 @@ export class InspectionSession {
               ? {
                   frontmatter: instruction.details.frontmatter,
                   bodyText: instruction.details.bodyText,
+                }
+              : null,
+          diagnostics,
+        };
+      }
+      // A recognized command file: the file plus the same one parse, because a
+      // command file carries a skill's frontmatter keys. Decided after the
+      // instructions variant, and that order is what a `.claude/commands/`
+      // directory holding a `CLAUDE.md` or an `AGENTS.md` settles on — such a
+      // file is an instruction file by its name and a command by its
+      // directory, and a detail is addressed by the path alone. Either variant
+      // renders the same document and the same declarations, so which one the
+      // order reaches changes nothing a reader sees.
+      //
+      // A loop rather than `find`: the callback's narrowing would not reach
+      // here without a hand-authored predicate, which asserts the kind instead
+      // of proving it, while `continue` narrows `details` by the compiler's own
+      // control flow.
+      for (const recognition of generation.recognitions) {
+        if (
+          recognition.sourceRelativePath !== sourceRelativePath ||
+          recognition.details.kind !== 'prompt/command'
+        ) {
+          continue;
+        }
+        return {
+          kind: 'prompt/command',
+          file,
+          // The same all-or-nothing rule as the skill variant (FR-028).
+          presentation:
+            recognition.parseStatus === 'parsed'
+              ? {
+                  frontmatter: recognition.details.frontmatter,
+                  bodyText: recognition.details.bodyText,
                 }
               : null,
           diagnostics,
@@ -1159,6 +1232,10 @@ export class InspectionSession {
         ...(this.committedGlobalGeneration?.recognitions ?? []),
       ]),
       rules: projectRuleInventory([
+        ...this.committedRepositoryGeneration.recognitions,
+        ...(this.committedGlobalGeneration?.recognitions ?? []),
+      ]),
+      prompts: projectPromptInventory([
         ...this.committedRepositoryGeneration.recognitions,
         ...(this.committedGlobalGeneration?.recognitions ?? []),
       ]),

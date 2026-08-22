@@ -263,14 +263,17 @@ segments rather than re-parsing it. A raw name is the string Node.js returned fo
 entry — `fs` decodes names as UTF-8 by documented default, so a platform name that is
 not valid UTF-8 arrives replacement-decoded, and a name the platform cannot resolve
 again through that string surfaces as the affected operation's ordinary failure. Presentation escapes control characters, the bidirectional formatting characters
-(U+061C, U+200E, U+200F, U+202A–U+202E, U+2066–U+2069), and lone surrogates without
+(U+061C, U+200E, U+200F, U+202A–U+202E, U+2066–U+2069), lone surrogates, and
+default-ignorable code points such as U+200B without
 changing the stored value: the formatting characters reorder the text around them, so a
-path carrying one would render as a different path than the one it identifies, and a
+path carrying one would render as a different path than the one it identifies, a
 lone surrogate draws as the one replacement glyph, so two names differing only in which
-surrogate they carry would render identically. A path label with
-no character that draws — one built only from whitespace or default-ignorable code points
-such as U+200B — is instead spelled out in full, because a label that renders as nothing
-leaves its control with neither visible text nor an accessible name. On the wire, `sourceRelativePath` serializes only the `value`
+surrogate they carry would render identically, and a default-ignorable code point draws
+nothing at all, so a name carrying one would render as the name without it. Whitespace is
+deliberately left as authored, because a space is a character a reader recognizes; a path
+label whose every character is whitespace is instead spelled out in full, because a label
+that renders as nothing leaves its control with neither visible text nor an accessible
+name, and so is any value a surface that collapses whitespace would draw ambiguously. On the wire, `sourceRelativePath` serializes only the `value`
 string; the containing file DTO's `sourceId` supplies the public ownership link.
 
 ### Packaged dist contents
@@ -1238,6 +1241,7 @@ shipped kinds do not agree on one:
 | `instructions` | One applicability range: the glob the governing files' own paths derive, listing each file it governs with that file's recognitions — each one product and the surfaces of the documented behaviors its admitting rules rest on, because a tool alone cannot say where a product reads the file from |
 | `rule` | The file itself: a rule file is modular instructions a product loads into context, and it declares no name a row could be keyed by nor governs a range it could be grouped under, so its Source-relative Path is the row's identity, and two products recognizing one file are two recognitions on one row, each naming its product and the surfaces of the documented behaviors its admitting rules rest on |
 | `permissions` | The file that declares the policy, on the same terms as a `rule` row. A separate kind because the subject differs: a permission policy decides which commands or tools a product may run, where a rule is guidance the product reads. Codex spells its policy in `.codex/rules/*.rules` and Claude calls its own modular instructions `rules` too, so grouping by the vendors' shared word would put two unrelated subjects in one list. A file whose whole content is the policy and a file carrying the policy in one block of a larger document are one row each: what differs is what the detail publishes, not what the row is. A carrier that declares no policy is no row at all — the rest of the document is the recognition that owns it, and a row would state a policy its author never wrote |
+| `prompt/command` | One name a reader invokes, on the same terms as a `skill` row: every recognition resolving that name — one per `(file, tool)` — is a definition listed inside the name's row, so a file two products invoke by one name is two definitions of that row and a file they name differently defines on each name's row. Which name that is belongs to the rule that admitted the file, because this kind's two locations answer differently. A command file's name is never authored — both products ignore a `name` key in one — so each product's own admitting rule derives it from the path: Claude Code takes the file's path below its command directory and turns every separator into a `:`, so `frontend/component.md` is `frontend:component` and `team/review/security.md` is `team:review:security`; a leaf whose stem is `skill` in any letter case takes its directory’s name instead of its own, which the product does and no page documents — the stem is compared without case while the `.md` extension is the one the matcher admits, so a `SKILL.MD` is not a command file here at all. The Copilot CLI takes the file name alone, having documented no namespace and reaching no subdirectory. The two therefore agree exactly at a root direct child, which is why such a file is one row naming both products while a nested one is a row of Claude's alone. A VS Code prompt file names itself instead: the documented `name` is what a reader types after the `/`, and the file's own name stands in when it declares none — so a prompt declaring the name a command resolves to is a definition on that command's row, the way two files of one skill name share theirs. A row states no same-name resolution, unlike a skill's. Two prompt files can now reach one name, and VS Code documents no outcome for that, so a row that answered would be answering a question no page asks — the definitions stand side by side and the reader sees both (FR-009) |
 | `settings/config` | The file itself |
 
 A CustomizationFile therefore publishes its own facts once — Source-relative Path, read
@@ -1467,8 +1471,10 @@ one canonical serialized document per side, diffed in Monaco (research.md § 7):
 frontmatter declaration is its file's one parse for the recognized Markdown kind, so a
 tool is not a coordinate of it — tool recognition is compared per tool in typed rows
 beside the diff — and each side serializes to YAML, the skill comparison leading with
-`name` and `description` and every other key sorted, the instruction comparison sorting
-every key. The MCP kind's declarations are each recognizing tool's own reading
+`name` and `description` and every other key sorted, the instruction and
+prompt-and-command comparisons sorting every key: this kind's row name is the admitting
+rule's answer rather than one declared key, so promoting a key would give the command
+half of the kind an identity it does not have. The MCP kind's declarations are each recognizing tool's own reading
 (§ Field reading), and their comparison surface is the declared server name's own — one
 name's declaration in each of two carriers of its row, serialized to one canonical JSON
 document per side and diffed in Monaco, loaded through two ordinary
@@ -1827,8 +1833,19 @@ This state is not authoritative and is never persisted.
   `get-mcp-carrier-detail` reads, and what Monaco diffs is each side's declaration for
   the named server serialized to one canonical JSON document (research.md § 7): the
   carriers need not share a syntax and no carrier shows its bytes (FR-007), so the
-  serialization is the one spelling both sides can be read in. A
-  cross-source comparison always
+  serialization is the one spelling both sides can be read in. The prompt-and-command
+  route names two files' `sourceRelativePath` identities that one invocation-name row of
+  the current generation holds — the row-owned pair again, the name row standing where
+  the skill name's row stands, and derived from the two identities because no shipped
+  rule lets one file resolve two names — resolved into zero or two readable files: a
+  file of this kind is complete in itself, so no side can be a stated absence, and a
+  pair no single row holds is reported rather than compared. One kind is one comparison
+  surface, so the kind's locations meet on it: a VS Code prompt file stands opposite the
+  command file whose name it declares. Beside the source diff, each recognizing tool's
+  cell states the name that tool invokes that side's file by — this kind's own typed
+  fact, because the admitting rule answers it and the kind's two locations answer
+  differently — and a cell with no definition is the whole of that tool not reading that
+  file. A cross-source comparison always
   compares each source's last committed state. A file pair is loaded through two ordinary
   `FileDetail` requests and a one-sided skill comparison through one — the absence needs
   no request — and Monaco compares the complete `sourceText` values, the absent side

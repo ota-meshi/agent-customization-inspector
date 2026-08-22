@@ -50,6 +50,7 @@ function bootstrapSnapshot(overrides: Partial<SessionSnapshot> = {}): SessionSna
     files: [],
     instructions: [],
     rules: [],
+    prompts: [],
     permissions: [],
     skills: [],
     mcp: [],
@@ -207,18 +208,13 @@ describe('session view state — session loss', () => {
     // The client's own guard and this module's assignment are in different
     // microtasks. A purge landing in that gap clears the view; the assignment
     // must not put the pre-purge snapshot back (FR-027, FR-042).
-    let releaseFetch: ((value: unknown) => void) | undefined;
-    const channel = {
-      call: () =>
-        new Promise((resolve) => {
-          releaseFetch = resolve;
-        }),
-    };
+    const heldFetch = Promise.withResolvers<unknown>();
+    const channel = { call: () => heldFetch.promise };
     const state = new SessionViewState({ channel });
     const started = state.start();
     // A purge runs while the fetch is still in flight.
     state.dispose();
-    releaseFetch!(sessionResult(bootstrapSnapshot()));
+    heldFetch.resolve(sessionResult(bootstrapSnapshot()));
     await started;
     expect(state.snapshot.value).toBeNull();
     state.dispose();
@@ -255,16 +251,12 @@ describe('session view state — session loss', () => {
   });
 
   it('rejects a settlement captured before the purge', async () => {
-    // Assigned inside the promise executor below; typed as a plain function
-    // with a no-op default so control-flow narrowing keeps it callable.
-    let release: (value: unknown) => void = () => {};
+    const heldFetch = Promise.withResolvers<unknown>();
     const calls: SessionRpcFunctionName[] = [];
     const channel = {
       call: (method: SessionRpcFunctionName) => {
         calls.push(method);
-        return new Promise<unknown>((resolve) => {
-          release = resolve;
-        });
+        return heldFetch.promise;
       },
     };
     const state = new SessionViewState({ channel });
@@ -274,7 +266,7 @@ describe('session view state — session loss', () => {
     }
     // The channel dies while the snapshot request is still outstanding.
     state.reportChannelLost(null);
-    release(sessionResult(bootstrapSnapshot()));
+    heldFetch.resolve(sessionResult(bootstrapSnapshot()));
     await started;
     // The late settlement was captured under the pre-purge epoch, so it
     // cannot repopulate the view it would have filled.
@@ -819,22 +811,19 @@ describe('an explicit rescan replaces the whole adopted generation (T182)', () =
     // The request token is the invocation's ownership of the page: a detail
     // that settles after `closeFileDetail` advanced the version must not
     // repopulate the state the reader already left.
-    let settleFirst!: (value: unknown) => void;
-    const first = new Promise((resolve) => {
-      settleFirst = resolve;
-    });
+    const firstDetail = Promise.withResolvers<unknown>();
     let detailCalls = 0;
     const { state } = rescanHarness({
       'agent-customization-inspector:get-session': () => sessionResult(committedSnapshot()),
       'agent-customization-inspector:get-file-detail': () => {
         detailCalls += 1;
-        return detailCalls === 1 ? first : detailFor('entry-1');
+        return detailCalls === 1 ? firstDetail.promise : detailFor('entry-1');
       },
     });
     await state.start();
     const opened = state.openFileDetail(pathFor('entry-1'), pathFor('entry-1'));
     state.closeFileDetail();
-    settleFirst(detailFor('entry-1'));
+    firstDetail.resolve(detailFor('entry-1'));
     await opened;
     // The settled response was captured under a superseded token: nothing
     // re-adopts it, and the route stays where the reader left it.
@@ -850,14 +839,8 @@ describe('an explicit rescan replaces the whole adopted generation (T182)', () =
     // must recover through a fresh snapshot-then-re-request, never render
     // under state resolved from the replaced generation
     // (contracts/http-api.md § Concurrency and lifecycle).
-    let settleDetail!: (value: unknown) => void;
-    const firstDetail = new Promise((resolve) => {
-      settleDetail = resolve;
-    });
-    let settleRefresh!: (value: unknown) => void;
-    const heldRefresh = new Promise((resolve) => {
-      settleRefresh = resolve;
-    });
+    const firstDetail = Promise.withResolvers<unknown>();
+    const heldRefresh = Promise.withResolvers<unknown>();
     let detailCalls = 0;
     let sessionCalls = 0;
     const { state } = rescanHarness({
@@ -869,7 +852,7 @@ describe('an explicit rescan replaces the whole adopted generation (T182)', () =
         // The rescan's own post-acceptance refresh is held, so the client's
         // adopted baseline is still generation 1 when the detail settles.
         if (sessionCalls === 2) {
-          return heldRefresh;
+          return heldRefresh.promise;
         }
         return sessionResult(replacementSnapshot());
       },
@@ -880,7 +863,7 @@ describe('an explicit rescan replaces the whole adopted generation (T182)', () =
       'agent-customization-inspector:get-file-detail': () => {
         detailCalls += 1;
         return detailCalls === 1
-          ? firstDetail
+          ? firstDetail.promise
           : { ...detailFor('entry-2'), repositoryGeneration: 2 };
       },
     });
@@ -894,9 +877,9 @@ describe('an explicit rescan replaces the whole adopted generation (T182)', () =
     // settles bound to generation 2 while this client still holds 1. It is
     // withheld — never rendered under state resolved from the replaced
     // generation — and recovery re-requests after a fresh snapshot.
-    settleDetail({ ...detailFor('entry-2'), repositoryGeneration: 2 });
+    firstDetail.resolve({ ...detailFor('entry-2'), repositoryGeneration: 2 });
     await Promise.resolve();
-    settleRefresh(sessionResult(replacementSnapshot()));
+    heldRefresh.resolve(sessionResult(replacementSnapshot()));
     await opened;
     await rescanned;
     expect(state.snapshot.value?.repositoryGeneration).toBe(2);

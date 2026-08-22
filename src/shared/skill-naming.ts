@@ -40,14 +40,12 @@ export const SKILL_NAMING: Readonly<Record<SupportedTool, SkillNaming>> = {
 export function skillCollisionGates(
   definitions: readonly SameNameCollisionDefinition[],
 ): ReadonlyMap<SupportedTool, (rowPaths: readonly string[]) => boolean> {
-  const pathsByTool = new Map<SupportedTool, string[]>();
-  for (const definition of definitions) {
-    const toolPaths = pathsByTool.get(definition.tool) ?? [];
-    toolPaths.push(definition.sourceRelativePath);
-    pathsByTool.set(definition.tool, toolPaths);
-  }
+  const byTool = Map.groupBy(definitions, (definition) => definition.tool);
   return new Map(
-    [...pathsByTool].map(([tool, paths]) => [tool, SKILL_NAMING[tool].collisionGate(paths)]),
+    [...byTool].map(([tool, group]) => [
+      tool,
+      SKILL_NAMING[tool].collisionGate(group.map((definition) => definition.sourceRelativePath)),
+    ]),
   );
 }
 

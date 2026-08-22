@@ -34,6 +34,7 @@ function snapshot(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot {
     files: [],
     instructions: [],
     rules: [],
+    prompts: [],
     permissions: [],
     skills: [],
     mcp: [],
@@ -120,13 +121,11 @@ describe('a newer generation abandons data, not commands', () => {
     // response. Adopting a newer snapshot invalidates that sequence's *data*,
     // not a command still in flight (contracts/http-api.md § Concurrency and
     // lifecycle), so the command must settle on its own terms.
-    let releaseRescan: ((value: unknown) => void) | undefined;
+    const rescanResponse = Promise.withResolvers<unknown>();
     const channel = {
       call: (method: SessionRpcFunctionName) =>
         method === SESSION_RPC_FUNCTIONS.rescanRepository
-          ? new Promise((resolve) => {
-              releaseRescan = resolve;
-            })
+          ? rescanResponse.promise
           : Promise.resolve(sessionResult(snapshot(), { repositoryGeneration: 2 })),
     };
     const client = new SessionApiClient({ channel, clientData: guard() });
@@ -134,7 +133,7 @@ describe('a newer generation abandons data, not commands', () => {
     // A snapshot at a newer generation arrives while the command is pending.
     const adopted = await client.fetchSession();
     expect(adopted.kind).toBe('adopted');
-    releaseRescan!({
+    rescanResponse.resolve({
       globalContentEpoch: 0,
       repositoryGeneration: 2,
       globalGeneration: null,
@@ -227,16 +226,12 @@ describe('session API client — inspection-data guards', () => {
   });
 
   it('adopts equal non-null generations only for the latest request token', async () => {
-    // Assigned inside the promise executor below; typed as a plain function
-    // with a no-op default so control-flow narrowing keeps it callable.
-    let release: (value: unknown) => void = () => {};
+    const heldResponse = Promise.withResolvers<unknown>();
     const responses: unknown[] = [
       // The baseline adoption, so the two overlapping requests below carry
       // an equal generation and no sequence advances between them.
       Promise.resolve(sessionResult(snapshot({ globalGeneration: 3 }))),
-      new Promise((resolve) => {
-        release = resolve;
-      }),
+      heldResponse.promise,
       Promise.resolve(sessionResult(snapshot({ globalGeneration: 3 }))),
     ];
     let index = 0;
@@ -252,7 +247,7 @@ describe('session API client — inspection-data guards', () => {
     const stale = client.fetchSession();
     const fresh = await client.fetchSession();
     expect(fresh.kind).toBe('adopted');
-    release(sessionResult(snapshot({ globalGeneration: 3 })));
+    heldResponse.resolve(sessionResult(snapshot({ globalGeneration: 3 })));
     // The first of the pair settled last; its token is no longer the latest,
     // so it is a late response and never reaches rendered state.
     await expect(stale).resolves.toEqual({ kind: 'discarded', reason: 'superseded-request' });
@@ -374,12 +369,10 @@ describe('session API client — inspection-data guards', () => {
   });
 
   it('discards a superseded rejection without purging newer client state', async () => {
-    let rejectStale: (error: Error) => void = () => {};
+    const heldResponse = Promise.withResolvers<unknown>();
     const responses: unknown[] = [
       Promise.resolve(sessionResult(snapshot())),
-      new Promise((_, reject) => {
-        rejectStale = reject;
-      }),
+      heldResponse.promise,
       Promise.resolve(sessionResult(snapshot())),
     ];
     let index = 0;
@@ -396,23 +389,18 @@ describe('session API client — inspection-data guards', () => {
     const stale = client.fetchSession();
     const fresh = await client.fetchSession();
     expect(fresh.kind).toBe('adopted');
-    rejectStale(new Error('superseded socket failure'));
+    heldResponse.reject(new Error('superseded socket failure'));
     await expect(stale).resolves.toEqual({ kind: 'discarded', reason: 'superseded-request' });
     expect(clientData.purges).toEqual([]);
   });
 
   it('discards a settlement whose request was aborted', async () => {
-    let release: (value: unknown) => void = () => {};
-    const channel = {
-      call: () =>
-        new Promise<unknown>((resolve) => {
-          release = resolve;
-        }),
-    };
+    const heldResponse = Promise.withResolvers<unknown>();
+    const channel = { call: () => heldResponse.promise };
     const client = new SessionApiClient({ channel, clientData: guard() });
     const pending = client.fetchSession();
     client.abortOutstandingRequests();
-    release(sessionResult(snapshot()));
+    heldResponse.resolve(sessionResult(snapshot()));
     await expect(pending).resolves.toEqual({ kind: 'discarded', reason: 'aborted' });
   });
 });

@@ -163,6 +163,37 @@ describe('recognition and declared-metadata comparison', () => {
     expect(companion.frontmatterDiff).toBeNull();
   });
 
+  it('declares nothing for a companion that is its own recognition of another kind', () => {
+    // An `AGENTS.md` inside a skill directory is a census companion here and a
+    // Copilot instruction file in its own right, so `get-file-detail` answers
+    // with the instructions variant and its parse (session.ts § fileDetail).
+    // No skill definition owns it, so it declares nothing on this surface —
+    // taking the parse would publish an instruction file's declarations as the
+    // skill's declared metadata.
+    const path = '.agents/skills/alpha/AGENTS.md';
+    const asInstructions: FileDetailDto = {
+      kind: 'instructions',
+      file: {
+        sourceId: 'source-repository',
+        sourceRelativePath: path,
+        diagnosticIds: [],
+        encoding: 'utf-8',
+        hadLeadingBom: false,
+        sourceText: 'fixture source',
+        sizeBytes: 14,
+      },
+      diagnostics: [],
+      presentation: { frontmatter: [scalar('applyTo', '**')], bodyText: 'body' },
+    };
+    const comparison = new SkillRecognitionComparison(
+      side(asInstructions, []),
+      side(companionDetail('.claude/skills/alpha/AGENTS.md'), []),
+    );
+    expect(comparison.leftDeclarations).toBe('not-a-skill');
+    expect(comparison.rightDeclarations).toBe('not-a-skill');
+    expect(comparison.frontmatterDiff).toBeNull();
+  });
+
   it('publishes one recognition row per recognizing tool, in the contracted tool order', () => {
     const path = '.agents/skills/alpha/SKILL.md';
     const otherPath = '.agents/skills/beta/SKILL.md';
@@ -229,6 +260,39 @@ describe('recognition and declared-metadata comparison', () => {
     ]);
     expect(comparison.rightDeclarations).toBe('extraction-failed');
     expect(comparison.frontmatterDiff).toBeNull();
+  });
+
+  it('reads the parse off whatever Markdown variant the path answered with', () => {
+    // `get-file-detail` is addressed by the path alone and answers with the
+    // first variant its fixed order reaches (session.ts § fileDetail), which
+    // is that function's business rather than this surface's. Every
+    // parse-carrying variant holds the same parse for the same bytes, so
+    // requiring this kind's own variant here would state a parsed file's
+    // declarations as unknown and suppress the frontmatter diff.
+    const leftPath = '.agents/skills/alpha/SKILL.md';
+    const rightPath = '.claude/skills/alpha/SKILL.md';
+    const asSkill = entryDetail(leftPath, [scalar('name', 'alpha'), scalar('zeta', 'left')]);
+    if (asSkill.kind !== 'skill') {
+      throw new Error('expected this kind’s variant from the helper');
+    }
+    const otherVariant: FileDetailDto = {
+      kind: 'instructions',
+      file: asSkill.file,
+      presentation: asSkill.presentation,
+      diagnostics: asSkill.diagnostics,
+    };
+    const comparison = new SkillRecognitionComparison(
+      side(otherVariant, [definition(leftPath, 'claude')]),
+      side(entryDetail(rightPath, [scalar('name', 'alpha')]), [definition(rightPath, 'claude')]),
+    );
+    expect(comparison.leftDeclarations).toBe('parsed');
+    expect(comparison.rightDeclarations).toBe('parsed');
+    expect(comparison.frontmatterDiff).toEqual({
+      originalText: ['name: alpha', 'zeta: left', ''].join('\n'),
+      modifiedText: 'name: alpha\n',
+      originalAbsent: false,
+      modifiedAbsent: false,
+    });
   });
 
   it('builds no recognition row at all for files no recognition owns', () => {

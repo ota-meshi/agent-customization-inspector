@@ -480,6 +480,245 @@ if (copilotMcpRule.kind !== 'MCP' || copilotMcpRule.mcpReading !== 'own') {
   throw new Error('expected the compiled Copilot MCP carrier rule');
 }
 
+const copilotCommandRule = COPILOT_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'copilot.repo.command',
+)!;
+
+describe('the Copilot command reading (T467)', () => {
+  /** Recognizes one authored root direct-child command file for Copilot. */
+  async function recognizePrompt(
+    sourceText: string,
+    matchedPath = '.claude/commands/deploy.md',
+  ): Promise<ToolRecognition> {
+    const { recognitions } = await recognizeCandidateForVendors(
+      {
+        matchedPath,
+        absolutePath: join(root, matchedPath),
+        sourceRoot: root,
+        admissions: [{ compiled: copilotCommandRule, origin: { planIndex: 0, selectorIndex: 0 } }],
+        sourceText,
+      },
+      ['copilot'],
+    );
+    const [recognition] = recognitions;
+    if (recognition === undefined) {
+      throw new Error('expected one Copilot command recognition');
+    }
+    return recognition;
+  }
+
+  it('reads the fields the CLI documents, and every other key the file wrote', async () => {
+    // The reference names `argument-hint`, `description`, `allowed-tools`, and
+    // `disable-model-invocation` as what the format supports, and this product
+    // publishes the keys the file wrote rather than an allowlist of them: an
+    // authored key set is not closed (FR-007).
+    const recognition = await recognizePrompt(
+      [
+        '---',
+        'description: Deploy the current branch',
+        'argument-hint: "[environment]"',
+        'allowed-tools:',
+        '  - Bash(git status)',
+        'disable-model-invocation: true',
+        'unlisted-key: kept',
+        '---',
+        '',
+        '# Deploy',
+        '',
+      ].join('\n'),
+    );
+    expect(recognition.details).toMatchObject({
+      kind: 'prompt/command',
+      invocationName: 'deploy',
+      bodyText: '\n# Deploy\n',
+    });
+    expect(
+      recognition.details.kind === 'prompt/command'
+        ? recognition.details.frontmatter.map((entry) => entry.key)
+        : [],
+    ).toEqual([
+      'description',
+      'argument-hint',
+      'allowed-tools',
+      'disable-model-invocation',
+      'unlisted-key',
+    ]);
+    expect(recognition.parseStatus).toBe('parsed');
+  });
+
+  it('names the file even when it declares a `name` the format does not need', async () => {
+    // "The command name is derived from the filename" and the format needs no
+    // `name` field, so a declared one is an ordinary key rather than the
+    // identity (contracts/vendors/github-copilot.md § Inspector Repository
+    // matcher rules).
+    const recognition = await recognizePrompt('---\nname: something-else\n---\n\n# Deploy\n');
+    expect(recognition.details).toMatchObject({
+      invocationName: 'deploy',
+      frontmatter: [
+        {
+          key: 'name',
+          keyKind: 'string',
+          value: { kind: 'scalar', scalarKind: 'string', text: 'something-else' },
+        },
+      ],
+    });
+  });
+
+  it('states nothing about the same-name skill that would outrank it', async () => {
+    // The documented priority is the CLI selection strategy's, and it turns on
+    // sources this scan never observes; a recognition records that the file
+    // exists at an allowlisted location and no more (FR-009).
+    const recognition = await recognizePrompt('# Deploy\n');
+    expect(JSON.stringify(recognition)).not.toContain('priority');
+    expect(JSON.stringify(recognition)).not.toContain('outrank');
+  });
+
+  it('publishes a credential and an environment reference exactly as authored', async () => {
+    const recognition = await recognizePrompt(
+      `---\ndescription: Publish with ${CONTENT_FIXTURE_SECRET}\nendpoint: \${DEPLOY_ENDPOINT}\n---\n\n# Publish\n`,
+    );
+    expect(recognition.details).toMatchObject({
+      frontmatter: [
+        {
+          key: 'description',
+          value: { kind: 'scalar', text: `Publish with ${CONTENT_FIXTURE_SECRET}` },
+        },
+        { key: 'endpoint', value: { kind: 'scalar', text: '${DEPLOY_ENDPOINT}' } },
+      ],
+    });
+    expect(process.env['DEPLOY_ENDPOINT']).toBeUndefined();
+  });
+
+  it('fails extraction all-or-nothing while keeping the name the path gives it', async () => {
+    const recognition = await recognizePrompt('---\nallowed-tools: [Bash\n---\n\n# Broken\n');
+    expect(recognition.details).toEqual({
+      kind: 'prompt/command',
+      invocationName: 'deploy',
+      frontmatter: [],
+      bodyText: '',
+    });
+    expect(recognition.parseStatus).toBe('failed');
+  });
+});
+
+const copilotPromptRule = COPILOT_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'copilot.repo.prompt',
+)!;
+
+describe('the Copilot prompt reading (T495)', () => {
+  /** Recognizes one authored prompt file at a `.github/prompts/` path. */
+  async function recognizePromptFile(
+    sourceText: string,
+    matchedPath = '.github/prompts/scaffold.prompt.md',
+  ): Promise<ToolRecognition> {
+    const { recognitions } = await recognizeCandidateForVendors(
+      {
+        matchedPath,
+        absolutePath: join(root, matchedPath),
+        sourceRoot: root,
+        admissions: [{ compiled: copilotPromptRule, origin: { planIndex: 0, selectorIndex: 0 } }],
+        sourceText,
+      },
+      ['copilot'],
+    );
+    const [recognition] = recognitions;
+    if (recognition === undefined) {
+      throw new Error('expected one Copilot prompt recognition');
+    }
+    return recognition;
+  }
+
+  it('reads every declared key in authored order, and the prompt after the block', async () => {
+    const recognition = await recognizePromptFile(
+      [
+        '---',
+        'name: scaffold-component',
+        'description: Scaffold a React component',
+        'argument-hint: "componentName"',
+        'tools:',
+        "  - 'editFiles'",
+        '---',
+        '',
+        '# Scaffold',
+        '',
+      ].join('\n'),
+    );
+    expect(recognition.details).toMatchObject({
+      kind: 'prompt/command',
+      invocationName: 'scaffold-component',
+      bodyText: '\n# Scaffold\n',
+    });
+    expect(
+      recognition.details.kind === 'prompt/command'
+        ? recognition.details.frontmatter.map((entry) => entry.key)
+        : [],
+    ).toEqual(['name', 'description', 'argument-hint', 'tools']);
+    expect(recognition.parseStatus).toBe('parsed');
+  });
+
+  it('keeps the declared name as a declaration as well as the identity', async () => {
+    // The `name` is the identity the row is grouped under and an ordinary key
+    // the detail shows: a declaration is published because the file wrote it,
+    // not because the product happens to read it (FR-007).
+    const recognition = await recognizePromptFile('---\nname: scaffold-component\n---\n\n# S\n');
+    expect(recognition.details).toMatchObject({
+      invocationName: 'scaffold-component',
+      frontmatter: [
+        {
+          key: 'name',
+          keyKind: 'string',
+          value: { kind: 'scalar', scalarKind: 'string', text: 'scaffold-component' },
+        },
+      ],
+    });
+  });
+
+  it('publishes a credential and an environment reference exactly as authored', async () => {
+    const recognition = await recognizePromptFile(
+      `---\ndescription: Publish with ${CONTENT_FIXTURE_SECRET}\nendpoint: \${DEPLOY_ENDPOINT}\n---\n\n# Publish\n`,
+    );
+    expect(recognition.details).toMatchObject({
+      frontmatter: [
+        {
+          key: 'description',
+          value: { kind: 'scalar', text: `Publish with ${CONTENT_FIXTURE_SECRET}` },
+        },
+        { key: 'endpoint', value: { kind: 'scalar', text: '${DEPLOY_ENDPOINT}' } },
+      ],
+    });
+    expect(process.env['DEPLOY_ENDPOINT']).toBeUndefined();
+  });
+
+  it('leaves a link, an image, and a `#file` reference in the prompt as text', async () => {
+    // Nothing is promoted to a reference and no target is opened: the prompt
+    // is the document its author wrote (FR-019, FR-033).
+    const recognition = await recognizePromptFile(
+      [
+        '# Audit',
+        '',
+        '- See [the guide](https://example.com/guide).',
+        '- ![diagram](./diagram.png)',
+        '- Use #file:src/index.ts for context.',
+        '',
+      ].join('\n'),
+      '.github/prompts/audit.prompt.md',
+    );
+    expect(recognition.details).toMatchObject({
+      invocationName: 'audit',
+      // The whole file, because it declares no frontmatter block to remove.
+      bodyText: [
+        '# Audit',
+        '',
+        '- See [the guide](https://example.com/guide).',
+        '- ![diagram](./diagram.png)',
+        '- Use #file:src/index.ts for context.',
+        '',
+      ].join('\n'),
+    });
+    expect(Object.keys(recognition)).not.toContain('relationships');
+  });
+});
+
 describe('the Copilot CLI MCP carrier reading (T344)', () => {
   it('reads the wrapper schema by the keys the file wrote, values literal', () => {
     // The `mcpServers` object form: one declaration per named map entry, the

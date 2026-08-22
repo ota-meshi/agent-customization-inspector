@@ -36,6 +36,10 @@ const claudeRulesRule = CLAUDE_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'claude.repo.rules',
 );
 
+const claudeCommandRule = CLAUDE_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'claude.repo.command',
+);
+
 const claudeMcpRule = CLAUDE_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'claude.repo.mcp',
 )!;
@@ -446,6 +450,181 @@ describe('Claude rule reading (T429)', () => {
     const serialized = JSON.stringify(recognition);
     expect(serialized).not.toContain(CONTENT_FIXTURE_SECRET);
     expect(serialized).not.toContain('${DEPLOY_ENDPOINT}');
+  });
+});
+
+describe('Claude command reading (T449)', () => {
+  /** Recognizes one authored command file at a `.claude/commands/` path. */
+  async function recognizePrompt(
+    sourceText: string,
+    matchedPath = '.claude/commands/deploy.md',
+  ): Promise<ToolRecognition> {
+    const { recognitions } = await recognizeCandidateForVendors(
+      {
+        matchedPath,
+        absolutePath: join(root, matchedPath),
+        sourceRoot: root,
+        admissions: [{ compiled: claudeCommandRule!, origin: { planIndex: 0, selectorIndex: 0 } }],
+        sourceText,
+      },
+      ['claude'],
+    );
+    const [recognition] = recognitions;
+    if (recognition === undefined) {
+      throw new Error('expected one Claude command recognition');
+    }
+    return recognition;
+  }
+
+  it('reads every declared key in authored order, and the prompt after the block', async () => {
+    // A command file supports a skill's frontmatter keys, so the detail leads
+    // with the declarations the file wrote and the prompt that follows them
+    // (FR-007). Keys are published in the file's own order, not sorted.
+    const recognition = await recognizePrompt(
+      [
+        '---',
+        'description: Deploy the current branch',
+        'argument-hint: "[environment]"',
+        'allowed-tools:',
+        '  - Bash(git status)',
+        '  - Read',
+        'model: opus',
+        '---',
+        '',
+        '# Deploy',
+        '',
+        'Deploy $1 after checking the working tree.',
+        '',
+      ].join('\n'),
+    );
+    expect(recognition.details).toEqual({
+      kind: 'prompt/command',
+      invocationName: 'deploy',
+      frontmatter: [
+        {
+          key: 'description',
+          keyKind: 'string',
+          value: { kind: 'scalar', scalarKind: 'string', text: 'Deploy the current branch' },
+        },
+        {
+          key: 'argument-hint',
+          keyKind: 'string',
+          value: { kind: 'scalar', scalarKind: 'string', text: '[environment]' },
+        },
+        {
+          key: 'allowed-tools',
+          keyKind: 'string',
+          value: {
+            kind: 'sequence',
+            items: [
+              { kind: 'scalar', scalarKind: 'string', text: 'Bash(git status)' },
+              { kind: 'scalar', scalarKind: 'string', text: 'Read' },
+            ],
+          },
+        },
+        {
+          key: 'model',
+          keyKind: 'string',
+          value: { kind: 'scalar', scalarKind: 'string', text: 'opus' },
+        },
+      ],
+      bodyText: '\n# Deploy\n\nDeploy $1 after checking the working tree.\n',
+    });
+    expect(recognition.parseStatus).toBe('parsed');
+  });
+
+  it('publishes the whole file as the prompt when it declares no frontmatter', async () => {
+    const recognition = await recognizePrompt('# Release\n\nCut a release.\n');
+    expect(recognition.details).toEqual({
+      kind: 'prompt/command',
+      invocationName: 'deploy',
+      frontmatter: [],
+      bodyText: '# Release\n\nCut a release.\n',
+    });
+    expect(recognition.parseStatus).toBe('parsed');
+  });
+
+  it('reads no name out of the file, and takes the invocation from the path', async () => {
+    // Claude Code ignores `name` in a command file and derives the command
+    // from the path instead, so a declared `name` is an ordinary key here and
+    // the identity the row is grouped under comes from where the file sits
+    // (data-model.md § Inventory unit).
+    const recognition = await recognizePrompt(
+      '---\nname: something-else\n---\n\n# Component\n',
+      '.claude/commands/frontend/component.md',
+    );
+    expect(recognition.details).toMatchObject({
+      kind: 'prompt/command',
+      invocationName: 'frontend:component',
+      frontmatter: [
+        {
+          key: 'name',
+          keyKind: 'string',
+          value: { kind: 'scalar', scalarKind: 'string', text: 'something-else' },
+        },
+      ],
+    });
+  });
+
+  it('fails extraction all-or-nothing on a malformed block', async () => {
+    // Extraction is all-or-nothing: nothing parsed is published, and the
+    // complete source stays displayed by the detail route (FR-028).
+    const recognition = await recognizePrompt('---\nallowed-tools: [Bash\n---\n\n# Broken\n');
+    expect(recognition.details).toEqual({
+      kind: 'prompt/command',
+      // Derived from the path, so the row keeps its identity while the
+      // declarations stay unknown.
+      invocationName: 'deploy',
+      frontmatter: [],
+      bodyText: '',
+    });
+    expect(recognition.parseStatus).toBe('failed');
+  });
+
+  it('publishes a credential and an environment reference exactly as authored', async () => {
+    // Neither is masked, shortened, or resolved against the process
+    // environment: the file is the reader's own (FR-025, FR-026).
+    const recognition = await recognizePrompt(
+      `---\ndescription: Publish with ${CONTENT_FIXTURE_SECRET}\nendpoint: \${DEPLOY_ENDPOINT}\n---\n\n# Publish\n`,
+    );
+    expect(recognition.details).toMatchObject({
+      frontmatter: [
+        {
+          key: 'description',
+          value: { kind: 'scalar', text: `Publish with ${CONTENT_FIXTURE_SECRET}` },
+        },
+        { key: 'endpoint', value: { kind: 'scalar', text: '${DEPLOY_ENDPOINT}' } },
+      ],
+    });
+    expect(process.env['DEPLOY_ENDPOINT']).toBeUndefined();
+  });
+
+  it('leaves an agent, skill, or file name in the prompt as text', async () => {
+    // Nothing is promoted to a reference: no target is resolved, opened, or
+    // read, and no edge record exists to carry one (FR-019; see
+    // `relationships.test.ts`).
+    const recognition = await recognizePrompt(
+      [
+        '# Audit',
+        '',
+        '- Hand the diff to the code-reviewer subagent.',
+        '- Then run /skill-name and read ./checklist.md.',
+        '',
+      ].join('\n'),
+    );
+    expect(recognition.details).toEqual({
+      kind: 'prompt/command',
+      invocationName: 'deploy',
+      frontmatter: [],
+      bodyText: [
+        '# Audit',
+        '',
+        '- Hand the diff to the code-reviewer subagent.',
+        '- Then run /skill-name and read ./checklist.md.',
+        '',
+      ].join('\n'),
+    });
+    expect(Object.keys(recognition)).not.toContain('relationships');
   });
 });
 

@@ -211,7 +211,7 @@ raw entry nameそのままの綴りである（FR-024）。Filesystem operation�
 Raw nameはNode.jsがそのentryに対して返したstringである — `fs`は文書化された既定としてnameをUTF-8で
 decodeするため、valid UTF-8でないplatform上の名前はreplacement-decodeされて届き、そのstringを通じて
 platformが再解決できない名前は、影響を受けるoperationの通常のfailureとして表面化する。
-Presentationはstored valueを変えず、control character、双方向書式characters（U+061C、U+200E、U+200F、U+202A–U+202E、U+2066–U+2069）、lone surrogateをescapeする。書式charactersは周囲の文字順を反転させるため、いずれかを含むpathは自身が識別するpathとは別のpathとして表示されてしまい、lone surrogateは1つのreplacement glyphとして描画されるため、どのsurrogateを含むかだけが異なる2つの名前は同一に表示されてしまう。描画される文字を持たないpath label — 空白のみ、またはU+200Bのようなdefault-ignorable code pointのみで構成されたもの — は代わりに全体を綴って表示する。何も描画しないlabelは、そのcontrolに可視textもaccessible nameも残さないからである。
+Presentationはstored valueを変えず、control character、双方向書式characters（U+061C、U+200E、U+200F、U+202A–U+202E、U+2066–U+2069）、lone surrogate、U+200Bのようなdefault-ignorable code pointをescapeする。書式charactersは周囲の文字順を反転させるため、いずれかを含むpathは自身が識別するpathとは別のpathとして表示されてしまい、lone surrogateは1つのreplacement glyphとして描画されるため、どのsurrogateを含むかだけが異なる2つの名前は同一に表示されてしまい、default-ignorable code pointは何も描画しないため、それを含む名前は含まない名前として表示されてしまう。空白は意図的にauthoredのまま残す。空白は読み手が認識できる文字だからである。すべての文字が空白であるpath labelは代わりに全体を綴って表示する。何も描画しないlabelは、そのcontrolに可視textもaccessible nameも残さないからであり、空白を畳むsurfaceが曖昧に描画してしまう値も同様に綴って表示する。
 Wire上では`sourceRelativePath`は`value` stringだけをserializeし、
 containing file DTOの`sourceId`がpublic ownership linkを提供する。
 
@@ -955,6 +955,7 @@ substituteしない。
 | `instructions` | 1つの適用範囲: 担当するfile自身のpathが導出するglobであり、担当する各fileをそのfileのrecognitionとともに列挙する — 各recognitionは1つのproductと、そのfileをadmitしたruleが依拠するdocumented behaviorのsurfaceである。toolだけでは、productがそのfileをどこから読むのかを言えないためである |
 | `rule` | File自身: rule fileはproductがcontextへ読み込むmodularなinstructionであり、rowのkeyにできる名前も、groupingできる範囲も持たないため、そのSource相対Pathがrowの同一性である。1つのfileを2つのproductが認識する場合は1 rowに2つのrecognitionが並び、各recognitionは1つのproductと、そのfileをadmitしたruleが依拠するdocumented behaviorのsurfaceを名指す |
 | `permissions` | Policyを宣言するfile自身。条件は`rule` rowと同じ。別kindである理由は主題が違うことにある: permission policyはproductがどのcommandやtoolを実行してよいかを決めるものであり、ruleはproductが読む指針である。Codexは自身のpolicyを`.codex/rules/*.rules`に綴り、Claudeは自身のmodular instructionもまた`rules`と呼ぶため、vendorが共有する語でまとめると無関係な2つの主題が1つのlistに並ぶことになる。File全体がpolicyであるfileと、より大きなdocumentの1 blockとしてpolicyを運ぶfileは、どちらも1 rowである: 違うのはdetailが公開するものであって、rowが何であるかではない。Policyを宣言しないcarrierはrowにならない — documentの残りはそれを所有するrecognitionであり、rowにすれば作者が書いていないpolicyを述べることになる |
+| `prompt/command` | 読み手が起動する名前1つであり、条件は`skill` rowと同じ: その名前を解決する各recognition — `(file, tool)`ごとに1つ — がdefinitionとして名前のrowの中に並ぶため、2つのproductが1つの名前で起動する1 fileはそのrowの2 definitionとなり、product間で名前が異なる場合はそれぞれの名前のrowにdefinitionを持つ。どの名前になるかは、そのfileをadmitしたrule自身のものである。このkindの2つのlocationが異なる答えを返すためである。Command fileの名前が著述されることはない — どちらのproductもcommand fileの`name` keyを無視する — ため、名前は各productのadmitしたrule自身がpathから導出する: Claude Codeはcommand directory配下のpathを取り、区切りをすべて`:`に置き換える。したがって`frontend/component.md`は`frontend:component`、`team/review/security.md`は`team:review:security`となる。stemが大文字小文字を問わず`skill`である葉だけは例外で、自身ではなくそのdirectoryの名前を取る。これはproductがそう振る舞うのであって、どのpageも文書化していない。stemは大文字小文字を無視して比較する一方、`.md`拡張子はmatcherがadmitするものそのものであるため、`SKILL.MD`はここではそもそもcommand fileにならない。Copilot CLIはnamespaceを文書化しておらずsubdirectoryにも到達しないため、file名だけを取る。したがって両者はroot直下の子で正確に一致し、そのfileは両productを名指す1 rowとなり、nestedなfileはClaude単独のrowとなる。一方、VS Code prompt fileは自身で名乗る: 文書化された`name`が読み手が`/`の後に入力するものであり、宣言がなければfile自身の名前が代わりに立つ — したがってcommandが解決する名前を宣言したpromptは、1つのskill名を持つ2 fileと同じように、そのcommandのrowのdefinitionとなる。Skillと違い、rowは同名解決を述べない。いまや2つのprompt fileが1つの名前に到達し得るが、VS Codeはその結果を文書化していないため、rowが答えればどのpageも問うていない問いに答えることになる — definitionは並んで立ち、読み手は両方を見る（FR-009） |
 | `settings/config` | File自身 |
 
 したがってCustomizationFileは自身の事実 — Source相対Path、read結果、size、diagnostic — を1度だけ
@@ -1130,7 +1131,7 @@ classify、retry、recoverしない。Triggerを所有するboundaryへpropagate
 generation resultを作らず、session API boundaryがtriggerを所有する場合はfailed requestのerrorとして通常どおり報告する。
 
 Recognitionはclosed tool順`copilot`、`claude`、`codex`、次にclosed kind順でsortし、opaque IDを使わない。
-File間のdeclaration comparisonは、sideごとに1つのcanonical serialized documentをMonacoでdiffする（research.md § 7）。frontmatter宣言はfileの認識Markdown kindに対する1回のparseであってtoolは宣言の座標ではなく — tool recognitionはdiffの横のtypedなrowでtoolごとに比較する — 各sideはYAMLへserializeし、skill comparisonは`name`と`description`を先頭にそれ以外のkeyをsort順で、instruction comparisonは全keyをsort順で並べる。MCP kindの宣言は各recognizing tool自身のreading（§ Field reading）であり、その比較surfaceは宣言済みserver名自身のもの — 1つの名前のdeclarationをその行の2つのcarrierそれぞれから取り、sideごとに1つのcanonical JSON documentへserializeしてMonacoでdiffする — で、通常の`get-mcp-carrier-detail` read 2件を通じてloadされる（§ BrowserState · ComparisonSelection）。いずれのdetailも自身のdeclaration contentを同じserialized documentとして、fileが書いたkey順のまま表示する（FR-007）。
+File間のdeclaration comparisonは、sideごとに1つのcanonical serialized documentをMonacoでdiffする（research.md § 7）。frontmatter宣言はfileの認識Markdown kindに対する1回のparseであってtoolは宣言の座標ではなく — tool recognitionはdiffの横のtypedなrowでtoolごとに比較する — 各sideはYAMLへserializeし、skill comparisonは`name`と`description`を先頭にそれ以外のkeyをsort順で、instruction comparisonとprompt-and-command comparisonは全keyをsort順で並べる。後者でkeyを先頭に立てないのは、このkindの行の名前が宣言された1つのkeyではなくadmitしたruleの答えであり、先頭に立てればこのkindのcommand側に持っていないidentityを与えることになるためである。MCP kindの宣言は各recognizing tool自身のreading（§ Field reading）であり、その比較surfaceは宣言済みserver名自身のもの — 1つの名前のdeclarationをその行の2つのcarrierそれぞれから取り、sideごとに1つのcanonical JSON documentへserializeしてMonacoでdiffする — で、通常の`get-mcp-carrier-detail` read 2件を通じてloadされる（§ BrowserState · ComparisonSelection）。いずれのdetailも自身のdeclaration contentを同じserialized documentとして、fileが書いたkey順のまま表示する（FR-007）。
 
 ### Field reading
 
@@ -1405,7 +1406,16 @@ readable-directory admissionだけが判定し、後のNode.js/OS rejectionは�
   ない名前を含めて — 比較されずに報告される。そのペアは通常の`get-mcp-carrier-detail` read 2件でloadし、
   Monacoがdiffするのは、名指されたserverに対する各sideのdeclarationを1つのcanonical JSON documentへ
   serializeしたものである（research.md § 7）: carrier同士はsyntaxを共有するとは限らず、carrierはbytesを
-  どこにも表示しない（FR-007）ため、serializationが両sideを読める唯一のspellingである。Cross-source comparisonは常に各sourceの最後に
+  どこにも表示しない（FR-007）ため、serializationが両sideを読める唯一のspellingである。Prompt-and-command
+  routeは、current generationの1つのinvocation-name行が保持する2つのfileの`sourceRelativePath` identityを
+  名指す — ここでも行が所有するペアであり、skill名の行の位置に名前の行が立つ。出荷済みのどのruleでも1つのfileが
+  2つの名前に解決されることはないため、所有する行は2つのidentityから導出される — 。0件またはreadableなfile
+  2つへ解決される: このkindのfileはそれ自体で完結するため、どちらの側も明示された不在にはならず、単一の行が
+  保持しないペアは比較されずに報告される。1つのkindは1つのcomparison surfaceであるため、このkindのlocationは
+  ここで出会う: VS Code prompt fileは、自身が宣言した名前を持つcommand fileと向かい合って立つ。Source diffの
+  横では、認識する各toolのcellが、そのtoolがそのsideのfileを起動する名前を述べる — admitしたruleがそれを答え、
+  このkindの2つのlocationが異なる答えを返すため、これはこのkind自身のtypedな事実である — 。定義を持たないcellは、
+  そのtoolがそのfileを読まないという事実のすべてである。Cross-source comparisonは常に各sourceの最後に
   commit済みstateを比較する。fileのペアは通常の`FileDetail` request 2件で、片側のskill comparisonは1件でloadする — 不在はrequestを
   要しない — 。MonacoはcompleteなsourceText同士を比較し、不在側は空として、存在する側の内容を行ごとにそれ自体が
   差分として描画する。Credential-like stringやenvironment referenceを含むliteralな差を表示する。

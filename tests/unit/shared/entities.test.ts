@@ -7,7 +7,6 @@ import {
   CUSTOMIZATION_KIND_ORDER,
   LIFECYCLE_QUALIFIER_ORDER,
   SUPPORTED_TOOL_ORDER,
-  containsInvisibleCharacters,
   createOpaqueId,
   createSourceBoundaryDto,
   decodeSourceBytes,
@@ -149,28 +148,6 @@ describe('rendersNothingVisible', () => {
   });
 });
 
-describe('containsInvisibleCharacters', () => {
-  it('reports a character that draws nothing beside ones that draw', () => {
-    // `a` + NUL + `b` and `a` + U+200B + `b` both read as `ab`: the detail
-    // surfaces put a spelled-out note beside such a value so two
-    // declarations differing only invisibly stay apart (FR-025).
-    expect(containsInvisibleCharacters('a\u0000b')).toBe(true);
-    expect(containsInvisibleCharacters('a\u200Bb')).toBe(true);
-    expect(containsInvisibleCharacters('soft\u00ADhyphen')).toBe(true);
-    expect(containsInvisibleCharacters('bom\uFEFF')).toBe(true);
-    expect(containsInvisibleCharacters('\u009Fc1')).toBe(true);
-  });
-
-  it('accepts text whose every character draws or shapes layout', () => {
-    expect(containsInvisibleCharacters('SKILL.md')).toBe(false);
-    // Tab, line feed, and carriage return shape layout the reader can see,
-    // so they are not the silent kind this predicate reports.
-    expect(containsInvisibleCharacters('a\tb\nc\rd')).toBe(false);
-    expect(containsInvisibleCharacters('spaced  out')).toBe(false);
-    expect(containsInvisibleCharacters('')).toBe(false);
-  });
-});
-
 describe('escapeControlCharacters', () => {
   it('gives every Cc code point a visible uppercase \\uXXXX spelling', () => {
     // A newline in an authored file name would otherwise split a rendered
@@ -254,11 +231,20 @@ describe('pathPresentationLabel', () => {
     expect(pathPresentationLabel(' ')).not.toBe(pathPresentationLabel('  '));
   });
 
-  it('leaves a nested path alone however invisible its segments are', () => {
-    // `/` draws, so only a single-segment value can reach the fallback — the
-    // case a Codex configured fallback basename produces, since no character
-    // grammar constrains a declared entry name.
-    expect(pathPresentationLabel('docs/​')).toBe('docs/​');
+  it('spells out an invisible segment of a nested path rather than dropping it', () => {
+    // `/` draws, so a nested value never reaches the whitespace fallback — but
+    // its invisible segment is still a difference a reader has to be able to
+    // see: `docs/` and `docs/` + U+200B are two paths one tree can hold, and
+    // unescaped they read as one (FR-025).
+    expect(pathPresentationLabel('docs/​')).toBe('docs/\\u200B');
+    expect(pathPresentationLabel('docs/​')).not.toBe(pathPresentationLabel('docs/'));
+  });
+
+  it('keeps a name carrying an invisible character apart from the name without it', () => {
+    // The case every name-headed row faces: two rows whose names differ only
+    // by a zero-width space must not draw as one row's name twice.
+    expect(pathPresentationLabel('deploy​')).toBe('deploy\\u200B');
+    expect(pathPresentationLabel('deploy​')).not.toBe(pathPresentationLabel('deploy'));
   });
 });
 

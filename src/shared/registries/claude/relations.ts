@@ -16,6 +16,7 @@
 // contract agree and the materialized fixture is byte-stable.
 import {
   CLAUDE_REPO_AGENTS_BEHAVIOR,
+  CLAUDE_REPO_COMMANDS_BEHAVIOR,
   CLAUDE_REPO_INSTRUCTIONS_ANCESTOR_BEHAVIOR,
   CLAUDE_REPO_INSTRUCTIONS_DESCENDANT_BEHAVIOR,
   CLAUDE_REPO_INSTRUCTIONS_LAUNCH_BEHAVIOR,
@@ -25,6 +26,7 @@ import {
   CLAUDE_REPO_LOCAL_SETTINGS_BEHAVIOR,
   CLAUDE_REPO_SHARED_SETTINGS_BEHAVIOR,
   CLAUDE_REPO_SKILLS_BEHAVIOR,
+  CLAUDE_USER_COMMANDS_BEHAVIOR,
   CLAUDE_USER_INSTRUCTIONS_BEHAVIOR,
   CLAUDE_USER_MCP_STATE_BEHAVIOR,
   CLAUDE_USER_PLUGINS_BEHAVIOR,
@@ -33,6 +35,7 @@ import {
   CLAUDE_USER_SKILLS_BEHAVIOR,
 } from './behaviors';
 import {
+  CLAUDE_REPO_COMMAND_RULE,
   CLAUDE_REPO_INSTRUCTIONS_RULE,
   CLAUDE_REPO_MCP_RULE,
   CLAUDE_REPO_PERMISSIONS_RULE,
@@ -40,6 +43,7 @@ import {
   CLAUDE_REPO_SKILL_RULE,
 } from './rules';
 import {
+  CLAUDE_COMMANDS_SELECTION_STRATEGY,
   CLAUDE_INSTRUCTIONS_LAYERING_STRATEGY,
   CLAUDE_MCP_SELECTION_STRATEGY,
   CLAUDE_RULES_LAYERING_STRATEGY,
@@ -51,6 +55,24 @@ import type { ClaudeRuleId, ClaudeStrategyId } from '../identifier-types';
 
 /** What each Claude strategy composes. What documents it is its own `evidence`. */
 export const CLAUDE_STRATEGY_RELATIONS: Readonly<Record<ClaudeStrategyId, StrategyRelations>> = {
+  /**
+   * Command selection composes both documented command scopes and both skill
+   * scopes. The command scopes are listed even though only the project one is
+   * readable: the strategy describes Claude's runtime, and omitting the User
+   * scope would describe the selection as choosing among project command files
+   * alone. The skill scopes are listed because they are the other side of the
+   * one selection this strategy records — the documented outcome is that a
+   * same-name skill wins over a command, so a graph naming only the command
+   * lookups would describe a choice with one candidate.
+   */
+  [CLAUDE_COMMANDS_SELECTION_STRATEGY.strategyId]: {
+    consumesBehaviors: [
+      CLAUDE_REPO_COMMANDS_BEHAVIOR,
+      CLAUDE_REPO_SKILLS_BEHAVIOR,
+      CLAUDE_USER_COMMANDS_BEHAVIOR,
+      CLAUDE_USER_SKILLS_BEHAVIOR,
+    ],
+  },
   /**
    * Instruction layering composes all four documented instruction scopes. The
    * User file is listed even though only the Repository ones are readable:
@@ -120,6 +142,17 @@ export const CLAUDE_STRATEGY_RELATIONS: Readonly<Record<ClaudeStrategyId, Strate
 
 /** What each Claude inspection rule is based on and explained by. What evidences it is its own `evidence`. */
 export const CLAUDE_RULE_RELATIONS: Readonly<Record<ClaudeRuleId, RuleRelations>> = {
+  /**
+   * The Repository command rule is based on the project command lookup alone —
+   * the User `commands/` directory the same statement pairs with is a
+   * different Source boundary this rule may not read — and is explained by the
+   * selection strategy, which owns the same-name skill precedence the rule
+   * deliberately does not project (FR-009).
+   */
+  [CLAUDE_REPO_COMMAND_RULE.ruleId]: {
+    basedOnBehaviors: [CLAUDE_REPO_COMMANDS_BEHAVIOR],
+    explainedByStrategies: [CLAUDE_COMMANDS_SELECTION_STRATEGY],
+  },
   /**
    * The Repository instruction rule is based on the three Repository lookups
    * it admits for — the User file is a different Source boundary this rule may

@@ -256,16 +256,17 @@ test('shows the addressed definition and nothing about a runtime it cannot see',
   page,
 }) => {
   await openSkill(page, '.agents/skills/greet/SKILL.md');
-  // One definition line — the route's own tool, captioned in words — because
-  // the URL addresses one definition; the first of the row's links is the
-  // Copilot one in the contracted tool order, and which other products
-  // recognize the file is the inventory's matrix. It says nothing about
-  // whether a product would load it, because that depends on a runtime this
-  // tool never observes — and a sentence about it would take the room the
-  // files below need.
+  // One definition line — the route's own tool and the surfaces its
+  // admissions rest on, captioned in words — because the URL addresses one
+  // definition; the first of the row's links is the Copilot one in the
+  // contracted tool order, and which other products recognize the file is the
+  // inventory's matrix. Naming a surface says where the product documents
+  // reading the file, never that it loaded it: that depends on a runtime this
+  // tool never observes, and a sentence about it would take the room the
+  // files below need (FR-009).
   const definition = page.locator('.aci-skill-detail__definition');
   await expect(definition).toHaveCount(1);
-  await expect(definition).toHaveText('GitHub Copilot · Skill');
+  await expect(definition).toHaveText('GitHub Copilot (VS Code, CLI, Cloud agent) · Skill');
   const detail = (await page.locator('.aci-skill-detail').textContent()) ?? '';
   for (const claim of ['Depends on runtime conditions', 'Selected by a documented rule']) {
     expect(detail).not.toContain(claim);

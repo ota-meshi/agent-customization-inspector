@@ -14,6 +14,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import * as fsIo from '../../../src/server/inspection/fs-io';
 import {
+  buildCommandFixture,
   buildClaudeInstructionFixture,
   buildClaudeMcpFixture,
   buildClaudePermissionsFixture,
@@ -29,6 +30,7 @@ import {
   buildCopilotInstructionFixture,
   buildCopilotSkillFixture,
   FIXTURE_SECRET_LITERAL,
+  type CommandFixture,
   type ClaudeInstructionFixture,
   type ClaudeMcpFixture,
   type ClaudeRuleFixture,
@@ -1938,6 +1940,435 @@ describe('the shipped Copilot instruction plans and their matrix (T247)', () => 
     // The hosted organization instructions name no local path, so nothing in
     // the tree can stand for them and no candidate exists for them.
     expect(toolsFor('packages/api/GEMINI.md')).toEqual([]);
+  });
+});
+
+describe('the shipped claude.repo.command plan (T442)', () => {
+  it('compiles the one trailing recursive step the contract row shows', () => {
+    const compiled = CLAUDE_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'claude.repo.command',
+    )!;
+    expect(compiled.tool).toBe('claude');
+    expect(compiled.kind).toBe('prompt/command');
+    expect(compiled.plan).toEqual(
+      new TraversalPlan(INSPECTION_RULES['claude.repo.command']!.matcher!),
+    );
+    // One recursive step and deliberately not two: the trailing one is the
+    // documented reach inside the commands directory, and the leading one the
+    // rule-file rule has would need a worked-file or descendant anchor no
+    // cited page states for this directory.
+    expect(compiled.plan.selectors).toHaveLength(1);
+    expect(compiled.plan.selectors[0]!.remainder).toEqual([
+      { kind: 'literal', value: '.claude' },
+      { kind: 'literal', value: 'commands' },
+      { kind: 'recursive-directories' },
+      { kind: 'regex', pattern: /\.md$/u },
+    ]);
+    expect(compiled.plan.selectionPolicy).toBe('all-matches');
+  });
+
+  it('answers the command name from the path it admitted', () => {
+    const compiled = CLAUDE_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'claude.repo.command',
+    )!;
+    if (compiled.kind !== 'prompt/command') {
+      throw new TypeError('the command rule compiled into a unit that cannot name a command');
+    }
+    // The path below the commands directory with every separator turned into
+    // a `:`: the changelog's own example is `frontend/component.md` as
+    // `/frontend:component`, and the product builds a deeper one the same way.
+    expect(compiled.invocationNameOf('.claude/commands/deploy.md', [])).toBe('deploy');
+    expect(compiled.invocationNameOf('.claude/commands/frontend/component.md', [])).toBe(
+      'frontend:component',
+    );
+    expect(compiled.invocationNameOf('.claude/commands/team/review/security.md', [])).toBe(
+      'team:review:security',
+    );
+    // The name is the path's own fact, so a file name that happens to contain
+    // a dot keeps every part of it but the `.md` the selector matched.
+    expect(compiled.invocationNameOf('.claude/commands/release.v2.md', [])).toBe('release.v2');
+  });
+
+  it('names a `SKILL.md` after its directory, in any letter case', () => {
+    const compiled = CLAUDE_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'claude.repo.command',
+    )!;
+    if (compiled.kind !== 'prompt/command') {
+      throw new TypeError('the command rule compiled into a unit that cannot name a command');
+    }
+    // Undocumented and taken from the product: such a file takes its
+    // directory's name rather than its own (user decision).
+    expect(compiled.invocationNameOf('.claude/commands/foo/SKILL.md', [])).toBe('foo');
+    expect(compiled.invocationNameOf('.claude/commands/foo/skill.md', [])).toBe('foo');
+    expect(compiled.invocationNameOf('.claude/commands/a/b/SKILL.md', [])).toBe('a:b');
+    // With no directory below the commands directory there is nothing to take
+    // a name from, and the product's own two naming sites disagree there, so
+    // the documented rule stands: a command file is invoked by its file name.
+    expect(compiled.invocationNameOf('.claude/commands/SKILL.md', [])).toBe('SKILL');
+  });
+
+  it('is explained by the selection strategy, by identity', () => {
+    const compiled = CLAUDE_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'claude.repo.command',
+    )!;
+    expect(compiled.relations).toBe(RULE_RELATIONS['claude.repo.command']);
+    // The same-name skill precedence is the strategy's; the rule says only
+    // what may be read (FR-009).
+    expect(compiled.relations.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual(
+      ['claude.commands.selection'],
+    );
+    expect(compiled.relations.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'claude.behavior.repo.commands',
+    ]);
+  });
+});
+
+describe('the shipped copilot.repo.command plan (T459)', () => {
+  it('compiles the one root direct-child program the contract row shows', () => {
+    const compiled = COPILOT_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'copilot.repo.command',
+    )!;
+    expect(compiled.tool).toBe('copilot');
+    expect(compiled.kind).toBe('prompt/command');
+    expect(compiled.plan).toEqual(
+      new TraversalPlan(INSPECTION_RULES['copilot.repo.command']!.matcher!),
+    );
+    // No recursive step at either end: the CLI reference documents the
+    // location and neither a project anchor nor an ancestor or recursive
+    // walk, so anything past a root direct child would be invented here.
+    expect(compiled.plan.selectors).toHaveLength(1);
+    expect(compiled.plan.selectors[0]!.remainder).toEqual([
+      { kind: 'literal', value: '.claude' },
+      { kind: 'literal', value: 'commands' },
+      { kind: 'regex', pattern: /\.md$/u },
+    ]);
+    expect(compiled.plan.selectionPolicy).toBe('all-matches');
+  });
+
+  it('answers the command name from the file name alone', () => {
+    const compiled = COPILOT_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'copilot.repo.command',
+    )!;
+    if (compiled.kind !== 'prompt/command') {
+      throw new TypeError('the command rule compiled into a unit that cannot name a command');
+    }
+    // "The command name is derived from the filename" is the whole documented
+    // rule, and this matcher admits no subdirectory for a namespace to come
+    // from.
+    expect(compiled.invocationNameOf('.claude/commands/deploy.md', [])).toBe('deploy');
+    expect(compiled.invocationNameOf('.claude/commands/release.v2.md', [])).toBe('release.v2');
+  });
+
+  it('is based on the legacy command lookup and explained by the CLI skill selection', () => {
+    const compiled = COPILOT_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'copilot.repo.command',
+    )!;
+    expect(compiled.relations).toBe(RULE_RELATIONS['copilot.repo.command']);
+    // The documented outcome — a same-name skill outranks a command — is the
+    // strategy's; the rule says only what may be read (FR-009).
+    expect(compiled.relations.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual(
+      ['copilot.cli.skills.selection'],
+    );
+    expect(compiled.relations.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'copilot.behavior.cli.commands',
+    ]);
+  });
+});
+
+describe('the shipped copilot.repo.prompt plan (T488)', () => {
+  it('compiles the one root direct-child program the contract row shows', () => {
+    const compiled = COPILOT_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'copilot.repo.prompt',
+    )!;
+    expect(compiled.tool).toBe('copilot');
+    expect(compiled.kind).toBe('prompt/command');
+    expect(compiled.plan).toEqual(
+      new TraversalPlan(INSPECTION_RULES['copilot.repo.prompt']!.matcher!),
+    );
+    // One default folder for the workspace scope, and every further location
+    // behind a setting this tool never reads — so no recursive step at either
+    // end, and the extension is exact.
+    expect(compiled.plan.selectors).toHaveLength(1);
+    expect(compiled.plan.selectors[0]!.remainder).toEqual([
+      { kind: 'literal', value: '.github' },
+      { kind: 'literal', value: 'prompts' },
+      { kind: 'regex', pattern: /\.prompt\.md$/u },
+    ]);
+    expect(compiled.plan.selectionPolicy).toBe('all-matches');
+  });
+
+  it('answers the declared name, and the file name when the file declares none', () => {
+    const compiled = COPILOT_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'copilot.repo.prompt',
+    )!;
+    if (compiled.kind !== 'prompt/command') {
+      throw new TypeError('the prompt rule compiled into a unit that cannot name a prompt');
+    }
+    const declared = (text: string) => [
+      {
+        key: 'name',
+        keyKind: 'string' as const,
+        value: { kind: 'scalar' as const, scalarKind: 'string' as const, text },
+      },
+    ];
+    // "The name of the prompt, used after typing / in chat. If not specified,
+    // the file name is used."
+    expect(
+      compiled.invocationNameOf(
+        '.github/prompts/scaffold.prompt.md',
+        declared('scaffold-component'),
+      ),
+    ).toBe('scaffold-component');
+    expect(compiled.invocationNameOf('.github/prompts/review.prompt.md', [])).toBe('review');
+    // An authored empty name names nothing a reader could type, so the file
+    // name stands in exactly as it does for a file that declares none.
+    expect(compiled.invocationNameOf('.github/prompts/review.prompt.md', declared(''))).toBe(
+      'review',
+    );
+    // The whole extension goes, not just the `.md`.
+    expect(compiled.invocationNameOf('.github/prompts/a.b.prompt.md', [])).toBe('a.b');
+  });
+
+  it('is based on the workspace prompt lookup and explained by no strategy', () => {
+    const compiled = COPILOT_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'copilot.repo.prompt',
+    )!;
+    expect(compiled.relations).toBe(RULE_RELATIONS['copilot.repo.prompt']);
+    expect(compiled.relations.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'copilot.behavior.vscode.prompts',
+    ]);
+    // The contract row marks the composition as explicit prompt invocation, so
+    // there is no strategy to name and none is invented.
+    expect(compiled.relations.explainedByStrategies).toEqual([]);
+  });
+});
+
+describe('the root-exact Copilot prompt inventory (T488)', () => {
+  let promptFixture: CommandFixture;
+
+  beforeAll(() => {
+    promptFixture = buildCommandFixture('inspector-copilot-prompt-files');
+  });
+
+  afterAll(() => {
+    rmSync(promptFixture.root, { recursive: true, force: true });
+  });
+
+  it('admits every `.prompt.md` directly in the root prompts directory', async () => {
+    const result = await scanWith(promptFixture.root, COPILOT_REPOSITORY_RULES);
+    const admitted = result.files
+      .filter((file) =>
+        resolveAdmittingRules(COPILOT_REPOSITORY_RULES, file.admissions).some(
+          (rule) => rule.rule.ruleId === 'copilot.repo.prompt',
+        ),
+      )
+      .map((file) => file.publicPath)
+      .sort();
+    expect(admitted).toEqual([...promptFixture.expectedPromptPaths]);
+  });
+
+  it('admits no nested, non-root, or wrong-extension prompt path', async () => {
+    const result = await scanWith(promptFixture.root, COPILOT_REPOSITORY_RULES);
+    const paths = new Set(result.files.map((file) => file.publicPath));
+    for (const nearMiss of [
+      '.github/prompts/notes.md',
+      '.github/prompts/team/deploy.prompt.md',
+      'packages/api/.github/prompts/deploy.prompt.md',
+    ]) {
+      expect(paths.has(nearMiss), nearMiss).toBe(false);
+    }
+  });
+
+  it('reaches no prompt file with a Claude or Codex rule', async () => {
+    for (const rules of [CLAUDE_REPOSITORY_RULES, CODEX_REPOSITORY_RULES]) {
+      const other = await scanWith(promptFixture.root, rules);
+      const paths = new Set(other.files.map((file) => file.publicPath));
+      for (const path of promptFixture.expectedPromptPaths) {
+        expect(paths.has(path), path).toBe(false);
+      }
+    }
+  });
+});
+
+describe('the root-anchored Claude command inventory (T442)', () => {
+  let commandFixture: CommandFixture;
+
+  beforeAll(() => {
+    commandFixture = buildCommandFixture('inspector-claude-command-files');
+  });
+
+  afterAll(() => {
+    rmSync(commandFixture.root, { recursive: true, force: true });
+  });
+
+  /** Publishes one fixture root's scan, as the coordinator would. */
+  async function publishCommands(root: string) {
+    const publication = await runSourceScan({
+      sourceId: 'src-commands',
+      root,
+      rootFailureOwner: 'repository',
+    });
+    if (publication.kind !== 'publishable') {
+      throw new Error(`expected a publishable scan, got ${publication.kind}`);
+    }
+    return publication;
+  }
+
+  it('admits every `.md` at any depth inside the root commands directory', async () => {
+    const result = await scanWith(commandFixture.root, CLAUDE_REPOSITORY_RULES);
+    const admitted = result.files
+      .filter((file) =>
+        resolveAdmittingRules(CLAUDE_REPOSITORY_RULES, file.admissions).some(
+          (rule) => rule.rule.ruleId === 'claude.repo.command',
+        ),
+      )
+      .map((file) => file.publicPath)
+      .sort();
+    expect(admitted).toEqual([...commandFixture.expectedCommandPaths]);
+    // A one-level namespace and a deeper one are the same documented reach,
+    // and both are in the set above.
+    expect(admitted).toContain('.claude/commands/frontend/component.md');
+    expect(admitted).toContain('.claude/commands/team/review/security.md');
+  });
+
+  it('never admits a subdirectory `.claude/commands`', async () => {
+    // The project command scope contributes at the selected root: no cited
+    // page states a skill-equivalent ancestor or lazy-descendant traversal
+    // for this directory, so a nested one is a near miss rather than a
+    // candidate.
+    const result = await scanWith(commandFixture.root, CLAUDE_REPOSITORY_RULES);
+    expect(result.files.map((file) => file.publicPath)).not.toContain(
+      commandFixture.nestedCommandPath,
+    );
+  });
+
+  it('never admits a standalone `.claude/prompts` file (FR-034)', async () => {
+    // FR-034 names the directory: no official page documents Claude Code
+    // reading one, so recognizing it would report a customization type the
+    // vendor does not have.
+    const result = await scanWith(commandFixture.root, CLAUDE_REPOSITORY_RULES);
+    expect(result.files.map((file) => file.publicPath)).not.toContain(commandFixture.promptsPath);
+  });
+
+  it('admits no spelling variant, VCS internal, or installed dependency', async () => {
+    const result = await scanWith(commandFixture.root, CLAUDE_REPOSITORY_RULES);
+    const paths = new Set(result.files.map((file) => file.publicPath));
+    for (const nearMiss of commandFixture.nearMissPaths) {
+      expect(paths.has(nearMiss), nearMiss).toBe(false);
+    }
+  });
+
+  it('reads a linked command file and namespace directory through their targets', async () => {
+    if (!commandFixture.capabilities.symlinks) {
+      return;
+    }
+    // A link is read through its target here like every other read (FR-024).
+    const result = await scanWith(commandFixture.root, CLAUDE_REPOSITORY_RULES);
+    const linked = result.files.find((file) => file.publicPath === '.claude/commands/shared.md');
+    expect(linked?.outcome).toMatchObject({ kind: 'readable', sourceText: '# shared command\n' });
+    const throughDirectory = result.files.find(
+      (file) => file.publicPath === '.claude/commands/shared/audit.md',
+    );
+    expect(throughDirectory?.outcome).toMatchObject({
+      kind: 'readable',
+      sourceText: '# shared audit command\n',
+    });
+  });
+
+  it('gives a root direct child one recognition per product, and no Codex one', async () => {
+    // Two products documenting a read of one path is two recognitions of it,
+    // from one read of one file (FR-004).
+    const published = await publishCommands(commandFixture.root);
+    const declaring = published.recognitions.filter(
+      (recognition) => recognition.sourceRelativePath === commandFixture.declaringCommandPath,
+    );
+    expect(declaring.map((recognition) => recognition.details.kind)).toEqual([
+      'prompt/command',
+      'prompt/command',
+    ]);
+    expect(declaring.map((recognition) => recognition.tool).toSorted()).toEqual([
+      'claude',
+      'copilot',
+    ]);
+    // Codex documents no command surface at all.
+    const codex = await scanWith(commandFixture.root, CODEX_REPOSITORY_RULES);
+    expect(codex.files.map((file) => file.publicPath)).not.toContain(
+      commandFixture.declaringCommandPath,
+    );
+  });
+
+  it('gives a nested command Claude alone, because Copilot documents no recursion', async () => {
+    const published = await publishCommands(commandFixture.root);
+    expect(commandFixture.claudeOnlyCommandPaths.length).toBeGreaterThan(0);
+    for (const path of commandFixture.claudeOnlyCommandPaths) {
+      const recognized = published.recognitions.filter(
+        (recognition) => recognition.sourceRelativePath === path,
+      );
+      expect(
+        recognized.map((recognition) => recognition.tool),
+        path,
+      ).toEqual(['claude']);
+    }
+  });
+
+  it('admits exactly the root direct children for Copilot', async () => {
+    // The CLI reference states the location and neither an anchor nor a walk,
+    // so a nested command is a path Copilot documents no read of.
+    const result = await scanWith(commandFixture.root, COPILOT_REPOSITORY_RULES);
+    const admitted = result.files
+      .filter((file) =>
+        resolveAdmittingRules(COPILOT_REPOSITORY_RULES, file.admissions).some(
+          (rule) => rule.rule.ruleId === 'copilot.repo.command',
+        ),
+      )
+      .map((file) => file.publicPath)
+      .sort();
+    expect(admitted).toEqual([...commandFixture.sharedCommandPaths]);
+    for (const path of commandFixture.claudeOnlyCommandPaths) {
+      expect(admitted, path).not.toContain(path);
+    }
+  });
+
+  it('names a shared root file the same for both products, and never a nested one', async () => {
+    // A root direct child is where the two derivations agree — Claude adds no
+    // namespace there and Copilot documents none — so the two recognitions
+    // land on one inventory row. Below the root only Claude has a name to
+    // give at all.
+    const published = await publishCommands(commandFixture.root);
+    const namesByPath = new Map<string, string[]>();
+    for (const recognition of published.recognitions) {
+      if (recognition.details.kind !== 'prompt/command') {
+        continue;
+      }
+      const names = namesByPath.get(recognition.sourceRelativePath) ?? [];
+      names.push(recognition.details.invocationName);
+      namesByPath.set(recognition.sourceRelativePath, names);
+    }
+    expect(namesByPath.get(commandFixture.declaringCommandPath)).toEqual(['deploy', 'deploy']);
+    expect(namesByPath.get('.claude/commands/frontend/component.md')).toEqual([
+      'frontend:component',
+    ]);
+  });
+
+  it('gives two same-named command files in different namespaces two names', async () => {
+    // The subdirectory is part of the name the vendor derives, so two files
+    // sharing a file name are two commands rather than a collision — which is
+    // why a command row needs no same-name resolution statement.
+    const claude = await publishCommands(commandFixture.root);
+    const named = new Map(
+      claude.recognitions.flatMap((recognition) =>
+        recognition.details.kind === 'prompt/command'
+          ? [[recognition.sourceRelativePath, recognition.details.invocationName]]
+          : [],
+      ),
+    );
+    for (const path of commandFixture.duplicateNameCommandPaths) {
+      expect(named.has(path), path).toBe(true);
+    }
+    expect([...commandFixture.duplicateNameCommandPaths].map((path) => named.get(path))).toEqual([
+      'deploy',
+      'frontend:deploy',
+    ]);
   });
 });
 

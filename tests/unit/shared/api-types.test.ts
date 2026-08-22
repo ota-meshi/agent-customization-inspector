@@ -90,6 +90,7 @@ describe('session snapshot DTO', () => {
       | 'files'
       | 'instructions'
       | 'rules'
+      | 'prompts'
       | 'permissions'
       | 'skills'
       | 'mcp'

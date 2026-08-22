@@ -43,6 +43,7 @@ function bootstrapSnapshot(overrides: Partial<SessionSnapshot> = {}): SessionSna
     files: [],
     instructions: [],
     rules: [],
+    prompts: [],
     permissions: [],
     skills: [],
     mcp: [],
@@ -185,6 +186,10 @@ describe('authored file content in the browser', () => {
       // renders as its heading, never authored content.
       'pageSubject',
       'policyDetail',
+      // The prompt-and-command comparison view (FR-011): this kind's own two
+      // ordinary detail loads, with the same guards as the others and
+      // nothing that masks or reveals either side.
+      'promptComparison',
       'refresh',
       // Lets a component register its Monaco model for synchronous disposal
       // on purge and on generation replacement — the opposite of a reveal.
@@ -243,21 +248,19 @@ describe('authored file content in the browser', () => {
     // answer still arrives — at a page that is no longer the skill's. Writing
     // it would put a file's failure in front of a reader who is back on the
     // inventory, with no file on screen to explain it.
-    let settleDetail: (value: unknown) => void = () => {};
+    const detailResponse = Promise.withResolvers<unknown>();
     const state = new SessionViewState({
       channel: {
         call: (method: SessionRpcFunctionName) =>
           method === SESSION_RPC_FUNCTIONS.getSession
             ? Promise.resolve(dataResult(bootstrapSnapshot()))
-            : new Promise((_resolve, reject) => {
-                settleDetail = reject;
-              }),
+            : detailResponse.promise,
       },
     });
     await state.start();
     const opening = state.openFileDetail('file-1', 'file-1');
     state.closeFileDetail();
-    settleDetail(new Error('the host failed while the reader was leaving'));
+    detailResponse.reject(new Error('the host failed while the reader was leaving'));
     await opening;
     expect(state.detailErrorMessage.value).toBeNull();
     expect(state.fileDetailState.value).toBe('idle');

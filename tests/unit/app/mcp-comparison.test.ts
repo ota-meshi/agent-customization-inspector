@@ -75,6 +75,7 @@ function snapshotWith(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot
     })),
     instructions: [],
     rules: [],
+    prompts: [],
     permissions: [],
     skills: [],
     mcp: [

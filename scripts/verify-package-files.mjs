@@ -6,8 +6,7 @@
 // (dist/cli.mjs, the package.json.bin target). Anything further would
 // re-verify sibling build output the same pipeline just produced.
 import { lstat, readFile } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join, resolve } from 'node:path';
 
 export const REQUIRED_PACKAGE_ENTRIES = Object.freeze(['public/index.html', 'cli.mjs']);
 
@@ -49,6 +48,6 @@ export async function verifyPackageFiles({ distDir }) {
 }
 
 if (import.meta.main) {
-  const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+  const rootDir = resolve(import.meta.dirname, '..');
   await verifyPackageFiles({ distDir: join(rootDir, 'dist') });
 }

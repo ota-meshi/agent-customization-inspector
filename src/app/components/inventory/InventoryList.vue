@@ -24,6 +24,7 @@
 // rather than the one running. The finding is that nothing was recognized;
 // which products and locations the release covers is documentation.
 import { computed } from 'vue';
+import PromptRow from './rows/PromptRow.vue';
 import InstructionRow from './rows/InstructionRow.vue';
 import McpRow from './rows/McpRow.vue';
 import PermissionsRow from './rows/PermissionsRow.vue';
@@ -32,6 +33,7 @@ import SkillRow from './rows/SkillRow.vue';
 import { inventoryPanelId, inventoryTabId } from './panel-ids';
 import { CUSTOMIZATION_KIND_PLURAL_TEXT } from '../../../shared/entities';
 import type {
+  PromptInventoryEntryDto,
   CustomizationFileSummaryDto,
   InstructionInventoryEntryDto,
   McpInventoryEntryDto,
@@ -49,6 +51,8 @@ const props = defineProps<{
   instructionRows: readonly InstructionInventoryEntryDto[];
   /** The rule rows that passed the active filters, in snapshot order. */
   ruleRows: readonly RuleInventoryEntryDto[];
+  /** The command rows that passed the active filters, in snapshot order. */
+  promptRows: readonly PromptInventoryEntryDto[];
   /** The permission-policy rows that passed the active filters, in snapshot order. */
   permissionsRows: readonly PermissionsInventoryEntryDto[];
   /** The skill rows that passed the active filters, in snapshot order. */
@@ -79,13 +83,15 @@ const rowCount = computed(() =>
     ? props.instructionRows.length
     : props.kind === 'rule'
       ? props.ruleRows.length
-      : props.kind === 'permissions'
-        ? props.permissionsRows.length
-        : props.kind === 'skill'
-          ? props.skillRows.length
-          : props.kind === 'MCP'
-            ? props.mcpRows.length
-            : 0,
+      : props.kind === 'prompt/command'
+        ? props.promptRows.length
+        : props.kind === 'permissions'
+          ? props.permissionsRows.length
+          : props.kind === 'skill'
+            ? props.skillRows.length
+            : props.kind === 'MCP'
+              ? props.mcpRows.length
+              : 0,
 );
 </script>
 
@@ -118,6 +124,18 @@ const rowCount = computed(() =>
         <!-- Keyed by the row's own path: the unit is the file, and a path is
              unique within a Source (FR-030). -->
         <RuleRow v-for="entry in ruleRows" :key="entry.sourceRelativePath" :entry="entry" />
+      </template>
+      <template v-if="kind === 'prompt/command'">
+        <!-- Keyed by the row's own name — the row unit is the name a reader
+             invokes, unique in the list by construction (data-model.md
+             § Inventory unit). -->
+        <PromptRow
+          v-for="entry in promptRows"
+          :key="entry.name"
+          :entry="entry"
+          :files-by-path="filesByPath"
+          :diagnostics="diagnostics"
+        />
       </template>
       <template v-if="kind === 'permissions'">
         <!-- Its own row component rather than the rules one: a permissions row

@@ -14,6 +14,7 @@ import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
+import { openNoKindDisclosure } from './no-kind-disclosure';
 
 /** A literal credential in a declared pattern, shown whole and unmasked. */
 const FIXTURE_SECRET = 'ghp_E2ERULEDETAIL00000000000000000000000000';
@@ -192,7 +193,7 @@ test.describe('a candidate whose bytes were never accepted', () => {
     }
 
     await page.goto(host.origin);
-    const unclassified = page.locator('h3:has-text("Files in no kind") ~ ul .aci-item');
+    const unclassified = (await openNoKindDisclosure(page)).locator('.aci-item');
     await expect(unclassified).toHaveCount(2);
     await expect(unclassified.filter({ hasText: 'binary.rules' })).toContainText(
       'This file contains NUL bytes',

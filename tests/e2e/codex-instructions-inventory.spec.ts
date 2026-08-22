@@ -18,6 +18,7 @@ import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
+import { openNoKindDisclosure } from './no-kind-disclosure';
 
 /** A literal credential in authored source, used to prove it never lists. */
 const FIXTURE_SECRET = 'ghp_E2EINSTRUCTIONS00000000000000000000000';
@@ -256,7 +257,7 @@ test.describe('a binary instruction candidate', () => {
     // "Files in no kind" states its path and read outcome, which is what a
     // `partial` generation naming its cause looks like on this page.
     await expect(page.getByRole('heading', { name: 'Files in no kind' })).toBeVisible();
-    const unclassified = page
+    const unclassified = (await openNoKindDisclosure(page))
       .locator('.aci-item')
       .filter({ hasText: 'AGENTS.override.md' })
       .first();

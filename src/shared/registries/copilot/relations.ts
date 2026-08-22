@@ -40,6 +40,7 @@ import {
   COPILOT_VSCODE_INSTRUCTIONS_PATH_BEHAVIOR,
   COPILOT_VSCODE_INSTRUCTIONS_REPOSITORY_BEHAVIOR,
   COPILOT_VSCODE_MCP_BEHAVIOR,
+  COPILOT_VSCODE_PROMPTS_BEHAVIOR,
   COPILOT_VSCODE_SKILLS_BEHAVIOR,
   COPILOT_VSCODE_USER_CLAUDE_BEHAVIOR,
   COPILOT_VSCODE_USER_MCP_BEHAVIOR,
@@ -49,6 +50,7 @@ import {
 import {
   COPILOT_EXCLUDED_ADDITIONAL_STANDARD_LOCATIONS_RULE,
   COPILOT_EXCLUDED_EXTRA_DIRECTORIES_RULE,
+  COPILOT_REPO_COMMAND_RULE,
   COPILOT_REPO_INSTRUCTIONS_AGENTS_RULE,
   COPILOT_REPO_INSTRUCTIONS_CLAUDE_ROOT_RULE,
   COPILOT_REPO_INSTRUCTIONS_GEMINI_ROOT_RULE,
@@ -59,6 +61,7 @@ import {
   COPILOT_REPO_MCP_RULE,
   COPILOT_REPO_MCP_VSCODE_ROOT_RULE,
   COPILOT_REPO_MCP_VSCODE_RULE,
+  COPILOT_REPO_PROMPT_RULE,
   COPILOT_REPO_SKILL_RULE,
 } from './rules';
 import {
@@ -190,6 +193,28 @@ export const COPILOT_STRATEGY_RELATIONS: Readonly<Record<CopilotStrategyId, Stra
 
 /** What each Copilot inspection rule is based on and explained by. What evidences it is its own `evidence`. */
 export const COPILOT_RULE_RELATIONS: Readonly<Record<CopilotRuleId, RuleRelations>> = {
+  /**
+   * The prompt rule is based on the workspace prompt lookup alone — the
+   * profile scope the same page documents is a different Source boundary this
+   * rule may not read — and is explained by no strategy at all: the contract
+   * row marks the behavior's composition as explicit prompt invocation, and a
+   * strategy invented here would record an edge no page establishes
+   * (contracts/runtime-composition.md § Registry completeness).
+   */
+  [COPILOT_REPO_PROMPT_RULE.ruleId]: {
+    basedOnBehaviors: [COPILOT_VSCODE_PROMPTS_BEHAVIOR],
+    explainedByStrategies: [],
+  },
+  /**
+   * The CLI command rule is based on the legacy command lookup alone, and is
+   * explained by the CLI skill selection — the strategy that owns the
+   * documented outcome the rule deliberately does not project: a same-name
+   * skill outranks a command (FR-009).
+   */
+  [COPILOT_REPO_COMMAND_RULE.ruleId]: {
+    basedOnBehaviors: [COPILOT_CLI_COMMANDS_BEHAVIOR],
+    explainedByStrategies: [COPILOT_CLI_SKILLS_SELECTION_STRATEGY],
+  },
   /**
    * The additional-standard-location exclusion cites the behaviors it
    * deliberately does not authorize — an exclusion names the surfaces it

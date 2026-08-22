@@ -180,6 +180,8 @@ const totalRowCount = computed(() => {
       return snapshot.value?.instructions.length ?? 0;
     case 'rule':
       return snapshot.value?.rules.length ?? 0;
+    case 'prompt/command':
+      return snapshot.value?.prompts.length ?? 0;
     case 'permissions':
       return snapshot.value?.permissions.length ?? 0;
     case 'skill':
@@ -206,6 +208,27 @@ function clearFilters(): void {
 const repositorySource = computed(
   () => snapshot.value?.sources.find((source) => source.kind === 'repository') ?? null,
 );
+
+/**
+ * How many of this Source's committed files kept a file-confined diagnostic —
+ * which is what a `partial` status reports (FR-028). The scan status states it,
+ * because the status is where a reader asks what "Partial" means and the causes
+ * themselves are spread across the rows of the files that carry them.
+ *
+ * Counted from the published files rather than from `snapshot.diagnostics`: a
+ * diagnostic is referenced by the file it belongs to, and one file may hold
+ * several, so counting records would report a number no list on this page has.
+ */
+const diagnosticFileCount = computed(() => {
+  const sourceId = repositorySource.value?.sourceId;
+  let count = 0;
+  for (const file of snapshot.value?.files ?? []) {
+    if (file.sourceId === sourceId && file.diagnosticIds.length > 0) {
+      count += 1;
+    }
+  }
+  return count;
+});
 
 const staleFailure = computed(() => {
   const sourceId = repositorySource.value?.sourceId;
@@ -238,6 +261,7 @@ const staleFailureMessage = computed(() =>
 
       <ScanProgress
         :source="repositorySource"
+        :diagnostic-file-count="diagnosticFileCount"
         :active-scan-request-id="sessionViewState.activeScanRequestId.value"
         :requesting="sessionViewState.rescanState.value === 'requesting'"
         :rejection="sessionViewState.rescanRejection.value"
@@ -270,6 +294,7 @@ const staleFailureMessage = computed(() =>
       :kind="filters.activeKind.value"
       :instruction-rows="filters.instructionRows.value"
       :rule-rows="filters.ruleRows.value"
+      :prompt-rows="filters.promptRows.value"
       :permissions-rows="filters.permissionsRows.value"
       :skill-rows="filters.skillRows.value"
       :mcp-rows="filters.mcpRows.value"
@@ -279,23 +304,40 @@ const staleFailureMessage = computed(() =>
       :diagnostics="snapshot.diagnostics"
     />
 
-    <template v-if="filters.unrecognizedRows.value.length > 0">
-      <h3>Files in no kind</h3>
+    <!-- Outside every kind tab: these files are in no kind's inventory, so no
+         kind presentation applies to them. It is a disclosure rather than a
+         standing section because its membership rule is absence: any repository
+         holding one unreadable, binary, or nothing-declaring candidate has it,
+         so as a standing section it sat open under whatever kind tab was being
+         read, on every visit, whether or not the reader was looking for it. The
+         count stays on the closed summary, and the scan status states how many
+         files kept a diagnostic (`ScanProgress.vue`), so a `partial` generation
+         still says which file it was (FR-028) at the cost of one interaction. -->
+    <details v-if="filters.unrecognizedRows.value.length > 0" class="aci-inventory-page__no-kind">
+      <summary>
+        <h3 class="aci-inventory-page__no-kind-heading">
+          Files in no kind
+          <span class="aci-inventory-page__no-kind-count">{{
+            filters.unrecognizedRows.value.length
+          }}</span>
+        </h3>
+      </summary>
       <p class="aci-note">
-        Files an inspection rule admitted that no kind tab lists. Each row states what happened —
-        bytes this scan could not use, a read that failed outright, or bytes that were read and
-        turned out to be binary — and a file whose content held nothing the kind that admitted it
-        publishes is here too, read and recognized as nothing. A file that only ships inside a
-        customization's own directory is not here: it belongs to that customization's row, and its
-        own row above says what happened to it.
+        Files an inspection rule admitted that no kind tab lists. Each row states its own read
+        outcome, and a file that was read and held nothing the kind that admitted it publishes is
+        here too. A file that only ships inside a customization's own directory is not: it belongs
+        to that customization's row, and its own row above says what happened to it.
       </p>
-      <!-- Outside every kind tab: these files are in no kind's inventory, so
-           no kind presentation applies to them. -->
+      <p v-if="filters.effectiveTool.value !== null" class="aci-note">
+        A tool filter is applied. No tool recognized these files, so none of them is listed under
+        one.
+      </p>
       <UnclassifiedList
+        v-else
         :files="filters.unrecognizedRows.value"
         :diagnostics="snapshot.diagnostics"
       />
-    </template>
+    </details>
 
     <h2>Diagnostics</h2>
     <DiagnosticList :diagnostics="snapshot.diagnostics" />
@@ -309,5 +351,36 @@ const staleFailureMessage = computed(() =>
 .aci-inventory-page__display-root {
   font-family: ui-monospace, monospace;
   overflow-wrap: anywhere;
+}
+
+/* Drawn as a box of its own, like the panels above it: closed, it is one line
+   between the kind panel and the diagnostics, and a border is what says the
+   line is a section rather than a stray heading. */
+.aci-inventory-page__no-kind {
+  border: 1px solid var(--aci-border);
+  border-radius: 0.5rem;
+  margin: 1rem 0;
+  padding: 0.5rem 0.75rem;
+}
+
+.aci-inventory-page__no-kind summary {
+  cursor: pointer;
+}
+
+/* The heading sits inside the summary so the section keeps its place in the
+   document outline while the summary stays the one control that opens it. It is
+   set inline at panel-heading size: as a block it would wrap under the
+   disclosure marker and draw its own margins inside the summary. */
+.aci-inventory-page__no-kind-heading {
+  display: inline;
+  font-size: 1rem;
+}
+
+/* The same muted count the kind tabs carry, so the closed line says how many
+   files are behind it without the reader opening it. */
+.aci-inventory-page__no-kind-count {
+  color: var(--aci-muted);
+  font-variant-numeric: tabular-nums;
+  margin-left: 0.4rem;
 }
 </style>

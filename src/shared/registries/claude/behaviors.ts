@@ -170,6 +170,53 @@ export const CLAUDE_REPO_INSTRUCTIONS_DESCENDANT_BEHAVIOR = {
 } as const satisfies VendorBehaviorStatement;
 
 /**
+ * Claude User commands: the `commands/` directory of the configuration
+ * directory, with the same subdirectory namespacing the project scope has.
+ *
+ * Recorded for maintenance and for the selection strategy that composes it; it
+ * expands no Global inspection, and `claude.excluded.user-runtime` keeps the
+ * surface out of the read allowlist (contracts/vendors/claude-code.md
+ * § Documented User behavior).
+ */
+export const CLAUDE_USER_COMMANDS_BEHAVIOR = {
+  behaviorId: 'claude.behavior.user.commands',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'user',
+        lookupBase: 'tool-home',
+        relativeSelector: 'commands/',
+        traversal: 'recursive-under-base',
+      }
+    : null,
+  documentationStatus: 'partially-documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.skills.locations-discovery',
+          url: 'https://code.claude.com/docs/en/skills',
+          officialHost: 'code.claude.com',
+          sections: ['Where skills live', 'How a skill gets its command name'],
+          reviewedOn: '2026-08-22',
+          establishes:
+            'The personal scope is the home configuration directory — the page places personal skills at ~/.claude/skills/<skill-name>/SKILL.md and says they apply to all your projects — and the same page says command files in .claude/commands/ work the way skills do and are invoked by their file name. That pairing is what makes <claude-config-dir>/commands/ the personal command directory; the page states no traversal for it, which the changelog entry beside this one supplies.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.changelog.legacy-command-nesting',
+          url: 'https://code.claude.com/docs/en/changelog',
+          officialHost: 'code.claude.com',
+          sections: ['1.0.51'],
+          reviewedOn: '2026-08-22',
+          establishes:
+            'Release 1.0.51 fixed user-level commands in subdirectories, which is where the personal directory is confirmed to recurse and to namespace by subdirectory.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
  * Claude User instructions at `<claude-config-dir>/CLAUDE.md`. Recorded for
  * maintenance and for the layering strategy that composes it: it expands no
  * Global inspection, and the only rule that will ever read the surface is the
@@ -263,6 +310,79 @@ export const CLAUDE_REPO_AGENTS_BEHAVIOR = {
           reviewedOn: '2026-08-20',
           establishes:
             'Project subagents are Markdown files discovered recursively under .claude/agents/ on each layer walked up from the working directory to the repository root, and directories added with --add-dir contribute their agents too; two same-name files under one directory tree load by filesystem read order rather than a documented precedence.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Claude project commands: the legacy `.claude/commands/` Markdown files a
+ * project keeps, discovered inside that directory including its
+ * subdirectories, where each subdirectory becomes a segment of the command's
+ * namespace.
+ *
+ * Commands and skills are one feature with two file layouts: a
+ * `.claude/commands/deploy.md` and a `.claude/skills/deploy/SKILL.md` both
+ * make `/deploy`, a command file supports the same frontmatter except `name`
+ * and `paths` — which Claude Code ignores in a command file — and a same-name
+ * skill outranks the command.
+ *
+ * `partially-documented` for the one thing the page leaves open: it says
+ * command files work the way skills do, and it documents skill discovery as an
+ * ancestor walk to the repository root plus a lazy descendant reach — but it
+ * writes the nested-directory sentence about `.claude/skills/` alone and never
+ * repeats it for `.claude/commands/`. A complete skill-equivalent ancestor and
+ * lazy-descendant command traversal is therefore not stated independently
+ * (contracts/vendors/claude-code.md § Documented Repository behavior), which
+ * is why the Inspector rule resting on this statement anchors at the selected
+ * root — the one layer every session shares.
+ */
+export const CLAUDE_REPO_COMMANDS_BEHAVIOR = {
+  behaviorId: 'claude.behavior.repo.commands',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'repository',
+        lookupBase: 'runtime-cwd',
+        // The directory, not a glob: a vendor locator is documentation rather
+        // than an Inspector selector, so the recursion is the `traversal`
+        // field's to state (contracts/inspection-path-allowlist.md § "Vendor
+        // locators are not Inspector matchers").
+        relativeSelector: '.claude/commands/',
+        // Everything below that directory: the changelog restored the
+        // subdirectory-derived namespace in a command name, which is the
+        // documented reach inside one commands directory. Which layers hold
+        // such a directory is the walk this field cannot also carry, and is
+        // what leaves the record `partially-documented`.
+        traversal: 'recursive-under-base',
+      }
+    : null,
+  documentationStatus: 'partially-documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.skills.locations-discovery',
+          url: 'https://code.claude.com/docs/en/skills',
+          officialHost: 'code.claude.com',
+          sections: [
+            'Where skills live',
+            'Discovery from parent and nested directories',
+            'How a skill gets its command name',
+          ],
+          reviewedOn: '2026-08-22',
+          establishes:
+            'Custom commands are merged into skills: a .claude/commands/deploy.md and a .claude/skills/deploy/SKILL.md both create /deploy, existing .claude/commands/ files keep working, and a skill outranks a command of the same name. A command file supports the same frontmatter as a skill except name and paths, which Claude Code ignores in one, and is invoked by its file name without the extension. The page says command files work the way skills do but writes its nested-directory sentence about .claude/skills/ alone, so no skill-equivalent ancestor or lazy-descendant command traversal is stated independently.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.changelog.legacy-command-nesting',
+          url: 'https://code.claude.com/docs/en/changelog',
+          officialHost: 'code.claude.com',
+          sections: ['1.0.45'],
+          reviewedOn: '2026-08-22',
+          establishes:
+            'Release 1.0.45 restored namespacing in command names based on subdirectories, with .claude/commands/frontend/component.md becoming /frontend:component — the documented reach inside one commands directory that makes its discovery recursive.',
         },
       ]
     : [],
@@ -405,10 +525,10 @@ export const CLAUDE_REPO_SKILLS_BEHAVIOR = {
           sourceId: 'anthropic.claude-code.skills.locations-discovery',
           url: 'https://code.claude.com/docs/en/skills',
           officialHost: 'code.claude.com',
-          sections: ['Where skills live'],
-          reviewedOn: '2026-08-08',
+          sections: ['Where skills live', 'Discovery from parent and nested directories'],
+          reviewedOn: '2026-08-22',
           establishes:
-            'Claude Code discovers repository skills at .claude/skills/<skill-name>/SKILL.md, with ancestor skill layers discovered at startup and nested descendant skill directories discovered on demand.',
+            'Claude Code discovers repository skills at .claude/skills/<skill-name>/SKILL.md, loading them from the start directory and every parent up to the repository root, while a nested descendant skill directory loads the first time Claude reads or edits a file inside it.',
         },
         {
           sourceId: 'anthropic.claude-code.changelog.nested-skill-discovery',
@@ -562,7 +682,7 @@ export const CLAUDE_USER_SKILLS_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/skills',
           officialHost: 'code.claude.com',
           sections: ['Where skills live'],
-          reviewedOn: '2026-08-08',
+          reviewedOn: '2026-08-22',
           establishes:
             'Claude Code additionally discovers user skills at ~/.claude/skills/<skill-name>/SKILL.md, one of the scopes its same-name selection resolves across.',
         },
@@ -838,6 +958,7 @@ export const CLAUDE_BEHAVIOR_STATEMENTS: Readonly<
   Record<ClaudeBehaviorId, VendorBehaviorStatement>
 > = {
   [CLAUDE_REPO_AGENTS_BEHAVIOR.behaviorId]: CLAUDE_REPO_AGENTS_BEHAVIOR,
+  [CLAUDE_REPO_COMMANDS_BEHAVIOR.behaviorId]: CLAUDE_REPO_COMMANDS_BEHAVIOR,
   [CLAUDE_REPO_INSTRUCTIONS_ANCESTOR_BEHAVIOR.behaviorId]:
     CLAUDE_REPO_INSTRUCTIONS_ANCESTOR_BEHAVIOR,
   [CLAUDE_REPO_INSTRUCTIONS_DESCENDANT_BEHAVIOR.behaviorId]:
@@ -849,6 +970,7 @@ export const CLAUDE_BEHAVIOR_STATEMENTS: Readonly<
   [CLAUDE_REPO_LOCAL_SETTINGS_BEHAVIOR.behaviorId]: CLAUDE_REPO_LOCAL_SETTINGS_BEHAVIOR,
   [CLAUDE_REPO_SHARED_SETTINGS_BEHAVIOR.behaviorId]: CLAUDE_REPO_SHARED_SETTINGS_BEHAVIOR,
   [CLAUDE_REPO_SKILLS_BEHAVIOR.behaviorId]: CLAUDE_REPO_SKILLS_BEHAVIOR,
+  [CLAUDE_USER_COMMANDS_BEHAVIOR.behaviorId]: CLAUDE_USER_COMMANDS_BEHAVIOR,
   [CLAUDE_USER_INSTRUCTIONS_BEHAVIOR.behaviorId]: CLAUDE_USER_INSTRUCTIONS_BEHAVIOR,
   [CLAUDE_USER_MCP_STATE_BEHAVIOR.behaviorId]: CLAUDE_USER_MCP_STATE_BEHAVIOR,
   [CLAUDE_USER_PLUGINS_BEHAVIOR.behaviorId]: CLAUDE_USER_PLUGINS_BEHAVIOR,

@@ -601,7 +601,9 @@ Verify:
    labeled controls and the accessible diff viewer without a focus trap.
 7. The packed app loads its editor worker from a same-origin static asset with no
    external request or `blob:` worker.
-8. Direct loads of `/`, `/skills/compare`, `/instructions/compare`, `/global-consent`, and `/skills/<tool>/<source-relative path>` all boot from
+8. Direct loads of `/`, `/global-consent`, every kind's comparison route
+   (`/skills/compare`, `/instructions/compare`, `/mcp/compare`,
+   `/prompts-and-commands/compare`), and every kind's detail route all boot from
    the same root-absolute assets served by the devframe host.
 9. Session-loss and response-guard tests cover a devframe-transport-reported channel loss,
    channel loss or unsupported protocol on the current non-superseded RPC, session-ID mismatch,

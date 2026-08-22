@@ -29,8 +29,8 @@ import { canonicalFrontmatterYamlText } from '../inspection/frontmatter-yaml';
 import { SUPPORTED_TOOL_ORDER, type SupportedTool } from '../../../shared/entities';
 import type {
   FileDetailDto,
-  DeclaredEntryDto,
   FileRecognitionDto,
+  MarkdownPresentationDto,
 } from '../../../shared/api-types';
 import type { VendorSurface } from '../../../shared/registries/behavior-types';
 
@@ -84,7 +84,7 @@ export const INSTRUCTION_RECOGNITION_SIDE_STATE_TEXT: Readonly<
  * only committed instruction files.
  */
 export type InstructionDeclarationSideState =
-  /** An instruction detail with a parsed presentation: its declarations serialize into the diff. */
+  /** A detail with a parsed presentation: its declarations serialize into the diff. */
   | 'parsed'
   /**
    * A detail without a parsed presentation: the all-or-nothing extraction
@@ -209,27 +209,41 @@ export class InstructionRecognitionComparison {
       }
     }
     this.tools = tools;
-    this.leftDeclarations = declarationState(left);
-    this.rightDeclarations = declarationState(right);
+    // Read once per side, so the stated state and the diffed document cannot
+    // disagree about whether the file parsed.
+    const leftPresentation = presentationOf(left);
+    const rightPresentation = presentationOf(right);
+    this.leftDeclarations = leftPresentation === null ? 'extraction-failed' : 'parsed';
+    this.rightDeclarations = rightPresentation === null ? 'extraction-failed' : 'parsed';
     this.frontmatterDiff =
-      this.leftDeclarations === 'parsed' && this.rightDeclarations === 'parsed'
+      leftPresentation !== null && rightPresentation !== null
         ? {
-            originalText: canonicalFrontmatterYamlText(entriesOf(left), []),
-            modifiedText: canonicalFrontmatterYamlText(entriesOf(right), []),
+            originalText: canonicalFrontmatterYamlText(leftPresentation.frontmatter, []),
+            modifiedText: canonicalFrontmatterYamlText(rightPresentation.frontmatter, []),
           }
         : null;
   }
 }
 
 /**
- * One parsed side's declarations. Callers guard on the 'parsed' state, which
- * is derived from the same detail, so the presentation is present here.
+ * One side's parse, or null when there is none. The parse is the file's, one
+ * per kind (FR-028), and every Markdown kind's variant carries the same one
+ * for the same bytes (candidate.ts § recognizeInstructions), so this asks what
+ * the adopted variant carries rather than requiring it to be this kind's:
+ * `get-file-detail` is addressed by the path alone and answers with the first
+ * variant its fixed order reaches — the skill variant for a file both kinds
+ * recognize — so a surface that required its own kind would report a parsed
+ * file as unparsed (session.ts § fileDetail). What this page renders is the
+ * document, and every parse-carrying variant holds it the same way. The two
+ * excluded variants are the ones that carry no parse at all: a rule file is
+ * published whole, and an unrecognized file has nothing read out of it.
  */
-function entriesOf(side: InstructionComparisonSideInput): readonly DeclaredEntryDto[] {
+function presentationOf(side: InstructionComparisonSideInput): MarkdownPresentationDto | null {
   const detail = side.detail;
-  return detail.kind === 'instructions' && detail.presentation !== null
-    ? detail.presentation.frontmatter
-    : [];
+  if (detail.kind === 'rule' || detail.kind === 'file') {
+    return null;
+  }
+  return detail.presentation;
 }
 
 /**
@@ -243,19 +257,6 @@ function recognitionState(
   return side.recognitions.some((recognition) => recognition.tool === tool)
     ? 'recognized'
     : 'not-recognized';
-}
-
-/**
- * What one side's declared metadata is; see
- * {@link InstructionDeclarationSideState}. The parse is the file's, one per
- * kind (FR-028), so it is read off the detail's presentation and is the same
- * fact for every recognizing tool at once.
- */
-function declarationState(side: InstructionComparisonSideInput): InstructionDeclarationSideState {
-  const detail = side.detail;
-  return detail.kind === 'instructions' && detail.presentation !== null
-    ? 'parsed'
-    : 'extraction-failed';
 }
 
 /** The surfaces one tool's recognition of a side rests on; empty when none. */

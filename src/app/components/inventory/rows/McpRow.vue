@@ -35,7 +35,6 @@ import {
 } from '../../../../shared/entities';
 import type {
   CustomizationFileSummaryDto,
-  McpDeclarationDto,
   McpInventoryEntryDto,
   SerializedDiagnostic,
 } from '../../../../shared/api-types';
@@ -106,15 +105,10 @@ const nameAccessibleText = computed(() =>
  * because the extraction ran once per file.
  */
 const carrierRows = computed(() => {
-  const byCarrier = new Map<string, McpDeclarationDto[]>();
-  for (const declaration of props.entry.declarations) {
-    const group = byCarrier.get(declaration.sourceRelativePath);
-    if (group === undefined) {
-      byCarrier.set(declaration.sourceRelativePath, [declaration]);
-    } else {
-      group.push(declaration);
-    }
-  }
+  const byCarrier = Map.groupBy(
+    props.entry.declarations,
+    (declaration) => declaration.sourceRelativePath,
+  );
   return [...byCarrier.entries()].map(([sourceRelativePath, declarations]) => ({
     key: sourceRelativePath,
     carrierText: pathPresentationLabel(sourceRelativePath),

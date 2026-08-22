@@ -10,7 +10,6 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 import {
   buildAllCustomizationKindFixture,
@@ -20,6 +19,7 @@ import {
   buildClaudeMcpFixture,
   buildClaudeRuleFixture,
   buildClaudeSkillFixture,
+  buildCommandFixture,
   buildCodexInstructionFixture,
   buildCodexMcpFixture,
   buildCodexRuleFixture,
@@ -32,7 +32,7 @@ import {
 } from '../tests/fixtures/repositories/build-fixtures.ts';
 
 /** The repository root, one directory above this script. */
-const repositoryRoot = fileURLToPath(new URL('..', import.meta.url));
+const repositoryRoot = join(import.meta.dirname, '..');
 
 /**
  * Where launched fixture trees live. The directory is listed in .gitignore,
@@ -56,6 +56,7 @@ const fixtureBuilders: Readonly<Record<string, (prefix?: string, root?: string) 
   'codex-instructions': buildCodexInstructionFixture,
   'codex-permissions': buildCodexRuleFixture,
   'claude-rules': buildClaudeRuleFixture,
+  commands: buildCommandFixture,
   'codex-mcp': buildCodexMcpFixture,
   'claude-mcp': buildClaudeMcpFixture,
   'copilot-cli-mcp': buildCopilotCliMcpFixture,

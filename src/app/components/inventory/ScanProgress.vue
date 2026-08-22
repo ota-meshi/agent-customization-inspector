@@ -23,6 +23,13 @@ import type { SourceDto, StaleSourceFailure } from '../../../shared/api-types';
 const props = defineProps<{
   /** The Source whose scan status is shown. */
   source: SourceDto;
+  /**
+   * How many of that Source's committed files kept a file-confined diagnostic
+   * (FR-028) — what the `partial` status reports. Stated here because this is
+   * where a reader meets that status, while the causes themselves are on the
+   * rows of the files that carry them.
+   */
+  diagnosticFileCount: number;
   /** The request ID of the command this page issued; null before any. */
   activeScanRequestId: string | null;
   /** True while the rescan command itself is in flight. */
@@ -99,6 +106,19 @@ const rejectionText = computed(() =>
           </dd>
         </template>
       </dl>
+
+      <!-- What a "Partial" status is about, stated where the status is read.
+           It is inside the live region because it is part of the state being
+           announced: a status of "Partial" with no count leaves the listener
+           with the same question a sighted reader has. Rendered from the count
+           rather than from the status value, so it makes one claim — how many
+           files kept a diagnostic — and never has to be kept in step with what
+           the status word means. -->
+      <p v-if="diagnosticFileCount > 0" class="aci-note">
+        {{ diagnosticFileCount }} file(s) kept a diagnostic of their own. Each states it where that
+        file is listed — on its row under its kind's tab, inside the row of the customization whose
+        directory holds it, or under “Files in no kind” when no kind lists it.
+      </p>
 
       <p v-if="staleFailure" class="aci-error">
         The last rescan failed, so the previous scan result is still shown and may be out of date.

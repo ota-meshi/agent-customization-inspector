@@ -1443,6 +1443,357 @@ export function buildClaudeRuleFixture(
   };
 }
 
+/** One built command fixture repository, covering both products (T440, T475). */
+export interface CommandFixture {
+  /** The absolute fixture root to scan. */
+  readonly root: string;
+  /** Which capability-gated cases exist; see {@link RepositoryFixtureCapabilities}. */
+  readonly capabilities: RepositoryFixtureCapabilities;
+  /**
+   * Every Source-relative Path the `claude.repo.command` allowlist must admit,
+   * sorted exactly as the scan publishes them. Capability-gated members are
+   * present only when the corresponding capability is.
+   */
+  readonly expectedCommandPaths: readonly string[];
+  /**
+   * The admitted paths both products recognize: the root direct children,
+   * which is everything `copilot.repo.command` reaches. Derived from
+   * {@link expectedCommandPaths} rather than listed again, so the two cannot
+   * disagree about which files the tree holds.
+   */
+  readonly sharedCommandPaths: readonly string[];
+  /**
+   * The admitted paths only Claude recognizes: the ones inside a namespace
+   * directory, which Copilot documents no read of. Derived from
+   * {@link expectedCommandPaths} for the same reason.
+   */
+  readonly claudeOnlyCommandPaths: readonly string[];
+  /** The command file whose frontmatter declares the keys a command supports. */
+  readonly declaringCommandPath: string;
+  /** The keys that file declares, in authored order. */
+  readonly declaredKeys: readonly string[];
+  /**
+   * The two command files sharing one file name in different namespaces.
+   * Claude derives two different names from them, because the subdirectory is
+   * part of the name it derives, so they are two rows rather than a collision.
+   */
+  readonly duplicateNameCommandPaths: readonly string[];
+  /**
+   * The command file whose frontmatter is malformed YAML: its extraction fails
+   * all-or-nothing while the complete source stays displayed (FR-028).
+   */
+  readonly malformedCommandPath: string;
+  /**
+   * The command file whose frontmatter and body hold a literal credential and
+   * an environment reference, so a test can prove neither reaches the
+   * inventory and neither is resolved (FR-026, FR-027).
+   */
+  readonly secretCommandPath: string;
+  /**
+   * The command file whose prompt names an agent and a skill, so a test can
+   * prove neither is resolved, opened, or read (FR-019).
+   */
+  readonly referencingCommandPath: string;
+  /**
+   * Paths no shipped rule of any product may admit: the subdirectory
+   * `.claude/commands` this release's root anchoring leaves out, the
+   * standalone `.claude/prompts` directory FR-034 names, a `.copilot/commands`
+   * directory no cited page documents, the spelling variants one step from
+   * the selector's literals, and VCS internals.
+   */
+  readonly nearMissPaths: readonly string[];
+  /**
+   * Every Source-relative Path the `copilot.repo.prompt` allowlist must admit,
+   * sorted exactly as the scan publishes them: the VS Code prompt files, which
+   * are the kind's other location.
+   */
+  readonly expectedPromptPaths: readonly string[];
+  /** The prompt file that declares its own `name`, and the name it declares. */
+  readonly declaringPromptPath: string;
+  /** The `name` that file declares, which is what a reader types after the `/`. */
+  readonly declaredPromptName: string;
+  /** The prompt file that declares none, so its file name is its name. */
+  readonly namelessPromptPath: string;
+  /**
+   * The prompt file whose declared `name` matches a command's derived name, so
+   * one row lists both files.
+   */
+  readonly sharedNamePromptPath: string;
+  /** The standalone `.claude/prompts` file FR-034 keeps out of the inventory. */
+  readonly promptsPath: string;
+  /** The subdirectory `.claude/commands` file the root anchoring keeps out. */
+  readonly nestedCommandPath: string;
+}
+
+/**
+ * Builds the canonical command fixture repository (T440, finalized for both
+ * products by T475).
+ *
+ * The Claude admitted set is every `.md` file at any depth inside the root's
+ * own `.claude/commands/`, which is the one documented recursion: the changelog
+ * restored the subdirectory-derived namespace in a command name and shows
+ * `.claude/commands/frontend/component.md` invoked as `/frontend:component`.
+ * The tree exercises it — a direct child, a one-level namespace, and a deeply
+ * nested one — beside the near misses one segment away from each.
+ *
+ * The leading recursion the rule file rule has is deliberately absent here and
+ * is a near miss instead: `packages/api/.claude/commands/deploy.md` is a file
+ * no cited page documents a read of, because the ancestor and lazy-descendant
+ * sentences of the skills page are written about `.claude/skills/` alone.
+ *
+ * The admitted files carry what a command file carries: the frontmatter keys a
+ * skill supports, two file names that coincide across namespaces, malformed
+ * YAML whose extraction fails while the source stays displayed, a literal
+ * credential and environment reference that must reach no inventory and never
+ * be resolved, and a prompt naming an agent and a skill that must never be
+ * resolved or read.
+ *
+ * Copilot reaches the root direct children of the same directory and nothing
+ * below them, so the tree is also the unified case: a root file carries a
+ * recognition from each product under one name, and a nested one carries
+ * Claude's alone.
+ *
+ * A standalone `.claude/prompts` file is written on purpose: FR-034 requires
+ * that it never becomes a supported Claude customization file.
+ */
+export function buildCommandFixture(
+  prefix = 'inspector-commands',
+  root = createRepositoryFixtureRoot(prefix),
+): CommandFixture {
+  const declaredKeys = ['description', 'argument-hint', 'allowed-tools', 'model'];
+  // A direct child declaring the keys a command file supports. `name` and
+  // `paths` are deliberately absent: Claude Code ignores both in a command
+  // file, and declaring one would put a key in the fixture whose presence
+  // says nothing about this product.
+  write(
+    root,
+    '.claude/commands/deploy.md',
+    [
+      '---',
+      'description: Deploy the current branch',
+      'argument-hint: "[environment]"',
+      'allowed-tools:',
+      '  - Bash(git status)',
+      '  - Read',
+      'model: opus',
+      '---',
+      '',
+      '# Deploy',
+      '',
+      'Deploy $1 after checking the working tree.',
+      '',
+    ].join('\n'),
+  );
+  // A command with no frontmatter at all: the whole file is the prompt.
+  write(root, '.claude/commands/release.md', '# Release\n\nCut a release.\n');
+  // The changelog's own namespacing example: the subdirectory is part of the
+  // command name the vendor derives, which this product publishes nowhere.
+  write(
+    root,
+    '.claude/commands/frontend/component.md',
+    '---\ndescription: Scaffold a component\n---\n\n# Component\n',
+  );
+  // Two file names that coincide across namespaces: two commands to the
+  // vendor, two rows here, and neither row is named by a command name.
+  write(root, '.claude/commands/frontend/deploy.md', '# Deploy the frontend\n');
+  // Deeper nesting, to prove the recursion is not one level.
+  write(root, '.claude/commands/team/review/security.md', '# Security review\n');
+  // Malformed YAML frontmatter: extraction fails all-or-nothing while the
+  // complete source stays displayed (FR-028).
+  write(root, '.claude/commands/broken.md', '---\nallowed-tools: [Bash\n---\n\n# Broken\n');
+  // The credential and environment-reference case, in the frontmatter and in
+  // the body: both are authored text a command file happens to contain, and
+  // neither may reach an inventory row or be resolved against the process
+  // environment (FR-026, FR-027).
+  write(
+    root,
+    '.claude/commands/secrets.md',
+    [
+      '---',
+      `description: Publish with ${FIXTURE_SECRET_LITERAL}`,
+      '---',
+      '',
+      '# Publish',
+      '',
+      `- The endpoint is ${FIXTURE_ENVIRONMENT_REFERENCE}.`,
+      '',
+    ].join('\n'),
+  );
+  // Names of an agent and a skill inside the prompt: text this product never
+  // resolves, opens, or reads (FR-019).
+  write(
+    root,
+    '.claude/commands/references.md',
+    [
+      '# Audit',
+      '',
+      '- Hand the diff to the code-reviewer subagent.',
+      '- Then run /skill-name and read ./checklist.md.',
+      '',
+    ].join('\n'),
+  );
+
+  // Near miss: the project command scope is the selected root's own, because
+  // no skill-equivalent ancestor or lazy-descendant command traversal is
+  // documented.
+  write(root, 'packages/api/.claude/commands/deploy.md', 'nested commands directory\n');
+  // Near miss: FR-034 — a standalone `.claude/prompts` directory is not a
+  // supported Claude customization file type.
+  write(root, '.claude/prompts/deploy.md', 'unsupported prompts directory\n');
+  // Near miss: Copilot documents its commands at `.claude/commands/` and
+  // names no product-home directory of its own, so nothing here may reach a
+  // `.copilot/commands` one.
+  write(root, '.copilot/commands/deploy.md', 'no documented copilot commands dir\n');
+  // The kind's other location: VS Code prompt files, which a reader invokes
+  // by hand with a `/`. A prompt declares its own `name` and falls back to its
+  // file name, which is the difference from a command file.
+  write(
+    root,
+    '.github/prompts/scaffold.prompt.md',
+    [
+      '---',
+      'name: scaffold-component',
+      'description: Scaffold a React component',
+      'argument-hint: "componentName"',
+      '---',
+      '',
+      '# Scaffold',
+      '',
+      'Create a component named ${input:componentName}.',
+      '',
+    ].join('\n'),
+  );
+  // No `name`, so the file name stands in.
+  write(root, '.github/prompts/review.prompt.md', '# Review\n\nReview the diff.\n');
+  // A declared name that collides with a root command's derived name, so the
+  // two files land on one row.
+  write(
+    root,
+    '.github/prompts/deploy.prompt.md',
+    '---\nname: deploy\n---\n\n# Deploy from the editor\n',
+  );
+  // Malformed frontmatter: the extraction fails and the file name stands in,
+  // exactly as it does for a file that declares no name (FR-028).
+  write(root, '.github/prompts/broken.prompt.md', '---\ntools: [read\n---\n\n# Broken\n');
+  // Near miss: the extension is exact, and a plain `.md` is not a prompt file.
+  write(root, '.github/prompts/notes.md', 'not a prompt file\n');
+  // Near miss: the page gives one default folder for the workspace scope and
+  // puts every other location behind a setting this tool never reads.
+  write(root, '.github/prompts/team/deploy.prompt.md', 'nested prompts directory\n');
+  write(root, 'packages/api/.github/prompts/deploy.prompt.md', 'non-root prompts directory\n');
+
+  // Near miss: the container literals are exact.
+  write(root, '.claude/command/deploy.md', 'singular commands dir\n');
+  write(root, 'claude/commands/deploy.md', 'no leading dot\n');
+  write(root, 'commands/deploy.md', 'no .claude above it\n');
+  // Near miss: the terminal step is the extension, in its own directory so a
+  // case-insensitive filesystem cannot collide it with an admitted file.
+  write(root, '.claude/commands/uppercase/DEPLOY.MD', 'wrong case\n');
+  write(root, '.claude/commands/notes.md.bak', 'backup suffix\n');
+  write(root, '.claude/commands/script.sh', 'echo not markdown\n');
+  // Near miss: VCS internals are excluded from traversal entirely.
+  write(root, '.git/.claude/commands/hidden.md', 'vcs internal\n');
+  // Near miss: an installed dependency tree is never entered.
+  write(root, 'node_modules/pkg/.claude/commands/vendored.md', 'installed package\n');
+  // An unrelated file sharing no segment with the selector.
+  write(root, 'README.md', 'unrelated\n');
+
+  const expectedCommandPaths = [
+    '.claude/commands/broken.md',
+    '.claude/commands/deploy.md',
+    '.claude/commands/frontend/component.md',
+    '.claude/commands/frontend/deploy.md',
+    '.claude/commands/references.md',
+    '.claude/commands/release.md',
+    '.claude/commands/secrets.md',
+    '.claude/commands/team/review/security.md',
+  ];
+  const nearMissPaths = [
+    '.claude/command/deploy.md',
+    '.copilot/commands/deploy.md',
+    '.github/prompts/notes.md',
+    '.github/prompts/team/deploy.prompt.md',
+    'packages/api/.github/prompts/deploy.prompt.md',
+    '.claude/commands/notes.md.bak',
+    '.claude/commands/script.sh',
+    '.claude/commands/uppercase/DEPLOY.MD',
+    '.claude/prompts/deploy.md',
+    '.git/.claude/commands/hidden.md',
+    'claude-commands-linked-target.md',
+    'claude/commands/deploy.md',
+    'commands/deploy.md',
+    'node_modules/pkg/.claude/commands/vendored.md',
+    'packages/api/.claude/commands/deploy.md',
+    'shared-claude-commands/audit.md',
+  ];
+
+  // Linked cases are capability-gated; see {@link buildCodexSkillFixture}. A
+  // link is read through its target like every other read (FR-024), so a
+  // linked command file and a linked namespace directory are ordinary rows.
+  const symlinks = tryMaterializeSymlinks(
+    root,
+    () => {
+      write(root, 'claude-commands-linked-target.md', '# shared command\n');
+      write(root, 'shared-claude-commands/audit.md', '# shared audit command\n');
+    },
+    () => {
+      symlinkSync(
+        join(root, 'claude-commands-linked-target.md'),
+        join(root, '.claude/commands/shared.md'),
+      );
+      symlinkSync(join(root, 'shared-claude-commands'), join(root, '.claude/commands/shared'));
+      // A link whose target is missing is that candidate's `file-unreadable`
+      // Diagnostic, not an absent file.
+      symlinkSync(join(root, 'no-such-command.md'), join(root, '.claude/commands/broken-link.md'));
+    },
+    ['.claude/commands/shared.md', '.claude/commands/shared', '.claude/commands/broken-link.md'],
+  );
+  if (symlinks) {
+    expectedCommandPaths.push(
+      '.claude/commands/broken-link.md',
+      '.claude/commands/shared.md',
+      '.claude/commands/shared/audit.md',
+    );
+  }
+
+  expectedCommandPaths.sort();
+  nearMissPaths.sort();
+
+  return {
+    root,
+    capabilities: { symlinks },
+    expectedCommandPaths,
+    // Both splits follow from the one admitted set: a root direct child has
+    // exactly the two container segments in front of its file name, and
+    // anything deeper sits inside a namespace directory Copilot documents no
+    // read of.
+    sharedCommandPaths: expectedCommandPaths.filter((path) => path.split('/').length === 3),
+    claudeOnlyCommandPaths: expectedCommandPaths.filter((path) => path.split('/').length > 3),
+    expectedPromptPaths: [
+      '.github/prompts/broken.prompt.md',
+      '.github/prompts/deploy.prompt.md',
+      '.github/prompts/review.prompt.md',
+      '.github/prompts/scaffold.prompt.md',
+    ],
+    declaringPromptPath: '.github/prompts/scaffold.prompt.md',
+    declaredPromptName: 'scaffold-component',
+    namelessPromptPath: '.github/prompts/review.prompt.md',
+    sharedNamePromptPath: '.github/prompts/deploy.prompt.md',
+    declaringCommandPath: '.claude/commands/deploy.md',
+    declaredKeys,
+    duplicateNameCommandPaths: [
+      '.claude/commands/deploy.md',
+      '.claude/commands/frontend/deploy.md',
+    ],
+    malformedCommandPath: '.claude/commands/broken.md',
+    secretCommandPath: '.claude/commands/secrets.md',
+    referencingCommandPath: '.claude/commands/references.md',
+    nearMissPaths,
+    promptsPath: '.claude/prompts/deploy.md',
+    nestedCommandPath: 'packages/api/.claude/commands/deploy.md',
+  };
+}
+
 /** One built Codex rule fixture repository (T402). */
 export interface CodexRuleFixture {
   /** The absolute fixture root to scan. */
@@ -3138,15 +3489,17 @@ export interface AllCustomizationKindFixture {
   readonly ruleFixture: CodexRuleFixture;
   /** The Claude rule fixture's own result, built into this root. */
   readonly claudeRuleFixture: ClaudeRuleFixture;
+  /** The Claude command fixture's own result, built into this root. */
+  readonly commandFixture: CommandFixture;
   /** The Claude permission-policy fixture's own result, built into this root. */
   readonly claudePermissionsFixture: ClaudePermissionsFixture;
 }
 
 /**
  * Builds every kind's fixture into one repository (T1099): the all-tool SKILL
- * tree, both vendors' rule trees, the cross-vendor MCP tree, and the
- * all-vendor instruction tree share a single root, so one launch exercises
- * every inventory this release publishes at once.
+ * tree, both vendors' rule trees, the Claude command tree, the cross-vendor
+ * MCP tree, and the all-vendor instruction tree share a single root, so one
+ * launch exercises every inventory this release publishes at once.
  *
  * The trees are disjoint except for two files both the MCP and instruction
  * builders own: the root and nested `.codex/config.toml`. Each of those
@@ -3175,6 +3528,7 @@ export function buildAllCustomizationKindFixture(
   const skillFixture = buildAllToolSkillFixture(prefix, root);
   const ruleFixture = buildCodexRuleFixture(prefix, root);
   const claudeRuleFixture = buildClaudeRuleFixture(prefix, root);
+  const commandFixture = buildCommandFixture(prefix, root);
   const mcpFixture = buildPriorityMcpFixture(prefix, root);
   // After the MCP builder, which writes its own `.claude/settings.json` as an
   // unadmitted MCP owner: here that path is a permission-policy carrier, and
@@ -3199,6 +3553,7 @@ export function buildAllCustomizationKindFixture(
     mcpFixture,
     ruleFixture,
     claudeRuleFixture,
+    commandFixture,
     claudePermissionsFixture,
   };
 }

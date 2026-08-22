@@ -1,5 +1,13 @@
 {
   "strategies": {
+    "claude.commands.selection": {
+      "consumesBehaviors": [
+        "claude.behavior.repo.commands",
+        "claude.behavior.repo.skills",
+        "claude.behavior.user.commands",
+        "claude.behavior.user.skills"
+      ]
+    },
     "claude.instructions.layering": {
       "consumesBehaviors": [
         "claude.behavior.repo.instructions.ancestor",
@@ -99,6 +107,10 @@
     }
   },
   "rules": {
+    "claude.repo.command": {
+      "basedOnBehaviors": ["claude.behavior.repo.commands"],
+      "explainedByStrategies": ["claude.commands.selection"]
+    },
     "claude.repo.instructions": {
       "basedOnBehaviors": [
         "claude.behavior.repo.instructions.ancestor",
@@ -168,6 +180,10 @@
         "copilot.behavior.vscode.skills"
       ],
       "explainedByStrategies": []
+    },
+    "copilot.repo.command": {
+      "basedOnBehaviors": ["copilot.behavior.cli.commands"],
+      "explainedByStrategies": ["copilot.cli.skills.selection"]
     },
     "copilot.repo.instructions.agents": {
       "basedOnBehaviors": [
@@ -242,6 +258,10 @@
     "copilot.repo.mcp.vscode-root": {
       "basedOnBehaviors": ["copilot.behavior.vscode.mcp"],
       "explainedByStrategies": ["copilot.vscode.mcp.selection"]
+    },
+    "copilot.repo.prompt": {
+      "basedOnBehaviors": ["copilot.behavior.vscode.prompts"],
+      "explainedByStrategies": []
     },
     "copilot.repo.skill": {
       "basedOnBehaviors": [

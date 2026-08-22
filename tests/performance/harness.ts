@@ -625,10 +625,7 @@ export interface Sc002AdmissionCapture {
  * fails for a missing admission instead of recording a wrong one.
  */
 export function createSc002AdmissionCapture(): Sc002AdmissionCapture {
-  let resolveAdmission: ((id: string) => void) | null = null;
-  const captured = new Promise<string>((resolve) => {
-    resolveAdmission = resolve;
-  });
+  const captured = Promise.withResolvers<string>();
   let callId: string | null = null;
   const frameText = (payload: string | Buffer): string =>
     typeof payload === 'string' ? payload : payload.toString('utf8');
@@ -648,14 +645,14 @@ export function createSc002AdmissionCapture(): Sc002AdmissionCapture {
           }
           const id = /\[0,"scanRequestId"\],\[0,"([^"]+)"\]/u.exec(text)?.[1];
           if (id !== undefined) {
-            resolveAdmission?.(id);
+            captured.resolve(id);
           }
         });
       });
     },
     admission: (timeoutMillis: number): Promise<string> =>
       Promise.race([
-        captured,
+        captured.promise,
         new Promise<string>((_resolve, reject) => {
           // Unreferenced so a settled race does not hold the runner's own
           // process open for the remainder of the window: this timer runs in

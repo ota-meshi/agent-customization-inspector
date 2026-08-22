@@ -17,7 +17,9 @@
 // the product owns best-effort startup browser opening through its startup
 // opener (`./browser-opener`, research.md § 3), adds no asset manifest or
 // per-asset re-verification, and its only routes of its own are the
-// `/skills/**`, `/instructions/**`, `/mcp/**`, `/rules/**`, and `/permissions/**` shell fallbacks in `createHostApp`,
+// `/skills/**`, `/instructions/**`, `/mcp/**`, `/rules/**`,
+// `/prompts-and-commands/**`, and `/permissions/**` shell fallbacks in
+// `createHostApp`,
 // which devframe's static handler cannot serve (Constitution Principle I). An unexpected
 // thrown/rejected RPC handler error is serialized as-is by devframe/birpc
 // and the client shows the real error (contracts/http-api.md § Common
@@ -441,6 +443,7 @@ export async function startInspectorHost(
  * `/instructions/<source-relative path>` with `AGENTS.md`,
  * `/mcp/<source-relative path>` with `config.toml`,
  * `/rules/<source-relative path>` with `style.md`,
+ * `/prompts-and-commands/<source-relative path>` with `deploy.md`,
  * `/permissions/<source-relative path>` with `default.rules` —
  * and devframe's static handler deliberately skips the `index.html` fallback
  * for a miss that looks like a file (it has an extension). This middleware
@@ -479,6 +482,7 @@ function createHostApp(): H3 {
   app.use('/instructions/**', rewriteToShell);
   app.use('/mcp/**', rewriteToShell);
   app.use('/rules/**', rewriteToShell);
+  app.use('/prompts-and-commands/**', rewriteToShell);
   app.use('/permissions/**', rewriteToShell);
   return app;
 }

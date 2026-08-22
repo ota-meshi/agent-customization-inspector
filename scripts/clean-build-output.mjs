@@ -4,8 +4,7 @@
 // itself, never by descending into its target — so no extra link handling
 // exists here.
 import { rm } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join, resolve } from 'node:path';
 
 export const CLEANED_TREES = Object.freeze(['.output', 'dist']);
 
@@ -21,6 +20,6 @@ export async function cleanBuildOutput(rootDir) {
 }
 
 if (import.meta.main) {
-  const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+  const rootDir = resolve(import.meta.dirname, '..');
   await cleanBuildOutput(rootDir);
 }

@@ -400,6 +400,94 @@ export interface RuleInventoryEntryDto {
 }
 
 /**
+ * One prompt or command file behind an inventory entry (contracts/http-api.md
+ * § get-session `prompts[]`). It names its file by `sourceRelativePath` and
+ * repeats nothing else the file publishes for itself — size, read outcome, and
+ * file-scoped diagnostics all stay on {@link CustomizationFileSummaryDto}.
+ */
+export interface PromptDefinitionDto {
+  /**
+   * The Source-relative Path of the prompt or command file this definition is
+   * authored in — the file's identity (FR-030), which joins to `files[]` and
+   * is the detail route `/prompts-and-commands/<source-relative path>`.
+   */
+  readonly sourceRelativePath: string;
+  /**
+   * The tool whose recognition this definition is (FR-007). One definition per
+   * `(file, tool)` under the entry's name — the same unit as ToolRecognition —
+   * so a file two products invoke by one name is two definitions of that
+   * entry, and a product that derives a different name for the file defines on
+   * that name's entry instead.
+   */
+  readonly tool: SupportedTool;
+  /**
+   * That tool's surfaces whose documented behavior the admitting rules rest
+   * on, deduplicated and in the closed surface order — the same statement
+   * {@link FileRecognitionDto} carries, because a definition is a recognition
+   * and FR-009 states the surfaces beside every recognition. Non-empty.
+   *
+   * Never a claim that a surface loaded the command: an admission is not an
+   * activation (FR-009).
+   */
+  readonly surfaces: readonly VendorSurface[];
+  /**
+   * The kind's extraction-failure reference (FR-028): one extraction per kind
+   * means one record, which every failed definition of the file names as its
+   * own parse fact and the file's `files[]` entry lists once.
+   *
+   * No `parseStatus` beside it, unlike a skill definition: a skill's row name
+   * comes out of the parse, so a failed one leaves that name unknown and the
+   * state has to be published. This kind's row name is never unknown — a
+   * command's is derived from the path, and a prompt file whose parse failed
+   * takes the file name its vendor documents for a file that declares none —
+   * so a failed parse costs the declarations and not the row's identity, which
+   * is exactly what this reference names.
+   */
+  readonly diagnosticIds: readonly string[];
+}
+
+/**
+ * One row of the prompts-and-commands inventory (contracts/http-api.md
+ * § get-session `prompts[]`, data-model.md § Inventory unit): one name a
+ * reader invokes, and every prompt or command file a recognizing tool invokes
+ * it by.
+ *
+ * The name is the unit rather than the file, the same way a skill row's is:
+ * what a reader looks for is the command they would type, and a file two
+ * products recognize may be one command to one of them and another to the
+ * other. The admitting rule is what answers it, because the kind's two
+ * locations answer differently: a command file's name is never authored —
+ * both products ignore a `name` key in one and derive the command from the
+ * path — while a VS Code prompt file declares the name a reader types, with
+ * its own file name standing in when it declares none.
+ */
+export interface PromptInventoryEntryDto {
+  /**
+   * The name one tool invokes this row's files by, as that tool builds it:
+   * Claude Code takes the path below its command directory and turns every
+   * separator into a `:`, so `deploy`, `frontend:component`, and
+   * `team:review:security`; the Copilot CLI takes the file name alone; a VS
+   * Code prompt file's declared `name` is taken as authored, falling back to
+   * its file name without the `.prompt.md` suffix.
+   *
+   * Empty exactly where the vendor's own derivation is: a file named `.md` in
+   * a command directory has nothing before its extension, and the products
+   * that derive the name from the path resolve it to the empty string, so
+   * reporting anything else would report a command they do not have. The row
+   * renders such a name through the label rule every authored value gets
+   * ({@link rendersNothingVisible}), which says the name draws nothing rather
+   * than drawing nothing.
+   */
+  readonly name: string;
+  /**
+   * The recognitions resolving this name, one definition per `(file, tool)`,
+   * in Source-relative Path order and the contracted tool order within one
+   * file. Non-empty: a name nothing recognizes is no row.
+   */
+  readonly definitions: readonly PromptDefinitionDto[];
+}
+
+/**
  * One row of the permissions inventory (contracts/http-api.md § get-session
  * `permissions[]`, data-model.md § Inventory unit): one declared permission
  * policy, named by the path of the file that declares it.
@@ -598,6 +686,32 @@ export interface InstructionFileDetailDto extends FileDetailBase {
 }
 
 /**
+ * Detail of a recognized command file: the file plus what the one scan-time
+ * parse resolved (contracts/http-api.md § get-file-detail). A command file
+ * carries a skill's frontmatter keys, so its detail leads with the
+ * declarations the file wrote and the instructions that follow them, from the
+ * same one parse the other Markdown kinds publish.
+ *
+ * No per-tool identity exists here, and no invocation name: which tools
+ * recognize the file is the inventory's fact, and so is the name a reader
+ * would type — the rule that admitted the file answers it, and a prompt file's
+ * own `name` declaration arrives here as a frontmatter entry like every other
+ * key it wrote. The detail page states the name by reading the rows this file
+ * is listed under, so the one fact is published once.
+ */
+export interface PromptFileDetailDto extends FileDetailBase {
+  /** Discriminant: the file is a recognized command file. */
+  readonly kind: 'prompt/command';
+  /**
+   * The parsed declarations and instructions, or null exactly when extraction
+   * failed all-or-nothing (FR-028), the same rule the skill and instruction
+   * variants follow: nothing was parsed, the failure's Diagnostic is in
+   * `diagnostics`, and the complete source stays readable.
+   */
+  readonly presentation: MarkdownPresentationDto | null;
+}
+
+/**
  * Detail of a recognized rule file: the file, and nothing derived from it
  * (contracts/http-api.md § get-file-detail).
  *
@@ -786,7 +900,11 @@ export interface PermissionPolicyBlockDetailDto extends PermissionPolicyDetailBa
  * admits; the vendor rule modules say why they get no rule of their own.
  */
 export type FileDetailDto =
-  SkillFileDetailDto | InstructionFileDetailDto | RuleFileDetailDto | UnrecognizedFileDetailDto;
+  | SkillFileDetailDto
+  | InstructionFileDetailDto
+  | PromptFileDetailDto
+  | RuleFileDetailDto
+  | UnrecognizedFileDetailDto;
 
 /** Fields every discovered file carries regardless of its read outcome. */
 interface CustomizationFileBase {
@@ -1075,6 +1193,14 @@ export interface SessionSnapshot {
    * order (data-model.md § Inventory unit).
    */
   readonly rules: readonly RuleInventoryEntryDto[];
+  /**
+   * The prompts-and-commands inventory: one entry per name a reader invokes,
+   * in name order, each listing the prompt or command files that resolve it
+   * (data-model.md § Inventory unit). Named for the kind rather than for the
+   * command half of it, so the field stays right as the kind's other
+   * locations ship.
+   */
+  readonly prompts: readonly PromptInventoryEntryDto[];
   /**
    * The permissions inventory: one entry per declared permission policy — a
    * policy deciding which commands or tools a product may run — named by the

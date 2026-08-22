@@ -189,12 +189,20 @@ export class CodexCompiledOtherKindRule
   implements CompiledStaticOtherKindRule
 {
   /** Narrowed to the kinds this unit compiles; the constructor proves it. */
-  declare public readonly kind: Exclude<CustomizationKind, 'instructions' | 'MCP' | 'permissions'>;
+  declare public readonly kind: Exclude<
+    CustomizationKind,
+    'instructions' | 'prompt/command' | 'MCP' | 'permissions'
+  >;
 
-  /** Compiles one Codex record of any kind but `instructions`, `MCP`, and `permissions`. */
+  /** Compiles one Codex record of any kind but the four with a question of their own. */
   public constructor(rule: InspectionRule) {
     super(rule);
-    if (rule.kind === 'instructions' || rule.kind === 'MCP' || rule.kind === 'permissions') {
+    if (
+      rule.kind === 'instructions' ||
+      rule.kind === 'prompt/command' ||
+      rule.kind === 'MCP' ||
+      rule.kind === 'permissions'
+    ) {
       throw new TypeError(`rule ${rule.ruleId} needs a Codex unit that answers for its kind`);
     }
   }

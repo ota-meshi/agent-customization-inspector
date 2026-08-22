@@ -21,6 +21,59 @@ import type { ClaudeStrategyId } from '../identifier-types';
 import type { RuntimeCompositionStrategy } from '../strategy-types';
 
 /**
+ * Claude command selection: a legacy command file and a skill compete for one
+ * command name, and the skill wins.
+ *
+ * `select-first` and deliberately nothing else. The documented outcome for a
+ * `.claude/commands/deploy.md` beside a `.claude/skills/deploy/SKILL.md` is
+ * that `/deploy` runs the skill, so one input is selected rather than both
+ * retained; and the subdirectory namespacing keeps two commands in different
+ * subdirectories from being that clash at all, because they are two names.
+ * A `replace` or `merge-map` here would record a combination the vendor
+ * documents for neither (contracts/runtime-composition.md
+ * § claude.commands.selection).
+ *
+ * `partially-documented` for what the pages leave open: command files are said
+ * to work the way skills do, but the ancestor and lazy-descendant traversal
+ * documented for skills is never restated for the command directory, so which
+ * layers contribute the commands being selected among is not established.
+ */
+export const CLAUDE_COMMANDS_SELECTION_STRATEGY = {
+  strategyId: 'claude.commands.selection',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  operations: ['select-first'],
+  documentationStatus: 'partially-documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.changelog.legacy-command-nesting',
+          url: 'https://code.claude.com/docs/en/changelog',
+          officialHost: 'code.claude.com',
+          sections: ['1.0.45', '1.0.51'],
+          reviewedOn: '2026-08-22',
+          establishes:
+            'Release 1.0.45 restored subdirectory-derived namespacing in command names, so .claude/commands/frontend/component.md is /frontend:component rather than /component, and release 1.0.51 fixed the same nesting for user-level commands — the two scopes this strategy composes.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.skills.locations-discovery',
+          url: 'https://code.claude.com/docs/en/skills',
+          officialHost: 'code.claude.com',
+          sections: [
+            'Where skills live',
+            'Discovery from parent and nested directories',
+            'How a skill gets its command name',
+          ],
+          reviewedOn: '2026-08-22',
+          establishes:
+            'Command files in .claude/commands/ share the skill command namespace and work the same way, and when a skill and a command share a name the skill takes precedence — with both .claude/commands/deploy.md and .claude/skills/deploy/SKILL.md present, /deploy runs the skill. A command is invoked by its file name without the extension. The nested-directory discovery sentence is written about .claude/skills/ alone, so which layers contribute commands is not stated independently.',
+        },
+      ]
+    : [],
+} as const satisfies RuntimeCompositionStrategy;
+
+/**
  * Claude instruction layering: the User file, each ancestor directory's
  * files, the launch directory's own, and the lazily discovered descendant
  * ones are all added to context in load order, broadest scope first
@@ -81,10 +134,10 @@ export const CLAUDE_SKILLS_SELECTION_STRATEGY = {
   tool: 'claude',
   surfaces: ['claude-cli-and-ide-clients'],
   operations: ['retain-all', 'select-closest'],
-  // Both operations are version-anchored: nested-clash retention at 2.1.178+
-  // (changelog § 2.1.178), and automatic working-context invocation from an
-  // unqualified name at 2.1.203+ (skills page § Where skills live). The record
-  // stays partial because exact IDE surface availability remains conditional.
+  // The retention half is version-anchored at 2.1.178+ (changelog § 2.1.178);
+  // the working-context selection the skills page documents beside it carries
+  // no version of its own. The record stays partial because exact IDE surface
+  // availability remains conditional.
   documentationStatus: 'partially-documented',
   lifecycleQualifiers: [],
   evidence: SHIPS_MAINTENANCE_DATA
@@ -94,9 +147,9 @@ export const CLAUDE_SKILLS_SELECTION_STRATEGY = {
           url: 'https://code.claude.com/docs/en/skills',
           officialHost: 'code.claude.com',
           sections: ['Where skills live', 'How a skill gets its command name'],
-          reviewedOn: '2026-08-08',
+          reviewedOn: '2026-08-22',
           establishes:
-            'Within one root, a nested skill sharing a name with another stays available under a directory-qualified command; when the unqualified name is used, Claude Code 2.1.203+ can invoke the variant matching the files being worked on. The name field of a personal or project skill sets only the display label, and the enterprise-over-personal-over-project precedence is a rule between levels, not within one.',
+            'Within one root, a nested skill sharing a name with another stays available under a directory-qualified command and Claude picks the variant matching the files it is working on; invoking the unqualified name loads the project-root skill and appends the directory-qualified variants with an instruction to also invoke any whose directory holds those files. The name field of a personal or project skill sets only the display label, and the enterprise-over-personal-over-project precedence is a rule between levels, not within one.',
         },
         {
           sourceId: 'anthropic.claude-code.changelog.nested-skill-discovery',
@@ -264,6 +317,7 @@ export const CLAUDE_SETTINGS_PRECEDENCE_STRATEGY = {
 export const CLAUDE_COMPOSITION_STRATEGIES: Readonly<
   Record<ClaudeStrategyId, RuntimeCompositionStrategy>
 > = {
+  [CLAUDE_COMMANDS_SELECTION_STRATEGY.strategyId]: CLAUDE_COMMANDS_SELECTION_STRATEGY,
   [CLAUDE_INSTRUCTIONS_LAYERING_STRATEGY.strategyId]: CLAUDE_INSTRUCTIONS_LAYERING_STRATEGY,
   [CLAUDE_MCP_SELECTION_STRATEGY.strategyId]: CLAUDE_MCP_SELECTION_STRATEGY,
   [CLAUDE_RULES_LAYERING_STRATEGY.strategyId]: CLAUDE_RULES_LAYERING_STRATEGY,

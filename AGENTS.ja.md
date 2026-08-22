@@ -112,6 +112,15 @@
   時点です。
 - Specificationが冗長な複雑さを要求している場合は、書かれたとおりに実装せず、同じ変更の中で両言語のspecificationを修正してください。
 
+## Platform baselineの方針
+
+Browserの下限はBaseline Newly available、Nodeの下限は`engines.node`が宣言するものです。どちらも意図的に前線寄りです。この製品のbrowser supportは市場のstatisticsではなくcertification matrixだからです — `playwright.config.ts`はChromium・Firefox・WebKitをそれぞれ1 revisionずつpinしており、3つすべてが出荷している機能は、認定browserすべてが持つ機能です。Baseline Widely availableを待てば、platformがその機能を備えたあとも何年ものあいだ手書きの等価物がtreeに残り、そのひとつひとつをこのrepositoryが正しく保ち続けることになります。
+
+- 認定3engineすべてが出荷した時点で、platform自身の構文を採用してください。これはシンプルな実装の方針の「手書きの等価物を書く前にplatform自身の語彙へ手を伸ばす」に期日を与えたものです。File openのcontrolの一覧はanchor positioningで配置したpopoverなので、light dismiss、Escape、top layer、空きのある側の選択はこのrepositoryではなくplatformのものです。配列の`Map`を組み立てるloopは`Map.groupBy`、後続のeventがsettleさせるpromiseは`Promise.withResolvers`、module自身のdirectoryは`import.meta.dirname`です。
+- Supportは思い出すのではなく、pinしたrevisionに対して実測してください。互換性tableはwebを、modelのtraining dataは過去を記述しますが、ここを支配するのはpinされた3 revisionの挙動であり、`CSS.supports()`と`playwright`経由のfeature probeが数秒で答えます。実測が設計を決めた箇所には、何が観測されたかを記録してください。
+- 認定engineの1つが欠く機能は、欠けても読み手が依存するものが何も変わらないprogressive enhancementとしてのみ使えます。Surfaceの正しさが乗っている機能は、3つすべてが揃うまで待ちます。
+- 機能が使えないと記録したコメントは、恒久的な言明ではなく日付つきの言明です。周辺のコードに触れるときに再実測し、実測が食い違ったら、コメントとそれが説明していた回避策を同じ変更で削除してください。
+
 ## 依存versionの方針
 
 - `package.json`の全dependencyはcaret rangeで宣言し、exact pinは使いません。Prerelease（`^2.0.1-rc.22`）も同様です。exactなresolved versionとintegrityはcommit済みlockfileが所有し、manifestにexact specifierを書くと同じpinを2箇所で管理することになります。ある解決が別のpackageの解決と一致しなければならない場合 — `h3`とdevframe自身のh3 — その一致が住む場所はlockfileであり、決定を記録するdocumentはそう書きます。

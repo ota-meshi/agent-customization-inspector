@@ -40,6 +40,8 @@ let modifiedEditorOptions: Record<string, unknown> | null = null;
 /** A configuration listener as the handle registers it on an inner editor. */
 type ConfigurationListener = (event: { hasChanged: (id: number) => boolean }) => void;
 /** The registered listeners per inner editor, so a label wipe can be simulated. */
+/** Every theme name Monaco was set to, so following the display is observable. */
+const themesSet: string[] = [];
 const originalConfigurationListeners: ConfigurationListener[] = [];
 const modifiedConfigurationListeners: ConfigurationListener[] = [];
 
@@ -116,7 +118,9 @@ vi.mock('monaco-editor/esm/vs/editor/editor.api.js', () => ({
         },
       };
     },
-    setTheme: () => undefined,
+    setTheme: (theme: string) => {
+      themesSet.push(theme);
+    },
   },
   Uri: { parse: (value: string) => value },
 }));
@@ -147,6 +151,7 @@ beforeEach(() => {
   modifiedEditorOptions = null;
   originalConfigurationListeners.length = 0;
   modifiedConfigurationListeners.length = 0;
+  themesSet.length = 0;
 });
 
 describe('the mounted read-only comparison surface', () => {
@@ -341,28 +346,32 @@ describe('the mounted read-only comparison surface', () => {
     // because the theme is one value derived from the pair (WCAG 1.4.11).
     // Left bound, either listener would hold the disposed editor for the life
     // of the document.
-    const bound: string[] = [];
     const original = globalThis.matchMedia;
     const queries: string[] = [];
+    // Real event targets rather than add/remove stubs that record their calls;
+    // see the viewer suite for why one `AbortSignal` needs them.
+    const displays: EventTarget[] = [];
     globalThis.matchMedia = ((query: string) => {
       queries.push(query);
-      return {
-        matches: true,
-        addEventListener: (type: string) => {
-          bound.push(type);
-        },
-        removeEventListener: (type: string) => {
-          bound.splice(bound.indexOf(type), 1);
-        },
-      };
+      const display = Object.assign(new EventTarget(), { matches: true });
+      displays.push(display);
+      return display;
     }) as unknown as typeof globalThis.matchMedia;
     try {
       const viewer = await SourceDiffHandle.mount(document.createElement('div'), COMPARISON);
       expect(queries).toEqual(['(prefers-color-scheme: dark)', '(forced-colors: active)']);
-      expect(bound).toEqual(['change', 'change']);
       expect(constructedOptions?.['theme']).toBe('hc-black');
+      themesSet.length = 0;
+      for (const display of displays) {
+        display.dispatchEvent(new Event('change'));
+      }
+      expect(themesSet).toEqual(['hc-black', 'hc-black']);
       viewer.dispose();
-      expect(bound).toEqual([]);
+      themesSet.length = 0;
+      for (const display of displays) {
+        display.dispatchEvent(new Event('change'));
+      }
+      expect(themesSet).toEqual([]);
     } finally {
       globalThis.matchMedia = original;
     }

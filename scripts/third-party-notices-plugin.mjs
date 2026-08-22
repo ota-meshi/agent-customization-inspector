@@ -25,8 +25,7 @@
 // the build, because each of them would otherwise publish third-party code with
 // no notice and no sign that one is missing.
 import { readFileSync, readdirSync, realpathSync, statSync } from 'node:fs';
-import { dirname, join, posix, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join, posix, resolve } from 'node:path';
 
 /**
  * Files that carry a package's own terms. A package may ship more than one —
@@ -89,7 +88,7 @@ const INJECTED_MODULE_PACKAGES = [
  * The repository root, which is what tells the product's own sources from
  * everything else. This file lives in `scripts/`.
  */
-const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..').replaceAll('\\', '/');
+const PROJECT_ROOT = resolve(import.meta.dirname, '..').replaceAll('\\', '/');
 
 /**
  * A module id reduced to the path or specifier it names: Rollup's virtual-module

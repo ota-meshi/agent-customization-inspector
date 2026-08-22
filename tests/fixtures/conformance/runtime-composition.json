@@ -1,5 +1,35 @@
 [
   {
+    "strategyId": "claude.commands.selection",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "operations": ["select-first"],
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.changelog.legacy-command-nesting",
+        "url": "https://code.claude.com/docs/en/changelog",
+        "officialHost": "code.claude.com",
+        "sections": ["1.0.45", "1.0.51"],
+        "reviewedOn": "2026-08-22",
+        "establishes": "Release 1.0.45 restored subdirectory-derived namespacing in command names, so .claude/commands/frontend/component.md is /frontend:component rather than /component, and release 1.0.51 fixed the same nesting for user-level commands — the two scopes this strategy composes."
+      },
+      {
+        "sourceId": "anthropic.claude-code.skills.locations-discovery",
+        "url": "https://code.claude.com/docs/en/skills",
+        "officialHost": "code.claude.com",
+        "sections": [
+          "Where skills live",
+          "Discovery from parent and nested directories",
+          "How a skill gets its command name"
+        ],
+        "reviewedOn": "2026-08-22",
+        "establishes": "Command files in .claude/commands/ share the skill command namespace and work the same way, and when a skill and a command share a name the skill takes precedence — with both .claude/commands/deploy.md and .claude/skills/deploy/SKILL.md present, /deploy runs the skill. A command is invoked by its file name without the extension. The nested-directory discovery sentence is written about .claude/skills/ alone, so which layers contribute commands is not stated independently."
+      }
+    ]
+  },
+  {
     "strategyId": "claude.instructions.layering",
     "tool": "claude",
     "surfaces": ["claude-cli-and-ide-clients"],
@@ -112,8 +142,8 @@
         "url": "https://code.claude.com/docs/en/skills",
         "officialHost": "code.claude.com",
         "sections": ["Where skills live", "How a skill gets its command name"],
-        "reviewedOn": "2026-08-08",
-        "establishes": "Within one root, a nested skill sharing a name with another stays available under a directory-qualified command; when the unqualified name is used, Claude Code 2.1.203+ can invoke the variant matching the files being worked on. The name field of a personal or project skill sets only the display label, and the enterprise-over-personal-over-project precedence is a rule between levels, not within one."
+        "reviewedOn": "2026-08-22",
+        "establishes": "Within one root, a nested skill sharing a name with another stays available under a directory-qualified command and Claude picks the variant matching the files it is working on; invoking the unqualified name loads the project-root skill and appends the directory-qualified variants with an instruction to also invoke any whose directory holds those files. The name field of a personal or project skill sets only the display label, and the enterprise-over-personal-over-project precedence is a rule between levels, not within one."
       },
       {
         "sourceId": "anthropic.claude-code.changelog.nested-skill-discovery",

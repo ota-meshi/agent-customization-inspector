@@ -122,6 +122,107 @@ export const CLAUDE_REPO_INSTRUCTIONS_RULE = {
 } as const satisfies InspectionRule;
 
 /**
+ * The `claude.repo.command` matcher, authored in the typed segment form the
+ * contract table shows: `['.claude', 'commands', ANY_DIRECTORIES, /\.md$/u]`.
+ *
+ * One recursive step and deliberately not two. The trailing `ANY_DIRECTORIES`
+ * reaches every depth *inside* the commands directory, because the changelog
+ * restored the subdirectory-derived namespace in a command name and shows
+ * `.claude/commands/frontend/component.md` invoked as `/frontend:component`.
+ * There is no leading one, because a leading recursive step needs a documented
+ * worked-file or descendant anchor and the pages supply none for this
+ * directory: the skills page says command files work the way skills do but
+ * writes its ancestor-walk and lazy-descendant sentences about
+ * `.claude/skills/` alone. So the project command scope contributes at the
+ * selected root — the one runtime-chain member every session shares — and a
+ * `packages/api/.claude/commands/deploy.md` is a near miss rather than a
+ * candidate (contracts/vendors/claude-code.md § Repository Inspector
+ * matchers).
+ */
+const CLAUDE_REPO_COMMAND_MATCHER: StructuredInspectorMatcher = {
+  base: { kind: 'repository' },
+  selectors: [
+    [
+      { kind: 'literal', value: '.claude' },
+      { kind: 'literal', value: 'commands' },
+      ANY_DIRECTORIES,
+      { kind: 'regex', pattern: /\.md$/u },
+    ],
+  ],
+};
+
+/**
+ * Claude Repository commands: the read-authorizing counterpart of
+ * `claude.behavior.repo.commands`. A command file is Markdown a reader invokes
+ * by name, and it carries a skill's frontmatter keys — `name` and `paths`
+ * excepted, which Claude Code ignores in one — so admitting it authorizes
+ * reading its bytes and nothing else.
+ *
+ * Admitting a file is not asserting Claude runs it, and nothing here resolves
+ * its invocation name: the name a reader would type is derived from the path
+ * — the file name without its extension, prefixed by the subdirectories
+ * between it and the commands directory — which the compiled unit answers
+ * rather than this record (`rules/claude.ts` § invocationNameOf). The
+ * inventory row is keyed by that name and the detail and comparison surfaces
+ * state it, because it is what a reader looks a command up by; what none of
+ * them states is that typing it would reach this file, which turns on a
+ * same-name skill outranking it and on which layers a session loads, neither
+ * of which this tool observes (FR-009).
+ *
+ * The standalone `.claude/prompts` directory gets no selector, and that is
+ * FR-034 rather than an omission: no official page documents Claude Code
+ * reading such a directory, so recognizing it would report a customization
+ * type the vendor does not have.
+ *
+ * The User scope the same statement pairs with — `<claude-config-dir>/commands/`
+ * — is a different Source boundary this rule may not read.
+ *
+ * `partially-documented`, from the behavior statement it rests on: the
+ * skill-equivalent ancestor and lazy-descendant traversal is not stated
+ * independently for this directory.
+ */
+export const CLAUDE_REPO_COMMAND_RULE = {
+  ruleId: 'claude.repo.command',
+  tool: 'claude',
+  discoveryClass: 'static-candidate',
+  kind: 'prompt/command',
+  sourceKinds: ['repository'],
+  matcher: CLAUDE_REPO_COMMAND_MATCHER,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'FR-034', 'QR-001', 'QR-004', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'partially-documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.skills.locations-discovery',
+          url: 'https://code.claude.com/docs/en/skills',
+          officialHost: 'code.claude.com',
+          sections: [
+            'Where skills live',
+            'Discovery from parent and nested directories',
+            'How a skill gets its command name',
+          ],
+          reviewedOn: '2026-08-22',
+          establishes:
+            'Existing .claude/commands/ files keep working and create the same commands skills do, a command file carries the same frontmatter as a skill except name and paths, and it is invoked by its file name without the extension — the exact shape this rule admits. The page states no ancestor or lazy-descendant reach for the command directory, which is why this rule is anchored at the selected root. It documents no .claude/prompts directory at all.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.changelog.legacy-command-nesting',
+          url: 'https://code.claude.com/docs/en/changelog',
+          officialHost: 'code.claude.com',
+          sections: ['1.0.45'],
+          reviewedOn: '2026-08-22',
+          establishes:
+            'Release 1.0.45 restored namespacing in command names based on subdirectories, so a command file lives at any depth inside the commands directory — the recursion this rule admits with its one trailing recursive step.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
  * The `claude.repo.skill` matcher, authored in the typed segment form the
  * contract table shows: `[ANY_DIRECTORIES, '.claude', 'skills', ANY_NAME,
  * 'SKILL.md']`. `ANY_NAME` is the one direct skill-name child and the terminal
@@ -185,10 +286,10 @@ export const CLAUDE_REPO_SKILL_RULE = {
           sourceId: 'anthropic.claude-code.skills.locations-discovery',
           url: 'https://code.claude.com/docs/en/skills',
           officialHost: 'code.claude.com',
-          sections: ['Where skills live'],
-          reviewedOn: '2026-08-08',
+          sections: ['Where skills live', 'Discovery from parent and nested directories'],
+          reviewedOn: '2026-08-22',
           establishes:
-            'Repository skills live at .claude/skills/<skill-name>/SKILL.md, and skills also load from nested .claude/skills directories on demand when Claude reads or edits a file in their subtree — the documented descendant reach that is why this rule admits that shape at every depth, while the ancestor startup walk contributes only the selected root, the one layer every session shares.',
+            'Repository skills live at .claude/skills/<skill-name>/SKILL.md, and skills also load from nested .claude/skills directories on demand when Claude reads or edits a file in their subtree — the documented descendant reach that is why this rule admits that shape at every depth, while the ancestor startup walk that also loads every parent directory up to the repository root contributes only the selected root, the one layer every session shares.',
         },
         {
           sourceId: 'anthropic.claude-code.plugins.components-scopes',
@@ -447,6 +548,7 @@ export const CLAUDE_REPO_PERMISSIONS_RULE = {
 
 /** Claude's contribution to the inspection-rule registry, keyed by `ruleId` in identifier order. */
 export const CLAUDE_INSPECTION_RULES: Readonly<Record<ClaudeRuleId, InspectionRule>> = {
+  [CLAUDE_REPO_COMMAND_RULE.ruleId]: CLAUDE_REPO_COMMAND_RULE,
   [CLAUDE_REPO_INSTRUCTIONS_RULE.ruleId]: CLAUDE_REPO_INSTRUCTIONS_RULE,
   [CLAUDE_REPO_MCP_RULE.ruleId]: CLAUDE_REPO_MCP_RULE,
   [CLAUDE_REPO_PERMISSIONS_RULE.ruleId]: CLAUDE_REPO_PERMISSIONS_RULE,

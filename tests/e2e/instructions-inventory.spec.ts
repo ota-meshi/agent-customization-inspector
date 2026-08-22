@@ -20,6 +20,7 @@ import {
 } from '../fixtures/repositories/build-fixtures';
 import { tabUntilFocused } from './keyboard';
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
+import { openNoKindDisclosure } from './no-kind-disclosure';
 
 let fixture: AllVendorInstructionFixture;
 let host: LaunchedHost;
@@ -137,7 +138,7 @@ test('reports the deterministic failures on the files they happened to', async (
   // "Files in no kind" states its path and read outcome, which is how the
   // `partial` generation names its other cause on this page.
   await expect(page.getByRole('heading', { name: 'Files in no kind' })).toBeVisible();
-  const unclassified = page
+  const unclassified = (await openNoKindDisclosure(page))
     .locator('.aci-item')
     .filter({ hasText: fixture.diagnosticOnlyPaths[0]! })
     .first();

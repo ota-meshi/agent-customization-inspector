@@ -15,6 +15,7 @@ import {
   CompiledInspectionRule,
   escapeGlobLiteral,
   type CompiledStaticCandidateRule,
+  type CompiledStaticPromptRule,
   type CompiledStaticInstructionRule,
   type CompiledStaticMcpProvenanceRule,
   type CompiledStaticMcpReadingRule,
@@ -290,6 +291,100 @@ export class CopilotCompiledMcpProvenanceRule
 }
 
 /**
+ * A Copilot command rule compiled for execution: everything a Copilot rule is,
+ * plus the one question only a command rule answers — the name a reader
+ * invokes an admitted file by.
+ */
+export class CopilotCompiledPromptRule
+  extends CopilotCompiledRule
+  implements CompiledStaticPromptRule
+{
+  /** Narrowed to the one kind this unit compiles; the constructor proves it. */
+  declare public readonly kind: 'prompt/command';
+
+  /**
+   * The command name one admitted file is invoked by: its file name without
+   * the `.md` extension. That is the whole rule the CLI reference states —
+   * "the command name is derived from the filename" — and there is nothing
+   * for a namespace to come from, because this rule admits root direct
+   * children alone.
+   *
+   * Deliberately not Claude's derivation over the same directory: Claude
+   * documents a subdirectory namespace and Copilot documents none, so one
+   * shared answer would put a namespace on a product that never wrote about
+   * one. A root direct child is where the two derivations agree, which is why
+   * a shared file lands on one inventory row with a definition from each
+   * product (data-model.md § Inventory unit).
+   *
+   * The slicing is exact rather than defensive: this unit compiles only the
+   * `copilot.repo.command` record, whose one selector ends in `/\.md$/u`.
+   */
+  public invocationNameOf(sourceRelativePath: string): string {
+    return sourceRelativePath.split('/').at(-1)!.slice(0, -'.md'.length);
+  }
+
+  /** Compiles one Copilot command record, rejecting one of another kind. */
+  public constructor(rule: InspectionRule) {
+    super(rule);
+    if (rule.kind !== 'prompt/command') {
+      throw new TypeError(`rule ${rule.ruleId} is not a Copilot command rule`);
+    }
+  }
+}
+
+/**
+ * A Copilot prompt-file rule compiled for execution: everything a Copilot rule
+ * is, plus the name a reader invokes an admitted prompt by.
+ *
+ * Its own unit beside {@link CopilotCompiledPromptRule}, which compiles the
+ * legacy command rule of the same kind, because the two answer the question
+ * differently — a prompt file declares its own name and a command file never
+ * does — and one unit answering both would have to ask which rule compiled it.
+ */
+export class CopilotCompiledPromptFileRule
+  extends CopilotCompiledRule
+  implements CompiledStaticPromptRule
+{
+  /** Narrowed to the one kind this unit compiles; the constructor proves it. */
+  declare public readonly kind: 'prompt/command';
+
+  /**
+   * The prompt's own declared `name`, or its file name without the
+   * `.prompt.md` extension when it declares none — which is what the page
+   * states: the `name` field is the name of the prompt used after typing `/`
+   * in chat, and if it is not specified the file name is used.
+   *
+   * A declared `name` counts only when it resolved to a non-empty scalar: a
+   * mapping or a sequence under that key is not a name a reader could type,
+   * and an authored empty string names nothing, so both fall back to the file
+   * name rather than putting an unusable row heading on screen.
+   *
+   * The slicing is exact rather than defensive: this unit compiles only the
+   * `copilot.repo.prompt` record, whose one selector ends in
+   * `/\.prompt\.md$/u`.
+   */
+  public invocationNameOf(
+    sourceRelativePath: string,
+    declared: readonly DeclaredEntryDto[],
+  ): string {
+    for (const entry of declared) {
+      if (entry.key === 'name' && entry.value.kind === 'scalar' && entry.value.text !== '') {
+        return entry.value.text;
+      }
+    }
+    return sourceRelativePath.split('/').at(-1)!.slice(0, -'.prompt.md'.length);
+  }
+
+  /** Compiles one Copilot prompt-file record, rejecting one of another kind. */
+  public constructor(rule: InspectionRule) {
+    super(rule);
+    if (rule.kind !== 'prompt/command') {
+      throw new TypeError(`rule ${rule.ruleId} is not a Copilot prompt rule`);
+    }
+  }
+}
+
+/**
  * A Copilot rule of every other kind, compiled for execution. It answers
  * nothing about applicability, which is exactly what a skill rule has to say
  * about it (see `CompiledNonInstructionRule`).
@@ -299,12 +394,20 @@ export class CopilotCompiledOtherKindRule
   implements CompiledStaticOtherKindRule
 {
   /** Narrowed to the kinds this unit compiles; the constructor proves it. */
-  declare public readonly kind: Exclude<CustomizationKind, 'instructions' | 'MCP' | 'permissions'>;
+  declare public readonly kind: Exclude<
+    CustomizationKind,
+    'instructions' | 'prompt/command' | 'MCP' | 'permissions'
+  >;
 
-  /** Compiles one Copilot record of any kind but `instructions`, `MCP`, and `permissions`. */
+  /** Compiles one Copilot record of any kind but the four with a question of their own. */
   public constructor(rule: InspectionRule) {
     super(rule);
-    if (rule.kind === 'instructions' || rule.kind === 'MCP' || rule.kind === 'permissions') {
+    if (
+      rule.kind === 'instructions' ||
+      rule.kind === 'prompt/command' ||
+      rule.kind === 'MCP' ||
+      rule.kind === 'permissions'
+    ) {
       throw new TypeError(`rule ${rule.ruleId} needs a Copilot unit that answers for its kind`);
     }
   }
@@ -349,17 +452,21 @@ export const COPILOT_REPOSITORY_RULES: readonly CompiledStaticCandidateRule[] = 
   .filter((rule) => rule.discoveryClass === 'static-candidate')
   .map((rule) =>
     // Each record compiles into the unit that can answer its kind's question:
-    // an instruction record what its files govern, an MCP record which
-    // servers its carrier declares; every other kind compiles into the plain
-    // one, which is what keeps a skill rule from carrying an answer it has
-    // none of.
+    // an instruction record what its files govern, a command record the name
+    // its files are invoked by, an MCP record which servers its carrier
+    // declares; every other kind compiles into the plain one, which is what
+    // keeps a skill rule from carrying an answer it has none of.
     rule.kind === 'instructions'
       ? new CopilotCompiledInstructionRule(rule)
-      : rule.kind === 'MCP'
-        ? rule.ruleId === 'copilot.repo.mcp.vscode'
-          ? new CopilotCompiledVscodeMcpCarrierRule(rule)
-          : rule.ruleId === 'copilot.repo.mcp.vscode-root'
-            ? new CopilotCompiledMcpProvenanceRule(rule)
-            : new CopilotCompiledMcpCarrierRule(rule)
-        : new CopilotCompiledOtherKindRule(rule),
+      : rule.kind === 'prompt/command'
+        ? rule.ruleId === 'copilot.repo.prompt'
+          ? new CopilotCompiledPromptFileRule(rule)
+          : new CopilotCompiledPromptRule(rule)
+        : rule.kind === 'MCP'
+          ? rule.ruleId === 'copilot.repo.mcp.vscode'
+            ? new CopilotCompiledVscodeMcpCarrierRule(rule)
+            : rule.ruleId === 'copilot.repo.mcp.vscode-root'
+              ? new CopilotCompiledMcpProvenanceRule(rule)
+              : new CopilotCompiledMcpCarrierRule(rule)
+          : new CopilotCompiledOtherKindRule(rule),
   );

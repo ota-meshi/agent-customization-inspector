@@ -215,7 +215,10 @@ import、installation、activationのauthorityを一切与えない。
 | `marketplace` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | 受理済み`.claude-plugin/marketplace.json`の正確なcatalog/plugin-entry leaf/item occurrence。`marketplace.plugin.source`だけがclosedなlocal-manifest derivationをseedできる |
 
 Initial releaseのClaude recognitionは、sharedな`skill metadata` kindを使用しない。Typed layer、path-derived namespace、
-selection、precedence、trust、surface、default、applicability factはauthored metadataではなく、どのsurfaceも公開しない。
+selection、precedence、trust、surface、default、applicability factはauthored metadataではない: いずれもfileから読み出さず、
+relationshipが運ぶこともない。Path由来の同一性は、それがinventory unitである場所でのみ公開する — `prompt/command` rowが
+group化される名前、`instructions` rowがgroup化される範囲 — のであって、runtimeについての主張として公開することは決してない:
+どのlayerがfileを読み込むか、productが何をselect・trust・defaultするかは、どのsurfaceも述べない（FR-009）。
 
 ## 既知の曖昧さとversion-sensitive fact
 

@@ -47,12 +47,12 @@ export type CustomizationKind =
   | 'skill'
   /** A custom-agent definition. */
   | 'agent'
-  /** A reusable prompt or slash command. */
-  | 'prompt/command'
   /** A lifecycle hook declaration. */
   | 'hook'
   /** An MCP server declaration carrier. */
   | 'MCP'
+  /** A reusable prompt or slash command. */
+  | 'prompt/command'
   /** One authored rule file: modular instructions a product loads into context. */
   | 'rule'
   /** A settings or configuration carrier. */
@@ -86,13 +86,13 @@ export const CUSTOMIZATION_KIND_ORDER: readonly CustomizationKind[] = [
   'skill',
   /** Custom agents follow skills. */
   'agent',
-  /** Prompts and commands follow agents. */
-  'prompt/command',
-  /** Hooks follow prompts and commands. */
+  /** Hooks follow custom agents. */
   'hook',
   /** MCP carriers follow hooks. */
   'MCP',
-  /** Rule files follow MCP carriers. */
+  /** Prompts and commands follow MCP carriers. */
+  'prompt/command',
+  /** Rule files follow prompts and commands. */
   'rule',
   /** Settings and config carriers follow rule files. */
   'settings/config',
@@ -148,7 +148,7 @@ export const CUSTOMIZATION_KIND_PLURAL_TEXT: Readonly<Record<CustomizationKind, 
   skill: 'skills',
   /** An agent row is one custom-agent definition. */
   agent: 'custom agents',
-  /** A prompt or command row is one definition. */
+  /** A prompt or command row is one name a reader invokes. */
   'prompt/command': 'prompts and commands',
   /** A hook row is one declaration. */
   hook: 'hook declarations',
@@ -179,7 +179,7 @@ export const CUSTOMIZATION_KIND_TEXT: Readonly<Record<CustomizationKind, string>
   /** Label for a custom-agent definition. */
   agent: 'Agent',
   /** Label for a prompt or slash command. */
-  'prompt/command': 'Prompt / command',
+  'prompt/command': 'Prompt / Command',
   /** Label for a hook declaration. */
   hook: 'Hook',
   /** Label for an MCP declaration carrier. */
@@ -502,9 +502,18 @@ export function encodeRootPresentation(value: string): string {
  *   which surrogate they carry would render identically. Under the `u` flag
  *   the class matches only an unpaired surrogate — a well-formed pair is one
  *   code point outside it — so astral characters render as themselves.
+ * - A default-ignorable code point — U+200B, U+00AD, U+FEFF, the variation
+ *   selectors — which draws nothing at all, so a name carrying one reads as
+ *   the name without it. This is the same reason the bidi and surrogate rows
+ *   exist, and escaping it here is what makes every surface drawing an
+ *   authored identity — a row's name, a heading, a comparison cell — keep two
+ *   such names apart without a note of its own.
  *
  * Every other character, spaces included, renders as itself, because the
- * authored spelling is the path's presentation identity. Distinct from
+ * authored spelling is the path's presentation identity. Whitespace is the one
+ * ambiguity left, and it is left deliberately: a space is a character a reader
+ * recognizes, so the surfaces that would collapse it spell the whole value out
+ * instead ({@link inlinePresentationLabel}). Distinct from
  * {@link encodeRootPresentation}, which escapes everything outside a small
  * ASCII set: a root label must be unambiguous on its own, while a path stays
  * readable and only its ambiguous characters need a visible spelling.
@@ -512,7 +521,7 @@ export function encodeRootPresentation(value: string): string {
 export function escapeControlCharacters(value: string): string {
   return value.replaceAll(
     // eslint-disable-next-line no-control-regex -- matching the Cc range is this function's purpose
-    /[\u0000-\u001F\u007F-\u009F\u061C\u200E\u200F\u2028\u2029\u202A-\u202E\u2066-\u2069\uD800-\uDFFF\\]/gu,
+    /[\u0000-\u001F\u007F-\u009F\u061C\u200E\u200F\u2028\u2029\u202A-\u202E\u2066-\u2069\uD800-\uDFFF\\]|\p{Default_Ignorable_Code_Point}/gu,
     (character) => `\\u${character.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')}`,
   );
 }
@@ -573,25 +582,6 @@ export function rendersNothingVisible(value: string): boolean {
 }
 
 /**
- * Whether a value carries a character no surface draws — a raw `Cc` control
- * other than the tab, line feed, and carriage return that shape layout, or a
- * default-ignorable code point such as U+200B or U+00AD. Such a value still
- * draws its other characters, so it renders as a *different* value: `a` +
- * U+0000 + `b` and `a` + U+200B + `b` both read as `ab`, and two
- * declarations differing only in an invisible character would read as one.
- * Callers add a spelled-out note beside the authored rendering; the value
- * itself stays exactly as authored (FR-025). Distinct from
- * {@link rendersNothingVisible}, which tests whether the whole value draws
- * nothing at all.
- */
-export function containsInvisibleCharacters(value: string): boolean {
-  // eslint-disable-next-line no-control-regex -- matching the Cc range is this function's purpose
-  return /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\p{Default_Ignorable_Code_Point}]/u.test(
-    value,
-  );
-}
-
-/**
  * One authored path or entry name as the text a surface draws for it: the
  * escaped spelling ({@link escapeControlCharacters}), or the completely
  * spelled-out root presentation when that spelling would still draw nothing
@@ -600,13 +590,14 @@ export function containsInvisibleCharacters(value: string): boolean {
  * name, so it is spelled out entirely, the way a root label is, because it
  * then has to be unambiguous on its own.
  *
- * Escaping alone cannot reach that: it leaves a space a space and a zero-width
- * space a zero-width space. What reaches it is a value with no character that
- * draws at all. For a whole Source-relative Path that means a single
- * segment — `/` draws, so every nested path keeps one visible character — and
- * a repository gets there through a Codex configured fallback basename, an
- * entry name the walk compares that no character grammar constrains. A tree
- * label is one entry name rather than a path, so any depth can reach it.
+ * Escaping alone cannot reach that: it spells out every character that draws
+ * nothing, but it leaves a space a space. What reaches it is a value whose
+ * every character is whitespace. For a whole Source-relative Path that means a
+ * single segment — `/` draws, so every nested path keeps one visible
+ * character — and a repository gets there through a Codex configured fallback
+ * basename, an entry name the walk compares that no character grammar
+ * constrains. A tree label is one entry name rather than a path, so any depth
+ * can reach it.
  *
  * Distinct from {@link inlinePresentationLabel}, which additionally spells out
  * a value whose whitespace a surface would collapse; here the authored
@@ -622,9 +613,11 @@ export function pathPresentationLabel(value: string): string {
  * whitespace — a native `<option>`'s text, an accessible name (FR-025): the
  * escaped spelling, or the completely spelled-out root presentation when
  * that spelling would render as nothing or ambiguously — through leading,
- * trailing, or consecutive whitespace, or default-ignorable code points —
- * so two values differing only invisibly never read as one label. The
- * predicate is a character-class test only: an authored value that happens
+ * trailing, or consecutive whitespace — so two values differing only in the
+ * whitespace this surface collapses never read as one label. Whitespace is the
+ * whole of what it adds: every character that draws nothing at all is already
+ * spelled out by the escaping ({@link escapeControlCharacters}). The predicate
+ * is a character-class test only: an authored value that happens
  * to spell a product phrase stays as authored, because matching this
  * product's own copy against authored text would turn display wording into
  * load-bearing syntax, and the complete source beside every surface keeps
@@ -632,8 +625,7 @@ export function pathPresentationLabel(value: string): string {
  */
 export function inlinePresentationLabel(value: string): string {
   const escaped = escapeControlCharacters(value);
-  return rendersNothingVisible(escaped) ||
-    /^\s|\s{2,}|\s$|\p{Default_Ignorable_Code_Point}/u.test(escaped)
+  return rendersNothingVisible(escaped) || /^\s|\s{2,}|\s$/u.test(escaped)
     ? encodeRootPresentation(value)
     : escaped;
 }

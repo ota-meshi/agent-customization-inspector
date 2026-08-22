@@ -79,6 +79,8 @@ export const FILE_DETAIL_KIND_TEXT: Readonly<Record<FileDetailDto['kind'], strin
   skill: CUSTOMIZATION_KIND_TEXT.skill,
   /** Caption for a detail an instructions recognition owns. */
   instructions: CUSTOMIZATION_KIND_TEXT.instructions,
+  /** Caption for a detail a command recognition owns. */
+  'prompt/command': CUSTOMIZATION_KIND_TEXT['prompt/command'],
   /** Caption for a detail a rule recognition owns. */
   rule: CUSTOMIZATION_KIND_TEXT.rule,
   /** Caption for a census-listed or otherwise unrecognized file's detail. */

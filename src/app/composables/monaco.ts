@@ -156,24 +156,26 @@ function themeForDisplay(dark: boolean, forcedColors: boolean): string {
 }
 
 /**
- * Binds one theme-follow listener to both display queries and returns it for
- * unbinding on dispose. Monaco's theme is global rather than per-editor, so
- * every handle setting it sets it for all of them — which is what the page
- * wants, because the display scheme is one fact and not one per viewer. Both
- * queries share the listener, because the theme is one value derived from
- * the pair (WCAG 1.4.11).
+ * Binds one theme-follow listener to both display queries and returns the
+ * controller that unbinds them on dispose. Monaco's theme is global rather
+ * than per-editor, so every handle setting it sets it for all of them — which
+ * is what the page wants, because the display scheme is one fact and not one
+ * per viewer. Both queries share the listener, because the theme is one value
+ * derived from the pair (WCAG 1.4.11), and one signal unbinds them for the
+ * same reason: they are one subscription, so a caller cannot end half of it.
  */
 function followDisplayTheme(
   monaco: MonacoApi,
   colorScheme: MediaQueryList,
   forcedColors: MediaQueryList,
-): () => void {
+): AbortController {
+  const binding = new AbortController();
   const follow = (): void => {
     monaco.editor.setTheme(themeForDisplay(colorScheme.matches, forcedColors.matches));
   };
-  colorScheme.addEventListener('change', follow);
-  forcedColors.addEventListener('change', follow);
-  return follow;
+  colorScheme.addEventListener('change', follow, { signal: binding.signal });
+  forcedColors.addEventListener('change', follow, { signal: binding.signal });
+  return binding;
 }
 
 /**
@@ -232,21 +234,13 @@ export class SourceViewerHandle {
   /** The one read-only editor this handle owns and disposes. */
   readonly #editor: import('monaco-editor/esm/vs/editor/editor.api.js').editor.IStandaloneCodeEditor;
 
-  /** The colour-scheme query whose change listener keeps the theme in step. */
-  readonly #colorScheme: MediaQueryList;
-
   /**
-   * The forced-colours query, watched together with the colour scheme: the
-   * theme is one decision made from both, so both have to reach the same place.
+   * The theme-follow subscription on both display queries — the colour scheme
+   * and forced colours, which the theme is one decision from — held so
+   * {@link dispose} can abort it. Left bound, it would keep this handle, and
+   * the disposed editor it names, alive for the life of the document.
    */
-  readonly #forcedColors: MediaQueryList;
-
-  /**
-   * The theme-follow listener, bound to both display queries; kept so
-   * {@link dispose} can unbind it. Left bound, it would keep this handle — and
-   * the disposed editor it names — alive for the life of the document.
-   */
-  readonly #followDisplay: () => void;
+  readonly #displayThemeFollow: AbortController;
 
   /**
    * The content-size listener of a fit-content mount, or null for the fixed
@@ -265,9 +259,7 @@ export class SourceViewerHandle {
   ) {
     this.#monaco = monaco;
     this.#editor = editor;
-    this.#colorScheme = colorScheme;
-    this.#forcedColors = forcedColors;
-    this.#followDisplay = followDisplayTheme(monaco, colorScheme, forcedColors);
+    this.#displayThemeFollow = followDisplayTheme(monaco, colorScheme, forcedColors);
     this.#fitContent = fitContent;
   }
 
@@ -354,8 +346,7 @@ export class SourceViewerHandle {
    * so an editor-only teardown would retain the authored text.
    */
   public dispose(): void {
-    this.#colorScheme.removeEventListener('change', this.#followDisplay);
-    this.#forcedColors.removeEventListener('change', this.#followDisplay);
+    this.#displayThemeFollow.abort();
     this.#fitContent?.dispose();
     const model = this.#editor.getModel();
     this.#editor.dispose();
@@ -530,14 +521,8 @@ export class SourceDiffHandle {
   /** The one read-only diff editor this handle owns and disposes. */
   readonly #editor: import('monaco-editor/esm/vs/editor/editor.api.js').editor.IStandaloneDiffEditor;
 
-  /** The colour-scheme query whose change listener keeps the theme in step. */
-  readonly #colorScheme: MediaQueryList;
-
-  /** The forced-colours query, watched with the scheme; see the viewer handle. */
-  readonly #forcedColors: MediaQueryList;
-
-  /** The theme-follow listener, unbound by {@link dispose}. */
-  readonly #followDisplay: () => void;
+  /** The theme-follow subscription on both display queries; see the viewer handle. */
+  readonly #displayThemeFollow: AbortController;
 
   /**
    * The per-inner-editor subscriptions — the two side-label restorers, plus
@@ -555,9 +540,7 @@ export class SourceDiffHandle {
     relabel: readonly import('monaco-editor/esm/vs/editor/editor.api.js').IDisposable[],
   ) {
     this.#editor = editor;
-    this.#colorScheme = colorScheme;
-    this.#forcedColors = forcedColors;
-    this.#followDisplay = followDisplayTheme(monaco, colorScheme, forcedColors);
+    this.#displayThemeFollow = followDisplayTheme(monaco, colorScheme, forcedColors);
     this.#relabel = relabel;
   }
 
@@ -579,8 +562,7 @@ export class SourceDiffHandle {
    * complete authored text (FR-027).
    */
   public dispose(): void {
-    this.#colorScheme.removeEventListener('change', this.#followDisplay);
-    this.#forcedColors.removeEventListener('change', this.#followDisplay);
+    this.#displayThemeFollow.abort();
     for (const subscription of this.#relabel) {
       subscription.dispose();
     }

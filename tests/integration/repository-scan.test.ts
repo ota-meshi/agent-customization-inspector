@@ -28,6 +28,7 @@ import {
   buildClaudeInstructionFixture,
   buildClaudeMcpFixture,
   buildClaudeSkillFixture,
+  buildCommandFixture,
   buildCopilotCliMcpFixture,
   buildCopilotVscodeMcpFixture,
   buildPriorityMcpFixture,
@@ -3110,6 +3111,183 @@ describe('the unified instructions inventory (T270)', () => {
       'CLAUDE.md',
       'GEMINI.md',
     ]);
+  });
+});
+
+describe('the unified commands inventory (T478)', () => {
+  it('reads a shared root command once and publishes one row with both products', async () => {
+    const fixture = buildCommandFixture('inspector-scan-commands');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    vi.clearAllMocks();
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+
+    // One read per discovered file, whichever products recognized it: the
+    // root direct children carry two recognitions from one read (FR-024). The
+    // dangling link is the exception the fixture also writes — its read never
+    // completes, so it is admitted, unreadable, and recognized by neither.
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) => String(call[0]));
+    for (const path of fixture.sharedCommandPaths) {
+      if (path.endsWith('broken-link.md')) {
+        continue;
+      }
+      const absolute = join(fixture.root, ...path.split('/'));
+      expect(
+        opened.filter((call) => call === absolute),
+        path,
+      ).toHaveLength(1);
+    }
+
+    // One row per name, in name order, with the definitions of each name in
+    // Source-relative Path then contracted tool order.
+    const rowsByName = new Map(snapshot.prompts.map((entry) => [entry.name, entry]));
+    expect([...rowsByName.keys()]).toEqual([...rowsByName.keys()].toSorted());
+    // The name two products derive from one command file, and that a prompt
+    // file in the same tree declares for itself: three definitions of one
+    // name across two files, which is what a row grouped by name is for.
+    const shared = rowsByName.get('deploy')!;
+    expect(shared.definitions).toEqual([
+      {
+        sourceRelativePath: '.claude/commands/deploy.md',
+        tool: 'copilot',
+        surfaces: ['copilot-cli'],
+        diagnosticIds: [],
+      },
+      {
+        sourceRelativePath: '.claude/commands/deploy.md',
+        tool: 'claude',
+        surfaces: ['claude-cli-and-ide-clients'],
+        diagnosticIds: [],
+      },
+      {
+        sourceRelativePath: '.github/prompts/deploy.prompt.md',
+        tool: 'copilot',
+        surfaces: ['copilot-vscode'],
+        diagnosticIds: [],
+      },
+    ]);
+
+    // A nested command is Claude's alone, under the namespaced name only
+    // Claude derives.
+    const nested = rowsByName.get('frontend:component')!;
+    expect(nested.definitions.map((definition) => definition.tool)).toEqual(['claude']);
+    expect(nested.definitions[0]!.sourceRelativePath).toBe(
+      '.claude/commands/frontend/component.md',
+    );
+
+    // Every admitted path reaches a row exactly once per recognizing product,
+    // and the excluded locations reach none.
+    const definitionPaths = snapshot.prompts.flatMap((entry) =>
+      entry.definitions.map((definition) => definition.sourceRelativePath),
+    );
+    for (const path of fixture.sharedCommandPaths) {
+      expect(definitionPaths.filter((candidate) => candidate === path).length, path).toBe(
+        path.endsWith('broken-link.md') ? 0 : 2,
+      );
+    }
+    for (const path of fixture.claudeOnlyCommandPaths) {
+      expect(definitionPaths.filter((candidate) => candidate === path).length, path).toBe(1);
+    }
+    for (const path of [...fixture.nearMissPaths, fixture.promptsPath, fixture.nestedCommandPath]) {
+      expect(definitionPaths, path).not.toContain(path);
+    }
+  });
+
+  it('states a malformed shared command once per product and commits the generation', async () => {
+    // The extraction runs once per `(file, kind)`, so both products' failed
+    // definitions reference the one record while the file's own entry lists
+    // it once (FR-028), and the generation is partial rather than aborted.
+    const fixture = buildCommandFixture('inspector-scan-commands-malformed');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    const { publication } = await scanOnce(context);
+    if (publication.kind !== 'publishable') {
+      throw new Error('expected a publishable outcome');
+    }
+    const snapshot = context.session.snapshot();
+    expect(snapshot.repositoryGeneration).toBe(1);
+    // The malformed command file's own definitions, taken out of the row by
+    // path: the row's name is also what the tree's malformed prompt file falls
+    // back to, and that file is a second extraction with a record of its own.
+    const broken = snapshot.prompts.find((entry) => entry.name === 'broken')!;
+    const references = broken.definitions
+      .filter((definition) => definition.sourceRelativePath === fixture.malformedCommandPath)
+      .map((definition) => definition.diagnosticIds);
+    expect(references).toHaveLength(2);
+    expect(new Set(references.flat()).size).toBe(1);
+    const file = snapshot.files.find(
+      (candidate) => candidate.sourceRelativePath === fixture.malformedCommandPath,
+    )!;
+    expect(file.diagnosticIds).toEqual(references[0]);
+  });
+
+  it('confines an injected command read failure to that file, and aborts on any other', async () => {
+    const fixture = buildCommandFixture('inspector-scan-commands-inject');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    const target = join(fixture.root, ...fixture.declaringCommandPath.split('/'));
+    // An ordinary read failure on one command file is file-confined: the walk
+    // classifies it `unreadable`, it gains no recognition under either
+    // product, and every other command still publishes (FR-028).
+    vi.mocked(fsIo.readFile).mockImplementation(async (path, options) => {
+      if (String(path) === target) {
+        throw Object.assign(new Error('injected read failure'), { code: 'EACCES' });
+      }
+      return realReadFile(path, options as never);
+    });
+    const { publication } = await scanOnce(context);
+    if (publication.kind !== 'publishable') {
+      throw new Error('expected a publishable outcome');
+    }
+    expect(publication.outcome).toBe('partial');
+    const snapshot = context.session.snapshot();
+    // The unreadable file defines nothing under either product. Its name
+    // survives on the row, because a prompt file in the same tree declares the
+    // same one — which is the row saying what a reader can still invoke and
+    // what it no longer resolves to.
+    expect(
+      snapshot.prompts.flatMap((entry) =>
+        entry.definitions.map((definition) => definition.sourceRelativePath),
+      ),
+    ).not.toContain(fixture.declaringCommandPath);
+    expect(snapshot.prompts.map((entry) => entry.name)).toContain('frontend:component');
+    expect(
+      snapshot.files.find((file) => file.sourceRelativePath === fixture.declaringCommandPath)!
+        .encoding,
+    ).toBe('unknown');
+    vi.mocked(fsIo.readFile).mockReset();
+
+    // A thrown recognition operation is not confined to one file: it
+    // propagates unchanged, commits nothing, and leaves the prior generation
+    // as all that remains (FR-029, FR-030).
+    const sourceId = context.session.repositorySourceId;
+    const admitted = context.coordinator.admitScan(sourceId, {
+      kind: 'request',
+      operationId: 'op-commands',
+    });
+    if (admitted.kind !== 'admitted') {
+      throw new Error('expected admission');
+    }
+    const injected = new Error('injected command recognition failure');
+    await expect(
+      runSourceScan({
+        sourceId,
+        root: fixture.root,
+        rootFailureOwner: `published-source:${sourceId}`,
+        recognize: () => {
+          throw injected;
+        },
+      }),
+    ).rejects.toBe(injected);
+    context.coordinator.failScan(admitted.scanRequestId, {
+      kind: 'error',
+      message: 'injected command recognition failure',
+    });
+    const after = context.session.snapshot();
+    expect(after.repositoryGeneration).toBe(1);
+    expect(after.prompts).toEqual(snapshot.prompts);
+    expect(after.snapshotState).toBe('stale-after-fatal-rescan');
   });
 });
 

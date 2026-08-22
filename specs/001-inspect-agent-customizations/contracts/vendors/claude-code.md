@@ -237,7 +237,12 @@ read, connection, execution, import, installation, or activation authority.
 
 No Claude recognition uses the shared `skill metadata` kind in the initial release. Typed
 layer, path-derived namespace, selection, precedence, trust, surface, default, and
-applicability facts are not authored metadata and are published by no surface.
+applicability facts are not authored metadata: none of them is read out of a file, and no
+relationship carries one. A path-derived identity is published where it is an inventory
+unit and nowhere else — the name a `prompt/command` row is grouped under, the range an
+`instructions` row is grouped by — and never as a claim about a runtime: which layer loads
+a file, and what a product would select, trust, or default to, no surface states
+(FR-009).
 
 ## Known ambiguities and version-sensitive facts
 

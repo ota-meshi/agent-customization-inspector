@@ -130,6 +130,7 @@ function snapshotWith(
     files,
     instructions: [],
     rules: [],
+    prompts: [],
     permissions: [],
     skills,
     mcp: [],
@@ -254,6 +255,31 @@ describe('inventory filters over the committed snapshot', () => {
     expect(
       filters.view.filesByPath.value.get('.agents/skills/greet/notes.md')?.diagnosticIds,
     ).toEqual(['diag-unreadable']);
+  });
+
+  it('keeps the files in no kind under a tool selection (T1124)', () => {
+    // A file here was recognized by no product, so a tool selection cannot
+    // match it — and emptying the list under one would take the only statement
+    // a `partial` generation has about that file off the page (FR-028). The
+    // rows stand, and the page states that a tool filter is applied rather than
+    // listing them under a tool none of them belongs to.
+    const snapshot = shallowRef<SessionSnapshot | null>(
+      snapshotWith(
+        [file('.agents/skills/greet/SKILL.md'), file('other/SKILL.md')],
+        [skill('greet', '.agents/skills/greet/SKILL.md')],
+      ),
+    );
+    const filters = withSelection(snapshot);
+    filters.tool.value = 'codex';
+    expect(filters.view.effectiveTool.value).toBe('codex');
+    expect(filters.view.unrecognizedRows.value.map((row) => row.sourceRelativePath)).toEqual([
+      'other/SKILL.md',
+    ]);
+
+    // The Source and path filters still apply: each is a fact about the file
+    // itself rather than about a recognition it does not have.
+    filters.pathQuery.value = 'skills/';
+    expect(filters.view.unrecognizedRows.value).toEqual([]);
   });
 
   it('narrows by source, tool, and Source-relative path', () => {
@@ -516,7 +542,7 @@ describe('the request-correlated rescan lifecycle', () => {
     // would overwrite the scanning Source with a Ready row beside a live
     // `activeScanRequestId`. The acceptance therefore waits the stale fetch
     // out and issues one that starts now.
-    let releaseStale: (() => void) | null = null;
+    const staleFetch = Promise.withResolvers<unknown>();
     let sessionCalls = 0;
     const scanning = {
       ...REPOSITORY_SOURCE,
@@ -532,16 +558,14 @@ describe('the request-correlated rescan lifecycle', () => {
         if (sessionCalls === 2) {
           // The stale fetch: started before the acceptance, settles after it,
           // and carries no accepted scan.
-          return new Promise((resolve) => {
-            releaseStale = () => resolve(adoptedSession());
-          });
+          return staleFetch.promise;
         }
         return Promise.resolve(adoptedSession({ sources: [scanning] }));
       },
       'agent-customization-inspector:rescan-repository': () => {
         // Release the stale fetch only after the acceptance settles, so it
         // is in flight across the whole command.
-        queueMicrotask(() => releaseStale?.());
+        queueMicrotask(() => staleFetch.resolve(adoptedSession()));
         return Promise.resolve({
           globalContentEpoch: 0,
           data: { scanRequestId: 'req-fresh', source: scanning },

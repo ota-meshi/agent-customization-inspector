@@ -306,15 +306,18 @@ describe('traversal-plan compilation', () => {
 describe('the Claude skill slice of the reference graph (T130, T133)', () => {
   it('ships only read-authorizing Claude records and no exclusion', () => {
     // The phase-local half of the registry catalog check: the shipped Claude
-    // catalog is the instruction, MCP carrier, and skill rules, all
-    // read-authorizing. No `excluded` or `relationship-only` Claude row ships
-    // yet — a symlinked skill needs none because links are read through their
-    // targets (FR-024), an unsupported instruction location is simply a path
-    // no selector reaches (T232), and the plugin/User exclusions ship with the
-    // phases that own their surfaces (T309) — and the eventual complete
-    // catalog gate is T913's, not this suite's.
+    // catalog is the command, instruction, MCP carrier, permission-policy,
+    // rule-file, and skill rules, all read-authorizing. No `excluded` or
+    // `relationship-only` Claude row ships yet — a symlinked skill needs none
+    // because links are read through their targets (FR-024), an unsupported
+    // instruction location is simply a path no selector reaches (T232), a
+    // standalone `.claude/prompts` directory is another one (FR-034, T445),
+    // and the plugin/User exclusions ship with the phases that own their
+    // surfaces (T309) — and the eventual complete catalog gate is T913's, not
+    // this suite's.
     const claudeRules = rules.filter((rule) => rule.tool === 'claude');
     expect(claudeRules.map((rule) => rule.ruleId)).toEqual([
+      'claude.repo.command',
       'claude.repo.instructions',
       'claude.repo.mcp',
       'claude.repo.permissions',
@@ -363,6 +366,7 @@ describe('the Copilot skill slice of the reference graph (T154, T158)', () => {
         .filter((rule) => rule.tool === 'copilot' && rule.discoveryClass === discoveryClass)
         .map((rule) => rule.ruleId);
     expect(byClass('static-candidate')).toEqual([
+      'copilot.repo.command',
       'copilot.repo.instructions.agents',
       'copilot.repo.instructions.claude-root',
       'copilot.repo.instructions.gemini-root',
@@ -373,13 +377,14 @@ describe('the Copilot skill slice of the reference graph (T154, T158)', () => {
       'copilot.repo.mcp',
       'copilot.repo.mcp.vscode',
       'copilot.repo.mcp.vscode-root',
+      'copilot.repo.prompt',
       'copilot.repo.skill',
     ]);
     expect(byClass('excluded')).toEqual([
       'copilot.excluded.additional-standard-locations',
       'copilot.excluded.extra-directories',
     ]);
-    expect(rules.filter((rule) => rule.tool === 'copilot')).toHaveLength(13);
+    expect(rules.filter((rule) => rule.tool === 'copilot')).toHaveLength(15);
   });
 
   it('gives an exclusion no matcher, no kind, and no strategy (T251)', () => {

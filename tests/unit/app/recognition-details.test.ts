@@ -104,6 +104,7 @@ function snapshotWith(
     files,
     instructions,
     rules: [],
+    prompts: [],
     permissions: [],
     skills,
     mcp: [],

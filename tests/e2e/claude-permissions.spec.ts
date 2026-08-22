@@ -13,6 +13,7 @@ import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
+import { openNoKindDisclosure } from './no-kind-disclosure';
 
 /** A literal credential in a declared rule, shown whole and unmasked. */
 const FIXTURE_SECRET = 'ghp_E2EPERMISSIONS0000000000000000000000000';
@@ -89,7 +90,8 @@ test.describe('the Claude permission policy a settings carrier declares', () => 
     // kind — read, and recognized as nothing.
     const noKind = page.locator('main').getByRole('heading', { name: 'Files in no kind' });
     await expect(noKind).toBeVisible();
-    await expect(page.locator('main')).toContainText('.claude/settings.local.json');
+    const unclassified = await openNoKindDisclosure(page);
+    await expect(unclassified).toContainText('.claude/settings.local.json');
   });
 
   test('opens the declared block, and not the file that carries it', async ({ page }) => {

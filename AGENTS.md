@@ -181,6 +181,36 @@ Above Expediency) to day-to-day coding decisions:
 - When a specification mandates redundant complexity, correct the specification — in both
   languages, in the same change — instead of implementing it as written.
 
+## Platform baseline policy
+
+The browser floor is Baseline Newly available, and the Node floor is what `engines.node`
+declares. Both sit deliberately close to the front edge, because this product's browser
+support is a certification matrix rather than a field statistic: `playwright.config.ts`
+pins one Chromium, one Firefox, and one WebKit revision, so a feature all three ship is a
+feature every certified browser has. Waiting for Baseline Widely available would keep
+hand-written equivalents in the tree for years after the platform grew the thing they
+imitate, and each of those equivalents is a mechanism this repository then has to keep
+correct.
+
+- Take the platform's own construct as soon as all three certified engines ship it. This
+  is the Implementation simplicity policy's "reach for the platform's own vocabulary"
+  with a date attached. The open control's list is a popover placed by anchor
+  positioning, so light dismiss, Escape, the top layer, and choosing the side that has
+  room are the platform's rather than this repository's; a loop building a `Map` of
+  arrays is `Map.groupBy`; a promise a later event settles is `Promise.withResolvers`; a
+  module's own directory is `import.meta.dirname`.
+- Measure support against the pinned revisions rather than recalling it. A compatibility
+  table describes the web and a model's training data describes the past, while what
+  governs here is what those three revisions do — which `CSS.supports()` and a feature
+  probe driven through `playwright` answer in seconds. Record what the measurement showed
+  wherever it decided a design.
+- A feature one certified engine lacks is usable only as progressive enhancement, where
+  its absence changes nothing a reader depends on. Anything a surface's correctness rests
+  on waits for all three.
+- A comment recording a feature as unavailable is a dated claim rather than a standing
+  one. Re-measure it when the code around it is touched, and when the measurement
+  disagrees, delete the comment and the workaround it explains in the same change.
+
 ## Dependency version policy
 
 - Every dependency in `package.json` is declared as a caret range — never as an exact

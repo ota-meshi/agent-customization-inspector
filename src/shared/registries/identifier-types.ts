@@ -28,6 +28,8 @@
 export type ClaudeBehaviorId =
   /** Claude subagent discovery: recursive Markdown under each layer's `.claude/agents/`; a non-authorizing MCP-selection input. */
   | 'claude.behavior.repo.agents'
+  /** Claude project command discovery: Markdown found recursively under the project's `.claude/commands/`. */
+  | 'claude.behavior.repo.commands'
   /** Claude instruction discovery in each directory above the runtime `cwd`, toward the filesystem root. */
   | 'claude.behavior.repo.instructions.ancestor'
   /** Claude instruction discovery in a subdirectory of the runtime `cwd`, on demand. */
@@ -46,6 +48,8 @@ export type ClaudeBehaviorId =
   | 'claude.behavior.repo.settings.local'
   /** Claude Repository skill discovery under `.claude/skills/<skill-name>/SKILL.md`. */
   | 'claude.behavior.repo.skills'
+  /** Claude User commands under `<claude-config-dir>/commands/`; a non-authorizing fact. */
+  | 'claude.behavior.user.commands'
   /** Claude User instructions at `<claude-config-dir>/CLAUDE.md`. */
   | 'claude.behavior.user.instructions'
   /** Claude User and per-project local MCP state at `<home>/.claude.json`; a non-authorizing fact. */
@@ -146,6 +150,8 @@ export type CopilotBehaviorId =
   | 'copilot.behavior.vscode.instructions.claude'
   /** Copilot VS Code path-specific instructions below its instruction locations. */
   | 'copilot.behavior.vscode.instructions.path'
+  /** Copilot VS Code prompt files at the workspace `.github/prompts`; invoked manually. */
+  | 'copilot.behavior.vscode.prompts'
   /** Copilot VS Code repository-wide `.github/copilot-instructions.md` at the workspace root. */
   | 'copilot.behavior.vscode.instructions.repository'
   /** Copilot VS Code workspace MCP configuration: `.vscode/mcp.json`, and root `.mcp.json` for 1.118+. */
@@ -158,6 +164,8 @@ export type CopilotBehaviorId =
   | 'copilot.behavior.vscode.user.instructions'
   /** Copilot VS Code User MCP configuration in the profile's own `mcp.json`. */
   | 'copilot.behavior.vscode.user.mcp'
+  /** Copilot VS Code User prompt files in the profile's own data; a non-authorizing fact. */
+  | 'copilot.behavior.vscode.user.prompts'
   /** Copilot VS Code User skill discovery in home and profile locations. */
   | 'copilot.behavior.vscode.user.skills';
 
@@ -197,6 +205,12 @@ export type AnthropicSourceId =
   | 'anthropic.claude-code.permissions.rule-syntax'
   /** The plugins reference: component scopes and skills-directory plugins. */
   | 'anthropic.claude-code.plugins.components-scopes'
+  /**
+   * The changelog releases that version-anchor legacy-command nesting: 1.0.45
+   * restored the subdirectory-derived namespace in a command name, and 1.0.51
+   * fixed the same nesting for the User scope (QR-005).
+   */
+  | 'anthropic.claude-code.changelog.legacy-command-nesting'
   /**
    * The changelog releases that version-anchor nested skill behavior: 2.1.6
    * introduced nested `.claude/skills` discovery, and 2.1.178 the
@@ -252,6 +266,8 @@ export type VsCodeSourceId =
   | 'vscode.copilot.customization'
   /** The VS Code custom-instructions page: the instruction file kinds and their locations. */
   | 'vscode.copilot.instructions'
+  /** The VS Code prompt-files page: where prompt files live, their format, and how one is invoked. */
+  | 'vscode.copilot.prompts'
   /** The VS Code AI-settings reference: the per-customization location settings. */
   | 'vscode.copilot.settings'
   /** The VS Code agent-skills page: workspace skill locations and progressive loading. */
@@ -276,6 +292,8 @@ export type SourceId = AnthropicSourceId | OpenAiSourceId | GitHubSourceId | VsC
  * (contracts/runtime-composition.md).
  */
 export type ClaudeStrategyId =
+  /** Claude command selection: commands share the skill command namespace, a same-name skill wins, and subdirectories namespace the command name. */
+  | 'claude.commands.selection'
   /** Claude instruction layering: User, ancestor, launch, and lazy descendant files, broad to narrow. */
   | 'claude.instructions.layering'
   /** Claude MCP selection: whole same-name server entries in local, project, User, plugin, connector order. */
@@ -341,6 +359,8 @@ export type StrategyId = ClaudeStrategyId | CodexStrategyId | CopilotStrategyId;
  * arrive with the inventory phase that needs them.
  */
 export type ClaudeRuleId =
+  /** Repository Claude command files under the root's own `.claude/commands/`; read-authorizing `static-candidate`. */
+  | 'claude.repo.command'
   /** Repository Claude instructions at every depth; read-authorizing `static-candidate`. */
   | 'claude.repo.instructions'
   /** The exact root `.mcp.json` MCP declaration carrier; read-authorizing `static-candidate`. */
@@ -379,6 +399,10 @@ export type CopilotRuleId =
   | 'copilot.excluded.additional-standard-locations'
   /** Runtime-supplied instruction and skill roots that never become scan roots. */
   | 'copilot.excluded.extra-directories'
+  /** Root direct-child Copilot CLI command files under `.claude/commands/`; read-authorizing `static-candidate`. */
+  | 'copilot.repo.command'
+  /** Root direct-child Copilot VS Code prompt files under `.github/prompts/`; read-authorizing `static-candidate`. */
+  | 'copilot.repo.prompt'
   /** Repository `AGENTS.md` at every depth; read-authorizing `static-candidate`. */
   | 'copilot.repo.instructions.agents'
   /** The root `CLAUDE.md` agent-instruction alternative; read-authorizing `static-candidate`. */

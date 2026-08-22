@@ -279,6 +279,19 @@ SessionSnapshot
 │       one row per recognized rule file, with each recognition in the closed
 │       tool order and each recognition's product surfaces in the closed
 │       surface order
+├── prompts[]
+│   └── name string,
+│       definitions[] { sourceRelativePath, tool, surfaces[], diagnosticIds[] } —
+│       one row per name a reader invokes, in name order, each listing every
+│       file a recognizing tool invokes it by, in Source-relative Path then
+│       tool order. Which name that is belongs to the rule that admitted the file.
+│       A command file's is never authored: both products ignore a `name` key
+│       in one, and each derives the command from the path — so a root direct
+│       child, where the two derivations agree, is one row naming both, and a
+│       nested one is a row of Claude's alone. A VS Code prompt file's is the
+│       `name` it declares, falling back to its own file name — so a prompt
+│       declaring the name a command resolves to is a definition on that
+│       command's row
 ├── permissions[]
 │   └── sourceRelativePath, recognitions[] { tool, surfaces[] },
 │       diagnosticIds[] —
@@ -629,7 +642,7 @@ Returns one active-generation file detail, discriminated by whether a recognitio
 the file:
 
 ```text
-FileDetail — kind: 'skill' | 'instructions' | 'rule' | 'file'
+FileDetail — kind: 'skill' | 'instructions' | 'prompt/command' | 'rule' | 'file'
 ├── kind 'skill' — the file is a recognized skill entry point:
 │   ├── file — one CustomizationFile, discriminated by encoding:
 │   │   ├── sourceId, sourceRelativePath, encoding, diagnosticIds[]
@@ -644,6 +657,11 @@ FileDetail — kind: 'skill' | 'instructions' | 'rule' | 'file'
 │   │   └── bodyText
 │   └── diagnostics[]
 ├── kind 'instructions' — the file is a recognized instruction file:
+│   ├── file — as above
+│   ├── presentation — as the skill variant: the same one scan-time parse,
+│   │   with the same null-on-failure rule (FR-028)
+│   └── diagnostics[]
+├── kind 'prompt/command' — the file is a recognized command file:
 │   ├── file — as above
 │   ├── presentation — as the skill variant: the same one scan-time parse,
 │   │   with the same null-on-failure rule (FR-028)
@@ -665,7 +683,15 @@ host's, the client receives a Source's root only as the one-way `displayRoot` es
 it could open.
 
 This tree is the response shape: a client can rely on exactly these fields and no
-others. The `rule` variant carries no `presentation`: such a file is
+others. The `prompt/command` variant carries a `presentation` because a prompt or command file
+supports a skill's frontmatter keys, so its detail leads with the declarations the file
+wrote and the prompt that follows them. What it does not carry is the name a reader
+would type: that is the rule's answer rather than a field of the detail, so it is the
+inventory's fact — the name each `prompts[]` row is grouped under — exactly as a skill's
+recognizing tools and invocation names are (`skills[]`). A prompt file declaring one is
+no exception: the declaration is in `presentation.frontmatter` like every other key the
+file wrote, and what the rule made of it is the row's.
+The `rule` variant carries no `presentation`: such a file is
 published as the one document its author wrote, so nothing is read out of it. A Claude
 `.claude/rules/**` file
 reaches the response whole, frontmatter block included, because splitting a rule into
@@ -800,7 +826,10 @@ client-side (research.md § 7) — a frontmatter declaration is its file's one p
 the Markdown kind, shared by every recognizing tool, so a tool is not a coordinate of it
 and tool recognition is compared per tool beside the diff; each side serializes to YAML,
 the skill comparison leading with `name` and `description` and every other key sorted,
-the instruction comparison sorting every key. The MCP kind's declarations are each
+the instruction and prompt-and-command comparisons sorting every key. The
+prompt-and-command comparison states one fact more per recognition, because this kind's
+row is a name rather than a file: each recognizing tool's cell carries the name that
+tool invokes that side's file by. The MCP kind's declarations are each
 recognizing tool's own reading (data-model.md § Field reading): their comparison surface
 is the declared server name's own — one name's declaration in each of two carriers of
 its row, serialized to one canonical JSON document per side, loaded through two ordinary
@@ -1550,11 +1579,14 @@ the post-acceptance failure's ordinary error. Disable itself never returns
    channel unchanged and round-trips at the client.
 5. Static traversal and encoded traversal attempts never escape the packaged `dist/public`
    output; every served byte comes from that packaged Nuxt output, no inspected file is
-   ever served, and the root, `/skills/compare`, `/instructions/compare`,
-   `/global-consent`, `/skills/<tool>/<source-relative path>`,
-   `/instructions/<source-relative path>`, `/mcp/<source-relative path>`,
-   `/rules/<source-relative path>`, and `/permissions/<source-relative path>` client
-   routes all boot the same packaged SPA shell, which embeds no session data.
+   ever served, and the root, `/global-consent`, each kind's comparison route
+   (`/skills/compare`, `/instructions/compare`, `/mcp/compare`,
+   `/prompts-and-commands/compare`), and each kind's detail route
+   (`/skills/<tool>/<source-relative path>`, `/instructions/<source-relative path>`,
+   `/mcp/<source-relative path>`, `/rules/<source-relative path>`,
+   `/prompts-and-commands/<source-relative path>`,
+   `/permissions/<source-relative path>`) all boot the same packaged SPA shell, which
+   embeds no session data.
 6. Queue ordering across Repository and each tool-specific Global rescan, duplicate
    rejection, aborts, partial outcomes, fatal failures, and polling expose only
    whole generations. A scan queued behind another Source starts from its owning

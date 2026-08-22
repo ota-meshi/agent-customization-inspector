@@ -16,16 +16,19 @@
 // and a per-vendor entry point would enumerate the same directory once per
 // recognizing product.
 //
-// A Markdown customization's declarations — a skill's, and an instruction
-// file's — are read out as the file wrote them (FR-007): every declared key in
-// authored order, plus the instructions left once the block is removed. The
-// skill's declared name leads because it seeds the resolved name the grouped
-// inventory row is keyed by and the heading a detail page shows — authored
-// when declared, the skill directory otherwise — and the authored value is not
-// recoverable from the path: a skill's `name` need not match its directory. An
-// instruction file has no name to read at all — its payload is the
-// presentation plus the applicability range its inventory row is grouped by
-// (data-model.md § Inventory unit).
+// A Markdown customization's declarations — a skill's, an instruction file's,
+// and a command file's — are read out as the file wrote them (FR-007): every
+// declared key in authored order, plus the instructions left once the block is
+// removed. The skill's declared name leads because it seeds the resolved name
+// the grouped inventory row is keyed by and the heading a detail page shows —
+// authored when declared, the skill directory otherwise — and the authored
+// value is not recoverable from the path: a skill's `name` need not match its
+// directory. An instruction file has no name to read at all — its payload is
+// the presentation plus the applicability range its inventory row is grouped
+// by. A command file has no name to read either, and for a sharper reason: the
+// vendor ignores a `name` key in one and derives the command from the path, so
+// the name its row is grouped by is the admitting rule's answer rather than
+// anything the bytes hold (data-model.md § Inventory unit).
 // No value is captioned, classified, or explained: what a key means is the
 // vendor's documentation, not this product's.
 //
@@ -205,6 +208,49 @@ export type RecognitionDetails =
       readonly applicabilityRange: string | null;
     }
   /**
+   * A command file: a prompt a reader invokes by name, identified by that name
+   * and presented by what it declares.
+   *
+   * The name is not read out of the file, because it is not in the file:
+   * Claude Code ignores a `name` key in a command file and derives the name
+   * from the path instead, so the admitting rule is what answers it
+   * (`registry.ts` § CompiledStaticPromptRule). The presentation comes from
+   * the same one parse a skill and an instruction file use, because a command
+   * file supports a skill's frontmatter keys and its detail leads with them
+   * (FR-007).
+   */
+  | {
+      /** The recognized customization kind. */
+      readonly kind: 'prompt/command';
+      /**
+       * The name a reader invokes this file by — the identity its inventory
+       * row is grouped under (data-model.md § Inventory unit), answered by the
+       * admitting rule from the path it matched and, for a prompt file, from
+       * what that file declared.
+       *
+       * Empty exactly where the vendor's own derivation is: a file named `.md`
+       * in a command directory has nothing before its extension
+       * (api-types.ts § PromptInventoryEntryDto). Never a claim that the
+       * command is reachable either: a same-name skill outranks one, which is
+       * runtime this tool never observes (FR-009).
+       */
+      readonly invocationName: string;
+      /**
+       * Every key the command file's frontmatter declares, in authored order;
+       * the source of the detail response's `presentation.frontmatter`. Empty
+       * when the file declares no frontmatter, and empty for a `failed`
+       * extraction, which publishes nothing while the complete source stays
+       * displayed (FR-028).
+       */
+      readonly frontmatter: readonly DeclaredEntryDto[];
+      /**
+       * The file with its frontmatter block removed: the source of the detail
+       * response's `presentation.bodyText`. Empty for a `failed` extraction:
+       * extraction is all-or-nothing (FR-028).
+       */
+      readonly bodyText: string;
+    }
+  /**
    * An MCP declaration carrier, identified by the servers it declares. The
    * kind's inventory unit is one declaration (data-model.md § Inventory
    * unit), so the carrier's one recognition holds them all and the session
@@ -256,7 +302,10 @@ export type RecognitionDetails =
    */
   | {
       /** The recognized customization kind. */
-      readonly kind: Exclude<CustomizationKind, 'skill' | 'instructions' | 'MCP'>;
+      readonly kind: Exclude<
+        CustomizationKind,
+        'skill' | 'instructions' | 'MCP' | 'prompt/command'
+      >;
     };
 
 /**
@@ -422,6 +471,64 @@ export class ToolRecognition {
   }
 
   /**
+   * Builds one command recognition from the shared Markdown extraction: the
+   * declarations the file wrote and the instructions left once the block is
+   * removed (FR-007). Both are empty for a failed extraction, which publishes
+   * nothing while the complete source stays displayed (FR-028).
+   *
+   * Its own factory rather than the instruction one under another kind: the
+   * two kinds ask their admitting rule different questions — what a file
+   * governs, and what a file is invoked by — and a row grouped by one would
+   * be wrong under the other (data-model.md § Inventory unit).
+   */
+  public static recognizePrompt(
+    sourceRelativePath: string,
+    tool: SupportedTool,
+    extraction: RecognitionExtraction<ParsedMarkdownDocument | undefined>,
+    admissions: readonly RecognitionAdmission[],
+  ): ToolRecognition {
+    // Asked of the admitting rule, which is where a product's own naming
+    // lives. Any admission answers: a recognition's admissions are one
+    // product's, and that product defines the answer once, so they cannot
+    // disagree. The narrowing is the compiler's own, over the `kind` that
+    // discriminates `CompiledCandidateRule` — nothing here asserts a
+    // capability the unit might not have.
+    const [admission] = admissions;
+    if (admission === undefined || admission.compiled.kind !== 'prompt/command') {
+      throw new TypeError('a command recognition has no rule that can answer its name');
+    }
+    // The one parse the kind's own name may come out of: a prompt file
+    // declares its `name`, so the rule is asked with the declarations beside
+    // the path.
+    //
+    // A failed extraction hands the rule an empty list, so the name falls back
+    // to the path — the same string the vendor's own fallback produces for a
+    // file that declares none, reached for a different reason. That is a
+    // deliberate accepted limitation rather than a claim the two states are
+    // one: a row has to be listed under something, the path is the only fact a
+    // failed parse cannot take away, and what distinguishes the two is the
+    // extraction Diagnostic this recognition carries — which every surface
+    // showing the definition shows beside it, saying the declarations are
+    // unknown rather than absent (FR-028).
+    const frontmatter = extraction.extracted?.frontmatterEntries ?? [];
+    return ToolRecognition.#assemble(
+      sourceRelativePath,
+      tool,
+      {
+        kind: 'prompt/command',
+        // Derived from the path, so a failed extraction takes nothing away
+        // from it: the row keeps its identity while the declarations it could
+        // not read stay unknown (FR-028).
+        invocationName: admission.compiled.invocationNameOf(sourceRelativePath, frontmatter),
+        frontmatter,
+        bodyText: extraction.extracted?.body ?? '',
+      },
+      extraction.status,
+      admissions,
+    );
+  }
+
+  /**
    * Builds one MCP carrier recognition from the carrier rule's own
    * declaration extraction. `servers` is empty for a failed extraction, which
    * publishes nothing while the carrier stays an admitted candidate (FR-028);
@@ -475,7 +582,7 @@ export class ToolRecognition {
   public static recognizeOther(
     sourceRelativePath: string,
     tool: SupportedTool,
-    kind: Exclude<CustomizationKind, 'skill' | 'instructions' | 'MCP'>,
+    kind: Exclude<CustomizationKind, 'skill' | 'instructions' | 'MCP' | 'prompt/command'>,
     admissions: readonly RecognitionAdmission[],
   ): ToolRecognition {
     return ToolRecognition.#assemble(
@@ -644,9 +751,10 @@ export interface RecognitionAdmission {
  * extraction family, so what an extraction produced is the slot's own type
  * and no consumer re-derives a payload's family from its runtime shape. Each
  * slot runs at most once and is shared by every recognition that reads it —
- * both Markdown kinds by the one parse, every tool alike — because what a
- * file declares does not depend on who asks (same-fact-once). A kind with no
- * extraction has no slot: its factory records `not-attempted` directly.
+ * `skill`, `instructions`, and `prompt/command` by the one Markdown parse,
+ * every tool alike — because what a file declares does not depend on who asks
+ * (same-fact-once). A kind with no extraction has no slot: its factory
+ * records `not-attempted` directly.
  */
 class CandidateExtractions {
   /** The file's complete decoded text every slot reads; see {@link RecognitionInput.sourceText}. */
@@ -670,12 +778,13 @@ class CandidateExtractions {
   }
 
   /**
-   * The Markdown extraction both frontmatter-led kinds read — the parsed
-   * document with its rendered declaration entries, the parser module's own
-   * presentation (`parsers/markdown.ts`): what the file declares does not
-   * depend on which product or kind asks, so parsing once is the
-   * same-fact-once rule, not an optimization with a semantic. A throw inside
-   * the parse or its rendering is this extraction's `failed` state (FR-028).
+   * The Markdown extraction every frontmatter-led kind reads — `skill`,
+   * `instructions`, and `prompt/command` alike: the parsed document with its
+   * rendered declaration entries, the parser module's own presentation
+   * (`parsers/markdown.ts`). What the file declares does not depend on which
+   * product or kind asks, so parsing once is the same-fact-once rule, not an
+   * optimization with a semantic. A throw inside the parse or its rendering
+   * is this extraction's `failed` state (FR-028).
    */
   public markdown(): RecognitionExtraction<ParsedMarkdownDocument> {
     this.#markdown ??= RecognitionExtraction.run(
@@ -798,6 +907,16 @@ export async function recognizeCandidateForVendors(
       }
       if (kind === 'instructions') {
         return ToolRecognition.recognizeInstructions(
+          input.matchedPath,
+          tool,
+          extractions.markdown(),
+          group,
+        );
+      }
+      if (kind === 'prompt/command') {
+        // The same one parse the two other frontmatter-led kinds read: what a
+        // file declares does not depend on which kind asks for it.
+        return ToolRecognition.recognizePrompt(
           input.matchedPath,
           tool,
           extractions.markdown(),

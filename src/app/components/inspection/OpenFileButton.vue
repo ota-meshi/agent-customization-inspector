@@ -27,7 +27,17 @@
 // set of buttons revealed by a toggle — and it stays operable with Tab and
 // Enter alone, where a `menu` role would owe readers arrow-key roving focus
 // this product would then have to keep correct.
-import { computed, inject, onBeforeUnmount, ref, useId, useTemplateRef, watch } from 'vue';
+//
+// That disclosure is a popover, so the platform owns what a hand-written
+// dropdown otherwise re-implements: `popovertarget` opens and closes it, a
+// press outside dismisses it, Escape closes it and returns focus to the
+// toggle, and it draws in the top layer where no ancestor's stacking or
+// clipping reaches it. Anchor positioning then hangs it from the control,
+// flips it to the side that has room, and settles on the position that
+// overflows least where neither side does, which is what keeps it inside the
+// viewport at the reflow width (WCAG 1.4.10) — measuring the room left beside
+// a box is the one thing hand-written positioning cannot do.
+import { computed, inject, ref, useId, useTemplateRef, watch } from 'vue';
 import type { Component } from 'vue';
 import ChevronDownIcon from '~icons/lucide/chevron-down';
 import ContainingFolderIcon from '~icons/lucide/folder-open';
@@ -70,10 +80,16 @@ const TARGET_ICON: Readonly<Record<FileOpenTarget, Component>> = {
   'containing-folder': ContainingFolderIcon,
 };
 
-/** Ties the toggle to the list it controls even while the list is collapsed. */
+/** Ties the toggle to the popover it controls even while that popover is closed. */
 const listId = useId();
 
-/** True while the list of applications is showing. */
+/**
+ * True while the list of applications is showing. The popover is what opens
+ * and closes — through the toggle, a press outside, or Escape — so this is
+ * kept in step with it by its own `toggle` event rather than assigned where a
+ * press is handled: the two dismissals this component never hears about would
+ * otherwise leave the toggle claiming to be expanded.
+ */
 const listOpen = ref(false);
 
 /**
@@ -94,10 +110,13 @@ const requesting = ref(false);
  */
 const failure = ref<string | null>(null);
 
-/** The toggle, so closing with Escape returns focus to what opened the list. */
+/** The toggle, so a choice returns focus to what opened the list. */
 const toggle = useTemplateRef<HTMLButtonElement>('toggle');
 
-/** The whole control, so a pointer press outside it closes the list. */
+/** The popover, so this component can close it as well as the platform. */
+const list = useTemplateRef<HTMLElement>('list');
+
+/** The whole control, so focus leaving it can be told from focus moving inside it. */
 const container = useTemplateRef<HTMLElement>('container');
 
 /** The applications this host published for this machine, in its own order. */
@@ -168,12 +187,13 @@ function chooseAndOpen(target: FileOpenTarget): void {
     return;
   }
   rememberOpenTarget(target);
-  // Focus moves before the list is hidden: the button the reader pressed is
-  // inside it, so hiding it first drops focus to the document body (WCAG
-  // 2.4.3). The toggle is the control the list belongs to, which is where
-  // Escape puts it too.
+  // Focus moves before the popover is hidden: the button the reader pressed is
+  // inside it, and the platform returns focus to the toggle for its own
+  // dismissals only — WebKit drops it to the document body when a page hides a
+  // popover itself (WCAG 2.4.3). The toggle is the control the list belongs
+  // to, which is where Escape and a press outside put it too.
   toggle.value?.focus();
-  listOpen.value = false;
+  list.value?.hidePopover();
   void openWith(target);
 }
 
@@ -187,52 +207,23 @@ watch(
   },
 );
 
-/** Closes the list and puts focus back on the toggle that opened it (WCAG 2.4.3). */
-function closeList(): void {
-  if (!listOpen.value) {
-    return;
-  }
-  listOpen.value = false;
-  toggle.value?.focus();
+/** Follows the popover's own open state, which is what {@link listOpen} states. */
+function followListState(event: ToggleEvent): void {
+  listOpen.value = event.newState === 'open';
 }
 
 /**
- * Closes the list on a press anywhere outside the control. A press is what
- * dismisses it rather than a click, so the list is gone before whatever was
- * pressed reacts; the keyboard's own way out is Escape, and Tab leaving the
- * control is handled by the `focusout` below.
+ * Closes the list when focus leaves the control entirely, such as on Tab —
+ * the one dismissal the platform does not perform, since a popover stays open
+ * while focus moves past it. The popover draws in the top layer but remains
+ * this element's descendant, so focus moving into it is focus staying inside.
  */
-function closeOnOutsidePress(event: PointerEvent): void {
-  const target = event.target;
-  if (target instanceof Node && container.value?.contains(target) === true) {
-    return;
-  }
-  listOpen.value = false;
-}
-
-// Registered only while the list is showing: a document listener that outlives
-// the open list would be one more thing every detail page pays for.
-watch(listOpen, (open) => {
-  if (open) {
-    document.addEventListener('pointerdown', closeOnOutsidePress);
-    return;
-  }
-  document.removeEventListener('pointerdown', closeOnOutsidePress);
-});
-
-onBeforeUnmount(() => {
-  // Reached when the reader navigates away with the list still open, which
-  // never runs the watcher's own removal.
-  document.removeEventListener('pointerdown', closeOnOutsidePress);
-});
-
-/** Closes the list when focus leaves the control entirely, such as on Tab. */
 function closeOnFocusLeaving(event: FocusEvent): void {
   const next = event.relatedTarget;
   if (next instanceof Node && container.value?.contains(next) === true) {
     return;
   }
-  listOpen.value = false;
+  list.value?.hidePopover();
 }
 </script>
 
@@ -241,7 +232,6 @@ function closeOnFocusLeaving(event: FocusEvent): void {
     v-if="selected !== null"
     ref="container"
     class="aci-open-file-button"
-    @keydown.escape="closeList"
     @focusout="closeOnFocusLeaving"
   >
     <span class="aci-open-file-button__controls">
@@ -263,25 +253,35 @@ function closeOnFocusLeaving(event: FocusEvent): void {
         />
       </button>
       <!-- Nothing to choose between when the host published one application,
-           and no toggle for a list that would hold one item. -->
+           and no toggle for a list that would hold one item. `popovertarget`
+           is the whole open-and-close: the press, the press outside, and
+           Escape are the platform's, and `aria-expanded` follows what it did
+           rather than what was pressed. -->
       <button
         v-if="targets.length > 1"
         ref="toggle"
         type="button"
         class="aci-open-file-button__toggle"
+        :popovertarget="listId"
         :aria-expanded="listOpen"
         :aria-controls="listId"
         title="Choose how to open this file"
         aria-label="Choose how to open this file"
-        @click="listOpen = !listOpen"
       >
         <ChevronDownIcon class="aci-open-file-button__icon" aria-hidden="true" />
       </button>
     </span>
-    <!-- Kept in the document and hidden, rather than inserted when it opens,
+    <!-- Kept in the document while closed, rather than inserted when it opens,
          so the toggle's `aria-controls` always names an element that exists.
-         `display: none` keeps its buttons out of the tab order meanwhile. -->
-    <ul v-show="listOpen" :id="listId" class="aci-open-file-button__list">
+         A closed popover is `display: none`, which keeps its buttons out of
+         the tab order meanwhile. -->
+    <ul
+      :id="listId"
+      ref="list"
+      popover
+      class="aci-open-file-button__list"
+      @toggle="followListState"
+    >
       <li v-for="target of targets" :key="target">
         <button
           type="button"
@@ -309,21 +309,24 @@ function closeOnFocusLeaving(event: FocusEvent): void {
 
 <style scoped>
 /* Beside the path it opens, and never louder than it: the path is what the
-   reader came for, this is one thing they can do with it. Positioned so the
-   list can hang from the control without the heading line reserving space for
-   it. */
+   reader came for, this is one thing they can do with it. `anchor-scope`
+   confines the anchor below to this instance: an anchor name is otherwise
+   document-wide and resolves to the last element carrying it, so on a page
+   rendering two of these controls every list would hang from the second. */
 .aci-open-file-button {
+  anchor-scope: --aci-open-file;
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
   margin-inline-start: 0.6rem;
-  position: relative;
   vertical-align: middle;
 }
 
 /* The two halves read as one control, so they share a border and only the
-   seam between them divides them. */
+   seam between them divides them — and the list hangs from the pair rather
+   than from the chevron that opens it. */
 .aci-open-file-button__controls {
+  anchor-name: --aci-open-file;
   display: inline-flex;
   align-items: stretch;
   border: 1px solid var(--aci-border);
@@ -361,25 +364,37 @@ function closeOnFocusLeaving(event: FocusEvent): void {
   width: 1em;
 }
 
+/* Hung under the control and starting where it starts, so the entries begin
+   on the edge the reader's eye is already on. The end edge is what a control
+   fixed to the end of its container would anchor to; this one is not — it
+   flows after a path, so where it lands on its line is a fact about that
+   path's length. The fallbacks answer what the anchor cannot: a control near
+   the end of a narrow viewport, where the list flips to end where the control
+   ends, and one with no room below it, where it flips above. The list is then
+   inside the viewport at any width and at 200% zoom with no two-dimensional
+   page scrolling (WCAG 1.4.10, contracts/accessibility-acceptance.md
+   AUTO-1.4.10). Choosing between them needs the room left beside the control,
+   which is the measurement no hand-written position has. */
 .aci-open-file-button__list {
+  position: absolute;
+  position-anchor: --aci-open-file;
+  position-area: block-end span-inline-end;
+  position-try-fallbacks:
+    flip-inline,
+    flip-block,
+    flip-block flip-inline;
   background: var(--aci-surface-raised);
   border: 1px solid var(--aci-border);
   border-radius: 0.25rem;
+  color: var(--aci-text);
   font-size: 0.85rem;
   font-weight: 400;
-  inset-block-start: calc(100% + 0.25rem);
-  /* Anchored at the control's end rather than its start: this control sits
-     beside a path, so it is usually near the end of its line, and a list that
-     grew from the start edge would run off the viewport there. `max-width`
-     keeps a long entry inside the viewport at any width and at 200% zoom
-     (WCAG 1.4.10). */
-  inset-inline-end: 0;
   list-style: none;
-  margin: 0;
-  max-width: min(20rem, 90vw);
+  /* A popover's own margin is `auto`, which would centre it in the viewport;
+     this replaces it with the gap between the control and the list. */
+  margin: 0.25rem 0 0;
   padding: 0.2rem;
-  position: absolute;
-  z-index: 1;
+  max-width: min(20rem, 90vw);
 }
 
 .aci-open-file-button__choice {

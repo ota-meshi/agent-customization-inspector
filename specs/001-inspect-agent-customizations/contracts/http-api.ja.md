@@ -248,6 +248,19 @@ SessionSnapshot
 │   └── sourceRelativePath, recognitions[] { tool, surfaces[] } —
 │       認識された rule file 1つにつき1行、その recognition を closed tool order
 │       で、各 recognition の product surface を closed surface order で持つ
+├── prompts[]
+│   └── name string,
+│       definitions[] { sourceRelativePath, tool, surfaces[], diagnosticIds[] } —
+│       読み手が起動する名前1つにつき1行を name 順で持ち、各行はその名前で
+│       起動される file を Source 相対パス順、次に tool 順で列挙する。どの名前
+│       になるかは、その file を admit した rule のものである。command file
+│       の名前が著述されることはない: どちらの product も command file の
+│       `name` key を無視し、それぞれが command を path から導出する。両者が
+│       一致する root 直下の子は両方を名指す 1 row となり、nested な file は
+│       Claude 単独の row となる。VS Code prompt file の名前は、その file が
+│       宣言した `name` であり、宣言がなければ自身の file 名が代わりに立つ —
+│       command が解決する名前を宣言した prompt は、その command の row の
+│       definition となる
 ├── permissions[]
 │   └── sourceRelativePath, recognitions[] { tool, surfaces[] },
 │       diagnosticIds[] —
@@ -517,7 +530,7 @@ phaseで、Global taskがこのfunctionとdetail/comparison routeへSource quali
 Active-generation file detailを1件返す。fileをrecognitionが所有するかどうかで判別される。
 
 ```text
-FileDetail — kind: 'skill' | 'instructions' | 'rule' | 'file'
+FileDetail — kind: 'skill' | 'instructions' | 'prompt/command' | 'rule' | 'file'
 ├── kind 'skill' — fileは認識されたskillのentry point:
 │   ├── file — encodingで判別されるCustomizationFile 1件:
 │   │   ├── sourceId, sourceRelativePath, encoding, diagnosticIds[]
@@ -532,6 +545,11 @@ FileDetail — kind: 'skill' | 'instructions' | 'rule' | 'file'
 │   │   └── bodyText
 │   └── diagnostics[]
 ├── kind 'instructions' — fileは認識されたinstruction file:
+│   ├── file — 上と同じ
+│   ├── presentation — skill variantと同じ: 同じscan時の1回のparseで、
+│   │   失敗時nullの規則も同じ（FR-028）
+│   └── diagnostics[]
+├── kind 'prompt/command' — fileは認識されたcommand file:
 │   ├── file — 上と同じ
 │   ├── presentation — skill variantと同じ: 同じscan時の1回のparseで、
 │   │   失敗時nullの規則も同じ（FR-028）
@@ -552,6 +570,13 @@ generationへ解決する: 絶対pathはhostのものであり、clientがSource
 detail responseは、pageが開けるものを何も渡さない。
 
 この木がresponseの形そのものである: clientは正確にこのfieldだけに依存できる。
+`prompt/command` variantが`presentation`を持つのは、prompt/command fileがskillと同じ
+frontmatter keyを取るためであり、そのdetailはfileが書いたdeclarationと、その後に続く
+promptから始まる。持たないのは、読み手が入力する名前である: これはdetailのfieldではなく
+ruleが答えるものであるため、inventoryの事実であり — 各`prompts[]` rowがgroup化される
+名前そのものであり — skillの認識toolとinvocation nameが`skills[]`の事実であるのと同じで
+ある。名前を宣言したprompt fileも例外ではない: その宣言はfileが書いた他のkeyと同じく
+`presentation.frontmatter`にあり、ruleがそこから何を作ったかがrowの事実である。
 `rule` variantは`presentation`を持たない: これらのfileはauthorが書いた
 1つのdocumentとして公開され、そこから何も読み出さないためである。Claudeの`.claude/rules/**` fileは
 frontmatter blockを含めて丸ごとresponseへ届く — ruleをdeclarationとbodyへ割ると、1つの
@@ -649,7 +674,9 @@ Declaration comparisonは、sideごとに1つのcanonical serialized documentを
 （research.md § 7）。frontmatter宣言はfileのMarkdown kindに対する1回のparseであって認識する
 全toolが共有するため、toolは宣言の座標ではなく、tool recognitionはdiffの横でtoolごとに比較する。
 各sideはYAMLへserializeし、skill comparisonは`name`と`description`を先頭にそれ以外のkeyを
-sort順で、instruction comparisonは全keyをsort順で並べる。MCP kindの宣言は各recognizing tool
+sort順で、instruction comparisonとprompt-and-command comparisonは全keyをsort順で並べる。Prompt-and-command
+comparisonはrecognitionごとにもう1つ事実を述べる。このkindの行はfileではなく名前であるためで、認識する
+各toolのcellが、そのtoolがそのsideのfileを起動する名前を運ぶ。MCP kindの宣言は各recognizing tool
 自身のreading（data-model.md § Field reading）であり、その比較surfaceは宣言済みserver名自身の
 もの — 1つの名前のdeclarationをその行の2つのcarrierそれぞれから取り、sideごとに1つの
 canonical JSON documentへserializeする — で、通常の`get-mcp-carrier-detail` result 2件を通じて
@@ -1308,9 +1335,11 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
    round-tripすることを証明する。
 5. Static traversal/encoded traversal attemptがpackaged `dist/public` outputの外へ出ない。Serve
    される全byteがそのpackaged Nuxt outputに由来し、inspected fileを一切serveせず、root、
-   `/skills/compare`、`/instructions/compare`、`/global-consent`、`/skills/<tool>/<Source相対パス>`、
-   `/instructions/<Source相対パス>`、`/mcp/<Source相対パス>`、`/rules/<Source相対パス>`、
-   `/permissions/<Source相対パス>`のclient routeがすべて同じpackaged SPA shellをbootし、
+   `/global-consent`、各kindのcomparison route（`/skills/compare`、`/instructions/compare`、
+   `/mcp/compare`、`/prompts-and-commands/compare`）、各kindのdetail route
+   （`/skills/<tool>/<Source相対パス>`、`/instructions/<Source相対パス>`、`/mcp/<Source相対パス>`、
+   `/rules/<Source相対パス>`、`/prompts-and-commands/<Source相対パス>`、
+   `/permissions/<Source相対パス>`）のclient routeがすべて同じpackaged SPA shellをbootし、
    そのshellはsession dataをembedしない。
 6. Repositoryと各tool-specific Global rescanのqueue order、duplicate rejection、abort、partial
    outcome、fatal failure、pollingがwhole generationだけを公開する。別のSourceの後でqueueした

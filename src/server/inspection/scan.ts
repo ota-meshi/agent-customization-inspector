@@ -25,7 +25,7 @@
 // converted into a Diagnostic — it propagates ordinarily from the traversal
 // call, aborts the attempt without a commit, and is reported as the failed
 // request's real error (FR-030 retains the last committed snapshot).
-import { SUPPORTED_TOOL_ORDER, type CustomizationKind } from '../../shared/entities';
+import { SUPPORTED_TOOL_ORDER } from '../../shared/entities';
 import {
   DiagnosticRecord,
   sortDiagnostics,
@@ -334,12 +334,7 @@ export async function assembleScanPublication(
         // what each inventory definition republishes. A recognizer never sees
         // the diagnostic ID it will be given, so the ID is attached here
         // rather than inside it.
-        const byKind = new Map<CustomizationKind, ToolRecognition[]>();
-        for (const recognition of fileRecognitions) {
-          const group = byKind.get(recognition.details.kind) ?? [];
-          group.push(recognition);
-          byKind.set(recognition.details.kind, group);
-        }
+        const byKind = Map.groupBy(fileRecognitions, (recognition) => recognition.details.kind);
         for (const group of byKind.values()) {
           // The production recognizer's groups are uniformly parsed or
           // failed — shared extraction for the Markdown kinds, one parser

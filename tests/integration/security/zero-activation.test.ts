@@ -38,6 +38,7 @@ import * as fsIo from '../../../src/server/inspection/fs-io';
 import {
   FIXTURE_ENVIRONMENT_REFERENCE,
   FIXTURE_SECRET_LITERAL,
+  buildCommandFixture,
   buildClaudeMcpFixture,
   buildClaudeRuleFixture,
   buildCodexMcpFixture,
@@ -718,6 +719,243 @@ describe('Claude rule inspection evaluates no glob (T430)', () => {
     const source = detail !== null && detail.file.encoding === 'utf-8' && detail.file.sourceText;
     expect(source).toContain(FIXTURE_SECRET_LITERAL);
     expect(source).toContain(FIXTURE_ENVIRONMENT_REFERENCE);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(vi.mocked(fsIo.readFile).mock.calls).toEqual([]);
+    expect(vi.mocked(fsIo.readdir).mock.calls).toEqual([]);
+  });
+});
+
+describe('Claude command inspection runs nothing (T450)', () => {
+  // A command file is a prompt a reader invokes: its body names agents,
+  // skills, and files, and its frontmatter names tools it would be allowed to
+  // use. Inspecting one must prove more than "no network": no named target is
+  // resolved, opened, imported, or read, and nothing the prompt describes is
+  // carried out.
+  it('publishes the declarations and the prompt while resolving and running nothing', async () => {
+    const fixture = buildCommandFixture('inspector-zero-activation-claude-commands');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const observed: string[] = [];
+    const globalScope = globalThis as Record<string, unknown>;
+    const originals = new Map<string, unknown>();
+    for (const name of ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'open']) {
+      originals.set(name, globalScope[name]);
+      globalScope[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during command inspection`);
+      };
+    }
+    const nodeSurfaces: [Record<string, unknown>, string][] = [
+      [net as unknown as Record<string, unknown>, 'createConnection'],
+      [tls as unknown as Record<string, unknown>, 'connect'],
+      [dns as unknown as Record<string, unknown>, 'lookup'],
+      [childProcess as unknown as Record<string, unknown>, 'spawn'],
+      [childProcess as unknown as Record<string, unknown>, 'exec'],
+      [childProcess as unknown as Record<string, unknown>, 'execFile'],
+      [http as unknown as Record<string, unknown>, 'request'],
+      [https as unknown as Record<string, unknown>, 'request'],
+      [dgram as unknown as Record<string, unknown>, 'createSocket'],
+    ];
+    const nodeOriginals = nodeSurfaces.map(([host, name]) => {
+      const original = host[name];
+      host[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during command inspection`);
+      };
+      return { host, name, original } as const;
+    });
+    vi.clearAllMocks();
+    let publication;
+    try {
+      publication = await runSourceScan({
+        sourceId: 'src-1',
+        root: fixture.root,
+        rootFailureOwner: 'repository',
+      });
+      expect(publication.kind).toBe('publishable');
+    } finally {
+      for (const [name, value] of originals) {
+        globalScope[name] = value;
+      }
+      for (const { host, name, original } of nodeOriginals) {
+        host[name] = original;
+      }
+    }
+    expect(observed).toEqual([]);
+    if (publication.kind !== 'publishable') {
+      throw new Error('expected a publishable scan');
+    }
+    // The prompt names a subagent, a skill, and a relative file. None of the
+    // three becomes a read: the only files opened are the candidates the
+    // allowlist admitted (FR-019).
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) => String(call[0]));
+    expect(opened).not.toContain(join(fixture.root, 'checklist.md'));
+    for (const forbidden of fixture.nearMissPaths) {
+      expect(opened).not.toContain(join(fixture.root, ...forbidden.split('/')));
+    }
+    // A standalone `.claude/prompts` file is never opened either: FR-034
+    // keeps the directory out of the allowlist entirely.
+    expect(opened).not.toContain(join(fixture.root, ...fixture.promptsPath.split('/')));
+    // What the recognition carries is the file's own declarations and prompt,
+    // and no reference record: no shipped recognition can produce an edge.
+    const referencing = publication.recognitions.find(
+      (recognition) =>
+        recognition.details.kind === 'prompt/command' &&
+        recognition.sourceRelativePath === fixture.referencingCommandPath,
+    );
+    expect(referencing?.details).toMatchObject({ kind: 'prompt/command', frontmatter: [] });
+    expect(Object.keys(referencing ?? {})).not.toContain('relationships');
+  });
+
+  it('activates nothing for the Copilot recognition of the same files (T468)', async () => {
+    // The root direct children carry a Copilot recognition as well, from the
+    // same one read and the same one parse. Nothing about the second product
+    // adds a capability: no target is resolved, opened, imported, or run, and
+    // the same-name skill priority the CLI documents is never evaluated here.
+    const fixture = buildCommandFixture('inspector-zero-activation-copilot-commands');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const observed: string[] = [];
+    const globalScope = globalThis as Record<string, unknown>;
+    const originals = new Map<string, unknown>();
+    for (const name of ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'open']) {
+      originals.set(name, globalScope[name]);
+      globalScope[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during command inspection`);
+      };
+    }
+    vi.clearAllMocks();
+    let publication;
+    try {
+      publication = await runSourceScan({
+        sourceId: 'src-1',
+        root: fixture.root,
+        rootFailureOwner: 'repository',
+      });
+    } finally {
+      for (const [name, value] of originals) {
+        globalScope[name] = value;
+      }
+    }
+    expect(observed).toEqual([]);
+    if (publication.kind !== 'publishable') {
+      throw new Error('expected a publishable scan');
+    }
+    // One read per file, whichever products recognized it: a shared root
+    // command is read once and recognized twice (FR-024).
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) => String(call[0]));
+    const sharedPath = join(fixture.root, ...fixture.declaringCommandPath.split('/'));
+    expect(opened.filter((path) => path === sharedPath)).toHaveLength(1);
+    const shared = publication.recognitions.filter(
+      (recognition) =>
+        recognition.details.kind === 'prompt/command' &&
+        recognition.sourceRelativePath === fixture.declaringCommandPath,
+    );
+    expect(shared.map((recognition) => recognition.tool).toSorted()).toEqual(['claude', 'copilot']);
+    // Neither recognition carries an edge: no shipped recognition can produce
+    // one, so a named agent or skill in a prompt stays text.
+    for (const recognition of shared) {
+      expect(Object.keys(recognition)).not.toContain('relationships');
+    }
+  });
+
+  it('opens no link, image, or `#file` target a prompt names (T496)', async () => {
+    // A prompt file is the kind's other location, and its body carries the
+    // reference shapes a command's does not: Markdown links, images, and
+    // `#file` tokens. None of them navigates, loads, or authorizes a read —
+    // the only files opened are the candidates the allowlist admitted
+    // (FR-019, FR-033).
+    const fixture = buildCommandFixture('inspector-zero-activation-copilot-prompts');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const observed: string[] = [];
+    const globalScope = globalThis as Record<string, unknown>;
+    const originals = new Map<string, unknown>();
+    for (const name of ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'open']) {
+      originals.set(name, globalScope[name]);
+      globalScope[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during prompt inspection`);
+      };
+    }
+    vi.clearAllMocks();
+    let publication;
+    try {
+      publication = await runSourceScan({
+        sourceId: 'src-1',
+        root: fixture.root,
+        rootFailureOwner: 'repository',
+      });
+    } finally {
+      for (const [name, value] of originals) {
+        globalScope[name] = value;
+      }
+    }
+    expect(observed).toEqual([]);
+    if (publication.kind !== 'publishable') {
+      throw new Error('expected a publishable scan');
+    }
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) => String(call[0]));
+    // The locations the prompt rule does not reach are never read either.
+    for (const forbidden of [
+      '.github/prompts/notes.md',
+      '.github/prompts/team/deploy.prompt.md',
+      'packages/api/.github/prompts/deploy.prompt.md',
+    ]) {
+      expect(opened).not.toContain(join(fixture.root, ...forbidden.split('/')));
+    }
+    // The declared name is the row's identity and the declarations are the
+    // detail's; no edge record exists to carry a reference.
+    const declaring = publication.recognitions.find(
+      (recognition) =>
+        recognition.details.kind === 'prompt/command' &&
+        recognition.sourceRelativePath === fixture.declaringPromptPath,
+    );
+    expect(declaring?.details).toMatchObject({
+      kind: 'prompt/command',
+      invocationName: fixture.declaredPromptName,
+    });
+    expect(Object.keys(declaring ?? {})).not.toContain('relationships');
+  });
+
+  it('assembles the command detail without any request or read', async () => {
+    const fixture = buildCommandFixture('inspector-zero-activation-claude-commands-detail');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const session = new InspectionSession({
+      invocationCwd: fixture.root,
+      rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
+    });
+    const context = { session, coordinator: new SessionCoordinator(session) };
+    const repository = session.snapshot().sources[0]!;
+    const admission = context.coordinator.admitScan(repository.sourceId, {
+      kind: 'startup',
+      operationId: null,
+    });
+    if (admission.kind !== 'admitted') {
+      throw new Error('the first scan was not admitted');
+    }
+    await executeRepositoryScan(
+      context,
+      admission.scanRequestId,
+      repository.sourceId,
+      'repository',
+    );
+
+    vi.clearAllMocks();
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const detail = session.fileDetail(fixture.secretCommandPath);
+
+    // Served from the committed generation: the credential and the
+    // environment reference reach the response exactly as authored, neither
+    // masked nor resolved (FR-025, FR-026), while nothing connects or reads.
+    expect(detail?.kind).toBe('prompt/command');
+    const source = detail !== null && detail.file.encoding === 'utf-8' && detail.file.sourceText;
+    expect(source).toContain(FIXTURE_SECRET_LITERAL);
+    expect(source).toContain(FIXTURE_ENVIRONMENT_REFERENCE);
+    // The declaration that carries the credential is published as authored
+    // too, so the reader sees the value their own file wrote.
+    const declared =
+      detail !== null && detail.kind === 'prompt/command' ? detail.presentation : null;
+    expect(JSON.stringify(declared?.frontmatter)).toContain(FIXTURE_SECRET_LITERAL);
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(vi.mocked(fsIo.readFile).mock.calls).toEqual([]);
     expect(vi.mocked(fsIo.readdir).mock.calls).toEqual([]);

@@ -16,15 +16,15 @@ import type { CustomizationKind } from '../../shared/entities';
 
 /**
  * The kinds whose detail is addressed by a Source-relative Path alone. A kind
- * is here exactly when no further fact splits its detail: an instruction file
- * and a rule file each have one page however many products recognize them, a
- * permission policy is addressed by the path of the file that declares it —
- * the identity its inventory row is named by — and an MCP carrier's own page
- * is the carrier's.
+ * is here exactly when no further fact splits its detail: an instruction file,
+ * a rule file, and a prompt or command file each have one page however many
+ * products recognize them, a permission policy is addressed by the path of the file
+ * that declares it — the identity its inventory row is named by — and an MCP
+ * carrier's own page is the carrier's.
  */
 export type PathAddressedDetailKind = Extract<
   CustomizationKind,
-  'instructions' | 'rule' | 'permissions' | 'MCP'
+  'instructions' | 'rule' | 'prompt/command' | 'permissions' | 'MCP'
 >;
 
 /** The URL segment each path-addressed detail route is rooted at. */
@@ -33,6 +33,13 @@ const DETAIL_ROUTE_SEGMENT: Readonly<Record<PathAddressedDetailKind, string>> = 
   instructions: 'instructions',
   /** Rule files live under `/rules/`. */
   rule: 'rules',
+  /**
+   * Prompt and command files live under `/prompts-and-commands/`. The segment
+   * spells the whole kind out rather than taking the shorter half of it: a
+   * reader reads this one in the address bar, and `/prompts/` would name a
+   * surface that also lists commands (user decision).
+   */
+  'prompt/command': 'prompts-and-commands',
   /** Declared permission policies live under `/permissions/`. */
   permissions: 'permissions',
   /** MCP carriers live under `/mcp/`. */

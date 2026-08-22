@@ -29,6 +29,8 @@ let attachedModel: { value: string; language: string; uri: string; dispose: () =
   null;
 /** The options passed to `updateOptions`, so the surface's name is observable. */
 let updatedOptions: Record<string, unknown> | null = null;
+/** Every theme name Monaco was set to, so following the display is observable. */
+const themesSet: string[] = [];
 /** Set to make the next `createModel` throw, for the mid-swap failure case. */
 let failNextCreateModel = false;
 
@@ -65,7 +67,9 @@ vi.mock('monaco-editor/esm/vs/editor/editor.api.js', () => ({
         },
       };
     },
-    setTheme: () => undefined,
+    setTheme: (theme: string) => {
+      themesSet.push(theme);
+    },
   },
   Uri: { parse: (value: string) => value },
 }));
@@ -100,6 +104,7 @@ beforeEach(() => {
   attachedModel = null;
   updatedOptions = null;
   failNextCreateModel = false;
+  themesSet.length = 0;
 });
 
 describe('source language selection', () => {
@@ -237,35 +242,43 @@ describe('the mounted read-only surface', () => {
     // not meet contrast in that mode (WCAG 1.4.11). Both listeners are real
     // subscriptions: left bound, either would hold the disposed editor for the
     // life of the document.
-    const bound: string[] = [];
     const original = globalThis.matchMedia;
     const queries: string[] = [];
-    // Only the three members the composable touches; the cast goes through
-    // `unknown` because a stub of the whole `MediaQueryList` surface would be
-    // three unused members of noise around the subscription under test.
+    // Real event targets rather than add/remove stubs that record their calls:
+    // the composable binds both listeners under one `AbortSignal`, which only
+    // a platform event target honours, so a stub would report a subscription
+    // still bound where a browser has none. Only the members the composable
+    // touches; the cast goes through `unknown` because a stub of the whole
+    // `MediaQueryList` surface would be unused members of noise around the
+    // subscription under test.
+    const displays: EventTarget[] = [];
     globalThis.matchMedia = ((query: string) => {
       queries.push(query);
-      return {
-        matches: true,
-        addEventListener: (type: string) => {
-          bound.push(type);
-        },
-        removeEventListener: (type: string) => {
-          bound.splice(bound.indexOf(type), 1);
-        },
-      };
+      const display = Object.assign(new EventTarget(), { matches: true });
+      displays.push(display);
+      return display;
     }) as unknown as typeof globalThis.matchMedia;
     try {
       const viewer = await SourceViewerHandle.mount(document.createElement('div'));
       expect(queries).toEqual(['(prefers-color-scheme: dark)', '(forced-colors: active)']);
-      expect(bound).toEqual(['change', 'change']);
       // Both queries match in this stub, so the theme is the dark high-contrast
       // one. Monaco's own detection is off, because an explicit `theme` wins
       // over it and would otherwise leave a low-contrast theme in forced colours.
       expect(constructedOptions?.['theme']).toBe('hc-black');
       expect(constructedOptions?.['autoDetectHighContrast']).toBe(false);
+      // A change on either query re-sets the theme while the handle is alive.
+      themesSet.length = 0;
+      for (const display of displays) {
+        display.dispatchEvent(new Event('change'));
+      }
+      expect(themesSet).toEqual(['hc-black', 'hc-black']);
+      // After disposal neither reaches Monaco at all.
       viewer.dispose();
-      expect(bound).toEqual([]);
+      themesSet.length = 0;
+      for (const display of displays) {
+        display.dispatchEvent(new Event('change'));
+      }
+      expect(themesSet).toEqual([]);
     } finally {
       globalThis.matchMedia = original;
     }

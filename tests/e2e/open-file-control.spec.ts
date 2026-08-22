@@ -47,9 +47,9 @@ test('offers the applications the host can launch, and closes on Escape', async 
   const toggle = page.getByRole('button', { name: 'Choose how to open this file' });
   await expect(toggle).toHaveAttribute('aria-expanded', 'false');
 
-  // The list the toggle names exists while collapsed, so `aria-controls`
-  // points at an element that is really there; `display: none` is what keeps
-  // its buttons out of the tab order meanwhile.
+  // The list the toggle names exists while closed, so `aria-controls` points
+  // at an element that is really there; a closed popover's own `display: none`
+  // is what keeps its buttons out of the tab order meanwhile.
   const listId = await toggle.getAttribute('aria-controls');
   expect(listId).not.toBeNull();
   const list = page.locator(`#${listId ?? ''}`);
@@ -82,4 +82,62 @@ test('offers the applications the host can launch, and closes on Escape', async 
   await expect(toggle).toHaveAttribute('aria-expanded', 'false');
   await expect(list).not.toBeVisible();
   await expect(toggle).toBeFocused();
+});
+
+test('lays the list out beside the control, on one line per entry', async ({ page }) => {
+  // The list draws in the top layer, where shrink-to-fit measures it against
+  // the viewport rather than against the control, so `width: max-content` is
+  // what makes it the width its captions ask for. Nothing else in this file
+  // would notice a caption wrapped to one character per line: the list would
+  // still be attached, visible, and operable — and unreadable.
+  await page.goto(host.origin);
+  await page.locator('[role="tabpanel"] a[href^="/instructions/"]').first().click();
+  await page.getByRole('button', { name: 'Choose how to open this file' }).click();
+
+  const layout = await page.evaluate(() => {
+    const list = document.querySelector('.aci-open-file-button__list')!;
+    const control = document.querySelector('.aci-open-file-button')!;
+    // One rect per line box the caption occupies, which needs no font metric
+    // to interpret: a collapsed list gives one rect per character.
+    const lineCounts = [...list.querySelectorAll('.aci-open-file-button__choice')].map((choice) => {
+      const text = [...choice.childNodes].find((node) => node.nodeType === Node.TEXT_NODE)!;
+      const range = document.createRange();
+      range.selectNodeContents(text);
+      return range.getClientRects().length;
+    });
+    return {
+      listWidth: list.getBoundingClientRect().width,
+      controlWidth: control.getBoundingClientRect().width,
+      lineCounts,
+    };
+  });
+  expect(layout.lineCounts.length).toBeGreaterThan(1);
+  for (const lines of layout.lineCounts) {
+    expect(lines).toBe(1);
+  }
+  expect(layout.listWidth).toBeGreaterThan(layout.controlWidth);
+});
+
+test('keeps the open list inside the viewport at the reflow width', async ({ page }) => {
+  // At 320 CSS pixels the list is wider than the room left beside the control
+  // on either side, so neither the anchor nor its flipped fallback fits and
+  // the position that overflows least is what draws. It stays reachable, and
+  // opening it adds no horizontal scrolling either (WCAG 1.4.10).
+  await page.setViewportSize({ width: 320, height: 720 });
+  await page.goto(host.origin);
+  await page.locator('[role="tabpanel"] a[href^="/instructions/"]').first().click();
+  await page.getByRole('button', { name: 'Choose how to open this file' }).click();
+
+  const box = await page.evaluate(() => {
+    const rect = document.querySelector('.aci-open-file-button__list')!.getBoundingClientRect();
+    return {
+      left: rect.left,
+      right: rect.right,
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+    };
+  });
+  expect(box.left).toBeGreaterThanOrEqual(0);
+  expect(box.right).toBeLessThanOrEqual(box.clientWidth);
+  expect(box.scrollWidth).toBe(box.clientWidth);
 });

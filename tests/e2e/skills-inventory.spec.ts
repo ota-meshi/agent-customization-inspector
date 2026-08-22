@@ -21,6 +21,7 @@ import {
 } from '../fixtures/repositories/build-fixtures';
 import { tabUntilFocused } from './keyboard';
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
+import { openNoKindDisclosure } from './no-kind-disclosure';
 
 let fixture: AllToolSkillFixture;
 let host: LaunchedHost;
@@ -149,9 +150,8 @@ test('exposes no authored content or fixture secret from the inventory surface',
   // The deterministic file-confined outcomes stay visible as source-free
   // facts: the NUL-carrying candidate is listed outside every kind with its
   // read outcome, named by path alone (FR-028).
-  const unclassified = page.locator('h3', { hasText: 'Files in no kind' });
-  await expect(unclassified).toBeVisible();
-  const text = await page.locator('main').innerText();
+  await expect(page.getByRole('heading', { name: 'Files in no kind' })).toBeVisible();
+  const text = await (await openNoKindDisclosure(page)).innerText();
   expect(text).toContain('.agents/skills/binary/SKILL.md');
   if (fixture.capabilities.symlinks) {
     expect(text).toContain('.agents/skills/broken/SKILL.md');

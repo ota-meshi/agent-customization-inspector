@@ -1,5 +1,62 @@
 [
   {
+    "ruleId": "claude.repo.command",
+    "tool": "claude",
+    "discoveryClass": "static-candidate",
+    "kind": "prompt/command",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".claude"
+          },
+          {
+            "kind": "literal",
+            "value": "commands"
+          },
+          {
+            "kind": "recursive-directories"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/\\.md$/u"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "FR-034", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.skills.locations-discovery",
+        "url": "https://code.claude.com/docs/en/skills",
+        "officialHost": "code.claude.com",
+        "sections": [
+          "Where skills live",
+          "Discovery from parent and nested directories",
+          "How a skill gets its command name"
+        ],
+        "reviewedOn": "2026-08-22",
+        "establishes": "Existing .claude/commands/ files keep working and create the same commands skills do, a command file carries the same frontmatter as a skill except name and paths, and it is invoked by its file name without the extension — the exact shape this rule admits. The page states no ancestor or lazy-descendant reach for the command directory, which is why this rule is anchored at the selected root. It documents no .claude/prompts directory at all."
+      },
+      {
+        "sourceId": "anthropic.claude-code.changelog.legacy-command-nesting",
+        "url": "https://code.claude.com/docs/en/changelog",
+        "officialHost": "code.claude.com",
+        "sections": ["1.0.45"],
+        "reviewedOn": "2026-08-22",
+        "establishes": "Release 1.0.45 restored namespacing in command names based on subdirectories, so a command file lives at any depth inside the commands directory — the recursion this rule admits with its one trailing recursive step."
+      }
+    ]
+  },
+  {
     "ruleId": "claude.repo.instructions",
     "tool": "claude",
     "discoveryClass": "static-candidate",
@@ -241,9 +298,9 @@
         "sourceId": "anthropic.claude-code.skills.locations-discovery",
         "url": "https://code.claude.com/docs/en/skills",
         "officialHost": "code.claude.com",
-        "sections": ["Where skills live"],
-        "reviewedOn": "2026-08-08",
-        "establishes": "Repository skills live at .claude/skills/<skill-name>/SKILL.md, and skills also load from nested .claude/skills directories on demand when Claude reads or edits a file in their subtree — the documented descendant reach that is why this rule admits that shape at every depth, while the ancestor startup walk contributes only the selected root, the one layer every session shares."
+        "sections": ["Where skills live", "Discovery from parent and nested directories"],
+        "reviewedOn": "2026-08-22",
+        "establishes": "Repository skills live at .claude/skills/<skill-name>/SKILL.md, and skills also load from nested .claude/skills directories on demand when Claude reads or edits a file in their subtree — the documented descendant reach that is why this rule admits that shape at every depth, while the ancestor startup walk that also loads every parent directory up to the repository root contributes only the selected root, the one layer every session shares."
       },
       {
         "sourceId": "anthropic.claude-code.plugins.components-scopes",
@@ -524,6 +581,48 @@
         "sections": ["Custom instructions settings", "Agent skills settings"],
         "reviewedOn": "2026-08-19",
         "establishes": "VS Code settings can add instruction and skill locations beyond the fixed directories, making participation a runtime input rather than part of the documented default lookup."
+      }
+    ]
+  },
+  {
+    "ruleId": "copilot.repo.command",
+    "tool": "copilot",
+    "discoveryClass": "static-candidate",
+    "kind": "prompt/command",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".claude"
+          },
+          {
+            "kind": "literal",
+            "value": "commands"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/\\.md$/u"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.reference",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Commands (alternative skill format)"],
+        "reviewedOn": "2026-08-20",
+        "establishes": "Commands are an alternative to skills stored as individual .md files in .claude/commands/, the command name is derived from the filename, the format needs no name field, and a same-name skill has higher priority. The section establishes no project anchor and no ancestor or recursive discovery, which is why this rule admits root direct children alone."
       }
     ]
   },
@@ -1013,6 +1112,48 @@
         "sections": ["Configure the mcp.json file"],
         "reviewedOn": "2026-08-20",
         "establishes": "The current guide names exactly two locations for the mcp.json file and the workspace root is not one of them, which is the conflict with the release note this rule retains rather than resolves."
+      }
+    ]
+  },
+  {
+    "ruleId": "copilot.repo.prompt",
+    "tool": "copilot",
+    "discoveryClass": "static-candidate",
+    "kind": "prompt/command",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".github"
+          },
+          {
+            "kind": "literal",
+            "value": "prompts"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/\\.prompt\\.md$/u"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.prompts",
+        "url": "https://code.visualstudio.com/docs/agent-customization/prompt-files",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Prompt file locations", "Prompt file format", "Create a prompt file"],
+        "reviewedOn": "2026-08-22",
+        "establishes": "A workspace keeps its prompt files in the .github/prompts folder and they carry the .prompt.md extension — the exact shape this rule admits — while further locations come from a setting and the default folder is stated without saying what it does with a nested directory."
       }
     ]
   },

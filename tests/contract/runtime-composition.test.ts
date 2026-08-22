@@ -256,6 +256,156 @@ describe('the Codex instruction composition strategies (T219)', () => {
   );
 });
 
+describe('the Claude command composition strategy (T451)', () => {
+  it('ships the command selection pipeline with its exact documented operations', () => {
+    // `select-first` is the complete documented pipeline: a command file and a
+    // skill compete for one command name and the skill wins, so one input is
+    // selected rather than both retained. The subdirectory namespacing keeps
+    // two commands in different namespaces from being that clash at all
+    // (contracts/runtime-composition.md § claude.commands.selection).
+    const selection = RUNTIME_COMPOSITION_STRATEGIES['claude.commands.selection'];
+    expect(selection.tool).toBe('claude');
+    expect(selection.operations).toEqual(['select-first']);
+    // Command files are said to work the way skills do, but the ancestor and
+    // lazy-descendant traversal documented for skills is never restated for
+    // the command directory (contracts/runtime-composition.md § Canonical
+    // evidence-assessment index).
+    expect(selection.documentationStatus).toBe('partially-documented');
+    expect(selection.lifecycleQualifiers).toEqual([]);
+  });
+
+  it('composes the strategy from both command scopes and both skill scopes, by identity', () => {
+    // The User scopes are listed even though only the project ones are
+    // readable: omitting them would describe the selection as choosing among
+    // project files alone. The skill scopes are listed because they are the
+    // other side of the one selection this strategy records — the documented
+    // outcome is that a same-name skill wins over a command, so a graph naming
+    // only the command lookups would describe a choice with one candidate.
+    const consumed = STRATEGY_RELATIONS['claude.commands.selection'].consumesBehaviors;
+    expect(consumed.map((behavior) => behavior.behaviorId)).toEqual([
+      'claude.behavior.repo.commands',
+      'claude.behavior.repo.skills',
+      'claude.behavior.user.commands',
+      'claude.behavior.user.skills',
+    ]);
+    for (const behavior of consumed) {
+      expect(VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId]).toBe(behavior);
+    }
+  });
+
+  it('explains the command rule through the selection strategy alone, by identity', () => {
+    const rule = RULE_RELATIONS['claude.repo.command'];
+    expect(rule.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'claude.behavior.repo.commands',
+    ]);
+    expect(rule.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual([
+      'claude.commands.selection',
+    ]);
+    for (const behavior of rule.basedOnBehaviors) {
+      expect(VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId]).toBe(behavior);
+    }
+    for (const strategy of rule.explainedByStrategies) {
+      expect(RUNTIME_COMPOSITION_STRATEGIES[strategy.strategyId]).toBe(strategy);
+    }
+    // The admitting record is a read authorization and nothing more: it
+    // recognizes the `prompt/command` kind and projects no same-name skill
+    // winner, no namespace, and no invocation (FR-009).
+    expect(INSPECTION_RULES['claude.repo.command'].kind).toBe('prompt/command');
+    expect(INSPECTION_RULES['claude.repo.command'].precedenceGroup).toBeNull();
+  });
+
+  it('states the contract row reciprocally with the shipped record, in both languages', () => {
+    // The bilingual contract is the normative side and the registry its
+    // implementation counterpart; the reciprocal check is what keeps one from
+    // drifting past the other.
+    const record = RUNTIME_COMPOSITION_STRATEGIES['claude.commands.selection'];
+    const consumed = STRATEGY_RELATIONS['claude.commands.selection'].consumesBehaviors.map(
+      (behavior) => behavior.behaviorId,
+    );
+    const cited = record.evidence.map((citation) => citation.sourceId);
+    expect(cited.length).toBeGreaterThan(0);
+    for (const path of [
+      'specs/001-inspect-agent-customizations/contracts/runtime-composition.md',
+      'specs/001-inspect-agent-customizations/contracts/runtime-composition.ja.md',
+    ]) {
+      const row = parseStrategyRow(path, 'claude.commands.selection');
+      expect(row.operations, path).toEqual(record.operations);
+      expect(row.consumesBehaviors, path).toEqual(consumed);
+      expect(row.evidence, path).toEqual(cited);
+    }
+  });
+});
+
+describe('the Copilot command composition graph (T469)', () => {
+  it('explains the command rule through the CLI skill selection alone, by identity', () => {
+    // Copilot documents no command-specific composition: the outcome it
+    // states — a same-name skill outranks a command — belongs to the skill
+    // selection, and inventing a second strategy would record an edge no page
+    // establishes (contracts/runtime-composition.md
+    // § copilot.cli.skills.selection).
+    const rule = RULE_RELATIONS['copilot.repo.command'];
+    expect(rule.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'copilot.behavior.cli.commands',
+    ]);
+    expect(rule.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual([
+      'copilot.cli.skills.selection',
+    ]);
+    for (const behavior of rule.basedOnBehaviors) {
+      expect(VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId]).toBe(behavior);
+    }
+    for (const strategy of rule.explainedByStrategies) {
+      expect(RUNTIME_COMPOSITION_STRATEGIES[strategy.strategyId]).toBe(strategy);
+    }
+    // The admitting record is a read authorization and nothing more: it
+    // recognizes the `prompt/command` kind and projects no priority (FR-009).
+    expect(INSPECTION_RULES['copilot.repo.command'].kind).toBe('prompt/command');
+    expect(INSPECTION_RULES['copilot.repo.command'].precedenceGroup).toBeNull();
+  });
+
+  it('keeps the command behavior inside the strategy it was shipped for', () => {
+    // The legacy command surface shipped with the skill phase because the
+    // selection composes it; the command rule resting on it must not change
+    // what that strategy consumes.
+    const consumed = STRATEGY_RELATIONS['copilot.cli.skills.selection'].consumesBehaviors;
+    expect(consumed.map((behavior) => behavior.behaviorId)).toContain(
+      'copilot.behavior.cli.commands',
+    );
+  });
+});
+
+describe('the Copilot prompt composition graph (T497)', () => {
+  it('names no strategy, because the contract row records none', () => {
+    // The behavior's composition column is explicit prompt invocation: the
+    // reader runs a prompt by hand, so there is no documented combination for
+    // a strategy to describe and none is invented
+    // (contracts/runtime-composition.md § Registry completeness).
+    const rule = RULE_RELATIONS['copilot.repo.prompt'];
+    expect(rule.explainedByStrategies).toEqual([]);
+    expect(rule.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'copilot.behavior.vscode.prompts',
+    ]);
+    for (const behavior of rule.basedOnBehaviors) {
+      expect(VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId]).toBe(behavior);
+    }
+    // The admitting record is a read authorization and nothing more: it
+    // recognizes the `prompt/command` kind and projects no invocation
+    // (FR-009).
+    expect(INSPECTION_RULES['copilot.repo.prompt'].kind).toBe('prompt/command');
+    expect(INSPECTION_RULES['copilot.repo.prompt'].precedenceGroup).toBeNull();
+  });
+
+  it('keeps the User prompt scope a statement no rule rests on', () => {
+    // The profile scope is documented and unread: it exists as a maintained
+    // record, and no shipped rule may name it as its basis (FR-016, FR-018).
+    expect(VENDOR_BEHAVIOR_STATEMENTS['copilot.behavior.vscode.user.prompts']).toBeDefined();
+    for (const relations of Object.values(RULE_RELATIONS)) {
+      expect(relations.basedOnBehaviors.map((behavior) => behavior.behaviorId)).not.toContain(
+        'copilot.behavior.vscode.user.prompts',
+      );
+    }
+  });
+});
+
 describe('the Claude rule composition strategy (T431)', () => {
   it('ships the rule layering pipeline with its exact documented operations', () => {
     // `filter`, `append` is the complete documented pipeline: a `paths` rule

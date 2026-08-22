@@ -9,9 +9,8 @@ import { spawn, type ChildProcessByStdio } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Readable } from 'node:stream';
-import { fileURLToPath } from 'node:url';
 
-const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url));
+const REPO_ROOT = join(import.meta.dirname, '..', '..');
 
 /** The packaged CLI entry `package.json.bin` points at. */
 export const CLI_ENTRY = join(REPO_ROOT, 'dist', 'cli.mjs');

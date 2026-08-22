@@ -15,6 +15,7 @@ import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
+import { openNoKindDisclosure } from './no-kind-disclosure';
 
 /** A literal credential in a declared pattern, used to prove it never lists. */
 const FIXTURE_SECRET = 'ghp_E2ERULES00000000000000000000000000000000';
@@ -187,11 +188,21 @@ test.describe('a rule file whose bytes cannot be read', () => {
     await expect(items).toHaveCount(1);
     await expect(items.first().locator('.aci-path')).toHaveText('.codex/rules/default.rules');
 
-    // The unreadable candidate is still visible, and is where a `partial`
-    // generation says which file made it partial.
-    const unclassified = page.locator('h3', { hasText: 'Files in no kind' });
-    await expect(unclassified).toBeVisible();
-    const unclassifiedRows = page.locator('h3:has-text("Files in no kind") ~ ul .aci-item');
+    // The scan status says how many files kept a diagnostic, which is what its
+    // `Partial` value reports; the causes themselves are on those files' rows.
+    await expect(page.locator('.aci-scan-progress')).toContainText(
+      '1 file(s) kept a diagnostic of their own',
+    );
+
+    // The unreadable candidate is still reachable, and is where a `partial`
+    // generation says which file made it partial. The section arrives closed,
+    // stating its count on the summary, so a reader who is not looking for it
+    // is not given the whole list under the tab they are reading (T1124).
+    await expect(page.getByRole('heading', { name: 'Files in no kind' })).toBeVisible();
+    await expect(page.locator('.aci-inventory-page__no-kind-count')).toHaveText('1');
+    await expect(page.locator('.aci-inventory-page__no-kind .aci-item')).toBeHidden();
+
+    const unclassifiedRows = (await openNoKindDisclosure(page)).locator('.aci-item');
     await expect(unclassifiedRows).toHaveCount(1);
     await expect(unclassifiedRows.first()).toContainText('.codex/rules/broken.rules');
     await expect(unclassifiedRows.first()).toContainText('This file could not be read.');

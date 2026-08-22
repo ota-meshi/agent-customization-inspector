@@ -489,8 +489,9 @@ pnpm exec vitest run --project unit \
    diffへ入り、navigateし、抜けられる。
 7. Packed appがeditor workerをsame-origin static assetからloadし、external requestも`blob:` workerも
    発生させない。
-8. `/`、`/skills/compare`、`/instructions/compare`、`/global-consent`、`/skills/<tool>/<Source相対パス>`のdirect loadが、devframe hostが配信する同じ
-   root-absolute assetからbootする。
+8. `/`、`/global-consent`、各kindのcomparison route（`/skills/compare`、`/instructions/compare`、
+   `/mcp/compare`、`/prompts-and-commands/compare`）、各kindのdetail routeのdirect loadが、
+   devframe hostが配信する同じroot-absolute assetからbootする。
 9. Session-loss/response-guard testは、devframe transportが報告するchannel loss、currentかつnon-supersededなRPCの
    現在の非supersededなRPCでのchannel lossまたは解釈できないprotocol、session-ID mismatch、greater Global content epochまたはnon-null disable fence、
    client epoch変更後のlate in-flight responseを扱う。CurrentなRPCでのtransport報告channel lossまたは解釈できないprotocolはshared full

@@ -26,6 +26,7 @@
 // filter value reaches the host, and no filter can widen what was scanned.
 import { computed, type ComputedRef, type Ref } from 'vue';
 import type {
+  PromptInventoryEntryDto,
   CustomizationFileSummaryDto,
   InstructionInventoryEntryDto,
   McpInventoryEntryDto,
@@ -111,6 +112,15 @@ export class InventoryFilterView {
   public readonly ruleRows: ComputedRef<readonly RuleInventoryEntryDto[]>;
 
   /**
+   * The command rows that pass every active filter, in snapshot order. A row
+   * is one name a reader invokes (data-model.md § Inventory unit); a filter
+   * keeps the definitions it matches and drops a row only when none is left,
+   * so a narrowed row states what still matches rather than every file the
+   * name has.
+   */
+  public readonly promptRows: ComputedRef<readonly PromptInventoryEntryDto[]>;
+
+  /**
    * The permission-policy rows that pass every active filter, in snapshot
    * order. A row is one declared policy, named by the path of the file that
    * declares it (data-model.md § Inventory unit), and the tool filter narrows
@@ -137,11 +147,15 @@ export class InventoryFilterView {
   public readonly mcpRows: ComputedRef<readonly McpInventoryEntryDto[]>;
 
   /**
-   * Admitted candidates that pass the filters but appear in no kind's
-   * inventory, in snapshot order — a candidate whose bytes were never accepted
-   * gains no recognition, so no kind tab can show it. They are listed apart
-   * rather than dropped: a scan that says "partial" has to be able to say which
-   * file (FR-028).
+   * Admitted candidates that pass the Source and path filters but appear in no
+   * kind's inventory, in snapshot order — a candidate whose bytes were never
+   * accepted gains no recognition, so no kind tab can show it. They are listed
+   * apart rather than dropped: a scan that says "partial" has to be able to say
+   * which file (FR-028).
+   *
+   * The tool selection is not one of the filters applied here, because no tool
+   * recognized any of these files; the page says a tool filter is applied
+   * rather than listing them under a tool none of them belongs to.
    *
    * A file that is only a companion is never here, whatever it carries: FR-003
    * gives an accompanying file no inventory row of its own. Its diagnostic is
@@ -220,6 +234,9 @@ export class InventoryFilterView {
         ...(snapshot.value?.rules ?? []).flatMap((entry) =>
           entry.recognitions.map((recognition) => recognition.tool),
         ),
+        ...(snapshot.value?.prompts ?? []).flatMap((entry) =>
+          entry.definitions.map((definition) => definition.tool),
+        ),
         ...(snapshot.value?.permissions ?? []).flatMap((entry) =>
           entry.recognitions.map((recognition) => recognition.tool),
         ),
@@ -232,6 +249,7 @@ export class InventoryFilterView {
       const present = new Set<CustomizationKind>([
         ...((snapshot.value?.instructions ?? []).length > 0 ? (['instructions'] as const) : []),
         ...((snapshot.value?.rules ?? []).length > 0 ? (['rule'] as const) : []),
+        ...((snapshot.value?.prompts ?? []).length > 0 ? (['prompt/command'] as const) : []),
         ...((snapshot.value?.permissions ?? []).length > 0 ? (['permissions'] as const) : []),
         ...((snapshot.value?.skills ?? []).length > 0 ? (['skill'] as const) : []),
         ...((snapshot.value?.mcp ?? []).length > 0 ? (['MCP'] as const) : []),
@@ -348,6 +366,22 @@ export class InventoryFilterView {
     );
 
     /**
+     * The command entries that survive every filter, each reduced to the
+     * definitions that matched. A name with no matching definition is not a
+     * row: showing it would claim a match the inventory does not have.
+     */
+    this.promptRows = computed(() =>
+      (snapshot.value?.prompts ?? []).flatMap((entry) => {
+        const definitions = entry.definitions.filter(
+          (definition) =>
+            fileMatches(definition.sourceRelativePath) &&
+            (effectiveTool.value === null || definition.tool === effectiveTool.value),
+        );
+        return definitions.length === 0 ? [] : [{ ...entry, definitions }];
+      }),
+    );
+
+    /**
      * The declared policies that survive every filter, each reduced to the
      * recognitions that matched, by the same two questions the rules filter
      * asks of its own rows.
@@ -432,13 +466,15 @@ export class InventoryFilterView {
             ? this.instructionRows.value.length
             : candidate === 'rule'
               ? this.ruleRows.value.length
-              : candidate === 'permissions'
-                ? this.permissionsRows.value.length
-                : candidate === 'skill'
-                  ? this.skillRows.value.length
-                  : candidate === 'MCP'
-                    ? this.mcpRows.value.length
-                    : 0,
+              : candidate === 'prompt/command'
+                ? this.promptRows.value.length
+                : candidate === 'permissions'
+                  ? this.permissionsRows.value.length
+                  : candidate === 'skill'
+                    ? this.skillRows.value.length
+                    : candidate === 'MCP'
+                      ? this.mcpRows.value.length
+                      : 0,
         );
       }
       return counts;
@@ -453,6 +489,9 @@ export class InventoryFilterView {
           entry.files.map((file) => file.sourceRelativePath),
         ),
         ...(snapshot.value?.rules ?? []).map((entry) => entry.sourceRelativePath),
+        ...(snapshot.value?.prompts ?? []).flatMap((entry) =>
+          entry.definitions.map((definition) => definition.sourceRelativePath),
+        ),
         ...(snapshot.value?.permissions ?? []).map((entry) => entry.sourceRelativePath),
         ...(snapshot.value?.skills ?? []).flatMap((entry) =>
           entry.definitions.map((definition) => definition.sourceRelativePath),
@@ -473,15 +512,17 @@ export class InventoryFilterView {
           entry.definitions.flatMap((definition) => definition.companionFiles),
         ),
       );
+      // The tool selection is deliberately not consulted. A file here was
+      // recognized by no product, so no tool selection can match it, and
+      // emptying the list under one would take the only statement a `partial`
+      // generation has about that file off the page (FR-028). The count stands
+      // either way and the page states that a tool filter is applied instead of
+      // listing the rows under a tool none of them belongs to.
       return (snapshot.value?.files ?? []).filter(
         (file) =>
           !recognized.has(file.sourceRelativePath) &&
           !companions.has(file.sourceRelativePath) &&
-          fileMatches(file.sourceRelativePath) &&
-          // A file in no kind's inventory was recognized by no product, so no
-          // tool selection can match it. Showing it under one would contradict
-          // the filter the user set.
-          effectiveTool.value === null,
+          fileMatches(file.sourceRelativePath),
       );
     });
 

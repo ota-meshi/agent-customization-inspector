@@ -1473,6 +1473,106 @@ export const COPILOT_VSCODE_MCP_BEHAVIOR = {
 } as const satisfies VendorBehaviorStatement;
 
 /**
+ * Copilot VS Code prompt files: the `.prompt.md` files a workspace keeps in
+ * `.github/prompts`, invoked manually with a `/` in chat rather than applied
+ * on their own.
+ *
+ * A prompt file names itself: its optional frontmatter `name` is what a reader
+ * types after the `/`, and the file name stands in when the file declares
+ * none. That is the difference from the legacy command surface the same kind
+ * covers, where the vendor derives the name from the path and reads no `name`
+ * key at all.
+ *
+ * `partially-documented`: the page names `.github/prompts` as the workspace
+ * default and says further locations come from `chat.promptFilesLocations`,
+ * but does not state precisely what it does with a nested directory below the
+ * default one (contracts/vendors/github-copilot.md § Documented VS Code
+ * behavior).
+ */
+export const COPILOT_VSCODE_PROMPTS_BEHAVIOR = {
+  behaviorId: 'copilot.behavior.vscode.prompts',
+  tool: 'copilot',
+  surfaces: ['copilot-vscode'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'repository',
+        lookupBase: 'workspace-root',
+        relativeSelector: '.github/prompts/<name>.prompt.md',
+        // The page's own table gives one default folder for the workspace
+        // scope; the configured extra locations are a runtime input this tool
+        // never observes, and the parent-repository discovery it mentions is
+        // gated on a setting rather than being the default walk.
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'partially-documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'vscode.copilot.prompts',
+          url: 'https://code.visualstudio.com/docs/agent-customization/prompt-files',
+          officialHost: 'code.visualstudio.com',
+          sections: [
+            'Prompt file locations',
+            'Prompt file format',
+            'Create a prompt file',
+            'Use a prompt file in chat',
+          ],
+          reviewedOn: '2026-08-22',
+          establishes:
+            'A workspace keeps its prompt files in the .github/prompts folder, they are Markdown files with the .prompt.md extension, their optional frontmatter name is the name a reader types after / in chat with the file name used when none is specified, and they are invoked manually rather than applied automatically. Additional workspace locations come from a setting, and what the default folder does with a nested directory is not stated.',
+        },
+        {
+          sourceId: 'vscode.copilot.settings',
+          url: 'https://code.visualstudio.com/docs/agents/reference/ai-settings',
+          officialHost: 'code.visualstudio.com',
+          sections: ['Reusable prompt files settings'],
+          reviewedOn: '2026-08-19',
+          establishes:
+            'The chat.promptFilesLocations setting searches the locations it lists and defaults to { ".github/prompts": true }, which is both why the located default is what this statement records and why the configured extras are a runtime input it does not.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Copilot VS Code User prompt files: the profile's own `*.prompt.md` files.
+ *
+ * Recorded for maintenance only; `copilot.excluded.user-runtime` keeps the
+ * surface out of the read allowlist (contracts/vendors/github-copilot.md
+ * § Documented User behavior).
+ */
+export const COPILOT_VSCODE_USER_PROMPTS_BEHAVIOR = {
+  behaviorId: 'copilot.behavior.vscode.user.prompts',
+  tool: 'copilot',
+  surfaces: ['copilot-vscode'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'user',
+        lookupBase: 'profile-data',
+        relativeSelector: '*.prompt.md',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'vscode.copilot.prompts',
+          url: 'https://code.visualstudio.com/docs/agent-customization/prompt-files',
+          officialHost: 'code.visualstudio.com',
+          sections: ['Prompt file locations'],
+          reviewedOn: '2026-08-22',
+          establishes:
+            'The user-profile scope keeps its prompt files in the profile data rather than in the workspace, which is a different Source boundary this release does not read.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
  * Copilot VS Code User MCP configuration: the profile-owned `mcp.json` the
  * guide documents beside the workspace file. Recorded for maintenance and
  * for the selection strategy that composes it — it expands no Global
@@ -1557,7 +1657,9 @@ export const COPILOT_BEHAVIOR_STATEMENTS: Readonly<
     COPILOT_VSCODE_INSTRUCTIONS_REPOSITORY_BEHAVIOR,
   [COPILOT_VSCODE_MCP_BEHAVIOR.behaviorId]: COPILOT_VSCODE_MCP_BEHAVIOR,
   [COPILOT_VSCODE_SKILLS_BEHAVIOR.behaviorId]: COPILOT_VSCODE_SKILLS_BEHAVIOR,
+  [COPILOT_VSCODE_PROMPTS_BEHAVIOR.behaviorId]: COPILOT_VSCODE_PROMPTS_BEHAVIOR,
   [COPILOT_VSCODE_USER_MCP_BEHAVIOR.behaviorId]: COPILOT_VSCODE_USER_MCP_BEHAVIOR,
+  [COPILOT_VSCODE_USER_PROMPTS_BEHAVIOR.behaviorId]: COPILOT_VSCODE_USER_PROMPTS_BEHAVIOR,
   [COPILOT_VSCODE_USER_CLAUDE_BEHAVIOR.behaviorId]: COPILOT_VSCODE_USER_CLAUDE_BEHAVIOR,
   [COPILOT_VSCODE_USER_INSTRUCTIONS_BEHAVIOR.behaviorId]: COPILOT_VSCODE_USER_INSTRUCTIONS_BEHAVIOR,
   [COPILOT_VSCODE_USER_SKILLS_BEHAVIOR.behaviorId]: COPILOT_VSCODE_USER_SKILLS_BEHAVIOR,

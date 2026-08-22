@@ -23,6 +23,41 @@
     ]
   },
   {
+    "behaviorId": "claude.behavior.repo.commands",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "runtime-cwd",
+      "relativeSelector": ".claude/commands/",
+      "traversal": "recursive-under-base"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.skills.locations-discovery",
+        "url": "https://code.claude.com/docs/en/skills",
+        "officialHost": "code.claude.com",
+        "sections": [
+          "Where skills live",
+          "Discovery from parent and nested directories",
+          "How a skill gets its command name"
+        ],
+        "reviewedOn": "2026-08-22",
+        "establishes": "Custom commands are merged into skills: a .claude/commands/deploy.md and a .claude/skills/deploy/SKILL.md both create /deploy, existing .claude/commands/ files keep working, and a skill outranks a command of the same name. A command file supports the same frontmatter as a skill except name and paths, which Claude Code ignores in one, and is invoked by its file name without the extension. The page says command files work the way skills do but writes its nested-directory sentence about .claude/skills/ alone, so no skill-equivalent ancestor or lazy-descendant command traversal is stated independently."
+      },
+      {
+        "sourceId": "anthropic.claude-code.changelog.legacy-command-nesting",
+        "url": "https://code.claude.com/docs/en/changelog",
+        "officialHost": "code.claude.com",
+        "sections": ["1.0.45"],
+        "reviewedOn": "2026-08-22",
+        "establishes": "Release 1.0.45 restored namespacing in command names based on subdirectories, with .claude/commands/frontend/component.md becoming /frontend:component — the documented reach inside one commands directory that makes its discovery recursive."
+      }
+    ]
+  },
+  {
     "behaviorId": "claude.behavior.repo.instructions.ancestor",
     "tool": "claude",
     "surfaces": ["claude-cli-and-ide-clients"],
@@ -265,9 +300,9 @@
         "sourceId": "anthropic.claude-code.skills.locations-discovery",
         "url": "https://code.claude.com/docs/en/skills",
         "officialHost": "code.claude.com",
-        "sections": ["Where skills live"],
-        "reviewedOn": "2026-08-08",
-        "establishes": "Claude Code discovers repository skills at .claude/skills/<skill-name>/SKILL.md, with ancestor skill layers discovered at startup and nested descendant skill directories discovered on demand."
+        "sections": ["Where skills live", "Discovery from parent and nested directories"],
+        "reviewedOn": "2026-08-22",
+        "establishes": "Claude Code discovers repository skills at .claude/skills/<skill-name>/SKILL.md, loading them from the start directory and every parent up to the repository root, while a nested descendant skill directory loads the first time Claude reads or edits a file inside it."
       },
       {
         "sourceId": "anthropic.claude-code.changelog.nested-skill-discovery",
@@ -284,6 +319,37 @@
         "sections": ["Choose where to start Claude", "Add per-directory skills"],
         "reviewedOn": "2026-07-25",
         "establishes": "The launch directory decides which skill layers load at startup, and nested directories can carry their own .claude/skills directories that join the session as files under them are accessed."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.user.commands",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "commands/",
+      "traversal": "recursive-under-base"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.skills.locations-discovery",
+        "url": "https://code.claude.com/docs/en/skills",
+        "officialHost": "code.claude.com",
+        "sections": ["Where skills live", "How a skill gets its command name"],
+        "reviewedOn": "2026-08-22",
+        "establishes": "The personal scope is the home configuration directory — the page places personal skills at ~/.claude/skills/<skill-name>/SKILL.md and says they apply to all your projects — and the same page says command files in .claude/commands/ work the way skills do and are invoked by their file name. That pairing is what makes <claude-config-dir>/commands/ the personal command directory; the page states no traversal for it, which the changelog entry beside this one supplies."
+      },
+      {
+        "sourceId": "anthropic.claude-code.changelog.legacy-command-nesting",
+        "url": "https://code.claude.com/docs/en/changelog",
+        "officialHost": "code.claude.com",
+        "sections": ["1.0.51"],
+        "reviewedOn": "2026-08-22",
+        "establishes": "Release 1.0.51 fixed user-level commands in subdirectories, which is where the personal directory is confirmed to recurse and to namespace by subdirectory."
       }
     ]
   },
@@ -444,7 +510,7 @@
         "url": "https://code.claude.com/docs/en/skills",
         "officialHost": "code.claude.com",
         "sections": ["Where skills live"],
-        "reviewedOn": "2026-08-08",
+        "reviewedOn": "2026-08-22",
         "establishes": "Claude Code additionally discovers user skills at ~/.claude/skills/<skill-name>/SKILL.md, one of the scopes its same-name selection resolves across."
       },
       {
@@ -1492,6 +1558,42 @@
     ]
   },
   {
+    "behaviorId": "copilot.behavior.vscode.prompts",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "workspace-root",
+      "relativeSelector": ".github/prompts/<name>.prompt.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.prompts",
+        "url": "https://code.visualstudio.com/docs/agent-customization/prompt-files",
+        "officialHost": "code.visualstudio.com",
+        "sections": [
+          "Prompt file locations",
+          "Prompt file format",
+          "Create a prompt file",
+          "Use a prompt file in chat"
+        ],
+        "reviewedOn": "2026-08-22",
+        "establishes": "A workspace keeps its prompt files in the .github/prompts folder, they are Markdown files with the .prompt.md extension, their optional frontmatter name is the name a reader types after / in chat with the file name used when none is specified, and they are invoked manually rather than applied automatically. Additional workspace locations come from a setting, and what the default folder does with a nested directory is not stated."
+      },
+      {
+        "sourceId": "vscode.copilot.settings",
+        "url": "https://code.visualstudio.com/docs/agents/reference/ai-settings",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Reusable prompt files settings"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "The chat.promptFilesLocations setting searches the locations it lists and defaults to { \".github/prompts\": true }, which is both why the located default is what this statement records and why the configured extras are a runtime input it does not."
+      }
+    ]
+  },
+  {
     "behaviorId": "copilot.behavior.vscode.skills",
     "tool": "copilot",
     "surfaces": ["copilot-vscode"],
@@ -1596,6 +1698,29 @@
         "sections": ["Configure the mcp.json file", "Synchronize MCP configuration across devices"],
         "reviewedOn": "2026-08-20",
         "establishes": "The user-profile mcp.json is the second documented location, opened through the MCP: Open User Configuration command, available across workspaces, per-profile, and synchronizable across devices; how a User declaration resolves against a same-name workspace declaration is not established."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.vscode.user.prompts",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "profile-data",
+      "relativeSelector": "*.prompt.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.prompts",
+        "url": "https://code.visualstudio.com/docs/agent-customization/prompt-files",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Prompt file locations"],
+        "reviewedOn": "2026-08-22",
+        "establishes": "The user-profile scope keeps its prompt files in the profile data rather than in the workspace, which is a different Source boundary this release does not read."
       }
     ]
   },

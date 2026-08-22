@@ -72,11 +72,11 @@ export const RECOGNITION_SIDE_STATE_TEXT: Readonly<Record<RecognitionSideState, 
  * kind, or the stated reason no parsed declarations exist to compare.
  */
 export type DeclarationSideState =
-  /** A skill detail with a parsed presentation: its declarations serialize into the diff. */
+  /** A detail with a parsed presentation: its declarations serialize into the diff. */
   | 'parsed'
   /**
-   * A skill detail whose all-or-nothing extraction failed: its declarations
-   * are unknown, not absent (FR-028), so this side serializes nothing.
+   * A detail whose all-or-nothing extraction failed: its declarations are
+   * unknown, not absent (FR-028), so this side serializes nothing.
    */
   | 'extraction-failed'
   /** A present file no skill recognition owns: it publishes no declarations. */
@@ -211,12 +211,14 @@ export class SkillRecognitionComparison {
       }
     }
     this.tools = tools;
-    this.leftDeclarations = declarationState(left);
-    this.rightDeclarations = declarationState(right);
-    const leftEntries =
-      this.leftDeclarations === 'parsed' && left !== null ? entriesOf(left) : null;
-    const rightEntries =
-      this.rightDeclarations === 'parsed' && right !== null ? entriesOf(right) : null;
+    // Read once per side, so the stated state and the diffed document cannot
+    // disagree about whether the file parsed.
+    const leftDeclarations = new SideDeclarations(left);
+    const rightDeclarations = new SideDeclarations(right);
+    this.leftDeclarations = leftDeclarations.state;
+    this.rightDeclarations = rightDeclarations.state;
+    const leftEntries = leftDeclarations.entries;
+    const rightEntries = rightDeclarations.entries;
     // An absent side pairs as the empty diff operand, so the present side's
     // document renders as the difference rather than vanishing with the pair
     // (T203). A present side without parsed declarations offers nothing to
@@ -249,14 +251,74 @@ export class SkillRecognitionComparison {
 const LEADING_FRONTMATTER_KEYS: readonly string[] = ['name', 'description'];
 
 /**
- * One parsed side's declarations. Callers guard on the 'parsed' state, which
- * is derived from the same detail, so the presentation is present here.
+ * One side's declared metadata, derived in a single read of its detail: the
+ * state the surface states, and the entries a parsed side serializes into the
+ * diff. Both from one read, because two values derived separately from one
+ * fact can disagree and one cannot (AGENTS.md § Implementation simplicity
+ * policy) — a side stated as unparsed whose document is diffed anyway is the
+ * disagreement this shape rules out.
+ *
+ * A class whose constructor derives both members: the constructor is the one
+ * place that says how the value's data came to be (AGENTS.md § Class and
+ * interface policy).
  */
-function entriesOf(side: ComparisonSideInput): readonly DeclaredEntryDto[] {
-  const detail = side.detail;
-  return detail.kind === 'skill' && detail.presentation !== null
-    ? detail.presentation.frontmatter
-    : [];
+class SideDeclarations {
+  /** What this side's declared metadata is; see {@link DeclarationSideState}. */
+  public readonly state: DeclarationSideState;
+
+  /**
+   * The declarations a parsed side serializes into the diff, or null when
+   * this side has none to serialize: an absence, a file no parse belongs to,
+   * or an extraction that failed all-or-nothing (FR-028). Never an empty list
+   * standing in for unknown declarations, which would diff as "nothing
+   * declared" against the other side's values.
+   */
+  public readonly entries: readonly DeclaredEntryDto[] | null;
+
+  /** Derives one side's declaration state and entries from its detail. */
+  public constructor(side: ComparisonSideInput | null) {
+    if (side === null) {
+      this.state = 'file-absent';
+      this.entries = null;
+      return;
+    }
+    // Whether a skill recognition owns this file, which is what
+    // {@link DeclarationSideState} 'not-a-skill' means — asked of the
+    // inventory's definitions rather than of the adopted variant, because the
+    // two disagree exactly where it matters: a census companion that is also
+    // its own recognition of another kind — an `AGENTS.md` inside a skill
+    // directory, which Copilot reads as an instruction file — arrives as that
+    // kind's variant carrying that kind's parse, and taking it would publish
+    // an instruction file's declarations as the skill's declared metadata.
+    // A file no definition owns declares nothing *here* whatever it declares
+    // for itself; its own detail is where its declarations are read.
+    if (side.definitions.length === 0) {
+      this.state = 'not-a-skill';
+      this.entries = null;
+      return;
+    }
+    const detail = side.detail;
+    // The parse is the file's, one per kind (FR-028), and every Markdown
+    // kind's variant carries the same one for the same bytes
+    // (candidate.ts § recognizeSkill), so this asks what the adopted variant
+    // carries rather than requiring it to be this kind's: `get-file-detail`
+    // is addressed by the path alone and answers with the first variant its
+    // fixed order reaches (session.ts § fileDetail), which is that function's
+    // business rather than this surface's. What the page renders is the
+    // document, and every parse-carrying variant holds it the same way. The
+    // two excluded variants are the ones that carry no parse at all: a rule
+    // file is published whole and an unrecognized file has nothing read out of
+    // it, so a definition-owning file that somehow arrives as one declares
+    // nothing to compare.
+    if (detail.kind === 'rule' || detail.kind === 'file') {
+      this.state = 'not-a-skill';
+      this.entries = null;
+      return;
+    }
+    const presentation = detail.presentation;
+    this.state = presentation === null ? 'extraction-failed' : 'parsed';
+    this.entries = presentation === null ? null : presentation.frontmatter;
+  }
 }
 
 /** What one side holds of one tool's recognition; see {@link RecognitionSideState}. */
@@ -284,20 +346,4 @@ function recognitionSurfaces(
 ): readonly VendorSurface[] {
   const definition = side?.definitions.find((candidate) => candidate.tool === tool);
   return definition?.surfaces ?? [];
-}
-
-/**
- * What one side's declared metadata is; see {@link DeclarationSideState}.
- * The parse is the file's, one per kind (FR-028), so it is read off the
- * detail's presentation rather than off any definition's per-tool copy of
- * the same fact.
- */
-function declarationState(side: ComparisonSideInput | null): DeclarationSideState {
-  if (side === null) {
-    return 'file-absent';
-  }
-  if (side.detail.kind !== 'skill') {
-    return 'not-a-skill';
-  }
-  return side.detail.presentation !== null ? 'parsed' : 'extraction-failed';
 }

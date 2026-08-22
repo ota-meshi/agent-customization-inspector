@@ -578,6 +578,150 @@ export const COPILOT_EXCLUDED_EXTRA_DIRECTORIES_RULE = {
 } as const satisfies InspectionRule;
 
 /**
+ * The `copilot.repo.command` matcher, authored in the typed segment form the
+ * contract table shows: the one program
+ * `['.claude', 'commands', /\.md$/u]`.
+ *
+ * Root-exact and direct-child, and deliberately narrower than Claude's rule
+ * over the same directory. The CLI reference documents the location as
+ * `.claude/commands/*.md` and establishes neither a project anchor nor an
+ * ancestor or recursive walk, so anything past a root direct child would be
+ * this product's invention: `packages/api/.claude/commands/deploy.md` and
+ * `.claude/commands/frontend/component.md` are both paths Copilot documents
+ * no read of, and both stay near misses here while the second remains a
+ * Claude candidate (contracts/vendors/github-copilot.md § Inspector
+ * Repository matcher rules; § Known conflicts and uncertainties item 3).
+ */
+const COPILOT_REPO_COMMAND_MATCHER: StructuredInspectorMatcher = {
+  base: { kind: 'repository' },
+  selectors: [
+    [
+      { kind: 'literal', value: '.claude' },
+      { kind: 'literal', value: 'commands' },
+      { kind: 'regex', pattern: /\.md$/u },
+    ],
+  ],
+};
+
+/**
+ * Copilot CLI commands: the read-authorizing counterpart of
+ * `copilot.behavior.cli.commands`. A command file is the alternative skill
+ * format the CLI documents — a plain `.md` file whose name is its filename,
+ * needing no `name` field — and admitting one authorizes reading its bytes
+ * and nothing else.
+ *
+ * The admitted files are the same physical files Claude's own command rule
+ * admits at the root, which is two products documenting a read of one path
+ * rather than a collision: each recognizes it, and the inventory row states
+ * both (FR-004). Below the root the two part company, because only Claude
+ * documents the recursion.
+ *
+ * Admitting a file is not asserting Copilot runs it: a same-name skill has
+ * higher priority, and which sources a session loads is runtime this tool
+ * never observes (FR-009).
+ *
+ * `partially-documented`, from the behavior statement it rests on: the
+ * reference implies a project location without anchoring it, and states no
+ * ancestor or recursive traversal.
+ */
+export const COPILOT_REPO_COMMAND_RULE = {
+  ruleId: 'copilot.repo.command',
+  tool: 'copilot',
+  discoveryClass: 'static-candidate',
+  kind: 'prompt/command',
+  sourceKinds: ['repository'],
+  matcher: COPILOT_REPO_COMMAND_MATCHER,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'partially-documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.cli.reference',
+          url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
+          officialHost: 'docs.github.com',
+          sections: ['Commands (alternative skill format)'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'Commands are an alternative to skills stored as individual .md files in .claude/commands/, the command name is derived from the filename, the format needs no name field, and a same-name skill has higher priority. The section establishes no project anchor and no ancestor or recursive discovery, which is why this rule admits root direct children alone.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
+ * The `copilot.repo.prompt` matcher, authored in the typed segment form the
+ * contract table shows: the one program
+ * `['.github', 'prompts', /\.prompt\.md$/u]`.
+ *
+ * Root-exact and direct-child. The page gives one default folder for the
+ * workspace scope and puts every further location behind a setting this tool
+ * never reads, so a nested `.github/prompts/team/deploy.prompt.md` is a path
+ * whose treatment the page does not state and this rule does not guess
+ * (contracts/vendors/github-copilot.md § Inspector Repository matcher rules).
+ */
+const COPILOT_REPO_PROMPT_MATCHER: StructuredInspectorMatcher = {
+  base: { kind: 'repository' },
+  selectors: [
+    [
+      { kind: 'literal', value: '.github' },
+      { kind: 'literal', value: 'prompts' },
+      { kind: 'regex', pattern: /\.prompt\.md$/u },
+    ],
+  ],
+};
+
+/**
+ * Copilot VS Code prompt files: the read-authorizing counterpart of
+ * `copilot.behavior.vscode.prompts`. A prompt file is Markdown a reader
+ * invokes manually with a `/`, and admitting one authorizes reading its bytes
+ * and nothing else.
+ *
+ * It is the `prompt/command` kind, the same kind the legacy command files
+ * carry, which is what puts a prompt and a command of one name on one
+ * inventory row (data-model.md § Inventory unit). What differs is where the
+ * name comes from: a prompt file declares its own `name` and falls back to its
+ * file name, while a command file declares none at all.
+ *
+ * Admitting a file is not asserting VS Code offers it: a prompt is invoked
+ * manually, and which locations a workspace actually searches turns on a
+ * setting this tool never reads (FR-009).
+ *
+ * `partially-documented`, from the behavior statement it rests on: what the
+ * default folder does with a nested directory is not stated.
+ */
+export const COPILOT_REPO_PROMPT_RULE = {
+  ruleId: 'copilot.repo.prompt',
+  tool: 'copilot',
+  discoveryClass: 'static-candidate',
+  kind: 'prompt/command',
+  sourceKinds: ['repository'],
+  matcher: COPILOT_REPO_PROMPT_MATCHER,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'partially-documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'vscode.copilot.prompts',
+          url: 'https://code.visualstudio.com/docs/agent-customization/prompt-files',
+          officialHost: 'code.visualstudio.com',
+          sections: ['Prompt file locations', 'Prompt file format', 'Create a prompt file'],
+          reviewedOn: '2026-08-22',
+          establishes:
+            'A workspace keeps its prompt files in the .github/prompts folder and they carry the .prompt.md extension — the exact shape this rule admits — while further locations come from a setting and the default folder is stated without saying what it does with a nested directory.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
  * The `copilot.repo.skill` matcher, authored in the typed segment form the
  * contract table shows: one root-anchored program per fixed skills directory —
  * `['.github', 'skills', ANY_NAME, 'SKILL.md']`,
@@ -896,6 +1040,7 @@ export const COPILOT_INSPECTION_RULES: Readonly<Record<CopilotRuleId, Inspection
   [COPILOT_EXCLUDED_ADDITIONAL_STANDARD_LOCATIONS_RULE.ruleId]:
     COPILOT_EXCLUDED_ADDITIONAL_STANDARD_LOCATIONS_RULE,
   [COPILOT_EXCLUDED_EXTRA_DIRECTORIES_RULE.ruleId]: COPILOT_EXCLUDED_EXTRA_DIRECTORIES_RULE,
+  [COPILOT_REPO_COMMAND_RULE.ruleId]: COPILOT_REPO_COMMAND_RULE,
   [COPILOT_REPO_INSTRUCTIONS_AGENTS_RULE.ruleId]: COPILOT_REPO_INSTRUCTIONS_AGENTS_RULE,
   [COPILOT_REPO_INSTRUCTIONS_CLAUDE_ROOT_RULE.ruleId]: COPILOT_REPO_INSTRUCTIONS_CLAUDE_ROOT_RULE,
   [COPILOT_REPO_INSTRUCTIONS_GEMINI_ROOT_RULE.ruleId]: COPILOT_REPO_INSTRUCTIONS_GEMINI_ROOT_RULE,
@@ -908,5 +1053,6 @@ export const COPILOT_INSPECTION_RULES: Readonly<Record<CopilotRuleId, Inspection
   [COPILOT_REPO_MCP_RULE.ruleId]: COPILOT_REPO_MCP_RULE,
   [COPILOT_REPO_MCP_VSCODE_RULE.ruleId]: COPILOT_REPO_MCP_VSCODE_RULE,
   [COPILOT_REPO_MCP_VSCODE_ROOT_RULE.ruleId]: COPILOT_REPO_MCP_VSCODE_ROOT_RULE,
+  [COPILOT_REPO_PROMPT_RULE.ruleId]: COPILOT_REPO_PROMPT_RULE,
   [COPILOT_REPO_SKILL_RULE.ruleId]: COPILOT_REPO_SKILL_RULE,
 };

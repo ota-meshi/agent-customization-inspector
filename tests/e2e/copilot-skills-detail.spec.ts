@@ -162,7 +162,9 @@ test('leads with the addressed Copilot definition and its authored invocation na
   await expect(page.locator('.aci-skill-detail__invocation-name')).toHaveText(
     'Invocation name: github-ship',
   );
-  await expect(page.locator('.aci-skill-detail__definition')).toHaveText('GitHub Copilot · Skill');
+  await expect(page.locator('.aci-skill-detail__definition')).toHaveText(
+    'GitHub Copilot (VS Code, CLI, Cloud agent) · Skill',
+  );
   // Every key the file declares, as one YAML document in the read-only
   // viewer, credential-shaped keys included — nothing captioned,
   // classified, or withheld (FR-007).
@@ -179,14 +181,18 @@ test('opens a shared .claude file as each product’s own definition', async ({ 
   // record, which is what keeps incompatible naming facts apart (FR-007).
   await openDefinition(page, 'copilot', '.claude/skills/lander/SKILL.md');
   await expect(page.locator('.aci-skill-detail h2')).toHaveText('lander-skill');
-  await expect(page.locator('.aci-skill-detail__definition')).toHaveText('GitHub Copilot · Skill');
+  await expect(page.locator('.aci-skill-detail__definition')).toHaveText(
+    'GitHub Copilot (VS Code, CLI, Cloud agent) · Skill',
+  );
   await expect(page.locator('.aci-skill-detail__invocation-name')).toHaveText(
     'Invocation name: lander-skill',
   );
 
   await openDefinition(page, 'claude', '.claude/skills/lander/SKILL.md');
   await expect(page.locator('.aci-skill-detail h2')).toHaveText('lander-skill');
-  await expect(page.locator('.aci-skill-detail__definition')).toHaveText('Claude Code · Skill');
+  await expect(page.locator('.aci-skill-detail__definition')).toHaveText(
+    'Claude Code (CLI and IDE clients) · Skill',
+  );
   await expect(page.locator('.aci-skill-detail__invocation-name')).toHaveText(
     'Invocation name: lander',
   );
@@ -197,32 +203,37 @@ test('retains the Codex detail of a shared .agents file beside the Copilot one',
 }) => {
   await openDefinition(page, 'codex', '.agents/skills/orbit/SKILL.md');
   await expect(page.locator('.aci-skill-detail h2')).toHaveText('orbit-skill');
-  await expect(page.locator('.aci-skill-detail__definition')).toHaveText('OpenAI Codex · Skill');
+  await expect(page.locator('.aci-skill-detail__definition')).toHaveText(
+    'OpenAI Codex (Local clients) · Skill',
+  );
 
   await openDefinition(page, 'copilot', '.agents/skills/orbit/SKILL.md');
   await expect(page.locator('.aci-skill-detail h2')).toHaveText('orbit-skill');
-  await expect(page.locator('.aci-skill-detail__definition')).toHaveText('GitHub Copilot · Skill');
+  await expect(page.locator('.aci-skill-detail__definition')).toHaveText(
+    'GitHub Copilot (VS Code, CLI, Cloud agent) · Skill',
+  );
 });
 
-test('states nothing about Copilot’s surfaces or their selection, even for a collision', async ({
-  page,
-}) => {
+test('states nothing about Copilot’s selection, even for a collision', async ({ page }) => {
   // `.github/skills/echo` and `.claude/skills/probe` both declare `voyage`,
   // so the committed inventory row states Copilot's surface-dependent rule —
   // the case a regression would leak into the detail. This page addresses one
   // definition and restates none of it: whether a surface would select this
   // skill depends on a runtime the Inspector never observes, and what each
-  // surface documents stays in Copilot's maintained contract (FR-009). The
-  // text is read from the whole detail, hidden panel included.
+  // surface documents stays in Copilot's maintained contract (FR-009).
+  //
+  // The surfaces themselves are not the claim being watched for: the
+  // definition line names the ones its admissions rest on, which says where
+  // Copilot documents reading the file and nothing about which of them won.
+  // The text is read from the whole detail, hidden panel included.
   await openDefinition(page, 'copilot', '.github/skills/echo/SKILL.md');
   await expect(page.locator('.aci-skill-detail h2')).toHaveText('voyage');
   await expect(page.locator('.aci-skill-detail__definition')).toHaveCount(1);
-  await expect(page.locator('.aci-skill-detail__definition')).toHaveText('GitHub Copilot · Skill');
+  await expect(page.locator('.aci-skill-detail__definition')).toHaveText(
+    'GitHub Copilot (VS Code, CLI, Cloud agent) · Skill',
+  );
   const detail = (await page.locator('.aci-skill-detail').textContent()) ?? '';
   for (const claim of [
-    'VS Code',
-    'CLI',
-    'Cloud',
     'depends on the surface',
     'uses the first in its documented source order',
     'keeps all of them',

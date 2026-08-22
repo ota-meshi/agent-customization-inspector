@@ -9,6 +9,7 @@
 // exists: before acceptance a failure is just this invocation's error and
 // leaves no trace, while after acceptance the invocation has already resolved
 // and the terminal failure must be findable on the Source it belongs to.
+import { setImmediate } from 'node:timers/promises';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -193,7 +194,7 @@ describe('rescan-repository admission', () => {
     const fn = registerFunctions(context).get('agent-customization-inspector:rescan-repository')!;
     const result = (await fn.handler()) as CommandResult<ScanAdmission>;
     // The accepted job resolves after the invocation returned its acceptance.
-    await new Promise((resolve) => setImmediate(resolve));
+    await setImmediate();
 
     const snapshot = context.session.snapshot();
     expect(snapshot.repositoryGeneration).toBe(1);
@@ -221,7 +222,7 @@ describe('the ordinary request-owned failure lifecycle (FR-030)', () => {
     const fn = registerFunctions(context).get('agent-customization-inspector:rescan-repository')!;
 
     const result = (await fn.handler()) as CommandResult<ScanAdmission>;
-    await new Promise((resolve) => setImmediate(resolve));
+    await setImmediate();
 
     const snapshot = context.session.snapshot();
     // The invocation already resolved with its acceptance, so the terminal

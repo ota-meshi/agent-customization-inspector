@@ -50,6 +50,15 @@ const claudeInstructionsRule = CLAUDE_REPOSITORY_RULES.find(
 const claudeRulesRule = CLAUDE_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'claude.repo.rules',
 )!;
+const claudeCommandRule = CLAUDE_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'claude.repo.command',
+)!;
+const copilotCommandRule = COPILOT_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'copilot.repo.command',
+)!;
+const copilotPromptRule = COPILOT_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'copilot.repo.prompt',
+)!;
 const copilotSkillRule = COPILOT_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'copilot.repo.skill',
 )!;
@@ -813,6 +822,261 @@ describe('Claude rule recognition (T426)', () => {
   it('enumerates no companion directory beside a rule file', async () => {
     // The census belongs to a directory-shaped kind, which is `skill` alone.
     expect(await censusOf('claude', '.claude/rules/api.md', [claudeRulesRule])).toEqual([]);
+  });
+});
+
+describe('Claude command recognition (T442)', () => {
+  /** Recognizes one authored `.claude/commands/**` file for Claude. */
+  async function recognizeClaudeCommand(matchedPath: string, sourceText = '') {
+    return (await recognizeWith('claude', matchedPath, [claudeCommandRule], sourceText))
+      .recognitions;
+  }
+
+  it('recognizes the admitted file as the command kind with the parse it shares', async () => {
+    // A command file carries a skill's frontmatter keys, so the shared
+    // Markdown extraction is what the recognition publishes — the same one
+    // parse both other frontmatter-led kinds read.
+    const recognitions = await recognizeClaudeCommand(
+      '.claude/commands/deploy.md',
+      '---\ndescription: Deploy the current branch\nmodel: opus\n---\n\n# Deploy\n',
+    );
+    expect(recognitions).toHaveLength(1);
+    expect(recognitions[0]).toMatchObject({
+      sourceRelativePath: '.claude/commands/deploy.md',
+      tool: 'claude',
+      details: {
+        kind: 'prompt/command',
+        frontmatter: [
+          { key: 'description', value: { kind: 'scalar', text: 'Deploy the current branch' } },
+          { key: 'model', value: { kind: 'scalar', text: 'opus' } },
+        ],
+        bodyText: '\n# Deploy\n',
+      },
+      parseStatus: 'parsed',
+      diagnosticIds: [],
+    });
+  });
+
+  it('names the recognition by the command the admitting rule derives', async () => {
+    // The command a reader types is derived from the path — the file name
+    // without its extension, namespaced by the subdirectories between it and
+    // the commands directory — because Claude Code ignores a `name` key in a
+    // command file. It is the admitting rule's answer, and it is the identity
+    // the inventory row is grouped under (data-model.md § Inventory unit).
+    const recognitions = await recognizeClaudeCommand(
+      '.claude/commands/frontend/component.md',
+      '---\ndescription: Scaffold a component\n---\n\n# Component\n',
+    );
+    const details = recognitions[0]!.details;
+    expect(details).toMatchObject({ kind: 'prompt/command', invocationName: 'frontend:component' });
+    expect(Object.keys(details).toSorted()).toEqual([
+      'bodyText',
+      'frontmatter',
+      'invocationName',
+      'kind',
+    ]);
+  });
+
+  it('names a direct child by its file name alone', async () => {
+    const recognitions = await recognizeClaudeCommand('.claude/commands/deploy.md');
+    expect(recognitions[0]!.details).toMatchObject({ invocationName: 'deploy' });
+  });
+
+  it('keeps the name a failed extraction cannot take away', async () => {
+    // The name is the path's own fact, so a failed parse costs the
+    // declarations and nothing else (FR-028).
+    const recognitions = await recognizeClaudeCommand(
+      '.claude/commands/team/review/security.md',
+      '---\nallowed-tools: [Bash\n---\n\n# Broken\n',
+    );
+    expect(recognitions[0]).toMatchObject({
+      parseStatus: 'failed',
+      details: { invocationName: 'team:review:security', frontmatter: [], bodyText: '' },
+    });
+  });
+
+  it('derives its provenance from the admitted path and the admitting rule', async () => {
+    const recognitions = await recognizeClaudeCommand('.claude/commands/team/review/security.md');
+    expect(recognitions[0]!.provenances).toHaveLength(1);
+    expect(recognitions[0]!.provenances[0]).toMatchObject({
+      ruleId: 'claude.repo.command',
+      matchedPath: '.claude/commands/team/review/security.md',
+    });
+  });
+
+  it('fails extraction all-or-nothing while the file stays an admitted candidate', async () => {
+    // Malformed YAML publishes nothing parsed; the complete source stays
+    // available through the detail route and the failure's own Diagnostic is
+    // the scan's to attach (FR-028).
+    const recognitions = await recognizeClaudeCommand(
+      '.claude/commands/broken.md',
+      '---\nallowed-tools: [Bash\n---\n\n# Broken\n',
+    );
+    expect(recognitions).toHaveLength(1);
+    expect(recognitions[0]).toMatchObject({
+      details: { kind: 'prompt/command', frontmatter: [], bodyText: '' },
+      parseStatus: 'failed',
+    });
+  });
+
+  it('produces nothing for another product asked about the same path', async () => {
+    // No other product's shipped rule reaches `.claude/commands/` in this
+    // release, so no pass can be handed a Claude command admission and
+    // fabricate a recognition from it.
+    expect(
+      (await recognizeWith('copilot', '.claude/commands/deploy.md', [claudeCommandRule]))
+        .recognitions,
+    ).toEqual([]);
+    expect(
+      (await recognizeWith('codex', '.claude/commands/deploy.md', [claudeCommandRule]))
+        .recognitions,
+    ).toEqual([]);
+  });
+
+  it('enumerates no companion directory beside a command file', async () => {
+    // The census belongs to a directory-shaped kind, which is `skill` alone —
+    // a command's own namespace directory holds sibling commands, each its own
+    // row, never a companion of one of them.
+    expect(await censusOf('claude', '.claude/commands/deploy.md', [claudeCommandRule])).toEqual([]);
+  });
+});
+
+describe('Copilot command recognition (T459)', () => {
+  /** Recognizes one authored root direct-child command file for Copilot. */
+  async function recognizeCopilotCommand(matchedPath: string, sourceText = '') {
+    return (await recognizeWith('copilot', matchedPath, [copilotCommandRule], sourceText))
+      .recognitions;
+  }
+
+  it('recognizes the admitted file as the command kind, named by its file name', async () => {
+    const recognitions = await recognizeCopilotCommand(
+      '.claude/commands/deploy.md',
+      '---\ndescription: Deploy the current branch\n---\n\n# Deploy\n',
+    );
+    expect(recognitions).toHaveLength(1);
+    expect(recognitions[0]).toMatchObject({
+      sourceRelativePath: '.claude/commands/deploy.md',
+      tool: 'copilot',
+      details: {
+        kind: 'prompt/command',
+        invocationName: 'deploy',
+        frontmatter: [
+          { key: 'description', value: { kind: 'scalar', text: 'Deploy the current branch' } },
+        ],
+      },
+      parseStatus: 'parsed',
+    });
+    expect(recognitions[0]!.provenances[0]).toMatchObject({
+      ruleId: 'copilot.repo.command',
+      matchedPath: '.claude/commands/deploy.md',
+    });
+  });
+
+  it('gives one shared root file a recognition per product, from one parse', async () => {
+    // The same physical file is admitted by both products' rules, and the one
+    // Markdown extraction is shared: two recognitions, one read, one parse
+    // (data-model.md § ToolRecognition).
+    const { recognitions } = await recognizeWith(
+      'claude',
+      '.claude/commands/deploy.md',
+      [claudeCommandRule, copilotCommandRule],
+      '---\ndescription: Deploy\n---\n\n# Deploy\n',
+    );
+    // One tool at a time through this helper, so the Copilot pass is asked
+    // separately; what both prove together is that each product's own rule
+    // yields its own recognition of the one file.
+    expect(recognitions).toHaveLength(1);
+    expect(recognitions[0]).toMatchObject({
+      tool: 'claude',
+      details: { invocationName: 'deploy' },
+    });
+    const copilot = (
+      await recognizeWith(
+        'copilot',
+        '.claude/commands/deploy.md',
+        [claudeCommandRule, copilotCommandRule],
+        '---\ndescription: Deploy\n---\n\n# Deploy\n',
+      )
+    ).recognitions;
+    expect(copilot).toHaveLength(1);
+    expect(copilot[0]).toMatchObject({
+      tool: 'copilot',
+      details: { invocationName: 'deploy', bodyText: '\n# Deploy\n' },
+    });
+    // Each recognition keeps only its own product's admission: a provenance
+    // says which rule authorized this product's read, never another's.
+    expect(copilot[0]!.provenances.map((provenance) => provenance.ruleId)).toEqual([
+      'copilot.repo.command',
+    ]);
+  });
+
+  it('produces nothing for a tool whose rule did not admit the path', async () => {
+    expect(
+      (await recognizeWith('codex', '.claude/commands/deploy.md', [copilotCommandRule]))
+        .recognitions,
+    ).toEqual([]);
+  });
+});
+
+describe('Copilot prompt recognition (T488)', () => {
+  /** Recognizes one authored `.github/prompts/*.prompt.md` for Copilot. */
+  async function recognizePromptFile(matchedPath: string, sourceText = '') {
+    return (await recognizeWith('copilot', matchedPath, [copilotPromptRule], sourceText))
+      .recognitions;
+  }
+
+  it('recognizes the admitted file as the same kind a command file carries', async () => {
+    // One kind for both locations, which is what puts a prompt and a command
+    // of one name on one inventory row (data-model.md § Inventory unit).
+    const recognitions = await recognizePromptFile(
+      '.github/prompts/scaffold.prompt.md',
+      '---\nname: scaffold-component\ndescription: Scaffold a React component\n---\n\n# Scaffold\n',
+    );
+    expect(recognitions).toHaveLength(1);
+    expect(recognitions[0]).toMatchObject({
+      sourceRelativePath: '.github/prompts/scaffold.prompt.md',
+      tool: 'copilot',
+      details: {
+        kind: 'prompt/command',
+        invocationName: 'scaffold-component',
+        bodyText: '\n# Scaffold\n',
+      },
+      parseStatus: 'parsed',
+    });
+    expect(recognitions[0]!.provenances[0]).toMatchObject({
+      ruleId: 'copilot.repo.prompt',
+      matchedPath: '.github/prompts/scaffold.prompt.md',
+    });
+  });
+
+  it('falls back to the file name when the file declares no name', async () => {
+    const recognitions = await recognizePromptFile(
+      '.github/prompts/review.prompt.md',
+      '# Review\n',
+    );
+    expect(recognitions[0]!.details).toMatchObject({ invocationName: 'review' });
+  });
+
+  it('falls back to the file name when the declarations could not be read', async () => {
+    // A failed extraction publishes no declarations, and the name the vendor
+    // gives a file that declares none is the same answer (FR-028).
+    const recognitions = await recognizePromptFile(
+      '.github/prompts/broken.prompt.md',
+      '---\ntools: [read\n---\n\n# Broken\n',
+    );
+    expect(recognitions[0]).toMatchObject({
+      parseStatus: 'failed',
+      details: { invocationName: 'broken', frontmatter: [], bodyText: '' },
+    });
+  });
+
+  it('produces nothing for a tool whose rule did not admit the path', async () => {
+    for (const tool of ['claude', 'codex'] as const) {
+      expect(
+        (await recognizeWith(tool, '.github/prompts/review.prompt.md', [copilotPromptRule]))
+          .recognitions,
+      ).toEqual([]);
+    }
   });
 });
 
