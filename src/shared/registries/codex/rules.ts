@@ -383,9 +383,94 @@ export const CODEX_REPO_SKILL_RULE = {
     : [],
 } as const satisfies InspectionRule;
 
+/**
+ * The `codex.repo.agent` matcher, authored in the typed segment form the
+ * contract table shows: the TOML files that are direct children of the
+ * Repository root's own `.codex/agents/` directory. The terminal step is a
+ * dynamic single-name regex, because the vendor fixes the extension and
+ * leaves the basename to the author — Codex identifies an agent by the `name`
+ * its file declares, and matching the filename to it is convention rather
+ * than lookup.
+ *
+ * Direct children only, and root-anchored. The page names `.codex/agents/`
+ * for project scope and documents no nested search, so a
+ * `.codex/agents/team/reviewer.toml` and a `packages/api/.codex/agents/` are
+ * both near misses: the first would rest on a recursion the page never
+ * states, and the second belongs to a runtime chain member this product does
+ * not select — the selected root is the project root (FR-001), the same
+ * decision `AGENTS.md`, `.codex/config.toml`, and `.codex/rules/` already
+ * carry.
+ */
+const CODEX_REPO_AGENT_MATCHER: StructuredInspectorMatcher = {
+  base: { kind: 'repository' },
+  selectors: [
+    [
+      { kind: 'literal', value: '.codex' },
+      { kind: 'literal', value: 'agents' },
+      { kind: 'regex', pattern: /\.toml$/u },
+    ],
+  ],
+};
+
+/**
+ * Codex Repository custom agents: the read-authorizing counterpart of
+ * `codex.behavior.repo.agents`. One admitted file defines one custom agent,
+ * and admitting it authorizes reading its bytes and nothing else — this
+ * product spawns no session, applies no configuration layer, and opens no
+ * path the file names.
+ *
+ * The declared `mcp_servers` an agent file may carry is that file's own
+ * content and joins no MCP row: an MCP declaration's home is an explicit
+ * carrier, and a file of another kind spelling MCP-looking configuration is
+ * that kind's ordinary content, visible in its own detail (data-model.md
+ * § Inventory unit). What the vendor documents about a spawned session
+ * inheriting the parent's servers is `codex.agents.inheritance`'s, which
+ * explains this rule and admits nothing.
+ *
+ * Admitting a file is not asserting Codex spawns the agent: project layers
+ * apply only to trusted projects, the User scope the same page documents lies
+ * outside this Source, and whether a spawn selects this agent at all is a
+ * runtime outcome this tool never observes (FR-009).
+ *
+ * `partially-documented`: the location this rule admits is the one the page
+ * names, but the page never states which directories of a project are
+ * searched, so the complete project search stays unestablished
+ * (contracts/vendors/openai-codex.md § Canonical evidence-assessment index).
+ * The nesting that gap would cover is precisely what this matcher declines to
+ * admit.
+ */
+export const CODEX_REPO_AGENT_RULE = {
+  ruleId: 'codex.repo.agent',
+  tool: 'codex',
+  discoveryClass: 'static-candidate',
+  kind: 'agent',
+  sourceKinds: ['repository'],
+  matcher: CODEX_REPO_AGENT_MATCHER,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'partially-documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'openai.codex.subagents',
+          url: 'https://learn.chatgpt.com/docs/agent-configuration/subagents.md',
+          officialHost: 'learn.chatgpt.com',
+          sections: ['Custom agents', 'Custom agent file schema'],
+          reviewedOn: '2026-08-22',
+          establishes:
+            'Project-scoped custom agents are standalone TOML files under .codex/agents/ — the exact location this rule admits — each file defining one agent whose identity is its declared name field; the personal ~/.codex/agents/ scope the same section documents is a different Source boundary this rule may not read, and no nested project directory is named.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
 /** Codex's contribution to the inspection-rule registry, keyed by `ruleId` in identifier order. */
 export const CODEX_INSPECTION_RULES: Readonly<Record<CodexRuleId, InspectionRule>> = {
   [CODEX_DERIVED_FALLBACK_BASENAME_RULE.ruleId]: CODEX_DERIVED_FALLBACK_BASENAME_RULE,
+  [CODEX_REPO_AGENT_RULE.ruleId]: CODEX_REPO_AGENT_RULE,
   [CODEX_REPO_CONFIG_RULE.ruleId]: CODEX_REPO_CONFIG_RULE,
   [CODEX_REPO_INSTRUCTIONS_RULE.ruleId]: CODEX_REPO_INSTRUCTIONS_RULE,
   [CODEX_REPO_RULES_RULE.ruleId]: CODEX_REPO_RULES_RULE,

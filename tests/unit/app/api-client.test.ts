@@ -36,6 +36,7 @@ function snapshot(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot {
     rules: [],
     prompts: [],
     permissions: [],
+    agents: [],
     skills: [],
     mcp: [],
     diagnostics: [],

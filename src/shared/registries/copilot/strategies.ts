@@ -415,10 +415,160 @@ export const COPILOT_CLOUD_MCP_SELECTION_STRATEGY = {
     : [],
 } as const satisfies RuntimeCompositionStrategy;
 
+/**
+ * Copilot VS Code custom-agent selection: keep the profiles this surface can
+ * run — a profile scoped by `target` to `vscode`, or one that sets no target
+ * and therefore defaults to both environments (`filter`) — pick the one a
+ * reader invokes or the model infers (`select-first`), and record that
+ * duplicate names across the workspace, User, organization, and plugin scopes
+ * have no documented winner (`unknown-order`).
+ *
+ * `partially-documented`: the cross-scope duplicate precedence is exactly the
+ * part no page establishes (contracts/runtime-composition.md § Canonical
+ * evidence-assessment index).
+ */
+export const COPILOT_VSCODE_AGENTS_SELECTION_STRATEGY = {
+  strategyId: 'copilot.vscode.agents.selection',
+  tool: 'copilot',
+  surfaces: ['copilot-vscode'],
+  operations: ['filter', 'select-first', 'unknown-order'],
+  documentationStatus: 'partially-documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.custom-agents',
+          url: 'https://docs.github.com/en/copilot/reference/custom-agents-configuration',
+          officialHost: 'docs.github.com',
+          sections: ['YAML frontmatter properties'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'A profile’s target property scopes it to vscode or github-copilot and defaults to both when unset, user-invocable controls whether a reader may select it, and disable-model-invocation controls whether the product may choose it on its own.',
+        },
+        {
+          sourceId: 'vscode.copilot.custom-agents',
+          url: 'https://code.visualstudio.com/docs/agent-customization/custom-agents',
+          officialHost: 'code.visualstudio.com',
+          sections: ['Custom agent file locations', 'Tool list priority'],
+          reviewedOn: '2026-07-15',
+          establishes:
+            'VS Code discovers custom agents in the workspace agents folders and in personal locations, and documents the tool-list priority a selected agent runs under; it establishes no winner for one name declared in two scopes.',
+        },
+        {
+          sourceId: 'vscode.copilot.settings',
+          url: 'https://code.visualstudio.com/docs/agents/reference/ai-settings',
+          officialHost: 'code.visualstudio.com',
+          sections: ['Custom agents settings'],
+          reviewedOn: '2026-08-19',
+          establishes:
+            'Which locations contribute custom agents is setting-controlled, so enablement and any additional configured location stay runtime conditions of this selection.',
+        },
+      ]
+    : [],
+} as const satisfies RuntimeCompositionStrategy;
+
+/**
+ * Copilot CLI custom-agent selection: among the project layers the upward
+ * walk loaded, the deepest ancestor wins and `.github/agents` outranks
+ * `.claude/agents` at the same level (`select-closest`), the first match in
+ * the documented source order is taken (`select-first`), and the
+ * project-versus-User order stays unresolved (`unknown-order`).
+ *
+ * `conflict` per the canonical index: the configuration-directory reference
+ * states that project agents outrank personal ones of the same name while the
+ * how-to states that the home-directory one is used instead, and the registry
+ * retains both rather than choosing (contracts/runtime-composition.md
+ * § Canonical evidence-assessment index).
+ *
+ * What the surface identifies an agent by is not in dispute: the plugin
+ * reference derives an agent's ID from its file name, which is the rule
+ * `copilot.repo.agent` answers with (`rules/copilot.ts` § agentNameOf).
+ */
+export const COPILOT_CLI_AGENTS_SELECTION_STRATEGY = {
+  strategyId: 'copilot.cli.agents.selection',
+  tool: 'copilot',
+  surfaces: ['copilot-cli'],
+  operations: ['select-closest', 'select-first', 'unknown-order'],
+  documentationStatus: 'conflict',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.cli.configuration',
+          url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference',
+          officialHost: 'docs.github.com',
+          sections: ['User-editable files'],
+          reviewedOn: '2026-07-15',
+          establishes:
+            'The personal agents directory is ~/.copilot/agents/, and this page states that project-level agents in .github/agents/ take precedence over personal agents of the same name — one of the two sides of the retained conflict.',
+        },
+        {
+          sourceId: 'github.copilot.cli.custom-agents',
+          url: 'https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/create-custom-agents-for-cli',
+          officialHost: 'docs.github.com',
+          sections: ['Creating a custom agent', 'Using a custom agent'],
+          reviewedOn: '2026-07-15',
+          establishes:
+            'A profile is created in the project .github/agents/ or the user ~/.copilot/agents/ location, and this page states that a same-name agent in the home directory is used rather than the repository one — the opposite side of the retained conflict; selection itself is a runtime act, by slash command, explicit instruction, or inference from the description.',
+        },
+        {
+          sourceId: 'github.copilot.cli.plugins',
+          url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference',
+          officialHost: 'docs.github.com',
+          sections: ['Loading order and precedence'],
+          reviewedOn: '2026-07-15',
+          establishes:
+            'Agents use first-found-wins precedence and a plugin agent never overrides a project-level or personal one, so plugin agents are the lowest documented source; an agent is deduplicated by an ID derived from its file name, so reviewer.agent.md is the agent reviewer.',
+        },
+        {
+          sourceId: 'github.copilot.cli.reference',
+          url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
+          officialHost: 'docs.github.com',
+          sections: ['Custom agent locations'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'Every .github/agents/ directory on the walk is loaded with the deepest taking highest priority, .github/agents/ takes precedence over .claude/agents/ at the same level, and plugin agents are lowest; this page places user agents below project agents, which the retained conflict records against the opposite assertion elsewhere.',
+        },
+      ]
+    : [],
+} as const satisfies RuntimeCompositionStrategy;
+
+/**
+ * Copilot cloud custom-agent selection: for one name, the repository profile
+ * wins over the organization one and the organization one over the enterprise
+ * one (`select-first`), and profiles are collapsed by the documented filename
+ * identity — the configuration file’s own name minus `.md` or
+ * `.agent.md` — so one profile per name survives (`deduplicate`).
+ */
+export const COPILOT_CLOUD_AGENTS_SELECTION_STRATEGY = {
+  strategyId: 'copilot.cloud.agents.selection',
+  tool: 'copilot',
+  surfaces: ['copilot-cloud'],
+  operations: ['select-first', 'deduplicate'],
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.custom-agents',
+          url: 'https://docs.github.com/en/copilot/reference/custom-agents-configuration',
+          officialHost: 'docs.github.com',
+          sections: ['YAML frontmatter properties', 'MCP server configurations'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'The configuration file’s name minus .md or .agent.md deduplicates a profile between levels so the lowest level takes precedence — repository over organization over enterprise — and a selected profile’s own mcp-servers configuration is applied after the out-of-the-box servers and before the repository settings.',
+        },
+      ]
+    : [],
+} as const satisfies RuntimeCompositionStrategy;
+
 /** Copilot's contribution to the strategy registry, keyed by `strategyId`. */
 export const COPILOT_COMPOSITION_STRATEGIES: Readonly<
   Record<CopilotStrategyId, RuntimeCompositionStrategy>
 > = {
+  [COPILOT_VSCODE_AGENTS_SELECTION_STRATEGY.strategyId]: COPILOT_VSCODE_AGENTS_SELECTION_STRATEGY,
+  [COPILOT_CLOUD_AGENTS_SELECTION_STRATEGY.strategyId]: COPILOT_CLOUD_AGENTS_SELECTION_STRATEGY,
+  [COPILOT_CLI_AGENTS_SELECTION_STRATEGY.strategyId]: COPILOT_CLI_AGENTS_SELECTION_STRATEGY,
   [COPILOT_CLI_INSTRUCTIONS_LAYERING_STRATEGY.strategyId]:
     COPILOT_CLI_INSTRUCTIONS_LAYERING_STRATEGY,
   [COPILOT_CLI_MCP_SELECTION_STRATEGY.strategyId]: COPILOT_CLI_MCP_SELECTION_STRATEGY,

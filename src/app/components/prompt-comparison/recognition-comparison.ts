@@ -21,11 +21,12 @@
 // row's identity repeated: it is this tool's reading of this file, which is
 // the fact a reader opened the pair to see.
 //
-// No key leads the canonical document, unlike the skill comparison's `name`
-// and `description`: the name a row is keyed by is the rule's answer rather
-// than one declared key, and a command file's `name` key is ignored by both
-// products that read it, so promoting it would give one half of the kind an
-// identity it does not have.
+// The canonical documents lead with the keys VS Code's prompt file format
+// publishes, in that table's order (declaration-order.ts). `description`
+// leads because that table does, not because this product ranks it: a command
+// file's `name` key is read by neither product that loads one, so a list
+// promoting `name` would suggest an identity half this kind does not have.
+// Which name a row is keyed by stays the rule's answer either way.
 //
 // A side cell is the definition itself or null. Nothing derived from that
 // presence is stored beside it — no recognized flag, no separately held
@@ -42,6 +43,7 @@
 // carry, and a name its prompt mentions stays text in the source diff
 // (api-types.ts § PromptFileDetailDto, FR-019).
 import { canonicalFrontmatterYamlText } from '../inspection/frontmatter-yaml';
+import { LEADING_PROMPT_FRONTMATTER_KEYS } from '../inspection/declaration-order';
 import { SUPPORTED_TOOL_ORDER, type SupportedTool } from '../../../shared/entities';
 import type {
   FileDetailDto,
@@ -184,8 +186,9 @@ export class PromptRecognitionComparison {
   public readonly rightDeclarations: PromptDeclarationSideState;
 
   /**
-   * The two canonical YAML documents the frontmatter diff mounts — every key
-   * sorted, with no leading identity pair — or null unless both sides are
+   * The two canonical YAML documents the frontmatter diff mounts — the
+   * documented prompt keys leading, every other key sorted
+   * (declaration-order.ts) — or null unless both sides are
    * 'parsed': an unparsed side's declarations are unknown, and nothing may
    * be diffed against them (FR-028).
    */
@@ -193,6 +196,26 @@ export class PromptRecognitionComparison {
     /** The first side's canonical document (frontmatter-yaml.ts). */
     readonly originalText: string;
     /** The second side's canonical document. */
+    readonly modifiedText: string;
+  } | null;
+
+  /**
+   * The two body texts the content diff mounts — each file with its
+   * frontmatter block removed, exactly as the one parse left it (FR-007) — or
+   * null under the same condition {@link frontmatterDiff} is.
+   *
+   * Its own diff beside the declarations, rather than left to the source
+   * comparison, because the two halves are one split and showing only one of
+   * them normalized would privilege it: the declarations align key by key
+   * whatever order each file wrote them in, and the body aligns line by line
+   * without the frontmatter block above it moving the lines. The complete
+   * authored source stays below both, which is where every authored spelling
+   * is readable (FR-011).
+   */
+  public readonly bodyDiff: {
+    /** The first side's body text. */
+    readonly originalText: string;
+    /** The second side's body text. */
     readonly modifiedText: string;
   } | null;
 
@@ -217,8 +240,24 @@ export class PromptRecognitionComparison {
     this.frontmatterDiff =
       leftPresentation !== null && rightPresentation !== null
         ? {
-            originalText: canonicalFrontmatterYamlText(leftPresentation.frontmatter, []),
-            modifiedText: canonicalFrontmatterYamlText(rightPresentation.frontmatter, []),
+            originalText: canonicalFrontmatterYamlText(
+              leftPresentation.frontmatter,
+              LEADING_PROMPT_FRONTMATTER_KEYS,
+            ),
+            modifiedText: canonicalFrontmatterYamlText(
+              rightPresentation.frontmatter,
+              LEADING_PROMPT_FRONTMATTER_KEYS,
+            ),
+          }
+        : null;
+    // The other half of the same one parse, under the same guard: a side that
+    // offers no declarations offers no body either, because both come from the
+    // presentation that failed.
+    this.bodyDiff =
+      leftPresentation !== null && rightPresentation !== null
+        ? {
+            originalText: leftPresentation.bodyText,
+            modifiedText: rightPresentation.bodyText,
           }
         : null;
   }
@@ -234,12 +273,14 @@ export class PromptRecognitionComparison {
  * while `get-file-detail` is addressed by the path alone and answers with the
  * first variant its fixed order reaches, so a surface that required its own
  * kind would report a parsed file as unparsed (session.ts § fileDetail). The
- * two excluded variants are the ones that carry no parse at all: a rule file
- * is published whole, and an unrecognized file has nothing read out of it.
+ * excluded variants are the ones that carry no `MarkdownPresentationDto` at
+ * all: a rule file is published whole, a custom agent publishes its own two
+ * halves under its own shape (api-types.ts § AgentPresentationDto), and an
+ * unrecognized file has nothing read out of it.
  */
 function presentationOf(side: PromptComparisonSideInput): MarkdownPresentationDto | null {
   const detail = side.detail;
-  if (detail.kind === 'rule' || detail.kind === 'file') {
+  if (detail.kind === 'rule' || detail.kind === 'agent' || detail.kind === 'file') {
     return null;
   }
   return detail.presentation;

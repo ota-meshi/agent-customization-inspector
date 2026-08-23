@@ -106,6 +106,7 @@ function snapshotWith(
     rules: [],
     prompts: [],
     permissions: [],
+    agents: [],
     skills,
     mcp: [],
     diagnostics: [],

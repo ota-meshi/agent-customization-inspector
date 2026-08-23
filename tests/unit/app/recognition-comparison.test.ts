@@ -339,6 +339,7 @@ describe('recognition and declared-metadata comparison', () => {
     // no relationship rows, because no shipped recognition publishes an
     // edge for the wire to carry (api-types.ts § FileDetailDto).
     expect(Object.keys(comparison).toSorted()).toEqual([
+      'bodyDiff',
       'frontmatterDiff',
       'leftDeclarations',
       'rightDeclarations',

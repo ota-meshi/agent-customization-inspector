@@ -125,13 +125,17 @@ test('compares the two census companions through the file switchers', async ({ p
 test('publishes no recognition rows for files that carry none', async ({ page }) => {
   await openCompanionComparison(page);
   // No `skill metadata` recognition exists (Phase 6 decision), so nothing is
-  // typed about these files: the metadata section states that instead of
-  // fabricating rows or section headings, and the literal sources above are
-  // the comparison.
+  // typed about these files: the section states that instead of fabricating
+  // rows or headings of its own, and the literal sources are the comparison.
   const comparison = page.locator('.aci-recognition-comparison');
   await expect(comparison).toContainText('No compared file here carries a recognition');
   await expect(comparison.locator('table')).toHaveCount(0);
-  await expect(comparison.locator('h3')).toHaveCount(0);
+  await expect(comparison.locator('section')).toHaveCount(0);
+  // The one heading left is the page's own, passed through this component's
+  // `source` slot: the complete sources still compare when no recognition
+  // does.
+  await expect(comparison.locator('h3')).toHaveText(['Source comparison']);
+  await expect(comparison.locator('.aci-skill-compare__source')).toHaveCount(1);
 });
 
 test('shows authored sensitive values unchanged, with no masking or reveal control', async ({

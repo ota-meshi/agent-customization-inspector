@@ -275,8 +275,10 @@ a file, and what a product would select, trust, or default to, no surface states
     `.worktreeinclude`, keybindings, themes, plugin monitors, channels, and LSP settings.
     They require an explicit excluded or candidate rule before implementation; silence is
     not evidence that Claude ignores them.
-11. Current Claude supports nested subagent spawning (documented maximum depth five). Any
-    older “subagents cannot spawn subagents” statement is stale and must not return.
+11. Current Claude supports nested subagent spawning: a subagent may spawn its own up to
+    three layers below the main conversation by default, and the limit is set by an
+    environment variable rather than fixed. Any older “subagents cannot spawn subagents”
+    statement is stale and must not return, and no record states a fixed depth.
 12. Upstream pages change without a versioned URL. Revalidation must compare the stored
     semantic assertion and section, not just URL reachability.
 

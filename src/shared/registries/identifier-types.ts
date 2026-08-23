@@ -28,6 +28,10 @@
 export type ClaudeBehaviorId =
   /** Claude subagent discovery: recursive Markdown under each layer's `.claude/agents/`; a non-authorizing MCP-selection input. */
   | 'claude.behavior.repo.agents'
+  /** Claude subagent local memory at `<project-root>/.claude/agent-memory-local/<agent-name>/`; runtime state, never a candidate. */
+  | 'claude.behavior.repo.agent-memory.local'
+  /** Claude subagent project memory at `<project-root>/.claude/agent-memory/<agent-name>/`; runtime state, never a candidate. */
+  | 'claude.behavior.repo.agent-memory.project'
   /** Claude project command discovery: Markdown found recursively under the project's `.claude/commands/`. */
   | 'claude.behavior.repo.commands'
   /** Claude instruction discovery in each directory above the runtime `cwd`, toward the filesystem root. */
@@ -48,6 +52,12 @@ export type ClaudeBehaviorId =
   | 'claude.behavior.repo.settings.local'
   /** Claude Repository skill discovery under `.claude/skills/<skill-name>/SKILL.md`. */
   | 'claude.behavior.repo.skills'
+  /** Claude User subagents under `<claude-config-dir>/agents/`; a non-authorizing fact. */
+  | 'claude.behavior.user.agents'
+  /** Claude User subagent memory at `<claude-config-dir>/agent-memory/<agent-name>/`; a non-authorizing fact. */
+  | 'claude.behavior.user.agent-memory'
+  /** Claude auto memory under `<claude-config-dir>/projects/<project-key>/memory/`; a non-authorizing fact. */
+  | 'claude.behavior.user.auto-memory'
   /** Claude User commands under `<claude-config-dir>/commands/`; a non-authorizing fact. */
   | 'claude.behavior.user.commands'
   /** Claude User instructions at `<claude-config-dir>/CLAUDE.md`. */
@@ -69,6 +79,8 @@ export type ClaudeBehaviorId =
  * phase that needs them.
  */
 export type CodexBehaviorId =
+  /** Codex project custom agents: standalone `.codex/agents/*.toml` spawned-session configuration layers. */
+  | 'codex.behavior.repo.agents'
   /** Codex project configuration layers at `.codex/config.toml`. */
   | 'codex.behavior.repo.config'
   /** Codex hooks in every active trusted config layer: `.codex/hooks.json` and inline `[hooks]`. */
@@ -81,6 +93,8 @@ export type CodexBehaviorId =
   | 'codex.behavior.repo.rules'
   /** Codex Repository skill discovery under `.agents/skills/<name>/SKILL.md`. */
   | 'codex.behavior.repo.skills'
+  /** Codex User custom agents at `<CODEX_HOME>/agents/*.toml`; a non-authorizing fact. */
+  | 'codex.behavior.user.agents'
   /** Codex User configuration at `<CODEX_HOME>/config.toml`; a non-authorizing carrier fact. */
   | 'codex.behavior.user.config'
   /** Codex User instruction fallback at `<CODEX_HOME>/AGENTS.override.md` then `AGENTS.md`. */
@@ -116,6 +130,8 @@ export type CopilotBehaviorId =
   | 'copilot.behavior.cli.instructions.repository'
   /** Copilot CLI workspace MCP declarations: `.mcp.json` and `.github/mcp.json` on each ancestor. */
   | 'copilot.behavior.cli.mcp'
+  /** Copilot CLI custom-agent discovery: `.github/agents` and `.claude/agents` on each ancestor to the Git root. */
+  | 'copilot.behavior.cli.agents'
   /** Copilot CLI Repository skill discovery in the three fixed skills directories. */
   | 'copilot.behavior.cli.skills'
   /** Copilot CLI User path instructions below `<COPILOT_HOME>/instructions`. */
@@ -124,8 +140,12 @@ export type CopilotBehaviorId =
   | 'copilot.behavior.cli.user.instructions.root'
   /** Copilot CLI User MCP configuration at `<COPILOT_HOME>/mcp-config.json`; a non-authorizing fact. */
   | 'copilot.behavior.cli.user.mcp'
+  /** Copilot CLI User custom agents under `~/.copilot/agents/`; a non-authorizing fact. */
+  | 'copilot.behavior.cli.user.agents'
   /** Copilot CLI User skill discovery under `~/.copilot/skills` and `~/.agents/skills`. */
   | 'copilot.behavior.cli.user.skills'
+  /** Copilot cloud agent custom-agent profiles at the repository root's `.github/agents`. */
+  | 'copilot.behavior.cloud.agents'
   /** Copilot cloud agent `AGENTS.md` discovery over the repository tree. */
   | 'copilot.behavior.cloud.instructions.agents'
   /** Copilot cloud agent root-only `CLAUDE.md` and `GEMINI.md` agent-instruction alternatives. */
@@ -136,6 +156,8 @@ export type CopilotBehaviorId =
   | 'copilot.behavior.cloud.instructions.repository'
   /** Copilot cloud agent hosted MCP configuration: out-of-box, custom-agent, then repository-settings sources; no filesystem locator. */
   | 'copilot.behavior.cloud.mcp'
+  /** Copilot cloud agent's hosted organization and enterprise agent profiles; no filesystem locator. */
+  | 'copilot.behavior.cloud.organization-agents'
   /** Copilot cloud agent's hosted organization instructions; no filesystem locator. */
   | 'copilot.behavior.cloud.organization-instructions'
   /** Copilot cloud agent's hosted remote-skill relay; no filesystem locator. */
@@ -160,6 +182,8 @@ export type CopilotBehaviorId =
   | 'copilot.behavior.vscode.skills'
   /** Copilot VS Code User `~/.claude/CLAUDE.md` personal instructions. */
   | 'copilot.behavior.vscode.user.claude'
+  /** Copilot VS Code User custom agents in home and profile data; a non-authorizing fact. */
+  | 'copilot.behavior.vscode.user.agents'
   /** Copilot VS Code User instruction locations in home and profile data. */
   | 'copilot.behavior.vscode.user.instructions'
   /** Copilot VS Code User MCP configuration in the profile's own `mcp.json`. */
@@ -234,17 +258,25 @@ export type OpenAiSourceId =
   /** The Codex rules page: where rule files live and what a `prefix_rule()` declares. */
   | 'openai.codex.rules'
   /** The Codex skills page: where Codex loads local skills, and their metadata. */
-  | 'openai.codex.skills';
+  | 'openai.codex.skills'
+  /** The Codex subagents page: custom-agent files, their schema, and how a spawned session inherits from its parent. */
+  | 'openai.codex.subagents';
 
 /**
  * GitHub official documentation pages cited by the shipped records
  * (contracts/official-sources.md § GitHub official sources).
  */
 export type GitHubSourceId =
+  /** The Copilot CLI configuration-directory reference: what `~/.copilot/` holds, its personal agents and skills among it, and the settings files each scope reads. */
+  | 'github.copilot.cli.configuration'
+  /** The Copilot CLI custom-agents how-to: where a profile is created and how a reader invokes one. */
+  | 'github.copilot.cli.custom-agents'
   /** The Copilot CLI custom-instructions how-to: the CLI instruction kinds and their locations. */
   | 'github.copilot.cli.instructions'
   /** The Copilot CLI MCP how-to: the per-repository carrier files and their two declaration schemas. */
   | 'github.copilot.cli.mcp'
+  /** The Copilot CLI plugin reference: plugin and marketplace manifests, their component paths, and the loading order a duplicate name resolves under. */
+  | 'github.copilot.cli.plugins'
   /** The Copilot CLI command reference: skill locations, legacy commands, and their order. */
   | 'github.copilot.cli.reference'
   /** The cloud-agent repository-instructions how-to: root, path-specific, and alternative files. */
@@ -292,6 +324,10 @@ export type SourceId = AnthropicSourceId | OpenAiSourceId | GitHubSourceId | VsC
  * (contracts/runtime-composition.md).
  */
 export type ClaudeStrategyId =
+  /** Claude subagent context composition: a fresh context per custom agent, or the parent conversation for a fork. */
+  | 'claude.agent-context.composition'
+  /** Claude subagent selection across managed, session, project, User, and plugin scopes; a same-tree duplicate stays unresolved. */
+  | 'claude.agents.selection'
   /** Claude command selection: commands share the skill command namespace, a same-name skill wins, and subdirectories namespace the command name. */
   | 'claude.commands.selection'
   /** Claude instruction layering: User, ancestor, launch, and lazy descendant files, broad to narrow. */
@@ -310,6 +346,8 @@ export type ClaudeStrategyId =
  * (contracts/runtime-composition.md).
  */
 export type CodexStrategyId =
+  /** Codex custom-agent inheritance: a spawned session overlays the selected agent file on the parent, live sandbox and approval overrides reapplied. */
+  | 'codex.agents.inheritance'
   /** Codex config-layer resolution: closest applicable value wins across User and project layers. */
   | 'codex.config.precedence'
   /** Codex instruction layering: per-directory first-non-empty selection, broad-to-narrow. */
@@ -328,18 +366,24 @@ export type CodexStrategyId =
  * statement (FR-009).
  */
 export type CopilotStrategyId =
+  /** Copilot CLI custom-agent selection: deepest project layer first, `.github` over `.claude`, project-versus-User unresolved. */
+  | 'copilot.cli.agents.selection'
   /** Copilot CLI instruction layering with deduplication and no general precedence. */
   | 'copilot.cli.instructions.layering'
   /** Copilot CLI MCP selection: session-additional, plugin, workspace, then User sources. */
   | 'copilot.cli.mcp.selection'
   /** Copilot CLI first-found skill selection across its documented source order. */
   | 'copilot.cli.skills.selection'
+  /** Copilot cloud custom-agent selection: Repository, then organization, then enterprise, deduplicated by filename. */
+  | 'copilot.cloud.agents.selection'
   /** Copilot cloud instruction layering, Repository before organization. */
   | 'copilot.cloud.instructions.layering'
   /** Copilot cloud hosted MCP selection: out-of-box, custom-agent, then repository-settings, later sources overriding. */
   | 'copilot.cloud.mcp.selection'
   /** Copilot cloud progressive skill loading with unresolved collision behavior. */
   | 'copilot.cloud.skills.selection'
+  /** Copilot VS Code custom-agent selection over profiles targeting VS Code, cross-scope duplicates unresolved. */
+  | 'copilot.vscode.agents.selection'
   /** Copilot VS Code MCP selection with the 1.118/current-guide location conflict and unknown total order. */
   | 'copilot.vscode.mcp.selection'
   /** Copilot VS Code instruction layering, personal before Repository before organization. */
@@ -359,6 +403,8 @@ export type StrategyId = ClaudeStrategyId | CodexStrategyId | CopilotStrategyId;
  * arrive with the inventory phase that needs them.
  */
 export type ClaudeRuleId =
+  /** Repository Claude subagents under the root's own `.claude/agents/` subtree; read-authorizing `static-candidate`. */
+  | 'claude.repo.agent'
   /** Repository Claude command files under the root's own `.claude/commands/`; read-authorizing `static-candidate`. */
   | 'claude.repo.command'
   /** Repository Claude instructions at every depth; read-authorizing `static-candidate`. */
@@ -380,6 +426,8 @@ export type ClaudeRuleId =
 export type CodexRuleId =
   /** Configured instruction fallback basenames, seeded by the pinned `.codex/config.toml` path. */
   | 'codex.derived.fallback-basename'
+  /** Repository Codex custom agents as direct-child TOML of the root's `.codex/agents/`; read-authorizing `static-candidate`. */
+  | 'codex.repo.agent'
   /** The root-exact `.codex/config.toml` MCP carrier; read-authorizing `static-candidate`. */
   | 'codex.repo.config'
   /** Repository Codex instructions at the exact root override/regular pair; read-authorizing `static-candidate`. */
@@ -397,6 +445,10 @@ export type CodexRuleId =
 export type CopilotRuleId =
   /** VS Code `.claude` instruction locations and non-root CLI alternatives left out of this release. */
   | 'copilot.excluded.additional-standard-locations'
+  /** Root direct-child Copilot custom agents under `.github/agents/`, which all three surfaces read; read-authorizing `static-candidate`. */
+  | 'copilot.repo.agent'
+  /** Root direct-child Copilot custom agents under `.claude/agents/`, which the editor and CLI surfaces read and the Cloud agent does not; read-authorizing `static-candidate`. */
+  | 'copilot.repo.agent.claude'
   /** Runtime-supplied instruction and skill roots that never become scan roots. */
   | 'copilot.excluded.extra-directories'
   /** Root direct-child Copilot CLI command files under `.claude/commands/`; read-authorizing `static-candidate`. */

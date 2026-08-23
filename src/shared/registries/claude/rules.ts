@@ -546,8 +546,100 @@ export const CLAUDE_REPO_PERMISSIONS_RULE = {
     : [],
 } as const satisfies InspectionRule;
 
+/**
+ * The `claude.repo.agent` matcher, authored in the typed segment form the
+ * contract table shows: `['.claude', 'agents', ANY_DIRECTORIES, /\.md$/u]`.
+ *
+ * One recursive step and deliberately not two, the same shape the command
+ * matcher takes and for the same reason. The trailing `ANY_DIRECTORIES`
+ * reaches every depth *inside* the agents directory, because the page states
+ * that `.claude/agents/` is scanned recursively so definitions can be
+ * organized into subfolders — and adds that the subdirectory path does not
+ * affect how a subagent is identified, since identity comes only from the
+ * `name` frontmatter field. There is no leading one, because a leading
+ * recursive step needs a documented worked-file or descendant anchor and this
+ * page supplies none: it documents an upward walk from the working directory
+ * to the repository root, whose one member every session shares is the
+ * selected root (FR-001). So a `packages/api/.claude/agents/reviewer.md` is a
+ * near miss rather than a candidate, and the `--add-dir` directories the same
+ * paragraph names are a runtime fact this product never turns into a scan root
+ * (contracts/vendors/claude-code.md § Repository Inspector matchers).
+ */
+const CLAUDE_REPO_AGENT_MATCHER: StructuredInspectorMatcher = {
+  base: { kind: 'repository' },
+  selectors: [
+    [
+      { kind: 'literal', value: '.claude' },
+      { kind: 'literal', value: 'agents' },
+      ANY_DIRECTORIES,
+      { kind: 'regex', pattern: /\.md$/u },
+    ],
+  ],
+};
+
+/**
+ * Claude Repository subagents: the read-authorizing counterpart of
+ * `claude.behavior.repo.agents`. A subagent file is Markdown whose frontmatter
+ * configures the agent and whose body is the system prompt it runs with, so
+ * admitting it authorizes reading its bytes and nothing else. This product
+ * spawns no subagent, preloads no skill, and opens no path the frontmatter
+ * names.
+ *
+ * The sibling `agent-memory` and `agent-memory-local` directories get no
+ * selector, and that is what keeps them out: they hold what a running subagent
+ * wrote across earlier conversations, which is runtime state rather than an
+ * authored customization, and admitting one would publish a session's
+ * accumulated notes as if the reader had written them.
+ *
+ * A declared `mcpServers` block is this file's own frontmatter and joins no
+ * MCP row: an MCP declaration's home is an explicit carrier, and a file of
+ * another kind spelling MCP-looking configuration is that kind's ordinary
+ * content (data-model.md § Inventory unit). A declared `hooks` block is the
+ * separate contained recognition's, which arrives with the Hook phase.
+ *
+ * Admitting a file is not asserting Claude loads the agent: a managed or
+ * session-scope definition of the same name outranks it, the User and plugin
+ * scopes the same page documents lie outside this Source, and a file the
+ * vendor skips — one declaring no `name`, or a `name` it rejects — is admitted
+ * and published all the same, because whether a runtime selects a file is
+ * conditional on inputs this tool never observes (FR-009).
+ *
+ * `partially-documented`, from the behavior statement it rests on: duplicate
+ * names inside one directory tree load by filesystem read order rather than a
+ * documented precedence (contracts/vendors/claude-code.md § Canonical
+ * evidence-assessment index).
+ */
+export const CLAUDE_REPO_AGENT_RULE = {
+  ruleId: 'claude.repo.agent',
+  tool: 'claude',
+  discoveryClass: 'static-candidate',
+  kind: 'agent',
+  sourceKinds: ['repository'],
+  matcher: CLAUDE_REPO_AGENT_MATCHER,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'partially-documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.subagents.scope-context',
+          url: 'https://code.claude.com/docs/en/sub-agents',
+          officialHost: 'code.claude.com',
+          sections: ['Choose the subagent scope'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'Project subagents live under .claude/agents/ and that directory is scanned recursively, so a definition may sit in a subfolder — the exact subtree this rule admits — while the User scope at ~/.claude/agents/ the same section documents is a different Source boundary the rule may not read, and the directories added with --add-dir are a runtime input rather than a location.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
 /** Claude's contribution to the inspection-rule registry, keyed by `ruleId` in identifier order. */
 export const CLAUDE_INSPECTION_RULES: Readonly<Record<ClaudeRuleId, InspectionRule>> = {
+  [CLAUDE_REPO_AGENT_RULE.ruleId]: CLAUDE_REPO_AGENT_RULE,
   [CLAUDE_REPO_COMMAND_RULE.ruleId]: CLAUDE_REPO_COMMAND_RULE,
   [CLAUDE_REPO_INSTRUCTIONS_RULE.ruleId]: CLAUDE_REPO_INSTRUCTIONS_RULE,
   [CLAUDE_REPO_MCP_RULE.ruleId]: CLAUDE_REPO_MCP_RULE,

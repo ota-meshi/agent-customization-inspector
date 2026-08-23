@@ -1921,9 +1921,11 @@ configuration.
   environment-variable references. `accessibilitySupport`
   stays `auto`, `accessibilityVerbose` is enabled, and each view has an `ariaLabel`.
   Monaco's diff editor owns literal source comparison; tool recognition is compared per
-  tool, and a file's declared metadata — one parse per kind — is matched by
-  `(kind, declared key)` and compares/renders each field's resolved value once in Vue
-  rather than serializing it into an editor.
+  tool, and a file's declared metadata is compared once — serialized to one canonical
+  document per side, which the diff editor mounts beside the source, rather than
+  field-matched and rendered in Vue. The parse behind it runs once per `(file, kind)` for
+  the Markdown kinds and once per `(file, tool)` for the custom-agent kind, whose split is
+  the admitting rule's own reading.
   Repository comparison acceptance first uses two distinct readable current-generation customization files from the
   same Repository Source; only after a successful Global commit does US4 verify a readable
   Repository file against a readable Global file while retaining each owning Source and

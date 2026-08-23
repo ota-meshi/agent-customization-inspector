@@ -826,12 +826,16 @@ string. Diff
 highlighting uses Monaco and browser capacity without a product-defined line or computation-
 time cutoff. If Monaco or the browser reports a recoverable failure, retain the complete
 read-only side-by-side source and a diagnostic. Tool recognition is compared per tool
-in typed rows, while a file's declared metadata — one parse per kind — is compared once,
-because a tool is not a coordinate of a declaration: each side serializes to one
-canonical document and the two documents diff in Monaco. The Markdown kinds' frontmatter
-serializes to YAML — the block's own language — with the skill comparison leading with
-`name` and `description` and every other key sorted, and the instruction comparison
-sorting every key (frontmatter-yaml.ts). The MCP
+in typed rows, while a file's declared metadata is compared once, because a tool is not a
+coordinate of a declaration: each side serializes to one canonical document and the two
+documents diff in Monaco. That parse runs once per `(file, kind)` for the Markdown kinds,
+which every shipped vendor reads under the same fixed YAML semantics; the custom-agent
+kind is the exception and runs once per `(file, tool)`, because how an agent file splits
+is the admitting rule's own reading — a Codex agent is TOML whose
+`developer_instructions` string is the prose. The Markdown kinds' frontmatter
+serializes to YAML — the block's own language — with each comparison leading with the
+keys the vendors document for its kind, in the order the page that publishes them does,
+and sorting every other key (frontmatter-yaml.ts, declaration-order.ts). The MCP
 comparison serializes instead of tabulating: its unit is one declared server name — the
 kind's inventory row unit (data-model.md § Inventory unit) — each side is that name's
 declaration in one of the row's carriers, and the surface serializes each declaration's

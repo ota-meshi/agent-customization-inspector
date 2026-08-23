@@ -180,7 +180,7 @@ test('compares the name’s two files from the row’s own link, with no selecti
   await expect(page.locator('.aci-skill-compare h2')).toHaveText('Compare skill files');
   // Both complete sources are on the one surface, their literal credential
   // difference included — the diff editor holds both sides' lines.
-  const diff = page.locator('.aci-source-diff').first();
+  const diff = page.locator('.aci-skill-compare__source .aci-source-diff');
   await expect(diff).toBeVisible();
   await expect(diff).toContainText(AGENTS_SECRET);
   await expect(diff).toContainText(CLAUDE_SECRET);
@@ -225,7 +225,7 @@ test('steps the pair through corresponding files and copies', async ({ page }) =
   // Step the pair to the companion: both sides move to the corresponding
   // file, and the diff follows immediately.
   await fileSwitch.selectOption('notes.md');
-  const diff = page.locator('.aci-source-diff').first();
+  const diff = page.locator('.aci-skill-compare__source .aci-source-diff');
   await expect(diff).toContainText('Greet notes line (agents).');
   await expect(diff).toContainText('Greet notes line (claude).');
   // The URL keeps the copies' entry identities and moves only the compared
@@ -265,7 +265,7 @@ test('falls back to a shared file only when no copy keeps the current one, and s
   const fileSwitch = page.getByRole('combobox', { name: 'Compared file' });
   // extras.md is the file only the first copy ships.
   await fileSwitch.selectOption('extras.md');
-  await expect(page.locator('.aci-source-diff').first()).toContainText(
+  await expect(page.locator('.aci-skill-compare__source .aci-source-diff')).toContainText(
     'Extras line only in agents.',
   );
   // Moving the side that shipped it to the third copy leaves no side with
@@ -280,7 +280,7 @@ test('falls back to a shared file only when no copy keeps the current one, and s
   await expect(page.locator('.aci-skill-compare [role="status"]')).toHaveText(
     'Comparison ready: SKILL.md.',
   );
-  const diff = page.locator('.aci-source-diff').first();
+  const diff = page.locator('.aci-skill-compare__source .aci-source-diff');
   await expect(diff).toContainText('Greetz-only instruction line.');
   await expect(diff).toContainText('Claude-only instruction line.');
 });
@@ -291,7 +291,7 @@ test('shows a file only one copy ships as a one-sided difference', async ({ page
   // present side's complete content, the absent side's stated absence — and
   // the diff renders the whole content as the difference it is.
   await page.getByRole('combobox', { name: 'Compared file' }).selectOption('extras.md');
-  await expect(page.locator('.aci-source-diff').first()).toContainText(
+  await expect(page.locator('.aci-skill-compare__source .aci-source-diff')).toContainText(
     'Extras line only in agents.',
   );
   await expect(page.locator('.aci-skill-compare__files')).toContainText(
@@ -312,7 +312,7 @@ test('shows a file only one copy ships as a one-sided difference', async ({ page
   );
   // Stepping back to a shared file returns to the ordinary two-file view.
   await page.getByRole('combobox', { name: 'Compared file' }).selectOption('notes.md');
-  await expect(page.locator('.aci-source-diff').first()).toContainText(
+  await expect(page.locator('.aci-skill-compare__source .aci-source-diff')).toContainText(
     'Greet notes line (claude).',
   );
 });
@@ -339,7 +339,7 @@ test('resolves a hand-edited compared file against the copies', async ({ page })
     'Nothing in the current scan sits at this link',
   );
   await page.getByRole('combobox', { name: 'Compared file' }).selectOption('notes.md');
-  await expect(page.locator('.aci-source-diff').first()).toContainText(
+  await expect(page.locator('.aci-skill-compare__source .aci-source-diff')).toContainText(
     'Greet notes line (claude).',
   );
 });
@@ -350,7 +350,15 @@ test('states tool recognition per tool and compares declared metadata once', asy
   // The two facts have two homes (research.md § 7): per-tool recognition
   // rows, and the files' declared metadata compared once under no tool
   // caption.
-  await expect(comparison.locator('h3')).toHaveText(['Tool recognition', 'Declared metadata']);
+  // The sections stand in the order a reader needs them: what each file
+  // declares, what each file says, then the complete files, and last the
+  // recognitions.
+  await expect(comparison.locator('h3')).toHaveText([
+    'Declared metadata',
+    'Instructions',
+    'Source comparison',
+    'Tool recognition',
+  ]);
   // The `.agents` file is recognized by GitHub Copilot and OpenAI Codex, the
   // `.claude` file by GitHub Copilot and Claude Code: one recognition row
   // per tool in the contracted order, each recognition distinguishable from
@@ -372,8 +380,12 @@ test('states tool recognition per tool and compares declared metadata once', asy
   // in Monaco under no tool heading (frontmatter-yaml.ts): the credential
   // difference shows both resolved values, the `name`/`description` pair
   // leads, and a key only one file declares stands on its side alone.
-  const metadataDiff = comparison.locator('.aci-source-diff');
-  await expect(metadataDiff).toHaveCount(1);
+  const metadataDiff = comparison.locator('.aci-source-diff').first();
+  // Two diffs in the sections: the declarations and the body, each the file's
+  // own half of one parse. Scoped to `section`, because the page's complete
+  // source comparison passes through this component's slot and sits beside
+  // them rather than inside one.
+  await expect(comparison.locator('section .aci-source-diff')).toHaveCount(2);
   await expect(metadataDiff).toContainText(AGENTS_SECRET);
   await expect(metadataDiff).toContainText(CLAUDE_SECRET);
   await expect(metadataDiff).toContainText('only_agents');
@@ -390,7 +402,9 @@ test('shows the tab title for the comparison the page holds', async ({ page }) =
 
 test('offers no control that masks a value or reveals a masked one', async ({ page }) => {
   await openComparison(page);
-  await expect(page.locator('.aci-source-diff').first()).toContainText(AGENTS_SECRET);
+  await expect(page.locator('.aci-skill-compare__source .aci-source-diff')).toContainText(
+    AGENTS_SECRET,
+  );
   for (const label of [/reveal/iu, /unmask/iu, /show secret/iu, /hide value/iu]) {
     await expect(page.getByRole('button', { name: label })).toHaveCount(0);
   }
@@ -405,13 +419,17 @@ test('leaves an environment reference as the characters that were written', asyn
   await openComparison(page);
   // The host reads no process environment on an inspected file's behalf, so
   // the reference is text on both the diff and the metadata rows.
-  await expect(page.locator('.aci-source-diff').first()).toContainText(FIXTURE_ENV_REFERENCE);
+  await expect(page.locator('.aci-skill-compare__source .aci-source-diff')).toContainText(
+    FIXTURE_ENV_REFERENCE,
+  );
   await expect(page.locator('.aci-recognition-comparison')).toContainText(FIXTURE_ENV_REFERENCE);
 });
 
 test('proposes no change: no merge, edit, lint, or fix control anywhere', async ({ page }) => {
   await openComparison(page);
-  await expect(page.locator('.aci-source-diff').first()).toContainText(AGENTS_SECRET);
+  await expect(page.locator('.aci-skill-compare__source .aci-source-diff')).toContainText(
+    AGENTS_SECRET,
+  );
   for (const label of [/merge/iu, /apply/iu, /fix/iu, /format/iu, /lint/iu, /revert/iu]) {
     await expect(page.getByRole('button', { name: label })).toHaveCount(0);
     await expect(page.getByRole('link', { name: label })).toHaveCount(0);
@@ -434,7 +452,9 @@ test('is operable from the keyboard alone', async ({ page }) => {
   // Arriving places focus on the page's own heading, the landmark every
   // state keeps (WCAG 2.4.3).
   await expect(page.locator('.aci-skill-compare h2')).toBeFocused();
-  await expect(page.locator('.aci-source-diff').first()).toContainText(AGENTS_SECRET);
+  await expect(page.locator('.aci-skill-compare__source .aci-source-diff')).toContainText(
+    AGENTS_SECRET,
+  );
   // The switchers are native selects reached in the page's real Tab order;
   // their value-change keys are the platform's own select semantics, which
   // differ per OS, so the change itself is driven with Playwright's
@@ -442,7 +462,7 @@ test('is operable from the keyboard alone', async ({ page }) => {
   const fileSwitch = page.getByRole('combobox', { name: 'Compared file' });
   expect(await tabUntilFocused(page, fileSwitch)).toBe(true);
   await fileSwitch.selectOption('notes.md');
-  await expect(page.locator('.aci-source-diff').first()).toContainText(
+  await expect(page.locator('.aci-skill-compare__source .aci-source-diff')).toContainText(
     'Greet notes line (agents).',
   );
 });
@@ -450,7 +470,9 @@ test('is operable from the keyboard alone', async ({ page }) => {
 test('keeps the whole page usable at a narrow viewport', async ({ page }) => {
   await page.setViewportSize({ width: 480, height: 900 });
   await openComparison(page);
-  await expect(page.locator('.aci-source-diff').first()).toContainText(AGENTS_SECRET);
+  await expect(page.locator('.aci-skill-compare__source .aci-source-diff')).toContainText(
+    AGENTS_SECRET,
+  );
   // The body never scrolls sideways (WCAG 1.4.10): wide content scrolls
   // inside its own container, and the diff editor switches to its inline
   // view when the side-by-side layout does not fit.
@@ -475,7 +497,9 @@ test('keeps the whole page usable at a narrow viewport', async ({ page }) => {
 
 test('drops the content when the route leaves the comparison', async ({ page }) => {
   await openComparison(page);
-  await expect(page.locator('.aci-source-diff').first()).toContainText(AGENTS_SECRET);
+  await expect(page.locator('.aci-skill-compare__source .aci-source-diff')).toContainText(
+    AGENTS_SECRET,
+  );
   await page.getByRole('link', { name: 'Back to the inventory' }).click();
   await expect(page.locator('.aci-source-diff')).toHaveCount(0);
   expect(await page.locator('main').innerText()).not.toContain(AGENTS_SECRET);

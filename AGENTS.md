@@ -62,6 +62,11 @@ policy agreed in conversation and left there is a policy the next session does n
   that — and briefly why — it changed, not what it used to say.
 - Removing a historical note is an edit like any other: check that the parenthetical did
   not also carry a normative cross-reference such as an `FR-` identifier.
+- Never attribute a decision to the user. "user decision", "by user decision", and their
+  translations say nothing: the code and its artifacts belong to the user, so every
+  decision recorded here is theirs already, and marking some of them re-raises the
+  question of who made the rest. Record the decision and the reason it holds; a note whose
+  only content was the attribution is deleted rather than reworded.
 
 ## Documentation language policy
 

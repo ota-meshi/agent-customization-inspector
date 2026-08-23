@@ -248,8 +248,10 @@ group化される名前、`instructions` rowがgroup化される範囲 — の�
 10. 現在の公式docsには`.claude/workflows/*.js`、`.worktreeinclude`、keybinding、theme、plugin monitor、
     channel、LSP settingsなどの新しいsurfaceがある。実装前に明示的なexcludedまたはcandidate ruleが
     必要であり、記載がないことはClaudeが無視する証拠ではない。
-11. 現在のClaudeはnested subagent spawnをsupportする（文書化された最大深さは5）。古い
-    「subagentはsubagentをspawnできない」という記述を復活させてはならない。
+11. 現在のClaudeはnested subagent spawnをsupportする: subagentは既定でmain conversationの
+    3層下まで自身のsubagentをspawnでき、その上限は固定値ではなくenvironment variableで
+    設定される。古い「subagentはsubagentをspawnできない」という記述を復活させてはならず、
+    どのrecordも固定の深さを述べない。
 12. Upstream pageはversion付きURLなしで変化する。再確認ではURL到達性だけでなく、保存したsemantic
     assertionとsectionを比較しなければならない。
 

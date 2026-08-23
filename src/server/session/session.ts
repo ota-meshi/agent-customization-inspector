@@ -45,6 +45,8 @@ import type {
   McpInventoryEntryDto,
   PermissionPolicyDetailDto,
   PromptDefinitionDto,
+  AgentDefinitionDto,
+  AgentInventoryEntryDto,
   PromptInventoryEntryDto,
   PermissionsInventoryEntryDto,
   RuleInventoryEntryDto,
@@ -437,6 +439,76 @@ function projectPromptInventory(
       }))
       // Entries in name order: the row's own key sorts it.
       .sort((left, right) => compareStrings(left.name, right.name))
+  );
+}
+
+/**
+ * Projects the custom-agent inventory from a generation's recognitions
+ * (contracts/http-api.md § get-session `agents[]`, data-model.md § Inventory
+ * unit): one entry per agent name the admitting rules resolve, each listing
+ * every file a recognizing tool defines that agent in.
+ *
+ * The name is the recognition's own — read out of the file's declarations
+ * when it was recognized (`candidate.ts`) — so this projection groups by it
+ * rather than deriving it a second time where the two could disagree.
+ *
+ * Grouped like the MCP inventory rather than like the skill one, because the
+ * name can be genuinely unknown: under a product that identifies an agent by
+ * its declared `name`, a file declaring none, one declaring anything but a
+ * scalar, and one whose declarations could not be read at all share the
+ * null-named row that closes the list. No path fallback stands in for them —
+ * those vendors make the declared `name` the source of truth and the filename
+ * a convention, so a row named after the path would report an agent the
+ * product does not have. Which fact names a definition is its admitting rule's
+ * answer, so a Copilot definition of the same file is named by the
+ * configuration file's own name and rows separately
+ * (`rules/registry.ts` § CompiledStaticAgentRule.agentNameOf,
+ * data-model.md § Inventory unit).
+ */
+function projectAgentInventory(recognitions: readonly ToolRecognition[]): AgentInventoryEntryDto[] {
+  const byName = new Map<string | null, AgentDefinitionDto[]>();
+  for (const recognition of recognitions) {
+    if (recognition.details.kind !== 'agent') {
+      continue;
+    }
+    const name = recognition.details.agentName ?? null;
+    const definition: AgentDefinitionDto = {
+      sourceRelativePath: recognition.sourceRelativePath,
+      tool: recognition.tool,
+      // The surfaces this one recognition's admissions rest on, derived the
+      // same way every other kind's row derives them (FR-009).
+      surfaces: surfacesOf(recognition),
+      parseStatus: recognition.parseStatus,
+      diagnosticIds: recognition.diagnosticIds,
+    };
+    const definitions = byName.get(name);
+    if (definitions === undefined) {
+      byName.set(name, [definition]);
+    } else {
+      definitions.push(definition);
+    }
+  }
+  return (
+    [...byName.entries()]
+      .map(([name, definitions]) => ({
+        name,
+        // Files in Source-relative Path order, then the contracted tool order
+        // within one file, so two snapshots of one generation publish the same
+        // rows and an opaque ID never decides a visible order.
+        definitions: definitions.toSorted((left, right) => {
+          const pathDelta = compareStrings(left.sourceRelativePath, right.sourceRelativePath);
+          return pathDelta !== 0
+            ? pathDelta
+            : SUPPORTED_TOOL_ORDER.indexOf(left.tool) - SUPPORTED_TOOL_ORDER.indexOf(right.tool);
+        }),
+      }))
+      // Entries in name order, the null-named row last: it is not a name, so
+      // it closes the list rather than sorting among the names.
+      .sort((left, right) =>
+        left.name === null || right.name === null
+          ? Number(left.name === null) - Number(right.name === null)
+          : compareStrings(left.name, right.name),
+      )
   );
 }
 
@@ -867,7 +939,8 @@ export class InspectionSession {
       // The parse the detail shows is the file's, not a recognizing tool's:
       // every recognition of the file's kind shares the one extraction
       // (candidate.ts), so any one of them carries it. The variants are tried
-      // in a fixed order — the three Markdown kinds, then the rule kind — and a
+      // in a fixed order — the three Markdown kinds, then the custom-agent
+      // kind, then the rule kind — and a
       // file no recognition owns is the plain one: a census companion, or a
       // diagnostic-only candidate (contracts/http-api.md § get-file-detail).
       // One file can hold two of these kinds: `CLAUDE.md` is a Claude
@@ -965,6 +1038,46 @@ export class InspectionSession {
               ? {
                   frontmatter: recognition.details.frontmatter,
                   bodyText: recognition.details.bodyText,
+                }
+              : null,
+          diagnostics,
+        };
+      }
+      // A recognized custom-agent file: the file and the two halves its own
+      // parse resolved. Decided after the three Markdown kinds, and the
+      // overlap that order settles is shipped rather than hypothetical: a
+      // `.claude/agents/CLAUDE.md` is a Claude subagent by its directory and a
+      // Claude instruction file by its name, so both rules admit it and this
+      // order hands it out as the instructions variant. Nothing is lost by
+      // that: a Markdown agent's two halves are the frontmatter block and the
+      // body, which is exactly what `MarkdownPresentationDto` carries, so the
+      // agent route maps that variant onto its own shape rather than treating
+      // the file as unparsed (`pages/agents/[...path].vue` § presentation).
+      // Reordering would only move the problem: the instruction route would
+      // then receive an agent variant it has no mapping for.
+      //
+      // A loop rather than `find`: the callback's narrowing would not reach
+      // here without a hand-authored predicate, which asserts the kind instead
+      // of proving it, while `continue` narrows `details` by the compiler's own
+      // control flow.
+      for (const recognition of generation.recognitions) {
+        if (
+          recognition.sourceRelativePath !== sourceRelativePath ||
+          recognition.details.kind !== 'agent'
+        ) {
+          continue;
+        }
+        return {
+          kind: 'agent',
+          file,
+          // Null exactly for a failed extraction, the same all-or-nothing rule
+          // the skill variant follows: both halves are unknown rather than
+          // absent, and the complete source stays readable (FR-028).
+          presentation:
+            recognition.parseStatus === 'parsed'
+              ? {
+                  metadata: recognition.details.metadata,
+                  instructionsText: recognition.details.instructionsText,
                 }
               : null,
           diagnostics,
@@ -1231,18 +1344,6 @@ export class InspectionSession {
         ...this.committedRepositoryGeneration.recognitions,
         ...(this.committedGlobalGeneration?.recognitions ?? []),
       ]),
-      rules: projectRuleInventory([
-        ...this.committedRepositoryGeneration.recognitions,
-        ...(this.committedGlobalGeneration?.recognitions ?? []),
-      ]),
-      prompts: projectPromptInventory([
-        ...this.committedRepositoryGeneration.recognitions,
-        ...(this.committedGlobalGeneration?.recognitions ?? []),
-      ]),
-      permissions: projectPermissionsInventory([
-        ...this.committedRepositoryGeneration.recognitions,
-        ...(this.committedGlobalGeneration?.recognitions ?? []),
-      ]),
       skills: projectSkillInventory(
         [
           ...this.committedRepositoryGeneration.recognitions,
@@ -1256,6 +1357,22 @@ export class InspectionSession {
         ]),
       ),
       mcp: projectMcpInventory([
+        ...this.committedRepositoryGeneration.recognitions,
+        ...(this.committedGlobalGeneration?.recognitions ?? []),
+      ]),
+      agents: projectAgentInventory([
+        ...this.committedRepositoryGeneration.recognitions,
+        ...(this.committedGlobalGeneration?.recognitions ?? []),
+      ]),
+      prompts: projectPromptInventory([
+        ...this.committedRepositoryGeneration.recognitions,
+        ...(this.committedGlobalGeneration?.recognitions ?? []),
+      ]),
+      rules: projectRuleInventory([
+        ...this.committedRepositoryGeneration.recognitions,
+        ...(this.committedGlobalGeneration?.recognitions ?? []),
+      ]),
+      permissions: projectPermissionsInventory([
         ...this.committedRepositoryGeneration.recognitions,
         ...(this.committedGlobalGeneration?.recognitions ?? []),
       ]),

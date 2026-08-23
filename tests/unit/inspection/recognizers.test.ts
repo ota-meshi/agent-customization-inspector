@@ -38,6 +38,9 @@ const codexConfigRule = CODEX_REPOSITORY_RULES.find(
 const codexRulesRule = CODEX_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'codex.repo.rules',
 )!;
+const codexAgentRule = CODEX_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'codex.repo.agent',
+)!;
 const claudeSkillRule = CLAUDE_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'claude.repo.skill',
 )!;
@@ -52,6 +55,9 @@ const claudeRulesRule = CLAUDE_REPOSITORY_RULES.find(
 )!;
 const claudeCommandRule = CLAUDE_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'claude.repo.command',
+)!;
+const claudeAgentRule = CLAUDE_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'claude.repo.agent',
 )!;
 const copilotCommandRule = COPILOT_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'copilot.repo.command',
@@ -1838,5 +1844,309 @@ describe('surface-qualified Copilot instruction recognition (T247, T257)', () =>
       }
       expect(recognition.details.applicabilityRange, matchedPath).toBe(range);
     }
+  });
+});
+
+describe('Codex custom-agent recognition (T509)', () => {
+  const agentPath = '.codex/agents/reviewer.toml';
+
+  it('attaches one codex/agent recognition carrying the name, the metadata, and the instructions', async () => {
+    const recognitions = await recognize(
+      agentPath,
+      [codexAgentRule],
+      [
+        'name = "reviewer"',
+        'description = "PR reviewer."',
+        'model_reasoning_effort = "high"',
+        'developer_instructions = "Review code like an owner."',
+        '',
+      ].join('\n'),
+    );
+    // One recognition per `(file, tool, kind)`: the admission yields the agent
+    // recognition and nothing else — no MCP recognition, no settings
+    // recognition before the phase that owns one.
+    expect(recognitions).toHaveLength(1);
+    expect(recognitions[0]).toMatchObject({
+      sourceRelativePath: agentPath,
+      tool: 'codex',
+      parseStatus: 'parsed',
+      diagnosticIds: [],
+    });
+    if (recognitions[0]!.details.kind !== 'agent') {
+      throw new Error('expected an agent recognition');
+    }
+    // The declared `name` is the identity the inventory row is grouped under;
+    // every other declaration but the instructions is metadata, in the file's
+    // own order, as the parser resolved it (FR-007).
+    expect(recognitions[0]!.details.agentName).toBe('reviewer');
+    expect(recognitions[0]!.details.metadata.map((entry) => entry.key)).toEqual([
+      'name',
+      'description',
+      'model_reasoning_effort',
+    ]);
+    // `developer_instructions` is the prose half rather than a metadata entry:
+    // the split is the admitting rule's contract, and the detail renders the
+    // two halves differently.
+    expect(recognitions[0]!.details.instructionsText).toBe('Review code like an owner.');
+  });
+
+  it('leaves a non-string instructions declaration in the metadata', async () => {
+    // A `developer_instructions` the file wrote as a list is a declaration
+    // rather than prose; moving a rendering of it into the instructions half
+    // would show a document the file does not contain.
+    const recognitions = await recognize(
+      agentPath,
+      [codexAgentRule],
+      'name = "reviewer"\ndeveloper_instructions = ["one"]\n',
+    );
+    if (recognitions[0]!.details.kind !== 'agent') {
+      throw new Error('expected an agent recognition');
+    }
+    expect(recognitions[0]!.details.metadata.map((entry) => entry.key)).toEqual([
+      'name',
+      'developer_instructions',
+    ]);
+    expect(recognitions[0]!.details.instructionsText).toBe('');
+  });
+
+  it('derives deterministic provenance from the admitting agent rule', async () => {
+    const recognitions = await recognize(agentPath, [codexAgentRule], 'name = "reviewer"\n');
+    expect(recognitions[0]!.provenances).toHaveLength(1);
+    expect(recognitions[0]!.provenances[0]).toMatchObject({
+      ruleId: 'codex.repo.agent',
+      discoveryClass: 'static-candidate',
+      matchedPath: agentPath,
+    });
+  });
+
+  it('publishes no name for a file that declares none, and never one from the path', async () => {
+    // Codex identifies a custom agent by its `name` field; matching the
+    // filename to it is convention rather than lookup, so a file declaring
+    // none has no agent name and joins the row that says so
+    // (data-model.md § Inventory unit).
+    const recognitions = await recognize(
+      agentPath,
+      [codexAgentRule],
+      'description = "Declares no name."\n',
+    );
+    if (recognitions[0]!.details.kind !== 'agent') {
+      throw new Error('expected an agent recognition');
+    }
+    expect(recognitions[0]!.details.agentName).toBeUndefined();
+    expect(recognitions[0]!.parseStatus).toBe('parsed');
+    // The file's own stem is `reviewer`; nothing the recognition reads out of
+    // the bytes borrows it, so the payload never mentions it. The path itself
+    // does, and stays the file's identity (FR-030).
+    expect(JSON.stringify(recognitions[0]!.details)).not.toContain('reviewer');
+  });
+
+  it('publishes no name for a non-scalar declaration and keeps the value in the declarations', async () => {
+    // A one-item sequence has a rendering too, and taking its text would name
+    // the agent after the first item of a list the file did not write as a
+    // name.
+    const recognitions = await recognize(agentPath, [codexAgentRule], 'name = ["one", "two"]\n');
+    if (recognitions[0]!.details.kind !== 'agent') {
+      throw new Error('expected an agent recognition');
+    }
+    expect(recognitions[0]!.details.agentName).toBeUndefined();
+    expect(recognitions[0]!.details.metadata[0]).toEqual({
+      key: 'name',
+      keyKind: 'string',
+      value: {
+        kind: 'sequence',
+        items: [
+          { kind: 'scalar', scalarKind: 'string', text: 'one' },
+          { kind: 'scalar', scalarKind: 'string', text: 'two' },
+        ],
+      },
+    });
+  });
+
+  it('keeps an authored empty name distinguishable from no name at all', async () => {
+    const recognitions = await recognize(agentPath, [codexAgentRule], 'name = ""\n');
+    if (recognitions[0]!.details.kind !== 'agent') {
+      throw new Error('expected an agent recognition');
+    }
+    expect(recognitions[0]!.details.agentName).toBe('');
+  });
+
+  it('fails the recognition all-or-nothing on unparsable TOML', async () => {
+    const recognitions = await recognize(agentPath, [codexAgentRule], 'name = "unterminated\n');
+    expect(recognitions).toHaveLength(1);
+    expect(recognitions[0]!.parseStatus).toBe('failed');
+    if (recognitions[0]!.details.kind !== 'agent') {
+      throw new Error('expected an agent recognition');
+    }
+    // Nothing parsed is published — not the half that would have parsed — and
+    // the file's complete source stays displayed (FR-028).
+    expect(recognitions[0]!.details.agentName).toBeUndefined();
+    expect(recognitions[0]!.details.metadata).toEqual([]);
+    expect(recognitions[0]!.details.instructionsText).toBe('');
+  });
+
+  it('publishes a declared mcp_servers table as this file\u2019s own content', async () => {
+    const recognitions = await recognize(
+      agentPath,
+      [codexAgentRule],
+      [
+        'name = "reviewer"',
+        '',
+        '[mcp_servers.docs]',
+        'url = "https://docs.example.com/mcp"',
+        '',
+      ].join('\n'),
+    );
+    // No second recognition of the MCP kind: an MCP declaration's home is an
+    // explicit carrier, and a file of another kind spelling MCP-looking
+    // configuration is that kind's ordinary content (data-model.md
+    // § Inventory unit).
+    expect(recognitions.map((recognition) => recognition.details.kind)).toEqual(['agent']);
+    if (recognitions[0]!.details.kind !== 'agent') {
+      throw new Error('expected an agent recognition');
+    }
+    const declared = recognitions[0]!.details.metadata.find((entry) => entry.key === 'mcp_servers');
+    expect(declared?.value.kind).toBe('mapping');
+  });
+
+  it('enumerates no companion directory for an agent file', async () => {
+    // The census belongs to a directory-shaped kind, which today is `skill`
+    // alone (contracts/inspection-path-allowlist.md § Bounded companion
+    // census): an agent file is one file, so its siblings are not its own.
+    const companions = await censusOf('codex', agentPath, [codexAgentRule]);
+    expect(companions).toEqual([]);
+  });
+});
+
+describe('Claude custom-agent recognition (T529)', () => {
+  const agentPath = '.claude/agents/review/security.md';
+
+  /** Recognizes one authored Claude subagent at a nested fixture path. */
+  async function recognizeAgent(sourceText: string) {
+    return (await recognizeWith('claude', agentPath, [claudeAgentRule], sourceText)).recognitions;
+  }
+
+  it('splits the frontmatter from the body and reads the declared name', async () => {
+    const recognitions = await recognizeAgent(
+      [
+        '---',
+        'name: security-reviewer',
+        'description: Looks for security risks',
+        'tools: Read, Glob, Grep',
+        '---',
+        '',
+        '# Security reviewer',
+        '',
+        'Review for injection and unsafe defaults.',
+        '',
+      ].join('\n'),
+    );
+    // One recognition per `(file, tool, kind)`: the admission yields the agent
+    // recognition and nothing else — no MCP recognition, and no instruction
+    // recognition, because this file's name is not one the instruction rule
+    // admits.
+    expect(recognitions).toHaveLength(1);
+    expect(recognitions[0]).toMatchObject({
+      sourceRelativePath: agentPath,
+      tool: 'claude',
+      parseStatus: 'parsed',
+      diagnosticIds: [],
+    });
+    if (recognitions[0]!.details.kind !== 'agent') {
+      throw new Error('expected an agent recognition');
+    }
+    // The subfolder path does not affect identity: the vendor states the name
+    // comes only from the `name` frontmatter field.
+    expect(recognitions[0]!.details.agentName).toBe('security-reviewer');
+    expect(recognitions[0]!.details.metadata.map((entry) => entry.key)).toEqual([
+      'name',
+      'description',
+      'tools',
+    ]);
+    // The body is what the file wrote once the block is removed, its own
+    // leading newline included: the parser slices rather than trims, so a
+    // reader sees the spacing they authored (parsers/markdown.ts).
+    expect(recognitions[0]!.details.instructionsText).toBe(
+      '\n# Security reviewer\n\nReview for injection and unsafe defaults.\n',
+    );
+  });
+
+  it('derives deterministic provenance from the admitting agent rule', async () => {
+    const recognitions = await recognizeAgent('---\nname: security-reviewer\n---\n');
+    expect(recognitions[0]!.provenances).toHaveLength(1);
+    expect(recognitions[0]!.provenances[0]).toMatchObject({
+      ruleId: 'claude.repo.agent',
+      discoveryClass: 'static-candidate',
+      matchedPath: agentPath,
+    });
+  });
+
+  it('publishes no name for a file that declares none, and never one from the path', async () => {
+    // The vendor documents treating a file with no `name` as documentation
+    // kept beside the agents; the filename is convention rather than identity,
+    // so no row is named after it (data-model.md § Inventory unit).
+    const recognitions = await recognizeAgent(
+      '---\ndescription: Notes kept beside the agents\n---\n\nHow we write agents.\n',
+    );
+    if (recognitions[0]!.details.kind !== 'agent') {
+      throw new Error('expected an agent recognition');
+    }
+    expect(recognitions[0]!.details.agentName).toBeUndefined();
+    expect(recognitions[0]!.parseStatus).toBe('parsed');
+    expect(JSON.stringify(recognitions[0]!.details)).not.toContain('security');
+  });
+
+  it('publishes a file with no frontmatter as all instructions and no metadata', async () => {
+    const recognitions = await recognizeAgent('# Just prose\n');
+    if (recognitions[0]!.details.kind !== 'agent') {
+      throw new Error('expected an agent recognition');
+    }
+    expect(recognitions[0]!.details.metadata).toEqual([]);
+    expect(recognitions[0]!.details.instructionsText).toBe('# Just prose\n');
+  });
+
+  it('fails the recognition all-or-nothing on unparsable frontmatter', async () => {
+    const recognitions = await recognizeAgent('---\nname: [unterminated\n---\n\n# Broken\n');
+    expect(recognitions).toHaveLength(1);
+    expect(recognitions[0]!.parseStatus).toBe('failed');
+    expect(recognitions[0]!.details).toEqual({
+      kind: 'agent',
+      metadata: [],
+      instructionsText: '',
+    });
+  });
+
+  it('publishes a declared mcpServers block as this file\u2019s own content', async () => {
+    const recognitions = await recognizeAgent(
+      [
+        '---',
+        'name: browser-tester',
+        'mcpServers:',
+        '  - playwright:',
+        '      command: npx',
+        '  - github',
+        '---',
+        '',
+        'Use the Playwright tools.',
+        '',
+      ].join('\n'),
+    );
+    // No second recognition of the MCP kind: an MCP declaration's home is an
+    // explicit carrier (data-model.md § Inventory unit).
+    expect(recognitions.map((recognition) => recognition.details.kind)).toEqual(['agent']);
+    if (recognitions[0]!.details.kind !== 'agent') {
+      throw new Error('expected an agent recognition');
+    }
+    const declared = recognitions[0]!.details.metadata.find((entry) => entry.key === 'mcpServers');
+    // The authored shape is kept: a sequence whose items are an inline
+    // definition and a bare name reference, neither resolved nor connected.
+    expect(declared?.value.kind).toBe('sequence');
+  });
+
+  it('enumerates no companion directory for an agent file', async () => {
+    // The census belongs to a directory-shaped kind, which today is `skill`
+    // alone (contracts/inspection-path-allowlist.md § Bounded companion
+    // census).
+    const companions = await censusOf('claude', agentPath, [claudeAgentRule]);
+    expect(companions).toEqual([]);
   });
 });

@@ -1,7 +1,8 @@
-// T140, T314, T324, T429: the Claude skill's declared-name reading and its
-// admission-level uncertainty, the Claude MCP carrier's whole-entry field
-// reading, and the skill negative — an `mcpServers`-spelling skill stays a
-// skill (data-model.md § Field reading, FR-007, FR-009, FR-026, FR-028).
+// T140, T314, T324, T429, T537: the Claude skill's declared-name reading and
+// its admission-level uncertainty, the Claude MCP carrier's whole-entry field
+// reading, the skill negative — an `mcpServers`-spelling skill stays a
+// skill — and the Claude subagent's own split into metadata and instructions
+// (data-model.md § Field reading, FR-007, FR-009, FR-026, FR-028).
 //
 // Every declared key is read out in the shape the file wrote it — list-valued
 // keys, `hooks`-spelling and MCP-spelling frontmatter, and credential-shaped
@@ -46,6 +47,10 @@ const claudeMcpRule = CLAUDE_REPOSITORY_RULES.find(
 
 const claudePermissionsRule = CLAUDE_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'claude.repo.permissions',
+)!;
+
+const claudeAgentRule = CLAUDE_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'claude.repo.agent',
 )!;
 
 /**
@@ -911,5 +916,240 @@ describe('the Claude permission-policy carrier reading (T1108)', () => {
       kind: 'scalar',
       text: 'second',
     });
+  });
+});
+
+describe('Claude subagent reading (T537)', () => {
+  /** Recognizes one authored subagent at the root\u2019s own agents directory. */
+  async function recognizeAgent(sourceText: string): Promise<readonly ToolRecognition[]> {
+    const matchedPath = '.claude/agents/code-reviewer.md';
+    mkdirSync(join(root, '.claude/agents'), { recursive: true });
+    const { recognitions } = await recognizeCandidateForVendors(
+      {
+        matchedPath,
+        absolutePath: join(root, matchedPath),
+        sourceRoot: root,
+        admissions: [{ compiled: claudeAgentRule, origin: { planIndex: 0, selectorIndex: 0 } }],
+        sourceText,
+      },
+      ['claude'],
+    );
+    return recognitions;
+  }
+
+  /** The one agent recognition's payload, or a failure. */
+  function agentDetailsOf(recognitions: readonly ToolRecognition[]) {
+    const [recognition] = recognitions;
+    if (recognition === undefined || recognition.details.kind !== 'agent') {
+      throw new Error('expected one Claude agent recognition');
+    }
+    return recognition.details;
+  }
+
+  it('publishes the context, tool, skill, and memory keys as the file wrote them', async () => {
+    // The vendor's own frontmatter fields are declarations like any other:
+    // this product resolves their values and captions none of them, because
+    // what a key means is the vendor's documentation rather than this
+    // product's. `context: fork`, `tools`, `skills`, and `memory` all arrive
+    // as metadata entries, in the file's own order.
+    const details = agentDetailsOf(
+      await recognizeAgent(
+        [
+          '---',
+          'name: code-reviewer',
+          'description: Reviews code',
+          'context: fork',
+          'tools: Read, Glob, Grep',
+          'disallowedTools:',
+          '  - Bash',
+          'model: sonnet',
+          'skills:',
+          '  - api-conventions',
+          'memory: project',
+          'maxTurns: 12',
+          '---',
+          '',
+          'Review like an owner. Hand findings to @debugger.',
+          '',
+        ].join('\n'),
+      ),
+    );
+    expect(details.metadata.map((entry) => entry.key)).toEqual([
+      'name',
+      'description',
+      'context',
+      'tools',
+      'disallowedTools',
+      'model',
+      'skills',
+      'memory',
+      'maxTurns',
+    ]);
+    // A list-valued key keeps its authored shape rather than being flattened.
+    expect(details.metadata[4]!.value).toEqual({
+      kind: 'sequence',
+      items: [{ kind: 'scalar', scalarKind: 'string', text: 'Bash' }],
+    });
+    // A numeric key resolves as a number, so a surface spelling it back can
+    // spell it bare (api-types.ts § DeclaredScalarKind).
+    expect(details.metadata[8]!.value).toEqual({
+      kind: 'scalar',
+      scalarKind: 'number',
+      text: '12',
+    });
+    // The body is the system prompt half; the agent reference inside it stays
+    // text, resolved to nothing (FR-019).
+    expect(details.instructionsText).toContain('Hand findings to @debugger.');
+  });
+
+  it('publishes a declared mcpServers block without an MCP recognition of any kind', async () => {
+    // The inheritance the vendor documents — a subagent taking the selected
+    // parent tools by default, then applying its own filters — is
+    // `claude.mcp.selection`'s to record and no surface's to project (FR-009).
+    // What the file itself declares is its own content and joins no MCP row
+    // (data-model.md § Inventory unit).
+    const recognitions = await recognizeAgent(
+      [
+        '---',
+        'name: browser-tester',
+        'mcpServers:',
+        '  - playwright:',
+        '      type: stdio',
+        '      command: npx',
+        '  - github',
+        '---',
+        '',
+        'Drive the browser.',
+        '',
+      ].join('\n'),
+    );
+    expect(recognitions.map((recognition) => recognition.details.kind)).toEqual(['agent']);
+    const declared = agentDetailsOf(recognitions).metadata.find(
+      (entry) => entry.key === 'mcpServers',
+    );
+    expect(declared?.value).toEqual({
+      kind: 'sequence',
+      items: [
+        {
+          kind: 'mapping',
+          entries: [
+            {
+              key: 'playwright',
+              keyKind: 'string',
+              value: {
+                kind: 'mapping',
+                entries: [
+                  {
+                    key: 'type',
+                    keyKind: 'string',
+                    value: { kind: 'scalar', scalarKind: 'string', text: 'stdio' },
+                  },
+                  {
+                    key: 'command',
+                    keyKind: 'string',
+                    value: { kind: 'scalar', scalarKind: 'string', text: 'npx' },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+        { kind: 'scalar', scalarKind: 'string', text: 'github' },
+      ],
+    });
+  });
+
+  it('publishes a declared hooks block as the agent\u2019s own metadata for now', async () => {
+    // The contained Hook recognition arrives with the Hook phase; until it
+    // does, a `hooks` block is one of this file's declarations and nothing
+    // else — no hook row, and certainly no command run (FR-019).
+    const recognitions = await recognizeAgent(
+      [
+        '---',
+        'name: guarded',
+        'hooks:',
+        '  PreToolUse:',
+        '    - command: ./scripts/validate.sh',
+        '---',
+        '',
+        'x',
+        '',
+      ].join('\n'),
+    );
+    expect(recognitions.map((recognition) => recognition.details.kind)).toEqual(['agent']);
+    expect(agentDetailsOf(recognitions).metadata.map((entry) => entry.key)).toEqual([
+      'name',
+      'hooks',
+    ]);
+  });
+
+  it('publishes a credential and an environment reference exactly as written', async () => {
+    const details = agentDetailsOf(
+      await recognizeAgent(
+        [
+          '---',
+          'name: secretive',
+          `token: ${CONTENT_FIXTURE_SECRET}`,
+          'endpoint: ${CLAUDE_AGENT_ENDPOINT}',
+          '---',
+          '',
+          'x',
+          '',
+        ].join('\n'),
+      ),
+    );
+    expect(details.metadata[1]!.value).toEqual({
+      kind: 'scalar',
+      scalarKind: 'string',
+      text: CONTENT_FIXTURE_SECRET,
+    });
+    expect(details.metadata[2]!.value).toEqual({
+      kind: 'scalar',
+      scalarKind: 'string',
+      text: '${CLAUDE_AGENT_ENDPOINT}',
+    });
+  });
+
+  it('resolves the declared name rather than slicing the authored spelling', async () => {
+    // The same rule a skill's name follows: quoting is resolved once under
+    // YAML 1.2's core schema, so the identity is the value a product loading
+    // the file has (data-model.md § Field reading).
+    const details = agentDetailsOf(await recognizeAgent('---\nname: "code-reviewer"\n---\n\nx\n'));
+    expect(details.agentName).toBe('code-reviewer');
+  });
+
+  it('publishes no name for a non-scalar declaration and keeps it in the metadata', async () => {
+    const details = agentDetailsOf(
+      await recognizeAgent('---\nname:\n  - one\n  - two\n---\n\nx\n'),
+    );
+    expect(details.agentName).toBeUndefined();
+    expect(details.metadata[0]!.value.kind).toBe('sequence');
+  });
+
+  it('fails all-or-nothing and keeps nothing that happened to parse', async () => {
+    const recognitions = await recognizeAgent('---\nname: [unterminated\n---\n\n# Broken\n');
+    expect(recognitions[0]!.parseStatus).toBe('failed');
+    expect(recognitions[0]!.details).toEqual({
+      kind: 'agent',
+      metadata: [],
+      instructionsText: '',
+    });
+  });
+
+  it('states the duplicate-name uncertainty by listing both files and no winner', async () => {
+    // Two files under one tree declaring one name are two recognitions, each
+    // naming its own file; nothing here orders them, because the page states
+    // that only one loads and names no rule for which
+    // (contracts/runtime-composition.md § claude.agents.selection, FR-009).
+    const first = agentDetailsOf(await recognizeAgent('---\nname: debugger\n---\n\nA\n'));
+    const second = agentDetailsOf(await recognizeAgent('---\nname: debugger\n---\n\nB\n'));
+    expect(first.agentName).toBe('debugger');
+    expect(second.agentName).toBe('debugger');
+    for (const details of [first, second]) {
+      const serialized = JSON.stringify(details);
+      for (const field of ['precedence', 'winner', 'selected', 'active']) {
+        expect(serialized).not.toContain(field);
+      }
+    }
   });
 });

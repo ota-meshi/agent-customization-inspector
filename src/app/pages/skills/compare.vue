@@ -1125,22 +1125,27 @@ onBeforeUnmount(() => {
         </section>
       </div>
 
-      <!-- Headed like the metadata sections below, so the halves of the
-           ready view sit at one heading level and the editor-failure
-           fallback's own captions nest under a heading rather than beside
-           one (WCAG 1.3.1). -->
-      <template v-if="readyView.diff !== null">
-        <h3>Source comparison</h3>
-        <SourceDiff v-bind="readyView.diff" />
-      </template>
-
-      <!-- The component owns its two section headings — tool recognition and
-           declared metadata are two facts with two homes (research.md § 7). -->
+      <!-- The component owns the section order — the declarations, the
+           instructions, the complete files it takes below through the
+           `source` slot, and last the recognitions (research.md § 7). What
+           the source diff is stays this page's, because the absent side of a
+           one-sided comparison is this page's model. -->
       <RecognitionComparison
         :comparison="readyView.recognition"
         :left-path="readyView.sides[0].path"
         :right-path="readyView.sides[1].path"
-      />
+      >
+        <template v-if="readyView.diff !== null" #source>
+          <div class="aci-skill-compare__source">
+            <!-- Headed like the sections around it, so the halves of the ready
+                 view sit at one heading level and the editor-failure fallback's
+                 own captions nest under a heading rather than beside one
+                 (WCAG 1.3.1). -->
+            <h3>Source comparison</h3>
+            <SourceDiff v-bind="readyView.diff" />
+          </div>
+        </template>
+      </RecognitionComparison>
     </div>
 
     <template v-else-if="status === 'loading'">

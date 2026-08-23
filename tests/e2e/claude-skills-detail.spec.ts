@@ -177,16 +177,28 @@ test('leads with the name and description, then the rest of the declarations', a
     'Invocation name: greet',
   );
   // Every key the file declares, as one YAML document in the read-only
-  // viewer, led by the two a reader looks for first however the file
-  // ordered them (FR-007).
+  // viewer, led in the documented reading order however the file ordered
+  // them (FR-007).
   const declarations = page.locator('.aci-skill-detail__declarations');
   await expect(declarations).toContainText('name: claude-greet');
   await expect(declarations).toContainText(FIXTURE_SECRET);
   await expect(declarations).toContainText(FIXTURE_ENV_REFERENCE);
   const text = await declarations.innerText();
   expect(text.indexOf('name:')).toBeGreaterThan(-1);
-  expect(text.indexOf('name:')).toBeLessThan(text.indexOf('description:'));
-  expect(text.indexOf('description:')).toBeLessThan(text.indexOf('agent:'));
+  // The file wrote `agent` and `context` before `allowed-tools` and `hooks`;
+  // the page leads them in the order the frontmatter reference publishes, and
+  // the key that reference does not name keeps its authored place at the end.
+  const positions = [
+    'name:',
+    'description:',
+    'allowed-tools:',
+    'context:',
+    'agent:',
+    'hooks:',
+    'api_key:',
+  ].map((key) => text.indexOf(key));
+  expect(positions).toEqual([...positions].toSorted((left, right) => left - right));
+  expect(Math.min(...positions)).toBeGreaterThan(-1);
   // The nested declarations are part of the same document, by the keys the
   // file wrote — the hooks mapping and the sequence items among them.
   await expect(declarations).toContainText('PostToolUse');

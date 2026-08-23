@@ -21,6 +21,23 @@ vi.mock('../../src/server/host/devframe-app', () => ({
   executeRepositoryScan: vi.fn(),
 }));
 
+// The machine this suite runs on is not consulted for the applications a
+// session would offer. The real probe asks it whether each editor's command
+// resolves, and that lookup reads `process.cwd()` on Windows — which the
+// working-directory claim below would then see as the command re-reading it,
+// though selection never does. What the probe publishes is proven in
+// tests/unit/host/file-opener.test.ts.
+vi.mock('../../src/server/host/file-opener', () => ({
+  DetectedFileOpener: {
+    // The two targets every machine satisfies through its own handlers, and
+    // no editor: nothing here asks the session what it would open a file in.
+    probe: async () => ({
+      targets: ['default-application', 'containing-folder'],
+      openFile: vi.fn(),
+    }),
+  },
+}));
+
 const { executeRepositoryScan, startInspectorHost } =
   await import('../../src/server/host/devframe-app');
 const { runInspectorCli } = await import('../../src/server/cli');

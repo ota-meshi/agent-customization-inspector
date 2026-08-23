@@ -50,6 +50,7 @@
 // enable, trust, select, or load it.
 import type {
   CompiledCandidateRule,
+  CompiledStaticAgentRule,
   CompiledStaticMcpReadingRule,
   CompiledStaticPermissionsCarrierRule,
   SelectorOrigin,
@@ -60,6 +61,7 @@ import { listCompanionFiles, type CompanionFile } from '../companion-census';
 import type { CustomizationKind, SupportedTool } from '../../../shared/entities';
 import type { VendorSurface } from '../../../shared/registries/behavior-types';
 import type {
+  AgentPresentationDto,
   DeclaredEntryDto,
   McpServerDeclarationDto,
   RecognitionParseStatus,
@@ -134,41 +136,6 @@ export class CandidateProvenance {
  * discriminant and no second copy that could disagree with it.
  */
 export type RecognitionDetails =
-  /** A skill, identified by the name authored in its own file. */
-  | {
-      /** The recognized customization kind. */
-      readonly kind: 'skill';
-      /**
-       * The skill's own declared name as the parser resolved it under YAML
-       * 1.2's core schema, or absent when the recognizer extracted none
-       * (FR-007). Resolved, not sliced: an authored `name: 007` is the string
-       * `7`, not the authored spelling (data-model.md § Field reading).
-       *
-       * It is the display label and the identity every inventory row's name
-       * is built from (data-model.md § Inventory unit): a nested Claude Code
-       * recognition's row prefixes it root-relative, and every other
-       * recognition's row is named by it exactly. A file that declares none —
-       * or declares it empty — is named by its skill directory instead.
-       *
-       * Absent, never empty: an authored empty string is a different fact from
-       * no name at all, and collapsing them would report one as the other.
-       */
-      readonly declaredName?: string;
-      /**
-       * Every key the `SKILL.md` frontmatter declares, in authored order; the
-       * source of the detail response's `presentation.frontmatter` (FR-007).
-       * Empty when the file declares no frontmatter, and empty for a `failed`
-       * extraction, which publishes nothing while the complete source stays
-       * displayed (FR-028).
-       */
-      readonly frontmatter: readonly DeclaredEntryDto[];
-      /**
-       * The `SKILL.md` with its frontmatter block removed: the source of the
-       * detail response's `presentation.bodyText`. Empty for a `failed`
-       * extraction: extraction is all-or-nothing (FR-028).
-       */
-      readonly bodyText: string;
-    }
   /**
    * An instruction file, presented by what it declares and grouped by what it
    * governs. No declared name is read: the Source-relative Path the
@@ -206,6 +173,113 @@ export type RecognitionDetails =
        * not be read at all, its parse-failure diagnostic beside it (FR-028).
        */
       readonly applicabilityRange: string | null;
+    }
+  /** A skill, identified by the name authored in its own file. */
+  | {
+      /** The recognized customization kind. */
+      readonly kind: 'skill';
+      /**
+       * The skill's own declared name as the parser resolved it under YAML
+       * 1.2's core schema, or absent when the recognizer extracted none
+       * (FR-007). Resolved, not sliced: an authored `name: 007` is the string
+       * `7`, not the authored spelling (data-model.md § Field reading).
+       *
+       * It is the display label and the identity every inventory row's name
+       * is built from (data-model.md § Inventory unit): a nested Claude Code
+       * recognition's row prefixes it root-relative, and every other
+       * recognition's row is named by it exactly. A file that declares none —
+       * or declares it empty — is named by its skill directory instead.
+       *
+       * Absent, never empty: an authored empty string is a different fact from
+       * no name at all, and collapsing them would report one as the other.
+       */
+      readonly declaredName?: string;
+      /**
+       * Every key the `SKILL.md` frontmatter declares, in authored order; the
+       * source of the detail response's `presentation.frontmatter` (FR-007).
+       * Empty when the file declares no frontmatter, and empty for a `failed`
+       * extraction, which publishes nothing while the complete source stays
+       * displayed (FR-028).
+       */
+      readonly frontmatter: readonly DeclaredEntryDto[];
+      /**
+       * The `SKILL.md` with its frontmatter block removed: the source of the
+       * detail response's `presentation.bodyText`. Empty for a `failed`
+       * extraction: extraction is all-or-nothing (FR-028).
+       */
+      readonly bodyText: string;
+    }
+  /**
+   * An MCP declaration carrier, identified by the servers it declares. The
+   * kind's inventory unit is one declaration (data-model.md § Inventory
+   * unit), so the carrier's one recognition holds them all and the session
+   * projection splits them into rows — a synthetic per-server candidate would
+   * be a file the repository does not have.
+   */
+  | {
+      /** The recognized customization kind. */
+      readonly kind: 'MCP';
+      /**
+       * Every server the carrier declares, one per named declaration in the
+       * parser's resolved order — the names the inventory rows are named by,
+       * and the fields the detail publishes by the keys the file wrote
+       * (FR-007). Empty when the carrier declares none, and empty for a
+       * `failed` extraction, which publishes nothing while the carrier stays
+       * an admitted candidate (FR-028).
+       */
+      readonly servers: readonly McpServerDeclarationDto[];
+    }
+  /**
+   * A custom-agent definition, identified by the name its admitting product
+   * identifies the agent by and presented by the two halves its detail shows:
+   * the declarations a product reads as configuration, and the instructions it
+   * gives the agent.
+   *
+   * Where that split falls is the admitting rule's contract — a Codex agent's
+   * `developer_instructions` key, a Markdown agent's frontmatter fence — and
+   * what it produces is one shape either way, so one detail surface renders
+   * both (`registry.ts` § CompiledStaticAgentRule). What a spawned session
+   * would inherit, and which agent a spawn would select, are the vendor's
+   * documented composition and reach no surface (FR-009). A declared
+   * `mcp_servers` block is one metadata entry and joins no MCP row
+   * (data-model.md § Inventory unit).
+   */
+  | {
+      /** The recognized customization kind. */
+      readonly kind: 'agent';
+      /**
+       * The name the admitting product identifies this agent by — the identity
+       * the inventory row is grouped under — or absent when that product
+       * identifies agents by a declaration this file does not make
+       * (`rules/registry.ts` § CompiledStaticAgentRule.agentNameOf).
+       *
+       * Which fact answers is the rule's, because the vendors differ: Codex
+       * and Claude Code take the declared `name`, so a file declaring none,
+       * declaring it as anything but a scalar, or whose extraction failed
+       * publishes no name and joins the row that says so (FR-007, FR-028);
+       * the Copilot surfaces take the configuration file's own name, so the
+       * path answers and the row keeps its identity either way.
+       *
+       * Absent, never empty: an authored empty string is a different fact
+       * from no name at all, and collapsing them would report one as the
+       * other.
+       */
+      readonly agentName?: string;
+      /**
+       * Every declaration the file makes except the one holding the
+       * instructions, in the file's own order; the source of the detail
+       * response's `presentation.metadata` (FR-007). Empty when the file
+       * declares nothing else, and empty for a `failed` extraction, which
+       * publishes nothing while the complete source stays displayed
+       * (FR-028).
+       */
+      readonly metadata: readonly DeclaredEntryDto[];
+      /**
+       * The instructions the file gives the agent; the source of the detail
+       * response's `presentation.instructionsText`. Empty for a `failed`
+       * extraction: extraction is all-or-nothing (FR-028).
+       */
+      readonly instructionsText: string;
     }
   /**
    * A command file: a prompt a reader invokes by name, identified by that name
@@ -251,26 +325,6 @@ export type RecognitionDetails =
       readonly bodyText: string;
     }
   /**
-   * An MCP declaration carrier, identified by the servers it declares. The
-   * kind's inventory unit is one declaration (data-model.md § Inventory
-   * unit), so the carrier's one recognition holds them all and the session
-   * projection splits them into rows — a synthetic per-server candidate would
-   * be a file the repository does not have.
-   */
-  | {
-      /** The recognized customization kind. */
-      readonly kind: 'MCP';
-      /**
-       * Every server the carrier declares, one per named declaration in the
-       * parser's resolved order — the names the inventory rows are named by,
-       * and the fields the detail publishes by the keys the file wrote
-       * (FR-007). Empty when the carrier declares none, and empty for a
-       * `failed` extraction, which publishes nothing while the carrier stays
-       * an admitted candidate (FR-028).
-       */
-      readonly servers: readonly McpServerDeclarationDto[];
-    }
-  /**
    * A permission policy a carrier declares as one block of a larger document:
    * the entries of that block, in the parser's resolved order. The kind's
    * other form — a file that is itself the whole policy — carries no
@@ -304,7 +358,7 @@ export type RecognitionDetails =
       /** The recognized customization kind. */
       readonly kind: Exclude<
         CustomizationKind,
-        'skill' | 'instructions' | 'MCP' | 'prompt/command'
+        'instructions' | 'skill' | 'MCP' | 'agent' | 'prompt/command'
       >;
     };
 
@@ -322,7 +376,7 @@ export type RecognitionDetails =
  * carries no wire identity of its own. A class reached only through its
  * factories, which fix how a record comes to be: one typed factory per kind
  * ({@link recognizeSkill}, {@link recognizeInstructions}, {@link recognizeMcp},
- * {@link recognizeOther}) derives the published
+ * {@link recognizeAgent}, {@link recognizeOther}) derives the published
  * fields from exactly the extraction its kind produces — the kind→payload
  * correlation is each signature's own fact, never a runtime shape test over a
  * kind-erased value — and {@link withDiagnostic} — the one later change a
@@ -574,6 +628,48 @@ export class ToolRecognition {
   }
 
   /**
+   * Builds one custom-agent recognition from the admitting rule's own split of
+   * the file and its own answer for what names the agent.
+   *
+   * Both questions are the rule's because both differ between the vendors:
+   * where the configuration ends and the prose begins — a Codex
+   * `developer_instructions` key, a Markdown frontmatter fence — and which
+   * fact identifies the agent — the declared `name` for Codex and Claude Code,
+   * the configuration file's own name for the Copilot surfaces
+   * (`rules/registry.ts` § CompiledStaticAgentRule). The rule is asked with
+   * the metadata beside the path, so each answers from the half it uses.
+   *
+   * A failed extraction publishes neither half, which is what leaves a
+   * declared-name product's row name unknown rather than absent while the
+   * complete source stays displayed (FR-028).
+   */
+  public static recognizeAgent(
+    sourceRelativePath: string,
+    tool: SupportedTool,
+    rule: CompiledStaticAgentRule,
+    extraction: RecognitionExtraction<AgentPresentationDto>,
+    admissions: readonly RecognitionAdmission[],
+  ): ToolRecognition {
+    const metadata = extraction.extracted?.metadata ?? [];
+    const agentName = rule.agentNameOf(sourceRelativePath, metadata);
+    return ToolRecognition.#assemble(
+      sourceRelativePath,
+      tool,
+      {
+        kind: 'agent',
+        // Absent rather than empty when the product's own identifying fact is
+        // not there, so "no name" and "an authored empty name" stay
+        // distinguishable — the same rule a skill's declared name follows.
+        ...(agentName === null ? {} : { agentName }),
+        metadata,
+        instructionsText: extraction.extracted?.instructionsText ?? '',
+      },
+      extraction.status,
+      admissions,
+    );
+  }
+
+  /**
    * Builds a recognition of a kind with no extraction of its own: the kind
    * alone is the record until its recognizer phase gives it an identity, and
    * `not-attempted` is the honest status — no allowlisted extractor applies,
@@ -582,7 +678,7 @@ export class ToolRecognition {
   public static recognizeOther(
     sourceRelativePath: string,
     tool: SupportedTool,
-    kind: Exclude<CustomizationKind, 'skill' | 'instructions' | 'MCP' | 'prompt/command'>,
+    kind: Exclude<CustomizationKind, 'instructions' | 'skill' | 'MCP' | 'agent' | 'prompt/command'>,
     admissions: readonly RecognitionAdmission[],
   ): ToolRecognition {
     return ToolRecognition.#assemble(
@@ -766,6 +862,9 @@ class CandidateExtractions {
   /** The per-tool MCP declaration readings, each run on its first request. */
   #mcp = new Map<SupportedTool, RecognitionExtraction<readonly McpServerDeclarationDto[]>>();
 
+  /** The per-tool custom-agent presentation readings, each run on its first request. */
+  #agent = new Map<SupportedTool, RecognitionExtraction<AgentPresentationDto>>();
+
   /** The per-tool declared-policy readings, each run on its first request. */
   #declaredPolicy = new Map<
     SupportedTool,
@@ -816,6 +915,27 @@ class CandidateExtractions {
       carrier.serverDeclarationsOf(text),
     );
     this.#mcp.set(carrier.tool, extraction);
+    return extraction;
+  }
+
+  /**
+   * The custom-agent presentation extraction, read by the admitting rule's own
+   * contract — where an agent file's configuration ends and its instructions
+   * begin is that vendor's fact. Keyed by the tool for the reason the MCP slot
+   * is: one physical file can be two vendors' agent definition —
+   * `.claude/agents/` is Claude's location and a Copilot VS Code one — and
+   * each publishes exactly its own vendor's reading. Within one tool the
+   * reading runs once, whichever of its admissions asks first.
+   */
+  public agent(rule: CompiledStaticAgentRule): RecognitionExtraction<AgentPresentationDto> {
+    const existing = this.#agent.get(rule.tool);
+    if (existing !== undefined) {
+      return existing;
+    }
+    const extraction = RecognitionExtraction.run(this.#sourceText, (text) =>
+      rule.agentPresentationOf(text),
+    );
+    this.#agent.set(rule.tool, extraction);
     return extraction;
   }
 
@@ -897,14 +1017,6 @@ export async function recognizeCandidateForVendors(
   const extractions = new CandidateExtractions(input.sourceText);
   const recognitions = [...byTool.entries()].flatMap(([tool, byKind]) =>
     [...byKind.entries()].map(([kind, group]) => {
-      if (kind === 'skill') {
-        return ToolRecognition.recognizeSkill(
-          input.matchedPath,
-          tool,
-          extractions.markdown(),
-          group,
-        );
-      }
       if (kind === 'instructions') {
         return ToolRecognition.recognizeInstructions(
           input.matchedPath,
@@ -913,10 +1025,8 @@ export async function recognizeCandidateForVendors(
           group,
         );
       }
-      if (kind === 'prompt/command') {
-        // The same one parse the two other frontmatter-led kinds read: what a
-        // file declares does not depend on which kind asks for it.
-        return ToolRecognition.recognizePrompt(
+      if (kind === 'skill') {
+        return ToolRecognition.recognizeSkill(
           input.matchedPath,
           tool,
           extractions.markdown(),
@@ -948,6 +1058,38 @@ export async function recognizeCandidateForVendors(
           }
         }
         throw new TypeError('an MCP recognition has no rule that can read its declarations');
+      }
+      if (kind === 'agent') {
+        // Dispatched the way the MCP reading is, over the `kind` discriminant:
+        // an agent unit owns its vendor's reading of an admitted file, and a
+        // loop rather than `find` because a callback's narrowing does not
+        // reach the caller without a hand-authored predicate, which would
+        // assert rather than prove. Every shipped agent rule compiles into
+        // such a unit, so a group without one cannot be produced by the
+        // shipped catalog and fails loudly here rather than publishing a
+        // recognition with no parse.
+        for (const { compiled } of group) {
+          if (compiled.kind === 'agent') {
+            return ToolRecognition.recognizeAgent(
+              input.matchedPath,
+              tool,
+              compiled,
+              extractions.agent(compiled),
+              group,
+            );
+          }
+        }
+        throw new TypeError('an agent recognition has no rule that can split its presentation');
+      }
+      if (kind === 'prompt/command') {
+        // The same one parse the two other frontmatter-led kinds read: what a
+        // file declares does not depend on which kind asks for it.
+        return ToolRecognition.recognizePrompt(
+          input.matchedPath,
+          tool,
+          extractions.markdown(),
+          group,
+        );
       }
       if (kind === 'permissions') {
         // Dispatched the way the MCP reading is, over the `kind` and

@@ -657,11 +657,15 @@ devframe hostがNuxt outputを直接配信するため（§ 8）、product-assem
 表示のinert性はread-onlyなeditor設定、Vue text binding、無効なlinkによって成立し、clientは引き続き
 external worker、blob worker、evaluated stringをloadしない。Diff highlightはproduct独自のline数/computation-time cutoffを設けず、Monacoとbrowserの
 capacityに従う。Monacoまたはbrowserがrecoverable failureを報告した場合もcomplete read-only side-by-side sourceと
-diagnosticを残す。Tool recognitionはtypedなrowでtoolごとに比較し、fileの宣言済みmetadata —
-kindごとに1回のparse — は1回だけ比較する。toolは宣言の座標ではないからである: 各sideを1つの
-canonical documentへserializeし、2つのdocumentをMonacoでdiffする。Markdown系kindのfrontmatterは
-YAML — blockそのものの言語 — へserializeし、skill comparisonは`name`と`description`を先頭に
-それ以外のkeyをsort順で、instruction comparisonは全keyをsort順で並べる（frontmatter-yaml.ts）。MCP comparisonは表ではなくserializationで比較する:
+diagnosticを残す。Tool recognitionはtypedなrowでtoolごとに比較し、fileの宣言済みmetadataは1回だけ比較する。
+toolは宣言の座標ではないからである: 各sideを1つのcanonical documentへserializeし、2つの
+documentをMonacoでdiffする。その背後のparseは、Markdown系kindについては`(file, kind)`ごとに
+1回である。shippedな全vendorが同じ固定YAML semanticsで読むためである。custom-agent kindは
+例外で`(file, tool)`ごとに1回になる。agent fileがどこで分割されるかはadmitしたrule自身の
+読み取りであり、Codexのagentは`developer_instructions`のstringがproseであるTOMLだからである。Markdown系kindのfrontmatterは
+YAML — blockそのものの言語 — へserializeし、各comparisonはそのkindについてvendorが文書化して
+いるkeyを、それを公開するpageの順で先頭に置き、それ以外のkeyをsort順で並べる
+（frontmatter-yaml.ts、declaration-order.ts）。MCP comparisonは表ではなくserializationで比較する:
 その単位はkindのinventory row unitである1つの宣言済みserver名（data-model.md § Inventory unit）で、
 各sideはそのrowのcarrierの1つにあるその名前のdeclarationであり、surfaceは各declarationのparsed
 entryを1つのpretty-printed JSON documentへserializeし、2つのdocumentをMonacoでdiffする。

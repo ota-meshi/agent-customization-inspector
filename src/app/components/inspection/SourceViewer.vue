@@ -33,6 +33,28 @@ const props = defineProps<{
    */
   readonly contentLabel?: string;
   /**
+   * The content-owner registry this viewer joins instead of the session's, for
+   * a caller whose surface owns the drop. The comparison surfaces are the
+   * callers: a pick or a URL edit replaces the open pair without a purge and
+   * without a new generation, and the contract orders dispose before replace
+   * (data-model.md § BrowserState), so a viewer that only joined the session's
+   * registry would hold the previous pair's authored source until Vue's
+   * unmount one flush later.
+   *
+   * Instead of the session's rather than in addition to it, because the two
+   * run at different moments and only one of them can be right. Adopting a
+   * newer generation calls `closeFileDetail()` before it closes the
+   * comparisons, and that call runs the session's owners: a comparison viewer
+   * joined there would be detached while the comparison's own reactive state
+   * was still unchanged, so the compare route's synchronous focus guard would
+   * find focus already on the document body with nothing left to rescue
+   * (WCAG 2.4.3). The comparison's own registry covers every occasion the
+   * session's does — a purge and a generation both reach it — and it drops its
+   * reactive state before running its owners, which is the order the guard
+   * needs.
+   */
+  readonly registerContentOwner?: (disposer: () => void) => () => void;
+  /**
    * The language id the model is created with, set by a caller that knows the
    * text's syntax where the path does not say it. Two callers do: one showing
    * a canonical serialization rather than the file's own bytes — the MCP
@@ -108,7 +130,8 @@ let unmounted = false;
 // because this component's contract is its props — a harness that renders it
 // without the shell simply has no owner registry to join.
 const sessionViewState = inject(SESSION_VIEW_STATE, undefined);
-const unregisterContentOwner = sessionViewState?.registerOpenContentOwner(() => {
+/** Drops this viewer's model and its fallback text; see the registrations below. */
+const dropContent = (): void => {
   // Supersede any mount still in flight before disposing: a mount resolving
   // after the disposal would otherwise attach and write the dropped source
   // into a fresh model during the one flush before this component unmounts.
@@ -120,7 +143,13 @@ const unregisterContentOwner = sessionViewState?.registerOpenContentOwner(() => 
   // gone.
   purged.value = true;
   fallbackElement.value?.replaceChildren();
-});
+};
+// The caller's registry when it named one, the session's otherwise — never
+// both; see the prop's own doc for why joining both breaks the focus rescue.
+const unregisterContentOwner =
+  props.registerContentOwner === undefined
+    ? sessionViewState?.registerOpenContentOwner(dropContent)
+    : props.registerContentOwner(dropContent);
 
 /** Disposes the mounted editor and its model; safe to call twice. */
 function disposeViewer(): void {

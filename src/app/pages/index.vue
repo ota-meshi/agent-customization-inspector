@@ -178,16 +178,18 @@ const totalRowCount = computed(() => {
   switch (filters.activeKind.value) {
     case 'instructions':
       return snapshot.value?.instructions.length ?? 0;
-    case 'rule':
-      return snapshot.value?.rules.length ?? 0;
-    case 'prompt/command':
-      return snapshot.value?.prompts.length ?? 0;
-    case 'permissions':
-      return snapshot.value?.permissions.length ?? 0;
     case 'skill':
       return snapshot.value?.skills.length ?? 0;
     case 'MCP':
       return snapshot.value?.mcp.length ?? 0;
+    case 'agent':
+      return snapshot.value?.agents.length ?? 0;
+    case 'prompt/command':
+      return snapshot.value?.prompts.length ?? 0;
+    case 'rule':
+      return snapshot.value?.rules.length ?? 0;
+    case 'permissions':
+      return snapshot.value?.permissions.length ?? 0;
     default:
       return 0;
   }
@@ -293,11 +295,12 @@ const staleFailureMessage = computed(() =>
     <InventoryList
       :kind="filters.activeKind.value"
       :instruction-rows="filters.instructionRows.value"
-      :rule-rows="filters.ruleRows.value"
-      :prompt-rows="filters.promptRows.value"
-      :permissions-rows="filters.permissionsRows.value"
       :skill-rows="filters.skillRows.value"
       :mcp-rows="filters.mcpRows.value"
+      :agent-rows="filters.agentRows.value"
+      :prompt-rows="filters.promptRows.value"
+      :rule-rows="filters.ruleRows.value"
+      :permissions-rows="filters.permissionsRows.value"
       :files-by-path="filters.filesByPath.value"
       :mcp-carrier-paths="filters.mcpCarrierPaths.value"
       :total-count="totalRowCount"
@@ -328,12 +331,16 @@ const staleFailureMessage = computed(() =>
         here too. A file that only ships inside a customization's own directory is not: it belongs
         to that customization's row, and its own row above says what happened to it.
       </p>
+      <!-- The note explains why a tool filter changes nothing here; it does
+           not replace the rows. These files are listed under no tool at all,
+           so a filter has nothing to narrow — and the count in the heading
+           above would otherwise name rows the body no longer shows, taking
+           each file's path and its detail link with them. -->
       <p v-if="filters.effectiveTool.value !== null" class="aci-note">
         A tool filter is applied. No tool recognized these files, so none of them is listed under
-        one.
+        one, and the list below is unchanged.
       </p>
       <UnclassifiedList
-        v-else
         :files="filters.unrecognizedRows.value"
         :diagnostics="snapshot.diagnostics"
       />

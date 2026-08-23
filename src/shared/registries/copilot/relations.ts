@@ -15,26 +15,31 @@
 // Ordering is by identifier within each array, so two builds of the same
 // contract agree and the materialized fixture is byte-stable.
 import {
+  COPILOT_CLI_AGENTS_BEHAVIOR,
   COPILOT_CLI_COMMANDS_BEHAVIOR,
-  COPILOT_CLI_MCP_BEHAVIOR,
   COPILOT_CLI_INSTRUCTIONS_AGENTS_BEHAVIOR,
   COPILOT_CLI_INSTRUCTIONS_CLAUDE_BEHAVIOR,
   COPILOT_CLI_INSTRUCTIONS_GEMINI_BEHAVIOR,
   COPILOT_CLI_INSTRUCTIONS_PATH_BEHAVIOR,
   COPILOT_CLI_INSTRUCTIONS_REPOSITORY_BEHAVIOR,
+  COPILOT_CLI_MCP_BEHAVIOR,
   COPILOT_CLI_SKILLS_BEHAVIOR,
+  COPILOT_CLI_USER_AGENTS_BEHAVIOR,
   COPILOT_CLI_USER_INSTRUCTIONS_PATH_BEHAVIOR,
   COPILOT_CLI_USER_INSTRUCTIONS_ROOT_BEHAVIOR,
   COPILOT_CLI_USER_MCP_BEHAVIOR,
   COPILOT_CLI_USER_SKILLS_BEHAVIOR,
+  COPILOT_CLOUD_AGENTS_BEHAVIOR,
   COPILOT_CLOUD_INSTRUCTIONS_AGENTS_BEHAVIOR,
-  COPILOT_CLOUD_MCP_BEHAVIOR,
   COPILOT_CLOUD_INSTRUCTIONS_ALTERNATIVES_BEHAVIOR,
   COPILOT_CLOUD_INSTRUCTIONS_PATH_BEHAVIOR,
   COPILOT_CLOUD_INSTRUCTIONS_REPOSITORY_BEHAVIOR,
+  COPILOT_CLOUD_MCP_BEHAVIOR,
+  COPILOT_CLOUD_ORGANIZATION_AGENTS_BEHAVIOR,
   COPILOT_CLOUD_ORGANIZATION_INSTRUCTIONS_BEHAVIOR,
   COPILOT_CLOUD_REMOTE_SKILLS_BEHAVIOR,
   COPILOT_CLOUD_SKILLS_BEHAVIOR,
+  COPILOT_VSCODE_AGENTS_BEHAVIOR,
   COPILOT_VSCODE_INSTRUCTIONS_AGENTS_BEHAVIOR,
   COPILOT_VSCODE_INSTRUCTIONS_CLAUDE_BEHAVIOR,
   COPILOT_VSCODE_INSTRUCTIONS_PATH_BEHAVIOR,
@@ -42,14 +47,17 @@ import {
   COPILOT_VSCODE_MCP_BEHAVIOR,
   COPILOT_VSCODE_PROMPTS_BEHAVIOR,
   COPILOT_VSCODE_SKILLS_BEHAVIOR,
+  COPILOT_VSCODE_USER_AGENTS_BEHAVIOR,
   COPILOT_VSCODE_USER_CLAUDE_BEHAVIOR,
-  COPILOT_VSCODE_USER_MCP_BEHAVIOR,
   COPILOT_VSCODE_USER_INSTRUCTIONS_BEHAVIOR,
+  COPILOT_VSCODE_USER_MCP_BEHAVIOR,
   COPILOT_VSCODE_USER_SKILLS_BEHAVIOR,
 } from './behaviors';
 import {
   COPILOT_EXCLUDED_ADDITIONAL_STANDARD_LOCATIONS_RULE,
   COPILOT_EXCLUDED_EXTRA_DIRECTORIES_RULE,
+  COPILOT_REPO_AGENT_CLAUDE_RULE,
+  COPILOT_REPO_AGENT_RULE,
   COPILOT_REPO_COMMAND_RULE,
   COPILOT_REPO_INSTRUCTIONS_AGENTS_RULE,
   COPILOT_REPO_INSTRUCTIONS_CLAUDE_ROOT_RULE,
@@ -65,12 +73,15 @@ import {
   COPILOT_REPO_SKILL_RULE,
 } from './rules';
 import {
+  COPILOT_CLI_AGENTS_SELECTION_STRATEGY,
   COPILOT_CLI_INSTRUCTIONS_LAYERING_STRATEGY,
   COPILOT_CLI_MCP_SELECTION_STRATEGY,
   COPILOT_CLI_SKILLS_SELECTION_STRATEGY,
+  COPILOT_CLOUD_AGENTS_SELECTION_STRATEGY,
   COPILOT_CLOUD_INSTRUCTIONS_LAYERING_STRATEGY,
   COPILOT_CLOUD_MCP_SELECTION_STRATEGY,
   COPILOT_CLOUD_SKILLS_SELECTION_STRATEGY,
+  COPILOT_VSCODE_AGENTS_SELECTION_STRATEGY,
   COPILOT_VSCODE_INSTRUCTIONS_LAYERING_STRATEGY,
   COPILOT_VSCODE_MCP_SELECTION_STRATEGY,
   COPILOT_VSCODE_SKILLS_SELECTION_STRATEGY,
@@ -87,6 +98,16 @@ export const COPILOT_STRATEGY_RELATIONS: Readonly<Record<CopilotStrategyId, Stra
    * runtime, and leaving them out would misdescribe a combination of
    * repository and personal files as a combination of repository files alone.
    */
+  /**
+   * CLI custom-agent selection composes the project layers the surface walks
+   * and the User scope it also reads. Both are listed for the reason the skill
+   * selections list theirs: the strategy describes Copilot's runtime, where
+   * the two scopes are combined and the precedence between them is what the
+   * official pages disagree about.
+   */
+  [COPILOT_CLI_AGENTS_SELECTION_STRATEGY.strategyId]: {
+    consumesBehaviors: [COPILOT_CLI_AGENTS_BEHAVIOR, COPILOT_CLI_USER_AGENTS_BEHAVIOR],
+  },
   [COPILOT_CLI_INSTRUCTIONS_LAYERING_STRATEGY.strategyId]: {
     consumesBehaviors: [
       COPILOT_CLI_INSTRUCTIONS_AGENTS_BEHAVIOR,
@@ -120,6 +141,15 @@ export const COPILOT_STRATEGY_RELATIONS: Readonly<Record<CopilotStrategyId, Stra
    * deliberately absent: the support matrix does not list them as a
    * Cloud-agent layer, so composing them would be an inference.
    */
+  /**
+   * Cloud custom-agent selection composes the Repository scope and the
+   * organization scope the same surface reads; the enterprise scope its
+   * documented order also names has no behavior of its own, because no file
+   * in a selected root can be one.
+   */
+  [COPILOT_CLOUD_AGENTS_SELECTION_STRATEGY.strategyId]: {
+    consumesBehaviors: [COPILOT_CLOUD_AGENTS_BEHAVIOR, COPILOT_CLOUD_ORGANIZATION_AGENTS_BEHAVIOR],
+  },
   [COPILOT_CLOUD_INSTRUCTIONS_LAYERING_STRATEGY.strategyId]: {
     consumesBehaviors: [
       COPILOT_CLOUD_INSTRUCTIONS_AGENTS_BEHAVIOR,
@@ -133,6 +163,13 @@ export const COPILOT_STRATEGY_RELATIONS: Readonly<Record<CopilotStrategyId, Stra
    * VS Code instruction layering composes the workspace locations and the
    * personal ones documented above them in the layer order.
    */
+  /**
+   * VS Code custom-agent selection composes the workspace scope and the User
+   * profile scope, which is where its unresolved same-name precedence lies.
+   */
+  [COPILOT_VSCODE_AGENTS_SELECTION_STRATEGY.strategyId]: {
+    consumesBehaviors: [COPILOT_VSCODE_AGENTS_BEHAVIOR, COPILOT_VSCODE_USER_AGENTS_BEHAVIOR],
+  },
   [COPILOT_VSCODE_INSTRUCTIONS_LAYERING_STRATEGY.strategyId]: {
     consumesBehaviors: [
       COPILOT_VSCODE_INSTRUCTIONS_AGENTS_BEHAVIOR,
@@ -378,6 +415,40 @@ export const COPILOT_RULE_RELATIONS: Readonly<Record<CopilotRuleId, RuleRelation
   [COPILOT_REPO_MCP_VSCODE_ROOT_RULE.ruleId]: {
     basedOnBehaviors: [COPILOT_VSCODE_MCP_BEHAVIOR],
     explainedByStrategies: [COPILOT_VSCODE_MCP_SELECTION_STRATEGY],
+  },
+  /**
+   * The `.github/agents/` rule is based on the three surface behaviors that
+   * read that directory from the repository itself; the User-scope and
+   * organization-scope behaviors the selections also consume describe files
+   * outside any selected root, so no admitted file can be one.
+   */
+  [COPILOT_REPO_AGENT_RULE.ruleId]: {
+    basedOnBehaviors: [
+      COPILOT_CLI_AGENTS_BEHAVIOR,
+      COPILOT_CLOUD_AGENTS_BEHAVIOR,
+      COPILOT_VSCODE_AGENTS_BEHAVIOR,
+    ],
+    explainedByStrategies: [
+      COPILOT_CLI_AGENTS_SELECTION_STRATEGY,
+      COPILOT_CLOUD_AGENTS_SELECTION_STRATEGY,
+      COPILOT_VSCODE_AGENTS_SELECTION_STRATEGY,
+    ],
+  },
+  /**
+   * The `.claude/agents/` rule rests on two behaviors rather than three, and
+   * is a rule of its own for exactly that: the Cloud agent's own behavior
+   * names `.github/agents/` alone, so a rule spanning both directories would
+   * derive a surface no page documents (`rules/registry.ts`
+   * § recognizingSurfaces). The cloud selection is absent from its
+   * explanations for the same reason — it composes only behaviors this
+   * directory is not one of.
+   */
+  [COPILOT_REPO_AGENT_CLAUDE_RULE.ruleId]: {
+    basedOnBehaviors: [COPILOT_CLI_AGENTS_BEHAVIOR, COPILOT_VSCODE_AGENTS_BEHAVIOR],
+    explainedByStrategies: [
+      COPILOT_CLI_AGENTS_SELECTION_STRATEGY,
+      COPILOT_VSCODE_AGENTS_SELECTION_STRATEGY,
+    ],
   },
   [COPILOT_REPO_SKILL_RULE.ruleId]: {
     basedOnBehaviors: [

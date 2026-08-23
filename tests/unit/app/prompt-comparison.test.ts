@@ -95,6 +95,7 @@ function snapshotWith(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot
       },
     ],
     permissions: [],
+    agents: [],
     skills: [],
     mcp: [],
     diagnostics: [],
@@ -433,16 +434,16 @@ describe('prompt and command recognition comparison rows (T503)', () => {
         [invoked(SHARED_NAME, RIGHT_PATH, 'copilot', ['copilot-vscode'])],
       ),
     );
-    // One canonical document per side — every key sorted, with no leading
-    // identity pair, because this kind's row name is the admitting rule's
-    // answer rather than one declared key — however many tools recognize
-    // either side: the declarations are the files' one parse, not any
-    // tool's, so no tool repeats or captions them (research.md § 7,
+    // One canonical document per side — the documented prompt keys leading in
+    // the order VS Code's prompt file format publishes them, every other key
+    // sorted after (declaration-order.ts) — however many tools recognize
+    // either side: the declarations are the files' one parse, not any tool's,
+    // so no tool repeats or captions them (research.md § 7,
     // frontmatter-yaml.ts).
     expect(comparison.frontmatterDiff).toEqual({
       originalText: [
-        'argument-hint: "[environment]"',
         'description: Deploy the current branch',
+        'argument-hint: "[environment]"',
         'disable-model-invocation: false',
         '',
       ].join('\n'),
@@ -523,6 +524,7 @@ describe('prompt and command recognition comparison rows (T503)', () => {
       ]),
     );
     expect(Object.keys(comparison).sort()).toEqual([
+      'bodyDiff',
       'frontmatterDiff',
       'leftDeclarations',
       'rightDeclarations',

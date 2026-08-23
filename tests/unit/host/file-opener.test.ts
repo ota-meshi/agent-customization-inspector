@@ -4,7 +4,7 @@
 // platform split, macOS spawning the resolved launcher where every other
 // platform goes through the `open` package — and the refusal to launch an
 // editor the probe did not find.
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import open from 'open';
 import { spawn } from 'node:child_process';
@@ -12,7 +12,7 @@ import { EventEmitter } from 'node:events';
 import { DetectedFileOpener } from '../../../src/server/host/file-opener';
 import type { FileOpenTarget } from '../../../src/shared/api-types';
 
-const { spawnMock, execFileAsyncMock } = vi.hoisted(() => ({
+const { spawnMock, execFileAsyncMock, whichMock, resolvedCommands } = vi.hoisted(() => ({
   // A real `ChildProcess` is an emitter the caller awaits `spawn` on before
   // detaching, so the double is one too: it emits `spawn` on the next tick,
   // which is what a successful launch does.
@@ -23,8 +23,28 @@ const { spawnMock, execFileAsyncMock } = vi.hoisted(() => ({
     return child;
   }),
   execFileAsyncMock: vi.fn<(file: string, args: readonly string[]) => Promise<unknown>>(),
+  whichMock:
+    vi.fn<(command: string, options: { nothrow: true; path?: string }) => Promise<string | null>>(),
+  // The commands this file answers the machine lookup for itself, cleared
+  // after every test. A command it holds no answer for is asked of the real
+  // machine, which is what the probe does.
+  resolvedCommands: new Map<string, string>(),
 }));
 
+// The probe's one question to a machine is whether a command resolves, so a
+// claim about which command the rule asks for is unobservable on a machine
+// that lacks it: a Windows runner has `vim` but no `vi`, and the terminal
+// editor's platform default is `vi`. The lookup therefore answers from this
+// file where it holds an answer, and from the real machine everywhere else —
+// which is what keeps the probe's own integration with `env-editor`'s catalog
+// exercised below.
+vi.mock('which', async (importOriginal) => {
+  const { default: realWhich } = await importOriginal<{ default: typeof import('which') }>();
+  whichMock.mockImplementation(
+    async (command, options) => resolvedCommands.get(command) ?? realWhich(command, options),
+  );
+  return { default: whichMock };
+});
 vi.mock('node:child_process', () => ({
   spawn: spawnMock,
   // The module promisifies `execFile`; `promisify` resolves through this
@@ -84,6 +104,7 @@ afterEach(() => {
   if (realVisual !== undefined) {
     process.env['VISUAL'] = realVisual;
   }
+  resolvedCommands.clear();
   vi.clearAllMocks();
 });
 
@@ -122,6 +143,15 @@ describe('the applications a machine offers', () => {
 });
 
 describe('the terminal editor a machine can host', () => {
+  // The two commands these claims are about — the editor a reader can name and
+  // the platform default the rule falls back to — so that what is asserted is
+  // which command the rule asks for rather than which editors the machine
+  // running the suite happens to have.
+  beforeEach(() => {
+    resolvedCommands.set('vi', '/usr/bin/vi');
+    resolvedCommands.set('vim', TERMINAL_EDITOR);
+  });
+
   it('offers none where the host cannot open a terminal window for one', async () => {
     // The window is opened through the macOS automation host, so nowhere else
     // can this product give a terminal editor somewhere to run.

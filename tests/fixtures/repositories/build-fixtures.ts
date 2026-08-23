@@ -2207,14 +2207,22 @@ export interface ClaudeMcpFixture {
   readonly plainSkillPath: string;
   /**
    * Files of future owner families that carry MCP declarations but that no
-   * shipped rule admits — a plugin manifest, an agent file. They must produce
-   * no candidate, no recognition, and no row: an owner adapter is dispatched
-   * only on an independently admitted owner. The settings file this fixture
-   * also writes is not among them any more: `claude.repo.permissions` admits
-   * it for the policy it may declare, which is a candidacy of its own kind and
-   * still no MCP one.
+   * shipped rule admits — a plugin manifest. They must produce no candidate,
+   * no recognition, and no row: an owner adapter is dispatched only on an
+   * independently admitted owner. Two files this fixture also writes are not
+   * among them any more, each for the same reason: `claude.repo.permissions`
+   * admits the settings file for the policy it may declare and
+   * `claude.repo.agent` admits the agent file for the agent it defines, and
+   * both candidacies are their own kind's rather than an MCP one.
    */
   readonly unadmittedOwnerPaths: readonly string[];
+  /**
+   * The admitted custom-agent file whose frontmatter spells `mcpServers`. It
+   * is a candidate of the `agent` kind and gains no MCP recognition: an MCP
+   * declaration's home is an explicit carrier (data-model.md § Inventory
+   * unit).
+   */
+  readonly mcpFrontmatterAgentPath: string;
   /**
    * The file the carrier's relative `command` value names. It exists on disk
    * precisely so a scan can prove no declared command target is opened.
@@ -2332,9 +2340,10 @@ export function buildClaudeMcpFixture(
   // negative above.
   write(root, '.claude/skills/plain/SKILL.md', '---\nname: plain\n---\n\n# Plain skill\n');
 
-  // Future owner families carrying declarations no shipped rule admits: an
-  // owner adapter grants no read authority, so none of these produces a
-  // candidate, a recognition, or a row.
+  // A future owner family carrying declarations no shipped rule admits: an
+  // owner adapter grants no read authority, so it produces no candidate, no
+  // recognition, and no row. The settings and agent files written beside it
+  // are admitted by their own kinds' rules and still reach no MCP surface.
   write(
     root,
     '.claude-plugin/plugin.json',
@@ -2374,7 +2383,8 @@ export function buildClaudeMcpFixture(
     expectedCarrierServerNames: ['context7', 'docs-http', 'odd'],
     mcpFrontmatterSkillPath: '.claude/skills/deploy/SKILL.md',
     plainSkillPath: '.claude/skills/plain/SKILL.md',
-    unadmittedOwnerPaths: ['.claude-plugin/plugin.json', '.claude/agents/reviewer.md'],
+    unadmittedOwnerPaths: ['.claude-plugin/plugin.json'],
+    mcpFrontmatterAgentPath: '.claude/agents/reviewer.md',
     commandTargetPath: 'scripts/context7.sh',
     nearMissPaths: [
       '.claude.json',
@@ -2874,7 +2884,10 @@ export function buildPriorityMcpFixture(
       // it for the policy it may declare, so it is a candidate of its own kind
       // — and still no MCP one, which the MCP rows this fixture asserts show.
       '.git/.mcp.json',
-      '.github/agents/deploy.md',
+      // `.github/agents/deploy.md` is not here for the same reason:
+      // `copilot.repo.agent` admits it for the agent it defines, so its
+      // `mcp-servers` block is that agent's own declared content and still no
+      // MCP row, which the MCP rows this fixture asserts show.
       '.mcp.json.bak',
       'mcp-config.json',
       'mcp.json',
@@ -3476,6 +3489,880 @@ export function buildAllVendorInstructionFixture(
 }
 
 /** One combined fixture repository holding every customization kind at once. */
+/** One built Codex custom-agent fixture repository (T507). */
+export interface CodexAgentFixture {
+  /** The absolute fixture root to scan. */
+  readonly root: string;
+  /** Which capability-gated cases exist; see {@link RepositoryFixtureCapabilities}. */
+  readonly capabilities: RepositoryFixtureCapabilities;
+  /**
+   * Every Source-relative Path the `codex.repo.agent` allowlist must admit,
+   * sorted. Capability-gated members are present only when the corresponding
+   * capability is.
+   */
+  readonly expectedAgentPaths: readonly string[];
+  /**
+   * The agent names the admitted files declare, sorted — the named rows of the
+   * custom-agent inventory. A name two files declare appears once: the row is
+   * the name, and both files are its definitions.
+   */
+  readonly expectedAgentNames: readonly string[];
+  /**
+   * The admitted files publishing no declared name, sorted — the members of
+   * the one null-named row: a file declaring no `name`, a file declaring one
+   * that is not a scalar, and the malformed file whose declarations could not
+   * be read at all.
+   */
+  readonly unnamedAgentPaths: readonly string[];
+  /**
+   * The admitted file whose TOML cannot be parsed: its recognition fails
+   * all-or-nothing, so it keeps its complete readable source and carries a
+   * `recognition-parse-failed` diagnostic (FR-028).
+   */
+  readonly malformedAgentPath: string;
+  /**
+   * The admitted file whose declarations spell an `[mcp_servers.*]` table.
+   * It joins no MCP inventory row: an MCP declaration's home is an explicit
+   * carrier, and this block is the agent file's own content
+   * (data-model.md § Inventory unit).
+   */
+  readonly mcpSpellingAgentPath: string;
+  /**
+   * Paths no shipped rule or derivation of any product may admit: the nested
+   * subdirectory below the root's `.codex/agents/`, the subdirectory
+   * `.codex/agents` belonging to a runtime chain member this product does not
+   * select, and spelling variants one step from the matcher's literals.
+   *
+   * The User scope (`<CODEX_HOME>/agents/*.toml`) has no entry here because it
+   * has no repository path at all: it lies outside every inspected Source, and
+   * `codex.behavior.user.agents` records it without authorizing a read.
+   */
+  readonly nearMissPaths: readonly string[];
+}
+
+/**
+ * Builds the canonical Codex custom-agent fixture repository (T507).
+ *
+ * Positive cases: two direct-child agents declaring distinct names, two more
+ * declaring one shared name — the duplicate-name row — an agent that declares
+ * a literal credential and a literal environment reference beside an
+ * `[mcp_servers.*]` table and two arbitrary configured paths, an agent
+ * declaring no `name`, an agent declaring a `name` that is a list rather than
+ * a scalar, a malformed TOML file, and a linked agent file where the platform
+ * materializes links.
+ *
+ * Near misses: a nested subdirectory below the root's `.codex/agents/` (the
+ * page documents no recursion), the subdirectory `.codex/agents` a runtime
+ * `cwd` below the root would reach — which re-declares a root agent name, so a
+ * duplicate in an unadmitted layer provably contributes nothing — and spelling
+ * variants beside the matcher's literals.
+ *
+ * The credential and the environment reference are here so a test can prove
+ * they reach no inventory summary, are never masked on the detail, and are
+ * never resolved (FR-025, FR-026). The configured paths are here so a test can
+ * prove no target is opened: a declared path never gains read authority and
+ * creates no candidate.
+ *
+ * `root` overrides where the tree is written; the default is a fresh root
+ * under the OS temporary directory. The dev fixture launcher
+ * (`scripts/serve-fixture.ts`) passes a repo-local git-ignored directory.
+ */
+export function buildCodexAgentFixture(
+  prefix = 'inspector-codex-agents',
+  root = createRepositoryFixtureRoot(prefix),
+): CodexAgentFixture {
+  write(
+    root,
+    '.codex/agents/pr-explorer.toml',
+    [
+      'name = "pr_explorer"',
+      'description = "Read-only codebase explorer."',
+      'model = "gpt-5.3-codex-spark"',
+      'model_reasoning_effort = "medium"',
+      'sandbox_mode = "read-only"',
+      'developer_instructions = """',
+      'Stay in exploration mode.',
+      'Cite files and symbols.',
+      '"""',
+      '',
+    ].join('\n'),
+  );
+  write(
+    root,
+    '.codex/agents/reviewer.toml',
+    [
+      'name = "reviewer"',
+      'description = "PR reviewer focused on correctness."',
+      'developer_instructions = "Review code like an owner."',
+      '',
+    ].join('\n'),
+  );
+  // The duplicate-name row: two files declare `docs_researcher`, so the
+  // inventory shows one row with two definitions. The vendor makes the
+  // declared name the identity, so the differing file names change nothing.
+  write(
+    root,
+    '.codex/agents/docs-researcher.toml',
+    [
+      'name = "docs_researcher"',
+      'description = "Documentation specialist."',
+      'developer_instructions = "Verify APIs against the docs."',
+      '',
+    ].join('\n'),
+  );
+  write(
+    root,
+    '.codex/agents/docs-researcher-2.toml',
+    [
+      'name = "docs_researcher"',
+      'description = "Second file declaring the same agent name."',
+      'developer_instructions = "Confirm framework behavior."',
+      '',
+    ].join('\n'),
+  );
+  // An agent spelling MCP configuration, a literal credential, a literal
+  // environment reference, and two arbitrary configured paths. None of them
+  // becomes an MCP row, a resolved value, or a candidate.
+  write(
+    root,
+    '.codex/agents/secretive.toml',
+    [
+      'name = "secretive"',
+      'description = "Declares a credential, an environment reference, and configured paths."',
+      'developer_instructions = "Use the docs server."',
+      'config_file = "./.codex/agents/shared.toml"',
+      '',
+      '[[skills.config]]',
+      'path = "./.agents/skills/deploy"',
+      '',
+      '[mcp_servers.docs]',
+      'url = "https://docs.example.com/mcp"',
+      '',
+      '[mcp_servers.docs.env]',
+      `API_KEY = "${FIXTURE_SECRET_LITERAL}"`,
+      `ENDPOINT = "${FIXTURE_ENVIRONMENT_REFERENCE}"`,
+      '',
+    ].join('\n'),
+  );
+  // Declares no `name`: the vendor requires one, so the file publishes no
+  // agent name and joins the null-named row rather than being named after its
+  // path.
+  write(
+    root,
+    '.codex/agents/nameless.toml',
+    [
+      'description = "Declares no name at all."',
+      'developer_instructions = "Do the work."',
+      '',
+    ].join('\n'),
+  );
+  // Declares a `name` that is a list: a rendering exists, but naming the agent
+  // after a list's first item would be an identity the file never declared, so
+  // this file joins the null-named row too.
+  write(
+    root,
+    '.codex/agents/listed-name.toml',
+    ['name = ["one", "two"]', 'description = "Declares a non-scalar name."', ''].join('\n'),
+  );
+  // Malformed TOML: the recognition fails all-or-nothing, the file keeps its
+  // complete readable source, and its diagnostic says the declarations could
+  // not be read (FR-028).
+  write(root, '.codex/agents/broken.toml', 'name = "broken\nthis is not TOML = [\n');
+
+  // Near miss: the nested subdirectory below the root's own agents directory.
+  // The page names `.codex/agents/` and documents no recursion, so admitting
+  // this would rest on a search no official text establishes.
+  write(
+    root,
+    '.codex/agents/team/nested.toml',
+    ['name = "nested"', 'description = "One directory too deep."', ''].join('\n'),
+  );
+  // Near miss: the subdirectory `.codex/agents` belongs to a runtime chain
+  // member this product does not select. It re-declares a root agent name, so
+  // a duplicate in an unadmitted layer provably contributes nothing.
+  write(
+    root,
+    'packages/api/.codex/agents/reviewer.toml',
+    ['name = "reviewer"', 'description = "Not the selected root\'s agent."', ''].join('\n'),
+  );
+  // Near misses: spelling variants one step from the matcher's literals.
+  write(root, '.codex/agents/reviewer.toml.bak', 'name = "backup suffix"\n');
+  write(root, '.codex/agents/reviewer.yaml', 'name: wrong extension\n');
+  write(root, '.codex/agent/reviewer.toml', 'name = "singular directory"\n');
+  write(root, 'codex/agents/reviewer.toml', 'name = "dotless directory"\n');
+  write(root, 'README.md', 'unrelated\n');
+
+  // The link case: an agent file reached through a symbolic link is the file
+  // it resolves to, read through the link like every other candidate (FR-024).
+  const linkedAgentPath = '.codex/agents/linked.toml';
+  const symlinks = tryMaterializeSymlinks(
+    root,
+    () => {
+      write(
+        root,
+        'fixtures/linked-agent.toml',
+        ['name = "linked"', 'description = "Reached through a symbolic link."', ''].join('\n'),
+      );
+    },
+    () => {
+      symlinkSync(join(root, 'fixtures/linked-agent.toml'), join(root, linkedAgentPath));
+    },
+    [linkedAgentPath],
+  );
+
+  return {
+    root,
+    capabilities: { symlinks },
+    expectedAgentPaths: [
+      '.codex/agents/broken.toml',
+      '.codex/agents/docs-researcher-2.toml',
+      '.codex/agents/docs-researcher.toml',
+      ...(symlinks ? [linkedAgentPath] : []),
+      '.codex/agents/listed-name.toml',
+      '.codex/agents/nameless.toml',
+      '.codex/agents/pr-explorer.toml',
+      '.codex/agents/reviewer.toml',
+      '.codex/agents/secretive.toml',
+    ].toSorted(),
+    expectedAgentNames: [
+      'docs_researcher',
+      ...(symlinks ? ['linked'] : []),
+      'pr_explorer',
+      'reviewer',
+      'secretive',
+    ].toSorted(),
+    unnamedAgentPaths: [
+      '.codex/agents/broken.toml',
+      '.codex/agents/listed-name.toml',
+      '.codex/agents/nameless.toml',
+    ],
+    malformedAgentPath: '.codex/agents/broken.toml',
+    mcpSpellingAgentPath: '.codex/agents/secretive.toml',
+    nearMissPaths: [
+      '.codex/agent/reviewer.toml',
+      '.codex/agents/reviewer.toml.bak',
+      '.codex/agents/reviewer.yaml',
+      '.codex/agents/team/nested.toml',
+      'codex/agents/reviewer.toml',
+      'packages/api/.codex/agents/reviewer.toml',
+    ],
+  };
+}
+
+/** One built Claude subagent fixture repository (T527). */
+export interface ClaudeAgentFixture {
+  /** The absolute fixture root to scan. */
+  readonly root: string;
+  /** Which capability-gated cases exist; see {@link RepositoryFixtureCapabilities}. */
+  readonly capabilities: RepositoryFixtureCapabilities;
+  /**
+   * Every Source-relative Path the `claude.repo.agent` allowlist must admit,
+   * sorted — the root's own `.claude/agents/` subtree at every depth.
+   * Capability-gated members are present only when the corresponding
+   * capability is.
+   */
+  readonly expectedAgentPaths: readonly string[];
+  /**
+   * The agent names the admitted files declare, sorted — the rows Claude
+   * Code's own recognitions head. A name two files declare appears once: the
+   * row is the name, and both files are its definitions, which is how the
+   * inventory shows a duplicate the vendor resolves by filesystem read order.
+   */
+  readonly expectedAgentNames: readonly string[];
+  /**
+   * The agent names Copilot's own rule resolves in this tree, sorted:
+   * `copilot.repo.agent` names `.claude/agents/` as one of the two directories
+   * it loads project agents from and identifies each by its configuration
+   * file's own name, so every direct child's stem is a row — including the
+   * files that declare no usable `name` at all, which have a Copilot row while
+   * their Claude recognition joins the null one. The nested files are absent:
+   * no Copilot page documents a subfolder inside an agents directory.
+   */
+  readonly expectedCopilotAgentNames: readonly string[];
+  /**
+   * The admitted files publishing no declared name, sorted: one declaring
+   * none — which the vendor documents as a file it treats as documentation
+   * beside the agents — and the malformed one whose frontmatter could not be
+   * read at all.
+   */
+  readonly unnamedAgentPaths: readonly string[];
+  /**
+   * The admitted file whose frontmatter cannot be parsed: its recognition
+   * fails all-or-nothing, so it keeps its complete readable source and carries
+   * a `recognition-parse-failed` diagnostic (FR-028).
+   */
+  readonly malformedAgentPath: string;
+  /**
+   * The admitted file whose frontmatter spells an `mcpServers` block beside a
+   * literal credential and a literal environment reference. It joins no MCP
+   * inventory row: an MCP declaration's home is an explicit carrier, and this
+   * block is the agent file's own content (data-model.md § Inventory unit).
+   */
+  readonly mcpFrontmatterAgentPath: string;
+  /**
+   * The admitted file declaring `memory: project`, a `skills` preload list,
+   * and an agent reference. All three are inert values: no memory directory is
+   * read, no skill is preloaded, and no agent is resolved.
+   */
+  readonly referencingAgentPath: string;
+  /**
+   * Paths no shipped rule or derivation of any product may admit: the two
+   * agent-memory directories a running subagent writes, the subdirectory
+   * `.claude/agents` belonging to a runtime chain member this product does not
+   * select, the `--add-dir` directory a runtime could contribute, and spelling
+   * variants one step from the matcher's literals.
+   *
+   * The User scope (`<claude-config-dir>/agents/`) has no entry here because
+   * it has no repository path at all: it lies outside every inspected Source,
+   * and `claude.behavior.user.agents` records it without authorizing a read.
+   */
+  readonly nearMissPaths: readonly string[];
+}
+
+/**
+ * Builds the canonical Claude subagent fixture repository (T527).
+ *
+ * Positive cases: a root direct child, an agent one subfolder deep — the page
+ * states `.claude/agents/` is scanned recursively and that the subfolder path
+ * does not affect identity — two files in one tree declaring one name, an
+ * agent whose frontmatter spells `mcpServers` beside a literal credential and
+ * a literal environment reference, an agent declaring a memory scope, a skill
+ * preload list, and an agent reference, an agent declaring no `name`, a
+ * malformed frontmatter block, and a linked agent file where the platform
+ * materializes links.
+ *
+ * Near misses: the `agent-memory` and `agent-memory-local` directories a
+ * running subagent writes — runtime state rather than authored
+ * customization — the subdirectory `.claude/agents` a runtime `cwd` below the
+ * root would reach, the extra directory a `--add-dir` run would contribute,
+ * and spelling variants beside the matcher's literals.
+ *
+ * `root` overrides where the tree is written; the default is a fresh root
+ * under the OS temporary directory. The dev fixture launcher
+ * (`scripts/serve-fixture.ts`) passes a repo-local git-ignored directory.
+ */
+export function buildClaudeAgentFixture(
+  prefix = 'inspector-claude-agents',
+  root = createRepositoryFixtureRoot(prefix),
+): ClaudeAgentFixture {
+  write(
+    root,
+    '.claude/agents/code-reviewer.md',
+    [
+      '---',
+      'name: code-reviewer',
+      'description: Reviews code for quality and best practices',
+      'tools: Read, Glob, Grep',
+      'model: sonnet',
+      '---',
+      '',
+      '# Code reviewer',
+      '',
+      'Analyze the code and provide specific, actionable feedback.',
+      '',
+    ].join('\n'),
+  );
+  // One subfolder deep: the page states the directory is scanned recursively
+  // and that the subfolder path does not affect how a subagent is identified.
+  write(
+    root,
+    '.claude/agents/review/security.md',
+    [
+      '---',
+      'name: security-reviewer',
+      'description: Looks for security risks',
+      '---',
+      '',
+      'Review for injection, secrets, and unsafe defaults.',
+      '',
+    ].join('\n'),
+  );
+  // The duplicate-name row: two files under one `.claude/agents/` tree declare
+  // `debugger`, which the vendor loads by filesystem read order rather than a
+  // documented precedence. The inventory lists both and states no winner.
+  write(
+    root,
+    '.claude/agents/debugger.md',
+    [
+      '---',
+      'name: debugger',
+      'description: Debugs failures',
+      '---',
+      '',
+      'Find root causes.',
+      '',
+    ].join('\n'),
+  );
+  write(
+    root,
+    '.claude/agents/research/debugger.md',
+    [
+      '---',
+      'name: debugger',
+      'description: A second file under the same tree declaring one name',
+      '---',
+      '',
+      'Reproduce first.',
+      '',
+    ].join('\n'),
+  );
+  // An agent spelling MCP configuration, a literal credential, and a literal
+  // environment reference. None becomes an MCP row, a resolved value, or a
+  // candidate.
+  write(
+    root,
+    '.claude/agents/browser-tester.md',
+    [
+      '---',
+      'name: browser-tester',
+      'description: Tests features in a real browser',
+      'mcpServers:',
+      '  - playwright:',
+      '      type: stdio',
+      '      command: npx',
+      '      args: ["-y", "@playwright/mcp@latest"]',
+      '      env:',
+      `        API_KEY: ${FIXTURE_SECRET_LITERAL}`,
+      `        ENDPOINT: ${FIXTURE_ENVIRONMENT_REFERENCE}`,
+      '  - github',
+      '---',
+      '',
+      'Use the Playwright tools to navigate and screenshot.',
+      '',
+    ].join('\n'),
+  );
+  // A memory scope, a skill preload list, and an agent reference: three inert
+  // values. No memory directory is read, no skill is preloaded, and no agent
+  // is resolved.
+  write(
+    root,
+    '.claude/agents/api-developer.md',
+    [
+      '---',
+      'name: api-developer',
+      'description: Implements API endpoints',
+      'memory: project',
+      'skills:',
+      '  - api-conventions',
+      '  - error-handling-patterns',
+      '---',
+      '',
+      'Follow the preloaded conventions. Hand findings to @code-reviewer.',
+      '',
+    ].join('\n'),
+  );
+  // Declares no `name`: the vendor documents treating such a file as
+  // documentation kept beside the agents, so it publishes no agent name and
+  // joins the row that says so rather than being named after its path.
+  write(
+    root,
+    '.claude/agents/README.md',
+    [
+      '---',
+      'description: Notes kept beside the agents',
+      '---',
+      '',
+      'How we write agents.',
+      '',
+    ].join('\n'),
+  );
+  // Malformed frontmatter: the recognition fails all-or-nothing, the file
+  // keeps its complete readable source, and its diagnostic says the
+  // declarations could not be read (FR-028).
+  write(root, '.claude/agents/broken.md', '---\nname: [unterminated\n---\n\n# Broken\n');
+
+  // Near miss: the memory directories a running subagent writes. They hold
+  // that session's accumulated notes rather than an authored customization.
+  write(root, '.claude/agent-memory/code-reviewer/MEMORY.md', '# Remembered patterns\n');
+  write(root, '.claude/agent-memory-local/code-reviewer/MEMORY.md', '# Local notes\n');
+  // Near miss: the subdirectory `.claude/agents` belongs to a runtime working
+  // directory this product does not select. It re-declares a root agent name,
+  // so a duplicate in an unadmitted layer provably contributes nothing.
+  write(
+    root,
+    'packages/api/.claude/agents/code-reviewer.md',
+    ['---', 'name: code-reviewer', 'description: Not the selected root', '---', '', 'x', ''].join(
+      '\n',
+    ),
+  );
+  // Near miss: the extra directory a `--add-dir` run would contribute is a
+  // runtime input this product never turns into a scan root.
+  write(
+    root,
+    'extra/.claude/agents/helper.md',
+    ['---', 'name: helper', 'description: Reached only through --add-dir', '---', '', 'x', ''].join(
+      '\n',
+    ),
+  );
+  // Near misses: the extension and the container literals are exact.
+  write(root, '.claude/agents/code-reviewer.md.bak', 'backup suffix\n');
+  write(root, '.claude/agents/code-reviewer.txt', 'wrong extension\n');
+  write(root, '.claude/agent/code-reviewer.md', 'singular directory\n');
+  write(root, 'claude/agents/code-reviewer.md', 'dotless directory\n');
+  write(root, 'README.md', 'unrelated\n');
+
+  // The link case: an agent file reached through a symbolic link is the file
+  // it resolves to, read through the link like every other candidate (FR-024).
+  const linkedAgentPath = '.claude/agents/linked.md';
+  const symlinks = tryMaterializeSymlinks(
+    root,
+    () => {
+      write(
+        root,
+        'fixtures/linked-agent.md',
+        [
+          '---',
+          'name: linked',
+          'description: Reached through a symbolic link',
+          '---',
+          '',
+          'x',
+          '',
+        ].join('\n'),
+      );
+    },
+    () => {
+      symlinkSync(join(root, 'fixtures/linked-agent.md'), join(root, linkedAgentPath));
+    },
+    [linkedAgentPath],
+  );
+
+  return {
+    root,
+    capabilities: { symlinks },
+    expectedAgentPaths: [
+      '.claude/agents/README.md',
+      '.claude/agents/api-developer.md',
+      '.claude/agents/broken.md',
+      '.claude/agents/browser-tester.md',
+      '.claude/agents/code-reviewer.md',
+      '.claude/agents/debugger.md',
+      ...(symlinks ? [linkedAgentPath] : []),
+      '.claude/agents/research/debugger.md',
+      '.claude/agents/review/security.md',
+    ].toSorted(),
+    expectedAgentNames: [
+      'api-developer',
+      'browser-tester',
+      'code-reviewer',
+      'debugger',
+      ...(symlinks ? ['linked'] : []),
+      'security-reviewer',
+    ].toSorted(),
+    expectedCopilotAgentNames: [
+      'README',
+      'api-developer',
+      'broken',
+      'browser-tester',
+      'code-reviewer',
+      'debugger',
+      ...(symlinks ? ['linked'] : []),
+    ].toSorted(),
+    unnamedAgentPaths: ['.claude/agents/README.md', '.claude/agents/broken.md'],
+    malformedAgentPath: '.claude/agents/broken.md',
+    mcpFrontmatterAgentPath: '.claude/agents/browser-tester.md',
+    referencingAgentPath: '.claude/agents/api-developer.md',
+    nearMissPaths: [
+      '.claude/agent-memory-local/code-reviewer/MEMORY.md',
+      '.claude/agent-memory/code-reviewer/MEMORY.md',
+      '.claude/agent/code-reviewer.md',
+      '.claude/agents/code-reviewer.md.bak',
+      '.claude/agents/code-reviewer.txt',
+      'claude/agents/code-reviewer.md',
+      'extra/.claude/agents/helper.md',
+      'packages/api/.claude/agents/code-reviewer.md',
+    ],
+  };
+}
+
+/** One built Copilot custom-agent fixture repository (T546). */
+export interface CopilotAgentFixture {
+  /** The absolute fixture root to scan. */
+  readonly root: string;
+  /**
+   * Every Source-relative Path the `copilot.repo.agent` allowlist must admit,
+   * sorted — the direct children of the root's own `.github/agents/` and
+   * `.claude/agents/`, both `.md` spellings among them.
+   */
+  readonly expectedAgentPaths: readonly string[];
+  /**
+   * The agent names Copilot resolves for those files, sorted: the
+   * configuration file's own name minus `.agent.md` or `.md`, which is what
+   * the shared profile reference documents Copilot deduplicates agents by. A
+   * name two files resolve to appears once — the row is the name, and both
+   * files are its definitions.
+   */
+  readonly expectedAgentNames: readonly string[];
+  /**
+   * The `.claude/agents/*.md` direct child both products define an agent from:
+   * Claude Code's subagent by its declared `name`, Copilot's agent profile by
+   * the file's own name. One physical file, one read, two rows.
+   */
+  readonly sharedClaudeAgentPath: string;
+  /** The name that file's Claude Code recognition heads its own row with. */
+  readonly sharedClaudeAgentDeclaredName: string;
+  /**
+   * The `.claude/agents/` file one subfolder deep: Claude Code documents the
+   * subtree as recursive and admits it, while no Copilot page documents a
+   * subfolder inside an agents directory, so `copilot.repo.agent` does not.
+   * It is not a {@link nearMissPaths} member for that reason — a shipped rule
+   * does admit it, just not Copilot's.
+   */
+  readonly claudeOnlyAgentPath: string;
+  /**
+   * The two files whose names collide: the `.agent.md` Cloud spelling and the
+   * plain `.md` one reduce to the same name, so they are two definitions of
+   * one row with no winner stated — the reference documents deduplication
+   * between levels and says nothing about two files of one level.
+   */
+  readonly duplicateNameAgentPaths: readonly string[];
+  /**
+   * The admitted file whose frontmatter cannot be parsed: its recognition
+   * fails all-or-nothing, so it keeps its complete readable source and carries
+   * a `recognition-parse-failed` diagnostic (FR-028). Its row name is
+   * unaffected, because the path is what names a Copilot agent.
+   */
+  readonly malformedAgentPath: string;
+  /**
+   * The admitted file whose frontmatter spells an `mcp-servers` block beside a
+   * literal credential and a literal environment reference, and names another
+   * agent in its body. All of it is the agent's own content: it joins no MCP
+   * inventory row, resolves no reference, and opens no handoff target
+   * (data-model.md § Inventory unit, FR-025, FR-026).
+   */
+  readonly mcpFrontmatterAgentPath: string;
+  /**
+   * Paths no shipped rule or derivation of any product may admit: a subfolder
+   * inside `.github/agents/`, the repository-local spelling of the CLI User
+   * scope, the subdirectory `.github` layer belonging to a runtime chain
+   * member this product does not select, the `--add-dir` directory a runtime
+   * could contribute, and spelling variants one step from the matcher's
+   * literals.
+   *
+   * The User scope (`~/.copilot/agents/`) and the hosted organization and
+   * enterprise scopes have no entry here because they have no repository path
+   * at all: `copilot.behavior.cli.user.agents` and
+   * `copilot.behavior.cloud.organization-agents` record them without
+   * authorizing a read, and the latter has no origin file anywhere.
+   */
+  readonly nearMissPaths: readonly string[];
+}
+
+/**
+ * Builds the canonical Copilot custom-agent fixture repository (T546).
+ *
+ * Positive cases: direct children of both documented directories, the
+ * `.agent.md` Cloud filename variant, two files whose names collide once the
+ * suffix is removed, a `.claude/agents/*.md` two products define an agent
+ * from, a profile declaring no `name` at all — which Copilot still names, from
+ * the file — an `mcp-servers` block beside a literal credential and a literal
+ * environment reference, a body naming another agent, and a malformed
+ * frontmatter block.
+ *
+ * Near misses: a subfolder inside an agents directory, the repository-local
+ * `.copilot/agents/` spelling of the CLI's User scope, the subdirectory
+ * `.github` layer a runtime `cwd` below the root would reach, the extra
+ * directory a `--add-dir` run would contribute, and spelling variants beside
+ * the matcher's literals.
+ *
+ * `root` overrides where the tree is written; the default is a fresh root
+ * under the OS temporary directory. The dev fixture launcher
+ * (`scripts/serve-fixture.ts`) passes a repo-local git-ignored directory.
+ */
+export function buildCopilotAgentFixture(
+  prefix = 'inspector-copilot-agents',
+  root = createRepositoryFixtureRoot(prefix),
+): CopilotAgentFixture {
+  write(
+    root,
+    '.github/agents/planner.md',
+    [
+      '---',
+      'name: Release planner',
+      'description: Plans a release and hands the work out',
+      'target: github-copilot',
+      'tools:',
+      '  - read',
+      '  - search',
+      'model: gpt-5.3',
+      'user-invocable: true',
+      '---',
+      '',
+      '# Release planner',
+      '',
+      'Draft the plan, then hand the review to @reviewer.',
+      '',
+    ].join('\n'),
+  );
+  // The Cloud filename variant and the plain spelling of one name: both reduce
+  // to `reviewer`, so they are two definitions of one row.
+  write(
+    root,
+    '.github/agents/reviewer.agent.md',
+    [
+      '---',
+      'name: Code reviewer',
+      'description: Reviews a pull request',
+      'target: vscode',
+      'disable-model-invocation: true',
+      '---',
+      '',
+      'Review like an owner.',
+      '',
+    ].join('\n'),
+  );
+  write(
+    root,
+    '.github/agents/reviewer.md',
+    [
+      '---',
+      'description: A second file of the same name at the same level',
+      '---',
+      '',
+      'The reference documents deduplication between levels, not within one.',
+      '',
+    ].join('\n'),
+  );
+  // An agent spelling MCP configuration, a literal credential, a literal
+  // environment reference, and a handoff. None becomes an MCP row, a resolved
+  // value, or an opened target.
+  write(
+    root,
+    '.github/agents/deployer.md',
+    [
+      '---',
+      'name: Deployer',
+      'description: Runs a deployment',
+      'mcp-servers:',
+      '  deploy-mcp:',
+      '    type: local',
+      '    command: npx',
+      '    args: ["-y", "@example/deploy-mcp"]',
+      '    env:',
+      `      API_KEY: ${FIXTURE_SECRET_LITERAL}`,
+      `      ENDPOINT: ${FIXTURE_ENVIRONMENT_REFERENCE}`,
+      'metadata:',
+      '  owner: platform',
+      '---',
+      '',
+      'Deploy, then hand the verification to @planner.',
+      '',
+    ].join('\n'),
+  );
+  // Declares no `name`: Copilot names it from the file anyway, so it heads a
+  // row rather than joining the one that says the name is not known.
+  write(
+    root,
+    '.github/agents/README.md',
+    [
+      '---',
+      'description: Notes kept beside the agent profiles',
+      '---',
+      '',
+      'How we write them.',
+      '',
+    ].join('\n'),
+  );
+  // Malformed frontmatter: the recognition fails all-or-nothing while the file
+  // keeps its complete readable source and its row keeps the name the path
+  // gives it (FR-028).
+  write(root, '.github/agents/broken.md', '---\nname: [unterminated\n---\n\n# Broken\n');
+  // The shared file: `copilot.repo.agent` names `.claude/agents/` as one of the
+  // two directories it loads project agents from, so this direct child is
+  // Claude Code's subagent and a Copilot agent profile alike — one read, two
+  // recognitions, two differently named rows.
+  write(
+    root,
+    '.claude/agents/copilot-shared.md',
+    [
+      '---',
+      'name: shared-reviewer',
+      'description: One file, two products',
+      '---',
+      '',
+      'Review the change.',
+      '',
+    ].join('\n'),
+  );
+  // Claude's alone: its page documents the subtree as recursive, and no
+  // Copilot page documents a subfolder inside an agents directory.
+  write(
+    root,
+    '.claude/agents/nested/deep.md',
+    ['---', 'name: deep-reviewer', 'description: One subfolder deep', '---', '', 'x', ''].join(
+      '\n',
+    ),
+  );
+
+  // Near miss: a subfolder inside `.github/agents/`, which no Copilot page
+  // documents.
+  write(
+    root,
+    '.github/agents/team/nested.md',
+    ['---', 'name: nested', 'description: A subfolder no page documents', '---', '', 'x', ''].join(
+      '\n',
+    ),
+  );
+  // Near miss: the CLI's User scope is `~/.copilot/agents/`, a different
+  // Source boundary. Its spelling inside a repository is admitted by nothing.
+  write(root, '.copilot/agents/personal.md', '---\nname: personal\n---\n\nx\n');
+  // Near miss: the subdirectory `.github` layer belongs to a runtime working
+  // directory this product does not select. It re-declares a root agent's
+  // file name, so a duplicate in an unadmitted layer provably contributes
+  // nothing.
+  write(
+    root,
+    'packages/api/.github/agents/planner.md',
+    '---\nname: Not the selected root\n---\n\nx\n',
+  );
+  // Near miss: the extra directory a `--add-dir` run would contribute is a
+  // runtime input this product never turns into a scan root.
+  write(root, 'extra/.github/agents/helper.md', '---\nname: helper\n---\n\nx\n');
+  // Near misses: the extension and the container literals are exact.
+  write(root, '.github/agents/planner.md.bak', 'backup suffix\n');
+  write(root, '.github/agents/planner.txt', 'wrong extension\n');
+  write(root, '.github/agent/planner.md', 'singular directory\n');
+  write(root, 'github/agents/planner.md', 'dotless directory\n');
+  write(root, 'README.md', 'unrelated\n');
+
+  return {
+    root,
+    expectedAgentPaths: [
+      '.claude/agents/copilot-shared.md',
+      '.github/agents/README.md',
+      '.github/agents/broken.md',
+      '.github/agents/deployer.md',
+      '.github/agents/planner.md',
+      '.github/agents/reviewer.agent.md',
+      '.github/agents/reviewer.md',
+    ].toSorted(),
+    expectedAgentNames: [
+      'README',
+      'broken',
+      'copilot-shared',
+      'deployer',
+      'planner',
+      'reviewer',
+    ].toSorted(),
+    sharedClaudeAgentPath: '.claude/agents/copilot-shared.md',
+    sharedClaudeAgentDeclaredName: 'shared-reviewer',
+    claudeOnlyAgentPath: '.claude/agents/nested/deep.md',
+    duplicateNameAgentPaths: ['.github/agents/reviewer.agent.md', '.github/agents/reviewer.md'],
+    malformedAgentPath: '.github/agents/broken.md',
+    mcpFrontmatterAgentPath: '.github/agents/deployer.md',
+    nearMissPaths: [
+      '.copilot/agents/personal.md',
+      '.github/agent/planner.md',
+      '.github/agents/planner.md.bak',
+      '.github/agents/planner.txt',
+      '.github/agents/team/nested.md',
+      'extra/.github/agents/helper.md',
+      'github/agents/planner.md',
+      'packages/api/.github/agents/planner.md',
+    ],
+  };
+}
+
 export interface AllCustomizationKindFixture {
   /** The absolute fixture root to scan. */
   readonly root: string;
@@ -3493,13 +4380,20 @@ export interface AllCustomizationKindFixture {
   readonly commandFixture: CommandFixture;
   /** The Claude permission-policy fixture's own result, built into this root. */
   readonly claudePermissionsFixture: ClaudePermissionsFixture;
+  /** The Codex custom-agent fixture's own result, built into this root. */
+  readonly agentFixture: CodexAgentFixture;
+  /** The Claude subagent fixture's own result, built into this root. */
+  readonly claudeAgentFixture: ClaudeAgentFixture;
+  /** The Copilot custom-agent fixture's own result, built into this root. */
+  readonly copilotAgentFixture: CopilotAgentFixture;
 }
 
 /**
  * Builds every kind's fixture into one repository (T1099): the all-tool SKILL
- * tree, both vendors' rule trees, the Claude command tree, the cross-vendor
- * MCP tree, and the all-vendor instruction tree share a single root, so one
- * launch exercises every inventory this release publishes at once.
+ * tree, both vendors' rule trees, the Claude command tree, the Codex, Claude,
+ * and Copilot custom-agent trees, the cross-vendor MCP tree, and the
+ * all-vendor instruction tree share a single root, so one launch exercises
+ * every inventory this release publishes at once.
  *
  * The trees are disjoint except for two files both the MCP and instruction
  * builders own: the root and nested `.codex/config.toml`. Each of those
@@ -3535,6 +4429,21 @@ export function buildAllCustomizationKindFixture(
   // the later write is the one this tree shows. Its `mcpServers` spelling
   // still joins no MCP row, which is what the MCP builder's copy was for.
   const claudePermissionsFixture = buildClaudePermissionsFixture(prefix, root);
+  // The custom-agent tree is disjoint from every other builder's: nothing else
+  // writes below `.codex/agents/`, and its own near misses sit beside paths no
+  // other builder claims.
+  const agentFixture = buildCodexAgentFixture(prefix, root);
+  // After the MCP builder, which writes its own `.claude/agents/reviewer.md`
+  // as an agent whose frontmatter spells `mcpServers`: the Claude agent tree
+  // owns `.claude/agents/` here, and its own `browser-tester.md` carries the
+  // same MCP-spelling case, so nothing this tree shows is lost.
+  const claudeAgentFixture = buildClaudeAgentFixture(prefix, root);
+  // After both, and disjoint from either: its `.github/agents/` tree is its
+  // own, and the one `.claude/agents/` file it writes carries a name no other
+  // builder uses. The MCP builder's `.github/agents/deploy.md` stays where it
+  // is — a second Copilot agent profile in the same directory, which is what
+  // this tree shows anyway.
+  const copilotAgentFixture = buildCopilotAgentFixture(prefix, root);
   // Capture the MCP builder's two Codex configs before the instruction
   // builder replaces those paths with its fallback declaration.
   const sharedCodexConfigPaths = ['.codex/config.toml', 'packages/api/.codex/config.toml'];
@@ -3555,5 +4464,8 @@ export function buildAllCustomizationKindFixture(
     claudeRuleFixture,
     commandFixture,
     claudePermissionsFixture,
+    agentFixture,
+    claudeAgentFixture,
+    copilotAgentFixture,
   };
 }

@@ -7,8 +7,10 @@
 //
 // A row's unit is decided by its kind (data-model.md § Inventory unit), so this
 // component dispatches to the kind's own list and never imposes a shared row
-// type: a skill row is one resolved name with its definitions, and an MCP row
-// is one declared server name with the declarations resolving it. What stays here is the pair
+// type: a skill row is one resolved name with its definitions, an MCP row is
+// one declared server name with the declarations resolving it, and a
+// custom-agent row is one agent name the admitting rule resolves, with the
+// files defining it. What stays here is the pair
 // of empty states, which is a fact about the view rather than about any kind.
 //
 // The two empty states are deliberately different. "Nothing matched the
@@ -24,15 +26,17 @@
 // rather than the one running. The finding is that nothing was recognized;
 // which products and locations the release covers is documentation.
 import { computed } from 'vue';
-import PromptRow from './rows/PromptRow.vue';
 import InstructionRow from './rows/InstructionRow.vue';
-import McpRow from './rows/McpRow.vue';
-import PermissionsRow from './rows/PermissionsRow.vue';
-import RuleRow from './rows/RuleRow.vue';
 import SkillRow from './rows/SkillRow.vue';
+import McpRow from './rows/McpRow.vue';
+import AgentRow from './rows/AgentRow.vue';
+import PromptRow from './rows/PromptRow.vue';
+import RuleRow from './rows/RuleRow.vue';
+import PermissionsRow from './rows/PermissionsRow.vue';
 import { inventoryPanelId, inventoryTabId } from './panel-ids';
 import { CUSTOMIZATION_KIND_PLURAL_TEXT } from '../../../shared/entities';
 import type {
+  AgentInventoryEntryDto,
   PromptInventoryEntryDto,
   CustomizationFileSummaryDto,
   InstructionInventoryEntryDto,
@@ -49,16 +53,18 @@ const props = defineProps<{
   kind: CustomizationKind | null;
   /** The instruction rows that passed the active filters, in snapshot order. */
   instructionRows: readonly InstructionInventoryEntryDto[];
-  /** The rule rows that passed the active filters, in snapshot order. */
-  ruleRows: readonly RuleInventoryEntryDto[];
-  /** The command rows that passed the active filters, in snapshot order. */
-  promptRows: readonly PromptInventoryEntryDto[];
-  /** The permission-policy rows that passed the active filters, in snapshot order. */
-  permissionsRows: readonly PermissionsInventoryEntryDto[];
   /** The skill rows that passed the active filters, in snapshot order. */
   skillRows: readonly SkillInventoryEntryDto[];
   /** The MCP name rows that passed the active filters, in snapshot order. */
   mcpRows: readonly McpInventoryEntryDto[];
+  /** The custom-agent name rows that passed the active filters, in snapshot order. */
+  agentRows: readonly AgentInventoryEntryDto[];
+  /** The command rows that passed the active filters, in snapshot order. */
+  promptRows: readonly PromptInventoryEntryDto[];
+  /** The rule rows that passed the active filters, in snapshot order. */
+  ruleRows: readonly RuleInventoryEntryDto[];
+  /** The permission-policy rows that passed the active filters, in snapshot order. */
+  permissionsRows: readonly PermissionsInventoryEntryDto[];
   /** Every published file by path, so a row can resolve the files it names. */
   filesByPath: ReadonlyMap<string, CustomizationFileSummaryDto>;
   /**
@@ -81,17 +87,19 @@ const props = defineProps<{
 const rowCount = computed(() =>
   props.kind === 'instructions'
     ? props.instructionRows.length
-    : props.kind === 'rule'
-      ? props.ruleRows.length
-      : props.kind === 'prompt/command'
-        ? props.promptRows.length
-        : props.kind === 'permissions'
-          ? props.permissionsRows.length
-          : props.kind === 'skill'
-            ? props.skillRows.length
-            : props.kind === 'MCP'
-              ? props.mcpRows.length
-              : 0,
+    : props.kind === 'skill'
+      ? props.skillRows.length
+      : props.kind === 'MCP'
+        ? props.mcpRows.length
+        : props.kind === 'agent'
+          ? props.agentRows.length
+          : props.kind === 'prompt/command'
+            ? props.promptRows.length
+            : props.kind === 'rule'
+              ? props.ruleRows.length
+              : props.kind === 'permissions'
+                ? props.permissionsRows.length
+                : 0,
 );
 </script>
 
@@ -120,34 +128,6 @@ const rowCount = computed(() =>
           :diagnostics="diagnostics"
         />
       </template>
-      <template v-if="kind === 'rule'">
-        <!-- Keyed by the row's own path: the unit is the file, and a path is
-             unique within a Source (FR-030). -->
-        <RuleRow v-for="entry in ruleRows" :key="entry.sourceRelativePath" :entry="entry" />
-      </template>
-      <template v-if="kind === 'prompt/command'">
-        <!-- Keyed by the row's own name — the row unit is the name a reader
-             invokes, unique in the list by construction (data-model.md
-             § Inventory unit). -->
-        <PromptRow
-          v-for="entry in promptRows"
-          :key="entry.name"
-          :entry="entry"
-          :files-by-path="filesByPath"
-          :diagnostics="diagnostics"
-        />
-      </template>
-      <template v-if="kind === 'permissions'">
-        <!-- Its own row component rather than the rules one: a permissions row
-             is a declared policy, keyed by the path of the file that declares
-             it (data-model.md § Inventory unit). -->
-        <PermissionsRow
-          v-for="entry in permissionsRows"
-          :key="entry.sourceRelativePath"
-          :entry="entry"
-          :diagnostics="diagnostics"
-        />
-      </template>
       <template v-if="kind === 'skill'">
         <SkillRow
           v-for="entry in skillRows"
@@ -169,6 +149,48 @@ const rowCount = computed(() =>
           :key="entry.name === null ? 'carriers' : `name:${entry.name}`"
           :entry="entry"
           :files-by-path="filesByPath"
+          :diagnostics="diagnostics"
+        />
+      </template>
+      <template v-if="kind === 'agent'">
+        <!-- Keyed by the row's own name — the row unit is the declared agent
+             name, unique in the list by construction — behind a `name:`
+             prefix, so the no-name row's own key can never collide with a
+             declared name: a TOML string can be empty, so the empty spelling
+             is a real row of its own (data-model.md § Inventory unit). -->
+        <AgentRow
+          v-for="entry in agentRows"
+          :key="entry.name === null ? 'unnamed' : `name:${entry.name}`"
+          :entry="entry"
+          :files-by-path="filesByPath"
+          :diagnostics="diagnostics"
+        />
+      </template>
+      <template v-if="kind === 'prompt/command'">
+        <!-- Keyed by the row's own name — the row unit is the name a reader
+             invokes, unique in the list by construction (data-model.md
+             § Inventory unit). -->
+        <PromptRow
+          v-for="entry in promptRows"
+          :key="entry.name"
+          :entry="entry"
+          :files-by-path="filesByPath"
+          :diagnostics="diagnostics"
+        />
+      </template>
+      <template v-if="kind === 'rule'">
+        <!-- Keyed by the row's own path: the unit is the file, and a path is
+             unique within a Source (FR-030). -->
+        <RuleRow v-for="entry in ruleRows" :key="entry.sourceRelativePath" :entry="entry" />
+      </template>
+      <template v-if="kind === 'permissions'">
+        <!-- Its own row component rather than the rules one: a permissions row
+             is a declared policy, keyed by the path of the file that declares
+             it (data-model.md § Inventory unit). -->
+        <PermissionsRow
+          v-for="entry in permissionsRows"
+          :key="entry.sourceRelativePath"
+          :entry="entry"
           :diagnostics="diagnostics"
         />
       </template>

@@ -14,6 +14,7 @@
 import {
   CompiledInspectionRule,
   escapeGlobLiteral,
+  type CompiledStaticAgentRule,
   type CompiledStaticCandidateRule,
   type CompiledStaticPromptRule,
   type CompiledStaticInstructionRule,
@@ -22,7 +23,12 @@ import {
   type CompiledStaticOtherKindRule,
 } from './registry';
 import { ParsedJsoncDocument, ParsedStrictJsonDocument } from '../parsers/json';
-import type { DeclaredEntryDto, McpServerDeclarationDto } from '../../../shared/api-types';
+import { ParsedMarkdownDocument } from '../parsers/markdown';
+import type {
+  AgentPresentationDto,
+  DeclaredEntryDto,
+  McpServerDeclarationDto,
+} from '../../../shared/api-types';
 import type { CustomizationKind } from '../../../shared/entities';
 import { COPILOT_RULE_RELATIONS } from '../../../shared/registries/copilot/relations';
 import { COPILOT_INSPECTION_RULES } from '../../../shared/registries/copilot/rules';
@@ -291,6 +297,99 @@ export class CopilotCompiledMcpProvenanceRule
 }
 
 /**
+ * The longer of the two agent-profile spellings the shared reference names.
+ * Declared once because the name derivation strips it and the shorter `.md`
+ * is what remains, so the two must not drift apart.
+ */
+const COPILOT_AGENT_PROFILE_SUFFIX = '.agent.md';
+
+/**
+ * A Copilot custom-agent rule compiled for execution: everything a Copilot
+ * rule is, plus the two questions only an agent rule answers — where an
+ * admitted agent file's configuration ends and its instructions begin, and
+ * which name the product identifies it by.
+ *
+ * The reading lives here, beside the rule that owns it, because the profile
+ * format is this vendor's own contract
+ * (contracts/vendors/github-copilot.md § Inspector Repository matcher rules);
+ * the Markdown parse and the rendering of resolved values are the format's and
+ * stay in `parsers/markdown.ts`.
+ *
+ * Both agent records compile into this one unit: the two differ in which
+ * directory they admit and therefore in which surfaces they rest on, which is
+ * the rules' own fact, while how an admitted file splits and what names it is
+ * identical for either.
+ */
+export class CopilotCompiledAgentRule
+  extends CopilotCompiledRule
+  implements CompiledStaticAgentRule
+{
+  /** Narrowed to the one kind this unit compiles; the constructor proves it. */
+  declare public readonly kind: 'agent';
+
+  /**
+   * One admitted agent profile split into the two halves its detail shows
+   * (FR-007): every frontmatter key the file declares — `name`, `description`,
+   * `target`, `tools`, and the `mcp-servers` block among them — as the
+   * metadata, and the body the fence leaves as the instructions the profile
+   * gives the agent.
+   *
+   * The parse is this vendor's reading rather than the shared Markdown slot's,
+   * for the reason Claude's is: what a rule reads out of a file is its own
+   * contract, and a `.claude/agents/*.md` this rule admits is one physical
+   * file two products define an agent from. Where the format coincides — as it
+   * does here — the two resolve identically, so the repetition is work over
+   * one string rather than a second fact
+   * (`recognizers/candidate.ts` § CandidateExtractions).
+   *
+   * No field is validated, no environment reference is resolved, and no
+   * declared tool, skill, server, or path gains read or connection authority.
+   * A declared `mcp-servers` block is one metadata entry and nothing more: it
+   * makes the file no MCP carrier, because an MCP declaration's home is an
+   * explicit carrier and nothing else (data-model.md § Inventory unit).
+   * Throws on text the frontmatter parser cannot read; the recognizer's
+   * extraction boundary turns the throw into the recognition's `failed` state
+   * while the file stays an admitted candidate whose complete source is still
+   * displayed (FR-028).
+   */
+  public agentPresentationOf(sourceText: string): AgentPresentationDto {
+    const document = new ParsedMarkdownDocument(sourceText);
+    return { metadata: document.frontmatterEntries, instructionsText: document.body };
+  }
+
+  /**
+   * The configuration file's own name minus `.agent.md` or `.md`, which is
+   * what the shared profile reference states Copilot identifies an agent by:
+   * that name is what deduplicates the levels, while the frontmatter `name` is
+   * documented as an optional display name. So the declarations are unused
+   * here, deliberately — a row named after a declared `name` would report an
+   * agent this product does not deduplicate under it — and a failed extraction
+   * takes nothing away from the row's identity (FR-028).
+   *
+   * Never `null`: a path always answers. A file named `.agent.md` or `.md`
+   * outright has an empty name, which is the vendor's own answer for it rather
+   * than an absent one, and the row states it as the empty name it is.
+   *
+   * The slicing is exact rather than defensive: this unit compiles only the
+   * `copilot.repo.agent` record, whose two selectors both end in `/\.md$/u`.
+   */
+  public agentNameOf(sourceRelativePath: string): string {
+    const fileName = sourceRelativePath.split('/').at(-1)!;
+    return fileName.endsWith(COPILOT_AGENT_PROFILE_SUFFIX)
+      ? fileName.slice(0, -COPILOT_AGENT_PROFILE_SUFFIX.length)
+      : fileName.slice(0, -'.md'.length);
+  }
+
+  /** Compiles one Copilot custom-agent record, rejecting one of another kind. */
+  public constructor(rule: InspectionRule) {
+    super(rule);
+    if (rule.kind !== 'agent') {
+      throw new TypeError(`rule ${rule.ruleId} is not a Copilot custom-agent rule`);
+    }
+  }
+}
+
+/**
  * A Copilot command rule compiled for execution: everything a Copilot rule is,
  * plus the one question only a command rule answers — the name a reader
  * invokes an admitted file by.
@@ -396,16 +495,17 @@ export class CopilotCompiledOtherKindRule
   /** Narrowed to the kinds this unit compiles; the constructor proves it. */
   declare public readonly kind: Exclude<
     CustomizationKind,
-    'instructions' | 'prompt/command' | 'MCP' | 'permissions'
+    'instructions' | 'MCP' | 'agent' | 'prompt/command' | 'permissions'
   >;
 
-  /** Compiles one Copilot record of any kind but the four with a question of their own. */
+  /** Compiles one Copilot record of any kind but the five with a question of their own. */
   public constructor(rule: InspectionRule) {
     super(rule);
     if (
       rule.kind === 'instructions' ||
-      rule.kind === 'prompt/command' ||
       rule.kind === 'MCP' ||
+      rule.kind === 'agent' ||
+      rule.kind === 'prompt/command' ||
       rule.kind === 'permissions'
     ) {
       throw new TypeError(`rule ${rule.ruleId} needs a Copilot unit that answers for its kind`);
@@ -416,10 +516,9 @@ export class CopilotCompiledOtherKindRule
 /**
  * The Copilot Repository rules a Repository scan executes, in shipped order.
  * The remaining Copilot rows of the vendor contract arrive with their own
- * inventory phases; the shipped set covers instructions, skills, and the MCP
- * carriers — the CLI's two root spellings and the VS Code pair — so a
- * repository whose only Copilot files are agents or prompts legitimately
- * contributes nothing to the inventory.
+ * inventory phases; the shipped set covers instructions, skills, prompts and
+ * commands, custom agents, and the MCP carriers — the CLI's two root
+ * spellings and the VS Code pair.
  *
  * Several shipped selectors overlap other vendors' spellings — a root
  * `.agents` or `.claude` skill, a root `AGENTS.md`, a root `CLAUDE.md` — so
@@ -453,20 +552,23 @@ export const COPILOT_REPOSITORY_RULES: readonly CompiledStaticCandidateRule[] = 
   .map((rule) =>
     // Each record compiles into the unit that can answer its kind's question:
     // an instruction record what its files govern, a command record the name
-    // its files are invoked by, an MCP record which servers its carrier
-    // declares; every other kind compiles into the plain one, which is what
-    // keeps a skill rule from carrying an answer it has none of.
+    // its files are invoked by, an agent record how its files split and what
+    // names them, an MCP record which servers its carrier declares; every
+    // other kind compiles into the plain one, which is what keeps a skill rule
+    // from carrying an answer it has none of.
     rule.kind === 'instructions'
       ? new CopilotCompiledInstructionRule(rule)
-      : rule.kind === 'prompt/command'
-        ? rule.ruleId === 'copilot.repo.prompt'
-          ? new CopilotCompiledPromptFileRule(rule)
-          : new CopilotCompiledPromptRule(rule)
+      : rule.kind === 'agent'
+        ? new CopilotCompiledAgentRule(rule)
         : rule.kind === 'MCP'
           ? rule.ruleId === 'copilot.repo.mcp.vscode'
             ? new CopilotCompiledVscodeMcpCarrierRule(rule)
             : rule.ruleId === 'copilot.repo.mcp.vscode-root'
               ? new CopilotCompiledMcpProvenanceRule(rule)
               : new CopilotCompiledMcpCarrierRule(rule)
-          : new CopilotCompiledOtherKindRule(rule),
+          : rule.kind === 'prompt/command'
+            ? rule.ruleId === 'copilot.repo.prompt'
+              ? new CopilotCompiledPromptFileRule(rule)
+              : new CopilotCompiledPromptRule(rule)
+            : new CopilotCompiledOtherKindRule(rule),
   );

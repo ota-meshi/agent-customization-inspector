@@ -182,11 +182,11 @@ export function frontmatterYamlText(entries: readonly DeclaredEntryDto[]): strin
 /**
  * Serializes one frontmatter block to the canonical YAML document a
  * comparison mounts as one Monaco side (FR-011): the caller's leading keys
- * first — the skill comparison leads with `name` and `description`, the
- * instruction comparison with none — then every other key, and every nested
- * mapping's keys, sorted, so both sides align line by line and a line
- * difference is a key difference. Sequence items keep their order: a list's
- * order is the declaration's own data.
+ * first — each kind's comparison leads with the keys the vendors document for
+ * it (declaration-order.ts) — then every other key, and every nested mapping's
+ * keys, sorted, so both sides align line by line and a line difference is a
+ * key difference. Sequence items keep their order: a list's order is the
+ * declaration's own data.
  */
 export function canonicalFrontmatterYamlText(
   entries: readonly DeclaredEntryDto[],

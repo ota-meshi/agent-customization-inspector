@@ -104,7 +104,7 @@ test('opens from a row and shows the complete literal diff', async ({ page }) =>
     .getByRole('tabpanel')
     .locator('.aci-item')
     .filter({ hasText: 'deploy' })
-    .getByRole('link', { name: /Compare the files invoked as deploy/u })
+    .getByRole('link', { name: /Compare this name's files: deploy/u })
     .click();
   await page.waitForURL(/\/prompts-and-commands\/compare\?/u);
   await expect(
@@ -115,7 +115,7 @@ test('opens from a row and shows the complete literal diff', async ({ page }) =>
   // and the environment reference exactly as authored, unmasked and
   // unresolved (FR-027, FR-025). `.first()`, because the declared-metadata
   // section below mounts its own diff of the serialized frontmatter.
-  const diff = page.locator('.aci-prompt-source-diff').first();
+  const diff = page.locator('.aci-prompt-compare__source .aci-prompt-source-diff');
   await expect(diff).toContainText(COMMAND_SECRET);
   await expect(diff).toContainText(PROMPT_SECRET);
   await expect(diff).toContainText(ENVIRONMENT_REFERENCE);
@@ -152,7 +152,15 @@ test('renders the per-tool invocation names and the serialized declarations', as
   // distinguishable from the physical file (US3 scenario 2) — and the files'
   // declared metadata compared once, under no tool caption.
   const metadata = page.locator('.aci-prompt-recognition-comparison');
-  await expect(metadata.locator('h3')).toHaveText(['Tool recognition', 'Declared metadata']);
+  // The sections stand in the order a reader needs them: what each file
+  // declares, what each file says, then the complete files, and last the
+  // recognitions.
+  await expect(metadata.locator('h3')).toHaveText([
+    'Declared metadata',
+    'Prompt or command content',
+    'Source comparison',
+    'Tool recognition',
+  ]);
   const toolTable = metadata.locator('table').first();
   await expect(toolTable.locator('tbody th')).toHaveText([
     'GitHub Copilot · Prompt / Command',
@@ -173,8 +181,12 @@ test('renders the per-tool invocation names and the serialized declarations', as
   // sorted and none promoted, diffed in Monaco under no tool caption
   // (frontmatter-yaml.ts): the shared key shows both values, and a side-only
   // key stands on its side alone (FR-011).
-  const metadataDiff = metadata.locator('.aci-prompt-source-diff');
-  await expect(metadataDiff).toHaveCount(1);
+  const metadataDiff = metadata.locator('.aci-prompt-source-diff').first();
+  // Two diffs in the sections: the declarations and the body, each the file's
+  // own half of one parse. Scoped to `section`, because the page's complete
+  // source comparison passes through this component's slot and sits beside
+  // them rather than inside one.
+  await expect(metadata.locator('section .aci-prompt-source-diff')).toHaveCount(2);
   await expect(metadataDiff).toContainText('description: Deploy the current branch');
   await expect(metadataDiff).toContainText('description: Deploy from the editor');
   await expect(metadataDiff).toContainText('argument-hint');

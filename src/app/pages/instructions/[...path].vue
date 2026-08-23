@@ -44,6 +44,8 @@ import { NuxtLink } from '#components';
 import OpenFileButton from '../../components/inspection/OpenFileButton.vue';
 import SourceViewer from '../../components/inspection/SourceViewer.vue';
 import { frontmatterYamlText } from '../../components/inspection/frontmatter-yaml';
+import type { DeclaredEntryDto } from '../../../shared/api-types';
+import { LEADING_INSTRUCTION_FRONTMATTER_KEYS } from '../../components/inspection/declaration-order';
 import { decodeDetailRoutePath } from '../../components/detail-route';
 import { nextTabForKey } from '../../components/tab-navigation';
 import { instructionComparisonRouteFor } from '../../composables/instruction-comparison';
@@ -209,11 +211,25 @@ const presentation = computed(() => {
 
 /**
  * The frontmatter as the YAML document the detail renders (FR-007,
- * frontmatter-yaml.ts): every declared key in the file's own order, spelled
- * back in the block's own language, so a reader compares it against their
- * file without translating and pastes from it without converting.
+ * frontmatter-yaml.ts): every declared key the file wrote, led by
+ * {@link LEADING_INSTRUCTION_FRONTMATTER_KEYS} and otherwise in the file's own
+ * order, spelled back in the block's own language, so a reader compares it
+ * against their file without translating and pastes from it without
+ * converting.
  */
-const frontmatterText = computed(() => frontmatterYamlText(presentation.value?.frontmatter ?? []));
+const frontmatterText = computed(() => {
+  const rank = (entry: DeclaredEntryDto): number => {
+    // Only a string key can be one of the leading keys: a numeric key spelling
+    // `name` is a different key (api-types.ts § DeclaredKeyKind).
+    const index =
+      entry.keyKind === 'string' ? LEADING_INSTRUCTION_FRONTMATTER_KEYS.indexOf(entry.key) : -1;
+    return index === -1 ? LEADING_INSTRUCTION_FRONTMATTER_KEYS.length : index;
+  };
+  // `toSorted` is stable, so the keys past the leaders keep authored order.
+  return frontmatterYamlText(
+    (presentation.value?.frontmatter ?? []).toSorted((left, right) => rank(left) - rank(right)),
+  );
+});
 
 /**
  * Whether the file left no instructions at all. Only an empty string counts:

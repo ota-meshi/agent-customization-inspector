@@ -483,6 +483,99 @@ export const CODEX_USER_SKILLS_BEHAVIOR = {
 } as const satisfies VendorBehaviorStatement;
 
 /**
+ * Codex project custom agents: local clients load standalone TOML files under
+ * a project's `.codex/agents/` as configuration layers for spawned sessions,
+ * so a custom agent can override the same settings a normal session config
+ * can. Every file must define `name`, `description`, and
+ * `developer_instructions`, and may carry other supported `config.toml` keys —
+ * `model`, `model_reasoning_effort`, `sandbox_mode`, `mcp_servers`, and
+ * `skills.config` among them. Codex identifies the agent by its `name` field;
+ * matching the filename to it is convention, not the lookup.
+ *
+ * `partially-documented`: the page names `.codex/agents/` for project scope
+ * and never states which directories of a project are searched, so the
+ * complete project search stays unestablished
+ * (contracts/vendors/openai-codex.md § Canonical evidence-assessment index).
+ * That gap is exactly what the Inspector rule declines to guess at — it
+ * admits the selected root's own `.codex/agents/` and nothing below it.
+ *
+ * Its `mcp_servers` keys are this statement's subject only as a spawned
+ * session's inherited configuration. They are not a second MCP carrier: an
+ * MCP declaration's home is an explicit carrier, and a file of another kind
+ * spelling MCP-looking configuration is that kind's own content
+ * (data-model.md § Inventory unit).
+ */
+export const CODEX_REPO_AGENTS_BEHAVIOR = {
+  behaviorId: 'codex.behavior.repo.agents',
+  tool: 'codex',
+  surfaces: ['codex-local-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'repository',
+        // The page says "project-scoped" and names the directory relative to
+        // the project, so the base is the repository root and the traversal is
+        // the one directory it names. Recording a chain here would assert the
+        // search the page does not describe — the same gap the
+        // `partially-documented` status carries.
+        lookupBase: 'repository-root',
+        relativeSelector: '.codex/agents/*.toml',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'partially-documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'openai.codex.subagents',
+          url: 'https://learn.chatgpt.com/docs/agent-configuration/subagents.md',
+          officialHost: 'learn.chatgpt.com',
+          sections: ['Custom agents', 'Custom agent file schema'],
+          reviewedOn: '2026-08-22',
+          establishes:
+            'Project-scoped custom agents are standalone TOML files under .codex/agents/, each defining one agent that Codex loads as a configuration layer for spawned sessions, with name, description, and developer_instructions required and other supported config.toml keys permitted; the page names the project directory without stating which directories of a project are searched.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Codex User custom agents. Recorded for maintenance only: it expands no
+ * Global inspection, and `codex.excluded.user-runtime` keeps the surface out
+ * of the read allowlist (FR-015 through FR-018). It is shipped here because
+ * `codex.agents.inheritance` composes both scopes, and a strategy naming a
+ * statement no catalog holds is the dangling edge the contract gate rejects.
+ */
+export const CODEX_USER_AGENTS_BEHAVIOR = {
+  behaviorId: 'codex.behavior.user.agents',
+  tool: 'codex',
+  surfaces: ['codex-local-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'user',
+        lookupBase: 'tool-home',
+        relativeSelector: 'agents/*.toml',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'openai.codex.subagents',
+          url: 'https://learn.chatgpt.com/docs/agent-configuration/subagents.md',
+          officialHost: 'learn.chatgpt.com',
+          sections: ['Custom agents'],
+          reviewedOn: '2026-08-22',
+          establishes:
+            'Personal custom agents are standalone TOML files under ~/.codex/agents/, and a custom agent whose name matches a built-in agent such as explorer takes precedence over it.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
  * Codex's contribution to the behavior registry, keyed by `behaviorId` in
  * identifier order. Each statement ships together with every other statement
  * its strategy composes — the two skill scopes for `codex.skills.discovery`
@@ -491,12 +584,14 @@ export const CODEX_USER_SKILLS_BEHAVIOR = {
  */
 export const CODEX_BEHAVIOR_STATEMENTS: Readonly<Record<CodexBehaviorId, VendorBehaviorStatement>> =
   {
+    [CODEX_REPO_AGENTS_BEHAVIOR.behaviorId]: CODEX_REPO_AGENTS_BEHAVIOR,
     [CODEX_REPO_CONFIG_BEHAVIOR.behaviorId]: CODEX_REPO_CONFIG_BEHAVIOR,
     [CODEX_REPO_HOOKS_BEHAVIOR.behaviorId]: CODEX_REPO_HOOKS_BEHAVIOR,
     [CODEX_REPO_INSTRUCTIONS_BEHAVIOR.behaviorId]: CODEX_REPO_INSTRUCTIONS_BEHAVIOR,
     [CODEX_REPO_MCP_BEHAVIOR.behaviorId]: CODEX_REPO_MCP_BEHAVIOR,
     [CODEX_REPO_RULES_BEHAVIOR.behaviorId]: CODEX_REPO_RULES_BEHAVIOR,
     [CODEX_REPO_SKILLS_BEHAVIOR.behaviorId]: CODEX_REPO_SKILLS_BEHAVIOR,
+    [CODEX_USER_AGENTS_BEHAVIOR.behaviorId]: CODEX_USER_AGENTS_BEHAVIOR,
     [CODEX_USER_CONFIG_BEHAVIOR.behaviorId]: CODEX_USER_CONFIG_BEHAVIOR,
     [CODEX_USER_INSTRUCTIONS_BEHAVIOR.behaviorId]: CODEX_USER_INSTRUCTIONS_BEHAVIOR,
     [CODEX_USER_RULES_BEHAVIOR.behaviorId]: CODEX_USER_RULES_BEHAVIOR,

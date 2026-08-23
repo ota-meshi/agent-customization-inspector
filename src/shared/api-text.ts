@@ -71,14 +71,18 @@ export const SCAN_PROGRESS_PHASE_TEXT: Readonly<Record<ScanProgressPhase, string
 /**
  * What a file detail's kind reads as (contracts/http-api.md § get-file-detail).
  * Every kind a recognition owns shares that customization kind's own caption,
- * so each reads the same wherever it is named; 'file' states the honest fact
- * that no recognition owns the file, never a fabricated kind (FR-012).
+ * so each reads the same wherever it is named, and they are listed in the
+ * closed kind order (`entities.ts` § CUSTOMIZATION_KIND_ORDER); 'file' follows
+ * because it is not a customization kind, and it states the honest fact that
+ * no recognition owns the file, never a fabricated kind (FR-012).
  */
 export const FILE_DETAIL_KIND_TEXT: Readonly<Record<FileDetailDto['kind'], string>> = {
-  /** Caption for a detail a skill recognition owns. */
-  skill: CUSTOMIZATION_KIND_TEXT.skill,
   /** Caption for a detail an instructions recognition owns. */
   instructions: CUSTOMIZATION_KIND_TEXT.instructions,
+  /** Caption for a detail a skill recognition owns. */
+  skill: CUSTOMIZATION_KIND_TEXT.skill,
+  /** Caption for a detail a custom-agent recognition owns. */
+  agent: CUSTOMIZATION_KIND_TEXT.agent,
   /** Caption for a detail a command recognition owns. */
   'prompt/command': CUSTOMIZATION_KIND_TEXT['prompt/command'],
   /** Caption for a detail a rule recognition owns. */

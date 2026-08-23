@@ -8,6 +8,7 @@
 // the rule owes is that no target the host did not publish can ever be
 // selected — a stored spelling is compared against the published list, never
 // parsed into it.
+import { Storage } from 'happy-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { FileOpenTarget } from '../../../src/shared/api-types';
@@ -30,7 +31,18 @@ async function freshModule(): Promise<
 }
 
 beforeEach(() => {
-  window.localStorage.clear();
+  // The environment's own storage does not reach `window` on every runtime
+  // this package supports: Vitest copies a happy-dom property onto the global
+  // only where the Node runtime does not already define that name, and
+  // `localStorage` is not among the keys it overrides — so on a runtime that
+  // defines `localStorage` itself, which Node.js 26 does, the module under
+  // test reads the runtime's own name instead of the page's storage.
+  // Installing happy-dom's Storage gives every supported runtime the same
+  // one, and a fresh instance per test is what clearing it would achieve.
+  // Measured 2026-08-22 against Vitest 4.1.11, where the copy still skips the
+  // name; vitest-dev/vitest#10293 changes that, so re-check this when the
+  // dependency moves.
+  vi.stubGlobal('localStorage', new Storage());
   vi.restoreAllMocks();
 });
 

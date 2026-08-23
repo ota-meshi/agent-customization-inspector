@@ -657,16 +657,22 @@ onBeforeUnmount(() => {
         </section>
       </div>
 
-      <h3>Source comparison</h3>
-      <SourceDiff v-bind="readyView.diff" />
-
-      <!-- The component owns its two section headings — tool recognition and
-           declared metadata are two facts with two homes (research.md § 7). -->
+      <!-- The component owns the section order — the declarations, the body,
+           the complete files it takes below through the `source` slot, and
+           last the recognitions (research.md § 7). What the source diff is
+           stays this page's. -->
       <RecognitionComparison
         :comparison="readyView.recognition"
         :left-path="readyView.sides[0].path"
         :right-path="readyView.sides[1].path"
-      />
+      >
+        <template #source>
+          <div class="aci-prompt-compare__source">
+            <h3>Source comparison</h3>
+            <SourceDiff v-bind="readyView.diff" />
+          </div>
+        </template>
+      </RecognitionComparison>
     </div>
 
     <template v-else-if="status === 'loading'">

@@ -14,7 +14,11 @@
 // are deliberately not re-checked at runtime (AGENTS.md Implementation
 // simplicity policy). Per-vendor rule catalogs arrive with their inventory
 // phases; this module owns only the shared closed grammar and compilation.
-import type { DeclaredEntryDto, McpServerDeclarationDto } from '../../../shared/api-types';
+import type {
+  AgentPresentationDto,
+  DeclaredEntryDto,
+  McpServerDeclarationDto,
+} from '../../../shared/api-types';
 import type { CustomizationKind, SupportedTool } from '../../../shared/entities';
 import { VENDOR_SURFACE_ORDER } from '../../../shared/registries/behavior-text';
 import type { VendorSurface } from '../../../shared/registries/behavior-types';
@@ -916,9 +920,102 @@ export type CompiledStaticPermissionsRule =
   CompiledStaticPermissionsCarrierRule | CompiledStaticPermissionsDocumentRule;
 
 /**
+ * A compiled rule that admits a custom-agent definition, and can therefore
+ * split one of its admitted files into the two halves the kind's detail shows:
+ * the declarations a product reads as configuration, and the instructions it
+ * gives the agent (contracts/http-api.md § get-file-detail).
+ *
+ * The agent sibling of {@link CompiledStaticMcpReadingRule}, and its own unit
+ * for the same reason: where that split falls is the admitting vendor's own
+ * contract, and the vendors do not agree. A Codex agent is a TOML document
+ * whose `developer_instructions` string is the prose and whose remaining
+ * top-level keys are the configuration; the products that write an agent as
+ * Markdown split at the frontmatter fence, the block being the configuration
+ * and the body the prose. One shape for both, because the detail renders them
+ * identically — the metadata as YAML, the instructions as Markdown — so a rule
+ * of another kind must not be asked for it and neither vendor needs a surface
+ * of its own.
+ *
+ * The agent's own name is a member here, because the vendors answer it
+ * differently: Codex and Claude Code document the declared `name` as the
+ * agent's identity and a matching filename as convention rather than lookup,
+ * while GitHub documents Copilot's `name` as an optional display name and
+ * deduplicates agents by the configuration file's own name minus `.md` or
+ * `.agent.md`. A recognizer that read the `name` entry for every vendor would
+ * name a Copilot agent after a field that product does not identify it by.
+ *
+ * The reading stops at what the file wrote. Which agent a spawn selects, what
+ * a spawned session inherits from its parent, and what an `mcp_servers` key
+ * inside the file would mean at runtime are the vendor's documented
+ * composition (`codex.agents.inheritance`), recorded in the strategy registry
+ * and projected by no surface (FR-009). In particular a declared
+ * `mcp_servers` block is this file's own content and makes it no carrier: an
+ * MCP declaration's home is an explicit carrier and nothing else
+ * (data-model.md § Inventory unit).
+ */
+export interface CompiledStaticAgentRule extends CompiledInspectionRule {
+  /** The recognized kind; an agent unit compiles custom-agent records alone. */
+  readonly kind: 'agent';
+  /**
+   * One admitted agent file's complete decoded text, split into the metadata
+   * and the instructions its detail publishes — both in the parser's resolved
+   * order and resolution (FR-007), and both empty when the file declares
+   * neither. Throws on text the file's format cannot parse; the recognizer's
+   * extraction boundary turns the throw into the recognition's `failed` state
+   * while the file stays an admitted candidate whose complete source is still
+   * displayed (FR-028).
+   */
+  agentPresentationOf(sourceText: string): AgentPresentationDto;
+  /**
+   * The name the admitting product identifies one admitted agent by — the
+   * identity its inventory row is grouped under (data-model.md § Inventory
+   * unit) — or `null` when the product identifies agents by a declaration
+   * this file does not make.
+   *
+   * Both inputs, because the products differ on which one answers: Codex and
+   * Claude Code identify an agent by its declared `name`, so a file declaring
+   * none has no name at all and joins the row that says so; the Copilot
+   * surfaces identify one by its configuration file's own name, so the path
+   * always answers and `null` never arises there.
+   *
+   * `declared` is the metadata {@link agentPresentationOf} resolved, empty for
+   * a failed extraction — which leaves a declared-name product's row name
+   * unknown rather than absent, while a file-name product's row keeps the
+   * identity a failed parse cannot take away (FR-028).
+   *
+   * Never a claim that the agent is reachable: which locations a session
+   * searches, whether a profile targets the running surface, and which of two
+   * same-name agents a spawn selects are runtime this tool never observes
+   * (FR-009).
+   */
+  agentNameOf(sourceRelativePath: string, declared: readonly DeclaredEntryDto[]): string | null;
+}
+
+/**
+ * The declared-`name` answer to {@link CompiledStaticAgentRule.agentNameOf},
+ * shared by the two products that document the field as the agent's identity —
+ * Codex and Claude Code — because their answer is one rule rather than two
+ * that happen to agree. Read by the string key and the scalar kind: a sequence
+ * under that key has a rendering too, and taking its text would name an agent
+ * after the first item of a list the file did not write as a name.
+ *
+ * `null` rather than the empty string when nothing was declared, so no name at
+ * all and an authored empty name stay distinguishable (FR-007).
+ */
+export function declaredAgentNameOf(declared: readonly DeclaredEntryDto[]): string | null {
+  for (const entry of declared) {
+    if (entry.keyKind === 'string' && entry.key === 'name' && entry.value.kind === 'scalar') {
+      return entry.value.text;
+    }
+  }
+  return null;
+}
+
+/**
  * A compiled static rule of every other kind — neither an instruction rule,
  * whose files govern a range, nor a command rule, whose files are invoked by a
- * name, nor an MCP carrier rule, whose files declare servers. It answers no
+ * name, nor an MCP carrier rule, whose files declare servers, nor a
+ * custom-agent rule, whose files declare an agent. It answers no
  * per-kind question, which is the whole point: a skill rule has no such answer
  * to give, and neither does a rule-file rule — a rule file is published as the
  * one Markdown or Starlark document its author wrote, so nothing is read out
@@ -928,7 +1025,7 @@ export interface CompiledStaticOtherKindRule extends CompiledInspectionRule {
   /** Every recognized kind but `instructions`, `prompt/command`, `MCP`, and `permissions`. */
   readonly kind: Exclude<
     CustomizationKind,
-    'instructions' | 'prompt/command' | 'MCP' | 'permissions'
+    'instructions' | 'MCP' | 'agent' | 'prompt/command' | 'permissions'
   >;
 }
 
@@ -939,8 +1036,9 @@ export interface CompiledStaticOtherKindRule extends CompiledInspectionRule {
  */
 export type CompiledStaticCandidateRule =
   | CompiledStaticInstructionRule
-  | CompiledStaticPromptRule
   | CompiledStaticMcpRule
+  | CompiledStaticAgentRule
+  | CompiledStaticPromptRule
   | CompiledStaticPermissionsRule
   | CompiledStaticOtherKindRule;
 

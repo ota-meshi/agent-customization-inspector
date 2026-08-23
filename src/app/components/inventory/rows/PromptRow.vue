@@ -179,11 +179,13 @@ const definitions = computed(() =>
          name, above all. The comparison surface's own pickers take over from
          there. The accessible name carries the invocation name, because a
          reader walking the page's links hears each one out of its visual
-         context and every row offers the same wording (WCAG 2.4.4). -->
+         context and every row offers the same wording (WCAG 2.4.4) — with the
+         visible label kept inside it, so a reader speaking what they see
+         reaches the control (WCAG 2.5.3). -->
     <p v-if="compareRoute !== null" class="aci-prompt-row__compare">
       <NuxtLink
         :to="compareRoute"
-        :aria-label="`Compare the files invoked as ${inlinePresentationLabel(entry.name)}`"
+        :aria-label="`Compare this name's files: ${inlinePresentationLabel(entry.name)}`"
         >Compare this name's files</NuxtLink
       >
     </p>

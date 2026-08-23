@@ -44,29 +44,12 @@
 // becomes its escape, identically on both comparison sides, so no spelling
 // manufactures a difference, and a `null`-spelling string never reads as
 // the authored null the absent variant serializes.
+import { LEADING_MCP_DECLARATION_KEYS } from './inspection/declaration-order';
 import type {
   DeclaredEntryDto,
   DeclaredScalarKind,
   DeclaredValueDto,
 } from '../../shared/api-types';
-
-/**
- * The declaration keys the comparison leads with, in reading order: the
- * server's kind, how it launches, where it connects, and what environment it
- * gets — the keys the vendors' carrier schemas commonly declare. Every key
- * not listed here follows them in sorted order, so both sides spell the
- * same set of keys in the same sequence.
- */
-const DECLARATION_KEY_ORDER: readonly string[] = [
-  'type',
-  'command',
-  'args',
-  'cwd',
-  'url',
-  'headers',
-  'env',
-  'envFile',
-];
 
 /** Deterministic key order for everything the fixed reading order does not place. */
 function compareKeyText(a: DeclaredEntryDto, b: DeclaredEntryDto): number {
@@ -151,8 +134,8 @@ export function declaredEntriesJsonText(fields: readonly DeclaredEntryDto[]): st
  */
 export function canonicalDeclaredEntriesJsonText(fields: readonly DeclaredEntryDto[]): string {
   const rank = (key: string): number => {
-    const index = DECLARATION_KEY_ORDER.indexOf(key);
-    return index === -1 ? DECLARATION_KEY_ORDER.length : index;
+    const index = LEADING_MCP_DECLARATION_KEYS.indexOf(key);
+    return index === -1 ? LEADING_MCP_DECLARATION_KEYS.length : index;
   };
   const ordered = fields.toSorted((a, b) => rank(a.key) - rank(b.key) || compareKeyText(a, b));
   return JSON.stringify(objectOf(ordered, true), null, 2);

@@ -17,33 +17,43 @@ import type { CustomizationKind } from '../../shared/entities';
 /**
  * The kinds whose detail is addressed by a Source-relative Path alone. A kind
  * is here exactly when no further fact splits its detail: an instruction file,
- * a rule file, and a prompt or command file each have one page however many
- * products recognize them, a permission policy is addressed by the path of the file
- * that declares it — the identity its inventory row is named by — and an MCP
- * carrier's own page is the carrier's.
+ * a rule file, a prompt or command file, and a custom-agent file each have one
+ * page however many products recognize them, a permission policy is addressed
+ * by the path of the file that declares it — the identity its inventory row is
+ * named by — and an MCP carrier's own page is the carrier's.
  */
 export type PathAddressedDetailKind = Extract<
   CustomizationKind,
-  'instructions' | 'rule' | 'prompt/command' | 'permissions' | 'MCP'
+  'instructions' | 'MCP' | 'agent' | 'prompt/command' | 'rule' | 'permissions'
 >;
 
-/** The URL segment each path-addressed detail route is rooted at. */
+/**
+ * The URL segment each path-addressed detail route is rooted at, in the closed
+ * kind order (`entities.ts` § CUSTOMIZATION_KIND_ORDER).
+ */
 const DETAIL_ROUTE_SEGMENT: Readonly<Record<PathAddressedDetailKind, string>> = {
   /** Instruction files live under `/instructions/`. */
   instructions: 'instructions',
-  /** Rule files live under `/rules/`. */
-  rule: 'rules',
+  /** MCP carriers live under `/mcp/`. */
+  MCP: 'mcp',
+  /**
+   * Custom-agent files live under `/agents/`. The row unit is the declared
+   * agent name, but a name is not a locator — two files can declare one, and a
+   * file can declare none at all — so the route is the file's own path, like
+   * every other path-addressed kind.
+   */
+  agent: 'agents',
   /**
    * Prompt and command files live under `/prompts-and-commands/`. The segment
    * spells the whole kind out rather than taking the shorter half of it: a
    * reader reads this one in the address bar, and `/prompts/` would name a
-   * surface that also lists commands (user decision).
+   * surface that also lists commands.
    */
   'prompt/command': 'prompts-and-commands',
+  /** Rule files live under `/rules/`. */
+  rule: 'rules',
   /** Declared permission policies live under `/permissions/`. */
   permissions: 'permissions',
-  /** MCP carriers live under `/mcp/`. */
-  MCP: 'mcp',
 };
 
 /**

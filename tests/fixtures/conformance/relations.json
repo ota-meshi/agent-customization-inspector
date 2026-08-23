@@ -1,5 +1,23 @@
 {
   "strategies": {
+    "claude.agent-context.composition": {
+      "consumesBehaviors": [
+        "claude.behavior.repo.agent-memory.local",
+        "claude.behavior.repo.agent-memory.project",
+        "claude.behavior.repo.agents",
+        "claude.behavior.repo.instructions.ancestor",
+        "claude.behavior.repo.instructions.descendant",
+        "claude.behavior.repo.instructions.launch",
+        "claude.behavior.repo.rules",
+        "claude.behavior.repo.skills",
+        "claude.behavior.user.agent-memory",
+        "claude.behavior.user.agents",
+        "claude.behavior.user.auto-memory"
+      ]
+    },
+    "claude.agents.selection": {
+      "consumesBehaviors": ["claude.behavior.repo.agents", "claude.behavior.user.agents"]
+    },
     "claude.commands.selection": {
       "consumesBehaviors": [
         "claude.behavior.repo.commands",
@@ -38,6 +56,9 @@
     "claude.skills.selection": {
       "consumesBehaviors": ["claude.behavior.repo.skills", "claude.behavior.user.skills"]
     },
+    "codex.agents.inheritance": {
+      "consumesBehaviors": ["codex.behavior.repo.agents", "codex.behavior.user.agents"]
+    },
     "codex.config.precedence": {
       "consumesBehaviors": ["codex.behavior.repo.config", "codex.behavior.user.config"]
     },
@@ -52,6 +73,9 @@
     },
     "codex.skills.discovery": {
       "consumesBehaviors": ["codex.behavior.repo.skills", "codex.behavior.user.skills"]
+    },
+    "copilot.cli.agents.selection": {
+      "consumesBehaviors": ["copilot.behavior.cli.agents", "copilot.behavior.cli.user.agents"]
     },
     "copilot.cli.instructions.layering": {
       "consumesBehaviors": [
@@ -74,6 +98,12 @@
         "copilot.behavior.cli.user.skills"
       ]
     },
+    "copilot.cloud.agents.selection": {
+      "consumesBehaviors": [
+        "copilot.behavior.cloud.agents",
+        "copilot.behavior.cloud.organization-agents"
+      ]
+    },
     "copilot.cloud.instructions.layering": {
       "consumesBehaviors": [
         "copilot.behavior.cloud.instructions.agents",
@@ -88,6 +118,9 @@
     },
     "copilot.cloud.skills.selection": {
       "consumesBehaviors": ["copilot.behavior.cloud.remote-skills", "copilot.behavior.cloud.skills"]
+    },
+    "copilot.vscode.agents.selection": {
+      "consumesBehaviors": ["copilot.behavior.vscode.agents", "copilot.behavior.vscode.user.agents"]
     },
     "copilot.vscode.instructions.layering": {
       "consumesBehaviors": [
@@ -107,6 +140,10 @@
     }
   },
   "rules": {
+    "claude.repo.agent": {
+      "basedOnBehaviors": ["claude.behavior.repo.agents"],
+      "explainedByStrategies": ["claude.agent-context.composition", "claude.agents.selection"]
+    },
     "claude.repo.command": {
       "basedOnBehaviors": ["claude.behavior.repo.commands"],
       "explainedByStrategies": ["claude.commands.selection"]
@@ -141,6 +178,10 @@
     "codex.derived.fallback-basename": {
       "basedOnBehaviors": ["codex.behavior.repo.config", "codex.behavior.repo.instructions"],
       "explainedByStrategies": ["codex.config.precedence", "codex.instructions.layering"]
+    },
+    "codex.repo.agent": {
+      "basedOnBehaviors": ["codex.behavior.repo.agents"],
+      "explainedByStrategies": ["codex.agents.inheritance"]
     },
     "codex.repo.config": {
       "basedOnBehaviors": [
@@ -180,6 +221,22 @@
         "copilot.behavior.vscode.skills"
       ],
       "explainedByStrategies": []
+    },
+    "copilot.repo.agent": {
+      "basedOnBehaviors": [
+        "copilot.behavior.cli.agents",
+        "copilot.behavior.cloud.agents",
+        "copilot.behavior.vscode.agents"
+      ],
+      "explainedByStrategies": [
+        "copilot.cli.agents.selection",
+        "copilot.cloud.agents.selection",
+        "copilot.vscode.agents.selection"
+      ]
+    },
+    "copilot.repo.agent.claude": {
+      "basedOnBehaviors": ["copilot.behavior.cli.agents", "copilot.behavior.vscode.agents"],
+      "explainedByStrategies": ["copilot.cli.agents.selection", "copilot.vscode.agents.selection"]
     },
     "copilot.repo.command": {
       "basedOnBehaviors": ["copilot.behavior.cli.commands"],

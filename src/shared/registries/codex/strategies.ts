@@ -21,6 +21,68 @@ import type { CodexStrategyId } from '../identifier-types';
 import type { RuntimeCompositionStrategy } from '../strategy-types';
 
 /**
+ * Codex custom-agent inheritance: a spawned session selects the agent
+ * configuration — a custom agent whose name matches a built-in one takes
+ * precedence over it (`select-first`) — overlays the child file's declared
+ * settings on the parent session per key (`merge-map`), and a value the child
+ * file declares replaces the resolved parent value (`replace`) — with the
+ * parent turn's live sandbox and approval overrides reapplied over the file's
+ * own defaults, which is the one edge that runs the other way.
+ *
+ * `select-first` covers exactly the precedence the page states, which is the
+ * custom-over-built-in one. No order is recorded between the personal
+ * `~/.codex/agents/` and project `.codex/agents/` scopes: the page names both
+ * locations and establishes nothing about which wins, and an operation there
+ * would be a resolution the vendor does not document.
+ *
+ * What the child file omits is what it inherits: `sandbox_mode`,
+ * `mcp_servers`, and `skills.config` come from the parent session when the
+ * file declares none. That inheritance is documented composition and stays
+ * here rather than becoming an Inspector reading — an agent file's
+ * `mcp_servers` keys are its own declared content, never a second MCP carrier,
+ * because an MCP declaration's home is an explicit carrier and nothing else
+ * (data-model.md § Inventory unit). No surface projects this pipeline either:
+ * what a concrete spawn resolves depends on the parent session, the live
+ * overrides, and the scopes outside the inspected Source, all of which are
+ * runtime this tool never observes (FR-009).
+ *
+ * `partially-documented`: the project traversal is unstated — the same gap
+ * `codex.behavior.repo.agents` carries — and the page establishes nothing
+ * about whether a child session inherits `AGENTS.md`, so no operation here
+ * claims it (contracts/runtime-composition.md § codex.agents.inheritance).
+ */
+export const CODEX_AGENTS_INHERITANCE_STRATEGY = {
+  strategyId: 'codex.agents.inheritance',
+  tool: 'codex',
+  surfaces: ['codex-local-clients'],
+  operations: ['select-first', 'merge-map', 'replace'],
+  documentationStatus: 'partially-documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'openai.codex.config-basic',
+          url: 'https://learn.chatgpt.com/docs/config-file/config-basic.md',
+          officialHost: 'learn.chatgpt.com',
+          sections: ['Codex configuration file', 'Configuration precedence'],
+          reviewedOn: '2026-08-17',
+          establishes:
+            'The settings a custom agent file may override are the same configuration keys the layer precedence resolves, which is what makes an agent file a configuration layer rather than a manifest of its own.',
+        },
+        {
+          sourceId: 'openai.codex.subagents',
+          url: 'https://learn.chatgpt.com/docs/agent-configuration/subagents.md',
+          officialHost: 'learn.chatgpt.com',
+          sections: ['Custom agents', 'Approvals and sandbox controls'],
+          reviewedOn: '2026-08-22',
+          establishes:
+            'A custom agent whose name matches a built-in agent such as explorer takes precedence over it, and Codex loads the selected agent file as a configuration layer for the spawned session: a model or reasoning effort the file sets takes precedence over the value resolved from an explicit spawn request, the [agents] defaults, and the parent, while sandbox_mode, mcp_servers, and skills.config inherit from the parent when the file omits them; the parent turn’s live sandbox and approval overrides are reapplied over the file’s own defaults. The page names the personal and project locations without establishing an order between them.',
+        },
+      ]
+    : [],
+} as const satisfies RuntimeCompositionStrategy;
+
+/**
  * Codex config-layer resolution: User/profile/CLI values and every trusted
  * project `.codex/config.toml` layer from the project root down to the
  * runtime `cwd` merge per key (`merge-map`), a closer layer's value replaces
@@ -224,6 +286,7 @@ export const CODEX_SKILLS_DISCOVERY_STRATEGY = {
 export const CODEX_COMPOSITION_STRATEGIES: Readonly<
   Record<CodexStrategyId, RuntimeCompositionStrategy>
 > = {
+  [CODEX_AGENTS_INHERITANCE_STRATEGY.strategyId]: CODEX_AGENTS_INHERITANCE_STRATEGY,
   [CODEX_CONFIG_PRECEDENCE_STRATEGY.strategyId]: CODEX_CONFIG_PRECEDENCE_STRATEGY,
   [CODEX_INSTRUCTIONS_LAYERING_STRATEGY.strategyId]: CODEX_INSTRUCTIONS_LAYERING_STRATEGY,
   [CODEX_MCP_CONFIGURATION_STRATEGY.strategyId]: CODEX_MCP_CONFIGURATION_STRATEGY,

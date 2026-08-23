@@ -104,7 +104,11 @@ const routeTitle = computed(() =>
           ? CUSTOMIZATION_KIND_TEXT.rule
           : route.path.startsWith('/permissions')
             ? CUSTOMIZATION_KIND_TEXT.permissions
-            : 'Inspection',
+            : route.path.startsWith('/agents')
+              ? CUSTOMIZATION_KIND_TEXT.agent
+              : route.path.startsWith('/prompts-and-commands')
+                ? CUSTOMIZATION_KIND_TEXT['prompt/command']
+                : 'Inspection',
 );
 
 const startupErrorMessage = shallowRef<string | null>(null);

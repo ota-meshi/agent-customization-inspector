@@ -26,6 +26,8 @@
 import {
   CompiledDerivedRule,
   CompiledInspectionRule,
+  declaredAgentNameOf,
+  type CompiledStaticAgentRule,
   type CompiledStaticCandidateRule,
   type CompiledStaticInstructionRule,
   type CompiledStaticMcpReadingRule,
@@ -33,7 +35,11 @@ import {
   type CompiledStaticPermissionsDocumentRule,
 } from './registry';
 import type { CustomizationKind } from '../../../shared/entities';
-import type { McpServerDeclarationDto } from '../../../shared/api-types';
+import type {
+  AgentPresentationDto,
+  DeclaredEntryDto,
+  McpServerDeclarationDto,
+} from '../../../shared/api-types';
 import { join } from 'node:path';
 import {
   isVcsInternalPath,
@@ -179,10 +185,103 @@ export class CodexCompiledMcpCarrierRule
 }
 
 /**
+ * The key a Codex custom-agent file writes its instructions under
+ * (contracts/vendors/openai-codex.md § Documented Repository behavior): the
+ * page requires `name`, `description`, and `developer_instructions` of every
+ * standalone agent file and calls the last one the core instructions that
+ * define the agent's behavior. It is the split this vendor's presentation
+ * falls at, so it is a literal here rather than anything a caller passes.
+ */
+const CODEX_AGENT_INSTRUCTIONS_KEY = 'developer_instructions';
+
+/**
+ * The Codex custom-agent rule compiled for execution: everything a Codex rule
+ * is, plus the one question only a custom-agent rule answers — where an
+ * admitted agent file's configuration ends and its instructions begin. The
+ * reading lives here, beside the rule that owns it, because a Codex agent
+ * file's format is this vendor's own contract
+ * (contracts/vendors/openai-codex.md § Inspector Repository rules); the TOML
+ * parse and the rendering of resolved values are the format's and stay in
+ * `parsers/toml.ts`.
+ */
+export class CodexCompiledAgentRule extends CodexCompiledRule implements CompiledStaticAgentRule {
+  /** Narrowed to the one kind this unit compiles; the constructor proves it. */
+  declare public readonly kind: 'agent';
+
+  /**
+   * One admitted `.codex/agents/*.toml` split into the two halves its detail
+   * shows (FR-007). A Codex agent file is a configuration layer with one prose
+   * key: `developer_instructions` holds the instructions, and every other
+   * top-level entry — `name` and `description` among them, beside whatever
+   * other supported `config.toml` keys the author wrote — is the metadata,
+   * each published in the file's own order as the parser resolved it.
+   *
+   * The split is taken only when that key resolves to a string. A
+   * `developer_instructions` the file wrote as a table, a list, a number, or a
+   * datetime is a declaration rather than prose, so it stays a metadata entry
+   * and the instructions are empty: moving a rendering of it into the prose
+   * half would show the reader a document their file does not contain.
+   *
+   * No field is validated, no environment reference is resolved, and no
+   * declared path, command, or server gains read or connection authority. A
+   * declared `mcp_servers` table is one metadata entry and nothing more: it
+   * makes the file no MCP carrier, because an MCP declaration's home is an
+   * explicit carrier and nothing else (data-model.md § Inventory unit).
+   * Throws on text TOML cannot parse; the recognizer's extraction boundary
+   * turns the throw into the recognition's `failed` state while the file
+   * stays an admitted candidate whose complete source is still displayed
+   * (FR-028).
+   */
+  public agentPresentationOf(sourceText: string): AgentPresentationDto {
+    const document = new ParsedTomlDocument(sourceText);
+    // Asked of the parser's typed resolution rather than of the rendered
+    // entry, which is what that view exists for (`parsers/toml.ts`): the
+    // rendering publishes a TOML datetime as a `string` scalar, because its
+    // ISO spelling is its spelling (api-types.ts § DeclaredScalarKind), so a
+    // `developer_instructions = 1979-05-27` would pass a check made over the
+    // entry and become a Markdown body the file does not contain. `typeof`
+    // over the resolution tells the two apart, exactly as the configuration
+    // read tells a string basename from a number.
+    const declared = document.table[CODEX_AGENT_INSTRUCTIONS_KEY];
+    const instructionsText = typeof declared === 'string' ? declared : '';
+    const metadata =
+      typeof declared === 'string'
+        ? document.entries.filter((entry) => entry.key !== CODEX_AGENT_INSTRUCTIONS_KEY)
+        : document.entries;
+    return { metadata, instructionsText };
+  }
+
+  /**
+   * The agent's declared `name`, which is what Codex identifies a custom agent
+   * by — the reference calls naming the file after it a convention rather than
+   * a lookup — so a file declaring none has no name at all and joins the row
+   * that says so rather than being named after its path.
+   *
+   * The path is unused for that reason, and the shared reading is the one both
+   * declared-name products use (`registry.ts` § declaredAgentNameOf).
+   */
+  public agentNameOf(
+    _sourceRelativePath: string,
+    declared: readonly DeclaredEntryDto[],
+  ): string | null {
+    return declaredAgentNameOf(declared);
+  }
+
+  /** Compiles one Codex custom-agent record, rejecting one of another kind. */
+  public constructor(rule: InspectionRule) {
+    super(rule);
+    if (rule.kind !== 'agent') {
+      throw new TypeError(`rule ${rule.ruleId} is not a Codex custom-agent rule`);
+    }
+  }
+}
+
+/**
  * A Codex rule of every other kind, compiled for execution. It answers no
- * per-kind question — neither an instruction rule's applicability nor an MCP
- * carrier's declarations — which is exactly what a skill rule has to say
- * about either (see `CompiledStaticOtherKindRule`).
+ * per-kind question — neither an instruction rule's applicability, nor an MCP
+ * carrier's declarations, nor a custom agent's — which is exactly what a
+ * skill rule has to say about any of them (see
+ * `CompiledStaticOtherKindRule`).
  */
 export class CodexCompiledOtherKindRule
   extends CodexCompiledRule
@@ -191,16 +290,17 @@ export class CodexCompiledOtherKindRule
   /** Narrowed to the kinds this unit compiles; the constructor proves it. */
   declare public readonly kind: Exclude<
     CustomizationKind,
-    'instructions' | 'prompt/command' | 'MCP' | 'permissions'
+    'instructions' | 'MCP' | 'agent' | 'prompt/command' | 'permissions'
   >;
 
-  /** Compiles one Codex record of any kind but the four with a question of their own. */
+  /** Compiles one Codex record of any kind but the five with a question of their own. */
   public constructor(rule: InspectionRule) {
     super(rule);
     if (
       rule.kind === 'instructions' ||
-      rule.kind === 'prompt/command' ||
       rule.kind === 'MCP' ||
+      rule.kind === 'agent' ||
+      rule.kind === 'prompt/command' ||
       rule.kind === 'permissions'
     ) {
       throw new TypeError(`rule ${rule.ruleId} needs a Codex unit that answers for its kind`);
@@ -246,8 +346,8 @@ export class CodexCompiledPermissionsDocumentRule
  * The Codex Repository rules a Repository scan executes, in shipped order.
  * The remaining Codex rows of the vendor contract arrive with their own
  * inventory phases; the shipped set covers static instructions, skills, the
- * MCP carrier, and rule files, with the configured instruction fallbacks
- * reaching the same walk through the derived rule below.
+ * MCP carrier, rule files, and custom agents, with the configured instruction
+ * fallbacks reaching the same walk through the derived rule below.
  *
  * The catalog now carries both discovery classes, and each compiles through
  * its own gate: the static rules below feed the traversal, while the derived
@@ -263,15 +363,17 @@ export const CODEX_REPOSITORY_RULES: readonly CompiledStaticCandidateRule[] = Ob
   .map((rule) =>
     // Each record compiles into the unit that can answer its kind's question:
     // an instruction record what its files govern, an MCP record which
-    // servers its carrier declares; every other kind compiles into the plain
-    // one.
+    // servers its carrier declares, a custom-agent record what its file
+    // declares; every other kind compiles into the plain one.
     rule.kind === 'instructions'
       ? new CodexCompiledInstructionRule(rule)
       : rule.kind === 'MCP'
         ? new CodexCompiledMcpCarrierRule(rule)
-        : rule.kind === 'permissions'
-          ? new CodexCompiledPermissionsDocumentRule(rule)
-          : new CodexCompiledOtherKindRule(rule),
+        : rule.kind === 'agent'
+          ? new CodexCompiledAgentRule(rule)
+          : rule.kind === 'permissions'
+            ? new CodexCompiledPermissionsDocumentRule(rule)
+            : new CodexCompiledOtherKindRule(rule),
   );
 
 export class CodexCompiledDerivedRule extends CompiledDerivedRule {

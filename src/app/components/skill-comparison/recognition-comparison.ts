@@ -6,9 +6,10 @@
 // scan-time parse for the kind (FR-028), so it is compared once — a tool is
 // not a coordinate of a declaration, and rendering the same file-level fact
 // under each recognizing tool would publish one fact as many: each side's
-// frontmatter serializes to one canonical YAML document — `name` and
-// `description` leading, every other key sorted — and the two documents are
-// what Monaco diffs (research.md § 7, frontmatter-yaml.ts). This module is
+// frontmatter serializes to one canonical YAML document — the documented
+// skill keys leading in their reading order, every other key sorted — and the
+// two documents are what Monaco diffs (research.md § 7, frontmatter-yaml.ts,
+// declaration-order.ts). This module is
 // the data half, kept out of the component so the decisions are testable
 // without a single-file-component compiler.
 //
@@ -18,6 +19,7 @@
 // relationships in particular, because no shipped recognition publishes an
 // edge for the wire to carry (api-types.ts § FileDetailDto).
 import { canonicalFrontmatterYamlText } from '../inspection/frontmatter-yaml';
+import { LEADING_SKILL_FRONTMATTER_KEYS } from '../inspection/declaration-order';
 import { SUPPORTED_TOOL_ORDER, type SupportedTool } from '../../../shared/entities';
 import type { VendorSurface } from '../../../shared/registries/behavior-types';
 import type {
@@ -199,6 +201,30 @@ export class SkillRecognitionComparison {
     readonly modifiedAbsent: boolean;
   } | null;
 
+  /**
+   * The two instruction texts the body diff mounts — each file with its
+   * frontmatter block removed, exactly as the one parse left it (FR-007) — or
+   * null under the same conditions {@link frontmatterDiff} is.
+   *
+   * Its own diff beside the declarations, rather than left to the source
+   * comparison, because the two halves are one split and showing only one of
+   * them normalized would privilege it: the declarations align key by key
+   * whatever order each file wrote them in, and the instructions align line by
+   * line without the frontmatter block above them moving the lines. The
+   * complete authored source stays below both, which is where every authored
+   * spelling is readable (FR-011).
+   */
+  public readonly bodyDiff: {
+    /** The first side's instructions; empty for a stated absence. */
+    readonly originalText: string;
+    /** The second side's instructions; empty for a stated absence. */
+    readonly modifiedText: string;
+    /** Whether the first side is the one-sided comparison's stated absence. */
+    readonly originalAbsent: boolean;
+    /** Whether the second side is the stated absence. */
+    readonly modifiedAbsent: boolean;
+  } | null;
+
   /** Derives the pair's recognition rows, declaration states, and diff documents. */
   public constructor(left: ComparisonSideInput | null, right: ComparisonSideInput | null) {
     const tools: ToolRecognitionRow[] = [];
@@ -231,24 +257,29 @@ export class SkillRecognitionComparison {
             originalText:
               leftEntries === null
                 ? ''
-                : canonicalFrontmatterYamlText(leftEntries, LEADING_FRONTMATTER_KEYS),
+                : canonicalFrontmatterYamlText(leftEntries, LEADING_SKILL_FRONTMATTER_KEYS),
             modifiedText:
               rightEntries === null
                 ? ''
-                : canonicalFrontmatterYamlText(rightEntries, LEADING_FRONTMATTER_KEYS),
+                : canonicalFrontmatterYamlText(rightEntries, LEADING_SKILL_FRONTMATTER_KEYS),
+            originalAbsent: leftEntries === null,
+            modifiedAbsent: rightEntries === null,
+          }
+        : null;
+    // The other half of the same one parse, under the same guard: a side that
+    // offers no declarations offers no instructions either, because both come
+    // from the presentation that failed or was never this kind's.
+    this.bodyDiff =
+      leftDiffable && rightDiffable && (leftEntries !== null || rightEntries !== null)
+        ? {
+            originalText: leftDeclarations.bodyText ?? '',
+            modifiedText: rightDeclarations.bodyText ?? '',
             originalAbsent: leftEntries === null,
             modifiedAbsent: rightEntries === null,
           }
         : null;
   }
 }
-
-/**
- * The identity keys the canonical documents lead with, the same pair the
- * skill detail leads with (FR-007): which skill this is and what it is for
- * come before whatever else either file declares.
- */
-const LEADING_FRONTMATTER_KEYS: readonly string[] = ['name', 'description'];
 
 /**
  * One side's declared metadata, derived in a single read of its detail: the
@@ -275,11 +306,21 @@ class SideDeclarations {
    */
   public readonly entries: readonly DeclaredEntryDto[] | null;
 
-  /** Derives one side's declaration state and entries from its detail. */
+  /**
+   * The instructions a parsed side serializes into the body diff — the file
+   * with its frontmatter block removed — or null in exactly the cases
+   * {@link entries} is null. Read from the same presentation, so the two
+   * halves and the stated state cannot disagree about whether the file
+   * parsed.
+   */
+  public readonly bodyText: string | null;
+
+  /** Derives one side's declaration state, entries, and body from its detail. */
   public constructor(side: ComparisonSideInput | null) {
     if (side === null) {
       this.state = 'file-absent';
       this.entries = null;
+      this.bodyText = null;
       return;
     }
     // Whether a skill recognition owns this file, which is what
@@ -295,6 +336,7 @@ class SideDeclarations {
     if (side.definitions.length === 0) {
       this.state = 'not-a-skill';
       this.entries = null;
+      this.bodyText = null;
       return;
     }
     const detail = side.detail;
@@ -306,18 +348,21 @@ class SideDeclarations {
     // fixed order reaches (session.ts § fileDetail), which is that function's
     // business rather than this surface's. What the page renders is the
     // document, and every parse-carrying variant holds it the same way. The
-    // two excluded variants are the ones that carry no parse at all: a rule
-    // file is published whole and an unrecognized file has nothing read out of
-    // it, so a definition-owning file that somehow arrives as one declares
-    // nothing to compare.
-    if (detail.kind === 'rule' || detail.kind === 'file') {
+    // excluded variants are the ones that carry no Markdown parse at all: a
+    // rule file is published whole, a custom agent publishes its declarations
+    // without a body, and an unrecognized file has nothing read out of it, so
+    // a definition-owning file that somehow arrives as one declares nothing to
+    // compare.
+    if (detail.kind === 'rule' || detail.kind === 'agent' || detail.kind === 'file') {
       this.state = 'not-a-skill';
       this.entries = null;
+      this.bodyText = null;
       return;
     }
     const presentation = detail.presentation;
     this.state = presentation === null ? 'extraction-failed' : 'parsed';
     this.entries = presentation === null ? null : presentation.frontmatter;
+    this.bodyText = presentation === null ? null : presentation.bodyText;
   }
 }
 

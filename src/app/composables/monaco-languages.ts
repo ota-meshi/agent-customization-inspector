@@ -31,6 +31,19 @@
 // (contracts/inspection-path-allowlist.md § Bounded companion census) — an
 // open-ended set that no hand-picked list stays correct for.
 //
+// All of them is still not every format this product's own kinds use: measured
+// against the pinned `monaco-editor` (its `esm/vs/basic-languages/` directory,
+// 2026-08-22), there is no TOML grammar, so a Codex `.codex/agents/*.toml`
+// renders as plain text under a file tab. The near fit is deliberately not
+// taken: `ini` claims `.ini` and `.properties` and would mislabel exactly the
+// part of an agent file a reader is checking — a `developer_instructions`
+// block's prose lines, whose leading `#` is literal text inside a multi-line
+// string and which `ini` would colour as comments. Naming a grammar the way
+// the permission-policy detail names `python` for a Starlark `.rules` file is
+// right only where the vendor's syntax really is that language. Re-measure
+// when this list is next touched: if `toml` appears upstream, import it and
+// delete this paragraph.
+//
 // The basic languages are imported for their side effects only:
 // `registerLanguage` is the export that matters, and it runs on import.
 

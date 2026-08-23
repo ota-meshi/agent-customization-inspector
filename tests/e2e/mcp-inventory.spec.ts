@@ -151,8 +151,14 @@ test.describe('the priority cross-vendor MCP inventory', () => {
   });
 
   test('operates the filters and a declaration link from the keyboard', async ({ page }) => {
-    await page.goto(host.origin);
-    await page.getByRole('tab', { name: /MCP/u }).click();
+    // The kind is reached by its own address rather than by clicking its tab,
+    // because the filters sit above the tab list: a walk that started on a tab
+    // would have to pass the end of the document to reach them, and what a
+    // browser does there is its own — Chromium and WebKit continue at the
+    // page's first control, while Firefox leaves the page for the browser's
+    // own controls and never comes back. The tab itself is operated by the
+    // filter tests above.
+    await page.goto(`${host.origin}?kind=MCP`);
     const items = page.getByRole('tabpanel').locator('.aci-item');
     await expect(items).toHaveCount(5);
 

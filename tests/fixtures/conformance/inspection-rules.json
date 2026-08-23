@@ -1,5 +1,50 @@
 [
   {
+    "ruleId": "claude.repo.agent",
+    "tool": "claude",
+    "discoveryClass": "static-candidate",
+    "kind": "agent",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".claude"
+          },
+          {
+            "kind": "literal",
+            "value": "agents"
+          },
+          {
+            "kind": "recursive-directories"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/\\.md$/u"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.subagents.scope-context",
+        "url": "https://code.claude.com/docs/en/sub-agents",
+        "officialHost": "code.claude.com",
+        "sections": ["Choose the subagent scope"],
+        "reviewedOn": "2026-08-20",
+        "establishes": "Project subagents live under .claude/agents/ and that directory is scanned recursively, so a definition may sit in a subfolder — the exact subtree this rule admits — while the User scope at ~/.claude/agents/ the same section documents is a different Source boundary the rule may not read, and the directories added with --add-dir are a runtime input rather than a location."
+      }
+    ]
+  },
+  {
     "ruleId": "claude.repo.command",
     "tool": "claude",
     "discoveryClass": "static-candidate",
@@ -343,6 +388,48 @@
     ]
   },
   {
+    "ruleId": "codex.repo.agent",
+    "tool": "codex",
+    "discoveryClass": "static-candidate",
+    "kind": "agent",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".codex"
+          },
+          {
+            "kind": "literal",
+            "value": "agents"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/\\.toml$/u"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.subagents",
+        "url": "https://learn.chatgpt.com/docs/agent-configuration/subagents.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Custom agents", "Custom agent file schema"],
+        "reviewedOn": "2026-08-22",
+        "establishes": "Project-scoped custom agents are standalone TOML files under .codex/agents/ — the exact location this rule admits — each file defining one agent whose identity is its declared name field; the personal ~/.codex/agents/ scope the same section documents is a different Source boundary this rule may not read, and no nested project directory is named."
+      }
+    ]
+  },
+  {
     "ruleId": "codex.repo.config",
     "tool": "codex",
     "discoveryClass": "static-candidate",
@@ -581,6 +668,114 @@
         "sections": ["Custom instructions settings", "Agent skills settings"],
         "reviewedOn": "2026-08-19",
         "establishes": "VS Code settings can add instruction and skill locations beyond the fixed directories, making participation a runtime input rather than part of the documented default lookup."
+      }
+    ]
+  },
+  {
+    "ruleId": "copilot.repo.agent",
+    "tool": "copilot",
+    "discoveryClass": "static-candidate",
+    "kind": "agent",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".github"
+          },
+          {
+            "kind": "literal",
+            "value": "agents"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/\\.md$/u"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.reference",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Custom agent locations"],
+        "reviewedOn": "2026-08-20",
+        "establishes": "The CLI loads project agents from .github/agents/ — the directory this rule admits — walking upward from the working directory to the Git root, whose one member every session shares is the selected root; the ~/.copilot/agents/ user scope named beside it is a different Source boundary this rule may not read."
+      },
+      {
+        "sourceId": "github.copilot.custom-agents",
+        "url": "https://docs.github.com/en/copilot/reference/custom-agents-configuration",
+        "officialHost": "docs.github.com",
+        "sections": ["YAML frontmatter properties"],
+        "reviewedOn": "2026-08-20",
+        "establishes": "A repository agent profile is one Markdown file with YAML frontmatter, named for deduplication by its own file name minus .md or .agent.md, so both spellings this rule admits are the same documented file kind."
+      },
+      {
+        "sourceId": "vscode.copilot.custom-agents",
+        "url": "https://code.visualstudio.com/docs/agent-customization/custom-agents",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Custom agent file locations"],
+        "reviewedOn": "2026-07-15",
+        "establishes": "VS Code reads the same workspace directory, accepting any .md file in it, and treats parent-folder discovery as an opt-in setting rather than part of the default lookup — which is why the rule stays anchored at the selected root."
+      }
+    ]
+  },
+  {
+    "ruleId": "copilot.repo.agent.claude",
+    "tool": "copilot",
+    "discoveryClass": "static-candidate",
+    "kind": "agent",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".claude"
+          },
+          {
+            "kind": "literal",
+            "value": "agents"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/\\.md$/u"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.reference",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Custom agent locations"],
+        "reviewedOn": "2026-08-20",
+        "establishes": "The CLI loads project agents from .claude/agents/ as well as .github/agents/, walking upward from the working directory to the Git root, whose one member every session shares is the selected root."
+      },
+      {
+        "sourceId": "vscode.copilot.custom-agents",
+        "url": "https://code.visualstudio.com/docs/agent-customization/custom-agents",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Custom agent file locations"],
+        "reviewedOn": "2026-07-15",
+        "establishes": "VS Code reads .claude/agents/ in the workspace beside .github/agents/, accepting any .md file in it, and treats parent-folder discovery as an opt-in setting rather than part of the default lookup — which is why the rule stays anchored at the selected root."
       }
     ]
   },

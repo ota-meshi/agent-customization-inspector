@@ -59,56 +59,15 @@ function surfacesText(definition: PromptSideDefinition): string {
 
 <template>
   <div class="aci-prompt-recognition-comparison">
+    <!-- The sections stand in the order a reader needs them: what each file
+         declares, what each file says, then the complete files the page
+         supplies, and last the recognitions — which tool reads which side is
+         context for the rest rather than the subject of the comparison. -->
     <p v-if="comparison.tools.length === 0" class="aci-note">
       No compared file here carries a recognition, so there is no tool recognition or declared
-      metadata to compare. The source comparison above is the whole comparison.
+      metadata to compare. The source comparison below is the whole comparison.
     </p>
     <template v-else>
-      <section>
-        <h3>Tool recognition</h3>
-        <!-- One row per recognizing tool, in the contracted tool order: each
-             recognition stays distinguishable from the physical file
-             (US3 scenario 2), captioned in words (AGENTS.md § User-visible
-             copy policy). A recognized cell carries the name this tool
-             invokes the file by and the surfaces its admissions rest on —
-             both are that one recognition's, so they are stated where the
-             recognition is. `tabindex` because the table is its own
-             horizontal scroll container on a wide viewport (WCAG 2.1.1). -->
-        <table class="aci-prompt-recognition-comparison__table" tabindex="0">
-          <thead>
-            <tr>
-              <th scope="col">Tool</th>
-              <th scope="col">First file</th>
-              <th scope="col">Second file</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in comparison.tools" :key="row.tool">
-              <th scope="row">
-                {{ SUPPORTED_TOOL_TEXT[row.tool] }} · {{ CUSTOMIZATION_KIND_TEXT[row.kind] }}
-              </th>
-              <td
-                v-for="(cell, side) in [row.left, row.right]"
-                :key="side"
-                :data-label="side === 0 ? 'First file' : 'Second file'"
-              >
-                <template v-if="cell === null">{{ NOT_RECOGNIZED_TEXT }}</template>
-                <template v-else
-                  >Invoked as
-                  <!-- The name escaped like a path, because a derived one is
-                       made of path segments and a declared one is authored
-                       text: both are the reader's own characters, and both
-                       are shown as what they are (FR-025). -->
-                  <span class="aci-authored-text">{{
-                    escapeControlCharacters(cell.invocationName)
-                  }}</span>
-                  <span class="aci-muted"> — surfaces: {{ surfacesText(cell) }}</span></template
-                >
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
       <section>
         <h3>Declared metadata</h3>
         <!-- The files' declared metadata, not any tool's: the declarations
@@ -131,13 +90,13 @@ function surfacesText(definition: PromptSideDefinition): string {
         <template v-if="comparison.frontmatterDiff !== null">
           <!-- What the diff holds, said before it: both sides are the
                canonical serialization of the frontmatter, not the files'
-               own spellings — those stay in the source comparison above
+               own spellings — those stay in the source comparison below
                (FR-007). The canonical key order is stated too, because a
                reader comparing against their own file would otherwise read
                the order as authored. -->
           <p class="aci-note">
             Each side is the file's frontmatter serialized as YAML with its keys in one canonical
-            order; the files' own spelling and key order stay in the source comparison above.
+            order; the files' own spelling and key order stay in the source comparison below.
           </p>
           <SourceDiff
             :original-text="comparison.frontmatterDiff.originalText"
@@ -150,7 +109,88 @@ function surfacesText(definition: PromptSideDefinition): string {
           />
         </template>
       </section>
+      <section v-if="comparison.bodyDiff !== null">
+        <h3>Prompt or command content</h3>
+        <!-- The other half of the same one parse, diffed on its own: the
+             declarations align key by key whatever order each file wrote them
+             in, and the body aligns line by line without the frontmatter block
+             above it moving the lines. Normalizing one half and leaving the
+             other only inside the source comparison would privilege it
+             (FR-007).
+             Named for the kind rather than for one of its source forms: one
+             kind covers a VS Code prompt file and a command file alike, and
+             captioning a command's body "prompt" would name it after the
+             half of the kind it is not (entities.ts § CUSTOMIZATION_KIND_TEXT). -->
+        <p class="aci-note">
+          Each side is what that file tells the reader’s agent, left once its frontmatter block is
+          removed — the prompt of a prompt file, the body of a command file; the block itself is
+          above, and each file whole is in the source comparison below.
+        </p>
+        <SourceDiff
+          :original-text="comparison.bodyDiff.originalText"
+          :original-path="leftPath"
+          :modified-text="comparison.bodyDiff.modifiedText"
+          :modified-path="rightPath"
+          content-language="markdown"
+          content-label="prompt or command content of"
+          fit-content
+        />
+      </section>
     </template>
+    <!-- Where the page's complete authored sources land: below the two
+         halves they were split into and above the recognitions. The page owns
+         what that is, because it differs by kind — one diff where both sides
+         share a format, two independent viewers for the custom-agent kind,
+         whose two formats have no meaningful byte-for-byte alignment — while
+         the order is this component's, so every kind's comparison reads the
+         same way. Outside the recognition branch above, because a file every
+         tool fails to recognize still shows its bytes (FR-027). -->
+    <slot name="source" />
+    <section v-if="comparison.tools.length > 0">
+      <h3>Tool recognition</h3>
+      <!-- One row per recognizing tool, in the contracted tool order: each
+           recognition stays distinguishable from the physical file
+           (US3 scenario 2), captioned in words (AGENTS.md § User-visible
+           copy policy). A recognized cell carries the name this tool
+           invokes the file by and the surfaces its admissions rest on —
+           both are that one recognition's, so they are stated where the
+           recognition is. `tabindex` because the table is its own
+           horizontal scroll container on a wide viewport (WCAG 2.1.1). -->
+      <table class="aci-prompt-recognition-comparison__table" tabindex="0">
+        <thead>
+          <tr>
+            <th scope="col">Tool</th>
+            <th scope="col">First file</th>
+            <th scope="col">Second file</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in comparison.tools" :key="row.tool">
+            <th scope="row">
+              {{ SUPPORTED_TOOL_TEXT[row.tool] }} · {{ CUSTOMIZATION_KIND_TEXT[row.kind] }}
+            </th>
+            <td
+              v-for="(cell, side) in [row.left, row.right]"
+              :key="side"
+              :data-label="side === 0 ? 'First file' : 'Second file'"
+            >
+              <template v-if="cell === null">{{ NOT_RECOGNIZED_TEXT }}</template>
+              <template v-else
+                >Invoked as
+                <!-- The name escaped like a path, because a derived one is
+                     made of path segments and a declared one is authored
+                     text: both are the reader's own characters, and both
+                     are shown as what they are (FR-025). -->
+                <span class="aci-authored-text">{{
+                  escapeControlCharacters(cell.invocationName)
+                }}</span>
+                <span class="aci-muted"> — surfaces: {{ surfacesText(cell) }}</span></template
+              >
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
   </div>
 </template>
 

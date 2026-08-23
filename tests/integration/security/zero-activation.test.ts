@@ -41,6 +41,9 @@ import {
   buildCommandFixture,
   buildClaudeMcpFixture,
   buildClaudeRuleFixture,
+  buildClaudeAgentFixture,
+  buildCopilotAgentFixture,
+  buildCodexAgentFixture,
   buildCodexMcpFixture,
   buildClaudePermissionsFixture,
   buildCodexRuleFixture,
@@ -1410,13 +1413,16 @@ describe('Copilot VS Code MCP inspection connects to nothing (T365)', () => {
   });
 });
 
-describe('unadmitted MCP-spelling files activate nothing (T376)', () => {
-  it('reads no agent, settings, or plugin file and publishes no MCP row for them', async () => {
-    // Only explicit MCP configuration joins the MCP surfaces: an agent profile's `mcp-servers`, a settings file's inline
-    // map, and a plugin manifest's declarations belong to files no shipped
-    // rule admits, so the scan opens none of them, recognizes nothing, and
-    // connects to nothing — and the hosted Cloud sources are registry facts
-    // with no file to read at all.
+describe('MCP-spelling files of other kinds activate nothing (T376)', () => {
+  it('publishes no MCP row for an agent or plugin file and opens no connection', async () => {
+    // Only explicit MCP configuration joins the MCP surfaces. The two files
+    // here spell it without being a carrier, and they reach that outcome by
+    // different routes: the agent profile is admitted for the agent it
+    // defines, so it is read once and its `mcp-servers` block is that agent's
+    // own declared content, while the plugin manifest is admitted by no
+    // shipped rule and is never opened at all. Neither produces an MCP
+    // recognition, and nothing connects — the hosted Cloud sources are
+    // registry facts with no file to read either.
     const root = mkdtempSync(join(tmpdir(), 'inspector-zero-activation-unadmitted-mcp-'));
     cleanups.push(() => rmSync(root, { recursive: true, force: true }));
     mkdirSync(join(root, '.github/agents'), { recursive: true });
@@ -1465,15 +1471,21 @@ describe('unadmitted MCP-spelling files activate nothing (T376)', () => {
       if (publication.kind !== 'publishable') {
         throw new Error('expected a publishable outcome');
       }
-      // No MCP recognition exists anywhere in the publication, and neither
-      // unadmitted file was read or published.
+      // No MCP recognition exists anywhere in the publication. The agent
+      // profile is published as the agent it is; the plugin manifest is
+      // published not at all.
       expect(
         publication.recognitions.filter((recognition) => recognition.details.kind === 'MCP'),
       ).toEqual([]);
       expect(
+        publication.recognitions
+          .filter((recognition) => recognition.sourceRelativePath === '.github/agents/deploy.md')
+          .map((recognition) => recognition.details.kind),
+      ).toEqual(['agent']);
+      expect(
         publication.files
           .map((file) => file.sourceRelativePath)
-          .filter((path) => path.includes('agents/deploy.md') || path.includes('.claude-plugin')),
+          .filter((path) => path.includes('.claude-plugin')),
       ).toEqual([]);
     } finally {
       for (const [name, value] of originals) {
@@ -1482,7 +1494,11 @@ describe('unadmitted MCP-spelling files activate nothing (T376)', () => {
     }
     expect(observed).toEqual([]);
     const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) => String(call[0]));
-    expect(opened).not.toContain(join(root, '.github', 'agents', 'deploy.md'));
+    // Read once, for the agent it defines — never a second time for the
+    // servers it spells.
+    expect(opened.filter((path) => path === join(root, '.github', 'agents', 'deploy.md'))).toEqual([
+      join(root, '.github', 'agents', 'deploy.md'),
+    ]);
     expect(opened).not.toContain(join(root, '.claude-plugin', 'plugin.json'));
   });
 });
@@ -1533,6 +1549,365 @@ describe('Claude permission-policy inspection enforces nothing (T1109)', () => {
     expect(JSON.stringify(detail)).not.toContain(fixture.unrelatedSettingsMarker);
     expect(JSON.stringify(detail)).not.toContain(FIXTURE_ENVIRONMENT_REFERENCE);
     // Nothing connected, executed, or read while the policy was assembled.
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(vi.mocked(fsIo.readFile).mock.calls).toEqual([]);
+    expect(vi.mocked(fsIo.readdir).mock.calls).toEqual([]);
+  });
+});
+
+describe('Codex custom-agent inspection activates nothing (T519)', () => {
+  it('reads the agent files and issues no DNS, socket, HTTP, MCP, or process request', async () => {
+    const fixture = buildCodexAgentFixture('inspector-zero-activation-agents');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const observed: string[] = [];
+    const globalScope = globalThis as Record<string, unknown>;
+    const originals = new Map<string, unknown>();
+    for (const name of ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'open']) {
+      originals.set(name, globalScope[name]);
+      globalScope[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during custom-agent inspection`);
+      };
+    }
+    // The same closed Node surfaces the MCP case spies on. An agent file
+    // declares a model, a sandbox mode, an `mcp_servers` table, and two
+    // configured paths; reaching any of them would need one of these, so a
+    // scan that touches none of them spawned no session, connected to no
+    // server, and ran no command.
+    const nodeSurfaces: [Record<string, unknown>, string][] = [
+      [net as unknown as Record<string, unknown>, 'createConnection'],
+      [net as unknown as Record<string, unknown>, 'connect'],
+      [tls as unknown as Record<string, unknown>, 'connect'],
+      [dns as unknown as Record<string, unknown>, 'lookup'],
+      [dns as unknown as Record<string, unknown>, 'resolve'],
+      [childProcess as unknown as Record<string, unknown>, 'spawn'],
+      [childProcess as unknown as Record<string, unknown>, 'exec'],
+      [childProcess as unknown as Record<string, unknown>, 'execFile'],
+      [childProcess as unknown as Record<string, unknown>, 'fork'],
+      [http as unknown as Record<string, unknown>, 'request'],
+      [https as unknown as Record<string, unknown>, 'request'],
+      [dgram as unknown as Record<string, unknown>, 'createSocket'],
+    ];
+    const nodeOriginals = nodeSurfaces.map(([host, name]) => {
+      const original = host[name];
+      host[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during custom-agent inspection`);
+      };
+      return { host, name, original } as const;
+    });
+    vi.clearAllMocks();
+    try {
+      const publication = await runSourceScan({
+        sourceId: 'src-1',
+        root: fixture.root,
+        rootFailureOwner: 'repository',
+      });
+      expect(publication.kind).toBe('publishable');
+    } finally {
+      for (const [name, value] of originals) {
+        globalScope[name] = value;
+      }
+      for (const { host, name, original } of nodeOriginals) {
+        host[name] = original;
+      }
+    }
+    expect(observed).toEqual([]);
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) => String(call[0]));
+    // The admitted agents are read once each, and nothing the allowlist
+    // excluded is opened at all.
+    for (const admitted of fixture.expectedAgentPaths) {
+      expect(
+        opened.filter((path) => path === join(fixture.root, ...admitted.split('/'))),
+        admitted,
+      ).toHaveLength(1);
+    }
+    for (const forbidden of fixture.nearMissPaths) {
+      expect(opened).not.toContain(join(fixture.root, ...forbidden.split('/')));
+    }
+    // The configured paths a declaration names stay values: neither the
+    // `config_file` target nor the `skills.config[].path` directory is opened
+    // (FR-019; contracts/runtime-composition.md § Normative relationship-only
+    // registry).
+    expect(opened).not.toContain(join(fixture.root, '.codex', 'agents', 'shared.toml'));
+    expect(opened).not.toContain(join(fixture.root, '.agents', 'skills', 'deploy'));
+  });
+
+  it('assembles the custom-agent detail without any request or read', async () => {
+    const fixture = buildCodexAgentFixture('inspector-zero-activation-agents-detail');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const session = new InspectionSession({
+      invocationCwd: fixture.root,
+      rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
+    });
+    const context = { session, coordinator: new SessionCoordinator(session) };
+    const repository = session.snapshot().sources[0]!;
+    const admission = context.coordinator.admitScan(repository.sourceId, {
+      kind: 'startup',
+      operationId: null,
+    });
+    if (admission.kind !== 'admitted') {
+      throw new Error('the first scan was not admitted');
+    }
+    await executeRepositoryScan(
+      context,
+      admission.scanRequestId,
+      repository.sourceId,
+      'repository',
+    );
+
+    vi.clearAllMocks();
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const detail = session.fileDetail(fixture.mcpSpellingAgentPath);
+    if (detail?.kind !== 'agent' || detail.presentation === null) {
+      throw new Error('expected a parsed custom-agent detail');
+    }
+    // The declarations reach the response as the author wrote them: the
+    // declared server URL, the credential, and the environment reference are
+    // their own characters, with nothing connected to and nothing resolved
+    // (FR-019, FR-025, FR-026).
+    const serialized = JSON.stringify(detail.presentation);
+    expect(serialized).toContain('https://docs.example.com/mcp');
+    expect(serialized).toContain(FIXTURE_SECRET_LITERAL);
+    expect(serialized).toContain(FIXTURE_ENVIRONMENT_REFERENCE);
+    // Nothing connected, executed, or read while the detail was assembled.
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(vi.mocked(fsIo.readFile).mock.calls).toEqual([]);
+    expect(vi.mocked(fsIo.readdir).mock.calls).toEqual([]);
+  });
+});
+
+describe('Claude subagent inspection activates nothing (T539)', () => {
+  it('reads the agent files and issues no DNS, socket, HTTP, MCP, or process request', async () => {
+    const fixture = buildClaudeAgentFixture('inspector-zero-activation-claude-agents');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const observed: string[] = [];
+    const globalScope = globalThis as Record<string, unknown>;
+    const originals = new Map<string, unknown>();
+    for (const name of ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'open']) {
+      originals.set(name, globalScope[name]);
+      globalScope[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during subagent inspection`);
+      };
+    }
+    // The same closed Node surfaces the Codex agent case spies on. A Claude
+    // subagent declares tools, preloaded skills, an inline `mcpServers`
+    // command, a hook command, and a memory scope; reaching any of them would
+    // need one of these, so a scan that touches none of them spawned nothing,
+    // connected to nothing, preloaded nothing, and ran no hook.
+    const nodeSurfaces: [Record<string, unknown>, string][] = [
+      [net as unknown as Record<string, unknown>, 'createConnection'],
+      [net as unknown as Record<string, unknown>, 'connect'],
+      [tls as unknown as Record<string, unknown>, 'connect'],
+      [dns as unknown as Record<string, unknown>, 'lookup'],
+      [dns as unknown as Record<string, unknown>, 'resolve'],
+      [childProcess as unknown as Record<string, unknown>, 'spawn'],
+      [childProcess as unknown as Record<string, unknown>, 'exec'],
+      [childProcess as unknown as Record<string, unknown>, 'execFile'],
+      [childProcess as unknown as Record<string, unknown>, 'fork'],
+      [http as unknown as Record<string, unknown>, 'request'],
+      [https as unknown as Record<string, unknown>, 'request'],
+      [dgram as unknown as Record<string, unknown>, 'createSocket'],
+    ];
+    const nodeOriginals = nodeSurfaces.map(([host, name]) => {
+      const original = host[name];
+      host[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during subagent inspection`);
+      };
+      return { host, name, original } as const;
+    });
+    vi.clearAllMocks();
+    try {
+      const publication = await runSourceScan({
+        sourceId: 'src-1',
+        root: fixture.root,
+        rootFailureOwner: 'repository',
+      });
+      expect(publication.kind).toBe('publishable');
+    } finally {
+      for (const [name, value] of originals) {
+        globalScope[name] = value;
+      }
+      for (const { host, name, original } of nodeOriginals) {
+        host[name] = original;
+      }
+    }
+    expect(observed).toEqual([]);
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) => String(call[0]));
+    // The admitted agents are read once each, and nothing the allowlist
+    // excluded is opened at all — the two memory directories a running
+    // subagent writes among them.
+    for (const admitted of fixture.expectedAgentPaths) {
+      expect(
+        opened.filter((path) => path === join(fixture.root, ...admitted.split('/'))),
+        admitted,
+      ).toHaveLength(1);
+    }
+    for (const forbidden of fixture.nearMissPaths) {
+      expect(opened).not.toContain(join(fixture.root, ...forbidden.split('/')));
+    }
+  });
+
+  it('assembles the subagent detail without any request or read', async () => {
+    const fixture = buildClaudeAgentFixture('inspector-zero-activation-claude-agents-detail');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const session = new InspectionSession({
+      invocationCwd: fixture.root,
+      rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
+    });
+    const context = { session, coordinator: new SessionCoordinator(session) };
+    const repository = session.snapshot().sources[0]!;
+    const admission = context.coordinator.admitScan(repository.sourceId, {
+      kind: 'startup',
+      operationId: null,
+    });
+    if (admission.kind !== 'admitted') {
+      throw new Error('the first scan was not admitted');
+    }
+    await executeRepositoryScan(
+      context,
+      admission.scanRequestId,
+      repository.sourceId,
+      'repository',
+    );
+
+    vi.clearAllMocks();
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const detail = session.fileDetail(fixture.mcpFrontmatterAgentPath);
+    if (detail?.kind !== 'agent' || detail.presentation === null) {
+      throw new Error('expected a parsed subagent detail');
+    }
+    // The declarations reach the response as the author wrote them: the
+    // inline server command, the credential, and the environment reference
+    // are their own characters, with nothing connected to and nothing
+    // resolved (FR-019, FR-025, FR-026).
+    const serialized = JSON.stringify(detail.presentation);
+    expect(serialized).toContain('@playwright/mcp@latest');
+    expect(serialized).toContain(FIXTURE_SECRET_LITERAL);
+    expect(serialized).toContain(FIXTURE_ENVIRONMENT_REFERENCE);
+    // Nothing connected, executed, or read while the detail was assembled.
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(vi.mocked(fsIo.readFile).mock.calls).toEqual([]);
+    expect(vi.mocked(fsIo.readdir).mock.calls).toEqual([]);
+  });
+});
+
+describe('Copilot custom-agent inspection activates nothing (T558)', () => {
+  it('reads the profiles and issues no DNS, socket, HTTP, MCP, or process request', async () => {
+    const fixture = buildCopilotAgentFixture('inspector-zero-activation-copilot-agents');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const observed: string[] = [];
+    const globalScope = globalThis as Record<string, unknown>;
+    const originals = new Map<string, unknown>();
+    for (const name of ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'open']) {
+      originals.set(name, globalScope[name]);
+      globalScope[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during agent-profile inspection`);
+      };
+    }
+    // The same closed Node surfaces the other agent cases spy on. A Copilot
+    // profile declares tools, a handoff, an `mcp-servers` command, and a
+    // target surface; reaching any of them would need one of these, so a scan
+    // that touches none of them spawned nothing, connected to nothing, and
+    // handed off to nothing.
+    const nodeSurfaces: [Record<string, unknown>, string][] = [
+      [net as unknown as Record<string, unknown>, 'createConnection'],
+      [net as unknown as Record<string, unknown>, 'connect'],
+      [tls as unknown as Record<string, unknown>, 'connect'],
+      [dns as unknown as Record<string, unknown>, 'lookup'],
+      [dns as unknown as Record<string, unknown>, 'resolve'],
+      [childProcess as unknown as Record<string, unknown>, 'spawn'],
+      [childProcess as unknown as Record<string, unknown>, 'exec'],
+      [childProcess as unknown as Record<string, unknown>, 'execFile'],
+      [childProcess as unknown as Record<string, unknown>, 'fork'],
+      [http as unknown as Record<string, unknown>, 'request'],
+      [https as unknown as Record<string, unknown>, 'request'],
+      [dgram as unknown as Record<string, unknown>, 'createSocket'],
+    ];
+    const nodeOriginals = nodeSurfaces.map(([host, name]) => {
+      const original = host[name];
+      host[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during agent-profile inspection`);
+      };
+      return { host, name, original } as const;
+    });
+    vi.clearAllMocks();
+    try {
+      const publication = await runSourceScan({
+        sourceId: 'src-1',
+        root: fixture.root,
+        rootFailureOwner: 'repository',
+      });
+      expect(publication.kind).toBe('publishable');
+    } finally {
+      for (const [name, value] of originals) {
+        globalScope[name] = value;
+      }
+      for (const { host, name, original } of nodeOriginals) {
+        host[name] = original;
+      }
+    }
+    expect(observed).toEqual([]);
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) => String(call[0]));
+    // The admitted profiles are read once each — the shared `.claude/agents/`
+    // file included, whose two products' recognitions come from one read — and
+    // nothing the allowlist excluded is opened at all.
+    for (const admitted of fixture.expectedAgentPaths) {
+      expect(
+        opened.filter((path) => path === join(fixture.root, ...admitted.split('/'))),
+        admitted,
+      ).toHaveLength(1);
+    }
+    for (const forbidden of fixture.nearMissPaths) {
+      expect(opened).not.toContain(join(fixture.root, ...forbidden.split('/')));
+    }
+  });
+
+  it('assembles the profile detail without any request or read', async () => {
+    const fixture = buildCopilotAgentFixture('inspector-zero-activation-copilot-agents-detail');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const session = new InspectionSession({
+      invocationCwd: fixture.root,
+      rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
+    });
+    const context = { session, coordinator: new SessionCoordinator(session) };
+    const repository = session.snapshot().sources[0]!;
+    const admission = context.coordinator.admitScan(repository.sourceId, {
+      kind: 'startup',
+      operationId: null,
+    });
+    if (admission.kind !== 'admitted') {
+      throw new Error('the first scan was not admitted');
+    }
+    await executeRepositoryScan(
+      context,
+      admission.scanRequestId,
+      repository.sourceId,
+      'repository',
+    );
+
+    vi.clearAllMocks();
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const detail = session.fileDetail(fixture.mcpFrontmatterAgentPath);
+    if (detail?.kind !== 'agent' || detail.presentation === null) {
+      throw new Error('expected a parsed agent-profile detail');
+    }
+    // The declarations reach the response as the author wrote them: the
+    // declared server command, the credential, and the environment reference
+    // are their own characters, with nothing connected to and nothing
+    // resolved (FR-019, FR-025, FR-026).
+    const serialized = JSON.stringify(detail.presentation);
+    expect(serialized).toContain('@example/deploy-mcp');
+    expect(serialized).toContain(FIXTURE_SECRET_LITERAL);
+    expect(serialized).toContain(FIXTURE_ENVIRONMENT_REFERENCE);
+    // Nothing connected, executed, or read while the detail was assembled.
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(vi.mocked(fsIo.readFile).mock.calls).toEqual([]);
     expect(vi.mocked(fsIo.readdir).mock.calls).toEqual([]);

@@ -256,7 +256,7 @@ reconciliationは`reviewedOn`を進めず、2つのfingerprintも当時のまま
 | `openai.codex.plugins` | <https://developers.openai.com/plugins/build/plugins.md> | `developers.openai.com` | `Build your own curated plugin list`; `Add a marketplace from the CLI`; `Create a plugin manually`; `Marketplace metadata`; `How local marketplaces work`; `Plugin structure` | `2026-07-25` |
 | `openai.codex.rules` | <https://learn.chatgpt.com/docs/agent-configuration/rules.md> | `learn.chatgpt.com` | `Rules`; `Create a rules file`; `Understand rule fields`; `Understand the rules language` | `2026-08-22` |
 | `openai.codex.skills` | <https://learn.chatgpt.com/docs/build-skills.md> | `learn.chatgpt.com` | `How ChatGPT and Codex use skills`; `Where Codex loads local skills`; `Distribute skills with plugins`; `Optional metadata` | `2026-07-25` |
-| `openai.codex.subagents` | <https://learn.chatgpt.com/docs/agent-configuration/subagents.md> | `learn.chatgpt.com` | `Orchestration and thread controls`; `Custom agents` | `2026-07-25` |
+| `openai.codex.subagents` | <https://learn.chatgpt.com/docs/agent-configuration/subagents.md> | `learn.chatgpt.com` | `Orchestration and thread controls`; `Approvals and sandbox controls`; `Custom agents`; `Custom agent file schema` | `2026-08-22` |
 
 ## Offline validationと明示drift review
 

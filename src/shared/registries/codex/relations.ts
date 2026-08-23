@@ -15,12 +15,14 @@
 // Ordering is by identifier within each array, so two builds of the same
 // contract agree and the materialized fixture is byte-stable.
 import {
+  CODEX_REPO_AGENTS_BEHAVIOR,
   CODEX_REPO_CONFIG_BEHAVIOR,
   CODEX_REPO_HOOKS_BEHAVIOR,
   CODEX_REPO_INSTRUCTIONS_BEHAVIOR,
   CODEX_REPO_MCP_BEHAVIOR,
   CODEX_REPO_RULES_BEHAVIOR,
   CODEX_REPO_SKILLS_BEHAVIOR,
+  CODEX_USER_AGENTS_BEHAVIOR,
   CODEX_USER_CONFIG_BEHAVIOR,
   CODEX_USER_INSTRUCTIONS_BEHAVIOR,
   CODEX_USER_RULES_BEHAVIOR,
@@ -28,12 +30,14 @@ import {
 } from './behaviors';
 import {
   CODEX_DERIVED_FALLBACK_BASENAME_RULE,
+  CODEX_REPO_AGENT_RULE,
   CODEX_REPO_CONFIG_RULE,
   CODEX_REPO_INSTRUCTIONS_RULE,
   CODEX_REPO_RULES_RULE,
   CODEX_REPO_SKILL_RULE,
 } from './rules';
 import {
+  CODEX_AGENTS_INHERITANCE_STRATEGY,
   CODEX_CONFIG_PRECEDENCE_STRATEGY,
   CODEX_INSTRUCTIONS_LAYERING_STRATEGY,
   CODEX_MCP_CONFIGURATION_STRATEGY,
@@ -45,6 +49,21 @@ import type { CodexRuleId, CodexStrategyId } from '../identifier-types';
 
 /** What each Codex strategy composes. What documents it is its own `evidence`. */
 export const CODEX_STRATEGY_RELATIONS: Readonly<Record<CodexStrategyId, StrategyRelations>> = {
+  /**
+   * Agent inheritance composes both documented custom-agent scopes: the
+   * project files this product can read and the personal ones it may not.
+   * Both are listed because the strategy describes Codex's runtime — a
+   * personal agent whose name matches takes precedence over a built-in, so
+   * omitting the User scope would describe a selection over project files
+   * alone. The config and MCP behaviors are deliberately not edges here: what
+   * a spawned session inherits from its parent is the parent session's
+   * resolved state rather than a lookup this strategy performs, and the
+   * layer resolution that produced it is `codex.config.precedence`'s own
+   * (contracts/runtime-composition.md § codex.agents.inheritance).
+   */
+  [CODEX_AGENTS_INHERITANCE_STRATEGY.strategyId]: {
+    consumesBehaviors: [CODEX_REPO_AGENTS_BEHAVIOR, CODEX_USER_AGENTS_BEHAVIOR],
+  },
   /**
    * Config precedence composes the project layers and the User host
    * configuration. Only the Repository carrier is readable; the edge records
@@ -108,6 +127,21 @@ export const CODEX_RULE_RELATIONS: Readonly<Record<CodexRuleId, RuleRelations>> 
   [CODEX_DERIVED_FALLBACK_BASENAME_RULE.ruleId]: {
     basedOnBehaviors: [CODEX_REPO_CONFIG_BEHAVIOR, CODEX_REPO_INSTRUCTIONS_BEHAVIOR],
     explainedByStrategies: [CODEX_CONFIG_PRECEDENCE_STRATEGY, CODEX_INSTRUCTIONS_LAYERING_STRATEGY],
+  },
+  /**
+   * The custom-agent rule is based on the project agent lookup alone — the
+   * personal `<CODEX_HOME>/agents/` scope the same page documents is a
+   * different Source boundary this rule may not read — and is explained by
+   * the inheritance strategy, which owns the spawned-session overlay,
+   * selection, and live sandbox/approval reapplication the rule itself
+   * deliberately does not project (FR-009). No MCP edge: an agent file's
+   * `mcp_servers` keys are its own declared content and make it no carrier,
+   * so the rule rests on no MCP behavior and explains itself through no MCP
+   * strategy (data-model.md § Inventory unit).
+   */
+  [CODEX_REPO_AGENT_RULE.ruleId]: {
+    basedOnBehaviors: [CODEX_REPO_AGENTS_BEHAVIOR],
+    explainedByStrategies: [CODEX_AGENTS_INHERITANCE_STRATEGY],
   },
   /**
    * The config carrier's candidacy is based on the three behaviors the

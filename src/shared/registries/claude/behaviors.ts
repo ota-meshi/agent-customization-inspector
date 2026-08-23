@@ -954,9 +954,215 @@ export const CLAUDE_USER_RULES_BEHAVIOR = {
     : [],
 } as const satisfies VendorBehaviorStatement;
 
+/**
+ * Claude subagent project memory: the directory a subagent whose frontmatter
+ * declares `memory: project` reads and writes across conversations, at
+ * `<project-root>/.claude/agent-memory/<agent-name>/`.
+ *
+ * Runtime state rather than candidate discovery, which is why no rule admits
+ * it: the directory is written by a running subagent, its content is that
+ * session's accumulated notes, and the Inspector reports authored
+ * customizations. Recorded because `claude.agent-context.composition`
+ * composes it — the memory scope decides part of a spawned subagent's initial
+ * context — so shipping the strategy without this statement would leave the
+ * dangling edge the contract gate rejects.
+ */
+export const CLAUDE_REPO_AGENT_MEMORY_PROJECT_BEHAVIOR = {
+  behaviorId: 'claude.behavior.repo.agent-memory.project',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'repository',
+        lookupBase: 'repository-root',
+        relativeSelector: '.claude/agent-memory/<agent-name>/',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.subagents.scope-context',
+          url: 'https://code.claude.com/docs/en/sub-agents',
+          officialHost: 'code.claude.com',
+          sections: ['Enable persistent memory'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'A subagent whose frontmatter declares memory: project keeps its persistent directory at .claude/agent-memory/<name-of-agent>/, whose MEMORY.md prefix is injected into that subagent’s system prompt when auto memory is enabled.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Claude subagent local memory: the same directory one scope narrower, at
+ * `<project-root>/.claude/agent-memory-local/<agent-name>/`, selected by
+ * `memory: local`. Its own statement rather than a variant of the project
+ * scope because the two are different locations a subagent's frontmatter
+ * chooses between, and a strategy naming one must not be read as naming the
+ * other (data-model.md § VendorBehaviorStatement).
+ */
+export const CLAUDE_REPO_AGENT_MEMORY_LOCAL_BEHAVIOR = {
+  behaviorId: 'claude.behavior.repo.agent-memory.local',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'repository',
+        lookupBase: 'repository-root',
+        relativeSelector: '.claude/agent-memory-local/<agent-name>/',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.subagents.scope-context',
+          url: 'https://code.claude.com/docs/en/sub-agents',
+          officialHost: 'code.claude.com',
+          sections: ['Enable persistent memory'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'A subagent whose frontmatter declares memory: local keeps its persistent directory at .claude/agent-memory-local/<name-of-agent>/, the project-specific scope documented as the one not checked into version control.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Claude User subagents. Recorded for maintenance only: it expands no Global
+ * inspection, and `claude.excluded.user-runtime` keeps the surface out of the
+ * read allowlist (FR-016, FR-018). It is shipped here because
+ * `claude.agents.selection` and `claude.agent-context.composition` both
+ * compose it, and a strategy naming a statement no catalog holds is the
+ * dangling edge the contract gate rejects.
+ */
+export const CLAUDE_USER_AGENTS_BEHAVIOR = {
+  behaviorId: 'claude.behavior.user.agents',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'user',
+        lookupBase: 'tool-home',
+        relativeSelector: 'Markdown files recursively under agents/',
+        // The page names one fixed directory and says it is scanned
+        // recursively; there is no chain to walk, so the traversal is the
+        // subtree of that exact location rather than an ancestor walk.
+        traversal: 'recursive-under-base',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.subagents.scope-context',
+          url: 'https://code.claude.com/docs/en/sub-agents',
+          officialHost: 'code.claude.com',
+          sections: ['Choose the subagent scope'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'User subagents live at ~/.claude/agents/, are available in every project, are scanned recursively so definitions can be organized into subfolders, and rank below the current project scope when two scopes declare one name.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Claude User subagent memory. Recorded for maintenance only, on the same
+ * terms as the User subagents above: it is runtime state under the Claude
+ * configuration directory, excluded by `claude.excluded.user-runtime`, and
+ * shipped because `claude.agent-context.composition` composes it.
+ */
+export const CLAUDE_USER_AGENT_MEMORY_BEHAVIOR = {
+  behaviorId: 'claude.behavior.user.agent-memory',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'user',
+        lookupBase: 'tool-home',
+        relativeSelector: 'agent-memory/<agent-name>/',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.subagents.scope-context',
+          url: 'https://code.claude.com/docs/en/sub-agents',
+          officialHost: 'code.claude.com',
+          sections: ['Enable persistent memory'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'A subagent whose frontmatter declares memory: user keeps its persistent directory at ~/.claude/agent-memory/<name-of-agent>/, the scope documented for learnings that should apply across all projects.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Claude auto memory: the per-project memory the main conversation maintains
+ * under the Claude configuration directory. Recorded for maintenance only and
+ * excluded by `claude.excluded.user-runtime`.
+ *
+ * It is composed by `claude.agent-context.composition` as an absence: the
+ * page states that the main conversation's auto memory is *not* loaded into a
+ * non-fork subagent, and that a subagent's own `memory` field is what gives it
+ * persistent memory instead. A statement the strategy consumes so it can
+ * record that boundary is still a statement it consumes
+ * (contracts/runtime-composition.md § claude.agent-context.composition).
+ */
+export const CLAUDE_USER_AUTO_MEMORY_BEHAVIOR = {
+  behaviorId: 'claude.behavior.user.auto-memory',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'user',
+        lookupBase: 'tool-home',
+        relativeSelector: 'projects/<project-key>/memory/MEMORY.md',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.memory.locations-load',
+          url: 'https://code.claude.com/docs/en/memory',
+          officialHost: 'code.claude.com',
+          sections: ['Auto memory'],
+          reviewedOn: '2026-08-18',
+          establishes:
+            'Auto memory keeps its files under the Claude configuration directory per project and loads a startup prefix with topic files fetched on demand.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.subagents.scope-context',
+          url: 'https://code.claude.com/docs/en/sub-agents',
+          officialHost: 'code.claude.com',
+          sections: ['What loads at startup', 'Enable persistent memory'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'The main conversation’s auto memory is not loaded into a non-fork subagent — a subagent’s own memory field is what gives it persistent memory instead — and turning auto memory off makes that field have no effect at all.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
 export const CLAUDE_BEHAVIOR_STATEMENTS: Readonly<
   Record<ClaudeBehaviorId, VendorBehaviorStatement>
 > = {
+  [CLAUDE_REPO_AGENT_MEMORY_LOCAL_BEHAVIOR.behaviorId]: CLAUDE_REPO_AGENT_MEMORY_LOCAL_BEHAVIOR,
+  [CLAUDE_REPO_AGENT_MEMORY_PROJECT_BEHAVIOR.behaviorId]: CLAUDE_REPO_AGENT_MEMORY_PROJECT_BEHAVIOR,
   [CLAUDE_REPO_AGENTS_BEHAVIOR.behaviorId]: CLAUDE_REPO_AGENTS_BEHAVIOR,
   [CLAUDE_REPO_COMMANDS_BEHAVIOR.behaviorId]: CLAUDE_REPO_COMMANDS_BEHAVIOR,
   [CLAUDE_REPO_INSTRUCTIONS_ANCESTOR_BEHAVIOR.behaviorId]:
@@ -970,6 +1176,9 @@ export const CLAUDE_BEHAVIOR_STATEMENTS: Readonly<
   [CLAUDE_REPO_LOCAL_SETTINGS_BEHAVIOR.behaviorId]: CLAUDE_REPO_LOCAL_SETTINGS_BEHAVIOR,
   [CLAUDE_REPO_SHARED_SETTINGS_BEHAVIOR.behaviorId]: CLAUDE_REPO_SHARED_SETTINGS_BEHAVIOR,
   [CLAUDE_REPO_SKILLS_BEHAVIOR.behaviorId]: CLAUDE_REPO_SKILLS_BEHAVIOR,
+  [CLAUDE_USER_AGENT_MEMORY_BEHAVIOR.behaviorId]: CLAUDE_USER_AGENT_MEMORY_BEHAVIOR,
+  [CLAUDE_USER_AGENTS_BEHAVIOR.behaviorId]: CLAUDE_USER_AGENTS_BEHAVIOR,
+  [CLAUDE_USER_AUTO_MEMORY_BEHAVIOR.behaviorId]: CLAUDE_USER_AUTO_MEMORY_BEHAVIOR,
   [CLAUDE_USER_COMMANDS_BEHAVIOR.behaviorId]: CLAUDE_USER_COMMANDS_BEHAVIOR,
   [CLAUDE_USER_INSTRUCTIONS_BEHAVIOR.behaviorId]: CLAUDE_USER_INSTRUCTIONS_BEHAVIOR,
   [CLAUDE_USER_MCP_STATE_BEHAVIOR.behaviorId]: CLAUDE_USER_MCP_STATE_BEHAVIOR,

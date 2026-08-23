@@ -317,6 +317,7 @@ describe('the Claude skill slice of the reference graph (T130, T133)', () => {
     // this suite's.
     const claudeRules = rules.filter((rule) => rule.tool === 'claude');
     expect(claudeRules.map((rule) => rule.ruleId)).toEqual([
+      'claude.repo.agent',
       'claude.repo.command',
       'claude.repo.instructions',
       'claude.repo.mcp',
@@ -349,11 +350,15 @@ describe('the Claude skill slice of the reference graph (T130, T133)', () => {
 });
 
 describe('the Copilot skill slice of the reference graph (T154, T158)', () => {
-  it('ships the seven instruction candidates, the MCP and skill rules, and exactly two exclusions', () => {
+  it('ships every read-authorizing Copilot candidate and exactly two exclusions', () => {
     // The phase-local half of the registry catalog check: the shipped Copilot
     // catalog is the skill rule, the CLI MCP carrier rule (T339), the two
-    // VS Code MCP rules (T359), and the seven instruction rules, all
-    // read-authorizing, plus the catalog's first two `excluded` records. The
+    // VS Code MCP rules (T359), the seven instruction rules, the command and
+    // prompt rules (T537), and the two custom-agent rules (T551) — one per
+    // documented agents directory, because the Cloud agent reads only
+    // `.github/agents/` and a rule's surfaces come from the behaviors it
+    // rests on — all read-authorizing, plus the catalog's first two
+    // `excluded` records. The
     // eventual complete catalog gate is T913's, not this suite's.
     //
     // Naming the exclusions is what makes them reviewable: rejecting a
@@ -366,6 +371,8 @@ describe('the Copilot skill slice of the reference graph (T154, T158)', () => {
         .filter((rule) => rule.tool === 'copilot' && rule.discoveryClass === discoveryClass)
         .map((rule) => rule.ruleId);
     expect(byClass('static-candidate')).toEqual([
+      'copilot.repo.agent',
+      'copilot.repo.agent.claude',
       'copilot.repo.command',
       'copilot.repo.instructions.agents',
       'copilot.repo.instructions.claude-root',
@@ -384,7 +391,7 @@ describe('the Copilot skill slice of the reference graph (T154, T158)', () => {
       'copilot.excluded.additional-standard-locations',
       'copilot.excluded.extra-directories',
     ]);
-    expect(rules.filter((rule) => rule.tool === 'copilot')).toHaveLength(15);
+    expect(rules.filter((rule) => rule.tool === 'copilot')).toHaveLength(17);
   });
 
   it('gives an exclusion no matcher, no kind, and no strategy (T251)', () => {
@@ -797,6 +804,7 @@ describe('the Codex MCP carrier slice of the reference graph (T282)', () => {
     const codexRules = rules.filter((rule) => rule.tool === 'codex');
     expect(codexRules.map((rule) => rule.ruleId)).toEqual([
       'codex.derived.fallback-basename',
+      'codex.repo.agent',
       'codex.repo.config',
       'codex.repo.instructions',
       'codex.repo.rules',

@@ -50,6 +50,8 @@ import { NuxtLink } from '#components';
 import OpenFileButton from '../../components/inspection/OpenFileButton.vue';
 import SourceViewer from '../../components/inspection/SourceViewer.vue';
 import { frontmatterYamlText } from '../../components/inspection/frontmatter-yaml';
+import type { DeclaredEntryDto } from '../../../shared/api-types';
+import { LEADING_PROMPT_FRONTMATTER_KEYS } from '../../components/inspection/declaration-order';
 import { decodeDetailRoutePath } from '../../components/detail-route';
 import { nextTabForKey } from '../../components/tab-navigation';
 import { usePageOwnership } from '../../composables/page-ownership';
@@ -225,13 +227,18 @@ const openDetail = computed(() => {
 /**
  * The file's own presentation — the one scan-time parse, published on every
  * variant that carries one. Null when extraction failed all-or-nothing, and
- * null for a variant that publishes none: a rule file is served whole, so a
- * file both kinds own shows its complete source under the file tab either way
- * (FR-028).
+ * null for a variant that publishes none: a rule file is served whole and a
+ * custom agent publishes declarations without a body, so a file two kinds own
+ * shows its complete source under the file tab either way (FR-028).
  */
 const presentation = computed(() => {
   const detail = openDetail.value;
-  if (detail === null || detail.kind === 'rule' || detail.kind === 'file') {
+  if (
+    detail === null ||
+    detail.kind === 'rule' ||
+    detail.kind === 'agent' ||
+    detail.kind === 'file'
+  ) {
     return null;
   }
   return detail.presentation;
@@ -239,11 +246,25 @@ const presentation = computed(() => {
 
 /**
  * The frontmatter as the YAML document the detail renders (FR-007,
- * frontmatter-yaml.ts): every declared key in the file's own order, spelled
- * back in the block's own language, so a reader compares it against their
- * file without translating and pastes from it without converting.
+ * frontmatter-yaml.ts): every declared key the file wrote, led by
+ * {@link LEADING_PROMPT_FRONTMATTER_KEYS} and otherwise in the file's own
+ * order, spelled back in the block's own language, so a reader compares it
+ * against their file without translating and pastes from it without
+ * converting.
  */
-const frontmatterText = computed(() => frontmatterYamlText(presentation.value?.frontmatter ?? []));
+const frontmatterText = computed(() => {
+  const rank = (entry: DeclaredEntryDto): number => {
+    // Only a string key can be one of the leading keys: a numeric key spelling
+    // `name` is a different key (api-types.ts § DeclaredKeyKind).
+    const index =
+      entry.keyKind === 'string' ? LEADING_PROMPT_FRONTMATTER_KEYS.indexOf(entry.key) : -1;
+    return index === -1 ? LEADING_PROMPT_FRONTMATTER_KEYS.length : index;
+  };
+  // `toSorted` is stable, so the keys past the leaders keep authored order.
+  return frontmatterYamlText(
+    (presentation.value?.frontmatter ?? []).toSorted((left, right) => rank(left) - rank(right)),
+  );
+});
 
 /**
  * Whether the file left no prompt at all. Only an empty string counts: a body

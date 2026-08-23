@@ -96,6 +96,7 @@ function snapshotWith(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot
     rules: [],
     prompts: [],
     permissions: [],
+    agents: [],
     skills: [],
     mcp: [],
     diagnostics: [],
@@ -468,6 +469,7 @@ describe('instruction recognition comparison rows (T276)', () => {
       side(instructionDetail(RIGHT_PATH, [scalarEntry('scope', 'workspace')]), [CLAUDE]),
     );
     expect(Object.keys(comparison).sort()).toEqual([
+      'bodyDiff',
       'frontmatterDiff',
       'leftDeclarations',
       'rightDeclarations',

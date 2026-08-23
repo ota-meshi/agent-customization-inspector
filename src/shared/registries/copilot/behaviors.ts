@@ -1611,6 +1611,201 @@ export const COPILOT_VSCODE_USER_MCP_BEHAVIOR = {
 } as const satisfies VendorBehaviorStatement;
 
 /**
+ * Copilot CLI custom-agent discovery: at every ancestor from the runtime
+ * working directory to the Git root, the CLI loads that layer's
+ * `.github/agents/` and `.claude/agents/` directories, so each package of a
+ * monorepo can contribute its own agents.
+ *
+ * `conflict` per the canonical index: official pages disagree on
+ * project-versus-User precedence, and the registry retains the incompatible
+ * assertions rather than picking one
+ * (contracts/vendors/github-copilot.md § Canonical evidence-assessment
+ * index).
+ */
+export const COPILOT_CLI_AGENTS_BEHAVIOR = {
+  behaviorId: 'copilot.behavior.cli.agents',
+  tool: 'copilot',
+  surfaces: ['copilot-cli'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'repository',
+        lookupBase: 'runtime-cwd',
+        relativeSelector: '.github/agents/*.md; .claude/agents/*.md',
+        traversal: 'ancestor-chain-to-repository-root',
+      }
+    : null,
+  documentationStatus: 'conflict',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.cli.reference',
+          url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
+          officialHost: 'docs.github.com',
+          sections: ['Custom agent locations'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'Project-scoped agents are loaded by walking upward from the working directory to the Git root, taking each ancestor level’s .github/agents/ and .claude/agents/ directories; every such directory is loaded, the deepest takes highest priority, and .github/agents/ takes precedence over .claude/agents/ at the same level.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Copilot CLI User custom agents. Recorded for maintenance only: it expands
+ * no Global inspection, and `copilot.excluded.user-runtime` keeps the surface
+ * out of the read allowlist. It is shipped here because
+ * `copilot.cli.agents.selection` composes it, and a strategy naming a
+ * statement no catalog holds is the dangling edge the contract gate rejects.
+ *
+ * `conflict`, carrying the same unresolved project-versus-User precedence its
+ * project counterpart records.
+ */
+export const COPILOT_CLI_USER_AGENTS_BEHAVIOR = {
+  behaviorId: 'copilot.behavior.cli.user.agents',
+  tool: 'copilot',
+  surfaces: ['copilot-cli'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'user',
+        lookupBase: 'tool-home',
+        relativeSelector: 'agents/*.md',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'conflict',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.cli.reference',
+          url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
+          officialHost: 'docs.github.com',
+          sections: ['Custom agent locations'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'User agents live at ~/.copilot/agents/ and plugin agents rank lowest; this page states that user-level agents have lower priority than project-level ones, which is one side of the retained project-versus-User conflict.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Copilot VS Code User custom agents. Recorded for maintenance only, on the
+ * same terms as the CLI User scope above, and shipped because
+ * `copilot.vscode.agents.selection` composes it.
+ */
+export const COPILOT_VSCODE_USER_AGENTS_BEHAVIOR = {
+  behaviorId: 'copilot.behavior.vscode.user.agents',
+  tool: 'copilot',
+  surfaces: ['copilot-vscode'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'user',
+        // The page names a home location and the VS Code profile alike, which
+        // is profile data rather than the product's own home directory.
+        lookupBase: 'profile-data',
+        relativeSelector: '~/.copilot/agents/*.md; profile agent files',
+        traversal: 'standard-location-chain',
+      }
+    : null,
+  documentationStatus: 'partially-documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'vscode.copilot.settings',
+          url: 'https://code.visualstudio.com/docs/agents/reference/ai-settings',
+          officialHost: 'code.visualstudio.com',
+          sections: ['Custom agents settings'],
+          reviewedOn: '2026-08-19',
+          establishes:
+            'Custom-agent locations are setting-controlled, so the personal and profile locations a workspace session also loads are configuration rather than a fixed list; duplicate-name precedence against workspace, organization, and plugin agents is not established, which is the partially-documented remainder.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Copilot cloud agent custom-agent profiles: the repository-level agent
+ * definitions the hosted agent reads from the repository root's
+ * `.github/agents`, in either the `*.agent.md` or the plain `*.md` spelling.
+ *
+ * The identity that deduplicates a profile across levels is the file's own
+ * name minus that extension rather than a declared key, which is why the
+ * inventory row a Copilot agent heads is named from its path
+ * (`rules/copilot.ts` § agentNameOf).
+ */
+export const COPILOT_CLOUD_AGENTS_BEHAVIOR = {
+  behaviorId: 'copilot.behavior.cloud.agents',
+  tool: 'copilot',
+  surfaces: ['copilot-cloud'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'repository',
+        lookupBase: 'repository-root',
+        relativeSelector: '.github/agents/*.agent.md; .github/agents/*.md',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.custom-agents',
+          url: 'https://docs.github.com/en/copilot/reference/custom-agents-configuration',
+          officialHost: 'docs.github.com',
+          sections: ['YAML frontmatter properties', 'Example agent profile configurations'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'A repository agent profile is a Markdown file with YAML frontmatter whose description is the one required property and whose name is an optional display name; the configuration file’s own name, minus .md or .agent.md, is what deduplicates a profile between levels so the lowest level wins.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Copilot's hosted organization and enterprise agent profiles. Recorded for
+ * maintenance only and, like the hosted remote-skill relay, it has no local
+ * filesystem locator at all: the profiles live on GitHub’s side, so no
+ * matcher could reach them and none is written
+ * (contracts/vendors/github-copilot.md § Documented User and hosted
+ * behavior). It is shipped because `copilot.cloud.agents.selection` composes
+ * it.
+ */
+export const COPILOT_CLOUD_ORGANIZATION_AGENTS_BEHAVIOR = {
+  behaviorId: 'copilot.behavior.cloud.organization-agents',
+  tool: 'copilot',
+  surfaces: ['copilot-cloud'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'hosted-managed',
+        // No local path exists, so the base is the hosted state itself and the
+        // relative selector is null rather than an invented location.
+        lookupBase: 'hosted-state',
+        relativeSelector: null,
+        traversal: 'none',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.custom-agents',
+          url: 'https://docs.github.com/en/copilot/reference/custom-agents-configuration',
+          officialHost: 'docs.github.com',
+          sections: ['Example agent profile configurations'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'Agent profiles also exist at the organization and enterprise levels, and on a naming conflict the lowest level wins — a repository agent over an organization one, and an organization agent over an enterprise one.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
  * Copilot's contribution to the behavior registry, keyed by `behaviorId`. Each
  * surface's statements ship together with the strategy that composes them —
  * an instruction layering consumes every scope of its own surface, User and
@@ -1620,6 +1815,12 @@ export const COPILOT_VSCODE_USER_MCP_BEHAVIOR = {
 export const COPILOT_BEHAVIOR_STATEMENTS: Readonly<
   Record<CopilotBehaviorId, VendorBehaviorStatement>
 > = {
+  [COPILOT_VSCODE_USER_AGENTS_BEHAVIOR.behaviorId]: COPILOT_VSCODE_USER_AGENTS_BEHAVIOR,
+  [COPILOT_CLOUD_ORGANIZATION_AGENTS_BEHAVIOR.behaviorId]:
+    COPILOT_CLOUD_ORGANIZATION_AGENTS_BEHAVIOR,
+  [COPILOT_CLOUD_AGENTS_BEHAVIOR.behaviorId]: COPILOT_CLOUD_AGENTS_BEHAVIOR,
+  [COPILOT_CLI_USER_AGENTS_BEHAVIOR.behaviorId]: COPILOT_CLI_USER_AGENTS_BEHAVIOR,
+  [COPILOT_CLI_AGENTS_BEHAVIOR.behaviorId]: COPILOT_CLI_AGENTS_BEHAVIOR,
   [COPILOT_CLI_COMMANDS_BEHAVIOR.behaviorId]: COPILOT_CLI_COMMANDS_BEHAVIOR,
   [COPILOT_CLI_INSTRUCTIONS_AGENTS_BEHAVIOR.behaviorId]: COPILOT_CLI_INSTRUCTIONS_AGENTS_BEHAVIOR,
   [COPILOT_CLI_INSTRUCTIONS_CLAUDE_BEHAVIOR.behaviorId]: COPILOT_CLI_INSTRUCTIONS_CLAUDE_BEHAVIOR,

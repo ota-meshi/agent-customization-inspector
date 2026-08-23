@@ -46,6 +46,7 @@ import { clearInventoryReturnPoint } from '../router.options';
 import { InstructionComparisonState } from '../composables/instruction-comparison';
 import { McpComparisonState } from '../composables/mcp-comparison';
 import { PromptComparisonState } from '../composables/prompt-comparison';
+import { CustomAgentComparisonState } from '../composables/custom-agent-comparison';
 import { SkillComparisonState } from '../composables/skill-comparison';
 import type {
   FileDetailDto,
@@ -178,6 +179,16 @@ export class SessionViewState {
    * with no copy or corresponding-file coordinate.
    */
   public readonly promptComparison: PromptComparisonState;
+
+  /**
+   * The custom-agent comparison view state (FR-011), owned here for the same
+   * reasons {@link skillComparison} is. Its own state rather than a widening
+   * of the others, because comparison is kind-specific with no shared module
+   * (spec.md § Clarifications Session 2026-08-14): this kind's model is two
+   * committed files of one agent-name row compared whole, with no copy or
+   * corresponding-file coordinate.
+   */
+  public readonly customAgentComparison: CustomAgentComparisonState;
 
   /** Which surface to render; see {@link SessionView}. */
   public readonly view = shallowRef<SessionView>('booting');
@@ -471,6 +482,17 @@ export class SessionViewState {
         this.view.value = 'ended';
       },
     });
+    // The `agent` kind's own comparison state, wired exactly like the four
+    // above and for the same reasons.
+    this.customAgentComparison = new CustomAgentComparisonState({
+      client: this.#client,
+      clientData: this.#clientData,
+      refreshFreshly: () => this.#refreshFreshly(),
+      reportFatalFailure: (error) => {
+        this.#sessionError.value = error.message;
+        this.view.value = 'ended';
+      },
+    });
   }
 
   /**
@@ -530,6 +552,7 @@ export class SessionViewState {
           this.instructionComparison.close();
           this.mcpComparison.close();
           this.promptComparison.close();
+          this.customAgentComparison.close();
         }
         this.snapshot.value = outcome.snapshot;
         // A refresh success answers session-level failures only: a retained

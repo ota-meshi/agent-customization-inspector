@@ -329,3 +329,158 @@ describe('the JSON-family document seams (T371 parsing seam)', () => {
     expect(new ParsedJsoncDocument('// just a list\n[1, 2]').entries).toEqual([]);
   });
 });
+
+describe('the inert TOML seam a Codex custom agent reads through (T517)', () => {
+  it('resolves the agent schema keys into the shared declaration shape', () => {
+    // The parse decides nothing about the format and extracts nothing from
+    // the result: `name`, `description`, and `developer_instructions` are
+    // entries like any other, and a multi-line basic string resolves to the
+    // text between its delimiters, its leading newline dropped by TOML's own
+    // rule (data-model.md § Field reading).
+    const document = new ParsedTomlDocument(
+      [
+        'name = "reviewer"',
+        'model_reasoning_effort = "high"',
+        'developer_instructions = """',
+        'Review code like an owner.',
+        '"""',
+        '',
+      ].join('\n'),
+    );
+    expect(document.entries).toEqual([
+      {
+        key: 'name',
+        keyKind: 'string',
+        value: { kind: 'scalar', scalarKind: 'string', text: 'reviewer' },
+      },
+      {
+        key: 'model_reasoning_effort',
+        keyKind: 'string',
+        value: { kind: 'scalar', scalarKind: 'string', text: 'high' },
+      },
+      {
+        key: 'developer_instructions',
+        keyKind: 'string',
+        value: {
+          kind: 'scalar',
+          scalarKind: 'string',
+          text: 'Review code like an owner.\n',
+        },
+      },
+    ]);
+  });
+
+  it('keeps a nested table and an array of tables in the shape the file wrote', () => {
+    // Nothing is summarized away: a table stays a mapping and an array of
+    // tables a sequence of mappings, which is what lets a detail publish an
+    // agent's `skills.config` and `mcp_servers` by the keys the file wrote.
+    const document = new ParsedTomlDocument(
+      [
+        '[[skills.config]]',
+        'path = "./.agents/skills/deploy"',
+        '',
+        '[mcp_servers.docs]',
+        'url = "https://docs.example.com/mcp"',
+        '',
+      ].join('\n'),
+    );
+    expect(document.entries).toEqual([
+      {
+        key: 'skills',
+        keyKind: 'string',
+        value: {
+          kind: 'mapping',
+          entries: [
+            {
+              key: 'config',
+              keyKind: 'string',
+              value: {
+                kind: 'sequence',
+                items: [
+                  {
+                    kind: 'mapping',
+                    entries: [
+                      {
+                        key: 'path',
+                        keyKind: 'string',
+                        value: {
+                          kind: 'scalar',
+                          scalarKind: 'string',
+                          text: './.agents/skills/deploy',
+                        },
+                      },
+                    ],
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+      {
+        key: 'mcp_servers',
+        keyKind: 'string',
+        value: {
+          kind: 'mapping',
+          entries: [
+            {
+              key: 'docs',
+              keyKind: 'string',
+              value: {
+                kind: 'mapping',
+                entries: [
+                  {
+                    key: 'url',
+                    keyKind: 'string',
+                    value: {
+                      kind: 'scalar',
+                      scalarKind: 'string',
+                      text: 'https://docs.example.com/mcp',
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    ]);
+  });
+
+  it('fails a malformed document whole rather than publishing what parsed', () => {
+    // Extraction is all-or-nothing (FR-028): the throw is what the
+    // recognition's `failed` state is made of, and the file's complete
+    // readable source stays displayed under its own tab.
+    expect(() => new ParsedTomlDocument('name = "unterminated\n')).toThrow();
+    expect(() => new ParsedTomlDocument('[mcp_servers.dup]\n\n[mcp_servers.dup]\n')).toThrow();
+  });
+
+  it('resolves an empty document to no declarations rather than a failure', () => {
+    // An agent file that declares nothing is a file that declares nothing —
+    // a rendering fact, not a parse error, so it publishes an empty
+    // declaration set and keeps its recognition.
+    expect(new ParsedTomlDocument('').entries).toEqual([]);
+    expect(new ParsedTomlDocument('# only a comment\n').entries).toEqual([]);
+  });
+
+  it('imposes no Inspector cap on document size, nesting, or integer width', () => {
+    // Capacity is Node.js's and the machine's; a product-defined ceiling would
+    // turn a large but perfectly ordinary customization file into a failure
+    // the vendor would have loaded (FR-029, parsers/extraction.ts).
+    const wide = Array.from({ length: 5_000 }, (_, index) => `k${index} = ${index}`).join('\n');
+    expect(new ParsedTomlDocument(wide).entries).toHaveLength(5_000);
+    // 200 nested tables: the depth is the file's, and the rendering recurses
+    // as far as the document goes.
+    const deepKey = Array.from({ length: 200 }, (_, index) => `n${index}`).join('.');
+    expect(() => new ParsedTomlDocument(`[${deepKey}]\nleaf = 1\n`)).not.toThrow();
+    // A 64-bit integer past `Number.MAX_SAFE_INTEGER` keeps its exact digits
+    // instead of failing the whole document over a value no reader looks at.
+    expect(new ParsedTomlDocument('big = 9223372036854775807').entries).toEqual([
+      {
+        key: 'big',
+        keyKind: 'string',
+        value: { kind: 'scalar', scalarKind: 'number', text: '9223372036854775807' },
+      },
+    ]);
+  });
+});

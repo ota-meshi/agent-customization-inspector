@@ -64,6 +64,7 @@ import SkillFileTree from '../../../components/inspection/SkillFileTree.vue';
 import OpenFileButton from '../../../components/inspection/OpenFileButton.vue';
 import SourceViewer from '../../../components/inspection/SourceViewer.vue';
 import { frontmatterYamlText } from '../../../components/inspection/frontmatter-yaml';
+import { LEADING_SKILL_FRONTMATTER_KEYS } from '../../../components/inspection/declaration-order';
 import { decodeDetailRoutePath } from '../../../components/detail-route';
 import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text';
 import { nextTabForKey } from '../../../components/tab-navigation';
@@ -324,24 +325,12 @@ const skillPresentation = computed(() => {
   return detail !== null && detail.kind === 'skill' ? detail.presentation : null;
 });
 
-/**
- * The keys the frontmatter declares, led by the two a reader needs first.
- *
- * `name` and `description` come first however the file ordered them: which
- * skill this is and what it is for are the two questions a detail surface
- * answers before any other, and a reader should not have to find them among
- * the keys a particular file happened to write earlier. Everything else keeps
- * the file's own order, because past those two the file's order is the only
- * one this product has any basis for (FR-007).
- */
-const LEADING_DECLARATIONS: readonly string[] = ['name', 'description'];
-
 const orderedDeclarations = computed(() => {
   const rank = (key: string): number => {
-    const index = LEADING_DECLARATIONS.indexOf(key);
-    return index === -1 ? LEADING_DECLARATIONS.length : index;
+    const index = LEADING_SKILL_FRONTMATTER_KEYS.indexOf(key);
+    return index === -1 ? LEADING_SKILL_FRONTMATTER_KEYS.length : index;
   };
-  // `toSorted` is stable, so the keys past the two leaders keep authored order.
+  // `toSorted` is stable, so the keys past the leaders keep authored order.
   return (skillPresentation.value?.frontmatter ?? []).toSorted(
     (left, right) => rank(left.key) - rank(right.key),
   );

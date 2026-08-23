@@ -61,7 +61,8 @@ another machine remains prohibited.
    the Nuxt build emitted into the packaged `dist/public`; the product defines no
    static-assets manifest, no per-asset integrity re-verification, and no hand-written
    router. The one product-owned piece in front of it is the closed detail-route
-   rewrite — `/skills/**`, `/instructions/**`, `/mcp/**`, `/rules/**`, and `/permissions/**`, one family per shipped
+   rewrite — `/skills/**`, `/instructions/**`, `/mcp/**`, `/rules/**`,
+   `/prompts-and-commands/**`, `/permissions/**`, and `/agents/**`, one family per shipped
    kind detail: a `GET`/`HEAD` whose path enters one of these route families is
    rewritten to `/` and falls
    through, so devframe's own static handler serves the packaged shell for detail deep
@@ -274,30 +275,6 @@ SessionSnapshot
 │       recognitions in the closed tool order, and each recognition's product
 │       surfaces in the closed surface order; the one null row closes the
 │       list with the files whose range is not known
-├── rules[]
-│   └── sourceRelativePath, recognitions[] { tool, surfaces[] } —
-│       one row per recognized rule file, with each recognition in the closed
-│       tool order and each recognition's product surfaces in the closed
-│       surface order
-├── prompts[]
-│   └── name string,
-│       definitions[] { sourceRelativePath, tool, surfaces[], diagnosticIds[] } —
-│       one row per name a reader invokes, in name order, each listing every
-│       file a recognizing tool invokes it by, in Source-relative Path then
-│       tool order. Which name that is belongs to the rule that admitted the file.
-│       A command file's is never authored: both products ignore a `name` key
-│       in one, and each derives the command from the path — so a root direct
-│       child, where the two derivations agree, is one row naming both, and a
-│       nested one is a row of Claude's alone. A VS Code prompt file's is the
-│       `name` it declares, falling back to its own file name — so a prompt
-│       declaring the name a command resolves to is a definition on that
-│       command's row
-├── permissions[]
-│   └── sourceRelativePath, recognitions[] { tool, surfaces[] },
-│       diagnosticIds[] —
-│       one row per declared permission policy, named by the path of the
-│       file that declares it; a carrier declaring none is recognized as
-│       whatever owns the rest of it, and is no row here
 ├── skills[]
 │   └── name string,
 │       definitions[] { sourceRelativePath, tool, surfaces[], parseStatus,
@@ -312,6 +289,55 @@ SessionSnapshot
 │       admissions rest on, exactly as an instruction file's recognitions do;
 │       the one null row closes the list with the
 │       carriers publishing no named declaration
+├── agents[]
+│   └── name string | null,
+│       definitions[] { sourceRelativePath, tool, surfaces[], parseStatus,
+│                       diagnosticIds[] } —
+│       one row per agent name, in name order, each listing every file that
+│       defines it, in Source-relative Path then tool order. The name is the
+│       one the admitting product identifies the agent by, and which fact
+│       that is differs by product: OpenAI Codex and Claude Code make the
+│       `name` field the agent's identity and a matching filename a
+│       convention — Claude Code adds that a subfolder inside the agents
+│       directory does not affect it either — while GitHub Copilot documents
+│       `name` as an optional display name and identifies a profile by its
+│       configuration file's own name minus `.md` or `.agent.md`. So two
+│       files resolving to one name are two definitions of one row, and one
+│       file two products resolve differently defines on two rows. A row
+│       states no same-name resolution, unlike a skill's: Claude Code
+│       documents that only one of two same-name files under one tree loads
+│       and names no rule for which, and GitHub documents deduplication
+│       between levels rather than within one, so a row that answered would
+│       answer a question no page asks — the definitions stand side by side
+│       and the reader sees both (FR-009). The one null row closes the list
+│       with the files publishing no name — under a declared-`name` product,
+│       one declaring none, one declaring anything but a scalar, and one
+│       whose declarations could not be read at all, whose name is unknown
+│       rather than absent; a file-name product's definition never reaches it
+├── prompts[]
+│   └── name string,
+│       definitions[] { sourceRelativePath, tool, surfaces[], diagnosticIds[] } —
+│       one row per name a reader invokes, in name order, each listing every
+│       file a recognizing tool invokes it by, in Source-relative Path then
+│       tool order. Which name that is belongs to the rule that admitted the file.
+│       A command file's is never authored: both products ignore a `name` key
+│       in one, and each derives the command from the path — so a root direct
+│       child, where the two derivations agree, is one row naming both, and a
+│       nested one is a row of Claude's alone. A VS Code prompt file's is the
+│       `name` it declares, falling back to its own file name — so a prompt
+│       declaring the name a command resolves to is a definition on that
+│       command's row
+├── rules[]
+│   └── sourceRelativePath, recognitions[] { tool, surfaces[] } —
+│       one row per recognized rule file, with each recognition in the closed
+│       tool order and each recognition's product surfaces in the closed
+│       surface order
+├── permissions[]
+│   └── sourceRelativePath, recognitions[] { tool, surfaces[] },
+│       diagnosticIds[] —
+│       one row per declared permission policy, named by the path of the
+│       file that declares it; a carrier declaring none is recognized as
+│       whatever owns the rest of it, and is no row here
 └── diagnostics[] { diagnosticId, code, sourceId string,
     sourceRelativePath string | null — null except file scope }
     (active-generation records plus session-owned lifecycle records)
@@ -642,8 +668,8 @@ Returns one active-generation file detail, discriminated by whether a recognitio
 the file:
 
 ```text
-FileDetail — kind: 'skill' | 'instructions' | 'prompt/command' | 'rule' | 'file'
-├── kind 'skill' — the file is a recognized skill entry point:
+FileDetail — kind: 'instructions' | 'skill' | 'agent' | 'prompt/command' | 'rule' | 'file'
+├── kind 'instructions' — the file is a recognized instruction file:
 │   ├── file — one CustomizationFile, discriminated by encoding:
 │   │   ├── sourceId, sourceRelativePath, encoding, diagnosticIds[]
 │   │   ├── readable text adds hadLeadingBom, sourceText, sizeBytes
@@ -656,15 +682,26 @@ FileDetail — kind: 'skill' | 'instructions' | 'prompt/command' | 'rule' | 'fil
 │   │   │   { kind: 'mapping', entries[] { key, keyKind, value } }, recursively
 │   │   └── bodyText
 │   └── diagnostics[]
-├── kind 'instructions' — the file is a recognized instruction file:
+├── kind 'skill' — the file is a recognized skill entry point:
 │   ├── file — as above
-│   ├── presentation — as the skill variant: the same one scan-time parse,
-│   │   with the same null-on-failure rule (FR-028)
+│   ├── presentation — as the instructions variant: the same one scan-time
+│   │   parse, with the same null-on-failure rule (FR-028)
+│   └── diagnostics[]
+├── kind 'agent' — the file is a recognized custom-agent definition:
+│   ├── file — as above
+│   ├── presentation — the one scan-time parse split into the two halves the
+│   │   kind shows, or null exactly when extraction failed all-or-nothing
+│   │   (FR-028):
+│   │   ├── metadata[] { key, keyKind, value } — the same declared-entry
+│   │   │   shape the instructions variant's frontmatter carries: every
+│   │   │   declaration except the one holding the instructions, in the file's
+│   │   │   own order
+│   │   └── instructionsText — the instructions the file gives the agent
 │   └── diagnostics[]
 ├── kind 'prompt/command' — the file is a recognized command file:
 │   ├── file — as above
-│   ├── presentation — as the skill variant: the same one scan-time parse,
-│   │   with the same null-on-failure rule (FR-028)
+│   ├── presentation — as the instructions variant: the same one scan-time
+│   │   parse, with the same null-on-failure rule (FR-028)
 │   └── diagnostics[]
 ├── kind 'rule' — the file is a recognized rule file:
 │   ├── file — as above
@@ -691,6 +728,25 @@ inventory's fact — the name each `prompts[]` row is grouped under — exactly 
 recognizing tools and invocation names are (`skills[]`). A prompt file declaring one is
 no exception: the declaration is in `presentation.frontmatter` like every other key the
 file wrote, and what the rule made of it is the row's.
+The `agent` variant carries a `presentation` of its own shape, because the split is not
+always a frontmatter block: a Codex agent is TOML whose `developer_instructions` string is
+the prose and whose remaining top-level keys are the configuration, while a Claude
+subagent and a Copilot agent profile are Markdown split at the frontmatter fence — the
+block configuring the agent and the body being the instructions it runs with. Where that split falls is the
+admitting rule's contract; what it produces is one shape either way, so one detail
+surface renders both — the metadata as YAML and the instructions as Markdown. The split
+is taken only when the declaration holding the instructions resolves to a string: one
+written as a table, a list, or a number is a declaration rather than prose, so it stays a
+metadata entry and `instructionsText` is empty. What the variant does not carry is the
+agent's name: a file's own `name` declaration is in `presentation.metadata` like every
+other key it wrote, and the name each `agents[]` row is grouped under is the inventory's
+fact, exactly as a command's invocation name is. That separation is what lets one file
+appear under two names — a `.claude/agents/*.md` direct child is Claude Code's subagent,
+named by its declared `name`, and a Copilot agent profile, named by the file's own
+name — without the detail having to choose one of them. A declared `mcp_servers` block is one
+metadata entry too: an MCP declaration's home is an explicit carrier, so an agent
+spelling one joins no MCP row and this response is where the reader sees it
+(data-model.md § Inventory unit).
 The `rule` variant carries no `presentation`: such a file is
 published as the one document its author wrote, so nothing is read out of it. A Claude
 `.claude/rules/**` file
@@ -706,14 +762,26 @@ not a file — one vendor's policy is a document of its own and another's is a b
 settings file whose other keys belong to a different recognition — so it is
 `get-permission-policy-detail`'s result rather than a shape here that would have to answer
 for a file it is not about.
-The parse the other recognized kinds show is the file's, not a recognizing tool's — every shipped vendor reads
-the same fixed YAML semantics, so the extraction runs once per `(file, kind)` — and the
-response publishes it once as `presentation`. There is no per-tool recognition list:
-which tools recognize the file, each tool's invocation name, and its parse state are the
-inventory's facts (`skills[].definitions[]`), and the route's tool segment says which
-definition a page is about; an instruction file's recognizing tools are listed beside it on
-its inventory row (`instructions[]`), and its detail route carries no tool segment
-because no per-tool fact distinguishes what the page would show. There is no admission record either: which rule
+The parse the other recognized kinds show is the file's, not a recognizing tool's, and the
+response publishes it once as `presentation`. For the Markdown kinds the extraction runs
+once per `(file, kind)`, because every shipped vendor reads the same fixed YAML semantics
+for them. The custom-agent kind is the exception, and it is the admitting rule's own
+reading rather than the kind's: a Codex agent is TOML whose `developer_instructions`
+string is the prose, while the Markdown products' agents split at a frontmatter fence, so
+the extraction is per `(file, tool)` there. What each reading produces is the same shape,
+which is why one `presentation` still publishes it — and where two products read one file,
+their readings resolve identically, so the repetition is work over one string rather than
+a second fact. There is no per-tool recognition list:
+which tools recognize the file, what each resolves it as, and its parse state are the
+inventory's facts, and each kind's own inventory carries them. A skill's are
+`skills[].definitions[]`, and that kind alone has a tool segment in its detail route,
+because a skill's name is one tool's resolution of it and the segment says which
+definition a page is about. Every other kind's detail route is the path alone: an
+instruction file's recognizing tools are listed beside it on its inventory row
+(`instructions[]`) and a custom agent's on `agents[].definitions[]`, and neither route
+carries a tool segment — an instruction file has no per-tool fact that distinguishes what
+the page would show, and a custom agent's page shows one file's two halves whichever
+product resolved which name for it. There is no admission record either: which rule
 authorized a read, and where it matched, is an internal record of the committed
 generation (data-model.md § ToolRecognition) that the relationship phases will read; no
 session response carries it — a configured fallback instruction file's detail is
@@ -825,8 +893,8 @@ error. Declaration comparison is one canonical serialized document per side, dif
 client-side (research.md § 7) — a frontmatter declaration is its file's one parse for
 the Markdown kind, shared by every recognizing tool, so a tool is not a coordinate of it
 and tool recognition is compared per tool beside the diff; each side serializes to YAML,
-the skill comparison leading with `name` and `description` and every other key sorted,
-the instruction and prompt-and-command comparisons sorting every key. The
+each comparison leading with the keys the vendors document for its kind, in the order the
+page that publishes them does, and sorting every other key (declaration-order.ts). The
 prompt-and-command comparison states one fact more per recognition, because this kind's
 row is a name rather than a file: each recognizing tool's cell carries the name that
 tool invokes that side's file by. The MCP kind's declarations are each

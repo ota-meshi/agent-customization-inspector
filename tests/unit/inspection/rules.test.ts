@@ -9,7 +9,7 @@
 // over-broad allowlist becomes visible is by naming the paths it must not
 // reach.
 import { rmSync } from 'node:fs';
-import { sep } from 'node:path';
+import { join, sep } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import * as fsIo from '../../../src/server/inspection/fs-io';
@@ -19,11 +19,15 @@ import {
   buildClaudeMcpFixture,
   buildClaudePermissionsFixture,
   buildClaudeRuleFixture,
+  buildClaudeAgentFixture,
   buildClaudeSkillFixture,
+  buildCodexAgentFixture,
   buildCodexInstructionFixture,
   buildCodexMcpFixture,
   buildCodexRuleFixture,
   buildCodexSkillFixture,
+  buildAllCustomizationKindFixture,
+  buildCopilotAgentFixture,
   buildCopilotCliMcpFixture,
   buildCopilotVscodeMcpFixture,
   buildPriorityMcpFixture,
@@ -31,6 +35,7 @@ import {
   buildCopilotSkillFixture,
   FIXTURE_SECRET_LITERAL,
   type CommandFixture,
+  type ClaudeAgentFixture,
   type ClaudeInstructionFixture,
   type ClaudeMcpFixture,
   type ClaudeRuleFixture,
@@ -39,6 +44,8 @@ import {
   type CodexMcpFixture,
   type CodexRuleFixture,
   type ClaudePermissionsFixture,
+  type CodexAgentFixture,
+  type CopilotAgentFixture,
   type CodexSkillFixture,
   type CopilotCliMcpFixture,
   type CopilotVscodeMcpFixture,
@@ -102,7 +109,7 @@ async function scanFixture() {
 
 describe('the shipped codex.repo.skill plan', () => {
   it('compiles the authored program once into the immutable typed plan', () => {
-    expect(CODEX_REPOSITORY_RULES).toHaveLength(4);
+    expect(CODEX_REPOSITORY_RULES).toHaveLength(5);
     const compiled = CODEX_REPOSITORY_RULES.find(
       (candidate) => candidate.rule.ruleId === 'codex.repo.skill',
     )!;
@@ -669,6 +676,7 @@ describe('the shipped codex.repo.instructions plan (T207)', () => {
     // Phase 15's, seeded by the configuration read rather than by the
     // carrier's admission.
     expect(CODEX_REPOSITORY_RULES.map((candidate) => candidate.rule.ruleId)).toEqual([
+      'codex.repo.agent',
       'codex.repo.config',
       'codex.repo.instructions',
       'codex.repo.rules',
@@ -1084,11 +1092,22 @@ describe('the root-exact Claude MCP inventory (T306)', () => {
     for (const nearMiss of [...mcpFixture.nearMissPaths, ...mcpFixture.unadmittedOwnerPaths]) {
       expect(paths.has(nearMiss), nearMiss).toBe(false);
     }
-    // The settings file is the one owner a later phase gave a candidacy of its
-    // own: `claude.repo.permissions` admits it for the policy it may declare.
-    // Its `mcpServers` spelling still reaches no MCP surface — the admission
-    // is a permission-policy one — and this fixture's copy declares no
-    // `permissions` object, so it carries no recognition at all.
+    // The settings file and the agent file are the two owners later phases
+    // gave a candidacy of their own: `claude.repo.permissions` admits the
+    // first for the policy it may declare and `claude.repo.agent` the second
+    // for the agent it defines. Neither `mcpServers` spelling reaches an MCP
+    // surface — each admission is its own kind's — and this fixture's settings
+    // copy declares no `permissions` object, so it carries no recognition at
+    // all.
+    const agent = result.files.find(
+      (file) => file.publicPath === mcpFixture.mcpFrontmatterAgentPath,
+    );
+    expect(agent, mcpFixture.mcpFrontmatterAgentPath).toBeDefined();
+    expect(
+      resolveAdmittingRules(CLAUDE_REPOSITORY_RULES, agent!.admissions).map(
+        (admission) => admission.rule.ruleId,
+      ),
+    ).toEqual(['claude.repo.agent']);
     const settings = result.files.find((file) => file.publicPath === '.claude/settings.json');
     expect(settings, '.claude/settings.json').toBeDefined();
     expect(
@@ -1655,8 +1674,7 @@ describe('the priority cross-vendor MCP matcher matrix (T390)', () => {
 
   it('ships MCP candidacy only through the five explicit carrier rules', () => {
     // Zero candidate rules from contained or runtime MCP facts: the closed
-    // MCP rule set is the explicit carriers', and no rule of the agent kind
-    // exists to smuggle a contained reading in.
+    // MCP rule set is the explicit carriers'.
     const mcpRuleIds = Object.values(INSPECTION_RULES)
       .filter((rule) => rule.kind === 'MCP' && rule.discoveryClass === 'static-candidate')
       .map((rule) => rule.ruleId)
@@ -1668,11 +1686,25 @@ describe('the priority cross-vendor MCP matcher matrix (T390)', () => {
       'copilot.repo.mcp.vscode',
       'copilot.repo.mcp.vscode-root',
     ]);
-    expect(
-      Object.values(INSPECTION_RULES).filter(
-        (rule) => rule.kind === 'agent' && rule.discoveryClass !== 'excluded',
-      ),
-    ).toEqual([]);
+    // An agent rule ships now, so the claim is stated where it can still be
+    // wrong: no rule of the agent kind rests on an MCP behavior or is
+    // explained by an MCP strategy, which is what would smuggle a contained
+    // reading in. A declared `mcp_servers` block stays the agent file's own
+    // content (data-model.md § Inventory unit).
+    for (const [ruleId, rule] of Object.entries(INSPECTION_RULES)) {
+      if (rule.kind !== 'agent') {
+        continue;
+      }
+      const edges = RULE_RELATIONS[rule.ruleId];
+      expect(
+        edges.basedOnBehaviors.filter((behavior) => behavior.behaviorId.includes('.mcp')),
+        ruleId,
+      ).toEqual([]);
+      expect(
+        edges.explainedByStrategies.filter((strategy) => strategy.strategyId.includes('.mcp')),
+        ruleId,
+      ).toEqual([]);
+    }
   });
 });
 
@@ -1997,7 +2029,7 @@ describe('the shipped claude.repo.command plan (T442)', () => {
       throw new TypeError('the command rule compiled into a unit that cannot name a command');
     }
     // Undocumented and taken from the product: such a file takes its
-    // directory's name rather than its own (user decision).
+    // directory's name rather than its own.
     expect(compiled.invocationNameOf('.claude/commands/foo/SKILL.md', [])).toBe('foo');
     expect(compiled.invocationNameOf('.claude/commands/foo/skill.md', [])).toBe('foo');
     expect(compiled.invocationNameOf('.claude/commands/a/b/SKILL.md', [])).toBe('a:b');
@@ -2444,5 +2476,615 @@ describe('the root Claude permission-policy inventory (T1107)', () => {
       '.claude/settings.local.json',
     ]);
     expect(claude.recognitions).toEqual([]);
+  });
+});
+
+describe('the shipped codex.repo.agent plan (T509)', () => {
+  it('compiles the root-anchored direct-child program and nothing wider', () => {
+    const compiled = CODEX_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'codex.repo.agent',
+    )!;
+    expect(compiled.tool).toBe('codex');
+    expect(compiled.kind).toBe('agent');
+    expect(compiled.plan).toEqual(
+      new TraversalPlan(INSPECTION_RULES['codex.repo.agent']!.matcher!),
+    );
+    // Two literals then one dynamic name step: the container is exact and the
+    // extension is the vendor's, so the program cannot reach a second
+    // directory level. No recursive token appears anywhere in it — the page
+    // names `.codex/agents/` for project scope and documents no nested
+    // search, and a `**` here would read files on the strength of a search no
+    // official text establishes.
+    expect(compiled.plan.selectors).toHaveLength(1);
+    expect(compiled.plan.selectors[0]!.remainder).toEqual([
+      { kind: 'literal', value: '.codex' },
+      { kind: 'literal', value: 'agents' },
+      { kind: 'regex', pattern: /\.toml$/u },
+    ]);
+    expect(compiled.plan.selectionPolicy).toBe('all-matches');
+  });
+
+  it('is explained by the inheritance strategy and rests on no MCP record', () => {
+    const compiled = CODEX_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'codex.repo.agent',
+    )!;
+    expect(compiled.relations).toBe(RULE_RELATIONS['codex.repo.agent']);
+    // The spawned-session overlay, the selection, and the live sandbox and
+    // approval reapplication are the strategy's, never the rule's: the rule
+    // says what may be read, and nothing it publishes states an outcome
+    // (FR-009).
+    expect(compiled.relations.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual(
+      ['codex.agents.inheritance'],
+    );
+    // The personal `<CODEX_HOME>/agents/` scope the same page documents is a
+    // Source boundary this rule may not open, so it is not among the
+    // behaviors the rule rests on — and no MCP behavior is either, which is
+    // what keeps a declared `mcp_servers` block the agent file's own content
+    // (data-model.md § Inventory unit).
+    expect(compiled.relations.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'codex.behavior.repo.agents',
+    ]);
+  });
+});
+
+describe('the root-anchored Codex custom-agent inventory (T509)', () => {
+  let agentFixture: CodexAgentFixture;
+
+  beforeAll(() => {
+    agentFixture = buildCodexAgentFixture('inspector-codex-agents-rules');
+  });
+
+  afterAll(() => {
+    rmSync(agentFixture.root, { recursive: true, force: true });
+  });
+
+  it('admits exactly the root\u2019s direct-child TOML agents', async () => {
+    const result = await scanWith(agentFixture.root, CODEX_REPOSITORY_RULES);
+    const admitted = result.files
+      .filter((file) =>
+        resolveAdmittingRules(CODEX_REPOSITORY_RULES, file.admissions).some(
+          (rule) => rule.rule.ruleId === 'codex.repo.agent',
+        ),
+      )
+      .map((file) => file.publicPath)
+      .sort();
+    expect(admitted).toEqual([...agentFixture.expectedAgentPaths]);
+    // One admission per file from the one selector of the one rule: no agent
+    // file is a candidate twice, and no other Codex rule reaches it.
+    for (const file of result.files.filter((candidate) =>
+      agentFixture.expectedAgentPaths.includes(candidate.publicPath),
+    )) {
+      expect(file.admissions, file.publicPath).toHaveLength(1);
+    }
+  });
+
+  it('admits no nested subdirectory, subdirectory layer, or spelling variant', async () => {
+    const result = await scanWith(agentFixture.root, CODEX_REPOSITORY_RULES);
+    const paths = new Set(result.files.map((file) => file.publicPath));
+    for (const nearMiss of agentFixture.nearMissPaths) {
+      expect(paths.has(nearMiss), nearMiss).toBe(false);
+    }
+  });
+
+  it('reads a symlinked agent file through its target', async () => {
+    if (!agentFixture.capabilities.symlinks) {
+      return;
+    }
+    const result = await scanWith(agentFixture.root, CODEX_REPOSITORY_RULES);
+    // A symbolic link is read transparently: Codex loading the same path
+    // would resolve it too (FR-024; spec.md § Clarifications).
+    const linked = result.files.find((file) => file.publicPath === '.codex/agents/linked.toml');
+    expect(linked?.outcome).toMatchObject({ kind: 'readable' });
+  });
+
+  it('promotes no configured path a declaration names', async () => {
+    // `config_file` and `skills.config[].path` are values, not locators: a
+    // declared path never gains read authority and creates no candidate
+    // (contracts/runtime-composition.md § Normative relationship-only
+    // registry).
+    const result = await scanWith(agentFixture.root, CODEX_REPOSITORY_RULES);
+    const paths = new Set(result.files.map((file) => file.publicPath));
+    expect(paths.has('.codex/agents/shared.toml')).toBe(false);
+    expect(paths.has('.agents/skills/deploy')).toBe(false);
+  });
+
+  it('gives an agent file no MCP recognition however it spells one', async () => {
+    const publication = await runSourceScan({
+      sourceId: 'src-agents',
+      root: agentFixture.root,
+      rootFailureOwner: 'repository',
+    });
+    if (publication.kind !== 'publishable') {
+      throw new Error(`expected a publishable scan, got ${publication.kind}`);
+    }
+    const spelling = publication.recognitions.filter(
+      (recognition) => recognition.sourceRelativePath === agentFixture.mcpSpellingAgentPath,
+    );
+    // One recognition, of the agent kind: the `[mcp_servers.*]` table it
+    // declares is this file's own content, and an MCP declaration's home is
+    // an explicit carrier (data-model.md § Inventory unit).
+    expect(spelling.map((recognition) => recognition.details.kind)).toEqual(['agent']);
+    expect(
+      publication.recognitions.filter((recognition) => recognition.details.kind === 'MCP'),
+    ).toEqual([]);
+  });
+
+  it('keeps the agent files and the other products\u2019 rules apart', async () => {
+    // The location is Codex's own: no Claude or Copilot selector reaches
+    // `.codex/agents/`, so a shared candidate cannot appear here by accident.
+    for (const rules of [CLAUDE_REPOSITORY_RULES, COPILOT_REPOSITORY_RULES]) {
+      const result = await scanWith(agentFixture.root, rules);
+      const paths = new Set(result.files.map((file) => file.publicPath));
+      for (const admitted of agentFixture.expectedAgentPaths) {
+        expect(paths.has(admitted), admitted).toBe(false);
+      }
+    }
+  });
+});
+
+describe('the shipped claude.repo.agent plan (T529)', () => {
+  it('compiles the root-anchored recursive program and nothing wider', () => {
+    const compiled = CLAUDE_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'claude.repo.agent',
+    )!;
+    expect(compiled.tool).toBe('claude');
+    expect(compiled.kind).toBe('agent');
+    expect(compiled.plan).toEqual(
+      new TraversalPlan(INSPECTION_RULES['claude.repo.agent']!.matcher!),
+    );
+    // One recursive step, inside the agents directory and nowhere else: the
+    // page states `.claude/agents/` is scanned recursively so a definition can
+    // sit in a subfolder, and documents the layer walk as upward from the
+    // working directory to the repository root — whose one member every
+    // session shares is the selected root, so no leading recursive step may
+    // appear.
+    expect(compiled.plan.selectors).toHaveLength(1);
+    expect(compiled.plan.selectors[0]!.remainder).toEqual([
+      { kind: 'literal', value: '.claude' },
+      { kind: 'literal', value: 'agents' },
+      { kind: 'recursive-directories' },
+      { kind: 'regex', pattern: /\.md$/u },
+    ]);
+    expect(compiled.plan.selectionPolicy).toBe('all-matches');
+  });
+
+  it('is explained by both agent strategies and rests on no MCP record', () => {
+    const compiled = CLAUDE_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'claude.repo.agent',
+    )!;
+    expect(compiled.relations).toBe(RULE_RELATIONS['claude.repo.agent']);
+    // The scope order and the spawned-session context are the strategies',
+    // never the rule's: the rule says what may be read, and nothing it
+    // publishes states an outcome (FR-009).
+    expect(compiled.relations.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual(
+      ['claude.agent-context.composition', 'claude.agents.selection'],
+    );
+    // The User scope the same page documents is a Source boundary this rule
+    // may not open, so it is not among the behaviors the rule rests on — and
+    // no MCP behavior is either, which is what keeps an agent's `mcpServers`
+    // frontmatter its own content (data-model.md § Inventory unit).
+    expect(compiled.relations.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'claude.behavior.repo.agents',
+    ]);
+  });
+});
+
+describe('the root-anchored Claude subagent inventory (T529)', () => {
+  let claudeAgents: ClaudeAgentFixture;
+
+  beforeAll(() => {
+    claudeAgents = buildClaudeAgentFixture('inspector-claude-agents-rules');
+  });
+
+  afterAll(() => {
+    rmSync(claudeAgents.root, { recursive: true, force: true });
+  });
+
+  it('admits the root\u2019s agents subtree at every depth', async () => {
+    const result = await scanWith(claudeAgents.root, CLAUDE_REPOSITORY_RULES);
+    const admitted = result.files
+      .filter((file) =>
+        resolveAdmittingRules(CLAUDE_REPOSITORY_RULES, file.admissions).some(
+          (rule) => rule.rule.ruleId === 'claude.repo.agent',
+        ),
+      )
+      .map((file) => file.publicPath)
+      .sort();
+    expect(admitted).toEqual([...claudeAgents.expectedAgentPaths]);
+    // One admission per file from the one selector of the one rule.
+    for (const file of result.files.filter((candidate) =>
+      claudeAgents.expectedAgentPaths.includes(candidate.publicPath),
+    )) {
+      expect(file.admissions, file.publicPath).toHaveLength(1);
+    }
+  });
+
+  it('admits no memory directory, subdirectory layer, extra directory, or spelling variant', async () => {
+    const result = await scanWith(claudeAgents.root, CLAUDE_REPOSITORY_RULES);
+    const paths = new Set(result.files.map((file) => file.publicPath));
+    for (const nearMiss of claudeAgents.nearMissPaths) {
+      expect(paths.has(nearMiss), nearMiss).toBe(false);
+    }
+  });
+
+  it('reads a symlinked agent file through its target', async () => {
+    if (!claudeAgents.capabilities.symlinks) {
+      return;
+    }
+    const result = await scanWith(claudeAgents.root, CLAUDE_REPOSITORY_RULES);
+    const linked = result.files.find((file) => file.publicPath === '.claude/agents/linked.md');
+    expect(linked?.outcome).toMatchObject({ kind: 'readable' });
+  });
+
+  it('gives an agent file no MCP recognition however it spells one', async () => {
+    const publication = await runSourceScan({
+      sourceId: 'src-claude-agents',
+      root: claudeAgents.root,
+      rootFailureOwner: 'repository',
+    });
+    if (publication.kind !== 'publishable') {
+      throw new Error(`expected a publishable scan, got ${publication.kind}`);
+    }
+    const spelling = publication.recognitions.filter(
+      (recognition) => recognition.sourceRelativePath === claudeAgents.mcpFrontmatterAgentPath,
+    );
+    // Two agent recognitions of one file: a `.claude/agents/*.md` direct child
+    // is Claude Code's subagent and a Copilot agent profile alike, so the file
+    // is read once and recognized by each product (T551). Neither is an MCP
+    // recognition, which is the point of this case.
+    expect(spelling.map((recognition) => recognition.details.kind)).toEqual(['agent', 'agent']);
+    expect(
+      publication.recognitions.filter((recognition) => recognition.details.kind === 'MCP'),
+    ).toEqual([]);
+    // The credential and the environment reference are read into the agent's
+    // own metadata and reach no other kind's record (FR-026).
+    expect(JSON.stringify(spelling)).toContain(FIXTURE_SECRET_LITERAL);
+  });
+
+  it('shares the subtree with Copilot exactly as far as Copilot documents it', async () => {
+    // No Codex selector reaches `.claude/agents/` at all.
+    const codex = await scanWith(claudeAgents.root, CODEX_REPOSITORY_RULES);
+    const codexPaths = new Set(codex.files.map((file) => file.publicPath));
+    for (const admitted of claudeAgents.expectedAgentPaths) {
+      expect(codexPaths.has(admitted), admitted).toBe(false);
+    }
+    // Copilot's own agent rule names `.claude/agents/` as one of the two
+    // directories it loads project agents from, but no Copilot page documents
+    // a subfolder inside an agents directory, so its selector admits the
+    // direct children alone (T551). That is what makes a nested file Claude's
+    // subagent and nothing else, while a direct child is one physical file two
+    // products define an agent from.
+    const copilot = await scanWith(claudeAgents.root, COPILOT_REPOSITORY_RULES);
+    const copilotPaths = new Set(copilot.files.map((file) => file.publicPath));
+    for (const admitted of claudeAgents.expectedAgentPaths) {
+      const isDirectChild = admitted.split('/').length === 3;
+      expect(copilotPaths.has(admitted), admitted).toBe(isDirectChild);
+    }
+  });
+});
+
+describe('the root-anchored Copilot custom-agent inventory (T548)', () => {
+  let copilotAgents: CopilotAgentFixture;
+
+  beforeAll(() => {
+    copilotAgents = buildCopilotAgentFixture('inspector-copilot-agents-rules');
+  });
+
+  afterAll(() => {
+    rmSync(copilotAgents.root, { recursive: true, force: true });
+  });
+
+  it('admits the direct children of both documented directories', async () => {
+    // Two rules, one per directory, because the Cloud agent documents
+    // `.github/agents/` alone and a rule's surfaces come from the behaviors it
+    // rests on (T551, `rules/registry.ts` § recognizingSurfaces). Together
+    // they admit exactly the set the one rule used to.
+    const result = await scanWith(copilotAgents.root, COPILOT_REPOSITORY_RULES);
+    const admittedBy = (ruleId: string): string[] =>
+      result.files
+        .filter((file) =>
+          resolveAdmittingRules(COPILOT_REPOSITORY_RULES, file.admissions).some(
+            (rule) => rule.rule.ruleId === ruleId,
+          ),
+        )
+        .map((file) => file.publicPath)
+        .toSorted();
+    const github = admittedBy('copilot.repo.agent');
+    const claude = admittedBy('copilot.repo.agent.claude');
+    expect(github.every((path) => path.startsWith('.github/agents/'))).toBe(true);
+    expect(claude).toEqual([copilotAgents.sharedClaudeAgentPath]);
+    expect([...github, ...claude].toSorted()).toEqual([...copilotAgents.expectedAgentPaths]);
+    // One admission per file: each rule has one selector and they reach
+    // different directories, so no file is admitted by both.
+    for (const file of result.files.filter((candidate) =>
+      copilotAgents.expectedAgentPaths.includes(candidate.publicPath),
+    )) {
+      expect(file.admissions, file.publicPath).toHaveLength(1);
+    }
+  });
+
+  it('admits no subfolder, User spelling, subdirectory layer, or extra directory', async () => {
+    const result = await scanWith(copilotAgents.root, COPILOT_REPOSITORY_RULES);
+    const paths = new Set(result.files.map((file) => file.publicPath));
+    for (const nearMiss of copilotAgents.nearMissPaths) {
+      expect(paths.has(nearMiss), nearMiss).toBe(false);
+    }
+    // The `.claude/agents/` subfolder is Claude's alone for the same reason:
+    // no Copilot page documents a subfolder inside an agents directory.
+    expect(paths.has(copilotAgents.claudeOnlyAgentPath)).toBe(false);
+  });
+
+  it('names each agent by its own file rather than by what it declares', async () => {
+    const publication = await runSourceScan({
+      sourceId: 'src-copilot-agents',
+      root: copilotAgents.root,
+      rootFailureOwner: 'repository',
+    });
+    if (publication.kind !== 'publishable') {
+      throw new Error(`expected a publishable scan, got ${publication.kind}`);
+    }
+    // The shared reference documents the `name` field as an optional display
+    // name and deduplicates agents by the configuration file's own name minus
+    // `.md` or `.agent.md`, so `planner.md` declaring `Release planner` is the
+    // `planner` row and the two `reviewer` spellings are one row.
+    const names = publication.recognitions
+      .filter(
+        (recognition) => recognition.tool === 'copilot' && recognition.details.kind === 'agent',
+      )
+      .map((recognition) =>
+        recognition.details.kind === 'agent' ? (recognition.details.agentName ?? null) : null,
+      )
+      .toSorted();
+    expect(names).toEqual([
+      'README',
+      'broken',
+      'copilot-shared',
+      'deployer',
+      'planner',
+      'reviewer',
+      'reviewer',
+    ]);
+    // A malformed file still keeps the name its path gives it: the path is
+    // what a failed extraction cannot take away (FR-028).
+    const malformed = publication.recognitions.find(
+      (recognition) =>
+        recognition.tool === 'copilot' &&
+        recognition.sourceRelativePath === copilotAgents.malformedAgentPath,
+    )!;
+    expect(malformed.parseStatus).toBe('failed');
+    expect(malformed.details.kind === 'agent' && malformed.details.agentName).toBe('broken');
+  });
+
+  it('gives one shared file two products\u2019 differently named recognitions', async () => {
+    const publication = await runSourceScan({
+      sourceId: 'src-copilot-agents-shared',
+      root: copilotAgents.root,
+      rootFailureOwner: 'repository',
+    });
+    if (publication.kind !== 'publishable') {
+      throw new Error(`expected a publishable scan, got ${publication.kind}`);
+    }
+    const shared = publication.recognitions
+      .filter(
+        (recognition) => recognition.sourceRelativePath === copilotAgents.sharedClaudeAgentPath,
+      )
+      .map((recognition) => [
+        recognition.tool,
+        recognition.details.kind === 'agent' ? (recognition.details.agentName ?? null) : null,
+      ]);
+    expect(shared.toSorted()).toEqual([
+      ['claude', copilotAgents.sharedClaudeAgentDeclaredName],
+      ['copilot', 'copilot-shared'],
+    ]);
+  });
+
+  it('gives an agent file no MCP recognition however it spells one', async () => {
+    const publication = await runSourceScan({
+      sourceId: 'src-copilot-agents-mcp',
+      root: copilotAgents.root,
+      rootFailureOwner: 'repository',
+    });
+    if (publication.kind !== 'publishable') {
+      throw new Error(`expected a publishable scan, got ${publication.kind}`);
+    }
+    const spelling = publication.recognitions.filter(
+      (recognition) => recognition.sourceRelativePath === copilotAgents.mcpFrontmatterAgentPath,
+    );
+    // One recognition, of the agent kind: the `mcp-servers` block it declares
+    // is this file's own content, and an MCP declaration's home is an explicit
+    // carrier (data-model.md § Inventory unit).
+    expect(spelling.map((recognition) => recognition.details.kind)).toEqual(['agent']);
+    expect(
+      publication.recognitions.filter((recognition) => recognition.details.kind === 'MCP'),
+    ).toEqual([]);
+    // The credential reaches the agent's own metadata and no other record
+    // (FR-026).
+    expect(JSON.stringify(spelling)).toContain(FIXTURE_SECRET_LITERAL);
+  });
+
+  it('rests the `.claude` rule on the two surfaces that read that directory', async () => {
+    // The Cloud agent's own behavior names `.github/agents/` alone, so a file
+    // in `.claude/agents/` must not derive its surface: that is the whole
+    // reason the directory has a rule of its own
+    // (`rules/registry.ts` § recognizingSurfaces).
+    const compiled = COPILOT_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'copilot.repo.agent.claude',
+    )!;
+    expect(compiled.relations.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'copilot.behavior.cli.agents',
+      'copilot.behavior.vscode.agents',
+    ]);
+    expect(compiled.recognizingSurfaces).toEqual(['copilot-vscode', 'copilot-cli']);
+  });
+
+  it('rests the rule on the three surface behaviors that read the repository', async () => {
+    const compiled = COPILOT_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'copilot.repo.agent',
+    )!;
+    // The User and organization scopes the selections also consume describe
+    // files outside every selected root, so no admitted file can be one and
+    // the rule does not rest on them. No MCP behavior is here either, which is
+    // what keeps an agent's `mcp-servers` frontmatter its own content
+    // (data-model.md § Inventory unit).
+    expect(compiled.relations.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'copilot.behavior.cli.agents',
+      'copilot.behavior.cloud.agents',
+      'copilot.behavior.vscode.agents',
+    ]);
+    expect(compiled.relations.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual(
+      [
+        'copilot.cli.agents.selection',
+        'copilot.cloud.agents.selection',
+        'copilot.vscode.agents.selection',
+      ],
+    );
+  });
+});
+
+describe('the unified custom-agent recognition matrix (T567)', () => {
+  let allKinds: { root: string };
+
+  beforeAll(() => {
+    allKinds = buildAllCustomizationKindFixture('inspector-all-kinds-agents-rules');
+  });
+
+  afterAll(() => {
+    rmSync(allKinds.root, { recursive: true, force: true });
+  });
+
+  /**
+   * Which products may recognize an agent at a path, from the documentation
+   * alone: a `.codex/agents/*.toml` is Codex's, a `.github/agents/` direct
+   * child is Copilot's, and a `.claude/agents/` file is Claude's at every
+   * depth and Copilot's only as a direct child, because no Copilot page
+   * documents a subfolder inside an agents directory.
+   */
+  function expectedToolsFor(sourceRelativePath: string): string[] {
+    const segments = sourceRelativePath.split('/');
+    if (segments[0] === '.codex') {
+      return ['codex'];
+    }
+    if (segments[0] === '.github') {
+      return ['copilot'];
+    }
+    return segments.length === 3 ? ['claude', 'copilot'] : ['claude'];
+  }
+
+  it('recognizes every agent file for exactly the products that document it', async () => {
+    const publication = await runSourceScan({
+      sourceId: 'src-all-kinds-agents',
+      root: allKinds.root,
+      rootFailureOwner: 'repository',
+    });
+    if (publication.kind !== 'publishable') {
+      throw new Error(`expected a publishable scan, got ${publication.kind}`);
+    }
+    const agentsByPath = Map.groupBy(
+      publication.recognitions.filter((recognition) => recognition.details.kind === 'agent'),
+      (recognition) => recognition.sourceRelativePath,
+    );
+    // The three trees are all present, so the matrix is a matrix rather than
+    // one vendor's inventory read twice.
+    const directories = new Set(
+      [...agentsByPath.keys()].map((path) => path.split('/').slice(0, 2).join('/')),
+    );
+    expect([...directories].toSorted()).toEqual([
+      '.claude/agents',
+      '.codex/agents',
+      '.github/agents',
+    ]);
+    for (const [sourceRelativePath, recognitions] of agentsByPath) {
+      expect(
+        recognitions.map((recognition) => recognition.tool).toSorted(),
+        sourceRelativePath,
+      ).toEqual(expectedToolsFor(sourceRelativePath));
+    }
+  });
+
+  it('gives no agent file an MCP recognition, whichever product recognizes it', async () => {
+    const publication = await runSourceScan({
+      sourceId: 'src-all-kinds-agents-mcp',
+      root: allKinds.root,
+      rootFailureOwner: 'repository',
+    });
+    if (publication.kind !== 'publishable') {
+      throw new Error(`expected a publishable scan, got ${publication.kind}`);
+    }
+    // An MCP declaration's home is an explicit carrier, so a file in any of
+    // the three agents directories is never an MCP row's owner — however it
+    // spells one (data-model.md § Inventory unit).
+    const agentDirectories = ['.codex/agents/', '.claude/agents/', '.github/agents/'];
+    for (const recognition of publication.recognitions) {
+      if (recognition.details.kind !== 'MCP') {
+        continue;
+      }
+      for (const directory of agentDirectories) {
+        expect(recognition.sourceRelativePath, recognition.sourceRelativePath).not.toContain(
+          directory,
+        );
+      }
+    }
+  });
+
+  it('names each agent by the fact its own product identifies it with', async () => {
+    const publication = await runSourceScan({
+      sourceId: 'src-all-kinds-agents-names',
+      root: allKinds.root,
+      rootFailureOwner: 'repository',
+    });
+    if (publication.kind !== 'publishable') {
+      throw new Error(`expected a publishable scan, got ${publication.kind}`);
+    }
+    for (const recognition of publication.recognitions) {
+      if (recognition.details.kind !== 'agent') {
+        continue;
+      }
+      const { agentName, metadata } = recognition.details;
+      const declared = metadata.find((entry) => entry.keyKind === 'string' && entry.key === 'name');
+      const label = `${recognition.tool} ${recognition.sourceRelativePath}`;
+      if (recognition.tool === 'copilot') {
+        // The file's own name minus `.agent.md` or `.md`: never the declared
+        // `name`, which this product documents as an optional display name.
+        const fileName = recognition.sourceRelativePath.split('/').at(-1)!;
+        const stem = fileName.endsWith('.agent.md')
+          ? fileName.slice(0, -'.agent.md'.length)
+          : fileName.slice(0, -'.md'.length);
+        expect(agentName, label).toBe(stem);
+      } else {
+        // The declared `name` when the file declares one as a scalar, and no
+        // name at all otherwise — never the path.
+        expect(agentName, label).toBe(
+          declared?.value.kind === 'scalar' ? declared.value.text : undefined,
+        );
+      }
+    }
+  });
+
+  it('reads one shared agent file once for both of its recognitions', async () => {
+    vi.clearAllMocks();
+    const publication = await runSourceScan({
+      sourceId: 'src-all-kinds-agents-reads',
+      root: allKinds.root,
+      rootFailureOwner: 'repository',
+    });
+    if (publication.kind !== 'publishable') {
+      throw new Error(`expected a publishable scan, got ${publication.kind}`);
+    }
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) => String(call[0]));
+    const shared = publication.recognitions
+      .filter(
+        (recognition) =>
+          recognition.details.kind === 'agent' &&
+          recognition.sourceRelativePath.startsWith('.claude/agents/') &&
+          recognition.sourceRelativePath.split('/').length === 3,
+      )
+      .map((recognition) => recognition.sourceRelativePath);
+    expect(shared.length).toBeGreaterThan(0);
+    for (const sourceRelativePath of new Set(shared)) {
+      expect(
+        opened.filter((path) => path === join(allKinds.root, ...sourceRelativePath.split('/'))),
+        sourceRelativePath,
+      ).toHaveLength(1);
+    }
   });
 });

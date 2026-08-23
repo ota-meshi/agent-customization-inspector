@@ -1,5 +1,6 @@
-// T078/T293/T411: the Codex skill's declared-name reading, the Codex MCP
-// carrier's declaration reading, and what a Codex rule file publishes
+// T078/T293/T411/T518: the Codex skill's declared-name reading, the Codex MCP
+// carrier's declaration reading, what a Codex rule file publishes, and the
+// Codex custom agent's declaration and name reading
 // (data-model.md § Field reading, FR-007, FR-028).
 //
 // The name is the one authored value recognition uses as identity: the key of
@@ -156,6 +157,9 @@ describe('Codex skill declared name', () => {
 // Selected by identity for the rule and carrier cases below.
 const codexRulesRule = CODEX_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'codex.repo.rules',
+);
+const codexAgentRule = CODEX_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'codex.repo.agent',
 );
 
 const codexConfigRule = CODEX_REPOSITORY_RULES.find(
@@ -348,6 +352,213 @@ describe('Codex MCP carrier reading (T293)', () => {
     expect(recognitions[0]!.provenances[0]).toMatchObject({
       ruleId: 'codex.derived.fallback-basename',
       discoveryClass: 'bounded-derived-candidate',
+    });
+  });
+});
+
+describe('Codex custom-agent reading (T518)', () => {
+  /** Recognizes one authored `.codex/agents/*.toml` at the root's own directory. */
+  async function recognizeAgent(sourceText: string): Promise<readonly ToolRecognition[]> {
+    const matchedPath = '.codex/agents/reviewer.toml';
+    mkdirSync(join(root, '.codex/agents'), { recursive: true });
+    const { recognitions } = await recognizeCandidateForVendors(
+      {
+        matchedPath,
+        absolutePath: join(root, matchedPath),
+        sourceRoot: root,
+        admissions: [{ compiled: codexAgentRule!, origin: { planIndex: 0, selectorIndex: 0 } }],
+        sourceText,
+      },
+      ['codex'],
+    );
+    return recognitions;
+  }
+
+  /** The one agent recognition's payload, or a failure. */
+  function agentDetailsOf(recognitions: readonly ToolRecognition[]) {
+    const [recognition] = recognitions;
+    if (recognition === undefined || recognition.details.kind !== 'agent') {
+      throw new Error('expected one Codex agent recognition');
+    }
+    return recognition.details;
+  }
+
+  it('splits the instructions out and keeps every other key as metadata, in file order', async () => {
+    // The vendor's own schema keys are declarations like any other: this
+    // product resolves their values and captions none of them, because what a
+    // key means is the vendor's documentation rather than this product's. The
+    // one key it does treat differently is `developer_instructions`, which the
+    // page calls the core instructions defining the agent's behavior — the
+    // split the detail's two panels render.
+    const details = agentDetailsOf(
+      await recognizeAgent(
+        [
+          'name = "reviewer"',
+          'description = "PR reviewer."',
+          'model = "gpt-5.6-terra"',
+          'model_reasoning_effort = "high"',
+          'sandbox_mode = "read-only"',
+          'developer_instructions = """',
+          'Review code like an owner.',
+          '"""',
+          '',
+          '[[skills.config]]',
+          'path = "./.agents/skills/deploy"',
+          '',
+        ].join('\n'),
+      ),
+    );
+    expect(details.metadata.map((entry) => entry.key)).toEqual([
+      'name',
+      'description',
+      'model',
+      'model_reasoning_effort',
+      'sandbox_mode',
+      'skills',
+    ]);
+    // The multi-line basic string resolves to the text between the delimiters,
+    // its leading newline dropped by TOML's own rule — the value a product
+    // loading the file has (data-model.md § Field reading).
+    expect(details.instructionsText).toBe('Review code like an owner.\n');
+    // A declared path is a value, not a locator: it is published as written
+    // and nothing opens it (FR-019).
+    expect(JSON.stringify(details.metadata[5])).toContain('./.agents/skills/deploy');
+  });
+
+  it('publishes a declared mcp_servers table without an MCP recognition of any kind', async () => {
+    // The inheritance the vendor documents — a spawned session taking its
+    // parent's servers when the file omits them — is `codex.agents.inheritance`'s
+    // to record and no surface's to project (FR-009). What the file itself
+    // declares is its own content, and it joins no MCP row (data-model.md
+    // § Inventory unit).
+    const recognitions = await recognizeAgent(
+      [
+        'name = "docs_researcher"',
+        '',
+        '[mcp_servers.docs]',
+        'url = "https://docs.example.com/mcp"',
+        '',
+      ].join('\n'),
+    );
+    expect(recognitions.map((recognition) => recognition.details.kind)).toEqual(['agent']);
+    const declared = agentDetailsOf(recognitions).metadata.find(
+      (entry) => entry.key === 'mcp_servers',
+    );
+    expect(declared?.value).toEqual({
+      kind: 'mapping',
+      entries: [
+        {
+          key: 'docs',
+          keyKind: 'string',
+          value: {
+            kind: 'mapping',
+            entries: [
+              {
+                key: 'url',
+                keyKind: 'string',
+                value: {
+                  kind: 'scalar',
+                  scalarKind: 'string',
+                  text: 'https://docs.example.com/mcp',
+                },
+              },
+            ],
+          },
+        },
+      ],
+    });
+  });
+
+  it('publishes a configured path as an inert value and opens nothing', async () => {
+    // `config_file` names a parent configuration the vendor's own composition
+    // would read; recording the characters is the whole of what this product
+    // does with it (contracts/runtime-composition.md § Normative
+    // relationship-only registry).
+    const recognitions = await recognizeAgent(
+      ['name = "reviewer"', 'config_file = "../shared/agent.toml"', ''].join('\n'),
+    );
+    const declarations = agentDetailsOf(recognitions).metadata;
+    expect(declarations[1]).toEqual({
+      key: 'config_file',
+      keyKind: 'string',
+      value: { kind: 'scalar', scalarKind: 'string', text: '../shared/agent.toml' },
+    });
+    // No edge vocabulary: an authored reference cannot be promoted to a
+    // relationship the shipped registry does not cover (data-model.md
+    // § Relationship).
+    const serialized = JSON.stringify(recognitions);
+    for (const field of ['targetOrigin', 'authoredTarget', 'resolutionStatus']) {
+      expect(serialized).not.toContain(field);
+    }
+  });
+
+  it('publishes a credential and an environment reference exactly as written', async () => {
+    // Nothing is masked and nothing is resolved: the files are the reader's
+    // own (FR-025, FR-026).
+    const recognitions = await recognizeAgent(
+      [
+        'name = "secretive"',
+        `token = "${CONTENT_FIXTURE_SECRET}"`,
+        'endpoint = "${CODEX_AGENT_ENDPOINT}"',
+        '',
+      ].join('\n'),
+    );
+    const declarations = agentDetailsOf(recognitions).metadata;
+    expect(declarations[1]!.value).toEqual({
+      kind: 'scalar',
+      scalarKind: 'string',
+      text: CONTENT_FIXTURE_SECRET,
+    });
+    expect(declarations[2]!.value).toEqual({
+      kind: 'scalar',
+      scalarKind: 'string',
+      text: '${CODEX_AGENT_ENDPOINT}',
+    });
+  });
+
+  it('resolves the declared name rather than slicing the authored spelling', async () => {
+    // The same rule a skill's name follows: quoting is resolved once, so the
+    // identity is the value a product loading the file has (data-model.md
+    // § Field reading).
+    const recognitions = await recognizeAgent("name = 'pr_explorer'\n");
+    const [recognition] = recognitions;
+    if (recognition === undefined || recognition.details.kind !== 'agent') {
+      throw new Error('expected one Codex agent recognition');
+    }
+    expect(recognition.details.agentName).toBe('pr_explorer');
+  });
+
+  it('leaves a non-string instructions declaration in the metadata, a datetime included', async () => {
+    // The rendering publishes a TOML datetime as a `string` scalar, because
+    // its ISO spelling is its spelling (api-types.ts § DeclaredScalarKind), so
+    // the split is decided on the parser's typed resolution instead: a
+    // `developer_instructions` written as a date is a declaration rather than
+    // prose, and moving its rendering into the instructions half would show a
+    // Markdown body the file does not contain.
+    for (const declaration of [
+      'developer_instructions = 1979-05-27',
+      'developer_instructions = 42',
+      'developer_instructions = ["one"]',
+      'developer_instructions = true',
+    ]) {
+      const details = agentDetailsOf(await recognizeAgent(`name = "reviewer"\n${declaration}\n`));
+      expect(
+        details.metadata.map((entry) => entry.key),
+        declaration,
+      ).toEqual(['name', 'developer_instructions']);
+      expect(details.instructionsText, declaration).toBe('');
+    }
+  });
+
+  it('fails all-or-nothing and keeps nothing that happened to parse', async () => {
+    const recognitions = await recognizeAgent(
+      ['name = "reviewer"', 'description = "unterminated', ''].join('\n'),
+    );
+    expect(recognitions[0]!.parseStatus).toBe('failed');
+    expect(recognitions[0]!.details).toEqual({
+      kind: 'agent',
+      metadata: [],
+      instructionsText: '',
     });
   });
 });

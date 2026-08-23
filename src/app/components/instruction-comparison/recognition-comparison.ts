@@ -26,6 +26,7 @@
 // instruction file never publishes an edge for the wire to carry
 // (api-types.ts § FileDetailDto, tasks.md T217/T238).
 import { canonicalFrontmatterYamlText } from '../inspection/frontmatter-yaml';
+import { LEADING_INSTRUCTION_FRONTMATTER_KEYS } from '../inspection/declaration-order';
 import { SUPPORTED_TOOL_ORDER, type SupportedTool } from '../../../shared/entities';
 import type {
   FileDetailDto,
@@ -184,9 +185,9 @@ export class InstructionRecognitionComparison {
   public readonly rightDeclarations: InstructionDeclarationSideState;
 
   /**
-   * The two canonical YAML documents the frontmatter diff mounts — every
-   * key sorted, with no leading identity pair, because an instruction file
-   * declares no identity this product reads — or null unless both sides are
+   * The two canonical YAML documents the frontmatter diff mounts — the
+   * documented instruction keys leading, every other key sorted
+   * (declaration-order.ts) — or null unless both sides are
    * 'parsed': an unparsed side's declarations are unknown, and nothing may
    * be diffed against them (FR-028).
    */
@@ -194,6 +195,26 @@ export class InstructionRecognitionComparison {
     /** The first side's canonical document (frontmatter-yaml.ts). */
     readonly originalText: string;
     /** The second side's canonical document. */
+    readonly modifiedText: string;
+  } | null;
+
+  /**
+   * The two body texts the content diff mounts — each file with its
+   * frontmatter block removed, exactly as the one parse left it (FR-007) — or
+   * null under the same condition {@link frontmatterDiff} is.
+   *
+   * Its own diff beside the declarations, rather than left to the source
+   * comparison, because the two halves are one split and showing only one of
+   * them normalized would privilege it: the declarations align key by key
+   * whatever order each file wrote them in, and the body aligns line by line
+   * without the frontmatter block above it moving the lines. The complete
+   * authored source stays below both, which is where every authored spelling
+   * is readable (FR-011).
+   */
+  public readonly bodyDiff: {
+    /** The first side's body text. */
+    readonly originalText: string;
+    /** The second side's body text. */
     readonly modifiedText: string;
   } | null;
 
@@ -218,8 +239,24 @@ export class InstructionRecognitionComparison {
     this.frontmatterDiff =
       leftPresentation !== null && rightPresentation !== null
         ? {
-            originalText: canonicalFrontmatterYamlText(leftPresentation.frontmatter, []),
-            modifiedText: canonicalFrontmatterYamlText(rightPresentation.frontmatter, []),
+            originalText: canonicalFrontmatterYamlText(
+              leftPresentation.frontmatter,
+              LEADING_INSTRUCTION_FRONTMATTER_KEYS,
+            ),
+            modifiedText: canonicalFrontmatterYamlText(
+              rightPresentation.frontmatter,
+              LEADING_INSTRUCTION_FRONTMATTER_KEYS,
+            ),
+          }
+        : null;
+    // The other half of the same one parse, under the same guard: a side that
+    // offers no declarations offers no body either, because both come from the
+    // presentation that failed.
+    this.bodyDiff =
+      leftPresentation !== null && rightPresentation !== null
+        ? {
+            originalText: leftPresentation.bodyText,
+            modifiedText: rightPresentation.bodyText,
           }
         : null;
   }
@@ -235,12 +272,13 @@ export class InstructionRecognitionComparison {
  * recognize — so a surface that required its own kind would report a parsed
  * file as unparsed (session.ts § fileDetail). What this page renders is the
  * document, and every parse-carrying variant holds it the same way. The two
- * excluded variants are the ones that carry no parse at all: a rule file is
- * published whole, and an unrecognized file has nothing read out of it.
+ * excluded variants are the ones that carry no Markdown parse at all: a rule
+ * file is published whole, a custom agent publishes its declarations without a
+ * body, and an unrecognized file has nothing read out of it.
  */
 function presentationOf(side: InstructionComparisonSideInput): MarkdownPresentationDto | null {
   const detail = side.detail;
-  if (detail.kind === 'rule' || detail.kind === 'file') {
+  if (detail.kind === 'rule' || detail.kind === 'agent' || detail.kind === 'file') {
     return null;
   }
   return detail.presentation;

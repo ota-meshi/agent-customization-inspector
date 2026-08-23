@@ -523,6 +523,234 @@ describe('the Codex rule composition strategy (T413)', () => {
   });
 });
 
+describe('the Claude custom-agent composition strategies (T540)', () => {
+  it('ships the selection pipeline with its exact documented operations', () => {
+    // `select-first`, `select-closest`, `unknown-order` is the complete
+    // documented pipeline: the higher-priority scope wins across managed,
+    // session, project, User, and plugin locations, the closest project layer
+    // wins among nested ones, and a duplicate inside one tree is recorded as
+    // unresolved rather than ordered (contracts/runtime-composition.md
+    // § claude.agents.selection).
+    const selection = RUNTIME_COMPOSITION_STRATEGIES['claude.agents.selection'];
+    expect(selection.tool).toBe('claude');
+    expect(selection.operations).toEqual(['select-first', 'select-closest', 'unknown-order']);
+    expect(selection.documentationStatus).toBe('partially-documented');
+    expect(selection.lifecycleQualifiers).toEqual([]);
+  });
+
+  it('ships the context pipeline with its exact documented operations', () => {
+    // `concatenate`, `filter`, `replace`: the fresh context is assembled from
+    // the documented inputs, the built-in omissions and the depth limit take
+    // some away, and `context: fork` replaces the fresh context with the
+    // parent conversation.
+    const composition = RUNTIME_COMPOSITION_STRATEGIES['claude.agent-context.composition'];
+    expect(composition.tool).toBe('claude');
+    expect(composition.operations).toEqual(['concatenate', 'filter', 'replace']);
+    expect(composition.documentationStatus).toBe('documented');
+    expect(composition.lifecycleQualifiers).toEqual([]);
+  });
+
+  it('composes each strategy from its documented inputs, by identity', () => {
+    const selection = STRATEGY_RELATIONS['claude.agents.selection'].consumesBehaviors;
+    expect(selection.map((behavior) => behavior.behaviorId)).toEqual([
+      'claude.behavior.repo.agents',
+      'claude.behavior.user.agents',
+    ]);
+    const composition = STRATEGY_RELATIONS['claude.agent-context.composition'].consumesBehaviors;
+    expect(composition.map((behavior) => behavior.behaviorId)).toEqual([
+      'claude.behavior.repo.agent-memory.local',
+      'claude.behavior.repo.agent-memory.project',
+      'claude.behavior.repo.agents',
+      'claude.behavior.repo.instructions.ancestor',
+      'claude.behavior.repo.instructions.descendant',
+      'claude.behavior.repo.instructions.launch',
+      'claude.behavior.repo.rules',
+      'claude.behavior.repo.skills',
+      'claude.behavior.user.agent-memory',
+      'claude.behavior.user.agents',
+      'claude.behavior.user.auto-memory',
+    ]);
+    for (const behavior of [...selection, ...composition]) {
+      expect(VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId]).toBe(behavior);
+    }
+  });
+
+  it('explains the subagent rule through both agent strategies, by identity', () => {
+    const rule = RULE_RELATIONS['claude.repo.agent'];
+    expect(rule.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'claude.behavior.repo.agents',
+    ]);
+    expect(rule.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual([
+      'claude.agent-context.composition',
+      'claude.agents.selection',
+    ]);
+    for (const behavior of rule.basedOnBehaviors) {
+      expect(VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId]).toBe(behavior);
+    }
+    for (const strategy of rule.explainedByStrategies) {
+      expect(RUNTIME_COMPOSITION_STRATEGIES[strategy.strategyId]).toBe(strategy);
+    }
+    // The admitting record is a read authorization and nothing more: it
+    // recognizes the `agent` kind and carries no projection of a selection.
+    expect(INSPECTION_RULES['claude.repo.agent'].kind).toBe('agent');
+    expect(INSPECTION_RULES['claude.repo.agent'].precedenceGroup).toBeNull();
+  });
+
+  it('keeps the memory scopes composition-only, with no rule of their own', () => {
+    // The three memory behaviors exist so the context strategy can name what
+    // it composes. None of them is `basedOnBehaviors` of any rule, which is
+    // what keeps a running subagent's accumulated notes out of the read
+    // allowlist entirely (contracts/vendors/claude-code.md § Repository vendor
+    // behavior).
+    const memoryBehaviors = [
+      'claude.behavior.repo.agent-memory.local',
+      'claude.behavior.repo.agent-memory.project',
+      'claude.behavior.user.agent-memory',
+      'claude.behavior.user.auto-memory',
+    ];
+    for (const [ruleId, edges] of Object.entries(RULE_RELATIONS)) {
+      for (const behavior of edges.basedOnBehaviors) {
+        expect(memoryBehaviors, `${ruleId} rests on ${behavior.behaviorId}`).not.toContain(
+          behavior.behaviorId,
+        );
+      }
+    }
+  });
+
+  it('states both contract rows reciprocally with the shipped records, in both languages', () => {
+    for (const strategyId of ['claude.agents.selection', 'claude.agent-context.composition']) {
+      const record = RUNTIME_COMPOSITION_STRATEGIES[strategyId as 'claude.agents.selection'];
+      const consumed = STRATEGY_RELATIONS[
+        strategyId as 'claude.agents.selection'
+      ].consumesBehaviors.map((behavior) => behavior.behaviorId);
+      const cited = record.evidence.map((citation) => citation.sourceId);
+      expect(cited.length).toBeGreaterThan(0);
+      for (const path of [
+        'specs/001-inspect-agent-customizations/contracts/runtime-composition.md',
+        'specs/001-inspect-agent-customizations/contracts/runtime-composition.ja.md',
+      ]) {
+        const row = parseStrategyRow(path, strategyId);
+        expect(row.operations, `${strategyId} ${path}`).toEqual(record.operations);
+        expect(row.consumesBehaviors, `${strategyId} ${path}`).toEqual(consumed);
+        expect(row.evidence, `${strategyId} ${path}`).toEqual(cited);
+      }
+    }
+  });
+});
+
+describe('the Codex custom-agent composition strategy (T520)', () => {
+  it('ships the inheritance pipeline with its exact documented operations', () => {
+    // `select-first`, `merge-map`, `replace` is the complete documented
+    // pipeline: a custom agent whose name matches a built-in one takes
+    // precedence over it, the child file then overlays the parent session per
+    // key, and a value the file declares replaces the one already resolved. No
+    // `append`, because nothing is accumulated, and no `unknown-order`,
+    // because the page makes no ordering claim between the personal and
+    // project scopes for one to qualify (contracts/runtime-composition.md
+    // § codex.agents.inheritance).
+    const inheritance = RUNTIME_COMPOSITION_STRATEGIES['codex.agents.inheritance'];
+    expect(inheritance.tool).toBe('codex');
+    expect(inheritance.operations).toEqual(['select-first', 'merge-map', 'replace']);
+    // The project traversal is unstated and child `AGENTS.md` inheritance is
+    // established nowhere, which is what keeps the record short of
+    // `documented` (contracts/runtime-composition.md § Canonical
+    // evidence-assessment index).
+    expect(inheritance.documentationStatus).toBe('partially-documented');
+    expect(inheritance.lifecycleQualifiers).toEqual([]);
+  });
+
+  it('composes the strategy from both documented agent scopes, by identity', () => {
+    // The User half is listed even though only the project files are
+    // readable: a personal agent whose name matches takes precedence over a
+    // built-in one, so omitting it would describe a selection over project
+    // files alone.
+    const consumed = STRATEGY_RELATIONS['codex.agents.inheritance'].consumesBehaviors;
+    expect(consumed.map((behavior) => behavior.behaviorId)).toEqual([
+      'codex.behavior.repo.agents',
+      'codex.behavior.user.agents',
+    ]);
+    for (const behavior of consumed) {
+      expect(VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId]).toBe(behavior);
+    }
+  });
+
+  it('explains the agent rule through the inheritance strategy alone, by identity', () => {
+    // The rule's own candidacy rests on the project agent lookup alone — the
+    // personal `<CODEX_HOME>/agents/` scope is a Source boundary it may not
+    // open — while the spawned-session overlay, the selection, and the live
+    // sandbox and approval reapplication stay the strategy's (FR-009;
+    // codex/relations.ts).
+    const rule = RULE_RELATIONS['codex.repo.agent'];
+    expect(rule.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'codex.behavior.repo.agents',
+    ]);
+    expect(rule.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual([
+      'codex.agents.inheritance',
+    ]);
+    for (const behavior of rule.basedOnBehaviors) {
+      expect(VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId]).toBe(behavior);
+    }
+    for (const strategy of rule.explainedByStrategies) {
+      expect(RUNTIME_COMPOSITION_STRATEGIES[strategy.strategyId]).toBe(strategy);
+    }
+    // The admitting record is a read authorization and nothing more: it
+    // recognizes the `agent` kind and carries no projection of a selection.
+    expect(INSPECTION_RULES['codex.repo.agent'].kind).toBe('agent');
+    expect(INSPECTION_RULES['codex.repo.agent'].precedenceGroup).toBeNull();
+  });
+
+  it('adds no MCP edge in either direction, which is what keeps an agent no carrier', () => {
+    // The inheritance the page documents — a spawned session taking its
+    // parent's `mcp_servers` when the file omits them — is composition rather
+    // than a lookup, so the strategy consumes no MCP behavior and the rule is
+    // explained by no MCP strategy. Without those edges an agent file's own
+    // `mcp_servers` table stays its declared content and joins no MCP row
+    // (data-model.md § Inventory unit).
+    const consumed = STRATEGY_RELATIONS['codex.agents.inheritance'].consumesBehaviors.map(
+      (behavior) => behavior.behaviorId,
+    );
+    expect(consumed.filter((behaviorId) => behaviorId.includes('.mcp'))).toEqual([]);
+    const rule = RULE_RELATIONS['codex.repo.agent'];
+    expect(
+      rule.basedOnBehaviors.filter((behavior) => behavior.behaviorId.includes('.mcp')),
+    ).toEqual([]);
+    expect(
+      rule.explainedByStrategies.filter((strategy) => strategy.strategyId.includes('.mcp')),
+    ).toEqual([]);
+    // And no MCP rule is explained by the inheritance strategy either, so the
+    // two registries stay disjoint in both directions.
+    for (const [ruleId, edges] of Object.entries(RULE_RELATIONS)) {
+      if (INSPECTION_RULES[ruleId as keyof typeof INSPECTION_RULES].kind !== 'MCP') {
+        continue;
+      }
+      expect(
+        edges.explainedByStrategies.filter(
+          (strategy) => strategy.strategyId === 'codex.agents.inheritance',
+        ),
+        ruleId,
+      ).toEqual([]);
+    }
+  });
+
+  it('states the contract row reciprocally with the shipped record, in both languages', () => {
+    const record = RUNTIME_COMPOSITION_STRATEGIES['codex.agents.inheritance'];
+    const consumed = STRATEGY_RELATIONS['codex.agents.inheritance'].consumesBehaviors.map(
+      (behavior) => behavior.behaviorId,
+    );
+    const cited = record.evidence.map((citation) => citation.sourceId);
+    expect(cited.length).toBeGreaterThan(0);
+    for (const path of [
+      'specs/001-inspect-agent-customizations/contracts/runtime-composition.md',
+      'specs/001-inspect-agent-customizations/contracts/runtime-composition.ja.md',
+    ]) {
+      const row = parseStrategyRow(path, 'codex.agents.inheritance');
+      expect(row.operations, path).toEqual(record.operations);
+      expect(row.consumesBehaviors, path).toEqual(consumed);
+      expect(row.evidence, path).toEqual(cited);
+    }
+  });
+});
+
 describe('the Codex MCP composition strategy (T296)', () => {
   it('ships the MCP configuration pipeline with its exact documented operations', () => {
     // `merge-map`, `replace` is the complete documented pipeline: the
@@ -966,16 +1194,25 @@ describe('the Copilot Cloud MCP composition strategy (T379)', () => {
   it('consumes the one hosted behavior and adds no candidate rule', () => {
     // The pipeline's three inputs — out-of-box, custom-agent, and
     // repository-settings MCP — are the hosted behavior's own documented
-    // sources; none is a local file, so no rule of the MCP or agent kind
-    // joins the catalog with it, and nothing about a custom agent is
-    // referenced before its own inventory wave.
+    // sources; none is a local file, so nothing this strategy or its behavior
+    // documents may reach the read allowlist. Stated as the two edges that
+    // would carry it rather than as "no agent rule exists": the Codex
+    // custom-agent rule ships with its own inventory wave and rests on a
+    // located project directory, so a count of agent rules stopped being the
+    // question this assertion is about.
     const consumed = STRATEGY_RELATIONS['copilot.cloud.mcp.selection'].consumesBehaviors.map(
       (behavior) => behavior.behaviorId,
     );
     expect(consumed).toEqual(['copilot.behavior.cloud.mcp']);
     expect(
-      Object.values(INSPECTION_RULES).filter(
-        (rule) => rule.kind === 'agent' && rule.discoveryClass !== 'excluded',
+      Object.entries(RULE_RELATIONS).filter(
+        ([, edges]) =>
+          edges.explainedByStrategies.some(
+            (strategy) => strategy.strategyId === 'copilot.cloud.mcp.selection',
+          ) ||
+          edges.basedOnBehaviors.some(
+            (behavior) => behavior.behaviorId === 'copilot.behavior.cloud.mcp',
+          ),
       ),
     ).toEqual([]);
   });
@@ -1169,6 +1406,138 @@ describe('the Claude settings precedence strategy (T1110)', () => {
     }
     for (const strategy of rule.explainedByStrategies) {
       expect(RUNTIME_COMPOSITION_STRATEGIES[strategy.strategyId]).toBe(strategy);
+    }
+  });
+});
+
+describe('the Copilot custom-agent composition strategies (T559)', () => {
+  it('ships one selection per surface with its exact documented operations', () => {
+    // Three surfaces, three strategies, and deliberately not one: VS Code
+    // filters by a profile's `target` and leaves cross-scope duplicates
+    // unresolved, the CLI walks project layers closest-first with a documented
+    // conflict about project versus User, and the Cloud agent selects
+    // Repository before organization before enterprise and deduplicates by
+    // the documented filename identity (contracts/runtime-composition.md).
+    const cases = [
+      {
+        strategyId: 'copilot.vscode.agents.selection',
+        surfaces: ['copilot-vscode'],
+        operations: ['filter', 'select-first', 'unknown-order'],
+        documentationStatus: 'partially-documented',
+      },
+      {
+        strategyId: 'copilot.cli.agents.selection',
+        surfaces: ['copilot-cli'],
+        operations: ['select-closest', 'select-first', 'unknown-order'],
+        documentationStatus: 'conflict',
+      },
+      {
+        strategyId: 'copilot.cloud.agents.selection',
+        surfaces: ['copilot-cloud'],
+        operations: ['select-first', 'deduplicate'],
+        documentationStatus: 'documented',
+      },
+    ] as const;
+    for (const expected of cases) {
+      const record = RUNTIME_COMPOSITION_STRATEGIES[expected.strategyId];
+      expect(record.tool, expected.strategyId).toBe('copilot');
+      expect(record.surfaces, expected.strategyId).toEqual(expected.surfaces);
+      expect(record.operations, expected.strategyId).toEqual(expected.operations);
+      expect(record.documentationStatus, expected.strategyId).toBe(expected.documentationStatus);
+      expect(record.lifecycleQualifiers, expected.strategyId).toEqual([]);
+    }
+  });
+
+  it('composes each selection from its own surface\u2019s two scopes, by identity', () => {
+    const composed = {
+      'copilot.vscode.agents.selection': [
+        'copilot.behavior.vscode.agents',
+        'copilot.behavior.vscode.user.agents',
+      ],
+      'copilot.cli.agents.selection': [
+        'copilot.behavior.cli.agents',
+        'copilot.behavior.cli.user.agents',
+      ],
+      'copilot.cloud.agents.selection': [
+        'copilot.behavior.cloud.agents',
+        'copilot.behavior.cloud.organization-agents',
+      ],
+    } as const;
+    for (const [strategyId, expected] of Object.entries(composed)) {
+      const consumed =
+        STRATEGY_RELATIONS[strategyId as 'copilot.cli.agents.selection'].consumesBehaviors;
+      expect(
+        consumed.map((behavior) => behavior.behaviorId),
+        strategyId,
+      ).toEqual(expected);
+      for (const behavior of consumed) {
+        expect(VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId]).toBe(behavior);
+      }
+    }
+  });
+
+  it('explains the profile rule through all three selections, by identity', () => {
+    const rule = RULE_RELATIONS['copilot.repo.agent'];
+    // The rule rests on the three repository-scoped behaviors alone: the User
+    // and organization scopes the selections also consume describe files
+    // outside every selected root, so no admitted file can be one.
+    expect(rule.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'copilot.behavior.cli.agents',
+      'copilot.behavior.cloud.agents',
+      'copilot.behavior.vscode.agents',
+    ]);
+    expect(rule.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual([
+      'copilot.cli.agents.selection',
+      'copilot.cloud.agents.selection',
+      'copilot.vscode.agents.selection',
+    ]);
+    for (const behavior of rule.basedOnBehaviors) {
+      expect(VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId]).toBe(behavior);
+    }
+    for (const strategy of rule.explainedByStrategies) {
+      expect(RUNTIME_COMPOSITION_STRATEGIES[strategy.strategyId]).toBe(strategy);
+    }
+    // The admitting record is a read authorization and nothing more: it
+    // recognizes the `agent` kind and carries no projection of a selection.
+    expect(INSPECTION_RULES['copilot.repo.agent'].kind).toBe('agent');
+    expect(INSPECTION_RULES['copilot.repo.agent'].precedenceGroup).toBeNull();
+  });
+
+  it('keeps the hosted organization scope composition-only, with no rule of its own', () => {
+    // `copilot.behavior.cloud.organization-agents` exists so the Cloud
+    // selection can name what it composes. It has no origin file anywhere —
+    // an organization profile lives outside every inspected Source — so no
+    // rule may rest on it (contracts/vendors/github-copilot.md).
+    for (const [ruleId, edges] of Object.entries(RULE_RELATIONS)) {
+      for (const behavior of edges.basedOnBehaviors) {
+        expect(behavior.behaviorId, `${ruleId} rests on ${behavior.behaviorId}`).not.toBe(
+          'copilot.behavior.cloud.organization-agents',
+        );
+      }
+    }
+  });
+
+  it('states all three contract rows reciprocally with the shipped records, in both languages', () => {
+    for (const strategyId of [
+      'copilot.cli.agents.selection',
+      'copilot.cloud.agents.selection',
+      'copilot.vscode.agents.selection',
+    ]) {
+      const record = RUNTIME_COMPOSITION_STRATEGIES[strategyId as 'copilot.cli.agents.selection'];
+      const consumed = STRATEGY_RELATIONS[
+        strategyId as 'copilot.cli.agents.selection'
+      ].consumesBehaviors.map((behavior) => behavior.behaviorId);
+      const cited = record.evidence.map((citation) => citation.sourceId);
+      expect(cited.length).toBeGreaterThan(0);
+      for (const path of [
+        'specs/001-inspect-agent-customizations/contracts/runtime-composition.md',
+        'specs/001-inspect-agent-customizations/contracts/runtime-composition.ja.md',
+      ]) {
+        const row = parseStrategyRow(path, strategyId);
+        expect(row.operations, `${strategyId} ${path}`).toEqual(record.operations);
+        expect(row.consumesBehaviors, `${strategyId} ${path}`).toEqual(consumed);
+        expect(row.evidence, `${strategyId} ${path}`).toEqual(cited);
+      }
     }
   });
 });

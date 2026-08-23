@@ -488,6 +488,91 @@ export interface PromptInventoryEntryDto {
 }
 
 /**
+ * One custom-agent file behind an inventory entry (contracts/http-api.md
+ * § get-session `agents[]`). It names its file by `sourceRelativePath` and
+ * repeats nothing else the file publishes for itself — size, read outcome, and
+ * file-scoped diagnostics all stay on {@link CustomizationFileSummaryDto}.
+ */
+export interface AgentDefinitionDto {
+  /**
+   * The Source-relative Path of the file this agent is defined in — the
+   * file's identity (FR-030), which joins to `files[]` and is the detail
+   * route `/agents/<source-relative path>`.
+   */
+  readonly sourceRelativePath: string;
+  /**
+   * The tool whose recognition this definition is (FR-007). One definition per
+   * `(file, tool)` under the entry's name — the same unit as ToolRecognition —
+   * so a file two products read as an agent is two definitions of that entry.
+   */
+  readonly tool: SupportedTool;
+  /**
+   * That tool's surfaces whose documented behavior the admitting rules rest
+   * on, deduplicated and in the closed surface order — the same statement
+   * {@link FileRecognitionDto} carries, because a definition is a recognition
+   * and FR-009 states the surfaces beside every recognition. Non-empty.
+   *
+   * Never a claim that a surface spawned the agent: an admission is not an
+   * activation (FR-009).
+   */
+  readonly surfaces: readonly VendorSurface[];
+  /**
+   * The kind's closed extraction state (FR-028), published because a
+   * declared-`name` product's row name comes out of the parse: a failed
+   * extraction leaves that name unknown rather than absent, which is what the
+   * null-named row's members tell apart, exactly as an MCP declaration's does.
+   * A file-name product's definition is unaffected — its row keeps the
+   * identity the path gives it — and the state is still published for it,
+   * because what could not be read is a fact about the file either way.
+   */
+  readonly parseStatus: RecognitionParseStatus;
+  /**
+   * The kind's extraction-failure reference (FR-028): one extraction per kind
+   * means one record, which every failed definition of the file names as its
+   * own parse fact and the file's `files[]` entry lists once.
+   */
+  readonly diagnosticIds: readonly string[];
+}
+
+/**
+ * One row of the custom-agent inventory (contracts/http-api.md § get-session
+ * `agents[]`, data-model.md § Inventory unit): one agent name, and every file
+ * a recognizing tool defines that agent in.
+ *
+ * The name is the unit rather than the file, the way an MCP row's declared
+ * server name is, so two files resolving one name are two definitions of one
+ * row. Which fact resolves it is the admitting rule's, because the products
+ * differ: OpenAI Codex and Claude Code identify a custom agent by the `name`
+ * its file declares and call a matching filename convention rather than
+ * lookup, while GitHub Copilot documents `name` as an optional display name
+ * and identifies a profile by its configuration file's own name minus `.md`
+ * or `.agent.md`. One file two products name differently therefore defines on
+ * two rows.
+ */
+export interface AgentInventoryEntryDto {
+  /**
+   * The name the admitting product identifies the agent by (FR-007), or null
+   * for the one row that closes the list with the files publishing no name.
+   *
+   * Which fact answers is the rule's, and so is what an absence means. Under a
+   * declared-`name` product the row is the value the parser resolved, and a
+   * file declaring none, one declaring anything but a scalar, and one whose
+   * declarations could not be read at all share the null row, where the name
+   * is unknown rather than absent (FR-028): naming such a row after its
+   * filename would report an agent name that product does not have. Under a
+   * file-name product the path answers, so its definitions never reach the
+   * null row and a failed parse takes nothing from the row's identity.
+   */
+  readonly name: string | null;
+  /**
+   * The recognitions defining this name, one definition per `(file, tool)`,
+   * in Source-relative Path order and the contracted tool order within one
+   * file. Non-empty: a name nothing recognizes is no row.
+   */
+  readonly definitions: readonly AgentDefinitionDto[];
+}
+
+/**
  * One row of the permissions inventory (contracts/http-api.md § get-session
  * `permissions[]`, data-model.md § Inventory unit): one declared permission
  * policy, named by the path of the file that declares it.
@@ -636,32 +721,44 @@ export interface MarkdownPresentationDto {
   readonly bodyText: string;
 }
 
+/**
+ * What one custom-agent file declares, split the way its detail shows it
+ * (contracts/http-api.md § get-file-detail): the declarations a product reads
+ * as configuration, and the instructions it gives the agent.
+ *
+ * Its own shape rather than {@link MarkdownPresentationDto} because the split
+ * is not a frontmatter block: a Codex agent is TOML whose
+ * `developer_instructions` string is the prose and whose remaining top-level
+ * keys are the configuration, while the products that write an agent as
+ * Markdown split at the frontmatter fence. Naming the halves after what they
+ * are lets both spell the same two fields, and lets one detail surface render
+ * them the same way — the metadata as YAML, the instructions as Markdown.
+ */
+export interface AgentPresentationDto {
+  /**
+   * Every declaration the file makes except the one holding the instructions,
+   * in the file's own order — the agent's own `name` among them, because the
+   * name is a declaration like any other on this surface and the row it heads
+   * is the inventory's fact (FR-007). Empty when the file declares nothing
+   * else.
+   */
+  readonly metadata: readonly DeclaredEntryDto[];
+  /**
+   * The instructions the file gives the agent, as the parser resolved them:
+   * a Codex agent's `developer_instructions` string, a Markdown agent's body
+   * once its frontmatter block is removed. Empty when the file declares none —
+   * and empty, too, when the declaration holding them is not a string, which
+   * leaves it a metadata entry rather than prose.
+   */
+  readonly instructionsText: string;
+}
+
 /** Fields every detail variant carries; see {@link FileDetailDto}. */
 interface FileDetailBase {
   /** The committed file, including its complete authored source when readable. */
   readonly file: CustomizationFileDto;
   /** The file-scoped Diagnostic records the file's own `diagnosticIds` name (FR-028). */
   readonly diagnostics: readonly SerializedDiagnostic[];
-}
-
-/**
- * Detail of a skill entry point: the file plus what the one scan-time parse
- * resolved (contracts/http-api.md § get-file-detail). The parse is a fact of
- * the file, not of a recognizing tool — every vendor reads the same fixed
- * YAML semantics — so it is published once; which tools recognize the file,
- * and each tool's invocation name, are the inventory's facts
- * (`skills[].definitions[]`), and the route's tool segment says which
- * definition a page is about.
- */
-export interface SkillFileDetailDto extends FileDetailBase {
-  /** Discriminant: the file is a recognized skill entry point. */
-  readonly kind: 'skill';
-  /**
-   * The parsed declarations and instructions, or null exactly when extraction
-   * failed all-or-nothing (FR-028): nothing was parsed, the failure's
-   * Diagnostic is in `diagnostics`, and the complete source stays readable.
-   */
-  readonly presentation: MarkdownPresentationDto | null;
 }
 
 /**
@@ -678,11 +775,60 @@ export interface InstructionFileDetailDto extends FileDetailBase {
   readonly kind: 'instructions';
   /**
    * The parsed declarations and instructions, or null exactly when extraction
-   * failed all-or-nothing (FR-028), the same rule the skill variant follows:
-   * nothing was parsed, the failure's Diagnostic is in `diagnostics`, and the
-   * complete source stays readable.
+   * failed all-or-nothing (FR-028): nothing was parsed, the failure's
+   * Diagnostic is in `diagnostics`, and the complete source stays readable.
+   * Every variant below that carries a parse follows the same rule.
    */
   readonly presentation: MarkdownPresentationDto | null;
+}
+
+/**
+ * Detail of a skill entry point: the file plus what the one scan-time parse
+ * resolved (contracts/http-api.md § get-file-detail). The parse is a fact of
+ * the file, not of a recognizing tool — every vendor reads the same fixed
+ * YAML semantics — so it is published once; which tools recognize the file,
+ * and each tool's invocation name, are the inventory's facts
+ * (`skills[].definitions[]`), and the route's tool segment says which
+ * definition a page is about.
+ */
+export interface SkillFileDetailDto extends FileDetailBase {
+  /** Discriminant: the file is a recognized skill entry point. */
+  readonly kind: 'skill';
+  /**
+   * The parsed declarations and instructions, or null exactly when extraction
+   * failed all-or-nothing (FR-028), the same rule the instructions variant
+   * states: nothing was parsed, the failure's Diagnostic is in `diagnostics`,
+   * and the complete source stays readable.
+   */
+  readonly presentation: MarkdownPresentationDto | null;
+}
+
+/**
+ * Detail of a recognized custom-agent file: the file plus what the one
+ * scan-time parse resolved (contracts/http-api.md § get-file-detail).
+ *
+ * Both halves, unlike an MCP carrier's: an agent file is admitted as the
+ * document its author wrote, so its complete authored source reaches the page
+ * (FR-025) and the parse sits beside it as the values a product would actually
+ * read — resolved once, quoting and escapes settled, where the source shows
+ * the spelling (data-model.md § Field reading).
+ *
+ * No per-tool identity here, and no agent name: which tools recognize the file
+ * is the inventory's fact, and so is the name — the file's own `name`
+ * declaration arrives here as one metadata entry like every other key it
+ * wrote. A declared `mcp_servers` block is one of those entries too: it is
+ * this file's content and joins no MCP row (data-model.md § Inventory unit).
+ */
+export interface AgentFileDetailDto extends FileDetailBase {
+  /** Discriminant: the file is a recognized custom-agent definition. */
+  readonly kind: 'agent';
+  /**
+   * The declarations and the instructions the one scan-time parse resolved, or
+   * null exactly when extraction failed all-or-nothing (FR-028): nothing was
+   * parsed, both halves are unknown rather than absent, the failure's
+   * Diagnostic is in `diagnostics`, and the complete source stays readable.
+   */
+  readonly presentation: AgentPresentationDto | null;
 }
 
 /**
@@ -704,9 +850,9 @@ export interface PromptFileDetailDto extends FileDetailBase {
   readonly kind: 'prompt/command';
   /**
    * The parsed declarations and instructions, or null exactly when extraction
-   * failed all-or-nothing (FR-028), the same rule the skill and instruction
-   * variants follow: nothing was parsed, the failure's Diagnostic is in
-   * `diagnostics`, and the complete source stays readable.
+   * failed all-or-nothing (FR-028), the same rule the instructions variant
+   * states: nothing was parsed, the failure's Diagnostic is in `diagnostics`,
+   * and the complete source stays readable.
    */
   readonly presentation: MarkdownPresentationDto | null;
 }
@@ -900,8 +1046,9 @@ export interface PermissionPolicyBlockDetailDto extends PermissionPolicyDetailBa
  * admits; the vendor rule modules say why they get no rule of their own.
  */
 export type FileDetailDto =
-  | SkillFileDetailDto
   | InstructionFileDetailDto
+  | SkillFileDetailDto
+  | AgentFileDetailDto
   | PromptFileDetailDto
   | RuleFileDetailDto
   | UnrecognizedFileDetailDto;
@@ -1188,27 +1335,6 @@ export interface SessionSnapshot {
    */
   readonly instructions: readonly InstructionInventoryEntryDto[];
   /**
-   * The rules inventory: one entry per recognized rule file — modular
-   * instructions a product loads into context — in Source-relative Path
-   * order (data-model.md § Inventory unit).
-   */
-  readonly rules: readonly RuleInventoryEntryDto[];
-  /**
-   * The prompts-and-commands inventory: one entry per name a reader invokes,
-   * in name order, each listing the prompt or command files that resolve it
-   * (data-model.md § Inventory unit). Named for the kind rather than for the
-   * command half of it, so the field stays right as the kind's other
-   * locations ship.
-   */
-  readonly prompts: readonly PromptInventoryEntryDto[];
-  /**
-   * The permissions inventory: one entry per declared permission policy — a
-   * policy deciding which commands or tools a product may run — named by the
-   * path of the file that declares it, in Source-relative Path order
-   * (data-model.md § Inventory unit).
-   */
-  readonly permissions: readonly PermissionsInventoryEntryDto[];
-  /**
    * The skill inventory: one entry per name as one tool resolves it
    * (data-model.md § Inventory unit). A row's unit is decided by the kind, not
    * by the file, so each kind publishes its own inventory as its recognizer
@@ -1222,6 +1348,34 @@ export interface SessionSnapshot {
    * (data-model.md § Inventory unit).
    */
   readonly mcp: readonly McpInventoryEntryDto[];
+  /**
+   * The custom-agent inventory: one entry per agent name the admitting rules
+   * resolve, in name order, each listing the files that define it; the one
+   * null-named entry closes the list with the files publishing no name
+   * (data-model.md § Inventory unit).
+   */
+  readonly agents: readonly AgentInventoryEntryDto[];
+  /**
+   * The prompts-and-commands inventory: one entry per name a reader invokes,
+   * in name order, each listing the prompt or command files that resolve it
+   * (data-model.md § Inventory unit). Named for the kind rather than for the
+   * command half of it, so the field stays right as the kind's other
+   * locations ship.
+   */
+  readonly prompts: readonly PromptInventoryEntryDto[];
+  /**
+   * The rules inventory: one entry per recognized rule file — modular
+   * instructions a product loads into context — in Source-relative Path
+   * order (data-model.md § Inventory unit).
+   */
+  readonly rules: readonly RuleInventoryEntryDto[];
+  /**
+   * The permissions inventory: one entry per declared permission policy — a
+   * policy deciding which commands or tools a product may run — named by the
+   * path of the file that declares it, in Source-relative Path order
+   * (data-model.md § Inventory unit).
+   */
+  readonly permissions: readonly PermissionsInventoryEntryDto[];
   /**
    * Active-generation Diagnostic records plus session-owned lifecycle
    * records (contracts/http-api.md § get-session `diagnostics[]`).

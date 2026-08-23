@@ -1035,11 +1035,193 @@ export const COPILOT_REPO_MCP_VSCODE_ROOT_RULE = {
     : [],
 } as const satisfies InspectionRule;
 
+/**
+ * The `copilot.repo.agent` matcher, authored in the typed segment form the
+ * contract table shows: the Markdown direct children of the Repository root's
+ * own `.github/agents/` directory.
+ *
+ * The `.claude/agents/` directory two of the three surfaces also read has a
+ * rule of its own rather than a second selector here, for the reason the
+ * repository instruction filename has a CLI-context rule of its own: a rule's
+ * surfaces are derived from the behaviors it rests on, so one rule spanning
+ * both directories would tag a `.claude/agents/*.md` with the Cloud agent
+ * surface, which documents `.github/agents/` alone
+ * (`rules/registry.ts` § recognizingSurfaces,
+ * contracts/vendors/github-copilot.md § Documented Cloud agent behavior).
+ *
+ * Direct children, and root-anchored. Every surface documents a root-anchored
+ * location — VS Code the workspace root, the cloud agent the repository root,
+ * and the CLI an upward walk from its working directory whose one member every
+ * session shares is the selected root (FR-001) — so a
+ * `packages/api/.github/agents/reviewer.md` belongs to a runtime chain member
+ * this product does not select and is a near miss rather than a candidate. No
+ * recursive step either: none of the three pages documents a subfolder inside
+ * an agents directory, unlike Claude's own subagent page, so admitting one
+ * would rest on a search no official text establishes
+ * (contracts/vendors/github-copilot.md § Inspector Repository matcher rules).
+ *
+ * The `*.agent.md` spelling the cloud agent also documents needs no selector
+ * of its own: it ends in `.md`, so the one dynamic step already admits it.
+ */
+const COPILOT_REPO_AGENT_MATCHER: StructuredInspectorMatcher = {
+  base: { kind: 'repository' },
+  selectors: [
+    [
+      { kind: 'literal', value: '.github' },
+      { kind: 'literal', value: 'agents' },
+      { kind: 'regex', pattern: /\.md$/u },
+    ],
+  ],
+};
+
+/**
+ * The `copilot.repo.agent.claude` matcher: the same direct-child shape one
+ * directory over. Its own program because its rule is its own; see
+ * {@link COPILOT_REPO_AGENT_MATCHER} for why the two are not one rule.
+ */
+const COPILOT_REPO_AGENT_CLAUDE_MATCHER: StructuredInspectorMatcher = {
+  base: { kind: 'repository' },
+  selectors: [
+    [
+      { kind: 'literal', value: '.claude' },
+      { kind: 'literal', value: 'agents' },
+      { kind: 'regex', pattern: /\.md$/u },
+    ],
+  ],
+};
+
+/**
+ * Copilot Repository custom agents: the read-authorizing counterpart of the
+ * three surface behaviors that document the same two directories. One
+ * admission covers all three, which is what puts every recognizing surface on
+ * the file's one recognition (`CandidateProvenance.recognizingSurfaces`).
+ *
+ * The `.claude/agents/` directory the CLI and VS Code also read belongs to
+ * `copilot.repo.agent.claude`, whose surfaces are those two alone.
+ *
+ * A declared `mcp-servers` block is this file's own frontmatter and joins no
+ * MCP row: an MCP declaration's home is an explicit carrier (data-model.md
+ * § Inventory unit). The shared profile format documents that field as not
+ * used in VS Code and other IDE custom agents at all, which is a runtime fact
+ * this product does not project either (FR-009).
+ *
+ * Admitting a file is not asserting any surface loads the agent: which
+ * locations a session searches, whether a profile's `target` includes the
+ * running surface, and whether an organization profile of the same name
+ * outranks it are runtime inputs this tool never observes.
+ */
+export const COPILOT_REPO_AGENT_RULE = {
+  ruleId: 'copilot.repo.agent',
+  tool: 'copilot',
+  discoveryClass: 'static-candidate',
+  kind: 'agent',
+  sourceKinds: ['repository'],
+  matcher: COPILOT_REPO_AGENT_MATCHER,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.cli.reference',
+          url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
+          officialHost: 'docs.github.com',
+          sections: ['Custom agent locations'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'The CLI loads project agents from .github/agents/ — the directory this rule admits — walking upward from the working directory to the Git root, whose one member every session shares is the selected root; the ~/.copilot/agents/ user scope named beside it is a different Source boundary this rule may not read.',
+        },
+        {
+          sourceId: 'github.copilot.custom-agents',
+          url: 'https://docs.github.com/en/copilot/reference/custom-agents-configuration',
+          officialHost: 'docs.github.com',
+          sections: ['YAML frontmatter properties'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'A repository agent profile is one Markdown file with YAML frontmatter, named for deduplication by its own file name minus .md or .agent.md, so both spellings this rule admits are the same documented file kind.',
+        },
+        {
+          sourceId: 'vscode.copilot.custom-agents',
+          url: 'https://code.visualstudio.com/docs/agent-customization/custom-agents',
+          officialHost: 'code.visualstudio.com',
+          sections: ['Custom agent file locations'],
+          reviewedOn: '2026-07-15',
+          establishes:
+            'VS Code reads the same workspace directory, accepting any .md file in it, and treats parent-folder discovery as an opt-in setting rather than part of the default lookup — which is why the rule stays anchored at the selected root.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
+ * Copilot Repository custom agents in `.claude/agents/`: the read-authorizing
+ * counterpart of the two surface behaviors that document that directory. The
+ * Cloud agent is deliberately absent — its own behavior names
+ * `.github/agents/` alone — which is the whole reason this is a rule rather
+ * than a second selector of {@link COPILOT_REPO_AGENT_RULE}: a rule's
+ * surfaces are derived from the behaviors it rests on, so one rule spanning
+ * both directories would report the hosted agent as reading a file no page
+ * says it reads (`rules/registry.ts` § recognizingSurfaces).
+ *
+ * A file here is admitted by this rule and by `claude.repo.agent` alike: one
+ * physical file, two products' recognitions, read once (`scan.ts`). Their
+ * answers differ where the vendors differ — Claude names the agent by its
+ * declared `name`, Copilot by the configuration file's own name — which is
+ * why the naming question belongs to the admitting rule
+ * (`registry.ts` § CompiledStaticAgentRule).
+ *
+ * Everything else it shares with its sibling: a declared `mcp-servers` block
+ * is this file's own frontmatter and joins no MCP row (data-model.md
+ * § Inventory unit), and admitting a file asserts no surface loads the agent
+ * (FR-009).
+ */
+export const COPILOT_REPO_AGENT_CLAUDE_RULE = {
+  ruleId: 'copilot.repo.agent.claude',
+  tool: 'copilot',
+  discoveryClass: 'static-candidate',
+  kind: 'agent',
+  sourceKinds: ['repository'],
+  matcher: COPILOT_REPO_AGENT_CLAUDE_MATCHER,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.cli.reference',
+          url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
+          officialHost: 'docs.github.com',
+          sections: ['Custom agent locations'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'The CLI loads project agents from .claude/agents/ as well as .github/agents/, walking upward from the working directory to the Git root, whose one member every session shares is the selected root.',
+        },
+        {
+          sourceId: 'vscode.copilot.custom-agents',
+          url: 'https://code.visualstudio.com/docs/agent-customization/custom-agents',
+          officialHost: 'code.visualstudio.com',
+          sections: ['Custom agent file locations'],
+          reviewedOn: '2026-07-15',
+          establishes:
+            'VS Code reads .claude/agents/ in the workspace beside .github/agents/, accepting any .md file in it, and treats parent-folder discovery as an opt-in setting rather than part of the default lookup — which is why the rule stays anchored at the selected root.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
 /** Copilot's contribution to the inspection-rule registry, keyed by `ruleId`. */
 export const COPILOT_INSPECTION_RULES: Readonly<Record<CopilotRuleId, InspectionRule>> = {
   [COPILOT_EXCLUDED_ADDITIONAL_STANDARD_LOCATIONS_RULE.ruleId]:
     COPILOT_EXCLUDED_ADDITIONAL_STANDARD_LOCATIONS_RULE,
   [COPILOT_EXCLUDED_EXTRA_DIRECTORIES_RULE.ruleId]: COPILOT_EXCLUDED_EXTRA_DIRECTORIES_RULE,
+  [COPILOT_REPO_AGENT_RULE.ruleId]: COPILOT_REPO_AGENT_RULE,
+  [COPILOT_REPO_AGENT_CLAUDE_RULE.ruleId]: COPILOT_REPO_AGENT_CLAUDE_RULE,
   [COPILOT_REPO_COMMAND_RULE.ruleId]: COPILOT_REPO_COMMAND_RULE,
   [COPILOT_REPO_INSTRUCTIONS_AGENTS_RULE.ruleId]: COPILOT_REPO_INSTRUCTIONS_AGENTS_RULE,
   [COPILOT_REPO_INSTRUCTIONS_CLAUDE_ROOT_RULE.ruleId]: COPILOT_REPO_INSTRUCTIONS_CLAUDE_ROOT_RULE,

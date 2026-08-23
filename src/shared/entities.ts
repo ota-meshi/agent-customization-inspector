@@ -45,20 +45,18 @@ export type CustomizationKind =
   | 'instructions'
   /** A skill entry point such as `SKILL.md`. */
   | 'skill'
-  /** A custom-agent definition. */
-  | 'agent'
-  /** A lifecycle hook declaration. */
-  | 'hook'
   /** An MCP server declaration carrier. */
   | 'MCP'
+  /** A custom-agent definition. */
+  | 'agent'
   /** A reusable prompt or slash command. */
   | 'prompt/command'
   /** One authored rule file: modular instructions a product loads into context. */
   | 'rule'
-  /** A settings or configuration carrier. */
-  | 'settings/config'
   /** A policy deciding which commands or tools a product may run. */
   | 'permissions'
+  /** A lifecycle hook declaration. */
+  | 'hook'
   /** An output-style definition. */
   | 'output style'
   /** A plugin manifest. */
@@ -66,7 +64,9 @@ export type CustomizationKind =
   /** A plugin marketplace catalog. */
   | 'marketplace'
   /** Skill-local metadata beside a `SKILL.md`. */
-  | 'skill metadata';
+  | 'skill metadata'
+  /** A settings or configuration carrier. */
+  | 'settings/config';
 
 /**
  * The closed presentation order of {@link CustomizationKind}: the order the
@@ -76,36 +76,42 @@ export type CustomizationKind =
  * this constant's own decision).
  *
  * It is a reading order rather than a derived one — no rule turns a kind into
- * a rank — so it is authored here once and {@link CustomizationKind} is
- * declared in the same order, leaving no second sequence to disagree with it.
+ * a rank — so it is authored here once and every other per-kind declaration
+ * follows it: {@link CustomizationKind} itself,
+ * {@link CUSTOMIZATION_KIND_TEXT}, {@link CUSTOMIZATION_KIND_PLURAL_TEXT},
+ * and the per-kind fields, unions, and dispatch chains the inventory and its
+ * routes are built from. A declaration in another sequence is a second
+ * reading order to disagree with this one, and the only orders that stay
+ * their own are the ones that carry meaning — the fixed variant order
+ * `InspectionSession.fileDetail` resolves an overlapping path with.
  */
 export const CUSTOMIZATION_KIND_ORDER: readonly CustomizationKind[] = [
   /** Instruction files sort first. */
   'instructions',
   /** Skills follow instructions. */
   'skill',
-  /** Custom agents follow skills. */
-  'agent',
-  /** Hooks follow custom agents. */
-  'hook',
-  /** MCP carriers follow hooks. */
+  /** MCP carriers follow skills. */
   'MCP',
-  /** Prompts and commands follow MCP carriers. */
+  /** Custom agents follow MCP carriers. */
+  'agent',
+  /** Prompts and commands follow custom agents. */
   'prompt/command',
   /** Rule files follow prompts and commands. */
   'rule',
-  /** Settings and config carriers follow rule files. */
-  'settings/config',
-  /** Permission policies follow the settings that can carry them. */
+  /** Permission policies follow rule files. */
   'permissions',
-  /** Output styles follow permission policies. */
+  /** Hooks follow permission policies. */
+  'hook',
+  /** Output styles follow hooks. */
   'output style',
   /** Plugin manifests follow output styles. */
   'plugin',
   /** Marketplace catalogs follow plugin manifests. */
   'marketplace',
-  /** Skill metadata sorts last. */
+  /** Skill metadata follows marketplace catalogs. */
   'skill metadata',
+  /** Settings and configuration carriers sort last. */
+  'settings/config',
 ];
 
 /**
@@ -142,22 +148,20 @@ export function isSupportedTool(value: unknown): value is SupportedTool {
 export const CUSTOMIZATION_KIND_PLURAL_TEXT: Readonly<Record<CustomizationKind, string>> = {
   /** Instruction rows are the files themselves. */
   instructions: 'instruction files',
-  /** Rule rows are the files themselves. */
-  rule: 'rule files',
   /** A skill row is one name as one tool resolves it. */
   skill: 'skills',
-  /** An agent row is one custom-agent definition. */
+  /** An MCP row is one server declared inside a carrier. */
+  MCP: 'MCP servers',
+  /** An agent row is one agent name the admitting rule resolves. */
   agent: 'custom agents',
   /** A prompt or command row is one name a reader invokes. */
   'prompt/command': 'prompts and commands',
-  /** A hook row is one declaration. */
-  hook: 'hook declarations',
-  /** An MCP row is one server declared inside a carrier. */
-  MCP: 'MCP servers',
-  /** A settings or configuration row is the carrier file. */
-  'settings/config': 'settings and configuration files',
+  /** Rule rows are the files themselves. */
+  rule: 'rule files',
   /** A permissions row is the file declaring the policy. */
   permissions: 'permission policies',
+  /** A hook row is one declaration. */
+  hook: 'hook declarations',
   /** An output-style row is one definition. */
   'output style': 'output styles',
   /** A plugin row is one manifest. */
@@ -166,28 +170,28 @@ export const CUSTOMIZATION_KIND_PLURAL_TEXT: Readonly<Record<CustomizationKind, 
   marketplace: 'marketplace catalogs',
   /** A skill-metadata row is one sibling metadata file. */
   'skill metadata': 'skill metadata files',
+  /** A settings or configuration row is the carrier file. */
+  'settings/config': 'settings and configuration files',
 };
 
 /** The label shown for each kind; see {@link SOURCE_BOUNDARY_ORIGIN_TEXT}. */
 export const CUSTOMIZATION_KIND_TEXT: Readonly<Record<CustomizationKind, string>> = {
   /** Label for an instruction file. */
   instructions: 'Instructions',
-  /** Label for a rule file. */
-  rule: 'Rule',
   /** Label for a skill entry point. */
   skill: 'Skill',
+  /** Label for an MCP declaration carrier. */
+  MCP: 'MCP',
   /** Label for a custom-agent definition. */
   agent: 'Agent',
   /** Label for a prompt or slash command. */
   'prompt/command': 'Prompt / Command',
-  /** Label for a hook declaration. */
-  hook: 'Hook',
-  /** Label for an MCP declaration carrier. */
-  MCP: 'MCP',
-  /** Label for a settings or configuration carrier. */
-  'settings/config': 'Settings / config',
+  /** Label for a rule file. */
+  rule: 'Rule',
   /** Label for a policy deciding which commands or tools may run. */
   permissions: 'Permissions',
+  /** Label for a hook declaration. */
+  hook: 'Hook',
   /** Label for an output-style definition. */
   'output style': 'Output style',
   /** Label for a plugin manifest. */
@@ -196,6 +200,8 @@ export const CUSTOMIZATION_KIND_TEXT: Readonly<Record<CustomizationKind, string>
   marketplace: 'Marketplace',
   /** Label for skill-local metadata. */
   'skill metadata': 'Skill metadata',
+  /** Label for a settings or configuration carrier. */
+  'settings/config': 'Settings / config',
 };
 
 /** The label shown for each tool; see {@link SOURCE_BOUNDARY_ORIGIN_TEXT}. */

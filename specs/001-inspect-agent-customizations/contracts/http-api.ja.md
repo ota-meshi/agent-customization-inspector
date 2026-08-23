@@ -54,7 +54,8 @@ customization-selected destination、別machineへの調査content送信は禁�
 3. Static byte servingはdevframe-ownedである。ServeされるSPA shellとassetはNuxt buildがpackaged
    `dist/public`へ出力したものそのままであり、productはstatic-assets manifest、per-asset
    integrity再検証、hand-written routerを一切定義しない。その前段にあるproduct所有の要素は
-   closedなdetail-route rewrite — `/skills/**`、`/instructions/**`、`/mcp/**`、`/rules/**`、`/permissions/**`、shipped kind
+   closedなdetail-route rewrite — `/skills/**`、`/instructions/**`、`/mcp/**`、`/rules/**`、
+   `/prompts-and-commands/**`、`/permissions/**`、`/agents/**`、shipped kind
    detailごとに1 family — だけである: これらのroute familyに入るpathの`GET`/`HEAD`を`/`へ
    書き換えてfall throughさせ、extension-guardedなSPA fallbackがfile missとして扱うdetail deep
    linkにも、devframe自身のstatic handlerがpackaged shellをserveする。Rewriteはfilesystemに
@@ -244,29 +245,6 @@ SessionSnapshot
 │       recognition を closed tool order で、各 recognition の product surface を
 │       closed surface order で持つ。null の1行が一覧を閉じ、既知の範囲を
 │       持たない file を持つ
-├── rules[]
-│   └── sourceRelativePath, recognitions[] { tool, surfaces[] } —
-│       認識された rule file 1つにつき1行、その recognition を closed tool order
-│       で、各 recognition の product surface を closed surface order で持つ
-├── prompts[]
-│   └── name string,
-│       definitions[] { sourceRelativePath, tool, surfaces[], diagnosticIds[] } —
-│       読み手が起動する名前1つにつき1行を name 順で持ち、各行はその名前で
-│       起動される file を Source 相対パス順、次に tool 順で列挙する。どの名前
-│       になるかは、その file を admit した rule のものである。command file
-│       の名前が著述されることはない: どちらの product も command file の
-│       `name` key を無視し、それぞれが command を path から導出する。両者が
-│       一致する root 直下の子は両方を名指す 1 row となり、nested な file は
-│       Claude 単独の row となる。VS Code prompt file の名前は、その file が
-│       宣言した `name` であり、宣言がなければ自身の file 名が代わりに立つ —
-│       command が解決する名前を宣言した prompt は、その command の row の
-│       definition となる
-├── permissions[]
-│   └── sourceRelativePath, recognitions[] { tool, surfaces[] },
-│       diagnosticIds[] —
-│       宣言された permission policy 1つにつき1行。宣言する file の path で
-│       名指す。宣言しない carrier は残りを所有する kind として認識され、
-│       ここには row を持たない
 ├── skills[]
 │   └── name string,
 │       definitions[] { sourceRelativePath, tool, surfaces[], parseStatus,
@@ -280,6 +258,53 @@ SessionSnapshot
 │       carrier path順、次にtool順で持ち、各宣言はadmissionが依拠するvendor
 │       surfaceをinstruction fileのrecognitionと同じ形で運ぶ。nullの1行が一覧を閉じ、
 │       named宣言を公開していないcarrierを持つ
+├── agents[]
+│   └── name string | null,
+│       definitions[] { sourceRelativePath, tool, surfaces[], parseStatus,
+│                       diagnosticIds[] } —
+│       agent name 1つにつき1行、name順。各rowはそのagentを定義する
+│       すべてのfileを、Source-relative Path順・その中はtool順で列挙する。
+│       nameはadmitしたproductがそのagentを識別する事実であり、どの事実かは
+│       productによって異なる: OpenAI CodexとClaude Codeは`name` fieldを
+│       agentのidentityとし、filenameを一致させることはconventionにすぎない
+│       と定めている（Claude Codeはagents directory内のsubfolderもidentityに
+│       影響しないと述べる）一方、GitHub Copilotは`name`をoptionalなdisplay
+│       nameとして文書化し、profileをconfiguration file自身の名から`.md`
+│       または`.agent.md`を除いたもので識別する。よって1つのnameに解決される
+│       2つのfileは1 rowの2 definitionであり、2つのproductが異なる名前に解決
+│       する1つのfileは2つのrowに定義を持つ。Rowはskillのrowと違い
+│       same-name resolutionを述べない: Claude Codeは1つのtree配下で同名の2
+│       fileのうち1つだけがloadされると述べどちらかを定めるruleを示さず、
+│       GitHubはlevel間のdeduplicationを述べて同一level内については述べないの
+│       で、答えるrowはどのpageも問うていない問いに答えることになる — definition
+│       は並べて示され、読者は両方を見る（FR-009）。1つだけのnull rowが末尾を
+│       締め、nameを公開しないfileを集める — 宣言された`name`で識別するproduct
+│       のもとで、宣言しないもの、scalar以外を宣言するもの、そして宣言をまったく
+│       読み取れずnameが不在ではなく不明なもの。file名で識別するproductの
+│       definitionはここに到達しない
+├── prompts[]
+│   └── name string,
+│       definitions[] { sourceRelativePath, tool, surfaces[], diagnosticIds[] } —
+│       読み手が起動する名前1つにつき1行を name 順で持ち、各行はその名前で
+│       起動される file を Source 相対パス順、次に tool 順で列挙する。どの名前
+│       になるかは、その file を admit した rule のものである。command file
+│       の名前が著述されることはない: どちらの product も command file の
+│       `name` key を無視し、それぞれが command を path から導出する。両者が
+│       一致する root 直下の子は両方を名指す 1 row となり、nested な file は
+│       Claude 単独の row となる。VS Code prompt file の名前は、その file が
+│       宣言した `name` であり、宣言がなければ自身の file 名が代わりに立つ —
+│       command が解決する名前を宣言した prompt は、その command の row の
+│       definition となる
+├── rules[]
+│   └── sourceRelativePath, recognitions[] { tool, surfaces[] } —
+│       認識された rule file 1つにつき1行、その recognition を closed tool order
+│       で、各 recognition の product surface を closed surface order で持つ
+├── permissions[]
+│   └── sourceRelativePath, recognitions[] { tool, surfaces[] },
+│       diagnosticIds[] —
+│       宣言された permission policy 1つにつき1行。宣言する file の path で
+│       名指す。宣言しない carrier は残りを所有する kind として認識され、
+│       ここには row を持たない
 └── diagnostics[] { diagnosticId, code, sourceId string,
     sourceRelativePath string | null — file scope以外はnull }
     （active-generation recordとsession-owned lifecycle record）
@@ -530,8 +555,8 @@ phaseで、Global taskがこのfunctionとdetail/comparison routeへSource quali
 Active-generation file detailを1件返す。fileをrecognitionが所有するかどうかで判別される。
 
 ```text
-FileDetail — kind: 'skill' | 'instructions' | 'prompt/command' | 'rule' | 'file'
-├── kind 'skill' — fileは認識されたskillのentry point:
+FileDetail — kind: 'instructions' | 'skill' | 'agent' | 'prompt/command' | 'rule' | 'file'
+├── kind 'instructions' — fileは認識されたinstruction file:
 │   ├── file — encodingで判別されるCustomizationFile 1件:
 │   │   ├── sourceId, sourceRelativePath, encoding, diagnosticIds[]
 │   │   ├── readable textはさらにhadLeadingBom, sourceText, sizeBytesを持つ
@@ -544,14 +569,24 @@ FileDetail — kind: 'skill' | 'instructions' | 'prompt/command' | 'rule' | 'fil
 │   │   │   { kind: 'mapping', entries[] { key, keyKind, value } }のいずれかで、再帰する
 │   │   └── bodyText
 │   └── diagnostics[]
-├── kind 'instructions' — fileは認識されたinstruction file:
+├── kind 'skill' — fileは認識されたskillのentry point:
 │   ├── file — 上と同じ
-│   ├── presentation — skill variantと同じ: 同じscan時の1回のparseで、
+│   ├── presentation — instructions variantと同じ: 同じscan時の1回のparseで、
 │   │   失敗時nullの規則も同じ（FR-028）
+│   └── diagnostics[]
+├── kind 'agent' — fileは認識されたcustom-agent定義:
+│   ├── file — 上と同じ
+│   ├── presentation — 1回のscan時parseを、このkindが示す2つの半分に
+│   │   分けたもの。extractionがall-or-nothingで失敗したときに限りnull
+│   │   （FR-028）:
+│   │   ├── metadata[] { key, keyKind, value } — instructions variantの
+│   │   │   frontmatterが運ぶのと同じdeclared-entry shape。instructionsを
+│   │   │   保持する宣言を除くすべての宣言を、fileが書いた順で運ぶ
+│   │   └── instructionsText — fileがagentに与えるinstructions
 │   └── diagnostics[]
 ├── kind 'prompt/command' — fileは認識されたcommand file:
 │   ├── file — 上と同じ
-│   ├── presentation — skill variantと同じ: 同じscan時の1回のparseで、
+│   ├── presentation — instructions variantと同じ: 同じscan時の1回のparseで、
 │   │   失敗時nullの規則も同じ（FR-028）
 │   └── diagnostics[]
 ├── kind 'rule' — fileは認識されたrule file:
@@ -577,6 +612,23 @@ ruleが答えるものであるため、inventoryの事実であり — 各`prom
 名前そのものであり — skillの認識toolとinvocation nameが`skills[]`の事実であるのと同じで
 ある。名前を宣言したprompt fileも例外ではない: その宣言はfileが書いた他のkeyと同じく
 `presentation.frontmatter`にあり、ruleがそこから何を作ったかがrowの事実である。
+`agent` variantは独自のshapeの`presentation`を持つ。分割点が常にfrontmatter blockとは
+限らないためである: Codexのagentは、`developer_instructions`のstringがproseで、残りの
+top-level keyがconfigurationであるTOMLであり、Claudeのsubagentとcopilotのagent profileは
+frontmatter fenceで分割されるMarkdownで、blockがagentのconfigurationを、bodyがそのagentが
+動くinstructionsを与える。分割点がどこかはadmitしたruleのcontractであり、生成される
+shapeはどちらも1つなので、1つのdetail surfaceが両方をrenderする — metadataはYAML、
+instructionsはMarkdownとして。分割は、instructionsを保持する宣言がstringに解決される
+場合に限って行う: table、list、numberとして書かれたものは proseではなく宣言なので、
+metadata entryのまま残り`instructionsText`は空になる。このvariantが運ばないのはagentの
+nameである: file自身の`name`宣言は、fileが書いた他のkeyと同様に`presentation.metadata`に
+あり、各`agents[]` rowがgroupingされるnameはinventoryの事実である。この分離があるからこそ、
+1つのfileが2つのnameで現れても — `.claude/agents/*.md`の直下childは、宣言された`name`で
+名付けられるClaude Codeのsubagentであり、同時にfile自身の名で名付けられるCopilotのagent
+profileでもある — detailはどちらかを選ぶ必要がない。commandのinvocation
+nameと同じ扱いである。宣言された`mcp_servers` blockも1つのmetadata entryにすぎない:
+MCP宣言の帰属先はexplicitなcarrierだけなので、それを書いたagentはMCP rowに加わらず、
+読者がそれを見るのはこのresponseである（data-model.md § Inventory unit）。
 `rule` variantは`presentation`を持たない: これらのfileはauthorが書いた
 1つのdocumentとして公開され、そこから何も読み出さないためである。Claudeの`.claude/rules/**` fileは
 frontmatter blockを含めて丸ごとresponseへ届く — ruleをdeclarationとbodyへ割ると、1つの
@@ -591,14 +643,22 @@ Permission policyはこれらのvariantに含まれない。Permissions rowが�
 recognitionに属するsettings fileの1 blockである — したがってpolicyは
 `get-permission-policy-detail`のresultであって、対象ではないfileについて答えねばならなくなる
 ここでのshapeではない。
-他の認識kindが示すparseはfileの事実であって認識toolのものではない — shippedな全vendorが同じ固定YAML
-semanticsを読むため、extractionは`(file, kind)`ごとに1回実行される — ので、responseは
-それを`presentation`として1回だけ公開する。Toolごとのrecognition一覧は存在しない:
-どのtoolがこのfileを認識するか、各toolのinvocation name、そのparse stateはinventoryの
-事実（`skills[].definitions[]`）であり、routeのtool segmentがpageの対象定義を言う。
-instruction fileの認識toolはそのinventory row（`instructions[]`）でfileの隣に
-列挙され、detail routeはtool segmentを持たない。pageが示す内容を分ける
-toolごとの事実が存在しないためである。
+他の認識kindが示すparseはfileの事実であって認識toolのものではなく、responseはそれを
+`presentation`として1回だけ公開する。Markdown kindについては、shippedな全vendorが同じ固定YAML
+semanticsを読むため、extractionは`(file, kind)`ごとに1回実行される。custom-agent kindはその例外で、
+しかもkindではなくadmitしたrule自身の読み取りである: Codexのagentは`developer_instructions`のstringが
+proseであるTOMLであり、Markdown productsのagentはfrontmatter fenceで分割されるため、ここでの
+extractionは`(file, tool)`ごとになる。どの読み取りも同じshapeを生むので`presentation`は1つのままであり、
+2つのproductが1つのfileを読む場合、その解決結果は一致するため、繰り返しは2つ目の事実ではなく
+1つのstringに対する作業にすぎない。Toolごとのrecognition一覧は存在しない:
+どのtoolがこのfileを認識するか、各toolがそれを何として解決するか、そのparse stateはinventoryの
+事実であり、kindごとのinventoryがそれを運ぶ。skillのそれは`skills[].definitions[]`であり、
+detail routeにtool segmentを持つのはこのkindだけである。skillのnameは1つのtoolによる解決であり、
+segmentがpageの対象定義を言うためである。他のkindのdetail routeはpathのみとする:
+instruction fileの認識toolはそのinventory row（`instructions[]`）で、custom agentのそれは
+`agents[].definitions[]`でfileの隣に列挙され、どちらのrouteもtool segmentを持たない。
+instruction fileにはpageが示す内容を分けるtoolごとの事実が存在せず、custom agentのpageは
+どのproductがどのnameを解決したかによらず1つのfileの2つの半分を示すためである。
 Admission recordも存在しない: どのruleがreadを認可しどこにmatchしたかは、relationship
 phaseが読むことになるcommit済みgenerationの内部record（data-model.md § ToolRecognition）
 であり、session responseは運ばない — したがって設定済みfallback instruction fileの
@@ -673,8 +733,8 @@ attemptをfailさせ、RPC所有の場合はrequestのordinary errorとして公
 Declaration comparisonは、sideごとに1つのcanonical serialized documentをclient側でdiffする
 （research.md § 7）。frontmatter宣言はfileのMarkdown kindに対する1回のparseであって認識する
 全toolが共有するため、toolは宣言の座標ではなく、tool recognitionはdiffの横でtoolごとに比較する。
-各sideはYAMLへserializeし、skill comparisonは`name`と`description`を先頭にそれ以外のkeyを
-sort順で、instruction comparisonとprompt-and-command comparisonは全keyをsort順で並べる。Prompt-and-command
+各sideはYAMLへserializeし、各comparisonはそのkindについてvendorが文書化しているkeyを、それを
+公開するpageの順で先頭に置き、それ以外のkeyをsort順で並べる（declaration-order.ts）。Prompt-and-command
 comparisonはrecognitionごとにもう1つ事実を述べる。このkindの行はfileではなく名前であるためで、認識する
 各toolのcellが、そのtoolがそのsideのfileを起動する名前を運ぶ。MCP kindの宣言は各recognizing tool
 自身のreading（data-model.md § Field reading）であり、その比較surfaceは宣言済みserver名自身の

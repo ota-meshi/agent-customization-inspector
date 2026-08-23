@@ -1,5 +1,51 @@
 [
   {
+    "behaviorId": "claude.behavior.repo.agent-memory.local",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "repository-root",
+      "relativeSelector": ".claude/agent-memory-local/<agent-name>/",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.subagents.scope-context",
+        "url": "https://code.claude.com/docs/en/sub-agents",
+        "officialHost": "code.claude.com",
+        "sections": ["Enable persistent memory"],
+        "reviewedOn": "2026-08-20",
+        "establishes": "A subagent whose frontmatter declares memory: local keeps its persistent directory at .claude/agent-memory-local/<name-of-agent>/, the project-specific scope documented as the one not checked into version control."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.repo.agent-memory.project",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "repository-root",
+      "relativeSelector": ".claude/agent-memory/<agent-name>/",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.subagents.scope-context",
+        "url": "https://code.claude.com/docs/en/sub-agents",
+        "officialHost": "code.claude.com",
+        "sections": ["Enable persistent memory"],
+        "reviewedOn": "2026-08-20",
+        "establishes": "A subagent whose frontmatter declares memory: project keeps its persistent directory at .claude/agent-memory/<name-of-agent>/, whose MEMORY.md prefix is injected into that subagent’s system prompt when auto memory is enabled."
+      }
+    ]
+  },
+  {
     "behaviorId": "claude.behavior.repo.agents",
     "tool": "claude",
     "surfaces": ["claude-cli-and-ide-clients"],
@@ -323,6 +369,83 @@
     ]
   },
   {
+    "behaviorId": "claude.behavior.user.agent-memory",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "agent-memory/<agent-name>/",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.subagents.scope-context",
+        "url": "https://code.claude.com/docs/en/sub-agents",
+        "officialHost": "code.claude.com",
+        "sections": ["Enable persistent memory"],
+        "reviewedOn": "2026-08-20",
+        "establishes": "A subagent whose frontmatter declares memory: user keeps its persistent directory at ~/.claude/agent-memory/<name-of-agent>/, the scope documented for learnings that should apply across all projects."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.user.agents",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "Markdown files recursively under agents/",
+      "traversal": "recursive-under-base"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.subagents.scope-context",
+        "url": "https://code.claude.com/docs/en/sub-agents",
+        "officialHost": "code.claude.com",
+        "sections": ["Choose the subagent scope"],
+        "reviewedOn": "2026-08-20",
+        "establishes": "User subagents live at ~/.claude/agents/, are available in every project, are scanned recursively so definitions can be organized into subfolders, and rank below the current project scope when two scopes declare one name."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.user.auto-memory",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "projects/<project-key>/memory/MEMORY.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.memory.locations-load",
+        "url": "https://code.claude.com/docs/en/memory",
+        "officialHost": "code.claude.com",
+        "sections": ["Auto memory"],
+        "reviewedOn": "2026-08-18",
+        "establishes": "Auto memory keeps its files under the Claude configuration directory per project and loads a startup prefix with topic files fetched on demand."
+      },
+      {
+        "sourceId": "anthropic.claude-code.subagents.scope-context",
+        "url": "https://code.claude.com/docs/en/sub-agents",
+        "officialHost": "code.claude.com",
+        "sections": ["What loads at startup", "Enable persistent memory"],
+        "reviewedOn": "2026-08-20",
+        "establishes": "The main conversation’s auto memory is not loaded into a non-fork subagent — a subagent’s own memory field is what gives it persistent memory instead — and turning auto memory off makes that field have no effect at all."
+      }
+    ]
+  },
+  {
     "behaviorId": "claude.behavior.user.commands",
     "tool": "claude",
     "surfaces": ["claude-cli-and-ide-clients"],
@@ -524,6 +647,29 @@
     ]
   },
   {
+    "behaviorId": "codex.behavior.repo.agents",
+    "tool": "codex",
+    "surfaces": ["codex-local-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "repository-root",
+      "relativeSelector": ".codex/agents/*.toml",
+      "traversal": "exact"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.subagents",
+        "url": "https://learn.chatgpt.com/docs/agent-configuration/subagents.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Custom agents", "Custom agent file schema"],
+        "reviewedOn": "2026-08-22",
+        "establishes": "Project-scoped custom agents are standalone TOML files under .codex/agents/, each defining one agent that Codex loads as a configuration layer for spawned sessions, with name, description, and developer_instructions required and other supported config.toml keys permitted; the page names the project directory without stating which directories of a project are searched."
+      }
+    ]
+  },
+  {
     "behaviorId": "codex.behavior.repo.config",
     "tool": "codex",
     "surfaces": ["codex-local-clients"],
@@ -678,6 +824,29 @@
     ]
   },
   {
+    "behaviorId": "codex.behavior.user.agents",
+    "tool": "codex",
+    "surfaces": ["codex-local-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "agents/*.toml",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.subagents",
+        "url": "https://learn.chatgpt.com/docs/agent-configuration/subagents.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Custom agents"],
+        "reviewedOn": "2026-08-22",
+        "establishes": "Personal custom agents are standalone TOML files under ~/.codex/agents/, and a custom agent whose name matches a built-in agent such as explorer takes precedence over it."
+      }
+    ]
+  },
+  {
     "behaviorId": "codex.behavior.user.config",
     "tool": "codex",
     "surfaces": ["codex-local-clients"],
@@ -766,6 +935,29 @@
         "sections": ["Where Codex loads local skills"],
         "reviewedOn": "2026-07-25",
         "establishes": "Local Codex clients additionally discover user skills at $HOME/.agents/skills/<name>/SKILL.md, alongside repository, admin, and system scopes."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cli.agents",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "runtime-cwd",
+      "relativeSelector": ".github/agents/*.md; .claude/agents/*.md",
+      "traversal": "ancestor-chain-to-repository-root"
+    },
+    "documentationStatus": "conflict",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.reference",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Custom agent locations"],
+        "reviewedOn": "2026-08-20",
+        "establishes": "Project-scoped agents are loaded by walking upward from the working directory to the Git root, taking each ancestor level’s .github/agents/ and .claude/agents/ directories; every such directory is loaded, the deepest takes highest priority, and .github/agents/ takes precedence over .claude/agents/ at the same level."
       }
     ]
   },
@@ -1017,6 +1209,29 @@
     ]
   },
   {
+    "behaviorId": "copilot.behavior.cli.user.agents",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "agents/*.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "conflict",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.reference",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Custom agent locations"],
+        "reviewedOn": "2026-08-20",
+        "establishes": "User agents live at ~/.copilot/agents/ and plugin agents rank lowest; this page states that user-level agents have lower priority than project-level ones, which is one side of the retained project-versus-User conflict."
+      }
+    ]
+  },
+  {
     "behaviorId": "copilot.behavior.cli.user.instructions.path",
     "tool": "copilot",
     "surfaces": ["copilot-cli"],
@@ -1129,6 +1344,29 @@
         "sections": ["Adding a skill that someone else has created"],
         "reviewedOn": "2026-07-15",
         "establishes": "A skill copied into a personal location is the same authored directory shape as a repository skill; only its scope differs."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cloud.agents",
+    "tool": "copilot",
+    "surfaces": ["copilot-cloud"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "repository-root",
+      "relativeSelector": ".github/agents/*.agent.md; .github/agents/*.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.custom-agents",
+        "url": "https://docs.github.com/en/copilot/reference/custom-agents-configuration",
+        "officialHost": "docs.github.com",
+        "sections": ["YAML frontmatter properties", "Example agent profile configurations"],
+        "reviewedOn": "2026-08-20",
+        "establishes": "A repository agent profile is a Markdown file with YAML frontmatter whose description is the one required property and whose name is an optional display name; the configuration file’s own name, minus .md or .agent.md, is what deduplicates a profile between levels so the lowest level wins."
       }
     ]
   },
@@ -1279,6 +1517,29 @@
         "sections": ["MCP server configuration details", "MCP server configurations"],
         "reviewedOn": "2026-08-20",
         "establishes": "A custom agent profile declares MCP servers through its mcp-servers property - the YAML representation of the repository MCP configuration format - and the cloud agent processes out-of-the-box configurations first, then the custom agent configuration, then repository settings, each level able to override the previous."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cloud.organization-agents",
+    "tool": "copilot",
+    "surfaces": ["copilot-cloud"],
+    "locator": {
+      "vendorScope": "hosted-managed",
+      "lookupBase": "hosted-state",
+      "relativeSelector": null,
+      "traversal": "none"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.custom-agents",
+        "url": "https://docs.github.com/en/copilot/reference/custom-agents-configuration",
+        "officialHost": "docs.github.com",
+        "sections": ["Example agent profile configurations"],
+        "reviewedOn": "2026-08-20",
+        "establishes": "Agent profiles also exist at the organization and enterprise levels, and on a naming conflict the lowest level wins — a repository agent over an organization one, and an organization agent over an enterprise one."
       }
     ]
   },
@@ -1621,6 +1882,29 @@
         "sections": ["Agent skills settings"],
         "reviewedOn": "2026-08-19",
         "establishes": "Skill discovery locations are setting-controlled, which keeps enablement and any additional configured location a runtime condition rather than part of the documented default lookup."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.vscode.user.agents",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "profile-data",
+      "relativeSelector": "~/.copilot/agents/*.md; profile agent files",
+      "traversal": "standard-location-chain"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.settings",
+        "url": "https://code.visualstudio.com/docs/agents/reference/ai-settings",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Custom agents settings"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "Custom-agent locations are setting-controlled, so the personal and profile locations a workspace session also loads are configuration rather than a fixed list; duplicate-name precedence against workspace, organization, and plugin agents is not established, which is the partially-documented remainder."
       }
     ]
   },

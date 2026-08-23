@@ -27,11 +27,13 @@ import {
   buildAllVendorInstructionFixture,
   buildClaudeInstructionFixture,
   buildClaudeMcpFixture,
+  buildClaudeAgentFixture,
   buildClaudeSkillFixture,
   buildCommandFixture,
   buildCopilotCliMcpFixture,
   buildCopilotVscodeMcpFixture,
   buildPriorityMcpFixture,
+  buildCodexAgentFixture,
   buildCodexInstructionFixture,
   buildCodexMcpFixture,
   buildCodexSkillFixture,
@@ -2176,14 +2178,18 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
     ]);
     // The published files are the four carriers — one physical item and one
     // read each, the shared root once for its three admissions — beside the
-    // settings file, which `claude.repo.permissions` admits for the policy it
-    // may declare; no near miss, agent, or plugin file joins them. The settings
-    // file declares no `permissions` object, so it carries no recognition and
-    // reaches no row, and its `mcpServers` spelling joins no MCP name above.
-    // Nothing is diagnosed, and no declared value reaches the snapshot.
+    // two files another kind's rule admits: the settings file, which
+    // `claude.repo.permissions` admits for the policy it may declare, and the
+    // agent profile, which `copilot.repo.agent` admits for the agent it
+    // defines. No near miss or plugin file joins them. Neither of the two
+    // reaches an MCP row: the settings file declares no `permissions` object
+    // so it carries no recognition at all, and both of their `mcpServers`
+    // spellings join no MCP name above. Nothing is diagnosed, and no declared
+    // value reaches the snapshot.
     expect(snapshot.files.map((file) => file.sourceRelativePath)).toEqual([
       '.claude/settings.json',
       fixture.codexCarrierPath,
+      '.github/agents/deploy.md',
       fixture.githubCarrierPath,
       fixture.rootCarrierPath,
       fixture.vscodeCarrierPath,
@@ -3291,6 +3297,278 @@ describe('the unified commands inventory (T478)', () => {
   });
 });
 
+describe('the committed Codex custom-agent inventory (T509, T524)', () => {
+  it('groups the rows by declared name and closes the list with the unnamed files', async () => {
+    const fixture = buildCodexAgentFixture('inspector-scan-codex-agents');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+
+    // One row per declared name, in name order, with the one null-named row
+    // last: a name is the unit, so the two files declaring `docs_researcher`
+    // are two definitions of one row (data-model.md § Inventory unit).
+    expect(snapshot.agents.map((entry) => entry.name)).toEqual([
+      ...fixture.expectedAgentNames,
+      null,
+    ]);
+    const shared = snapshot.agents.find((entry) => entry.name === 'docs_researcher')!;
+    expect(shared.definitions.map((definition) => definition.sourceRelativePath)).toEqual([
+      '.codex/agents/docs-researcher-2.toml',
+      '.codex/agents/docs-researcher.toml',
+    ]);
+    expect(shared.definitions[0]).toEqual({
+      sourceRelativePath: '.codex/agents/docs-researcher-2.toml',
+      tool: 'codex',
+      surfaces: ['codex-local-clients'],
+      parseStatus: 'parsed',
+      diagnosticIds: [],
+    });
+    // The null-named row holds the three files publishing no declared name:
+    // one declaring none, one declaring a list, and the malformed one whose
+    // name is unknown rather than absent (FR-028).
+    const unnamed = snapshot.agents.at(-1)!;
+    expect(unnamed.name).toBeNull();
+    expect(unnamed.definitions.map((definition) => definition.sourceRelativePath)).toEqual([
+      ...fixture.unnamedAgentPaths,
+    ]);
+    // No row is named after a file: the vendor makes the declared `name` the
+    // identity and a matching filename convention, so a path-derived name
+    // would report an agent the product does not have.
+    expect(snapshot.agents.map((entry) => entry.name)).not.toContain('nameless');
+  });
+
+  it('keeps a malformed agent readable and diagnosed while the generation stays partial', async () => {
+    const fixture = buildCodexAgentFixture('inspector-scan-codex-agents-malformed');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    const { publication } = await scanOnce(context);
+    if (publication.kind !== 'publishable') {
+      throw new Error('expected a publishable outcome');
+    }
+    // A file-confined extraction failure keeps the generation publishable and
+    // marks it partial; the file itself stays published with its own facts.
+    expect(publication.outcome).toBe('partial');
+    const snapshot = context.session.snapshot();
+    const malformed = snapshot.files.find(
+      (file) => file.sourceRelativePath === fixture.malformedAgentPath,
+    )!;
+    expect(malformed.diagnosticIds).toHaveLength(1);
+    expect(snapshot.diagnostics).toEqual([
+      expect.objectContaining({
+        code: 'recognition-parse-failed',
+        sourceRelativePath: fixture.malformedAgentPath,
+      }),
+    ]);
+    const failed = snapshot.agents
+      .at(-1)!
+      .definitions.find(
+        (definition) => definition.sourceRelativePath === fixture.malformedAgentPath,
+      )!;
+    expect(failed.parseStatus).toBe('failed');
+    expect(failed.diagnosticIds).toEqual(malformed.diagnosticIds);
+    // The complete source is still what the detail serves, and the parse
+    // publishes nothing rather than the half that would have parsed (FR-028).
+    const detail = context.session.fileDetail(fixture.malformedAgentPath);
+    expect(detail).toMatchObject({ kind: 'agent', presentation: null });
+    expect(detail!.file.encoding).toBe('utf-8');
+  });
+
+  it('serves the two halves of an agent detail and no MCP row for its declarations', async () => {
+    const fixture = buildCodexAgentFixture('inspector-scan-codex-agents-detail');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    await scanOnce(context);
+
+    const detail = context.session.fileDetail(fixture.mcpSpellingAgentPath);
+    if (detail?.kind !== 'agent' || detail.presentation === null) {
+      throw new Error('expected a parsed custom-agent detail');
+    }
+    // The instructions are the prose half; every other key — the declared
+    // `mcp_servers` table and the configured paths among them — is metadata,
+    // in the file's own order.
+    expect(detail.presentation.instructionsText).toBe('Use the docs server.');
+    expect(detail.presentation.metadata.map((entry) => entry.key)).toEqual([
+      'name',
+      'description',
+      'config_file',
+      'skills',
+      'mcp_servers',
+    ]);
+    // The credential and the environment reference reach the detail exactly as
+    // written, and nothing resolves either (FR-025, FR-026).
+    const serialized = JSON.stringify(detail.presentation);
+    expect(serialized).toContain(FIXTURE_SECRET_LITERAL);
+    expect(serialized).toContain(FIXTURE_ENVIRONMENT_REFERENCE);
+    // And the MCP inventory is empty: an MCP declaration's home is an explicit
+    // carrier, so an agent spelling one joins no MCP row and this tree holds
+    // no carrier at all (data-model.md § Inventory unit).
+    expect(context.session.snapshot().mcp).toEqual([]);
+  });
+});
+
+describe('the committed Claude subagent inventory (T529, T544)', () => {
+  it('groups the recursive subtree by declared name and lists a duplicate twice', async () => {
+    const fixture = buildClaudeAgentFixture('inspector-scan-claude-agents');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+
+    // The kind's inventory, not one product's: a `.claude/agents/*.md` direct
+    // child is Claude Code's subagent and a Copilot agent profile alike, and
+    // the two products name it differently — Claude Code by the declared
+    // `name`, Copilot by the configuration file's own name — so a file whose
+    // stem differs from its declared name heads a row for each.
+    const expectedNames = [
+      ...new Set([...fixture.expectedAgentNames, ...fixture.expectedCopilotAgentNames]),
+    ].toSorted();
+    expect(snapshot.agents.map((entry) => entry.name)).toEqual([...expectedNames, null]);
+    // A subfolder changes nothing about identity: the nested `security.md`
+    // heads its own name's row, and the two files declaring `debugger` — one
+    // at the top of the tree and one in a subfolder — are two definitions of
+    // one row, listed in Source-relative Path order with no winner stated.
+    const nested = snapshot.agents.find((entry) => entry.name === 'security-reviewer')!;
+    expect(nested.definitions.map((definition) => definition.sourceRelativePath)).toEqual([
+      '.claude/agents/review/security.md',
+    ]);
+    // A definition is one recognition — one per `(file, tool)` — so the direct
+    // child contributes two: Claude Code's, from its declared `name`, and
+    // Copilot's, from the configuration file's own name, which happens to be
+    // the same string.
+    const duplicate = snapshot.agents.find((entry) => entry.name === 'debugger')!;
+    expect(
+      duplicate.definitions.map((definition) => [definition.sourceRelativePath, definition.tool]),
+    ).toEqual([
+      ['.claude/agents/debugger.md', 'copilot'],
+      ['.claude/agents/debugger.md', 'claude'],
+      ['.claude/agents/research/debugger.md', 'claude'],
+    ]);
+    expect(duplicate.definitions[1]).toEqual({
+      sourceRelativePath: '.claude/agents/debugger.md',
+      tool: 'claude',
+      surfaces: ['claude-cli-and-ide-clients'],
+      parseStatus: 'parsed',
+      diagnosticIds: [],
+    });
+    // The null-named row holds the file declaring no `name` and the malformed
+    // one, and no row is named after a file.
+    const unnamed = snapshot.agents.at(-1)!;
+    expect(unnamed.name).toBeNull();
+    expect(unnamed.definitions.map((definition) => definition.sourceRelativePath)).toEqual([
+      ...fixture.unnamedAgentPaths,
+    ]);
+    // No declared-name product's row is named after a file: `README` heads a
+    // row only because Copilot identifies an agent by the configuration file's
+    // own name, and the Claude recognition of that same file is in the
+    // null-named row above.
+    const readme = snapshot.agents.find((entry) => entry.name === 'README')!;
+    expect(
+      readme.definitions.map((definition) => [definition.sourceRelativePath, definition.tool]),
+    ).toEqual([['.claude/agents/README.md', 'copilot']]);
+  });
+
+  it('commits no candidate for agent memory, the extra directory, or a nested layer', async () => {
+    const fixture = buildClaudeAgentFixture('inspector-scan-claude-agents-negatives');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+    for (const nearMiss of fixture.nearMissPaths) {
+      expect(
+        snapshot.files.some((file) => file.sourceRelativePath === nearMiss),
+        nearMiss,
+      ).toBe(false);
+    }
+  });
+
+  it('serves an agent that is also an instruction file from the variant it reaches', async () => {
+    // `.claude/agents/CLAUDE.md` is a Claude subagent by its directory and a
+    // Claude instruction file by its name, so both rules admit it and it is a
+    // row in both inventories. `get-file-detail` is addressed by the path
+    // alone and answers with the first variant its fixed order reaches — the
+    // instructions one — and that variant carries the same two values a
+    // Markdown agent's parse produces, so the agent route maps it rather than
+    // reporting a parsed file as unparsed (pages/agents/[...path].vue).
+    const root = createRepositoryFixtureRoot('inspector-scan-claude-agent-overlap');
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    mkdirSync(join(root, '.claude/agents'), { recursive: true });
+    writeFileSync(
+      join(root, '.claude/agents/CLAUDE.md'),
+      '---\nname: overlapping\ndescription: both kinds\n---\n\n# Body\n',
+      'utf8',
+    );
+    const context = bootstrap(root);
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+
+    // Two agent rows and one instruction row, all from the one file: Claude
+    // Code's recognition names it by the declared `name` and Copilot's by the
+    // configuration file's own name, so one file heads two rows of the agent
+    // inventory while its instruction range heads one of that kind's.
+    expect(snapshot.agents.map((entry) => entry.name)).toEqual(['CLAUDE', 'overlapping']);
+    expect(snapshot.instructions.map((entry) => entry.applicabilityRange)).toEqual([
+      '.claude/agents/**',
+    ]);
+    // The detail the fixed order settles on carries the parse both routes
+    // draw, in the shape that variant publishes it.
+    const detail = context.session.fileDetail('.claude/agents/CLAUDE.md');
+    if (detail?.kind !== 'instructions' || detail.presentation === null) {
+      throw new Error('expected a parsed instructions detail');
+    }
+    expect(detail.presentation.frontmatter.map((entry) => entry.key)).toEqual([
+      'name',
+      'description',
+    ]);
+    expect(detail.presentation.bodyText).toBe('\n# Body\n');
+  });
+
+  it('serves the two halves of a subagent detail and no MCP row for its frontmatter', async () => {
+    const fixture = buildClaudeAgentFixture('inspector-scan-claude-agents-detail');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    await scanOnce(context);
+
+    const detail = context.session.fileDetail(fixture.mcpFrontmatterAgentPath);
+    if (detail?.kind !== 'agent' || detail.presentation === null) {
+      throw new Error('expected a parsed subagent detail');
+    }
+    // The frontmatter is the metadata half and the body the instructions half,
+    // exactly as the instruction detail splits a Markdown file.
+    expect(detail.presentation.metadata.map((entry) => entry.key)).toEqual([
+      'name',
+      'description',
+      'mcpServers',
+    ]);
+    expect(detail.presentation.instructionsText).toContain(
+      'Use the Playwright tools to navigate and screenshot.',
+    );
+    // The credential and the environment reference reach the detail exactly as
+    // written, and nothing resolves either (FR-025, FR-026).
+    const serialized = JSON.stringify(detail.presentation);
+    expect(serialized).toContain(FIXTURE_SECRET_LITERAL);
+    expect(serialized).toContain(FIXTURE_ENVIRONMENT_REFERENCE);
+    // And the MCP inventory is empty: this tree holds no explicit carrier, so
+    // an agent spelling `mcpServers` adds no row (data-model.md § Inventory
+    // unit).
+    expect(context.session.snapshot().mcp).toEqual([]);
+
+    // The referencing agent's memory scope, preloaded skills, and agent
+    // reference are declared values on the same terms.
+    const referencing = context.session.fileDetail(fixture.referencingAgentPath);
+    if (referencing?.kind !== 'agent' || referencing.presentation === null) {
+      throw new Error('expected a parsed subagent detail');
+    }
+    expect(referencing.presentation.metadata.map((entry) => entry.key)).toEqual([
+      'name',
+      'description',
+      'memory',
+      'skills',
+    ]);
+    expect(referencing.presentation.instructionsText).toContain('@code-reviewer');
+  });
+});
+
 describe('the combined all-kind fixture serves every inventory from one tree (T1099)', () => {
   it('publishes skills, rules, permissions, instructions, and MCP from one scan', async () => {
     const fixture = buildAllCustomizationKindFixture('inspector-scan-all-kinds');
@@ -3358,5 +3636,136 @@ describe('the combined all-kind fixture serves every inventory from one tree (T1
         (diagnostic) => diagnostic.sourceRelativePath === '.codex/config.toml',
       ),
     ).toBe(false);
+  });
+});
+
+describe('the unified custom-agent inventory across all three products (T568)', () => {
+  it('lists every product\u2019s agents as one inventory, each definition once', async () => {
+    const fixture = buildAllCustomizationKindFixture('inspector-scan-all-agents');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+
+    // One inventory for the kind, not one per product: every agent row's
+    // definitions come from the tools that recognize the file, and all three
+    // products contribute.
+    const tools = new Set(
+      snapshot.agents.flatMap((entry) => entry.definitions.map((definition) => definition.tool)),
+    );
+    expect([...tools].toSorted()).toEqual(['claude', 'codex', 'copilot']);
+    // A definition is one recognition — one per `(file, tool)` — so no pair
+    // appears twice however many rules admitted the file.
+    const pairs = snapshot.agents.flatMap((entry) =>
+      entry.definitions.map((definition) => `${definition.tool} ${definition.sourceRelativePath}`),
+    );
+    expect(pairs.length).toBe(new Set(pairs).size);
+    // The shared file the two Markdown products both define an agent from is
+    // two definitions under two different names, because the products
+    // identify an agent by different facts.
+    const sharedPath = fixture.copilotAgentFixture.sharedClaudeAgentPath;
+    const sharedRows = snapshot.agents
+      .filter((entry) =>
+        entry.definitions.some((definition) => definition.sourceRelativePath === sharedPath),
+      )
+      .map((entry) => [
+        entry.name,
+        entry.definitions
+          .filter((definition) => definition.sourceRelativePath === sharedPath)
+          .map((definition) => definition.tool),
+      ]);
+    // In the inventory's own name order, which is what puts the Copilot row
+    // first: the two names are different strings, not two spellings of one.
+    expect(sharedRows).toEqual([
+      ['copilot-shared', ['copilot']],
+      [fixture.copilotAgentFixture.sharedClaudeAgentDeclaredName, ['claude']],
+    ]);
+    // No agent row exists for a file the Copilot rule may not reach, and no
+    // MCP row is owned by any agent file (data-model.md § Inventory unit).
+    const claudeOnly = snapshot.agents.filter((entry) =>
+      entry.definitions.some(
+        (definition) =>
+          definition.sourceRelativePath === fixture.copilotAgentFixture.claudeOnlyAgentPath,
+      ),
+    );
+    expect(claudeOnly.flatMap((entry) => entry.definitions.map((one) => one.tool))).toEqual([
+      'claude',
+    ]);
+    for (const row of snapshot.mcp) {
+      for (const declaration of row.declarations) {
+        expect(declaration.sourceRelativePath, `${row.name}`).not.toContain('/agents/');
+      }
+    }
+  });
+
+  it('publishes the same rows and the same order on a rescan', async () => {
+    const fixture = buildAllCustomizationKindFixture('inspector-scan-all-agents-rescan');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    // Every published fact of the inventory except the diagnostic IDs, which
+    // are minted per generation and are the one thing a rescan is expected to
+    // change (data-model.md § Diagnostic).
+    const rowsOf = (snapshot: ReturnType<typeof context.session.snapshot>) =>
+      snapshot.agents.map((entry) => ({
+        name: entry.name,
+        definitions: entry.definitions.map(({ diagnosticIds: _diagnosticIds, ...rest }) => rest),
+      }));
+    await scanOnce(context);
+    const first = rowsOf(context.session.snapshot());
+    await scanOnce(context);
+    const second = context.session.snapshot();
+    // A second generation over an unchanged tree publishes the identical
+    // inventory: nothing an opaque ID or a filesystem read order decides
+    // reaches a visible order (data-model.md § ToolRecognition).
+    expect(second.repositoryGeneration).toBe(2);
+    expect(rowsOf(second)).toEqual(first);
+  });
+
+  it('confines an injected agent read failure to that file while the rest commits', async () => {
+    const fixture = buildAllCustomizationKindFixture('inspector-scan-all-agents-inject');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    const injected = fixture.copilotAgentFixture.mcpFrontmatterAgentPath;
+    const target = join(fixture.root, ...injected.split('/'));
+    // An ordinary read failure on one agent file is file-confined (FR-028):
+    // the walk classifies it `unreadable`, so it gains no recognition and no
+    // row, while every other agent still publishes. The abort half of the
+    // doctrine — a thrown or rejected operation that is not confined to one
+    // file — is owned by the suites above, which prove it without a kind of
+    // their own.
+    vi.mocked(fsIo.readFile).mockImplementation(async (path, options) => {
+      if (String(path) === target) {
+        throw Object.assign(new Error('injected read failure'), { code: 'EACCES' });
+      }
+      return realReadFile(path, options as never);
+    });
+    const { publication } = await scanOnce(context);
+    if (publication.kind !== 'publishable') {
+      throw new Error('expected a publishable outcome');
+    }
+    expect(publication.outcome).toBe('partial');
+    const snapshot = context.session.snapshot();
+    expect(snapshot.repositoryGeneration).toBe(1);
+    const targetFile = snapshot.files.find((file) => file.sourceRelativePath === injected)!;
+    expect(targetFile.encoding).toBe('unknown');
+    expect(targetFile.diagnosticIds).toHaveLength(1);
+    // No agent definition anywhere names the unreadable file...
+    for (const entry of snapshot.agents) {
+      for (const definition of entry.definitions) {
+        expect(definition.sourceRelativePath, entry.name ?? '(null row)').not.toBe(injected);
+      }
+    }
+    // ...while its siblings under the same rule are untouched.
+    const siblings = fixture.copilotAgentFixture.expectedAgentPaths.filter(
+      (path) => path !== injected,
+    );
+    const published = new Set(
+      snapshot.agents.flatMap((entry) =>
+        entry.definitions.map((definition) => definition.sourceRelativePath),
+      ),
+    );
+    for (const sibling of siblings) {
+      expect(published.has(sibling), sibling).toBe(true);
+    }
   });
 });

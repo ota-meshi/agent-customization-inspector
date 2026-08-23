@@ -33,60 +33,18 @@ defineProps<{
 
 <template>
   <div class="aci-recognition-comparison">
+    <!-- The sections stand in the order a reader needs them: what each file
+         declares, what each file says, then the complete files the page
+         supplies, and last the recognitions — which tool reads which side is
+         context for the rest rather than the subject of the comparison. -->
     <!-- Count-neutral, because a one-sided pair reaches this note too: one
          present file no recognition owns, beside its stated absence
          (FR-011). -->
     <p v-if="comparison.tools.length === 0" class="aci-note">
       No compared file here carries a recognition, so there is no tool recognition or declared
-      metadata to compare. The source comparison above is the whole comparison.
+      metadata to compare. The source comparison below is the whole comparison.
     </p>
     <template v-else>
-      <section>
-        <h3>Tool recognition</h3>
-        <!-- One row per recognizing tool, in the contracted tool order: each
-             recognition stays distinguishable from the physical file
-             (US3 scenario 2), captioned in words (AGENTS.md § User-visible
-             copy policy). A table rather than sentences: the relationship a
-             screen reader needs — this tool, this file's state, that file's
-             state — is exactly what table headers state. `tabindex` because
-             the table is its own horizontal scroll container on a wide
-             viewport (WCAG 2.1.1). -->
-        <table class="aci-recognition-comparison__table" tabindex="0">
-          <thead>
-            <tr>
-              <th scope="col">Tool</th>
-              <th scope="col">First file</th>
-              <th scope="col">Second file</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in comparison.tools" :key="row.tool">
-              <th scope="row">
-                {{ SUPPORTED_TOOL_TEXT[row.tool] }} · {{ CUSTOMIZATION_KIND_TEXT[row.kind] }}
-              </th>
-              <!-- The recognition, and the surfaces of the documented
-                   behaviors its admitting rules rest on: FR-009 states them
-                   beside every recognition, so a side that recognizes the file
-                   says on which surfaces it is documented to be read. A side
-                   with no recognition has none to state. -->
-              <td data-label="First file">
-                {{ RECOGNITION_SIDE_STATE_TEXT[row.left] }}
-                <span v-if="row.leftSurfaces.length > 0" class="aci-muted">
-                  ({{ row.leftSurfaces.map((surface) => VENDOR_SURFACE_TEXT[surface]).join(', ') }})
-                </span>
-              </td>
-              <td data-label="Second file">
-                {{ RECOGNITION_SIDE_STATE_TEXT[row.right] }}
-                <span v-if="row.rightSurfaces.length > 0" class="aci-muted">
-                  ({{
-                    row.rightSurfaces.map((surface) => VENDOR_SURFACE_TEXT[surface]).join(', ')
-                  }})
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
       <section>
         <h3>Declared metadata</h3>
         <!-- The files' declared metadata, not any tool's: the declarations
@@ -103,13 +61,13 @@ defineProps<{
         <template v-if="comparison.frontmatterDiff !== null">
           <!-- What the diff holds, said before it: both sides are the
                canonical serialization of the frontmatter, not the files'
-               own spellings — those stay in the source comparison above
+               own spellings — those stay in the source comparison below
                (FR-007). The canonical key order is stated too, because a
                reader comparing against their own file would otherwise read
                the order as authored. -->
           <p class="aci-note">
             Each side is the file's frontmatter serialized as YAML with its keys in one canonical
-            order; the files' own spelling and key order stay in the source comparison above.
+            order; the files' own spelling and key order stay in the source comparison below.
           </p>
           <SourceDiff
             :original-text="comparison.frontmatterDiff.originalText"
@@ -124,7 +82,84 @@ defineProps<{
           />
         </template>
       </section>
+      <section v-if="comparison.bodyDiff !== null">
+        <h3>Instructions</h3>
+        <!-- The other half of the same one parse, diffed on its own: the
+             declarations align key by key whatever order each file wrote them
+             in, and the instructions align line by line without the
+             frontmatter block above them moving the lines. Normalizing one
+             half and leaving the other only inside the source comparison
+             would privilege it (FR-007). -->
+        <p class="aci-note">
+          Each side is the instructions left once that file's frontmatter block is removed; the
+          block itself is above, and each file whole is in the source comparison below.
+        </p>
+        <SourceDiff
+          :original-text="comparison.bodyDiff.originalText"
+          :original-path="leftPath"
+          :modified-text="comparison.bodyDiff.modifiedText"
+          :modified-path="rightPath"
+          :original-absent="comparison.bodyDiff.originalAbsent"
+          :modified-absent="comparison.bodyDiff.modifiedAbsent"
+          content-language="markdown"
+          content-label="instructions of"
+          fit-content
+        />
+      </section>
     </template>
+    <!-- Where the page's complete authored sources land: below the two
+         halves they were split into and above the recognitions. The page owns
+         what that is, because it differs by kind — one diff where both sides
+         share a format, two independent viewers for the custom-agent kind,
+         whose two formats have no meaningful byte-for-byte alignment — while
+         the order is this component's, so every kind's comparison reads the
+         same way. Outside the recognition branch above, because a file every
+         tool fails to recognize still shows its bytes (FR-027). -->
+    <slot name="source" />
+    <section v-if="comparison.tools.length > 0">
+      <h3>Tool recognition</h3>
+      <!-- One row per recognizing tool, in the contracted tool order: each
+           recognition stays distinguishable from the physical file
+           (US3 scenario 2), captioned in words (AGENTS.md § User-visible
+           copy policy). A table rather than sentences: the relationship a
+           screen reader needs — this tool, this file's state, that file's
+           state — is exactly what table headers state. `tabindex` because
+           the table is its own horizontal scroll container on a wide
+           viewport (WCAG 2.1.1). -->
+      <table class="aci-recognition-comparison__table" tabindex="0">
+        <thead>
+          <tr>
+            <th scope="col">Tool</th>
+            <th scope="col">First file</th>
+            <th scope="col">Second file</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in comparison.tools" :key="row.tool">
+            <th scope="row">
+              {{ SUPPORTED_TOOL_TEXT[row.tool] }} · {{ CUSTOMIZATION_KIND_TEXT[row.kind] }}
+            </th>
+            <!-- The recognition, and the surfaces of the documented
+                 behaviors its admitting rules rest on: FR-009 states them
+                 beside every recognition, so a side that recognizes the file
+                 says on which surfaces it is documented to be read. A side
+                 with no recognition has none to state. -->
+            <td data-label="First file">
+              {{ RECOGNITION_SIDE_STATE_TEXT[row.left] }}
+              <span v-if="row.leftSurfaces.length > 0" class="aci-muted">
+                ({{ row.leftSurfaces.map((surface) => VENDOR_SURFACE_TEXT[surface]).join(', ') }})
+              </span>
+            </td>
+            <td data-label="Second file">
+              {{ RECOGNITION_SIDE_STATE_TEXT[row.right] }}
+              <span v-if="row.rightSurfaces.length > 0" class="aci-muted">
+                ({{ row.rightSurfaces.map((surface) => VENDOR_SURFACE_TEXT[surface]).join(', ') }})
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
   </div>
 </template>
 

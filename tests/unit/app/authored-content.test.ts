@@ -45,6 +45,7 @@ function bootstrapSnapshot(overrides: Partial<SessionSnapshot> = {}): SessionSna
     rules: [],
     prompts: [],
     permissions: [],
+    agents: [],
     skills: [],
     mcp: [],
     diagnostics: [],
@@ -159,6 +160,10 @@ describe('authored file content in the browser', () => {
       'activeScanRequestId',
       'carrierDetail',
       'closeFileDetail',
+      // The custom-agent comparison view (FR-011): the agent kind's own two
+      // ordinary detail loads, with the same guards as the skill one and
+      // nothing that masks or reveals either side.
+      'customAgentComparison',
       'detailErrorMessage',
       'dispose',
       'entryDetail',

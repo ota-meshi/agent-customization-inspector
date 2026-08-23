@@ -16,6 +16,8 @@
 // contract agree and the materialized fixture is byte-stable.
 import {
   CLAUDE_REPO_AGENTS_BEHAVIOR,
+  CLAUDE_REPO_AGENT_MEMORY_LOCAL_BEHAVIOR,
+  CLAUDE_REPO_AGENT_MEMORY_PROJECT_BEHAVIOR,
   CLAUDE_REPO_COMMANDS_BEHAVIOR,
   CLAUDE_REPO_INSTRUCTIONS_ANCESTOR_BEHAVIOR,
   CLAUDE_REPO_INSTRUCTIONS_DESCENDANT_BEHAVIOR,
@@ -26,6 +28,9 @@ import {
   CLAUDE_REPO_LOCAL_SETTINGS_BEHAVIOR,
   CLAUDE_REPO_SHARED_SETTINGS_BEHAVIOR,
   CLAUDE_REPO_SKILLS_BEHAVIOR,
+  CLAUDE_USER_AGENTS_BEHAVIOR,
+  CLAUDE_USER_AGENT_MEMORY_BEHAVIOR,
+  CLAUDE_USER_AUTO_MEMORY_BEHAVIOR,
   CLAUDE_USER_COMMANDS_BEHAVIOR,
   CLAUDE_USER_INSTRUCTIONS_BEHAVIOR,
   CLAUDE_USER_MCP_STATE_BEHAVIOR,
@@ -35,6 +40,7 @@ import {
   CLAUDE_USER_SKILLS_BEHAVIOR,
 } from './behaviors';
 import {
+  CLAUDE_REPO_AGENT_RULE,
   CLAUDE_REPO_COMMAND_RULE,
   CLAUDE_REPO_INSTRUCTIONS_RULE,
   CLAUDE_REPO_MCP_RULE,
@@ -43,6 +49,8 @@ import {
   CLAUDE_REPO_SKILL_RULE,
 } from './rules';
 import {
+  CLAUDE_AGENTS_SELECTION_STRATEGY,
+  CLAUDE_AGENT_CONTEXT_COMPOSITION_STRATEGY,
   CLAUDE_COMMANDS_SELECTION_STRATEGY,
   CLAUDE_INSTRUCTIONS_LAYERING_STRATEGY,
   CLAUDE_MCP_SELECTION_STRATEGY,
@@ -55,6 +63,43 @@ import type { ClaudeRuleId, ClaudeStrategyId } from '../identifier-types';
 
 /** What each Claude strategy composes. What documents it is its own `evidence`. */
 export const CLAUDE_STRATEGY_RELATIONS: Readonly<Record<ClaudeStrategyId, StrategyRelations>> = {
+  /**
+   * Agent-context composition composes every documented input a spawned
+   * subagent's fresh context is assembled from: the agent files themselves,
+   * the instruction chain it inherits, the rule layers, the skills its
+   * `skills` field can preload, the three memory scopes its `memory` field
+   * selects between, and the auto memory the page states is deliberately not
+   * loaded. A statement the strategy consumes so it can record that boundary
+   * is still one it consumes (contracts/runtime-composition.md
+   * § claude.agent-context.composition).
+   */
+  [CLAUDE_AGENT_CONTEXT_COMPOSITION_STRATEGY.strategyId]: {
+    consumesBehaviors: [
+      CLAUDE_REPO_AGENT_MEMORY_LOCAL_BEHAVIOR,
+      CLAUDE_REPO_AGENT_MEMORY_PROJECT_BEHAVIOR,
+      CLAUDE_REPO_AGENTS_BEHAVIOR,
+      CLAUDE_REPO_INSTRUCTIONS_ANCESTOR_BEHAVIOR,
+      CLAUDE_REPO_INSTRUCTIONS_DESCENDANT_BEHAVIOR,
+      CLAUDE_REPO_INSTRUCTIONS_LAUNCH_BEHAVIOR,
+      CLAUDE_REPO_RULES_BEHAVIOR,
+      CLAUDE_REPO_SKILLS_BEHAVIOR,
+      CLAUDE_USER_AGENT_MEMORY_BEHAVIOR,
+      CLAUDE_USER_AGENTS_BEHAVIOR,
+      CLAUDE_USER_AUTO_MEMORY_BEHAVIOR,
+    ],
+  },
+  /**
+   * Agent selection composes both documented subagent scopes: the project
+   * files this product can read and the personal ones it may not. Both are
+   * listed because the strategy describes Claude's runtime — the User scope is
+   * one of the priorities it orders — while the managed, session `--agents`,
+   * and plugin scopes it also orders have no behavior statement of their own,
+   * so they stay condition facts rather than edges (data-model.md
+   * § RegistryRelations).
+   */
+  [CLAUDE_AGENTS_SELECTION_STRATEGY.strategyId]: {
+    consumesBehaviors: [CLAUDE_REPO_AGENTS_BEHAVIOR, CLAUDE_USER_AGENTS_BEHAVIOR],
+  },
   /**
    * Command selection composes both documented command scopes and both skill
    * scopes. The command scopes are listed even though only the project one is
@@ -142,6 +187,23 @@ export const CLAUDE_STRATEGY_RELATIONS: Readonly<Record<ClaudeStrategyId, Strate
 
 /** What each Claude inspection rule is based on and explained by. What evidences it is its own `evidence`. */
 export const CLAUDE_RULE_RELATIONS: Readonly<Record<ClaudeRuleId, RuleRelations>> = {
+  /**
+   * The subagent rule is based on the project agent lookup alone — the User
+   * scope the same page documents is a different Source boundary it may not
+   * open — and is explained by both agent strategies: the selection that
+   * orders same-name definitions across scopes and leaves a same-tree
+   * duplicate unresolved, and the composition that assembles a spawned
+   * subagent's context. Neither is projected by any surface (FR-009). No MCP
+   * edge: an agent's `mcpServers` frontmatter is its own declared content and
+   * makes it no carrier (data-model.md § Inventory unit).
+   */
+  [CLAUDE_REPO_AGENT_RULE.ruleId]: {
+    basedOnBehaviors: [CLAUDE_REPO_AGENTS_BEHAVIOR],
+    explainedByStrategies: [
+      CLAUDE_AGENT_CONTEXT_COMPOSITION_STRATEGY,
+      CLAUDE_AGENTS_SELECTION_STRATEGY,
+    ],
+  },
   /**
    * The Repository command rule is based on the project command lookup alone —
    * the User `commands/` directory the same statement pairs with is a

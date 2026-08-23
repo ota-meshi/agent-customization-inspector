@@ -21,8 +21,11 @@ workspace内で動作する。調査対象のカスタマイズファイルをad
 filesystem I/Oはすべて`src/server/inspection/` directory配下だけに置く。そこでは固定inspection path allowlistに対する
 通常の再帰的`node:fs/promises` walkを行い、使用できないentryにはfile別diagnosticを付ける。Browserは記述された完全な
 sourceをread-only Monaco editorで表示し、source比較にはMonaco diff editorを使う。Tool recognitionは
-toolごとに比較し、宣言済みmetadata — fileのkindごとに1回のparse — はkind/fieldで対応付け、
-parserが解決した値を通常のVue componentで比較・表示する。
+toolごとに比較し、宣言済みmetadataは1回だけ比較する — sideごとに1つのcanonical documentへ
+serializeし、それをdiff editorがsourceの傍らにmountする。kind/fieldで対応付けてVue
+componentで描画するのではない。その背後のparseは、Markdown系kindについては`(file, kind)`
+ごと、custom-agent kindについては`(file, tool)`ごとに1回であり、後者の分割はadmitした
+rule自身の読み取りである。
 
 Root selectionは単純かつlexicalとする。CLIは`process.cwd()`を正確に1回captureし、`--root <path>`を
 acceptする（反復指定はparserのlast valueへ解決）。Absolute optionはそのまま保持し、relative optionはcapture済みinvocation directoryに対して

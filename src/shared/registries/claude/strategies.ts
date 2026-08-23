@@ -21,6 +21,106 @@ import type { ClaudeStrategyId } from '../identifier-types';
 import type { RuntimeCompositionStrategy } from '../strategy-types';
 
 /**
+ * Claude subagent selection: for a name several scopes declare, the managed
+ * definition wins, then a session `--agents` one, then the closest project
+ * layer, then the User scope, then a plugin's (`select-first`,
+ * `select-closest`) — while a duplicate inside one `.claude/agents/` tree,
+ * subfolders included, loads by filesystem read order rather than a documented
+ * precedence (`unknown-order`).
+ *
+ * The unresolved half is the point: the page states that only one of two
+ * same-name files under one tree loads and names no rule for which, so a
+ * surface that ordered them would answer a question the vendor leaves open.
+ * The agent inventory therefore lists both definitions of such a name side by
+ * side and states no winner, exactly as a `prompt/command` row does
+ * (data-model.md § Inventory unit, FR-009).
+ *
+ * `partially-documented`: the same-tree duplicate order is unspecified, which
+ * the canonical index records as the assessment basis — `unknown-order` says
+ * the pipeline reaches that step, not that the step is established
+ * (contracts/runtime-composition.md § Canonical evidence-assessment index).
+ */
+export const CLAUDE_AGENTS_SELECTION_STRATEGY = {
+  strategyId: 'claude.agents.selection',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  operations: ['select-first', 'select-closest', 'unknown-order'],
+  documentationStatus: 'partially-documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.subagents.scope-context',
+          url: 'https://code.claude.com/docs/en/sub-agents',
+          officialHost: 'code.claude.com',
+          sections: ['Choose the subagent scope'],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'When several subagents share one name the higher-priority location wins, in managed, --agents session, project, User, then plugin order; across nested project directories the definition closest to the working directory wins, while two files under one .claude/agents/ tree load by filesystem read order rather than a documented precedence.',
+        },
+      ]
+    : [],
+} as const satisfies RuntimeCompositionStrategy;
+
+/**
+ * Claude subagent context composition: a non-fork subagent starts with a fresh
+ * context assembled from documented inputs — its own system prompt, the
+ * delegation message, the CLAUDE.md hierarchy the main conversation loads, a
+ * git-status snapshot, and the full content of every skill its `skills` field
+ * preloads (`concatenate`) — with the built-in Explore and Plan agents
+ * omitting the instruction and git inputs and the current nested-spawn depth
+ * limit withholding the `Agent` tool (`filter`), while `context: fork`
+ * inherits the parent conversation instead of that fresh context (`replace`).
+ *
+ * The memory scope is one of those inputs and one of the reasons the strategy
+ * names the memory behaviors: `memory: user`, `project`, or `local` selects
+ * one directory whose `MEMORY.md` prefix joins the subagent's system prompt,
+ * and the main conversation's auto memory is deliberately not among the
+ * inputs.
+ *
+ * No surface projects any of this. What a concrete spawn composes depends on
+ * the parent session, the enabled scopes, and runtime this tool never observes
+ * (FR-009); what the Inspector publishes is the file's own declarations.
+ */
+export const CLAUDE_AGENT_CONTEXT_COMPOSITION_STRATEGY = {
+  strategyId: 'claude.agent-context.composition',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  operations: ['concatenate', 'filter', 'replace'],
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.memory.locations-load',
+          url: 'https://code.claude.com/docs/en/memory',
+          officialHost: 'code.claude.com',
+          sections: ['How CLAUDE.md files load', 'Auto memory'],
+          reviewedOn: '2026-08-18',
+          establishes:
+            'The CLAUDE.md hierarchy a subagent inherits is the one the main conversation loads, and auto memory is the separate per-project store a session maintains under the Claude configuration directory.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.subagents.scope-context',
+          url: 'https://code.claude.com/docs/en/sub-agents',
+          officialHost: 'code.claude.com',
+          sections: [
+            'What loads at startup',
+            'Available tools',
+            'Preload skills into subagents',
+            'Scope MCP servers to a subagent',
+            'Enable persistent memory',
+            'Let subagents spawn their own subagents',
+          ],
+          reviewedOn: '2026-08-20',
+          establishes:
+            'A non-fork subagent starts with a fresh isolated context holding its own system prompt, the delegation message, every level of the CLAUDE.md hierarchy, a git-status snapshot, and the full content of each preloaded skill, with Explore and Plan omitting the instruction and git inputs and the main conversation’s auto memory never loaded; a fork inherits the parent conversation instead; the tools field decides the inherited tool set, an mcpServers entry is either an inline definition scoped to that subagent or a name referencing the parent session’s connection, the memory field selects one persistent directory whose MEMORY.md prefix joins the system prompt, and at the nested-spawn depth limit the Agent tool is withheld.',
+        },
+      ]
+    : [],
+} as const satisfies RuntimeCompositionStrategy;
+
+/**
  * Claude command selection: a legacy command file and a skill compete for one
  * command name, and the skill wins.
  *
@@ -317,6 +417,8 @@ export const CLAUDE_SETTINGS_PRECEDENCE_STRATEGY = {
 export const CLAUDE_COMPOSITION_STRATEGIES: Readonly<
   Record<ClaudeStrategyId, RuntimeCompositionStrategy>
 > = {
+  [CLAUDE_AGENT_CONTEXT_COMPOSITION_STRATEGY.strategyId]: CLAUDE_AGENT_CONTEXT_COMPOSITION_STRATEGY,
+  [CLAUDE_AGENTS_SELECTION_STRATEGY.strategyId]: CLAUDE_AGENTS_SELECTION_STRATEGY,
   [CLAUDE_COMMANDS_SELECTION_STRATEGY.strategyId]: CLAUDE_COMMANDS_SELECTION_STRATEGY,
   [CLAUDE_INSTRUCTIONS_LAYERING_STRATEGY.strategyId]: CLAUDE_INSTRUCTIONS_LAYERING_STRATEGY,
   [CLAUDE_MCP_SELECTION_STRATEGY.strategyId]: CLAUDE_MCP_SELECTION_STRATEGY,

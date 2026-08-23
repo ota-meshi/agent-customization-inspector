@@ -40,6 +40,9 @@ import type { ToolRecognition } from '../../../src/server/inspection/recognizers
 const copilotSkillRule = COPILOT_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'copilot.repo.skill',
 )!;
+const copilotAgentRule = COPILOT_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'copilot.repo.agent',
+)!;
 const claudeSkillRule = CLAUDE_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'claude.repo.skill',
 )!;
@@ -915,5 +918,254 @@ describe('the Copilot Cloud MCP runtime facts (T374)', () => {
     expect(COPILOT_CLOUD_MCP_SELECTION_STRATEGY.operations).toEqual(['replace']);
     expect(COPILOT_CLOUD_MCP_SELECTION_STRATEGY.documentationStatus).toBe('partially-documented');
     expect(COPILOT_CLOUD_MCP_SELECTION_STRATEGY.surfaces).toEqual(['copilot-cloud']);
+  });
+});
+
+describe('Copilot custom-agent reading (T556)', () => {
+  /**
+   * Recognizes one authored profile at an admitted path. The path is a
+   * parameter because the rule's two selectors reach different directories and
+   * the file's own name is what identifies the agent.
+   */
+  async function recognizeAgent(
+    matchedPath: string,
+    sourceText: string,
+  ): Promise<readonly ToolRecognition[]> {
+    mkdirSync(join(root, matchedPath.split('/').slice(0, -1).join('/')), { recursive: true });
+    const { recognitions } = await recognizeCandidateForVendors(
+      {
+        matchedPath,
+        absolutePath: join(root, matchedPath),
+        sourceRoot: root,
+        admissions: [{ compiled: copilotAgentRule, origin: { planIndex: 0, selectorIndex: 0 } }],
+        sourceText,
+      },
+      ['copilot'],
+    );
+    return recognitions;
+  }
+
+  /** The one agent recognition's payload, or a failure. */
+  function agentDetailsOf(recognitions: readonly ToolRecognition[]) {
+    const [recognition] = recognitions;
+    if (recognition === undefined || recognition.details.kind !== 'agent') {
+      throw new Error('expected one Copilot agent recognition');
+    }
+    return recognition.details;
+  }
+
+  it('publishes the documented frontmatter properties as the file wrote them', async () => {
+    // The reference's own property table — `name`, `description`, `target`,
+    // `tools`, `model`, `disable-model-invocation`, `user-invocable`,
+    // `mcp-servers`, `metadata` — plus the two the note names as IDE-only,
+    // `argument-hint` and `handoffs`. Every one is a declaration like any
+    // other: this product resolves the value and captions none of them,
+    // because what a key means is the vendor's documentation rather than this
+    // product's (FR-007).
+    const details = agentDetailsOf(
+      await recognizeAgent(
+        '.github/agents/planner.md',
+        [
+          '---',
+          'name: Release planner',
+          'description: Plans a release',
+          'target: github-copilot',
+          'tools: read, search',
+          'model: gpt-5.3',
+          'disable-model-invocation: true',
+          'user-invocable: false',
+          'argument-hint: <milestone>',
+          'handoffs:',
+          '  - reviewer',
+          'metadata:',
+          '  owner: platform',
+          '---',
+          '',
+          'Draft the plan, then hand the review to @reviewer.',
+          '',
+        ].join('\n'),
+      ),
+    );
+    expect(details.metadata.map((entry) => entry.key)).toEqual([
+      'name',
+      'description',
+      'target',
+      'tools',
+      'model',
+      'disable-model-invocation',
+      'user-invocable',
+      'argument-hint',
+      'handoffs',
+      'metadata',
+    ]);
+    // A boolean key resolves as a boolean, so a surface spelling it back
+    // spells it bare (api-types.ts § DeclaredScalarKind).
+    expect(details.metadata[5]!.value).toEqual({
+      kind: 'scalar',
+      scalarKind: 'boolean',
+      text: 'true',
+    });
+    // A list-valued key keeps its authored shape rather than being flattened;
+    // the comma-separated `tools` spelling the reference also allows stays the
+    // one string it is, because resolving it is the vendor's reading and not
+    // this product's.
+    expect(details.metadata[3]!.value).toEqual({
+      kind: 'scalar',
+      scalarKind: 'string',
+      text: 'read, search',
+    });
+    expect(details.metadata[8]!.value).toEqual({
+      kind: 'sequence',
+      items: [{ kind: 'scalar', scalarKind: 'string', text: 'reviewer' }],
+    });
+    // The body is the instructions half; the handoff inside it stays text,
+    // resolved to nothing (FR-019).
+    expect(details.instructionsText).toContain('hand the review to @reviewer.');
+  });
+
+  it('names the agent from its file on both documented directories and both spellings', async () => {
+    // The shared reference documents the `name` field as an optional display
+    // name and deduplicates agents by the configuration file's own name minus
+    // `.md` or `.agent.md`, so the path answers on every surface and a
+    // declared `name` never does.
+    const cases = [
+      ['.github/agents/planner.md', 'planner'],
+      ['.github/agents/reviewer.agent.md', 'reviewer'],
+      ['.claude/agents/shared.md', 'shared'],
+    ] as const;
+    for (const [matchedPath, expected] of cases) {
+      const details = agentDetailsOf(
+        await recognizeAgent(matchedPath, '---\nname: A display name\n---\n\nx\n'),
+      );
+      expect(details.agentName, matchedPath).toBe(expected);
+    }
+  });
+
+  it('publishes a declared mcp-servers block without an MCP recognition of any kind', async () => {
+    // The reference documents `mcp-servers` as additional servers a Cloud
+    // agent may use and as not used in VS Code and other IDE custom agents.
+    // Either way it is this file's own content and joins no MCP row
+    // (data-model.md § Inventory unit).
+    const recognitions = await recognizeAgent(
+      '.github/agents/deployer.md',
+      [
+        '---',
+        'name: Deployer',
+        'mcp-servers:',
+        '  deploy-mcp:',
+        '    type: local',
+        '    command: npx',
+        '---',
+        '',
+        'Deploy.',
+        '',
+      ].join('\n'),
+    );
+    expect(recognitions.map((recognition) => recognition.details.kind)).toEqual(['agent']);
+    const declared = agentDetailsOf(recognitions).metadata.find(
+      (entry) => entry.key === 'mcp-servers',
+    );
+    expect(declared?.value).toEqual({
+      kind: 'mapping',
+      entries: [
+        {
+          key: 'deploy-mcp',
+          keyKind: 'string',
+          value: {
+            kind: 'mapping',
+            entries: [
+              {
+                key: 'type',
+                keyKind: 'string',
+                value: { kind: 'scalar', scalarKind: 'string', text: 'local' },
+              },
+              {
+                key: 'command',
+                keyKind: 'string',
+                value: { kind: 'scalar', scalarKind: 'string', text: 'npx' },
+              },
+            ],
+          },
+        },
+      ],
+    });
+  });
+
+  it('publishes a credential and an environment reference exactly as written', async () => {
+    const details = agentDetailsOf(
+      await recognizeAgent(
+        '.github/agents/secretive.md',
+        [
+          '---',
+          'name: Secretive',
+          `token: ${CONTENT_FIXTURE_SECRET}`,
+          'endpoint: ${COPILOT_AGENT_ENDPOINT}',
+          '---',
+          '',
+          'x',
+          '',
+        ].join('\n'),
+      ),
+    );
+    expect(details.metadata[1]!.value).toEqual({
+      kind: 'scalar',
+      scalarKind: 'string',
+      text: CONTENT_FIXTURE_SECRET,
+    });
+    expect(details.metadata[2]!.value).toEqual({
+      kind: 'scalar',
+      scalarKind: 'string',
+      text: '${COPILOT_AGENT_ENDPOINT}',
+    });
+  });
+
+  it('keeps the name a failed extraction cannot take away', async () => {
+    // Extraction is all-or-nothing, so nothing that happened to parse is kept
+    // — but the name comes from the path, which a failed parse leaves intact
+    // (FR-028).
+    const recognitions = await recognizeAgent(
+      '.github/agents/broken.md',
+      '---\nname: [unterminated\n---\n\n# Broken\n',
+    );
+    expect(recognitions[0]!.parseStatus).toBe('failed');
+    expect(recognitions[0]!.details).toEqual({
+      kind: 'agent',
+      agentName: 'broken',
+      metadata: [],
+      instructionsText: '',
+    });
+  });
+
+  it('states the same-name uncertainty by naming both files and no winner', async () => {
+    // The reference documents deduplication between levels and says nothing
+    // about two files of one level, so nothing here orders them (FR-009).
+    const first = agentDetailsOf(
+      await recognizeAgent('.github/agents/reviewer.md', '---\ndescription: A\n---\n\nA\n'),
+    );
+    const second = agentDetailsOf(
+      await recognizeAgent('.github/agents/reviewer.agent.md', '---\ndescription: B\n---\n\nB\n'),
+    );
+    expect(first.agentName).toBe('reviewer');
+    expect(second.agentName).toBe('reviewer');
+    for (const details of [first, second]) {
+      const serialized = JSON.stringify(details);
+      for (const field of ['precedence', 'winner', 'selected', 'active']) {
+        expect(serialized).not.toContain(field);
+      }
+    }
+  });
+
+  it('rests one recognition on all three surfaces the one admission covers', async () => {
+    // One rule stands for the CLI, the Cloud agent, and VS Code alike, so a
+    // single admission puts every recognizing surface on the file's one
+    // recognition — never a surface-specific recognition or a claim that a
+    // profile's `target` selected one (FR-009).
+    const [recognition] = await recognizeAgent(
+      '.github/agents/planner.md',
+      '---\ntarget: vscode\n---\n\nx\n',
+    );
+    expect(
+      recognition!.provenances.flatMap((provenance) => [...provenance.recognizingSurfaces]),
+    ).toEqual(['copilot-vscode', 'copilot-cli', 'copilot-cloud']);
   });
 });

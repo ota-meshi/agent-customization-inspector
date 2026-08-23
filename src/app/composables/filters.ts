@@ -26,6 +26,7 @@
 // filter value reaches the host, and no filter can widen what was scanned.
 import { computed, type ComputedRef, type Ref } from 'vue';
 import type {
+  AgentInventoryEntryDto,
   PromptInventoryEntryDto,
   CustomizationFileSummaryDto,
   InstructionInventoryEntryDto,
@@ -104,31 +105,6 @@ export class InventoryFilterView {
   public readonly instructionRows: ComputedRef<readonly InstructionInventoryEntryDto[]>;
 
   /**
-   * The rule rows that pass every active filter, in snapshot order. A row is
-   * one recognized rule file (data-model.md § Inventory unit); a tool filter
-   * keeps the recognizing tools it matches and drops the row only when none
-   * is left, so a narrowed row states what still matches.
-   */
-  public readonly ruleRows: ComputedRef<readonly RuleInventoryEntryDto[]>;
-
-  /**
-   * The command rows that pass every active filter, in snapshot order. A row
-   * is one name a reader invokes (data-model.md § Inventory unit); a filter
-   * keeps the definitions it matches and drops a row only when none is left,
-   * so a narrowed row states what still matches rather than every file the
-   * name has.
-   */
-  public readonly promptRows: ComputedRef<readonly PromptInventoryEntryDto[]>;
-
-  /**
-   * The permission-policy rows that pass every active filter, in snapshot
-   * order. A row is one declared policy, named by the path of the file that
-   * declares it (data-model.md § Inventory unit), and the tool filter narrows
-   * it by the same rule the other path-identified rows follow.
-   */
-  public readonly permissionsRows: ComputedRef<readonly PermissionsInventoryEntryDto[]>;
-
-  /**
    * The skill rows that pass every active filter, in snapshot order. A row is
    * one resolved name; a filter keeps the definitions it matches and drops a
    * row only when none is left, so a narrowed row states what still matches
@@ -145,6 +121,41 @@ export class InventoryFilterView {
    * skill rows do.
    */
   public readonly mcpRows: ComputedRef<readonly McpInventoryEntryDto[]>;
+
+  /**
+   * The custom-agent rows that pass every active filter, in snapshot order. A
+   * row is one agent name the admitting rules resolve (data-model.md
+   * § Inventory unit); a filter
+   * keeps the definitions it matches and drops a row only when none is left,
+   * so a narrowed row states what still matches rather than every file the
+   * name has, exactly as the MCP rows do.
+   */
+  public readonly agentRows: ComputedRef<readonly AgentInventoryEntryDto[]>;
+
+  /**
+   * The command rows that pass every active filter, in snapshot order. A row
+   * is one name a reader invokes (data-model.md § Inventory unit); a filter
+   * keeps the definitions it matches and drops a row only when none is left,
+   * so a narrowed row states what still matches rather than every file the
+   * name has.
+   */
+  public readonly promptRows: ComputedRef<readonly PromptInventoryEntryDto[]>;
+
+  /**
+   * The rule rows that pass every active filter, in snapshot order. A row is
+   * one recognized rule file (data-model.md § Inventory unit); a tool filter
+   * keeps the recognizing tools it matches and drops the row only when none
+   * is left, so a narrowed row states what still matches.
+   */
+  public readonly ruleRows: ComputedRef<readonly RuleInventoryEntryDto[]>;
+
+  /**
+   * The permission-policy rows that pass every active filter, in snapshot
+   * order. A row is one declared policy, named by the path of the file that
+   * declares it (data-model.md § Inventory unit), and the tool filter narrows
+   * it by the same rule the other path-identified rows follow.
+   */
+  public readonly permissionsRows: ComputedRef<readonly PermissionsInventoryEntryDto[]>;
 
   /**
    * Admitted candidates that pass the Source and path filters but appear in no
@@ -231,11 +242,14 @@ export class InventoryFilterView {
         ...(snapshot.value?.mcp ?? []).flatMap((entry) =>
           entry.declarations.map((declaration) => declaration.tool),
         ),
-        ...(snapshot.value?.rules ?? []).flatMap((entry) =>
-          entry.recognitions.map((recognition) => recognition.tool),
+        ...(snapshot.value?.agents ?? []).flatMap((entry) =>
+          entry.definitions.map((definition) => definition.tool),
         ),
         ...(snapshot.value?.prompts ?? []).flatMap((entry) =>
           entry.definitions.map((definition) => definition.tool),
+        ),
+        ...(snapshot.value?.rules ?? []).flatMap((entry) =>
+          entry.recognitions.map((recognition) => recognition.tool),
         ),
         ...(snapshot.value?.permissions ?? []).flatMap((entry) =>
           entry.recognitions.map((recognition) => recognition.tool),
@@ -248,11 +262,12 @@ export class InventoryFilterView {
       // only once its recognizer phase ships an inventory of its own.
       const present = new Set<CustomizationKind>([
         ...((snapshot.value?.instructions ?? []).length > 0 ? (['instructions'] as const) : []),
-        ...((snapshot.value?.rules ?? []).length > 0 ? (['rule'] as const) : []),
-        ...((snapshot.value?.prompts ?? []).length > 0 ? (['prompt/command'] as const) : []),
-        ...((snapshot.value?.permissions ?? []).length > 0 ? (['permissions'] as const) : []),
         ...((snapshot.value?.skills ?? []).length > 0 ? (['skill'] as const) : []),
         ...((snapshot.value?.mcp ?? []).length > 0 ? (['MCP'] as const) : []),
+        ...((snapshot.value?.agents ?? []).length > 0 ? (['agent'] as const) : []),
+        ...((snapshot.value?.prompts ?? []).length > 0 ? (['prompt/command'] as const) : []),
+        ...((snapshot.value?.rules ?? []).length > 0 ? (['rule'] as const) : []),
+        ...((snapshot.value?.permissions ?? []).length > 0 ? (['permissions'] as const) : []),
       ]);
       return CUSTOMIZATION_KIND_ORDER.filter((candidate) => present.has(candidate));
     });
@@ -343,68 +358,6 @@ export class InventoryFilterView {
     );
 
     /**
-     * The rule files that survive every filter, each reduced to the
-     * recognitions that matched. A file with no matching recognition is not a
-     * row: showing it would claim a match the inventory does not have.
-     *
-     * A recognition is kept or dropped whole, surfaces included, exactly as
-     * an instruction file's are: the tool filter selects a product, and a
-     * product's recognition of a file is one fact however many of its
-     * surfaces read the file.
-     */
-    this.ruleRows = computed(() =>
-      (snapshot.value?.rules ?? []).flatMap((entry) => {
-        if (!fileMatches(entry.sourceRelativePath)) {
-          return [];
-        }
-        const recognitions =
-          effectiveTool.value === null
-            ? entry.recognitions
-            : entry.recognitions.filter((recognition) => recognition.tool === effectiveTool.value);
-        return recognitions.length === 0 ? [] : [{ ...entry, recognitions }];
-      }),
-    );
-
-    /**
-     * The command entries that survive every filter, each reduced to the
-     * definitions that matched. A name with no matching definition is not a
-     * row: showing it would claim a match the inventory does not have.
-     */
-    this.promptRows = computed(() =>
-      (snapshot.value?.prompts ?? []).flatMap((entry) => {
-        const definitions = entry.definitions.filter(
-          (definition) =>
-            fileMatches(definition.sourceRelativePath) &&
-            (effectiveTool.value === null || definition.tool === effectiveTool.value),
-        );
-        return definitions.length === 0 ? [] : [{ ...entry, definitions }];
-      }),
-    );
-
-    /**
-     * The declared policies that survive every filter, each reduced to the
-     * recognitions that matched, by the same two questions the rules filter
-     * asks of its own rows.
-     *
-     * Written out rather than shared with the rules filter above: the two rows
-     * are different subjects — a rule file, and a policy a file declares — so
-     * the first fact one of them gains that the other has no answer for would
-     * break a shared filter, and the duplication is four lines.
-     */
-    this.permissionsRows = computed(() =>
-      (snapshot.value?.permissions ?? []).flatMap((entry) => {
-        if (!fileMatches(entry.sourceRelativePath)) {
-          return [];
-        }
-        const recognitions =
-          effectiveTool.value === null
-            ? entry.recognitions
-            : entry.recognitions.filter((recognition) => recognition.tool === effectiveTool.value);
-        return recognitions.length === 0 ? [] : [{ ...entry, recognitions }];
-      }),
-    );
-
-    /**
      * The skill entries that survive every filter, each reduced to the
      * definitions that matched. A name with no matching definition is not a row:
      * showing it would claim a match the inventory does not have.
@@ -455,6 +408,86 @@ export class InventoryFilterView {
       }),
     );
 
+    /**
+     * The custom-agent entries that survive every filter, each reduced to the
+     * definitions that matched. A name with no matching definition is not a
+     * row: showing it would claim a match the inventory does not have. The
+     * null-named row narrows by the same two questions — it is a row of files
+     * like any other, and only its heading differs.
+     */
+    this.agentRows = computed<readonly AgentInventoryEntryDto[]>(() =>
+      (snapshot.value?.agents ?? []).flatMap((entry) => {
+        const definitions = entry.definitions.filter(
+          (definition) =>
+            fileMatches(definition.sourceRelativePath) &&
+            (effectiveTool.value === null || definition.tool === effectiveTool.value),
+        );
+        return definitions.length === 0 ? [] : [{ ...entry, definitions }];
+      }),
+    );
+
+    /**
+     * The command entries that survive every filter, each reduced to the
+     * definitions that matched. A name with no matching definition is not a
+     * row: showing it would claim a match the inventory does not have.
+     */
+    this.promptRows = computed(() =>
+      (snapshot.value?.prompts ?? []).flatMap((entry) => {
+        const definitions = entry.definitions.filter(
+          (definition) =>
+            fileMatches(definition.sourceRelativePath) &&
+            (effectiveTool.value === null || definition.tool === effectiveTool.value),
+        );
+        return definitions.length === 0 ? [] : [{ ...entry, definitions }];
+      }),
+    );
+
+    /**
+     * The rule files that survive every filter, each reduced to the
+     * recognitions that matched. A file with no matching recognition is not a
+     * row: showing it would claim a match the inventory does not have.
+     *
+     * A recognition is kept or dropped whole, surfaces included, exactly as
+     * an instruction file's are: the tool filter selects a product, and a
+     * product's recognition of a file is one fact however many of its
+     * surfaces read the file.
+     */
+    this.ruleRows = computed(() =>
+      (snapshot.value?.rules ?? []).flatMap((entry) => {
+        if (!fileMatches(entry.sourceRelativePath)) {
+          return [];
+        }
+        const recognitions =
+          effectiveTool.value === null
+            ? entry.recognitions
+            : entry.recognitions.filter((recognition) => recognition.tool === effectiveTool.value);
+        return recognitions.length === 0 ? [] : [{ ...entry, recognitions }];
+      }),
+    );
+
+    /**
+     * The declared policies that survive every filter, each reduced to the
+     * recognitions that matched, by the same two questions the rules filter
+     * asks of its own rows.
+     *
+     * Written out rather than shared with the rules filter above: the two rows
+     * are different subjects — a rule file, and a policy a file declares — so
+     * the first fact one of them gains that the other has no answer for would
+     * break a shared filter, and the duplication is four lines.
+     */
+    this.permissionsRows = computed(() =>
+      (snapshot.value?.permissions ?? []).flatMap((entry) => {
+        if (!fileMatches(entry.sourceRelativePath)) {
+          return [];
+        }
+        const recognitions =
+          effectiveTool.value === null
+            ? entry.recognitions
+            : entry.recognitions.filter((recognition) => recognition.tool === effectiveTool.value);
+        return recognitions.length === 0 ? [] : [{ ...entry, recognitions }];
+      }),
+    );
+
     this.kindCounts = computed(() => {
       const counts = new Map<CustomizationKind, number>();
       for (const candidate of this.availableKinds.value) {
@@ -464,17 +497,19 @@ export class InventoryFilterView {
           candidate,
           candidate === 'instructions'
             ? this.instructionRows.value.length
-            : candidate === 'rule'
-              ? this.ruleRows.value.length
-              : candidate === 'prompt/command'
-                ? this.promptRows.value.length
-                : candidate === 'permissions'
-                  ? this.permissionsRows.value.length
-                  : candidate === 'skill'
-                    ? this.skillRows.value.length
-                    : candidate === 'MCP'
-                      ? this.mcpRows.value.length
-                      : 0,
+            : candidate === 'skill'
+              ? this.skillRows.value.length
+              : candidate === 'MCP'
+                ? this.mcpRows.value.length
+                : candidate === 'agent'
+                  ? this.agentRows.value.length
+                  : candidate === 'prompt/command'
+                    ? this.promptRows.value.length
+                    : candidate === 'rule'
+                      ? this.ruleRows.value.length
+                      : candidate === 'permissions'
+                        ? this.permissionsRows.value.length
+                        : 0,
         );
       }
       return counts;
@@ -488,17 +523,20 @@ export class InventoryFilterView {
         ...(snapshot.value?.instructions ?? []).flatMap((entry) =>
           entry.files.map((file) => file.sourceRelativePath),
         ),
-        ...(snapshot.value?.rules ?? []).map((entry) => entry.sourceRelativePath),
-        ...(snapshot.value?.prompts ?? []).flatMap((entry) =>
-          entry.definitions.map((definition) => definition.sourceRelativePath),
-        ),
-        ...(snapshot.value?.permissions ?? []).map((entry) => entry.sourceRelativePath),
         ...(snapshot.value?.skills ?? []).flatMap((entry) =>
           entry.definitions.map((definition) => definition.sourceRelativePath),
         ),
         ...(snapshot.value?.mcp ?? []).flatMap((entry) =>
           entry.declarations.map((declaration) => declaration.sourceRelativePath),
         ),
+        ...(snapshot.value?.agents ?? []).flatMap((entry) =>
+          entry.definitions.map((definition) => definition.sourceRelativePath),
+        ),
+        ...(snapshot.value?.prompts ?? []).flatMap((entry) =>
+          entry.definitions.map((definition) => definition.sourceRelativePath),
+        ),
+        ...(snapshot.value?.rules ?? []).map((entry) => entry.sourceRelativePath),
+        ...(snapshot.value?.permissions ?? []).map((entry) => entry.sourceRelativePath),
       ]);
       // A companion belongs to the customization whose directory holds it, and
       // that customization already has a row — so a companion is excluded here

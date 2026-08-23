@@ -12,7 +12,9 @@
 // what an already-admitted candidate is recognized as.
 import {
   CompiledInspectionRule,
+  declaredAgentNameOf,
   escapeGlobLiteral,
+  type CompiledStaticAgentRule,
   type CompiledStaticCandidateRule,
   type CompiledStaticPromptRule,
   type CompiledStaticInstructionRule,
@@ -21,7 +23,12 @@ import {
   type CompiledStaticPermissionsCarrierRule,
 } from './registry';
 import { ParsedStrictJsonDocument } from '../parsers/json';
-import type { DeclaredEntryDto, McpServerDeclarationDto } from '../../../shared/api-types';
+import { ParsedMarkdownDocument } from '../parsers/markdown';
+import type {
+  AgentPresentationDto,
+  DeclaredEntryDto,
+  McpServerDeclarationDto,
+} from '../../../shared/api-types';
 import type { CustomizationKind } from '../../../shared/entities';
 import { CLAUDE_RULE_RELATIONS } from '../../../shared/registries/claude/relations';
 import { CLAUDE_INSPECTION_RULES } from '../../../shared/registries/claude/rules';
@@ -158,7 +165,7 @@ export class ClaudeCompiledPromptRule
    * takes its directory's name instead of its own, so
    * `.claude/commands/foo/SKILL.md` is `foo` and
    * `.claude/commands/a/b/SKILL.md` is `a:b`. Matching the product where
-   * nothing is written is the standing decision for this kind (user decision).
+   * nothing is written is the standing decision for this kind.
    *
    * The one path that exception cannot answer is a `SKILL.md` directly in the
    * commands directory, where there is no directory below it to take a name
@@ -317,16 +324,17 @@ export class ClaudeCompiledOtherKindRule
   /** Narrowed to the kinds this unit compiles; the constructor proves it. */
   declare public readonly kind: Exclude<
     CustomizationKind,
-    'instructions' | 'prompt/command' | 'MCP' | 'permissions'
+    'instructions' | 'MCP' | 'agent' | 'prompt/command' | 'permissions'
   >;
 
-  /** Compiles one Claude record of any kind but the four with a question of their own. */
+  /** Compiles one Claude record of any kind but the five with a question of their own. */
   public constructor(rule: InspectionRule) {
     super(rule);
     if (
       rule.kind === 'instructions' ||
-      rule.kind === 'prompt/command' ||
       rule.kind === 'MCP' ||
+      rule.kind === 'agent' ||
+      rule.kind === 'prompt/command' ||
       rule.kind === 'permissions'
     ) {
       throw new TypeError(`rule ${rule.ruleId} needs a Claude unit that answers for its kind`);
@@ -335,11 +343,85 @@ export class ClaudeCompiledOtherKindRule
 }
 
 /**
+ * The Claude custom-agent rule compiled for execution: everything a Claude
+ * rule is, plus the one question only a custom-agent rule answers — where an
+ * admitted agent file's configuration ends and its instructions begin.
+ *
+ * A Claude subagent is Markdown, so the split is the frontmatter fence: the
+ * block configures the agent and the body is the system prompt it runs with
+ * (contracts/vendors/claude-code.md § Repository Inspector matchers). The
+ * reading lives here, beside the rule that owns it, because where the split
+ * falls is this vendor's own contract; the Markdown parse and the rendering of
+ * resolved values are the format's and stay in `parsers/markdown.ts`.
+ */
+export class ClaudeCompiledAgentRule extends ClaudeCompiledRule implements CompiledStaticAgentRule {
+  /** Narrowed to the one kind this unit compiles; the constructor proves it. */
+  declare public readonly kind: 'agent';
+
+  /**
+   * One admitted Markdown file from the root's own `.claude/agents/` subtree,
+   * split into the two halves its detail shows (FR-007): every frontmatter key
+   * the file declares — `name`,
+   * `description`, `tools`, `skills`, `memory`, and the `mcpServers` block
+   * among them — as the metadata, and the body the fence leaves as the
+   * instructions.
+   *
+   * The parse is this vendor's reading rather than the shared Markdown slot's,
+   * for the reason the MCP and permission readings are keyed by tool: what a
+   * rule reads out of a file is its own contract, and one physical file can be
+   * two products' agent definition. Where the format coincides with the shared
+   * parse — as it does here — the two resolve identically, so the repetition
+   * is work over one string rather than a second fact
+   * (`recognizers/candidate.ts` § CandidateExtractions).
+   *
+   * No field is validated, no environment reference is resolved, and no
+   * declared skill, server, tool, or path gains read or connection authority.
+   * A declared `mcpServers` block is one metadata entry and nothing more: it
+   * makes the file no MCP carrier, because an MCP declaration's home is an
+   * explicit carrier and nothing else (data-model.md § Inventory unit).
+   * Throws on text the frontmatter parser cannot read; the recognizer's
+   * extraction boundary turns the throw into the recognition's `failed` state
+   * while the file stays an admitted candidate whose complete source is still
+   * displayed (FR-028).
+   */
+  public agentPresentationOf(sourceText: string): AgentPresentationDto {
+    const document = new ParsedMarkdownDocument(sourceText);
+    return { metadata: document.frontmatterEntries, instructionsText: document.body };
+  }
+
+  /**
+   * The agent's declared `name`, which is what Claude Code identifies a
+   * subagent by: the page documents the `name` field as the identifier and
+   * adds that a subfolder inside the agents directory does not affect it, so
+   * neither the file name nor the directory above it names a row here, and a
+   * file declaring none joins the row that says the name is not known.
+   *
+   * The path is unused for that reason, and the shared reading is the one both
+   * declared-name products use (`registry.ts` § declaredAgentNameOf).
+   */
+  public agentNameOf(
+    _sourceRelativePath: string,
+    declared: readonly DeclaredEntryDto[],
+  ): string | null {
+    return declaredAgentNameOf(declared);
+  }
+
+  /** Compiles one Claude custom-agent record, rejecting one of another kind. */
+  public constructor(rule: InspectionRule) {
+    super(rule);
+    if (rule.kind !== 'agent') {
+      throw new TypeError(`rule ${rule.ruleId} is not a Claude custom-agent rule`);
+    }
+  }
+}
+
+/**
  * The Claude Repository rules a Repository scan executes, in shipped order.
  * The remaining Claude rows of the vendor contract arrive with their own
- * inventory phases; the shipped set covers instructions and skills, so a
- * repository whose only Claude files are settings or agents legitimately
- * contributes nothing to the inventory.
+ * inventory phases; the shipped set covers instructions, skills, commands, the
+ * MCP carrier, rule files, the permission policy, and custom agents, so a
+ * repository whose only Claude files are settings legitimately contributes
+ * nothing to the inventory.
  *
  * Every shipped rule is compiled rather than filtered: a Claude record that
  * authorizes no traversal is rejected by the {@link ClaudeCompiledRule}
@@ -353,16 +435,19 @@ export const CLAUDE_REPOSITORY_RULES: readonly CompiledStaticCandidateRule[] = O
 ).map((rule) =>
   // Each record compiles into the unit that can answer its kind's question:
   // an instruction record what its files govern, a command record the name its
-  // files are invoked by, an MCP record which servers its carrier declares;
-  // every other kind compiles into the plain one, which is what keeps a skill
-  // rule from carrying an answer it has none of.
+  // files are invoked by, an MCP record which servers its carrier declares, a
+  // custom-agent record where its file's configuration ends and its
+  // instructions begin; every other kind compiles into the plain one, which is
+  // what keeps a skill rule from carrying an answer it has none of.
   rule.kind === 'instructions'
     ? new ClaudeCompiledInstructionRule(rule)
-    : rule.kind === 'prompt/command'
-      ? new ClaudeCompiledPromptRule(rule)
-      : rule.kind === 'MCP'
-        ? new ClaudeCompiledMcpCarrierRule(rule)
-        : rule.kind === 'permissions'
-          ? new ClaudeCompiledPermissionsCarrierRule(rule)
-          : new ClaudeCompiledOtherKindRule(rule),
+    : rule.kind === 'MCP'
+      ? new ClaudeCompiledMcpCarrierRule(rule)
+      : rule.kind === 'agent'
+        ? new ClaudeCompiledAgentRule(rule)
+        : rule.kind === 'prompt/command'
+          ? new ClaudeCompiledPromptRule(rule)
+          : rule.kind === 'permissions'
+            ? new ClaudeCompiledPermissionsCarrierRule(rule)
+            : new ClaudeCompiledOtherKindRule(rule),
 );

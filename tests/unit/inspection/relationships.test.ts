@@ -28,7 +28,18 @@ import { CLAUDE_REPOSITORY_RULES } from '../../../src/server/inspection/rules/cl
 import { COPILOT_REPOSITORY_RULES } from '../../../src/server/inspection/rules/copilot';
 import { CODEX_REPOSITORY_RULES } from '../../../src/server/inspection/rules/codex';
 import { INSPECTION_RULES } from '../../../src/shared/registries/inspection-rules';
-import { CODEX_STRATEGY_RELATIONS } from '../../../src/shared/registries/codex/relations';
+import {
+  CODEX_RULE_RELATIONS,
+  CODEX_STRATEGY_RELATIONS,
+} from '../../../src/shared/registries/codex/relations';
+import {
+  CLAUDE_RULE_RELATIONS,
+  CLAUDE_STRATEGY_RELATIONS,
+} from '../../../src/shared/registries/claude/relations';
+import {
+  COPILOT_RULE_RELATIONS,
+  COPILOT_STRATEGY_RELATIONS,
+} from '../../../src/shared/registries/copilot/relations';
 import { assembleScanPublication } from '../../../src/server/inspection/scan';
 
 // Pass-through spies over the closed fs surface, so a case can prove which
@@ -47,6 +58,12 @@ const claudeSkillRule = CLAUDE_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'claude.repo.skill',
 )!;
 
+const claudeAgentRule = CLAUDE_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'claude.repo.agent',
+)!;
+const copilotAgentRule = COPILOT_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'copilot.repo.agent',
+)!;
 const codexInstructionRule = CODEX_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'codex.repo.instructions',
 );
@@ -225,24 +242,35 @@ describe('Codex MCP declarations emit no relationship and promote no target (T29
     }
   });
 
-  it('keeps the agent-inheritance adapter dormant, with no behavior backlink', () => {
-    // The agent-inheritance edge arrives with the phase that ships Codex
-    // agents. Until then the adapter is pure absence: the MCP strategy
-    // consumes no agent behavior — nothing exists for a backlink to dangle
-    // from — and no shipped identifier names a Codex agent behavior or
-    // strategy for it to reference prematurely.
-    const consumed = CODEX_STRATEGY_RELATIONS['codex.mcp.configuration'].consumesBehaviors;
-    expect(consumed.map((behavior) => behavior.behaviorId)).toEqual([
-      'codex.behavior.repo.mcp',
-      'codex.behavior.user.config',
+  it('keeps agent inheritance and MCP configuration disjoint in both directions', () => {
+    // Codex agents ship, so the question is no longer whether an agent
+    // identifier exists — it is whether either registry reaches the other.
+    // Neither does: the MCP strategy composes the declaration behavior and the
+    // User host configuration, and the agent-inheritance strategy composes the
+    // two agent scopes. What a spawned session inherits from its parent's
+    // servers is documented composition inside the agent strategy, never a
+    // behavior the MCP strategy consumes.
+    expect(
+      CODEX_STRATEGY_RELATIONS['codex.mcp.configuration'].consumesBehaviors.map(
+        (behavior) => behavior.behaviorId,
+      ),
+    ).toEqual(['codex.behavior.repo.mcp', 'codex.behavior.user.config']);
+    expect(
+      CODEX_STRATEGY_RELATIONS['codex.agents.inheritance'].consumesBehaviors.map(
+        (behavior) => behavior.behaviorId,
+      ),
+    ).toEqual(['codex.behavior.repo.agents', 'codex.behavior.user.agents']);
+    // And the rule that admits an agent file rests on no MCP behavior and is
+    // explained by no MCP strategy, which is what keeps a declared
+    // `mcp_servers` block the agent file's own content rather than a second
+    // carrier (data-model.md § Inventory unit).
+    const agentRule = CODEX_RULE_RELATIONS['codex.repo.agent'];
+    expect(agentRule.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'codex.behavior.repo.agents',
     ]);
-    const shippedCodexIds = [
-      ...Object.keys(CODEX_STRATEGY_RELATIONS),
-      ...consumed.map((behavior) => behavior.behaviorId),
-    ];
-    for (const id of shippedCodexIds) {
-      expect(id).not.toContain('agent');
-    }
+    expect(agentRule.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual([
+      'codex.agents.inheritance',
+    ]);
   });
 });
 
@@ -591,6 +619,270 @@ describe('Copilot instruction files emit no relationship either (T261)', () => {
       });
     } finally {
       delete process.env['ACI_T261_REFERENCE'];
+    }
+  });
+});
+
+describe('Claude subagent declarations emit no relationship and promote no target (T538)', () => {
+  // Every reference shape the eventual agent relationship registry will care
+  // about — a preloaded skill name, an agent reference, a memory scope, an
+  // inline MCP command with arguments, a named parent server, a hook command
+  // path, and a runtime-only environment reference — authored into one
+  // subagent. The declarations publish as the values they are; no edge, no
+  // read, no promotion.
+  const AGENT_TEXT = [
+    '---',
+    'name: code-reviewer',
+    'description: Reviews code',
+    'memory: project',
+    'skills:',
+    '  - api-conventions',
+    'mcpServers:',
+    '  - playwright:',
+    '      command: ../../scripts/playwright.sh',
+    '      args: ["-y", "some-package"]',
+    '      env:',
+    '        ENDPOINT: ${RUNTIME_ONLY_REFERENCE}',
+    '  - github',
+    'hooks:',
+    '  PreToolUse:',
+    '    - command: ./scripts/validate.sh',
+    '---',
+    '',
+    'Hand findings to @debugger, and read .claude/agent-memory/code-reviewer/MEMORY.md.',
+    '',
+  ].join('\n');
+
+  /** Recognizes one authored subagent at the root\u2019s own agents directory. */
+  async function recognizeClaudeAgent(sourceText: string) {
+    const matchedPath = '.claude/agents/code-reviewer.md';
+    const { recognitions } = await recognizeCandidateForVendors(
+      {
+        matchedPath,
+        absolutePath: join(root, matchedPath),
+        sourceRoot: root,
+        admissions: [{ compiled: claudeAgentRule, origin: { planIndex: 0, selectorIndex: 0 } }],
+        sourceText,
+      },
+      ['claude'],
+    );
+    return recognitions;
+  }
+
+  it('opens no declared target while recognizing the subagent', async () => {
+    // A named skill, an inline command path, a hook command, and a memory
+    // directory sit in the frontmatter, and the body names an agent and a
+    // memory file. Recognition reads nothing: the engine parses the text it
+    // was handed, runs no census for the agent kind, and never resolves a
+    // declared path or name to anything (FR-020).
+    vi.clearAllMocks();
+    const recognitions = await recognizeClaudeAgent(AGENT_TEXT);
+    expect(recognitions).toHaveLength(1);
+    expect(vi.mocked(fsIo.readFile)).not.toHaveBeenCalled();
+    expect(vi.mocked(fsIo.readdir)).not.toHaveBeenCalled();
+  });
+
+  it('publishes the references as declarations and no relationship vocabulary', async () => {
+    const recognitions = await recognizeClaudeAgent(AGENT_TEXT);
+    const serialized = JSON.stringify(recognitions);
+    // The values are there, exactly as authored...
+    expect(serialized).toContain('../../scripts/playwright.sh');
+    expect(serialized).toContain('./scripts/validate.sh');
+    expect(serialized).toContain('${RUNTIME_ONLY_REFERENCE}');
+    expect(serialized).toContain('api-conventions');
+    // ...and no edge fields are: an unlisted or uncovered reference cannot be
+    // promoted to a generic, inferred, or fallback relationship
+    // (data-model.md § Relationship).
+    for (const field of [
+      'relationshipId',
+      'targetOrigin',
+      'authoredTarget',
+      'semanticTarget',
+      'normalizedTarget',
+      'boundaryStatus',
+      'resolutionStatus',
+    ]) {
+      expect(serialized).not.toContain(field);
+    }
+  });
+
+  it('keeps the excluded memory roots out of the shipped rule catalog entirely', () => {
+    // The memory scopes are behavior statements the context strategy composes
+    // and nothing more: no rule of any product admits an `agent-memory` or
+    // `agent-memory-local` path, so no candidate can be created there
+    // (contracts/vendors/claude-code.md § Repository vendor behavior).
+    for (const rule of Object.values(INSPECTION_RULES)) {
+      const selectors = rule.matcher?.selectors ?? [];
+      for (const selector of selectors) {
+        for (const segment of selector) {
+          if (segment.kind === 'literal') {
+            expect(segment.value, rule.ruleId).not.toContain('agent-memory');
+          }
+        }
+      }
+    }
+  });
+
+  it('keeps agent selection and context composition free of MCP edges', () => {
+    // A subagent inherits the selected parent MCP tools, which
+    // `claude.mcp.selection` records by consuming the agent behavior. The
+    // reverse edge does not exist: neither agent strategy consumes an MCP
+    // behavior, and the rule that admits an agent file rests on none — which
+    // is what keeps a declared `mcpServers` block the file's own content
+    // (data-model.md § Inventory unit).
+    for (const strategyId of ['claude.agents.selection', 'claude.agent-context.composition']) {
+      const consumed = CLAUDE_STRATEGY_RELATIONS[
+        strategyId as 'claude.agents.selection'
+      ].consumesBehaviors.map((behavior) => behavior.behaviorId);
+      expect(
+        consumed.filter((behaviorId) => behaviorId.includes('.mcp')),
+        strategyId,
+      ).toEqual([]);
+    }
+    const agentRule = CLAUDE_RULE_RELATIONS['claude.repo.agent'];
+    expect(agentRule.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'claude.behavior.repo.agents',
+    ]);
+    expect(agentRule.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual([
+      'claude.agent-context.composition',
+      'claude.agents.selection',
+    ]);
+  });
+});
+
+describe('Copilot agent profiles emit no relationship and promote no target (T557)', () => {
+  // Every reference shape the eventual agent relationship registry will care
+  // about, authored into one profile: a handoff naming another agent, a
+  // preloaded skill, a tool list, an inline MCP command with arguments, a
+  // runtime-only environment reference, and a Markdown link. The declarations
+  // publish as the values they are; no edge, no read, no promotion.
+  const PROFILE_TEXT = [
+    '---',
+    'name: Deployer',
+    'description: Runs a deployment',
+    'target: github-copilot',
+    'tools:',
+    '  - read',
+    '  - shell',
+    'handoffs:',
+    '  - planner',
+    'mcp-servers:',
+    '  deploy-mcp:',
+    '    command: ../../scripts/deploy-mcp.sh',
+    '    args: ["-y", "some-package"]',
+    '    env:',
+    '      ENDPOINT: ${RUNTIME_ONLY_REFERENCE}',
+    'metadata:',
+    '  owner: platform',
+    '---',
+    '',
+    'Hand the verification to @planner, and read [the runbook](../docs/target.md).',
+    '',
+  ].join('\n');
+
+  /** Recognizes one authored profile at the root\u2019s own agents directory. */
+  async function recognizeCopilotAgent(sourceText: string) {
+    const matchedPath = '.github/agents/deployer.md';
+    const { recognitions } = await recognizeCandidateForVendors(
+      {
+        matchedPath,
+        absolutePath: join(root, matchedPath),
+        sourceRoot: root,
+        admissions: [{ compiled: copilotAgentRule, origin: { planIndex: 0, selectorIndex: 0 } }],
+        sourceText,
+      },
+      ['copilot'],
+    );
+    return recognitions;
+  }
+
+  it('opens no declared target while recognizing the profile', async () => {
+    vi.clearAllMocks();
+    const recognitions = await recognizeCopilotAgent(PROFILE_TEXT);
+    expect(recognitions).toHaveLength(1);
+    expect(vi.mocked(fsIo.readFile)).not.toHaveBeenCalled();
+    expect(vi.mocked(fsIo.readdir)).not.toHaveBeenCalled();
+  });
+
+  it('publishes the references as declarations and no relationship vocabulary', async () => {
+    const recognitions = await recognizeCopilotAgent(PROFILE_TEXT);
+    const serialized = JSON.stringify(recognitions);
+    // The values are there, exactly as authored...
+    expect(serialized).toContain('../../scripts/deploy-mcp.sh');
+    expect(serialized).toContain('${RUNTIME_ONLY_REFERENCE}');
+    expect(serialized).toContain('planner');
+    // ...and no edge fields are: an unlisted or uncovered reference cannot be
+    // promoted to a generic, inferred, or fallback relationship
+    // (data-model.md § Relationship).
+    for (const field of [
+      'relationshipId',
+      'targetOrigin',
+      'authoredTarget',
+      'semanticTarget',
+      'normalizedTarget',
+      'boundaryStatus',
+      'resolutionStatus',
+    ]) {
+      expect(serialized).not.toContain(field);
+    }
+  });
+
+  it('names the agent from its file while the declared name stays a declaration', async () => {
+    const recognitions = await recognizeCopilotAgent(PROFILE_TEXT);
+    const [recognition] = recognitions;
+    if (recognition?.details.kind !== 'agent') {
+      throw new Error('expected one agent recognition');
+    }
+    // GitHub documents the `name` field as an optional display name and
+    // deduplicates agents by the configuration file's own name, so the row
+    // identity is `deployer` while `Deployer` stays an ordinary declaration
+    // the detail publishes (FR-007).
+    expect(recognition.details.agentName).toBe('deployer');
+    expect(recognition.details.metadata.find((entry) => entry.key === 'name')?.value).toMatchObject(
+      { kind: 'scalar', text: 'Deployer' },
+    );
+  });
+
+  it('keeps agent selection free of MCP edges in both directions', () => {
+    // The three agent selections consume agent behaviors alone, and the rule
+    // that admits a profile rests on none of the MCP behaviors — which is what
+    // keeps a declared `mcp-servers` block the file's own content
+    // (data-model.md § Inventory unit). The reference states the field is not
+    // used in VS Code and other IDE custom agents at all, so no surface even
+    // has an inverse edge to record.
+    for (const strategyId of [
+      'copilot.cli.agents.selection',
+      'copilot.cloud.agents.selection',
+      'copilot.vscode.agents.selection',
+    ] as const) {
+      const consumed = COPILOT_STRATEGY_RELATIONS[strategyId].consumesBehaviors.map(
+        (behavior) => behavior.behaviorId,
+      );
+      expect(
+        consumed.filter((behaviorId) => behaviorId.includes('.mcp')),
+        strategyId,
+      ).toEqual([]);
+    }
+    const agentRule = COPILOT_RULE_RELATIONS['copilot.repo.agent'];
+    expect(agentRule.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'copilot.behavior.cli.agents',
+      'copilot.behavior.cloud.agents',
+      'copilot.behavior.vscode.agents',
+    ]);
+    // And no MCP selection consumes an agent behavior either: a Copilot agent
+    // profile is no MCP source on any surface.
+    for (const strategyId of [
+      'copilot.cli.mcp.selection',
+      'copilot.cloud.mcp.selection',
+      'copilot.vscode.mcp.selection',
+    ] as const) {
+      const consumed = COPILOT_STRATEGY_RELATIONS[strategyId].consumesBehaviors.map(
+        (behavior) => behavior.behaviorId,
+      );
+      expect(
+        consumed.filter((behaviorId) => behaviorId.includes('.agents')),
+        strategyId,
+      ).toEqual([]);
     }
   });
 });
