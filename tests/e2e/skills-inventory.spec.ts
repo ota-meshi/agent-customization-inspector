@@ -43,27 +43,46 @@ function skillRows(page: import('@playwright/test').Page) {
 
 /** How many rows the fixture's committed inventory has, symlink cases included. */
 function expectedRowCount(): number {
-  // alpha, dup, empty, orbit, packages/api:deploy, packages/api:dup,
+  // alpha, dup, empty, lander, orbit, packages/api:deploy, packages/api:dup,
   // secretive, voyage — plus the linked skill when the platform could
-  // materialize symbolic links.
-  return fixture.capabilities.symlinks ? 9 : 8;
+  // materialize symbolic links. `lander` and `voyage` are the two names one
+  // `.claude/skills/lander/SKILL.md` is invoked by: Claude Code's skill
+  // directory and Copilot's authored `name` (FR-007).
+  return fixture.capabilities.symlinks ? 10 : 9;
 }
 
 test('lists one unified skill inventory with each file’s recognition badges', async ({ page }) => {
   await page.goto(host.origin);
   await expect(skillRows(page)).toHaveCount(expectedRowCount());
 
-  // Multi-recognition, read off the definition links a file's group renders:
-  // the shared spellings carry both products, `.github` and the nested
-  // `.claude` layer exactly one.
-  const fileGroupOf = (path: string) => page.locator('.aci-skill-row__file', { hasText: path });
-  const expectTools = async (path: string, tools: readonly string[]) => {
-    await expect(fileGroupOf(path).locator('.aci-skill-row__definitions a')).toHaveText([...tools]);
+  // Multi-recognition, read off the definition links a file's group renders
+  // inside the row that holds it: the shared `.agents` spelling carries both
+  // products under one authored name, while the shared `.claude` file's two
+  // products invoke it by different names and so appear one per row.
+  const expectTools = async (row: string, path: string, tools: readonly string[]) => {
+    const group = page
+      .locator('[role="tabpanel"] .aci-item', {
+        has: page.locator('.aci-skill-row__name', { hasText: new RegExp(`^${row}$`, 'u') }),
+      })
+      .locator('.aci-skill-row__file', { hasText: path });
+    await expect(group.locator('.aci-skill-row__tool')).toHaveText([...tools]);
   };
-  await expectTools('.agents/skills/orbit/SKILL.md', ['GitHub Copilot', 'OpenAI Codex']);
-  await expectTools('.claude/skills/lander/SKILL.md', ['GitHub Copilot', 'Claude Code']);
-  await expectTools('.github/skills/ship/SKILL.md', ['GitHub Copilot']);
-  await expectTools('packages/api/.claude/skills/deploy/SKILL.md', ['Claude Code']);
+  await expectTools('orbit', '.agents/skills/orbit/SKILL.md', [
+    'GitHub Copilot VS Code, CLI, Cloud agent',
+    'OpenAI Codex Local clients',
+  ]);
+  await expectTools('voyage', '.claude/skills/lander/SKILL.md', [
+    'GitHub Copilot VS Code, CLI, Cloud agent',
+  ]);
+  await expectTools('lander', '.claude/skills/lander/SKILL.md', [
+    'Claude Code CLI and IDE clients',
+  ]);
+  await expectTools('voyage', '.github/skills/ship/SKILL.md', [
+    'GitHub Copilot VS Code, CLI, Cloud agent',
+  ]);
+  await expectTools('packages/api:deploy', 'packages/api/.claude/skills/deploy/SKILL.md', [
+    'Claude Code CLI and IDE clients',
+  ]);
 
   // The one kind so far renders as the selected tab of the unified list.
   await expect(page.getByRole('tab', { name: /skill/iu })).toHaveAttribute('aria-selected', 'true');

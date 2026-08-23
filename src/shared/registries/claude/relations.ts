@@ -46,6 +46,7 @@ import {
   CLAUDE_REPO_MCP_RULE,
   CLAUDE_REPO_PERMISSIONS_RULE,
   CLAUDE_REPO_RULES_RULE,
+  CLAUDE_REPO_SETTINGS_RULE,
   CLAUDE_REPO_SKILL_RULE,
 } from './rules';
 import {
@@ -248,6 +249,19 @@ export const CLAUDE_RULE_RELATIONS: Readonly<Record<ClaudeRuleId, RuleRelations>
    * (FR-009).
    */
   [CLAUDE_REPO_PERMISSIONS_RULE.ruleId]: {
+    basedOnBehaviors: [CLAUDE_REPO_LOCAL_SETTINGS_BEHAVIOR, CLAUDE_REPO_SHARED_SETTINGS_BEHAVIOR],
+    explainedByStrategies: [CLAUDE_SETTINGS_PRECEDENCE_STRATEGY],
+  },
+  /**
+   * The settings recognition of the same two files rests on the same two
+   * project settings lookups — what it publishes is the documents those
+   * lookups locate — and is explained by the same precedence strategy, which
+   * owns the scope order and the array merge the rule deliberately does not
+   * project (FR-009). The edges match the permission rule's because both
+   * recognitions come from one pair of documented locations; what differs is
+   * the subject each row names, which is not an edge.
+   */
+  [CLAUDE_REPO_SETTINGS_RULE.ruleId]: {
     basedOnBehaviors: [CLAUDE_REPO_LOCAL_SETTINGS_BEHAVIOR, CLAUDE_REPO_SHARED_SETTINGS_BEHAVIOR],
     explainedByStrategies: [CLAUDE_SETTINGS_PRECEDENCE_STRATEGY],
   },

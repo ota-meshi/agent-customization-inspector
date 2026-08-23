@@ -4,11 +4,13 @@
 //
 // One physical file two products admit is one definition per recognizing
 // tool, and the client keeps those definitions separate all the way to the
-// detail route: each keeps its own tool, its own documented invocation name,
-// and its own `/skills/<tool>/<source-relative path>` URL, and the tool
-// filter narrows a shared row to exactly the addressed tool's definition.
-// Nothing merges the recognitions into one product-neutral record, and a
-// single shared file is one skill per tool — never a same-name collision.
+// inventory: each keeps its own tool and sits on the row of the name that
+// tool invokes the file by, and the tool filter narrows the file to exactly
+// the addressed tool's row. Nothing merges the recognitions into one
+// product-neutral record, and a single shared file is one skill per tool —
+// never a same-name collision. The detail route is the file's own,
+// `/skills/<source-relative path>`, because both products read the same
+// document.
 //
 // These suites drive the filter view and the route builder rather than
 // mounting the page component: the unit project has no single-file-component
@@ -18,7 +20,6 @@ import { describe, expect, it } from 'vitest';
 import { ref, shallowRef, type Ref } from 'vue';
 
 import { detailRoute } from '../../../src/app/components/detail-route';
-import { skillDetailRoute } from '../../../src/app/components/skill-detail-route';
 import { useInventoryFilters } from '../../../src/app/composables/filters';
 import { pathPresentationLabel } from '../../../src/shared/entities';
 import type {
@@ -59,36 +60,31 @@ function file(path: string): CustomizationFileSummaryDto {
   };
 }
 
-/** One definition — one `(file, tool)` recognition — with its own invocation name. */
-function definition(tool: SupportedTool, path: string, invocationName: string): SkillDefinitionDto {
+/** One definition — one `(file, tool)` recognition of a skill. */
+function definition(tool: SupportedTool, path: string): SkillDefinitionDto {
   return {
     sourceRelativePath: path,
     tool,
     surfaces: [],
     parseStatus: 'parsed',
-    invocationName,
     diagnosticIds: [],
     companionFiles: [],
   };
 }
 
 /**
- * The shared-file row: the authored `voyage` in `.claude/skills/lander/`,
- * admitted by Copilot and Claude. Both tools resolve the authored row name,
- * while their documented invocation names differ — Copilot invokes the
- * authored identity and Claude Code its directory-derived command — which is
- * exactly what must survive to the detail route unmerged. Definitions in the
- * closed tool order, as the server publishes them.
+ * The rows one shared file produces: `.claude/skills/lander/SKILL.md` declares
+ * `name: voyage` and is admitted by Copilot and Claude, which invoke it by
+ * different names — Copilot by the authored identity, Claude Code by the skill
+ * directory — so the one file is listed under each (FR-007). Keeping them
+ * apart is exactly what must survive to the detail route. Rows in the order
+ * the server publishes them, which is by name.
  */
-function sharedRow(): SkillInventoryEntryDto {
-  return {
-    name: 'voyage',
-    definitions: [
-      definition('copilot', SHARED_PATH, 'voyage'),
-      definition('claude', SHARED_PATH, 'lander'),
-    ],
-    sameNameResolutions: [],
-  };
+function sharedFileRows(): readonly SkillInventoryEntryDto[] {
+  return [
+    { name: 'lander', definitions: [definition('claude', SHARED_PATH)], sameNameResolutions: [] },
+    { name: 'voyage', definitions: [definition('copilot', SHARED_PATH)], sameNameResolutions: [] },
+  ];
 }
 
 function snapshotWith(
@@ -106,6 +102,7 @@ function snapshotWith(
     rules: [],
     prompts: [],
     permissions: [],
+    settings: [],
     agents: [],
     skills,
     mcp: [],
@@ -136,58 +133,61 @@ function withSelection(snapshot: Ref<SessionSnapshot | null>) {
 }
 
 describe('a shared file’s recognitions stay separate definitions', () => {
-  it('keeps one definition per recognizing tool, each with its own invocation name', () => {
+  it('lists the one file under each name a tool invokes it by', () => {
     const snapshot = shallowRef<SessionSnapshot | null>(
-      snapshotWith([file(SHARED_PATH)], [sharedRow()]),
+      snapshotWith([file(SHARED_PATH)], sharedFileRows()),
     );
     const { view } = withSelection(snapshot);
     expect(view.availableTools.value).toEqual(['copilot', 'claude']);
-    const [row] = view.skillRows.value;
-    expect(row?.definitions.map(({ tool }) => tool)).toEqual(['copilot', 'claude']);
-    // One file, two documented invocation names: the authored identity for
-    // Copilot, the directory-derived command for Claude Code. The view passes
-    // each through unchanged — a merged or product-neutral value would state a
-    // name one of the vendors does not document (FR-007).
-    expect(row?.definitions.map(({ invocationName }) => invocationName)).toEqual([
-      'voyage',
-      'lander',
+    // One file, two names: the skill directory for Claude Code, the authored
+    // identity for Copilot. The view passes each row through unchanged — a
+    // merged row would be headed by a name one of the vendors does not answer
+    // to (FR-007).
+    expect(
+      view.skillRows.value.map((row) => [row.name, row.definitions.map(({ tool }) => tool)]),
+    ).toEqual([
+      ['lander', ['claude']],
+      ['voyage', ['copilot']],
     ]);
   });
 
-  it('routes each definition to its own tool’s detail URL', () => {
-    // The URL is the definition's identity — the recognizing tool and the
-    // file's path (FR-030) — so the one shared path yields one route per
-    // recognition, and neither resolves to the other's definition.
-    const routes = sharedRow().definitions.map(({ tool, sourceRelativePath }) =>
-      skillDetailRoute(tool, sourceRelativePath),
-    );
+  it('routes both rows’ definitions to the one file’s detail URL', () => {
+    // The URL is the file's identity and nothing else (FR-030): two products
+    // reading one `SKILL.md` read the same bytes, the same frontmatter, and
+    // the same companion directory, so the two rows' definitions of it
+    // address one document rather than two.
+    const routes = sharedFileRows()
+      .flatMap((row) => row.definitions)
+      .map(({ sourceRelativePath }) => detailRoute('skill', sourceRelativePath));
     expect(routes).toEqual([
-      '/skills/copilot/.claude/skills/lander/SKILL.md',
-      '/skills/claude/.claude/skills/lander/SKILL.md',
+      '/skills/.claude/skills/lander/SKILL.md',
+      '/skills/.claude/skills/lander/SKILL.md',
     ]);
-    expect(new Set(routes).size).toBe(2);
+    expect(new Set(routes).size).toBe(1);
   });
 
-  it('narrows a shared row to exactly the addressed tool’s definition', () => {
+  it('narrows the shared file to exactly the addressed tool’s row', () => {
     const snapshot = shallowRef<SessionSnapshot | null>(
-      snapshotWith([file(SHARED_PATH)], [sharedRow()]),
+      snapshotWith([file(SHARED_PATH)], sharedFileRows()),
     );
     const { tool, view } = withSelection(snapshot);
     tool.value = 'copilot';
-    expect(view.skillRows.value).toHaveLength(1);
+    expect(view.skillRows.value.map((row) => row.name)).toEqual(['voyage']);
     expect(view.skillRows.value[0]?.definitions.map((one) => one.tool)).toEqual(['copilot']);
     tool.value = 'claude';
+    expect(view.skillRows.value.map((row) => row.name)).toEqual(['lander']);
     expect(view.skillRows.value[0]?.definitions.map((one) => one.tool)).toEqual(['claude']);
   });
 
   it('reads no same-name collision out of one shared file', () => {
-    // Two recognitions of one physical file are one skill per tool, not two
-    // skills contending for a name. A statement authored onto such a row
-    // describes a collision no tool faces, so the view restates none of it —
-    // the same gate that drops a statement when a filter hides one side of a
-    // real clash (FR-007).
+    // One recognition of one physical file is one skill, not two contending
+    // for a name. A statement authored onto such a row describes a collision
+    // no tool faces, so the view restates none of it — the same gate that
+    // drops a statement when a filter hides one side of a real clash
+    // (FR-007).
     const row: SkillInventoryEntryDto = {
-      ...sharedRow(),
+      name: 'voyage',
+      definitions: [definition('copilot', SHARED_PATH)],
       sameNameResolutions: [{ tool: 'copilot', resolution: 'surface-dependent' }],
     };
     const snapshot = shallowRef<SessionSnapshot | null>(snapshotWith([file(SHARED_PATH)], [row]));
@@ -203,7 +203,7 @@ describe('a shared file’s recognitions stay separate definitions', () => {
     const shipPath = '.github/skills/ship/SKILL.md';
     const row: SkillInventoryEntryDto = {
       name: 'voyage',
-      definitions: [...sharedRow().definitions, definition('copilot', shipPath, 'voyage')],
+      definitions: [definition('copilot', SHARED_PATH), definition('copilot', shipPath)],
       sameNameResolutions: [{ tool: 'copilot', resolution: 'surface-dependent' }],
     };
     const snapshot = shallowRef<SessionSnapshot | null>(

@@ -186,7 +186,7 @@ test.describe('a carrier a configured fallback also recognizes', () => {
     await rm(fixture, { recursive: true, force: true });
   });
 
-  test('routes the instruction row to the carrier view and offers no comparison', async ({
+  test('serves the file under its instruction row and its declarations under the MCP row', async ({
     page,
   }) => {
     await page.goto(host.origin);
@@ -195,20 +195,33 @@ test.describe('a carrier a configured fallback also recognizes', () => {
     // The carrier is a legitimate instructions row member — Codex reads the
     // configured fallback as guidance — listed beside the root AGENTS.md.
     await expect(panel).toContainText('.mcp.json');
-    // The recognizing product's link opens the carrier's own MCP view, never
-    // the instruction detail whose `FileDetail` the contract withholds; the
-    // sibling AGENTS.md keeps its ordinary instruction detail link.
+    // Which detail a link opens follows from the row it is on (FR-007): the
+    // instruction row's subject is the file, so it links to the file's own
+    // detail exactly as the sibling AGENTS.md does.
     await expect(panel.locator('a[href="/instructions/AGENTS.md"]').first()).toBeVisible();
-    await expect(panel.locator('a[href^="/instructions/.mcp.json"]')).toHaveCount(0);
-    await panel.locator('a[href="/mcp/.mcp.json"]').click();
-    await expect(page).toHaveURL(/\/mcp\//u);
+    await panel.locator('a[href="/instructions/.mcp.json"]').first().click();
+    await expect(page).toHaveURL(/\/instructions\//u);
     await expect(page.getByRole('heading', { name: '.mcp.json' })).toBeVisible();
-    await expect(page.locator('main')).toContainText('Readable text');
+    await expect(page.locator('main')).toContainText('"mcpServers"');
+
+    // The MCP row of the same file leads with one declaration instead, and
+    // carries none of the document's bytes.
+    await page.goto(host.origin);
+    await page.getByRole('tab', { name: /^MCP/u }).click();
+    await page.getByRole('tabpanel').locator('a[href^="/mcp/.mcp.json"]').first().click();
+    await expect(page).toHaveURL(/\/mcp\//u);
     await expect(page.getByRole('heading', { name: 'shared' })).toBeVisible();
-    // And no comparison offers the carrier: with the carrier excluded, the
-    // range has one comparable file left, so the row links no comparison.
-    await page.goBack();
-    await expect(page.getByRole('link', { name: /Compare this range's files/u })).toHaveCount(0);
+    await expect(page.locator('main')).toContainText('Readable text');
+  });
+
+  test('offers the range comparison the carrier is a comparable member of', async ({ page }) => {
+    // Both files of the range show their complete source, so both are
+    // comparison-eligible and the row links a comparison of the pair.
+    await page.goto(host.origin);
+    await page.getByRole('tab', { name: /instructions/iu }).click();
+    await expect(
+      page.getByRole('tabpanel').getByRole('link', { name: /Compare this range's files/u }),
+    ).toHaveCount(1);
   });
 });
 

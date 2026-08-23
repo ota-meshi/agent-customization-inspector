@@ -148,28 +148,38 @@ const kindText = CUSTOMIZATION_KIND_TEXT.agent;
 const inventoryRoute = '/?kind=agent';
 
 /**
- * The comparison entry for this file (FR-011, T575): this file beside another
- * file of one of the rows it is listed under — the rows that own every pair
- * this file can be part of, exactly as a skill's entry link stays inside its
- * name's row. Null when this file is not readable or no row of its own holds
- * a readable counterpart; the compare route's own pickers take over from
- * there, so any other pair of the row is one pick away rather than composed
- * here.
+ * The comparison entries for this file (FR-011, T575): one per row this file
+ * is listed under that also holds a readable counterpart — this file beside
+ * another file of that row, exactly as a skill's entry link stays inside its
+ * name's row. One per row rather than the first row alone, because the
+ * products identify an agent by different facts, so one file sits on the row
+ * of its declared `name` and on the row of its file name, and each may own a
+ * pair the other does not. Empty when this file is not readable or no row of
+ * its own holds a readable counterpart; the compare route's own pickers take
+ * over from there, so any other pair of a row is one pick away rather than
+ * composed here.
  *
  * The null-named row is skipped for the reason its own row links no
  * comparison: its files share the absence of a name rather than an identity
  * (data-model.md § Inventory unit).
  */
-const comparePairRoute = computed(() => {
+const comparePairRoutes = computed(() => {
   const readable = new Set(
     (snapshot.value?.files ?? []).filter(isReadableFile).map((file) => file.sourceRelativePath),
   );
   if (!readable.has(openPath.value)) {
-    return null;
+    return [];
   }
+  const entries: {
+    readonly key: string;
+    readonly nameText: string;
+    readonly nameAccessibleText: string;
+    readonly route: ReturnType<typeof customAgentComparisonRouteFor>;
+  }[] = [];
+  const named = new Set<string>();
   for (const entry of snapshot.value?.agents ?? []) {
     const name = entry.name;
-    if (name === null) {
+    if (name === null || named.has(name)) {
       continue;
     }
     let holdsOpenFile = false;
@@ -182,10 +192,24 @@ const comparePairRoute = computed(() => {
       }
     }
     if (holdsOpenFile && counterpart !== undefined) {
-      return customAgentComparisonRouteFor(name, openPath.value, counterpart);
+      named.add(name);
+      entries.push({
+        key: name,
+        // The drawn label rule, so a name built only from invisible code
+        // points still identifies its link ({@link pathPresentationLabel}),
+        // and this product's note where the name is the empty string, which
+        // has nothing to draw.
+        nameText: name === '' ? '(empty name)' : pathPresentationLabel(name),
+        // The accessible name carries the row's name through the single-line
+        // label rule instead: an accessible name collapses whitespace, so two
+        // rows differing only in it must not announce as one control (FR-025,
+        // WCAG 2.4.6).
+        nameAccessibleText: name === '' ? '(empty name)' : inlinePresentationLabel(name),
+        route: customAgentComparisonRouteFor(name, openPath.value, counterpart),
+      });
     }
   }
-  return null;
+  return entries;
 });
 
 /**
@@ -339,7 +363,7 @@ const openDetail = computed(() => {
  * Markdown-kind rule, so nothing but an agent variant can arrive for one.
  */
 function presentationOf(detail: FileDetailDto): AgentPresentationDto | null {
-  if (detail.kind === 'rule' || detail.kind === 'file') {
+  if (detail.kind === 'rule' || detail.kind === 'settings/config' || detail.kind === 'file') {
     return null;
   }
   if (detail.kind === 'agent') {
@@ -763,8 +787,10 @@ onBeforeUnmount(() => {
              the current scan holds another readable file that resolves one of
              this file's names. The comparison surface's own pickers take over
              from there. -->
-        <p v-if="comparePairRoute !== null">
-          <NuxtLink :to="comparePairRoute">Compare this file</NuxtLink>
+        <p v-for="pair in comparePairRoutes" :key="pair.key">
+          <NuxtLink :to="pair.route" :aria-label="`Compare this file: ${pair.nameAccessibleText}`"
+            >Compare this file</NuxtLink
+          >
         </p>
       </div>
 

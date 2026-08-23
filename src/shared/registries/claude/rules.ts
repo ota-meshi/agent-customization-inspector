@@ -505,6 +505,11 @@ const CLAUDE_REPO_PERMISSIONS_MATCHER: StructuredInspectorMatcher = {
  * `partially-documented`, from the behavior statement it rests on: which
  * directory the personal file is read from turns on the session's repository
  * and host, which this tool cannot see.
+ *
+ * The document the policy block sits in is {@link CLAUDE_REPO_SETTINGS_RULE}'s
+ * recognition of the same file: two rules over one candidate and one read, so
+ * neither has to know the other's shape, and which detail a reader gets
+ * follows from the row they arrived through (FR-007).
  */
 export const CLAUDE_REPO_PERMISSIONS_RULE = {
   ruleId: 'claude.repo.permissions',
@@ -541,6 +546,66 @@ export const CLAUDE_REPO_PERMISSIONS_RULE = {
           reviewedOn: '2026-08-22',
           establishes:
             'A permissions object in a settings file holds allow and deny arrays of rules written Tool or Tool(specifier), where a specifier may carry glob wildcards; the rules are the policy this kind recognizes.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
+ * Claude Repository settings: the same two root settings files
+ * {@link CLAUDE_REPO_PERMISSIONS_RULE} admits, recognized here as the
+ * documents they are. The shared `settings.json` and the personal
+ * `settings.local.json` are both this kind's rows, because the row unit is the
+ * file (data-model.md § Inventory unit) and each is a settings file in its own
+ * right rather than two spellings of one.
+ *
+ * The matcher is shared with the permissions rule rather than restated,
+ * because it is the same pair of locations and a second spelling of it could
+ * drift. Two rules over one path add no read: the walk merges them into one
+ * candidate with both provenances, exactly as any two plans admitting one file
+ * do.
+ *
+ * This recognition reads nothing out of the document: its detail is the JSON
+ * its author wrote, comments and key order intact. The `permissions` object
+ * inside it belongs to the other recognition's row and is visible here only as
+ * part of the one document (FR-007).
+ *
+ * Admitting a file is not asserting Claude applied it: the value a session
+ * uses is combined with the User scope and the managed locations this product
+ * never reads, under precedence and trust state that turns on runtime this
+ * tool does not observe (FR-009). No path, command, or hook the document names
+ * gains read authority.
+ *
+ * `partially-documented`, from the behavior statements it rests on, for the
+ * reason the permissions rule carries the same status: which directory the
+ * personal file is read from turns on the session's repository and host.
+ */
+export const CLAUDE_REPO_SETTINGS_RULE = {
+  ruleId: 'claude.repo.settings',
+  tool: 'claude',
+  discoveryClass: 'static-candidate',
+  kind: 'settings/config',
+  sourceKinds: ['repository'],
+  matcher: CLAUDE_REPO_PERMISSIONS_MATCHER,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'partially-documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.settings.scopes-precedence',
+          url: 'https://code.claude.com/docs/en/settings',
+          officialHost: 'code.claude.com',
+          sections: [
+            'Settings files and who they affect',
+            'Compare the scope of each settings file',
+          ],
+          reviewedOn: '2026-08-22',
+          establishes:
+            "A project's .claude/settings.json and .claude/settings.local.json — the exact locations this rule admits — are the project scope's own settings files, the first shared with the team and the second personal to one checkout.",
         },
       ]
     : [],
@@ -645,5 +710,6 @@ export const CLAUDE_INSPECTION_RULES: Readonly<Record<ClaudeRuleId, InspectionRu
   [CLAUDE_REPO_MCP_RULE.ruleId]: CLAUDE_REPO_MCP_RULE,
   [CLAUDE_REPO_PERMISSIONS_RULE.ruleId]: CLAUDE_REPO_PERMISSIONS_RULE,
   [CLAUDE_REPO_RULES_RULE.ruleId]: CLAUDE_REPO_RULES_RULE,
+  [CLAUDE_REPO_SETTINGS_RULE.ruleId]: CLAUDE_REPO_SETTINGS_RULE,
   [CLAUDE_REPO_SKILL_RULE.ruleId]: CLAUDE_REPO_SKILL_RULE,
 };

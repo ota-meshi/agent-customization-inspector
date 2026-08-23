@@ -14,11 +14,7 @@ import {
 } from '../../shared/entities';
 import { VENDOR_SURFACE_ORDER } from '../../shared/registries/behavior-text';
 import type { VendorSurface } from '../../shared/registries/behavior-types';
-import {
-  SKILL_NAMING,
-  facesSameNameCollision,
-  skillCollisionGates,
-} from '../../shared/skill-naming';
+import { facesSameNameCollision, skillCollisionGates } from '../../shared/skill-collision';
 import { sameNameSkillResolutionFor } from '../../shared/registries/skill-resolution';
 import {
   createBootstrapGeneration,
@@ -51,6 +47,7 @@ import type {
   PermissionsInventoryEntryDto,
   RuleInventoryEntryDto,
   SameNameSkillResolutionDto,
+  SettingsInventoryEntryDto,
   SkillDefinitionDto,
   ScanProgressPhase,
   ScanProgressDto,
@@ -149,14 +146,18 @@ function summarizeFile(file: CustomizationFileDto): CustomizationFileSummaryDto 
 /**
  * Projects the skill inventory from a generation's recognitions
  * (contracts/http-api.md § get-session `skills[]`, data-model.md § Inventory
- * unit): one entry per name as one tool resolves it, each listing every
- * `SKILL.md` a recognizing tool resolves it for.
+ * unit): one entry per invocation name as one tool resolves it, each listing
+ * every `SKILL.md` a recognizing tool invokes under it.
  *
- * Every tool resolves the authored name — or the skill directory name when
- * the file declares none or declares it empty, so every row has a name to be
- * listed under — and a Claude recognition of a nested skill prefixes it
- * root-relative (FR-007), so one file's recognitions can land on two
- * entries — each listing only the tools that resolve that entry's name.
+ * The name is the one the recognizing tool's own documentation invokes the
+ * file by, resolved by the admitting rule at recognition time (FR-007,
+ * rules/registry.ts § CompiledStaticSkillRule): Codex and Copilot invoke the
+ * authored name — or the skill directory name when the file declares none or
+ * declares it empty, so every row has a name to be listed under — while
+ * Claude Code derives its command from the skill directory whatever the
+ * frontmatter declares, root-relative-prefixed when nested. So one file's
+ * recognitions land on two entries whenever the tools invoke it differently,
+ * each entry listing only the tools that reach it under that entry's name.
  *
  * A recognition names its file by Source-relative Path, so the projection
  * needs no filesystem access and two snapshots of one generation publish the
@@ -171,29 +172,29 @@ function projectSkillInventory(
     if (!isSkillRecognition(recognition)) {
       continue;
     }
-    const naming = SKILL_NAMING[recognition.tool];
     const path = recognition.sourceRelativePath;
-    const declared = recognition.details.declaredName;
-    const name = naming.rowName(path, declared);
+    // The name the recognizing tool invokes this file by, resolved once where
+    // the extraction was read (candidate.ts `recognizeSkill`).
+    const name = recognition.details.invocationName;
     let entry = byName.get(name);
     if (entry === undefined) {
       entry = { name, definitions: [] };
       byName.set(name, entry);
     }
     // A definition is one recognition — the ToolRecognition unit, one per
-    // `(file, tool)`, which is also the identity the detail route addresses
-    // as `/skills/<tool>/<source-relative path>` — so a file two products resolve to one
-    // name is two definitions of that entry, and a product resolving a
-    // different name — Claude prefixing a nested skill — defines on that
-    // name's entry instead. The census is the file's, so each of its
+    // `(file, tool)` — so a file two products invoke by one name is two
+    // definitions of that entry, and a product invoking the file by a
+    // different name defines on that name's entry instead. The detail route
+    // is the file's own, `/skills/<source-relative path>`: two products read
+    // one file's bytes, and the names they invoke it by are what the rows
+    // carry. The census is the file's, so each of its
     // definitions carries the same list; the parse state is the
     // recognition's own, and the extraction-failure reference each failed
     // definition republishes is the kind's one shared record — the parse ran
-    // once (FR-028). A failed extraction leaves
-    // the authored name unknown — not absent — so the row keeps only the
-    // directory-derived provisional identity, and the invocation name is
-    // published only where the tool's naming survives the failure
-    // (skill-naming.ts).
+    // once (FR-028). A failed extraction leaves an authored-name tool's name
+    // unknown — not absent — so its definition lands on the
+    // directory-derived provisional row, which the same-name machinery reads
+    // as grouping rather than as collision evidence (skill-collision.ts).
     entry.definitions.push({
       sourceRelativePath: path,
       tool: recognition.tool,
@@ -202,17 +203,13 @@ function projectSkillInventory(
       // a recognition, so it states them too.
       surfaces: surfacesOf(recognition),
       parseStatus: recognition.parseStatus,
-      invocationName:
-        recognition.parseStatus === 'failed'
-          ? naming.invocationNameForFailedExtraction(path)
-          : naming.invocationName(path, declared),
       diagnosticIds: recognition.diagnosticIds,
       companionFiles: skillCompanionsByPath.get(path) ?? [],
     });
   }
   // One collision gate per recognizing tool over the whole generation's
   // definitions — a gate can span rows, Claude's does — through the shared
-  // assembly the client's filtered view also uses (skill-naming.ts), so the
+  // assembly the client's filtered view also uses (skill-collision.ts), so the
   // two surfaces cannot drift.
   const collisionGates = skillCollisionGates(
     [...byName.values()].flatMap((entry) => entry.definitions),
@@ -545,6 +542,34 @@ function projectPermissionsInventory(
 }
 
 /**
+ * Projects the settings-and-configuration inventory from a generation's
+ * recognitions (contracts/http-api.md § get-session `settings[]`,
+ * data-model.md § Inventory unit): one entry per recognized settings or
+ * configuration file, in Source-relative Path order, because the kind's unit
+ * is the file.
+ *
+ * Written out rather than shared with the rules or permissions projection
+ * above: the three rows are different subjects — a rule file, a policy a file
+ * declares, and the file a product reads its settings from — so the first
+ * fact one of them gains that the others have no answer for would break a
+ * shared projection, and the duplication is four lines.
+ */
+function projectSettingsInventory(
+  recognitions: readonly ToolRecognition[],
+): SettingsInventoryEntryDto[] {
+  const byPath = Map.groupBy(
+    recognitions.filter((recognition) => recognition.details.kind === 'settings/config'),
+    (recognition) => recognition.sourceRelativePath,
+  );
+  return [...byPath.entries()]
+    .map(([sourceRelativePath, group]) => ({
+      sourceRelativePath,
+      recognitions: fileRecognitionsOf(group),
+    }))
+    .sort((left, right) => compareStrings(left.sourceRelativePath, right.sourceRelativePath));
+}
+
+/**
  * Projects the MCP inventory from a generation's recognitions
  * (contracts/http-api.md § get-session `mcp[]`, data-model.md § Inventory
  * unit): one entry per declared server name, listing every declaration that
@@ -679,7 +704,7 @@ function unionOfServerReadings(
 
 /**
  * A recognition narrowed to the skill kind, so {@link projectSkillInventory}
- * reads `details.declaredName` where its guard has already proved the skill
+ * reads `details.invocationName` where its guard has already proved the skill
  * kind instead of re-narrowing per access.
  */
 type SkillRecognition = ToolRecognition & {
@@ -725,7 +750,7 @@ function resolutionsFor(
     .flatMap((tool) => {
       // Which collision a tool's quoted rule answers is that tool's own
       // naming policy, asked through the shared per-view machinery
-      // (skill-naming.ts): Codex's and Copilot's is the row-internal count,
+      // (skill-collision.ts): Codex's and Copilot's is the row-internal count,
       // Claude's spans rows through the skill directory clash.
       if (!facesSameNameCollision(collisionGates, tool, definitions)) {
         return [];
@@ -871,18 +896,6 @@ export class InspectionSession {
   }
 
   /**
-   * Resolves one committed file's complete detail, including the authored
-   * source the snapshot deliberately withholds (FR-027).
-   *
-   * The path is the file's identity (FR-030), resolved against the current
-   * committed generations only, so a request made after a commit answers with
-   * what the new generation holds at that path — or null when it holds
-   * nothing — never with a previous generation's record. The lookup spans
-   * both sequences because the two are independent; a path is unique per
-   * Source, and the shipped milestone has one Source — the Global tasks add
-   * the Source dimension when a second one can hold the same path.
-   */
-  /**
    * Hands one committed file to an application on the reader's machine
    * (contracts/http-api.md § open-file), answering whether there was a file
    * to hand over. `false` means the current committed generations hold
@@ -916,6 +929,23 @@ export class InspectionSession {
     return true;
   }
 
+  /**
+   * Resolves one committed file's complete detail, including the authored
+   * source the snapshot deliberately withholds (FR-027).
+   *
+   * It answers for the rows whose subject is the file itself, so a path
+   * carrying only declaration-subject rows — an MCP carrier's servers, a
+   * declared permission policy — resolves to null and is served by that
+   * row's own function instead (FR-007).
+   *
+   * The path is the file's identity (FR-030), resolved against the current
+   * committed generations only, so a request made after a commit answers with
+   * what the new generation holds at that path — or null when it holds
+   * nothing — never with a previous generation's record. The lookup spans
+   * both sequences because the two are independent; a path is unique per
+   * Source, and the shipped milestone has one Source — the Global tasks add
+   * the Source dimension when a second one can hold the same path.
+   */
   public fileDetail(sourceRelativePath: string): FileDetailDto | null {
     const generations = [
       this.committedRepositoryGeneration,
@@ -936,13 +966,18 @@ export class InspectionSession {
       const diagnostics = generation.diagnostics.filter((diagnostic) =>
         file.diagnosticIds.includes(diagnostic.diagnosticId),
       );
+      // This function answers for the rows whose subject is the file itself,
+      // so every variant below carries the complete file and the two
+      // declaration-subject kinds are checked last, after none of them
+      // claimed the path (contracts/http-api.md § get-file-detail).
+      //
       // The parse the detail shows is the file's, not a recognizing tool's:
       // every recognition of the file's kind shares the one extraction
-      // (candidate.ts), so any one of them carries it. The variants are tried
-      // in a fixed order — the three Markdown kinds, then the custom-agent
-      // kind, then the rule kind — and a
-      // file no recognition owns is the plain one: a census companion, or a
-      // diagnostic-only candidate (contracts/http-api.md § get-file-detail).
+      // (candidate.ts), so any one of them carries it. The file-subject
+      // variants are tried in a fixed order — the three Markdown kinds, then
+      // the custom-agent kind, then the rule kind, then the settings kind —
+      // and a file no recognition owns is the plain one: a census companion,
+      // or a diagnostic-only candidate.
       // One file can hold two of these kinds: `CLAUDE.md` is a Claude
       // instruction file at every depth, so a `.claude/rules/CLAUDE.md` is
       // also a Claude rule and is a row in both inventories. A detail is
@@ -969,25 +1004,6 @@ export class InspectionSession {
               : null,
           diagnostics,
         };
-      }
-      // A standalone MCP carrier has no FileDetail at all: its detail is
-      // `mcpCarrierDetail`'s own result, because every variant this function
-      // serves carries the full file, and the carrier's whole admission rests
-      // on its bytes reaching no response (FR-007). Null is the same
-      // stale-resource answer as a path the generations hold nothing at
-      // (contracts/http-api.md § get-file-detail). Decided before the
-      // instructions variant, which does carry the full body text: a Codex
-      // `project_doc_fallback_filenames` entry naming `.mcp.json` makes the
-      // root carrier an instructions candidate too, and answering that
-      // recognition first would hand out the bytes FR-007 withholds — the
-      // carrier's protection wins over the fallback recognition's detail.
-      if (
-        generation.recognitions.some(
-          (recognition) =>
-            recognition.sourceRelativePath === sourceRelativePath && isMcpRecognition(recognition),
-        )
-      ) {
-        return null;
       }
       const instruction = generation.recognitions.find(
         (recognition): recognition is InstructionRecognition =>
@@ -1083,23 +1099,6 @@ export class InspectionSession {
           diagnostics,
         };
       }
-      // A declared permission policy has no FileDetail at all, the same way a
-      // standalone MCP carrier has none: what a permissions row names is a
-      // policy rather than a file (data-model.md § Inventory unit), so it is
-      // `permissionPolicyDetail`'s resource, and answering here would publish
-      // it as a file — as "no recognition owns this", for a path whose own
-      // inventory row says one does. Null is the same stale-resource answer
-      // as a path the generations hold nothing at (contracts/http-api.md
-      // § get-file-detail).
-      if (
-        generation.recognitions.some(
-          (recognition) =>
-            recognition.sourceRelativePath === sourceRelativePath &&
-            recognition.details.kind === 'permissions',
-        )
-      ) {
-        return null;
-      }
       // A recognized rule file: the file, and nothing read out of it. A rule
       // is published as the one document its author wrote — a Claude rule
       // whole, frontmatter block included — so the variant carries no
@@ -1121,6 +1120,63 @@ export class InspectionSession {
           file,
           diagnostics,
         };
+      }
+      // A recognized settings or configuration file: the file, and nothing
+      // read out of it. The kind's row unit is the file itself
+      // (data-model.md § Inventory unit), so the document its author wrote is
+      // the whole answer — a Codex `.codex/config.toml` reaches the page as
+      // the TOML it is, comments and section order intact. Its
+      // `[mcp_servers.*]` tables are the MCP rows' subject and are served
+      // declaration-first by `mcpCarrierDetail`; that they are visible here
+      // too is the one document seen under its own row rather than a second
+      // publication of one fact (FR-007).
+      if (
+        generation.recognitions.some(
+          (recognition) =>
+            recognition.sourceRelativePath === sourceRelativePath &&
+            recognition.details.kind === 'settings/config',
+        )
+      ) {
+        return {
+          kind: 'settings/config',
+          file,
+          diagnostics,
+        };
+      }
+      // Past here the path carries no row whose subject is the file, so a
+      // declaration-subject recognition is all it has and this function holds
+      // no detail for it. Null is the same stale-resource answer as a path
+      // the generations hold nothing at (contracts/http-api.md
+      // § get-file-detail).
+      //
+      // A standalone MCP carrier: its detail is `mcpCarrierDetail`'s own
+      // result, because every variant this function serves carries the full
+      // file while an MCP row's subject is one declaration inside it
+      // (FR-007). A carrier that also holds a file-subject row — a
+      // `.mcp.json` a Codex `project_doc_fallback_filenames` entry names is
+      // an instruction file besides — was already answered above under that
+      // row, which is what "the row's subject decides" means.
+      if (
+        generation.recognitions.some(
+          (recognition) =>
+            recognition.sourceRelativePath === sourceRelativePath && isMcpRecognition(recognition),
+        )
+      ) {
+        return null;
+      }
+      // A declared permission policy, on the same terms: what a permissions
+      // row names is a policy rather than a file (data-model.md § Inventory
+      // unit), so it is `permissionPolicyDetail`'s resource, and answering
+      // here would publish it as "no recognition owns this" for a path whose
+      // own inventory row says one does.
+      if (
+        generation.recognitions.some(
+          (recognition) =>
+            recognition.sourceRelativePath === sourceRelativePath &&
+            recognition.details.kind === 'permissions',
+        )
+      ) {
+        return null;
       }
       return {
         kind: 'file',
@@ -1373,6 +1429,10 @@ export class InspectionSession {
         ...(this.committedGlobalGeneration?.recognitions ?? []),
       ]),
       permissions: projectPermissionsInventory([
+        ...this.committedRepositoryGeneration.recognitions,
+        ...(this.committedGlobalGeneration?.recognitions ?? []),
+      ]),
+      settings: projectSettingsInventory([
         ...this.committedRepositoryGeneration.recognitions,
         ...(this.committedGlobalGeneration?.recognitions ?? []),
       ]),

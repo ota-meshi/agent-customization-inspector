@@ -62,8 +62,8 @@ another machine remains prohibited.
    static-assets manifest, no per-asset integrity re-verification, and no hand-written
    router. The one product-owned piece in front of it is the closed detail-route
    rewrite — `/skills/**`, `/instructions/**`, `/mcp/**`, `/rules/**`,
-   `/prompts-and-commands/**`, `/permissions/**`, and `/agents/**`, one family per shipped
-   kind detail: a `GET`/`HEAD` whose path enters one of these route families is
+   `/prompts-and-commands/**`, `/permissions/**`, `/agents/**`, and
+   `/settings-and-configuration/**`, one family per shipped kind detail: a `GET`/`HEAD` whose path enters one of these route families is
    rewritten to `/` and falls
    through, so devframe's own static handler serves the packaged shell for detail deep
    links its extension-guarded SPA fallback would treat as file misses. The rewrite
@@ -278,7 +278,7 @@ SessionSnapshot
 ├── skills[]
 │   └── name string,
 │       definitions[] { sourceRelativePath, tool, surfaces[], parseStatus,
-│                       invocationName, diagnosticIds[], companionFiles[] },
+│                       diagnosticIds[], companionFiles[] },
 │       sameNameResolutions[] { tool, resolution } — one per tool facing a collision
 ├── mcp[]
 │   └── name string | null,
@@ -338,40 +338,42 @@ SessionSnapshot
 │       one row per declared permission policy, named by the path of the
 │       file that declares it; a carrier declaring none is recognized as
 │       whatever owns the rest of it, and is no row here
+├── settings[]
+│   └── sourceRelativePath, recognitions[] { tool, surfaces[] } —
+│       one row per recognized settings or configuration file, named by its
+│       own path, because this kind's unit is the file; a file that also
+│       carries declarations another kind owns — Codex's `.codex/config.toml`
+│       — is a row here and on that kind's list too. No diagnostic list, for
+│       the reason `rules[]` has none: nothing is read out of the document
 └── diagnostics[] { diagnosticId, code, sourceId string,
     sourceRelativePath string | null — null except file scope }
     (active-generation records plus session-owned lifecycle records)
 ```
 
-An inventory row's unit is decided by the kind, not by the file. A skill is one name as
-one tool resolves it (data-model.md § Inventory unit): the authored frontmatter `name` —
-or the skill directory name when the file declares none or declares it empty — or when
-its extraction failed, the directory being the path's own fact rather than something a
-failed parse could be read for (FR-028) — so `name`
-is never null or empty — which a Claude Code recognition of a nested skill prefixes
-root-relative, so
-`apps/web/.claude/skills/deploy/SKILL.md` declaring `name: deploy` is `apps/web:deploy` on
-its Claude row. A definition is one
+An inventory row's unit is decided by the kind, not by the file. A skill is one
+invocation name as one tool resolves it (data-model.md § Inventory unit): the name that
+tool's own documentation invokes the file by, resolved by the admitting rule. Codex and
+Copilot invoke the authored frontmatter `name` — or the skill directory name when the
+file declares none, declares it empty, or its extraction failed, the directory being the
+path's own fact rather than something a failed parse could be read for (FR-028) — while
+Claude Code's command name is the skill directory whatever the frontmatter declares,
+prefixed root-relative for a nested skill, so `apps/web/.claude/skills/deploy/SKILL.md`
+declaring `name: ship` is `apps/web:deploy` on its Claude Code row and `ship` on its
+Copilot one. `name` is never null or empty. A definition is one
 tool's recognition of one file — the ToolRecognition unit, one per `(file, tool)`, named
-by `definitions[].tool` — so several `SKILL.md` files resolving to one name publish one
-entry listing each recognition as a definition — two files that declare no name and sit
-in same-named skill directories among them — a file two tools resolve to one name is two
-definitions of that entry, and a file whose tools resolve different names defines on each
-name's entry. A definition's `invocationName` is the invocation name its own tool's
-documentation gives the file: Claude Code's command name is derived from the path — the
-skill directory name, root-relative-prefixed when nested, whatever the frontmatter
-declares — while Codex and Copilot invoke the authored `name`, with the same skill
-directory fallback the rows use when the file declares none. It is null exactly when the
-tool invokes the authored name and the definition's extraction failed: that name is
-unknown rather than absent, and the directory would be a value read out of a failed
-parse (FR-028). A definition also carries its own recognition's `parseStatus` and
+by `definitions[].tool` — so several `SKILL.md` files one tool invokes by one name
+publish one entry listing each recognition as a definition — two files that declare no
+name and sit in same-named skill directories among them — a file two tools invoke by one
+name is two definitions of that entry, and a file whose tools invoke it by different
+names defines on each name's entry. A definition publishes no name of its own: the row's
+is the name, and a second copy on the definition would be a fact and something derived
+from it. A definition carries its own recognition's `parseStatus` and
 extraction-failure `diagnosticIds`: one extraction per kind means one failure record
 (FR-028), which every failed definition of the file references and the file's `files[]`
-entry lists once. The detail shows the owning
-definition's invocation name beside the row name when one is published (data-model.md
-§ Skill presentation); the values come
-from the one projection that keys the rows, so vendor naming cannot drift between server
-and client. An
+entry lists once. The detail is headed by the row name of the definition its route
+addresses (data-model.md § Skill presentation); the name comes
+from the one rule that resolves it at recognition time, so vendor naming cannot drift
+between server and client. An
 MCP row is one declared server name, listing every `[mcp_servers.*]`-style declaration
 that resolves it — one per `(carrier, tool)` — so one admitted `.codex/config.toml`
 contributes one declaration per server it declares and a second carrier declaring the
@@ -668,7 +670,8 @@ Returns one active-generation file detail, discriminated by whether a recognitio
 the file:
 
 ```text
-FileDetail — kind: 'instructions' | 'skill' | 'agent' | 'prompt/command' | 'rule' | 'file'
+FileDetail — kind: 'instructions' | 'skill' | 'agent' | 'prompt/command' | 'rule' |
+             'settings/config' | 'file'
 ├── kind 'instructions' — the file is a recognized instruction file:
 │   ├── file — one CustomizationFile, discriminated by encoding:
 │   │   ├── sourceId, sourceRelativePath, encoding, diagnosticIds[]
@@ -706,6 +709,10 @@ FileDetail — kind: 'instructions' | 'skill' | 'agent' | 'prompt/command' | 'ru
 ├── kind 'rule' — the file is a recognized rule file:
 │   ├── file — as above
 │   └── diagnostics[]
+├── kind 'settings/config' — the file is a recognized settings or
+│   configuration file:
+│   ├── file — as above
+│   └── diagnostics[]
 └── kind 'file' — no recognition owns the file (a file only the census
     lists, or a diagnostic-only candidate):
     ├── file — as above
@@ -725,7 +732,7 @@ supports a skill's frontmatter keys, so its detail leads with the declarations t
 wrote and the prompt that follows them. What it does not carry is the name a reader
 would type: that is the rule's answer rather than a field of the detail, so it is the
 inventory's fact — the name each `prompts[]` row is grouped under — exactly as a skill's
-recognizing tools and invocation names are (`skills[]`). A prompt file declaring one is
+invocation name is (`skills[]`). A prompt file declaring one is
 no exception: the declaration is in `presentation.frontmatter` like every other key the
 file wrote, and what the rule made of it is the row's.
 The `agent` variant carries a `presentation` of its own shape, because the split is not
@@ -756,6 +763,16 @@ out, nothing can fail to be read: the kind produces no extraction diagnostic, an
 declared `paths` glob is authored text this product never evaluates against a filesystem
 path. The variant is its own rather than the unrecognized one, because a recognition does
 own the file and its inventory row says so.
+The `settings/config` variant carries no `presentation` for the same reason, and its row
+unit is the file itself (data-model.md § Inventory unit), so the document its author wrote
+is the whole answer: a Codex `.codex/config.toml` reaches the response as the TOML it is,
+comments, authored spellings, and section order intact, which is what a reader comparing
+the response against their own file needs. Its `[mcp_servers.*]` tables are a different
+row's subject and are served declaration-first by `get-mcp-carrier-detail`; that they are
+also visible here is the same document seen under its own row rather than a second
+publication of one fact. No declared agent, skill, model-instruction, compact-prompt, or
+hook path is read, resolved, or followed, and no environment reference is substituted
+(FR-019, FR-026).
 
 A permission policy is not among these variants. What a permissions row names is a policy,
 not a file — one vendor's policy is a document of its own and another's is a block of a
@@ -774,14 +791,11 @@ their readings resolve identically, so the repetition is work over one string ra
 a second fact. There is no per-tool recognition list:
 which tools recognize the file, what each resolves it as, and its parse state are the
 inventory's facts, and each kind's own inventory carries them. A skill's are
-`skills[].definitions[]`, and that kind alone has a tool segment in its detail route,
-because a skill's name is one tool's resolution of it and the segment says which
-definition a page is about. Every other kind's detail route is the path alone: an
-instruction file's recognizing tools are listed beside it on its inventory row
-(`instructions[]`) and a custom agent's on `agents[].definitions[]`, and neither route
-carries a tool segment — an instruction file has no per-tool fact that distinguishes what
-the page would show, and a custom agent's page shows one file's two halves whichever
-product resolved which name for it. There is no admission record either: which rule
+`skills[].definitions[]`, an instruction file's are listed beside it on its inventory row
+(`instructions[]`), and a custom agent's on `agents[].definitions[]`. Every kind's detail
+route is the path alone: two products reading one file read the same bytes, so a per-tool
+address would give one document two URLs, and where the products differ — the name each
+invokes a skill by — the page states them together from the rows that hold the file. There is no admission record either: which rule
 authorized a read, and where it matched, is an internal record of the committed
 generation (data-model.md § ToolRecognition) that the relationship phases will read; no
 session response carries it — a configured fallback instruction file's detail is
@@ -804,31 +818,32 @@ that both render the `key` text `1` — so a client matching declarations across
 matches by that pair, never by `key` alone. The same entry shape, `keyKind` included,
 recurs inside every nested `mapping` value.
 
-For a readable file, `sourceText` is the complete decoded source, exactly as authored. A
-standalone MCP declaration carrier — a file the MCP kind recognizes and no skill
-kind claims — has no `FileDetail` at all: a file admitted so its
-declarations can be published shows those declarations and never its own bytes (FR-007),
-and a function whose purpose is serving authored source carries no variant that must
-withhold it. The withholding outranks every other recognition the same path carries: a
-Codex `project_doc_fallback_filenames` entry naming `.mcp.json` makes the carrier an
-instructions candidate too, and that variant's detail is the full body text — exactly
-the bytes FR-007 withholds — so the carrier stays withheld rather than answered under
-the fallback recognition. Such a carrier's detail is `get-mcp-carrier-detail`'s own
-result, and its
-path requested here resolves to the same `stale-resource` rejection as any path this
-function holds no detail for. Only the explicit carriers hold MCP recognitions: a file
+For a readable file, `sourceText` is the complete decoded source, exactly as authored. This
+function answers for the rows whose subject is the file itself, so a path carrying only
+declaration-subject rows has no `FileDetail` at all: a standalone MCP declaration carrier —
+a file the MCP kind recognizes and no file-subject kind claims — publishes its declarations
+through `get-mcp-carrier-detail` and never its own bytes (FR-007), and a function whose
+purpose is serving authored source carries no variant that must withhold it. Its path
+requested here resolves to the same `stale-resource` rejection as any path this function
+holds no detail for. A path that also carries a file-subject row is answered under that row
+instead, because a row's subject is what its detail is about (FR-007): a Codex
+`project_doc_fallback_filenames` entry naming `.mcp.json` makes that carrier an instruction
+file besides, and an instruction file shows its complete source, so the one path serves its
+declarations alone through `get-mcp-carrier-detail` and its whole document here. Only the
+explicit carriers hold MCP recognitions: a file
 of any other kind that spells MCP-looking configuration in its own content — a skill's
 or an agent's frontmatter, a settings file's inline map — is that kind's ordinary
 content, served by this function under its own kind with every declared key visible in
 its presentation, and it joins no MCP surface.
 
-A permission policy is withheld here on the same terms, in both its forms. A carrier
-declaring a policy block is a file admitted so that block can be published, so the bytes
-around it are never served, and a file whose whole content is the policy is a policy
-rather than a file this function has anything of its own to say about: what a permissions
-row names is the policy (data-model.md § Inventory unit). Either path requested here
-resolves to the `stale-resource` rejection, and `get-permission-policy-detail` is where
-the policy is served.
+A permission policy is withheld here on the same terms, in both its forms: what a
+permissions row names is the policy rather than the file that declares it (data-model.md
+§ Inventory unit), so neither form is a subject this function answers for — a carrier
+declaring a policy block is a file admitted so that block can be published, and a file
+whose whole content is the policy is a policy rather than a file this function has
+anything of its own to say about. A path carrying a permissions row and no file-subject
+row resolves to the `stale-resource` rejection, and `get-permission-policy-detail` is
+where the policy is served.
 
 A skill's `presentation` is what it declares and what it instructs, because that
 is what its detail surface leads with. `frontmatter[]` lists every key the file declares,
@@ -1650,11 +1665,12 @@ the post-acceptance failure's ordinary error. Disable itself never returns
    ever served, and the root, `/global-consent`, each kind's comparison route
    (`/skills/compare`, `/instructions/compare`, `/mcp/compare`,
    `/prompts-and-commands/compare`), and each kind's detail route
-   (`/skills/<tool>/<source-relative path>`, `/instructions/<source-relative path>`,
+   (`/skills/<source-relative path>`, `/instructions/<source-relative path>`,
    `/mcp/<source-relative path>`, `/rules/<source-relative path>`,
    `/prompts-and-commands/<source-relative path>`,
-   `/permissions/<source-relative path>`) all boot the same packaged SPA shell, which
-   embeds no session data.
+   `/permissions/<source-relative path>`, `/agents/<source-relative path>`,
+   `/settings-and-configuration/<source-relative path>`) all boot the same packaged SPA
+   shell, which embeds no session data.
 6. Queue ordering across Repository and each tool-specific Global rescan, duplicate
    rejection, aborts, partial outcomes, fatal failures, and polling expose only
    whole generations. A scan queued behind another Source starts from its owning

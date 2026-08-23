@@ -46,6 +46,7 @@ import {
   buildCodexAgentFixture,
   buildCodexMcpFixture,
   buildClaudePermissionsFixture,
+  buildCopilotSettingsFixture,
   buildCodexRuleFixture,
   buildCodexSkillFixture,
   buildCopilotCliMcpFixture,
@@ -549,6 +550,10 @@ describe('Codex MCP inspection connects to nothing (T294)', () => {
     // once — the configuration stage's read, seeded into the walk for its
     // candidacy (T282) — plus the published files, never the standalone near
     // miss, the nested carrier, a declared command path, or a plugin load.
+    // The near misses include the model-instruction and compact-prompt files
+    // the carrier's own configuration names and that exist on disk (T591):
+    // the settings row publishes those declarations as the characters their
+    // author wrote, and read authority still comes from a matcher alone.
     const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) => String(call[0]));
     for (const forbidden of fixture.nearMissPaths) {
       expect(opened).not.toContain(join(fixture.root, ...forbidden.split('/')));
@@ -1500,6 +1505,129 @@ describe('MCP-spelling files of other kinds activate nothing (T376)', () => {
       join(root, '.github', 'agents', 'deploy.md'),
     ]);
     expect(opened).not.toContain(join(root, '.claude-plugin', 'plugin.json'));
+  });
+});
+
+describe('Copilot settings inspection activates nothing (T635)', () => {
+  it('enables no plugin, invokes no hook, connects to nothing, and expands no root', async () => {
+    const fixture = buildCopilotSettingsFixture('inspector-zero-activation-copilot-settings');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    cleanups.push(() => rmSync(fixture.malformedRoot, { recursive: true, force: true }));
+    const session = new InspectionSession({
+      invocationCwd: fixture.root,
+      rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
+    });
+    const context = { session, coordinator: new SessionCoordinator(session) };
+    const repository = session.snapshot().sources[0]!;
+    const admission = context.coordinator.admitScan(repository.sourceId, {
+      kind: 'startup',
+      operationId: null,
+    });
+    if (admission.kind !== 'admitted') {
+      throw new Error('the first scan was not admitted');
+    }
+    await executeRepositoryScan(
+      context,
+      admission.scanRequestId,
+      repository.sourceId,
+      'repository',
+    );
+
+    // Nothing the documents declare was opened during the scan: an enabled
+    // plugin, a known marketplace, an inline hook command, a status-line
+    // script, and an inline MCP server are values their author wrote. Neither
+    // excluded document was read either — read authority comes from a matcher
+    // alone (contracts/inspection-path-allowlist.md § Read authorization).
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) => String(call[0]));
+    for (const nearMiss of fixture.nearMissPaths) {
+      expect(opened, nearMiss).not.toContain(join(fixture.root, ...nearMiss.split('/')));
+    }
+
+    vi.clearAllMocks();
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const detail = session.fileDetail('.github/copilot/settings.json');
+    if (detail?.kind !== 'settings/config' || detail.file.encoding !== 'utf-8') {
+      throw new Error('the settings file published no readable detail of its own');
+    }
+    // The document reaches the response as its author wrote it, credential and
+    // environment reference included, with no process value substituted
+    // (FR-025, FR-026).
+    expect(detail.file.sourceText).toContain(fixture.githubSettingsMarker);
+    expect(detail.file.sourceText).toContain(FIXTURE_ENVIRONMENT_REFERENCE);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(vi.mocked(fsIo.readFile).mock.calls).toEqual([]);
+    expect(vi.mocked(fsIo.readdir).mock.calls).toEqual([]);
+    // No settings file is an MCP owner, whatever it spells: the one MCP row
+    // this tree has is the Codex configuration layer, which is an explicit
+    // carrier (data-model.md § Inventory unit).
+    expect(
+      session
+        .snapshot()
+        .mcp.flatMap((entry) =>
+          entry.declarations.map((declaration) => declaration.sourceRelativePath),
+        ),
+    ).toEqual([fixture.codexCarrierPath]);
+  });
+});
+
+describe('Claude settings inspection activates nothing (T614)', () => {
+  it('shows the document and enables, invokes, connects to, and expands nothing', async () => {
+    const fixture = buildClaudePermissionsFixture('inspector-zero-activation-settings');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    cleanups.push(() => rmSync(fixture.policylessRoot, { recursive: true, force: true }));
+    cleanups.push(() => rmSync(fixture.malformedRoot, { recursive: true, force: true }));
+    const session = new InspectionSession({
+      invocationCwd: fixture.root,
+      rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
+    });
+    const context = { session, coordinator: new SessionCoordinator(session) };
+    const repository = session.snapshot().sources[0]!;
+    const admission = context.coordinator.admitScan(repository.sourceId, {
+      kind: 'startup',
+      operationId: null,
+    });
+    if (admission.kind !== 'admitted') {
+      throw new Error('the first scan was not admitted');
+    }
+    await executeRepositoryScan(
+      context,
+      admission.scanRequestId,
+      repository.sourceId,
+      'repository',
+    );
+
+    // Nothing the documents declare was opened during the scan: a selected
+    // plugin, an invoked hook command, a status-line script, an additional
+    // directory, and an inline MCP server are all values their author wrote,
+    // and read authority comes from a matcher alone
+    // (contracts/inspection-path-allowlist.md § Read authorization).
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) => String(call[0]));
+    for (const nearMiss of fixture.nearMissPaths) {
+      expect(opened, nearMiss).not.toContain(join(fixture.root, ...nearMiss.split('/')));
+    }
+
+    vi.clearAllMocks();
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const detail = session.fileDetail(fixture.declaringCarrierPath);
+    if (detail?.kind !== 'settings/config') {
+      throw new Error('the settings file published no detail of its own');
+    }
+    if (detail.file.encoding !== 'utf-8') {
+      throw new Error('expected the readable settings file');
+    }
+    // The document reaches the response as its author wrote it, which is what
+    // this row's subject is: the settings keys the permissions response
+    // withholds are here, credential and environment reference included, with
+    // no process value substituted (FR-025, FR-026).
+    expect(detail.file.sourceText).toContain(fixture.unrelatedSettingsMarker);
+    expect(detail.file.sourceText).toContain(FIXTURE_ENVIRONMENT_REFERENCE);
+    expect(detail.file.sourceText).toContain('"enabledPlugins"');
+    // Nothing connected, executed, or read while the detail was assembled.
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(vi.mocked(fsIo.readFile).mock.calls).toEqual([]);
+    expect(vi.mocked(fsIo.readdir).mock.calls).toEqual([]);
   });
 });
 

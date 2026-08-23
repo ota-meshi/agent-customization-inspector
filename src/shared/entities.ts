@@ -201,7 +201,7 @@ export const CUSTOMIZATION_KIND_TEXT: Readonly<Record<CustomizationKind, string>
   /** Label for skill-local metadata. */
   'skill metadata': 'Skill metadata',
   /** Label for a settings or configuration carrier. */
-  'settings/config': 'Settings / config',
+  'settings/config': 'Settings / Config',
 };
 
 /** The label shown for each tool; see {@link SOURCE_BOUNDARY_ORIGIN_TEXT}. */

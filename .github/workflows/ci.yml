@@ -168,12 +168,13 @@ jobs:
 
   browser:
     # One job per Playwright project rather than all three browsers in a
-    # single job. Installing chromium, firefox, and webkit with their apt
+    # single job: installing chromium, firefox, and webkit with their apt
     # dependencies together, then running the full suite three times over,
-    # used to fill the runner's disk before the matrix run finished
-    # (ENOSPC). Each browser now gets its own runner and its own disk
-    # budget, matching this file's "every gate is an independent job"
-    # design.
+    # fills the runner's disk before the matrix run finishes (ENOSPC). Each
+    # browser gets its own runner and its own disk budget, matching this
+    # file's "every gate is an independent job" design. The webkit job still
+    # reaches ENOSPC part-way through its own suite, which the disk-usage
+    # steps below are there to attribute.
     name: Browser certification suite (${{ matrix.browser }})
     strategy:
       fail-fast: false
@@ -192,12 +193,41 @@ jobs:
       # The browser suite drives the packaged CLI (dist/cli.mjs serving
       # dist/public), so the build is a prerequisite of this job.
       - run: pnpm run build
+      # Instrumentation for the ENOSPC above, not a gate: nothing in the
+      # harness accounts for the growth, because every suite removes its
+      # fixture tree in `afterEach` and the launched CLI writes no temporary
+      # file of its own. This pair records what the disk holds on either side
+      # of the run — the second one on failure too, so the ENOSPC state itself
+      # is recorded — and the three browsers report side by side, which is
+      # what says whether the growth is webkit's. Both steps come out again
+      # once the growth has been attributed.
+      #
+      # Each one clears the runner's `-e` and `pipefail` before measuring,
+      # because `du` exits non-zero on any directory it cannot read. Left as
+      # the runner starts them, one unreadable entry under /tmp would fail the
+      # job before the suite ran at all, and one under the workspace would
+      # fail a suite that had passed — and the failing command would take the
+      # measurements after it down with it, which is the whole output.
+      - name: Disk usage before the suite
+        run: |
+          set +e +o pipefail
+          df -h /
+          du -xh -d 1 /tmp 2>/dev/null | sort -h | tail -10
       # No `--` before the flag: Playwright's CLI treats a literal `--`
       # token as the start of its own positional test-file filters, so
       # `pnpm run test:e2e -- --project=x` silently drops the project
       # filter and runs every project's tests instead of just `x`.
       - name: Run primary-workflow and accessibility suite
         run: pnpm run test:e2e --project=${{ matrix.browser }}
+      - name: Disk usage after the suite
+        if: always()
+        run: |
+          set +e +o pipefail
+          df -h /
+          du -xh -d 1 /tmp 2>/dev/null | sort -h | tail -20
+          du -xh -d 2 "$GITHUB_WORKSPACE" 2>/dev/null | sort -h | tail -20
+          du -xh -d 2 "$HOME" 2>/dev/null | sort -h | tail -20
+          sudo du -xh -d 3 / 2>/dev/null | sort -h | tail -25
 
   build:
     name: Development/build baseline (Node.js 24.18.0, ubuntu-24.04 x64)

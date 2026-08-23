@@ -92,6 +92,7 @@ describe('session snapshot DTO', () => {
       | 'rules'
       | 'prompts'
       | 'permissions'
+      | 'settings'
       | 'agents'
       | 'skills'
       | 'mcp'

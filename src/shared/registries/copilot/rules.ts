@@ -1215,11 +1215,171 @@ export const COPILOT_REPO_AGENT_CLAUDE_RULE = {
     : [],
 } as const satisfies InspectionRule;
 
+/**
+ * The `copilot.repo.settings` matcher: the two GitHub Copilot settings
+ * documents and the two cross-tool Claude-format ones the CLI reads for the
+ * documented shared subset, each an exact Repository-root location. Four
+ * programs rather than one dynamic step, so each admission carries which
+ * authored filename matched.
+ *
+ * Root-anchored with no recursive step: the pages name these locations as the
+ * repository's own, and a settings file in a subdirectory is a path the vendor
+ * documents no read of. A configured location is not here either — a
+ * runtime-supplied root is `copilot.excluded.extra-directories`' fact and
+ * never a scan root (FR-001).
+ */
+const COPILOT_REPO_SETTINGS_MATCHER: StructuredInspectorMatcher = {
+  base: { kind: 'repository' },
+  selectors: [
+    [
+      { kind: 'literal', value: '.github' },
+      { kind: 'literal', value: 'copilot' },
+      { kind: 'literal', value: 'settings.json' },
+    ],
+    [
+      { kind: 'literal', value: '.github' },
+      { kind: 'literal', value: 'copilot' },
+      { kind: 'literal', value: 'settings.local.json' },
+    ],
+    [
+      { kind: 'literal', value: '.claude' },
+      { kind: 'literal', value: 'settings.json' },
+    ],
+    [
+      { kind: 'literal', value: '.claude' },
+      { kind: 'literal', value: 'settings.local.json' },
+    ],
+  ],
+};
+
+/**
+ * Copilot Repository settings: the supported settings documents, recognized
+ * as the `settings/config` kind whose row unit is the file.
+ *
+ * Two of the four are shared physical files with Claude Code, which admits
+ * them under its own rules: one file, one read, and one recognition per
+ * product — which is what the surfaces on each recognition are for (FR-004).
+ *
+ * This recognition reads nothing out of a document: its detail is the JSON its
+ * author wrote (FR-007). What may be written inside — an inline `hooks` block,
+ * an `enabledPlugins` map, a `permissions` object — belongs to the Hook,
+ * Plugin, and permissions recognitions of the same files, each arriving with
+ * its own phase; a settings file is never an MCP owner, because an MCP
+ * declaration's home is an explicit carrier and nothing else (data-model.md
+ * § Inventory unit).
+ *
+ * Admitting a file is not asserting Copilot applied it: the value a session
+ * uses comes out of the documented defaults/managed/User/repository/local/
+ * environment/flag cascade, and which surface is running at all is runtime
+ * this tool never observes (FR-009).
+ */
+export const COPILOT_REPO_SETTINGS_RULE = {
+  ruleId: 'copilot.repo.settings',
+  tool: 'copilot',
+  discoveryClass: 'static-candidate',
+  kind: 'settings/config',
+  sourceKinds: ['repository'],
+  matcher: COPILOT_REPO_SETTINGS_MATCHER,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.cli.configuration',
+          url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference',
+          officialHost: 'docs.github.com',
+          sections: ['Configuration file settings'],
+          reviewedOn: '2026-08-23',
+          establishes:
+            'The repository settings file is .github/copilot/settings.json and the local one .github/copilot/settings.local.json — the exact locations this rule admits — and the CLI also reads .claude/settings.json and .claude/settings.local.json for the shared cross-tool subset, which is the other pair.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
+ * `copilot.excluded.vscode-settings`: VS Code's general workspace
+ * `.vscode/settings.json`. It is a documented setting input, and it is left
+ * out of this release's read allowlist: it is the editor's own settings
+ * document rather than a Copilot customization, and what this product admits
+ * under `.vscode/` is the dedicated `.vscode/mcp.json` carrier alone.
+ *
+ * Rejecting it is the matchers' own doing — no shipped selector names that
+ * path — and this record is what says the omission was decided rather than
+ * overlooked.
+ */
+export const COPILOT_EXCLUDED_VSCODE_SETTINGS_RULE = {
+  ruleId: 'copilot.excluded.vscode-settings',
+  tool: 'copilot',
+  discoveryClass: 'excluded',
+  kind: null,
+  sourceKinds: ['repository'],
+  matcher: null,
+  policyRefs: SHIPS_MAINTENANCE_DATA ? ['FR-003', 'FR-004', 'QR-001', 'QR-005'] : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'vscode.settings',
+          url: 'https://code.visualstudio.com/docs/configure/settings',
+          officialHost: 'code.visualstudio.com',
+          sections: ['Workspace settings'],
+          reviewedOn: '2026-08-23',
+          establishes:
+            'Workspace settings are stored in a .vscode/settings.json inside the workspace, which is the general editor settings document this release does not admit.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
+ * `copilot.excluded.cli-lsp`: the CLI's `.github/lsp.json`. It is documented
+ * project configuration and is left out of this release's read allowlist
+ * because it configures language servers rather than the agent's
+ * customization — it is not a Supported Initial Release Customization File.
+ *
+ * Rejecting it is the matchers' own doing, exactly as for the VS Code settings
+ * exclusion above.
+ */
+export const COPILOT_EXCLUDED_CLI_LSP_RULE = {
+  ruleId: 'copilot.excluded.cli-lsp',
+  tool: 'copilot',
+  discoveryClass: 'excluded',
+  kind: null,
+  sourceKinds: ['repository'],
+  matcher: null,
+  policyRefs: SHIPS_MAINTENANCE_DATA ? ['FR-003', 'FR-004', 'FR-020', 'QR-001', 'QR-005'] : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.cli.lsp',
+          url: 'https://docs.github.com/en/copilot/concepts/agents/copilot-cli/lsp-servers',
+          officialHost: 'docs.github.com',
+          sections: ['How LSP servers are loaded'],
+          reviewedOn: '2026-08-23',
+          establishes:
+            'The project LSP configuration is .github/lsp.json in the current repository, the highest of three language-server configuration priorities — configuration for language servers rather than for the agent customization this product inventories.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
 /** Copilot's contribution to the inspection-rule registry, keyed by `ruleId`. */
 export const COPILOT_INSPECTION_RULES: Readonly<Record<CopilotRuleId, InspectionRule>> = {
   [COPILOT_EXCLUDED_ADDITIONAL_STANDARD_LOCATIONS_RULE.ruleId]:
     COPILOT_EXCLUDED_ADDITIONAL_STANDARD_LOCATIONS_RULE,
+  [COPILOT_EXCLUDED_CLI_LSP_RULE.ruleId]: COPILOT_EXCLUDED_CLI_LSP_RULE,
   [COPILOT_EXCLUDED_EXTRA_DIRECTORIES_RULE.ruleId]: COPILOT_EXCLUDED_EXTRA_DIRECTORIES_RULE,
+  [COPILOT_EXCLUDED_VSCODE_SETTINGS_RULE.ruleId]: COPILOT_EXCLUDED_VSCODE_SETTINGS_RULE,
   [COPILOT_REPO_AGENT_RULE.ruleId]: COPILOT_REPO_AGENT_RULE,
   [COPILOT_REPO_AGENT_CLAUDE_RULE.ruleId]: COPILOT_REPO_AGENT_CLAUDE_RULE,
   [COPILOT_REPO_COMMAND_RULE.ruleId]: COPILOT_REPO_COMMAND_RULE,
@@ -1236,5 +1396,6 @@ export const COPILOT_INSPECTION_RULES: Readonly<Record<CopilotRuleId, Inspection
   [COPILOT_REPO_MCP_VSCODE_RULE.ruleId]: COPILOT_REPO_MCP_VSCODE_RULE,
   [COPILOT_REPO_MCP_VSCODE_ROOT_RULE.ruleId]: COPILOT_REPO_MCP_VSCODE_ROOT_RULE,
   [COPILOT_REPO_PROMPT_RULE.ruleId]: COPILOT_REPO_PROMPT_RULE,
+  [COPILOT_REPO_SETTINGS_RULE.ruleId]: COPILOT_REPO_SETTINGS_RULE,
   [COPILOT_REPO_SKILL_RULE.ruleId]: COPILOT_REPO_SKILL_RULE,
 };

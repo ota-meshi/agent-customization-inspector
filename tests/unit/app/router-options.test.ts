@@ -31,7 +31,7 @@ function routeAt(matchedPath: string, fullPath = matchedPath): RouteLocationNorm
 const inventory = routeAt('/');
 
 /** One skill detail, the page a row leads to. */
-const skillDetail = routeAt('/skills/:tool/:path(.*)*', '/skills/codex/b');
+const skillDetail = routeAt('/skills/:path(.*)*', '/skills/b');
 
 /** Runs the rule for one navigation, the way the router calls it. */
 function scrollFor(to: RouteLocationNormalized, from: RouteLocationNormalized) {
@@ -61,7 +61,7 @@ beforeEach(() => {
 
 describe('the navigation scroll rule', () => {
   it('leaves a same-page parameter change where the reader put it', () => {
-    const companion = routeAt('/skills/:tool/:path(.*)*', '/skills/codex/scripts/run.sh');
+    const companion = routeAt('/skills/:path(.*)*', '/skills/scripts/run.sh');
 
     expect(scrollFor(companion, skillDetail)).toBe(false);
   });
@@ -71,16 +71,16 @@ describe('the navigation scroll rule', () => {
   });
 
   it('focuses the followed row and answers it with the offset it was followed from', () => {
-    renderLink('/skills/codex/a', 40);
-    renderLink('/skills/codex/b', 260);
+    renderLink('/skills/a', 40);
+    renderLink('/skills/b', 260);
 
-    recordInventoryReturnPoint('/skills/codex/b');
+    recordInventoryReturnPoint('/skills/b');
 
     // Coming back to a freshly rendered list, where the row now sits somewhere
     // else: the answer names that row and the offset it sat at when it was
     // followed, never where it happens to be now.
     document.body.innerHTML = '';
-    const returned = renderLink('/skills/codex/b', 900);
+    const returned = renderLink('/skills/b', 900);
 
     expect(scrollFor(inventory, skillDetail)).toEqual({ el: returned, top: 260 });
     expect(document.activeElement).toBe(returned);
@@ -95,13 +95,13 @@ describe('the navigation scroll rule', () => {
   });
 
   it('starts at the top and moves no focus when the row is no longer listed', () => {
-    renderLink('/skills/codex/b', 260);
-    recordInventoryReturnPoint('/skills/codex/b');
+    renderLink('/skills/b', 260);
+    recordInventoryReturnPoint('/skills/b');
 
     // A generation adopted while the reader was away publishes another row in
     // its place; the ordinary page-change rule then stands whole.
     document.body.innerHTML = '';
-    const other = renderLink('/skills/codex/c', 260);
+    const other = renderLink('/skills/c', 260);
     other.focus();
 
     expect(scrollFor(inventory, skillDetail)).toEqual({ left: 0, top: 0 });
@@ -109,18 +109,18 @@ describe('the navigation scroll rule', () => {
   });
 
   it('records nothing when the departure matches no rendered link', () => {
-    renderLink('/skills/codex/b', 260);
+    renderLink('/skills/b', 260);
 
-    recordInventoryReturnPoint('/skills/codex/never-rendered');
+    recordInventoryReturnPoint('/skills/never-rendered');
 
     expect(scrollFor(inventory, skillDetail)).toEqual({ left: 0, top: 0 });
   });
 
   it('keeps only the last departure, which is the one a return was made from', () => {
-    const first = renderLink('/skills/codex/a', 40);
-    renderLink('/skills/codex/b', 260);
-    recordInventoryReturnPoint('/skills/codex/b');
-    recordInventoryReturnPoint('/skills/codex/a');
+    const first = renderLink('/skills/a', 40);
+    renderLink('/skills/b', 260);
+    recordInventoryReturnPoint('/skills/b');
+    recordInventoryReturnPoint('/skills/a');
 
     expect(scrollFor(inventory, skillDetail)).toEqual({ el: first, top: 40 });
   });

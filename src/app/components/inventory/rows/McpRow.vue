@@ -242,7 +242,7 @@ const compareRoute = computed(() => {
 }
 
 /* The declarations of the name, set under it by an indent and a rule,
-   matching how a skill row groups its definitions under the resolved name. */
+   matching how a skill row groups its files under the invocation name. */
 .aci-mcp-row__declarations {
   list-style: none;
   margin: 0.2rem 0 0;

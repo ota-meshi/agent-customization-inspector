@@ -379,15 +379,19 @@ describe('registry composition', () => {
     .map((entry) => entry.name)
     .sort();
 
-  it('gives every vendor directory exactly its catalogs, relations, and skill naming', () => {
+  it('gives every vendor directory exactly its catalogs, relations, and skill collision policy', () => {
     expect(vendorDirectories.length).toBeGreaterThan(0);
     for (const vendor of vendorDirectories) {
-      // `skill-naming.ts` is behavior rather than a record catalog — each
-      // vendor's naming implementation, composed by
-      // `src/shared/skill-naming.ts` (FR-007) — so it sits beside the
+      // `skill-collision.ts` is behavior rather than a record catalog — each
+      // vendor's same-name collision policy, composed by
+      // `src/shared/skill-collision.ts` (FR-007) — so it sits beside the
       // catalogs without joining the per-record aggregate checks below.
       expect(readdirSync(`src/shared/registries/${vendor}`).sort()).toEqual(
-        [...CATALOG_FILES.map((catalog) => catalog.file), 'relations.ts', 'skill-naming.ts'].sort(),
+        [
+          ...CATALOG_FILES.map((catalog) => catalog.file),
+          'relations.ts',
+          'skill-collision.ts',
+        ].sort(),
       );
     }
   });

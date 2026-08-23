@@ -12,9 +12,11 @@
 // own worker. A service's worker-backed features validate and complete, which
 // this product must not do: a squiggle under an inspected file would be the
 // tool judging a customization it has no standing to judge. A basic language
-// only colours text — JSON included: its colouring is the JSON service's own
-// local tokenizer wired directly to a hand-registered `json` id, with the
-// service contribution and its worker never imported (monaco-languages.ts).
+// only colours text — JSON and TOML included: JSON's colouring is the JSON
+// service's own local tokenizer wired directly to a hand-registered `json` id,
+// with the service contribution and its worker never imported, and TOML's is a
+// Monarch grammar from `@ota-meshi/site-kit-monarch-syntaxes`, which the pinned
+// editor ships no grammar of its own for (monaco-languages.ts).
 //
 // Inertness is the configuration, not a sanitizer. The editor is read-only in
 // both the model and the DOM, opens no link, resolves no URI, and loads no
@@ -39,20 +41,17 @@ export interface RegisteredLanguage {
 }
 
 /**
- * The two formats this product recognizes that Monaco ships no grammar for.
+ * The spellings no registered language claims, mapped to the language whose
+ * grammar they take.
  *
  * JSON's own colouring comes from the JSON service's local tokenizer, wired
  * directly to the `json` id (monaco-languages.ts): that registration claims
- * `.json` itself, so only the spellings it does not claim are mapped
- * here. `.jsonc` takes the same `json` tokenizer — its comment support is
- * the tokenizer's own — and TOML, which Monaco ships nothing for, borrows
- * the nearest pure tokenizer: its sections, `key = value` lines, quoted
- * strings, and `#` comments are what the ini grammar colours. The mapped id
- * is internal — the model URI is opaque and no surface shows a language
- * name — and colouring is presentation over text that is displayed exactly
- * as authored either way.
+ * `.json` itself, so only `.jsonc` is mapped here, to the same tokenizer —
+ * its comment support is the tokenizer's own. The mapped id is internal — the
+ * model URI is opaque and no surface shows a language name — and colouring is
+ * presentation over text that is displayed exactly as authored either way.
  *
- * Both entries are extensions that name one format. A suffix several
+ * The entry is an extension that names one format. A suffix several
  * unrelated tools use is not evidence of a syntax and gets no entry: `.rules`
  * is a spelling other products give files of their own, so borrowing a
  * grammar for the suffix would colour those as something they are not. Where
@@ -61,10 +60,7 @@ export interface RegisteredLanguage {
  * file is spelled — and the surface names the language itself
  * (`SourceViewerHandle.showSource` § contentLanguage).
  */
-const BORROWED_GRAMMARS: ReadonlyMap<string, string> = new Map([
-  ['.jsonc', 'json'],
-  ['.toml', 'ini'],
-]);
+const BORROWED_GRAMMARS: ReadonlyMap<string, string> = new Map([['.jsonc', 'json']]);
 
 /** The language a file with no claim gets: shown exactly as authored, uncoloured. */
 const PLAIN_TEXT = 'plaintext';

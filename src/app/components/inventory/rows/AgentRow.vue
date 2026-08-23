@@ -250,7 +250,7 @@ const fileRows = computed(() => {
 }
 
 /* The definitions of the name, set under it by an indent and a rule, matching
-   how a skill row groups its definitions under the resolved name. */
+   how a skill row groups its files under the invocation name. */
 .aci-agent-row__definitions {
   list-style: none;
   margin: 0.2rem 0 0;

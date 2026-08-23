@@ -18,6 +18,7 @@ import {
   buildClaudeInstructionFixture,
   buildClaudeMcpFixture,
   buildClaudePermissionsFixture,
+  buildCopilotSettingsFixture,
   buildClaudeRuleFixture,
   buildClaudeAgentFixture,
   buildClaudeSkillFixture,
@@ -109,7 +110,7 @@ async function scanFixture() {
 
 describe('the shipped codex.repo.skill plan', () => {
   it('compiles the authored program once into the immutable typed plan', () => {
-    expect(CODEX_REPOSITORY_RULES).toHaveLength(5);
+    expect(CODEX_REPOSITORY_RULES).toHaveLength(6);
     const compiled = CODEX_REPOSITORY_RULES.find(
       (candidate) => candidate.rule.ruleId === 'codex.repo.skill',
     )!;
@@ -680,6 +681,7 @@ describe('the shipped codex.repo.instructions plan (T207)', () => {
       'codex.repo.config',
       'codex.repo.instructions',
       'codex.repo.rules',
+      'codex.repo.settings',
       'codex.repo.skill',
     ]);
     expect(CODEX_DERIVED_FALLBACK_RULE.rule).toBe(derived);
@@ -820,15 +822,20 @@ describe('the anchored Codex MCP carrier inventory (T282)', () => {
     rmSync(mcpFixture.root, { recursive: true, force: true });
   });
 
-  it('admits the carrier exactly once, with one read and one admission', async () => {
+  it('admits the carrier once from both of its rules, with one read', async () => {
     const result = await scanWith(mcpFixture.root, CODEX_REPOSITORY_RULES);
     const carrier = result.files.find((file) => file.publicPath === mcpFixture.carrierPath);
     expect(carrier).toBeDefined();
-    // One admission from the one selector of the one rule: no duplicate
-    // candidate, and each admitted file is read exactly once by the walk.
-    expect(carrier!.admissions).toHaveLength(1);
-    const [admitted] = resolveAdmittingRules(CODEX_REPOSITORY_RULES, carrier!.admissions);
-    expect(admitted!.rule.ruleId).toBe('codex.repo.config');
+    // Two admissions, one candidate: the file is the MCP carrier its
+    // `[mcp_servers.*]` tables make it and the settings document those tables
+    // sit in, and each recognition is a rule's (T584). Two plans matching one
+    // path merge into one candidate, so no duplicate file appears and the walk
+    // still reads it exactly once.
+    expect(
+      resolveAdmittingRules(CODEX_REPOSITORY_RULES, carrier!.admissions)
+        .map((admitted) => admitted.rule.ruleId)
+        .toSorted(),
+    ).toEqual(['codex.repo.config', 'codex.repo.settings']);
     const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) =>
       String(call[0])
         .slice(mcpFixture.root.length + 1)
@@ -838,16 +845,48 @@ describe('the anchored Codex MCP carrier inventory (T282)', () => {
     expect(opened.filter((path) => path === mcpFixture.carrierPath)).toHaveLength(1);
   });
 
-  it('admits no standalone MCP file, nested carrier, or spelling variant', async () => {
+  it('admits no standalone MCP file, nested carrier, spelling variant, or configured target', async () => {
     // The standalone `.mcp.json` near miss is the registry decision this
     // phase records: inline servers are metadata on the admitted carrier and
     // create no second candidate, and no plugin, User, or managed location is
     // promoted into the Repository walk.
+    //
+    // The list now also holds the model-instruction and compact-prompt files
+    // the carrier's own configuration names (T579): read authority comes from
+    // a matcher alone, so a path a document declares reaches nothing however
+    // many settings rows publish the declaration. The catalog scanned here is
+    // the whole Codex one, `codex.repo.settings` included, so the settings
+    // rule provably widens no location.
     const result = await scanWith(mcpFixture.root, CODEX_REPOSITORY_RULES);
     const paths = new Set(result.files.map((file) => file.publicPath));
     for (const nearMiss of mcpFixture.nearMissPaths) {
       expect(paths.has(nearMiss), nearMiss).toBe(false);
     }
+  });
+
+  it('keeps the settings rule anchored at the one root layer', async () => {
+    // The settings rule shares the carrier rule's authored matcher, so it
+    // inherits every anchoring decision that matcher already carries: the
+    // selected root is the project root (FR-001), so the nested layer Codex
+    // would walk toward its runtime `cwd` is a near miss here, at this phase
+    // as at every earlier one.
+    const compiled = CODEX_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'codex.repo.settings',
+    )!;
+    expect(compiled.tool).toBe('codex');
+    expect(compiled.kind).toBe('settings/config');
+    expect(compiled.plan).toEqual(
+      new TraversalPlan(INSPECTION_RULES['codex.repo.settings']!.matcher!),
+    );
+    expect(compiled.plan.selectors).toHaveLength(1);
+    expect(compiled.plan.selectors[0]!.remainder).toEqual([
+      { kind: 'literal', value: '.codex' },
+      { kind: 'literal', value: 'config.toml' },
+    ]);
+    const result = await scanWith(mcpFixture.root, [compiled]);
+    // Scanned alone, the rule admits exactly the root layer and nothing else:
+    // no descendant, no spelling variant, no configured target.
+    expect(result.files.map((file) => file.publicPath)).toEqual([mcpFixture.carrierPath]);
   });
 });
 
@@ -1093,12 +1132,13 @@ describe('the root-exact Claude MCP inventory (T306)', () => {
       expect(paths.has(nearMiss), nearMiss).toBe(false);
     }
     // The settings file and the agent file are the two owners later phases
-    // gave a candidacy of their own: `claude.repo.permissions` admits the
-    // first for the policy it may declare and `claude.repo.agent` the second
-    // for the agent it defines. Neither `mcpServers` spelling reaches an MCP
-    // surface — each admission is its own kind's — and this fixture's settings
-    // copy declares no `permissions` object, so it carries no recognition at
-    // all.
+    // gave a candidacy of their own: the settings file is admitted twice —
+    // `claude.repo.permissions` for the policy it may declare and
+    // `claude.repo.settings` for the document around it, two rules over one
+    // candidate — and `claude.repo.agent` admits the second for the agent it
+    // defines. Neither `mcpServers` spelling reaches an MCP surface — each
+    // admission is its own kind's — and this fixture's settings copy declares
+    // no `permissions` object, so it carries the settings recognition alone.
     const agent = result.files.find(
       (file) => file.publicPath === mcpFixture.mcpFrontmatterAgentPath,
     );
@@ -1111,10 +1151,10 @@ describe('the root-exact Claude MCP inventory (T306)', () => {
     const settings = result.files.find((file) => file.publicPath === '.claude/settings.json');
     expect(settings, '.claude/settings.json').toBeDefined();
     expect(
-      resolveAdmittingRules(CLAUDE_REPOSITORY_RULES, settings!.admissions).map(
-        (admission) => admission.rule.ruleId,
-      ),
-    ).toEqual(['claude.repo.permissions']);
+      resolveAdmittingRules(CLAUDE_REPOSITORY_RULES, settings!.admissions)
+        .map((admission) => admission.rule.ruleId)
+        .toSorted(),
+    ).toEqual(['claude.repo.permissions', 'claude.repo.settings']);
     // The mcpServers-spelling skill and the plain skill are admitted — as
     // skills, by the skill rule, and as nothing else: a skill frontmatter
     // spelling `mcpServers` is a field Claude does not document, never a
@@ -1638,7 +1678,8 @@ describe('the priority cross-vendor MCP matcher matrix (T390)', () => {
   it('admits each explicit carrier under exactly its own rules, in one combined walk', async () => {
     // The whole priority wave in one catalog: the shared root carries three
     // admissions of one physical file, every other carrier exactly its own
-    // rule's, and the Codex configuration carrier its config rule's.
+    // rule's, and the Codex configuration carrier the two rules that read it —
+    // its MCP tables and the settings document they sit in.
     const rules = [
       ...CLAUDE_REPOSITORY_RULES,
       ...COPILOT_REPOSITORY_RULES,
@@ -1657,7 +1698,10 @@ describe('the priority cross-vendor MCP matcher matrix (T390)', () => {
     ]);
     expect(admittedIds(priority.githubCarrierPath)).toEqual(['copilot.repo.mcp']);
     expect(admittedIds(priority.vscodeCarrierPath)).toEqual(['copilot.repo.mcp.vscode']);
-    expect(admittedIds(priority.codexCarrierPath)).toEqual(['codex.repo.config']);
+    expect(admittedIds(priority.codexCarrierPath).toSorted()).toEqual([
+      'codex.repo.config',
+      'codex.repo.settings',
+    ]);
     // One physical file, one read: the shared root appears once however many
     // admissions it carries.
     expect(
@@ -2404,6 +2448,146 @@ describe('the root-anchored Claude command inventory (T442)', () => {
   });
 });
 
+describe('the supported Copilot settings inventory (T624)', () => {
+  it('compiles the four exact documents and nothing wider', () => {
+    const compiled = COPILOT_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'copilot.repo.settings',
+    )!;
+    expect(compiled.tool).toBe('copilot');
+    expect(compiled.kind).toBe('settings/config');
+    expect(compiled.plan).toEqual(
+      new TraversalPlan(INSPECTION_RULES['copilot.repo.settings']!.matcher!),
+    );
+    // Four exact programs, one per documented filename, with no recursive
+    // token anywhere: the pages name these locations as the repository's own,
+    // so neither an ancestor nor a descendant copy is reachable and a
+    // configured root is a path no selector names (FR-001).
+    expect(compiled.plan.selectors).toHaveLength(4);
+    expect(compiled.plan.selectors.map((selector) => selector.remainder)).toEqual([
+      [
+        { kind: 'literal', value: '.github' },
+        { kind: 'literal', value: 'copilot' },
+        { kind: 'literal', value: 'settings.json' },
+      ],
+      [
+        { kind: 'literal', value: '.github' },
+        { kind: 'literal', value: 'copilot' },
+        { kind: 'literal', value: 'settings.local.json' },
+      ],
+      [
+        { kind: 'literal', value: '.claude' },
+        { kind: 'literal', value: 'settings.json' },
+      ],
+      [
+        { kind: 'literal', value: '.claude' },
+        { kind: 'literal', value: 'settings.local.json' },
+      ],
+    ]);
+  });
+
+  it('admits the four documents alone, and neither excluded file', async () => {
+    const fixture = buildCopilotSettingsFixture('inspector-copilot-settings-rules');
+    const compiled = COPILOT_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'copilot.repo.settings',
+    )!;
+    const result = await scanWith(fixture.root, [compiled]);
+    expect(result.files.map((file) => file.publicPath).toSorted()).toEqual([
+      ...fixture.expectedSettingsPaths,
+    ]);
+    // The whole Copilot catalog reaches none of the negatives either: the two
+    // documented exclusions, the targets these documents declare, and the
+    // spelling variants beside them.
+    const wholeCatalog = await scanWith(fixture.root, COPILOT_REPOSITORY_RULES);
+    const paths = new Set(wholeCatalog.files.map((file) => file.publicPath));
+    for (const nearMiss of fixture.nearMissPaths) {
+      expect(paths.has(nearMiss), nearMiss).toBe(false);
+    }
+    rmSync(fixture.root, { recursive: true, force: true });
+    rmSync(fixture.malformedRoot, { recursive: true, force: true });
+  });
+
+  it('records each exclusion against the behavior it leaves out', () => {
+    // An exclusion authorizes nothing and names the documented lookup it
+    // declines, which is what makes the omission reviewable rather than
+    // invisible (T628).
+    for (const [ruleId, behaviorId] of [
+      ['copilot.excluded.vscode-settings', 'copilot.behavior.vscode.settings'],
+      ['copilot.excluded.cli-lsp', 'copilot.behavior.cli.lsp'],
+    ] as const) {
+      const rule = INSPECTION_RULES[ruleId]!;
+      expect(rule.discoveryClass, ruleId).toBe('excluded');
+      expect(rule.matcher, ruleId).toBeNull();
+      expect(rule.kind, ruleId).toBeNull();
+      // Exact rather than membership: an exclusion names the one documented
+      // lookup it declines, so an extra edge — a User layer no Repository scan
+      // reaches, say — would widen what the omission claims to cover and a
+      // `toContain` could not see it.
+      expect(
+        RULE_RELATIONS[ruleId].basedOnBehaviors.map((behavior) => behavior.behaviorId),
+        ruleId,
+      ).toEqual([behaviorId]);
+    }
+  });
+});
+
+describe('the root Claude settings inventory (T603)', () => {
+  it('compiles the exact launch-root pair and nothing wider', () => {
+    const compiled = CLAUDE_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'claude.repo.settings',
+    )!;
+    expect(compiled.tool).toBe('claude');
+    expect(compiled.kind).toBe('settings/config');
+    expect(compiled.plan).toEqual(
+      new TraversalPlan(INSPECTION_RULES['claude.repo.settings']!.matcher!),
+    );
+    // Two exact programs, one per documented filename, with no recursive
+    // token anywhere: the page names the project scope as the launch
+    // directory's own `.claude/`, so neither an ancestor nor a descendant
+    // copy is reachable. The same authored matcher the permissions rule
+    // compiles, because it is the same pair of locations.
+    expect(compiled.plan.selectors).toHaveLength(2);
+    expect(compiled.plan.selectors.map((selector) => selector.remainder)).toEqual([
+      [
+        { kind: 'literal', value: '.claude' },
+        { kind: 'literal', value: 'settings.json' },
+      ],
+      [
+        { kind: 'literal', value: '.claude' },
+        { kind: 'literal', value: 'settings.local.json' },
+      ],
+    ]);
+    expect(INSPECTION_RULES['claude.repo.settings']!.matcher).toBe(
+      INSPECTION_RULES['claude.repo.permissions']!.matcher,
+    );
+  });
+
+  it('admits the two root files alone, and no standalone Claude state beside them', async () => {
+    const fixture = buildClaudePermissionsFixture('inspector-claude-settings-rules');
+    const compiled = CLAUDE_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'claude.repo.settings',
+    )!;
+    const result = await scanWith(fixture.root, [compiled]);
+    // Scanned alone, the rule reaches exactly the two documented files: no
+    // ancestor, no descendant, no spelling variant, and none of the targets
+    // the documents themselves declare — a hook command and a status-line
+    // script gain no read authority from being named.
+    expect(result.files.map((file) => file.publicPath).toSorted()).toEqual([
+      fixture.declaringCarrierPath,
+      fixture.localCarrierPath,
+    ]);
+    // No standalone hook, prompt, workflow, or agent-memory candidate ships
+    // with this phase either: the whole Claude catalog reaches none of them.
+    const wholeCatalog = await scanWith(fixture.root, CLAUDE_REPOSITORY_RULES);
+    const paths = new Set(wholeCatalog.files.map((file) => file.publicPath));
+    for (const nearMiss of fixture.nearMissPaths) {
+      expect(paths.has(nearMiss), nearMiss).toBe(false);
+    }
+    rmSync(fixture.root, { recursive: true, force: true });
+    rmSync(fixture.policylessRoot, { recursive: true, force: true });
+    rmSync(fixture.malformedRoot, { recursive: true, force: true });
+  });
+});
+
 describe('the root Claude permission-policy inventory (T1107)', () => {
   let permissionsFixture: ClaudePermissionsFixture;
 
@@ -2443,39 +2627,75 @@ describe('the root Claude permission-policy inventory (T1107)', () => {
       permissionsFixture.declaringCarrierPath,
       permissionsFixture.localCarrierPath,
     ]) {
-      const rules = resolveAdmittingRules(
-        CLAUDE_REPOSITORY_RULES,
-        byPath.get(admitted)!.admissions,
-      ).map((admission) => admission.rule.ruleId);
-      expect(rules, admitted).toEqual(['claude.repo.permissions']);
+      const rules = resolveAdmittingRules(CLAUDE_REPOSITORY_RULES, byPath.get(admitted)!.admissions)
+        .map((admission) => admission.rule.ruleId)
+        .toSorted();
+      // Two rules over one candidate: the policy block inside the file and
+      // the document around it are two recognitions of one read.
+      expect(rules, admitted).toEqual(['claude.repo.permissions', 'claude.repo.settings']);
     }
-    expect(byPath.has(permissionsFixture.nestedSettingsPath)).toBe(false);
+    for (const nearMiss of permissionsFixture.nearMissPaths) {
+      expect(byPath.has(nearMiss), nearMiss).toBe(false);
+    }
   });
 
-  it('gives a declaring carrier one permissions recognition and no other tool one', async () => {
+  it('gives a declaring carrier its two Claude recognitions, and Copilot its own', async () => {
     const claude = await publish(permissionsFixture.root);
     const declaring = claude.recognitions.filter(
+      (recognition) =>
+        recognition.sourceRelativePath === permissionsFixture.declaringCarrierPath &&
+        recognition.tool === 'claude',
+    );
+    // One recognition per `(file, tool, kind)`: the policy the file declares
+    // and the document it declares it in, each from its own Claude rule.
+    expect(declaring.map((recognition) => recognition.details.kind).toSorted()).toEqual([
+      'permissions',
+      'settings/config',
+    ]);
+    // No Codex rule reaches a Claude settings file. Copilot does reach it, and
+    // as one kind only: the CLI documents reading `.claude/settings*.json` for
+    // the shared cross-tool subset of repository settings, so the file is a
+    // settings row for that product too — one physical file, one read, and one
+    // recognition per `(file, tool, kind)` (T625).
+    const codex = await scanWith(permissionsFixture.root, CODEX_REPOSITORY_RULES);
+    expect(codex.files.map((file) => file.publicPath)).not.toContain(
+      permissionsFixture.declaringCarrierPath,
+    );
+    const all = claude.recognitions.filter(
       (recognition) => recognition.sourceRelativePath === permissionsFixture.declaringCarrierPath,
     );
-    expect(declaring.map((recognition) => recognition.details.kind)).toEqual(['permissions']);
-    // No Codex or Copilot rule reaches a Claude settings file.
-    for (const rules of [CODEX_REPOSITORY_RULES, COPILOT_REPOSITORY_RULES]) {
-      const other = await scanWith(permissionsFixture.root, rules);
-      expect(other.files.map((file) => file.publicPath)).not.toContain(
-        permissionsFixture.declaringCarrierPath,
-      );
-    }
+    expect(
+      all
+        .filter((recognition) => recognition.tool === 'copilot')
+        .map((recognition) => recognition.details.kind),
+    ).toEqual(['settings/config']);
+    expect(all.every((recognition) => recognition.tool !== 'codex')).toBe(true);
   });
 
-  it('leaves a settings file that declares no policy admitted and unrecognized', async () => {
+  it('leaves a settings file that declares no policy out of the permissions rows', async () => {
     const claude = await publish(permissionsFixture.policylessRoot);
     // Admitted and read — the file is published with its own facts — and
-    // recognized as nothing, so it reaches no permissions row.
+    // recognized as the settings document it is, which is what a file
+    // declaring no `permissions` object still is. It reaches no permissions
+    // row, because a policy nobody wrote is not an empty policy.
     expect(claude.files.map((file) => file.sourceRelativePath)).toEqual([
       '.claude/settings.json',
       '.claude/settings.local.json',
     ]);
-    expect(claude.recognitions).toEqual([]);
+    // Four recognitions over two files: each document is a settings row for
+    // Claude and for Copilot, which is the shared-physical-file case — the
+    // CLI documents reading `.claude/settings*.json` for the shared cross-tool
+    // subset (T625). None is a permissions row.
+    expect(
+      claude.recognitions
+        .map((recognition) => `${recognition.tool}/${recognition.details.kind}`)
+        .toSorted(),
+    ).toEqual([
+      'claude/settings/config',
+      'claude/settings/config',
+      'copilot/settings/config',
+      'copilot/settings/config',
+    ]);
   });
 });
 

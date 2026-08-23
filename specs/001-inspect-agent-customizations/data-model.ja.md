@@ -602,7 +602,7 @@ authorityへ変えずに記録する。
 |---|---|---|
 | `strategyId` | stable dotted string | Uniqueで、bilingual runtime-composition contractで定義 |
 | `tool` / `surfaces` | tool enum / non-empty surface enum[] | 正確なproduct/surface boundary |
-| `operations` | non-emptyなordered closed enum[] | 各entryは`append \| concatenate \| select-first \| select-closest \| replace \| merge-map \| deduplicate \| filter \| retain-all \| unknown-order`。Array orderは文書化済みpipeline order。`retain-all`は、文書化された全inputが利用可能なまま残りどれもmerge されないことを述べる。Collapsing entryが無いことはそれを述べない。Arrayは、あるsourceが文書化しているstepを記録するのであって、そのsourceが排除しているstepを記録するのではないからである |
+| `operations` | non-emptyなordered closed enum[] | 各entryは`append \| concatenate \| select-first \| select-closest \| replace \| merge-map \| deduplicate \| tighten-only \| filter \| retain-all \| unknown-order`。Array orderは文書化済みpipeline order、またはsourceがsequenceではなくkeyごとのpolicyを述べる場合はそれが列挙するalternativeである — Copilot CLIのrepository layerはsupportする各keyに1つのmerge behaviorを挙げる。`tighten-only`は、より近いinputが値を一方向にだけ動かせることを述べる。これはsource自身が名指している。`retain-all`は、文書化された全inputが利用可能なまま残りどれもmerge されないことを述べる。Collapsing entryが無いことはそれを述べない。Arrayは、あるsourceが文書化しているstepを記録するのであって、そのsourceが排除しているstepを記録するのではないからである |
 | `documentationStatus` | `DocumentationStatus` | Partial/unknown/conflicting orderからwinnerを捏造しない |
 | `lifecycleQualifiers` | `LifecycleQualifier[]` | Unique fixed order。Documentation completenessと分離 |
 | `evidence` | non-emptyな`EvidenceCitation[]` | このrecordを確立するreview済みdocumentation（§ EvidenceCitation）。Packaged CLIでは空 |
@@ -950,14 +950,14 @@ substituteしない。
 
 | Kind | 1 rowが示す単位 |
 |---|---|
-| `skill` | 1つのtoolが解決した1つの名前（FR-007）: authoredなfrontmatter `name` — fileが宣言しない場合はskill directory名 — であり、nestedなskillのClaude Code recognitionはこれにroot相対のprefixを前置する。定義は1つのrecognition — `(file, tool)`につき1つ — であるため、1つの名前に解決される複数fileは1 entryが各recognitionを定義として列挙し、toolごとに異なる名前へ解決される1つのfileは各名前のentryで定義される。definitionはrecognitionであるため、pathで識別されるrowのrecognitionとまったく同じく、admitしたruleが依拠するdocumented behaviorのsurfaceを述べる（FR-009） |
+| `skill` | 1つのtoolが解決した1つのinvocation name（FR-007）: そのtool自身の文書がこのfileを呼び出す名前で、admitしたruleが答える — CodexとCopilotはauthoredなfrontmatter `name`、fileが宣言しない場合はskill directory名。Claude Codeはfrontmatterの宣言に依らずskill directoryで、nestedならroot相対のprefixを前置する。定義は1つのrecognition — `(file, tool)`につき1つ — であるため、1つのtoolが1つの名前で呼び出す複数fileは1 entryが各recognitionを定義として列挙し、toolごとに異なる名前で呼び出される1つのfileは各名前のentryで定義される。definitionはrecognitionであるため、pathで識別されるrowのrecognitionとまったく同じく、admitしたruleが依拠するdocumented behaviorのsurfaceを述べる（FR-009） |
 | `MCP` | 宣言されたserver名1つ: その名前を解決するすべての`[mcp_servers.*]`型宣言 — `(carrier, tool)`ごとに1つ — がその名前のrowの中に列挙される。したがって1つの`.codex/config.toml`は宣言したserverごとに宣言を1つ寄与し、同じ名前を宣言する第2のcarrierはその名前のrowに合流する。宣言の住処は明示的なcarrierだけである: 他のkindのfileが自身の内容にMCP風のconfigurationを綴っても — skillやagentのfrontmatter、settings fileのinline map — それはそのkindの通常のcontentであり、そのfile自身のdetailに見えるだけで、MCP rowには合流しない。各宣言は自身のfileを名指す。nameがnullである1つのrowがlistを閉じ、現在named宣言を公開していないcarrier — rowが不明である読めない宣言block、または何も宣言しないcarrier — を保持する |
 | `instructions` | 1つの適用範囲: 担当するfile自身のpathが導出するglobであり、担当する各fileをそのfileのrecognitionとともに列挙する — 各recognitionは1つのproductと、そのfileをadmitしたruleが依拠するdocumented behaviorのsurfaceである。toolだけでは、productがそのfileをどこから読むのかを言えないためである |
 | `rule` | File自身: rule fileはproductがcontextへ読み込むmodularなinstructionであり、rowのkeyにできる名前も、groupingできる範囲も持たないため、そのSource相対Pathがrowの同一性である。1つのfileを2つのproductが認識する場合は1 rowに2つのrecognitionが並び、各recognitionは1つのproductと、そのfileをadmitしたruleが依拠するdocumented behaviorのsurfaceを名指す |
 | `permissions` | Policyを宣言するfile自身。条件は`rule` rowと同じ。別kindである理由は主題が違うことにある: permission policyはproductがどのcommandやtoolを実行してよいかを決めるものであり、ruleはproductが読む指針である。Codexは自身のpolicyを`.codex/rules/*.rules`に綴り、Claudeは自身のmodular instructionもまた`rules`と呼ぶため、vendorが共有する語でまとめると無関係な2つの主題が1つのlistに並ぶことになる。File全体がpolicyであるfileと、より大きなdocumentの1 blockとしてpolicyを運ぶfileは、どちらも1 rowである: 違うのはdetailが公開するものであって、rowが何であるかではない。Policyを宣言しないcarrierはrowにならない — documentの残りはそれを所有するrecognitionであり、rowにすれば作者が書いていないpolicyを述べることになる |
 | `prompt/command` | 読み手が起動する名前1つであり、条件は`skill` rowと同じ: その名前を解決する各recognition — `(file, tool)`ごとに1つ — がdefinitionとして名前のrowの中に並ぶため、2つのproductが1つの名前で起動する1 fileはそのrowの2 definitionとなり、product間で名前が異なる場合はそれぞれの名前のrowにdefinitionを持つ。どの名前になるかは、そのfileをadmitしたrule自身のものである。このkindの2つのlocationが異なる答えを返すためである。Command fileの名前が著述されることはない — どちらのproductもcommand fileの`name` keyを無視する — ため、名前は各productのadmitしたrule自身がpathから導出する: Claude Codeはcommand directory配下のpathを取り、区切りをすべて`:`に置き換える。したがって`frontend/component.md`は`frontend:component`、`team/review/security.md`は`team:review:security`となる。stemが大文字小文字を問わず`skill`である葉だけは例外で、自身ではなくそのdirectoryの名前を取る。これはproductがそう振る舞うのであって、どのpageも文書化していない。stemは大文字小文字を無視して比較する一方、`.md`拡張子はmatcherがadmitするものそのものであるため、`SKILL.MD`はここではそもそもcommand fileにならない。Copilot CLIはnamespaceを文書化しておらずsubdirectoryにも到達しないため、file名だけを取る。したがって両者はroot直下の子で正確に一致し、そのfileは両productを名指す1 rowとなり、nestedなfileはClaude単独のrowとなる。一方、VS Code prompt fileは自身で名乗る: 文書化された`name`が読み手が`/`の後に入力するものであり、宣言がなければfile自身の名前が代わりに立つ — したがってcommandが解決する名前を宣言したpromptは、1つのskill名を持つ2 fileと同じように、そのcommandのrowのdefinitionとなる。Skillと違い、rowは同名解決を述べない。いまや2つのprompt fileが1つの名前に到達し得るが、VS Codeはその結果を文書化していないため、rowが答えればどのpageも問うていない問いに答えることになる — definitionは並んで立ち、読み手は両方を見る（FR-009） |
 | `agent` | agent name 1つ: それを定義するすべてのfile — `(file, tool)`ごとに1 definition — がそのnameのrowの中に列挙されるので、1つのnameに解決される2つのfileは1 rowの2 definitionになる。nameはadmitしたproductがそのagentを識別する事実であり、どの事実かはproductによって異なる: OpenAI CodexとClaude Codeは`name` fieldをagentのidentityとし、filenameを一致させることはlookupではなくconventionだと述べている（Claude Codeはagents directory内のsubfolderもidentityに影響しないと述べる）ため、これらのrowをfileの名で名指せばproductが持たないagentを報告することになる。一方GitHub Copilotは`name`をoptionalなdisplay nameとして文書化し、profileをconfiguration file自身の名から`.md`または`.agent.md`を除いたもので識別するため、そのrowを宣言された`name`で名指せばCopilotがその名でdeduplicateしないagentを報告することになる。したがって2つのproductが認識する1つのfileは、両者の答えが異なる限り2つのrowに定義を持つ。Rowはskillのrowと違いsame-name resolutionを述べない: Claude Codeは1つの`.claude/agents/` tree配下で同名の2 fileのうち1つだけがloadされると述べ、どちらかを定めるruleを示さないので、答えるrowはどのpageも問うていない問いに答えることになる — definitionは並べて示され、読者は両方を見る（FR-009）。nameがnullである唯一のrowが末尾を締め、nameを公開しないfileを集める — 宣言された`name`でagentを識別するproductのもとで、宣言しないもの、scalar以外を宣言するもの、そして宣言をまったく読み取れずnameが不在ではなく不明なもの（FR-028）。file名で識別するproductのdefinitionはここに到達しない: fileが何を宣言していてもpathが答えるので、抽出の失敗はそのidentityを奪わない。Definitionは、admitしたruleが依拠するdocumented behaviorのsurfaceを、skill definitionと同じように述べる（FR-009）。sessionがそのagentをspawnした、あるいは選択したという主張では決してない |
-| `settings/config` | File自身 |
+| `settings/config` | File自身。`rule` rowと同じ条件である: settingsまたはconfiguration fileは、rowのkeyになる名前を宣言せず、groupingの基準になる範囲も支配しないため、Source-relative Pathがrowのidentityであり、1つのfileを2つの製品が認識すれば1つのrow上の2つのrecognitionになる。主題が異なるため別のkindである: 製品が設定を読む先のfileであり、contextへ読み込むguidanceであるruleでも、何を実行してよいかを決めるpermission policyでもない。1つの物理fileがこのrowと別kindのrowを同時に持ちうる — Codexの`.codex/config.toml`は宣言した各serverのMCP rowと、それらの宣言が置かれたdocumentであるここのrowを持つ — また、linkがどのdetailを開くかはfileではなくそのlinkが載るrowから従う（FR-007） |
 
 したがってCustomizationFileは自身の事実 — Source相対Path、read結果、size、diagnostic — を1度だけ
 公開し、各kindの一覧はそれを繰り返さず`sourceRelativePath`で参照する。Companionは何を持っていても自身のrowに
@@ -1001,16 +1001,19 @@ nullである1つのrowを共有し、すべての範囲付きrowの後にsort�
 範囲はfileが担当する対象を述べる。
 製品がそのfileをloadしたという主張では決してない: admissionはactivationではない（FR-009）。
 
-Skill rowの名前は1つのtoolが解決した名前である（FR-007）: authoredなfrontmatter `name` —
+Skill rowの名前は1つのtool自身の文書がこのfileを呼び出す名前である（FR-007）。名前がpathと
+宣言からどう導かれるかはそのvendor自身のcontractであるため、admitしたruleが答える。Codexと
+Copilotはauthoredなfrontmatter `name`を呼び出す —
 fileが宣言しないか空で宣言する場合はskill directory名。名前付きdirectoryであることが
 skillであり、これによりすべてのrowが名前を持ち、同名directoryに置かれたそうした2つの
-fileは1つのrowを共有する — であり、nestedなskillのClaude Code recognitionはこれに`.claude`を保持するdirectoryの
-root相対`/`-joined pathと`:`を前置するため、`name: deploy`を宣言する
-`apps/web/.claude/skills/deploy/SKILL.md`はClaude rowでは`apps/web:deploy`である。最終
-セグメントは、skill directory名を取りauthoredな`name`を表示labelだけとして扱うvendor文書化の
-command名とは意図的に異なる: 1つのskillの定義をtool横断で比較することがこのrowの存在理由で
-あり、authoredな`name`は3つのtoolが共有する唯一のidentityであるため、すべてのrowはそれで
-keyされ、vendorのものはnested qualificationの形だけである。Nested形には常にprefixが付く:
+fileは1つのrowを共有する。Claude Codeはfrontmatterの宣言に依らずskill directoryを呼び出し、
+authoredな`name`は表示labelだけとして扱う（skills page § How a skill gets its command
+name）。nestedなskillのcommandには`.claude`を保持するdirectoryの
+root相対`/`-joined pathと`:`が前置される。したがって`name: ship`を宣言する
+`apps/web/.claude/skills/deploy/SKILL.md`は、Claude Code rowでは`apps/web:deploy`、
+Copilot rowでは`ship`である。そこに列挙されたtoolが応じない名前を見出しに持つrowは、読み手が
+呼び出せないものを名指すことになる。だからrowと invocation nameは2つではなく1つの事実である。
+Nested形には常にprefixが付く:
 vendorは、この製品が決して読まない層に対する名前衝突時に、決して観測しないsession working
 directory相対でqualifyするため、root相対のqualified綴りだけがstaticなinventoryが保証できる
 唯一の安定した名前である。名前はSource相対Pathと同じ制御文字escaping
@@ -1021,9 +1024,9 @@ lookupと選択のidentityとして、それ自身として読めなければな
 referenceである（FR-028）。extractionは`(file, kind)`ごとに1回なので失敗のrecordも1件であり、
 そのfileの失敗した各定義がそれを自身のparse事実として名指し、fileの`files[]` entryは
 file-confinedな結果としてそれを1回だけ列挙する。extractionの
-失敗はauthoredな名前を不在ではなく不明のまま残す: rowはdirectory由来の暫定的なidentity —
-失敗したparseの読みではなくpath自身の事実 — を保ち、authoredな名前を呼び出すtoolの
-`invocationName`はnullとなり、その定義はauthored-nameの衝突の証拠にならない。Claude Codeの
+失敗はauthoredな名前を不在ではなく不明のまま残すため、それを呼び出すtoolはskill directoryへ
+フォールバックする — 失敗したparseの読みではなくpath自身の事実である。そこで名付けられたrowは
+暫定的なgroupingであり、その定義はそのtoolのsame-name衝突の証拠にならない。Claude Codeの
 path由来command名はどちらでも成立する。
 
 GroupingされたentryがInspectorの記録していない優劣を暗示することはない。各entryは、そのentryの定義の
@@ -1185,22 +1188,27 @@ extractionとJSON transportを変化なく通過しなければならない。
 
 ### Skillの表示
 
-Skillのdetail surfaceは、それを運ぶfileではなくskill自身から始める: row名 — この製品の仮の
-identityで、一覧が示すものと同じ — を見出しとし、その傍らに、公開された`invocationName`
-（contracts/http-api.md § get-session `skills[]`）から、pageを所有する定義の文書化された
-invocation nameを置く。定義は1つのtoolのrecognitionであり、それぞれが自身のtoolの文書化された
-名前を公開する。pageはrouteが指す定義を示す — detail URLは`/skills/<tool>/<Source相対パス>`という
-定義自身のidentityで、広い区分であるtoolが先に来て、companionも同じtool segmentの下で開く —
-ため、見出しの傍らにどのinvocation nameが出るかはlinkのidentityであってpreferenceではない。このidentityは再スキャンとserver起動を跨いで安定である — それはURLのpath半分のことで、
+Skillのdetail surfaceは、それを運ぶfileではなくskill自身から始める: skill自身のdirectory —
+それを読むどの製品も共有する唯一のidentity — を見出しとし、その下に、各認識製品がそのskillを
+呼び出す名前を閉じたtool順で述べる。値はdetail上に再公開されるのではなく、そのfileを抱える
+rowから読み取られる（contracts/http-api.md § get-session `skills[]`）。定義は1つのtoolの
+recognitionであり、2つのtoolが異なる名前で
+呼び出す1つのfileは各名前のrowの定義になる。pageはrouteが指すfileを示す —
+detail URLは`/skills/<Source相対パス>`という
+file自身のidentityで、companionも同じrouteの下で開く —
+ため、どのdocumentがpageに出るかはlinkのidentityであってpreferenceではない。tool segmentは
+持たない: 1つの`SKILL.md`を読む2つの製品は同じbyte、同じfrontmatter、同じcompanion
+directoryを読むため、製品ごとのaddressは1つのdocumentに、名前だけが異なる2つのURLを与える
+ことになる。このidentityは再スキャンとserver起動を跨いで安定である — それはURLのpath半分のことで、
 Source-relative Pathがwire上のfileのidentityであり、detail requestはそれを現在のcommit済み
 snapshotに対して解決するため、bookmarkされたlinkのpathは、再スキャンを跨ぎ、同じrootを選択する
 起動を跨いで、同じfileを名指し続ける（FR-030）。別のrootを選択する起動（FR-001）はそのrootの
 scanに対して解決し、originはdevframeのport選択に属し、固定defaultが塞がっているときだけ移る
-（quickstart.md）ため、portの移動が変えるのはbookmarkの指す先であって、そのpathが名指すfileではない。URLのtoolに
-対して現在のscanが保持しないpathはdead linkとして報告される。
-authoredな`name`がdirectoryと異なるrootの`.claude` skillは、Copilotにはauthoredな名前 —
-row名として見え続ける — で、Claude Codeには自身の定義のpageがその傍らに示すdirectory由来の
-commandで呼び出される。公開値はprojectionのものであり、
+（quickstart.md）ため、portの移動が変えるのはbookmarkの指す先であって、そのpathが名指すfileではない。
+現在のscanが保持しないpathはdead linkとして報告される。
+authoredな`name`がdirectoryと異なるrootの`.claude` skillは、Copilotにはauthoredな名前で、
+Claude Codeにはdirectory由来のcommandで呼び出され、pageはその両方を製品と対にして述べる。
+公開値はprojectionのものであり、
 clientはvendor namingを再導出せず公開値を描画する。
 その下に2つのtab — skill自身と、そのfile — を置く。Skill tabはfrontmatterが宣言する全keyを1つのYAML documentとしてread-only viewerで提示し —
 fileの記述順にかかわらず、vendorがskillに対して文書化しているkeyをClaude Code自身のfrontmatter referenceが公開する順で先頭に置き、それ以外のkeyはfileの順のまま。
@@ -1217,7 +1225,7 @@ shippedな全vendorが同じ固定YAML semanticsを読む — toolごとのcopy�
 
 | Field | Type | Rule |
 |---|---|---|
-| `declaredName` | string、無ければ不在 | Parserが解決した`name` scalar（§ Field reading）。空ではなく不在とする: authoredな空の名前は「名前が無い」とは別の事実である。`name`がscalar以外へ解決するときも不在とする — fileが名前として書いていないlistの先頭itemでskillを名指すのは、fileが宣言していないidentityになる。これは表示labelであり、すべてのrowの名前の元となるidentityである。Fileが宣言しないか空で宣言するrowはskill directory名で名付けられ、nestedなClaude Code recognitionのrowはroot相対のprefixを前置する（§ 一覧の単位、FR-007） |
+| `invocationName` | string | このrecognition自身のtoolがそのfileを呼び出す名前で、admitしたruleが答える（§ 一覧の単位、FR-007）。空にはならない: authoredなidentityを呼び出すruleは、Parserが解決した`name` scalar（§ Field reading）を読み、fileが宣言しない場合、空で宣言する場合、scalar以外へ解決する場合 — fileが名前として書いていないlistの先頭itemでskillを名指すのは、fileが宣言していないidentityになる — 、およびextractionが失敗した場合はskill directoryへフォールバックする。Claude Codeのruleは宣言を一切読まず、skill directoryを取り、nestedならroot相対のprefixを前置する。authoredな`name`自体はここには持たない: それは下の`frontmatter` entryの1つであり、保持すれば事実とそこから導出した値の二重公開になる |
 | `frontmatter` | ordered entry[] | Fileが宣言するすべてのkeyを、fileが書いたkey — 維持管理上のcatalogのものではない — でauthored順に持つ。Frontmatter blockの無いdocument、mappingではなくlistや裸のscalarとして書かれたblock — そうしたblockはkeyを宣言せず、listを読めば得られるindex位置はfileが書いたkeyではない — 、`failed` extractionでは空 |
 | `bodyText` | string | 同じdocumentからfrontmatter blockを取り除いたもの。`failed` extractionでは空 |
 
@@ -1394,10 +1402,13 @@ readable-directory admissionだけが判定し、後のNode.js/OS rejectionは�
   responseがstateを再populateしないことを守るのはepochである。全central invalidation/purgeが同じepochをincrementするため、
   response deliveryが既にqueue済みでもlate callbackはno-opになる。
 - `ComparisonSelection`: kind固有のcomparison routeがそのkind自身の座標で名指すもの
-  （spec.md § Clarifications Session 2026-08-14）。Skill routeは比較する2つのcopyのentry fileの
-  `sourceRelativePath` identityとcopy相対の比較対象ファイルを名指し、所属sequenceのcurrentな
+  （spec.md § Clarifications Session 2026-08-14）。Skill routeは、所有する行のinvocation name、比較する2つのcopyのentry fileの
+  `sourceRelativePath` identity、copy相対の比較対象ファイルを名指し、所属sequenceのcurrentな
   commit済みgenerationに対して、0件、対応するreadableなfileを2つ、またはreadableなfile 1つと
-  明示された不在へ解決される。Instruction routeは、current generationの1つのapplicability-range行が
+  明示された不在へ解決される。行を2つのidentityから導出せず名指すのは、2つのfileが複数の行に
+  同居しうるためである — 製品はskillを異なる事実で呼び出すため、他方のdirectory名を自身の`name`
+  として宣言するfileは両方を両方の行に載せる — 。導出した行はgenerationが先に公開した方になり、
+  読み手が開いた行の3つ目のcopyをroute自身のswitcherから取り落とす。Instruction routeは、current generationの1つのapplicability-range行が
   保持する2つのfileの`sourceRelativePath` identityを名指す — skillの前例が確立した、行が所有するペアであり、
   skill名の行の位置にrange行が立つ。fileはちょうど1つのrangeを統治するため、所有する行は2つのidentityから
   導出される — 。0件またはreadableなfile 2つへ解決される: instruction fileはそれ自体で完結するため、

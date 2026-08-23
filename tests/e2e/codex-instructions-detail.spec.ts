@@ -94,7 +94,7 @@ async function openInstruction(page: import('@playwright/test').Page, path: stri
   // link addresses the same file detail, so the first one opens it (T224).
   await page
     .locator('.aci-instruction-row__files > li', { hasText: path })
-    .locator('.aci-instruction-row__tools a')
+    .locator('.aci-instruction-row__owner a')
     .first()
     .click();
 }

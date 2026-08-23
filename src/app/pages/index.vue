@@ -190,6 +190,8 @@ const totalRowCount = computed(() => {
       return snapshot.value?.rules.length ?? 0;
     case 'permissions':
       return snapshot.value?.permissions.length ?? 0;
+    case 'settings/config':
+      return snapshot.value?.settings.length ?? 0;
     default:
       return 0;
   }
@@ -301,8 +303,8 @@ const staleFailureMessage = computed(() =>
       :prompt-rows="filters.promptRows.value"
       :rule-rows="filters.ruleRows.value"
       :permissions-rows="filters.permissionsRows.value"
+      :settings-rows="filters.settingsRows.value"
       :files-by-path="filters.filesByPath.value"
-      :mcp-carrier-paths="filters.mcpCarrierPaths.value"
       :total-count="totalRowCount"
       :diagnostics="snapshot.diagnostics"
     />

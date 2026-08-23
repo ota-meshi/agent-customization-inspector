@@ -998,9 +998,11 @@ export interface CodexMcpFixture {
   /** The absolute fixture root to scan. */
   readonly root: string;
   /**
-   * The Source-relative Path of the root `.codex/config.toml` carrier the
-   * `codex.repo.config` rule admits — its first and only candidacy. The same
-   * physical file still seeds the fallback derivation as configuration.
+   * The Source-relative Path of the root `.codex/config.toml` the two Codex
+   * rules admit — `codex.repo.config` for the `[mcp_servers.*]` tables it
+   * carries and `codex.repo.settings` for the document they sit in — as one
+   * candidate read once. The same physical file still seeds the fallback
+   * derivation as configuration.
    */
   readonly carrierPath: string;
   /**
@@ -1043,6 +1045,15 @@ export interface CodexMcpFixture {
  * one scan proves the MCP rows, the unchanged instruction/fallback rows, and
  * the atomic omission of a malformed declaration at once.
  *
+ * The same file is the Codex settings document its `settings/config` row is
+ * (T577), so it also carries the general configuration a reader opens that row
+ * for: a comment, an underscored integer, a trust declaration, and configured
+ * model-instruction, compact-prompt, and plugin paths. Those targets are
+ * written to disk as near misses — a configured path gains no read authority
+ * and becomes no candidate — and the comment and authored spellings are what
+ * the detail must still show, since that row publishes the document rather
+ * than a parser's resolution of it (FR-007).
+ *
  * Near misses: the nested carrier chain (which re-declares `context7`, so a
  * duplicate name in an unadmitted layer provably contributes nothing) and
  * spelling variants beside the carrier's literals. The root `.mcp.json` is a
@@ -1058,7 +1069,24 @@ export function buildCodexMcpFixture(
     root,
     '.codex/config.toml',
     [
+      // A leading comment, and the authored spellings beside it: the settings
+      // detail shows the document whole, so a comment and an underscored
+      // integer are exactly what a parser-resolved declaration list would
+      // have dropped.
+      '# Codex project configuration for the fixture repository.',
+      'model = "gpt-5.4-codex"',
+      'project_doc_max_bytes = 32_768',
+      'approval_policy = "on-request"',
       'project_doc_fallback_filenames = ["TEAM_GUIDE.md"]',
+      '',
+      // Inert configured targets: a declared path never gains read authority
+      // and creates no candidate, whichever family it names.
+      '[projects."."]',
+      'trust_level = "trusted"',
+      '',
+      '[experimental]',
+      'model_instructions_file = "./.codex/model-instructions.md"',
+      'compact_prompt_file = "./.codex/compact-prompt.md"',
       '',
       // An inert plugin relationship: a declared path never gains read
       // authority and creates no candidate.
@@ -1109,6 +1137,11 @@ export function buildCodexMcpFixture(
   // Near miss: spelling variants one step from the carrier's literals.
   write(root, '.codex/config.toml.bak', 'backup suffix\n');
   write(root, '.codex/nested/config.toml', 'wrong depth\n');
+  // Near miss: the targets the configuration above names. A configured path
+  // gains no read authority and becomes no candidate, so these files exist
+  // precisely to stay absent from every inventory.
+  write(root, '.codex/model-instructions.md', '# configured model instructions\n');
+  write(root, '.codex/compact-prompt.md', '# configured compact prompt\n');
 
   return {
     root,
@@ -1118,10 +1151,176 @@ export function buildCodexMcpFixture(
     configuredFallbackBasenames,
     expectedDerivedFallbackPaths: ['TEAM_GUIDE.md'],
     nearMissPaths: [
+      '.codex/compact-prompt.md',
       '.codex/config.toml.bak',
+      '.codex/model-instructions.md',
       '.codex/nested/config.toml',
       'packages/api/.codex/config.toml',
     ],
+  };
+}
+
+/** One built all-vendor settings fixture repository (T622, unified by T643). */
+export interface CopilotSettingsFixture {
+  /** The absolute fixture root to scan. */
+  readonly root: string;
+  /**
+   * The four settings documents `copilot.repo.settings` admits, sorted: the
+   * two GitHub Copilot files and the two Claude-format ones the CLI reads for
+   * the documented shared cross-tool subset. The last two are shared physical
+   * files Claude Code admits under its own rules — one file, one read, one
+   * recognition per product.
+   */
+  readonly expectedSettingsPaths: readonly string[];
+  /** The two of them Claude Code recognizes as well, sorted. */
+  readonly sharedWithClaudePaths: readonly string[];
+  /**
+   * A marker only the GitHub settings document carries, so a surface showing
+   * it is showing that document rather than a neighbour.
+   */
+  readonly githubSettingsMarker: string;
+  /**
+   * Paths no shipped rule may admit: the two explicitly excluded documents —
+   * a general `.vscode/settings.json` and the CLI's `.github/lsp.json` — the
+   * targets these documents declare, and spelling variants one segment from
+   * each admitted literal.
+   */
+  readonly nearMissPaths: readonly string[];
+  /**
+   * A second root whose GitHub settings document strict JSON cannot parse.
+   * Its own root because one root's four filenames are already the positive
+   * cases.
+   */
+  readonly malformedRoot: string;
+  /**
+   * The Codex configuration layer in the same root, so one tree holds all
+   * three products' settings documents (T643). It is the settings family's
+   * only MCP-row source, because only an explicit carrier holds an MCP
+   * recognition.
+   */
+  readonly codexCarrierPath: string;
+  /**
+   * Every settings row this tree publishes, sorted — the four Copilot
+   * documents and the Codex layer. Two of the four are also Claude rows, so
+   * the row count is the file count and the recognitions differ per row.
+   */
+  readonly expectedUnifiedSettingsPaths: readonly string[];
+  /** The server the Codex layer declares, which is the tree's one MCP row. */
+  readonly codexServerName: string;
+}
+
+/**
+ * Builds the canonical Copilot settings fixture repository (T622).
+ *
+ * The four admitted documents carry what a Copilot settings document carries:
+ * general keys, an inline `hooks` block, an `enabledPlugins` map and an
+ * `extraKnownMarketplaces` entry, a declared status-line command, a literal
+ * credential, and a literal environment reference — every one of them a value
+ * its author wrote, which no row may show and nothing may resolve (FR-026,
+ * FR-027). None of them makes the file an MCP owner: an MCP declaration's home
+ * is an explicit carrier and nothing else (data-model.md § Inventory unit).
+ *
+ * The negatives are the two documented exclusions this phase records — a
+ * general `.vscode/settings.json` and the CLI's `.github/lsp.json` — beside
+ * the configured targets the documents name and spelling variants one segment
+ * from each admitted literal.
+ */
+export function buildCopilotSettingsFixture(
+  prefix = 'inspector-copilot-settings',
+  root = createRepositoryFixtureRoot(prefix),
+): CopilotSettingsFixture {
+  const githubSettingsMarker = 'fixture-github-copilot-settings-marker';
+  write(
+    root,
+    '.github/copilot/settings.json',
+    `${JSON.stringify(
+      {
+        companyAnnouncements: [githubSettingsMarker],
+        enabledPlugins: { 'code-formatter@company-tools': true },
+        extraKnownMarketplaces: {
+          'company-tools': { source: { source: 'github', repo: 'your-org/plugin-marketplace' } },
+        },
+        statusLine: { type: 'command', command: './.github/copilot/statusline.sh' },
+        env: { COPILOT_FIXTURE_ENDPOINT: FIXTURE_ENVIRONMENT_REFERENCE },
+        hooks: {
+          PostToolUse: [
+            { matcher: 'Edit', hooks: [{ type: 'command', command: './.github/hooks/format.sh' }] },
+          ],
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  write(
+    root,
+    '.github/copilot/settings.local.json',
+    `${JSON.stringify({ disableAllHooks: true, token: FIXTURE_SECRET_LITERAL }, null, 2)}\n`,
+  );
+  // The two cross-tool documents: one physical file each, admitted by this
+  // product's Claude rules as well.
+  write(root, '.claude/settings.json', `${JSON.stringify({ model: 'opus' }, null, 2)}\n`);
+  write(
+    root,
+    '.claude/settings.local.json',
+    `${JSON.stringify({ enabledPlugins: {} }, null, 2)}\n`,
+  );
+
+  // The two documented exclusions this phase records: both exist on disk
+  // precisely so a test can prove no rule admits them.
+  write(root, '.vscode/settings.json', `${JSON.stringify({ 'editor.tabSize': 2 }, null, 2)}\n`);
+  write(root, '.github/lsp.json', `${JSON.stringify({ servers: {} }, null, 2)}\n`);
+  // The targets the documents above declare: a configured path gains no read
+  // authority and becomes no candidate.
+  write(root, '.github/copilot/statusline.sh', 'echo status\n');
+  write(root, '.github/hooks/format.sh', 'echo formatting\n');
+  // Near misses one segment from each admitted literal.
+  write(root, '.github/settings.json', '{}\n');
+  write(root, '.github/copilot/settings.json.bak', 'backup suffix\n');
+  write(root, 'packages/api/.github/copilot/settings.json', '{}\n');
+
+  // The Codex layer, so one tree holds all three products' settings documents
+  // (T643): the settings family's only MCP-row source, since a Claude or
+  // Copilot settings file spelling MCP configuration is that file's own
+  // content and joins no MCP row.
+  write(
+    root,
+    '.codex/config.toml',
+    ['model = "gpt-5.4-codex"', '', '[mcp_servers.codex-db]', 'command = "npx"', ''].join('\n'),
+  );
+
+  const malformedRoot = createRepositoryFixtureRoot(`${prefix}-malformed`);
+  write(malformedRoot, '.github/copilot/settings.json', '{ "enabledPlugins": { \n');
+
+  return {
+    root,
+    expectedSettingsPaths: [
+      '.claude/settings.json',
+      '.claude/settings.local.json',
+      '.github/copilot/settings.json',
+      '.github/copilot/settings.local.json',
+    ],
+    sharedWithClaudePaths: ['.claude/settings.json', '.claude/settings.local.json'],
+    githubSettingsMarker,
+    nearMissPaths: [
+      '.github/copilot/settings.json.bak',
+      '.github/copilot/statusline.sh',
+      '.github/hooks/format.sh',
+      '.github/lsp.json',
+      '.github/settings.json',
+      '.vscode/settings.json',
+      'packages/api/.github/copilot/settings.json',
+    ],
+    malformedRoot,
+    codexCarrierPath: '.codex/config.toml',
+    expectedUnifiedSettingsPaths: [
+      '.claude/settings.json',
+      '.claude/settings.local.json',
+      '.codex/config.toml',
+      '.github/copilot/settings.json',
+      '.github/copilot/settings.local.json',
+    ],
+    codexServerName: 'codex-db',
   };
 }
 
@@ -1160,6 +1359,13 @@ export interface ClaudePermissionsFixture {
    * at the launch directory alone, so no selector reaches this one.
    */
   readonly nestedSettingsPath: string;
+  /**
+   * Paths no shipped rule of any product may admit (T601): spelling variants
+   * one segment from each admitted literal, and the targets the settings
+   * documents themselves name — a declared hook command and a status-line
+   * script, which gain no read authority from being declared.
+   */
+  readonly nearMissPaths: readonly string[];
   /**
    * A third fixture root whose two settings files declare no `permissions`
    * object at all: admitted, readable candidates that gain no recognition and
@@ -1244,6 +1450,14 @@ export interface ClaudeRuleFixture {
  * resolved (FR-025, FR-026), and rule strings that name tools, commands,
  * paths, and a domain so a test can prove none of them is resolved or
  * evaluated (FR-019).
+ *
+ * The same two files are the Claude settings documents their `settings/config`
+ * rows are (T601), so the shared one also carries the general settings a
+ * reader opens that row for — a model, a retention period, a status line, a
+ * hook command, and an enabled plugin — beside the near misses those
+ * declarations name. Two rows of one file with visibly different subjects: the
+ * permissions row publishes the `permissions` block alone, and the settings
+ * row the whole document (FR-007).
  */
 export function buildClaudePermissionsFixture(
   prefix = 'inspector-claude-permissions',
@@ -1268,6 +1482,15 @@ export function buildClaudePermissionsFixture(
         },
         env: { CLAUDE_FIXTURE_ENDPOINT: FIXTURE_ENVIRONMENT_REFERENCE },
         companyAnnouncements: ['fixture-unrelated-settings-marker'],
+        model: 'opus',
+        cleanupPeriodDays: 20,
+        statusLine: { type: 'command', command: './.claude/statusline.sh' },
+        hooks: {
+          PostToolUse: [
+            { matcher: 'Edit', hooks: [{ type: 'command', command: './.claude/hooks/format.sh' }] },
+          ],
+        },
+        enabledPlugins: { 'formatter@marketplace': true },
       },
       null,
       2,
@@ -1281,6 +1504,19 @@ export function buildClaudePermissionsFixture(
   );
   // A near miss: the project scope is the launch directory's own `.claude/`.
   write(root, 'packages/api/.claude/settings.json', '{ "permissions": { "allow": [] } }\n');
+  // Near misses one segment from each admitted literal (T601): the container
+  // is exact, the filename is exact, and no settings file outside `.claude/`
+  // is admitted. A parent-directory copy needs no file of its own — the
+  // Repository boundary is the selected root, so nothing above it is walked.
+  write(root, 'settings.json', '{ "model": "opus" }\n');
+  write(root, '.claude/settings.json.bak', 'backup suffix\n');
+  write(root, '.claude/settings/config.json', '{ "model": "opus" }\n');
+  write(root, '.claude/nested/settings.json', '{ "model": "opus" }\n');
+  // Near misses the settings documents themselves name: a declared hook
+  // command, a status-line script, and an additional directory gain no read
+  // authority and become no candidate.
+  write(root, '.claude/hooks/format.sh', 'echo formatting\n');
+  write(root, '.claude/statusline.sh', 'echo status\n');
   // Two more roots, because one root has only two admitted filenames and both
   // are the declaring cases above: a settings file that declares no policy —
   // admitted, readable, and no row — and one strict JSON cannot parse.
@@ -1297,6 +1533,15 @@ export function buildClaudePermissionsFixture(
     allowRules,
     unrelatedSettingsMarker: 'fixture-unrelated-settings-marker',
     nestedSettingsPath: 'packages/api/.claude/settings.json',
+    nearMissPaths: [
+      '.claude/hooks/format.sh',
+      '.claude/nested/settings.json',
+      '.claude/settings.json.bak',
+      '.claude/settings/config.json',
+      '.claude/statusline.sh',
+      'packages/api/.claude/settings.json',
+      'settings.json',
+    ],
     policylessRoot,
     policylessCarrierPath: '.claude/settings.local.json',
   };
@@ -4363,6 +4608,27 @@ export function buildCopilotAgentFixture(
   };
 }
 
+/**
+ * The general Codex configuration the all-kinds tree's carrier carries, so its
+ * `settings/config` row opens a document a reader can recognize as one: a
+ * comment, an underscored integer, a trust declaration, and configured paths
+ * that gain no read authority.
+ */
+const CODEX_GENERAL_CONFIGURATION = [
+  '',
+  '# Codex project configuration for the all-kinds fixture repository.',
+  'model = "gpt-5.4-codex"',
+  'project_doc_max_bytes = 32_768',
+  'approval_policy = "on-request"',
+  '',
+  '[projects."."]',
+  'trust_level = "trusted"',
+  '',
+  '[experimental]',
+  'model_instructions_file = "./.codex/model-instructions.md"',
+  '',
+].join('\n');
+
 export interface AllCustomizationKindFixture {
   /** The absolute fixture root to scan. */
   readonly root: string;
@@ -4386,6 +4652,8 @@ export interface AllCustomizationKindFixture {
   readonly claudeAgentFixture: ClaudeAgentFixture;
   /** The Copilot custom-agent fixture's own result, built into this root. */
   readonly copilotAgentFixture: CopilotAgentFixture;
+  /** The all-vendor settings fixture's own result, built into this root. */
+  readonly settingsFixture: CopilotSettingsFixture;
 }
 
 /**
@@ -4424,6 +4692,14 @@ export function buildAllCustomizationKindFixture(
   const claudeRuleFixture = buildClaudeRuleFixture(prefix, root);
   const commandFixture = buildCommandFixture(prefix, root);
   const mcpFixture = buildPriorityMcpFixture(prefix, root);
+  // The settings family, so one launch shows every inventory this release
+  // publishes. Built before the permissions fixture, which owns the two
+  // `.claude/settings*.json` documents in this tree and writes richer ones:
+  // those files are exactly what the Copilot CLI also reads, so the later
+  // write is the copy this tree shows and both products still recognize it.
+  // Its own `.github/copilot/` documents and its excluded neighbours are
+  // disjoint from every other builder's paths.
+  const settingsFixture = buildCopilotSettingsFixture(prefix, root);
   // After the MCP builder, which writes its own `.claude/settings.json` as an
   // unadmitted MCP owner: here that path is a permission-policy carrier, and
   // the later write is the one this tree shows. Its `mcpServers` spelling
@@ -4453,7 +4729,17 @@ export function buildAllCustomizationKindFixture(
   const instructionFixture = buildAllVendorInstructionFixture(prefix, root);
   for (const [index, path] of sharedCodexConfigPaths.entries()) {
     const fallbackDeclaration = readFileSync(join(root, path), 'utf8');
-    write(root, path, `${fallbackDeclaration}\n${mcpCodexConfigs[index]!}`);
+    // The general configuration between the two builders' outputs, so the
+    // carrier is the settings document its own row publishes rather than a
+    // fallback declaration and server tables alone: a comment and an
+    // underscored integer are exactly what that row shows and what neither
+    // neighbouring builder has a reason to write. Top-level keys before the
+    // first table header, because a TOML document requires that order.
+    write(
+      root,
+      path,
+      `${fallbackDeclaration}${CODEX_GENERAL_CONFIGURATION}\n${mcpCodexConfigs[index]!}`,
+    );
   }
   return {
     root,
@@ -4467,5 +4753,6 @@ export function buildAllCustomizationKindFixture(
     agentFixture,
     claudeAgentFixture,
     copilotAgentFixture,
+    settingsFixture,
   };
 }

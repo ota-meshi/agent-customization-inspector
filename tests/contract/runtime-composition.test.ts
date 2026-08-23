@@ -751,6 +751,175 @@ describe('the Codex custom-agent composition strategy (T520)', () => {
   });
 });
 
+describe('the Copilot settings composition graph (T636)', () => {
+  it('ships one precedence strategy per settings surface, with its documented operations', () => {
+    const cli = RUNTIME_COMPOSITION_STRATEGIES['copilot.cli.settings.precedence'];
+    expect(cli.tool).toBe('copilot');
+    expect(cli.surfaces).toEqual(['copilot-cli']);
+    // The merge behaviors the page's repository-settings table states per key:
+    // replaced by the repository layer, merged by key, a union it can add
+    // entries to and never remove from — a set union, which `append` with
+    // `deduplicate` is and text `concatenate` is not — and the one key it may
+    // only tighten, `respectGitignore`, which it may enable and never disable.
+    expect(cli.operations).toEqual([
+      'append',
+      'replace',
+      'merge-map',
+      'deduplicate',
+      'tighten-only',
+    ]);
+    const vscode = RUNTIME_COMPOSITION_STRATEGIES['copilot.vscode.settings.precedence'];
+    expect(vscode.surfaces).toEqual(['copilot-vscode']);
+    expect(vscode.operations).toEqual(['merge-map', 'replace']);
+    // Each composes its own surface's Repository and User layers: the vendor's
+    // order spans both, and omitting the User layer would describe a cascade
+    // with a step missing.
+    expect(
+      STRATEGY_RELATIONS['copilot.cli.settings.precedence'].consumesBehaviors.map(
+        (behavior) => behavior.behaviorId,
+      ),
+    ).toEqual(['copilot.behavior.cli.settings', 'copilot.behavior.cli.user.settings']);
+    expect(
+      STRATEGY_RELATIONS['copilot.vscode.settings.precedence'].consumesBehaviors.map(
+        (behavior) => behavior.behaviorId,
+      ),
+    ).toEqual(['copilot.behavior.vscode.settings', 'copilot.behavior.vscode.user.settings']);
+  });
+
+  it('keeps the settings rule out of every MCP composition, permanently', () => {
+    // A settings file is never an MCP owner: an MCP declaration's home is an
+    // explicit carrier and nothing else (data-model.md § Inventory unit), so
+    // the rule rests on no MCP behavior and no MCP strategy explains it.
+    const settings = RULE_RELATIONS['copilot.repo.settings'];
+    expect(settings.basedOnBehaviors.some((behavior) => behavior.behaviorId.includes('mcp'))).toBe(
+      false,
+    );
+    expect(
+      settings.explainedByStrategies.some((strategy) => strategy.strategyId.includes('mcp')),
+    ).toBe(false);
+    for (const strategyId of [
+      'copilot.cli.mcp.selection',
+      'copilot.vscode.mcp.selection',
+    ] as const) {
+      expect(
+        STRATEGY_RELATIONS[strategyId].consumesBehaviors.some((behavior) =>
+          behavior.behaviorId.includes('settings'),
+        ),
+        strategyId,
+      ).toBe(false);
+    }
+  });
+
+  it('defers the Plugin and Hook families rather than composing them here', () => {
+    // The settings documents can carry an inline hook block and a plugin map;
+    // both are the Hook and Plugin recognitions' subject and arrive with their
+    // phases, so no strategy of either family ships yet.
+    const ids = Object.keys(RUNTIME_COMPOSITION_STRATEGIES);
+    expect(ids.filter((id) => id.startsWith('copilot.') && id.includes('hooks'))).toEqual([]);
+    expect(ids.filter((id) => id.startsWith('copilot.') && id.includes('plugins'))).toEqual([]);
+  });
+});
+
+describe('the Claude settings composition graph (T615)', () => {
+  it('reuses the shipped precedence strategy rather than adding one', () => {
+    // The settings recognition is explained by the scope resolution already
+    // shipped for the permission policy inside the same files: what a
+    // `settings/config` row publishes is the document a settings scope is,
+    // and how the scopes resolve against each other is
+    // `claude.settings.precedence`'s. No strategy arrives with this phase,
+    // because no composition it would describe is new
+    // (contracts/runtime-composition.md § claude.settings.precedence).
+    const precedence = RUNTIME_COMPOSITION_STRATEGIES['claude.settings.precedence'];
+    expect(precedence.tool).toBe('claude');
+    expect(precedence.operations).toEqual(['replace', 'merge-map', 'concatenate', 'deduplicate']);
+    expect(precedence.documentationStatus).toBe('partially-documented');
+  });
+
+  it('explains the settings rule through the two project lookups, by identity', () => {
+    // The same edges the permission rule carries, because both recognitions
+    // come from one pair of documented locations: what differs between the
+    // rows is the subject each names, which is not an edge (claude/relations.ts).
+    const settings = RULE_RELATIONS['claude.repo.settings'];
+    expect(settings.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'claude.behavior.repo.settings.local',
+      'claude.behavior.repo.settings.shared',
+    ]);
+    expect(settings.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual([
+      'claude.settings.precedence',
+    ]);
+    for (const behavior of settings.basedOnBehaviors) {
+      expect(VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId]).toBe(behavior);
+    }
+    for (const strategy of settings.explainedByStrategies) {
+      expect(RUNTIME_COMPOSITION_STRATEGIES[strategy.strategyId]).toBe(strategy);
+    }
+  });
+
+  it('adds no MCP composition edge of any kind with the settings row', () => {
+    // A settings file's inline `mcpServers` map is that file's own declared
+    // content, so the rule that admits it rests on no MCP behavior and is
+    // explained by no MCP strategy (data-model.md § Inventory unit).
+    const settings = RULE_RELATIONS['claude.repo.settings'];
+    expect(settings.basedOnBehaviors.some((behavior) => behavior.behaviorId.includes('mcp'))).toBe(
+      false,
+    );
+    expect(
+      settings.explainedByStrategies.some((strategy) => strategy.strategyId.includes('mcp')),
+    ).toBe(false);
+    // And the MCP selection strategy consumes no settings behavior back.
+    expect(
+      STRATEGY_RELATIONS['claude.mcp.selection'].consumesBehaviors.some((behavior) =>
+        behavior.behaviorId.includes('settings'),
+      ),
+    ).toBe(false);
+  });
+});
+
+describe('the Codex settings composition graph (T592)', () => {
+  it('reuses the shipped precedence strategy rather than adding one', () => {
+    // The settings recognition is explained by the layer resolution that was
+    // already shipped for the carrier: a `settings/config` row publishes the
+    // document a config layer is, and how layers resolve against each other
+    // is `codex.config.precedence`'s. No strategy arrives with this phase,
+    // because no composition it would describe is new
+    // (contracts/runtime-composition.md § codex.config.precedence).
+    const precedence = RUNTIME_COMPOSITION_STRATEGIES['codex.config.precedence'];
+    expect(precedence.tool).toBe('codex');
+    expect(precedence.operations).toEqual(['merge-map', 'replace', 'select-closest']);
+    expect(precedence.documentationStatus).toBe('documented');
+  });
+
+  it('explains the settings rule through the precedence strategy alone, by identity', () => {
+    // What the row publishes is the document the config-layer lookup locates,
+    // so that lookup is its whole basis. The MCP and Hook statements the
+    // carrier rule rests on are the other recognition's: a rule is based on
+    // the behavior its own recognition reads out, and this one reads nothing
+    // out at all (codex/relations.ts).
+    const settings = RULE_RELATIONS['codex.repo.settings'];
+    expect(settings.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'codex.behavior.repo.config',
+    ]);
+    expect(settings.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual([
+      'codex.config.precedence',
+    ]);
+    for (const behavior of settings.basedOnBehaviors) {
+      expect(VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId]).toBe(behavior);
+    }
+    for (const strategy of settings.explainedByStrategies) {
+      expect(RUNTIME_COMPOSITION_STRATEGIES[strategy.strategyId]).toBe(strategy);
+    }
+  });
+
+  it('adds no Hook composition with the settings row', () => {
+    // An inline `[hooks]` table is part of the document this row publishes and
+    // is no recognition of its own until the Hook phase ships one, so no
+    // strategy composes one here.
+    expect(
+      Object.keys(RUNTIME_COMPOSITION_STRATEGIES).filter((id) => id.startsWith('codex.hooks')),
+    ).toEqual([]);
+  });
+});
+
 describe('the Codex MCP composition strategy (T296)', () => {
   it('ships the MCP configuration pipeline with its exact documented operations', () => {
     // `merge-map`, `replace` is the complete documented pipeline: the

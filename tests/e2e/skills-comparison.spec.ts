@@ -148,15 +148,18 @@ function rowOf(page: import('@playwright/test').Page, path: string) {
 }
 
 /**
- * A direct comparison URL: the two copies' entry identities and, when it is
- * not the entries themselves, the compared file inside them. Resolved
- * against the printed origin — which ends with `/` — so the path never
- * doubles its leading slash into a route the router does not have.
+ * A direct comparison URL: the owning row's invocation name, the two copies'
+ * entry identities, and, when it is not the entries themselves, the compared
+ * file inside them. Resolved against the printed origin — which ends with
+ * `/` — so the path never doubles its leading slash into a route the router
+ * does not have.
  */
-function compareUrl(left: string, right: string, file?: string): string {
+function compareUrl(name: string, left: string, right: string, file?: string): string {
   const fileQuery = file === undefined ? '' : `&file=${encodeURIComponent(file)}`;
   return new URL(
-    `/skills/compare?left=${encodeURIComponent(left)}&right=${encodeURIComponent(right)}${fileQuery}`,
+    `/skills/compare?name=${encodeURIComponent(name)}&left=${encodeURIComponent(
+      left,
+    )}&right=${encodeURIComponent(right)}${fileQuery}`,
     host.origin,
   ).toString();
 }
@@ -321,7 +324,7 @@ test('reports a pair of two different names instead of comparing it', async ({ p
   // The URL names two copies of one skill name; a pair the model cannot
   // express is reported, never compared (FR-011), and no authored content
   // is fetched for it.
-  await page.goto(compareUrl(AGENTS_PATH, '.agents/skills/solo/SKILL.md'));
+  await page.goto(compareUrl('greet', AGENTS_PATH, '.agents/skills/solo/SKILL.md'));
   await expect(page.locator('.aci-skill-compare')).toContainText(
     'No skill name in the current scan owns both',
   );
@@ -334,7 +337,7 @@ test('resolves a hand-edited compared file against the copies', async ({ page })
   // The `file` coordinate is copy-relative: a spelling neither copy holds
   // settles as the ordinary stale outcome, with the switchers still offered
   // as the way back to a real file.
-  await page.goto(compareUrl(AGENTS_PATH, CLAUDE_PATH, 'missing.md'));
+  await page.goto(compareUrl('greet', AGENTS_PATH, CLAUDE_PATH, 'missing.md'));
   await expect(page.locator('.aci-skill-compare')).toContainText(
     'Nothing in the current scan sits at this link',
   );
@@ -507,7 +510,7 @@ test('drops the content when the route leaves the comparison', async ({ page }) 
 });
 
 test('reports a link whose copy the current scan does not hold', async ({ page }) => {
-  await page.goto(compareUrl('.agents/skills/gone/SKILL.md', CLAUDE_PATH));
+  await page.goto(compareUrl('greet', '.agents/skills/gone/SKILL.md', CLAUDE_PATH));
   await expect(page.locator('.aci-skill-compare')).toContainText(
     'No skill name in the current scan owns both',
   );
@@ -521,11 +524,66 @@ test('reports a link whose copy the current scan does not hold', async ({ page }
 });
 
 test('rejects the same copy for both comparison inputs', async ({ page }) => {
-  await page.goto(compareUrl(AGENTS_PATH, AGENTS_PATH));
+  await page.goto(compareUrl('greet', AGENTS_PATH, AGENTS_PATH));
   // The same copy must not occupy both sides, however many recognitions its
   // entry has (FR-011); the page states the rejection instead of a
   // degenerate diff, and the statement's inventory link is the way back to
   // a valid pair — no switchers render for a pair outside the model.
   await expect(page.locator('.aci-skill-compare')).toContainText('two distinct copies');
   await expect(page.locator('.aci-source-diff')).toHaveCount(0);
+});
+
+test('opens the named row when two rows hold the same pair', async ({ page }) => {
+  // The case the `name` coordinate exists for. Crossed naming puts two files
+  // on both of two rows: Claude Code invokes each by its skill directory,
+  // Copilot by the `name` each declares, so `alpha/` declaring `name: beta`
+  // beside `beta/` declaring `name: alpha` is on the `alpha` row and the
+  // `beta` row alike. A third copy joins `alpha` alone, so the two rows'
+  // switcher populations differ and a derived row would be observably the
+  // wrong one — the published order puts `alpha` first, which is what a
+  // comparison opened from `beta` would otherwise get.
+  await mkdir(join(fixture, '.claude/skills/alpha'), { recursive: true });
+  await mkdir(join(fixture, '.claude/skills/beta'), { recursive: true });
+  await mkdir(join(fixture, '.agents/skills/third'), { recursive: true });
+  await writeFile(
+    join(fixture, '.claude/skills/alpha/SKILL.md'),
+    '---\nname: beta\n---\n\n# Alpha\n',
+    'utf8',
+  );
+  await writeFile(
+    join(fixture, '.claude/skills/beta/SKILL.md'),
+    '---\nname: alpha\n---\n\n# Beta\n',
+    'utf8',
+  );
+  await writeFile(
+    join(fixture, '.agents/skills/third/SKILL.md'),
+    '---\nname: alpha\n---\n\n# Third\n',
+    'utf8',
+  );
+  await page.goto(host.origin);
+  await page.getByRole('button', { name: 'Rescan repository' }).click();
+  const crossedPair = ['.claude/skills/alpha/SKILL.md', '.claude/skills/beta/SKILL.md'] as const;
+  await expect(async () => {
+    await page.getByRole('button', { name: 'Refresh status' }).click();
+    await expect(rowOf(page, '.agents/skills/third/SKILL.md')).toHaveCount(1, { timeout: 1_000 });
+  }).toPass();
+
+  // Opened as `beta`: that row holds exactly the two copies on screen, so no
+  // copy switcher is offered — a switcher exists only where a third copy
+  // could be stepped to.
+  await page.goto(compareUrl('beta', ...crossedPair));
+  await expect(page.locator('.aci-skill-compare__source .aci-source-diff')).toBeVisible();
+  const copySwitcher = page.getByRole('combobox', { name: 'First skill directory' });
+  await expect(copySwitcher).toHaveCount(0);
+
+  // Opened as `alpha`: the same pair, and now a switcher, because that row
+  // holds a third copy. Deriving the row from the two paths would have given
+  // this row to the `beta` comparison above too — the generation publishes
+  // `alpha` first — and offered a copy that row does not hold.
+  await page.goto(compareUrl('alpha', ...crossedPair));
+  await expect(copySwitcher.locator('option')).toHaveText([
+    '.agents/skills/third/',
+    '.claude/skills/alpha/',
+    '.claude/skills/beta/',
+  ]);
 });

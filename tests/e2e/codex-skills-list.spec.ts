@@ -317,23 +317,19 @@ test('rescans on demand and keeps the status tied to that request', async ({ pag
 
 test('links each definition by its stable tool-and-path identity', async ({ page }) => {
   await page.goto(host.origin);
-  const links = page.locator('.aci-skill-row__definitions a');
-  await expect(links).toHaveCount(4);
+  const links = page.locator('.aci-skill-row__file a');
+  await expect(links).toHaveCount(2);
 
-  // The link carries the tool and the Source-relative path — the definition's
-  // own identity, stable across rescans and same-root server launches; the
-  // path is the file's identity on the wire, so no per-generation file ID
-  // exists to leak into a URL.
+  // The link carries the Source-relative path and nothing else — the file's
+  // own identity, stable across rescans and same-root server launches, and
+  // its identity on the wire too, so no per-generation file ID exists to leak
+  // into a URL. Two products reading one file share the link, because they
+  // read the same document.
   const hrefs = await links.evaluateAll((elements) =>
     elements.map((element) => element.getAttribute('href') ?? ''),
   );
   expect(hrefs.toSorted()).toEqual(
-    [
-      '/skills/copilot/.agents/skills/greet/SKILL.md',
-      '/skills/codex/.agents/skills/greet/SKILL.md',
-      '/skills/copilot/.agents/skills/deploy/SKILL.md',
-      '/skills/codex/.agents/skills/deploy/SKILL.md',
-    ].toSorted(),
+    ['/skills/.agents/skills/greet/SKILL.md', '/skills/.agents/skills/deploy/SKILL.md'].toSorted(),
   );
   // The row itself offers nothing else to act on here: opening the file is
   // the one thing a row leads to, and the comparison entry — a link, never a

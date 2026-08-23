@@ -300,8 +300,10 @@ test('reports a pair the model does not express instead of comparing it', async 
 
 test('enters from the detail page and returns to the instructions tab', async ({ page }) => {
   await page.goto(host.origin);
-  // Into a detail through its row, then into the comparison from there.
-  await page.getByRole('link', { name: 'OpenAI Codex', exact: false }).first().click();
+  // Into a detail through its row's path link, then into the comparison from
+  // there: an instruction detail is addressed by the path alone, so the path
+  // is what the row links.
+  await page.getByRole('tabpanel').locator('.aci-item a.aci-path').first().click();
   await expect(page).toHaveURL(/\/instructions\//u);
   await page.getByRole('link', { name: 'Compare this instruction file' }).click();
   await page.waitForURL(/\/instructions\/compare\?/u);

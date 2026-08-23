@@ -78,7 +78,6 @@ function skillWithCompanions(
       tool: 'codex' as const,
       surfaces: [],
       parseStatus: 'parsed' as const,
-      invocationName: name,
       diagnosticIds: [],
       companionFiles,
     })),
@@ -132,6 +131,7 @@ function snapshotWith(
     rules: [],
     prompts: [],
     permissions: [],
+    settings: [],
     agents: [],
     skills,
     mcp: [],
@@ -396,6 +396,102 @@ describe('inventory filters over the committed snapshot', () => {
   });
 });
 
+describe('settings and configuration rows in the filtered view (T588)', () => {
+  /** The one shipped settings row: the Codex carrier, named by its path. */
+  const CODEX_CONFIG = {
+    sourceRelativePath: '.codex/config.toml',
+    recognitions: [{ tool: 'codex', surfaces: ['codex-local-clients'] }],
+  } as const;
+
+  /** One Claude-recognized skill, so a second tool is offered to filter by. */
+  const CLAUDE_SKILL: SkillInventoryEntryDto = {
+    name: 'greet',
+    definitions: [
+      {
+        sourceRelativePath: '.claude/skills/greet/SKILL.md',
+        tool: 'claude',
+        surfaces: [],
+        parseStatus: 'parsed',
+        diagnosticIds: [],
+        companionFiles: [],
+      },
+    ],
+    sameNameResolutions: [],
+  };
+
+  it('offers the kind, counts its rows, and narrows them by tool and path', () => {
+    const snapshot = shallowRef<SessionSnapshot | null>(
+      snapshotWith(
+        [file('.codex/config.toml'), file('.claude/skills/greet/SKILL.md')],
+        [CLAUDE_SKILL],
+        { settings: [CODEX_CONFIG] },
+      ),
+    );
+    const filters = withSelection(snapshot);
+    expect(filters.view.availableKinds.value).toEqual(['skill', 'settings/config']);
+    expect(filters.view.availableTools.value).toEqual(['claude', 'codex']);
+    expect(filters.view.settingsRows.value).toEqual([CODEX_CONFIG]);
+    // Counted with every other filter applied but not the kind itself, so the
+    // tab reads its own row count rather than the active kind's.
+    expect(filters.view.kindCounts.value.get('settings/config')).toBe(1);
+    // A tool the row does not carry drops it whole, exactly as the other
+    // path-identified rows narrow.
+    filters.tool.value = 'claude';
+    expect(filters.view.settingsRows.value).toEqual([]);
+    expect(filters.view.kindCounts.value.get('settings/config')).toBe(0);
+    filters.tool.value = null;
+    // The path filter matches the spelling the row renders, case-folded.
+    filters.pathQuery.value = 'CONFIG.TOML';
+    expect(filters.view.settingsRows.value).toEqual([CODEX_CONFIG]);
+    filters.pathQuery.value = 'settings.json';
+    expect(filters.view.settingsRows.value).toEqual([]);
+  });
+
+  it('narrows a shared row to the recognitions that match, and drops none that does (T647)', () => {
+    // A settings document two products recognize is one row naming both, so a
+    // tool filter narrows the row rather than removing it — the same rule the
+    // instruction rows follow.
+    const shared = {
+      sourceRelativePath: '.claude/settings.json',
+      recognitions: [
+        { tool: 'copilot', surfaces: ['copilot-cli'] },
+        { tool: 'claude', surfaces: ['claude-cli-and-ide-clients'] },
+      ],
+    } as const;
+    const snapshot = shallowRef<SessionSnapshot | null>(
+      snapshotWith([file('.claude/settings.json'), file('.codex/config.toml')], [], {
+        settings: [shared, CODEX_CONFIG],
+      }),
+    );
+    const filters = withSelection(snapshot);
+    expect(filters.view.settingsRows.value).toEqual([shared, CODEX_CONFIG]);
+    filters.tool.value = 'claude';
+    expect(filters.view.settingsRows.value).toEqual([
+      { ...shared, recognitions: [shared.recognitions[1]] },
+    ]);
+    filters.tool.value = 'codex';
+    expect(filters.view.settingsRows.value).toEqual([CODEX_CONFIG]);
+    filters.tool.value = 'copilot';
+    expect(filters.view.settingsRows.value).toEqual([
+      { ...shared, recognitions: [shared.recognitions[0]] },
+    ]);
+  });
+
+  it('leaves a recognized settings file out of the files in no kind', () => {
+    // The row is the file, so a file this kind recognizes is not a file
+    // nothing recognized — even when another kind also lists it.
+    const snapshot = shallowRef<SessionSnapshot | null>(
+      snapshotWith([file('.codex/config.toml'), file('notes.txt')], [], {
+        settings: [CODEX_CONFIG],
+      }),
+    );
+    const filters = withSelection(snapshot);
+    expect(filters.view.unrecognizedRows.value.map((row) => row.sourceRelativePath)).toEqual([
+      'notes.txt',
+    ]);
+  });
+});
+
 describe('same-name resolutions in the filtered view', () => {
   it('drops a statement when the filter leaves a tool one definition', () => {
     const snapshot = ref<SessionSnapshot | null>(
@@ -428,7 +524,6 @@ describe('same-name resolutions in the filtered view', () => {
         tool: 'claude' as const,
         surfaces: [],
         parseStatus: 'parsed' as const,
-        invocationName: 'wave',
         diagnosticIds: [],
         companionFiles: [],
       })),
@@ -466,7 +561,6 @@ describe('same-name resolutions in the filtered view', () => {
           tool: 'claude' as const,
           surfaces: [],
           parseStatus: 'parsed' as const,
-          invocationName: name,
           diagnosticIds: [],
           companionFiles: [],
         },
@@ -692,13 +786,11 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
     const definition = (
       tool: SupportedTool,
       path: string,
-      invocationName: string,
     ): SkillInventoryEntryDto['definitions'][number] => ({
       sourceRelativePath: path,
       tool,
       surfaces: [],
       parseStatus: 'parsed',
-      invocationName,
       diagnosticIds: [],
       companionFiles: [],
     });
@@ -706,10 +798,10 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
       {
         name: 'alpha',
         definitions: [
-          definition('copilot', '.agents/skills/alpha-a/SKILL.md', 'alpha'),
-          definition('codex', '.agents/skills/alpha-a/SKILL.md', 'alpha'),
-          definition('copilot', '.agents/skills/alpha-b/SKILL.md', 'alpha'),
-          definition('codex', '.agents/skills/alpha-b/SKILL.md', 'alpha'),
+          definition('copilot', '.agents/skills/alpha-a/SKILL.md'),
+          definition('codex', '.agents/skills/alpha-a/SKILL.md'),
+          definition('copilot', '.agents/skills/alpha-b/SKILL.md'),
+          definition('codex', '.agents/skills/alpha-b/SKILL.md'),
         ],
         sameNameResolutions: [
           { tool: 'copilot', resolution: 'surface-dependent' },
@@ -719,17 +811,26 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
       {
         name: 'voyage',
         definitions: [
-          definition('copilot', '.claude/skills/lander/SKILL.md', 'voyage'),
-          definition('claude', '.claude/skills/lander/SKILL.md', 'voyage'),
-          definition('copilot', '.github/skills/ship/SKILL.md', 'voyage'),
+          definition('copilot', '.claude/skills/lander/SKILL.md'),
+          definition('copilot', '.github/skills/ship/SKILL.md'),
         ],
         sameNameResolutions: [{ tool: 'copilot', resolution: 'surface-dependent' }],
       },
       {
+        // The same `.claude/skills/lander/SKILL.md` the `voyage` row above
+        // holds, on its own row because Claude Code invokes it by its skill
+        // directory whatever its frontmatter declares (FR-007). A double that
+        // put the Claude definition under `voyage` would be a row the
+        // projection cannot produce.
+        name: 'lander',
+        definitions: [definition('claude', '.claude/skills/lander/SKILL.md')],
+        sameNameResolutions: [],
+      },
+      {
         name: 'orbit',
         definitions: [
-          definition('copilot', '.agents/skills/orbit/SKILL.md', 'orbit'),
-          definition('codex', '.agents/skills/orbit/SKILL.md', 'orbit'),
+          definition('copilot', '.agents/skills/orbit/SKILL.md'),
+          definition('codex', '.agents/skills/orbit/SKILL.md'),
         ],
         sameNameResolutions: [],
       },
@@ -759,6 +860,7 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
     expect(filters.view.skillRows.value.map((entry) => entry.name)).toEqual([
       'alpha',
       'voyage',
+      'lander',
       'orbit',
     ]);
   });
@@ -778,9 +880,9 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
 
     filters.tool.value = 'claude';
     const claudeRows = filters.view.skillRows.value;
-    // One Claude definition of `voyage` remains, so no tool still faces a
+    // Claude's one definition is on its own row, so no tool still faces a
     // collision and the row states nothing.
-    expect(claudeRows.map((entry) => entry.name)).toEqual(['voyage']);
+    expect(claudeRows.map((entry) => entry.name)).toEqual(['lander']);
     expect(claudeRows[0]!.sameNameResolutions).toEqual([]);
   });
 
@@ -808,13 +910,13 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
   it('counts the kind tab from the filtered unified rows', () => {
     const snapshot = shallowRef<SessionSnapshot | null>(unifiedSnapshot());
     const filters = withSelection(snapshot);
-    expect(filters.view.kindCounts.value.get('skill')).toBe(3);
+    expect(filters.view.kindCounts.value.get('skill')).toBe(4);
     filters.tool.value = 'claude';
     expect(filters.view.kindCounts.value.get('skill')).toBe(1);
     filters.pathQuery.value = 'no-such-path';
     expect(filters.view.kindCounts.value.get('skill')).toBe(0);
     // An unmatched filter empties the rows without touching the snapshot.
-    expect(snapshot.value!.skills).toHaveLength(3);
+    expect(snapshot.value!.skills).toHaveLength(4);
   });
 
   it('adopts and filters the unified inventory without ever requesting a detail', async () => {
@@ -840,7 +942,7 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
     await state.start();
     const filters = withSelection(state.snapshot);
     filters.tool.value = 'claude';
-    expect(filters.view.skillRows.value.map((entry) => entry.name)).toEqual(['voyage']);
+    expect(filters.view.skillRows.value.map((entry) => entry.name)).toEqual(['lander']);
     filters.pathQuery.value = 'alpha';
     filters.tool.value = null;
     expect(filters.view.skillRows.value.map((entry) => entry.name)).toEqual(['alpha']);
@@ -874,7 +976,6 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
         expect(Object.keys(definition).sort()).toEqual([
           'companionFiles',
           'diagnosticIds',
-          'invocationName',
           'parseStatus',
           'sourceRelativePath',
           'surfaces',

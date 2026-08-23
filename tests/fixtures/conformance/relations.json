@@ -91,6 +91,9 @@
     "copilot.cli.mcp.selection": {
       "consumesBehaviors": ["copilot.behavior.cli.mcp", "copilot.behavior.cli.user.mcp"]
     },
+    "copilot.cli.settings.precedence": {
+      "consumesBehaviors": ["copilot.behavior.cli.settings", "copilot.behavior.cli.user.settings"]
+    },
     "copilot.cli.skills.selection": {
       "consumesBehaviors": [
         "copilot.behavior.cli.commands",
@@ -135,6 +138,12 @@
     "copilot.vscode.mcp.selection": {
       "consumesBehaviors": ["copilot.behavior.vscode.mcp", "copilot.behavior.vscode.user.mcp"]
     },
+    "copilot.vscode.settings.precedence": {
+      "consumesBehaviors": [
+        "copilot.behavior.vscode.settings",
+        "copilot.behavior.vscode.user.settings"
+      ]
+    },
     "copilot.vscode.skills.selection": {
       "consumesBehaviors": ["copilot.behavior.vscode.skills", "copilot.behavior.vscode.user.skills"]
     }
@@ -171,6 +180,13 @@
       "basedOnBehaviors": ["claude.behavior.repo.rules"],
       "explainedByStrategies": ["claude.rules.layering"]
     },
+    "claude.repo.settings": {
+      "basedOnBehaviors": [
+        "claude.behavior.repo.settings.local",
+        "claude.behavior.repo.settings.shared"
+      ],
+      "explainedByStrategies": ["claude.settings.precedence"]
+    },
     "claude.repo.skill": {
       "basedOnBehaviors": ["claude.behavior.repo.skills"],
       "explainedByStrategies": ["claude.skills.selection"]
@@ -199,6 +215,10 @@
       "basedOnBehaviors": ["codex.behavior.repo.rules"],
       "explainedByStrategies": ["codex.rules.resolution"]
     },
+    "codex.repo.settings": {
+      "basedOnBehaviors": ["codex.behavior.repo.config"],
+      "explainedByStrategies": ["codex.config.precedence"]
+    },
     "codex.repo.skill": {
       "basedOnBehaviors": ["codex.behavior.repo.skills"],
       "explainedByStrategies": ["codex.skills.discovery"]
@@ -212,6 +232,10 @@
       ],
       "explainedByStrategies": []
     },
+    "copilot.excluded.cli-lsp": {
+      "basedOnBehaviors": ["copilot.behavior.cli.lsp"],
+      "explainedByStrategies": []
+    },
     "copilot.excluded.extra-directories": {
       "basedOnBehaviors": [
         "copilot.behavior.cli.instructions.agents",
@@ -221,6 +245,10 @@
         "copilot.behavior.vscode.skills"
       ],
       "explainedByStrategies": []
+    },
+    "copilot.excluded.vscode-settings": {
+      "basedOnBehaviors": ["copilot.behavior.vscode.settings"],
+      "explainedByStrategies": ["copilot.vscode.settings.precedence"]
     },
     "copilot.repo.agent": {
       "basedOnBehaviors": [
@@ -319,6 +347,10 @@
     "copilot.repo.prompt": {
       "basedOnBehaviors": ["copilot.behavior.vscode.prompts"],
       "explainedByStrategies": []
+    },
+    "copilot.repo.settings": {
+      "basedOnBehaviors": ["copilot.behavior.cli.settings"],
+      "explainedByStrategies": ["copilot.cli.settings.precedence"]
     },
     "copilot.repo.skill": {
       "basedOnBehaviors": [

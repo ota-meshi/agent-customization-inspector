@@ -8,10 +8,9 @@
 // that matters, because an authored entry name must not be able to smuggle a
 // separator or a query into the URL.
 //
-// The kinds whose detail carries a second coordinate keep their own module for
-// that coordinate alone and build on these: a skill's route names the
-// definition's tool (`skill-detail-route.ts`), and an MCP declaration's names
-// the declared server (`mcp-detail-route.ts`).
+// The one kind whose detail carries a second coordinate keeps its own module
+// for that coordinate alone and builds on these: an MCP declaration's route
+// names the declared server (`mcp-detail-route.ts`).
 import type { CustomizationKind } from '../../shared/entities';
 
 /**
@@ -20,11 +19,23 @@ import type { CustomizationKind } from '../../shared/entities';
  * a rule file, a prompt or command file, and a custom-agent file each have one
  * page however many products recognize them, a permission policy is addressed
  * by the path of the file that declares it — the identity its inventory row is
- * named by — and an MCP carrier's own page is the carrier's.
+ * named by — an MCP carrier's own page is the carrier's, and a settings or
+ * configuration file's page is that file's, its row unit being the file. A
+ * skill is here too: its row unit is one invocation name, and two products
+ * that invoke one `SKILL.md` differently put it on two rows, but both read the
+ * same bytes, the same frontmatter, and the same companion directory, so the
+ * page is the file's and the names are what the page states (FR-007).
  */
 export type PathAddressedDetailKind = Extract<
   CustomizationKind,
-  'instructions' | 'MCP' | 'agent' | 'prompt/command' | 'rule' | 'permissions'
+  | 'instructions'
+  | 'skill'
+  | 'MCP'
+  | 'agent'
+  | 'prompt/command'
+  | 'rule'
+  | 'permissions'
+  | 'settings/config'
 >;
 
 /**
@@ -34,6 +45,12 @@ export type PathAddressedDetailKind = Extract<
 const DETAIL_ROUTE_SEGMENT: Readonly<Record<PathAddressedDetailKind, string>> = {
   /** Instruction files live under `/instructions/`. */
   instructions: 'instructions',
+  /**
+   * Skills live under `/skills/`, addressed by the file's path — the
+   * `SKILL.md` or one of the companions its census lists, since the page shows
+   * the whole directory and lets the reader move between its files.
+   */
+  skill: 'skills',
   /** MCP carriers live under `/mcp/`. */
   MCP: 'mcp',
   /**
@@ -54,6 +71,14 @@ const DETAIL_ROUTE_SEGMENT: Readonly<Record<PathAddressedDetailKind, string>> = 
   rule: 'rules',
   /** Declared permission policies live under `/permissions/`. */
   permissions: 'permissions',
+  /**
+   * Settings and configuration files live under `/settings-and-configuration/`.
+   * The segment spells the kind out rather than taking the shorter half of it,
+   * the same choice `/prompts-and-commands/` makes: a reader reads this one in
+   * the address bar, and `/settings/` would name a surface that also lists
+   * configuration files no vendor calls settings.
+   */
+  'settings/config': 'settings-and-configuration',
 };
 
 /**

@@ -1,10 +1,10 @@
 <script setup lang="ts">
-// A skill row (T071/T1077). The row's unit is one name as one tool resolves
-// it, not one file (data-model.md § Inventory unit): every tool resolves the
-// authored `name`, a Claude Code recognition of a nested skill prefixes it
-// root-relative (`apps/web:deploy`), and two files may resolve to one name.
-// Each recognition resolving the name — one definition per `(file, tool)` —
-// is listed beneath it.
+// A skill row (T071/T1077). The row's unit is one invocation name as one tool
+// resolves it, not one file (data-model.md § Inventory unit): Codex and
+// Copilot invoke the authored `name`, Claude Code the skill directory —
+// root-relative-prefixed when nested, `apps/web:deploy` — and two files one
+// tool invokes by one name share the row. Each recognition reaching the name
+// — one definition per `(file, tool)` — is listed beneath it.
 //
 // A row shows what was found and how it was classified — never what it says.
 // The snapshot carries no `sourceText`, and complete authored content is served
@@ -13,6 +13,11 @@
 // the row's resolved name — authored only when the file declared one, the
 // skill directory otherwise — which is presentation identity rather than
 // content (FR-007).
+//
+// The path is the link, as it is on every other row whose subject is a file:
+// the detail route is the file's identity, and the two products reading one
+// `SKILL.md` open the same document (FR-030). The recognizing products ride
+// beneath it, each with the surfaces its admission rests on.
 //
 // When several definitions share a name, the row states how each product
 // resolves it and never orders them: the three products' recorded statements
@@ -27,7 +32,7 @@ import { computed } from 'vue';
 import { NuxtLink } from '#components';
 import RowDiagnostics from './RowDiagnostics.vue';
 import { skillRowFiles, type SkillRowFile } from './skill-row-files';
-import { skillDetailRoute } from '../../skill-detail-route';
+import { detailRoute } from '../../detail-route';
 import { skillComparisonRouteFor } from '../../../composables/skill-comparison';
 import {
   SAME_NAME_SKILL_RESOLUTION_TEXT,
@@ -41,7 +46,6 @@ import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text
 import type {
   CustomizationFileSummaryDto,
   SerializedDiagnostic,
-  SkillDefinitionDto,
   SkillInventoryEntryDto,
 } from '../../../../shared/api-types';
 
@@ -58,17 +62,6 @@ const props = defineProps<{
   /** The generation's diagnostics, resolved per definition by {@link RowDiagnostics}. */
   diagnostics: readonly SerializedDiagnostic[];
 }>();
-
-/**
- * The detail route of one definition: the recognizing tool and the file's
- * own path — the definition's identity, which the path half of a bookmarked
- * link keeps across rescans and launches that select the same root, while
- * the origin is devframe's port selection (data-model.md § Skill
- * presentation). Built from the raw path, not the escaped display spelling.
- */
-function detailRouteOf(definition: SkillDefinitionDto): string {
-  return skillDetailRoute(definition.tool, definition.sourceRelativePath);
-}
 
 /**
  * This row's definitions grouped by the file each recognizes, so a file's own
@@ -110,7 +103,7 @@ const comparableEntryPaths = computed(() => {
 const compareRoute = computed(() => {
   const [first, second] = comparableEntryPaths.value;
   return first !== undefined && second !== undefined
-    ? skillComparisonRouteFor(first, second)
+    ? skillComparisonRouteFor(props.entry.name, first, second)
     : null;
 });
 
@@ -164,64 +157,65 @@ function affectedCompanions(
     </p>
 
     <ul class="aci-skill-row__files" role="list">
-      <!-- One item per file this name is declared by, and beneath it one item
-           per definition — one recognition, the `(file, tool)` unit (FR-007).
-           Grouping is what the reader sees, not what the row publishes: every
-           definition is still listed and still links to its own route, because
-           two products recognizing one file do not read it under one condition
-           and the row may not present them as though they did (FR-009). -->
+      <!-- One item per file this name is declared by, each stating its own
+           path once with the products that recognize it beside it — the shape
+           every other row whose subject is a file uses. Grouping is what the
+           reader sees, not what the row publishes: every recognition is still
+           stated, because two products recognizing one file do not read it
+           under one condition and the row may not present them as though they
+           did (FR-009). -->
       <li v-for="file in rowFiles" :key="file.sourceRelativePath" class="aci-skill-row__file">
-        <!-- The file's own facts, stated once for the definitions below it: the
-             Source-relative Path (escaped for presentation, data-model.md
-             § SourceRelativePath, so a path spanning lines cannot read as two
-             files), and what ships beside the `SKILL.md`. The census says the
-             skill has supporting files, not that a product loads them; the
-             detail view is where the directory itself can be opened. It is
-             stated even at zero, because how many a skill ships is a fact
-             about it and "none" is part of that fact. -->
-        <p class="aci-path aci-authored-text">{{ file.pathText }}</p>
+        <!-- The path is the link: the detail route is the file's identity, and
+             its path half survives rescans and launches that select the same
+             root, the origin being devframe's port selection (data-model.md
+             § Skill presentation). It is escaped for presentation
+             (data-model.md § SourceRelativePath) so a path spanning lines
+             cannot read as two files. The accessible name adds the row's own
+             name, because two rows can list one file — the products invoke it
+             by different names — and two links with one accessible name and
+             one destination would be the same control twice (WCAG 2.4.6;
+             label-in-name keeps the visible path as the prefix). Both halves
+             go through the whitespace-safe label, because the accessible-name
+             computation collapses whitespace and two spellings differing only
+             in it must not read as one link name (FR-025).
+
+             Each recognizing product trails the link on the same line with
+             the surfaces of the documented behaviors its admitting rules rest
+             on, exactly as an instruction file's or a policy's row states
+             them: a surface set narrows what reads the file even when it
+             holds one member (FR-009), and naming one is never a claim that
+             the surface loaded the skill. -->
+        <p class="aci-skill-row__owner">
+          <NuxtLink
+            :to="detailRoute('skill', file.sourceRelativePath)"
+            class="aci-path aci-authored-text"
+            :aria-label="`${inlinePresentationLabel(
+              file.sourceRelativePath,
+            )}: ${inlinePresentationLabel(entry.name)}`"
+            >{{ file.pathText }}</NuxtLink
+          >
+          <span
+            v-for="definition in file.definitions"
+            :key="definition.tool"
+            class="aci-skill-row__tool aci-muted"
+            >{{ SUPPORTED_TOOL_TEXT[definition.tool] }}
+            <span class="aci-skill-row__surfaces">{{
+              definition.surfaces.map((surface) => VENDOR_SURFACE_TEXT[surface]).join(', ')
+            }}</span></span
+          >
+        </p>
+        <!-- What ships beside the `SKILL.md`. The census says the skill has
+             supporting files, not that a product loads them; the detail view
+             is where the directory itself can be opened. It is stated even at
+             zero, because how many a skill ships is a fact about it and
+             "none" is part of that fact. -->
         <p class="aci-note">{{ file.companionFiles.length }} supporting file(s)</p>
 
-        <ul class="aci-skill-row__definitions" role="list">
-          <!-- The recognizing product is the link, because the detail route is
-               the definition's own identity — the tool, then the path — and a
-               file two products recognize has two of them (FR-030). The kind
-               is the tab the row is listed under, so repeating it here says
-               nothing. -->
-          <li v-for="definition in file.definitions" :key="definition.tool">
-            <!-- The visible text is the tool alone — the path is the line
-                 above — but the accessible name carries both: a reader walking
-                 the page's links hears each link out of its visual context,
-                 and every skill row offers a link reading "GitHub Copilot"
-                 (WCAG 2.4.4). The visible text leads the label, so speaking
-                 the words on the link still activates it (WCAG 2.5.3). -->
-            <!-- The path half goes through the whitespace-safe label: the
-                 accessible-name computation collapses whitespace, and two
-                 paths differing only in it must not read as one link name
-                 (FR-025). -->
-            <NuxtLink
-              :to="detailRouteOf(definition)"
-              :aria-label="`${SUPPORTED_TOOL_TEXT[definition.tool]} — ${inlinePresentationLabel(
-                file.sourceRelativePath,
-              )}`"
-              >{{ SUPPORTED_TOOL_TEXT[definition.tool] }}</NuxtLink
-            >
-            <!-- The surfaces of the documented behaviors this definition's
-                 admitting rules rest on, beside the product exactly as an
-                 instruction file's or a policy's row states them: a definition
-                 is one recognition, and a surface set narrows what reads the
-                 file even when it holds one member (FR-009). Naming one is
-                 never a claim that the surface loaded the skill. -->
-            <span class="aci-skill-row__surfaces aci-muted">{{
-              definition.surfaces.map((surface) => VENDOR_SURFACE_TEXT[surface]).join(', ')
-            }}</span>
-            <!-- The definition's own extraction diagnostics — its recognition's
-                 reference to the kind's one shared failure record, not the
-                 file's aggregate, so a definition reports its own kind's
-                 failure and never every problem its file carries (FR-028). -->
-            <RowDiagnostics :diagnostic-ids="definition.diagnosticIds" :diagnostics="diagnostics" />
-          </li>
-        </ul>
+        <!-- The extraction-failure record this file's recognitions reference.
+             One record however many products recognize the file — the parse
+             ran once (FR-028) — so it is stated for the file rather than once
+             per recognition, which would read as several failures. -->
+        <RowDiagnostics :diagnostic-ids="file.diagnosticIds" :diagnostics="diagnostics" />
 
         <!-- A supporting file this scan could not use. Named rather than
              counted: the reader has to know which file to open in the skill's
@@ -252,8 +246,8 @@ function affectedCompanions(
       <!-- The accessible name carries the row's name after the visible
            phrase: in a links list every comparable row would otherwise
            announce identically, the same reason the tool links above carry
-           their path (WCAG 2.4.6; label-in-name keeps the visible phrase as
-           the prefix). Through the whitespace-safe label, because the
+           their row's name (WCAG 2.4.6; label-in-name keeps the visible phrase
+           as the prefix). Through the whitespace-safe label, because the
            accessible-name computation normalizes whitespace: two names
            differing only invisibly must not read as one name (FR-025). -->
       <NuxtLink
@@ -275,39 +269,56 @@ function affectedCompanions(
 </template>
 
 <style scoped>
-/* The surfaces trail the product on the same line, set apart by a separator
-   rather than by punctuation inside the text: the product is what recognized
-   the file, and the surfaces qualify it. */
-.aci-skill-row__surfaces {
+.aci-skill-row__owner {
+  margin: 0;
+}
+
+/* Each recognizing product trails the file on the same line, set apart by a
+   separator, matching how an instruction row states its recognitions. */
+.aci-skill-row__tool {
   margin-inline-start: 0.4rem;
 }
 
-.aci-skill-row__surfaces::before {
+.aci-skill-row__tool::before {
   content: '·';
   margin-inline-end: 0.4rem;
 }
 
-.aci-skill-row__files,
-.aci-skill-row__definitions,
+/* The surfaces qualify their own product within the same span: the product
+   alone does not say where it reads the file from once two surfaces document
+   different lookup bases. */
+.aci-skill-row__surfaces {
+  font-size: 0.85em;
+}
+
+.aci-skill-row__surfaces::before {
+  content: '(';
+}
+
+.aci-skill-row__surfaces::after {
+  content: ')';
+}
+
 .aci-skill-row__resolutions {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-/* Two files declaring one name are two groups, so they are separated by more
-   than the gap between the lines inside either of them. */
-.aci-skill-row__files > li + li {
-  margin-block-start: 0.6rem;
+/* The files of the name, set under it by an indent and a rule — the layout
+   every other grouped row uses for the members of its own subject: an
+   instruction row's files, an MCP row's declarations, an agent row's
+   definitions. The indent is what says the files belong to the name above
+   them rather than standing beside it. */
+.aci-skill-row__files {
+  list-style: none;
+  margin: 0.2rem 0 0;
+  border-inline-start: 1px solid var(--aci-border);
+  padding-inline-start: 0.6rem;
 }
 
-/* The recognitions of one file, set under the file's own lines by an indent and
-   a rule. The rule is what says where the group ends: without it, a second
-   file's path read as another line of the first file's list. */
-.aci-skill-row__definitions {
-  border-inline-start: 1px solid var(--aci-border);
-  margin-block-start: 0.2rem;
-  padding-inline-start: 0.6rem;
+.aci-skill-row__files > li + li {
+  margin-block-start: 0.4rem;
 }
 
 /* The statements describe the row as a whole, so they sit apart from the
@@ -327,8 +338,9 @@ function affectedCompanions(
   margin: 0;
   overflow-wrap: anywhere;
 }
-/* The row-level comparison link, set apart from the definitions it spans. */
+/* The row-level comparison link, set apart from the files it spans, the way
+   an agent row's and a prompt row's are. */
 .aci-skill-row__compare {
-  margin: 0.25rem 0 0;
+  margin: 0.3rem 0 0;
 }
 </style>

@@ -1806,6 +1806,233 @@ export const COPILOT_CLOUD_ORGANIZATION_AGENTS_BEHAVIOR = {
 } as const satisfies VendorBehaviorStatement;
 
 /**
+ * The Copilot CLI's Repository settings lookup: the shared
+ * `.github/copilot/settings.json`, the personal
+ * `.github/copilot/settings.local.json`, and the two cross-tool
+ * `.claude/settings*.json` files the CLI reads for the documented shared
+ * subset of repository settings.
+ *
+ * This is the lookup that locates the documents `copilot.repo.settings`
+ * admits. What may be written *inside* them — an inline `hooks` block, a
+ * plugin recommendation — is the Hook and Plugin families' own subject and
+ * arrives with their phases; a settings row publishes the document, not a
+ * reading taken out of it (FR-007).
+ *
+ * Recording the cascade authorizes nothing: which layer wins for a key is the
+ * runtime outcome `copilot.cli.settings.precedence` describes and no surface
+ * projects (FR-009).
+ */
+export const COPILOT_CLI_SETTINGS_BEHAVIOR = {
+  behaviorId: 'copilot.behavior.cli.settings',
+  tool: 'copilot',
+  surfaces: ['copilot-cli'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'repository',
+        lookupBase: 'repository-root',
+        relativeSelector:
+          '.github/copilot/settings.json; .github/copilot/settings.local.json; .claude/settings.json; .claude/settings.local.json',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.cli.configuration',
+          url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference',
+          officialHost: 'docs.github.com',
+          sections: ['Configuration file settings'],
+          reviewedOn: '2026-08-23',
+          establishes:
+            'Settings apply in the order built-in defaults, MDM managed settings, user settings, repository .github/copilot/settings.json, local .github/copilot/settings.local.json, environment variables, then command-line flags; and the CLI also reads .claude/settings.json and .claude/settings.local.json for the shared cross-tool subset of repository settings such as companyAnnouncements, disableAllHooks, enabledPlugins, extraKnownMarketplaces, and hooks.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * VS Code's general workspace settings scope, recorded so
+ * `copilot.excluded.vscode-settings` can name what it leaves out.
+ *
+ * Non-authorizing, and the settings documents this release admits do not rest
+ * on it: `copilot.repo.settings` is based on the CLI settings behavior alone,
+ * because what may be written inside such a document — a plugin
+ * recommendation among it — belongs to the recognition whose subject that
+ * declaration is, and those arrive with their own phases (FR-007).
+ * `.vscode/settings.json` itself stays unadmitted: it is a general editor
+ * settings document rather than a Copilot customization, and the initial read
+ * allowlist admits only the dedicated `.vscode/mcp.json` carrier and the
+ * supported Copilot/Claude settings files.
+ */
+export const COPILOT_VSCODE_SETTINGS_BEHAVIOR = {
+  behaviorId: 'copilot.behavior.vscode.settings',
+  tool: 'copilot',
+  surfaces: ['copilot-vscode'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'repository',
+        lookupBase: 'workspace-root',
+        relativeSelector: '.vscode/settings.json',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'vscode.settings',
+          url: 'https://code.visualstudio.com/docs/configure/settings',
+          officialHost: 'code.visualstudio.com',
+          sections: ['Workspace settings', 'Settings precedence'],
+          reviewedOn: '2026-08-23',
+          establishes:
+            'Workspace settings are stored in the workspace .vscode/settings.json, and the scopes override each other in the documented order where a later scope wins, workspace settings sitting above user settings.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * The Copilot CLI's documented `.github/lsp.json` project LSP configuration,
+ * recorded so `copilot.excluded.cli-lsp` can name what it leaves out. It is
+ * language-server configuration rather than an agent customization, so it is
+ * not a Supported Initial Release Customization File and no rule admits it.
+ */
+export const COPILOT_CLI_LSP_BEHAVIOR = {
+  behaviorId: 'copilot.behavior.cli.lsp',
+  tool: 'copilot',
+  surfaces: ['copilot-cli'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'repository',
+        lookupBase: 'repository-root',
+        relativeSelector: '.github/lsp.json',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.cli.lsp',
+          url: 'https://docs.github.com/en/copilot/concepts/agents/copilot-cli/lsp-servers',
+          officialHost: 'docs.github.com',
+          sections: ['How to add an LSP server', 'How LSP servers are loaded'],
+          reviewedOn: '2026-08-23',
+          establishes:
+            'The CLI loads LSP server configuration from the project .github/lsp.json first, then plugin-provided servers, then the user ~/.copilot/lsp-config.json, with a higher-priority source overriding a lower one of the same server name.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * The CLI's User settings layer, a non-authorizing fact: it is one layer of
+ * the same cascade `copilot.behavior.cli.settings` records, and it lies
+ * outside the Repository Source this release reads.
+ */
+export const COPILOT_CLI_USER_SETTINGS_BEHAVIOR = {
+  behaviorId: 'copilot.behavior.cli.user.settings',
+  tool: 'copilot',
+  surfaces: ['copilot-cli'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'user',
+        lookupBase: 'tool-home',
+        relativeSelector: 'settings.json',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.cli.configuration',
+          url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference',
+          officialHost: 'docs.github.com',
+          sections: ['Configuration file settings'],
+          reviewedOn: '2026-08-23',
+          establishes:
+            'User settings live at ~/.copilot/settings.json — relocatable through COPILOT_HOME — and sit below the repository and local layers in the documented cascade.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * The CLI's User LSP configuration, a non-authorizing fact for the same
+ * reason its Repository sibling is recorded: it is the lowest layer of the
+ * LSP priority the excluded project file belongs to.
+ */
+export const COPILOT_CLI_USER_LSP_BEHAVIOR = {
+  behaviorId: 'copilot.behavior.cli.user.lsp',
+  tool: 'copilot',
+  surfaces: ['copilot-cli'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'user',
+        lookupBase: 'tool-home',
+        relativeSelector: 'lsp-config.json',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.cli.lsp',
+          url: 'https://docs.github.com/en/copilot/concepts/agents/copilot-cli/lsp-servers',
+          officialHost: 'docs.github.com',
+          sections: ['How LSP servers are loaded'],
+          reviewedOn: '2026-08-23',
+          establishes:
+            'The user configuration ~/.copilot/lsp-config.json is the lowest of the three documented LSP priorities, below the project file and plugin-provided servers.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * VS Code's User settings scope, a non-authorizing fact: it is the scope the
+ * workspace settings this product reads sit above, and it lies outside the
+ * Repository Source.
+ */
+export const COPILOT_VSCODE_USER_SETTINGS_BEHAVIOR = {
+  behaviorId: 'copilot.behavior.vscode.user.settings',
+  tool: 'copilot',
+  surfaces: ['copilot-vscode'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'user',
+        lookupBase: 'profile-data',
+        relativeSelector: 'settings.json',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'vscode.settings',
+          url: 'https://code.visualstudio.com/docs/configure/settings',
+          officialHost: 'code.visualstudio.com',
+          sections: ['User settings', 'Profile settings', 'Settings precedence'],
+          reviewedOn: '2026-08-23',
+          establishes:
+            'User settings apply globally to every VS Code instance and are overridden by workspace settings, with profile, remote, and language-specific scopes participating in the same documented order.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
  * Copilot's contribution to the behavior registry, keyed by `behaviorId`. Each
  * surface's statements ship together with the strategy that composes them —
  * an instruction layering consumes every scope of its own surface, User and
@@ -1864,4 +2091,10 @@ export const COPILOT_BEHAVIOR_STATEMENTS: Readonly<
   [COPILOT_VSCODE_USER_CLAUDE_BEHAVIOR.behaviorId]: COPILOT_VSCODE_USER_CLAUDE_BEHAVIOR,
   [COPILOT_VSCODE_USER_INSTRUCTIONS_BEHAVIOR.behaviorId]: COPILOT_VSCODE_USER_INSTRUCTIONS_BEHAVIOR,
   [COPILOT_VSCODE_USER_SKILLS_BEHAVIOR.behaviorId]: COPILOT_VSCODE_USER_SKILLS_BEHAVIOR,
+  [COPILOT_CLI_LSP_BEHAVIOR.behaviorId]: COPILOT_CLI_LSP_BEHAVIOR,
+  [COPILOT_CLI_SETTINGS_BEHAVIOR.behaviorId]: COPILOT_CLI_SETTINGS_BEHAVIOR,
+  [COPILOT_CLI_USER_LSP_BEHAVIOR.behaviorId]: COPILOT_CLI_USER_LSP_BEHAVIOR,
+  [COPILOT_CLI_USER_SETTINGS_BEHAVIOR.behaviorId]: COPILOT_CLI_USER_SETTINGS_BEHAVIOR,
+  [COPILOT_VSCODE_SETTINGS_BEHAVIOR.behaviorId]: COPILOT_VSCODE_SETTINGS_BEHAVIOR,
+  [COPILOT_VSCODE_USER_SETTINGS_BEHAVIOR.behaviorId]: COPILOT_VSCODE_USER_SETTINGS_BEHAVIOR,
 };

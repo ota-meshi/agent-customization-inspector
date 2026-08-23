@@ -161,17 +161,15 @@ export interface SkillDefinitionDto {
   /**
    * The Source-relative Path of the `SKILL.md` this definition is authored
    * in — the file's identity (FR-030), which joins to `files[]` and is the
-   * path half of the definition's own detail route,
-   * `/skills/<tool>/<source-relative path>`.
+   * whole of its detail route, `/skills/<source-relative path>`.
    */
   readonly sourceRelativePath: string;
   /**
    * The tool whose recognition this definition is (FR-007). One definition
    * per `(file, tool)` under the entry's name — the same unit as
-   * ToolRecognition — so a file two products resolve to one name is two
-   * definitions of that entry, and a tool that resolves a different name for
-   * the file — Claude Code prefixing a nested skill — defines on that name's
-   * entry instead.
+   * ToolRecognition — so a file two products invoke by one name is two
+   * definitions of that entry, and a tool that invokes the file by a
+   * different name defines on that name's entry instead.
    */
   readonly tool: SupportedTool;
   /**
@@ -190,27 +188,13 @@ export interface SkillDefinitionDto {
    * This definition's extraction state — the owning recognition's own
    * `parseStatus`, republished here because the definition is that
    * recognition (FR-028). `failed` is what keeps a surface from reading the
-   * skill-directory row name as something the file declared: the authored
-   * name is unknown, not absent, so a failed definition claims no authored
-   * invocation name and evidences no authored-name collision — Claude Code's
-   * path-derived clash stands either way (skill-naming.ts
-   * `collisionEvidencePaths`).
+   * skill-directory row name as something the file declared: for a tool that
+   * invokes the authored name, that name is unknown rather than absent, so
+   * the row the definition landed on is provisional grouping and evidences no
+   * collision — Claude Code's path-derived clash stands either way
+   * (skill-collision.ts `collisionEvidencePaths`).
    */
   readonly parseStatus: RecognitionParseStatus;
-  /**
-   * The invocation name this definition's tool documents for the file:
-   * Claude Code's command name is derived from the path — the skill directory,
-   * root-relative-prefixed when nested — whatever the frontmatter declares,
-   * while Codex and Copilot invoke the authored `name`, with the same skill
-   * directory fallback the rows use when the file declares none. Null exactly
-   * when the tool invokes the authored name and this definition's extraction
-   * failed: that name is unknown, and publishing the directory instead would
-   * read a value out of a failed parse (FR-028). The detail shows it beside
-   * the row's own name when present (data-model.md § Skill presentation);
-   * computed by the projection that keys the rows, so vendor naming cannot
-   * drift between server and client.
-   */
-  readonly invocationName: string | null;
   /**
    * The kind's extraction-failure reference (FR-028): one extraction per
    * kind means one record, which every failed definition of the file names
@@ -238,29 +222,33 @@ export interface SkillDefinitionDto {
 
 /**
  * One row of the skill inventory (contracts/http-api.md § get-session
- * `skills[]`, data-model.md § Inventory unit): one name as one tool resolves
- * it, and every `SKILL.md` a recognizing tool resolves it for.
+ * `skills[]`, data-model.md § Inventory unit): one invocation name as one
+ * tool resolves it, and every `SKILL.md` a recognizing tool invokes under it.
  *
- * The name is the unit rather than the file: two files may resolve to one
- * name — by declaring it, or by sitting in same-named directories while
- * declaring none — and one file's recognizing tools may resolve different
- * names — Claude Code prefixes a nested skill's name root-relative — putting
- * the file on each name's row with the tools that resolve it there (FR-007).
+ * The invocation name is the unit rather than the file: two files may be
+ * invoked by one name — by declaring it, or by sitting in same-named
+ * directories while declaring none — and one file's recognizing tools may
+ * invoke it by different names, putting the file on each name's row with the
+ * tools that reach it there (FR-007).
  */
 export interface SkillInventoryEntryDto {
   /**
-   * The name one tool resolves (FR-007): the authored frontmatter `name` — or
-   * the skill directory name when the file declares none or declares it
-   * empty — which a nested Claude Code recognition prefixes with the
-   * root-relative `/`-joined path of the directory holding its `.claude` and
-   * a `:` — `apps/web:deploy`. Never null or empty: being a named directory
-   * is what a skill is, so every row has a name to be listed under.
+   * The name one tool's own documentation invokes these files by (FR-007):
+   * the authored frontmatter `name` for Codex and Copilot — or the skill
+   * directory name when the file declares none or declares it empty — and,
+   * for Claude Code, the skill directory whatever the frontmatter declares,
+   * prefixed for a nested skill with the root-relative `/`-joined path of the
+   * directory holding its `.claude` and a `:` — `apps/web:deploy`. Never null
+   * or empty: being a named directory is what a skill is, so every row has a
+   * name to be listed under. Resolved by the admitting rule at recognition
+   * time (server/inspection/rules/registry.ts § CompiledStaticSkillRule),
+   * which is where a product's own naming lives.
    */
   readonly name: string;
   /**
-   * The recognitions resolving this name, one definition per `(file, tool)`,
-   * in Source-relative Path order and the contracted tool order within one
-   * file.
+   * The recognitions invoking these files by this name, one definition per
+   * `(file, tool)`, in Source-relative Path order and the contracted tool
+   * order within one file.
    */
   readonly definitions: readonly SkillDefinitionDto[];
   /**
@@ -617,6 +605,49 @@ export interface PermissionsInventoryEntryDto {
 }
 
 /**
+ * One row of the settings-and-configuration inventory
+ * (contracts/http-api.md § get-session `settings[]`, data-model.md
+ * § Inventory unit): one recognized settings or configuration file, named by
+ * its path, because the kind's unit is the file itself.
+ *
+ * Not {@link RuleInventoryEntryDto} or {@link PermissionsInventoryEntryDto}
+ * under another name, though the three coincide in shape: a rule row is a
+ * document a product reads as guidance, a permissions row is a policy a file
+ * declares, and this row is the file a product reads its settings from. Two
+ * units that coincide in shape are still two (data-model.md § Inventory
+ * unit).
+ *
+ * A file can hold this row and another kind's at once: Codex's
+ * `.codex/config.toml` is one admitted candidate whose `[mcp_servers.*]`
+ * tables are MCP rows and whose document is this row. What the file declares
+ * is not here — it is served by the kind's own detail, one file at a time
+ * (FR-027) — and the file's own read outcome, size, and diagnostics stay on
+ * its `files[]` entry.
+ *
+ * There is no extraction diagnostic list, for the reason
+ * {@link RuleInventoryEntryDto} has none: nothing is read out of the document
+ * this row publishes, so nothing can fail to be read (FR-028). A file whose
+ * bytes were never accepted gains no recognition and is no row here at all.
+ *
+ * A row is never a claim that a product applied the settings: a project layer
+ * applies only to a trusted project, the layers outside this Source resolve
+ * against the same keys, and which value wins is runtime this tool never
+ * observes (FR-009).
+ */
+export interface SettingsInventoryEntryDto {
+  /**
+   * The Source-relative Path of the settings or configuration file — the
+   * row's identity (FR-030), which joins to `files[]`.
+   */
+  readonly sourceRelativePath: string;
+  /**
+   * What recognized this file — one entry per recognizing tool, in the closed
+   * tool order (FR-004). Non-empty: a file nothing recognizes is no row.
+   */
+  readonly recognitions: readonly FileRecognitionDto[];
+}
+
+/**
  * One row of the MCP inventory (contracts/http-api.md § get-session `mcp[]`,
  * data-model.md § Inventory unit): one declared server name, listing every
  * declaration that resolves it — one per `(carrier, tool)`, the same grouping
@@ -787,9 +818,9 @@ export interface InstructionFileDetailDto extends FileDetailBase {
  * resolved (contracts/http-api.md § get-file-detail). The parse is a fact of
  * the file, not of a recognizing tool — every vendor reads the same fixed
  * YAML semantics — so it is published once; which tools recognize the file,
- * and each tool's invocation name, are the inventory's facts
- * (`skills[].definitions[]`), and the route's tool segment says which
- * definition a page is about.
+ * and the name each invokes it by, are the inventory's facts
+ * (`skills[].definitions[]` under the row each name keys), which the detail
+ * surface reads off the rows holding the file rather than from this response.
  */
 export interface SkillFileDetailDto extends FileDetailBase {
   /** Discriminant: the file is a recognized skill entry point. */
@@ -879,6 +910,31 @@ export interface PromptFileDetailDto extends FileDetailBase {
 export interface RuleFileDetailDto extends FileDetailBase {
   /** Discriminant: the file is a recognized rule file. */
   readonly kind: 'rule';
+}
+
+/**
+ * Detail of a recognized settings or configuration file: the file, and
+ * nothing read out of it (contracts/http-api.md § get-file-detail).
+ *
+ * No `presentation`, for the reason {@link RuleFileDetailDto} has none and
+ * one more of its own: the kind's inventory row is the file itself
+ * (data-model.md § Inventory unit), so the document its author wrote is the
+ * whole answer, and a parser-resolved declaration list would drop the
+ * comments, authored spellings, and section order a reader compares against
+ * their own file. With nothing read out, nothing can fail to be read, so the
+ * kind produces no extraction diagnostic.
+ *
+ * A Codex `.codex/config.toml` reaches this variant whole, its
+ * `[mcp_servers.*]` tables included. Those tables are a different row's
+ * subject and are served declaration-first by `get-mcp-carrier-detail`; that
+ * they are visible here too is the one document seen under its own row rather
+ * than a second publication of one fact (FR-007). No declared path is read,
+ * resolved, or followed, and no environment reference is substituted
+ * (FR-019, FR-026).
+ */
+export interface SettingsFileDetailDto extends FileDetailBase {
+  /** Discriminant: the file is a recognized settings or configuration file. */
+  readonly kind: 'settings/config';
 }
 
 /**
@@ -1051,6 +1107,7 @@ export type FileDetailDto =
   | AgentFileDetailDto
   | PromptFileDetailDto
   | RuleFileDetailDto
+  | SettingsFileDetailDto
   | UnrecognizedFileDetailDto;
 
 /** Fields every discovered file carries regardless of its read outcome. */
@@ -1376,6 +1433,16 @@ export interface SessionSnapshot {
    * (data-model.md § Inventory unit).
    */
   readonly permissions: readonly PermissionsInventoryEntryDto[];
+  /**
+   * The settings-and-configuration inventory: one entry per recognized
+   * settings or configuration file — the file a product reads its settings
+   * from — in Source-relative Path order, because the kind's unit is the file
+   * (data-model.md § Inventory unit). Named for the leading half of the kind
+   * the way `prompts` is, so the field reads as a plain plural beside the
+   * others; the detail route spells the kind out in full, as
+   * `/prompts-and-commands/` does.
+   */
+  readonly settings: readonly SettingsInventoryEntryDto[];
   /**
    * Active-generation Diagnostic records plus session-owned lifecycle
    * records (contracts/http-api.md § get-session `diagnostics[]`).

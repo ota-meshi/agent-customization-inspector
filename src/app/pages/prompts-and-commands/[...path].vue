@@ -237,6 +237,7 @@ const presentation = computed(() => {
     detail === null ||
     detail.kind === 'rule' ||
     detail.kind === 'agent' ||
+    detail.kind === 'settings/config' ||
     detail.kind === 'file'
   ) {
     return null;

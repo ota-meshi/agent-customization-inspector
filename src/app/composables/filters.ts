@@ -34,6 +34,7 @@ import type {
   PermissionsInventoryEntryDto,
   RuleInventoryEntryDto,
   SessionSnapshot,
+  SettingsInventoryEntryDto,
   SkillInventoryEntryDto,
   SourceDto,
 } from '../../shared/api-types';
@@ -44,7 +45,7 @@ import {
   type CustomizationKind,
   type SupportedTool,
 } from '../../shared/entities';
-import { facesSameNameCollision, skillCollisionGates } from '../../shared/skill-naming';
+import { facesSameNameCollision, skillCollisionGates } from '../../shared/skill-collision';
 
 /**
  * The filter fields the caller owns. They are passed in rather than returned so
@@ -158,6 +159,14 @@ export class InventoryFilterView {
   public readonly permissionsRows: ComputedRef<readonly PermissionsInventoryEntryDto[]>;
 
   /**
+   * The settings-and-configuration rows that pass every active filter, in
+   * snapshot order. A row is one recognized settings or configuration file
+   * (data-model.md § Inventory unit), and the tool filter narrows it by the
+   * same rule the other path-identified rows follow.
+   */
+  public readonly settingsRows: ComputedRef<readonly SettingsInventoryEntryDto[]>;
+
+  /**
    * Admitted candidates that pass the Source and path filters but appear in no
    * kind's inventory, in snapshot order — a candidate whose bytes were never
    * accepted gains no recognition, so no kind tab can show it. They are listed
@@ -196,18 +205,6 @@ export class InventoryFilterView {
   public readonly filesByPath: ComputedRef<ReadonlyMap<string, CustomizationFileSummaryDto>>;
 
   /**
-   * Every path with an MCP recognition in the committed generation, from the
-   * unfiltered inventory — named rows and the no-name row alike. A carrier's
-   * `FileDetail` is withheld by contract (FR-007), so a surface that links a
-   * file to a source-serving detail — an instruction row whose file is also
-   * a carrier, through a Codex configured fallback — routes it to the
-   * carrier's own MCP view instead. Derived from the snapshot rather than
-   * the filtered rows, so a tool or path filter cannot change where a link
-   * points.
-   */
-  public readonly mcpCarrierPaths: ComputedRef<ReadonlySet<string>>;
-
-  /**
    * True while a filter narrows the inventory — drives the "clear" affordance.
    * The kind tab is not a filter and never counts here: clearing the filters
    * must not navigate the user off the kind they are looking at.
@@ -222,15 +219,6 @@ export class InventoryFilterView {
     this.filesByPath = computed(
       () => new Map((snapshot.value?.files ?? []).map((file) => [file.sourceRelativePath, file])),
     );
-    this.mcpCarrierPaths = computed(
-      () =>
-        new Set(
-          (snapshot.value?.mcp ?? []).flatMap((entry) =>
-            entry.declarations.map((declaration) => declaration.sourceRelativePath),
-          ),
-        ),
-    );
-
     this.availableTools = computed(() => {
       const present = new Set([
         ...(snapshot.value?.instructions ?? []).flatMap((entry) =>
@@ -254,6 +242,9 @@ export class InventoryFilterView {
         ...(snapshot.value?.permissions ?? []).flatMap((entry) =>
           entry.recognitions.map((recognition) => recognition.tool),
         ),
+        ...(snapshot.value?.settings ?? []).flatMap((entry) =>
+          entry.recognitions.map((recognition) => recognition.tool),
+        ),
       ]);
       return SUPPORTED_TOOL_ORDER.filter((candidate) => present.has(candidate));
     });
@@ -268,6 +259,7 @@ export class InventoryFilterView {
         ...((snapshot.value?.prompts ?? []).length > 0 ? (['prompt/command'] as const) : []),
         ...((snapshot.value?.rules ?? []).length > 0 ? (['rule'] as const) : []),
         ...((snapshot.value?.permissions ?? []).length > 0 ? (['permissions'] as const) : []),
+        ...((snapshot.value?.settings ?? []).length > 0 ? (['settings/config'] as const) : []),
       ]);
       return CUSTOMIZATION_KIND_ORDER.filter((candidate) => present.has(candidate));
     });
@@ -372,7 +364,7 @@ export class InventoryFilterView {
         return definitions.length === 0 ? [] : [{ entry, definitions }];
       });
       // The same per-tool collision machinery the projection applied,
-      // through the shared assembly (skill-naming.ts) so the two surfaces
+      // through the shared assembly (skill-collision.ts) so the two surfaces
       // cannot drift — rebuilt here because the population is this view's
       // own: a gate can span rows — Claude's does — and a filter can hide
       // one side of a clash, so the statement goes with the definitions it
@@ -488,6 +480,30 @@ export class InventoryFilterView {
       }),
     );
 
+    /**
+     * The settings and configuration files that survive every filter, each
+     * reduced to the recognitions that matched, by the same two questions the
+     * rules filter asks of its own rows.
+     *
+     * Written out rather than shared with the two filters above: the three
+     * rows are different subjects — a rule file, a policy a file declares,
+     * and the file a product reads its settings from — so the first fact one
+     * of them gains that the others have no answer for would break a shared
+     * filter, and the duplication is four lines.
+     */
+    this.settingsRows = computed(() =>
+      (snapshot.value?.settings ?? []).flatMap((entry) => {
+        if (!fileMatches(entry.sourceRelativePath)) {
+          return [];
+        }
+        const recognitions =
+          effectiveTool.value === null
+            ? entry.recognitions
+            : entry.recognitions.filter((recognition) => recognition.tool === effectiveTool.value);
+        return recognitions.length === 0 ? [] : [{ ...entry, recognitions }];
+      }),
+    );
+
     this.kindCounts = computed(() => {
       const counts = new Map<CustomizationKind, number>();
       for (const candidate of this.availableKinds.value) {
@@ -509,7 +525,9 @@ export class InventoryFilterView {
                       ? this.ruleRows.value.length
                       : candidate === 'permissions'
                         ? this.permissionsRows.value.length
-                        : 0,
+                        : candidate === 'settings/config'
+                          ? this.settingsRows.value.length
+                          : 0,
         );
       }
       return counts;
@@ -537,6 +555,7 @@ export class InventoryFilterView {
         ),
         ...(snapshot.value?.rules ?? []).map((entry) => entry.sourceRelativePath),
         ...(snapshot.value?.permissions ?? []).map((entry) => entry.sourceRelativePath),
+        ...(snapshot.value?.settings ?? []).map((entry) => entry.sourceRelativePath),
       ]);
       // A companion belongs to the customization whose directory holds it, and
       // that customization already has a row — so a companion is excluded here

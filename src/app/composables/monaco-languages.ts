@@ -33,16 +33,14 @@
 //
 // All of them is still not every format this product's own kinds use: measured
 // against the pinned `monaco-editor` (its `esm/vs/basic-languages/` directory,
-// 2026-08-22), there is no TOML grammar, so a Codex `.codex/agents/*.toml`
-// renders as plain text under a file tab. The near fit is deliberately not
-// taken: `ini` claims `.ini` and `.properties` and would mislabel exactly the
-// part of an agent file a reader is checking — a `developer_instructions`
-// block's prose lines, whose leading `#` is literal text inside a multi-line
-// string and which `ini` would colour as comments. Naming a grammar the way
-// the permission-policy detail names `python` for a Starlark `.rules` file is
-// right only where the vendor's syntax really is that language. Re-measure
-// when this list is next touched: if `toml` appears upstream, import it and
-// delete this paragraph.
+// 2026-08-23), there is no TOML grammar, and `.codex/config.toml` is a core
+// customization format here. `@ota-meshi/site-kit-monarch-syntaxes` publishes
+// one, and what it publishes is a Monarch grammar and a language
+// configuration — a basic language in everything but which package ships it,
+// with no service, no worker, and no validation behind it — so the `toml` id
+// is registered from that package below. Re-measure when this list is next
+// touched: if `toml` appears in `basic-languages`, import the contribution
+// here and drop that registration.
 //
 // The basic languages are imported for their side effects only:
 // `registerLanguage` is the export that matters, and it runs on import.
@@ -128,6 +126,10 @@ import 'monaco-editor/esm/vs/basic-languages/vb/vb.contribution.js';
 import 'monaco-editor/esm/vs/basic-languages/wgsl/wgsl.contribution.js';
 import 'monaco-editor/esm/vs/basic-languages/xml/xml.contribution.js';
 import 'monaco-editor/esm/vs/basic-languages/yaml/yaml.contribution.js';
+import {
+  loadTomlLanguage,
+  loadTomlLanguageConfig,
+} from '@ota-meshi/site-kit-monarch-syntaxes/toml';
 import { languages } from 'monaco-editor/esm/vs/editor/editor.api.js';
 import { createTokenizationSupport } from 'monaco-editor/esm/vs/language/json/tokenization.js';
 
@@ -144,3 +146,23 @@ languages.register({
   mimetypes: ['application/json'],
 });
 languages.setTokensProvider('json', createTokenizationSupport(true));
+
+// TOML as a basic language, from `@ota-meshi/site-kit-monarch-syntaxes` (see
+// the module comment above). These three calls are what that package's own
+// `setupTomlLanguage` would make, and they are also what Monaco's
+// `basic-languages/_.contribution.js` makes for every language imported
+// above: the id and its extension claim, a factory the editor calls for the
+// grammar, and the language configuration attached the first time a `.toml`
+// model exists. Both loaders `import()` one chunk of the package, so the
+// grammar is fetched on the first `.toml` file opened and not before.
+//
+// `setupTomlLanguage` itself is not called, because its parameter is the whole
+// `monaco-editor` entry point — a type that includes the JSON, CSS, HTML, and
+// TypeScript language services this module exists to keep out of the bundle.
+// Passing what this application actually has would mean asserting a shape it
+// deliberately does not have.
+languages.register({ id: 'toml', extensions: ['.toml'] });
+languages.registerTokensProviderFactory('toml', { create: loadTomlLanguage });
+languages.onLanguageEncountered('toml', async () => {
+  languages.setLanguageConfiguration('toml', await loadTomlLanguageConfig());
+});

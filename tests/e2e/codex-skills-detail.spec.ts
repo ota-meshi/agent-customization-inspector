@@ -85,13 +85,11 @@ test.afterEach(async () => {
 /** Opens the named skill's detail route from the inventory. */
 async function openSkill(page: import('@playwright/test').Page, path: string): Promise<void> {
   await page.goto(host.origin);
-  // A file two products recognize offers one definition link per product;
-  // each addresses its own definition route and either opens the same file.
-  await page
-    .locator('.aci-skill-row__file', { hasText: path })
-    .locator('.aci-skill-row__definitions a')
-    .first()
-    .click();
+  // The path is the link, and the route is the file's own, so a file listed
+  // under more than one row opens the same page from any of them.
+  const links = page.locator('.aci-skill-row__file').locator(`a[href$="/${path}"]`);
+  await links.first().waitFor();
+  await links.first().click();
 }
 
 /**
@@ -120,13 +118,15 @@ test('opens the file directly, with nothing standing in front of it', async ({ p
 
 test('titles the tab by the skill the page shows', async ({ page }) => {
   await openSkill(page, '.agents/skills/greet/SKILL.md');
-  await expect(page.locator('.aci-skill-detail h2')).toHaveText('greet');
+  await expect(page.locator('.aci-skill-detail h2')).toHaveText('.agents/skills/greet/');
   // Two tabs on two skills must be distinguishable by title alone
   // (WCAG 2.4.2): the subject the heading shows is the subject the tab
   // names, where the surface name alone would title every skill the same.
   // The subject rides between first-strong isolates so an authored
   // directional control cannot reorder the title around it.
-  await expect(page).toHaveTitle('\u2068greet\u2069 — Agent Customization Inspector');
+  await expect(page).toHaveTitle(
+    '\u2068.agents/skills/greet/\u2069 — Agent Customization Inspector',
+  );
 });
 
 test('shows the complete authored source', async ({ page }) => {
@@ -175,12 +175,18 @@ test('leads with the skill itself before any file contents', async ({ page }) =>
   await openSkill(page, '.agents/skills/greet/SKILL.md');
   // The skill is what the page is about: its name, what it is for, the rest of
   // what it declares, and then the instructions it carries.
-  await expect(page.locator('.aci-skill-detail h2')).toHaveText('greet');
+  await expect(page.locator('.aci-skill-detail h2')).toHaveText('.agents/skills/greet/');
   // Every key the file declares, as one YAML document in the read-only
   // viewer, led by the two a reader looks for first (FR-007).
   const declarations = page.locator('.aci-skill-detail__declarations');
   await expect(declarations).toContainText('name: greet');
   await expect(declarations).toContainText(`deploy with ${FIXTURE_SECRET}`);
+  // The last key this test reads, awaited before the text is taken: the editor
+  // writes only the lines its own box holds, and the box reaches them one
+  // layout after the fit height is written to it (`SourceViewerHandle.mount`
+  // § fitContent), so a text taken between the two has the key in no DOM to be
+  // found and orders it at -1.
+  await expect(declarations).toContainText('api_key:');
   const text = await declarations.innerText();
   expect(text.indexOf('name:')).toBeGreaterThan(-1);
   expect(text.indexOf('name:')).toBeLessThan(text.indexOf('description:'));
@@ -258,15 +264,15 @@ test('shows the addressed definition and nothing about a runtime it cannot see',
   await openSkill(page, '.agents/skills/greet/SKILL.md');
   // One definition line — the route's own tool and the surfaces its
   // admissions rest on, captioned in words — because the URL addresses one
-  // definition; the first of the row's links is the Copilot one in the
-  // contracted tool order, and which other products recognize the file is the
-  // inventory's matrix. Naming a surface says where the product documents
+  // recognizing product, in the contracted tool order, with the name each
+  // invokes the skill by. Naming a surface says where the product documents
   // reading the file, never that it loaded it: that depends on a runtime this
   // tool never observes, and a sentence about it would take the room the
   // files below need (FR-009).
-  const definition = page.locator('.aci-skill-detail__definition');
-  await expect(definition).toHaveCount(1);
-  await expect(definition).toHaveText('GitHub Copilot (VS Code, CLI, Cloud agent) · Skill');
+  await expect(page.locator('.aci-skill-detail__invocations li')).toHaveText([
+    'GitHub Copilot (VS Code, CLI, Cloud agent) · Skill · Invocation name: greet',
+    'OpenAI Codex (Local clients) · Skill · Invocation name: greet',
+  ]);
   const detail = (await page.locator('.aci-skill-detail').textContent()) ?? '';
   for (const claim of ['Depends on runtime conditions', 'Selected by a documented rule']) {
     expect(detail).not.toContain(claim);
@@ -275,9 +281,10 @@ test('shows the addressed definition and nothing about a runtime it cannot see',
 
 test('says what it recognized in words, never as a contract identifier', async ({ page }) => {
   await openSkill(page, '.agents/skills/greet/SKILL.md');
-  // The definition line is captioned by the product's name, not its token.
+  // The invocation lines are captioned by the products' names, not their
+  // tokens.
   await expect(
-    page.locator('.aci-skill-detail__definition').filter({ hasText: 'GitHub Copilot' }),
+    page.locator('.aci-skill-detail__invocations li').filter({ hasText: 'GitHub Copilot' }),
   ).toHaveCount(1);
 
   // `textContent` rather than `innerText`, so anything rendered but visually
@@ -298,7 +305,7 @@ test('lists the skill’s own directory in the files tab', async ({ page }) => {
   await openSkillFiles(page, '.agents/skills/greet/SKILL.md');
   // The heading is the skill's declared name, not a path: what the reader
   // asked about is a customization, and the files are how it is made.
-  await expect(page.locator('.aci-skill-detail h2')).toHaveText('greet');
+  await expect(page.locator('.aci-skill-detail h2')).toHaveText('.agents/skills/greet/');
   const tree = page.getByRole('navigation', { name: 'Files in this skill' });
   // A skill is a directory: the entry point and what ships beside it, the
   // binary asset included. Only files are links; `scripts/` is the directory
@@ -354,8 +361,8 @@ test('opens a supporting file from the tree and keeps the skill on screen', asyn
   // from answering the wrong question — a companion carries no recognition of
   // its own, and a screen that reported that would be describing the file
   // instead of the skill the reader is looking at.
-  await expect(page.locator('.aci-skill-detail h2')).toHaveText('greet');
-  await expect(page.locator('.aci-skill-detail__definition')).toHaveCount(1);
+  await expect(page.locator('.aci-skill-detail h2')).toHaveText('.agents/skills/greet/');
+  await expect(page.locator('.aci-skill-detail__invocations li')).toHaveCount(2);
   await expect(page.locator('.aci-skill-detail__main h3')).toHaveText(
     '.agents/skills/greet/scripts/run.sh',
   );
@@ -390,7 +397,7 @@ test('shows a binary asset as the fact it is, with nothing wrong', async ({ page
   expect(text).not.toContain('NUL');
   // And the skill above it is untouched: the asset changes what is shown, not
   // what was recognized.
-  await expect(page.locator('.aci-skill-detail__definition')).toHaveCount(1);
+  await expect(page.locator('.aci-skill-detail__invocations li')).toHaveCount(2);
 });
 
 test('leaves the reader in the tree when they select another file', async ({ page }) => {
@@ -425,8 +432,8 @@ test('opens the skill from any of its files, not only its entry point', async ({
   const companionUrl = page.url();
 
   await page.goto(companionUrl);
-  await expect(page.locator('.aci-skill-detail h2')).toHaveText('greet');
-  await expect(page.locator('.aci-skill-detail__definition')).toHaveCount(1);
+  await expect(page.locator('.aci-skill-detail h2')).toHaveText('.agents/skills/greet/');
+  await expect(page.locator('.aci-skill-detail__invocations li')).toHaveCount(2);
   await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toContainText('echo hi');
 });
 
@@ -500,7 +507,7 @@ test('is operable from the keyboard alone', async ({ page }) => {
   // would still land on it.
   const skillLink = page
     .locator('.aci-skill-row__file', { hasText: '.agents/skills/greet/SKILL.md' })
-    .locator('.aci-skill-row__definitions a')
+    .locator('.aci-skill-row__owner a')
     .first();
   expect(await tabUntilFocused(page, skillLink)).toBe(true);
   await page.keyboard.press('Enter');
@@ -543,11 +550,11 @@ test('keeps a link resolving across a rescan through its path identity', async (
     });
   }).toPass();
 
-  // The URL names the definition's stable identity — the tool and the path —
-  // and the path is the file's identity on the wire (FR-030): the same URL
-  // resolves against the new generation and the skill opens again.
+  // The URL names the file's stable identity, which is its identity on the
+  // wire too (FR-030): the same URL resolves against the new generation and
+  // the skill opens again.
   await page.goto(bookmarkedUrl);
-  await expect(page.locator('.aci-skill-detail h2')).toHaveText('greet');
+  await expect(page.locator('.aci-skill-detail h2')).toHaveText('.agents/skills/greet/');
 });
 
 test('reports a link whose path the current scan does not hold', async ({ page }) => {
@@ -556,10 +563,10 @@ test('reports a link whose path the current scan does not hold', async ({ page }
   // route owns the page, or a slow navigation would bookmark the inventory.
   await page.waitForURL(/\/skills\//u);
   const bookmarkedUrl = page.url();
-  // The same URL with the tool segment swapped names a definition this
-  // generation does not hold — Claude never recognizes an `.agents` skill —
-  // and the page says so instead of guessing at a nearby one.
-  await page.goto(bookmarkedUrl.replace(/\/skills\/[a-z]+\//u, '/skills/claude/'));
+  // The same URL with the file's own name swapped names a path this
+  // generation does not hold, and the page says so instead of guessing at a
+  // nearby one.
+  await page.goto(bookmarkedUrl.replace('/SKILL.md', '/NO-SUCH.md'));
   await expect(page.locator('.aci-skill-detail')).toContainText(
     'Nothing in the current scan sits at this link',
   );

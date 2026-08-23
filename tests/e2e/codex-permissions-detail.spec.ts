@@ -80,7 +80,7 @@ test.describe('the complete literal Codex rule detail', () => {
     const rows = page.getByRole('tabpanel').locator('.aci-item');
     await rows
       .filter({ hasText: '.codex/rules/deploy.rules' })
-      .getByRole('link', { name: 'OpenAI Codex' })
+      .getByRole('link', { name: '.codex/rules/deploy.rules' })
       .click();
     await expect(page).toHaveURL(/\/permissions\/\.codex\/rules\/deploy\.rules$/u);
     await expect(page.getByRole('heading', { name: '.codex/rules/deploy.rules' })).toBeVisible();

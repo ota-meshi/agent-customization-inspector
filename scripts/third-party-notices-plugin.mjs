@@ -51,10 +51,12 @@ const NOTICE_DIRECTORIES = ['.', 'dist', 'licenses', 'license'];
  * Nothing here is a hand-maintained *list* — which package needs a text is
  * still decided by the bundle, and a package with neither its own notice nor
  * one here still stops the build. What this covers is the case the derivation
- * cannot reach: `@iconify-json/lucide` carries the icon artwork whose paths
- * are inlined into the bundle, declares its license in its manifest, and ships
- * no file holding that license's text, so the text can only come from
- * upstream. It is copied verbatim from the icon set's own `LICENSE`.
+ * cannot reach: a package that declares its license in its manifest but
+ * publishes no file holding that license's text, so the text can only come
+ * from upstream, copied verbatim from that project's own `LICENSE`. The
+ * `@iconify-json/*` collections are one — their icon artwork is inlined into
+ * the bundle as SVG paths — and `@ota-meshi/site-kit-monarch-syntaxes`, whose
+ * TOML grammar the editor's language registration imports, is another.
  */
 const VENDORED_NOTICE_DIRECTORY = 'licenses';
 

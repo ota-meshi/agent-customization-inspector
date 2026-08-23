@@ -310,7 +310,7 @@ export class CustomAgentRecognitionComparison {
  */
 function presentationOf(side: CustomAgentComparisonSideInput): AgentPresentationDto | null {
   const detail = side.detail;
-  if (detail.kind === 'rule' || detail.kind === 'file') {
+  if (detail.kind === 'rule' || detail.kind === 'settings/config' || detail.kind === 'file') {
     return null;
   }
   if (detail.kind === 'agent') {

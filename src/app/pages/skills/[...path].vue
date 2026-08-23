@@ -2,8 +2,8 @@
 // The skill detail route (T102): what one skill is, and the files it is made of.
 //
 // The skill is the subject, not the file. A reader arriving here asked about a
-// customization, so the page opens with what was recognized — the row's
-// resolved name, the product whose definition the route addresses, every key
+// customization, so the page opens with what was recognized — the skill's own
+// directory, the name each recognizing product invokes it by, every key
 // its frontmatter declares, and the instructions that frontmatter block was
 // removed from — and the directory's files come after, as the detail of that. A page that opened on
 // a file made the reader assemble the skill from its parts.
@@ -22,17 +22,18 @@
 // looking at. Here the recognition on screen is always the skill's, and
 // selecting a file changes only which source is shown.
 //
-// The URL names a definition — `/skills/<tool>/<source-relative path>` —
-// because that is the unit a link from the inventory addresses: the path is
-// the file's identity (FR-030), and the tool says which recognition of it the
-// page is about, so no preference has to pick one when a file sits on two
-// rows. The pair is stable across rescans and server launches — the host
+// The URL names a file — `/skills/<source-relative path>` — and nothing
+// else, the way every other file-subject detail route does (FR-030). No tool
+// segment, because two products reading one `SKILL.md` read the same bytes,
+// the same frontmatter, and the same companion directory: a per-tool address
+// would give one document two URLs differing only in a name. What differs is
+// the name each product invokes it by, and the page states them together
+// (FR-007). The path is stable across rescans and server launches — the host
 // resolves a detail request against whatever generation is current — so a
-// bookmarked link's path keeps naming the same file wherever a launch selects
-// the same root, the origin half being devframe's port selection
-// (data-model.md § Skill presentation), and a path the current scan does not
-// hold is reported rather than guessed at. Companions open under the same
-// tool segment.
+// bookmarked link keeps naming the same file wherever a launch selects the
+// same root, the origin half being devframe's port selection (data-model.md
+// § Skill presentation), and a path the current scan does not hold is
+// reported rather than guessed at.
 //
 // This surface — like the skill comparison at `/skills/compare` — shows file
 // contents exactly as authored — credentials included, with nothing masked
@@ -60,27 +61,30 @@ import {
 } from 'vue';
 import { useRoute } from 'vue-router';
 import { NuxtLink } from '#components';
-import SkillFileTree from '../../../components/inspection/SkillFileTree.vue';
-import OpenFileButton from '../../../components/inspection/OpenFileButton.vue';
-import SourceViewer from '../../../components/inspection/SourceViewer.vue';
-import { frontmatterYamlText } from '../../../components/inspection/frontmatter-yaml';
-import { LEADING_SKILL_FRONTMATTER_KEYS } from '../../../components/inspection/declaration-order';
-import { decodeDetailRoutePath } from '../../../components/detail-route';
-import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text';
-import { nextTabForKey } from '../../../components/tab-navigation';
-import { skillComparisonRouteFor } from '../../../composables/skill-comparison';
-import { usePageOwnership } from '../../../composables/page-ownership';
-import { SESSION_VIEW_STATE } from '../../../session/view-state';
-import type { SkillDefinitionDto, SkillInventoryEntryDto } from '../../../../shared/api-types';
-import { DIAGNOSTIC_REGISTRY } from '../../../../shared/diagnostics';
+import SkillFileTree from '../../components/inspection/SkillFileTree.vue';
+import OpenFileButton from '../../components/inspection/OpenFileButton.vue';
+import SourceViewer from '../../components/inspection/SourceViewer.vue';
+import { frontmatterYamlText } from '../../components/inspection/frontmatter-yaml';
+import { LEADING_SKILL_FRONTMATTER_KEYS } from '../../components/inspection/declaration-order';
+import { decodeDetailRoutePath } from '../../components/detail-route';
+import { VENDOR_SURFACE_TEXT } from '../../../shared/registries/behavior-text';
+import { nextTabForKey } from '../../components/tab-navigation';
+import { skillComparisonRouteFor } from '../../composables/skill-comparison';
+import { usePageOwnership } from '../../composables/page-ownership';
+import { SESSION_VIEW_STATE } from '../../session/view-state';
+import type { SkillDefinitionDto, SkillInventoryEntryDto } from '../../../shared/api-types';
+import { DIAGNOSTIC_REGISTRY } from '../../../shared/diagnostics';
 import {
   CUSTOMIZATION_KIND_TEXT,
   FILE_ENCODING_TEXT,
+  SUPPORTED_TOOL_ORDER,
   SUPPORTED_TOOL_TEXT,
   escapeControlCharacters,
+  inlinePresentationLabel,
   isReadableFile,
   rendersNothingVisible,
-} from '../../../../shared/entities';
+  type SupportedTool,
+} from '../../../shared/entities';
 
 const sessionViewState = inject(SESSION_VIEW_STATE);
 if (sessionViewState === undefined) {
@@ -92,23 +96,10 @@ if (sessionViewState === undefined) {
 
 const route = useRoute();
 /**
- * The tool segment from the URL: which recognition of the file the page is
- * about (`/skills/<tool>/<source-relative path>`). Matched against the
- * committed inventory — a spelling the generation's definitions do not use
- * resolves to no owner, which the template reports as a dead link. A router
- * hands a repeated parameter over as an array; this route's does not repeat,
- * so the array form folds to its first value rather than being a case.
- */
-const openTool = computed((): string => {
-  const parameter = route.params['tool'];
-  return typeof parameter === 'string' ? parameter : (parameter?.[0] ?? '');
-});
-
-/**
- * The Source-relative path from the URL's catch-all segments — the stable
- * half of the definition identity a reader bookmarks. The router hands the
- * segments over individually and decoded, so joining them with `/` restores
- * the published spelling exactly.
+ * The Source-relative path from the URL's catch-all segments — the whole
+ * identity a reader bookmarks. The router hands the segments over
+ * individually and decoded, so joining them with `/` restores the published
+ * spelling exactly.
  */
 const openPath = computed((): string => {
   const parameter = route.params['path'];
@@ -131,8 +122,8 @@ const committedPaths = computed(
 
 /**
  * The committed readable files — the comparison-eligible subset (FR-025)
- * behind {@link comparePairRoute}: only a file with readable source text can
- * be a comparison input.
+ * behind each invocation's comparison link: only a file with readable source
+ * text can be a comparison input.
  */
 const comparablePaths = computed(
   () =>
@@ -140,34 +131,6 @@ const comparablePaths = computed(
       (snapshot.value?.files ?? []).filter(isReadableFile).map((file) => file.sourceRelativePath),
     ),
 );
-
-/**
- * The comparison this page links to — the owning name's first two readable
- * entry-point files — or null when the name has fewer than two, where there
- * is nothing to pair. A comparison is a pair within one skill name — the
- * URL itself names two of the name's copies (FR-011) — and this page
- * already knows the name: the same link the inventory row offers,
- * so a reader deep in a skill's files never has to go back to the list to
- * start comparing. The compare route's own file switchers take over from
- * there, census companions included.
- */
-const comparePairRoute = computed(() => {
-  const entry = owner.value?.entry;
-  if (entry === undefined) {
-    return null;
-  }
-  const paths: string[] = [];
-  for (const definition of entry.definitions) {
-    const path = definition.sourceRelativePath;
-    if (comparablePaths.value.has(path) && !paths.includes(path)) {
-      paths.push(path);
-    }
-  }
-  const [first, second] = paths;
-  return first !== undefined && second !== undefined
-    ? skillComparisonRouteFor(first, second)
-    : null;
-});
 
 const entryDetail = sessionViewState.entryDetail;
 const openCompanion = sessionViewState.openCompanion;
@@ -191,11 +154,11 @@ const owner = computed(() => {
   if (!committedPaths.value.has(path)) {
     return null;
   }
-  // One walk over the inventory, keeping only this route's tool's
-  // definitions: the URL addresses a definition —
-  // `/skills/<tool>/<source-relative path>` — so which recognition of a file
-  // the page is about is the link's own identity rather than a preference
-  // this page applies.
+  // One walk over the inventory. Any definition of the file answers, because
+  // what this resolves is which skill the URL's file belongs to — a
+  // directory and its census — and every product that reads the file reads
+  // the same one. Which names those products invoke it by is a separate
+  // question, answered over the whole inventory by {@link invocationNames}.
   //
   // A file that is a skill's own entry point wins over every census that
   // happens to list it, and the two are not exclusive: a skill nested inside
@@ -208,9 +171,6 @@ const owner = computed(() => {
   let deepest: { entry: SkillInventoryEntryDto; definition: SkillDefinitionDto } | null = null;
   for (const entry of snapshot.value?.skills ?? []) {
     for (const definition of entry.definitions) {
-      if (definition.tool !== openTool.value) {
-        continue;
-      }
       if (definition.sourceRelativePath === path) {
         return { entry, definition };
       }
@@ -259,60 +219,123 @@ const treeFiles = computed(() => {
 const treeDirectory = computed(() => directoryOf(treeFiles.value[0] ?? ''));
 
 /**
- * What the page is titled: the owning row's name — this product's provisional
- * identity, the same one the inventory lists, so the page and the list agree
- * (FR-007, data-model.md § Skill presentation). The addressed definition's
- * documented invocation name sits beside it. Nothing only when the name has
- * no character that draws;
- * the template titles the page by its kind then, and the path is on the line
- * below either way.
+ * One product's own name for this skill: the tool, the name its documentation
+ * invokes the skill by — which is what the inventory keys that product's row
+ * by (FR-007) — and the surfaces of the documented behaviors the admitting
+ * rules rest on. A class because production builds these in exactly one
+ * place, {@link invocationNames}.
+ */
+class SkillInvocation {
+  /** The recognizing product, rendered through its closed-union caption. */
+  public readonly tool: SupportedTool;
+  /** That product's name for the skill, escaped for presentation like a path. */
+  public readonly nameText: string;
+  /**
+   * The same name as accessible-name text: the single-line label rule,
+   * because an accessible name collapses whitespace and would read two
+   * invisibly different names as one ({@link inlinePresentationLabel}).
+   */
+  public readonly nameAccessibleText: string;
+  /**
+   * Whether the name draws nothing as authored — whitespace, or
+   * default-ignorable code points — so the line can say so instead of showing
+   * an apparently empty value (FR-025).
+   */
+  public readonly nameInvisible: boolean;
+  /** The surfaces this product's admissions rest on, already captioned. */
+  public readonly surfacesText: string;
+  /**
+   * The comparison of this name's copies — its row's first two readable entry
+   * files — or null when the name has fewer than two, where there is nothing
+   * to pair. A comparison is a pair within one name (FR-011), so each name
+   * offers its own: the same link the inventory row offers, so a reader deep
+   * in a skill's files never has to go back to the list to start comparing.
+   * The compare route's own file switchers take over from there, census
+   * companions included.
+   */
+  public readonly compareRoute: ReturnType<typeof skillComparisonRouteFor> | null;
+
+  /**
+   * Builds one line from the row that names it and the definition in it.
+   * `namedAlready` is true when an earlier line of this page already carries
+   * this row's comparison entry, which suppresses a second one: the
+   * comparison belongs to the name, so two products invoking one file by one
+   * name would otherwise offer the same control twice — one accessible name,
+   * one destination (WCAG 2.4.6).
+   */
+  public constructor(
+    entry: SkillInventoryEntryDto,
+    definition: SkillDefinitionDto,
+    comparablePaths: ReadonlySet<string>,
+    namedAlready: boolean,
+  ) {
+    this.tool = definition.tool;
+    this.nameText = escapeControlCharacters(entry.name);
+    this.nameAccessibleText = inlinePresentationLabel(entry.name);
+    this.nameInvisible = rendersNothingVisible(entry.name);
+    this.surfacesText = definition.surfaces
+      .map((surface) => VENDOR_SURFACE_TEXT[surface])
+      .join(', ');
+    const paths: string[] = [];
+    for (const candidate of entry.definitions) {
+      const path = candidate.sourceRelativePath;
+      if (comparablePaths.has(path) && !paths.includes(path)) {
+        paths.push(path);
+      }
+    }
+    const [first, second] = paths;
+    this.compareRoute =
+      !namedAlready && first !== undefined && second !== undefined
+        ? skillComparisonRouteFor(entry.name, first, second)
+        : null;
+  }
+}
+
+/**
+ * The name each recognizing product invokes this skill by, in the closed tool
+ * order (FR-007, data-model.md § Skill presentation).
  *
- * Rendered with the same control-character escaping as a path, because a
- * nested prefix and a fallback name are path segments (data-model.md
- * § Inventory unit). The renderability test below is only that: the value is
- * never trimmed, and a whitespace-only name stays readable as itself among
- * the declarations (FR-025).
+ * Read off the inventory rather than a field of the detail: a row is one
+ * invocation name as one tool resolves it, so the entry file's rows already
+ * carry every name and its product, and a second copy on the detail would be
+ * a fact and something derived from it. The URL names a file rather than a
+ * product, so the page states them all — this is what a per-tool address
+ * used to say one at a time.
+ *
+ * Keyed on the skill's entry file, so opening a companion states the same
+ * names: a companion is a file of the skill, not a skill of its own.
  */
-/** The owning row's own name, raw — one lookup the three presentations below share. */
-const rowName = computed(() => owner.value?.entry.name ?? '');
-
-const inventoryName = computed(() => escapeControlCharacters(rowName.value));
-
-/**
- * Whether the row's name draws nothing as authored — whitespace, or
- * default-ignorable code points. The heading then renders the escaped
- * spelling with the same note the inventory row shows, so the page and the
- * list stay the same row name (FR-007); for a name of plain whitespace the
- * escaped spelling still draws nothing, which is exactly what the note is
- * for.
- */
-const inventoryNameInvisible = computed(
-  () => rowName.value !== '' && rendersNothingVisible(rowName.value),
-);
-
-/**
- * The skill's documented invocation name, from the definition this route
- * addresses: the URL's tool segment decided which recognition the page is
- * about, so the value is that definition's published one (data-model.md
- * § Skill presentation). Empty when the definition publishes none — a failed
- * extraction leaves an authored-name tool's invocation unknown (FR-028) —
- * and the line below renders only when there is one. Escaped like every
- * name.
- */
-const invocationName = computed(() =>
-  escapeControlCharacters(owner.value?.definition.invocationName ?? ''),
-);
-
-/**
- * Whether the published invocation name draws nothing as authored —
- * whitespace, or default-ignorable code points — so the line can say so
- * instead of showing an apparently empty value, the same note the inventory
- * row gives the row name (FR-025).
- */
-const invocationNameInvisible = computed(() => {
-  const published = owner.value?.definition.invocationName ?? '';
-  return published !== '' && rendersNothingVisible(published);
+const invocationNames = computed((): readonly SkillInvocation[] => {
+  const entryPath = owner.value?.definition.sourceRelativePath;
+  if (entryPath === undefined) {
+    return [];
+  }
+  const byTool = new Map<SupportedTool, SkillInvocation>();
+  // One comparison entry per name rather than per product: the comparison is
+  // the name's, so a second product invoking the file by the same name adds a
+  // line but no second link.
+  const named = new Set<string>();
+  for (const entry of snapshot.value?.skills ?? []) {
+    for (const definition of entry.definitions) {
+      if (definition.sourceRelativePath === entryPath) {
+        byTool.set(
+          definition.tool,
+          new SkillInvocation(entry, definition, comparablePaths.value, named.has(entry.name)),
+        );
+        named.add(entry.name);
+      }
+    }
+  }
+  return SUPPORTED_TOOL_ORDER.filter((tool) => byTool.has(tool)).map((tool) => byTool.get(tool)!);
 });
+
+/**
+ * The skill's directory, escaped for presentation, which heads the page: the
+ * directory is the skill (FR-007), and it is the one identity every product
+ * reading it shares, where the names they invoke it by differ. Empty only
+ * before an owner resolves, where the template titles the page by its kind.
+ */
+const skillDirectoryText = computed(() => escapeControlCharacters(treeDirectory.value));
 
 /**
  * The skill's own presentation — the one scan-time parse, published once on
@@ -595,7 +618,7 @@ const detailFailure = computed<string | null>(() => {
  */
 const detailAnnouncement = computed(() => {
   if (detailState.value === 'stale' || owner.value === null) {
-    return 'Nothing in the current scan sits at this link\u2019s path for this tool.';
+    return 'Nothing in the current scan sits at this link\u2019s path.';
   }
   if (detailFailure.value !== null) {
     return detailFailure.value;
@@ -703,17 +726,18 @@ const titleSubject = computed<string | null>(() => {
   if (detailFailure.value !== null && detailState.value !== 'companion-failed') {
     return 'Skill could not be loaded';
   }
-  // The raw name, not this page's escaped spelling: the shell escapes its
-  // subject exactly once at the rendering boundary (`App.vue`), so passing an
-  // escaped value would double-escape — a name containing a newline would
-  // head the page as `\u000A` but title the tab `\u005Cu000A`. Null when the
-  // escaped spelling still draws nothing — a plain-whitespace name — because
-  // a tab titled by it would read as having no subject at all.
-  const name = owner.value?.entry.name;
-  if (name === undefined || rendersNothingVisible(escapeControlCharacters(name))) {
+  // The skill's own directory, which is what heads the page. The raw value,
+  // not this page's escaped spelling: the shell escapes its subject exactly
+  // once at the rendering boundary (`App.vue`), so passing an escaped value
+  // would double-escape — a directory containing a newline would head the
+  // page as `\u000A` but title the tab `\u005Cu000A`. Null when the escaped
+  // spelling still draws nothing, because a tab titled by it would read as
+  // having no subject at all.
+  const directory = treeDirectory.value;
+  if (directory === '' || rendersNothingVisible(escapeControlCharacters(directory))) {
     return null;
   }
-  return name;
+  return directory;
 });
 watchEffect(() => {
   // Reported as this page instance's own, so an outgoing page's unmount
@@ -822,38 +846,18 @@ onBeforeUnmount(() => {
     <p><NuxtLink to="/?kind=skill">Back to the inventory</NuxtLink></p>
 
     <h2 ref="heading" tabindex="-1">
-      <!-- The row's own name heads the page — this product's provisional
-           identity, the same one the inventory lists, in the same spelling:
-           escaped like a path, and a name that draws nothing as authored
-           gets the same note the inventory row shows rather than being
-           replaced by the page's kind (FR-007). The span hugs its binding
-           because it renders authored whitespace. -->
-      <template v-if="inventoryName !== '' && inventoryNameInvisible"
-        ><span class="aci-authored-text aci-authored-atomic">{{ inventoryName }}</span>
-        <span class="aci-muted">(name with no visible characters)</span></template
-      >
-      <span v-else-if="inventoryName !== ''" class="aci-authored-text">{{ inventoryName }}</span>
+      <!-- The skill's own directory heads the page: the directory is the
+           skill (FR-007), and it is the one identity every product reading
+           it shares, where the names they invoke it by differ and are listed
+           below. Escaped for presentation like every path, never a locator
+           anything can open (FR-024, FR-030). A URL no owner resolves for is
+           headed by the kind, so the heading always describes the page
+           (WCAG 2.4.6). -->
+      <span v-if="skillDirectoryText !== ''" class="aci-path aci-authored-text">{{
+        skillDirectoryText
+      }}</span>
       <template v-else>Skill</template>
     </h2>
-
-    <!-- The documented invocation name, beside the provisional name in the
-         heading: the two kinds of name a reader needs — what the vendors'
-         own documentation invokes, and what this inventory lists — shown
-         together so both can be checked (FR-007, data-model.md § Skill
-         presentation). Absent when the definition publishes none: a failed
-         extraction leaves an authored-name tool's invocation unknown, and
-         its diagnostic tells the failure (FR-028). A name that draws nothing
-         gets the same note the row shows, so the line never reads as an
-         empty value (FR-025). -->
-    <p v-if="invocationName !== ''" class="aci-note aci-skill-detail__invocation-name">
-      Invocation name:
-      <span class="aci-authored-text" :class="{ 'aci-authored-atomic': invocationNameInvisible }">{{
-        invocationName
-      }}</span>
-      <span v-if="invocationNameInvisible" class="aci-muted"
-        >(name with no visible characters)</span
-      >
-    </p>
 
     <!-- Stable rather than inserted with the state it reports, because a
          region that appears together with its message is not reliably read;
@@ -868,9 +872,8 @@ onBeforeUnmount(() => {
 
     <template v-else-if="detailState === 'stale' || owner === null">
       <p class="aci-error">
-        Nothing in the current scan sits at this link's path for this tool. The inventory may have
-        changed since the link was made; a rescan that brings the path back will make it resolve
-        again.
+        Nothing in the current scan sits at this link's path. The inventory may have changed since
+        the link was made; a rescan that brings the path back will make it resolve again.
       </p>
       <p><NuxtLink to="/?kind=skill">Return to the inventory and open it again.</NuxtLink></p>
     </template>
@@ -890,33 +893,55 @@ onBeforeUnmount(() => {
 
     <template v-else-if="entryDetail">
       <div class="aci-skill-detail__overview">
-        <!-- Path text escapes control characters for presentation
-             (data-model.md § SourceRelativePath); the stored value that roots
-             the tree below is unchanged. -->
-        <p class="aci-path aci-authored-text">{{ escapeControlCharacters(treeDirectory) }}</p>
-
-        <!-- Which definition this page is: the route's tool, rendered
-             through its closed-union caption, with the surfaces of the
-             documented behaviors its admitting rules rest on beside it
-             (FR-007, FR-009) — a definition is one recognition, and every
-             recognition states them. Naming a surface is never a claim that it
-             loaded the skill. The recognizing-tools matrix of the file is the
-             inventory's to show; this page is one definition of it, and
-             selecting a companion never changes it. -->
-        <p v-if="owner !== null" class="aci-skill-detail__definition">
-          {{ SUPPORTED_TOOL_TEXT[owner.definition.tool] }} ({{
-            owner.definition.surfaces.map((surface) => VENDOR_SURFACE_TEXT[surface]).join(', ')
-          }}) ·
-          {{ CUSTOMIZATION_KIND_TEXT.skill }}
-        </p>
-
-        <!-- The comparison entry for this name (FR-011): present exactly when
-             the name resolves two or more readable files. The comparison
-             surface's own file switchers take over from there, this skill's
-             census files included. -->
-        <p v-if="comparePairRoute !== null" class="aci-skill-detail__compare">
-          <NuxtLink :to="comparePairRoute">Compare this skill's files</NuxtLink>
-        </p>
+        <!-- What each recognizing product invokes this skill by, with the
+             surfaces of the documented behaviors its admitting rules rest on
+             beside it (FR-007, FR-009). Two products reading one `SKILL.md`
+             need not agree — Copilot invokes the authored `name`, Claude Code
+             the skill directory — so the page states both rather than picking
+             one, which a per-product address would have decided instead. Naming
+             a surface is never a claim that it loaded the skill. Selecting a
+             companion never changes this list: a companion is a file of the
+             skill, not a skill of its own. -->
+        <ul v-if="invocationNames.length > 0" class="aci-skill-detail__invocations" role="list">
+          <li v-for="invocation in invocationNames" :key="invocation.tool">
+            <span class="aci-skill-detail__invocation"
+              >{{ SUPPORTED_TOOL_TEXT[invocation.tool] }} ({{ invocation.surfacesText }}) ·
+              {{ CUSTOMIZATION_KIND_TEXT.skill }}</span
+            >
+            <!-- The name is labelled rather than trailing the product, because
+                 what it is — the name that product's own documentation
+                 invokes the skill by — is the whole point of showing several.
+                 The span hugs its binding because it renders authored
+                 whitespace, and a name that draws nothing as authored gets the
+                 note the inventory row gives it, so the line never reads as an
+                 empty value (FR-025). -->
+            {{ ' · ' }}
+            <span
+              >Invocation name:
+              <span
+                class="aci-authored-text"
+                :class="{ 'aci-authored-atomic': invocation.nameInvisible }"
+                >{{ invocation.nameText }}</span
+              ><span v-if="invocation.nameInvisible" class="aci-muted">
+                (name with no visible characters)</span
+              ></span
+            >
+            <!-- The comparison entry for this name (FR-011): present exactly
+                 when the name resolves two or more readable files. The
+                 comparison surface's own file switchers take over from there,
+                 this skill's census files included. The accessible name
+                 carries the name, because a page listing two products offers
+                 the same phrase twice (WCAG 2.4.6; label-in-name keeps the
+                 visible phrase as the prefix). -->
+            <template v-if="invocation.compareRoute !== null">{{ ' · ' }}</template>
+            <NuxtLink
+              v-if="invocation.compareRoute !== null"
+              :to="invocation.compareRoute"
+              :aria-label="`Compare this skill's files: ${invocation.nameAccessibleText}`"
+              >Compare this skill's files</NuxtLink
+            >
+          </li>
+        </ul>
       </div>
 
       <!-- Two subjects, two tabs: the skill itself, and the files its
@@ -1034,12 +1059,7 @@ onBeforeUnmount(() => {
         </p>
 
         <div class="aci-skill-detail__layout">
-          <SkillFileTree
-            :files="treeFiles"
-            :selected-path="openPath"
-            :tool="openTool"
-            :directory="treeDirectory"
-          />
+          <SkillFileTree :files="treeFiles" :selected-path="openPath" :directory="treeDirectory" />
 
           <!-- One element for all three states, so the skip target above survives
              the swap between them: a target that unmounted when loading became
@@ -1177,9 +1197,35 @@ onBeforeUnmount(() => {
 
 /* The definition's own caption line, weighted like a heading within the
    overview: it says which tool's definition the page is. */
-.aci-skill-detail__definition {
-  font-weight: 600;
+/* One line per recognizing product, laid across the overview's width rather
+   than stacked in a column: this list is the widest thing the overview holds,
+   and stacking three short parts per product left the rest of the line empty.
+   Products wrap onto their own lines only when two no longer fit. */
+.aci-skill-detail__invocations {
+  column-gap: 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
   margin: 0;
+  padding: 0;
+  row-gap: 0.15rem;
+}
+
+/* The product, its name, and its comparison entry read as one line, set apart
+   by separators rather than by punctuation inside the text — the same rhythm
+   an inventory row's recognitions have. */
+.aci-skill-detail__invocation {
+  font-weight: 600;
+}
+
+/* The separator is a text node rather than generated content, so the line
+   reads the same to a screen reader as it does on screen: `::before` content
+   is not part of the accessible text, and `Skill` would run into
+   `Invocation name` with nothing between them. */
+.aci-skill-detail__invocations li {
+  display: flex;
+  column-gap: 0.4rem;
+  flex-wrap: wrap;
 }
 
 /* Kept short on purpose: it is what a reader needs before choosing a file, and

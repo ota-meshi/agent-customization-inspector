@@ -91,24 +91,33 @@ useRouter().afterEach((to, from, failure) => {
 /**
  * What the current route is, for the document title: the fallback surface
  * name when the active page reports no subject of its own through
- * {@link SessionViewState.pageSubject}.
+ * {@link SessionViewState.pageSubject}. A detail page falls back here when
+ * its own subject draws nothing — a path of whitespace alone — so a family
+ * missing from this chain titles such a tab `Inspection` rather than by its
+ * kind.
+ *
+ * One branch per route family `detail-route.ts` declares, in the closed kind
+ * order (`entities.ts` § CUSTOMIZATION_KIND_ORDER); a family added there
+ * belongs here in the same change.
  */
 const routeTitle = computed(() =>
-  route.path.startsWith('/skills/')
-    ? CUSTOMIZATION_KIND_TEXT.skill
-    : route.path.startsWith('/instructions')
-      ? CUSTOMIZATION_KIND_TEXT.instructions
+  route.path.startsWith('/instructions')
+    ? CUSTOMIZATION_KIND_TEXT.instructions
+    : route.path.startsWith('/skills/')
+      ? CUSTOMIZATION_KIND_TEXT.skill
       : route.path.startsWith('/mcp')
         ? CUSTOMIZATION_KIND_TEXT.MCP
-        : route.path.startsWith('/rules')
-          ? CUSTOMIZATION_KIND_TEXT.rule
-          : route.path.startsWith('/permissions')
-            ? CUSTOMIZATION_KIND_TEXT.permissions
-            : route.path.startsWith('/agents')
-              ? CUSTOMIZATION_KIND_TEXT.agent
-              : route.path.startsWith('/prompts-and-commands')
-                ? CUSTOMIZATION_KIND_TEXT['prompt/command']
-                : 'Inspection',
+        : route.path.startsWith('/agents')
+          ? CUSTOMIZATION_KIND_TEXT.agent
+          : route.path.startsWith('/prompts-and-commands')
+            ? CUSTOMIZATION_KIND_TEXT['prompt/command']
+            : route.path.startsWith('/rules')
+              ? CUSTOMIZATION_KIND_TEXT.rule
+              : route.path.startsWith('/permissions')
+                ? CUSTOMIZATION_KIND_TEXT.permissions
+                : route.path.startsWith('/settings-and-configuration')
+                  ? CUSTOMIZATION_KIND_TEXT['settings/config']
+                  : 'Inspection',
 );
 
 const startupErrorMessage = shallowRef<string | null>(null);
@@ -219,7 +228,7 @@ onMounted(async () => {
   //
   // `baseURL` is this page's own origin rather than devframe's default
   // `'./'`, which resolves against the current document path. This application
-  // has nested routes — `/skills/<tool>/<source-relative path>` — and a page loaded directly at one
+  // has nested routes — `/skills/<source-relative path>` — and a page loaded directly at one
   // of them would look for the connection metadata under `/skills/` and fail to
   // connect at all. The origin is the right base because the host serves the
   // shell from the site root (`app.baseURL` in nuxt.config.ts); a bare `'/'`

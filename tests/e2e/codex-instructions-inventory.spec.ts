@@ -104,12 +104,14 @@ test.describe('instruction rows with an admitted carrier', () => {
     expect(text).not.toContain('ABSENT_GUIDE.md');
   });
 
-  test('shows the carrier only under the MCP tab, with no declaration rows', async ({ page }) => {
+  test('shows the carrier under its own tabs, with no declaration rows', async ({ page }) => {
     await page.goto(host.origin);
     await expect(page.getByRole('tabpanel').locator('.aci-item')).toHaveCount(2);
-    // The carrier's own candidacy (Phase 23, `codex.repo.config`) adds the
-    // MCP tab beside Instructions; the instruction rows still never name it.
-    await expect(page.getByRole('tab')).toHaveCount(2);
+    // The carrier's two candidacies add two tabs beside Instructions: the MCP
+    // tab for the declarations inside the file (`codex.repo.config`) and the
+    // settings tab for the document they sit in (`codex.repo.settings`). The
+    // instruction rows still never name it.
+    await expect(page.getByRole('tab')).toHaveCount(3);
     const instructionsText = await page.getByRole('tabpanel').innerText();
     expect(instructionsText).not.toContain('config.toml');
     // Under the MCP tab the carrier is the one grouping, stating that it
@@ -119,6 +121,11 @@ test.describe('instruction rows with an admitted carrier', () => {
     await expect(page.getByRole('tabpanel').locator('.aci-item')).toHaveCount(1);
     await expect(page.getByRole('tabpanel')).toContainText('.codex/config.toml');
     await expect(page.getByRole('tabpanel')).toContainText('This file declares no MCP servers.');
+    // And under the settings tab it is one row: the file itself, which is
+    // that kind's inventory unit (data-model.md § Inventory unit).
+    await page.getByRole('tab', { name: /Settings \/ Config/u }).click();
+    await expect(page.getByRole('tabpanel').locator('.aci-item')).toHaveCount(1);
+    await expect(page.getByRole('tabpanel')).toContainText('.codex/config.toml');
   });
 
   test('shows no authored source text', async ({ page }) => {
@@ -207,19 +214,15 @@ test.describe('the kind tab as URL state', () => {
 
     // Into the detail and back with the browser: the tab the user left is
     // the tab they return to.
-    await page
-      .getByRole('link', { name: /OpenAI Codex/u })
-      .first()
-      .click();
-    await expect(page.getByRole('heading', { name: 'greet' })).toBeVisible();
+    await page.locator('.aci-skill-row__file').locator('a').first().click();
+    await expect(
+      page.getByRole('heading', { name: '.agents/skills/greet/', exact: true }),
+    ).toBeVisible();
     await page.goBack();
     await expect(page.getByRole('tab', { selected: true })).toContainText('Skill');
 
     // And the detail page's own link names the kind it returns to.
-    await page
-      .getByRole('link', { name: /OpenAI Codex/u })
-      .first()
-      .click();
+    await page.locator('.aci-skill-row__file').locator('a').first().click();
     await page.getByRole('link', { name: 'Back to the inventory' }).click();
     await expect(page.getByRole('tab', { selected: true })).toContainText('Skill');
   });

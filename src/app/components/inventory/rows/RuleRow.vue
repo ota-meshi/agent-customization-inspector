@@ -30,7 +30,11 @@
 import { computed } from 'vue';
 import { NuxtLink } from '#components';
 import { detailRoute } from '../../detail-route';
-import { SUPPORTED_TOOL_TEXT, pathPresentationLabel } from '../../../../shared/entities';
+import {
+  SUPPORTED_TOOL_TEXT,
+  inlinePresentationLabel,
+  pathPresentationLabel,
+} from '../../../../shared/entities';
 import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text';
 import type { RuleInventoryEntryDto } from '../../../../shared/api-types';
 
@@ -54,6 +58,14 @@ const pathText = computed(() => pathPresentationLabel(props.entry.sourceRelative
 const route = computed(() => detailRoute('rule', props.entry.sourceRelativePath));
 
 /**
+ * What a screen reader announces the path link as: a reader walking the page's
+ * links hears each one out of its visual context, and the whitespace-safe
+ * label keeps two paths differing only in spacing from announcing identically
+ * (WCAG 2.4.4, FR-025).
+ */
+const pathAccessibleText = computed(() => inlinePresentationLabel(props.entry.sourceRelativePath));
+
+/**
  * Each product that recognized the file, with the surfaces its admissions
  * rest on beside it — the product alone does not say where a file is read
  * from once two surfaces document different lookup bases (FR-009).
@@ -74,42 +86,53 @@ const recognitions = computed(() =>
 
 <template>
   <li class="aci-item">
-    <!-- The file's path is the row's identity, rendered exactly as published
-         and never as a locator anything can open (FR-024). -->
-    <p class="aci-path aci-authored-text">{{ pathText }}</p>
-
-    <!-- Every product that recognized the file, in the closed tool order, each
-         linking to the file's own detail route, with the surfaces of the
-         documented behaviors its admitting rules rest on beside it. Naming a
-         surface is never a claim that the surface loaded the file (FR-009). -->
-    <ul class="aci-rule-row__tools" role="list">
-      <li v-for="recognition in recognitions" :key="recognition.tool">
-        <NuxtLink :to="route">{{ recognition.toolText }}</NuxtLink>
-        <span class="aci-rule-row__surfaces aci-muted">{{ recognition.surfacesText }}</span>
-      </li>
-    </ul>
+    <!-- The file's path is the row's identity and the link to its own detail,
+         rendered exactly as published and never as a locator anything outside
+         this product can open (FR-024). The products that recognized it stand
+         beside it, each with the surfaces of the documented behaviors its
+         admitting rules rest on; naming a surface is never a claim that the
+         surface loaded the file (FR-009). -->
+    <p class="aci-rule-row__owner">
+      <NuxtLink :to="route" class="aci-path aci-authored-text" :aria-label="pathAccessibleText">{{
+        pathText
+      }}</NuxtLink>
+      <span
+        v-for="recognition in recognitions"
+        :key="recognition.tool"
+        class="aci-rule-row__tool aci-muted"
+        >{{ recognition.toolText }}
+        <span class="aci-rule-row__surfaces">{{ recognition.surfacesText }}</span></span
+      >
+    </p>
   </li>
 </template>
 
 <style scoped>
-/* The recognitions of the file, set under the path by an indent and a
-   rule, matching how a skill row groups its definitions. */
-.aci-rule-row__tools {
-  list-style: none;
-  margin: 0.2rem 0 0;
-  border-inline-start: 1px solid var(--aci-border);
-  padding-inline-start: 0.6rem;
+/* The path and the products that recognize it on one line, the way an MCP or
+   agent row lays out a carrier and its recognitions: the path is the subject
+   and the products qualify it. */
+.aci-rule-row__owner {
+  margin: 0;
 }
 
-/* The surfaces trail the product on the same line, set apart by a separator
-   rather than by punctuation inside the text: the product is what was
-   recognized, and the surfaces qualify it. */
-.aci-rule-row__surfaces {
+.aci-rule-row__tool {
   margin-inline-start: 0.4rem;
 }
 
-.aci-rule-row__surfaces::before {
+.aci-rule-row__tool::before {
   content: '·';
   margin-inline-end: 0.4rem;
+}
+
+.aci-rule-row__surfaces {
+  font-size: 0.85em;
+}
+
+.aci-rule-row__surfaces::before {
+  content: '(';
+}
+
+.aci-rule-row__surfaces::after {
+  content: ')';
 }
 </style>

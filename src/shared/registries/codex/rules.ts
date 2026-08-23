@@ -99,9 +99,10 @@ export const CODEX_REPO_INSTRUCTIONS_RULE = {
  * Configured instruction fallback basenames, seeded by the pinned
  * `.codex/config.toml` path (contracts/vendors/openai-codex.md § Derived
  * Repository rules). The seed is a configuration input the
- * configuration-read stage consumes; this product never publishes or
- * raw-displays the file itself, and its candidacy as an MCP carrier is its
- * own later phase's decision.
+ * configuration-read stage consumes; the same physical file is also admitted
+ * as an MCP carrier by `codex.repo.config` and as a settings document by
+ * `codex.repo.settings`, whose detail serves it whole — one read, three
+ * readers.
  * The configuration-read stage does exactly one thing with it: read the
  * `project_doc_fallback_filenames` array out of the seed it opened, and give
  * the walk one Repository-root selector per declared name, admitting whichever
@@ -177,10 +178,13 @@ const CODEX_REPO_CONFIG_MATCHER: StructuredInspectorMatcher = {
  * derivation still reads the same physical file as its seed before the walk
  * (`codex.derived.fallback-basename`), because configuration decides what the
  * walk targets and must be known first. What this rule adds is the candidacy —
- * the file publishes its own facts in `files[]` like every candidate — while
- * honoring the decision that the carrier's own source text reaches no surface:
- * its detail publishes the declarations by the keys the file wrote, never the
- * file's bytes (FR-007).
+ * the file publishes its own facts in `files[]` like every candidate — and its
+ * MCP detail publishes the declarations by the keys the file wrote rather than
+ * the file's bytes, because that detail's subject is one declaration (FR-007).
+ * The document those declarations sit in is {@link CODEX_REPO_SETTINGS_RULE}'s
+ * recognition of the same file: two rules over one candidate and one read, the
+ * arrangement `.claude/settings.json` already has where one rule admits the
+ * permission policy inside it and another the settings around it.
  *
  * Admitting the carrier is not asserting Codex loads it: project layers apply
  * only to trusted projects, and whether a declared server is enabled or
@@ -219,6 +223,59 @@ export const CODEX_REPO_CONFIG_RULE = {
           reviewedOn: '2026-07-25',
           establishes:
             'MCP servers are declared as named [mcp_servers.*] tables inside that configuration file, which is why the carrier is admitted for the MCP inventory rather than any standalone MCP file.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
+ * The Codex Repository configuration document — the same root
+ * `.codex/config.toml` {@link CODEX_REPO_CONFIG_RULE} admits, recognized here
+ * as the settings file it is. The vendor contract is explicit that the single
+ * admitted carrier owns separate `MCP` and `settings/config` recognitions
+ * (contracts/vendors/openai-codex.md § Normative initial-release presentation
+ * allowlist), and a recognition is what a rule produces, so each is a rule.
+ * Two rules over one path add no read: the walk merges them into one candidate
+ * with both provenances, exactly as any two plans admitting one file do.
+ *
+ * The matcher is shared with the carrier rule rather than restated, because it
+ * is the same location and a second spelling of it could drift.
+ *
+ * The kind's inventory unit is the file (data-model.md § Inventory unit), so
+ * this recognition reads nothing out of the document: its detail is the TOML
+ * its author wrote, comments and section order intact. The `[mcp_servers.*]`
+ * tables inside it belong to the other recognition's rows and are visible here
+ * only as part of the one document (FR-007).
+ *
+ * Admitting the file is not asserting Codex applied it: project layers apply
+ * only to trusted projects, the User and system layers this Source excludes
+ * resolve against the same keys, and which value wins is a runtime outcome
+ * this tool never observes (FR-009). No configured target the document names
+ * gains read authority.
+ */
+export const CODEX_REPO_SETTINGS_RULE = {
+  ruleId: 'codex.repo.settings',
+  tool: 'codex',
+  discoveryClass: 'static-candidate',
+  kind: 'settings/config',
+  sourceKinds: ['repository'],
+  matcher: CODEX_REPO_CONFIG_MATCHER,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'openai.codex.config-basic',
+          url: 'https://learn.chatgpt.com/docs/config-file/config-basic.md',
+          officialHost: 'learn.chatgpt.com',
+          sections: ['Codex configuration file', 'Configuration precedence'],
+          reviewedOn: '2026-08-17',
+          establishes:
+            'Project configuration lives in .codex/config.toml, loaded per trusted layer from the project root down to the runtime cwd — the root layer being the one inside the selected Repository boundary.',
         },
       ]
     : [],
@@ -474,5 +531,6 @@ export const CODEX_INSPECTION_RULES: Readonly<Record<CodexRuleId, InspectionRule
   [CODEX_REPO_CONFIG_RULE.ruleId]: CODEX_REPO_CONFIG_RULE,
   [CODEX_REPO_INSTRUCTIONS_RULE.ruleId]: CODEX_REPO_INSTRUCTIONS_RULE,
   [CODEX_REPO_RULES_RULE.ruleId]: CODEX_REPO_RULES_RULE,
+  [CODEX_REPO_SETTINGS_RULE.ruleId]: CODEX_REPO_SETTINGS_RULE,
   [CODEX_REPO_SKILL_RULE.ruleId]: CODEX_REPO_SKILL_RULE,
 };

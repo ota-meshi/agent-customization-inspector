@@ -33,12 +33,6 @@ const props = defineProps<{
   readonly files: readonly string[];
   /** The path of the file currently open, so the tree can mark it. */
   readonly selectedPath: string;
-  /**
-   * The tool segment of the detail route this tree lives under. A link
-   * addresses a definition — `/skills/<tool>/<source-relative path>` — so opening a
-   * companion stays within the recognition the page is about.
-   */
-  readonly tool: string;
   /** The directory prefix the tree is rooted at, stripped from every label. */
   readonly directory: string;
 }>();
@@ -49,7 +43,7 @@ const nodes = computed(() => buildSkillTree(props.files, props.directory));
 
 <template>
   <nav class="aci-skill-file-tree" aria-label="Files in this skill">
-    <SkillFileTreeBranch :nodes="nodes" :selected-path="selectedPath" :tool="tool" />
+    <SkillFileTreeBranch :nodes="nodes" :selected-path="selectedPath" />
   </nav>
 </template>
 

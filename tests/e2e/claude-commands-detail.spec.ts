@@ -81,7 +81,7 @@ test.describe('the complete literal Claude command detail', () => {
     await rows
       .filter({ hasText: '.claude/commands/deploy.md' })
       .first()
-      .getByRole('link', { name: 'Claude Code' })
+      .getByRole('link', { name: '.claude/commands/deploy.md' })
       .click();
     await expect(page).toHaveURL(/\/prompts-and-commands\/\.claude\/commands\/deploy\.md$/u);
     await expect(page.getByRole('heading', { name: '.claude/commands/deploy.md' })).toBeVisible();

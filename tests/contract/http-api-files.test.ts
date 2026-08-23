@@ -594,13 +594,14 @@ describe('get-mcp-carrier-detail for the Codex MCP carrier (T295)', () => {
     expect(JSON.stringify(result)).not.toContain('sourceText');
   });
 
-  it('withholds the carrier bytes even when a configured fallback recognizes it (FR-007)', async () => {
+  it('answers a carrier that a configured fallback also recognizes under its file row (FR-007)', async () => {
     // A Codex `project_doc_fallback_filenames` entry naming `.mcp.json` makes
-    // the root carrier an instructions candidate too. The instructions
-    // variant carries the full body text, so answering it for this file
-    // would hand out the bytes — credentials included — that the carrier's
-    // admission withholds; the carrier's protection wins, and the path is
-    // `get-mcp-carrier-detail`'s resource alone.
+    // the root carrier an instruction file too. Which detail answers for a
+    // file follows from the row it is reached through, never from the file:
+    // the MCP row's subject is one declaration, so that detail publishes
+    // declarations alone, while the instructions row's subject is the file,
+    // so the instruction detail is the whole document — the same complete
+    // source every other instruction file shows.
     const root = createRepositoryFixtureRoot('inspector-mcp-fallback-carrier');
     cleanups.push(() => rmSync(root, { recursive: true, force: true }));
     mkdirSync(join(root, '.codex'), { recursive: true });
@@ -645,17 +646,27 @@ describe('get-mcp-carrier-detail for the Codex MCP carrier (T295)', () => {
       .instructions.flatMap((entry) => entry.files)
       .filter((file) => file.sourceRelativePath === '.mcp.json');
     expect(carrierInstructionFiles).not.toHaveLength(0);
-    // The source-serving function holds nothing at the carrier's path, and no
-    // authored byte of the carrier reaches its response.
+    // The source-serving function answers under the instructions row, with
+    // the document the reader wrote — credentials included, because a file
+    // the inspector read is the reader's own and nothing is masked
+    // (FR-025, FR-026).
     const detail = await getFileDetail(context, '.mcp.json');
-    expect(detail).toEqual({ error: { code: 'stale-resource' } });
-    expect(JSON.stringify(detail)).not.toContain(FIXTURE_SECRET_LITERAL);
-    // The declarations remain served by the carrier's own function.
+    if (!('data' in detail) || detail.data.kind !== 'instructions') {
+      throw new Error('expected the instructions file detail');
+    }
+    if (detail.data.file.encoding !== 'utf-8') {
+      throw new Error('expected the readable carrier file');
+    }
+    expect(detail.data.file.sourceText).toContain(FIXTURE_SECRET_LITERAL);
+    // The declarations are still served by the carrier's own function, which
+    // is what the MCP row opens.
     const carrier = await getMcpCarrierDetail(context, '.mcp.json');
     if (!('data' in carrier)) {
       throw new Error('expected the carrier detail result');
     }
     expect(carrier.data.servers?.map((server) => server.name)).toEqual(['db']);
+    // That response still carries no bytes: its subject is one declaration.
+    expect(JSON.stringify(carrier)).not.toContain('sourceText');
   });
 
   it('validates by resolution: each function rejects the other’s resource as stale', async () => {
@@ -666,17 +677,21 @@ describe('get-mcp-carrier-detail for the Codex MCP carrier (T295)', () => {
     expect(await getMcpCarrierDetail(context, 'packages/api/.codex/config.toml')).toEqual({
       error: { code: 'stale-resource' },
     });
-    // A committed instruction file is `get-file-detail`'s resource, not a
-    // carrier; the carrier is `get-mcp-carrier-detail`'s resource, not a
-    // file detail — the carrier's bytes must reach no response, so the
-    // source-serving function holds no detail at its path
-    // (contracts/http-api.md § get-file-detail, § get-mcp-carrier-detail).
+    // A committed instruction file is `get-file-detail`'s resource and not a
+    // carrier (contracts/http-api.md § get-mcp-carrier-detail).
     expect(await getMcpCarrierDetail(context, 'AGENTS.md')).toEqual({
       error: { code: 'stale-resource' },
     });
-    expect(await getFileDetail(context, fixture.carrierPath)).toEqual({
-      error: { code: 'stale-resource' },
-    });
+    // The Codex carrier resolves in both directions, because it holds a row
+    // of each shape: its MCP rows are declarations inside the file, and its
+    // `settings/config` row is the file. The MCP detail therefore publishes
+    // declarations with no bytes, and the file detail the whole document
+    // (contracts/http-api.md § get-file-detail).
+    const fileDetail = await getFileDetail(context, fixture.carrierPath);
+    if (!('data' in fileDetail) || fileDetail.data.kind !== 'settings/config') {
+      throw new Error('expected the settings file detail');
+    }
+    expect(fileDetail.data.file.sourceRelativePath).toBe(fixture.carrierPath);
   });
 });
 
@@ -1093,5 +1108,100 @@ describe('get-mcp-carrier-detail for Claude declarations (T316)', () => {
       expect.objectContaining({ code: 'recognition-parse-failed' }),
     ]);
     expect(JSON.stringify(result)).not.toContain('sourceText');
+  });
+});
+
+describe('get-file-detail for the Codex settings document (T593)', () => {
+  /** One scanned Codex carrier fixture and its host context. */
+  async function scannedSettingsFixture(): Promise<{
+    readonly context: InspectorHostContext;
+    readonly fixture: CodexMcpFixture;
+  }> {
+    const fixture = buildCodexMcpFixture('inspector-settings-detail-contract');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const session = new InspectionSession({
+      invocationCwd: fixture.root,
+      rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
+    });
+    const context: InspectorHostContext = {
+      session,
+      coordinator: new SessionCoordinator(session),
+    };
+    const repository = session.snapshot().sources[0]!;
+    const admission = context.coordinator.admitScan(repository.sourceId, {
+      kind: 'startup',
+      operationId: null,
+    });
+    if (admission.kind !== 'admitted') {
+      throw new Error('the first scan was not admitted');
+    }
+    await executeRepositoryScan(
+      context,
+      admission.scanRequestId,
+      repository.sourceId,
+      'repository',
+    );
+    return { context, fixture };
+  }
+
+  it('serves the complete document under its own variant, with no presentation', async () => {
+    const { context, fixture } = await scannedSettingsFixture();
+    const result = await getFileDetail(context, fixture.carrierPath);
+    if (!('data' in result) || result.data.kind !== 'settings/config') {
+      throw new Error('expected the settings file detail');
+    }
+    // Exactly the fields the contract's tree names for this variant: the
+    // file, the diagnostics, and nothing read out of the document
+    // (contracts/http-api.md § get-file-detail).
+    expect(Object.keys(result.data).toSorted()).toEqual(['diagnostics', 'file', 'kind']);
+    const file = result.data.file;
+    if (file.encoding !== 'utf-8') {
+      throw new Error('expected the readable carrier file');
+    }
+    expect(file.sourceRelativePath).toBe(fixture.carrierPath);
+    expect(file.hadLeadingBom).toBe(false);
+    expect(file.sizeBytes).toBe(Buffer.byteLength(file.sourceText, 'utf8'));
+    // The document reaches the response as its author wrote it, which is what
+    // separates this row from the MCP row of the same file: the comment, the
+    // underscored integer, and the section order a parser's resolution would
+    // have dropped are all still there (FR-007).
+    expect(file.sourceText).toContain('# Codex project configuration for the fixture repository.');
+    expect(file.sourceText).toContain('project_doc_max_bytes = 32_768');
+    expect(file.sourceText).toContain('[mcp_servers.context7]');
+    // Credentials and environment references are the characters that were
+    // written: nothing is masked and no process value is substituted, because
+    // the file is the reader's own (FR-025, FR-026).
+    expect(file.sourceText).toContain(FIXTURE_SECRET_LITERAL);
+    expect(file.sourceText).toContain(FIXTURE_ENVIRONMENT_REFERENCE);
+    // Nothing was read out, so nothing could fail to be read (FR-028).
+    expect(result.data.diagnostics).toEqual([]);
+  });
+
+  it('answers a path the current generation holds no settings row at as stale', async () => {
+    const { context, fixture } = await scannedSettingsFixture();
+    // The nested layer is a near miss the walk never admitted, so no row of
+    // any kind sits at it and both functions answer the same way.
+    for (const nearMiss of fixture.nearMissPaths) {
+      expect(await getFileDetail(context, nearMiss), nearMiss).toEqual({
+        error: { code: 'stale-resource' },
+      });
+    }
+    // A value of another type resolves the same way: the parameter validates
+    // by resolution, so there is no separate malformed-argument outcome.
+    expect(await getFileDetail(context, 42 as unknown as string)).toEqual({
+      error: { code: 'stale-resource' },
+    });
+  });
+
+  it('carries the epoch and both sequence generations beside the payload', async () => {
+    const { context, fixture } = await scannedSettingsFixture();
+    const result = await getFileDetail(context, fixture.carrierPath);
+    expect(Object.keys(result).toSorted()).toEqual([
+      'data',
+      'globalContentEpoch',
+      'globalGeneration',
+      'repositoryGeneration',
+    ]);
   });
 });

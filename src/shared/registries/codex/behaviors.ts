@@ -80,10 +80,11 @@ export const CODEX_REPO_INSTRUCTIONS_BEHAVIOR = {
  * the project root down to the runtime `cwd`, closest value winning per key.
  *
  * The documented lookup behind the configuration file the fallback
- * derivation reads as its seed (T1089/T1090). A non-authorizing statement:
- * the file is a configuration input this product never publishes or
- * raw-displays, and its first candidacy (`codex.repo.config`) arrives with
- * the phase that owns the carrier.
+ * derivation reads as its seed (T1089/T1090). A non-authorizing statement of
+ * its own: what admits the file is `codex.repo.config`, whose MCP rows are
+ * the servers it declares, and `codex.repo.settings`, whose row is the file
+ * itself and whose detail serves the complete document (FR-007). All three
+ * share one read of the one physical file.
  */
 export const CODEX_REPO_CONFIG_BEHAVIOR = {
   behaviorId: 'codex.behavior.repo.config',

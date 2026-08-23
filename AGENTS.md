@@ -331,6 +331,23 @@ correct.
   release, or other project-owned suites whose configuration explicitly requires broader
   browser coverage.
 
+## Agent-started process policy
+
+- A process Coding Agent starts is Coding Agent's to stop. A dev server, a fixture launch
+  (`pnpm run start:fixture`), a watcher, or anything else backgrounded for verification is
+  terminated before the turn ends, so the user is never left with a port held or a tree
+  served by a build they have moved on from.
+- Stop it by the handle the launch gave: the recorded process ID, or `preview_stop` for a
+  server started through the preview tooling. Verify the stop rather than assuming it — a
+  launcher script exits while the server it spawned keeps running, which leaves an orphan
+  whose parent is `init`, so `ps` after the kill is what says the port is free.
+- Never kill a process this session did not start. A `ps` sweep by name reaches the user's
+  own servers and editors too, so the target is a process whose start this turn's own
+  transcript accounts for.
+- The exception is a process the user asked to keep running. Say so explicitly when leaving
+  one up, with the port or URL it is on, so ending the turn is not the same as losing track
+  of it.
+
 ## User-visible copy policy
 
 - Copy a component alone renders is written where it renders. There is one UI

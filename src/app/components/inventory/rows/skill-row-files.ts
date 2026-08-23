@@ -63,6 +63,23 @@ export class SkillRowFile {
   public get companionFiles(): readonly string[] {
     return this.definitions[0].companionFiles;
   }
+
+  /**
+   * The extraction-failure records this file's recognitions reference, without
+   * repetition. It is one record however many products recognize the file —
+   * the parse ran once per `(file, kind)` (FR-028) — so stating it once for
+   * the file rather than once per recognition is what keeps a shared failure
+   * from reading as several.
+   */
+  public get diagnosticIds(): readonly string[] {
+    const ids = new Set<string>();
+    for (const definition of this.definitions) {
+      for (const id of definition.diagnosticIds) {
+        ids.add(id);
+      }
+    }
+    return [...ids];
+  }
 }
 
 /**

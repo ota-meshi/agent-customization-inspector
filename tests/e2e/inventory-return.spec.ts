@@ -48,7 +48,7 @@ test('returns the reader to the row they followed, by Back and by the page’s o
   await page.goto(host.origin);
   // The last definition link in the list, which is far enough down this
   // fixture's inventory that reading it requires scrolling.
-  const row = page.locator('[role="tabpanel"] .aci-skill-row__definitions a').last();
+  const row = page.locator('[role="tabpanel"] .aci-skill-row__owner a').last();
   await expect(row).toBeVisible();
   await row.scrollIntoViewIfNeeded();
   const href = await row.getAttribute('href');
@@ -86,7 +86,7 @@ test('returns to the narrowed list the reader left, and to the row inside it', a
   const narrowed = await rows.count();
   expect(narrowed).toBeLessThan(unfiltered);
 
-  const row = page.locator('[role="tabpanel"] .aci-skill-row__definitions a').last();
+  const row = page.locator('[role="tabpanel"] .aci-skill-row__owner a').last();
   await row.scrollIntoViewIfNeeded();
   const href = await row.getAttribute('href');
   const leftAt = await scrollOffset(page);
@@ -114,7 +114,7 @@ test('returns to the narrowed list the reader left, and to the row inside it', a
 
 test('opens a detail page at its top, as any page change does', async ({ page }) => {
   await page.goto(host.origin);
-  const row = page.locator('[role="tabpanel"] .aci-skill-row__definitions a').last();
+  const row = page.locator('[role="tabpanel"] .aci-skill-row__owner a').last();
   await row.scrollIntoViewIfNeeded();
   expect(await scrollOffset(page)).toBeGreaterThan(0);
 

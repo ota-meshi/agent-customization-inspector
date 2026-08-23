@@ -21,8 +21,10 @@ import {
   type CompiledStaticMcpReadingRule,
   type CompiledStaticOtherKindRule,
   type CompiledStaticPermissionsCarrierRule,
+  type CompiledStaticSkillRule,
 } from './registry';
 import { ParsedStrictJsonDocument } from '../parsers/json';
+import { skillDirectoryOf } from '../../../shared/registries/skill-directory';
 import { ParsedMarkdownDocument } from '../parsers/markdown';
 import type {
   AgentPresentationDto,
@@ -313,9 +315,63 @@ export class ClaudeCompiledPermissionsCarrierRule
 }
 
 /**
- * A Claude rule of every other kind, compiled for execution. It answers
- * nothing about applicability, which is exactly what a skill rule has to say
- * about it (see `CompiledNonInstructionRule`).
+ * A Claude skill rule compiled for execution: everything a Claude rule is,
+ * plus the one question only a skill rule answers — the command name Claude
+ * Code invokes an admitted `SKILL.md` by. The derivation lives here, beside
+ * the rule that owns it, because it is built from the path this rule's own
+ * selectors match (contracts/vendors/anthropic-claude-code.md § Normative
+ * initial-release presentation allowlist).
+ */
+export class ClaudeCompiledSkillRule extends ClaudeCompiledRule implements CompiledStaticSkillRule {
+  /** Narrowed to the one kind this unit compiles; the constructor proves it. */
+  declare public readonly kind: 'skill';
+
+  /**
+   * The vendor's documented command name: the skill directory, qualified with
+   * the root-relative `/`-joined path of the directory holding the skill's
+   * `.claude` and a `:` when the skill is nested — `apps/web:deploy` — and the
+   * bare directory name at the root (skills page § How a skill gets its
+   * command name).
+   *
+   * The declared `name` is deliberately not read, which is why the parameter
+   * is unused: the vendor treats that field as a display label, so a row keyed
+   * by it would head a group Claude Code does not answer to. It also means a
+   * failed extraction takes nothing away from the name — the path is its whole
+   * basis (FR-028).
+   *
+   * The qualification is always applied, deliberately diverging from the
+   * vendor's clash-conditional, session-cwd-relative prefix: the inspector
+   * observes no session and never reads the layers that decide whether an
+   * unqualified name is free, so the root-relative spelling is the one stable
+   * name a static inventory can stand behind.
+   *
+   * Defined for the paths this rule admits, whose shape is
+   * `<prefix...>/.claude/skills/<skill-directory>/SKILL.md`.
+   */
+  public invocationNameOf(
+    sourceRelativePath: string,
+    _declared: readonly DeclaredEntryDto[],
+  ): string {
+    const segments = sourceRelativePath.split('/');
+    const prefix = segments.slice(0, -4);
+    const skillDirectory = skillDirectoryOf(sourceRelativePath);
+    return prefix.length === 0 ? skillDirectory : `${prefix.join('/')}:${skillDirectory}`;
+  }
+
+  /** Compiles one Claude skill record, rejecting one of another kind. */
+  public constructor(rule: InspectionRule) {
+    super(rule);
+    if (rule.kind !== 'skill') {
+      throw new TypeError(`rule ${rule.ruleId} is not a Claude skill rule`);
+    }
+  }
+}
+
+/**
+ * A Claude rule of every other kind, compiled for execution. It answers no
+ * per-kind question — nothing about applicability, nothing a carrier
+ * declares, nothing a file is invoked by (see
+ * `CompiledStaticOtherKindRule`).
  */
 export class ClaudeCompiledOtherKindRule
   extends ClaudeCompiledRule
@@ -324,14 +380,15 @@ export class ClaudeCompiledOtherKindRule
   /** Narrowed to the kinds this unit compiles; the constructor proves it. */
   declare public readonly kind: Exclude<
     CustomizationKind,
-    'instructions' | 'MCP' | 'agent' | 'prompt/command' | 'permissions'
+    'instructions' | 'skill' | 'MCP' | 'agent' | 'prompt/command' | 'permissions'
   >;
 
-  /** Compiles one Claude record of any kind but the five with a question of their own. */
+  /** Compiles one Claude record of any kind but the six with a question of their own. */
   public constructor(rule: InspectionRule) {
     super(rule);
     if (
       rule.kind === 'instructions' ||
+      rule.kind === 'skill' ||
       rule.kind === 'MCP' ||
       rule.kind === 'agent' ||
       rule.kind === 'prompt/command' ||
@@ -419,9 +476,10 @@ export class ClaudeCompiledAgentRule extends ClaudeCompiledRule implements Compi
  * The Claude Repository rules a Repository scan executes, in shipped order.
  * The remaining Claude rows of the vendor contract arrive with their own
  * inventory phases; the shipped set covers instructions, skills, commands, the
- * MCP carrier, rule files, the permission policy, and custom agents, so a
- * repository whose only Claude files are settings legitimately contributes
- * nothing to the inventory.
+ * MCP carrier, rule files, the permission policy, custom agents, and the
+ * settings documents — the last two rules over one candidate, since
+ * `.claude/settings*.json` is both the permission policy's carrier and a
+ * settings document of its own (FR-007).
  *
  * Every shipped rule is compiled rather than filtered: a Claude record that
  * authorizes no traversal is rejected by the {@link ClaudeCompiledRule}
@@ -437,17 +495,20 @@ export const CLAUDE_REPOSITORY_RULES: readonly CompiledStaticCandidateRule[] = O
   // an instruction record what its files govern, a command record the name its
   // files are invoked by, an MCP record which servers its carrier declares, a
   // custom-agent record where its file's configuration ends and its
-  // instructions begin; every other kind compiles into the plain one, which is
-  // what keeps a skill rule from carrying an answer it has none of.
+  // instructions begin, a skill record the command name its file is invoked
+  // by; every other kind compiles into the plain one, which is what keeps a
+  // rule-file rule from carrying an answer it has none of.
   rule.kind === 'instructions'
     ? new ClaudeCompiledInstructionRule(rule)
-    : rule.kind === 'MCP'
-      ? new ClaudeCompiledMcpCarrierRule(rule)
-      : rule.kind === 'agent'
-        ? new ClaudeCompiledAgentRule(rule)
-        : rule.kind === 'prompt/command'
-          ? new ClaudeCompiledPromptRule(rule)
-          : rule.kind === 'permissions'
-            ? new ClaudeCompiledPermissionsCarrierRule(rule)
-            : new ClaudeCompiledOtherKindRule(rule),
+    : rule.kind === 'skill'
+      ? new ClaudeCompiledSkillRule(rule)
+      : rule.kind === 'MCP'
+        ? new ClaudeCompiledMcpCarrierRule(rule)
+        : rule.kind === 'agent'
+          ? new ClaudeCompiledAgentRule(rule)
+          : rule.kind === 'prompt/command'
+            ? new ClaudeCompiledPromptRule(rule)
+            : rule.kind === 'permissions'
+              ? new ClaudeCompiledPermissionsCarrierRule(rule)
+              : new ClaudeCompiledOtherKindRule(rule),
 );

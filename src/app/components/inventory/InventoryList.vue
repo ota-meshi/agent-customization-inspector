@@ -33,6 +33,7 @@ import AgentRow from './rows/AgentRow.vue';
 import PromptRow from './rows/PromptRow.vue';
 import RuleRow from './rows/RuleRow.vue';
 import PermissionsRow from './rows/PermissionsRow.vue';
+import SettingsRow from './rows/SettingsRow.vue';
 import { inventoryPanelId, inventoryTabId } from './panel-ids';
 import { CUSTOMIZATION_KIND_PLURAL_TEXT } from '../../../shared/entities';
 import type {
@@ -44,6 +45,7 @@ import type {
   PermissionsInventoryEntryDto,
   RuleInventoryEntryDto,
   SerializedDiagnostic,
+  SettingsInventoryEntryDto,
   SkillInventoryEntryDto,
 } from '../../../shared/api-types';
 import type { CustomizationKind } from '../../../shared/entities';
@@ -65,15 +67,10 @@ const props = defineProps<{
   ruleRows: readonly RuleInventoryEntryDto[];
   /** The permission-policy rows that passed the active filters, in snapshot order. */
   permissionsRows: readonly PermissionsInventoryEntryDto[];
+  /** The settings-and-configuration rows that passed the active filters, in snapshot order. */
+  settingsRows: readonly SettingsInventoryEntryDto[];
   /** Every published file by path, so a row can resolve the files it names. */
   filesByPath: ReadonlyMap<string, CustomizationFileSummaryDto>;
-  /**
-   * Every path with an MCP recognition, from the unfiltered committed
-   * inventory ({@link InventoryFilterView.mcpCarrierPaths}): an instruction
-   * row routes such a file to the carrier's own MCP view, because a
-   * carrier's `FileDetail` is withheld by contract (FR-007).
-   */
-  mcpCarrierPaths: ReadonlySet<string>;
   /** How many rows the committed generation published before filtering. */
   totalCount: number;
   /** The generation's diagnostics, resolved per row. */
@@ -99,7 +96,9 @@ const rowCount = computed(() =>
               ? props.ruleRows.length
               : props.kind === 'permissions'
                 ? props.permissionsRows.length
-                : 0,
+                : props.kind === 'settings/config'
+                  ? props.settingsRows.length
+                  : 0,
 );
 </script>
 
@@ -124,7 +123,6 @@ const rowCount = computed(() =>
           :key="entry.applicabilityRange ?? ''"
           :entry="entry"
           :files-by-path="filesByPath"
-          :mcp-carrier-paths="mcpCarrierPaths"
           :diagnostics="diagnostics"
         />
       </template>
@@ -193,6 +191,12 @@ const rowCount = computed(() =>
           :entry="entry"
           :diagnostics="diagnostics"
         />
+      </template>
+      <template v-if="kind === 'settings/config'">
+        <!-- Its own row component again: this row is the file a product reads
+             its settings from, keyed by that file's path (data-model.md
+             § Inventory unit). -->
+        <SettingsRow v-for="entry in settingsRows" :key="entry.sourceRelativePath" :entry="entry" />
       </template>
     </ul>
     <!-- Nothing was recognized as this kind at all — a different finding from

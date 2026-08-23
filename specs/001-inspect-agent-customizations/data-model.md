@@ -793,7 +793,7 @@ deduplication, or precedence without turning it into read authority.
 |---|---|---|
 | `strategyId` | stable dotted string | Unique and defined in the bilingual runtime-composition contract |
 | `tool` / `surfaces` | tool enum / non-empty surface enum[] | Exact product and surface boundary |
-| `operations` | non-empty ordered closed enum[] | Each entry is `append \| concatenate \| select-first \| select-closest \| replace \| merge-map \| deduplicate \| filter \| retain-all \| unknown-order`; array order is the documented pipeline order. `retain-all` states that every documented input remains available and none is merged away — the absence of a collapsing entry does not state it, because the array records the steps a source documents rather than the steps it rules out |
+| `operations` | non-empty ordered closed enum[] | Each entry is `append \| concatenate \| select-first \| select-closest \| replace \| merge-map \| deduplicate \| tighten-only \| filter \| retain-all \| unknown-order`; array order is the documented pipeline order, or the documented alternatives where a source states a per-key policy rather than a sequence — the Copilot CLI's repository layer lists one merge behavior per supported key. `tighten-only` states that a closer input may move a value in one direction only, which the source itself names. `retain-all` states that every documented input remains available and none is merged away — the absence of a collapsing entry does not state it, because the array records the steps a source documents rather than the steps it rules out |
 | `documentationStatus` | `DocumentationStatus` | Partial/unknown/conflicting order never becomes a fabricated winner |
 | `lifecycleQualifiers` | `LifecycleQualifier[]` | Unique fixed order; independent of documentation completeness |
 | `evidence` | non-empty `EvidenceCitation[]` | The reviewed documentation establishing this record (§ EvidenceCitation); empty in a packaged CLI |
@@ -1236,14 +1236,14 @@ shipped kinds do not agree on one:
 
 | Kind | The unit one row shows |
 |---|---|
-| `skill` | One name as one tool resolves it (FR-007): the authored frontmatter `name` — or the skill directory name when the file declares none — which a Claude Code recognition of a nested skill prefixes root-relative. A definition is one recognition — one per `(file, tool)` — so several files resolving to one name are one entry listing each recognition as a definition, and one file whose tools resolve different names defines on each name's entry. Being a recognition, a definition states the surfaces of the documented behaviors its admitting rules rest on, exactly as a path-identified row's recognitions do (FR-009) |
+| `skill` | One invocation name as one tool resolves it (FR-007): the name that tool's own documentation invokes the file by, which the admitting rule answers — the authored frontmatter `name` for Codex and Copilot, or the skill directory name when the file declares none; the skill directory whatever the frontmatter declares for Claude Code, prefixed root-relative when nested. A definition is one recognition — one per `(file, tool)` — so several files one tool invokes by one name are one entry listing each recognition as a definition, and one file whose tools invoke it by different names defines on each name's entry. Being a recognition, a definition states the surfaces of the documented behaviors its admitting rules rest on, exactly as a path-identified row's recognitions do (FR-009) |
 | `MCP` | One declared server name: every `[mcp_servers.*]`-style declaration resolving that name — one per `(carrier, tool)` — is listed inside the name's row, so one `.codex/config.toml` contributes one declaration per server it declares, and a second carrier declaring the same name joins that name's row. A declaration's home is an explicit carrier and nothing else: a file of any other kind that spells MCP-looking configuration — a skill's or an agent's frontmatter, a settings file's inline map — is that kind's ordinary content, visible in its own detail, and joins no MCP row. Each declaration names its own file. The one row whose name is null closes the list with the carriers currently publishing no named declaration — an unreadable declaration block, whose rows are unknown, or a carrier declaring none |
 | `instructions` | One applicability range: the glob the governing files' own paths derive, listing each file it governs with that file's recognitions — each one product and the surfaces of the documented behaviors its admitting rules rest on, because a tool alone cannot say where a product reads the file from |
 | `rule` | The file itself: a rule file is modular instructions a product loads into context, and it declares no name a row could be keyed by nor governs a range it could be grouped under, so its Source-relative Path is the row's identity, and two products recognizing one file are two recognitions on one row, each naming its product and the surfaces of the documented behaviors its admitting rules rest on |
 | `permissions` | The file that declares the policy, on the same terms as a `rule` row. A separate kind because the subject differs: a permission policy decides which commands or tools a product may run, where a rule is guidance the product reads. Codex spells its policy in `.codex/rules/*.rules` and Claude calls its own modular instructions `rules` too, so grouping by the vendors' shared word would put two unrelated subjects in one list. A file whose whole content is the policy and a file carrying the policy in one block of a larger document are one row each: what differs is what the detail publishes, not what the row is. A carrier that declares no policy is no row at all — the rest of the document is the recognition that owns it, and a row would state a policy its author never wrote |
 | `prompt/command` | One name a reader invokes, on the same terms as a `skill` row: every recognition resolving that name — one per `(file, tool)` — is a definition listed inside the name's row, so a file two products invoke by one name is two definitions of that row and a file they name differently defines on each name's row. Which name that is belongs to the rule that admitted the file, because this kind's two locations answer differently. A command file's name is never authored — both products ignore a `name` key in one — so each product's own admitting rule derives it from the path: Claude Code takes the file's path below its command directory and turns every separator into a `:`, so `frontend/component.md` is `frontend:component` and `team/review/security.md` is `team:review:security`; a leaf whose stem is `skill` in any letter case takes its directory’s name instead of its own, which the product does and no page documents — the stem is compared without case while the `.md` extension is the one the matcher admits, so a `SKILL.MD` is not a command file here at all. The Copilot CLI takes the file name alone, having documented no namespace and reaching no subdirectory. The two therefore agree exactly at a root direct child, which is why such a file is one row naming both products while a nested one is a row of Claude's alone. A VS Code prompt file names itself instead: the documented `name` is what a reader types after the `/`, and the file's own name stands in when it declares none — so a prompt declaring the name a command resolves to is a definition on that command's row, the way two files of one skill name share theirs. A row states no same-name resolution, unlike a skill's. Two prompt files can now reach one name, and VS Code documents no outcome for that, so a row that answered would be answering a question no page asks — the definitions stand side by side and the reader sees both (FR-009) |
 | `agent` | One agent name the admitting rules resolve: every file that defines it — one definition per `(file, tool)` — is listed inside the name's row, so two files resolving one name are two definitions of one row. The name is the one the admitting product identifies the agent by, and which fact that is differs by product: OpenAI Codex and Claude Code make the `name` field the agent's identity and call a matching filename a convention rather than a lookup — Claude Code adds that a subfolder inside the agents directory does not affect it either — so naming one of their rows after a file would report an agent the product does not have, while GitHub Copilot documents `name` as an optional display name and identifies a profile by its configuration file's own name minus `.md` or `.agent.md`, so naming one of its rows after a declared `name` would report an agent Copilot does not deduplicate under it. One file two products recognize therefore defines on two rows whenever their answers differ. A row states no same-name resolution, unlike a skill's: Claude Code documents that only one of two same-name files under one `.claude/agents/` tree loads and names no rule for which, so a row that answered would be answering a question no page asks — the definitions stand side by side and the reader sees both (FR-009). The one row whose name is null closes the list with the files publishing no name — under a product that identifies an agent by its declared `name`, one declaring none, one declaring anything but a scalar, and one whose declarations could not be read at all, whose name is unknown rather than absent (FR-028). A file-name product's definition never reaches it: the path answers whatever the file declares, and a failed extraction takes nothing away from it. A definition states the surfaces of the documented behaviors its admitting rules rest on, exactly as a skill definition does (FR-009); it is never a claim that a session spawned or selected the agent |
-| `settings/config` | The file itself |
+| `settings/config` | The file itself, on the same terms as a `rule` row: a settings or configuration file declares no name a row could be keyed by and governs no range it could be grouped under, so its Source-relative Path is the row's identity, and two products recognizing one file are two recognitions on one row. A separate kind because the subject differs: what a product reads its settings from, where a rule is guidance it loads into context and a permission policy decides what it may run. One physical file can hold this row and another kind's — Codex's `.codex/config.toml` has one MCP row per server it declares and one row here for the document those declarations sit in — and which detail a link opens follows from the row it is on rather than from the file (FR-007) |
 
 A CustomizationFile therefore publishes its own facts once — Source-relative Path, read
 outcome, size, diagnostics — and each kind's inventory refers to it by `sourceRelativePath`
@@ -1294,18 +1294,20 @@ row whose `applicabilityRange` is null, sorted after every ranged row. A range
 states what a file governs. It is never a claim that a product loaded the file: an
 admission is not an activation (FR-009).
 
-A skill row's name is the name one tool resolves (FR-007): the authored frontmatter
-`name` — or the skill directory name when the file declares none or declares it empty,
-because being a named directory is what a skill is, so every row has a name and two such
-files in same-named directories share one — which a Claude Code recognition of a nested
-skill prefixes
-with the `/`-joined root-relative path of the directory holding its `.claude` and a `:`,
-so `apps/web/.claude/skills/deploy/SKILL.md` declaring `name: deploy` is `apps/web:deploy`
-on its Claude row. The last segment deliberately differs from the vendor's documented
-command name, which takes the skill directory name and treats the authored `name` as only
-a display label: comparing one skill's definitions across tools is what the row exists
-for, and the authored `name` is the one identity all three tools share, so every row is
-keyed by it and only the nested qualification shape is the vendor's. The nested form is
+A skill row's name is the name one tool's own documentation invokes the file by (FR-007),
+answered by the rule that admitted it because how a name follows from a path and a
+declaration is that vendor's own contract. Codex and Copilot invoke the authored
+frontmatter `name` — or the skill directory name when the file declares none or declares
+it empty, because being a named directory is what a skill is, so every row has a name and
+two such files in same-named directories share one. Claude Code invokes the skill
+directory whatever the frontmatter declares, treating the authored `name` as only a
+display label (skills page § How a skill gets its command name), and a nested skill's
+command is prefixed
+with the `/`-joined root-relative path of the directory holding its `.claude` and a `:`.
+So `apps/web/.claude/skills/deploy/SKILL.md` declaring `name: ship` is `apps/web:deploy`
+on its Claude Code row and `ship` on its Copilot one. A row headed by a name the tool
+listed in it does not answer to would name something the reader cannot invoke, which is
+why the row and the invocation name are one fact rather than two. The nested form is
 always prefixed: the vendor qualifies on a name clash against layers this product never
 reads, relative to a session working directory it never observes, so the root-relative
 qualified spelling is the one stable name a static inventory can stand behind. A name is
@@ -1317,10 +1319,10 @@ A definition carries its own recognition's parse facts: its `parseStatus`, and t
 extraction-failure reference of its kind (FR-028). One extraction per `(file, kind)`
 means one failure record, which every failed definition of the file names as its own
 parse fact and the file's `files[]` entry lists once as its file-confined outcome. A failed extraction leaves
-the authored name unknown rather than absent: the row keeps the directory-derived
-provisional identity — the path's own fact, not a reading of the failed parse — while an
-authored-name tool's `invocationName` is null and the definition evidences no
-authored-name collision. Claude Code's path-derived command name stands either way.
+the authored name unknown rather than absent, so a tool that invokes it falls back to the
+skill directory — the path's own fact, not a reading of the failed parse. The row that
+names is provisional grouping, and the definition evidences no same-name collision for
+that tool. Claude Code's path-derived command name stands either way.
 
 A grouped entry never implies a winner the Inspector has not recorded. Each entry states how
 a product resolves a name it recognizes on two or more of that entry's definitions, because
@@ -1551,15 +1553,18 @@ transport unaltered.
 
 ### Skill presentation
 
-A skill's detail surface leads with the skill, not with the file that carries it: its row
-name as the heading — this product's provisional identity, the same one the inventory
-lists — with the owning definition's documented invocation name beside it from the published
-`invocationName` (contracts/http-api.md § get-session `skills[]`). A definition
-is one tool's recognition, and each publishes its own tool's documented name
-(`definitions[].invocationName`); the page shows the definition its route addresses — a
-detail URL is `/skills/<tool>/<source-relative path>`, the definition's own identity, tool first as the
-broader segment, and a companion opens under the same tool segment — so which invocation
-name sits beside the heading is the link's identity rather than a preference. That
+A skill's detail surface leads with the skill, not with the file that carries it: the
+skill's own directory as the heading — the one identity every product reading it shares —
+and beneath it the name each recognizing product invokes the skill by, in the closed tool
+order, read off the rows that hold the file (contracts/http-api.md § get-session
+`skills[]`) rather than republished on the detail. A definition is one tool's
+recognition, and one file two tools invoke differently is a definition of each name's
+row; the page shows the file its route addresses — a
+detail URL is `/skills/<source-relative path>`, the file's own identity, and a companion
+opens under the same route — so which document the page shows is the link's identity
+rather than a preference. No tool segment: two products reading one `SKILL.md` read the
+same bytes, the same frontmatter, and the same companion directory, so a per-product
+address would give one document two URLs differing only in a name. That
 identity is stable across rescans and server launches — it is the URL's path half, so a
 bookmarked link's path keeps naming the same file across rescans and across launches that
 select the same root, because the Source-relative Path is the
@@ -1567,12 +1572,12 @@ file's identity on the wire and a detail request resolves it against the current
 snapshot (FR-030); a launch that selects another root (FR-001) resolves it against that
 root's scan, and the origin is devframe's port selection, fixed-default unless occupied
 (quickstart.md), so a moved port changes where a bookmark points, never which file its
-path names — and a path the current scan does not hold for the URL's tool is
+path names — and a path the current scan does not hold is
 reported as a dead link. A root
 `.claude` skill whose authored `name` differs from its directory is invoked by Copilot
-under the authored name, which stays visible as the row's name, and by Claude Code under
-the directory-derived command its own definition's page shows beside it. The published value is
-the projection's, so the client renders vendor naming rather than re-deriving it. Then two tabs — the skill itself and its files. The skill
+under the authored name and by Claude Code under the directory-derived command, and the
+page names both against their products. The published values are the projection's, so the
+client renders vendor naming rather than re-deriving it. Then two tabs — the skill itself and its files. The skill
 tab presents every key the frontmatter declares as one YAML document through the
 read-only viewer — led by the keys the vendors document for a skill, in the order Claude
 Code's own frontmatter reference publishes them, and every other key in the file's own
@@ -1592,7 +1597,7 @@ copy exists on the wire, and the internal `ToolRecognition.details` carries, for
 
 | Field | Type | Rules |
 |---|---|---|
-| `declaredName` | string, absent when none | The `name` scalar as the parser resolved it (§ Field reading). Absent, never empty: an authored empty name is a different fact from no name. Absent too for a `name` that resolves to anything but a scalar — naming a skill after the first item of a list it wrote would be an identity the file never declared. It is the display label and the identity every row's name is built from; a row whose file declares none, or declares it empty, is named by its skill directory, and a nested Claude Code recognition's row prefixes it root-relative (§ Inventory unit, FR-007) |
+| `invocationName` | string | The name this recognition's own tool invokes the file by, answered by the admitting rule (§ Inventory unit, FR-007). Never empty: a rule that invokes the authored identity reads the `name` scalar as the parser resolved it (§ Field reading) and falls back to the skill directory when the file declares none, declares it empty, resolves it to anything but a scalar — naming a skill after the first item of a list it wrote would be an identity the file never declared — or when extraction failed; Claude Code's rule reads no declaration at all and takes the skill directory, root-relative-prefixed when nested. The authored `name` itself is not held here: it is one of the `frontmatter` entries below, so keeping it would publish a fact and something derived from it |
 | `frontmatter` | ordered entry[] | Every key the file declares, in authored order, keyed by the key the file wrote — never a maintained catalog's. Empty for a document with no frontmatter block, for a block written as a list or a bare scalar rather than a mapping — such a block declares no keys, and the index positions a list would be read by are not keys the file wrote — and for a `failed` extraction |
 | `bodyText` | string | The same document with its frontmatter block removed. Empty for a `failed` extraction |
 
@@ -1819,10 +1824,16 @@ This state is not authoritative and is never persisted.
   epoch, so a late callback is a no-op even when response delivery was already queued.
 - `ComparisonSelection`: what a kind-specific comparison route names, by that kind's own
   coordinates (spec.md § Clarifications Session 2026-08-14). The skill route names the
-  two compared copies' entry files' `sourceRelativePath` identities
-  plus the copy-relative compared file, resolved against the owning sequence's current
-  committed generation into zero files, two readable corresponding files, or one
-  readable file beside its stated absent counterpart. The instruction route names two
+  owning row's invocation name, the two compared copies' entry files'
+  `sourceRelativePath` identities, and the copy-relative compared file, resolved
+  against the owning sequence's current committed generation into zero files, two
+  readable corresponding files, or one readable file beside its stated absent
+  counterpart. The row is named rather than derived from the two identities, because
+  two files can sit together on more than one row — the products invoke a skill by
+  different facts, so a file declaring another's directory name as its own `name`
+  puts both on both rows — and a derived row would be whichever the generation
+  published first, dropping a third copy of the row the reader opened from out of the
+  route's own switchers. The instruction route names two
   files' `sourceRelativePath` identities that one applicability-range row of the
   current generation holds — the row-owned pair the skill precedent establishes, the
   range row standing where the skill name's row stands, and derived from the two

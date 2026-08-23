@@ -89,44 +89,53 @@ const compareRoute = computed(() => {
 });
 
 /**
- * Each definition of this name with the values its line renders. Derived
- * rather than read once at setup, because the row's key is its name: a tool
- * filter that drops definitions leaves the key alone, so the component
+ * The files defining this name, each with the products that recognize it. One
+ * item per file rather than per definition: this kind's detail is addressed by
+ * the path alone, so a link per product would be the same URL repeated once
+ * per recognition — the agent, skill, and MCP rows group theirs the same way.
+ *
+ * Derived rather than computed once at setup, because the row's key is its
+ * name: a filter that drops definitions leaves the key alone, so the component
  * instance is reused and a value read once would keep rendering the
  * definitions the filter removed.
  */
-const definitions = computed(() =>
-  props.entry.definitions.map((definition: PromptDefinitionDto) => ({
-    /**
-     * Unique within a row: one definition per `(file, tool)`, and the tool is
-     * one of three fixed literals with no space in it, so the first space
-     * splits the pair back apart whatever the path holds.
-     */
-    key: `${definition.tool} ${definition.sourceRelativePath}`,
-    toolText: SUPPORTED_TOOL_TEXT[definition.tool],
-    surfacesText: definition.surfaces.map((surface) => VENDOR_SURFACE_TEXT[surface]).join(', '),
+const fileRows = computed(() => {
+  const byFile = Map.groupBy(
+    props.entry.definitions,
+    (definition: PromptDefinitionDto) => definition.sourceRelativePath,
+  );
+  return [...byFile.entries()].map(([sourceRelativePath, definitions]) => ({
+    key: sourceRelativePath,
     /**
      * The file's path through the shared label rule rather than plain
      * escaping ({@link pathPresentationLabel}): a name built only from
      * whitespace or default-ignorable code points draws nothing, and this
-     * line is what says which file the definition is.
+     * line is what says which file the definitions are of.
      */
-    pathText: pathPresentationLabel(definition.sourceRelativePath),
+    pathText: pathPresentationLabel(sourceRelativePath),
     /**
-     * The accessible name of the link carries the path as well as the
-     * product: a reader walking the page's links hears each one out of its
-     * visual context, and every command row offers a link reading "Claude
-     * Code" (WCAG 2.4.4). It goes through the whitespace-safe label because
-     * the accessible-name computation collapses whitespace (FR-025).
+     * The accessible name of the link is the path, which is what the link
+     * shows. It goes through the single-line label rule instead: an
+     * accessible name is flattened, so authored whitespace the drawn label
+     * legitimately renders would collapse and two different files could
+     * announce identically (WCAG 2.4.4, FR-025).
      */
-    linkLabel: `${SUPPORTED_TOOL_TEXT[definition.tool]} — ${inlinePresentationLabel(
-      definition.sourceRelativePath,
-    )}`,
+    pathAccessibleText: inlinePresentationLabel(sourceRelativePath),
+    recognitions: definitions.map((definition) => ({
+      tool: definition.tool,
+      toolText: SUPPORTED_TOOL_TEXT[definition.tool],
+      surfacesText: definition.surfaces.map((surface) => VENDOR_SURFACE_TEXT[surface]).join(', '),
+    })),
     /** The file's own detail route; the path is the whole route identity (FR-030). */
-    route: detailRoute('prompt/command', definition.sourceRelativePath),
-    diagnosticIds: definition.diagnosticIds,
-  })),
-);
+    detailRoute: detailRoute('prompt/command', sourceRelativePath),
+    /**
+     * The extraction diagnostics this file's definitions reference,
+     * deduplicated: one extraction per `(file, kind)` means every definition
+     * of one file points at the same record (FR-028).
+     */
+    diagnosticIds: [...new Set(definitions.flatMap((definition) => definition.diagnosticIds))],
+  }));
+});
 </script>
 
 <template>
@@ -151,25 +160,33 @@ const definitions = computed(() =>
       >
     </p>
 
-    <!-- One item per definition — one recognition, the `(file, tool)` unit —
-         each stating the file it is authored in, the product that recognized
-         it, and the surfaces of the documented behaviors its admitting rules
-         rest on. Naming a surface is never a claim that the surface loaded the
+    <!-- One item per file, each linking to that file's own detail with the
+         products that recognized it beside the path, and the surfaces of the
+         documented behaviors their admitting rules rest on beside each
+         product. Naming a surface is never a claim that the surface loaded the
          file (FR-009). -->
     <ul class="aci-prompt-row__definitions" role="list">
-      <li v-for="definition in definitions" :key="definition.key">
-        <p class="aci-path aci-authored-text">{{ definition.pathText }}</p>
-        <p>
-          <NuxtLink :to="definition.route" :aria-label="definition.linkLabel">{{
-            definition.toolText
-          }}</NuxtLink>
-          <span class="aci-prompt-row__surfaces aci-muted">{{ definition.surfacesText }}</span>
+      <li v-for="file in fileRows" :key="file.key">
+        <p class="aci-prompt-row__owner">
+          <NuxtLink
+            :to="file.detailRoute"
+            class="aci-path aci-authored-text"
+            :aria-label="file.pathAccessibleText"
+            >{{ file.pathText }}</NuxtLink
+          >
+          <span
+            v-for="recognition in file.recognitions"
+            :key="recognition.tool"
+            class="aci-prompt-row__tool aci-muted"
+            >{{ recognition.toolText }}
+            <span class="aci-prompt-row__surfaces">{{ recognition.surfacesText }}</span></span
+          >
         </p>
-        <!-- The definition's own extraction diagnostics — its recognition's
+        <!-- The file's own extraction diagnostics — its recognitions'
              reference to the kind's one shared failure record, not the file's
-             aggregate, so a definition reports its own kind's failure and
-             never every problem its file carries (FR-028). -->
-        <RowDiagnostics :diagnostic-ids="definition.diagnosticIds" :diagnostics="diagnostics" />
+             aggregate, so a row reports its own kind's failure and never every
+             problem its file carries (FR-028). -->
+        <RowDiagnostics :diagnostic-ids="file.diagnosticIds" :diagnostics="diagnostics" />
       </li>
     </ul>
 
@@ -217,16 +234,32 @@ const definitions = computed(() =>
   margin: 0;
 }
 
-/* The surfaces trail the product on the same line, set apart by a separator
-   rather than by punctuation inside the text: the product is what was
-   recognized, and the surfaces qualify it. */
-.aci-prompt-row__surfaces {
+/* The path and the products that recognize it on one line, the way an MCP or
+   agent row lays out a carrier and its recognitions: the path is the subject
+   and the products qualify it. */
+.aci-prompt-row__owner {
+  margin: 0;
+}
+
+.aci-prompt-row__tool {
   margin-inline-start: 0.4rem;
 }
 
-.aci-prompt-row__surfaces::before {
+.aci-prompt-row__tool::before {
   content: '·';
   margin-inline-end: 0.4rem;
+}
+
+.aci-prompt-row__surfaces {
+  font-size: 0.85em;
+}
+
+.aci-prompt-row__surfaces::before {
+  content: '(';
+}
+
+.aci-prompt-row__surfaces::after {
+  content: ')';
 }
 
 /* The comparison entry closes the row, under the files it compares. */

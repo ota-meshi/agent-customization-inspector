@@ -353,7 +353,12 @@ class SideDeclarations {
     // without a body, and an unrecognized file has nothing read out of it, so
     // a definition-owning file that somehow arrives as one declares nothing to
     // compare.
-    if (detail.kind === 'rule' || detail.kind === 'agent' || detail.kind === 'file') {
+    if (
+      detail.kind === 'rule' ||
+      detail.kind === 'agent' ||
+      detail.kind === 'settings/config' ||
+      detail.kind === 'file'
+    ) {
       this.state = 'not-a-skill';
       this.entries = null;
       this.bodyText = null;

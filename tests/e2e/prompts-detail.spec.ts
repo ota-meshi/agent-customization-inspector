@@ -86,7 +86,7 @@ test.describe('the complete literal Copilot prompt detail', () => {
       .getByRole('tabpanel')
       .locator('.aci-item')
       .filter({ hasText: 'scaffold-component' })
-      .getByRole('link', { name: 'GitHub Copilot' })
+      .getByRole('link', { name: '.github/prompts/scaffold.prompt.md' })
       .click();
     await expect(page).toHaveURL(
       /\/prompts-and-commands\/\.github\/prompts\/scaffold\.prompt\.md$/u,

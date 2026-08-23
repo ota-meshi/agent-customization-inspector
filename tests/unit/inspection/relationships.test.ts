@@ -274,6 +274,88 @@ describe('Codex MCP declarations emit no relationship and promote no target (T29
   });
 });
 
+/** Recognizes the authored Codex settings document at its one admitted path. */
+async function recognizeCodexSettings(sourceText: string) {
+  const codexSettingsRule = CODEX_REPOSITORY_RULES.find(
+    (compiled) => compiled.rule.ruleId === 'codex.repo.settings',
+  )!;
+  const matchedPath = '.codex/config.toml';
+  mkdirSync(join(root, '.codex'), { recursive: true });
+  const { recognitions } = await recognizeCandidateForVendors(
+    {
+      matchedPath,
+      absolutePath: join(root, matchedPath),
+      sourceRoot: root,
+      admissions: [{ compiled: codexSettingsRule, origin: { planIndex: 0, selectorIndex: 0 } }],
+      sourceText,
+    },
+    ['codex'],
+  );
+  return recognitions;
+}
+
+describe('Codex settings declarations emit no relationship and promote no target (T591)', () => {
+  // Every configured-target family the settings row can carry, authored into
+  // one document: the fallback basenames, an agent configuration path, a
+  // model-instruction path, a compact-prompt path, a skill path, a hook
+  // handler, and an MCP field. Each is a value its author wrote; none is a
+  // read, an edge, or a promotion.
+  const SETTINGS_TEXT = [
+    'project_doc_fallback_filenames = ["TEAM_GUIDE.md", "../escape/OUT.md"]',
+    '',
+    '[experimental]',
+    'model_instructions_file = "./.codex/model-instructions.md"',
+    'compact_prompt_file = "../../compact.md"',
+    '',
+    '[agents]',
+    'config_path = "./.codex/agents/reviewer.toml"',
+    '',
+    '[skills]',
+    'extra_paths = ["./.agents/skills/greet"]',
+    '',
+    '[hooks.session_start]',
+    'command = ["./scripts/hook.sh"]',
+    '',
+    '[mcp_servers.named]',
+    'command = "npx"',
+    '',
+  ].join('\n');
+
+  it('opens no configured target while recognizing the document', async () => {
+    // The recognition reads nothing at all: the kind's detail is the bytes
+    // the scan already holds, so no path the document names is resolved,
+    // opened, or enumerated (FR-020).
+    const recognitions = await recognizeCodexSettings(SETTINGS_TEXT);
+    expect(recognitions).toHaveLength(1);
+    expect(recognitions[0]!.details.kind).toBe('settings/config');
+    expect(vi.mocked(fsIo.readFile)).not.toHaveBeenCalled();
+    expect(vi.mocked(fsIo.readdir)).not.toHaveBeenCalled();
+  });
+
+  it('publishes no relationship vocabulary for any configured family', async () => {
+    const serialized = JSON.stringify(await recognizeCodexSettings(SETTINGS_TEXT));
+    // No edge fields: an unlisted or uncovered reference cannot be promoted
+    // to a generic, inferred, or fallback relationship (data-model.md
+    // § Relationship).
+    for (const field of [
+      'relationshipId',
+      'targetOrigin',
+      'authoredTarget',
+      'semanticTarget',
+      'normalizedTarget',
+      'boundaryStatus',
+      'resolutionStatus',
+    ]) {
+      expect(serialized).not.toContain(field);
+    }
+    // Nor any declared value: this recognition reads nothing out of the
+    // document, so what a reader sees is the file's own source through its
+    // detail rather than a reading republished on the recognition (FR-007).
+    expect(serialized).not.toContain('model_instructions_file');
+    expect(serialized).not.toContain('../escape/OUT.md');
+  });
+});
+
 /** Recognizes one authored Codex instruction file at the given admitted path. */
 async function recognizeCodexInstruction(matchedPath: string, sourceText: string) {
   const { recognitions } = await recognizeCandidateForVendors(

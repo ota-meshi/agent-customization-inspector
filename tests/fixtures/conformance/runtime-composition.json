@@ -351,7 +351,7 @@
         "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference",
         "officialHost": "docs.github.com",
         "sections": ["User-editable files"],
-        "reviewedOn": "2026-07-15",
+        "reviewedOn": "2026-08-23",
         "establishes": "The personal agents directory is ~/.copilot/agents/, and this page states that project-level agents in .github/agents/ take precedence over personal agents of the same name — one of the two sides of the retained conflict."
       },
       {
@@ -429,6 +429,27 @@
         "sections": ["Adding per-repository MCP servers"],
         "reviewedOn": "2026-08-20",
         "establishes": "Among the project-level files, same-name definitions in files closer to the working directory take precedence, .mcp.json takes precedence over .github/mcp.json in the same directory, and project-level definitions take precedence over ~/.copilot/mcp-config.json."
+      }
+    ]
+  },
+  {
+    "strategyId": "copilot.cli.settings.precedence",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "operations": ["append", "replace", "merge-map", "deduplicate", "tighten-only"],
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.configuration",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference",
+        "officialHost": "docs.github.com",
+        "sections": [
+          "Configuration file settings",
+          "Repository settings (.github/copilot/settings.json)"
+        ],
+        "reviewedOn": "2026-08-23",
+        "establishes": "Settings are applied in the order built-in defaults, MDM managed settings, user settings, repository settings, local settings, environment variables, then command-line flags, with a later source overriding an earlier one; each key the repository layer supports carries its own merge behavior, listed as replaced by the repository, merged so the repository overrides the user for the same key, a union to which the repository can add entries and never remove them, or tighten-only, which the repository can enable and never disable; an MDM value of disable for permissions.disableBypassPermissionsMode always wins over a closer layer, and the repository model, effortLevel, and contextTier overrides apply only when the working directory is trusted."
       }
     ]
   },
@@ -625,6 +646,24 @@
         "sections": ["Workspace .mcp.json files and server deduplication"],
         "reviewedOn": "2026-08-20",
         "establishes": "The 1.118 release adds workspace-root .mcp.json input and a most-specific same-name deduplication rule that enables one server and disables its duplicates, without defining a total order across the root, .vscode, User, and plugin inputs - the unknown-order operation this pipeline retains."
+      }
+    ]
+  },
+  {
+    "strategyId": "copilot.vscode.settings.precedence",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "operations": ["merge-map", "replace"],
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.settings",
+        "url": "https://code.visualstudio.com/docs/configure/settings",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Settings precedence"],
+        "reviewedOn": "2026-08-23",
+        "establishes": "Configurations are overridden across the setting scopes in a documented order where a later scope wins — defaults, user, remote, workspace, workspace folder, and the language-specific variants of each."
       }
     ]
   },

@@ -93,6 +93,10 @@ const REGISTERED = [
   // (tokens-only; monaco-languages.ts), so at runtime it is a registered
   // language like any basic one.
   { id: 'json', extensions: ['.json'] },
+  // `toml` is registered from the Monarch grammar package the pinned
+  // `monaco-editor` gives no equivalent for (monaco-languages.ts), so at
+  // runtime it too is a registered language like any basic one.
+  { id: 'toml', extensions: ['.toml'] },
   { id: 'dockerfile', extensions: ['.dockerfile'], filenames: ['Dockerfile'] },
 ];
 
@@ -115,6 +119,9 @@ describe('source language selection', () => {
     // registry is loaded rather than a chosen few.
     expect(resolveSourceLanguage(REGISTERED, '.agents/skills/g/scripts/run.sh')).toBe('shell');
     expect(resolveSourceLanguage(REGISTERED, '.agents/skills/g/scripts/build.py')).toBe('python');
+    // Codex's own configuration file, answered by the registry like any
+    // other: the `toml` id claims `.toml` (monaco-languages.ts).
+    expect(resolveSourceLanguage(REGISTERED, '.codex/config.toml')).toBe('toml');
   });
 
   it('prefers an exact file name over any extension it happens to have', () => {
@@ -126,12 +133,10 @@ describe('source language selection', () => {
 
   it('maps the spellings the registered languages do not claim', () => {
     // `.json` is the `json` language's own registered extension; `.jsonc`
-    // takes the same tokenizer — its comment support is the tokenizer's
-    // own — and TOML, which Monaco ships nothing for, borrows the nearest
-    // pure tokenizer (monaco.ts § BORROWED_GRAMMARS).
+    // takes the same tokenizer, and its comment support is the tokenizer's
+    // own (monaco.ts § BORROWED_GRAMMARS).
     expect(resolveSourceLanguage(REGISTERED, '.codex/hooks.json')).toBe('json');
     expect(resolveSourceLanguage(REGISTERED, '.vscode/mcp.jsonc')).toBe('json');
-    expect(resolveSourceLanguage(REGISTERED, '.codex/config.toml')).toBe('ini');
   });
 
   it('falls back to plain text for a path nothing claims', () => {

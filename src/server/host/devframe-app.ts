@@ -439,13 +439,14 @@ export async function startInspectorHost(
 /**
  * The H3 app devframe mounts onto, carrying the route families devframe's
  * own SPA fallback cannot serve: a detail URL ends with the file's own
- * last segment — `/skills/<tool>/<source-relative path>` with `SKILL.md`,
+ * last segment — `/skills/<source-relative path>` with `SKILL.md`,
  * `/instructions/<source-relative path>` with `AGENTS.md`,
  * `/mcp/<source-relative path>` with `config.toml`,
  * `/rules/<source-relative path>` with `style.md`,
  * `/prompts-and-commands/<source-relative path>` with `deploy.md`,
  * `/permissions/<source-relative path>` with `default.rules`,
- * `/agents/<source-relative path>` with `reviewer.toml` —
+ * `/agents/<source-relative path>` with `reviewer.toml`,
+ * `/settings-and-configuration/<source-relative path>` with `config.toml` —
  * and devframe's static handler deliberately skips the `index.html` fallback
  * for a miss that looks like a file (it has an extension). This middleware
  * only rewrites such a request to the root and falls through, so devframe's
@@ -486,5 +487,6 @@ function createHostApp(): H3 {
   app.use('/prompts-and-commands/**', rewriteToShell);
   app.use('/permissions/**', rewriteToShell);
   app.use('/agents/**', rewriteToShell);
+  app.use('/settings-and-configuration/**', rewriteToShell);
   return app;
 }

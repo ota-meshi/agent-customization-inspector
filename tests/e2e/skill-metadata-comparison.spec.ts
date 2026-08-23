@@ -160,7 +160,7 @@ test('offers the same comparison entry from the skill detail page', async ({ pag
   await page.goto(host.origin);
   await page
     .locator('.aci-skill-row__file', { hasText: AGENTS_SKILL })
-    .locator('.aci-skill-row__definitions a')
+    .locator('.aci-skill-row__owner a')
     .first()
     .click();
   // A reader deep in a skill's files starts comparing from where they are:

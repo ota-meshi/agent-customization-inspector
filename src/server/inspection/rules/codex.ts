@@ -18,14 +18,20 @@
 // walk executes for them. The scan composes each vendor's reader exactly like
 // the rule catalogs, so the logic lives with the vendor it belongs to
 // (contracts/vendors/openai-codex.md § Derived Repository rules). The file is
-// also a candidate of its own: `codex.repo.config` admits it, its
-// `[mcp_servers.*]` tables are the MCP rows its recognition publishes, and
-// its detail is `get-mcp-carrier-detail`'s — the one thing it never has is a
-// raw source display, on any surface (FR-007). The stage-one read is seeded
-// into the walk so the one physical file is read once per attempt (T282).
+// also a candidate of its own, admitted by two rules over one read:
+// `codex.repo.config` for the `[mcp_servers.*]` tables it carries and
+// `codex.repo.settings` for the document those tables sit in. Which detail
+// answers for it follows from the row a reader arrives through, never from
+// the file (FR-007): an MCP row's subject is one declaration, so
+// `get-mcp-carrier-detail` publishes declarations and no bytes, while the
+// settings row's subject is the file, so `get-file-detail` serves the
+// complete TOML under its `settings/config` variant. The stage-one read is
+// seeded into the walk so the one physical file is read once per attempt
+// (T282).
 import {
   CompiledDerivedRule,
   CompiledInspectionRule,
+  authoredSkillNameOf,
   declaredAgentNameOf,
   type CompiledStaticAgentRule,
   type CompiledStaticCandidateRule,
@@ -33,6 +39,7 @@ import {
   type CompiledStaticMcpReadingRule,
   type CompiledStaticOtherKindRule,
   type CompiledStaticPermissionsDocumentRule,
+  type CompiledStaticSkillRule,
 } from './registry';
 import type { CustomizationKind } from '../../../shared/entities';
 import type {
@@ -135,6 +142,12 @@ export class CodexCompiledInstructionRule
  * § Normative initial-release presentation allowlist, the `MCP` row); the
  * TOML parse and the rendering
  * of resolved values are the format's and stay in `parsers/toml.ts`.
+ *
+ * The admitted `.codex/config.toml` is Codex's project configuration layer,
+ * and these declarations are one block of it. The document itself is a
+ * different recognition of the same file, admitted by `codex.repo.settings`
+ * and published as the TOML its author wrote — two rules over one candidate
+ * and one read, each answering for the row that reaches it (FR-007).
  */
 export class CodexCompiledMcpCarrierRule
   extends CodexCompiledRule
@@ -277,10 +290,42 @@ export class CodexCompiledAgentRule extends CodexCompiledRule implements Compile
 }
 
 /**
+ * A Codex skill rule, compiled for execution: the plan and guards every
+ * compiled rule is, plus the one question only a skill rule answers — the
+ * name Codex invokes an admitted `SKILL.md` by. The answer lives here,
+ * beside the rule that owns it, because a skill's identity is this vendor's
+ * own contract (contracts/vendors/openai-codex.md § Normative
+ * initial-release presentation allowlist).
+ */
+export class CodexCompiledSkillRule extends CodexCompiledRule implements CompiledStaticSkillRule {
+  /** Narrowed to the one kind this unit compiles; the constructor proves it. */
+  declare public readonly kind: 'skill';
+
+  /**
+   * The `name` the file declares, with the skill directory as the fallback —
+   * the shared answer of the products that document that field as the skill's
+   * identity ({@link authoredSkillNameOf}), which Codex is one of.
+   */
+  public invocationNameOf(
+    sourceRelativePath: string,
+    declared: readonly DeclaredEntryDto[],
+  ): string {
+    return authoredSkillNameOf(sourceRelativePath, declared);
+  }
+
+  /** Compiles one Codex skill record. */
+  public constructor(rule: InspectionRule) {
+    super(rule);
+    if (rule.kind !== 'skill') {
+      throw new TypeError(`rule ${rule.ruleId} is not a Codex skill rule`);
+    }
+  }
+}
+
+/**
  * A Codex rule of every other kind, compiled for execution. It answers no
  * per-kind question — neither an instruction rule's applicability, nor an MCP
- * carrier's declarations, nor a custom agent's — which is exactly what a
- * skill rule has to say about any of them (see
+ * carrier's declarations, nor a custom agent's, nor a skill's name (see
  * `CompiledStaticOtherKindRule`).
  */
 export class CodexCompiledOtherKindRule
@@ -290,14 +335,15 @@ export class CodexCompiledOtherKindRule
   /** Narrowed to the kinds this unit compiles; the constructor proves it. */
   declare public readonly kind: Exclude<
     CustomizationKind,
-    'instructions' | 'MCP' | 'agent' | 'prompt/command' | 'permissions'
+    'instructions' | 'skill' | 'MCP' | 'agent' | 'prompt/command' | 'permissions'
   >;
 
-  /** Compiles one Codex record of any kind but the five with a question of their own. */
+  /** Compiles one Codex record of any kind but the six with a question of their own. */
   public constructor(rule: InspectionRule) {
     super(rule);
     if (
       rule.kind === 'instructions' ||
+      rule.kind === 'skill' ||
       rule.kind === 'MCP' ||
       rule.kind === 'agent' ||
       rule.kind === 'prompt/command' ||
@@ -346,8 +392,9 @@ export class CodexCompiledPermissionsDocumentRule
  * The Codex Repository rules a Repository scan executes, in shipped order.
  * The remaining Codex rows of the vendor contract arrive with their own
  * inventory phases; the shipped set covers static instructions, skills, the
- * MCP carrier, rule files, and custom agents, with the configured instruction
- * fallbacks reaching the same walk through the derived rule below.
+ * MCP carrier, the settings document that carrier is, rule files, and custom
+ * agents, with the configured instruction fallbacks reaching the same walk
+ * through the derived rule below.
  *
  * The catalog now carries both discovery classes, and each compiles through
  * its own gate: the static rules below feed the traversal, while the derived
@@ -364,16 +411,19 @@ export const CODEX_REPOSITORY_RULES: readonly CompiledStaticCandidateRule[] = Ob
     // Each record compiles into the unit that can answer its kind's question:
     // an instruction record what its files govern, an MCP record which
     // servers its carrier declares, a custom-agent record what its file
-    // declares; every other kind compiles into the plain one.
+    // declares, a skill record what Codex invokes it by; every other kind
+    // compiles into the plain one.
     rule.kind === 'instructions'
       ? new CodexCompiledInstructionRule(rule)
-      : rule.kind === 'MCP'
-        ? new CodexCompiledMcpCarrierRule(rule)
-        : rule.kind === 'agent'
-          ? new CodexCompiledAgentRule(rule)
-          : rule.kind === 'permissions'
-            ? new CodexCompiledPermissionsDocumentRule(rule)
-            : new CodexCompiledOtherKindRule(rule),
+      : rule.kind === 'skill'
+        ? new CodexCompiledSkillRule(rule)
+        : rule.kind === 'MCP'
+          ? new CodexCompiledMcpCarrierRule(rule)
+          : rule.kind === 'agent'
+            ? new CodexCompiledAgentRule(rule)
+            : rule.kind === 'permissions'
+              ? new CodexCompiledPermissionsDocumentRule(rule)
+              : new CodexCompiledOtherKindRule(rule),
   );
 
 export class CodexCompiledDerivedRule extends CompiledDerivedRule {

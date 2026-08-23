@@ -98,19 +98,15 @@ test.afterEach(async () => {
   await rm(fixture, { recursive: true, force: true });
 });
 
-/** Opens one definition's detail route directly by its stable identity. */
-async function openDefinition(
-  page: import('@playwright/test').Page,
-  tool: string,
-  path: string,
-): Promise<void> {
-  await page.goto(new URL(`/skills/${tool}/${path}`, host.origin).href);
+/** Opens one file's skill detail route directly by its stable identity. */
+async function openSkillAt(page: import('@playwright/test').Page, path: string): Promise<void> {
+  await page.goto(new URL(`/skills/${path}`, host.origin).href);
 }
 
 test('shows the literal credential and environment reference with no mask, reveal, or substitution', async ({
   page,
 }) => {
-  await openDefinition(page, 'copilot', '.github/skills/ship/SKILL.md');
+  await openSkillAt(page, '.github/skills/ship/SKILL.md');
   // The Skill tab's declarations carry the credential too, and a hidden
   // panel's controls are outside the accessibility tree the role query
   // reads — so the no-reveal claim is asserted on each tab in turn, while
@@ -151,20 +147,16 @@ test('shows the literal credential and environment reference with no mask, revea
   expect(text).not.toContain(ENV_SENTINEL);
 });
 
-test('leads with the addressed Copilot definition and its authored invocation name', async ({
-  page,
-}) => {
-  await openDefinition(page, 'copilot', '.github/skills/ship/SKILL.md');
-  // The heading is the row's own name; the invocation name beside it is
-  // Copilot's — the authored identity, because Copilot invokes the authored
-  // `name` rather than a path-derived command (FR-007).
-  await expect(page.locator('.aci-skill-detail h2')).toHaveText('github-ship');
-  await expect(page.locator('.aci-skill-detail__invocation-name')).toHaveText(
-    'Invocation name: github-ship',
-  );
-  await expect(page.locator('.aci-skill-detail__definition')).toHaveText(
-    'GitHub Copilot (VS Code, CLI, Cloud agent) · Skill',
-  );
+test('leads with the skill directory and the name Copilot invokes it by', async ({ page }) => {
+  await openSkillAt(page, '.github/skills/ship/SKILL.md');
+  // The heading is the skill's own directory — what every product reading it
+  // shares — and the line beneath names each product with the name its own
+  // documentation invokes the skill by: Copilot's is the authored `name`
+  // rather than a path-derived command (FR-007).
+  await expect(page.locator('.aci-skill-detail h2')).toHaveText('.github/skills/ship/');
+  await expect(page.locator('.aci-skill-detail__invocations li')).toHaveText([
+    'GitHub Copilot (VS Code, CLI, Cloud agent) · Skill · Invocation name: github-ship',
+  ]);
   // Every key the file declares, as one YAML document in the read-only
   // viewer, credential-shaped keys included — nothing captioned,
   // classified, or withheld (FR-007).
@@ -174,44 +166,31 @@ test('leads with the addressed Copilot definition and its authored invocation na
   await expect(declarations).toContainText(`api_key: ${FIXTURE_SECRET}`);
 });
 
-test('opens a shared .claude file as each product’s own definition', async ({ page }) => {
-  // One physical file, two recognitions, two routes. The Copilot definition
-  // invokes the authored name; the Claude definition invokes the
-  // directory-derived command. Neither route shows a merged product-neutral
-  // record, which is what keeps incompatible naming facts apart (FR-007).
-  await openDefinition(page, 'copilot', '.claude/skills/lander/SKILL.md');
-  await expect(page.locator('.aci-skill-detail h2')).toHaveText('lander-skill');
-  await expect(page.locator('.aci-skill-detail__definition')).toHaveText(
-    'GitHub Copilot (VS Code, CLI, Cloud agent) · Skill',
-  );
-  await expect(page.locator('.aci-skill-detail__invocation-name')).toHaveText(
-    'Invocation name: lander-skill',
-  );
-
-  await openDefinition(page, 'claude', '.claude/skills/lander/SKILL.md');
-  await expect(page.locator('.aci-skill-detail h2')).toHaveText('lander-skill');
-  await expect(page.locator('.aci-skill-detail__definition')).toHaveText(
-    'Claude Code (CLI and IDE clients) · Skill',
-  );
-  await expect(page.locator('.aci-skill-detail__invocation-name')).toHaveText(
-    'Invocation name: lander',
-  );
-});
-
-test('retains the Codex detail of a shared .agents file beside the Copilot one', async ({
+test('opens a shared .claude file once, naming what each product invokes it by', async ({
   page,
 }) => {
-  await openDefinition(page, 'codex', '.agents/skills/orbit/SKILL.md');
-  await expect(page.locator('.aci-skill-detail h2')).toHaveText('orbit-skill');
-  await expect(page.locator('.aci-skill-detail__definition')).toHaveText(
-    'OpenAI Codex (Local clients) · Skill',
-  );
+  // One physical file, two recognitions, one route: both products read the
+  // same bytes, so a per-product address would give one document two URLs.
+  // What differs is the name — Copilot invokes the authored `lander-skill`,
+  // Claude Code the skill directory — and the page states both rather than
+  // merging them into a product-neutral record (FR-007).
+  await openSkillAt(page, '.claude/skills/lander/SKILL.md');
+  await expect(page.locator('.aci-skill-detail h2')).toHaveText('.claude/skills/lander/');
+  await expect(page.locator('.aci-skill-detail__invocations li')).toHaveText([
+    'GitHub Copilot (VS Code, CLI, Cloud agent) · Skill · Invocation name: lander-skill',
+    'Claude Code (CLI and IDE clients) · Skill · Invocation name: lander',
+  ]);
+});
 
-  await openDefinition(page, 'copilot', '.agents/skills/orbit/SKILL.md');
-  await expect(page.locator('.aci-skill-detail h2')).toHaveText('orbit-skill');
-  await expect(page.locator('.aci-skill-detail__definition')).toHaveText(
-    'GitHub Copilot (VS Code, CLI, Cloud agent) · Skill',
-  );
+test('names both products of a shared .agents file on the one page', async ({ page }) => {
+  // Codex and Copilot invoke the authored name, so the shared `.agents` file
+  // is one row and its page names both products against the same name.
+  await openSkillAt(page, '.agents/skills/orbit/SKILL.md');
+  await expect(page.locator('.aci-skill-detail h2')).toHaveText('.agents/skills/orbit/');
+  await expect(page.locator('.aci-skill-detail__invocations li')).toHaveText([
+    'GitHub Copilot (VS Code, CLI, Cloud agent) · Skill · Invocation name: orbit-skill',
+    'OpenAI Codex (Local clients) · Skill · Invocation name: orbit-skill',
+  ]);
 });
 
 test('states nothing about Copilot’s selection, even for a collision', async ({ page }) => {
@@ -223,15 +202,17 @@ test('states nothing about Copilot’s selection, even for a collision', async (
   // surface documents stays in Copilot's maintained contract (FR-009).
   //
   // The surfaces themselves are not the claim being watched for: the
-  // definition line names the ones its admissions rest on, which says where
+  // invocation line names the ones its admissions rest on, which says where
   // Copilot documents reading the file and nothing about which of them won.
   // The text is read from the whole detail, hidden panel included.
-  await openDefinition(page, 'copilot', '.github/skills/echo/SKILL.md');
-  await expect(page.locator('.aci-skill-detail h2')).toHaveText('voyage');
-  await expect(page.locator('.aci-skill-detail__definition')).toHaveCount(1);
-  await expect(page.locator('.aci-skill-detail__definition')).toHaveText(
-    'GitHub Copilot (VS Code, CLI, Cloud agent) · Skill',
-  );
+  await openSkillAt(page, '.github/skills/echo/SKILL.md');
+  await expect(page.locator('.aci-skill-detail h2')).toHaveText('.github/skills/echo/');
+  // The comparison entry rides on the same line, because this name resolves
+  // two readable copies; it is a link to a diff, never a statement about
+  // which copy a surface would select.
+  await expect(page.locator('.aci-skill-detail__invocations li')).toHaveText([
+    "GitHub Copilot (VS Code, CLI, Cloud agent) · Skill · Invocation name: voyage · Compare this skill's files",
+  ]);
   const detail = (await page.locator('.aci-skill-detail').textContent()) ?? '';
   for (const claim of [
     'depends on the surface',
@@ -246,38 +227,33 @@ test('states nothing about Copilot’s selection, even for a collision', async (
 test('keeps a malformed shared skill readable while the one parse failure is stated once', async ({
   page,
 }) => {
-  // Extraction ran once for the shared physical file, so each product's route
-  // shows the same single failure record with the open file — never one per
-  // recognizing product — while the complete source stays displayed (FR-028).
-  for (const [tool, invocation] of [
-    ['copilot', null],
-    ['claude', 'Invocation name: broken'],
-  ] as const) {
-    await openDefinition(page, tool, '.claude/skills/broken/SKILL.md');
-    // A failed extraction leaves the Skill panel nothing to show, so the page
-    // itself selects the Files tab; the source and the failure must be where
-    // the reader actually is, which is why each is asserted visible rather
-    // than merely attached behind a hidden panel.
-    await expect(page.getByRole('tab', { name: /^files/iu })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    );
-    const viewer = page.locator('.aci-skill-detail__main .aci-source-viewer');
-    await expect(viewer).toBeVisible();
-    await expect(viewer).toContainText('# Broken');
-    const failure = page.locator('.aci-skill-detail__main li', {
-      hasText: 'This file could not be parsed',
-    });
-    await expect(failure).toHaveCount(1);
-    await expect(failure).toBeVisible();
-    // The invocation names stay each tool's own on the failed path: a failed
-    // parse leaves Copilot's authored invocation unknown, so its route shows
-    // no invocation line, while Claude Code's path-derived command stands
-    // (FR-007, FR-028; `skill-naming.ts`).
-    if (invocation === null) {
-      await expect(page.locator('.aci-skill-detail__invocation-name')).toHaveCount(0);
-    } else {
-      await expect(page.locator('.aci-skill-detail__invocation-name')).toHaveText(invocation);
-    }
-  }
+  // Extraction ran once for the shared physical file, so the page shows one
+  // failure record with the open file — never one per recognizing product —
+  // while the complete source stays displayed (FR-028).
+  await openSkillAt(page, '.claude/skills/broken/SKILL.md');
+  // Both products name the skill `broken`, reached two ways: Claude Code's
+  // command name is the skill directory, and Copilot's authored name is
+  // unknown after a failed parse, so it falls back to the same directory —
+  // provisional grouping rather than a name Copilot resolved (FR-007,
+  // FR-028; `src/shared/skill-collision.ts`).
+  await expect(page.locator('.aci-skill-detail__invocations li')).toHaveText([
+    'GitHub Copilot (VS Code, CLI, Cloud agent) · Skill · Invocation name: broken',
+    'Claude Code (CLI and IDE clients) · Skill · Invocation name: broken',
+  ]);
+  // A failed extraction leaves the Skill panel nothing to show, so the page
+  // itself selects the Files tab; the source and the failure must be where
+  // the reader actually is, which is why each is asserted visible rather
+  // than merely attached behind a hidden panel.
+  await expect(page.getByRole('tab', { name: /^files/iu })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  const viewer = page.locator('.aci-skill-detail__main .aci-source-viewer');
+  await expect(viewer).toBeVisible();
+  await expect(viewer).toContainText('# Broken');
+  const failure = page.locator('.aci-skill-detail__main li', {
+    hasText: 'This file could not be parsed',
+  });
+  await expect(failure).toHaveCount(1);
+  await expect(failure).toBeVisible();
 });

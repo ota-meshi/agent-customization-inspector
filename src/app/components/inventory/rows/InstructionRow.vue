@@ -39,6 +39,7 @@ import { instructionComparisonRouteFor } from '../../../composables/instruction-
 import {
   SUPPORTED_TOOL_TEXT,
   applicabilityRangePresentation,
+  inlinePresentationLabel,
   isReadableFile,
   pathPresentationLabel,
 } from '../../../../shared/entities';
@@ -59,14 +60,6 @@ const props = defineProps<{
    * names.
    */
   filesByPath: ReadonlyMap<string, CustomizationFileSummaryDto>;
-  /**
-   * Every path with an MCP recognition in the committed generation. A file
-   * here is a declaration carrier whose `FileDetail` is withheld by contract
-   * (FR-007) — a Codex configured fallback can make the root `.mcp.json` an
-   * instructions candidate too — so the row routes it to the carrier's own
-   * MCP view and never composes it into a comparison.
-   */
-  mcpCarrierPaths: ReadonlySet<string>;
   /** The generation's diagnostics, resolved per file by {@link RowDiagnostics}. */
   diagnostics: readonly SerializedDiagnostic[];
 }>();
@@ -95,10 +88,9 @@ const rangeText = computed(() =>
  * place an instruction file's file-confined outcome can be named: it is
  * recognized, so it appears under no "files in no kind" heading, and a
  * `partial` generation would otherwise state no cause (FR-028). A file that
- * is also an MCP carrier routes to the carrier's own view instead: its
- * `FileDetail` is withheld by contract (FR-007), so the instruction detail
- * route would answer `stale-resource`, and the MCP view is where the file's
- * facts live.
+ * also carries MCP declarations still routes here: which detail answers for a
+ * file is decided by the row it is reached through, and this row's subject is
+ * the file (FR-007).
  *
  * A file's path goes through the shared label rule rather than plain escaping
  * ({@link pathPresentationLabel}): a root-level name built only from
@@ -115,9 +107,13 @@ const rowFiles = computed(() =>
   props.entry.files.map((file) => ({
     key: file.sourceRelativePath,
     pathText: pathPresentationLabel(file.sourceRelativePath),
-    detailRoute: props.mcpCarrierPaths.has(file.sourceRelativePath)
-      ? detailRoute('MCP', file.sourceRelativePath)
-      : detailRoute('instructions', file.sourceRelativePath),
+    detailRoute: detailRoute('instructions', file.sourceRelativePath),
+    /**
+     * What a screen reader announces the path link as: every file of a range
+     * offers one link, so the path is what tells them apart out of visual
+     * context, through the whitespace-safe label (WCAG 2.4.4, FR-025).
+     */
+    pathAccessibleText: inlinePresentationLabel(file.sourceRelativePath),
     recognitions: file.recognitions.map((recognition) => ({
       tool: recognition.tool,
       toolText: SUPPORTED_TOOL_TEXT[recognition.tool],
@@ -131,19 +127,14 @@ const rowFiles = computed(() =>
  * The comparison this row links to — its first two comparable files — or
  * null when the range has fewer than two, where a link would open a
  * comparison with nothing to pair. Comparable means readable (FR-025: a
- * diagnostic-only file is not comparison-eligible) and not an MCP carrier,
- * whose source no comparison may display (FR-007). The compare route's own pickers take over from there:
+ * diagnostic-only file is not comparison-eligible). The compare route's own pickers take over from there:
  * they hold every committed instruction file, so the reader steps to any
  * other pair on the comparison itself instead of composing one here (T278).
  */
 const compareRoute = computed(() => {
   const readable = props.entry.files.filter((file) => {
     const published = props.filesByPath.get(file.sourceRelativePath);
-    return (
-      published !== undefined &&
-      isReadableFile(published) &&
-      !props.mcpCarrierPaths.has(file.sourceRelativePath)
-    );
+    return published !== undefined && isReadableFile(published);
   });
   const [first, second] = readable;
   return first !== undefined && second !== undefined
@@ -160,12 +151,11 @@ const compareRoute = computed(() => {
 
     <ul class="aci-instruction-row__files" role="list">
       <li v-for="file in rowFiles" :key="file.key">
-        <!-- The file's path is its identity within the range. -->
-        <p class="aci-path aci-authored-text">{{ file.pathText }}</p>
-
-        <!-- Every product that recognized the file, in the closed tool order,
-             each linking to the file's own detail route: selecting an
-             instruction is how its complete inert detail opens (T224).
+        <!-- The file's path is its identity within the range and the link to
+             its own detail: selecting an instruction is how its complete inert
+             detail opens (T224). The products that recognized it stand beside
+             it, the way an MCP or agent row lays out a carrier and its
+             recognitions.
 
              The surfaces sit beside the product because the product alone
              does not say where the file is read from: Copilot's editor, CLI,
@@ -174,14 +164,21 @@ const compareRoute = computed(() => {
              in a subdirectory names the CLI's alone. It is where a product
              documents reading the file, never a claim that a session loaded
              it (FR-009). -->
-        <ul class="aci-instruction-row__tools" role="list">
-          <li v-for="recognition in file.recognitions" :key="recognition.tool">
-            <NuxtLink :to="file.detailRoute">{{ recognition.toolText }}</NuxtLink>
-            <span class="aci-instruction-row__surfaces aci-muted">{{
-              recognition.surfacesText
-            }}</span>
-          </li>
-        </ul>
+        <p class="aci-instruction-row__owner">
+          <NuxtLink
+            :to="file.detailRoute"
+            class="aci-path aci-authored-text"
+            :aria-label="file.pathAccessibleText"
+            >{{ file.pathText }}</NuxtLink
+          >
+          <span
+            v-for="recognition in file.recognitions"
+            :key="recognition.tool"
+            class="aci-instruction-row__tool aci-muted"
+            >{{ recognition.toolText }}
+            <span class="aci-instruction-row__surfaces">{{ recognition.surfacesText }}</span></span
+          >
+        </p>
 
         <RowDiagnostics :diagnostic-ids="file.diagnosticIds" :diagnostics="diagnostics" />
       </li>
@@ -205,34 +202,46 @@ const compareRoute = computed(() => {
   font-weight: 600;
 }
 
+/* The files of the range, set under it by an indent and a rule, the way every
+   other grouped row sets its own: an MCP row's carriers, an agent row's
+   definitions, a skill row's files. The indent is what says the files belong to the
+   range above them rather than standing beside it. */
 .aci-instruction-row__files {
   list-style: none;
   margin: 0.2rem 0 0;
-  padding-inline-start: 0;
+  border-inline-start: 1px solid var(--aci-border);
+  padding-inline-start: 0.6rem;
 }
 
 .aci-instruction-row__files > li + li {
   margin-block-start: 0.4rem;
 }
 
-.aci-instruction-row__tools {
-  list-style: none;
-  margin: 0.2rem 0 0;
-  /* The recognitions of the file, set under the path by an indent and a rule,
-     matching how a skill row groups its definitions. */
-  border-inline-start: 1px solid var(--aci-border);
-  padding-inline-start: 0.6rem;
+/* The path and the products that recognize it on one line, the way an MCP or
+   agent row lays out a carrier and its recognitions: the path is the subject
+   and the products qualify it. */
+.aci-instruction-row__owner {
+  margin: 0;
 }
 
-/* The surfaces trail the product on the same line, set apart by a separator
-   rather than by punctuation inside the text: the product is the link, and the
-   surfaces qualify it. */
-.aci-instruction-row__surfaces {
+.aci-instruction-row__tool {
   margin-inline-start: 0.4rem;
 }
 
-.aci-instruction-row__surfaces::before {
+.aci-instruction-row__tool::before {
   content: '·';
   margin-inline-end: 0.4rem;
+}
+
+.aci-instruction-row__surfaces {
+  font-size: 0.85em;
+}
+
+.aci-instruction-row__surfaces::before {
+  content: '(';
+}
+
+.aci-instruction-row__surfaces::after {
+  content: ')';
 }
 </style>

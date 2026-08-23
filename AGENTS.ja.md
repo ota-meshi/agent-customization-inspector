@@ -218,6 +218,13 @@ Browserの下限はBaseline Newly available、Nodeの下限は`engines.node`が�
 - コーディングエージェントがlocal検証のためにPlaywright testを実行する場合、userが追加のbrowserを明示的に求めない限り、`chromium` project（Chrome）だけを実行してください。たとえば`--project=chromium`を明示し、設定済みbrowserをすべて実行するcommandを使わないでください。
 - このdefaultはコーディングエージェントが開始するlocal検証だけを対象にします。より広いbrowser coverageをconfigurationで明示的に要求するCI、release、その他project所有のsuiteは変更しません。
 
+## エージェントが起動したプロセスの方針
+
+- コーディングエージェントが起動したプロセスは、コーディングエージェントが終了させます。dev server、fixtureの起動（`pnpm run start:fixture`）、watcher、その他検証のためにbackgroundへ回したものは、turnが終わる前に終了してください。userが、すでに離れたbuildにportを握られたまま、あるいはtreeを配信されたまま取り残されることがないようにするためです。
+- 起動時に得たhandleで終了してください: 記録したprocess ID、あるいはpreview toolingで起動したserverなら`preview_stop`です。終了したと仮定せず検証してください — launcher scriptはそれがspawnしたserverが動いたまま終了することがあり、親が`init`のorphanが残ります。killの後の`ps`こそがportの解放を示します。
+- このsessionが起動していないプロセスを終了させてはいけません。名前による`ps`の一括処理はuser自身のserverやeditorにも届くため、対象はこのturnのtranscriptが起動を説明できるプロセスに限ります。
+- 例外は、userが動かし続けるよう求めたプロセスです。残す場合はそのportまたはURLとともに明示してください。turnを終えることが、その所在を見失うことと同じにならないようにするためです。
+
 ## ユーザー可視テキストの方針
 
 - あるコンポーネントだけが描画するテキストは、描画する場所に書いてください。UI 言語は 1 つなので、

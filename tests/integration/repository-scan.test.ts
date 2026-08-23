@@ -35,7 +35,9 @@ import {
   buildPriorityMcpFixture,
   buildCodexAgentFixture,
   buildCodexInstructionFixture,
+  buildClaudePermissionsFixture,
   buildCodexMcpFixture,
+  buildCopilotSettingsFixture,
   buildCodexSkillFixture,
   buildCopilotInstructionFixture,
   buildCopilotSkillFixture,
@@ -388,7 +390,6 @@ describe('recognition is atomic per admitted candidate (FR-005)', () => {
           // document.
           surfaces: ['copilot-vscode', 'copilot-cli', 'copilot-cloud'],
           parseStatus: 'parsed',
-          invocationName: 'greet',
           diagnosticIds: [],
           companionFiles,
         },
@@ -397,7 +398,6 @@ describe('recognition is atomic per admitted candidate (FR-005)', () => {
           tool: 'codex',
           surfaces: ['codex-local-clients'],
           parseStatus: 'parsed',
-          invocationName: 'greet',
           diagnosticIds: [],
           companionFiles,
         },
@@ -638,13 +638,12 @@ describe('the inventory unit is the kind, not the file (T1078)', () => {
   });
 
   it('states a resolution only for a tool that recognizes the name twice', async () => {
-    // One name, two files: Claude recognizes only the `.claude` one and Codex
-    // only the `.agents` one, so neither has two files to resolve between and
-    // neither states a rule. Copilot reads both spellings, so it alone faces
-    // the collision — and its statement is the surface-dependent one, because
-    // no single Copilot rule is documented across VS Code, CLI, and Cloud.
-    // Counting the row's definitions instead of each tool's would state all
-    // three.
+    // One authored name, two files: Codex reads only the `.agents` one, so it
+    // has nothing to resolve between and states no rule. Copilot reads both
+    // spellings, so it alone faces the collision — and its statement is the
+    // surface-dependent one, because no single Copilot rule is documented
+    // across VS Code, CLI, and Cloud. Counting the row's definitions instead
+    // of each tool's would state all three.
     const root = skillsDeclaring('inspector-scan-split-tools', {
       ship: '---\nname: release\n---\n',
     });
@@ -658,27 +657,32 @@ describe('the inventory unit is the kind, not the file (T1078)', () => {
     await scanOnce(context);
 
     const snapshot = context.session.snapshot();
-    const [row] = snapshot.skills;
-    expect(row!.name).toBe('release');
-    expect(row!.definitions).toHaveLength(4);
-    // A definition is one recognition, and each publishes its own tool's
-    // documented invocation name (contracts/http-api.md § get-session
-    // `skills[]`): Claude's is the directory-derived `deploy`, not the
-    // authored `release` the row is keyed by, while Codex and Copilot invoke
-    // the authored name.
+    // A row is one invocation name as one tool resolves it (FR-007), so
+    // Claude Code's reading of `.claude/skills/deploy/SKILL.md` is its own
+    // row: Claude derives the command from the skill directory and never from
+    // the authored `name`, so `release` is not a command it answers to.
     expect(
-      row!.definitions.map((definition) => [
-        definition.sourceRelativePath,
-        definition.tool,
-        definition.invocationName,
+      snapshot.skills.map((entry) => [
+        entry.name,
+        entry.definitions.map((definition) => [definition.sourceRelativePath, definition.tool]),
       ]),
     ).toEqual([
-      ['.agents/skills/ship/SKILL.md', 'copilot', 'release'],
-      ['.agents/skills/ship/SKILL.md', 'codex', 'release'],
-      ['.claude/skills/deploy/SKILL.md', 'copilot', 'release'],
-      ['.claude/skills/deploy/SKILL.md', 'claude', 'deploy'],
+      ['deploy', [['.claude/skills/deploy/SKILL.md', 'claude']]],
+      [
+        'release',
+        [
+          ['.agents/skills/ship/SKILL.md', 'copilot'],
+          ['.agents/skills/ship/SKILL.md', 'codex'],
+          ['.claude/skills/deploy/SKILL.md', 'copilot'],
+        ],
+      ],
     ]);
-    expect(row!.sameNameResolutions).toEqual([
+    const [deployRow, releaseRow] = snapshot.skills;
+    // Claude's clash is between skill directories anywhere in the generation,
+    // and this one is the only `deploy` directory Claude reads, so it states
+    // nothing either.
+    expect(deployRow!.sameNameResolutions).toEqual([]);
+    expect(releaseRow!.sameNameResolutions).toEqual([
       { tool: 'copilot', resolution: 'surface-dependent' },
     ]);
   });
@@ -730,16 +734,16 @@ describe('the inventory unit is the kind, not the file (T1078)', () => {
     const snapshot = context.session.snapshot();
     const [definition] = snapshot.skills[0]!.definitions;
     // A definition names its file by path and carries only what is its own —
-    // the recognition's parse state, its extraction diagnostics, and its
-    // tool's invocation name. The file's size, encoding, and file-scoped
-    // diagnostics live on the file itself, so the two can never disagree
+    // the recognition's parse state and its extraction diagnostics. The name
+    // is the row's, because a row is one invocation name; the file's size,
+    // encoding, and file-scoped diagnostics live on the file itself, so no
+    // two of them can disagree
     // (T1074; the recognition-owned diagnostics are the one deliberate
     // exception: an extraction failure is the kind's one shared record, and
     // each definition republishes its own recognition's reference to it).
     expect(Object.keys(definition!).sort()).toEqual([
       'companionFiles',
       'diagnosticIds',
-      'invocationName',
       'parseStatus',
       'sourceRelativePath',
       // The surfaces this recognition's admissions rest on: a definition is a
@@ -779,9 +783,6 @@ describe('a failed extraction is separated from a nameless parse (FR-028)', () =
     expect(row!.definitions.map((definition) => definition.tool)).toEqual(['copilot', 'codex']);
     for (const definition of row!.definitions) {
       expect(definition.parseStatus).toBe('failed');
-      // The authored name is unknown, not absent, so an authored-name tool
-      // claims no documented invocation name for it.
-      expect(definition.invocationName).toBeNull();
       expect(definition.diagnosticIds).toHaveLength(1);
     }
     // One shared record: both definitions name the same diagnostic, and the
@@ -1173,9 +1174,9 @@ describe('the Copilot recognition matrix (T156)', () => {
   });
 
   it('groups the shared declared name and states only the surface-dependent Copilot rule', async () => {
-    // `.github/skills/ship` and `.claude/skills/lander` both declare `voyage`:
-    // Copilot recognizes both files, so it faces the collision, while Claude
-    // recognizes one and states nothing. The Copilot statement is the
+    // `.github/skills/ship` and `.claude/skills/lander` both declare `voyage`,
+    // which is the name Copilot invokes each by — so Copilot recognizes both
+    // files under one name and faces the collision. Its statement is the
     // surface-dependent one, because its CLI documents a first-found winner
     // while VS Code and Cloud document no duplicate precedence (FR-007).
     const fixture = buildCopilotSkillFixture('inspector-scan-copilot-shared-name');
@@ -1185,16 +1186,24 @@ describe('the Copilot recognition matrix (T156)', () => {
     const snapshot = context.session.snapshot();
 
     const row = snapshot.skills.find((entry) => entry.name === 'voyage');
-    // Three definitions for two files: `lander` is one per recognizing
-    // product — Copilot and Claude — while `ship` is Copilot's alone.
-    expect(row?.definitions.map((definition) => definition.tool)).toEqual([
-      'copilot',
-      'claude',
-      'copilot',
+    expect(
+      row?.definitions.map((definition) => [definition.sourceRelativePath, definition.tool]),
+    ).toEqual([
+      ['.claude/skills/lander/SKILL.md', 'copilot'],
+      ['.github/skills/ship/SKILL.md', 'copilot'],
     ]);
     expect(row?.sameNameResolutions).toEqual([
       { tool: 'copilot', resolution: 'surface-dependent' },
     ]);
+
+    // Claude Code reads the same `lander` file, but invokes it by its skill
+    // directory whatever the frontmatter declares, so its recognition is its
+    // own row and no `voyage` statement is made for it (FR-007).
+    const claudeRow = snapshot.skills.find((entry) => entry.name === 'lander');
+    expect(
+      claudeRow?.definitions.map((definition) => [definition.sourceRelativePath, definition.tool]),
+    ).toEqual([['.claude/skills/lander/SKILL.md', 'claude']]);
+    expect(claudeRow?.sameNameResolutions).toEqual([]);
   });
 });
 
@@ -1362,18 +1371,25 @@ describe('the unified skill inventory (T180)', () => {
       'copilot',
     ]);
 
-    // `voyage` is declared by a `.claude` file and a `.github` file. Only
-    // Copilot recognizes both, so only Copilot's statement is published —
-    // and its three surfaces make it `surface-dependent`, never a winner.
+    // `voyage` is declared by a `.claude` file and a `.github` file, and it is
+    // the name Copilot invokes both by — so Copilot alone faces the collision,
+    // and its three surfaces make the statement `surface-dependent`, never a
+    // winner. Claude Code reads the `.claude` file too but invokes it by its
+    // skill directory, so its recognition heads a `lander` row of its own
+    // (FR-007).
     const voyage = byName.get('voyage')!;
     expect(voyage.definitions.map((definition) => definition.tool).sort()).toEqual([
-      'claude',
       'copilot',
       'copilot',
     ]);
     expect(voyage.sameNameResolutions).toEqual([
       { tool: 'copilot', resolution: 'surface-dependent' },
     ]);
+    const lander = byName.get('lander')!;
+    expect(
+      lander.definitions.map((definition) => [definition.sourceRelativePath, definition.tool]),
+    ).toEqual([['.claude/skills/lander/SKILL.md', 'claude']]);
+    expect(lander.sameNameResolutions).toEqual([]);
 
     // `dup` exists at two depths under `.claude`. The nested declaration is
     // its own context-prefixed row, and Claude's directory-name collision
@@ -1849,6 +1865,17 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
             diagnosticIds: carrier!.diagnosticIds,
           },
         ],
+      },
+    ]);
+    // The settings row of the same file is untouched by that failure: nothing
+    // is read out of the document for it, so nothing can fail to be read and
+    // the row carries no diagnostic list at all, while the file entry above
+    // carries the MCP kind's record (FR-028). What the row opens is the bytes
+    // the author wrote, malformed or not.
+    expect(snapshot.settings).toEqual([
+      {
+        sourceRelativePath: '.codex/config.toml',
+        recognitions: [{ tool: 'codex', surfaces: ['codex-local-clients'] }],
       },
     ]);
     // The would-be fallback stays a plain unadmitted file: a carrier that
@@ -3294,6 +3321,290 @@ describe('the unified commands inventory (T478)', () => {
     expect(after.repositoryGeneration).toBe(1);
     expect(after.prompts).toEqual(snapshot.prompts);
     expect(after.snapshotState).toBe('stale-after-fatal-rescan');
+  });
+});
+
+describe('the unified settings and configuration inventory (T646)', () => {
+  it('publishes one row per physical file, each naming the products that recognize it', async () => {
+    const fixture = buildCopilotSettingsFixture('inspector-scan-unified-settings');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    cleanups.push(() => rmSync(fixture.malformedRoot, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    vi.clearAllMocks();
+
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+
+    // One row per recognized file in Source-relative Path order, because the
+    // kind's unit is the file — a shared physical file is one row naming two
+    // products rather than two rows (data-model.md § Inventory unit).
+    expect(snapshot.settings.map((entry) => entry.sourceRelativePath)).toEqual([
+      ...fixture.expectedUnifiedSettingsPaths,
+    ]);
+    const byPath = new Map(snapshot.settings.map((entry) => [entry.sourceRelativePath, entry]));
+    expect(
+      byPath.get('.claude/settings.json')!.recognitions.map((recognition) => recognition.tool),
+    ).toEqual(['copilot', 'claude']);
+    expect(
+      byPath
+        .get('.github/copilot/settings.json')!
+        .recognitions.map((recognition) => recognition.tool),
+    ).toEqual(['copilot']);
+    expect(
+      byPath.get(fixture.codexCarrierPath)!.recognitions.map((recognition) => recognition.tool),
+    ).toEqual(['codex']);
+
+    // Every settings file is a permanent MCP non-owner; the family's one MCP
+    // row is the Codex carrier, which is an explicit carrier.
+    expect(snapshot.mcp.map((entry) => entry.name)).toEqual([fixture.codexServerName]);
+    expect(
+      snapshot.mcp[0]!.declarations.map((declaration) => declaration.sourceRelativePath),
+    ).toEqual([fixture.codexCarrierPath]);
+
+    // One physical file, one read — the shared documents included.
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) =>
+      String(call[0])
+        .slice(fixture.root.length + 1)
+        .split(sep)
+        .join('/'),
+    );
+    for (const path of fixture.expectedUnifiedSettingsPaths) {
+      expect(
+        opened.filter((candidate) => candidate === path),
+        path,
+      ).toHaveLength(1);
+    }
+    // And no configured target or excluded document was opened at all.
+    for (const nearMiss of fixture.nearMissPaths) {
+      expect(opened, nearMiss).not.toContain(nearMiss);
+    }
+  });
+
+  it('keeps a file-confined failure to its own file in a partial generation', async () => {
+    const fixture = buildCopilotSettingsFixture('inspector-scan-unified-settings-partial');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    cleanups.push(() => rmSync(fixture.malformedRoot, { recursive: true, force: true }));
+    const context = bootstrap(fixture.malformedRoot);
+    const { publication } = await scanOnce(context);
+    if (publication.kind !== 'publishable') {
+      throw new Error('expected a publishable outcome');
+    }
+    const snapshot = context.session.snapshot();
+    // Nothing is read out of a settings document, so a document strict JSON
+    // rejects still publishes its row and its source, and the generation is
+    // complete rather than partial: there is no extraction here to fail
+    // (FR-028).
+    expect(publication.outcome).toBe('complete');
+    expect(snapshot.settings.map((entry) => entry.sourceRelativePath)).toEqual([
+      '.github/copilot/settings.json',
+    ]);
+    expect(snapshot.diagnostics).toEqual([]);
+    const detail = context.session.fileDetail('.github/copilot/settings.json');
+    if (detail?.kind !== 'settings/config' || detail.file.encoding !== 'utf-8') {
+      throw new Error('expected the readable settings file detail');
+    }
+    expect(detail.file.sourceText).toContain('"enabledPlugins"');
+  });
+});
+
+describe('the committed Claude settings inventory (T610)', () => {
+  it('publishes both documented layers, each beside its own permissions row', async () => {
+    const fixture = buildClaudePermissionsFixture('inspector-scan-claude-settings');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    cleanups.push(() => rmSync(fixture.policylessRoot, { recursive: true, force: true }));
+    cleanups.push(() => rmSync(fixture.malformedRoot, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    vi.clearAllMocks();
+
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+
+    // One row per recognized file, in Source-relative Path order: the shared
+    // file and the personal one are two settings files rather than two
+    // spellings of one (data-model.md § Inventory unit). Each row names both
+    // products, because the Copilot CLI documents reading these same two
+    // documents for the shared cross-tool subset — one physical file, one
+    // read, one recognition per product (T645).
+    expect(snapshot.settings).toEqual([
+      {
+        sourceRelativePath: fixture.declaringCarrierPath,
+        recognitions: [
+          { tool: 'copilot', surfaces: ['copilot-cli'] },
+          { tool: 'claude', surfaces: ['claude-cli-and-ide-clients'] },
+        ],
+      },
+      {
+        sourceRelativePath: fixture.localCarrierPath,
+        recognitions: [
+          { tool: 'copilot', surfaces: ['copilot-cli'] },
+          { tool: 'claude', surfaces: ['claude-cli-and-ide-clients'] },
+        ],
+      },
+    ]);
+    // The permissions rows of the same two files are unchanged by the settings
+    // rows beside them: two rules over one candidate change neither neighbour.
+    expect(snapshot.permissions.map((entry) => entry.sourceRelativePath)).toEqual([
+      fixture.declaringCarrierPath,
+      fixture.localCarrierPath,
+    ]);
+    // One physical file, one read: the settings recognition adds no second
+    // open of either document.
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) =>
+      String(call[0])
+        .slice(fixture.root.length + 1)
+        .split(sep)
+        .join('/'),
+    );
+    for (const path of [fixture.declaringCarrierPath, fixture.localCarrierPath]) {
+      expect(
+        opened.filter((candidate) => candidate === path),
+        path,
+      ).toHaveLength(1);
+    }
+    // Zero reads of what the documents declare: a hook command, a status-line
+    // script, and every spelling variant beside them.
+    for (const nearMiss of fixture.nearMissPaths) {
+      expect(opened, nearMiss).not.toContain(nearMiss);
+    }
+  });
+
+  it('gives a settings file that declares no policy a settings row and no permissions row', async () => {
+    const fixture = buildClaudePermissionsFixture('inspector-scan-claude-settings-policyless');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    cleanups.push(() => rmSync(fixture.policylessRoot, { recursive: true, force: true }));
+    cleanups.push(() => rmSync(fixture.malformedRoot, { recursive: true, force: true }));
+    const context = bootstrap(fixture.policylessRoot);
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+
+    // A file declaring no `permissions` object is still the settings document
+    // it is; what it is not is a policy row, because a policy nobody wrote is
+    // not an empty policy.
+    expect(snapshot.settings.map((entry) => entry.sourceRelativePath)).toEqual([
+      '.claude/settings.json',
+      '.claude/settings.local.json',
+    ]);
+    expect(snapshot.permissions).toEqual([]);
+  });
+
+  it('keeps the settings row of a document strict JSON cannot read', async () => {
+    const fixture = buildClaudePermissionsFixture('inspector-scan-claude-settings-malformed');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    cleanups.push(() => rmSync(fixture.policylessRoot, { recursive: true, force: true }));
+    cleanups.push(() => rmSync(fixture.malformedRoot, { recursive: true, force: true }));
+    const context = bootstrap(fixture.malformedRoot);
+    const { publication } = await scanOnce(context);
+    if (publication.kind !== 'publishable') {
+      throw new Error('expected a publishable outcome');
+    }
+    // The permissions extraction failed all-or-nothing, which makes the
+    // generation partial; the settings row reads nothing out of the document,
+    // so it stands with no diagnostic of its own (FR-028).
+    expect(publication.outcome).toBe('partial');
+    const snapshot = context.session.snapshot();
+    expect(snapshot.settings).toEqual([
+      {
+        sourceRelativePath: '.claude/settings.json',
+        recognitions: [
+          { tool: 'copilot', surfaces: ['copilot-cli'] },
+          { tool: 'claude', surfaces: ['claude-cli-and-ide-clients'] },
+        ],
+      },
+    ]);
+    expect(snapshot.diagnostics).toEqual([
+      expect.objectContaining({
+        code: 'recognition-parse-failed',
+        sourceRelativePath: '.claude/settings.json',
+      }),
+    ]);
+    // And the document still reaches its own detail whole, because that row's
+    // subject is the file rather than the block a parser rejected.
+    const detail = context.session.fileDetail('.claude/settings.json');
+    if (detail?.kind !== 'settings/config' || detail.file.encoding !== 'utf-8') {
+      throw new Error('expected the readable settings file detail');
+    }
+    expect(detail.file.sourceText).toContain('"permissions"');
+  });
+});
+
+describe('the committed Codex settings inventory (T581)', () => {
+  it('publishes the carrier under both of its rows from one read', async () => {
+    const fixture = buildCodexMcpFixture('inspector-scan-codex-settings');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    vi.clearAllMocks();
+
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+
+    // One row per recognized file, because the kind's unit is the file
+    // (data-model.md § Inventory unit): the one carrier, named by its path.
+    expect(snapshot.settings).toEqual([
+      {
+        sourceRelativePath: fixture.carrierPath,
+        recognitions: [{ tool: 'codex', surfaces: ['codex-local-clients'] }],
+      },
+    ]);
+    // The MCP rows of the same file are unchanged by the settings row beside
+    // them, and the configured fallback still derived its own candidate: two
+    // rules over one candidate change neither neighbour. Filtered to the rows
+    // the carrier declares, because the tree also holds Claude's own
+    // `.mcp.json`, whose no-name row closes the list.
+    expect(
+      snapshot.mcp
+        .filter((entry) =>
+          entry.declarations.some(
+            (declaration) => declaration.sourceRelativePath === fixture.carrierPath,
+          ),
+        )
+        .map((entry) => entry.name),
+    ).toEqual(fixture.expectedServerNames);
+    for (const derived of fixture.expectedDerivedFallbackPaths) {
+      expect(
+        snapshot.instructions.some((entry) =>
+          entry.files.some((file) => file.sourceRelativePath === derived),
+        ),
+        derived,
+      ).toBe(true);
+    }
+    // One physical file, one read: the settings recognition adds no second
+    // open of the carrier, and the configuration-read stage's own read is the
+    // seeded one the walk reuses (T282).
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) =>
+      String(call[0])
+        .slice(fixture.root.length + 1)
+        .split(sep)
+        .join('/'),
+    );
+    expect(opened.filter((path) => path === fixture.carrierPath)).toHaveLength(1);
+    // Zero reads of the targets the document declares: read authority comes
+    // from a matcher alone, so a configured path reaches nothing
+    // (contracts/inspection-path-allowlist.md § Read authorization).
+    for (const nearMiss of fixture.nearMissPaths) {
+      expect(opened, nearMiss).not.toContain(nearMiss);
+    }
+  });
+
+  it('lists the carrier in no other kind and outside the files in no kind', async () => {
+    const fixture = buildCodexMcpFixture('inspector-scan-codex-settings-kinds');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+
+    // The carrier is a settings row and an MCP row, and nothing else: it is
+    // no rule file, no permission policy, no agent, and no command.
+    expect(snapshot.rules.map((entry) => entry.sourceRelativePath)).not.toContain(
+      fixture.carrierPath,
+    );
+    expect(snapshot.permissions.map((entry) => entry.sourceRelativePath)).not.toContain(
+      fixture.carrierPath,
+    );
+    // It is a recognized file, so it belongs to no "files in no kind"
+    // listing; the file entry itself still publishes its own facts (FR-003).
+    expect(snapshot.files.some((file) => file.sourceRelativePath === fixture.carrierPath)).toBe(
+      true,
+    );
   });
 });
 

@@ -174,26 +174,31 @@ export type RecognitionDetails =
        */
       readonly applicabilityRange: string | null;
     }
-  /** A skill, identified by the name authored in its own file. */
+  /** A skill, identified by the name its recognizing tool invokes it by. */
   | {
       /** The recognized customization kind. */
       readonly kind: 'skill';
       /**
-       * The skill's own declared name as the parser resolved it under YAML
-       * 1.2's core schema, or absent when the recognizer extracted none
-       * (FR-007). Resolved, not sliced: an authored `name: 007` is the string
-       * `7`, not the authored spelling (data-model.md § Field reading).
+       * The name this recognition's own tool invokes the file by — the
+       * identity its inventory row is grouped under (FR-007, data-model.md
+       * § Inventory unit), answered by the admitting rule from the path it
+       * matched and, where the product invokes the authored identity, from
+       * what that file declared.
        *
-       * It is the display label and the identity every inventory row's name
-       * is built from (data-model.md § Inventory unit): a nested Claude Code
-       * recognition's row prefixes it root-relative, and every other
-       * recognition's row is named by it exactly. A file that declares none —
-       * or declares it empty — is named by its skill directory instead.
+       * Held rather than the declared name it may be built from: the declared
+       * name is one of the `frontmatter` entries below, so storing it too
+       * would publish a fact and something derived from it, and every surface
+       * wants the name the tool answers to rather than the label. Resolved,
+       * not sliced: an authored `name: 007` is the string `7`, not the
+       * authored spelling (data-model.md § Field reading).
        *
-       * Absent, never empty: an authored empty string is a different fact from
-       * no name at all, and collapsing them would report one as the other.
+       * Never empty: a tool invoking a file that declares no name — or
+       * declares it empty — falls back to the skill directory, and being a
+       * named directory is what a skill is. That fallback is also what a
+       * `failed` extraction resolves to for such a tool, which makes the row
+       * provisional grouping rather than collision evidence (FR-028).
        */
-      readonly declaredName?: string;
+      readonly invocationName: string;
       /**
        * Every key the `SKILL.md` frontmatter declares, in authored order; the
        * source of the detail response's `presentation.frontmatter` (FR-007).
@@ -347,11 +352,13 @@ export type RecognitionDetails =
    * Every other kind. An identity or presentation arrives with the recognizer
    * phase that needs one; until then the kind alone is the record.
    *
-   * A rule file and a whole-document permission policy are here on purpose
-   * rather than pending an identity: each detail publishes the one document
-   * its author wrote rather than a reading taken out of it — a Claude rule the
-   * complete Markdown, frontmatter block included (contracts/http-api.md
-   * § get-file-detail), and a Codex policy the complete Starlark
+   * A rule file, a whole-document permission policy, and a settings or
+   * configuration file are here on purpose rather than pending an identity:
+   * each detail publishes the one document its author wrote rather than a
+   * reading taken out of it — a Claude rule the complete Markdown,
+   * frontmatter block included, and a Codex `.codex/config.toml` the complete
+   * TOML, comments and section order intact (contracts/http-api.md
+   * § get-file-detail) — and a Codex policy the complete Starlark
    * (§ get-permission-policy-detail).
    */
   | {
@@ -448,29 +455,38 @@ export class ToolRecognition {
     extraction: RecognitionExtraction<ParsedMarkdownDocument | undefined>,
     admissions: readonly RecognitionAdmission[],
   ): ToolRecognition {
-    const document = extraction.extracted;
-    // The name is the one declaration read out on its own, because it is the
-    // identity an inventory row is grouped by and the heading a detail page
-    // shows. Read from the rendered entries by the string key and the scalar
-    // kind: a one-item sequence has a rendering too, and taking its text
-    // would name a skill after the first item of a list the file did not
-    // write as a name. Every other declaration, the description included, is
-    // published once in `frontmatter` and read from there.
-    const name = document?.frontmatterEntries.find(
-      (entry) => entry.keyKind === 'string' && entry.key === 'name',
-    );
+    // Asked of the admitting rule, which is where a product's own naming
+    // lives — the same question a command recognition asks
+    // ({@link recognizePrompt}). Any admission answers: a recognition's
+    // admissions are one product's, and that product defines the answer once,
+    // so they cannot disagree. The narrowing is the compiler's own, over the
+    // `kind` that discriminates `CompiledCandidateRule` — nothing here asserts
+    // a capability the unit might not have.
+    const [admission] = admissions;
+    if (admission === undefined || admission.compiled.kind !== 'skill') {
+      throw new TypeError('a skill recognition has no rule that can answer its name');
+    }
+    // The one parse the kind's own name may come out of: Codex and Copilot
+    // invoke the `name` a skill declares, so the rule is asked with the
+    // declarations beside the path.
+    //
+    // A failed extraction hands the rule an empty list, so those products'
+    // name falls back to the skill directory — the same string their own
+    // fallback produces for a file that declares none, reached for a different
+    // reason. The extraction Diagnostic this recognition carries is what
+    // distinguishes them, and it is why the same-name machinery treats such a
+    // row as provisional grouping rather than as collision evidence (FR-028,
+    // shared/skill-collision.ts). Claude Code reads no declaration at all, so
+    // its command name is unaffected either way.
+    const frontmatter = extraction.extracted?.frontmatterEntries ?? [];
     return ToolRecognition.#assemble(
       sourceRelativePath,
       tool,
       {
         kind: 'skill',
-        // Absent rather than empty when nothing was authored, so "no name"
-        // and "an authored empty name" stay distinguishable. A recognition
-        // whose extraction failed has no document at all, which is what
-        // publishes nothing rather than the part that parsed (FR-028).
-        ...(name?.value.kind === 'scalar' ? { declaredName: name.value.text } : {}),
-        frontmatter: document?.frontmatterEntries ?? [],
-        bodyText: document?.body ?? '',
+        invocationName: admission.compiled.invocationNameOf(sourceRelativePath, frontmatter),
+        frontmatter,
+        bodyText: extraction.extracted?.body ?? '',
       },
       extraction.status,
       admissions,

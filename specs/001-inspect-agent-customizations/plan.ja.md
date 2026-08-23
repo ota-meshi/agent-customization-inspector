@@ -111,7 +111,8 @@ Vue 3.5.39とする。6つのNode/OS floor jobはcompatibleな全minor/patch rel
 **主要依存関係**: Nuxt 4.4.8、Vue Router 5.2.0、tsdown 0.22.8、Vite 7.3.6
 （Nuxtと互換性のある最新release）、`devframe` 0.7.5（pre-1.0 local-tool host framework）、
 `gunshi` 0.37.0、`open` 11.0.1、`yaml` 2.9.0、
-`strip-json-comments` 5.0.3、`smol-toml` 1.7.0、`h3` 2.0.1-rc.22、`monaco-editor` 0.55.1。いずれも`package.json`には
+`strip-json-comments` 5.0.3、`smol-toml` 1.7.0、`h3` 2.0.1-rc.22、`monaco-editor` 0.55.1、
+`@ota-meshi/site-kit-monarch-syntaxes` 0.7.3（Monacoが持たないTOML Monarch grammar）。いずれも`package.json`には
 caret rangeで宣言し、commit済みlockfileがこれらのexactなresolved versionとintegrityをpinする。
 `h3`のresolved versionはdevframe自身のh3と一致するため、hostの`/skills/**` shell fallbackと
 devframeは1つのH3 module instanceに解決される（research.md § 3）。devframeの残りのtransitive tree
@@ -840,7 +841,7 @@ src/
 │   │   ├── index.vue
 │   │   ├── global-consent.vue
 │   │   ├── skills/compare.vue
-│   │   └── skills/[tool]/[...path].vue
+│   │   └── skills/[...path].vue
 │   └── styles/
 ├── server/
 │   ├── cli.ts
@@ -968,7 +969,7 @@ LICENSE
 使用する。NuxtはSPA（`ssr: false`）とし、static Nitro preset、`app.baseURL: '/'`、
 `app.buildAssetsDir: '/_nuxt/'`、CDN URLなし、明示的importを使い、component auto-discoveryを無効にする。
 これにより全nested client routeが同じroot-absolute same-origin asset URLをresolveする。Detail routeは、それが表示する
-認識済みkindに属する。`/skills/<tool>/<Source相対パス>`がfileではなく`skills`を名乗るのはそのためである: detailが示すのはskillの宣言、
+認識済みkindに属する。`/skills/<Source相対パス>`がfileではなく`skills`を名乗るのはそのためである: detailが示すのはskillの宣言、
 指示、directoryであり、別kindのdetailは別のlayoutで別の問いに答える。出荷中のinspection ruleはすべて`skill`を認識するため
 detail routeはこの1つであり、2つ目のkindを認識するphaseがそのkindのrouteとpageを併せて追加する。`src/server/cli.ts` entryは
 BOMなし、LF終端の正確な先頭行`#!/usr/bin/env node`で始まり、tsdownがpackaged `dist/cli.mjs`でそのshebangを

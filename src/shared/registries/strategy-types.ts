@@ -11,7 +11,9 @@ import type { VendorSurface } from './behavior-types';
 
 /**
  * The closed composition operations of a strategy, in documented pipeline
- * order (data-model.md § RuntimeCompositionStrategy `operations`).
+ * order — or, where a source documents a per-key policy rather than a
+ * sequence, the alternatives it lists (data-model.md
+ * § RuntimeCompositionStrategy `operations`).
  */
 export type CompositionOperation =
   /** Documented inputs are appended in order. */
@@ -28,6 +30,14 @@ export type CompositionOperation =
   | 'merge-map'
   /** Duplicate documented inputs collapse to one. */
   | 'deduplicate'
+  /**
+   * A closer documented input may move a value in one direction only. Stated
+   * where a source names that asymmetry itself: the Copilot CLI's repository
+   * layer may enable `respectGitignore` and never disable it, which neither
+   * `replace` nor `filter` says — one would let the closer layer loosen the
+   * broader one, the other names a condition the page does not give.
+   */
+  | 'tighten-only'
   /** Documented inputs are filtered by a documented condition. */
   | 'filter'
   /**

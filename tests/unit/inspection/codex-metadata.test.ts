@@ -68,15 +68,18 @@ async function recognize(sourceText: string): Promise<ToolRecognition> {
   return recognition;
 }
 
-describe('Codex skill declared name', () => {
+describe('Codex skill invocation name', () => {
   it.each(SKILL_CONTENT_CASES.map((testCase) => [testCase.id, testCase] as const))(
-    'publishes the name the parser resolved: %s',
+    'invokes the name the parser resolved: %s',
     async (_id, testCase) => {
       const recognition = await recognize(testCase.sourceText);
       expect(recognition.parseStatus).toBe('parsed');
-      const declaredName =
-        recognition.details.kind === 'skill' ? (recognition.details.declaredName ?? null) : null;
-      expect(declaredName).toBe(testCase.name);
+      // Codex documents the authored `name` as the skill's identity, so the
+      // rule that admitted the file answers with it — falling back to the
+      // skill directory, `greet` here, for a file declaring none (FR-007).
+      expect(recognition.details.kind === 'skill' && recognition.details.invocationName).toBe(
+        testCase.name ?? 'greet',
+      );
     },
   );
 
@@ -123,7 +126,12 @@ describe('Codex skill declared name', () => {
       if (recognition.details.kind !== 'skill') {
         throw new Error('expected a skill recognition');
       }
-      expect('declaredName' in recognition.details).toBe(false);
+      // The name falls back to the skill directory rather than being guessed
+      // out of a parse that produced nothing — the same string Codex's own
+      // fallback gives a file declaring none, which is why the row it lands
+      // on is provisional grouping rather than same-name collision evidence
+      // (FR-028, src/shared/skill-collision.ts).
+      expect(recognition.details.invocationName).toBe('greet');
       // All-or-nothing: a failed extraction publishes no partial declarations
       // and no instructions either — not just no name (FR-028).
       expect(recognition.details.frontmatter).toEqual([]);
@@ -147,7 +155,7 @@ describe('Codex skill declared name', () => {
     // The literal is published as written; nothing looks up `HOME` or `TOKEN`,
     // so no process value can reach a response (FR-026).
     const recognition = await recognize('---\nname: "$HOME/${TOKEN}"\n---\n');
-    expect(recognition.details.kind === 'skill' && recognition.details.declaredName).toBe(
+    expect(recognition.details.kind === 'skill' && recognition.details.invocationName).toBe(
       '$HOME/${TOKEN}',
     );
     expect(JSON.stringify(recognition)).not.toContain(process.env['HOME'] ?? '\0unset');

@@ -106,7 +106,7 @@ smoke testで証明する。Tarballをisolated fixtureへinstallしてexecutable
 commit済みlockfile — integrity hash付きの各resolved version — が、hashが既に固定したcontentを再scanせず、
 lockfile自身の値をtestで再記述もせずに、初期リリースのproduction closureをstableにし
 payloadをbyte-fixedにする。
-`/skills/<tool>/<Source相対パス>`のようなnested routeにも同じshellを返すためroot-absolute assetが必要で、
+`/skills/<Source相対パス>`のようなnested routeにも同じshellを返すためroot-absolute assetが必要で、
 relativeな`./_nuxt/` URLはそのroute配下へ誤ってresolveされる。
 公式[Nuxt 4 configuration reference](https://nuxt.com/docs/4.x/api/nuxt-config#baseurl)は`baseURL`、
 `buildAssetsDir`、defaultが空の`cdnURL`を定義する。正確な
@@ -170,7 +170,7 @@ research、plan、quickstart、task artifactをすべて同期して`/speckit.pl
 | Frontmatter | `vfile-matter` 5.0.1、`vfile` 6.0.3 | Frontmatterのdelimiter処理。Frontmatter blockの開始と終了を決めることはBOM処理、改行、閉じfenceの形を決め直すことであり、正規表現ではなくparserの仕事である。これは同表の`yaml` engineでblockをparseする。独自の`js-yaml`を持つpackageは1つのdocumentに2つの意味を与えてしまう。js-yaml 3はYAML 1.1、`yaml`はYAML 1.2だからである |
 | File opening | `which` 6.0.1、`env-editor` 1.3.0 | Detail surfaceのopen control（FR-022）。`which`はlaunchが実行するeditor commandを解決するため、hostが提示するものと起動できるものが2つの食い違い得る事実ではなく1つの事実になる。`env-editor`は、そのcommandが`PATH`に無いときにinstallが置く場所を供給し、それらの場所を各editorのpackagingへ追随させる自前の表ではなく、維持された第三者の事実のままに保つ。`which`は6.xに留める: 7.0.0は`^24.15.0`を宣言し、本projectが支援するNode rangeの一部を除外するためである。Launch自体は上に挙げた`open`を再利用する。installされたapplicationを汎用に探すpackage（`locate-app`）は採らない: CommonJS専用であり、本projectがauditするproduction closureへprompt engineering用packageと`crypto-js`を持ち込むためである |
 | Icon | `unplugin-icons` 23.0.1、`@iconify-json/lucide` 1.2.124、`@iconify-json/simple-icons` 1.2.93 | Build時のicon compile: `~icons/<collection>/<name>` importはそのicon自身のSVGを持つcomponentになるため、pageは何もfetchせず、icon runtimeも同梱されない — FR-022が要求する形であり、IconifyのAPI前提のruntime（`@nuxt/icon`、`@iconify/vue`）を採らない理由でもある。両collectionともicon dataを配布する一方で自身のlicense fileを持たないため、notice document（FR-043）が読めるよう、各setのupstream textを`licenses/`配下に本repositoryが保持する |
-| Source view/diff | `monaco-editor` 0.55.1 | 現行stable read-only source/diff editor。固有diff engineによりclient dependency重複を避ける |
+| Source view/diff | `monaco-editor` 0.55.1、`@ota-meshi/site-kit-monarch-syntaxes` 0.7.3 | 現行stable read-only source/diff editor。固有diff engineによりclient dependency重複を避ける。MonacoはTOML grammarを持たず、`.codex/config.toml`はこのproductが開くcustomization formatであるため、`toml` idはsyntaxes packageから登録する: basic languageそのものであるMonarch grammarとlanguage configurationであり、language serviceもworkerも伴わない。この packageは自身のlicense fileを同梱しないため、notice documentが読めるようupstreamのtextを`licenses/`に置く（FR-043） |
 | Lint | ESLint 10.7.0、`@nuxt/eslint` 1.16.0、`@stylistic/eslint-plugin` 5.10.0 | 現行互換stable release。`@stylistic`はESLint 10がcoreから外したstylistic rule（例: `quotes`）を提供する |
 | Unit/integration | Vitestとcoverage-v8 4.1.10、Nuxt Test Utils 4.0.3 | Vitest/coverageを同じversionにし、Nuxt supportのtest harnessを使う |
 | Component/DOM | Vue Test Utils 2.4.11、happy-dom 20.10.6 | Nuxt Test Utils peerを満たす現行release |
@@ -632,8 +632,13 @@ extension claimで登録し、そのidに配線する唯一の機能はservice�
 module — である。contribution自体は決してimportしない。そのlazyにloadされるmodeがserviceのworkerを
 emitされるbundleへ引き込み、language-service workerの出荷はpackage gateが禁じるものだからである。
 したがって本物の`json` coloringがvalidationもworkerもなしで出荷され、`.jsonc`は同じtokenizerへmapされる
-（comment対応はtokenizer自身のもの）。Monacoが何も持たないTOMLは最も近い純粋なtokenizer（ini）を借りる。mapされた
-idはinternalで、model URIはopaqueのままであり、textはいずれにせよ
+（comment対応はtokenizer自身のもの）。Monacoが何も持たないTOMLは、grammarを
+`@ota-meshi/site-kit-monarch-syntaxes`から取る: serviceを伴わないMonarch grammarとlanguage
+configurationであり、`toml` idへbasic languageと同じlazy factoryで登録するため、それらを運ぶchunkは
+最初の`.toml` fileを開いたときに取得される。登録にpackage自身の`setupTomlLanguage`は使わない。その
+parameterは`monaco-editor` entry point全体であり、その型にはこのbundleが除外するlanguage serviceが
+含まれるため、呼び出すことはこのapplicationが意図的に持たない形を主張することになるからである。
+`.jsonc`のmappingはinternalで、model URIはopaqueのままであり、textはいずれにせよ
 記述されたとおりに表示される。
 Modelはopaqueなin-memory URIと完全な記述済みsource textを保持し、route close、selection replacement、source
 disable、generation replacement時にeditor/subscriptionとは別にdisposeする。Monacoのtext modelはdocumentごとに

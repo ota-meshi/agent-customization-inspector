@@ -133,7 +133,7 @@ production closure stable and its payloads byte-fixed for the first release with
 re-scanning content the hashes already fix and without a test that restates the lockfile's
 own values.
 Root-absolute assets are necessary because the same shell is returned for nested routes
-such as `/skills/<tool>/<source-relative path>`; a relative `./_nuxt/` URL would resolve beneath that route.
+such as `/skills/<source-relative path>`; a relative `./_nuxt/` URL would resolve beneath that route.
 The official [Nuxt 4 configuration reference](https://nuxt.com/docs/4.x/api/nuxt-config#baseurl)
 defines `baseURL`, `buildAssetsDir`, and the empty-by-default `cdnURL`. The exact
 [Nuxt output-directory documentation](https://nuxt.com/docs/4.x/directory-structure/output)
@@ -207,7 +207,7 @@ create a second dependency baseline.
 | Frontmatter | `vfile-matter` 5.0.1, `vfile` 6.0.3 | Frontmatter delimiter handling. Deciding where a frontmatter block begins and ends means re-deciding BOM handling, line endings, and the closing-fence forms, so it is a parser rather than a regular expression. This one parses the block with the `yaml` engine already listed here; a package carrying its own `js-yaml` would give one document two meanings, because js-yaml 3 is YAML 1.1 and `yaml` is YAML 1.2 |
 | File opening | `which` 6.0.1, `env-editor` 1.3.0 | The detail surfaces' open control (FR-022). `which` resolves the editor command a launch would run, so what the host offers and what it can start are one fact rather than two that can disagree; `env-editor` supplies where an installation puts that command when it is not on `PATH`, keeping those locations a maintained third-party fact instead of a table this repository would have to follow each editor's packaging with. `which` stays on 6.x because 7.0.0 declares `^24.15.0`, which excludes part of this project's own supported Node range; the launch itself reuses `open`, already listed above. A package that finds installed applications generally (`locate-app`) is rejected: it is CommonJS-only and pulls a prompt-engineering package and `crypto-js` into a production closure this project audits |
 | Icons | `unplugin-icons` 23.0.1, `@iconify-json/lucide` 1.2.124, `@iconify-json/simple-icons` 1.2.93 | Build-time icon compilation: each `~icons/<collection>/<name>` import becomes a component carrying that icon's own SVG, so the page fetches nothing and no icon runtime ships — the arrangement FR-022 requires, and the reason Iconify's API-backed runtime (`@nuxt/icon`, `@iconify/vue`) is rejected. Both collections ship their icon data with no license file of their own, so this repository carries each set's upstream text under `licenses/` for the notice document to read (FR-043) |
-| Source view/diff | `monaco-editor` 0.55.1 | Current stable read-only source and diff editor; its own diff engine avoids a duplicate client dependency |
+| Source view/diff | `monaco-editor` 0.55.1, `@ota-meshi/site-kit-monarch-syntaxes` 0.7.3 | Current stable read-only source and diff editor; its own diff engine avoids a duplicate client dependency. Monaco ships no TOML grammar and `.codex/config.toml` is a customization format this product opens, so the `toml` id is registered from the syntaxes package: a Monarch grammar and a language configuration — what a basic language is — with no language service and no worker behind them. That package ships no license file of its own, so this repository carries its upstream text under `licenses/` for the notice document to read (FR-043) |
 | Lint | ESLint 10.7.0, `@nuxt/eslint` 1.16.0, `@stylistic/eslint-plugin` 5.10.0 | Current compatible stable releases; `@stylistic` supplies the stylistic rules (e.g. `quotes`) ESLint 10 dropped from core |
 | Unit/integration | Vitest and coverage-v8 4.1.10, Nuxt Test Utils 4.0.3 | Exact matching Vitest/coverage versions; Nuxt-supported test harness |
 | Components/DOM | Vue Test Utils 2.4.11, happy-dom 20.10.6 | Current releases satisfying Nuxt Test Utils peers |
@@ -795,8 +795,14 @@ worker behind it. The contribution itself is never imported, because its lazily 
 mode carries the service's worker into the emitted bundle, and shipping a
 language-service worker is what the package gate forbids. The real `json` colouring
 therefore ships with no validation and no worker, and `.jsonc` maps to the same
-tokenizer, whose comment support is its own. TOML, which Monaco ships nothing for, borrows the nearest pure
-tokenizer (ini): the mapped id is internal, the model URI
+tokenizer, whose comment support is its own. TOML, which Monaco ships nothing for, takes its grammar from
+`@ota-meshi/site-kit-monarch-syntaxes`: a Monarch grammar and a language configuration with no
+service behind them, registered onto a `toml` id through the same lazy factory every basic
+language uses, so the chunk carrying them is fetched on the first `.toml` file opened. The
+package's own `setupTomlLanguage` is not what registers it — its parameter is the whole
+`monaco-editor` entry point, whose type includes the language services this bundle excludes,
+so calling it would mean asserting a shape this application deliberately does not have. The
+`.jsonc` mapping is internal, the model URI
 stays opaque, and the text is displayed exactly as authored either way. Models use opaque in-memory URIs, hold
 complete authored source text, and are disposed separately from their editor and
 subscriptions on route close, selection replacement, source disable, or generation

@@ -55,7 +55,8 @@ customization-selected destination、別machineへの調査content送信は禁�
    `dist/public`へ出力したものそのままであり、productはstatic-assets manifest、per-asset
    integrity再検証、hand-written routerを一切定義しない。その前段にあるproduct所有の要素は
    closedなdetail-route rewrite — `/skills/**`、`/instructions/**`、`/mcp/**`、`/rules/**`、
-   `/prompts-and-commands/**`、`/permissions/**`、`/agents/**`、shipped kind
+   `/prompts-and-commands/**`、`/permissions/**`、`/agents/**`、
+   `/settings-and-configuration/**`、shipped kind
    detailごとに1 family — だけである: これらのroute familyに入るpathの`GET`/`HEAD`を`/`へ
    書き換えてfall throughさせ、extension-guardedなSPA fallbackがfile missとして扱うdetail deep
    linkにも、devframe自身のstatic handlerがpackaged shellをserveする。Rewriteはfilesystemに
@@ -248,7 +249,7 @@ SessionSnapshot
 ├── skills[]
 │   └── name string,
 │       definitions[] { sourceRelativePath, tool, surfaces[], parseStatus,
-│                       invocationName, diagnosticIds[], companionFiles[] },
+│                       diagnosticIds[], companionFiles[] },
 │       sameNameResolutions[] { tool, resolution } — one per tool facing a collision
 ├── mcp[]
 │   └── name string | null,
@@ -305,33 +306,39 @@ SessionSnapshot
 │       宣言された permission policy 1つにつき1行。宣言する file の path で
 │       名指す。宣言しない carrier は残りを所有する kind として認識され、
 │       ここには row を持たない
+├── settings[]
+│   └── sourceRelativePath, recognitions[] { tool, surfaces[] } —
+│       認識された settings または configuration file 1つにつき1行。この
+│       kind の単位は file 自身なので、自身の path で名指す。他の kind が
+│       所有する宣言も運ぶ file — Codexの `.codex/config.toml` — は、ここ
+│       にも、その kind の一覧にも row を持つ。diagnostic の一覧は持たない。
+│       `rules[]` と同じ理由で、document から何も読み出さないためである
 └── diagnostics[] { diagnosticId, code, sourceId string,
     sourceRelativePath string | null — file scope以外はnull }
     （active-generation recordとsession-owned lifecycle record）
 ```
 
-一覧rowの単位はfileではなくkindが決める。Skillは1つのtoolが解決した1つの名前である
-（data-model.md § 一覧の単位）: authoredなfrontmatter `name` — fileが宣言しないか空で
-宣言する場合、またはextractionが失敗した場合はskill directory名。directoryはpath自身の事実であり、
-失敗したparseから読み出した値ではない（FR-028）。したがって`name`がnullや空になることはない — であり、
-nestedなskillのClaude Code recognitionはroot相対のprefixを前置するため、`name: deploy`を宣言する
-`apps/web/.claude/skills/deploy/SKILL.md`はClaude rowでは`apps/web:deploy`である。
-1つの名前に解決される複数の
+一覧rowの単位はfileではなくkindが決める。Skillは1つのtoolが解決した1つのinvocation
+nameである（data-model.md § 一覧の単位）: そのtool自身の文書がこのfileを呼び出す名前で、
+admitしたruleが解決する。CodexとCopilotはauthoredなfrontmatter `name`を呼び出す —
+fileが宣言しないか空で宣言する場合、またはextractionが失敗した場合はskill directory名。
+directoryはpath自身の事実であり、失敗したparseから読み出した値ではない（FR-028）。一方
+Claude Codeのcommand名はfrontmatterの宣言に依らずskill directoryであり、nestedなskillには
+root相対のprefixを前置する。したがって`name: ship`を宣言する
+`apps/web/.claude/skills/deploy/SKILL.md`は、Claude Code rowでは`apps/web:deploy`、
+Copilot rowでは`ship`である。`name`がnullや空になることはない。
+1つのtoolが1つの名前で呼び出す複数の
 `SKILL.md`は、複数の定義を持つ1つのentryとして公開される — 名前を宣言せず同名のskill
-directoryに置かれた2つのfileもその一例である。認識toolごとに異なる名前へ解決される
-定義は1つのtoolによる1つのfileのrecognition — ToolRecognitionの単位、`(file, tool)`につき
-1つで、`definitions[].tool`が名指す — であるため、2つのtoolが1つの名前に解決するfileはその
-entryの2つの定義であり、toolごとに異なる名前へ解決されるfileは各名前のentryで定義される。
-定義の`invocationName`は、その定義自身のtoolの文書がこのfileに与えるinvocation nameである: Claude Codeの
-command名はfrontmatterの宣言に依らずpathから導出され — skill directory名で、nestedなら
-root相対prefix付き — 、CodexとCopilotはauthoredな`name`を、fileが宣言しない場合はrowと同じ
-skill directoryフォールバック付きで呼び出す。Toolがauthoredな名前を呼び出し、かつその定義の
-extractionが失敗した場合に限りnullとする: その名前は不在ではなく不明であり、directoryを公開すれば
-失敗したparseから値を読み出すことになるからである（FR-028）。定義は自身のrecognitionの
-`parseStatus`とextraction失敗の`diagnosticIds`も運ぶ: extractionはkindごとに1回なので失敗の
+directoryに置かれた2つのfileもその一例である。定義は1つのtoolによる1つのfileのrecognition
+— ToolRecognitionの単位、`(file, tool)`につき
+1つで、`definitions[].tool`が名指す — であるため、2つのtoolが1つの名前で呼び出すfileはその
+entryの2つの定義であり、toolごとに異なる名前で呼び出されるfileは各名前のentryで定義される。
+定義は独自の名前を公開しない: 名前はrowのものであり、定義側の第2の複製は事実とそこから
+導出した値の二重公開になる。定義は自身のrecognitionの
+`parseStatus`とextraction失敗の`diagnosticIds`を運ぶ: extractionはkindごとに1回なので失敗の
 recordも1件であり（FR-028）、そのfileの失敗した各定義がそれを参照し、fileの`files[]` entryは
-それを1回だけ列挙する。Detailは公開されている場合にpageを所有する定義のinvocation nameを
-row名の傍らに示す（data-model.md § Skillの表示）。値はrowをkeyする同じprojectionから来るため、vendor
+それを1回だけ列挙する。Detailの見出しはrouteが指す定義のrow名である
+（data-model.md § Skillの表示）。名前はrecognition時にそれを解決する唯一のruleから来るため、vendor
 namingがserverとclientの間で乖離することはない。MCP rowは宣言されたserver名1つであり、その名前を解決するすべての`[mcp_servers.*]`型宣言 —
 `(carrier, tool)`ごとに1つ — を列挙する。したがってadmit済みの`.codex/config.toml` 1つは宣言した
 serverごとに宣言を1つ寄与し、同じ名前を宣言する第2のcarrierはその名前のrowに合流する。宣言の
@@ -555,7 +562,8 @@ phaseで、Global taskがこのfunctionとdetail/comparison routeへSource quali
 Active-generation file detailを1件返す。fileをrecognitionが所有するかどうかで判別される。
 
 ```text
-FileDetail — kind: 'instructions' | 'skill' | 'agent' | 'prompt/command' | 'rule' | 'file'
+FileDetail — kind: 'instructions' | 'skill' | 'agent' | 'prompt/command' | 'rule' |
+             'settings/config' | 'file'
 ├── kind 'instructions' — fileは認識されたinstruction file:
 │   ├── file — encodingで判別されるCustomizationFile 1件:
 │   │   ├── sourceId, sourceRelativePath, encoding, diagnosticIds[]
@@ -592,6 +600,9 @@ FileDetail — kind: 'instructions' | 'skill' | 'agent' | 'prompt/command' | 'ru
 ├── kind 'rule' — fileは認識されたrule file:
 │   ├── file — 上と同じ
 │   └── diagnostics[]
+├── kind 'settings/config' — fileは認識されたsettingsまたはconfiguration file:
+│   ├── file — 上と同じ
+│   └── diagnostics[]
 └── kind 'file' — fileを所有するrecognitionが無い（censusだけが列挙したfile、
     またはdiagnostic-onlyのcandidate）:
     ├── file — 上と同じ
@@ -609,7 +620,7 @@ detail responseは、pageが開けるものを何も渡さない。
 frontmatter keyを取るためであり、そのdetailはfileが書いたdeclarationと、その後に続く
 promptから始まる。持たないのは、読み手が入力する名前である: これはdetailのfieldではなく
 ruleが答えるものであるため、inventoryの事実であり — 各`prompts[]` rowがgroup化される
-名前そのものであり — skillの認識toolとinvocation nameが`skills[]`の事実であるのと同じで
+名前そのものであり — skillのinvocation nameが`skills[]`の事実であるのと同じで
 ある。名前を宣言したprompt fileも例外ではない: その宣言はfileが書いた他のkeyと同じく
 `presentation.frontmatter`にあり、ruleがそこから何を作ったかがrowの事実である。
 `agent` variantは独自のshapeの`presentation`を持つ。分割点が常にfrontmatter blockとは
@@ -637,6 +648,14 @@ fileとして書かれたものを2つの半分として読者に見せること
 本productがfilesystem pathに対して評価することのないauthored textである。それでも独自の
 variantであるのは、recognitionがこのfileを所有しており、そのinventory rowがそう述べて
 いるからである。
+`settings/config` variantが`presentation`を持たないのも同じ理由であり、そのrowの単位は
+file自身であるため（data-model.md § 一覧の単位）、authorが書いたdocumentがそのまま答えに
+なる: Codexの`.codex/config.toml`は、comment、authoredな綴り、section順を保ったTOMLとして
+responseへ届く。自分のfileと突き合わせる読者に必要なのはそれである。その`[mcp_servers.*]`
+tableは別のrowの主題であり、`get-mcp-carrier-detail`が宣言を先頭にしてserveする。ここにも
+見えるのは、同じdocumentを自身のrowの下で見ているからであって、1つの事実を二重に公開して
+いるのではない。宣言されたagent、skill、model-instruction、compact-prompt、hookのpathは
+読まれず、解決されず、辿られない。environment referenceも置換されない（FR-019、FR-026）。
 
 Permission policyはこれらのvariantに含まれない。Permissions rowが名指すのはfileではなくpolicyで
 あり — あるvendorのpolicyはそれ自体が1つのdocumentであり、別のvendorのそれは、他のkeyが別の
@@ -652,13 +671,12 @@ extractionは`(file, tool)`ごとになる。どの読み取りも同じshapeを
 2つのproductが1つのfileを読む場合、その解決結果は一致するため、繰り返しは2つ目の事実ではなく
 1つのstringに対する作業にすぎない。Toolごとのrecognition一覧は存在しない:
 どのtoolがこのfileを認識するか、各toolがそれを何として解決するか、そのparse stateはinventoryの
-事実であり、kindごとのinventoryがそれを運ぶ。skillのそれは`skills[].definitions[]`であり、
-detail routeにtool segmentを持つのはこのkindだけである。skillのnameは1つのtoolによる解決であり、
-segmentがpageの対象定義を言うためである。他のkindのdetail routeはpathのみとする:
-instruction fileの認識toolはそのinventory row（`instructions[]`）で、custom agentのそれは
-`agents[].definitions[]`でfileの隣に列挙され、どちらのrouteもtool segmentを持たない。
-instruction fileにはpageが示す内容を分けるtoolごとの事実が存在せず、custom agentのpageは
-どのproductがどのnameを解決したかによらず1つのfileの2つの半分を示すためである。
+事実であり、kindごとのinventoryがそれを運ぶ。skillのそれは`skills[].definitions[]`、
+instruction fileの認識toolはそのinventory row（`instructions[]`）、custom agentのそれは
+`agents[].definitions[]`でfileの隣に列挙される。どのkindのdetail routeもpathのみとする:
+1つのfileを読む2つのproductは同じbyteを読むため、toolごとのaddressは1つのdocumentに2つのURLを
+与えることになり、productが異なる点 — skillを呼び出す名前 — は、そのfileを抱えるrowから
+pageがまとめて述べるためである。
 Admission recordも存在しない: どのruleがreadを認可しどこにmatchしたかは、relationship
 phaseが読むことになるcommit済みgenerationの内部record（data-model.md § ToolRecognition）
 であり、session responseは運ばない — したがって設定済みfallback instruction fileの
@@ -678,9 +696,9 @@ formatであって、この製品ではない。
 keyである — ため、file間で宣言をmatchするclientは`key`単独ではなくこの組でmatchする。
 同じentry形は`keyKind`を含めて、nestした全`mapping` value内へ再帰する。
 
-Readable fileでは`sourceText`を完全なdecoded sourceとし、書かれたとおりに保持する。standaloneのMCP declaration carrier — MCP kindがrecognizeし、skill kindがclaimしないfile — は`FileDetail`を一切持たない: 宣言を公開するためにadmitされたfileはその宣言を示し、自身のbyteは決して示さない（FR-007）。authored sourceをserveすることが目的のfunctionは、それを差し控えねばならないvariantを運ばない。この差し控えは、同じpathが運ぶ他のあらゆるrecognitionに優先する: Codexの`project_doc_fallback_filenames` entryが`.mcp.json`を指名するとcarrierはinstructions candidateにもなるが、そのvariantのdetailは完全なbody text — まさにFR-007が差し控えるbyte — であるため、carrierはfallback recognitionの下で答えられるのではなく、差し控えられたままになる。そのようなcarrierのdetailは`get-mcp-carrier-detail`自身のresultであり、そのpathをこのfunctionへrequestすると、このfunctionがdetailを保持しない他のあらゆるpathと同じ`stale-resource` rejectionに解決される。MCP recognitionを持つのは明示的なcarrierだけである: 他のkindのfileが自身の内容にMCP風のconfigurationを綴っても — skillやagentのfrontmatter、settings fileのinline map — それはそのkindの通常のcontentであり、このfunctionが自身のkindの下でserveするpresentationに宣言済みkeyとして見えるだけで、どのMCP surfaceにも合流しない。
+Readable fileでは`sourceText`を完全なdecoded sourceとし、書かれたとおりに保持する。このfunctionが答えるのは主題がfile自身であるrowであるため、宣言を主題とするrowしか持たないpathは`FileDetail`を一切持たない: standaloneのMCP declaration carrier — MCP kindがrecognizeし、file主題のkindがclaimしないfile — は`get-mcp-carrier-detail`を通じて宣言を公開し、自身のbyteは決して示さない（FR-007）。authored sourceをserveすることが目的のfunctionは、それを差し控えねばならないvariantを運ばない。そのpathをこのfunctionへrequestすると、このfunctionがdetailを保持しない他のあらゆるpathと同じ`stale-resource` rejectionに解決される。file主題のrowも持つpathは、そのrowの下で答える。rowの主題こそがそのdetailの対象だからである（FR-007）: Codexの`project_doc_fallback_filenames` entryが`.mcp.json`を指名すると、そのcarrierはinstruction fileでもあり、instruction fileは完全なsourceを示すため、1つのpathが`get-mcp-carrier-detail`では宣言だけを、ここではdocument全体をserveする。MCP recognitionを持つのは明示的なcarrierだけである: 他のkindのfileが自身の内容にMCP風のconfigurationを綴っても — skillやagentのfrontmatter、settings fileのinline map — それはそのkindの通常のcontentであり、このfunctionが自身のkindの下でserveするpresentationに宣言済みkeyとして見えるだけで、どのMCP surfaceにも合流しない。
 
-Permission policyも同じ条件で、2つのformのいずれもここでは差し控える。Policy blockを宣言するcarrierは、そのblockを公開するためにadmitされたfileであるため、その周囲のbyteは決してserveしない。またfile全体の内容がpolicyであるfileは、このfunctionが自身として述べることを何も持たないfileではなくpolicyである: permissions rowが名指すのはpolicyだからである（data-model.md § 一覧の単位）。どちらのpathもここへrequestすると`stale-resource` rejectionに解決し、policyをserveするのは`get-permission-policy-detail`である。
+Permission policyも同じ条件で、2つのformのいずれもここでは差し控える: permissions rowが名指すのは、それを宣言するfileではなくpolicyであるため（data-model.md § 一覧の単位）、どちらのformもこのfunctionが答える主題ではない — Policy blockを宣言するcarrierは、そのblockを公開するためにadmitされたfileであり、file全体の内容がpolicyであるfileは、このfunctionが自身として述べることを何も持たないfileではなくpolicyである。permissions rowを持ちfile主題のrowを持たないpathは`stale-resource` rejectionに解決し、policyをserveするのは`get-permission-policy-detail`である。
 
 Skillの`presentation`は、宣言している内容と指示している内容である。detail surfaceがそれを先頭に
 置くからである。`frontmatter[]`はfileが宣言するすべてのkeyを、fileが書いたkeyそのもの —
@@ -1397,9 +1415,11 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
    される全byteがそのpackaged Nuxt outputに由来し、inspected fileを一切serveせず、root、
    `/global-consent`、各kindのcomparison route（`/skills/compare`、`/instructions/compare`、
    `/mcp/compare`、`/prompts-and-commands/compare`）、各kindのdetail route
-   （`/skills/<tool>/<Source相対パス>`、`/instructions/<Source相対パス>`、`/mcp/<Source相対パス>`、
+   （`/skills/<Source相対パス>`、`/instructions/<Source相対パス>`、`/mcp/<Source相対パス>`、
    `/rules/<Source相対パス>`、`/prompts-and-commands/<Source相対パス>`、
-   `/permissions/<Source相対パス>`）のclient routeがすべて同じpackaged SPA shellをbootし、
+   `/permissions/<Source相対パス>`、`/agents/<Source相対パス>`、
+   `/settings-and-configuration/<Source相対パス>`）のclient routeがすべて同じpackaged SPA
+   shellをbootし、
    そのshellはsession dataをembedしない。
 6. Repositoryと各tool-specific Global rescanのqueue order、duplicate rejection、abort、partial
    outcome、fatal failure、pollingがwhole generationだけを公開する。別のSourceの後でqueueした

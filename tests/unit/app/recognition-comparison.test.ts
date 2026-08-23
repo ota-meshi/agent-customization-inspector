@@ -74,7 +74,6 @@ function definition(
     tool,
     surfaces: [],
     parseStatus,
-    invocationName: parseStatus === 'parsed' ? 'greet' : null,
     diagnosticIds: [],
     companionFiles: [],
   };

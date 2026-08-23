@@ -34,6 +34,7 @@ import {
   CODEX_REPO_CONFIG_RULE,
   CODEX_REPO_INSTRUCTIONS_RULE,
   CODEX_REPO_RULES_RULE,
+  CODEX_REPO_SETTINGS_RULE,
   CODEX_REPO_SKILL_RULE,
 } from './rules';
 import {
@@ -160,6 +161,19 @@ export const CODEX_RULE_RELATIONS: Readonly<Record<CodexRuleId, RuleRelations>> 
       CODEX_REPO_MCP_BEHAVIOR,
     ],
     explainedByStrategies: [CODEX_CONFIG_PRECEDENCE_STRATEGY, CODEX_MCP_CONFIGURATION_STRATEGY],
+  },
+  /**
+   * The settings recognition of the same file rests on the config-layer
+   * lookup alone: what it publishes is the document that lookup locates, and
+   * the declarations inside it that another recognition owns — the MCP tables
+   * — are that recognition's basis rather than this one's. It is explained by
+   * the precedence that resolves the layers, which is the only composition a
+   * document-shaped recognition can be explained by
+   * (contracts/vendors/openai-codex.md § Inspector Repository rules).
+   */
+  [CODEX_REPO_SETTINGS_RULE.ruleId]: {
+    basedOnBehaviors: [CODEX_REPO_CONFIG_BEHAVIOR],
+    explainedByStrategies: [CODEX_CONFIG_PRECEDENCE_STRATEGY],
   },
   /**
    * The Repository instruction rule is based on the project instruction

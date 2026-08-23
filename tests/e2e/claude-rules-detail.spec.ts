@@ -84,7 +84,7 @@ test.describe('the complete literal Claude rule detail', () => {
     const rows = page.getByRole('tabpanel').locator('.aci-item');
     await rows
       .filter({ hasText: '.claude/rules/api.md' })
-      .getByRole('link', { name: 'Claude Code' })
+      .getByRole('link', { name: '.claude/rules/api.md' })
       .click();
     await expect(page).toHaveURL(/\/rules\/\.claude\/rules\/api\.md$/u);
     await expect(page.getByRole('heading', { name: '.claude/rules/api.md' })).toBeVisible();

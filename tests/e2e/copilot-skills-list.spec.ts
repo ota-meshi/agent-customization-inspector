@@ -62,46 +62,64 @@ test('lists each recognition exactly once as a definition with the exact matrix'
   page,
 }) => {
   await page.goto(host.origin);
-  // Three rows for four admitted files: the two `voyage` files share
-  // one grouped row, and the nested `.claude` layer — which declares no
-  // name — is its own row named by its prefixed skill directory,
-  // `packages/api:lander-nested` (FR-007, T1081).
-  await expect(page.locator('.aci-item')).toHaveCount(3);
+  // Four rows for four admitted files: the two files Copilot invokes as
+  // `voyage` share one grouped row, `.claude/skills/lander` is also Claude
+  // Code's own `lander` row because Claude invokes the skill directory
+  // whatever the frontmatter declares, and the nested `.claude` layer is a
+  // row named by its prefixed skill directory (FR-007, T1081).
+  await expect(page.locator('.aci-item')).toHaveCount(4);
 
-  // Rows in name order: `orbit`, the directory-named `packages/api:lander-nested`,
-  // then the grouped `voyage`.
-  // One path line per file; the definitions beneath it link once per
-  // recognizing product to their own `/skills/<tool>/<source-relative path>`
-  // routes.
+  // Rows in name order: `lander`, `orbit`, `packages/api:lander-nested`, then
+  // the grouped `voyage`. One path line per file within a row; the
+  // definitions beneath it link once per recognizing product to their own
+  // `/skills/<source-relative path>` routes.
   await expect(page.locator('.aci-item .aci-path')).toHaveText([
+    '.claude/skills/lander/SKILL.md',
     '.agents/skills/orbit/SKILL.md',
     'packages/api/.claude/skills/lander-nested/SKILL.md',
     '.claude/skills/lander/SKILL.md',
     '.github/skills/ship/SKILL.md',
   ]);
 
-  // The matrix, read off each file's definition links: a definition is one
-  // `(file, tool)` recognition carrying exactly its own tool's link, and a
-  // file's definitions follow the fixed tool order, so the links a file's
-  // group shows together are that file's recognition matrix. `toHaveText` is
-  // exact, so an extra definition would fail rather than pass unnoticed:
-  // every root file is Copilot's, the shared spellings add the sharing
-  // product, and the nested `.claude` layer is Claude's alone.
-  const fileGroupOf = (path: string) => page.locator('.aci-skill-row__file', { hasText: path });
-  const expectTools = async (path: string, tools: readonly string[]) => {
-    await expect(fileGroupOf(path).locator('.aci-skill-row__definitions a')).toHaveText([...tools]);
+  // The matrix, read off each file's definition links inside the row that
+  // holds it: a definition is one `(file, tool)` recognition carrying exactly
+  // its own tool's link. `toHaveText` is exact, so an extra definition would
+  // fail rather than pass unnoticed. The shared `.claude/skills/lander` file
+  // is asserted once per row, which is where the two products' different
+  // names put its two recognitions.
+  const expectTools = async (row: string, path: string, tools: readonly string[]) => {
+    const group = page
+      .locator('.aci-item', {
+        has: page.locator('.aci-skill-row__name', { hasText: new RegExp(`^${row}$`, 'u') }),
+      })
+      .locator('.aci-skill-row__file', { hasText: path });
+    await expect(group.locator('.aci-skill-row__tool')).toHaveText([...tools]);
   };
-  await expectTools('.github/skills/ship/SKILL.md', ['GitHub Copilot']);
-  await expectTools('.agents/skills/orbit/SKILL.md', ['GitHub Copilot', 'OpenAI Codex']);
-  await expectTools('.claude/skills/lander/SKILL.md', ['GitHub Copilot', 'Claude Code']);
-  await expectTools('packages/api/.claude/skills/lander-nested/SKILL.md', ['Claude Code']);
+  await expectTools('voyage', '.github/skills/ship/SKILL.md', [
+    'GitHub Copilot VS Code, CLI, Cloud agent',
+  ]);
+  await expectTools('voyage', '.claude/skills/lander/SKILL.md', [
+    'GitHub Copilot VS Code, CLI, Cloud agent',
+  ]);
+  await expectTools('lander', '.claude/skills/lander/SKILL.md', [
+    'Claude Code CLI and IDE clients',
+  ]);
+  await expectTools('orbit', '.agents/skills/orbit/SKILL.md', [
+    'GitHub Copilot VS Code, CLI, Cloud agent',
+    'OpenAI Codex Local clients',
+  ]);
+  await expectTools(
+    'packages/api:lander-nested',
+    'packages/api/.claude/skills/lander-nested/SKILL.md',
+    ['Claude Code CLI and IDE clients'],
+  );
 });
 
 test('shows no nested-context, extra-depth, configured-root, or authored-content row', async ({
   page,
 }) => {
   await page.goto(host.origin);
-  await expect(page.locator('.aci-item')).toHaveCount(3);
+  await expect(page.locator('.aci-item')).toHaveCount(4);
   const text = await page.locator('main').innerText();
   // The nested `.github` and `.agents` contexts belong to runtime contexts
   // this product does not select, so neither is listed at all.
@@ -126,11 +144,11 @@ test('groups the shared declared name and states the surface-dependent Copilot r
   page,
 }) => {
   await page.goto(host.origin);
-  // `.github/skills/ship` and `.claude/skills/lander` both declare `voyage`:
-  // one row, three definitions — `lander` one per recognizing product — and
-  // only Copilot faces the collision — its statement is that no single rule
-  // is documented across its surfaces, never the CLI's first-found winner as
-  // a product-wide claim (FR-007).
+  // `.github/skills/ship` and `.claude/skills/lander` both declare `voyage`,
+  // which is the name Copilot invokes each by — so one row, two Copilot
+  // definitions, and Copilot alone faces the collision. Its statement is that
+  // no single rule is documented across its surfaces, never the CLI's
+  // first-found winner as a product-wide claim (FR-007).
   const grouped = page.locator('.aci-item').filter({ hasText: 'voyage' }).first();
   await expect(grouped.locator('.aci-path')).toHaveText([
     '.claude/skills/lander/SKILL.md',
@@ -145,10 +163,11 @@ test('groups the shared declared name and states the surface-dependent Copilot r
 
 test('filters the matrix apart with the tool filter', async ({ page }) => {
   await page.goto(host.origin);
-  await expect(page.locator('.aci-item')).toHaveCount(3);
+  await expect(page.locator('.aci-item')).toHaveCount(4);
 
-  // Copilot recognizes every root file; the sharing vendors keep exactly
-  // their own — Claude both `.claude` depths, Codex the root `.agents` one.
+  // Copilot recognizes every root file, under the two authored names; the
+  // sharing vendors keep exactly their own — Claude both `.claude` depths
+  // under its own command names, Codex the root `.agents` one.
   await page.getByLabel('Tool').selectOption('copilot');
   await expect(page.locator('.aci-item')).toHaveCount(2);
   await page.getByLabel('Tool').selectOption('codex');
@@ -157,11 +176,11 @@ test('filters the matrix apart with the tool filter', async ({ page }) => {
   await page.getByLabel('Tool').selectOption('claude');
   await expect(page.locator('.aci-item')).toHaveCount(2);
   await expect(page.locator('.aci-item .aci-path')).toHaveText([
-    'packages/api/.claude/skills/lander-nested/SKILL.md',
     '.claude/skills/lander/SKILL.md',
+    'packages/api/.claude/skills/lander-nested/SKILL.md',
   ]);
   await page.getByRole('button', { name: 'Clear filters' }).click();
-  await expect(page.locator('.aci-item')).toHaveCount(3);
+  await expect(page.locator('.aci-item')).toHaveCount(4);
 });
 
 test('opens a Copilot definition by its stable identity into the detail route', async ({
@@ -170,13 +189,11 @@ test('opens a Copilot definition by its stable identity into the detail route', 
   await page.goto(host.origin);
   const link = page
     .locator('.aci-skill-row__file', { hasText: '.github/skills/ship/SKILL.md' })
-    .locator('.aci-skill-row__definitions a');
+    .locator('.aci-skill-row__owner a');
   await link.click();
   // The detail route is the one surface that serves authored content; the
-  // list milestone only proves the row links to the definition's own identity
-  // — `/skills/<tool>/<source-relative path>` — and the `.github` root file is
-  // Copilot's alone, so the tool segment is exact.
-  await expect(page).toHaveURL(
-    new URL('/skills/copilot/.github/skills/ship/SKILL.md', host.origin).href,
-  );
+  // list milestone only proves the row links to the file's own identity —
+  // `/skills/<source-relative path>`, with no tool in it, because both
+  // products reading a file read the same document.
+  await expect(page).toHaveURL(new URL('/skills/.github/skills/ship/SKILL.md', host.origin).href);
 });

@@ -307,7 +307,7 @@ describe('the Claude skill slice of the reference graph (T130, T133)', () => {
   it('ships only read-authorizing Claude records and no exclusion', () => {
     // The phase-local half of the registry catalog check: the shipped Claude
     // catalog is the command, instruction, MCP carrier, permission-policy,
-    // rule-file, and skill rules, all read-authorizing. No `excluded` or
+    // rule-file, settings, and skill rules, all read-authorizing. No `excluded` or
     // `relationship-only` Claude row ships yet — a symlinked skill needs none
     // because links are read through their targets (FR-024), an unsupported
     // instruction location is simply a path no selector reaches (T232), a
@@ -323,6 +323,7 @@ describe('the Claude skill slice of the reference graph (T130, T133)', () => {
       'claude.repo.mcp',
       'claude.repo.permissions',
       'claude.repo.rules',
+      'claude.repo.settings',
       'claude.repo.skill',
     ]);
     for (const rule of claudeRules) {
@@ -350,22 +351,23 @@ describe('the Claude skill slice of the reference graph (T130, T133)', () => {
 });
 
 describe('the Copilot skill slice of the reference graph (T154, T158)', () => {
-  it('ships every read-authorizing Copilot candidate and exactly two exclusions', () => {
+  it('ships every read-authorizing Copilot candidate and exactly four exclusions', () => {
     // The phase-local half of the registry catalog check: the shipped Copilot
     // catalog is the skill rule, the CLI MCP carrier rule (T339), the two
     // VS Code MCP rules (T359), the seven instruction rules, the command and
-    // prompt rules (T537), and the two custom-agent rules (T551) — one per
+    // prompt rules (T537), the two custom-agent rules (T551) — one per
     // documented agents directory, because the Cloud agent reads only
     // `.github/agents/` and a rule's surfaces come from the behaviors it
-    // rests on — all read-authorizing, plus the catalog's first two
-    // `excluded` records. The
+    // rests on — and the settings rule (T628), all read-authorizing, plus the
+    // catalog's four `excluded` records. The
     // eventual complete catalog gate is T913's, not this suite's.
     //
     // Naming the exclusions is what makes them reviewable: rejecting a
-    // configured or environment-supplied root is still the matchers' own
-    // doing — no selector reaches outside the fixed directory spellings — so
-    // an exclusion record states that the omission was decided, and a third
-    // one appearing here would be an exclusion nobody reviewed.
+    // configured root, a general editor settings file, or a language-server
+    // configuration is still the matchers' own doing — no selector reaches
+    // those paths — so an exclusion record states that the omission was
+    // decided, and a fifth one appearing here would be an exclusion nobody
+    // reviewed.
     const byClass = (discoveryClass: string): string[] =>
       rules
         .filter((rule) => rule.tool === 'copilot' && rule.discoveryClass === discoveryClass)
@@ -385,13 +387,16 @@ describe('the Copilot skill slice of the reference graph (T154, T158)', () => {
       'copilot.repo.mcp.vscode',
       'copilot.repo.mcp.vscode-root',
       'copilot.repo.prompt',
+      'copilot.repo.settings',
       'copilot.repo.skill',
     ]);
     expect(byClass('excluded')).toEqual([
       'copilot.excluded.additional-standard-locations',
+      'copilot.excluded.cli-lsp',
       'copilot.excluded.extra-directories',
+      'copilot.excluded.vscode-settings',
     ]);
-    expect(rules.filter((rule) => rule.tool === 'copilot')).toHaveLength(17);
+    expect(rules.filter((rule) => rule.tool === 'copilot')).toHaveLength(20);
   });
 
   it('gives an exclusion no matcher, no kind, and no strategy (T251)', () => {
@@ -712,14 +717,16 @@ describe('the unified instruction selector matrix (T269)', () => {
     expect(derived[0]!.tool).toBe('codex');
   });
 
-  it('keeps the instruction-adjacent exclusions non-authorizing', () => {
-    // The two Copilot exclusions are the only shipped exclusion records, and
+  it('keeps every shipped exclusion non-authorizing', () => {
+    // The four Copilot exclusions are the only shipped exclusion records, and
     // an exclusion authorizes nothing: no matcher to admit by and no kind to
     // recognize as (T251 owns their full shape).
     const exclusions = rules.filter((rule) => rule.discoveryClass === 'excluded');
-    expect(exclusions.map((rule) => rule.ruleId).sort()).toEqual([
+    expect(exclusions.map((rule) => rule.ruleId).toSorted()).toEqual([
       'copilot.excluded.additional-standard-locations',
+      'copilot.excluded.cli-lsp',
       'copilot.excluded.extra-directories',
+      'copilot.excluded.vscode-settings',
     ]);
     for (const rule of exclusions) {
       expect(rule.matcher, rule.ruleId).toBeNull();
@@ -771,22 +778,36 @@ describe('the unified instruction selector matrix (T269)', () => {
 });
 
 describe('the Codex MCP carrier slice of the reference graph (T282)', () => {
-  it('registers the carrier as its first and only candidacy across the catalog', () => {
-    // "First and only" is a property of the complete registry, not of the
-    // Codex catalog alone: a second rule of any vendor admitting
-    // `.codex/config.toml` would publish the carrier twice with two reads.
+  it('registers the carrier under exactly its two Codex rules across the catalog', () => {
+    // The file is admitted by the two rules whose recognitions it carries —
+    // its `[mcp_servers.*]` tables and the settings document those tables sit
+    // in — and by nothing else. Two rules over one path are one candidate and
+    // one read, because the walk merges plans that match the same file; a
+    // third rule, or one of another vendor, would be a recognition nobody
+    // decided on.
     const admitting = rules.filter(
       (rule) =>
         rule.matcher !== null &&
         rule.matcher.selectors.some((selector) => matches(selector, ['.codex', 'config.toml'])),
     );
-    expect(admitting.map((rule) => rule.ruleId)).toEqual(['codex.repo.config']);
+    expect(admitting.map((rule) => rule.ruleId).toSorted()).toEqual([
+      'codex.repo.config',
+      'codex.repo.settings',
+    ]);
     const config = INSPECTION_RULES['codex.repo.config'];
     expect(config.discoveryClass).toBe('static-candidate');
     // Admitted for the MCP inventory: the rows are the contained
     // `[mcp_servers.*]` declarations (data-model.md § Inventory unit).
     expect(config.kind).toBe('MCP');
     expect(config.sourceKinds).toEqual(['repository']);
+    const settings = INSPECTION_RULES['codex.repo.settings'];
+    expect(settings.discoveryClass).toBe('static-candidate');
+    // Admitted for the settings inventory, whose row unit is the file itself.
+    expect(settings.kind).toBe('settings/config');
+    expect(settings.sourceKinds).toEqual(['repository']);
+    // The same authored location, not a second spelling of it: a matcher
+    // written twice is one that can drift.
+    expect(settings.matcher).toBe(config.matcher);
   });
 
   it('keeps the fallback derivation Phase 15’s and adds no other Codex row', () => {
@@ -808,6 +829,7 @@ describe('the Codex MCP carrier slice of the reference graph (T282)', () => {
       'codex.repo.config',
       'codex.repo.instructions',
       'codex.repo.rules',
+      'codex.repo.settings',
       'codex.repo.skill',
     ]);
     for (const rule of codexRules) {

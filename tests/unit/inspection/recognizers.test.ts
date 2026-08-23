@@ -35,6 +35,9 @@ const codexInstructionsRule = CODEX_REPOSITORY_RULES.find(
 const codexConfigRule = CODEX_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'codex.repo.config',
 )!;
+const codexSettingsRule = CODEX_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'codex.repo.settings',
+)!;
 const codexRulesRule = CODEX_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'codex.repo.rules',
 )!;
@@ -59,6 +62,12 @@ const claudeCommandRule = CLAUDE_REPOSITORY_RULES.find(
 const claudeAgentRule = CLAUDE_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'claude.repo.agent',
 )!;
+const claudePermissionsRule = CLAUDE_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'claude.repo.permissions',
+)!;
+const claudeSettingsRule = CLAUDE_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'claude.repo.settings',
+)!;
 const copilotCommandRule = COPILOT_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'copilot.repo.command',
 )!;
@@ -76,6 +85,9 @@ const copilotVscodeMcpRule = COPILOT_REPOSITORY_RULES.find(
 )!;
 const copilotVscodeRootMcpRule = COPILOT_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'copilot.repo.mcp.vscode-root',
+)!;
+const copilotSettingsRule = COPILOT_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'copilot.repo.settings',
 )!;
 
 /**
@@ -205,7 +217,7 @@ describe('Codex skill recognition', () => {
       [codexSkillRule],
       '---\nname: secretive\napi_key: ghp_EXAMPLE000000000000000000000000000000\n---\n\nBody.\n',
     );
-    expect(recognition!.details.kind === 'skill' && recognition!.details.declaredName).toBe(
+    expect(recognition!.details.kind === 'skill' && recognition!.details.invocationName).toBe(
       'secretive',
     );
     // Every declared key is listed, credential-shaped ones included: this is
@@ -214,30 +226,34 @@ describe('Codex skill recognition', () => {
     expect(JSON.stringify(recognition)).not.toContain('sourceText');
   });
 
-  it('takes the declared name from the file, not from the directory', async () => {
+  it('takes the name Codex invokes from the file, not from the directory', async () => {
     // The two are independent: a skill may be authored with a name that does
-    // not match the directory holding it, and the row must show what the file
-    // says (FR-007).
+    // not match the directory holding it, and Codex documents the declared
+    // `name` as the identity, so that is what its row is keyed by (FR-007).
     const [recognition] = await recognize(
       '.agents/skills/greet/SKILL.md',
       [codexSkillRule],
       '---\nname: say-hello\n---\n\nSay hello.\n',
     );
-    expect(recognition!.details.kind === 'skill' && recognition!.details.declaredName).toBe(
+    expect(recognition!.details.kind === 'skill' && recognition!.details.invocationName).toBe(
       'say-hello',
     );
   });
 
-  it('leaves the declared name absent rather than guessing one', async () => {
-    // Absent, not empty, and never the directory segment: "this file declares
-    // no name" is a different fact from "it declares an empty one".
+  it('falls back to the skill directory rather than leaving a row unnamed', async () => {
+    // Codex still invokes a skill whose file declares no usable name, and
+    // being a named directory is what a skill is — so the directory names the
+    // row, and the declarations published beside it are what say the file
+    // declared none (FR-007).
     for (const source of ['', '# no frontmatter\n', '---\ndescription: x\n---\n']) {
       const [recognition] = await recognize(
         '.agents/skills/greet/SKILL.md',
         [codexSkillRule],
         source,
       );
-      expect('declaredName' in recognition!.details).toBe(false);
+      expect(recognition!.details.kind === 'skill' && recognition!.details.invocationName).toBe(
+        'greet',
+      );
     }
   });
 
@@ -290,9 +306,11 @@ describe('Claude skill recognition (T127)', () => {
     expect(recognitions[0]).toMatchObject({
       sourceRelativePath: '.claude/skills/greet/SKILL.md',
       tool: 'claude',
-      // The name is the value the grouped inventory row is keyed by (FR-007),
-      // extracted from the file and never from the directory segment.
-      details: { kind: 'skill', declaredName: 'authored-name' },
+      // The value the grouped inventory row is keyed by (FR-007): Claude
+      // Code's command name, which is the skill directory whatever the file
+      // declares — `authored-name` is the label the detail lists among the
+      // declarations, not a command anything answers to.
+      details: { kind: 'skill', invocationName: 'greet' },
       parseStatus: 'parsed',
       diagnosticIds: [],
     });
@@ -307,7 +325,7 @@ describe('Claude skill recognition (T127)', () => {
     if (recognition!.details.kind !== 'skill') {
       throw new Error('expected a skill recognition');
     }
-    expect(recognition!.details.declaredName).toBe('greet');
+    expect(recognition!.details.invocationName).toBe('greet');
     expect(recognition!.details.frontmatter.map((entry) => entry.key)).toEqual([
       'name',
       'description',
@@ -318,16 +336,19 @@ describe('Claude skill recognition (T127)', () => {
     expect(JSON.stringify(recognition)).not.toContain('sourceText');
   });
 
-  it('leaves the declared name absent rather than guessing one', async () => {
-    // Absent, not empty, and never the directory segment: "this file declares
-    // no name" is a different fact from "it declares an empty one".
+  it('keeps its command name when the file declares nothing', async () => {
+    // Claude Code derives the command from the path, so a file declaring no
+    // name changes nothing about the identity its row is keyed by, and the
+    // empty declarations beside it are what report the absence (FR-007).
     for (const source of ['', '# no frontmatter\n', '---\ndescription: x\n---\n']) {
       const [recognition] = await recognizeClaude(
         '.claude/skills/greet/SKILL.md',
         [claudeSkillRule],
         source,
       );
-      expect('declaredName' in recognition!.details).toBe(false);
+      expect(recognition!.details.kind === 'skill' && recognition!.details.invocationName).toBe(
+        'greet',
+      );
     }
   });
 
@@ -544,9 +565,10 @@ describe('Codex MCP recognition (T283)', () => {
         ].join('\n'),
       )
     ).recognitions;
-    // One recognition per `(file, tool, kind)`: the carrier's admission
-    // yields the MCP recognition and nothing else — no instructions, no
-    // settings recognition before the phase that owns one.
+    // One recognition per `(file, tool, kind)`: this admission yields the MCP
+    // recognition and nothing else. The settings recognition of the same file
+    // is the other rule's, and this case passes only that rule's admission —
+    // the pair is `Codex settings recognition` below.
     expect(recognitions).toHaveLength(1);
     expect(recognitions[0]).toMatchObject({
       sourceRelativePath: carrierPath,
@@ -697,6 +719,109 @@ describe('Codex MCP recognition (T283)', () => {
   });
 });
 
+describe('Codex settings recognition (T580)', () => {
+  const carrierPath = '.codex/config.toml';
+  const document = [
+    '# a comment the document keeps',
+    'model = "gpt-5.4-codex"',
+    'project_doc_fallback_filenames = ["TEAM_GUIDE.md"]',
+    '',
+    '[mcp_servers.context7]',
+    'command = "npx"',
+    '',
+  ].join('\n');
+
+  it('attaches one codex/settings recognition that reads nothing out of the document', async () => {
+    const recognitions = (await recognizeWith('codex', carrierPath, [codexSettingsRule], document))
+      .recognitions;
+    expect(recognitions).toHaveLength(1);
+    expect(recognitions[0]).toMatchObject({
+      sourceRelativePath: carrierPath,
+      tool: 'codex',
+      // Nothing is extracted, so `not-attempted` is the honest status: the
+      // kind's row unit is the file and its detail is the document its author
+      // wrote (FR-007), which no parse stands between.
+      parseStatus: 'not-attempted',
+      diagnosticIds: [],
+      details: { kind: 'settings/config' },
+    });
+  });
+
+  it('derives deterministic provenance from the admitting settings rule', async () => {
+    const recognitions = (await recognizeWith('codex', carrierPath, [codexSettingsRule], document))
+      .recognitions;
+    expect(recognitions[0]!.provenances).toHaveLength(1);
+    expect(recognitions[0]!.provenances[0]).toMatchObject({
+      ruleId: 'codex.repo.settings',
+      discoveryClass: 'static-candidate',
+      matchedPath: carrierPath,
+    });
+  });
+
+  it('coexists with the MCP recognition of the same file, one recognition per kind', async () => {
+    // The two rules admit one candidate, and the recognizer groups by
+    // `(tool, kind)`, so the same file carries both recognitions with their
+    // own provenances — the arrangement the vendor contract fixes for this
+    // one carrier (contracts/vendors/openai-codex.md § Normative
+    // initial-release presentation allowlist).
+    const recognitions = (
+      await recognizeWith('codex', carrierPath, [codexConfigRule, codexSettingsRule], document)
+    ).recognitions;
+    expect(recognitions.map((recognition) => recognition.details.kind).toSorted()).toEqual([
+      'MCP',
+      'settings/config',
+    ]);
+    for (const recognition of recognitions) {
+      expect(recognition.provenances).toHaveLength(1);
+    }
+    // The MCP reading is unchanged by the settings admission beside it.
+    const mcp = recognitions.find((recognition) => recognition.details.kind === 'MCP')!;
+    if (mcp.details.kind !== 'MCP') {
+      throw new Error('expected an MCP recognition');
+    }
+    expect(mcp.details.servers.map((server) => server.name)).toEqual(['context7']);
+    // No Hook recognition: the `[hooks]` family arrives with its own phase,
+    // and until then an inline declaration is part of the document this row
+    // publishes rather than a row of its own.
+    expect(recognitions.some((recognition) => recognition.details.kind === 'hook')).toBe(false);
+  });
+
+  it('coexists with a configured fallback instruction recognition of the same file', async () => {
+    // A `project_doc_fallback_filenames` entry can name the carrier itself,
+    // which makes it an instruction file too. Three rules, three
+    // recognitions, one candidate — and the settings recognition is
+    // unaffected by either neighbour.
+    const recognitions = (
+      await recognizeWith(
+        'codex',
+        carrierPath,
+        [codexConfigRule, codexSettingsRule, codexInstructionsRule],
+        document,
+      )
+    ).recognitions;
+    expect(recognitions.map((recognition) => recognition.details.kind).toSorted()).toEqual([
+      'MCP',
+      'instructions',
+      'settings/config',
+    ]);
+  });
+
+  it('publishes the same record for a document no parser could read', async () => {
+    // Nothing is read out, so nothing can fail to be read: a document TOML
+    // rejects still carries the settings recognition, and its detail is still
+    // the bytes its author wrote (FR-028).
+    const recognitions = (
+      await recognizeWith('codex', carrierPath, [codexSettingsRule], 'model = "unterminated\n')
+    ).recognitions;
+    expect(recognitions).toHaveLength(1);
+    expect(recognitions[0]).toMatchObject({
+      parseStatus: 'not-attempted',
+      diagnosticIds: [],
+      details: { kind: 'settings/config' },
+    });
+  });
+});
+
 describe('Codex permission-policy recognition (T409)', () => {
   /** A rule file's authored text, credential and all. */
   const RULE_SOURCE = [
@@ -772,6 +897,187 @@ describe('Codex permission-policy recognition (T409)', () => {
     expect(
       (await recognizeWith('copilot', '.codex/rules/default.rules', [codexRulesRule])).recognitions,
     ).toEqual([]);
+  });
+});
+
+describe('Copilot settings recognition (T625)', () => {
+  const document = JSON.stringify({
+    enabledPlugins: { 'code-formatter@company-tools': true },
+    hooks: { PostToolUse: [{ matcher: 'Edit' }] },
+    mcpServers: { db: { command: 'npx' } },
+  });
+
+  for (const layer of [
+    '.github/copilot/settings.json',
+    '.github/copilot/settings.local.json',
+    '.claude/settings.json',
+    '.claude/settings.local.json',
+  ] as const) {
+    it(`attaches one copilot/settings recognition to ${layer}, reading nothing out of it`, async () => {
+      const recognitions = (await recognizeWith('copilot', layer, [copilotSettingsRule], document))
+        .recognitions;
+      expect(recognitions).toHaveLength(1);
+      expect(recognitions[0]).toMatchObject({
+        sourceRelativePath: layer,
+        tool: 'copilot',
+        parseStatus: 'not-attempted',
+        diagnosticIds: [],
+        details: { kind: 'settings/config' },
+      });
+      // The surfaces of the documented lookup the admission rests on: the CLI
+      // settings lookup is what locates these documents as settings, and
+      // naming a surface never claims it applied them (FR-009).
+      expect(recognitions[0]!.provenances[0]).toMatchObject({
+        ruleId: 'copilot.repo.settings',
+        discoveryClass: 'static-candidate',
+        matchedPath: layer,
+      });
+      expect(recognitions[0]!.provenances[0]!.recognizingSurfaces).toEqual(['copilot-cli']);
+    });
+  }
+
+  it('recognizes a shared Claude document as its own product, one per tool', async () => {
+    // `.claude/settings.json` is one physical file two products admit: Claude
+    // Code under its own rules and the Copilot CLI for the documented shared
+    // cross-tool subset. One read, one recognition per `(file, tool, kind)`.
+    const { recognitions } = await recognizeCandidateForVendors(
+      {
+        matchedPath: '.claude/settings.json',
+        absolutePath: join(root, '.claude/settings.json'),
+        sourceRoot: root,
+        sourceText: document,
+        admissions: [
+          { compiled: claudeSettingsRule, origin: { planIndex: 0, selectorIndex: 0 } },
+          { compiled: copilotSettingsRule, origin: { planIndex: 1, selectorIndex: 2 } },
+        ],
+      },
+      ['copilot', 'claude'],
+    );
+    expect(
+      recognitions.map((recognition) => `${recognition.tool}/${recognition.details.kind}`),
+    ).toEqual(['copilot/settings/config', 'claude/settings/config']);
+    for (const recognition of recognitions) {
+      expect(recognition.provenances).toHaveLength(1);
+    }
+  });
+
+  it('makes an inline mcpServers map no MCP recognition, and no premature hook or plugin one', async () => {
+    const recognitions = (
+      await recognizeWith(
+        'copilot',
+        '.github/copilot/settings.json',
+        [copilotSettingsRule],
+        document,
+      )
+    ).recognitions;
+    for (const kind of ['MCP', 'hook', 'plugin'] as const) {
+      expect(
+        recognitions.some((recognition) => recognition.details.kind === kind),
+        kind,
+      ).toBe(false);
+    }
+  });
+});
+
+describe('Claude settings recognition (T604)', () => {
+  const document = JSON.stringify(
+    {
+      model: 'opus',
+      permissions: { allow: ['Bash(npm run test:*)'] },
+      mcpServers: { db: { command: 'npx' } },
+      hooks: { PostToolUse: [{ matcher: 'Edit' }] },
+    },
+    null,
+    2,
+  );
+
+  for (const layer of ['.claude/settings.json', '.claude/settings.local.json'] as const) {
+    it(`attaches one claude/settings recognition to ${layer}, reading nothing out of it`, async () => {
+      const recognitions = (await recognizeWith('claude', layer, [claudeSettingsRule], document))
+        .recognitions;
+      // Both documented layers are rows of this kind, because the row unit is
+      // the file: the shared file and the personal one are two settings files
+      // rather than two spellings of one (data-model.md § Inventory unit).
+      expect(recognitions).toHaveLength(1);
+      expect(recognitions[0]).toMatchObject({
+        sourceRelativePath: layer,
+        tool: 'claude',
+        // Nothing is extracted, so `not-attempted` is the honest status: the
+        // detail is the document its author wrote (FR-007).
+        parseStatus: 'not-attempted',
+        diagnosticIds: [],
+        details: { kind: 'settings/config' },
+      });
+      expect(recognitions[0]!.provenances).toHaveLength(1);
+      expect(recognitions[0]!.provenances[0]).toMatchObject({
+        ruleId: 'claude.repo.settings',
+        discoveryClass: 'static-candidate',
+        matchedPath: layer,
+      });
+    });
+  }
+
+  it('coexists with the permissions recognition of the same file, one per kind', async () => {
+    const recognitions = (
+      await recognizeWith(
+        'claude',
+        '.claude/settings.json',
+        [claudePermissionsRule, claudeSettingsRule],
+        document,
+      )
+    ).recognitions;
+    expect(recognitions.map((recognition) => recognition.details.kind).toSorted()).toEqual([
+      'permissions',
+      'settings/config',
+    ]);
+    for (const recognition of recognitions) {
+      expect(recognition.provenances).toHaveLength(1);
+    }
+    // The policy reading is unchanged by the settings admission beside it.
+    const policy = recognitions.find((recognition) => recognition.details.kind === 'permissions')!;
+    if (!('declaredPolicy' in policy.details)) {
+      throw new Error('expected a declared-block permissions recognition');
+    }
+    expect(policy.details.declaredPolicy.map((entry) => entry.key)).toEqual(['allow']);
+  });
+
+  it('makes an inline mcpServers map no MCP recognition of any kind', async () => {
+    // A settings file spelling MCP configuration is that file's own declared
+    // content, visible through its detail: only an explicit carrier holds an
+    // MCP recognition (data-model.md § Inventory unit).
+    const recognitions = (
+      await recognizeWith(
+        'claude',
+        '.claude/settings.json',
+        [claudePermissionsRule, claudeSettingsRule],
+        document,
+      )
+    ).recognitions;
+    expect(recognitions.some((recognition) => recognition.details.kind === 'MCP')).toBe(false);
+    // And no Hook recognition either: that family arrives with its own phase,
+    // and until then an inline declaration is part of the document this row
+    // publishes.
+    expect(recognitions.some((recognition) => recognition.details.kind === 'hook')).toBe(false);
+  });
+
+  it('publishes the same record for a document strict JSON cannot read', async () => {
+    // Nothing is read out, so nothing can fail to be read: the settings row
+    // stands and its detail is still the bytes its author wrote. The
+    // permissions recognition of the same file is the one that fails (FR-028).
+    const recognitions = (
+      await recognizeWith(
+        'claude',
+        '.claude/settings.json',
+        [claudePermissionsRule, claudeSettingsRule],
+        '{ "permissions": { "allow": [ }',
+      )
+    ).recognitions;
+    const settings = recognitions.find(
+      (recognition) => recognition.details.kind === 'settings/config',
+    )!;
+    expect(settings).toMatchObject({ parseStatus: 'not-attempted', diagnosticIds: [] });
+    const policy = recognitions.find((recognition) => recognition.details.kind === 'permissions')!;
+    expect(policy.parseStatus).toBe('failed');
   });
 });
 

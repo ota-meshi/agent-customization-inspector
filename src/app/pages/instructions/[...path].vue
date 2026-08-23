@@ -142,25 +142,20 @@ const toolsText = computed(() =>
 );
 
 /**
- * The comparison-eligible files: readable (FR-025), and not an MCP carrier —
- * a carrier's source is never displayed (FR-007), so a Codex configured
- * fallback naming `.mcp.json` must not make the carrier this file's
- * comparison counterpart, exactly as the inventory row and the compare
- * route's own pickers exclude it.
+ * The comparison-eligible files: readable (FR-025), which is the whole gate,
+ * exactly as the inventory row and the compare route's own pickers apply it.
+ * An MCP carrier is not excluded: which detail answers for a file follows
+ * from the row it is reached through and never from the file (FR-007), so a
+ * `.mcp.json` a Codex `project_doc_fallback_filenames` entry names is an
+ * instruction file with a complete source of its own, and a comparison of
+ * instruction files may pair it.
  */
-const comparablePaths = computed(() => {
-  const carriers = new Set(
-    (snapshot.value?.mcp ?? []).flatMap((entry) =>
-      entry.declarations.map((declaration) => declaration.sourceRelativePath),
+const comparablePaths = computed(
+  () =>
+    new Set(
+      (snapshot.value?.files ?? []).filter(isReadableFile).map((file) => file.sourceRelativePath),
     ),
-  );
-  return new Set(
-    (snapshot.value?.files ?? [])
-      .filter(isReadableFile)
-      .map((file) => file.sourceRelativePath)
-      .filter((path) => !carriers.has(path)),
-  );
-});
+);
 
 /**
  * The comparison entry for this file (FR-011, T278): this file beside a

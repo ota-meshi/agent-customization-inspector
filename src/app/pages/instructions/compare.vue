@@ -149,22 +149,6 @@ const readablePaths = computed(
 );
 
 /**
- * Every path with an MCP recognition in the committed generation. A carrier's
- * source is never displayed (FR-007), so a carrier that is also an
- * instruction candidate — the Codex configured-fallback case — is not
- * comparison-eligible: the pickers never offer it, and a deep link naming it
- * is a fault the template reports instead of a comparison.
- */
-const mcpCarrierPaths = computed(
-  () =>
-    new Set(
-      (snapshot.value?.mcp ?? []).flatMap((entry) =>
-        entry.declarations.map((declaration) => declaration.sourceRelativePath),
-      ),
-    ),
-);
-
-/**
  * The one inventory row owning the pair: both identities are files of one
  * applicability-range row — the population this model can express, exactly
  * as a skill pair is owned by one name's row. A file governs exactly one
@@ -195,7 +179,7 @@ const owningRow = computed<InstructionInventoryEntryDto | null>(() => {
 const comparablePaths = computed<readonly string[]>(() =>
   (owningRow.value?.files ?? [])
     .map((file) => file.sourceRelativePath)
-    .filter((path) => readablePaths.value.has(path) && !mcpCarrierPaths.value.has(path)),
+    .filter((path) => readablePaths.value.has(path)),
 );
 
 /**
@@ -243,15 +227,6 @@ const pairFault = computed<string | null>(() => {
     // current scan does not hold — exactly as the skill route reports a pair
     // no name's row owns.
     return 'No applicability range in the current scan holds both of this link’s files. The inventory may have changed since the link was made; open a comparison from an instruction row.';
-  }
-  if (
-    mcpCarrierPaths.value.has(currentLeftPath.value) ||
-    mcpCarrierPaths.value.has(currentRightPath.value)
-  ) {
-    // A carrier's source is never displayed (FR-007), so it cannot stand on
-    // either side of a source comparison; its declarations are served by its
-    // own MCP page.
-    return 'This link names an MCP declaration file, whose source is never displayed. Its declarations are on its own MCP page.';
   }
   return null;
 });

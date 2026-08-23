@@ -80,7 +80,7 @@ test.describe('rule files under the .claude/rules subtrees', () => {
       'packages/api/.claude/rules/http.md',
     ]);
     for (let index = 0; index < 4; index += 1) {
-      await expect(items.nth(index).locator('.aci-rule-row__tools')).toContainText('Claude Code');
+      await expect(items.nth(index).locator('.aci-rule-row__owner')).toContainText('Claude Code');
     }
 
     const text = await page.locator('main').innerText();
@@ -88,7 +88,7 @@ test.describe('rule files under the .claude/rules subtrees', () => {
     // recognition: the rule rows name Claude Code alone.
     const toolsText = await page
       .getByRole('tabpanel')
-      .locator('.aci-rule-row__tools')
+      .locator('.aci-rule-row__owner')
       .allInnerTexts();
     expect(toolsText.join(' ')).not.toContain('GitHub Copilot');
     expect(toolsText.join(' ')).not.toContain('OpenAI Codex');
@@ -104,7 +104,7 @@ test.describe('rule files under the .claude/rules subtrees', () => {
     await page.getByRole('tab', { name: /Permissions/u }).click();
     const items = page.getByRole('tabpanel').locator('.aci-item');
     await expect(items.locator('.aci-path')).toHaveText(['.codex/rules/deploy.rules']);
-    await expect(items.first().locator('.aci-permissions-row__tools')).toContainText(
+    await expect(items.first().locator('.aci-permissions-row__owner')).toContainText(
       'OpenAI Codex',
     );
   });

@@ -9,8 +9,8 @@
 // own surface, and nothing here pretends to be it.
 //
 // The comparison selection is the route's:
-// `/skills/compare?left=<entry path>&right=<entry path>&file=<relative>`
-// names two copies of one skill name by their entry files' Source-relative
+// `/skills/compare?name=<row name>&left=<entry path>&right=<entry path>&file=<relative>`
+// names the row and two of its copies by their entry files' Source-relative
 // Paths — the identity the inventory and the detail route use (FR-030) —
 // and the compared file inside them, and the compare page's own switchers
 // are how a reader moves those coordinates. There is no standing
@@ -73,33 +73,52 @@ export type SkillComparisonViewStatus =
   | 'failed';
 
 /**
- * The skill comparison route of one compared pair. `left` and `right` are
- * the two copies' identities — their entry files' Source-relative Paths,
- * the same identity the inventory's definitions and the detail route use
- * (FR-030) — and `comparedFile` is the copy-relative path of the file the
- * pair shows, omitted for the entries themselves. The URL carries the
- * comparison model's own coordinates rather than two free file paths, so a
- * pair the model cannot express — two files of different names, one file
- * twice, a cross-kind pair — cannot be written. A module function beside
- * the state class so every surface that builds the link — the inventory
- * row's and detail page's entry links, and the compare route's own
- * switchers — builds the same URL.
+ * The skill comparison route of one compared pair. `name` is the invocation
+ * name of the row the pair belongs to, `left` and `right` are the two copies'
+ * identities — their entry files' Source-relative Paths, the same identity the
+ * inventory's definitions and the detail route use (FR-030) — and
+ * `comparedFile` is the copy-relative path of the file the pair shows, omitted
+ * for the entries themselves. The URL carries the comparison model's own
+ * coordinates rather than two free file paths, so a pair the model cannot
+ * express — two files of different names, one file twice, a cross-kind pair —
+ * cannot be written.
+ *
+ * The row is named rather than derived from the two paths, because two files
+ * can sit together on two rows: the products invoke a skill by different
+ * facts, so `.claude/skills/alpha/SKILL.md` declaring `name: beta` beside
+ * `.claude/skills/beta/SKILL.md` declaring `name: alpha` is on the `alpha` row
+ * and the `beta` row alike. A derived row would be whichever of them sorts
+ * first, which drops a third copy of the row the reader opened from out of the
+ * compare page's switchers.
+ *
+ * A module function beside the state class so every surface that builds the
+ * link — the inventory row's and detail page's entry links, and the compare
+ * route's own switchers — builds the same URL.
  */
 export function skillComparisonRouteFor(
+  name: string,
   left: string,
   right: string,
   comparedFile?: string,
 ): {
   readonly path: string;
-  readonly query: { readonly left: string; readonly right: string; readonly file?: string };
+  readonly query: {
+    readonly name: string;
+    readonly left: string;
+    readonly right: string;
+    readonly file?: string;
+  };
 } {
-  // Each path rides as its JSON string body, the spelling every route in this
+  // Each value rides as its JSON string body, the spelling every route in this
   // product uses: a raw entry name can hold a lone surrogate (data-model.md
   // § SourceRelativePath), which the router's own query encoding rejects with
-  // a `URIError` while the row's link renders (`detail-route.ts`).
+  // a `URIError` while the row's link renders (`detail-route.ts`). An
+  // invocation name is authored text — or a directory segment — and takes the
+  // same spelling for the same reason.
   return {
     path: '/skills/compare',
     query: {
+      name: toJsonStringBody(name),
       left: toJsonStringBody(left),
       right: toJsonStringBody(right),
       ...(comparedFile === undefined ? {} : { file: toJsonStringBody(comparedFile) }),

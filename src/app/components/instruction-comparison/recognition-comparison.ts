@@ -278,7 +278,12 @@ export class InstructionRecognitionComparison {
  */
 function presentationOf(side: InstructionComparisonSideInput): MarkdownPresentationDto | null {
   const detail = side.detail;
-  if (detail.kind === 'rule' || detail.kind === 'agent' || detail.kind === 'file') {
+  if (
+    detail.kind === 'rule' ||
+    detail.kind === 'agent' ||
+    detail.kind === 'settings/config' ||
+    detail.kind === 'file'
+  ) {
     return null;
   }
   return detail.presentation;

@@ -1147,6 +1147,29 @@
     ]
   },
   {
+    "behaviorId": "copilot.behavior.cli.lsp",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "repository-root",
+      "relativeSelector": ".github/lsp.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.lsp",
+        "url": "https://docs.github.com/en/copilot/concepts/agents/copilot-cli/lsp-servers",
+        "officialHost": "docs.github.com",
+        "sections": ["How to add an LSP server", "How LSP servers are loaded"],
+        "reviewedOn": "2026-08-23",
+        "establishes": "The CLI loads LSP server configuration from the project .github/lsp.json first, then plugin-provided servers, then the user ~/.copilot/lsp-config.json, with a higher-priority source overriding a lower one of the same server name."
+      }
+    ]
+  },
+  {
     "behaviorId": "copilot.behavior.cli.mcp",
     "tool": "copilot",
     "surfaces": ["copilot-cli"],
@@ -1174,6 +1197,29 @@
         "sections": ["Adding per-repository MCP servers"],
         "reviewedOn": "2026-08-20",
         "establishes": "A project-level file declares its servers in either of two schemas — the top-level mcpServers object, or the bare top-level format where each key is an MCP server name — which is why the CLI carrier reading accepts both forms."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cli.settings",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "repository-root",
+      "relativeSelector": ".github/copilot/settings.json; .github/copilot/settings.local.json; .claude/settings.json; .claude/settings.local.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.configuration",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Configuration file settings"],
+        "reviewedOn": "2026-08-23",
+        "establishes": "Settings apply in the order built-in defaults, MDM managed settings, user settings, repository .github/copilot/settings.json, local .github/copilot/settings.local.json, environment variables, then command-line flags; and the CLI also reads .claude/settings.json and .claude/settings.local.json for the shared cross-tool subset of repository settings such as companyAnnouncements, disableAllHooks, enabledPlugins, extraKnownMarketplaces, and hooks."
       }
     ]
   },
@@ -1294,6 +1340,29 @@
     ]
   },
   {
+    "behaviorId": "copilot.behavior.cli.user.lsp",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "lsp-config.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.lsp",
+        "url": "https://docs.github.com/en/copilot/concepts/agents/copilot-cli/lsp-servers",
+        "officialHost": "docs.github.com",
+        "sections": ["How LSP servers are loaded"],
+        "reviewedOn": "2026-08-23",
+        "establishes": "The user configuration ~/.copilot/lsp-config.json is the lowest of the three documented LSP priorities, below the project file and plugin-provided servers."
+      }
+    ]
+  },
+  {
     "behaviorId": "copilot.behavior.cli.user.mcp",
     "tool": "copilot",
     "surfaces": ["copilot-cli"],
@@ -1313,6 +1382,29 @@
         "sections": ["MCP server configuration", "Environment variables"],
         "reviewedOn": "2026-08-20",
         "establishes": "Persistent user servers are configured in ~/.copilot/mcp-config.json — the file the copilot mcp add subcommand writes — and that source is the lowest priority of the documented loading order; COPILOT_HOME overrides the configuration and state directory whose default is $HOME/.copilot, which is the relocation the <COPILOT_HOME> spelling names."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cli.user.settings",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "settings.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.configuration",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Configuration file settings"],
+        "reviewedOn": "2026-08-23",
+        "establishes": "User settings live at ~/.copilot/settings.json — relocatable through COPILOT_HOME — and sit below the repository and local layers in the documented cascade."
       }
     ]
   },
@@ -1855,6 +1947,29 @@
     ]
   },
   {
+    "behaviorId": "copilot.behavior.vscode.settings",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "workspace-root",
+      "relativeSelector": ".vscode/settings.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.settings",
+        "url": "https://code.visualstudio.com/docs/configure/settings",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Workspace settings", "Settings precedence"],
+        "reviewedOn": "2026-08-23",
+        "establishes": "Workspace settings are stored in the workspace .vscode/settings.json, and the scopes override each other in the documented order where a later scope wins, workspace settings sitting above user settings."
+      }
+    ]
+  },
+  {
     "behaviorId": "copilot.behavior.vscode.skills",
     "tool": "copilot",
     "surfaces": ["copilot-vscode"],
@@ -2005,6 +2120,29 @@
         "sections": ["Prompt file locations"],
         "reviewedOn": "2026-08-22",
         "establishes": "The user-profile scope keeps its prompt files in the profile data rather than in the workspace, which is a different Source boundary this release does not read."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.vscode.user.settings",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "profile-data",
+      "relativeSelector": "settings.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.settings",
+        "url": "https://code.visualstudio.com/docs/configure/settings",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["User settings", "Profile settings", "Settings precedence"],
+        "reviewedOn": "2026-08-23",
+        "establishes": "User settings apply globally to every VS Code instance and are overridden by workspace settings, with profile, remote, and language-specific scopes participating in the same documented order."
       }
     ]
   },

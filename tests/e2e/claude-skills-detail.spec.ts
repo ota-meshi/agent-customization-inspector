@@ -110,22 +110,18 @@ test.afterEach(async () => {
 });
 
 /**
- * Opens the named skill's detail route from the inventory. A shared file has
- * one definition link per recognizing product, each addressing its own
- * `/skills/<tool>/<source-relative path>` route; this suite is about the
- * Claude recognition, so the Claude definition's link is followed when the
- * file has one.
+ * Opens the named skill's detail route from the inventory. The path is the
+ * link and the route is the file's own — `/skills/<source-relative path>` —
+ * so a file listed under two rows opens the same page from either, and the
+ * first row that lists it is as good as any.
  */
 async function openSkill(page: import('@playwright/test').Page, path: string): Promise<void> {
   await page.goto(host.origin);
-  const links = page
-    .locator('.aci-skill-row__file', { hasText: path })
-    .locator('.aci-skill-row__definitions a');
-  const claudeLink = links.and(page.locator('[href^="/skills/claude/"]'));
+  const links = page.locator('.aci-skill-row__file').locator(`a[href$="/${path}"]`);
   // The rows render together once the snapshot arrives, so waiting for any
-  // link is waiting for all of them; counting before that saw an empty list.
+  // link is waiting for all of them; clicking before that found nothing.
   await links.first().waitFor();
-  await ((await claudeLink.count()) > 0 ? claudeLink : links.first()).click();
+  await links.first().click();
 }
 
 /**
@@ -168,14 +164,11 @@ test('shows the literal credential and environment reference with no mask or rev
 
 test('leads with the name and description, then the rest of the declarations', async ({ page }) => {
   await openSkill(page, '.claude/skills/greet/SKILL.md');
-  // The heading is the row's own name — the same one the inventory lists —
-  // and the documented invocation name sits beside it: this page is the
-  // Claude definition's own route, so the value is Claude's directory-derived
-  // command rather than the authored label (FR-007, T1081).
-  await expect(page.locator('.aci-skill-detail h2')).toHaveText('claude-greet');
-  await expect(page.locator('.aci-skill-detail__invocation-name')).toHaveText(
-    'Invocation name: greet',
-  );
+  // The heading is the skill's own directory, and the line beneath names each
+  // recognizing product with the name it invokes the skill by: Copilot's is
+  // the authored `claude-greet`, Claude Code's the directory-derived `greet`
+  // (FR-007, T1081).
+  await expect(page.locator('.aci-skill-detail h2')).toHaveText('.claude/skills/greet/');
   // Every key the file declares, as one YAML document in the read-only
   // viewer, led in the documented reading order however the file ordered
   // them (FR-007).
@@ -183,6 +176,13 @@ test('leads with the name and description, then the rest of the declarations', a
   await expect(declarations).toContainText('name: claude-greet');
   await expect(declarations).toContainText(FIXTURE_SECRET);
   await expect(declarations).toContainText(FIXTURE_ENV_REFERENCE);
+  // The editor writes only the lines its own box holds, and the box reaches the
+  // whole document one layout after the fit height is written to it
+  // (`SourceViewerHandle.mount` § fitContent). Awaiting the document's last key
+  // is what makes the read below a read of the whole document: taken between
+  // the two, the box is still its minimum height and every key past the third
+  // is in no DOM to be found.
+  await expect(declarations).toContainText('api_key:');
   const text = await declarations.innerText();
   expect(text.indexOf('name:')).toBeGreaterThan(-1);
   // The file wrote `agent` and `context` before `allowed-tools` and `hooks`;
@@ -229,16 +229,9 @@ test('opens a nested skill as itself, not as the skill whose census lists it', a
   // The inner file is the outer skill's companion as well as its own entry
   // point. Resolving the owner by whichever test matches first would open the
   // outer skill, and the reader would have no way to reach the inner one. The
-  // heading is the row's own name — the prefixed authored label — while the
-  // invocation list carries Claude's documented command, the prefixed
-  // directory (FR-007, T1081).
+  // heading is the inner skill's own directory, not the outer one's
+  // (FR-007, T1081).
   await expect(page.locator('.aci-skill-detail h2')).toHaveText(
-    '.claude/skills/outer/sub:zzz-inner',
-  );
-  await expect(page.locator('.aci-skill-detail__invocation-name')).toHaveText(
-    'Invocation name: .claude/skills/outer/sub:inner',
-  );
-  await expect(page.locator('.aci-skill-detail__overview .aci-path')).toHaveText(
     '.claude/skills/outer/sub/.claude/skills/inner/',
   );
 });
@@ -250,9 +243,6 @@ test('keeps a nested skill selected when one of its own companions is opened', a
   // first would swap the page to the outer skill from the inner skill's own
   // tree, leaving the reader no way back to the file they clicked.
   await expect(page.locator('.aci-skill-detail h2')).toHaveText(
-    '.claude/skills/outer/sub:zzz-inner',
-  );
-  await expect(page.locator('.aci-skill-detail__overview .aci-path')).toHaveText(
     '.claude/skills/outer/sub/.claude/skills/inner/',
   );
 });
@@ -271,16 +261,17 @@ test('shows the addressed definition and nothing about a runtime it cannot see',
   page,
 }) => {
   await openSkill(page, '.claude/skills/greet/SKILL.md');
-  // One definition line — the route's own tool and the surfaces its
-  // admissions rest on, captioned in words — because the URL addresses one
-  // definition; which other products recognize the file is the inventory's
-  // matrix. Naming a surface says where the product documents reading the
-  // file, never that it loaded it: that depends on a runtime this tool never
-  // observes, and a sentence about it would take the room the files below
-  // need (FR-009).
-  const definition = page.locator('.aci-skill-detail__definition');
-  await expect(definition).toHaveCount(1);
-  await expect(definition).toHaveText('Claude Code (CLI and IDE clients) · Skill');
+  // One line per recognizing product, in the contracted tool order, each
+  // with the surfaces its admissions rest on and the name it invokes the
+  // skill by — `claude-greet` for Copilot, which reads the authored `name`,
+  // and the skill directory for Claude Code. Naming a surface says where the
+  // product documents reading the file, never that it loaded it: that depends
+  // on a runtime this tool never observes, and a sentence about it would take
+  // the room the files below need (FR-009).
+  await expect(page.locator('.aci-skill-detail__invocations li')).toHaveText([
+    'GitHub Copilot (VS Code, CLI, Cloud agent) · Skill · Invocation name: claude-greet',
+    'Claude Code (CLI and IDE clients) · Skill · Invocation name: greet',
+  ]);
   const detail = (await page.locator('.aci-skill-detail').textContent()) ?? '';
   for (const claim of ['Depends on runtime conditions', 'Selected by a documented rule']) {
     expect(detail).not.toContain(claim);
@@ -331,7 +322,7 @@ test('keeps a link resolving across a rescan through its path identity', async (
   // and the path is the file's identity on the wire (FR-030): the same URL
   // resolves against the new generation and the skill opens again.
   await page.goto(bookmarkedUrl);
-  await expect(page.locator('.aci-skill-detail h2')).toHaveText('claude-greet');
+  await expect(page.locator('.aci-skill-detail h2')).toHaveText('.claude/skills/greet/');
 });
 
 test('rescues focus to the heading when a newer commit replaces the open detail', async ({
@@ -375,10 +366,10 @@ test('reports a link whose path the current scan does not hold', async ({ page }
   // route owns the page, or a slow navigation would bookmark the inventory.
   await page.waitForURL(/\/skills\//u);
   const bookmarkedUrl = page.url();
-  // The same URL with the tool segment swapped names a definition this
-  // generation does not hold — Codex never recognizes a `.claude` skill — and
-  // the page says so instead of guessing at a nearby one.
-  await page.goto(bookmarkedUrl.replace('/skills/claude/', '/skills/codex/'));
+  // The same URL with the file's own name swapped names a path this
+  // generation does not hold, and the page says so instead of guessing at a
+  // nearby one.
+  await page.goto(bookmarkedUrl.replace('/SKILL.md', '/NO-SUCH.md'));
   await expect(page.locator('.aci-skill-detail')).toContainText(
     'Nothing in the current scan sits at this link',
   );
@@ -387,8 +378,8 @@ test('reports a link whose path the current scan does not hold', async ({ page }
 
 test('leaves the Codex detail beside it unchanged', async ({ page }) => {
   await openSkillFiles(page, '.agents/skills/codex-greet/SKILL.md');
-  await expect(page.locator('.aci-skill-detail h2')).toHaveText('codex-greet');
-  await expect(page.locator('.aci-skill-detail__definition')).toHaveCount(1);
+  await expect(page.locator('.aci-skill-detail h2')).toHaveText('.agents/skills/codex-greet/');
+  await expect(page.locator('.aci-skill-detail__invocations li')).toHaveCount(2);
   await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toContainText('# Codex');
 });
 

@@ -115,18 +115,21 @@ async function recognize(
   return recognition;
 }
 
-describe('Copilot skill declared name', () => {
+describe('Copilot skill invocation name', () => {
   it.each(SKILL_CONTENT_CASES.map((testCase) => [testCase.id, testCase] as const))(
-    'publishes the name the parser resolved: %s',
+    'invokes the name the parser resolved: %s',
     async (_id, testCase) => {
       // The shared authored-content cases pin resolution semantics — quoting,
       // escapes, repeats, aliases, tags, astral characters — and Copilot reads
       // them exactly as Codex and Claude do, through the one shared extractor.
       const recognition = await recognize(testCase.sourceText);
       expect(recognition.parseStatus).toBe('parsed');
-      const declaredName =
-        recognition.details.kind === 'skill' ? (recognition.details.declaredName ?? null) : null;
-      expect(declaredName).toBe(testCase.name);
+      // Copilot documents the authored `name` as the skill's identity, so the
+      // rule that admitted the file answers with it — falling back to the
+      // skill directory, `greet` here, for a file declaring none (FR-007).
+      expect(recognition.details.kind === 'skill' && recognition.details.invocationName).toBe(
+        testCase.name ?? 'greet',
+      );
     },
   );
 
@@ -156,8 +159,8 @@ describe('Copilot skill declared name', () => {
     ]);
     expect(Object.keys(recognition.details).toSorted()).toEqual([
       'bodyText',
-      'declaredName',
       'frontmatter',
+      'invocationName',
       'kind',
     ]);
     expect(recognition.details.frontmatter).toEqual([
@@ -195,7 +198,7 @@ describe('Copilot skill declared name', () => {
       recognize('---\nname: voyage\n---\n\nClaude lander.\n', '.claude/skills/lander/SKILL.md'),
     ]);
     for (const recognition of [ship, lander]) {
-      expect(recognition.details.kind === 'skill' && recognition.details.declaredName).toBe(
+      expect(recognition.details.kind === 'skill' && recognition.details.invocationName).toBe(
         'voyage',
       );
       // The closed record and details key sets, sorted before comparing —
@@ -212,8 +215,8 @@ describe('Copilot skill declared name', () => {
       ]);
       expect(Object.keys(recognition.details).toSorted()).toEqual([
         'bodyText',
-        'declaredName',
         'frontmatter',
+        'invocationName',
         'kind',
       ]);
     }
@@ -258,7 +261,6 @@ describe('Copilot skill declared name', () => {
     );
     expect(recognitions.map((recognition) => recognition.tool)).toEqual(['copilot', 'claude']);
     const [copilot, claude] = recognitions;
-    expect(copilot!.details).toEqual(claude!.details);
     if (copilot!.details.kind !== 'skill' || claude!.details.kind !== 'skill') {
       throw new Error('expected skill recognitions');
     }
@@ -266,7 +268,12 @@ describe('Copilot skill declared name', () => {
     // but distinct values, so the shared array is what proves the extraction
     // ran once and both recognitions publish it.
     expect(copilot!.details.frontmatter).toBe(claude!.details.frontmatter);
-    expect(copilot!.details.declaredName).toBe('lander-skill');
+    expect(copilot!.details.bodyText).toBe(claude!.details.bodyText);
+    // The one thing the two recognitions do not share, because each product is
+    // asked its own rule about the same file: Copilot invokes the declared
+    // `name`, Claude Code the skill directory (FR-007). One parse, two names.
+    expect(copilot!.details.invocationName).toBe('lander-skill');
+    expect(claude!.details.invocationName).toBe('lander');
   });
 
   it('recognizes nothing for a context Copilot’s own rule did not admit', async () => {
@@ -300,7 +307,12 @@ describe('Copilot skill declared name', () => {
       if (recognition.details.kind !== 'skill') {
         throw new Error('expected a skill recognition');
       }
-      expect('declaredName' in recognition.details).toBe(false);
+      // The name falls back to the skill directory rather than being guessed
+      // out of a parse that produced nothing — the same string Copilot's own
+      // fallback gives a file declaring none, which is why the row it lands
+      // on is provisional grouping rather than same-name collision evidence
+      // (FR-028, src/shared/skill-collision.ts).
+      expect(recognition.details.invocationName).toBe('greet');
       // All-or-nothing: a failed extraction publishes no partial declarations
       // and no instructions either — not just no name (FR-028).
       expect(recognition.details.frontmatter).toEqual([]);
@@ -312,7 +324,7 @@ describe('Copilot skill declared name', () => {
     // The literal is published as written; nothing looks up `HOME` or `TOKEN`,
     // so no process value can reach a response (FR-026).
     const recognition = await recognize('---\nname: "$HOME/${TOKEN}"\n---\n');
-    expect(recognition.details.kind === 'skill' && recognition.details.declaredName).toBe(
+    expect(recognition.details.kind === 'skill' && recognition.details.invocationName).toBe(
       '$HOME/${TOKEN}',
     );
     expect(JSON.stringify(recognition)).not.toContain(process.env['HOME'] ?? '\0unset');

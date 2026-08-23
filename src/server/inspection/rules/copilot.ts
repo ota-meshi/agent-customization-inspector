@@ -21,6 +21,8 @@ import {
   type CompiledStaticMcpProvenanceRule,
   type CompiledStaticMcpReadingRule,
   type CompiledStaticOtherKindRule,
+  type CompiledStaticSkillRule,
+  authoredSkillNameOf,
 } from './registry';
 import { ParsedJsoncDocument, ParsedStrictJsonDocument } from '../parsers/json';
 import { ParsedMarkdownDocument } from '../parsers/markdown';
@@ -484,9 +486,49 @@ export class CopilotCompiledPromptFileRule
 }
 
 /**
- * A Copilot rule of every other kind, compiled for execution. It answers
- * nothing about applicability, which is exactly what a skill rule has to say
- * about it (see `CompiledNonInstructionRule`).
+ * A Copilot skill rule, compiled for execution: everything a Copilot rule is,
+ * plus the one question only a skill rule answers — the name Copilot invokes
+ * an admitted `SKILL.md` by. The answer lives here, beside the rule that owns
+ * it, because a skill's identity is this vendor's own contract
+ * (contracts/vendors/github-copilot.md § Normative initial-release
+ * presentation allowlist).
+ */
+export class CopilotCompiledSkillRule
+  extends CopilotCompiledRule
+  implements CompiledStaticSkillRule
+{
+  /** Narrowed to the one kind this unit compiles; the constructor proves it. */
+  declare public readonly kind: 'skill';
+
+  /**
+   * The `name` the file declares, with the skill directory as the fallback —
+   * the shared answer of the products that document that field as the skill's
+   * identity ({@link authoredSkillNameOf}), which Copilot is one of. It is
+   * what makes a `.claude/skills/lander/SKILL.md` declaring `name: voyage`
+   * Copilot's `voyage` and Claude Code's `lander`: each product is asked its
+   * own rule about the same file.
+   */
+  public invocationNameOf(
+    sourceRelativePath: string,
+    declared: readonly DeclaredEntryDto[],
+  ): string {
+    return authoredSkillNameOf(sourceRelativePath, declared);
+  }
+
+  /** Compiles one Copilot skill record, rejecting one of another kind. */
+  public constructor(rule: InspectionRule) {
+    super(rule);
+    if (rule.kind !== 'skill') {
+      throw new TypeError(`rule ${rule.ruleId} is not a Copilot skill rule`);
+    }
+  }
+}
+
+/**
+ * A Copilot rule of every other kind, compiled for execution. It answers no
+ * per-kind question — nothing about applicability, nothing a carrier
+ * declares, nothing a file is invoked by (see
+ * `CompiledStaticOtherKindRule`).
  */
 export class CopilotCompiledOtherKindRule
   extends CopilotCompiledRule
@@ -495,14 +537,15 @@ export class CopilotCompiledOtherKindRule
   /** Narrowed to the kinds this unit compiles; the constructor proves it. */
   declare public readonly kind: Exclude<
     CustomizationKind,
-    'instructions' | 'MCP' | 'agent' | 'prompt/command' | 'permissions'
+    'instructions' | 'skill' | 'MCP' | 'agent' | 'prompt/command' | 'permissions'
   >;
 
-  /** Compiles one Copilot record of any kind but the five with a question of their own. */
+  /** Compiles one Copilot record of any kind but the six with a question of their own. */
   public constructor(rule: InspectionRule) {
     super(rule);
     if (
       rule.kind === 'instructions' ||
+      rule.kind === 'skill' ||
       rule.kind === 'MCP' ||
       rule.kind === 'agent' ||
       rule.kind === 'prompt/command' ||
@@ -517,8 +560,9 @@ export class CopilotCompiledOtherKindRule
  * The Copilot Repository rules a Repository scan executes, in shipped order.
  * The remaining Copilot rows of the vendor contract arrive with their own
  * inventory phases; the shipped set covers instructions, skills, prompts and
- * commands, custom agents, and the MCP carriers — the CLI's two root
- * spellings and the VS Code pair.
+ * commands, custom agents, the MCP carriers — the CLI's two root spellings
+ * and the VS Code pair — and the settings documents, the CLI's own pair
+ * beside the Claude-compatible subset it also reads.
  *
  * Several shipped selectors overlap other vendors' spellings — a root
  * `.agents` or `.claude` skill, a root `AGENTS.md`, a root `CLAUDE.md` — so
@@ -553,22 +597,25 @@ export const COPILOT_REPOSITORY_RULES: readonly CompiledStaticCandidateRule[] = 
     // Each record compiles into the unit that can answer its kind's question:
     // an instruction record what its files govern, a command record the name
     // its files are invoked by, an agent record how its files split and what
-    // names them, an MCP record which servers its carrier declares; every
-    // other kind compiles into the plain one, which is what keeps a skill rule
-    // from carrying an answer it has none of.
+    // names them, an MCP record which servers its carrier declares, a skill
+    // record the name its file is invoked by; every other kind compiles into
+    // the plain one, which is what keeps a rule-file rule from carrying an
+    // answer it has none of.
     rule.kind === 'instructions'
       ? new CopilotCompiledInstructionRule(rule)
-      : rule.kind === 'agent'
-        ? new CopilotCompiledAgentRule(rule)
+      : rule.kind === 'skill'
+        ? new CopilotCompiledSkillRule(rule)
         : rule.kind === 'MCP'
           ? rule.ruleId === 'copilot.repo.mcp.vscode'
             ? new CopilotCompiledVscodeMcpCarrierRule(rule)
             : rule.ruleId === 'copilot.repo.mcp.vscode-root'
               ? new CopilotCompiledMcpProvenanceRule(rule)
               : new CopilotCompiledMcpCarrierRule(rule)
-          : rule.kind === 'prompt/command'
-            ? rule.ruleId === 'copilot.repo.prompt'
-              ? new CopilotCompiledPromptFileRule(rule)
-              : new CopilotCompiledPromptRule(rule)
-            : new CopilotCompiledOtherKindRule(rule),
+          : rule.kind === 'agent'
+            ? new CopilotCompiledAgentRule(rule)
+            : rule.kind === 'prompt/command'
+              ? rule.ruleId === 'copilot.repo.prompt'
+                ? new CopilotCompiledPromptFileRule(rule)
+                : new CopilotCompiledPromptRule(rule)
+              : new CopilotCompiledOtherKindRule(rule),
   );

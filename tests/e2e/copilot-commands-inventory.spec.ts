@@ -94,7 +94,8 @@ test.describe('the Copilot CLI reading of root command files', () => {
     // A root direct child is one row naming both products: two documented
     // reads of one path are two recognitions of it, not a collision (FR-004).
     const shared = items.filter({ hasText: 'deploy' }).first();
-    await expect(shared.locator('.aci-prompt-row__definitions > li')).toHaveCount(2);
+    await expect(shared.locator('.aci-prompt-row__definitions > li')).toHaveCount(1);
+    await expect(shared.locator('.aci-prompt-row__tool')).toHaveCount(2);
     await expect(shared.locator('.aci-prompt-row__definitions')).toContainText('Claude Code');
     await expect(shared.locator('.aci-prompt-row__definitions')).toContainText('GitHub Copilot');
     // Each definition states the surfaces its own admissions rest on, and
@@ -103,6 +104,7 @@ test.describe('the Copilot CLI reading of root command files', () => {
     // The nested command keeps Claude's recognition and gains no Copilot one.
     const nested = items.filter({ hasText: 'frontend:component' });
     await expect(nested.locator('.aci-prompt-row__definitions > li')).toHaveCount(1);
+    await expect(nested.locator('.aci-prompt-row__tool')).toHaveCount(1);
     await expect(nested.locator('.aci-prompt-row__definitions')).toContainText('Claude Code');
   });
 
@@ -113,9 +115,10 @@ test.describe('the Copilot CLI reading of root command files', () => {
     await page.getByRole('tab', { name: /Prompt \/ Command/u }).click();
     const broken = page.getByRole('tabpanel').locator('.aci-item').filter({ hasText: 'broken' });
     // One extraction per `(file, kind)` means one record, which every failed
-    // definition of the file references (FR-028) — so the row shows it beside
-    // each product rather than merging the two into one line.
-    await expect(broken.locator('.aci-prompt-row__definitions > li')).toHaveCount(2);
+    // definition of the file references (FR-028) — so the row's one item for
+    // the file states it once, beside both products.
+    await expect(broken.locator('.aci-prompt-row__definitions > li')).toHaveCount(1);
+    await expect(broken.locator('.aci-prompt-row__tool')).toHaveCount(2);
     await expect(broken).toContainText('This file could not be parsed');
   });
 });

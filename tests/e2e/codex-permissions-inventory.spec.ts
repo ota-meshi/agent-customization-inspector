@@ -98,7 +98,7 @@ test.describe('rule files at the root configuration layer', () => {
       '.codex/rules/deploy.rules',
     ]);
     for (const index of [0, 1]) {
-      await expect(items.nth(index).locator('.aci-permissions-row__tools')).toContainText(
+      await expect(items.nth(index).locator('.aci-permissions-row__owner')).toContainText(
         'OpenAI Codex',
       );
     }

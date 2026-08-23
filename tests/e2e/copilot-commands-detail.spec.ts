@@ -82,7 +82,7 @@ test.describe('the complete literal Copilot command detail', () => {
       .getByRole('tabpanel')
       .locator('.aci-item')
       .filter({ hasText: '.claude/commands/deploy.md' })
-      .getByRole('link', { name: 'GitHub Copilot' })
+      .getByRole('link', { name: '.claude/commands/deploy.md' })
       .click();
     await expect(page).toHaveURL(/\/prompts-and-commands\/\.claude\/commands\/deploy\.md$/u);
 

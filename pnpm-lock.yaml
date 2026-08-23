@@ -57,6 +57,9 @@ importers:
       '@nuxt/test-utils':
         specifier: ^4.0.3
         version: 4.0.3(@playwright/test@1.61.1)(@vue/test-utils@2.4.11(@vue/compiler-dom@3.5.40)(@vue/server-renderer@3.5.39(vue@3.5.39(typescript@6.0.3)))(vue@3.5.39(typescript@6.0.3)))(crossws@0.4.10(srvx@0.11.22))(esbuild@0.28.1)(happy-dom@20.10.6)(magicast@0.5.3)(playwright-core@1.61.1)(rolldown@1.1.5)(rollup@4.62.2)(typescript@6.0.3)(vite@7.3.6(@types/node@24.13.3)(jiti@2.7.0)(terser@5.49.0)(yaml@2.9.0))(vitest@4.1.10)
+      '@ota-meshi/site-kit-monarch-syntaxes':
+        specifier: ^0.7.3
+        version: 0.7.3
       '@playwright/test':
         specifier: ^1.61.1
         version: 1.61.1
@@ -815,6 +818,9 @@ packages:
 
   '@one-ini/wasm@0.1.1':
     resolution: {integrity: sha512-XuySG1E38YScSJoMlqovLru4KTUNSjgVTIjyh7qMX6aNN5HY5Ct5LhRJdxO79JtTzKfzV/bnWpz+zquYrISsvw==}
+
+  '@ota-meshi/site-kit-monarch-syntaxes@0.7.3':
+    resolution: {integrity: sha512-7O6mfm3DKZ1jNtbm2qeAMNRi2E8RoW1VtVuwizpAT4iov9XRogMDcFo5OBAkxtc2UqtqKU2crFomtuYhukhg0A==}
 
   '@oxc-minify/binding-android-arm-eabi@0.133.0':
     resolution: {integrity: sha512-D8M1+nqwLaACHZsld/t6f+cE4N97XOu5iQ88f1ZaYH4ptFzFrXo5N7wUKACTI4xmNUD+6W0Y4Apk5U2r8HLdBQ==}
@@ -5986,6 +5992,8 @@ snapshots:
       - yaml
 
   '@one-ini/wasm@0.1.1': {}
+
+  '@ota-meshi/site-kit-monarch-syntaxes@0.7.3': {}
 
   '@oxc-minify/binding-android-arm-eabi@0.133.0':
     optional: true

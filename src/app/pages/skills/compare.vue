@@ -12,11 +12,13 @@
 // phase designs its own surface (spec.md § Clarifications).
 //
 // The URL carries the model's own coordinates —
-// `/skills/compare?left=<entry path>&right=<entry path>&file=<relative>` —
-// the two copies named by their entry files' Source-relative Paths, the
-// identity the inventory's definitions and the detail route already use
-// (FR-030), and the compared file by its copy-relative place inside them,
-// `file` omitted for the entries themselves. Coordinates rather than two
+// `/skills/compare?name=<row name>&left=<entry path>&right=<entry path>&file=<relative>` —
+// the row by the invocation name it is keyed by, the two copies by their
+// entry files' Source-relative Paths, the identity the inventory's definitions
+// and the detail route already use (FR-030), and the compared file by its
+// copy-relative place inside them, `file` omitted for the entries themselves.
+// The row is named rather than derived, because two files can sit together on
+// more than one row (`composables/skill-comparison.ts`). Coordinates rather than two
 // free file paths, so a pair the model cannot express — two different
 // names, one copy twice, another kind's file — cannot be written, only
 // reported. The link survives rescans and server launches, resolving
@@ -98,6 +100,14 @@ function queryPath(name: string): string {
     : '';
 }
 
+/**
+ * The invocation name of the row the pair belongs to. Carried rather than
+ * derived, because two files can sit together on more than one row: the
+ * products invoke a skill by different facts
+ * (`composables/skill-comparison.ts`).
+ */
+const rowNameParameter = computed(() => queryPath('name'));
+
 /** The first copy's identity: its entry file's Source-relative Path (FR-030). */
 const leftPath = computed(() => queryPath('left'));
 /** The second copy's identity: its entry file's Source-relative Path (FR-030). */
@@ -113,8 +123,15 @@ const requestedFile = computed(() => {
   return value === '' ? 'SKILL.md' : value;
 });
 
-/** Whether the URL names a pair at all; without one there is nothing to open. */
-const hasPair = computed(() => leftPath.value !== '' && rightPath.value !== '');
+/**
+ * Whether the URL names a row and a pair at all; without all three there is
+ * nothing to open. An empty `name` is an absent one here rather than a value:
+ * a skill row is named by an authored name or by its skill directory, and
+ * neither can be empty (FR-007).
+ */
+const hasPair = computed(
+  () => rowNameParameter.value !== '' && leftPath.value !== '' && rightPath.value !== '',
+);
 
 /**
  * The coordinates most recently requested by a switcher and not yet
@@ -134,7 +151,7 @@ const pendingPair = shallowRef<{
 
 // The route caught up (or the reader navigated): the query is the truth
 // again, and a pending value kept past this point would shadow it.
-watch([leftPath, rightPath, requestedFile], () => {
+watch([rowNameParameter, leftPath, rightPath, requestedFile], () => {
   pendingPair.value = null;
 });
 
@@ -152,7 +169,17 @@ const currentFile = computed(() => pendingPair.value?.file ?? requestedFile.valu
  */
 function switchTo(left: string, right: string, file: string): void {
   pendingPair.value = { left, right, file };
-  void router.replace(skillComparisonRouteFor(left, right, file === 'SKILL.md' ? undefined : file));
+  // The row stays the one the link named: a switch moves a side inside that
+  // row, and re-deriving the row from the new pair would let a switch land on
+  // a different row's copies.
+  void router.replace(
+    skillComparisonRouteFor(
+      rowNameParameter.value,
+      left,
+      right,
+      file === 'SKILL.md' ? undefined : file,
+    ),
+  );
 }
 
 /** The directory a path sits in, trailing slash kept. */
@@ -210,25 +237,32 @@ const committedPaths = computed(
 );
 
 /**
- * The one inventory row owning the pair: both identities are entry files of
- * its definitions. First match in the snapshot's published row order — one
- * file can sit on two rows (a nested skill's root-relative prefixed name
- * beside a plain one), and when two rows hold both entries the published
- * order is the deterministic tie-break. Null when no row holds both, which
- * the template reports instead of comparing: a pair of two different names,
- * one copy twice, or an identity the current scan does not hold is not a
+ * The one inventory row owning the pair: the row the URL names, holding both
+ * identities as entry files of its definitions. The name is read from the URL
+ * rather than derived from the two paths, because two files can sit together
+ * on more than one row — `.claude/skills/alpha/SKILL.md` declaring
+ * `name: beta` beside `.claude/skills/beta/SKILL.md` declaring `name: alpha`
+ * is on the `alpha` row and the `beta` row alike — and a derived row would be
+ * whichever sorts first, dropping a third copy of the row the reader opened
+ * from out of the switchers below. Null when no such row exists, which the
+ * template reports instead of comparing: a pair of two different names, one
+ * copy twice, or an identity the current scan does not hold is not a
  * comparison this model expresses.
  */
 const owningRow = computed<SkillInventoryEntryDto | null>(() => {
   if (!hasPair.value || currentLeftPath.value === currentRightPath.value) {
     return null;
   }
-  return (
-    (snapshot.value?.skills ?? []).find((entry) => {
-      const entries = new Set(entry.definitions.map((d) => d.sourceRelativePath));
-      return entries.has(currentLeftPath.value) && entries.has(currentRightPath.value);
-    }) ?? null
-  );
+  for (const entry of snapshot.value?.skills ?? []) {
+    if (entry.name !== rowNameParameter.value) {
+      continue;
+    }
+    const entries = new Set(entry.definitions.map((d) => d.sourceRelativePath));
+    if (entries.has(currentLeftPath.value) && entries.has(currentRightPath.value)) {
+      return entry;
+    }
+  }
+  return null;
 });
 
 /**
@@ -601,6 +635,11 @@ function openCurrent(left: string, right: string): void {
 // because its immediate run consults them.
 watch(
   [
+    // The row name is part of the key: a URL that changes only `name` names a
+    // different row, which can turn a comparison the model expresses into one
+    // it does not, and a key without it would leave the previous pair open
+    // while the template reported the fault.
+    rowNameParameter,
     leftPath,
     rightPath,
     requestedFile,

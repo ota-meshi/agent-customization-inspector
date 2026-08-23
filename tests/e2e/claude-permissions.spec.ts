@@ -13,7 +13,6 @@ import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
-import { openNoKindDisclosure } from './no-kind-disclosure';
 
 /** A literal credential in a declared rule, shown whole and unmasked. */
 const FIXTURE_SECRET = 'ghp_E2EPERMISSIONS0000000000000000000000000';
@@ -81,17 +80,18 @@ test.describe('the Claude permission policy a settings carrier declares', () => 
       '.codex/rules/deploy.rules',
     ]);
     await expect(
-      rows.filter({ hasText: '.claude/settings.json' }).locator('.aci-permissions-row__tools'),
+      rows.filter({ hasText: '.claude/settings.json' }).locator('.aci-permissions-row__owner'),
     ).toContainText('Claude Code');
     // The settings file that declares no policy is in no permissions row — the
-    // exact row set above is what says so. It is not absent from the page
-    // either: an inspection rule admitted it and
-    // its bytes were read, so the inventory lists it under the files in no
-    // kind — read, and recognized as nothing.
-    const noKind = page.locator('main').getByRole('heading', { name: 'Files in no kind' });
-    await expect(noKind).toBeVisible();
-    const unclassified = await openNoKindDisclosure(page);
-    await expect(unclassified).toContainText('.claude/settings.local.json');
+    // exact row set above is what says so — because a policy nobody wrote is
+    // not an empty policy. It is still the settings document it is, so the
+    // settings tab lists it: which row a file appears under is decided by what
+    // each recognition is about, not by the file.
+    await page.getByRole('tab', { name: /Settings \/ Config/u }).click();
+    await expect(page.getByRole('tabpanel').locator('.aci-item .aci-path')).toHaveText([
+      '.claude/settings.json',
+      '.claude/settings.local.json',
+    ]);
   });
 
   test('opens the declared block, and not the file that carries it', async ({ page }) => {
@@ -101,7 +101,7 @@ test.describe('the Claude permission policy a settings carrier declares', () => 
       .getByRole('tabpanel')
       .locator('.aci-item')
       .filter({ hasText: '.claude/settings.json' })
-      .getByRole('link', { name: 'Claude Code' })
+      .getByRole('link', { name: '.claude/settings.json' })
       .click();
     await expect(page).toHaveURL(/\/permissions\/\.claude\/settings\.json$/u);
     const main = page.locator('main');

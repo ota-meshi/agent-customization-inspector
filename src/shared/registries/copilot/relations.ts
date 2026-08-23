@@ -47,6 +47,11 @@ import {
   COPILOT_VSCODE_MCP_BEHAVIOR,
   COPILOT_VSCODE_PROMPTS_BEHAVIOR,
   COPILOT_VSCODE_SKILLS_BEHAVIOR,
+  COPILOT_CLI_LSP_BEHAVIOR,
+  COPILOT_CLI_SETTINGS_BEHAVIOR,
+  COPILOT_CLI_USER_SETTINGS_BEHAVIOR,
+  COPILOT_VSCODE_SETTINGS_BEHAVIOR,
+  COPILOT_VSCODE_USER_SETTINGS_BEHAVIOR,
   COPILOT_VSCODE_USER_AGENTS_BEHAVIOR,
   COPILOT_VSCODE_USER_CLAUDE_BEHAVIOR,
   COPILOT_VSCODE_USER_INSTRUCTIONS_BEHAVIOR,
@@ -55,7 +60,9 @@ import {
 } from './behaviors';
 import {
   COPILOT_EXCLUDED_ADDITIONAL_STANDARD_LOCATIONS_RULE,
+  COPILOT_EXCLUDED_CLI_LSP_RULE,
   COPILOT_EXCLUDED_EXTRA_DIRECTORIES_RULE,
+  COPILOT_EXCLUDED_VSCODE_SETTINGS_RULE,
   COPILOT_REPO_AGENT_CLAUDE_RULE,
   COPILOT_REPO_AGENT_RULE,
   COPILOT_REPO_COMMAND_RULE,
@@ -70,6 +77,7 @@ import {
   COPILOT_REPO_MCP_VSCODE_ROOT_RULE,
   COPILOT_REPO_MCP_VSCODE_RULE,
   COPILOT_REPO_PROMPT_RULE,
+  COPILOT_REPO_SETTINGS_RULE,
   COPILOT_REPO_SKILL_RULE,
 } from './rules';
 import {
@@ -84,6 +92,8 @@ import {
   COPILOT_VSCODE_AGENTS_SELECTION_STRATEGY,
   COPILOT_VSCODE_INSTRUCTIONS_LAYERING_STRATEGY,
   COPILOT_VSCODE_MCP_SELECTION_STRATEGY,
+  COPILOT_CLI_SETTINGS_PRECEDENCE_STRATEGY,
+  COPILOT_VSCODE_SETTINGS_PRECEDENCE_STRATEGY,
   COPILOT_VSCODE_SKILLS_SELECTION_STRATEGY,
 } from './strategies';
 import type { RuleRelations, StrategyRelations } from '../relation-types';
@@ -226,6 +236,23 @@ export const COPILOT_STRATEGY_RELATIONS: Readonly<Record<CopilotStrategyId, Stra
   [COPILOT_VSCODE_MCP_SELECTION_STRATEGY.strategyId]: {
     consumesBehaviors: [COPILOT_VSCODE_MCP_BEHAVIOR, COPILOT_VSCODE_USER_MCP_BEHAVIOR],
   },
+  /**
+   * CLI settings precedence composes the Repository cascade layer this
+   * product reads and the User layer it may not: the order is the vendor's
+   * runtime, and omitting the User layer would describe a cascade with a
+   * step missing.
+   */
+  [COPILOT_CLI_SETTINGS_PRECEDENCE_STRATEGY.strategyId]: {
+    consumesBehaviors: [COPILOT_CLI_SETTINGS_BEHAVIOR, COPILOT_CLI_USER_SETTINGS_BEHAVIOR],
+  },
+  /**
+   * VS Code settings precedence composes the workspace scope and the User
+   * scope it sits above, for the same reason: the editor's documented order
+   * is what the record explains, and it spans both.
+   */
+  [COPILOT_VSCODE_SETTINGS_PRECEDENCE_STRATEGY.strategyId]: {
+    consumesBehaviors: [COPILOT_VSCODE_SETTINGS_BEHAVIOR, COPILOT_VSCODE_USER_SETTINGS_BEHAVIOR],
+  },
 };
 
 /** What each Copilot inspection rule is based on and explained by. What evidences it is its own `evidence`. */
@@ -276,6 +303,44 @@ export const COPILOT_RULE_RELATIONS: Readonly<Record<CopilotRuleId, RuleRelation
    * `AGENTS.md` files as well as `*.instructions.md` ones, and two skill
    * locations — which is why the record names no single kind.
    */
+  /**
+   * The settings rule is based on the one documented lookup that locates the
+   * documents it publishes as settings — the CLI's, which names all four
+   * files — and is explained by that surface's precedence, which owns the
+   * layer order the rule deliberately does not project (FR-009).
+   *
+   * The editor, hook, and plugin behaviors these same documents participate
+   * in are deliberately absent: they are what the Hook and Plugin
+   * recognitions of these files will rest on, and a rule is based on the
+   * lookup its own recognition publishes.
+   */
+  [COPILOT_REPO_SETTINGS_RULE.ruleId]: {
+    basedOnBehaviors: [COPILOT_CLI_SETTINGS_BEHAVIOR],
+    explainedByStrategies: [COPILOT_CLI_SETTINGS_PRECEDENCE_STRATEGY],
+  },
+  /**
+   * The VS Code settings exclusion cites the one behavior whose documented
+   * lookup it leaves out, and is explained by the precedence that lookup
+   * participates in — recording the omission without granting a candidate.
+   */
+  [COPILOT_EXCLUDED_VSCODE_SETTINGS_RULE.ruleId]: {
+    basedOnBehaviors: [COPILOT_VSCODE_SETTINGS_BEHAVIOR],
+    explainedByStrategies: [COPILOT_VSCODE_SETTINGS_PRECEDENCE_STRATEGY],
+  },
+  /**
+   * The CLI LSP exclusion cites the project LSP behavior alone — the
+   * Repository `.github/lsp.json` lookup it declines
+   * (contracts/vendors/github-copilot.md § Excluded and unsupported) — and is
+   * explained by no strategy: the LSP priority is outside the initial
+   * strategy projection, so recording one would name a composition this
+   * release does not carry. The User layer below it is not this rule's to
+   * decline: no Repository scan reaches it, and the contract's
+   * `copilot.excluded.user-runtime` is what keeps that surface out.
+   */
+  [COPILOT_EXCLUDED_CLI_LSP_RULE.ruleId]: {
+    basedOnBehaviors: [COPILOT_CLI_LSP_BEHAVIOR],
+    explainedByStrategies: [],
+  },
   [COPILOT_EXCLUDED_EXTRA_DIRECTORIES_RULE.ruleId]: {
     basedOnBehaviors: [
       COPILOT_CLI_INSTRUCTIONS_AGENTS_BEHAVIOR,

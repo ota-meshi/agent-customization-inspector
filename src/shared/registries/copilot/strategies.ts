@@ -498,7 +498,7 @@ export const COPILOT_CLI_AGENTS_SELECTION_STRATEGY = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference',
           officialHost: 'docs.github.com',
           sections: ['User-editable files'],
-          reviewedOn: '2026-07-15',
+          reviewedOn: '2026-08-23',
           establishes:
             'The personal agents directory is ~/.copilot/agents/, and this page states that project-level agents in .github/agents/ take precedence over personal agents of the same name — one of the two sides of the retained conflict.',
         },
@@ -562,6 +562,94 @@ export const COPILOT_CLOUD_AGENTS_SELECTION_STRATEGY = {
     : [],
 } as const satisfies RuntimeCompositionStrategy;
 
+/**
+ * Copilot CLI settings precedence: the documented cascade over the settings
+ * documents this release admits, and the per-key merge policy the repository
+ * layer applies within it.
+ *
+ * The operations are the merge behaviors the page's repository-settings table
+ * lists per key, as alternatives rather than as sequential steps: `replace`
+ * for a key the repository layer replaces outright, `merge-map` for the
+ * object-valued keys it merges by key, `append` with `deduplicate` for the
+ * list-valued keys documented as a union — the repository layer can add
+ * entries and never remove them, which is set union rather than text
+ * concatenation — and `tighten-only` for the one key it may move in a single
+ * direction, `respectGitignore`, which it may enable and never disable.
+ *
+ * The cascade carries two documented exceptions the record states rather than
+ * smooths over: an MDM value of `disable` for
+ * `permissions.disableBypassPermissionsMode` wins over every closer layer,
+ * and the repository layer's `model`, `effortLevel`, and `contextTier`
+ * overrides apply only in a trusted working directory.
+ *
+ * Recording it decides nothing a surface shows: which layer wins for a key
+ * turns on the managed, User, environment, trust, and flag inputs this
+ * product never observes, so no row or detail projects a precedence
+ * (FR-009).
+ */
+export const COPILOT_CLI_SETTINGS_PRECEDENCE_STRATEGY = {
+  strategyId: 'copilot.cli.settings.precedence',
+  tool: 'copilot',
+  surfaces: ['copilot-cli'],
+  operations: ['append', 'replace', 'merge-map', 'deduplicate', 'tighten-only'],
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.cli.configuration',
+          url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference',
+          officialHost: 'docs.github.com',
+          sections: [
+            'Configuration file settings',
+            'Repository settings (.github/copilot/settings.json)',
+          ],
+          reviewedOn: '2026-08-23',
+          establishes:
+            'Settings are applied in the order built-in defaults, MDM managed settings, user settings, repository settings, local settings, environment variables, then command-line flags, with a later source overriding an earlier one; each key the repository layer supports carries its own merge behavior, listed as replaced by the repository, merged so the repository overrides the user for the same key, a union to which the repository can add entries and never remove them, or tighten-only, which the repository can enable and never disable; an MDM value of disable for permissions.disableBypassPermissionsMode always wins over a closer layer, and the repository model, effortLevel, and contextTier overrides apply only when the working directory is trusted.',
+        },
+      ]
+    : [],
+} as const satisfies RuntimeCompositionStrategy;
+
+/**
+ * Copilot VS Code settings precedence: the editor's own scope order, which
+ * resolves the VS Code workspace and User settings documents this release
+ * deliberately leaves out — `copilot.excluded.vscode-settings` names the
+ * omission, and this record is the documented composition behind the scope it
+ * declines. Nothing this release admits rests on it: `copilot.repo.settings`
+ * is based on the CLI settings behavior alone.
+ *
+ * `merge-map` and `replace` alone: the page fixes an order in which a later
+ * scope overrides an earlier one for the same key, and states no
+ * list-concatenation rule of its own.
+ *
+ * The policy, remote, language-specific, and profile scopes are inputs of the
+ * same order rather than facts a surface projects: which value a session ends
+ * up with turns on runtime this tool never observes (FR-009).
+ */
+export const COPILOT_VSCODE_SETTINGS_PRECEDENCE_STRATEGY = {
+  strategyId: 'copilot.vscode.settings.precedence',
+  tool: 'copilot',
+  surfaces: ['copilot-vscode'],
+  operations: ['merge-map', 'replace'],
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'vscode.settings',
+          url: 'https://code.visualstudio.com/docs/configure/settings',
+          officialHost: 'code.visualstudio.com',
+          sections: ['Settings precedence'],
+          reviewedOn: '2026-08-23',
+          establishes:
+            'Configurations are overridden across the setting scopes in a documented order where a later scope wins — defaults, user, remote, workspace, workspace folder, and the language-specific variants of each.',
+        },
+      ]
+    : [],
+} as const satisfies RuntimeCompositionStrategy;
+
 /** Copilot's contribution to the strategy registry, keyed by `strategyId`. */
 export const COPILOT_COMPOSITION_STRATEGIES: Readonly<
   Record<CopilotStrategyId, RuntimeCompositionStrategy>
@@ -581,4 +669,7 @@ export const COPILOT_COMPOSITION_STRATEGIES: Readonly<
   [COPILOT_VSCODE_INSTRUCTIONS_LAYERING_STRATEGY.strategyId]:
     COPILOT_VSCODE_INSTRUCTIONS_LAYERING_STRATEGY,
   [COPILOT_VSCODE_SKILLS_SELECTION_STRATEGY.strategyId]: COPILOT_VSCODE_SKILLS_SELECTION_STRATEGY,
+  [COPILOT_CLI_SETTINGS_PRECEDENCE_STRATEGY.strategyId]: COPILOT_CLI_SETTINGS_PRECEDENCE_STRATEGY,
+  [COPILOT_VSCODE_SETTINGS_PRECEDENCE_STRATEGY.strategyId]:
+    COPILOT_VSCODE_SETTINGS_PRECEDENCE_STRATEGY,
 };

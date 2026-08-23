@@ -160,17 +160,31 @@ describe('no surface derives a general winner from the shipped strategies', () =
     );
   });
 
-  it('reads no settings file to decide any of it', () => {
+  it('reads a settings file only for the settings rows it is (T624)', () => {
     // Enablement is settings-dependent for every one of these locations, and
-    // this wave authorizes no settings read: no Copilot rule of any class
-    // names a settings behavior, and the only rule that could reach a settings
-    // path — one with a matcher — recognizes instructions or skills.
+    // none of them reads a settings file to decide it: an instruction or skill
+    // rule rests on no settings behavior, so nothing it publishes could turn
+    // on one. The settings documents themselves are their own kind's rows,
+    // which is the one place a Copilot settings behavior is a basis.
     const copilotRules = Object.values(INSPECTION_RULES).filter((rule) => rule.tool === 'copilot');
     for (const rule of copilotRules) {
-      expect(rule.kind, rule.ruleId).not.toBe('settings/config');
+      if (rule.kind === 'settings/config' || rule.discoveryClass === 'excluded') {
+        continue;
+      }
       for (const behavior of RULE_RELATIONS[rule.ruleId].basedOnBehaviors) {
         expect(behavior.behaviorId, rule.ruleId).not.toContain('settings');
       }
     }
+    // Exactly one Copilot rule recognizes the settings kind, and it is the one
+    // that rests on the CLI settings lookup — nothing else acquired a settings
+    // basis on the way here.
+    expect(
+      copilotRules.filter((rule) => rule.kind === 'settings/config').map((rule) => rule.ruleId),
+    ).toEqual(['copilot.repo.settings']);
+    expect(
+      RULE_RELATIONS['copilot.repo.settings'].basedOnBehaviors.map(
+        (behavior) => behavior.behaviorId,
+      ),
+    ).toEqual(['copilot.behavior.cli.settings']);
   });
 });

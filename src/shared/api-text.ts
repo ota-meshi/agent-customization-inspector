@@ -87,6 +87,8 @@ export const FILE_DETAIL_KIND_TEXT: Readonly<Record<FileDetailDto['kind'], strin
   'prompt/command': CUSTOMIZATION_KIND_TEXT['prompt/command'],
   /** Caption for a detail a rule recognition owns. */
   rule: CUSTOMIZATION_KIND_TEXT.rule,
+  /** Caption for a detail a settings-or-configuration recognition owns. */
+  'settings/config': CUSTOMIZATION_KIND_TEXT['settings/config'],
   /** Caption for a census-listed or otherwise unrecognized file's detail. */
   file: 'No recognized kind',
 };

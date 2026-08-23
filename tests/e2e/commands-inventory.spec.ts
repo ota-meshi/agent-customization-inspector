@@ -67,10 +67,12 @@ test.describe('one command inventory for both products', () => {
       'team:review:security',
     ]);
 
-    // The root direct children carry a definition from each product.
+    // The root direct children are one item naming both products: one file,
+    // one link, and the products beside it.
     for (const name of ['deploy', 'release']) {
       const row = items.filter({ hasText: name }).first();
-      await expect(row.locator('.aci-prompt-row__definitions > li')).toHaveCount(2);
+      await expect(row.locator('.aci-prompt-row__definitions > li')).toHaveCount(1);
+      await expect(row.locator('.aci-prompt-row__tool')).toHaveCount(2);
       await expect(row.locator('.aci-prompt-row__definitions')).toContainText('Claude Code');
       await expect(row.locator('.aci-prompt-row__definitions')).toContainText('GitHub Copilot');
     }
@@ -118,12 +120,13 @@ test.describe('one command inventory for both products', () => {
       .first();
 
     // The detail is addressed by the path alone: no per-tool fact
-    // distinguishes what the page would show, so both definitions of one file
-    // link to the same page (FR-030).
-    await shared.getByRole('link', { name: 'Claude Code' }).click();
-    await expect(page).toHaveURL(/\/prompts-and-commands\/\.claude\/commands\/deploy\.md$/u);
-    await page.goBack();
-    await shared.getByRole('link', { name: 'GitHub Copilot' }).click();
+    // distinguishes what the page would show, so the file gets one link
+    // however many products recognize it, and the products stand beside it
+    // as text (FR-030).
+    await expect(shared.getByRole('link')).toHaveCount(1);
+    await expect(shared).toContainText('GitHub Copilot');
+    await expect(shared).toContainText('Claude Code');
+    await shared.getByRole('link', { name: '.claude/commands/deploy.md' }).click();
     await expect(page).toHaveURL(/\/prompts-and-commands\/\.claude\/commands\/deploy\.md$/u);
     // And the page states both products, because both recognize the file.
     await expect(page.locator('main')).toContainText('GitHub Copilot (CLI)');

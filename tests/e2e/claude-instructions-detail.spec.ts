@@ -101,7 +101,7 @@ async function openInstruction(page: import('@playwright/test').Page, path: stri
   // holding this path offers this file's links.
   await page
     .locator('.aci-instruction-row__files > li', { hasText: path })
-    .locator('.aci-instruction-row__tools a')
+    .locator('.aci-instruction-row__owner a')
     .first()
     .click();
   // The click resolves when the click lands, not when the route has swapped,

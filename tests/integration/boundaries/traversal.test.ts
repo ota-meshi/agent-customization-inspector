@@ -21,7 +21,8 @@ import {
 import {
   ANY_DIRECTORIES,
   TraversalPlan,
-  type CompiledStaticOtherKindRule,
+  authoredSkillNameOf,
+  type CompiledStaticSkillRule,
 } from '../../../src/server/inspection/rules/registry';
 import { runTraversalScan } from '../../../src/server/inspection/traversal';
 import { assembleScanPublication } from '../../../src/server/inspection/scan';
@@ -60,7 +61,7 @@ const AGENTS_PLAN = TraversalPlan.fromPrograms({ kind: 'repository' }, [
 // under test with a stand-in rule identity rather than the shipped Codex
 // catalog: the matrix must behave identically for whichever rule admitted a
 // candidate.
-function codexSkillRule(plan: TraversalPlan): CompiledStaticOtherKindRule {
+function codexSkillRule(plan: TraversalPlan): CompiledStaticSkillRule {
   return {
     rule: CODEX_REPO_SKILL_RULE,
     relations: CODEX_RULE_RELATIONS['codex.repo.skill'],
@@ -71,10 +72,15 @@ function codexSkillRule(plan: TraversalPlan): CompiledStaticOtherKindRule {
     // supplies the identity a candidate carries, and Codex's one surface is
     // that identity's whole answer here.
     recognizingSurfaces: ['codex-local-clients'],
+    // Codex's own answer, restated by the stand-in: these suites publish
+    // candidates rather than exercise naming, and a skill rule that could not
+    // answer its kind's question would not compile (FR-007).
+    invocationNameOf: (sourceRelativePath, declared) =>
+      authoredSkillNameOf(sourceRelativePath, declared),
   };
 }
 
-const AGENTS_RULES: readonly CompiledStaticOtherKindRule[] = [codexSkillRule(AGENTS_PLAN)];
+const AGENTS_RULES: readonly CompiledStaticSkillRule[] = [codexSkillRule(AGENTS_PLAN)];
 
 // The shipped Codex instruction rule, compiled as itself: the stand-in
 // recognitions below are of the `instructions` kind, and an instruction

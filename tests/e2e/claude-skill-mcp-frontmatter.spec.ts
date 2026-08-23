@@ -110,10 +110,13 @@ test.describe('a skill whose frontmatter spells mcpServers', () => {
     // displayed under the skill's own kind.
     await page
       .locator('.aci-skill-row__file', { hasText: SKILL_PATH })
-      .locator('.aci-skill-row__definitions a[href^="/skills/claude/"]')
+      .locator('a')
+      .first()
       .click();
-    await expect(page).toHaveURL(/\/skills\/claude\//u);
-    await expect(page.getByRole('heading', { name: 'deploy' })).toBeVisible();
+    await expect(page).toHaveURL(new RegExp(`/skills/${SKILL_PATH}$`, 'u'));
+    await expect(
+      page.getByRole('heading', { name: '.claude/skills/deploy/', exact: true }),
+    ).toBeVisible();
     const main = page.locator('main');
     await expect(main).toContainText('mcpServers');
     await expect(main).toContainText(`Bearer ${FIXTURE_SECRET}`);

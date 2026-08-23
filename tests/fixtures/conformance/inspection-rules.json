@@ -301,6 +301,57 @@
     ]
   },
   {
+    "ruleId": "claude.repo.settings",
+    "tool": "claude",
+    "discoveryClass": "static-candidate",
+    "kind": "settings/config",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".claude"
+          },
+          {
+            "kind": "literal",
+            "value": "settings.json"
+          }
+        ],
+        [
+          {
+            "kind": "literal",
+            "value": ".claude"
+          },
+          {
+            "kind": "literal",
+            "value": "settings.local.json"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.settings.scopes-precedence",
+        "url": "https://code.claude.com/docs/en/settings",
+        "officialHost": "code.claude.com",
+        "sections": [
+          "Settings files and who they affect",
+          "Compare the scope of each settings file"
+        ],
+        "reviewedOn": "2026-08-22",
+        "establishes": "A project's .claude/settings.json and .claude/settings.local.json — the exact locations this rule admits — are the project scope's own settings files, the first shared with the team and the second personal to one checkout."
+      }
+    ]
+  },
+  {
     "ruleId": "claude.repo.skill",
     "tool": "claude",
     "discoveryClass": "static-candidate",
@@ -558,6 +609,44 @@
     ]
   },
   {
+    "ruleId": "codex.repo.settings",
+    "tool": "codex",
+    "discoveryClass": "static-candidate",
+    "kind": "settings/config",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".codex"
+          },
+          {
+            "kind": "literal",
+            "value": "config.toml"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.config-basic",
+        "url": "https://learn.chatgpt.com/docs/config-file/config-basic.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Codex configuration file", "Configuration precedence"],
+        "reviewedOn": "2026-08-17",
+        "establishes": "Project configuration lives in .codex/config.toml, loaded per trusted layer from the project root down to the runtime cwd — the root layer being the one inside the selected Repository boundary."
+      }
+    ]
+  },
+  {
     "ruleId": "codex.repo.skill",
     "tool": "codex",
     "discoveryClass": "static-candidate",
@@ -634,6 +723,28 @@
     ]
   },
   {
+    "ruleId": "copilot.excluded.cli-lsp",
+    "tool": "copilot",
+    "discoveryClass": "excluded",
+    "kind": null,
+    "sourceKinds": ["repository"],
+    "matcher": null,
+    "policyRefs": ["FR-003", "FR-004", "FR-020", "QR-001", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.lsp",
+        "url": "https://docs.github.com/en/copilot/concepts/agents/copilot-cli/lsp-servers",
+        "officialHost": "docs.github.com",
+        "sections": ["How LSP servers are loaded"],
+        "reviewedOn": "2026-08-23",
+        "establishes": "The project LSP configuration is .github/lsp.json in the current repository, the highest of three language-server configuration priorities — configuration for language servers rather than for the agent customization this product inventories."
+      }
+    ]
+  },
+  {
     "ruleId": "copilot.excluded.extra-directories",
     "tool": "copilot",
     "discoveryClass": "excluded",
@@ -668,6 +779,28 @@
         "sections": ["Custom instructions settings", "Agent skills settings"],
         "reviewedOn": "2026-08-19",
         "establishes": "VS Code settings can add instruction and skill locations beyond the fixed directories, making participation a runtime input rather than part of the documented default lookup."
+      }
+    ]
+  },
+  {
+    "ruleId": "copilot.excluded.vscode-settings",
+    "tool": "copilot",
+    "discoveryClass": "excluded",
+    "kind": null,
+    "sourceKinds": ["repository"],
+    "matcher": null,
+    "policyRefs": ["FR-003", "FR-004", "QR-001", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.settings",
+        "url": "https://code.visualstudio.com/docs/configure/settings",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Workspace settings"],
+        "reviewedOn": "2026-08-23",
+        "establishes": "Workspace settings are stored in a .vscode/settings.json inside the workspace, which is the general editor settings document this release does not admit."
       }
     ]
   },
@@ -1349,6 +1482,82 @@
         "sections": ["Prompt file locations", "Prompt file format", "Create a prompt file"],
         "reviewedOn": "2026-08-22",
         "establishes": "A workspace keeps its prompt files in the .github/prompts folder and they carry the .prompt.md extension — the exact shape this rule admits — while further locations come from a setting and the default folder is stated without saying what it does with a nested directory."
+      }
+    ]
+  },
+  {
+    "ruleId": "copilot.repo.settings",
+    "tool": "copilot",
+    "discoveryClass": "static-candidate",
+    "kind": "settings/config",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".github"
+          },
+          {
+            "kind": "literal",
+            "value": "copilot"
+          },
+          {
+            "kind": "literal",
+            "value": "settings.json"
+          }
+        ],
+        [
+          {
+            "kind": "literal",
+            "value": ".github"
+          },
+          {
+            "kind": "literal",
+            "value": "copilot"
+          },
+          {
+            "kind": "literal",
+            "value": "settings.local.json"
+          }
+        ],
+        [
+          {
+            "kind": "literal",
+            "value": ".claude"
+          },
+          {
+            "kind": "literal",
+            "value": "settings.json"
+          }
+        ],
+        [
+          {
+            "kind": "literal",
+            "value": ".claude"
+          },
+          {
+            "kind": "literal",
+            "value": "settings.local.json"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.configuration",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Configuration file settings"],
+        "reviewedOn": "2026-08-23",
+        "establishes": "The repository settings file is .github/copilot/settings.json and the local one .github/copilot/settings.local.json — the exact locations this rule admits — and the CLI also reads .claude/settings.json and .claude/settings.local.json for the shared cross-tool subset, which is the other pair."
       }
     ]
   },

@@ -134,7 +134,8 @@ outside the contract.
 **Primary Dependencies**: Nuxt 4.4.8, Vue Router 5.2.0, tsdown 0.22.8, Vite 7.3.6
 (latest Nuxt-compatible release), `devframe` 0.7.5 (the pre-1.0 local-tool
 host framework), `gunshi` 0.37.0, `open` 11.0.1, `yaml` 2.9.0,
-`strip-json-comments` 5.0.3, `smol-toml` 1.7.0, `h3` 2.0.1-rc.22, and `monaco-editor` 0.55.1.
+`strip-json-comments` 5.0.3, `smol-toml` 1.7.0, `h3` 2.0.1-rc.22, `monaco-editor` 0.55.1, and
+`@ota-meshi/site-kit-monarch-syntaxes` 0.7.3 (the TOML Monarch grammar Monaco ships none of).
 Each is declared as a caret range in `package.json`,
 and the committed lockfile pins these exact resolved versions with integrity; `h3`'s
 resolution coincides with devframe's own h3, so the host's `/skills/**` shell fallback
@@ -1353,7 +1354,7 @@ src/
 │   │   ├── index.vue
 │   │   ├── global-consent.vue
 │   │   ├── skills/compare.vue
-│   │   └── skills/[tool]/[...path].vue
+│   │   └── skills/[...path].vue
 │   └── styles/
 ├── server/
 │   ├── cli.ts
@@ -1483,7 +1484,7 @@ and CLI are released and versioned together. Nuxt is configured as an SPA (`ssr:
 with the static Nitro preset, `app.baseURL: '/'`, `app.buildAssetsDir: '/_nuxt/'`, no CDN
 URL, explicit imports, and component auto-discovery disabled. Every nested client route
 therefore resolves the same root-absolute, same-origin asset URLs. A detail route belongs
-to the recognized kind whose surface it is, which is why `/skills/<tool>/<source-relative path>` names `skills`
+to the recognized kind whose surface it is, which is why `/skills/<source-relative path>` names `skills`
 rather than the file: what a detail shows is a skill's declarations, its instructions, and
 its directory, and another kind's detail answers different questions with a different
 layout. Every shipped inspection rule recognizes `skill`, so that is the one detail route;

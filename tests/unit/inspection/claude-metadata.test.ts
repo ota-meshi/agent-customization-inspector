@@ -49,6 +49,9 @@ const claudePermissionsRule = CLAUDE_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'claude.repo.permissions',
 )!;
 
+const claudeSettingsRule = CLAUDE_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'claude.repo.settings',
+);
 const claudeAgentRule = CLAUDE_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'claude.repo.agent',
 )!;
@@ -94,6 +97,27 @@ async function recognize(
   return recognition;
 }
 
+/**
+ * The `name` a `SKILL.md` declares, read back out of the declarations the
+ * recognition publishes — the one place a declared name lives, because Claude
+ * Code invokes a skill by its directory and the recognition holds that name
+ * alone (FR-007). Null when the file declares no scalar `name`, which is the
+ * one case a resolved value must not be invented for: a sequence under that
+ * key has a rendering too, and taking its text would name a skill after an
+ * item the file never wrote as a name.
+ */
+function declaredNameOf(recognition: ToolRecognition): string | null {
+  if (recognition.details.kind !== 'skill') {
+    return null;
+  }
+  for (const entry of recognition.details.frontmatter) {
+    if (entry.keyKind === 'string' && entry.key === 'name' && entry.value.kind === 'scalar') {
+      return entry.value.text;
+    }
+  }
+  return null;
+}
+
 describe('Claude skill declared name', () => {
   it.each(SKILL_CONTENT_CASES.map((testCase) => [testCase.id, testCase] as const))(
     'publishes the name the parser resolved: %s',
@@ -103,9 +127,13 @@ describe('Claude skill declared name', () => {
       // them exactly as Codex does, through the one shared extractor.
       const recognition = await recognize(testCase.sourceText);
       expect(recognition.parseStatus).toBe('parsed');
-      const declaredName =
-        recognition.details.kind === 'skill' ? (recognition.details.declaredName ?? null) : null;
-      expect(declaredName).toBe(testCase.name);
+      expect(declaredNameOf(recognition)).toBe(testCase.name);
+      // What Claude Code invokes is the skill directory whatever that
+      // declaration says, so the identity its row is keyed by is the same for
+      // every one of these files (FR-007).
+      expect(recognition.details.kind === 'skill' && recognition.details.invocationName).toBe(
+        'greet',
+      );
     },
   );
 
@@ -187,7 +215,7 @@ describe('Claude skill declared name', () => {
         },
       },
     ]);
-    expect(recognition.details.declaredName).toBe('rich');
+    expect(declaredNameOf(recognition)).toBe('rich');
     // The description is published once, as one of the declarations. A second
     // copy beside them would be the same fact in two states.
     expect(recognition.details.frontmatter).toContainEqual({
@@ -209,7 +237,7 @@ describe('Claude skill declared name', () => {
     if (recognition.details.kind !== 'skill') {
       throw new Error('expected a skill recognition');
     }
-    expect('declaredName' in recognition.details).toBe(false);
+    expect(declaredNameOf(recognition)).toBeNull();
     expect(recognition.details.frontmatter).toEqual([
       {
         key: 'name',
@@ -258,7 +286,7 @@ describe('Claude skill declared name', () => {
     }
     expect(nested.entries.map((entry) => entry.key)).toEqual(['30', '4', 'z']);
     // The name is still read from the key it names, not from the first entry.
-    expect(recognition.details.declaredName).toBe('ordered');
+    expect(declaredNameOf(recognition)).toBe('ordered');
   });
 
   it('titles a key with the text a product resolves it to', async () => {
@@ -339,7 +367,7 @@ describe('Claude skill declared name', () => {
     }
     expect(recognition.parseStatus).toBe('parsed');
     expect(recognition.details.frontmatter).toEqual([]);
-    expect('declaredName' in recognition.details).toBe(false);
+    expect(declaredNameOf(recognition)).toBeNull();
   });
 
   it.each(MALFORMED_SKILL_CONTENT_CASES.map((testCase) => [testCase.id, testCase] as const))(
@@ -352,7 +380,10 @@ describe('Claude skill declared name', () => {
       if (recognition.details.kind !== 'skill') {
         throw new Error('expected a skill recognition');
       }
-      expect('declaredName' in recognition.details).toBe(false);
+      expect(declaredNameOf(recognition)).toBeNull();
+      // Claude Code's command name is the path's own fact, so it stands
+      // whether or not the frontmatter parsed (FR-028).
+      expect(recognition.details.invocationName).toBe('greet');
       // All-or-nothing: a failed extraction publishes no partial declarations
       // and no instructions either — not just no name (FR-028).
       expect(recognition.details.frontmatter).toEqual([]);
@@ -373,9 +404,7 @@ describe('Claude skill declared name', () => {
     // The literal is published as written; nothing looks up `HOME` or `TOKEN`,
     // so no process value can reach a response (FR-026).
     const recognition = await recognize('---\nname: "$HOME/${TOKEN}"\n---\n');
-    expect(recognition.details.kind === 'skill' && recognition.details.declaredName).toBe(
-      '$HOME/${TOKEN}',
-    );
+    expect(declaredNameOf(recognition)).toBe('$HOME/${TOKEN}');
     expect(JSON.stringify(recognition)).not.toContain(process.env['HOME'] ?? '\0unset');
   });
 
@@ -630,6 +659,74 @@ describe('Claude command reading (T449)', () => {
       ].join('\n'),
     });
     expect(Object.keys(recognition)).not.toContain('relationships');
+  });
+});
+
+describe('Claude settings metadata (T613)', () => {
+  /** Recognizes one authored settings document at the given admitted layer. */
+  async function recognizeSettings(
+    matchedPath: '.claude/settings.json' | '.claude/settings.local.json',
+    sourceText: string,
+  ): Promise<ToolRecognition> {
+    const { recognitions } = await recognizeCandidateForVendors(
+      {
+        matchedPath,
+        absolutePath: join(root, matchedPath),
+        sourceRoot: root,
+        admissions: [{ compiled: claudeSettingsRule!, origin: { planIndex: 0, selectorIndex: 0 } }],
+        sourceText,
+      },
+      ['claude'],
+    );
+    const [recognition] = recognitions;
+    if (recognition === undefined) {
+      throw new Error('expected one Claude recognition');
+    }
+    return recognition;
+  }
+
+  const DOCUMENT = JSON.stringify({
+    model: 'opus',
+    enabledPlugins: { 'formatter@marketplace': true },
+    hooks: { PostToolUse: [{ matcher: 'Edit' }] },
+    additionalDirectories: ['../docs/'],
+  });
+
+  it('names the recognizing surfaces and reads nothing out of either layer', async () => {
+    for (const layer of ['.claude/settings.json', '.claude/settings.local.json'] as const) {
+      const recognition = await recognizeSettings(layer, DOCUMENT);
+      expect(recognition.details.kind, layer).toBe('settings/config');
+      // The surfaces the admitting rule's behaviors are scoped to: naming one
+      // is never a claim that the surface applied the settings (FR-009).
+      expect(recognition.provenances[0]!.recognizingSurfaces, layer).toEqual([
+        'claude-cli-and-ide-clients',
+      ]);
+      // Nothing is extracted, so the record carries no reading of any declared
+      // component: what a reader sees is the document, through its detail.
+      expect(recognition.parseStatus, layer).toBe('not-attempted');
+      expect(JSON.stringify(recognition.details), layer).toBe('{"kind":"settings/config"}');
+    }
+  });
+
+  it('projects no scope, precedence, or layer onto either recognition', async () => {
+    // Which of the two layers wins for a key, and how the User and managed
+    // scopes outside this Source resolve against them, is the vendor's own
+    // documented composition and reaches no surface (FR-009; T091). The
+    // record carries the path and the kind, and nothing that ranks them.
+    const shared = await recognizeSettings('.claude/settings.json', DOCUMENT);
+    const local = await recognizeSettings('.claude/settings.local.json', DOCUMENT);
+    for (const recognition of [shared, local]) {
+      const serialized = JSON.stringify(recognition);
+      for (const token of ['precedence', 'scope', 'layer', 'local', 'shared', 'wins']) {
+        expect(serialized.toLowerCase(), recognition.sourceRelativePath).not.toContain(
+          `"${token}"`,
+        );
+      }
+    }
+    // The two are told apart by their paths alone, which is the row identity
+    // this kind uses (data-model.md § Inventory unit).
+    expect(shared.sourceRelativePath).toBe('.claude/settings.json');
+    expect(local.sourceRelativePath).toBe('.claude/settings.local.json');
   });
 });
 

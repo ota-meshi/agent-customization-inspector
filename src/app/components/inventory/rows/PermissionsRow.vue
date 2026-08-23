@@ -7,8 +7,10 @@
 //
 // A row shows that a policy was declared and what recognized it, never what it
 // permits. The snapshot carries no declared value, and a policy is served only
-// by its own detail, one at a time (FR-027): selecting a product here is how
-// that policy's complete inert detail opens.
+// by its own detail, one at a time (FR-027): selecting the path here is how
+// that policy's complete inert detail opens. The path is the link because a
+// detail is addressed by the path alone, so a link per product would be the
+// same URL repeated once per recognition.
 //
 // Nothing here is a claim that a policy is in force. A permission decision is
 // combined with every other active layer's — the User layer and the managed
@@ -33,7 +35,11 @@ import { computed } from 'vue';
 import { NuxtLink } from '#components';
 import RowDiagnostics from './RowDiagnostics.vue';
 import { detailRoute } from '../../detail-route';
-import { SUPPORTED_TOOL_TEXT, pathPresentationLabel } from '../../../../shared/entities';
+import {
+  SUPPORTED_TOOL_TEXT,
+  inlinePresentationLabel,
+  pathPresentationLabel,
+} from '../../../../shared/entities';
 import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text';
 import type {
   PermissionsInventoryEntryDto,
@@ -62,6 +68,12 @@ const pathText = computed(() => pathPresentationLabel(props.entry.sourceRelative
 const route = computed(() => detailRoute('permissions', props.entry.sourceRelativePath));
 
 /**
+ * What a screen reader announces the path link as; see {@link SettingsRow} for
+ * the rule every path-addressed row follows (WCAG 2.4.4, FR-025).
+ */
+const pathAccessibleText = computed(() => inlinePresentationLabel(props.entry.sourceRelativePath));
+
+/**
  * Each product that recognized the policy, with the surfaces its admissions
  * rest on beside it — the product alone does not say where a file is read
  * from once two surfaces document different lookup bases (FR-009).
@@ -82,21 +94,23 @@ const recognitions = computed(() =>
 
 <template>
   <li class="aci-item">
-    <!-- The declaring file's path is the row's identity, rendered exactly as
-         published and never as a locator anything can open (FR-024). -->
-    <p class="aci-path aci-authored-text">{{ pathText }}</p>
-
-    <!-- Every product that recognized the policy, in the closed tool order,
-         each linking to the policy's own detail route, with the surfaces of
-         the documented behaviors its admitting rules rest on beside it. Naming
-         a surface is never a claim that the surface enforced the policy
-         (FR-009). -->
-    <ul class="aci-permissions-row__tools" role="list">
-      <li v-for="recognition in recognitions" :key="recognition.tool">
-        <NuxtLink :to="route">{{ recognition.toolText }}</NuxtLink>
-        <span class="aci-permissions-row__surfaces aci-muted">{{ recognition.surfacesText }}</span>
-      </li>
-    </ul>
+    <!-- The declaring file's path is the row's identity and the link to the
+         policy's own detail, rendered exactly as published and never as a
+         locator anything outside this product can open (FR-024). A link per
+         product would be the same URL repeated, because this detail is
+         addressed by the path alone. -->
+    <p class="aci-permissions-row__owner">
+      <NuxtLink :to="route" class="aci-path aci-authored-text" :aria-label="pathAccessibleText">{{
+        pathText
+      }}</NuxtLink>
+      <span
+        v-for="recognition in recognitions"
+        :key="recognition.tool"
+        class="aci-permissions-row__tool aci-muted"
+        >{{ recognition.toolText }}
+        <span class="aci-permissions-row__surfaces">{{ recognition.surfacesText }}</span></span
+      >
+    </p>
 
     <!-- Why a row a reader can see publishes nothing: the extraction's own
          record, resolved from the generation's diagnostics (FR-028). -->
@@ -105,24 +119,31 @@ const recognitions = computed(() =>
 </template>
 
 <style scoped>
-/* The recognitions of the policy, set under the path by an indent and a
-   rule, matching how a skill row groups its definitions. */
-.aci-permissions-row__tools {
-  list-style: none;
-  margin: 0.2rem 0 0;
-  border-inline-start: 1px solid var(--aci-border);
-  padding-inline-start: 0.6rem;
+/* The path and the products that recognize it on one line, the way an MCP or
+   agent row lays out a carrier and its recognitions: the path is the subject
+   and the products qualify it. */
+.aci-permissions-row__owner {
+  margin: 0;
 }
 
-/* The surfaces trail the product on the same line, set apart by a separator
-   rather than by punctuation inside the text: the product is what was
-   recognized, and the surfaces qualify it. */
-.aci-permissions-row__surfaces {
+.aci-permissions-row__tool {
   margin-inline-start: 0.4rem;
 }
 
-.aci-permissions-row__surfaces::before {
+.aci-permissions-row__tool::before {
   content: '·';
   margin-inline-end: 0.4rem;
+}
+
+.aci-permissions-row__surfaces {
+  font-size: 0.85em;
+}
+
+.aci-permissions-row__surfaces::before {
+  content: '(';
+}
+
+.aci-permissions-row__surfaces::after {
+  content: ')';
 }
 </style>

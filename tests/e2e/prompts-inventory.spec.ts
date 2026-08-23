@@ -78,16 +78,17 @@ test.describe('Copilot prompt files in the prompts-and-commands inventory', () =
       'scaffold-component',
     ]);
 
-    // The shared name lists every definition that resolves it: the command
-    // file as each of the two products that read it, and the prompt file the
-    // editor reads. One name, one row, three definitions.
+    // The shared name lists every file that resolves it: the command file,
+    // which two products read, and the prompt file the editor reads. One
+    // name, one row, two files — the command file's two recognitions are two
+    // products beside one path rather than two items.
     const shared = items.filter({ hasText: 'deploy' });
     await expect(shared.locator('.aci-path')).toHaveText([
       '.claude/commands/deploy.md',
-      '.claude/commands/deploy.md',
       '.github/prompts/deploy.prompt.md',
     ]);
-    await expect(shared.locator('.aci-prompt-row__definitions > li')).toHaveCount(3);
+    await expect(shared.locator('.aci-prompt-row__definitions > li')).toHaveCount(2);
+    await expect(shared.locator('.aci-prompt-row__tool')).toHaveCount(3);
     await expect(shared.locator('.aci-prompt-row__definitions')).toContainText('Claude Code');
     await expect(shared.locator('.aci-prompt-row__definitions')).toContainText('GitHub Copilot');
 

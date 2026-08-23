@@ -22,6 +22,7 @@ import type {
 import type { CustomizationKind, SupportedTool } from '../../../shared/entities';
 import { VENDOR_SURFACE_ORDER } from '../../../shared/registries/behavior-text';
 import type { VendorSurface } from '../../../shared/registries/behavior-types';
+import { skillDirectoryOf } from '../../../shared/registries/skill-directory';
 import type { InspectionRule } from '../../../shared/registries/rule-types';
 import type { RuleRelations } from '../../../shared/registries/relation-types';
 
@@ -805,6 +806,81 @@ export interface CompiledStaticPromptRule extends CompiledInspectionRule {
 }
 
 /**
+ * A compiled rule that admits a `SKILL.md`, and can therefore answer the one
+ * question only this kind's rule answers — the name the admitting product
+ * invokes the skill by, which is the kind's inventory unit (data-model.md
+ * § Inventory unit).
+ *
+ * The skill sibling of {@link CompiledStaticPromptRule}, and its own unit for
+ * the same reason: how a name follows from a path and a declaration is the
+ * admitting vendor's own contract, so an instruction or rule-file rule must
+ * not be asked for it. The products answer differently — Codex and Copilot
+ * invoke the `name` the file declares, while Claude Code derives its command
+ * from the skill directory and treats the declared name as a display label —
+ * which is what makes the derivation the rule's rather than the parser's.
+ */
+export interface CompiledStaticSkillRule extends CompiledInspectionRule {
+  /** The recognized kind; this unit compiles `skill` records alone. */
+  readonly kind: 'skill';
+  /**
+   * The name one admitted `SKILL.md` is invoked by, as the admitting product
+   * builds it. Never empty: a product invoking a file that declares no usable
+   * name falls back to the skill directory, and being a named directory is
+   * what a skill is (FR-007).
+   *
+   * Both inputs, because the products differ on which one answers: Codex and
+   * Copilot read the declared `name`, while Claude Code reads none at all and
+   * derives its command from the path. A unit that took one input would leave
+   * the other vendor's answer unreachable.
+   *
+   * `declared` is the file's frontmatter as the one scan-time parse resolved
+   * it, empty for a failed extraction — which lands a declared-name product's
+   * skill on its skill directory, the same string that product's own fallback
+   * produces for a file declaring none, reached for a different reason. What
+   * distinguishes the two is the extraction Diagnostic the recognition
+   * carries, which every surface showing the definition shows beside it, and
+   * which is why such a row is provisional grouping rather than evidence of a
+   * same-name collision (FR-028, shared/skill-collision.ts).
+   *
+   * Never a claim that the skill is reachable: which locations a session
+   * searches, and which of two same-name skills it would load, is runtime this
+   * tool never observes (FR-009).
+   */
+  invocationNameOf(sourceRelativePath: string, declared: readonly DeclaredEntryDto[]): string;
+}
+
+/**
+ * The declared-`name` answer to {@link CompiledStaticSkillRule.invocationNameOf},
+ * shared by the two products that document the field as the skill's identity —
+ * Codex and Copilot — because their answer is one rule rather than two that
+ * happen to agree. Read by the string key and the scalar kind: a sequence
+ * under that key has a rendering too, and taking its text would name a skill
+ * after the first item of a list the file did not write as a name.
+ *
+ * Falls back to the skill directory when nothing usable was declared — an
+ * absent `name`, an authored empty one, or a failed extraction's empty
+ * `declared` — because a directory can name a row where an absent or empty
+ * scalar cannot, and a product still invokes such a skill by something
+ * (FR-007). Which of those three it was is not collapsed away: the authored
+ * declarations are published in full beside the name, and a failed extraction
+ * carries its own Diagnostic (FR-028).
+ */
+export function authoredSkillNameOf(
+  sourceRelativePath: string,
+  declared: readonly DeclaredEntryDto[],
+): string {
+  for (const entry of declared) {
+    if (entry.keyKind === 'string' && entry.key === 'name' && entry.value.kind === 'scalar') {
+      if (entry.value.text !== '') {
+        return entry.value.text;
+      }
+      break;
+    }
+  }
+  return skillDirectoryOf(sourceRelativePath);
+}
+
+/**
  * A compiled rule that admits an MCP declaration carrier, and can therefore
  * answer which servers one of its admitted files declares — the rows the MCP
  * inventory publishes, one per declaration (data-model.md § Inventory unit).
@@ -1013,19 +1089,22 @@ export function declaredAgentNameOf(declared: readonly DeclaredEntryDto[]): stri
 
 /**
  * A compiled static rule of every other kind — neither an instruction rule,
- * whose files govern a range, nor a command rule, whose files are invoked by a
- * name, nor an MCP carrier rule, whose files declare servers, nor a
- * custom-agent rule, whose files declare an agent. It answers no
- * per-kind question, which is the whole point: a skill rule has no such answer
- * to give, and neither does a rule-file rule — a rule file is published as the
- * one Markdown or Starlark document its author wrote, so nothing is read out
- * of it for a caller to ask about.
+ * whose files govern a range, nor a command or skill rule, whose files are
+ * invoked by a name, nor an MCP carrier rule, whose files declare servers, nor
+ * a custom-agent rule, whose files declare an agent. It answers no per-kind
+ * question, which is the whole point: a rule-file rule has no such answer to
+ * give — a rule file is published as the one Markdown or Starlark document its
+ * author wrote, so nothing is read out of it for a caller to ask about — and
+ * neither does a settings or configuration rule, whose file is served whole.
  */
 export interface CompiledStaticOtherKindRule extends CompiledInspectionRule {
-  /** Every recognized kind but `instructions`, `prompt/command`, `MCP`, and `permissions`. */
+  /**
+   * Every recognized kind but `instructions`, `prompt/command`, `skill`,
+   * `MCP`, `agent`, and `permissions`.
+   */
   readonly kind: Exclude<
     CustomizationKind,
-    'instructions' | 'MCP' | 'agent' | 'prompt/command' | 'permissions'
+    'instructions' | 'skill' | 'MCP' | 'agent' | 'prompt/command' | 'permissions'
   >;
 }
 
@@ -1039,6 +1118,7 @@ export type CompiledStaticCandidateRule =
   | CompiledStaticMcpRule
   | CompiledStaticAgentRule
   | CompiledStaticPromptRule
+  | CompiledStaticSkillRule
   | CompiledStaticPermissionsRule
   | CompiledStaticOtherKindRule;
 
