@@ -36,6 +36,7 @@ import {
 import { NuxtPage } from '#components';
 import { useRoute, useRouter } from 'vue-router';
 import { connectDevframe, isCallableStatus } from 'devframe/client';
+import ColorSchemeSwitch from './components/ColorSchemeSwitch.vue';
 import { pageKey } from './router.options';
 import { SESSION_VIEW_STATE, SessionViewState, type SessionView } from './session/view-state';
 import { CUSTOMIZATION_KIND_TEXT, escapeControlCharacters } from '../shared/entities';
@@ -285,7 +286,15 @@ onBeforeUnmount(() => {
 
 <template>
   <main class="aci-app">
-    <h1 ref="heading" tabindex="-1">{{ APP_NAME }}</h1>
+    <!-- The title and the one control that belongs to the whole page rather
+         than to what is under it: which scheme the reader wants it drawn in.
+         The switch is here because it applies to every route, and a plain
+         element rather than a `header` because a `header` inside `main` is a
+         landmark question this row has no reason to raise. -->
+    <div class="aci-app__masthead">
+      <h1 ref="heading" tabindex="-1">{{ APP_NAME }}</h1>
+      <ColorSchemeSwitch />
+    </div>
     <!-- The inventory's own introduction, so it is shown with the inventory. A
          detail route does not repeat it: that screen is devoted to the
          recognized skill and its files — the definition line, the parsed
@@ -365,6 +374,17 @@ onBeforeUnmount(() => {
   margin: 0 auto;
   max-width: 72rem;
   padding: 1.5rem 1.25rem 2rem;
+}
+
+/* The title on one side and the scheme switch on the other, which is where a
+   reader looks for it. Centred on the cross axis rather than baseline-aligned:
+   the switch is a control with no text of its own, so a baseline would put it
+   below the title it sits beside. */
+.aci-app__masthead {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
 }
 
 .aci-app h1 {

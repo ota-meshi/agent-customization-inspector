@@ -359,6 +359,16 @@ correct.
 - The exception is a process the user asked to keep running. Say so explicitly when leaving
   one up, with the port or URL it is on, so ending the turn is not the same as losing track
   of it.
+- Port 9999 is the machine owner's, and no process Coding Agent starts may bind it. It is
+  devframe's default port, so every launch of this product's host reaches for it unasked —
+  `pnpm start`, `pnpm run start:fixture`, and the suites through
+  `tests/e2e/launch-host.ts` and `tests/package/npx-launch.test.ts`. Pass `--port 0`,
+  which has devframe select a free port and
+  print it in the launch line; the launch line is where the bound port is read from in
+  either case, so nothing is lost by not knowing it in advance. Reserving the port only
+  while an agent is idle would not be reserving it: devframe moves off an occupied port
+  but takes a free one, so an agent that omits `--port 0` takes 9999 exactly whenever its
+  owner is not already holding it.
 
 ## User-visible copy policy
 

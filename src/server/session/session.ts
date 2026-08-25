@@ -44,6 +44,8 @@ import type {
   OutputStyleInventoryEntryDto,
   PluginCarrierDetailDto,
   PluginCarrierDetailParams,
+  PluginFileDetailDto,
+  PluginFileDetailParams,
   PluginCarrierDto,
   PluginDeclarationDto,
   PluginInventoryEntryDto,
@@ -181,7 +183,7 @@ function directoryFilesOf(
 }
 
 /**
- * Every published file below one plugin root: a plugin *is* its root, so the
+ * Every published file one plugin root holds: a plugin *is* its root, so the
  * whole directory is what it ships (contracts/inspection-path-allowlist.md
  * § Bounded companion census).
  *
@@ -210,7 +212,7 @@ function pluginRootFilesOf(pluginRoot: string, files: readonly CustomizationFile
  *
  * The name is the one the recognizing tool's own documentation invokes the
  * file by, resolved by the admitting rule at recognition time (FR-007,
- * rules/registry.ts § CompiledStaticSkillRule): Codex and Copilot invoke the
+ * rules/skills/compiled-rule.ts § CompiledStaticSkillRule): Codex and Copilot invoke the
  * authored name — or the skill directory name when the file declares none or
  * declares it empty, so every row has a name to be listed under — while
  * Claude Code derives its command from the skill directory whatever the
@@ -575,7 +577,7 @@ function projectPluginInventory(
   recognitions: readonly ToolRecognition[],
   files: readonly CustomizationFileDto[],
 ): PluginInventoryEntryDto[] {
-  const byName = new Map<string | null, { carriers: PluginCarrierDto[]; files: Set<string> }>();
+  const byName = new Map<string | null, { carriers: PluginCarrierDto[] }>();
   for (const recognition of recognitions) {
     if (recognition.details.kind !== 'plugin') {
       continue;
@@ -589,14 +591,14 @@ function projectPluginInventory(
         recognizingSurfaces.add(surface);
       }
     }
-    const carrierShared = {
+    const carrier = {
       sourceRelativePath: recognition.sourceRelativePath,
       tool: recognition.tool,
       surfaces: VENDOR_SURFACE_ORDER.filter((surface) => recognizingSurfaces.has(surface)),
       parseStatus: recognition.parseStatus,
       diagnosticIds: recognition.diagnosticIds,
+      carrier: recognition.details.carrier,
     };
-    const carrier: PluginCarrierDto = { ...carrierShared, carrier: recognition.details.carrier };
     // One row per name the carrier resolves. A carrier that resolves none joins
     // the null row: "this file resolves no plugin name" is what that row says.
     const names =
@@ -604,27 +606,34 @@ function projectPluginInventory(
         ? [null]
         : recognition.details.plugins.map((plugin) => plugin.name);
     for (const [index, name] of names.entries()) {
-      const row = byName.get(name) ?? { carriers: [], files: new Set<string>() };
+      const row = byName.get(name) ?? { carriers: [] };
       byName.set(name, row);
-      if (
-        !row.carriers.some(
-          (existing) =>
-            existing.sourceRelativePath === carrier.sourceRelativePath &&
-            existing.tool === carrier.tool,
-        )
-      ) {
-        // One carrier resolving the same name twice is one carrier of that row:
-        // the row lists the files that resolve the name, and listing one file
-        // twice would say two files do.
-        row.carriers.push(carrier);
-      }
-      // What this declaration's plugin ships joins the row's own list: one row
-      // is one plugin, and two offerings of it reach the files of each.
-      for (const file of pluginRootFilesOf(
+      // What this carrier's offering of this name reaches: the directory the
+      // declaration named, as the census enumerated it. A carrier declaring
+      // one name twice — two entries, two directories — reaches both, so the
+      // one carrier of that row carries their files together.
+      const reached = pluginRootFilesOf(
         recognition.details.plugins[index]?.pluginRoot ?? '',
         files,
-      )) {
-        row.files.add(file);
+      );
+      const existing = row.carriers.find(
+        (candidate) =>
+          candidate.sourceRelativePath === carrier.sourceRelativePath &&
+          candidate.tool === carrier.tool,
+      );
+      if (existing === undefined) {
+        row.carriers.push({ ...carrier, files: reached });
+      } else {
+        // One carrier resolving the same name twice is one carrier of that
+        // row: listing it twice would say two files resolve the name.
+        row.carriers.splice(row.carriers.indexOf(existing), 1, {
+          ...existing,
+          // Sorted after the merge, not merely deduplicated: the two offerings
+          // are in the catalog's own order, so a later entry naming `a/` would
+          // otherwise follow an earlier one naming `z/` in a list the DTO
+          // publishes as sorted (`api-types.ts` § PluginCarrierDto.files).
+          files: [...new Set([...existing.files, ...reached])].toSorted(compareStrings),
+        });
       }
     }
   }
@@ -632,7 +641,6 @@ function projectPluginInventory(
     [...byName.entries()]
       .map(([name, row]): PluginInventoryEntryDto => ({
         name,
-        files: [...row.files].toSorted(compareStrings),
         carriers: row.carriers.toSorted((left, right) => {
           const pathDelta = compareStrings(left.sourceRelativePath, right.sourceRelativePath);
           return pathDelta !== 0
@@ -1610,6 +1618,7 @@ export class InspectionSession {
       for (const recognition of generation.recognitions) {
         if (
           recognition.sourceRelativePath !== params.sourceRelativePath ||
+          recognition.tool !== params.tool ||
           recognition.details.kind !== 'plugin'
         ) {
           continue;
@@ -1659,6 +1668,71 @@ export class InspectionSession {
                   : null,
               diagnostics,
             };
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Resolves one file a plugin ships — its complete authored source and its own
+   * diagnostics (contracts/http-api.md § get-plugin-file-detail).
+   *
+   * Its own resolver rather than a `fileDetail` branch, because the subject is
+   * the file *as this plugin's*. `fileDetail` answers for the row whose subject
+   * a file is, and a path whose only rows name declarations inside it — an MCP
+   * carrier, a declared permission policy — has no such row, so it answers
+   * there with the same null it answers for a path no generation holds. Below a
+   * plugin root that file is still one of the plugin's own files, and the
+   * plugin's page is where a reader opens it: refusing there would list a file
+   * in the tree and then report it as gone.
+   *
+   * Membership is what makes the path readable here: the file must sit below a
+   * directory this carrier's offering of this row's name reached, which is the
+   * census's own answer (contracts/inspection-path-allowlist.md § Bounded
+   * companion census). A path outside every such directory resolves nowhere,
+   * so this function cannot be used to read an arbitrary file through a
+   * plugin's name.
+   */
+  public pluginFileDetail(params: PluginFileDetailParams): PluginFileDetailDto | null {
+    const generations = [
+      this.committedRepositoryGeneration,
+      ...(this.committedGlobalGeneration === null ? [] : [this.committedGlobalGeneration]),
+    ];
+    for (const generation of generations) {
+      for (const recognition of generation.recognitions) {
+        if (
+          recognition.sourceRelativePath !== params.sourceRelativePath ||
+          recognition.tool !== params.tool ||
+          recognition.details.kind !== 'plugin'
+        ) {
+          continue;
+        }
+        // The roots this carrier's offering of the requested name reached, in
+        // the reading that product published: a declaration of another name at
+        // the same carrier reaches its own directory, and a file below that one
+        // is that row's rather than this one's.
+        const roots = recognition.details.plugins
+          .filter((plugin) => plugin.name === params.pluginName)
+          .map((plugin) => plugin.pluginRoot)
+          .filter((root): root is string => root !== null);
+        if (!roots.some((root) => params.filePath.startsWith(root))) {
+          return null;
+        }
+        const file = generation.files.find(
+          (candidate) => candidate.sourceRelativePath === params.filePath,
+        );
+        if (file === undefined) {
+          // The census enumerated the directory in an earlier commit and this
+          // one no longer holds the file: the same stale answer a path the
+          // generations hold nothing at gets.
+          return null;
+        }
+        return {
+          file,
+          diagnostics: generation.diagnostics.filter((diagnostic) =>
+            file.diagnosticIds.includes(diagnostic.diagnosticId),
+          ),
+        };
       }
     }
     return null;
@@ -2101,7 +2175,7 @@ export class SessionCoordinator {
       readonly files: readonly CustomizationFileDto[];
       /** The attempt's recognitions; published as constructed by the commit. */
       readonly recognitions: readonly ToolRecognition[];
-      /** Each recognized skill entry point's census, keyed by its path. */
+      /** The attempt's diagnostics, already serialized for the DTO. */
       readonly diagnostics: readonly SerializedDiagnostic[];
       /**
        * The attempt's closed publication outcome (FR-028): 'partial' exactly

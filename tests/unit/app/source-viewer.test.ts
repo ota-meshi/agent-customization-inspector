@@ -17,6 +17,7 @@
 // happy-dom explicitly — the `coverage` project runs the same files under the
 // Node environment its contract and integration members need.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { nextTick } from 'vue';
 
 /** The options the fake editor was constructed with, captured per test. */
 let constructedOptions: Record<string, unknown> | null = null;
@@ -80,6 +81,9 @@ vi.mock('../../../src/app/composables/monaco-languages', () => ({}));
 
 const { SourceViewerHandle, resolveSourceLanguage } =
   await import('../../../src/app/composables/monaco');
+// The same module instance the composable reads its scheme from, so choosing
+// here is the reader choosing on the page.
+const { chooseColorScheme } = await import('../../../src/app/composables/color-scheme');
 
 /** The registry entries these cases choose between, shaped as Monaco reports them. */
 const REGISTERED = [
@@ -241,20 +245,20 @@ describe('the mounted read-only surface', () => {
   });
 
   it('follows the page display and unbinds those subscriptions', async () => {
-    // The page uses CSS system colours and Monaco picks a theme by name, so the
-    // two are kept in step. Forced colours are watched with them, because the
-    // theme is one value derived from the pair and Monaco's ordinary themes do
-    // not meet contrast in that mode (WCAG 1.4.11). Both listeners are real
-    // subscriptions: left bound, either would hold the disposed editor for the
-    // life of the document.
+    // The page draws itself in CSS system colours resolved against the scheme
+    // the reader chose, and Monaco picks a theme by name, so the two are kept in
+    // step. Forced colours are watched with the scheme, because the theme is one
+    // value derived from the pair (WCAG 1.4.11) and Monaco's ordinary themes do
+    // not meet contrast in that mode. Both are real subscriptions: left bound,
+    // either would hold the disposed editor for the life of the document.
     const original = globalThis.matchMedia;
     const queries: string[] = [];
-    // Real event targets rather than add/remove stubs that record their calls:
-    // the composable binds both listeners under one `AbortSignal`, which only
-    // a platform event target honours, so a stub would report a subscription
-    // still bound where a browser has none. Only the members the composable
-    // touches; the cast goes through `unknown` because a stub of the whole
-    // `MediaQueryList` surface would be unused members of noise around the
+    // A real event target rather than an add/remove stub that records its calls:
+    // the composable binds the forced-colours listener under an `AbortSignal`,
+    // which only a platform event target honours, so a stub would report a
+    // subscription still bound where a browser has none. Only the members the
+    // composable touches; the cast goes through `unknown` because a stub of the
+    // whole `MediaQueryList` surface would be unused members of noise around the
     // subscription under test.
     const displays: EventTarget[] = [];
     globalThis.matchMedia = ((query: string) => {
@@ -263,27 +267,41 @@ describe('the mounted read-only surface', () => {
       displays.push(display);
       return display;
     }) as unknown as typeof globalThis.matchMedia;
+    chooseColorScheme('dark');
     try {
       const viewer = await SourceViewerHandle.mount(document.createElement('div'));
-      expect(queries).toEqual(['(prefers-color-scheme: dark)', '(forced-colors: active)']);
-      // Both queries match in this stub, so the theme is the dark high-contrast
-      // one. Monaco's own detection is off, because an explicit `theme` wins
-      // over it and would otherwise leave a low-contrast theme in forced colours.
+      // The scheme is the page's own value rather than a media query, so a mount
+      // opens exactly one display query: the forced-colours one.
+      expect(queries).toEqual(['(forced-colors: active)']);
+      // Forced colours match in this stub and the reader has chosen dark, so the
+      // theme is the dark high-contrast one. Monaco's own detection is off,
+      // because an explicit `theme` wins over it and would otherwise leave a
+      // low-contrast theme in forced colours.
       expect(constructedOptions?.['theme']).toBe('hc-black');
       expect(constructedOptions?.['autoDetectHighContrast']).toBe(false);
-      // A change on either query re-sets the theme while the handle is alive.
+      // Every handle mounted earlier in this suite is still following the same
+      // page scheme — Monaco's theme is global, so a change reaches all of them —
+      // and each of those reports the plain pair, because only this case's
+      // stubbed display has forced colours. Reading the high-contrast themes is
+      // therefore reading exactly what the handle under test set.
+      const highContrast = (): string[] => themesSet.filter((theme) => theme.startsWith('hc-'));
+      // A change on either half re-sets the theme while the handle is alive.
       themesSet.length = 0;
+      chooseColorScheme('light');
+      await nextTick();
       for (const display of displays) {
         display.dispatchEvent(new Event('change'));
       }
-      expect(themesSet).toEqual(['hc-black', 'hc-black']);
+      expect(highContrast()).toEqual(['hc-light', 'hc-light']);
       // After disposal neither reaches Monaco at all.
       viewer.dispose();
       themesSet.length = 0;
+      chooseColorScheme('dark');
+      await nextTick();
       for (const display of displays) {
         display.dispatchEvent(new Event('change'));
       }
-      expect(themesSet).toEqual([]);
+      expect(highContrast()).toEqual([]);
     } finally {
       globalThis.matchMedia = original;
     }

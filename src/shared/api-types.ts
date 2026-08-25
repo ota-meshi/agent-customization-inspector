@@ -241,7 +241,7 @@ export interface SkillInventoryEntryDto {
    * directory holding its `.claude` and a `:` — `apps/web:deploy`. Never null
    * or empty: being a named directory is what a skill is, so every row has a
    * name to be listed under. Resolved by the admitting rule at recognition
-   * time (server/inspection/rules/registry.ts § CompiledStaticSkillRule),
+   * time (server/inspection/rules/skills/compiled-rule.ts § CompiledStaticSkillRule),
    * which is where a product's own naming lives.
    */
   readonly name: string;
@@ -540,7 +540,8 @@ export interface OutputStyleInventoryEntryDto {
    * name without its `.md` extension. Never empty — a declared empty name
    * falls back like an absent one, because a picker cannot show a style by a
    * name with no characters. Resolved by the admitting rule at recognition
-   * time (server/inspection/rules/registry.ts § CompiledStaticOutputStyleRule).
+   * time (server/inspection/rules/output-styles/compiled-rule.ts
+   * § CompiledStaticOutputStyleRule).
    */
   readonly name: string;
   /**
@@ -1010,6 +1011,49 @@ export type PluginCarrierKind =
   | 'catalog';
 
 /**
+ * Where one plugin's files come from, as the closed set every product's
+ * documented plugin source forms map onto
+ * (contracts/vendors/*.md § Repository vendor behavior).
+ *
+ * Each vendor writes its own spelling for the same kinds of place — Claude's
+ * and Codex's `url` is a Git repository, Claude's `git-subdir` and Codex's
+ * `git-subdir` a directory inside one — so what a declaration publishes is the
+ * kind rather than the token, and the rule that admitted the carrier maps only
+ * the forms its own documentation lists. A form its documentation does not
+ * list resolves to `unrecognized`, which is an answer a surface states rather
+ * than an absent directory a reader has to interpret.
+ */
+export type PluginSourceForm =
+  /**
+   * A directory of this repository: a `./` path relative to the marketplace
+   * root, or a bare name resolved under the catalog's own declared root where
+   * a vendor documents that spelling. {@link PluginDeclarationDto.pluginRoot}
+   * carries the directory, and is null when the declared path does not stay
+   * inside the Source.
+   */
+  | 'repository-directory'
+  /** A GitHub repository the client clones. */
+  | 'github-repository'
+  /** A Git repository named by its URL. */
+  | 'git-repository'
+  /** A subdirectory inside a Git repository. */
+  | 'git-subdirectory'
+  /** A package the client installs from an npm registry. */
+  | 'npm-package'
+  /** A zip archive the client downloads over HTTPS. */
+  | 'zip-archive'
+  /** A directory produced by running a command on the reader's own machine. */
+  | 'command-output'
+  /**
+   * A source in no form the admitting vendor documents: an object whose
+   * discriminant that vendor does not define, a string that is not one of its
+   * documented path spellings, or an entry writing no source at all. Nothing
+   * is derived from it — no directory, no manifest, no file — and the surfaces
+   * say that rather than reporting a directory as missing.
+   */
+  | 'unrecognized';
+
+/**
  * One plugin a carrier declares — a manifest's own plugin, or one entry of a
  * catalog — carrying the name it resolves and the fields the file wrote for it
  * (FR-007).
@@ -1032,6 +1076,22 @@ export interface PluginDeclarationDto {
    * that were written, never a process value (FR-026).
    */
   readonly fields: readonly DeclaredEntryDto[];
+  /**
+   * What kind of place this plugin's files come from
+   * ({@link PluginSourceForm}), as the rule that admitted the carrier read the
+   * declared source.
+   *
+   * Published beside {@link pluginRoot} rather than derived from it, because
+   * the two answer different questions and disagree in both directions: a
+   * `./` path leaving the Source is a form this product read and a directory
+   * it does not hold, while an npm package is a form it read that names no
+   * directory anywhere here. A surface with only the root would have to
+   * present both as the same absence.
+   *
+   * A manifest's own plugin is `repository-directory`: the plugin is the
+   * directory holding the manifest, and nothing offers it from elsewhere.
+   */
+  readonly sourceForm: PluginSourceForm;
   /**
    * The Source-relative directory this plugin's files sit in, trailing slash
    * kept — the plugin root the declaration's local source names — or null when
@@ -1106,6 +1166,19 @@ export interface PluginCarrierDto {
    * once and each of its declarations republishes as its own parse fact.
    */
   readonly diagnosticIds: readonly string[];
+  /**
+   * The Source-relative Paths of the files this carrier's offering of this
+   * row's name reaches, sorted: the directory that offering named, as the
+   * census enumerated it (contracts/inspection-path-allowlist.md § Bounded
+   * companion census).
+   *
+   * Per carrier rather than per row, because that is what the census
+   * established: two carriers of one name can name two directories, one of
+   * them inside the other, and which files each reached is not the paths that
+   * begin with its own. A row's whole file list is these lists together,
+   * derived where it is shown.
+   */
+  readonly files: readonly string[];
 }
 
 /**
@@ -1137,10 +1210,68 @@ export interface PluginCarrierDetailParams {
   /** The Source-relative Path of the carrier file; the file's identity (FR-030). */
   readonly sourceRelativePath: string;
   /**
+   * The product whose reading the detail answers with — the other half of a
+   * carrier's identity, because an inventory row lists one carrier per
+   * `(file, tool)` (data-model.md § Inventory unit).
+   *
+   * A parameter rather than a choice the projection makes: one catalog can be
+   * admitted by every product, and which directory an entry's source names is
+   * each vendor's own contract, so the same file read as Codex reads it and as
+   * Claude reads it are two answers. Serving whichever recognition came first
+   * would state one product's root, source form, and manifest under another
+   * product's name.
+   */
+  readonly tool: SupportedTool;
+  /**
    * The plugin name the row is headed by, or null for the row that closes the
    * list with the declarations resolving no name at all.
    */
   readonly pluginName: string | null;
+}
+
+/**
+ * What one `get-plugin-file-detail` request names: a file of one plugin, and
+ * the carrier whose offering reached it (contracts/http-api.md
+ * § get-plugin-file-detail).
+ *
+ * Four coordinates rather than the file's path alone, because the subject is
+ * the file *as one plugin's*: which files a plugin ships is what the census
+ * enumerated below the directory one carrier's offering named, so the carrier,
+ * the product reading it, and the row's name are what make the path a member
+ * of anything (contracts/inspection-path-allowlist.md § Bounded companion
+ * census).
+ */
+export interface PluginFileDetailParams {
+  /** The Source-relative Path of the carrier that declares the plugin (FR-030). */
+  readonly sourceRelativePath: string;
+  /** The product whose reading of that carrier reached the file; see {@link PluginCarrierDetailParams.tool}. */
+  readonly tool: SupportedTool;
+  /**
+   * The plugin name the row is headed by, or null for the row that closes the
+   * list with the declarations resolving no name at all.
+   */
+  readonly pluginName: string | null;
+  /** The Source-relative Path of the file to read, which must be one that plugin ships. */
+  readonly filePath: string;
+}
+
+/**
+ * The result of `get-plugin-file-detail`: one file a plugin ships, with its
+ * complete authored source and its own diagnostics (FR-007, FR-025).
+ *
+ * The file and nothing read out of it. A plugin's own files acquire no rule, no
+ * recognition, and no kind by being below its root
+ * (contracts/inspection-path-allowlist.md § Bounded companion census), so there
+ * is no parse to publish beside the bytes — and a file that a rule *does*
+ * independently admit keeps its own rows, which is why this result carries the
+ * file rather than a kind: it answers for the plugin's page, where the subject
+ * is the plugin, while that file's own row answers for its own kind.
+ */
+export interface PluginFileDetailDto {
+  /** The committed file with its complete authored source (FR-025). */
+  readonly file: CustomizationFileDto;
+  /** The file's own diagnostics, in the commit's deterministic order (FR-028). */
+  readonly diagnostics: readonly SerializedDiagnostic[];
 }
 
 /** What both plugin carrier details carry. */
@@ -1228,23 +1359,14 @@ export interface PluginInventoryEntryDto {
   /**
    * The carriers resolving this name, in Source-relative Path then tool
    * order. Never empty: a row exists because a carrier declared it.
+   *
+   * Each carries the files its own offering reaches, so the plugin's whole
+   * file list is theirs together: the plugin's own manifest is among them
+   * rather than a row of its own — a plugin is its root — including the one
+   * manifest that is itself a carrier, which the row names as a carrier and
+   * lists among its files too.
    */
   readonly carriers: readonly PluginCarrierDto[];
-  /**
-   * The Source-relative Paths of the files this plugin ships, sorted and
-   * deduplicated across its carriers — the plugin roots its offerings name,
-   * enumerated in full (contracts/inspection-path-allowlist.md § Bounded
-   * companion census).
-   *
-   * The plugin's own manifest is one of them rather than a row of its own: a
-   * plugin is its root, and the manifest is what it ships alongside the
-   * skills, hooks, and assets beside it. That holds for the one manifest that
-   * is itself a carrier — the folder a `.claude-plugin/plugin.json` makes a
-   * plugin — which the row names as its carrier and lists here too, so this
-   * list is the plugin's whole directory wherever it is shown. Empty for an
-   * offering whose source names nothing this repository holds as a directory.
-   */
-  readonly files: readonly string[];
 }
 
 /**

@@ -15,6 +15,7 @@ import type {
   FileDetailDto,
   FileOpenTarget,
   PluginCarrierKind,
+  PluginSourceForm,
   ScanProgressPhase,
 } from './api-types';
 import { CUSTOMIZATION_KIND_TEXT } from './entities';
@@ -83,6 +84,39 @@ export const PLUGIN_CARRIER_TEXT: Readonly<Record<PluginCarrierKind, string>> = 
   manifest: 'Manifest',
   /** Caption for a catalog listing the plugin. */
   catalog: 'Catalog entry',
+};
+
+/**
+ * What each kind of plugin source reads as inside the sentence a surface
+ * writes about a plugin whose files this scan does not hold — "This offering
+ * names <text>" (see {@link PluginSourceForm}).
+ *
+ * A noun phrase rather than a whole sentence, because the two surfaces that
+ * state the absence — the plugin's own page and the comparison's manifest
+ * section — write the same clause around it. The vendor's own token is never
+ * one of these: `git-subdir` is a key a catalog author writes, not a thing to
+ * read (AGENTS.md § User-visible copy policy).
+ */
+export const PLUGIN_SOURCE_FORM_TEXT: Readonly<Record<PluginSourceForm, string>> = {
+  /**
+   * Read only where the declared path leaves the Source: a directory this
+   * repository holds is named by the path itself, which the surfaces draw.
+   */
+  'repository-directory': 'a directory relative to this repository',
+  /** A GitHub repository the client clones. */
+  'github-repository': 'a GitHub repository',
+  /** A Git repository named by its URL. */
+  'git-repository': 'a Git repository',
+  /** A subdirectory inside a Git repository. */
+  'git-subdirectory': 'a subdirectory of a Git repository',
+  /** A package installed from an npm registry. */
+  'npm-package': 'an npm package',
+  /** A zip archive downloaded over HTTPS. */
+  'zip-archive': 'a zip archive',
+  /** A directory produced by a command on the reader's own machine. */
+  'command-output': 'a directory a local command produces',
+  /** A source in no form the product that reads this catalog documents. */
+  unrecognized: 'a source in no form this product recognizes',
 };
 
 /**

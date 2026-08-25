@@ -227,6 +227,7 @@ Browserの下限はBaseline Newly available、Nodeの下限は`engines.node`が�
 - 起動時に得たhandleで終了してください: 記録したprocess ID、あるいはpreview toolingで起動したserverなら`preview_stop`です。終了したと仮定せず検証してください — launcher scriptはそれがspawnしたserverが動いたまま終了することがあり、親が`init`のorphanが残ります。killの後の`ps`こそがportの解放を示します。
 - このsessionが起動していないプロセスを終了させてはいけません。名前による`ps`の一括処理はuser自身のserverやeditorにも届くため、対象はこのturnのtranscriptが起動を説明できるプロセスに限ります。
 - 例外は、userが動かし続けるよう求めたプロセスです。残す場合はそのportまたはURLとともに明示してください。turnを終えることが、その所在を見失うことと同じにならないようにするためです。
+- Port 9999はマシンの持ち主のものであり、コーディングエージェントが起動したどのプロセスもこれをbindしてはいけません。これはdevframeのdefault portであるため、このプロダクトのhostはどの起動でも求められないままそこへ手を伸ばします — `pnpm start`、`pnpm run start:fixture`、そして`tests/e2e/launch-host.ts`と`tests/package/npx-launch.test.ts`を通るsuiteです。代わりに`--port 0`を渡してください。devframeが空きportを選び、launch lineに表示します。どちらの場合もbindされたportはlaunch lineから読むので、事前に知らないことで失うものはありません。エージェントが空いている間だけportを空けておくのは、確保したことになりません: devframeは塞がったportからは移りますが、空いているportは取るため、`--port 0`を省いたエージェントは、持ち主がまだ握っていない瞬間にちょうど9999を取ります。
 
 ## ユーザー可視テキストの方針
 

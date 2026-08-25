@@ -570,7 +570,7 @@ export const CLAUDE_REPO_MARKETPLACE_BEHAVIOR = {
           sections: ['Create the marketplace file', 'Plugin sources'],
           reviewedOn: '2026-08-25',
           establishes:
-            'A repository publishes its catalog as .claude-plugin/marketplace.json in its root, defining the marketplace name, owner, and a plugins list whose entries each need a name and a source; a source starting with ./ names a plugin in the same repository, resolved against the marketplace root, while GitHub, git, git-subdirectory, npm, archive, and command sources name plugins fetched from elsewhere. Users reach a catalog by adding it, so registration is separate from the catalog file.',
+            'A repository publishes its catalog as .claude-plugin/marketplace.json in its root, defining the marketplace name, owner, and a plugins list whose entries each need a name and a source. A source string starting with ./ names a plugin in the same repository, resolved against the marketplace root; a bare name with no / names one the same way once metadata.pluginRoot declares the directory such names resolve under. Every other source is an object naming where the plugin is fetched from through its own source key: github, url, git-subdir, npm, archive, or command. Users reach a catalog by adding it, so registration is separate from the catalog file.',
         },
       ]
     : [],

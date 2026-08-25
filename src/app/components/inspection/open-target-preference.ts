@@ -8,9 +8,10 @@
 //
 // The stored value is a preference about the reader's own machine — which
 // editor they use — and carries nothing that was inspected: no path, no
-// authored content, no session identity. It is the only value this
-// application stores, and FR-027's rule that inspected content is never
-// persisted is unaffected by it.
+// authored content, no session identity, so FR-027's rule that inspected
+// content is never persisted is unaffected by it. The reader's colour scheme
+// (`composables/color-scheme.ts`) is the only other value stored, on the same
+// terms.
 //
 // One module-level ref rather than one per component instance: every open
 // control on the page is the same reader's choice, so choosing in one updates

@@ -384,7 +384,7 @@ export type RecognitionDetails =
        * a declaration is that vendor's own contract, exactly as it is for a
        * skill or a command: Codex resolves a catalog's offering as
        * `plugin@marketplace` and a derived manifest under the offering that
-       * reached it (`rules/codex.ts`). Empty when the carrier declares none,
+       * reached it (`rules/plugins/codex.ts`). Empty when the carrier declares none,
        * and empty for a `failed` extraction, which publishes nothing while the
        * carrier stays an admitted candidate (FR-028).
        */
@@ -1066,7 +1066,8 @@ class CandidateExtractions {
   /**
    * The candidate's own Source-relative Path, for the one reading that needs
    * it: a plugin manifest names neither its plugin nor its root, and where it
-   * sits is what answers both (`registry.ts` § CompiledStaticPluginManifestRule).
+   * sits is what answers both
+   * (`rules/plugins/compiled-rule.ts` § CompiledStaticPluginManifestRule).
    */
   readonly #matchedPath: string;
 
@@ -1256,6 +1257,13 @@ export async function recognizeCandidateForVendors(
   // text answers as it reads it, because which source forms name a directory
   // here — and which directory a manifest's presence made a plugin — is that
   // vendor's contract; a declaration naming none occupies nothing.
+  //
+  // Every plugin admission is read rather than the first, because the vendors
+  // document different source forms for one catalog: `.claude-plugin/marketplace.json`
+  // is admitted by all three, and an entry writing Codex's `{ source: 'local',
+  // path }` object names a directory to Codex and nothing to the other two.
+  // Stopping at the first admission would leave that directory unenumerated,
+  // and the plugin's own page empty for the product that does read it.
   for (const { compiled } of input.admissions) {
     if (compiled.kind !== 'plugin') {
       continue;
@@ -1275,7 +1283,6 @@ export async function recognizeCandidateForVendors(
         directories.push(plugin.pluginRoot);
       }
     }
-    break;
   }
   // The typed extraction slots every recognition of this candidate shares
   // ({@link CandidateExtractions}) are created above, because the directories

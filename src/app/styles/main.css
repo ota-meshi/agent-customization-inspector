@@ -3,17 +3,24 @@
  * Phase 3 screen shows almost no product content, and every rule here
  * exists to keep what it does show readable and keyboard-operable.
  *
- * Two rules are load-bearing rather than cosmetic:
+ * Three rules are load-bearing rather than cosmetic:
  *  - the visible :focus-visible outline, because keyboard operation of the
  *    focused heading and any control the shell later adds is an
  *    accessibility acceptance criterion
- *    (contracts/accessibility-acceptance.md); and
+ *    (contracts/accessibility-acceptance.md);
  *  - the `overflow-wrap` on presentation labels, because an escaped root
  *    label has no spaces and would otherwise force the page to scroll
- *    horizontally.
+ *    horizontally; and
+ *  - the `color-scheme` pair below, which is the whole palette: every color
+ *    here is a system color, so what light and dark look like is the
+ *    browser's answer resolved against the scheme in force.
  */
 
 :root {
+  /* The scheme the page draws in before the client has resolved one, which is
+     the reader's own system preference. The class below replaces it as soon as
+     the bundle runs, and this is what keeps the first paint from being a white
+     page on a dark desktop for the moment in between. */
   color-scheme: light dark;
   --aci-surface: Canvas;
   /* Two surfaces above the page, mixed from the same system colors rather than
@@ -38,6 +45,26 @@
      every boundary here reads fine at this value. */
   --aci-border: color-mix(in srgb, CanvasText 45%, Canvas);
   --aci-accent: AccentColor;
+}
+
+/* The resolved scheme, written onto the document root as one of these two class
+   names by `composables/color-scheme.ts`. Every color above is a system color,
+   so this one declaration is the whole palette swap: the browser resolves
+   `Canvas`, `CanvasText`, and `AccentColor` against the scheme in force here,
+   and the mixes derived from them follow without a value being written twice.
+   `dark` is spelled the way it is because the switch's own stylesheet selects
+   that name (`shine-and-bright`), so the page and the control read one class
+   rather than two states that could disagree.
+
+   Re-resolving a system color when this declaration changes was measured
+   2026-08-25 on all three certified revisions — the whole palette moved in
+   Chromium, Firefox, and WebKit alike (tests/e2e/color-scheme-switch.spec.ts). */
+:root.light {
+  color-scheme: light;
+}
+
+:root.dark {
+  color-scheme: dark;
 }
 
 body {

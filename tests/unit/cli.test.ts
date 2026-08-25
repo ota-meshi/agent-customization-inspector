@@ -1,7 +1,8 @@
 // T043: the Gunshi root command surface (FR-001, contracts/http-api.md
 // § Host requirements #4/#5). Covers the positive default-true `open` flag
 // and its generated `--no-open`, optional `--root <path>` with last-wins
-// repetition, the one captured `process.cwd()`, purely lexical absolute and
+// repetition, the optional `--port <number>` preference forwarded to the
+// host, the one captured `process.cwd()`, purely lexical absolute and
 // relative resolution, zero selection I/O and no `process.chdir()`, fixed
 // actionable rejection of an empty option value and of operands, strict
 // unknown-option rejection, non-binding help/version, and the single
@@ -170,6 +171,24 @@ describe('browser opening', () => {
   it('prints the loopback URL exactly once as the manual fallback', async () => {
     await runInspectorCli(['--no-open']);
     expect(logSpy.mock.calls).toEqual([['http://localhost:9999/']]);
+  });
+});
+
+describe('port preference', () => {
+  it('states no preference when --port is omitted', async () => {
+    await runInspectorCli(['--no-open']);
+    expect(startHost.mock.calls[0]?.[0].preferredPort).toBeUndefined();
+  });
+
+  it.each([
+    ['a named port', '9998', 9998],
+    // 0 is devframe's request for an automatically selected free port, so it
+    // has to reach the host as the number rather than as an absent
+    // preference — the two mean different ports.
+    ['automatic selection', '0', 0],
+  ])('forwards --port %s to the host unresolved', async (_label, argument, expected) => {
+    await runInspectorCli(['--no-open', '--port', argument]);
+    expect(startHost.mock.calls[0]?.[0].preferredPort).toBe(expected);
   });
 });
 

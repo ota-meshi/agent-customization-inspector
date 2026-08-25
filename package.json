@@ -78,6 +78,7 @@
     "nuxt": "^4.4.8",
     "playwright": "^1.61.1",
     "prettier": "^3.9.6",
+    "shine-and-bright": "^0.3.0",
     "tsdown": "^0.22.8",
     "typescript": "^6.0.3",
     "unplugin-icons": "^23.0.1",

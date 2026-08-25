@@ -115,8 +115,10 @@ discoverされるものではなくactivateされるものであり、clientが�
 
 代わりに、repository catalogのlocal entryが名指す先を列挙する。`codex.repo.marketplace`が
 catalogをadmitし、それをadmitしたruleが各local entryのpluginがどこにあるかに答える —
-`<Repository root>/<validated-local-source>/`。sourceは文書化済みlocal formを使い`./`で始まり
-root内に留まる。scanはそのdirectoryを列挙し、配下の全regular fileをそのpluginが同梱するfileと
+`<Repository root>/<validated-local-source>/`。sourceは文書化済みlocal form — `source: 'local'`
+と`path`を持つobject、またはそのpath文字列単体 — を使い`./`で始まりroot内に留まる。`url`・
+`git-subdir`・`npm` entryはこのrepositoryの外を名指し、このvendorがどこにも文書化していない綴りは
+何も名指さない。scanはそのdirectoryを列挙し、配下の全regular fileをそのpluginが同梱するfileと
 して公開する
 （contracts/inspection-path-allowlist.ja.md § Bounded companion census）。pluginのmanifestも
 そのうちの1つである。いずれもcandidateにはならない: rule、recognition、kind、自身のinventory

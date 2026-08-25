@@ -11,6 +11,7 @@
 // scan holds.
 import type { RouteLocationRaw } from 'vue-router';
 
+import type { SupportedTool } from '../../shared/entities';
 import { detailRoute, selectedFileQuery, toJsonStringBody } from './detail-route';
 
 /**
@@ -30,12 +31,19 @@ import { detailRoute, selectedFileQuery, toJsonStringBody } from './detail-route
  */
 export function pluginCarrierDetailRoute(
   sourceRelativePath: string,
+  tool: SupportedTool,
   name: string | null,
   selectedFilePath: string | null = null,
 ): RouteLocationRaw {
   return {
     path: detailRoute('plugin', sourceRelativePath),
     query: {
+      // The product whose reading the page opens: a row lists one carrier per
+      // `(file, tool)`, and which directory an entry's source names is that
+      // vendor's own contract, so the link that opens a carrier line names the
+      // product that line is about (`api-types.ts`
+      // § PluginCarrierDetailParams.tool).
+      tool,
       ...(name === null ? {} : { plugin: toJsonStringBody(name) }),
       ...selectedFileQuery(selectedFilePath),
     },

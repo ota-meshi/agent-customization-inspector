@@ -14,6 +14,7 @@
 // read-only on both sides, no link, no revert affordance, and models that are
 // created and disposed deterministically.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { nextTick } from 'vue';
 
 /** The options the fake diff editor was constructed with, captured per test. */
 let constructedOptions: Record<string, unknown> | null = null;
@@ -130,6 +131,9 @@ vi.mock('monaco-editor/esm/vs/editor/editor.api.js', () => ({
 vi.mock('../../../src/app/composables/monaco-languages', () => ({}));
 
 const { SourceDiffHandle } = await import('../../../src/app/composables/monaco');
+// The same module instance the composable reads its scheme from, so choosing
+// here is the reader choosing on the page.
+const { chooseColorScheme } = await import('../../../src/app/composables/color-scheme');
 
 /** The comparison every case mounts unless it says otherwise. */
 const COMPARISON = {
@@ -341,15 +345,15 @@ describe('the mounted read-only comparison surface', () => {
   });
 
   it('follows the page display and unbinds those subscriptions', async () => {
-    // The page uses CSS system colours and Monaco picks a theme by name, so
-    // the two are kept in step; forced colours are watched with the scheme
-    // because the theme is one value derived from the pair (WCAG 1.4.11).
-    // Left bound, either listener would hold the disposed editor for the life
-    // of the document.
+    // The page draws itself in CSS system colours resolved against the scheme
+    // the reader chose and Monaco picks a theme by name, so the two are kept in
+    // step; forced colours are watched with the scheme because the theme is one
+    // value derived from the pair (WCAG 1.4.11). Left bound, either subscription
+    // would hold the disposed editor for the life of the document.
     const original = globalThis.matchMedia;
     const queries: string[] = [];
-    // Real event targets rather than add/remove stubs that record their calls;
-    // see the viewer suite for why one `AbortSignal` needs them.
+    // A real event target rather than an add/remove stub that records its calls;
+    // see the viewer suite for why the `AbortSignal` needs one.
     const displays: EventTarget[] = [];
     globalThis.matchMedia = ((query: string) => {
       queries.push(query);
@@ -357,21 +361,34 @@ describe('the mounted read-only comparison surface', () => {
       displays.push(display);
       return display;
     }) as unknown as typeof globalThis.matchMedia;
+    chooseColorScheme('dark');
     try {
       const viewer = await SourceDiffHandle.mount(document.createElement('div'), COMPARISON);
-      expect(queries).toEqual(['(prefers-color-scheme: dark)', '(forced-colors: active)']);
+      // The scheme is the page's own value rather than a media query, so a mount
+      // opens exactly one display query: the forced-colours one.
+      expect(queries).toEqual(['(forced-colors: active)']);
       expect(constructedOptions?.['theme']).toBe('hc-black');
+      // Every handle mounted earlier in this suite is still following the same
+      // page scheme — Monaco's theme is global, so a change reaches all of them —
+      // and each of those reports the plain pair, because only this case's
+      // stubbed display has forced colours. Reading the high-contrast themes is
+      // therefore reading exactly what the handle under test set.
+      const highContrast = (): string[] => themesSet.filter((theme) => theme.startsWith('hc-'));
       themesSet.length = 0;
+      chooseColorScheme('light');
+      await nextTick();
       for (const display of displays) {
         display.dispatchEvent(new Event('change'));
       }
-      expect(themesSet).toEqual(['hc-black', 'hc-black']);
+      expect(highContrast()).toEqual(['hc-light', 'hc-light']);
       viewer.dispose();
       themesSet.length = 0;
+      chooseColorScheme('dark');
+      await nextTick();
       for (const display of displays) {
         display.dispatchEvent(new Event('change'));
       }
-      expect(themesSet).toEqual([]);
+      expect(highContrast()).toEqual([]);
     } finally {
       globalThis.matchMedia = original;
     }

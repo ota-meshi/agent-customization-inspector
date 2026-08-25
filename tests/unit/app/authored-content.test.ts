@@ -197,7 +197,19 @@ describe('authored file content in the browser', () => {
       // The active route's title subject — a display name the page already
       // renders as its heading, never authored content.
       'pageSubject',
+      // The plugin kind's own comparison view: two ordinary carrier-detail
+      // loads and, for a file selected inside it, two ordinary file-detail
+      // loads — with the same guards as the sibling surfaces and nothing that
+      // masks or reveals either side.
+      'pluginComparison',
       'pluginDetail',
+      // A plugin's own files, in their own slots: the plugin's file function
+      // answers with the file and its diagnostics, so a file a rule
+      // independently admitted keeps its own row for its own kind while these
+      // hold what the plugin ships (contracts/http-api.md
+      // § get-plugin-file-detail). Nothing masks or reveals either.
+      'pluginManifestFile',
+      'pluginOpenFile',
       'policyDetail',
       // The prompt-and-command comparison view (FR-011): this kind's own two
       // ordinary detail loads, with the same guards as the others and

@@ -171,6 +171,7 @@ research、plan、quickstart、task artifactをすべて同期して`/speckit.pl
 | File opening | `which` 6.0.1、`env-editor` 1.3.0 | Detail surfaceのopen control（FR-022）。`which`はlaunchが実行するeditor commandを解決するため、hostが提示するものと起動できるものが2つの食い違い得る事実ではなく1つの事実になる。`env-editor`は、そのcommandが`PATH`に無いときにinstallが置く場所を供給し、それらの場所を各editorのpackagingへ追随させる自前の表ではなく、維持された第三者の事実のままに保つ。`which`は6.xに留める: 7.0.0は`^24.15.0`を宣言し、本projectが支援するNode rangeの一部を除外するためである。Launch自体は上に挙げた`open`を再利用する。installされたapplicationを汎用に探すpackage（`locate-app`）は採らない: CommonJS専用であり、本projectがauditするproduction closureへprompt engineering用packageと`crypto-js`を持ち込むためである |
 | Icon | `unplugin-icons` 23.0.1、`@iconify-json/lucide` 1.2.124、`@iconify-json/simple-icons` 1.2.93 | Build時のicon compile: `~icons/<collection>/<name>` importはそのicon自身のSVGを持つcomponentになるため、pageは何もfetchせず、icon runtimeも同梱されない — FR-022が要求する形であり、IconifyのAPI前提のruntime（`@nuxt/icon`、`@iconify/vue`）を採らない理由でもある。両collectionともicon dataを配布する一方で自身のlicense fileを持たないため、notice document（FR-043）が読めるよう、各setのupstream textを`licenses/`配下に本repositoryが保持する |
 | Source view/diff | `monaco-editor` 0.55.1、`@ota-meshi/site-kit-monarch-syntaxes` 0.7.3 | 現行stable read-only source/diff editor。固有diff engineによりclient dependency重複を避ける。MonacoはTOML grammarを持たず、`.codex/config.toml`はこのproductが開くcustomization formatであるため、`toml` idはsyntaxes packageから登録する: basic languageそのものであるMonarch grammarとlanguage configurationであり、language serviceもworkerも伴わない。この packageは自身のlicense fileを同梱しないため、notice documentが読めるようupstreamのtextを`licenses/`に置く（FR-043） |
+| Colour-scheme control | `shine-and-bright` 0.3.0 | 読み手がpageのcolour schemeを選ぶswitch。描画はこのpackageが同梱するstylesheetのものである: componentはそのclass名が選択するmarkupを描き、packageのcustom propertyを設定するだけなので、knobのスライドとsunからmoonへの変化はこのrepositoryのものではなくpackageのものである。上のiconやgrammar packageと同じく、CSSをclient bundleが運ぶdevDependencyであり、自身のlicense fileを同梱するため、notice documentはそのtextを読む（それらは`licenses/`配下に同梱テキストを置く）(FR-043)。forced colours有効時は`box-shadow`がすべて落ちるためsunとmoonも消えるが、buttonとknobのborderは読み手のpaletteで塗り直され、knobは依然として両端の間を移動する — 2026-08-25に計測。その状況で用途を述べるのはcontrolのaccessible nameである（WCAG 1.4.11） |
 | Lint | ESLint 10.7.0、`@nuxt/eslint` 1.16.0、`@stylistic/eslint-plugin` 5.10.0 | 現行互換stable release。`@stylistic`はESLint 10がcoreから外したstylistic rule（例: `quotes`）を提供する |
 | Unit/integration | Vitestとcoverage-v8 4.1.10、Nuxt Test Utils 4.0.3 | Vitest/coverageを同じversionにし、Nuxt supportのtest harnessを使う |
 | Component/DOM | Vue Test Utils 2.4.11、happy-dom 20.10.6 | Nuxt Test Utils peerを満たす現行release |
@@ -662,9 +663,17 @@ devframe hostがNuxt outputを直接配信するため（§ 8）、product-assem
 表示のinert性はread-onlyなeditor設定、Vue text binding、無効なlinkによって成立し、clientは引き続き
 external worker、blob worker、evaluated stringをloadしない。Diff highlightはproduct独自のline数/computation-time cutoffを設けず、Monacoとbrowserの
 capacityに従う。Monacoまたはbrowserがrecoverable failureを報告した場合もcomplete read-only side-by-side sourceと
-diagnosticを残す。Tool recognitionはtypedなrowでtoolごとに比較し、fileの宣言済みmetadataは1回だけ比較する。
+diagnosticを残す。Tool recognitionはtoolごとに比較し、fileの宣言済みmetadataは1回だけ比較する。
 toolは宣言の座標ではないからである: 各sideを1つのcanonical documentへserializeし、2つの
-documentをMonacoでdiffする。その背後のparseは、Markdown系kindについては`(file, kind)`ごとに
+documentをMonacoでdiffする。例外はcarrier自身が宣言であるsideである: plugin manifestは
+その内容全体で自身のpluginを宣言し、既にstrict JSONであるため、そのsideは書かれたままのfileと
+する。serializeし直せば同じdocumentを書き手が書いたものから1往復遠ざけることになり、
+そのためどのsurfaceも表示のためにmanifestをparseしない
+（contracts/http-api.ja.md § get-plugin-carrier-detail）。tool ごとの記述をどう描くかはkind自身のものである: 2つのsideが
+1つの名前が解決する2つのfileであるkindでは、tool 1件につき1 rowのtableとする。片方だけを認識する
+productがあることを述べるのがそのrowだからである。両sideがcarrier file そのものであるkindでは
+side ごとに1行とする。あるfileを読むproductはそのfile自身の事実であり、2行が既にそれを担うからである。
+1行に収まらないlistはpageを広げず折り返す。その背後のparseは、Markdown系kindについては`(file, kind)`ごとに
 1回である。shippedな全vendorが同じ固定YAML semanticsで読むためである。custom-agent kindは
 例外で`(file, tool)`ごとに1回になる。agent fileがどこで分割されるかはadmitしたrule自身の
 読み取りであり、Codexのagentは`developer_instructions`のstringがproseであるTOMLだからである。Markdown系kindのfrontmatterは
@@ -804,7 +813,11 @@ Session APIは、明示的なdetail requestにだけ完全なauthored contentを
 Global disableは明示的なfull-purge例外である。
 
 Browser attempt前に、解決済みlocal origin `http://localhost:<port>/`をhostのready callbackから起動元
-terminalへ正確に1回表示する（FR-001）。Browser openingはstartup openerを通じたproductのpolicyである（§ 3）:
+terminalへ正確に1回表示する（FR-001）。それがどのportかはdevframeの解決に属する: CLIの`--port`は
+希望を述べるだけで、devframeは自身のdefaultと同じ方法でそれを解決する — 空いていればそのport、
+塞がっていれば別port、0なら空きportの自動選択 — ため、bindされたportを述べるのは表示originだけであり、
+誰かが確保しているportを奪ってはならない起動は`--port 0`を渡す。
+Browser openingはstartup openerを通じたproductのpolicyである（§ 3）:
 CLIのnegatableな`--open` flag（default true）は、hostがlaunch lineの後にそれを実行するかを決め、
 devframeのbundled openerは無効化されてproductのopenerだけが動く。macOSでは、起動中のChromium系
 browserが既に持つsession tabを、`open`のhelperが新しいtabをspawnする前にfocusする。spawnされる

@@ -24,7 +24,9 @@
 // markup. What it adds over a plain text node is what a large authored file
 // needs: line numbers, virtualized rendering, find, keyboard navigation, and
 // Monaco's own screen-reader support.
+import { watch } from 'vue';
 import { createOpaqueId, inlinePresentationLabel } from '../../shared/entities';
+import { colorScheme } from './color-scheme';
 
 /**
  * One registered language, reduced to what choosing between them needs. Taken
@@ -102,15 +104,6 @@ export function resolveSourceLanguage(
 }
 
 /**
- * The page follows the operating system's colour scheme through CSS system
- * colours, and Monaco picks its theme from a name rather than from CSS, so the
- * two are kept in step here. Without this the editor is a light panel on a dark
- * page for anyone whose system is dark — which is not only jarring but changes
- * the contrast of the authored text this view exists to show.
- */
-const DARK_SCHEME_QUERY = '(prefers-color-scheme: dark)';
-
-/**
  * The forced-colours query. A reader in that mode has replaced the platform's
  * colours with their own, and Monaco's ordinary themes do not meet contrast
  * there — its high-contrast themes are the ones built for it (WCAG 1.4.11).
@@ -143,6 +136,11 @@ function ariaContainer(): HTMLElement {
  * Monaco's built-in theme name for the display the page is on: the
  * high-contrast pair when the reader has forced colours, the ordinary pair
  * otherwise, dark or light either way.
+ *
+ * The page draws itself in CSS system colours and Monaco picks its theme from a
+ * name rather than from CSS, so the two are kept in step through this. Without
+ * it the editor is a light panel on a dark page — which is not only jarring but
+ * changes the contrast of the authored text this view exists to show.
  */
 function themeForDisplay(dark: boolean, forcedColors: boolean): string {
   if (forcedColors) {
@@ -152,24 +150,27 @@ function themeForDisplay(dark: boolean, forcedColors: boolean): string {
 }
 
 /**
- * Binds one theme-follow listener to both display queries and returns the
- * controller that unbinds them on dispose. Monaco's theme is global rather
+ * Binds one theme-follow listener to both of the display's halves and returns
+ * the controller that unbinds them on dispose. Monaco's theme is global rather
  * than per-editor, so every handle setting it sets it for all of them — which
  * is what the page wants, because the display scheme is one fact and not one
- * per viewer. Both queries share the listener, because the theme is one value
- * derived from the pair (WCAG 1.4.11), and one signal unbinds them for the
- * same reason: they are one subscription, so a caller cannot end half of it.
+ * per viewer.
+ *
+ * The two halves share the listener, because the theme is one value derived
+ * from the pair (WCAG 1.4.11), and one signal unbinds them for the same reason:
+ * they are one subscription, so a caller cannot end half of it. They are watched
+ * differently only because they are answered differently — the scheme is the
+ * reader's own choice, taken from the page's one copy of it
+ * (`color-scheme.ts`), while forced colours is a display mode nobody chooses
+ * here and stays a media query.
  */
-function followDisplayTheme(
-  monaco: MonacoApi,
-  colorScheme: MediaQueryList,
-  forcedColors: MediaQueryList,
-): AbortController {
+function followDisplayTheme(monaco: MonacoApi, forcedColors: MediaQueryList): AbortController {
   const binding = new AbortController();
   const follow = (): void => {
-    monaco.editor.setTheme(themeForDisplay(colorScheme.matches, forcedColors.matches));
+    monaco.editor.setTheme(themeForDisplay(colorScheme.value === 'dark', forcedColors.matches));
   };
-  colorScheme.addEventListener('change', follow, { signal: binding.signal });
+  const unwatchScheme = watch(colorScheme, follow);
+  binding.signal.addEventListener('abort', unwatchScheme);
   forcedColors.addEventListener('change', follow, { signal: binding.signal });
   return binding;
 }
@@ -231,10 +232,11 @@ export class SourceViewerHandle {
   readonly #editor: import('monaco-editor/esm/vs/editor/editor.api.js').editor.IStandaloneCodeEditor;
 
   /**
-   * The theme-follow subscription on both display queries — the colour scheme
-   * and forced colours, which the theme is one decision from — held so
-   * {@link dispose} can abort it. Left bound, it would keep this handle, and
-   * the disposed editor it names, alive for the life of the document.
+   * The theme-follow subscription on both halves of the display — the reader's
+   * colour scheme and forced colours, which the theme is one decision from —
+   * held so {@link dispose} can abort it. Left bound, it would keep this
+   * handle, and the disposed editor it names, alive for the life of the
+   * document.
    */
   readonly #displayThemeFollow: AbortController;
 
@@ -249,13 +251,12 @@ export class SourceViewerHandle {
   public constructor(
     monaco: MonacoApi,
     editor: import('monaco-editor/esm/vs/editor/editor.api.js').editor.IStandaloneCodeEditor,
-    colorScheme: MediaQueryList,
     forcedColors: MediaQueryList,
     fitContent: import('monaco-editor/esm/vs/editor/editor.api.js').IDisposable | null = null,
   ) {
     this.#monaco = monaco;
     this.#editor = editor;
-    this.#displayThemeFollow = followDisplayTheme(monaco, colorScheme, forcedColors);
+    this.#displayThemeFollow = followDisplayTheme(monaco, forcedColors);
     this.#fitContent = fitContent;
   }
 
@@ -383,7 +384,6 @@ export class SourceViewerHandle {
     },
   ): Promise<SourceViewerHandle> {
     const monaco = await loadMonaco();
-    const colorScheme = globalThis.matchMedia(DARK_SCHEME_QUERY);
     const forcedColors = globalThis.matchMedia(FORCED_COLORS_QUERY);
     // ARIA messages go into this module's own element rather than Monaco's
     // default: Monaco's is created once and never emptied, so a line it
@@ -393,10 +393,10 @@ export class SourceViewerHandle {
     const editor = monaco.editor.create(container, {
       value: '',
       ariaContainerElement: announcements,
-      theme: themeForDisplay(colorScheme.matches, forcedColors.matches),
+      theme: themeForDisplay(colorScheme.value === 'dark', forcedColors.matches),
       // Monaco's own high-contrast detection is off because this handle owns
-      // the theme: it derives one value from the colour-scheme and
-      // forced-colours queries together, while Monaco's detection reads only
+      // the theme: it derives one value from the reader's colour scheme and the
+      // forced-colours query together, while Monaco's detection reads only
       // forced colours and would be a second owner of the same decision. It
       // also loses to an explicit `theme`, which is passed above — the service
       // auto-detects at construction and `setTheme` then overwrites it, so
@@ -456,7 +456,7 @@ export class SourceViewerHandle {
       fitContent = editor.onDidContentSizeChange(fit);
       fit();
     }
-    return new SourceViewerHandle(monaco, editor, colorScheme, forcedColors, fitContent);
+    return new SourceViewerHandle(monaco, editor, forcedColors, fitContent);
   }
 }
 
@@ -517,7 +517,7 @@ export class SourceDiffHandle {
   /** The one read-only diff editor this handle owns and disposes. */
   readonly #editor: import('monaco-editor/esm/vs/editor/editor.api.js').editor.IStandaloneDiffEditor;
 
-  /** The theme-follow subscription on both display queries; see the viewer handle. */
+  /** The theme-follow subscription on both halves of the display; see the viewer handle. */
   readonly #displayThemeFollow: AbortController;
 
   /**
@@ -531,12 +531,11 @@ export class SourceDiffHandle {
   public constructor(
     monaco: MonacoApi,
     editor: import('monaco-editor/esm/vs/editor/editor.api.js').editor.IStandaloneDiffEditor,
-    colorScheme: MediaQueryList,
     forcedColors: MediaQueryList,
     relabel: readonly import('monaco-editor/esm/vs/editor/editor.api.js').IDisposable[],
   ) {
     this.#editor = editor;
-    this.#displayThemeFollow = followDisplayTheme(monaco, colorScheme, forcedColors);
+    this.#displayThemeFollow = followDisplayTheme(monaco, forcedColors);
     this.#relabel = relabel;
   }
 
@@ -609,7 +608,6 @@ export class SourceDiffHandle {
     },
   ): Promise<SourceDiffHandle> {
     const monaco = await loadMonaco();
-    const colorScheme = globalThis.matchMedia(DARK_SCHEME_QUERY);
     const forcedColors = globalThis.matchMedia(FORCED_COLORS_QUERY);
     // ARIA messages go into this module's own element rather than Monaco's
     // default under `document.body`, which outlives every editor (FR-027).
@@ -628,7 +626,7 @@ export class SourceDiffHandle {
         'ariaContainerElement' | 'wordBasedSuggestions'
       > = {
       ariaContainerElement: announcements,
-      theme: themeForDisplay(colorScheme.matches, forcedColors.matches),
+      theme: themeForDisplay(colorScheme.value === 'dark', forcedColors.matches),
       // This handle owns the theme; see the viewer handle's mount for why
       // Monaco's own high-contrast detection stays off (WCAG 1.4.11).
       autoDetectHighContrast: false,
@@ -764,7 +762,7 @@ export class SourceDiffHandle {
         monaco.Uri.parse(`inmemory://source/${createOpaqueId()}`),
       );
       editor.setModel({ original, modified });
-      return new SourceDiffHandle(monaco, editor, colorScheme, forcedColors, relabel);
+      return new SourceDiffHandle(monaco, editor, forcedColors, relabel);
     } catch (error) {
       for (const subscription of relabel) {
         subscription.dispose();

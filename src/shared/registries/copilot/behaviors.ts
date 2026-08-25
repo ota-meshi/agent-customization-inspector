@@ -1967,10 +1967,10 @@ export const COPILOT_CLI_PLUGINS_BEHAVIOR = {
           sourceId: 'github.copilot.cli.plugins',
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference',
           officialHost: 'docs.github.com',
-          sections: ['File locations', 'marketplace.json', 'CLI commands'],
+          sections: ['File locations', 'marketplace.json', 'Plugin source types', 'CLI commands'],
           reviewedOn: '2026-08-25',
           establishes:
-            'A plugin manifest is .plugin/plugin.json, plugin.json, .github/plugin/plugin.json, or .claude-plugin/plugin.json and a marketplace manifest is marketplace.json, .plugin/marketplace.json, .github/plugin/marketplace.json, or .claude-plugin/marketplace.json, each checked in that order; a plugin is installed by naming a marketplace plugin, a GitHub repository or subdirectory, a Git URL, or a local path, and installed copies live under ~/.copilot/installed-plugins.',
+            'A plugin manifest is .plugin/plugin.json, plugin.json, .github/plugin/plugin.json, or .claude-plugin/plugin.json and a marketplace manifest is marketplace.json, .plugin/marketplace.json, .github/plugin/marketplace.json, or .claude-plugin/marketplace.json, each checked in that order; a plugin is installed by naming a marketplace plugin, a GitHub repository or subdirectory, a Git URL, or a local path, and installed copies live under ~/.copilot/installed-plugins. A catalog entry writes its own source as a relative path string — the page catalog example writes ./plugins/<name> — or as an object describing a GitHub repository or a Git URL through its source key, github or url, with optional ref, sha, and path; the owner/repo shorthand belongs to the marketplace add command rather than to an entry source.',
         },
       ]
     : [],

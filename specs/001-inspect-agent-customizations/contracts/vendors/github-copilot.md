@@ -179,8 +179,17 @@ state this contract records and no surface projects.
 
 A catalog is where that chain reaches a Repository file. A repository publishes one at the
 first of the four documented marketplace locations it uses, which `copilot.repo.marketplace`
-admits, and the catalog maps each plugin name to that plugin's own source; only a documented
-local source below the marketplace root names a directory this repository carries.
+admits, and the catalog maps each plugin name to that plugin's own source. The documented
+spellings are a relative path string below the marketplace root — the page's own catalog
+example writes `./plugins/<name>` — and an object naming a GitHub repository or a Git URL
+through its own `source` key, `github` or `url`. Only a path names a directory this
+repository carries, and the `./` prefix is optional: the client strips one leading `./`,
+joins a declared `metadata.pluginRoot` in front of either spelling, and refuses a path that
+leaves the marketplace directory, so `plugins/formatter` and `./plugins/formatter` are one
+directory and a string source is never a repository shorthand. The `owner/repo` shorthand
+belongs to the CLI's marketplace-add command instead, where the source names the catalog.
+A spelling this vendor documents nowhere, and a non-string scalar where it documents a
+path, name nothing here.
 
 No rule admits a plugin manifest, and none derives one. A plugin root is established by
 installation, by a registered catalog, or by an absolute path in an editor setting — never

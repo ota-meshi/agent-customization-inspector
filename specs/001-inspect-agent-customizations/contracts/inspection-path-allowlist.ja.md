@@ -405,9 +405,9 @@ readerが1つのentry nameとしてwalkへ渡す値はpathではなくnameであ
 何にも届かない。したがってそうした値はauthoredのまま扱い、rejectしてもその傍らで宣言された通常の名前を
 落とすだけである。
 
-Authored local pathはdata-model contractのexact pure tokenizerを使う。Prefix policyが扱うのはliteral `./` 1個だけで、U+002Fだけをseparatorと
-する。Empty input/segment、leading/trailing/repeated separator、`.`/`..`、backslash、colon、first-segment home marker、control、unpaired
-surrogateはcomplete derivationをzero target I/Oでrejectする。Percent/URL/URI decode、environment expansion、home resolve、
+Authored local pathはここに述べるexact pure grammarだけでtokenizeし、他のどこにも定義を置かない。Prefix policyが扱うのはliteral `./` 1個だけで、U+002Fだけをseparatorと
+する。Empty input/segment、leading/trailing/repeated separator、`.`/`..`、backslash、colon、first-segment home marker、control character — Unicodeの`Cc`
+category、すなわちC0 block・DEL・C1 block — 、unpaired surrogateはcomplete derivationをzero target I/Oでrejectする。Percent/URL/URI decode、environment expansion、home resolve、
 platform path parseはない。Readerはpath stringでなくvalidated literal segmentを生成する。Fixed suffix alternativeはliteral
 `first-present-exact`を使い、exact classification欠落だけがregistry orderの次alternativeへ進む。最初にpresentとなったpathは後続の
 read/parse resultが不成功でもlater alternativeを停止する。Ancestor-chain placementではfixed root-to-narrow placementごとに独立適用する。

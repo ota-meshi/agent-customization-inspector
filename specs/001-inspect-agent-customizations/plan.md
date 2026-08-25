@@ -183,8 +183,9 @@ give an explicit reasoned no-impact determination. Missing or stale bilingual de
 blocks T002; missing bilingual validation evidence fails the release gate.
 
 `src/server/cli.ts` uses only Gunshi's stable root `define`/`cli` API. It defines a negatable
-`open` boolean with a true default to provide `--no-open` and a single string-valued
-`root` option for `--root <path>`, enables `strict: true`, explicitly rejects every
+`open` boolean with a true default to provide `--no-open`, a single string-valued
+`root` option for `--root <path>`, and a number-valued `port` option for `--port <number>`,
+enables `strict: true`, explicitly rejects every
 positional/rest argument before binding, awaits `cli()`, and lets a parser-owned validation
 `AggregateError` propagate ordinarily to a nonzero process exit. Before creating a
 session it captures `process.cwd()` exactly once and rejects an explicit empty `--root`
@@ -199,11 +200,16 @@ help/version are handled without binding. The production entry does not import
 validation the CLI starts the devframe host through the app definition in
 `src/server/host/devframe-app.ts`; devframe owns port selection, the loopback `localhost` bind, and the
 startup browser-open attempt, and the CLI prints the loopback origin once for the FR-001
-manual fallback.
+manual fallback. A `--port` value reaches the definition's `cli.port` exactly as parsed
+and is a preference devframe resolves; with the option omitted the key is absent and
+devframe's own default stands.
 
-**Storage**: No durable application storage. Session state, inspected file bytes, complete
+**Storage**: Nothing inspected is stored. Session state, inspected file bytes, complete
 authored-source DTOs, diagnostics, and comparison selection exist only in process/browser
-memory.
+memory. Two reader preferences do persist, in browser local storage under this origin, and
+neither carries anything read from a repository: which application the open control launches
+a file in, and which colour scheme the page is drawn in. Both are about the reader's own
+machine, both survive a reload and a rescan, and both are absent until the reader chooses.
 
 **Testing**: Automated suites use Vitest 4.1.10 with `@vitest/coverage-v8` 4.1.10, Nuxt Test Utils 4.0.3,
 Vue Test Utils 2.4.11, happy-dom 20.10.6, Playwright 1.61.1, and

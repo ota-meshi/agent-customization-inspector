@@ -11,10 +11,10 @@ export default defineConfig({
   testDir: 'tests/e2e',
   fullyParallel: false,
   // One worker for the whole matrix, not just within a file. Each test
-  // launches the real packaged CLI, and every host asks devframe for its
-  // default local port; concurrent workers make that port assignment a race,
-  // which is exactly the nondeterminism a certification baseline must not
-  // have.
+  // launches the real packaged CLI, and every host has devframe select a free
+  // local port; the selection releases the port it probed before the host
+  // binds it, so concurrent workers make that selection a race, which is
+  // exactly the nondeterminism a certification baseline must not have.
   workers: 1,
   forbidOnly: true,
   retries: 0,

@@ -59,7 +59,7 @@ export default defineConfig({
           // every in-page wait, launch, and read-back inside the harness
           // carries its own deadline. The files stay serialized so no second
           // workload contends with a timed measurement or races devframe's
-          // default-port assignment, exactly what playwright.config.ts
+          // free-port selection, exactly what playwright.config.ts
           // serializes the e2e suite to avoid.
           environment: 'node',
           include: ['tests/performance/**/*.test.ts'],

@@ -215,7 +215,7 @@
         "officialHost": "code.claude.com",
         "sections": ["Create the marketplace file", "Plugin sources"],
         "reviewedOn": "2026-08-25",
-        "establishes": "A repository publishes its catalog as .claude-plugin/marketplace.json in its root, defining the marketplace name, owner, and a plugins list whose entries each need a name and a source; a source starting with ./ names a plugin in the same repository, resolved against the marketplace root, while GitHub, git, git-subdirectory, npm, archive, and command sources name plugins fetched from elsewhere. Users reach a catalog by adding it, so registration is separate from the catalog file."
+        "establishes": "A repository publishes its catalog as .claude-plugin/marketplace.json in its root, defining the marketplace name, owner, and a plugins list whose entries each need a name and a source. A source string starting with ./ names a plugin in the same repository, resolved against the marketplace root; a bare name with no / names one the same way once metadata.pluginRoot declares the directory such names resolve under. Every other source is an object naming where the plugin is fetched from through its own source key: github, url, git-subdir, npm, archive, or command. Users reach a catalog by adding it, so registration is separate from the catalog file."
       }
     ]
   },
@@ -885,7 +885,7 @@
           "Add a marketplace from the CLI"
         ],
         "reviewedOn": "2026-08-25",
-        "establishes": "The ChatGPT desktop app reads a repo marketplace at $REPO_ROOT/.agents/plugins/marketplace.json and a legacy-compatible one at $REPO_ROOT/.claude-plugin/marketplace.json, each a JSON catalog whose plugins[] entries name the plugins it exposes, and shows each as a selectable source in the Plugins Directory; the Codex CLI adds, lists, refreshes, and removes marketplace sources and prints the ones Codex is considering, including local defaults, while directing installation and testing back to the desktop app. The personal ~/.agents/plugins/marketplace.json named beside them is a different Source boundary this statement does not reach, and installation and per-plugin enablement are separate state."
+        "establishes": "The ChatGPT desktop app reads a repo marketplace at $REPO_ROOT/.agents/plugins/marketplace.json and a legacy-compatible one at $REPO_ROOT/.claude-plugin/marketplace.json, each a JSON catalog whose plugins[] entries name the plugins it exposes, each entry writing its source as a local object with a path kept relative to the marketplace root and started with ./, as that path string alone, or as a url, git-subdir, or npm object, and shows each catalog as a selectable source in the Plugins Directory; the Codex CLI adds, lists, refreshes, and removes marketplace sources and prints the ones Codex is considering, including local defaults, while directing installation and testing back to the desktop app. The personal ~/.agents/plugins/marketplace.json named beside them is a different Source boundary this statement does not reach, and installation and per-plugin enablement are separate state."
       }
     ]
   },
@@ -1406,9 +1406,9 @@
         "sourceId": "github.copilot.cli.plugins",
         "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference",
         "officialHost": "docs.github.com",
-        "sections": ["File locations", "marketplace.json", "CLI commands"],
+        "sections": ["File locations", "marketplace.json", "Plugin source types", "CLI commands"],
         "reviewedOn": "2026-08-25",
-        "establishes": "A plugin manifest is .plugin/plugin.json, plugin.json, .github/plugin/plugin.json, or .claude-plugin/plugin.json and a marketplace manifest is marketplace.json, .plugin/marketplace.json, .github/plugin/marketplace.json, or .claude-plugin/marketplace.json, each checked in that order; a plugin is installed by naming a marketplace plugin, a GitHub repository or subdirectory, a Git URL, or a local path, and installed copies live under ~/.copilot/installed-plugins."
+        "establishes": "A plugin manifest is .plugin/plugin.json, plugin.json, .github/plugin/plugin.json, or .claude-plugin/plugin.json and a marketplace manifest is marketplace.json, .plugin/marketplace.json, .github/plugin/marketplace.json, or .claude-plugin/marketplace.json, each checked in that order; a plugin is installed by naming a marketplace plugin, a GitHub repository or subdirectory, a Git URL, or a local path, and installed copies live under ~/.copilot/installed-plugins. A catalog entry writes its own source as a relative path string — the page catalog example writes ./plugins/<name> — or as an object describing a GitHub repository or a Git URL through its source key, github or url, with optional ref, sha, and path; the owner/repo shorthand belongs to the marketplace add command rather than to an entry source."
       }
     ]
   },

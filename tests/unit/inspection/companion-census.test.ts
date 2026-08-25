@@ -168,9 +168,16 @@ describe('listCompanionFiles', () => {
       return;
     }
     const census = await listCompanionFiles(root, directory);
-    const listed = census.map((file) => file.censusRelativePath);
-    expect(listed).toHaveLength(2);
-    expect(new Set(listed).size).toBe(2);
+    // The entry point is listed like any other entry — this module enumerates
+    // a directory and the caller removes what the walk already published — so
+    // the two spellings are the entries beside it.
+    const spellings = census
+      .map((file) => file.censusRelativePath)
+      .filter((path) => path !== 'SKILL.md');
+    expect(spellings).toHaveLength(2);
+    // Two distinct strings: the composed and the decomposed name are two
+    // entries, and no normalization step folds them into one.
+    expect(new Set(spellings).size).toBe(2);
   });
 
   it('propagates a failure rather than reporting an empty directory', async () => {

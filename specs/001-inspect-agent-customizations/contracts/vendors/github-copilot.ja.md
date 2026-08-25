@@ -162,8 +162,15 @@ pluginが利用可能になるもう1つの経路である。同じrepository le
 
 そのchainがRepository fileに到達する地点がcatalogである。repositoryは文書化された4つの
 marketplace locationのうち使うものにcatalogを公開し、それを`copilot.repo.marketplace`がadmitする。
-catalogは各plugin名をそのplugin自身のsourceへ対応付け、このrepositoryが持つdirectoryを名指すのは
-marketplace root配下の文書化されたlocal sourceだけである。
+catalogは各plugin名をそのplugin自身のsourceへ対応付ける。文書化された綴りは、marketplace root
+配下の相対path文字列 — 当該ページのcatalog例は`./plugins/<name>`と書く — と、自身の`source` keyで
+GitHub repositoryまたはGit URLを名指すobject（`github`と`url`）である。このrepositoryが持つ
+directoryを名指すのはpathだけであり、`./`接頭辞は任意である: clientは先頭の`./`を1つ剥がし、
+宣言された`metadata.pluginRoot`をどちらの綴りの前にも結合し、marketplace directoryの外へ出る
+pathを拒否する。したがって`plugins/formatter`と`./plugins/formatter`は同一のdirectoryであり、
+文字列のsourceがrepository短縮形になることはない。`owner/repo`短縮形はCLIのmarketplace追加
+commandに属し、そこではsourceがcatalogを名指す。このvendorがどこにも文書化していない綴りと、
+pathを文書化している位置での非string scalarは、ここでは何も名指さない。
 
 plugin manifestをadmitするruleは存在せず、導出するruleも存在しない。plugin rootはinstall、登録済み
 catalog、またはeditor設定の絶対pathによって確立されるものであり、Repository pathにfileが現れること

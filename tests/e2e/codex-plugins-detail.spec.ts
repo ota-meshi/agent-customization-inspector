@@ -45,6 +45,16 @@ test.describe('the complete literal Codex plugin carrier detail', () => {
               policy: { installation: 'AVAILABLE', authentication: 'ON_INSTALL' },
               category: 'Productivity',
             },
+            // A plugin root that also holds a file a rule independently
+            // admits: `.codex/rules/*.rules` is a declared permission policy,
+            // whose own row names a policy rather than a file, so the generic
+            // file detail refuses it. It is still one of this plugin's files.
+            {
+              name: 'config-helper',
+              source: { source: 'local', path: './.codex' },
+              policy: { installation: 'AVAILABLE', authentication: 'ON_INSTALL' },
+              category: 'Productivity',
+            },
             // A source this repository does not hold as a plugin root: the
             // offering is declared and no manifest is reached for it.
             {
@@ -98,6 +108,10 @@ test.describe('the complete literal Codex plugin carrier detail', () => {
       '{\n  "name": "broken-plugin",\n  "version": "0.0.1",\n}\n',
       'utf8',
     );
+    // The plugin root above, with the policy document inside it.
+    await mkdir(join(fixture, '.codex/rules'), { recursive: true });
+    await writeFile(join(fixture, '.codex/rules/team.rules'), 'allow("read", "src/**")\n', 'utf8');
+
     host = await launchHost(fixture);
   });
 
@@ -202,7 +216,9 @@ test.describe('the complete literal Codex plugin carrier detail', () => {
     // repository, so there is no manifest to read and no file to open: the
     // plugin tab says so, and the files tab says the scan found none — both
     // pointing at the declaration rather than at anything fetched (FR-022).
-    await expect(page.locator('body')).toContainText('This scan holds no manifest for this plugin');
+    await expect(page.locator('body')).toContainText(
+      'This offering names a subdirectory of a Git repository, so this scan holds none of this plugin',
+    );
     const declaration = page.locator('section', { hasText: 'Declaration' }).first();
     await expect(declaration).toContainText('git-subdir');
     await expect(declaration).toContainText('https://github.com/example/codex-plugins.git');
@@ -288,6 +304,24 @@ test.describe('the complete literal Codex plugin carrier detail', () => {
       'This carrier declares nothing at this link in the current scan.',
     );
     await expect(page.locator('.aci-plugin-detail__main')).toHaveCount(0);
+  });
+
+  test('opens a file of the plugin whose own row names a declaration', async ({ page }) => {
+    await openPlugin(page, 'config-helper@inspector-examples');
+    await page.getByRole('tab', { name: /^files/iu }).click();
+
+    // `.codex/rules/team.rules` is a declared permission policy: its own row
+    // names the policy rather than the file, so the generic file detail holds
+    // nothing for it. Below this plugin's root it is one of the files the
+    // plugin ships, and the plugin's own file function is what reads it
+    // (contracts/http-api.md § get-plugin-file-detail).
+    const tree = page.getByRole('navigation', { name: 'Files in this plugin' });
+    await tree.getByRole('link', { name: 'team.rules' }).click();
+    await expect(page.locator('body')).toContainText('allow("read", "src/**")');
+    // What the file is comes from the inventory: the page says the plugin
+    // ships it and that a row of another kind names it too.
+    await expect(page.locator('body')).toContainText('also recognized on its own row as');
+    await expect(page.locator('body')).not.toContainText('no rule admitted it');
   });
 
   test('drops the content when the route leaves the carrier', async ({ page }) => {

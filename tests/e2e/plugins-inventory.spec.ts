@@ -30,7 +30,7 @@ test.describe('the unified plugin inventory', () => {
           plugins: [
             {
               name: 'formatter',
-              source: { source: 'local', path: './plugins/formatter' },
+              source: './plugins/formatter',
               description: 'Formats a diff the way the team writes it.',
             },
             { name: 'packager', source: './plugins/packager' },
@@ -228,7 +228,7 @@ test.describe('the unified plugin inventory', () => {
     const manifest = page.locator('section', { hasText: 'Manifest' }).first();
     await expect(manifest).toContainText('plugins/packager/.codex-plugin/plugin.json');
     await expect(manifest).toContainText('"version": "3.1.0"');
-    await expect(page.locator('body')).not.toContainText('holds no manifest for this plugin');
+    await expect(page.locator('body')).not.toContainText('holds no manifest inside');
   });
 
   test('keeps a plugin own files out of every other kind', async ({ page }) => {

@@ -2,10 +2,11 @@
 // (spec.md FR-043).
 //
 // The published package inlines third-party code: the client bundle carries
-// Monaco, Vue, the Nuxt runtime, and the devframe client as its own bytes
-// rather than as installed packages the user receives with their license
-// files. Every one of those licenses requires its copyright and permission
-// notice to travel with the copies, so the notice has to be in the tarball.
+// Monaco, Vue, the Nuxt runtime, the devframe client, and the theme switch's
+// stylesheet as its own bytes rather than as installed packages the user
+// receives with their license files. Every one of those licenses requires its
+// copyright and permission notice to travel with the copies, so the notice has
+// to be in the tarball.
 //
 // The list is derived from the emitted chunks instead of being maintained by
 // hand: a hand-written list agrees with the bundle only until the next
@@ -104,6 +105,29 @@ const PROJECT_ROOT = resolve(import.meta.dirname, '..').replaceAll('\\', '/');
 function normalizeModuleId(moduleId) {
   const withoutQuery = moduleId.split('?')[0] ?? moduleId;
   return withoutQuery.replace(/^\0/u, '').replaceAll('\\', '/');
+}
+
+/**
+ * Whether a module's bytes leave the chunk that lists it, which a stylesheet's
+ * do: the bundler moves them into an emitted `.css` asset and leaves the
+ * chunk's own copy of the module empty.
+ *
+ * This is what separates a stylesheet from the case the walk below skips on. A
+ * rendered length of zero otherwise means the module contributed nothing to the
+ * output, which is how a copy of a package that tree-shaking discarded is kept
+ * from standing in for the copy that shipped — but read that way, a CSS-only
+ * package would ship its code with its notice silently dropped for looking like
+ * a module that rendered to nothing. `shine-and-bright`, which draws the colour
+ * scheme switch, is exactly that package. The suffix is the test because it is
+ * the module id the bundler records for a stylesheet; a query string is already
+ * gone by the time this sees it, which is what keeps a Vue component's own
+ * `<style>` block — a `.vue` module — out of this branch.
+ *
+ * @param {string} moduleId Module id from an emitted chunk.
+ * @returns {boolean}
+ */
+function emitsOutsideItsChunk(moduleId) {
+  return normalizeModuleId(moduleId).endsWith('.css');
 }
 
 /**
@@ -313,16 +337,18 @@ export function thirdPartyNoticesPlugin({ fileName = 'THIRD-PARTY-NOTICES.txt' }
       // The emitted chunks, not the loaded module graph: the graph holds every
       // module Rollup resolved, including ones tree-shaking then dropped, so a
       // discarded copy of a package could stand in for the copy that shipped. A
-      // module rendered to nothing contributed no code either. Keyed by
-      // directory rather than by name, because two versions of one package can
-      // both be installed and only the ones in a chunk belong here.
+      // module rendered to nothing contributed no code either — unless its bytes
+      // were emitted somewhere other than this chunk, which is a stylesheet
+      // ({@link emitsOutsideItsChunk}). Keyed by directory rather than by name,
+      // because two versions of one package can both be installed and only the
+      // ones in a chunk belong here.
       const byDirectory = new Map();
       for (const output of Object.values(bundle)) {
         if (output.type !== 'chunk') {
           continue;
         }
         for (const [moduleId, module] of Object.entries(output.modules)) {
-          if (module.renderedLength === 0) {
+          if (module.renderedLength === 0 && !emitsOutsideItsChunk(moduleId)) {
             continue;
           }
           const target = owningPackage(moduleId);

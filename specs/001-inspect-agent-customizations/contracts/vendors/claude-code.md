@@ -114,9 +114,13 @@ The other way is a catalog. `.claude/settings.json` registers one by name under
 that folder, and names the plugins to turn on under `enabledPlugins`, keyed
 `<plugin-name>@<marketplace-name>`. A repository's own catalog is documented at
 `.claude-plugin/marketplace.json` in its root, which `claude.repo.marketplace` admits: it
-maps each plugin name to that plugin's own source, and only a `./` path relative to the
-marketplace root names a directory this repository carries. A `github`, `git`, `npm`,
-`archive`, or `command` source leaves the name with no Repository directory, and enabling
+maps each plugin name to that plugin's own source. Two source spellings name a directory
+this repository carries: a `./` path relative to the marketplace root, and a bare name —
+one directory name carrying no `/` — resolved under the `metadata.pluginRoot` the catalog
+declares for exactly that purpose. Every other source is an object naming where the plugin
+is fetched from through its own `source` key — `github`, `url`, `git-subdir`, `npm`,
+`archive`, or `command` — and leaves the name with no Repository directory, as does a path
+that leaves the marketplace root and any spelling this vendor documents nowhere. Enabling
 such a plugin in a project settings file does not install it for anyone else. The
 marketplace source and the plugin source are separate settings: the catalog says where each
 plugin comes from, never that it is installed.

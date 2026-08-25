@@ -66,12 +66,16 @@ test.describe('the complete literal Claude plugin carrier detail', () => {
           plugins: [
             {
               name: 'quality-review',
-              source: { source: 'local', path: './plugins/quality-review' },
+              source: './plugins/quality-review',
               description: 'Adds a quality-review skill for quick code reviews.',
             },
             {
               name: 'remote-helper',
-              source: { source: 'git', url: 'https://example.com/plugins.git' },
+              source: { source: 'url', url: 'https://example.com/plugins.git' },
+            },
+            {
+              name: 'bare-helper',
+              source: './plugins/bare-helper',
             },
           ],
         },
@@ -90,6 +94,15 @@ test.describe('the complete literal Claude plugin carrier detail', () => {
     await writeFile(
       join(fixture, 'plugins/quality-review/skills/checklist/SKILL.md'),
       '---\nname: checklist\n---\n\nWalk the checklist.\n',
+      'utf8',
+    );
+    // A local root this repository carries that keeps no plugin manifest: the
+    // other absence the detail states, and a different one from a source that
+    // names no directory here at all.
+    await mkdir(join(fixture, 'plugins/bare-helper/commands'), { recursive: true });
+    await writeFile(
+      join(fixture, 'plugins/bare-helper/commands/summarize.md'),
+      '# Summarize\n',
       'utf8',
     );
 
@@ -178,9 +191,30 @@ test.describe('the complete literal Claude plugin carrier detail', () => {
 
     const declaration = page.locator('section', { hasText: 'Declaration' }).first();
     await expect(declaration).toContainText('https://example.com/plugins.git');
-    await expect(page.locator('body')).toContainText('This scan holds no manifest for this plugin');
+    // The offering names a Git repository, which is what the page states —
+    // never that a directory here ships no manifest, which would report this
+    // repository as missing a file the offering never put in it.
+    await expect(page.locator('body')).toContainText(
+      'This offering names a Git repository, so this scan holds none of this plugin',
+    );
+    await expect(page.locator('body')).not.toContainText('holds no manifest inside');
     await page.getByRole('tab', { name: /^files/iu }).click();
     await expect(page.locator('body')).toContainText('This scan found no files for this plugin');
+  });
+
+  test('names the directory an offering reaches that keeps no manifest', async ({ page }) => {
+    await openPlugin(page, 'bare-helper@inspector-examples');
+
+    // The other absence: the offering names a directory this repository does
+    // carry, so the statement is about that directory and says which one.
+    const body = page.locator('body');
+    await expect(body).toContainText('This scan holds no manifest inside');
+    await expect(body).toContainText('plugins/bare-helper/');
+    await expect(body).not.toContainText('names no directory in this repository');
+    // The files it does ship are still its own, read through the plugin.
+    await page.getByRole('tab', { name: /^files/iu }).click();
+    const tree = page.getByRole('navigation', { name: 'Files in this plugin' });
+    await expect(tree.getByRole('link', { name: 'summarize.md' })).toBeVisible();
   });
 
   test('drops the content when the route leaves the carrier', async ({ page }) => {

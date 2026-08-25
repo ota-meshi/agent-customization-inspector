@@ -26,6 +26,8 @@ import type {
   McpCarrierDetailDto,
   PluginCarrierDetailDto,
   PluginCarrierDetailParams,
+  PluginFileDetailDto,
+  PluginFileDetailParams,
   PermissionPolicyDetailDto,
   ScanAdmission,
   SessionSnapshot,
@@ -50,6 +52,8 @@ export const SESSION_RPC_FUNCTIONS = {
   /** One MCP-declaring file's declarations and file facts, never its source (FR-007). */
   getMcpCarrierDetail: 'agent-customization-inspector:get-mcp-carrier-detail',
   getPluginCarrierDetail: 'agent-customization-inspector:get-plugin-carrier-detail',
+  /** One file a plugin ships, read as that plugin's (contracts/http-api.md § get-plugin-file-detail). */
+  getPluginFileDetail: 'agent-customization-inspector:get-plugin-file-detail',
   /** One declared permission policy, addressed by the path of the file that declares it. */
   getPermissionPolicyDetail: 'agent-customization-inspector:get-permission-policy-detail',
   /** Accept one explicit Repository scan command. */
@@ -240,7 +244,7 @@ export type McpCarrierDetailOutcome = DetailFetchOutcome<McpCarrierDetailDto>;
  * row's rather than the whole carrier's
  * (contracts/http-api.md § get-plugin-carrier-detail).
  */
-type DetailRequestPayload = string | PluginCarrierDetailParams;
+type DetailRequestPayload = string | PluginCarrierDetailParams | PluginFileDetailParams;
 
 /**
  * The outcome of one guarded `get-plugin-carrier-detail` request: the shared
@@ -249,6 +253,13 @@ type DetailRequestPayload = string | PluginCarrierDetailParams;
  * it when the carrier is a catalog (FR-007).
  */
 export type PluginCarrierDetailOutcome = DetailFetchOutcome<PluginCarrierDetailDto>;
+
+/**
+ * The outcome of one guarded `get-plugin-file-detail` request: the shared
+ * detail outcome carrying one file a plugin ships, with its complete authored
+ * source (FR-025).
+ */
+export type PluginFileDetailOutcome = DetailFetchOutcome<PluginFileDetailDto>;
 
 /**
  * The outcome of one guarded `get-permission-policy-detail` request: the
@@ -728,6 +739,20 @@ export class SessionApiClient {
   ): Promise<PluginCarrierDetailOutcome> {
     return this.#fetchDetail<PluginCarrierDetailDto>(
       SESSION_RPC_FUNCTIONS.getPluginCarrierDetail,
+      params,
+    );
+  }
+
+  /**
+   * Issues one guarded plugin-file request through the same guards, token
+   * family, and adoption rules as {@link fetchFileDetail}: the detail
+   * functions serve the one open detail, so a newer request of any of them
+   * supersedes an older of another (contracts/http-api.md
+   * § get-plugin-file-detail).
+   */
+  public fetchPluginFileDetail(params: PluginFileDetailParams): Promise<PluginFileDetailOutcome> {
+    return this.#fetchDetail<PluginFileDetailDto>(
+      SESSION_RPC_FUNCTIONS.getPluginFileDetail,
       params,
     );
   }

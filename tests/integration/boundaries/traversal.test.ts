@@ -21,16 +21,16 @@ import {
 import {
   ANY_DIRECTORIES,
   TraversalPlan,
-  authoredSkillNameOf,
   type CompiledStaticSkillRule,
 } from '../../../src/server/inspection/rules/registry';
+import { authoredSkillNameOf } from '../../../src/server/inspection/rules/skills/invocation-name';
 import { runTraversalScan } from '../../../src/server/inspection/traversal';
 import { assembleScanPublication } from '../../../src/server/inspection/scan';
 import {
   CODEX_REPO_INSTRUCTIONS_RULE,
   CODEX_REPO_SKILL_RULE,
 } from '../../../src/shared/registries/codex/rules';
-import { CodexCompiledInstructionRule } from '../../../src/server/inspection/rules/codex';
+import { CodexCompiledInstructionRule } from '../../../src/server/inspection/rules/instructions/codex';
 import { CODEX_RULE_RELATIONS } from '../../../src/shared/registries/codex/relations';
 import type { RecognitionParseStatus } from '../../../src/shared/api-types';
 import { RecognitionExtraction } from '../../../src/server/inspection/parsers/extraction';

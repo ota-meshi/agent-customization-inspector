@@ -60,7 +60,7 @@ test.describe('Claude plugins declared by placement and by a repository catalog'
           plugins: [
             {
               name: 'quality-review',
-              source: { source: 'local', path: './plugins/quality-review' },
+              source: './plugins/quality-review',
               description: 'Adds a quality-review skill for quick code reviews.',
             },
             { name: 'remote-helper', source: 'owner/repo' },

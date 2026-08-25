@@ -47,13 +47,19 @@ import {
   selectedFileOf,
 } from '../../components/detail-route';
 import { pluginCarrierDetailRoute } from '../../components/plugin-detail-route';
+import { pluginComparisonRouteFor } from '../../composables/plugin-comparison';
 import { nextTabForKey } from '../../components/tab-navigation';
 import { usePageOwnership } from '../../composables/page-ownership';
 import { SESSION_VIEW_STATE } from '../../session/view-state';
 import { DIAGNOSTIC_REGISTRY } from '../../../shared/diagnostics';
-import { PLUGIN_CARRIER_TEXT } from '../../../shared/api-text';
+import { PLUGIN_CARRIER_TEXT, PLUGIN_SOURCE_FORM_TEXT } from '../../../shared/api-text';
+import type { PluginSourceForm } from '../../../shared/api-types';
+import type { CustomizationKind, SupportedTool } from '../../../shared/entities';
 import {
+  CUSTOMIZATION_KIND_ORDER,
   CUSTOMIZATION_KIND_TEXT,
+  SUPPORTED_TOOL_ORDER,
+  isSupportedTool,
   FILE_ENCODING_TEXT,
   SUPPORTED_TOOL_TEXT,
   escapeControlCharacters,
@@ -107,11 +113,11 @@ const pluginDetail = sessionViewState.pluginDetail;
 // The plugin's own manifest, in the slot a skill's entry point uses: it is what
 // the plugin panel shows beside the offering, and it stays there while the
 // reader steps through the other files in the files panel.
-const manifestDetail = sessionViewState.entryDetail;
+const manifestDetail = sessionViewState.pluginManifestFile;
 // The selected file's own detail: a file the plugin ships carries no
 // recognition, so it is served by the file detail every unrecognized file is,
 // in the slot a skill's selected file uses.
-const selectedFileDetail = sessionViewState.openCompanion;
+const selectedFileDetail = sessionViewState.pluginOpenFile;
 const detailState = sessionViewState.fileDetailState;
 /** This route's own failed request, which this page reports and announces. */
 const detailError = sessionViewState.detailErrorMessage;
@@ -139,6 +145,55 @@ const owner = computed(() =>
       .map((carrier) => ({ name: entry.name, carrier })),
   ),
 );
+
+/**
+ * The product whose reading this page shows: the one the link named, or — for a
+ * link that named none — the first carrier of this row at this path in the
+ * closed tool order.
+ *
+ * A carrier is one `(file, tool)` pair, so which product is asked decides the
+ * plugin root, the source form, and the manifest forms the page states
+ * (`api-types.ts` § PluginCarrierDetailParams.tool). Every link this product
+ * renders names one; the fallback is for a link written before, or by hand,
+ * and the page says which product it settled on rather than answering silently.
+ *
+ * Null while the snapshot holds no carrier at this path, where there is nothing
+ * to ask and {@link carrierResolved} already reports the link.
+ */
+const openTool = computed((): SupportedTool | null => {
+  const named = route.query['tool'];
+  if (typeof named === 'string' && isSupportedTool(named)) {
+    return named;
+  }
+  for (const tool of SUPPORTED_TOOL_ORDER) {
+    if (owner.value.some(({ carrier }) => carrier.tool === tool)) {
+      return tool;
+    }
+  }
+  return null;
+});
+
+/** Whether the link named the product whose reading the page is showing. */
+const toolNamedByLink = computed(() => {
+  const named = route.query['tool'];
+  return typeof named === 'string' && isSupportedTool(named);
+});
+
+/**
+ * How the page states whose reading it shows. A carrier every product reads is
+ * three carriers of one row, each with its own root and manifest, so the
+ * sentence names the one this page answers for — and says so plainly when the
+ * link left it unsaid.
+ */
+const readingText = computed(() => {
+  const tool = openTool.value;
+  if (tool === null) {
+    return '';
+  }
+  return toolNamedByLink.value
+    ? `Read as ${SUPPORTED_TOOL_TEXT[tool]} reads this carrier`
+    : `Read as ${SUPPORTED_TOOL_TEXT[tool]} reads this carrier; the link named no product`;
+});
 
 /** Whether the committed inventory lists this file as a plugin carrier at all. */
 const carrierListed = computed(() => owner.value.length > 0);
@@ -190,20 +245,40 @@ const carrierRoots = computed((): readonly string[] => {
 });
 
 /**
+ * The directories this carrier's offering names, as the one authored phrase
+ * the manifest note points at. An offering of one name may name two, so the
+ * note lists what it named rather than choosing between them.
+ */
+const namedRootsText = computed(() =>
+  carrierRoots.value.map((root) => pathPresentationLabel(root)).join(' and '),
+);
+
+/**
  * The files this carrier's offering ships that the open generation still holds.
  * The row publishes every path the scan enumerated below the roots its
  * offerings named; a path the current commit no longer carries is dropped, so
  * the tree can offer no file this generation cannot serve (FR-030).
  */
 const rowFiles = computed(() => {
-  // A manifest carrier is a file of the plugin as well as the thing that
-  // declares it, the way a skill's `SKILL.md` is, and the row publishes it as
-  // one: this list is that one, filtered to what this carrier's own offering
-  // reached, so the tree and the row's count are the same fact.
-  return (row.value?.files ?? []).filter(
-    (path) =>
-      committedPaths.value.has(path) && carrierRoots.value.some((root) => path.startsWith(root)),
+  // This carrier's own list, as the census under its offering's directory
+  // produced it (`api-types.ts` § PluginCarrierDto.files). A manifest carrier
+  // is a file of the plugin as well as the thing that declares it, the way a
+  // skill's `SKILL.md` is, and it is in that list, so the tree and the row's
+  // count are the same fact.
+  // This carrier and no other: the open row's, at this path, as the product
+  // this page answers for reads it. One catalog offers many plugins, each
+  // row's carrier lists the files that row's own offering reached, and two
+  // products reading one catalog can reach different files from it — the
+  // source forms they document are not the same set.
+  const reached = new Set(
+    (row.value?.carriers ?? [])
+      .filter(
+        (carrier) =>
+          carrier.sourceRelativePath === carrierPath.value && carrier.tool === openTool.value,
+      )
+      .flatMap((carrier) => carrier.files),
   );
+  return [...reached].filter((path) => committedPaths.value.has(path)).toSorted();
 });
 
 /** The open detail once it is this carrier's; a slow previous one never renders here. */
@@ -286,7 +361,9 @@ const openFilePath = computed((): string | null => {
  * that names one waiting for a request it had itself prevented.
  */
 const carrierResolved = computed(() =>
-  owner.value.some(({ name }) => name === openPluginName.value),
+  owner.value.some(
+    ({ name, carrier }) => name === openPluginName.value && carrier.tool === openTool.value,
+  ),
 );
 
 /**
@@ -388,6 +465,27 @@ const toolsText = computed(() =>
 );
 
 /**
+ * Where this plugin's comparison opens, or null when the row holds no second
+ * carrier: a comparison needs one plugin name declared in two distinct files,
+ * and the counterpart is the first carrier of this row that is not the one
+ * this page is open at. The comparison surface's own pickers take over from
+ * there. Null for the row that resolves no name, which is about no plugin a
+ * comparison would compare.
+ */
+const compareRoute = computed((): RouteLocationRaw | null => {
+  const name = openPluginName.value;
+  if (name === null || row.value === null) {
+    return null;
+  }
+  for (const carrier of row.value.carriers) {
+    if (carrier.sourceRelativePath !== carrierPath.value) {
+      return pluginComparisonRouteFor(name, carrierPath.value, carrier.sourceRelativePath);
+    }
+  }
+  return null;
+});
+
+/**
  * Where one file of this plugin opens: this same page, with that file
  * selected. The name travels because one plugin root can be reached through
  * more than one offering, and a file of it belongs to whichever row the reader
@@ -399,7 +497,14 @@ const toolsText = computed(() =>
  * different file once the declaration changed.
  */
 function pluginFileRoute(sourceRelativePath: string): RouteLocationRaw {
-  return pluginCarrierDetailRoute(carrierPath.value, openPluginName.value, sourceRelativePath);
+  // The product stays what this page is open for: stepping through the
+  // plugin's files is not a step to another carrier.
+  return pluginCarrierDetailRoute(
+    carrierPath.value,
+    openTool.value ?? SUPPORTED_TOOL_ORDER[0]!,
+    openPluginName.value,
+    sourceRelativePath,
+  );
 }
 
 /** What the open carrier is to the plugins it declares, for the caption line. */
@@ -429,8 +534,26 @@ const openDeclarations = computed(() =>
     : (openDetail.value.plugins ?? []).map((plugin, index) => ({
         key: index,
         jsonText: declaredEntriesJsonText(plugin.fields),
+        sourceForm: plugin.sourceForm,
       })),
 );
+
+/**
+ * What kind of place this carrier's offerings of the open row name, when they
+ * all name the same kind — the phrase the manifest note is written around
+ * (`api-text.ts` § PLUGIN_SOURCE_FORM_TEXT).
+ *
+ * Null when they disagree, which one catalog holding two entries of the null
+ * row can produce, and null when there is no declaration to answer from: a
+ * failed extraction leaves the entries unknown rather than sourceless, and the
+ * declaration section above already states that.
+ */
+const openSourceForm = computed((): PluginSourceForm | null => {
+  const [first, ...rest] = new Set(
+    openDeclarations.value.map((declaration) => declaration.sourceForm),
+  );
+  return first !== undefined && rest.length === 0 ? first : null;
+});
 
 /**
  * What a catalog declares about itself, as the same JSON document. Empty for a
@@ -483,18 +606,79 @@ const openFile = computed(() => {
 /**
  * What the open file is to this plugin, for the line under its heading.
  *
- * Every file below a plugin root is one the plugin ships that no rule admitted
- * — a bundled skill, an `.mcp.json`, an asset — with one exception: the
- * manifest that is itself this page's carrier, where a rule admitted the file
- * and the folder holding it is a plugin because of it
- * (`claude.repo.skills-directory-plugin`). Saying otherwise there would deny
- * the recognition this very page was reached through.
+ * Most files below a plugin root are ones the plugin ships that no rule
+ * admitted — an asset, a bundled `.mcp.json`, a hooks file — but not all of
+ * them: a path a rule independently admits keeps its own recognitions and its
+ * own row, a nested `SKILL.md` above all (FR-007), and the manifest that is
+ * itself this page's carrier is admitted by the rule this page was reached
+ * through (`claude.repo.skills-directory-plugin`). What the file is is
+ * therefore read from the detail the host served for it rather than from its
+ * path: saying no rule admitted a file whose own detail names its kind would
+ * deny a recognition this product published.
+ *
+ * The plain sentence stands while the detail is not in hand, where the kind is
+ * not yet known and the file is a file of the plugin either way.
  */
-const openFileRoleText = computed(() =>
-  openFilePath.value === carrierPath.value
-    ? 'The manifest that declares this plugin'
-    : 'One of the files the plugin ships; no rule admitted it',
-);
+const openFileRoleText = computed(() => {
+  if (openFilePath.value === carrierPath.value) {
+    return 'The manifest that declares this plugin';
+  }
+  // What the file is comes from the inventory rather than from the file's own
+  // request: a plugin's file is served as the plugin's ({@link
+  // openFileRoleKinds}), and a rule that independently admitted it publishes
+  // that on its own kind's rows, which the snapshot already carries.
+  const [first, ...rest] = openFileRoleKinds.value;
+  if (first === undefined) {
+    return 'One of the files the plugin ships; no rule admitted it';
+  }
+  const kinds = [first, ...rest].map((kind) => CUSTOMIZATION_KIND_TEXT[kind]).join(', ');
+  return `One of the files the plugin ships; also recognized on its own row as ${kinds}`;
+});
+
+/**
+ * The kinds whose inventory rows name the open file, in the closed kind order
+ * and without repetition — empty for the ordinary file of a plugin, which no
+ * rule admitted (contracts/inspection-path-allowlist.md § Bounded companion
+ * census).
+ *
+ * Read from the snapshot the page already holds rather than from the file's
+ * own detail: a plugin's file is served as the plugin's, so its request
+ * answers with the file rather than with a kind, and the rows are where a
+ * recognition is published (FR-007).
+ */
+const openFileRoleKinds = computed((): readonly CustomizationKind[] => {
+  const path = openFilePath.value;
+  const held = snapshot.value;
+  if (path === null || held === null) {
+    return [];
+  }
+  // One entry per kind whose rows can name a file, filtered through the closed
+  // kind order so two files never read in two orders (`entities.ts`
+  // § CUSTOMIZATION_KIND_ORDER). The plugin kind is not among them: this page
+  // is that row.
+  const named: Readonly<Partial<Record<CustomizationKind, boolean>>> = {
+    instructions: held.instructions.some((row) =>
+      row.files.some((file) => file.sourceRelativePath === path),
+    ),
+    skill: held.skills.some((row) =>
+      row.definitions.some((definition) => definition.sourceRelativePath === path),
+    ),
+    MCP: held.mcp.some((row) =>
+      row.declarations.some((declaration) => declaration.sourceRelativePath === path),
+    ),
+    agent: held.agents.some((row) =>
+      row.definitions.some((definition) => definition.sourceRelativePath === path),
+    ),
+    'prompt/command': held.prompts.some((row) =>
+      row.definitions.some((definition) => definition.sourceRelativePath === path),
+    ),
+    permissions: held.permissions.some((row) => row.sourceRelativePath === path),
+    'output style': held.outputStyles.some((row) =>
+      row.definitions.some((definition) => definition.sourceRelativePath === path),
+    ),
+  };
+  return CUSTOMIZATION_KIND_ORDER.filter((kind) => named[kind] === true);
+});
 
 /** The open file's path as presentation text, escaped like every path. */
 const openFilePathText = computed(() =>
@@ -742,8 +926,14 @@ const requestOpen = (): void => {
   // selection of the manifest itself from the carrier's own detail, and a
   // second request could only fail a pane whose source is already in hand.
   const servedByCarrier = openDetail.value?.carrier === 'manifest';
+  const tool = openTool.value;
+  if (tool === null) {
+    // No carrier at this path in the committed inventory: the watcher's
+    // resolution gate reports the link, and there is no product to ask.
+    return;
+  }
   void pageOwnership.openPluginDetail(
-    { sourceRelativePath: carrierPath.value, pluginName: openPluginName.value },
+    { sourceRelativePath: carrierPath.value, pluginName: openPluginName.value, tool },
     servedByCarrier ? null : manifestFile.value,
     servedByCarrier && openFilePath.value === carrierPath.value ? null : openFilePath.value,
   );
@@ -775,12 +965,13 @@ watch(
   [
     carrierPath,
     openPluginName,
+    openTool,
     manifestFile,
     openFilePath,
     (): boolean => carrierResolved.value,
     (): number => snapshot.value?.repositoryGeneration ?? 0,
   ],
-  ([path, , , , resolved]) => {
+  ([path, , , , , resolved]) => {
     if (path === '' || !resolved) {
       pageOwnership.close();
       return;
@@ -991,6 +1182,11 @@ watch(
         <dd>{{ carrierText }}</dd>
         <dt>Recognized by</dt>
         <dd>{{ toolsText }}</dd>
+        <!-- Which of those products this page answers for: the root, the
+             source form, and the manifest forms below are that product's
+             reading of this carrier. -->
+        <dt>Reading</dt>
+        <dd>{{ readingText }}</dd>
         <dt>Encoding</dt>
         <!-- What the read produced, and nothing else — the same facts an MCP
              carrier's detail states, because both are files admitted so their
@@ -1119,9 +1315,35 @@ watch(
           </template>
           <p v-else class="aci-note">This file has no source text to show.</p>
         </section>
-        <p v-else class="aci-note">
-          This scan holds no manifest for this plugin: the offering's `source` names no directory in
-          this repository, or the directory it names ships none.
+        <!-- What the absence is, rather than one sentence covering every way
+             there could be none. An offering naming a Git repository, an npm
+             package, or any other place outside this repository names no
+             directory here at all, so a note about a directory that ships no
+             manifest would report this repository as missing a file the
+             offering never put in it (`api-types.ts` § PluginSourceForm). -->
+        <p v-else-if="carrierRoots.length > 0" class="aci-note">
+          This scan holds no manifest inside
+          <span class="aci-path aci-authored-text">{{ namedRootsText }}</span
+          >, which is what this offering names.
+        </p>
+        <p v-else-if="openSourceForm !== null" class="aci-note">
+          This offering names {{ PLUGIN_SOURCE_FORM_TEXT[openSourceForm] }}, so this scan holds none
+          of this plugin's own files.
+          <template v-if="openSourceForm === 'repository-directory'">
+            No directory this scan can enumerate follows from what it writes.
+          </template>
+        </p>
+        <p v-else-if="openDeclarations.length > 0" class="aci-note">
+          These offerings name no directory in this repository, so this scan holds none of this
+          plugin's own files.
+        </p>
+
+        <!-- The comparison this plugin's row can open: one name declared in
+             two files, which is what a repository keeping parallel catalogs
+             has. Placed under the declaration, because it is a step out of
+             this page rather than one of the plugin's own facts. -->
+        <p v-if="compareRoute !== null" class="aci-plugin-detail__compare">
+          <NuxtLink :to="compareRoute">Compare this plugin</NuxtLink>
         </p>
 
         <!-- Stated on the panel that shows the declaration, because that is
@@ -1190,6 +1412,19 @@ watch(
                    the one file that did not load. -->
               <template v-if="detailState === 'companion-failed'">
                 <p class="aci-error">{{ detailFailure }}</p>
+                <p>
+                  <button type="button" @click="retryOpen">Try again</button>
+                </p>
+              </template>
+              <!-- The manifest is served through its own slot, so a failure
+                   there settles nowhere this pane watches: a reader who
+                   selected the manifest in the tree would wait on a request
+                   that has already ended, with the failure and the retry on a
+                   panel they are not looking at (FR-028). -->
+              <template v-else-if="openFilePath === manifestFile && manifestError !== null">
+                <p class="aci-error">
+                  This plugin's manifest could not be loaded. {{ manifestError }}
+                </p>
                 <p>
                   <button type="button" @click="retryOpen">Try again</button>
                 </p>
@@ -1310,6 +1545,10 @@ watch(
   .aci-plugin-detail__layout {
     grid-template-columns: minmax(9rem, 14rem) minmax(0, 1fr);
   }
+}
+
+.aci-plugin-detail__compare {
+  margin: 0.75rem 0 0;
 }
 
 .aci-plugin-detail__main {

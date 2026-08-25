@@ -57,17 +57,16 @@ import {
   type CopilotSkillFixture,
 } from '../../fixtures/repositories/build-fixtures';
 
+import { CODEX_REPOSITORY_RULES } from '../../../src/server/inspection/rules/codex';
+import { CODEX_DERIVED_FALLBACK_RULE } from '../../../src/server/inspection/rules/instructions/codex';
+import { CodexCompiledPluginCatalogRule } from '../../../src/server/inspection/rules/plugins/codex';
+import { CLAUDE_REPOSITORY_RULES } from '../../../src/server/inspection/rules/claude';
 import {
-  CODEX_DERIVED_FALLBACK_RULE,
-  CodexCompiledPluginCatalogRule,
-  CODEX_REPOSITORY_RULES,
-} from '../../../src/server/inspection/rules/codex';
-import {
-  CLAUDE_REPOSITORY_RULES,
   ClaudeCompiledPluginCatalogRule,
   ClaudeCompiledPluginManifestRule,
-} from '../../../src/server/inspection/rules/claude';
+} from '../../../src/server/inspection/rules/plugins/claude';
 import { COPILOT_REPOSITORY_RULES } from '../../../src/server/inspection/rules/copilot';
+import { CopilotCompiledPluginCatalogRule } from '../../../src/server/inspection/rules/plugins/copilot';
 import { INSPECTION_RULES } from '../../../src/shared/registries/inspection-rules';
 import { RULE_RELATIONS } from '../../../src/shared/registries/relations';
 import {
@@ -1294,7 +1293,7 @@ describe('the shipped Codex plugin plans (T753)', () => {
       interface: { displayName: 'Examples' },
       plugins: [
         { name: 'first', source: { source: 'local', path: './plugins/first' } },
-        { name: 'second', source: './plugins/second/' },
+        { name: 'second', source: './plugins/second' },
         // Not an object: omitted whole rather than published partially, the
         // rule the MCP carrier reading follows.
         'third',
@@ -1310,13 +1309,19 @@ describe('the shipped Codex plugin plans (T753)', () => {
     // The catalog's own keys are its own, never the `plugins` array whose
     // entries are the declarations.
     expect(reading.catalogFields.map((field) => field.key)).toEqual(['name', 'interface']);
-    // Both documented local spellings name the same plugin root, and a trailing
-    // slash is an ordinary spelling of a directory. The answer is where each
-    // plugin sits, never a file below it: a plugin is its root, and its own
-    // manifest is one of the files it ships.
+    // Both documented local spellings name the same kind of plugin root. The
+    // answer is where each plugin sits, never a file below it: a plugin is its
+    // root, and its own manifest is one of the files it ships.
     expect(reading.plugins.map((plugin) => plugin.pluginRoot)).toEqual([
       'plugins/first/',
       'plugins/second/',
+    ]);
+    // Both spellings are the same kind of place, which is what the declaration
+    // publishes: the vendor's token is not what a reader is shown
+    // (`api-types.ts` § PluginSourceForm).
+    expect(reading.plugins.map((plugin) => plugin.sourceForm)).toEqual([
+      'repository-directory',
+      'repository-directory',
     ]);
   });
 
@@ -1340,6 +1345,16 @@ describe('the shipped Codex plugin plans (T753)', () => {
         // A path without the documented `./` prefix, and a source that is
         // not a string or an object at all.
         { name: 'bare', source: { source: 'local', path: 'plugins/bare' } },
+        // A trailing, repeated, or leading separator, a backslash or colon
+        // segment, and a first-segment home marker each reject the whole
+        // derivation with zero target I/O
+        // (contracts/inspection-path-allowlist.md § Common conformance
+        // requirements).
+        { name: 'trailing', source: './plugins/trailing/' },
+        { name: 'repeated', source: './plugins//repeated' },
+        { name: 'windows', source: './plugins\\windows' },
+        { name: 'colon', source: './plugins:colon' },
+        { name: 'home', source: './~/plugins/home' },
         { name: 'listed', source: ['./plugins/listed'] },
         { name: 'nameless-source' },
         // A segment no filesystem entry can be named. The platform raises on
@@ -1347,16 +1362,43 @@ describe('the shipped Codex plugin plans (T753)', () => {
         // declaration carrying one would fail the whole scan attempt instead
         // of standing as an offering that occupies nothing (FR-028, FR-029).
         { name: 'nul', source: { source: 'local', path: './plugins/\u0000bad' } },
+        // A C1 control character is refused for the same reason a C0 one is:
+        // the refused set is Unicode's `Cc` category, so a pattern stopping at
+        // DEL would let this value name a directory and reach the census,
+        // where the contract requires zero target I/O.
+        { name: 'c1', source: './plugins/\u0085next-line' },
       ],
     });
     // Every entry is still published as a declaration — what a catalog wrote is
     // what the row shows — while none of them names a directory this Source
     // holds, so none ships a file here.
     const reading = catalog.pluginCarrierReadingOf(sourceText);
-    expect(reading.plugins).toHaveLength(9);
+    expect(reading.plugins).toHaveLength(15);
     expect(reading.plugins.map((plugin) => plugin.pluginRoot)).toEqual(
       reading.plugins.map(() => null),
     );
+    // Naming no directory is one outcome of several causes, and the
+    // declaration says which: a documented remote form is read as that form,
+    // a documented local path that leaves the Source stays the local form
+    // whose directory this Source does not hold, and a spelling the page
+    // documents nowhere is unrecognized.
+    expect(reading.plugins.map((plugin) => plugin.sourceForm)).toEqual([
+      'git-subdirectory',
+      'npm-package',
+      'repository-directory',
+      'repository-directory',
+      'repository-directory',
+      'repository-directory',
+      'repository-directory',
+      'repository-directory',
+      'repository-directory',
+      'repository-directory',
+      'repository-directory',
+      'unrecognized',
+      'unrecognized',
+      'repository-directory',
+      'repository-directory',
+    ]);
   });
 });
 
@@ -1416,9 +1458,13 @@ describe('the shipped Claude plugin rules (T776)', () => {
       JSON.stringify({
         name: 'inspector-examples',
         owner: { name: 'Platform team' },
+        metadata: { pluginRoot: './plugins' },
         plugins: [
-          { name: 'quality-review', source: { source: 'local', path: './plugins/quality-review' } },
-          { name: 'changelog-writer', source: './plugins/changelog-writer/' },
+          { name: 'quality-review', source: './plugins/quality-review' },
+          { name: 'changelog-writer', source: './plugins/changelog-writer' },
+          // A bare name: a single directory name resolved under the catalog's
+          // own `metadata.pluginRoot`.
+          { name: 'formatter', source: 'formatter' },
           // Not an object: omitted whole rather than published partially.
           'third',
         ],
@@ -1427,18 +1473,91 @@ describe('the shipped Claude plugin rules (T776)', () => {
     expect(reading.plugins.map((plugin) => plugin.name)).toEqual([
       'quality-review@inspector-examples',
       'changelog-writer@inspector-examples',
+      'formatter@inspector-examples',
     ]);
-    expect(reading.catalogFields.map((field) => field.key)).toEqual(['name', 'owner']);
+    expect(reading.catalogFields.map((field) => field.key)).toEqual(['name', 'owner', 'metadata']);
     expect(reading.plugins.map((plugin) => plugin.pluginRoot)).toEqual([
       'plugins/quality-review/',
       'plugins/changelog-writer/',
+      'plugins/formatter/',
+    ]);
+    expect(reading.plugins.map((plugin) => plugin.sourceForm)).toEqual([
+      'repository-directory',
+      'repository-directory',
+      'repository-directory',
     ]);
     // The manifest inside each root is named, not admitted: it is one of the
     // files that plugin ships, and the detail opens on it.
     expect(reading.plugins.map((plugin) => plugin.manifestPaths)).toEqual([
       ['plugins/quality-review/.claude-plugin/plugin.json'],
       ['plugins/changelog-writer/.claude-plugin/plugin.json'],
+      ['plugins/formatter/.claude-plugin/plugin.json'],
     ]);
+  });
+
+  it('resolves neither an inherited property nor a non-string scalar', () => {
+    const compiled = CLAUDE_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'claude.repo.marketplace',
+    )!;
+    if (!(compiled instanceof ClaudeCompiledPluginCatalogRule)) {
+      throw new Error('the marketplace rule compiles into the Claude catalog unit');
+    }
+    const reading = compiled.pluginCarrierReadingOf(
+      JSON.stringify({
+        name: 'examples',
+        metadata: { pluginRoot: 7 },
+        plugins: [
+          // A discriminant naming a property of every object is not a form
+          // this vendor documents: the table is asked for its own keys alone.
+          { name: 'inherited', source: { source: 'constructor' } },
+          { name: 'inherited-method', source: { source: 'toString' } },
+          // A number and a boolean render as text a path could be built from,
+          // and the page documents both spellings as strings.
+          { name: 'numeric', source: 7 },
+          { name: 'boolean', source: true },
+        ],
+      }),
+    );
+    expect(reading.plugins.map((plugin) => plugin.sourceForm)).toEqual([
+      'unrecognized',
+      'unrecognized',
+      'unrecognized',
+      'unrecognized',
+    ]);
+    expect(reading.plugins.map((plugin) => plugin.pluginRoot)).toEqual([null, null, null, null]);
+  });
+
+  it('resolves a bare name only under a relative `metadata.pluginRoot`', () => {
+    const compiled = CLAUDE_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'claude.repo.marketplace',
+    )!;
+    if (!(compiled instanceof ClaudeCompiledPluginCatalogRule)) {
+      throw new Error('the marketplace rule compiles into the Claude catalog unit');
+    }
+    // The declared root is a relative path inside the marketplace, written
+    // with or without the `./` prefix, and a trailing slash is an ordinary
+    // spelling of a directory. A name carrying a `/` is not a bare name at
+    // all — the page says such a source still needs the prefix — and an
+    // absolute or home-anchored root resolves nothing.
+    const rootsFor = (metadata: unknown, source: string): string | null =>
+      compiled.pluginCarrierReadingOf(
+        JSON.stringify({ name: 'examples', metadata, plugins: [{ name: 'p', source }] }),
+      ).plugins[0]!.pluginRoot;
+    expect(rootsFor({ pluginRoot: './plugins' }, 'formatter')).toBe('plugins/formatter/');
+    expect(rootsFor({ pluginRoot: 'plugins/' }, 'formatter')).toBe('plugins/formatter/');
+    expect(rootsFor({ pluginRoot: './' }, 'formatter')).toBe('formatter/');
+    expect(rootsFor({ pluginRoot: './plugins' }, 'team-a/formatter')).toBeNull();
+    expect(rootsFor({ pluginRoot: '/opt/plugins' }, 'formatter')).toBeNull();
+    expect(rootsFor({ pluginRoot: '~/plugins' }, 'formatter')).toBeNull();
+    expect(rootsFor({ pluginRoot: './../outside' }, 'formatter')).toBeNull();
+    expect(rootsFor({}, 'formatter')).toBeNull();
+    // Without a declared root a bare name is not a documented spelling at all,
+    // which is a different answer from a documented path this Source does not
+    // hold.
+    const unrooted = compiled.pluginCarrierReadingOf(
+      JSON.stringify({ name: 'examples', plugins: [{ name: 'p', source: 'formatter' }] }),
+    );
+    expect(unrooted.plugins[0]!.sourceForm).toBe('unrecognized');
   });
 
   it('names no directory for a source the closed local form does not name', () => {
@@ -1452,13 +1571,26 @@ describe('the shipped Claude plugin rules (T776)', () => {
       JSON.stringify({
         name: 'inspector-examples',
         plugins: [
-          { name: 'shorthand', source: 'owner/repo' },
-          { name: 'git', source: { source: 'git', url: 'https://example.com/p.git' } },
+          // Every object form the page's own source table lists.
+          { name: 'github', source: { source: 'github', repo: 'owner/plugin-repo' } },
+          { name: 'git', source: { source: 'url', url: 'https://example.com/p.git' } },
+          {
+            name: 'subdir',
+            source: { source: 'git-subdir', url: 'https://example.com/m.git', path: 'tools/p' },
+          },
           { name: 'npm', source: { source: 'npm', package: '@example/plugin' } },
-          { name: 'absolute', source: { source: 'local', path: '/opt/plugins/absolute' } },
-          { name: 'home', source: { source: 'local', path: '~/.claude/plugins/home' } },
-          { name: 'escaping', source: { source: 'local', path: './../outside/escaping' } },
-          { name: 'bare', source: { source: 'local', path: 'plugins/bare' } },
+          { name: 'archive', source: { source: 'archive', url: 'https://example.com/p.zip' } },
+          { name: 'command', source: { source: 'command', command: 'render-plugin' } },
+          // A documented relative path that leaves the Source: the form is
+          // read, and the directory it names is not this repository's.
+          { name: 'escaping', source: './../outside/escaping' },
+          // Spellings this page documents nowhere: a `/`-carrying string with
+          // no `./` prefix, an absolute path, a home path, and the object
+          // spelling another product uses for a local source.
+          { name: 'shorthand', source: 'owner/repo' },
+          { name: 'absolute', source: '/opt/plugins/absolute' },
+          { name: 'home', source: '~/.claude/plugins/home' },
+          { name: 'local-object', source: { source: 'local', path: './plugins/local' } },
           { name: 'nameless-source' },
         ],
       }),
@@ -1466,10 +1598,165 @@ describe('the shipped Claude plugin rules (T776)', () => {
     // Every entry is still published as a declaration — what a catalog wrote is
     // what the row shows — while none of them names a directory this Source
     // holds, so none ships a file here.
-    expect(reading.plugins).toHaveLength(8);
+    expect(reading.plugins).toHaveLength(12);
     expect(reading.plugins.map((plugin) => plugin.pluginRoot)).toEqual(
       reading.plugins.map(() => null),
     );
+    expect(reading.plugins.map((plugin) => plugin.sourceForm)).toEqual([
+      'github-repository',
+      'git-repository',
+      'git-subdirectory',
+      'npm-package',
+      'zip-archive',
+      'command-output',
+      'repository-directory',
+      'unrecognized',
+      'unrecognized',
+      'unrecognized',
+      'unrecognized',
+      'unrecognized',
+    ]);
+  });
+});
+
+describe('an incompletely written plugin source (T1126)', () => {
+  it('reads the form its discriminant names, whatever else the object omits', () => {
+    // The product classifies against documented forms and does not validate a
+    // file (FR-032): an object naming a form and nothing else is that form
+    // written incompletely, so it reads as the kind of place it names while
+    // naming no place — the same answer a local object with no `path` gives.
+    const codex = CODEX_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'codex.repo.marketplace',
+    )!;
+    if (!(codex instanceof CodexCompiledPluginCatalogRule)) {
+      throw new Error('the catalog rule compiles into the Codex catalog unit');
+    }
+    const reading = codex.pluginCarrierReadingOf(
+      JSON.stringify({
+        name: 'examples',
+        plugins: [
+          { name: 'no-url', source: { source: 'url' } },
+          { name: 'no-package', source: { source: 'npm' } },
+          { name: 'no-path', source: { source: 'local' } },
+        ],
+      }),
+    );
+    expect(reading.plugins.map((plugin) => plugin.sourceForm)).toEqual([
+      'git-repository',
+      'npm-package',
+      'repository-directory',
+    ]);
+    expect(reading.plugins.map((plugin) => plugin.pluginRoot)).toEqual([null, null, null]);
+  });
+});
+
+describe('the Copilot catalog entry source forms (T1126)', () => {
+  it('reads the documented forms and nothing else', () => {
+    const compiled = COPILOT_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'copilot.repo.marketplace',
+    )!;
+    if (!(compiled instanceof CopilotCompiledPluginCatalogRule)) {
+      throw new Error('the marketplace rule compiles into the Copilot catalog unit');
+    }
+    const reading = compiled.pluginCarrierReadingOf(
+      JSON.stringify({
+        name: 'examples',
+        plugins: [
+          // The page's own example spelling for a plugin this repository
+          // carries, the same path without the optional prefix, and the two
+          // object forms its source-type section lists.
+          { name: 'local', source: './plugins/local' },
+          { name: 'prefixless', source: 'plugins/prefixless' },
+          { name: 'github', source: { source: 'github', repo: 'owner/repo', ref: 'v1.0.0' } },
+          { name: 'git', source: { source: 'url', url: 'https://example.com/p.git' } },
+          // A path that leaves this repository, and one this client resolves
+          // as a directory of it whatever it looks like: a string entry source
+          // is a path here, never a repository shorthand.
+          { name: 'escaping', source: './../outside/escaping' },
+          { name: 'shorthand', source: 'octo-org/plugin-repo' },
+          // Spellings this page documents nowhere: an npm package, another
+          // product's local object, and a non-string scalar.
+          { name: 'npm', source: { source: 'npm', package: '@example/plugin' } },
+          { name: 'local-object', source: { source: 'local', path: './plugins/local' } },
+          { name: 'numeric', source: 7 },
+        ],
+      }),
+    );
+    expect(reading.plugins.map((plugin) => plugin.sourceForm)).toEqual([
+      'repository-directory',
+      'repository-directory',
+      'github-repository',
+      'git-repository',
+      'repository-directory',
+      'repository-directory',
+      'unrecognized',
+      'unrecognized',
+      'unrecognized',
+    ]);
+    // A path that stays inside the Source names a directory here, prefix or
+    // not; every other entry stands as an offering occupying nothing.
+    expect(reading.plugins.map((plugin) => plugin.pluginRoot)).toEqual([
+      'plugins/local/',
+      'plugins/prefixless/',
+      null,
+      null,
+      null,
+      'octo-org/plugin-repo/',
+      null,
+      null,
+      null,
+    ]);
+  });
+
+  it('joins a declared root spelled with a trailing separator', () => {
+    const compiled = COPILOT_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'copilot.repo.marketplace',
+    )!;
+    if (!(compiled instanceof CopilotCompiledPluginCatalogRule)) {
+      throw new Error('the marketplace rule compiles into the Copilot catalog unit');
+    }
+    // `./plugins/`, `plugins/`, and `./` are the same directories the client
+    // resolves: joining them verbatim would spell the empty segment the path
+    // contract refuses and lose the root entirely.
+    const rootFor = (pluginRoot: string): string | null =>
+      compiled.pluginCarrierReadingOf(
+        JSON.stringify({
+          name: 'examples',
+          metadata: { pluginRoot },
+          plugins: [{ name: 'p', source: 'formatter' }],
+        }),
+      ).plugins[0]!.pluginRoot;
+    expect(rootFor('./plugins/')).toBe('plugins/formatter/');
+    expect(rootFor('plugins/')).toBe('plugins/formatter/');
+    expect(rootFor('./')).toBe('formatter/');
+  });
+
+  it('joins a declared `metadata.pluginRoot` in front of either spelling', () => {
+    const compiled = COPILOT_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'copilot.repo.marketplace',
+    )!;
+    if (!(compiled instanceof CopilotCompiledPluginCatalogRule)) {
+      throw new Error('the marketplace rule compiles into the Copilot catalog unit');
+    }
+    // This client joins the declared root in front of a path whether or not it
+    // carries the prefix, which is where it differs from the other product
+    // documenting the same field: that one ignores the root for a `./` path.
+    const reading = compiled.pluginCarrierReadingOf(
+      JSON.stringify({
+        name: 'examples',
+        metadata: { pluginRoot: './plugins' },
+        plugins: [
+          { name: 'bare', source: 'formatter' },
+          { name: 'prefixed', source: './formatter' },
+          { name: 'nested', source: 'team-a/formatter' },
+        ],
+      }),
+    );
+    expect(reading.plugins.map((plugin) => plugin.pluginRoot)).toEqual([
+      'plugins/formatter/',
+      'plugins/formatter/',
+      'plugins/team-a/formatter/',
+    ]);
   });
 });
 
@@ -1509,7 +1796,7 @@ describe('the one catalog location every product reads (T820)', () => {
     // three that differ only in who read it.
     const sourceText = JSON.stringify({
       name: 'shared-tools',
-      plugins: [{ name: 'formatter', source: { source: 'local', path: './plugins/formatter' } }],
+      plugins: [{ name: 'formatter', source: './plugins/formatter' }],
     });
     const names = [
       ...CODEX_REPOSITORY_RULES,

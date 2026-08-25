@@ -2128,11 +2128,20 @@ export interface ClaudePluginFixture {
   readonly skillsDirectoryPluginName: string;
   /** A skills-directory folder with a `SKILL.md` and no manifest: a skill, never a plugin. */
   readonly plainSkillPath: string;
-  /** The optional manifest inside the plugin root the catalog's object-form local source names. */
-  readonly objectSourceManifestPath: string;
+  /** The optional manifest inside the plugin root a `./` entry names. */
+  readonly pathSourceManifestPath: string;
+  /**
+   * The manifest inside the root a bare-name entry names, which resolves only
+   * under the catalog's own `metadata.pluginRoot`.
+   */
+  readonly bareNameManifestPath: string;
   /** The plugin root a catalog entry names but that ships no manifest at all. */
   readonly manifestlessRootFilePath: string;
-  /** The plugin names whose entries name a source outside this repository. */
+  /**
+   * The plugin names whose entries name a place outside this repository —
+   * every documented remote form, a relative path leaving the root, and the
+   * spellings this vendor documents nowhere.
+   */
   readonly nonLocalPluginNames: readonly string[];
   /**
    * A manifest whose JSON no reader accepts, below a catalog's local root.
@@ -2227,33 +2236,55 @@ export function buildClaudePluginFixture(
       {
         name: 'inspector-examples',
         owner: { name: 'Platform team', email: 'platform@example.com' },
+        // The directory bare plugin names resolve under, which is what makes
+        // the bare-name spelling below a path at all.
+        metadata: { pluginRoot: './plugins' },
         plugins: [
           {
             name: 'quality-review',
-            source: { source: 'local', path: './plugins/quality-review' },
+            source: './plugins/quality-review',
             description: 'Adds a quality-review skill for quick code reviews.',
             category: 'Productivity',
           },
-          // The plain-string spelling of the same local form.
-          { name: 'changelog-writer', source: './plugins/changelog-writer' },
+          // The bare-name spelling of the same local form.
+          { name: 'changelog-writer', source: 'changelog-writer' },
           // A local root the repository carries that ships no manifest: the
           // page makes the manifest optional, so the entry still declares a
           // plugin and the root still holds its files.
-          { name: 'bare-helper', source: { source: 'local', path: './plugins/bare-helper' } },
+          { name: 'bare-helper', source: './plugins/bare-helper' },
           // A root this repository does not carry: the offering stands and
           // occupies nothing here.
-          { name: 'missing-helper', source: { source: 'local', path: './plugins/missing-helper' } },
+          { name: 'missing-helper', source: './plugins/missing-helper' },
           // The manifest below this one is not JSON any reader accepts.
-          { name: 'broken-plugin', source: { source: 'local', path: './plugins/broken-plugin' } },
+          { name: 'broken-plugin', source: './plugins/broken-plugin' },
           // Credentials and environment references stay exactly as written.
-          { name: 'secret-keeper', source: { source: 'local', path: './plugins/secret-keeper' } },
-          // Every source form that names no directory in this repository.
-          { name: 'remote-helper', source: 'owner/repo' },
-          { name: 'git-helper', source: { source: 'git', url: 'https://example.com/p.git' } },
+          { name: 'secret-keeper', source: './plugins/secret-keeper' },
+          // One entry per documented form that names a place outside this
+          // repository, so every member of the published classification has a
+          // row to be read on.
+          { name: 'github-helper', source: { source: 'github', repo: 'owner/plugin-repo' } },
+          { name: 'git-helper', source: { source: 'url', url: 'https://example.com/p.git' } },
+          {
+            name: 'subdir-helper',
+            source: {
+              source: 'git-subdir',
+              url: 'https://example.com/monorepo.git',
+              path: 'tools/claude-plugin',
+            },
+          },
           { name: 'npm-helper', source: { source: 'npm', package: '@example/plugin' } },
-          { name: 'absolute-helper', source: { source: 'local', path: '/opt/plugins/absolute' } },
-          { name: 'home-helper', source: { source: 'local', path: '~/.claude/plugins/home' } },
-          { name: 'escaping-helper', source: { source: 'local', path: './../outside/escaping' } },
+          {
+            name: 'archive-helper',
+            source: { source: 'archive', url: 'https://example.com/plugins/helper-2.1.0.zip' },
+          },
+          { name: 'command-helper', source: { source: 'command', command: 'render-plugin' } },
+          // A documented relative path that leaves this repository.
+          { name: 'escaping-helper', source: './../outside/escaping' },
+          // Spellings this vendor documents nowhere: a `/`-carrying string
+          // with no `./` prefix, an absolute path, and a home path.
+          { name: 'remote-helper', source: 'owner/repo' },
+          { name: 'absolute-helper', source: '/opt/plugins/absolute' },
+          { name: 'home-helper', source: '~/.claude/plugins/home' },
         ],
       },
       null,
@@ -2347,16 +2378,21 @@ export function buildClaudePluginFixture(
     skillsDirectoryManifestPath: '.claude/skills/release-notes/.claude-plugin/plugin.json',
     skillsDirectoryPluginName: 'release-notes@skills-dir',
     plainSkillPath: '.claude/skills/greet/SKILL.md',
-    objectSourceManifestPath: 'plugins/quality-review/.claude-plugin/plugin.json',
+    pathSourceManifestPath: 'plugins/quality-review/.claude-plugin/plugin.json',
+    bareNameManifestPath: 'plugins/changelog-writer/.claude-plugin/plugin.json',
     manifestlessRootFilePath: 'plugins/bare-helper/commands/summarize.md',
     nonLocalPluginNames: [
       'absolute-helper',
+      'archive-helper',
+      'command-helper',
       'escaping-helper',
       'git-helper',
+      'github-helper',
       'home-helper',
       'missing-helper',
       'npm-helper',
       'remote-helper',
+      'subdir-helper',
     ],
     malformedManifestPath: 'plugins/broken-plugin/.claude-plugin/plugin.json',
     secretManifestPath: 'plugins/secret-keeper/.claude-plugin/plugin.json',
@@ -2437,33 +2473,49 @@ export function buildCopilotPluginFixture(
         plugins: [
           {
             name: 'quality-review',
-            source: { source: 'local', path: './plugins/quality-review' },
+            source: './plugins/quality-review',
             description: 'Adds a quality-review skill for quick code reviews.',
           },
-          // The plain-string spelling of the same local form.
           { name: 'changelog-writer', source: './plugins/changelog-writer' },
           // A root that uses the Claude manifest form Copilot also reads.
-          { name: 'release-notes', source: { source: 'local', path: './plugins/release-notes' } },
-          { name: 'secret-keeper', source: { source: 'local', path: './plugins/secret-keeper' } },
+          { name: 'release-notes', source: './plugins/release-notes' },
+          { name: 'secret-keeper', source: './plugins/secret-keeper' },
           // A root this repository does not carry.
-          { name: 'missing-helper', source: { source: 'local', path: './plugins/missing-helper' } },
-          // Every source form that names no directory here.
+          { name: 'missing-helper', source: './plugins/missing-helper' },
+          // The two object forms this vendor documents.
+          {
+            name: 'github-helper',
+            source: { source: 'github', repo: 'octo-org/plugin-repo', ref: 'v1.0.0' },
+          },
+          { name: 'git-helper', source: { source: 'url', url: 'https://example.com/p.git' } },
+          // A documented relative path that leaves this repository.
+          { name: 'escaping-helper', source: './../outside/escaping' },
+          // A string entry source is a path here, never a repository
+          // shorthand: this one names a directory the repository does not
+          // carry, which is a different absence from a form the vendor does
+          // not document.
           { name: 'shorthand-helper', source: 'octo-org/plugin-repo' },
-          { name: 'git-helper', source: { source: 'git', url: 'https://example.com/p.git' } },
+          // Spellings this vendor documents nowhere: an npm package and an
+          // absolute path.
           { name: 'npm-helper', source: { source: 'npm', package: '@example/plugin' } },
-          { name: 'absolute-helper', source: { source: 'local', path: '/opt/plugins/absolute' } },
-          { name: 'escaping-helper', source: { source: 'local', path: './../outside/escaping' } },
+          { name: 'absolute-helper', source: '/opt/plugins/absolute' },
         ],
       },
       null,
       2,
     )}\n`,
   );
-  // The other three documented catalog locations, each a catalog of its own.
-  for (const [path, name] of [
-    ['.plugin/marketplace.json', 'inspector-legacy'],
-    ['.github/plugin/marketplace.json', 'inspector-github'],
-    ['.claude-plugin/marketplace.json', 'inspector-shared'],
+  // The other three documented catalog locations. Two of them publish one
+  // marketplace: a repository that kept the catalog where the legacy client
+  // reads it and where the current one does, which is what a team migrating
+  // between the documented locations has. They have drifted — the legacy copy
+  // still names the vendored snapshot taken before the plugin moved under
+  // `plugins/` — so one plugin name is carried by two files naming two
+  // directories, which is what the plugin comparison compares.
+  for (const [path, name, source] of [
+    ['.plugin/marketplace.json', 'inspector-shared', './vendor/shared'],
+    ['.github/plugin/marketplace.json', 'inspector-github', './plugins/shared'],
+    ['.claude-plugin/marketplace.json', 'inspector-shared', './plugins/shared'],
   ] as const) {
     write(
       root,
@@ -2472,7 +2524,12 @@ export function buildCopilotPluginFixture(
         {
           name,
           plugins: [
-            { name: 'shared-helper', source: { source: 'local', path: './plugins/shared' } },
+            {
+              name: 'shared-helper',
+              description: 'Shares the review checklist across repositories.',
+              version: source === './vendor/shared' ? '1.3.0' : '1.4.0',
+              source,
+            },
           ],
         },
         null,
@@ -2483,8 +2540,26 @@ export function buildCopilotPluginFixture(
   write(
     root,
     'plugins/shared/plugin.json',
-    `${JSON.stringify({ name: 'shared-helper' }, null, 2)}\n`,
+    `${JSON.stringify({ name: 'shared-helper', version: '1.4.0' }, null, 2)}\n`,
   );
+  write(
+    root,
+    'plugins/shared/skills/review/SKILL.md',
+    '---\nname: review\ndescription: Share the review checklist.\n---\n\nWalk the checklist.\n',
+  );
+  // The vendored snapshot the legacy catalog still names: the same files one
+  // version back, with one the current copy no longer ships.
+  write(
+    root,
+    'vendor/shared/plugin.json',
+    `${JSON.stringify({ name: 'shared-helper', version: '1.3.0' }, null, 2)}\n`,
+  );
+  write(
+    root,
+    'vendor/shared/skills/review/SKILL.md',
+    '---\nname: review\ndescription: Share the review checklist.\n---\n\nWalk the checklist, then note the reviewer.\n',
+  );
+  write(root, 'vendor/shared/NOTICE.md', '# Vendored copy\n\nTaken at 1.3.0.\n');
 
   // Plugin roots, each using a different one of the documented manifest forms.
   write(
@@ -2592,6 +2667,7 @@ export function buildCopilotPluginFixture(
       'absolute-helper',
       'escaping-helper',
       'git-helper',
+      'github-helper',
       'missing-helper',
       'npm-helper',
       'shorthand-helper',
@@ -2616,6 +2692,28 @@ export function buildCopilotPluginFixture(
  * however many products resolve it, and one physical file is read once however
  * many of them recognize it (data-model.md § Inventory unit).
  */
+/**
+ * What {@link buildPluginComparisonFixture} writes: one plugin name offered by
+ * two catalogs, which is what a repository publishing the same marketplace for
+ * two products has, plus a second name only one catalog offers.
+ */
+export interface PluginComparisonFixture {
+  /** The absolute fixture root to scan. */
+  readonly root: string;
+  /** The catalog Claude reads, and Codex and Copilot with it. */
+  readonly claudeCatalogPath: string;
+  /** The catalog at the location Codex reads for a repository's own plugins. */
+  readonly codexCatalogPath: string;
+  /** The name both catalogs offer, whose row therefore holds two carriers. */
+  readonly sharedPluginName: string;
+  /** The name only one catalog offers, whose row holds one carrier. */
+  readonly singleCarrierPluginName: string;
+  /** The literal credential one catalog entry writes, which must render as authored. */
+  readonly credential: string;
+  /** The environment reference the other entry writes, which is never resolved. */
+  readonly environmentReference: string;
+}
+
 export interface UnifiedPluginFixture {
   /** The absolute fixture root to scan. */
   readonly root: string;
@@ -2656,6 +2754,158 @@ export interface UnifiedPluginFixture {
  * three products read, each product's own catalog location, a placement-loaded
  * Claude plugin, and a cross-tool plugin root that ships two manifest forms.
  */
+/**
+ * A repository that publishes one marketplace to two products: the same
+ * catalog is kept at the location Claude documents for a repository's own
+ * catalog — which Codex and Copilot read too — and at the one Codex reads for
+ * a repository's own plugins. Two files, one marketplace name, one plugin
+ * name: the row has two carriers, and comparing them is what says whether the
+ * copies still agree. They deliberately do not. The Codex-side entry is a
+ * version behind, describes the plugin differently, and carries an extra key,
+ * and it still names the vendored snapshot the team took before the plugin
+ * moved under `plugins/` — so the two copies differ file by file as well, one
+ * of them shipping a file the other does not.
+ *
+ * Values that must survive a comparison exactly as authored ride along: a
+ * literal credential in a homepage query and an environment reference in an
+ * `env` map, neither masked nor resolved anywhere (FR-026, FR-027).
+ */
+export function buildPluginComparisonFixture(
+  prefix = 'inspector-plugin-comparison',
+  root = createRepositoryFixtureRoot(prefix),
+): PluginComparisonFixture {
+  const credential = 'ghp_review_assistant_fixture_not_a_real_secret';
+  const environmentReference = '${REVIEW_ASSISTANT_TOKEN}';
+  const claudeCatalogPath = '.claude-plugin/marketplace.json';
+  const codexCatalogPath = '.agents/plugins/marketplace.json';
+  // The copy the editors read: current version, and the plugin's own
+  // description.
+  write(
+    root,
+    claudeCatalogPath,
+    `${JSON.stringify(
+      {
+        name: 'acme-tools',
+        owner: { name: 'Acme platform team', email: 'platform@acme.example' },
+        metadata: { description: 'Plugins the platform team maintains', version: '3.2.0' },
+        plugins: [
+          {
+            name: 'review-assistant',
+            description: 'Reviews a diff against the team checklist.',
+            version: '2.1.0',
+            source: './plugins/review-assistant',
+            homepage: `https://acme.example/plugins/review-assistant?token=${credential}`,
+            env: { REVIEW_TOKEN: environmentReference },
+          },
+          {
+            name: 'changelog-writer',
+            description: 'Drafts the release notes for a milestone.',
+            version: '1.4.0',
+            source: './plugins/changelog-writer',
+          },
+        ],
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  // The copy kept where Codex reads: a version behind, a description that was
+  // edited on one side only, a key the other copy does not carry, and a
+  // source still pointing at the vendored snapshot the team took before the
+  // plugin moved under `plugins/`.
+  write(
+    root,
+    codexCatalogPath,
+    `${JSON.stringify(
+      {
+        name: 'acme-tools',
+        owner: { name: 'Acme platform team', email: 'platform@acme.example' },
+        metadata: { description: 'Plugins the platform team maintains', version: '3.2.0' },
+        plugins: [
+          {
+            name: 'review-assistant',
+            description: 'Reviews a pull request against the team checklist.',
+            version: '2.0.0',
+            source: './vendor/review-assistant',
+            homepage: `https://acme.example/plugins/review-assistant?token=${credential}`,
+            env: { REVIEW_TOKEN: environmentReference },
+            keywords: ['review', 'checklist'],
+          },
+        ],
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  // The root both entries name, with the manifest each product's client reads
+  // and the skill the plugin ships.
+  write(
+    root,
+    'plugins/review-assistant/.claude-plugin/plugin.json',
+    `${JSON.stringify(
+      {
+        name: 'review-assistant',
+        version: '2.1.0',
+        description: 'Reviews a diff against the team checklist.',
+        skills: './skills/',
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  write(
+    root,
+    'plugins/review-assistant/.codex-plugin/plugin.json',
+    `${JSON.stringify({ name: 'review-assistant', version: '2.0.0' }, null, 2)}\n`,
+  );
+  write(
+    root,
+    'plugins/review-assistant/skills/checklist/SKILL.md',
+    '---\nname: checklist\ndescription: Walk the review checklist.\n---\n\nWalk the checklist.\n',
+  );
+  // The vendored snapshot the other catalog still points at: the same files
+  // one version back, with one the current copy no longer ships.
+  write(
+    root,
+    'vendor/review-assistant/.claude-plugin/plugin.json',
+    `${JSON.stringify(
+      {
+        name: 'review-assistant',
+        version: '2.0.0',
+        description: 'Reviews a pull request against the team checklist.',
+        skills: './skills/',
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  write(
+    root,
+    'vendor/review-assistant/.codex-plugin/plugin.json',
+    `${JSON.stringify({ name: 'review-assistant', version: '2.0.0' }, null, 2)}\n`,
+  );
+  write(
+    root,
+    'vendor/review-assistant/skills/checklist/SKILL.md',
+    '---\nname: checklist\ndescription: Walk the review checklist.\n---\n\nWalk the checklist, then note the reviewer.\n',
+  );
+  write(root, 'vendor/review-assistant/NOTICE.md', '# Vendored copy\n\nTaken at 2.0.0.\n');
+  write(
+    root,
+    'plugins/changelog-writer/.claude-plugin/plugin.json',
+    `${JSON.stringify({ name: 'changelog-writer', version: '1.4.0' }, null, 2)}\n`,
+  );
+  return {
+    root,
+    claudeCatalogPath,
+    codexCatalogPath,
+    sharedPluginName: 'review-assistant@acme-tools',
+    singleCarrierPluginName: 'changelog-writer@acme-tools',
+    credential,
+    environmentReference,
+  };
+}
+
 export function buildUnifiedPluginFixture(
   prefix = 'inspector-unified-plugins',
   root = createRepositoryFixtureRoot(prefix),
@@ -2673,10 +2923,10 @@ export function buildUnifiedPluginFixture(
         plugins: [
           {
             name: 'formatter',
-            source: { source: 'local', path: './plugins/formatter' },
+            source: './plugins/formatter',
             description: 'Formats a diff the way the team writes it.',
           },
-          { name: 'remote-linter', source: { source: 'git', url: 'https://example.com/lint.git' } },
+          { name: 'remote-linter', source: { source: 'url', url: 'https://example.com/lint.git' } },
         ],
       },
       null,
@@ -2738,9 +2988,7 @@ export function buildUnifiedPluginFixture(
     `${JSON.stringify(
       {
         name: 'codex-tools',
-        plugins: [
-          { name: 'release-notes', source: { source: 'local', path: './plugins/release-notes' } },
-        ],
+        plugins: [{ name: 'release-notes', source: './plugins/release-notes' }],
       },
       null,
       2,

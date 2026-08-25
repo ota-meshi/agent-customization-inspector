@@ -488,10 +488,12 @@ way, and opens that entry, so a value holding a separator, a dot segment, or a h
 reaches nothing rather than reaching outward. Such a value is therefore taken as authored,
 and rejecting it would only drop the ordinary names declared beside it.
 
-Authored local paths use the exact pure tokenizer in the data-model contract. Prefix policy
+An authored local path is tokenized by the exact pure grammar stated here and nowhere
+else. Prefix policy
 handles only one literal `./`; U+002F is the sole separator. Empty input/segments, leading,
 trailing, or repeated separators, `.`/`..`, backslash, colon, a first-segment home marker,
-controls, and unpaired surrogates reject the whole derivation with zero
+a control character — Unicode's `Cc` category, meaning the C0 block, DEL, and the C1 block —
+and unpaired surrogates reject the whole derivation with zero
 target I/O. There is no percent/URL/URI decoding, environment expansion, home resolution, or
 platform path parsing. A reader produces validated literal segments, never a path
 string. Fixed suffix alternatives use literal `first-present-exact`: only a missing exact

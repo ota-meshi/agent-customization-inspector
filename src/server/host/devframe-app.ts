@@ -51,6 +51,8 @@ import type {
   McpCarrierDetailDto,
   PluginCarrierDetailDto,
   PluginCarrierDetailParams,
+  PluginFileDetailDto,
+  PluginFileDetailParams,
   PermissionPolicyDetailDto,
   ScanAdmission,
   SessionSnapshot,
@@ -152,7 +154,10 @@ export async function executeRepositoryScan(
  * value is published exactly as written or not at all, and a process
  * environment is never read on an inspected file's behalf.
  */
-export function createInspectorDevframe(context: InspectorHostContext): DevframeDefinition {
+export function createInspectorDevframe(
+  context: InspectorHostContext,
+  preferredPort?: number,
+): DevframeDefinition {
   // devframe 0.7.5 declares `defineDevframe` in its types but does not
   // export it at runtime; the helper is an identity function, so the typed
   // literal below is the same definition value it would return.
@@ -178,6 +183,13 @@ export function createInspectorDevframe(context: InspectorHostContext): Devframe
       // Unauthenticated by decision: loopback binding is the complete
       // host-side protection (QR-003, Constitution § Quality and Safety Standards).
       auth: false,
+      // A preference, never the bound port (FR-001): devframe hands this to
+      // `get-port-please`, which keeps the value when the port is free, moves
+      // to another port when it is taken, and reads 0 as the request to have
+      // a free port selected automatically. The key is omitted when the CLI
+      // was given no `--port`, so an unstated preference stays devframe's own
+      // default rather than a value this product repeats.
+      ...(preferredPort === undefined ? {} : { port: preferredPort }),
     },
     setup(ctx) {
       // None of these declare devframe's `jsonSerializable: true`, although
@@ -297,6 +309,32 @@ export function createInspectorDevframe(context: InspectorHostContext): Devframe
             // No plugin recognition at the path — never scanned, or removed by
             // a later commit. A parsed carrier declaring no plugin is not this
             // case: it holds a recognition and answers with an empty list.
+            return { error: { code: 'stale-resource' } };
+          }
+          return { ...context.session.dataEnvelope(), data: detail };
+        },
+      });
+      ctx.rpc.register({
+        name: 'agent-customization-inspector:get-plugin-file-detail',
+        type: 'query',
+        // One file a plugin ships, read as that plugin's
+        // (contracts/http-api.md § get-plugin-file-detail). Its own function
+        // rather than a `get-file-detail` variant because that one answers for
+        // the row whose subject a file is, and a file below a plugin root has
+        // no such row of its own unless a rule independently admitted it — in
+        // which case that row answers for its own kind while this one answers
+        // for the plugin's page. Membership validates by resolution, exactly as
+        // every other detail parameter does.
+        handler: (
+          params?: PluginFileDetailParams | null,
+        ): InspectionDataResult<PluginFileDetailDto> | DeterministicRejection => {
+          const detail =
+            params === null || params === undefined
+              ? null
+              : context.session.pluginFileDetail(params);
+          if (detail === null) {
+            // No plugin recognition at the path for that product, a file the
+            // offering never reached, or a commit that no longer holds it.
             return { error: { code: 'stale-resource' } };
           }
           return { ...context.session.dataEnvelope(), data: detail };
@@ -429,13 +467,20 @@ export interface StartInspectorHostOptions {
    * (`./browser-opener`); `false` maps from `--no-open`.
    */
   readonly openBrowser?: boolean;
+  /**
+   * The preferred local port from `--port` (FR-001), or `undefined` when the
+   * option was omitted and devframe's own default stands. devframe resolves
+   * it: a taken port moves to another, and 0 asks for a free one.
+   */
+  readonly preferredPort?: number | undefined;
   /** Called after loopback bind and before the host's startup opener. */
   readonly onReady?: CreateDevServerOptions['onReady'];
 }
 
 /**
  * Starts the loopback devframe dev server for the inspector definition.
- * devframe owns port selection, the loopback `localhost` bind, and static
+ * devframe owns port selection — `--port` reaches it as the preference it
+ * resolves, never as the bound port — the loopback `localhost` bind, and static
  * serving; the product owns startup browser opening through its startup
  * opener (FR-001, research.md § 3), so devframe's bundled opener stays
  * disabled and only the product's opener runs. The caller (the CLI) awaits
@@ -470,7 +515,10 @@ export async function startInspectorHost(
       }
     },
   };
-  return createDevServer(createInspectorDevframe(options.context), serverOptions);
+  return createDevServer(
+    createInspectorDevframe(options.context, options.preferredPort),
+    serverOptions,
+  );
 }
 
 /**

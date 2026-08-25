@@ -10,7 +10,7 @@
 //
 // What a skill is *named* is not here: that is the admitting rule's answer,
 // resolved once at recognition time
-// (`server/inspection/rules/registry.ts` § CompiledStaticSkillRule), because
+// (`server/inspection/rules/skills/compiled-rule.ts` § CompiledStaticSkillRule), because
 // how a name follows from a path and a declaration is the vendor's own
 // contract. What is here is view-wide rather than per-file — a gate is built
 // from every path a tool defines in the view — and the client re-derives it

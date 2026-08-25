@@ -131,7 +131,10 @@ client reads here, and the path is a near miss at every depth including the root
 What a repository catalog's local entry names is enumerated instead. `codex.repo.marketplace`
 admits the catalog, and the rule that admitted it answers where each local entry's plugin
 sits — `<repository root>/<validated-local-source>/`, where the source must use a documented
-local form, begin with `./`, and remain inside the root. The scan enumerates that directory,
+local form — the object with `source: 'local'` and a `path`, or that path string alone —
+begin with `./`, and remain inside the root. A `url`, `git-subdir`, or `npm` entry names a
+place outside this repository, and a spelling this vendor documents nowhere names nothing
+at all. The scan enumerates that directory,
 publishing every regular file under it as the files that plugin ships
 (contracts/inspection-path-allowlist.md § Bounded companion census). The plugin's own
 manifest is one of them. None becomes a candidate: no rule, no recognition, no kind, and no

@@ -33,7 +33,7 @@ customization-selected destination、別machineへの調査content送信は禁�
 
 ## Host要件
 
-1. Processはdevframeが選択したlocal portへ、固定のhost名`localhost`（platformのresolverがIPv4 `127.0.0.1`またはIPv6 `::1`として解決する）を通じてloopback interfaceだけでbindする。Host overrideはなく、どの
+1. Processはdevframeが選択したlocal portへ、固定のhost名`localhost`（platformのresolverがIPv4 `127.0.0.1`またはIPv6 `::1`として解決する）を通じてloopback interfaceだけでbindする。起動は`--port <number>`で希望portを述べてよく（FR-001）、devframeがそれを解決する: 空いているportはそのまま使い、塞がっていれば別portへ移り、0は空きportの自動選択を求める。したがってどのportをbindするかは、希望が述べられたかどうかに関わらずdevframeの決定のままである。Host overrideはなく、どの
    configuration/flagも`0.0.0.0`、LAN address、Unix socketへbindしない。全inspected-source
    filesystem operationはinspection module（`src/server/inspection/`）が発行する。他の
    production moduleはNode.jsのfilesystem APIをimportせず、その前段に別のadmission serviceは
@@ -104,6 +104,7 @@ customization-selected destination、別machineへの調査content送信は禁�
 | `agent-customization-inspector:get-file-detail` | read | Active-generationの`FileDetail` 1件 |
 | `agent-customization-inspector:get-mcp-carrier-detail` | read | Active-generationの`McpCarrierDetail` 1件: MCPを宣言する1 fileの宣言とfileの事実。sourceは決して含まない |
 | `agent-customization-inspector:get-plugin-carrier-detail` | read | inventory row 1件についてのActive-generationの`PluginCarrierDetail` 1件: carrierがmanifestなら完全なsource、catalogなら要求されたentryの宣言。catalog自身のbyteは決して含まない |
+| `agent-customization-inspector:get-plugin-file-detail` | read | pluginが同梱するfile 1件をそのpluginのものとして読む: 記述された完全なsourceとそのfile自身のdiagnostic。要求元carrierのそのrow名のofferingが到達したpathに限る |
 | `agent-customization-inspector:get-permission-policy-detail` | read | Active-generationの`PermissionPolicyDetail` 1件: 宣言された1つのpermission policyを、document全体またはblockとして |
 | `agent-customization-inspector:rescan-repository` | command | 明示Repository scan command 1件の受理 |
 | `agent-customization-inspector:open-file` | command | Commit済みfile 1件をreader自身のmachine上のapplicationで開く |
@@ -113,9 +114,17 @@ customization-selected destination、別machineへの調査content送信は禁�
 | `agent-customization-inspector:rescan-global` | command | Enabled Global Source 1件のscan command受理 |
 | `agent-customization-inspector:disable-global` | command | Priority Global-disable barrier |
 
-Comparison viewは最大2件の`get-file-detail` resultから — MCP declaration comparisonでは
-2件の`get-mcp-carrier-detail` resultから — client側で構築する — 存在する側ごとに1件で、
-片側comparisonの明示された不在の対応物はrequestを要しない — 。独立したcomparison functionは存在しない。Catalogのどこにもmasking、redaction、reveal、environment-resolution
+Comparison viewは通常のdetail functionから、sideが示すdocument 1件につき1 requestで
+client側に構築する。独立したcomparison functionは存在しない。File comparisonは最大2件の
+`get-file-detail` result — 存在する側ごとに1件で、片側comparisonの明示された不在の対応物は
+requestを要しない — 、MCP declaration comparisonは2件の`get-mcp-carrier-detail` result、
+plugin comparisonは2件の`get-plugin-carrier-detail` resultに加えて、panelが示す各documentの
+`get-plugin-file-detail` — 2つのpluginそれぞれのmanifestと、読み手が選んだfileのcopy — から
+構築する。requestはpanelごとではなくdocumentごとである: 2つのsideが同じdocumentへ解決する
+場合と、carrier自身のresponseが既に運んだdocumentは、pairのどちらの順序でも二度requestしない。
+したがってdocumentをどちらのsideが保持しているかは何も決めない。Viewはpanelが示しているものを保持する
+ため、panel間の移動は既に手元にあるものを示し、読み直さない。保持した各documentは他と同じ
+generationとpurgeの規則でviewとともに退場する。Catalogのどこにもmasking、redaction、reveal、environment-resolution
 functionは存在せず、hostはdevframeのoptional MCP routeをenableしない。
 
 同じchannelには、このcatalogではなくframeworkが無条件に登録するdevframe自身のbuilt-inも載る:
@@ -311,7 +320,7 @@ SessionSnapshot
 ├── plugins[]
 │   └── name string または null、
 │       carriers[] { sourceRelativePath, tool, surfaces[], carrier, parseStatus,
-│       diagnosticIds[] }、files[] — plugin名ごとに1 row、名前順。各rowは、その名前を解決する
+│       diagnosticIds[]、files[] } — plugin名ごとに1 row、名前順。各rowは、その名前を解決する
 │       全carrierをSource相対Path順、次にtool順で列挙する。1つのnull名rowが、名前を
 │       1つも解決しないcarrierとともにlistを閉じる。carrierがどの名前を解決するかは
 │       admitしたruleに属する。commandと同じである: Codexはcatalogの提供を
@@ -319,12 +328,14 @@ SessionSnapshot
 │       2 rowになる。
 │       `carrier`は`manifest`か`catalog`である: 製品が配置だけでpluginを読み込む
 │       ときのmanifestか、それを提供するentryを持つcatalogかである。Catalogがrowになることは無い — catalogはplugin名を出どころのsourceへ解決
-│       するものであり、それはcarrierだからである。`files[]`はpluginが同梱するfileで
-│       sort済みである: その提供が名指すplugin rootを丸ごと列挙したもので、pluginの
-│       manifestもその1つであり、このrowのcarrier自身であるmanifestも含む。それが
-│       置かれたfolderがそのpluginだからである。root配下でruleがそれ自体をadmitした
-│       fileもここに含まれ、かつ自身のrowを保つ。宣言とdiagnosticはそちらにある。
-│       2通りの道で辿り着く1つのdirectoryは、1つのdirectoryだからである。Rowはinstallation、
+│       するものであり、それはcarrierだからである。carrierの`files[]`は、そのcarrier自身に
+│       よるこのrow名の提供が届くfileでsort済みである: その提供が名指すplugin rootを
+│       丸ごと列挙したもので、pluginのmanifestもその1つであり、このrowのcarrier自身で
+│       あるmanifestも含む。それが置かれたfolderがそのpluginだからである。root配下で
+│       ruleがそれ自体をadmitしたfileもここに含まれ、かつ自身のrowを保つ。宣言と
+│       diagnosticはそちらにある。pluginのfile一覧全体はcarrierたちの一覧を合わせた
+│       もので、表示する場所で導出する: 1つの名前の2つのcarrierは2つのdirectoryを
+│       名指しうるため、rowはその2つ目の綴りを公開しない。Rowはinstallation、
 │       enablement、trust、cachedコピーのいずれも述べない
 ├── outputStyles[]
 │   └── name string,
@@ -876,18 +887,30 @@ fenceがnon-nullの間は`global-disable-pending` conflict rejection。
 
 ### `agent-customization-inspector:get-plugin-carrier-detail`
 
-Parameter: 宣言するfileのcommit済みSource相対Path — fileのidentityである（FR-030） — と、
-読み出すinventory rowのplugin名を持つobject 1件。名前を1つも解決しない宣言でlistを閉じるrowでは
-`pluginName`はnullである。
+Parameter: 宣言するfileのcommit済みSource相対Path — fileのidentityである（FR-030） — 、
+読み出すinventory rowのplugin名、そして答えがどの製品の読み取りであるかを持つobject 1件。
+名前を1つも解決しない宣言でlistを閉じるrowでは`pluginName`はnullである。
 
 ```json
-{ "sourceRelativePath": ".agents/plugins/marketplace.json", "pluginName": "secret-keeper@inspector-legacy" }
+{
+  "sourceRelativePath": ".agents/plugins/marketplace.json",
+  "pluginName": "secret-keeper@inspector-legacy",
+  "tool": "codex"
+}
 ```
 
 名前はclientが返ってきた内容に適用するfilterではなくparameterである。答えがrow 1件のものだから
 である: そうでなければ、多数のpluginをofferするcatalogは他の全pluginの宣言を、そのうち1件に
 ついてのpageへ送ることになる。したがって1つのcatalogの2つのplugin間を移動することは、2つの
 file間を移動するのとまったく同じく、それ自体が1つのrequestである。
+
+toolがparameterであるのも同じ理由の一段先である: inventory rowは`(file, tool)`ごとに1つの
+carrierを並べ、entryのsourceがどのdirectoryを名指すかは各vendorのcontractであるため、全製品が
+admitする1つのcatalogには製品ごとの読み取りがある — 同じentryがある製品にはplugin rootを名指し、
+他の製品には何も名指さない。projectionが最初に到達したrecognitionで答えれば、ある製品のroot・
+source form・manifest形式を別の製品の名前の下に公開してしまう。製品を名指すrequestは、読み手が
+たどったcarrier行について答える。manifest形式はそのpathの全recognitionの合併のままである。
+rootのどのfileがpluginの自己宣言かは、同じdirectoryについて各vendorが答える問いだからである。
 
 Active-generationのplugin carrier detailを1件返す。判別はそのfileが宣言するpluginに対して
 何であるかによる。2つのcarrier種別は異なる答えを返す。これが`FileDetail`のvariantでは
@@ -925,9 +948,20 @@ PluginCarrierDetail — carrier: 'manifest' | 'catalog'
 各catalog entryは`name` — それが解決するplugin名、宣言しなければnull — 、
 `fields[] { key, keyKind, value }`（そのpluginについてfileが書いた全key。
 `presentation.frontmatter`と同じentry shape）、そしてadmitした各ruleがそのentryの宣言済み
-sourceから答えるものである: `pluginRoot`はそのpluginのfileが占めるSource相対directoryで、
-sourceがここのdirectoryをまったく名指さない場合 — git、npm、絶対path、home、rootを出る
-source — はnullになる。`manifestPaths[]`はそのroot内で、clientがpluginの自己宣言として読む
+sourceから答えるものである: `sourceForm`、`pluginRoot`、`manifestPaths[]`。
+
+`sourceForm`はそのpluginのfileがどの種類の場所から来るかであり、各製品が文書化する形式を
+写し取った閉じた集合である — `repository-directory`、`github-repository`、`git-repository`、
+`git-subdirectory`、`npm-package`、`zip-archive`、`command-output`、そしてadmitしたvendorが
+どの形式としても文書化していないsourceに対する`unrecognized`。vendor自身のtokenではなく種類で
+あるのは、1つの場所に複数の綴りがあるからであり、rootから導出せず並べて公開するのは、Sourceの外へ
+出る相対pathは「ruleが読めた形式」かつ「名指せないdirectory」であり、npm packageはそもそもここの
+どのdirectoryも名指さないからである。rootだけを持つsurfaceは両者を同じ不在として述べてしまう。
+manifest carrierの宣言は`repository-directory`である: pluginとはそのmanifestを置くdirectoryである。
+
+`pluginRoot`はそのpluginのfileが占めるSource相対directoryで、sourceがここのdirectoryをまったく
+名指さない場合 — repository directory以外のすべての形式、およびrootを出るrepository相対path —
+はnullになる。`manifestPaths[]`はそのroot内で、clientがpluginの自己宣言として読む
 fileであり、順序付きで重複は無く、そうしたsourceでは空になる。形式は1製品のものではなく認識する
 全製品のものである: rootのどのfileがpluginの自己宣言かは各vendorのcontractであり、3製品が読む
 1つのcatalogは1つのpluginを1つのrootへ解決しつつ、そこで探す形式のlistを3つ持つ。1製品分の
@@ -952,6 +986,43 @@ Outcome: `PluginCarrierDetail` result — parse済みで要求された名前を
 持たない場合は`stale-resource` rejection — 一度もscanされていないか、後のcommitで削除されたか
 である。別の型の値も同じく解決されるため、malformed-argumentの独立したoutcomeは存在しない。
 Disable fenceがnon-nullの間は`global-disable-pending` conflict rejectionである。
+
+### `agent-customization-inspector:get-plugin-file-detail`
+
+Parameter: pluginを宣言するcarrier、その読み取りでfileに到達した製品、読み出すrowのplugin名
+（listを閉じるrowではnull）、そして読むfileのSource相対Pathを持つobject 1件。
+
+```json
+{
+  "sourceRelativePath": ".agents/plugins/marketplace.json",
+  "tool": "codex",
+  "pluginName": "config-helper@inspector-examples",
+  "filePath": ".codex/rules/team.rules"
+}
+```
+
+`get-file-detail`の変種ではなく独自の関数である。subjectが「このpluginのfileとしての」fileだから
+である。`get-file-detail`はfileがsubjectであるrowについて答えるが、plugin root配下のfileには
+そのようなrowが無い: そこに列挙されたことでrule、recognition、kindのいずれも得ない
+（contracts/inspection-path-allowlist.ja.md § Bounded companion census）。ruleが独立にadmitする
+path — nestedな`SKILL.md`、宣言されたpermission policy、MCP carrier — は自身のkindのrowを保持し、
+そのrowはそれぞれの関数で答える。この関数はpluginのpageについて答える。そこでのsubjectはpluginで
+あり、fileはそれが同梱するfileの1つである。
+
+carrierと製品がparameterであるのは`get-plugin-carrier-detail`のそれらと同じ理由である: offeringが
+どのdirectoryを名指すかは各vendorのcontractなので、pluginがどのfileを同梱するかは1つの
+`(file, tool)` carrierによる1つのrow名の読み取りについての事実である。pathが読める条件はmembership
+である: fileはそのcarrierのそのrow名のofferingが到達したdirectory配下に無ければならない。したがって
+この関数でplugin名を通じて任意のfileを読むことはできない。
+
+戻り値はActive-generationのresult 1件で、commit済みfileの記述された完全なsource（FR-025）と、
+commitの決定的順序でのそのfile自身のdiagnostic（FR-028）を持つ。parseは伴わない: pluginのfileは
+そのfileとして公開され、それを認識するkindは自身のdetailでparseを公開する。
+
+Outcome: 通常のdata envelope。`stale-resource` rejectionは、その製品についてpathにplugin
+recognitionを持つcommit済みgenerationが無いとき、offeringがそのpathを含むdirectoryに到達していない
+とき、またはこのcommitがそこにfileを持たないとき。他の型の値も同じく解決しないので、malformed-argument
+outcomeは別に存在しない。disable fenceが非nullの間は`global-disable-pending` conflict rejection。
 
 ### `agent-customization-inspector:get-permission-policy-detail`
 

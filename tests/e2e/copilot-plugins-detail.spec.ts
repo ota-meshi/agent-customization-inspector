@@ -33,8 +33,14 @@ test.describe('the complete literal Copilot plugin carrier detail', () => {
           plugins: [
             {
               name: 'secret-keeper',
-              source: { source: 'local', path: './plugins/secret-keeper' },
+              source: './plugins/secret-keeper',
               description: 'Bundles an MCP server that needs a token.',
+            },
+            // The GitHub object form this vendor documents, and an npm package,
+            // which it documents nowhere: two different absences.
+            {
+              name: 'github-helper',
+              source: { source: 'github', repo: 'octo-org/plugin-repo', ref: 'v1.0.0' },
             },
             { name: 'npm-helper', source: { source: 'npm', package: '@example/plugin' } },
           ],
@@ -128,12 +134,28 @@ test.describe('the complete literal Copilot plugin carrier detail', () => {
     );
   });
 
-  test('states that a source outside the repository reached no files', async ({ page }) => {
+  test('names the kind of place a source outside the repository is', async ({ page }) => {
+    await openPlugin(page, 'github-helper@inspector-examples');
+
+    const declaration = page.locator('section', { hasText: 'Declaration' }).first();
+    await expect(declaration).toContainText('octo-org/plugin-repo');
+    // The offering names a GitHub repository, which the page states as what it
+    // is rather than as a directory this repository is missing.
+    await expect(page.locator('body')).toContainText(
+      'This offering names a GitHub repository, so this scan holds none of this plugin',
+    );
+  });
+
+  test('states that a source in no documented form was not recognized', async ({ page }) => {
     await openPlugin(page, 'npm-helper@inspector-examples');
 
     const declaration = page.locator('section', { hasText: 'Declaration' }).first();
     await expect(declaration).toContainText('@example/plugin');
-    await expect(page.locator('body')).toContainText('This scan holds no manifest for this plugin');
+    // An npm package is a form Claude Code and Codex document and this vendor
+    // does not, so nothing is derived from it and the page says so.
+    await expect(page.locator('body')).toContainText(
+      'This offering names a source in no form this product recognizes',
+    );
   });
 
   test('drops the content when the route leaves the carrier', async ({ page }) => {

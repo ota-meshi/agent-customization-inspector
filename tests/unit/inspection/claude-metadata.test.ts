@@ -17,10 +17,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { recognizeCandidateForVendors } from '../../../src/server/inspection/recognizers/candidate';
-import {
-  CLAUDE_REPOSITORY_RULES,
-  ClaudeCompiledMcpCarrierRule,
-} from '../../../src/server/inspection/rules/claude';
+import { CLAUDE_REPOSITORY_RULES } from '../../../src/server/inspection/rules/claude';
+import { ClaudeCompiledMcpCarrierRule } from '../../../src/server/inspection/rules/mcp/claude';
 import { CLAUDE_INSPECTION_RULES } from '../../../src/shared/registries/claude/rules';
 import { CLAUDE_MCP_SELECTION_STRATEGY } from '../../../src/shared/registries/claude/strategies';
 import {

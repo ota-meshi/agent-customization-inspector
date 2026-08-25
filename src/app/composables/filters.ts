@@ -643,7 +643,9 @@ export class InventoryFilterView {
         ),
         // A plugin's own files belong to the plugin's row, which already has
         // them: the row is one plugin, and the files it ships are its own.
-        ...(snapshot.value?.plugins ?? []).flatMap((entry) => entry.files),
+        ...(snapshot.value?.plugins ?? []).flatMap((entry) =>
+          entry.carriers.flatMap((carrier) => carrier.files),
+        ),
       ]);
       // The tool selection is deliberately not consulted. A file here was
       // recognized by no product, so no tool selection can match it, and

@@ -187,6 +187,34 @@ test.describe('Codex plugins declared by a repository catalog and its manifests'
     await expect(remoteRow).not.toContainText('file(s) in this plugin');
   });
 
+  test('opens each carrier line on that product own reading of the catalog', async ({ page }) => {
+    await page.goto(host.origin);
+    await page.getByRole('tab', { name: /Plugin/u }).click();
+    const legacyRow = page
+      .getByRole('tabpanel')
+      .locator('.aci-item')
+      .filter({ hasText: 'release-notes@inspector-legacy' });
+
+    // One catalog, three carriers: the entry writes the object spelling only
+    // Codex documents, so Codex resolves a directory from it and the other two
+    // resolve none. Each line opens that product's answer rather than
+    // whichever recognition the projection reached first.
+    const carriers = legacyRow.locator('.aci-plugin-row__owner');
+    await carriers.filter({ hasText: 'OpenAI Codex' }).getByRole('link').click();
+    await expect(page.locator('body')).toContainText('Read as OpenAI Codex reads this carrier');
+    await expect(page.locator('body')).toContainText('plugins/legacy-release-notes/');
+
+    await page.getByRole('link', { name: 'Back to the inventory' }).click();
+    await page.getByRole('tab', { name: /Plugin/u }).click();
+    await carriers.filter({ hasText: 'Claude Code' }).getByRole('link').click();
+    await expect(page.locator('body')).toContainText('Read as Claude Code reads this carrier');
+    // Claude documents the plain `./` string and no `local` object, so this
+    // entry names it no directory: the page says what the offering is rather
+    // than showing another product's root.
+    await expect(page.locator('body')).toContainText('a source in no form this product recognizes');
+    await expect(page.locator('body')).not.toContainText('plugins/legacy-release-notes/');
+  });
+
   test('lists no component a manifest points at and no nested near miss', async ({ page }) => {
     await page.goto(host.origin);
     await page.getByRole('tab', { name: /Plugin/u }).click();

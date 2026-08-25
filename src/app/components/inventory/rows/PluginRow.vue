@@ -30,6 +30,7 @@ import { computed } from 'vue';
 import { NuxtLink } from '#components';
 import RowDiagnostics from './RowDiagnostics.vue';
 import { pluginCarrierDetailRoute } from '../../plugin-detail-route';
+import { pluginComparisonRouteFor } from '../../../composables/plugin-comparison';
 import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text';
 import { PLUGIN_CARRIER_TEXT } from '../../../../shared/api-text';
 import {
@@ -74,6 +75,41 @@ const nameAccessibleText = computed(() =>
   props.entry.name === null ? null : inlinePresentationLabel(props.entry.name),
 );
 
+/**
+ * Where this row's comparison opens, or null when it has none: a comparison
+ * needs one plugin name declared in two distinct files, and the row's first
+ * two carrier paths are the pair the link names. The compare route's own
+ * pickers take over from there — they hold this row's every carrier, so the
+ * reader steps to any other pair on the comparison itself instead of
+ * composing one here. One file that several products recognize is one carrier
+ * of the row, so a row whose carriers are all that file offers no comparison:
+ * the two sides would be the same document. The no-name row links none: its
+ * carriers resolve no plugin a comparison would be about.
+ */
+const compareRoute = computed(() => {
+  if (props.entry.name === null) {
+    return null;
+  }
+  const name = props.entry.name;
+  const [first, second] = new Set(
+    props.entry.carriers.map((carrier) => carrier.sourceRelativePath),
+  );
+  return first !== undefined && second !== undefined
+    ? pluginComparisonRouteFor(name, first, second)
+    : null;
+});
+
+/**
+ * How many files this plugin ships: the carriers' own lists together, counted
+ * where the row states them. Each carrier publishes what its offering reached
+ * (`api-types.ts` § PluginCarrierDto.files), and two carriers naming one
+ * directory reach the same files, so the union is the plugin's whole
+ * directory.
+ */
+const shippedFileCount = computed(
+  () => new Set(props.entry.carriers.flatMap((carrier) => carrier.files)).size,
+);
+
 const carrierRows = computed(() =>
   props.entry.carriers.map((carrier) => ({
     /**
@@ -101,7 +137,11 @@ const carrierRows = computed(() =>
      * detail needs to know which of them the reader followed (FR-030). The
      * null row's carriers name no plugin, so their detail is the file's alone.
      */
-    detailRoute: pluginCarrierDetailRoute(carrier.sourceRelativePath, props.entry.name),
+    detailRoute: pluginCarrierDetailRoute(
+      carrier.sourceRelativePath,
+      carrier.tool,
+      props.entry.name,
+    ),
     /** The kind's extraction diagnostics for this file (FR-028). */
     diagnosticIds: carrier.diagnosticIds,
   })),
@@ -160,13 +200,31 @@ const carrierRows = computed(() =>
          are the plugin's content, and the offering's own detail is where they
          are read. Stated even so, because the scan read them and a file the
          scan read is a file the reader can account for. -->
-    <p v-if="entry.files.length > 0" class="aci-note">
-      {{ entry.files.length }} file(s) in this plugin
+    <p v-if="shippedFileCount > 0" class="aci-note">
+      {{ shippedFileCount }} file(s) in this plugin
+    </p>
+
+    <p v-if="compareRoute !== null" class="aci-plugin-row__compare">
+      <!-- The accessible name carries the row's plugin name after the visible
+           phrase: in a links list every comparable row would otherwise
+           announce identically (WCAG 2.4.6; label-in-name keeps the visible
+           phrase as the prefix). -->
+      <NuxtLink
+        :to="compareRoute"
+        :aria-label="`Compare this plugin with another copy: ${nameAccessibleText ?? ''}`"
+        >Compare this plugin</NuxtLink
+      >
     </p>
   </li>
 </template>
 
 <style scoped>
+/* The comparison entry sits last, under everything the row states: it is a
+   step out of the inventory rather than one of the row's own facts. */
+.aci-plugin-row__compare {
+  margin: 0.35rem 0 0;
+}
+
 /* The name leads the row, as every name-headed row's does: it is what a reader
    looks for, and the carriers that resolve it follow underneath. */
 .aci-plugin-row__name {

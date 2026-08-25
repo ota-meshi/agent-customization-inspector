@@ -33,10 +33,19 @@ export interface LaunchedHost {
  * the inspected repository.
  */
 export async function launchHost(fixture: string): Promise<LaunchedHost> {
-  const child = spawn(process.execPath, [CLI_ENTRY, '--no-open', '--root', fixture], {
-    cwd: tmpdir(),
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
+  // `--port 0` has devframe select a free port instead of reusing its fixed
+  // default, so a suite run never takes the port the machine's owner reserved
+  // for their own use (AGENTS.md § Agent-started process policy). No test
+  // depends on which port it picks: the origin below is read from the printed
+  // launch line.
+  const child = spawn(
+    process.execPath,
+    [CLI_ENTRY, '--no-open', '--port', '0', '--root', fixture],
+    {
+      cwd: tmpdir(),
+      stdio: ['ignore', 'pipe', 'pipe'],
+    },
+  );
   child.stdout.setEncoding('utf8');
   child.stderr.setEncoding('utf8');
   let stdout = '';

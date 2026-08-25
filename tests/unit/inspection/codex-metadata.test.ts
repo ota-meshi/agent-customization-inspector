@@ -13,10 +13,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { recognizeCandidateForVendors } from '../../../src/server/inspection/recognizers/candidate';
-import {
-  CODEX_DERIVED_FALLBACK_RULE,
-  CODEX_REPOSITORY_RULES,
-} from '../../../src/server/inspection/rules/codex';
+import { CODEX_REPOSITORY_RULES } from '../../../src/server/inspection/rules/codex';
+import { CODEX_DERIVED_FALLBACK_RULE } from '../../../src/server/inspection/rules/instructions/codex';
 import {
   CONTENT_FIXTURE_SECRET,
   MALFORMED_SKILL_CONTENT_CASES,

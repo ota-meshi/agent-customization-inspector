@@ -132,6 +132,13 @@ Read the printed URL rather than assuming a port. devframe selects another local
 its default is already bound, so a stale inspector left running would otherwise take the
 connection.
 
+`--port <number>` states a preferred port instead of devframe's default, and `--port 0`
+asks for a free one to be selected automatically. The preference is resolved the same way
+the default is — an occupied port still moves to another — so the printed URL remains the
+only place the bound port is stated. Use `--port 0` for any launch that must not take a
+port someone is holding for their own use; the suites launch that way for the same reason
+(AGENTS.md § Agent-started process policy).
+
 To exercise the inspector against a deterministic fixture repository — the exact trees
 the suites assert against, written by the builders in
 `tests/fixtures/repositories/build-fixtures.ts` — one script rebuilds the named fixture
@@ -1740,6 +1747,9 @@ Gunshi's non-binding help/version, strict unknown-option rejection,
 explicit positional/rest rejection, default exact captured `process.cwd()`, and one `--root`
 accepted with a repeated option resolving to the parser's last value — an absolute option kept as given, a relative option resolved
 against the captured invocation directory, and no `chdir`.
+They cover the optional `--port` preference reaching the host exactly as parsed — 0
+included, that being devframe's request for an automatically selected free port — and its
+absence leaving devframe's own default in place.
 They reject an explicit empty `--root` value with the fixed actionable, source-value-free
 startup error before session/browser creation and reject a missing value through Gunshi's
 typed argument validation. They require nonzero

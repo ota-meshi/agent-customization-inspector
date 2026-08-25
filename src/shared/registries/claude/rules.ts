@@ -883,7 +883,7 @@ export const CLAUDE_REPO_MARKETPLACE_RULE = {
           sections: ['Create the marketplace file', 'Plugin sources'],
           reviewedOn: '2026-08-25',
           establishes:
-            'A repository defines its marketplace in .claude-plugin/marketplace.json in its root — the exact location this rule admits — listing a name, owner information, and plugin entries that each carry a name and the source the plugin is fetched from, where a ./ source names a plugin in the same repository resolved against the marketplace root.',
+            'A repository defines its marketplace in .claude-plugin/marketplace.json in its root — the exact location this rule admits — listing a name, owner information, and plugin entries that each carry a name and the source the plugin is fetched from, where a ./ source names a plugin in the same repository resolved against the marketplace root, and a bare name does the same under a declared metadata.pluginRoot.',
         },
       ]
     : [],

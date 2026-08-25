@@ -27,7 +27,7 @@ test.describe('Copilot plugins declared by the repository own catalogs', () => {
           plugins: [
             {
               name: 'quality-review',
-              source: { source: 'local', path: './plugins/quality-review' },
+              source: './plugins/quality-review',
               description: 'Adds a quality-review skill for quick code reviews.',
             },
             { name: 'shorthand-helper', source: 'octo-org/plugin-repo' },
@@ -118,7 +118,10 @@ test.describe('Copilot plugins declared by the repository own catalogs', () => {
     await expect(notes.locator('.aci-path').first()).toHaveText('.github/plugin/marketplace.json');
     await expect(notes).toContainText('1 file(s) in this plugin');
 
-    // A GitHub shorthand source names no directory here.
+    // A string entry source is a path, so this one names the directory
+    // `octo-org/plugin-repo` — which this repository does not carry, so the row
+    // ships nothing. The `owner/repo` shorthand belongs to the CLI's
+    // marketplace-add command instead.
     const shorthand = items.filter({ hasText: 'shorthand-helper@inspector-examples' });
     await expect(shorthand).not.toContainText('file(s) in this plugin');
   });

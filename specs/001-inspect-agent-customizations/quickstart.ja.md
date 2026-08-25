@@ -112,6 +112,12 @@ pnpm start --no-open --root /path/to/repository
 Portを決め打ちせず、printされたURLを読む。devframeはdefault portが既にbindされていれば別の
 local portを選ぶため、実行したままの古いinspectorが接続を奪う可能性がある。
 
+`--port <number>`はdevframeのdefaultに代えて希望portを述べ、`--port 0`は空きportの自動選択を
+求める。希望はdefaultと同じ方法で解決される — 塞がっていればやはり別portへ移る — ため、
+bindされたportを述べる場所はprintされたURLだけである。誰かが自分用に確保しているportを
+奪ってはならない起動には`--port 0`を使う。suiteも同じ理由でその形で起動する
+（AGENTS.md § Agent-started process policy）。
+
 決定論的なfixture repository — suiteがassertする対象と同一の、
 `tests/fixtures/repositories/build-fixtures.ts`のbuilderが書き出すtree — に対してinspectorを
 確認するには、1つのscriptが指名されたfixtureをgit-ignoredな`.tmp/fixtures/` treeの下に
@@ -1165,7 +1171,9 @@ validation failure、await済みcompletionに加え、defaultでcaptureしたexa
 反復指定をparserのlast valueへ解決する`--root`、すなわちabsolute optionをそのまま保持すること、relative optionをcaptureした
 呼び出しdirectoryに対してresolveすること、`chdir`なし、明示的なempty `--root` valueをsession/browser
 作成前に固定actionableかつsource-value-freeなstartup errorでrejectすること、およびvalueの欠落を
-Gunshiのtyped argument validationでrejectすることも扱う。
+Gunshiのtyped argument validationでrejectすること、省略可能な`--port`の希望がparseされたまま
+hostへ届くこと — 0を含む。0はdevframeに空きportの自動選択を求める値だからである — と、
+省略時はdevframe自身のdefaultが残ることも扱う。
 Testはさらに、automatic openingがOS default handlerへ委譲するだけでversionを
 certifyできないことも証明する。Release recordはpin済みPlaywright revisionを使用し、`--no-open`と表示URLをmanual certified-browser
 fallbackとする。Documentation gateはplanning setを公開せず、repository内の全英日document

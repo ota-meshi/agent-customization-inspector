@@ -153,7 +153,8 @@ compatibility/support window、rollback/support pathを含めるか、理由付�
 英日design evidenceが欠落またはstaleならT002をblockし、英日validation evidenceが欠落すればrelease gateをfailする。
 
 `src/server/cli.ts`はGunshiのstableなroot `define`/`cli` APIだけを使用する。Negatableな`open` booleanを
-default trueとして定義して`--no-open`を提供し、単一のstring-valued `root` optionで`--root <path>`を提供する。
+default trueとして定義して`--no-open`を提供し、単一のstring-valued `root` optionで`--root <path>`を、
+number-valuedな`port` optionで`--port <number>`を提供する。
 `strict: true`を有効にし、bind前にすべてのpositional/rest argumentを明示的に拒否し、`cli()`をawaitし、
 parser所有のvalidation `AggregateError`を通常どおりnonzeroのprocess exitへ伝播させる。Session作成前に
 `process.cwd()`を正確に1回captureし、明示的なempty valueの`--root`はsession作成またはbrowser起動より前に
@@ -164,10 +165,14 @@ validationによりrejectする（反復`--root`はparserのlast valueへ解決�
 lazy command、custom plugin、experimental parser combinatorをimportしない。Validation後、CLIは
 `src/server/host/devframe-app.ts`のapp definitionを通じてdevframe hostを起動する。devframeがport選択、
 loopbackの`localhost` bind、起動時のbrowser-open試行を所有し、CLIはFR-001のmanual fallback用にloopback originを
-1回表示する。
+1回表示する。`--port`の値はparseされたままdefinitionの`cli.port`へ届き、devframeが解決する希望である。
+Optionを省略した場合そのkeyは存在せず、devframe自身のdefaultが適用される。
 
-**ストレージ**: 永続的application storageは使用しない。Session state、調査対象file byte、記述された完全な
-source DTO、diagnostic、comparison selectionはprocess/browser memoryだけに存在する。
+**ストレージ**: 調査対象は何も保存しない。Session state、調査対象file byte、記述された完全な
+source DTO、diagnostic、comparison selectionはprocess/browser memoryだけに存在する。読み手の
+preferenceは2つだけ、このoriginのbrowser local storageに残る。いずれもrepositoryから読んだものを
+含まない: open controlがfileを開くapplicationと、pageを描くcolour schemeである。どちらも読み手自身の
+machineについての値であり、reloadとrescanを越えて残り、読み手が選ぶまでは存在しない。
 
 **テスト**: Automated suiteにはVitest 4.1.10と
 `@vitest/coverage-v8` 4.1.10、Nuxt Test Utils 4.0.3、

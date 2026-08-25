@@ -208,6 +208,7 @@ create a second dependency baseline.
 | File opening | `which` 6.0.1, `env-editor` 1.3.0 | The detail surfaces' open control (FR-022). `which` resolves the editor command a launch would run, so what the host offers and what it can start are one fact rather than two that can disagree; `env-editor` supplies where an installation puts that command when it is not on `PATH`, keeping those locations a maintained third-party fact instead of a table this repository would have to follow each editor's packaging with. `which` stays on 6.x because 7.0.0 declares `^24.15.0`, which excludes part of this project's own supported Node range; the launch itself reuses `open`, already listed above. A package that finds installed applications generally (`locate-app`) is rejected: it is CommonJS-only and pulls a prompt-engineering package and `crypto-js` into a production closure this project audits |
 | Icons | `unplugin-icons` 23.0.1, `@iconify-json/lucide` 1.2.124, `@iconify-json/simple-icons` 1.2.93 | Build-time icon compilation: each `~icons/<collection>/<name>` import becomes a component carrying that icon's own SVG, so the page fetches nothing and no icon runtime ships — the arrangement FR-022 requires, and the reason Iconify's API-backed runtime (`@nuxt/icon`, `@iconify/vue`) is rejected. Both collections ship their icon data with no license file of their own, so this repository carries each set's upstream text under `licenses/` for the notice document to read (FR-043) |
 | Source view/diff | `monaco-editor` 0.55.1, `@ota-meshi/site-kit-monarch-syntaxes` 0.7.3 | Current stable read-only source and diff editor; its own diff engine avoids a duplicate client dependency. Monaco ships no TOML grammar and `.codex/config.toml` is a customization format this product opens, so the `toml` id is registered from the syntaxes package: a Monarch grammar and a language configuration — what a basic language is — with no language service and no worker behind them. That package ships no license file of its own, so this repository carries its upstream text under `licenses/` for the notice document to read (FR-043) |
+| Colour-scheme control | `shine-and-bright` 0.3.0 | The switch the reader chooses the page's colour scheme with, drawn by the stylesheet that package ships: the component renders the markup those class names select and sets the package's own custom properties, so the sliding knob and the sun-to-moon transition are the package's rather than this repository's. A devDependency whose CSS the client bundle carries, like the icon and grammar packages above; it ships its own license file, so the notice document reads that text where those carry theirs under `licenses/` (FR-043). With forced colours active every `box-shadow` is dropped, which takes the sun and the moon with it while the button's and the knob's borders repaint and the knob still slides — measured 2026-08-25, and the control's accessible name is what states its purpose there (WCAG 1.4.11) |
 | Lint | ESLint 10.7.0, `@nuxt/eslint` 1.16.0, `@stylistic/eslint-plugin` 5.10.0 | Current compatible stable releases; `@stylistic` supplies the stylistic rules (e.g. `quotes`) ESLint 10 dropped from core |
 | Unit/integration | Vitest and coverage-v8 4.1.10, Nuxt Test Utils 4.0.3 | Exact matching Vitest/coverage versions; Nuxt-supported test harness |
 | Components/DOM | Vue Test Utils 2.4.11, happy-dom 20.10.6 | Current releases satisfying Nuxt Test Utils peers |
@@ -831,10 +832,19 @@ disabled links, and the client still loads no external worker, blob worker, or e
 string. Diff
 highlighting uses Monaco and browser capacity without a product-defined line or computation-
 time cutoff. If Monaco or the browser reports a recoverable failure, retain the complete
-read-only side-by-side source and a diagnostic. Tool recognition is compared per tool
-in typed rows, while a file's declared metadata is compared once, because a tool is not a
+read-only side-by-side source and a diagnostic. Tool recognition is compared per tool,
+while a file's declared metadata is compared once, because a tool is not a
 coordinate of a declaration: each side serializes to one canonical document and the two
-documents diff in Monaco. That parse runs once per `(file, kind)` for the Markdown kinds,
+documents diff in Monaco. The exception is a side whose carrier *is* the declaration: a
+plugin manifest declares its plugin with its whole content and is strict JSON already, so
+that side is the file as written — re-serializing it would put the same document one round
+trip further from what the author wrote, which is why no surface parses a manifest for
+display (contracts/http-api.md § get-plugin-carrier-detail). How the per-tool statement is drawn is the kind's own: a table of
+one row per tool where the two sides are two files one name resolves to, since a product
+recognizing one and not the other is the row that says so, and one line per side where both
+sides are whole carrier files, since the products that read a file are that file's own facts
+and the two lines already carry them. A list too long for its line wraps rather than
+widening the page. That parse runs once per `(file, kind)` for the Markdown kinds,
 which every shipped vendor reads under the same fixed YAML semantics; the custom-agent
 kind is the exception and runs once per `(file, tool)`, because how an agent file splits
 is the admitting rule's own reading — a Codex agent is TOML whose
@@ -1014,7 +1024,12 @@ all. The client binds current status and rendered
 inventory completion to its admitted request ID and rejects an earlier status or generation.
 
 Print the resolved local `http://localhost:<port>/` origin exactly once to the initiating
-terminal, from the host's ready callback, before any browser attempt (FR-001). Browser
+terminal, from the host's ready callback, before any browser attempt (FR-001). Which port
+that is stays devframe's resolution: the CLI's `--port` states a preference it resolves
+the same way it resolves its own default — keeping a free port, moving off an occupied
+one, selecting a free port for 0 — so the printed origin is the only statement of the
+bound port, and a launch that must not take a port someone is holding passes `--port 0`.
+Browser
 opening is product policy through the startup opener (§ 3): the CLI's negatable `--open`
 flag (default true) decides whether the host runs it after the launch line, devframe's
 bundled opener stays disabled so only the product's opener runs, on macOS a session tab a

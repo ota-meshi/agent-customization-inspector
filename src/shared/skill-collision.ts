@@ -7,7 +7,7 @@
 // tool cannot compile without declaring its policy.
 //
 // What a skill is named is the admitting rule's answer instead, resolved once
-// at recognition time (`server/inspection/rules/registry.ts`
+// at recognition time (`server/inspection/rules/skills/compiled-rule.ts`
 // § CompiledStaticSkillRule) and published on the recognition, so no surface
 // re-derives it.
 // Platform-neutral by design — only Web APIs, no node: imports — so the

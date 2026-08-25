@@ -36,6 +36,7 @@ import {
   buildCopilotSkillFixture,
   buildCopilotVscodeMcpFixture,
   buildPriorityMcpFixture,
+  buildPluginComparisonFixture,
   buildUnifiedPluginFixture,
 } from '../tests/fixtures/repositories/build-fixtures.ts';
 
@@ -73,6 +74,9 @@ const fixtureBuilders: Readonly<Record<string, (prefix?: string, root?: string) 
   'copilot-plugins': buildCopilotPluginFixture,
   // Every product's plugin path in one tree, the shared catalog included.
   'all-plugins': buildUnifiedPluginFixture,
+  // One marketplace kept in two catalogs, drifted: what the plugin
+  // comparison surface is for.
+  'plugin-comparison': buildPluginComparisonFixture,
   commands: buildCommandFixture,
   'codex-mcp': buildCodexMcpFixture,
   'claude-mcp': buildClaudeMcpFixture,

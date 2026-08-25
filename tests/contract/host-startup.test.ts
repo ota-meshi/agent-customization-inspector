@@ -3,7 +3,8 @@
 // catalog). Covers the packaged-shell serving configuration, the
 // product-owned best-effort startup opener running after the launch line
 // with devframe's bundled opener disabled, the unauthenticated
-// loopback binding, the absence of startup documentation/network access and
+// loopback binding, the port preference the CLI states and devframe
+// resolves, the absence of startup documentation/network access and
 // of any customization-content classification at startup, the exact packed
 // package fields, and the ownerless automatic-startup rejection reaching the
 // process top level without a fabricated Diagnostic or scan result.
@@ -115,6 +116,15 @@ describe('host startup', () => {
       vi.mocked(createDevServer).mock.calls.at(-1)![1]!.onReady!(READY_INFO),
     ).resolves.toBeUndefined();
   });
+
+  it('carries the CLI port preference into the definition devframe resolves', async () => {
+    // The definition tests below build it directly; this is the wiring the
+    // CLI actually goes through, and 0 — devframe's automatically selected
+    // free port — is the value a dropped preference would silently turn into
+    // the fixed default.
+    await startInspectorHost({ context: hostContext(), openBrowser: false, preferredPort: 0 });
+    expect(vi.mocked(createDevServer).mock.calls.at(-1)![0].cli?.port).toBe(0);
+  });
 });
 
 /** One registered RPC function as captured from the definition's `setup`. */
@@ -181,6 +191,23 @@ describe('devframe host definition', () => {
     expect(JSON.stringify(definition.cli)).not.toMatch(/0\.0\.0\.0|::\b|\blan\b/u);
   });
 
+  it('declares no port when the CLI stated no preference', () => {
+    // Same reason as `host`: with no `--port`, which port is bound is
+    // devframe's own default, and repeating it here would be duplicated
+    // policy.
+    expect(createInspectorDevframe(hostContext()).cli).not.toHaveProperty('port');
+  });
+
+  it.each([
+    // 0 is devframe's own request for an automatically selected free port, so
+    // it must arrive as a declared preference; an absent key means something
+    // else entirely.
+    ['automatic selection', 0],
+    ['a named port', 9998],
+  ])('declares %s as the preference devframe resolves', (_label, preferredPort) => {
+    expect(createInspectorDevframe(hostContext(), preferredPort).cli?.port).toBe(preferredPort);
+  });
+
   it('registers every session function under the product namespace', () => {
     const { functions } = registerFunctions(hostContext());
     expect(functions.map((fn) => fn.name)).toEqual([
@@ -188,6 +215,7 @@ describe('devframe host definition', () => {
       'agent-customization-inspector:get-file-detail',
       'agent-customization-inspector:get-mcp-carrier-detail',
       'agent-customization-inspector:get-plugin-carrier-detail',
+      'agent-customization-inspector:get-plugin-file-detail',
       'agent-customization-inspector:get-permission-policy-detail',
       'agent-customization-inspector:rescan-repository',
       'agent-customization-inspector:open-file',

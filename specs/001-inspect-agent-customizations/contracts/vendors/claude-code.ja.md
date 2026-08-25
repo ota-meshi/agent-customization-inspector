@@ -103,10 +103,13 @@ folderをpluginにするため、manifestは`claude.repo.skills-directory-plugin
 登録し — そのfolderに対するworkspace trust dialogを受け入れた後にのみ有効となる — `enabledPlugins`で
 有効化するpluginを`<plugin-name>@<marketplace-name>`のkeyで指名する。repository自身のcatalogは
 rootの`.claude-plugin/marketplace.json`として文書化されており、`claude.repo.marketplace`がこれを
-admitする。catalogは各plugin名をそのplugin自身のsourceへ対応付け、このrepositoryが持つdirectoryを
-名指すのはmarketplace rootからの`./`相対pathだけである。`github`・`git`・`npm`・`archive`・
-`command` sourceの場合、その名前に対応するRepository directoryは存在せず、project settings fileで
-有効化してもそれが他者にinstallされることはない。marketplace sourceとplugin sourceは別の設定で
+admitする。catalogは各plugin名をそのplugin自身のsourceへ対応付ける。このrepositoryが持つdirectoryを
+名指す綴りは2つある: marketplace rootからの`./`相対pathと、`/`を含まないdirectory名1つだけの
+bare name — これはcatalogがそのために宣言する`metadata.pluginRoot`配下として解決される。
+それ以外のsourceは自身の`source` keyで取得元を名指すobjectであり — `github`・`url`・
+`git-subdir`・`npm`・`archive`・`command` — その名前に対応するRepository directoryは存在しない。
+marketplace rootの外へ出るpathと、このvendorがどこにも文書化していない綴りも同様である。
+project settings fileで有効化してもそれが他者にinstallされることはない。marketplace sourceとplugin sourceは別の設定で
 あり、catalogは各pluginの取得元を述べるだけで、installされていることは述べない。
 
 Catalogのlocal source配下の`.claude-plugin/plugin.json`をadmitするruleは存在せず、導出するruleも

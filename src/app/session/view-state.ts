@@ -45,6 +45,7 @@ import { ClientDataPurge } from './client-data';
 import { clearInventoryReturnPoint } from '../router.options';
 import { InstructionComparisonState } from '../composables/instruction-comparison';
 import { McpComparisonState } from '../composables/mcp-comparison';
+import { PluginComparisonState } from '../composables/plugin-comparison';
 import { PromptComparisonState } from '../composables/prompt-comparison';
 import { CustomAgentComparisonState } from '../composables/custom-agent-comparison';
 import { SkillComparisonState } from '../composables/skill-comparison';
@@ -54,6 +55,7 @@ import type {
   McpCarrierDetailDto,
   PluginCarrierDetailDto,
   PluginCarrierDetailParams,
+  PluginFileDetailDto,
   PermissionPolicyDetailDto,
   RejectionCode,
   SessionSnapshot,
@@ -188,6 +190,13 @@ export class SessionViewState {
   public readonly mcpComparison: McpComparisonState;
 
   /**
+   * The plugin kind's own comparison view: one plugin name's declarations in
+   * two of its row's carriers (`plugin-comparison.ts`). Its own state beside
+   * the others because comparison is kind-specific with no shared module.
+   */
+  public readonly pluginComparison: PluginComparisonState;
+
+  /**
    * The prompt-and-command comparison view state (FR-011), owned here for
    * the same reasons {@link skillComparison} is. Its own state rather than a
    * widening of the others, because comparison is kind-specific with no
@@ -282,6 +291,20 @@ export class SessionViewState {
    * detail under two names.
    */
   public readonly openCompanion = shallowRef<FileDetailDto | null>(null);
+
+  /**
+   * The plugin's own manifest, as the plugin's file function served it — the
+   * slot the plugin panel reads, beside {@link pluginOpenFile}.
+   *
+   * Its own slot rather than {@link entryDetail}, because a plugin's file is
+   * not a kind's parse: `get-plugin-file-detail` answers with the file and its
+   * diagnostics, and a file a rule independently admitted keeps its own row
+   * for its own kind (contracts/http-api.md § get-plugin-file-detail).
+   */
+  public readonly pluginManifestFile = shallowRef<PluginFileDetailDto | null>(null);
+
+  /** The file of the open plugin the reader selected; see {@link pluginManifestFile}. */
+  public readonly pluginOpenFile = shallowRef<PluginFileDetailDto | null>(null);
 
   /**
    * The open plugin carrier's detail, or null while none is (contracts/http-api.md
@@ -521,6 +544,17 @@ export class SessionViewState {
         this.view.value = 'ended';
       },
     });
+    // The plugin kind's own comparison state, wired exactly like the ones
+    // above and for the same reasons.
+    this.pluginComparison = new PluginComparisonState({
+      client: this.#client,
+      clientData: this.#clientData,
+      refreshFreshly: () => this.#refreshFreshly(),
+      reportFatalFailure: (error) => {
+        this.#sessionError.value = error.message;
+        this.view.value = 'ended';
+      },
+    });
     // The `prompt/command` kind's own comparison state, wired exactly like
     // the three above and for the same reasons.
     this.promptComparison = new PromptComparisonState({
@@ -601,6 +635,7 @@ export class SessionViewState {
           this.skillComparison.close();
           this.instructionComparison.close();
           this.mcpComparison.close();
+          this.pluginComparison.close();
           this.promptComparison.close();
           this.customAgentComparison.close();
         }
@@ -840,6 +875,8 @@ export class SessionViewState {
     this.openCompanion.value = null;
     this.carrierDetail.value = null;
     this.pluginDetail.value = null;
+    this.pluginManifestFile.value = null;
+    this.pluginOpenFile.value = null;
     this.entryDetailError.value = null;
     // The request key goes with the detail it keyed. It is authored text — a
     // carrier's path and a declared plugin name — so leaving it behind would
@@ -1202,6 +1239,8 @@ export class SessionViewState {
       this.openCompanion.value = null;
       this.carrierDetail.value = null;
       this.pluginDetail.value = null;
+      this.pluginManifestFile.value = null;
+      this.pluginOpenFile.value = null;
       this.#openPluginRow = null;
       this.policyDetail.value = null;
     }
@@ -1228,6 +1267,7 @@ export class SessionViewState {
     // request when the manifest is what is open: it is already here, and asking
     // again would put one file's detail in two slots.
     await this.#openSelectedPluginFile(
+      params,
       selectedFilePath === manifestPath ? null : selectedFilePath,
       owns,
     );
@@ -1235,14 +1275,14 @@ export class SessionViewState {
       return;
     }
     const heldManifest =
-      this.entryDetail.value?.file.sourceRelativePath === manifestPath
-        ? this.entryDetail.value
+      this.pluginManifestFile.value?.file.sourceRelativePath === manifestPath
+        ? this.pluginManifestFile.value
         : null;
     const manifest =
-      heldManifest ?? (await this.#fetchOwnedFileDetail(manifestPath, owns, 'manifest'));
+      heldManifest ?? (await this.#fetchOwnedPluginFile(params, manifestPath, owns, 'manifest'));
     if (owns()) {
       // Null when its own request failed, which the slot's error already says.
-      this.entryDetail.value = manifest;
+      this.pluginManifestFile.value = manifest;
     }
   }
 
@@ -1314,25 +1354,106 @@ export class SessionViewState {
    * whose offering reached no files here.
    */
   async #openSelectedPluginFile(
+    params: PluginCarrierDetailParams,
     selectedFilePath: string | null,
     owns: () => boolean,
   ): Promise<void> {
     if (selectedFilePath === null) {
-      this.openCompanion.value = null;
+      this.pluginOpenFile.value = null;
       return;
     }
     const held =
-      this.openCompanion.value?.file.sourceRelativePath === selectedFilePath
-        ? this.openCompanion.value
+      this.pluginOpenFile.value?.file.sourceRelativePath === selectedFilePath
+        ? this.pluginOpenFile.value
         : null;
-    const file = held ?? (await this.#fetchOwnedFileDetail(selectedFilePath, owns, 'pane'));
+    const file = held ?? (await this.#fetchOwnedPluginFile(params, selectedFilePath, owns, 'pane'));
     if (file === null || !owns()) {
       // The fetch settled the state itself — the pane's own failure, a stale
       // path, or a request this one no longer owns.
       return;
     }
-    this.openCompanion.value = file;
+    this.pluginOpenFile.value = file;
     this.fileDetailState.value = 'ready';
+  }
+
+  /**
+   * Fetches one file of the open plugin under `owns`, settling every outcome
+   * that is not a detail exactly as {@link #fetchOwnedFileDetail} does for a
+   * file of a row whose subject the file is — the same slots, the same states,
+   * because the two serve the one open detail.
+   *
+   * The plugin's own function rather than the generic one: a file below a
+   * plugin root has no row whose subject it is unless a rule independently
+   * admitted it, and the generic function answers for that row alone, so it
+   * refuses exactly the files the plugin's tree lists
+   * (contracts/http-api.md § get-plugin-file-detail).
+   */
+  async #fetchOwnedPluginFile(
+    params: PluginCarrierDetailParams,
+    filePath: string,
+    owns: () => boolean,
+    slot: FileDetailSlot,
+  ): Promise<PluginFileDetailDto | null> {
+    const outcome = await this.#client.fetchPluginFileDetail({ ...params, filePath });
+    switch (outcome.kind) {
+      case 'adopted':
+        return owns() ? outcome.detail : null;
+      case 'rejected':
+        // The plugin no longer reaches this file: a commit that dropped it, or
+        // a path this offering never enumerated. The same declared outcome, in
+        // the same state, as a file detail's stale answer — and the refetch is
+        // what makes reopening the row show what this generation holds.
+        if (owns()) {
+          this.pluginManifestFile.value = null;
+          this.pluginOpenFile.value = null;
+          this.fileDetailState.value = 'stale';
+          void this.refresh();
+        }
+        return null;
+      case 'failed':
+        // A fatal failure is the transport reporting the host is gone, which is
+        // true of the session rather than of this request, so it is the one
+        // outcome a no-longer-owning request still reports.
+        if (outcome.fatal) {
+          this.#sessionError.value = outcome.error.message;
+          this.view.value = 'ended';
+        } else if (owns()) {
+          if (slot === 'manifest') {
+            // The manifest's own outcome, in the slot that shows it: the pane
+            // state belongs to the file the reader selected, which is a
+            // separate request with a separate answer.
+            this.pluginManifestFile.value = null;
+            this.entryDetailError.value = outcome.error.message;
+          } else {
+            this.pluginOpenFile.value = null;
+            this.fileDetailState.value = 'companion-failed';
+            this.#detailError.value = outcome.error.message;
+          }
+        }
+        return null;
+      case 'newer-generation':
+        // The host committed past this page's snapshot, so the response was
+        // withheld rather than shown under this generation's labels. Adopting
+        // the newer snapshot is the fix, and the route's open effect watches
+        // the committed generations, so the refresh both closes this selection
+        // and reopens the same path under the new one — the same recovery a
+        // file detail performs (FR-030).
+        if (owns()) {
+          await this.#refreshFreshly();
+          if (owns()) {
+            this.pluginManifestFile.value = null;
+            this.pluginOpenFile.value = null;
+            this.fileDetailState.value = 'idle';
+          }
+        }
+        return null;
+      case 'purged':
+        // The disposer already cleared the detail along with the view.
+        return null;
+      case 'discarded':
+        // A newer selection superseded this request and owns the state now.
+        return null;
+    }
   }
 
   /**

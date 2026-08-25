@@ -16,10 +16,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { recognizeCandidateForVendors } from '../../../src/server/inspection/recognizers/candidate';
 import { CLAUDE_REPOSITORY_RULES } from '../../../src/server/inspection/rules/claude';
-import {
-  CODEX_DERIVED_FALLBACK_RULE,
-  CODEX_REPOSITORY_RULES,
-} from '../../../src/server/inspection/rules/codex';
+import { CODEX_REPOSITORY_RULES } from '../../../src/server/inspection/rules/codex';
+import { CODEX_DERIVED_FALLBACK_RULE } from '../../../src/server/inspection/rules/instructions/codex';
 import { COPILOT_REPOSITORY_RULES } from '../../../src/server/inspection/rules/copilot';
 import type { CompiledStaticCandidateRule } from '../../../src/server/inspection/rules/registry';
 import type { SupportedTool } from '../../../src/shared/entities';

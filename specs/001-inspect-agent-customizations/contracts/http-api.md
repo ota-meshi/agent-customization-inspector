@@ -38,8 +38,12 @@ another machine remains prohibited.
 
 1. The process binds a devframe-selected local port on the loopback interface only, via
    the fixed host name `localhost` (which the platform resolver yields as IPv4
-   `127.0.0.1` or IPv6 `::1`). There is no host override: no configuration or flag binds
-   `0.0.0.0`, a LAN address, or a Unix socket.
+   `127.0.0.1` or IPv6 `::1`). A launch may state a preferred port with `--port <number>`
+   (FR-001), and devframe resolves it: a free port is kept, an occupied one moves to
+   another, and 0 asks for a free port to be selected automatically. Which port is bound
+   therefore stays devframe's decision whether or not a preference was stated. There is
+   no host override: no configuration or flag binds `0.0.0.0`, a LAN address, or a Unix
+   socket.
    Every inspected-source filesystem operation is issued by the inspection module
    (`src/server/inspection/`); no other production module imports a Node.js filesystem
    API, and there is no separate admission service in front of it. Node.js compatibility is declared
@@ -120,6 +124,7 @@ another machine remains prohibited.
 | `agent-customization-inspector:get-file-detail` | read | One active-generation `FileDetail` |
 | `agent-customization-inspector:get-mcp-carrier-detail` | read | One active-generation `McpCarrierDetail`: one MCP-declaring file's declarations and file facts, never its source |
 | `agent-customization-inspector:get-plugin-carrier-detail` | read | One active-generation `PluginCarrierDetail` for one inventory row: the complete source when the carrier is a manifest and, when the carrier is a catalog, the requested entry's declarations, never the catalog's own bytes |
+| `agent-customization-inspector:get-plugin-file-detail` | read | One file a plugin ships, read as that plugin's: the complete authored source and the file's own diagnostics, for a path the requesting carrier's offering of that row's name reached |
 | `agent-customization-inspector:get-permission-policy-detail` | read | One active-generation `PermissionPolicyDetail`: one declared permission policy, whole document or declared block |
 | `agent-customization-inspector:rescan-repository` | command | Accept one explicit Repository scan command |
 | `agent-customization-inspector:open-file` | command | Open one committed file in an application on the reader's own machine |
@@ -129,10 +134,19 @@ another machine remains prohibited.
 | `agent-customization-inspector:rescan-global` | command | Accept one scan command for one enabled Global Source |
 | `agent-customization-inspector:disable-global` | command | The priority Global-disable barrier |
 
-Comparison views are constructed client-side from at most two `get-file-detail`
-results — one per present side, and a one-sided comparison's stated absent counterpart
-needs none — or, for the MCP declaration comparison, from two `get-mcp-carrier-detail`
-results, and there is no separate comparison function. There is also no masking, redaction, reveal, or
+Comparison views are constructed client-side from the ordinary detail functions, one
+request per document a side shows, and there is no separate comparison function. The file
+comparisons take at most two `get-file-detail` results — one per present side, and a
+one-sided comparison's stated absent counterpart needs none — the MCP declaration
+comparison two `get-mcp-carrier-detail` results, and the plugin comparison two
+`get-plugin-carrier-detail` results plus a `get-plugin-file-detail` for each further
+document its panels show: the two plugins' own manifests, and the copies of the file the
+reader has selected. One request per document, never per panel: a document two sides resolve to, and
+one a carrier's own response already served, are not asked for again — the second in
+either pair order, so which side holds a document decides nothing. A view holds what its
+panels are showing, so stepping between them shows what is already in hand rather than
+re-reading it; every held document leaves with the view under the same generation and purge
+rules as any other. There is also no masking, redaction, reveal, or
 environment-resolution function anywhere in the catalog, and the host does not enable
 devframe's optional MCP route.
 
@@ -344,7 +358,7 @@ SessionSnapshot
 ├── plugins[]
 │   └── name string or null,
 │       carriers[] { sourceRelativePath, tool, surfaces[], carrier, parseStatus,
-│       diagnosticIds[] }, files[] — one row per plugin name, in name order,
+│       diagnosticIds[], files[] } — one row per plugin name, in name order,
 │       each listing
 │       every carrier that resolves it in Source-relative Path then tool order;
 │       the one null-named row closes the list with the carriers that resolve no
@@ -354,14 +368,16 @@ SessionSnapshot
 │       rows. `carrier` is `manifest` or `catalog`: the manifest a product
 │       loads a plugin by placement from, or the catalog whose entry offers it. A catalog is never a
 │       row of its own — it resolves plugin names to the sources they come from,
-│       which makes it a carrier. `files[]` are the files the plugin ships,
-│       sorted: the plugin root its offering names, enumerated in full,
-│       the plugin's own manifest among them — the manifest that is itself
-│       this row's carrier included, since the folder holding it is the
-│       plugin. A file there that a rule admitted on its own account is
-│       listed here too and keeps its own row, which is where its
-│       declarations and diagnostics are: one directory reached two ways is
-│       one directory. The row states no installation, enablement, trust, or cached copy
+│       which makes it a carrier. A carrier's `files[]` are the files its own
+│       offering of this row's name reaches, sorted: the plugin root that
+│       offering names, enumerated in full, the plugin's own manifest among
+│       them — the manifest that is itself this row's carrier included, since
+│       the folder holding it is the plugin. A file there that a rule
+│       admitted on its own account is listed too and keeps its own row,
+│       which is where its declarations and diagnostics are. The plugin's
+│       whole file list is its carriers' lists together, derived where it is
+│       shown: two carriers of one name can name two directories, so the row
+│       publishes no second spelling of them. The row states no installation, enablement, trust, or cached copy
 ├── outputStyles[]
 │   └── name string,
 │       definitions[] { sourceRelativePath, tool, surfaces[], diagnosticIds[] } —
@@ -1047,17 +1063,32 @@ the `global-disable-pending` conflict rejection while the disable fence is non-n
 ### `agent-customization-inspector:get-plugin-carrier-detail`
 
 Parameters: one object naming the committed Source-relative Path of the declaring file —
-the file's identity (FR-030) — and the plugin name of the inventory row being read, null
-for the row that closes the list with the declarations resolving no name at all.
+the file's identity (FR-030) — the plugin name of the inventory row being read, null
+for the row that closes the list with the declarations resolving no name at all, and the
+product whose reading the answer is.
 
 ```json
-{ "sourceRelativePath": ".agents/plugins/marketplace.json", "pluginName": "secret-keeper@inspector-legacy" }
+{
+  "sourceRelativePath": ".agents/plugins/marketplace.json",
+  "pluginName": "secret-keeper@inspector-legacy",
+  "tool": "codex"
+}
 ```
 
 The name is a parameter rather than a filter the client applies to what came back, because
 the answer is one row's: a catalog offering many plugins would otherwise ship every other
 plugin's declaration to a page about one of them. A step between two plugins of one catalog
 is therefore a request of its own, exactly as a step between two files is.
+
+The tool is a parameter for the same reason, one level further: an inventory row lists one
+carrier per `(file, tool)`, and which directory an entry's source names is each vendor's own
+contract, so one catalog admitted by every product has one reading per product — the same
+entry naming a plugin root to one of them and nothing to the others. Answering with
+whichever recognition a projection reached first would publish one product's root, source
+form, and manifest forms under another product's name; a request that names the product
+answers for the carrier line the reader followed. The manifest forms stay the union across
+every recognition at that path, because which file inside a root is the plugin's own
+declaration is a question each vendor answers for the same directory.
 
 Returns one active-generation plugin carrier detail, discriminated by what the file is to
 the plugins it declares. The two carrier kinds answer differently, which is why
@@ -1098,11 +1129,23 @@ PluginCarrierDetail — carrier: 'manifest' | 'catalog'
 Each catalog entry is `name` — the plugin name it resolves, or null when it declares none —
 `fields[] { key, keyKind, value }`, every key the file wrote for that plugin, in the same
 entry shape `presentation.frontmatter` uses, and what the admitting rules answer from that
-entry's declared source: `pluginRoot`, the Source-relative directory the plugin's files
-occupy — null when the source names no directory here at all, as a Git, npm, absolute,
-home, or root-escaping source does — and `manifestPaths[]`, the files inside it that a
-client reads as the plugin's declaration of itself, in order and without repetition, empty
-for such a source. The forms are every recognizing product's rather than one's: which file
+entry's declared source: `sourceForm`, `pluginRoot`, and `manifestPaths[]`.
+
+`sourceForm` is what kind of place the plugin's files come from, as the closed set every
+product's documented forms map onto — `repository-directory`, `github-repository`,
+`git-repository`, `git-subdirectory`, `npm-package`, `zip-archive`, `command-output`, and
+`unrecognized` for a source in no form the admitting vendor documents. The kind rather than
+the vendor's own token, because one place has several spellings, and published beside the
+root rather than derived from it: a relative path that leaves the Source is a form the rule
+read and a directory it cannot name, while an npm package names no directory anywhere here,
+and a surface holding only the root would state both as one absence. A manifest carrier's
+declaration is `repository-directory`: the plugin is the directory holding the manifest.
+
+`pluginRoot` is the Source-relative directory the plugin's files occupy — null when the
+source names no directory here at all, as every form but a repository directory does, and
+as a repository-relative path leaving the root does — and `manifestPaths[]` are the files
+inside it that a client reads as the plugin's declaration of itself, in order and without
+repetition, empty for such a source. The forms are every recognizing product's rather than one's: which file
 inside a root is the plugin's own declaration is each vendor's contract, and one catalog
 three products read resolves one plugin to one root with three lists of forms to look for
 there, so a surface given a single product's list would report that this scan holds no
@@ -1129,6 +1172,49 @@ rejection when no current committed generation holds a plugin recognition at the
 later commit, and a value of another type resolves the same way, so no separate
 malformed-argument outcome exists; the `global-disable-pending` conflict rejection while the
 disable fence is non-null.
+
+### `agent-customization-inspector:get-plugin-file-detail`
+
+Parameters: one object naming the carrier that declares the plugin, the product whose
+reading of it reached the file, the plugin name of the row being read — null for the row
+that closes the list — and the Source-relative Path of the file to read.
+
+```json
+{
+  "sourceRelativePath": ".agents/plugins/marketplace.json",
+  "tool": "codex",
+  "pluginName": "config-helper@inspector-examples",
+  "filePath": ".codex/rules/team.rules"
+}
+```
+
+Its own function rather than a `get-file-detail` variant, because the subject is the file
+*as this plugin's*. `get-file-detail` answers for the row whose subject a file is, and a
+file below a plugin root has no such row: it acquired no rule, no recognition, and no kind
+by being enumerated there (contracts/inspection-path-allowlist.md § Bounded companion
+census). A path a rule *does* independently admit — a nested `SKILL.md`, a declared
+permission policy, an MCP carrier — keeps its own rows for its own kinds, and those rows
+answer through their own functions; this one answers for the plugin's page, where the
+subject is the plugin and the file is one of the files it ships.
+
+The carrier and the product are parameters for the reason
+`get-plugin-carrier-detail`'s are: which directory an offering names is each vendor's own
+contract, so which files a plugin ships is a fact about one `(file, tool)` carrier's
+reading of one row's name. Membership is what makes the path readable: the file must sit
+below a directory that carrier's offering of that name reached, so the function cannot be
+used to read an arbitrary file through a plugin's name.
+
+Returns one active-generation result carrying the committed file with its complete authored
+source (FR-025) and the file's own diagnostics in the commit's deterministic order
+(FR-028). No parse accompanies it: a plugin's file is published as the file it is, and a
+kind that recognizes it publishes its parse on that kind's own detail.
+
+Outcomes: the ordinary data envelope; the `stale-resource` rejection when no current
+committed generation holds a plugin recognition at the path for that product, when the
+offering reached no directory the path sits below, or when this commit no longer holds a
+file there — and a value of another type resolves the same way, so no separate
+malformed-argument outcome exists; the `global-disable-pending` conflict rejection while
+the disable fence is non-null.
 
 ### `agent-customization-inspector:get-permission-policy-detail`
 

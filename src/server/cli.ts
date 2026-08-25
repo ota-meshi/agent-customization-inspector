@@ -58,8 +58,9 @@ const NO_OPERANDS_ACCEPTED =
   'This command accepts options only. Pass the inspected repository root with --root <path>.';
 
 /**
- * The root Gunshi command (FR-001): a negatable default-true `open` flag
- * and an optional `--root <path>` whose resolution is purely lexical.
+ * The root Gunshi command (FR-001): a negatable default-true `open` flag,
+ * an optional `--root <path>` whose resolution is purely lexical, and an
+ * optional `--port <number>` the host passes to devframe as a preference.
  */
 const command = define({
   name: packageJson.name,
@@ -73,6 +74,11 @@ const command = define({
       default: true,
       negatable: true,
       description: 'Open the browser automatically (disable with --no-open)',
+    },
+    port: {
+      type: 'number',
+      description:
+        'Preferred local port; 0 selects a free one automatically (default: devframe selects)',
     },
   },
   async run(ctx) {
@@ -151,6 +157,11 @@ const command = define({
     const server = await startInspectorHost({
       context,
       openBrowser: ctx.values.open,
+      // Forwarded exactly as parsed, `undefined` included: which port is bound
+      // stays devframe's decision (FR-001), so the product neither substitutes
+      // a default of its own nor range-checks a value devframe already
+      // resolves against what the machine has free.
+      preferredPort: ctx.values.port,
       onReady: ({ origin }) => {
         // The one launch line (FR-001, contracts/http-api.md § Host
         // requirements #4): the host invokes this after binding and before

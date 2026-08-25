@@ -122,7 +122,7 @@ export type CustomAgentDeclarationSideState =
    * failed, so the declarations are unknown, not absent (FR-028), and this
    * side serializes nothing. A Copilot row's name survives it, because that
    * product reads the name from the path rather than from the parse
-   * (rules/registry.ts § CompiledStaticAgentRule.agentNameOf).
+   * (rules/agents/compiled-rule.ts § CompiledStaticAgentRule.agentNameOf).
    */
   | 'extraction-failed';
 

@@ -12,7 +12,7 @@
 import { describe, expect, it } from 'vitest';
 import { RecognitionExtraction } from '../../../src/server/inspection/parsers/extraction';
 import { ParsedTomlDocument } from '../../../src/server/inspection/parsers/toml';
-import { configuredFallbackBasenamesOf } from '../../../src/server/inspection/rules/codex';
+import { configuredFallbackBasenamesOf } from '../../../src/server/inspection/rules/instructions/codex';
 
 describe('recognition extraction', () => {
   it('publishes the declared name of an extractor that succeeds', () => {

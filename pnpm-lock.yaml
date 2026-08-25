@@ -96,6 +96,9 @@ importers:
       prettier:
         specifier: ^3.9.6
         version: 3.9.6
+      shine-and-bright:
+        specifier: ^0.3.0
+        version: 0.3.0
       tsdown:
         specifier: ^0.22.8
         version: 0.22.8(@volar/typescript@2.4.28)(typescript@6.0.3)(vue-tsc@3.3.7(typescript@6.0.3))
@@ -4135,6 +4138,9 @@ packages:
   shell-quote@1.10.0:
     resolution: {integrity: sha512-w1aiOKwKuRgtwAReIIj89puqg+I7GvX4IbLrvmhXbzQsj1+Zwi4VO3+fa6ZF91TWSjIxoEkKnMeHcLEODK5ZXA==}
     engines: {node: '>= 0.4'}
+
+  shine-and-bright@0.3.0:
+    resolution: {integrity: sha512-058+pljj55OasRfMGx3J3iqclLcY82vwkY7Li/igAsWTaPUd+yqKkktJwWp9i7Jb+mHORCykv5uiJF7qbHVxGg==}
 
   siginfo@2.0.0:
     resolution: {integrity: sha512-ybx0WO1/8bSBLEWXZvEd7gMW3Sn3JFlW3TvX1nREbDLRNQNaeNN8WK0meBwPdAaOI7TtRRRJn/Es1zhrrCHu7g==}
@@ -9266,6 +9272,8 @@ snapshots:
   shebang-regex@3.0.0: {}
 
   shell-quote@1.10.0: {}
+
+  shine-and-bright@0.3.0: {}
 
   siginfo@2.0.0: {}
 
